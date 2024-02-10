@@ -7,13 +7,17 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::fs;
 use std::io::Error as IOError;
+use std::path::PathBuf;
 use toml::de::Error as TomlError;
+use crate::ui::picker::PathOrId::Path;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Config {
     pub theme: Option<String>,
     pub keys: HashMap<Mode, KeyTrie>,
     pub editor: helix_view::editor::Config,
+    pub global_location: (PathBuf, bool),
+    pub local_location: (PathBuf, bool),
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -30,6 +34,8 @@ impl Default for Config {
             theme: None,
             keys: keymap::default(),
             editor: helix_view::editor::Config::default(),
+            global_location: (helix_loader::config_file(), false),
+            local_location: (helix_loader::workspace_config_file(), false),
         }
     }
 }
@@ -57,24 +63,27 @@ impl Display for ConfigLoadError {
 
 impl Config {
     pub fn load(
-        global: Result<String, ConfigLoadError>,
-        local: Result<String, ConfigLoadError>,
+        global: (Result<String, ConfigLoadError>, PathBuf),
+        local: (Result<String, ConfigLoadError>, PathBuf),
     ) -> Result<Config, ConfigLoadError> {
+        // let global_location: Option<String> = global.as_ref().ok().cloned();
+        // let local_location = local.as_ref().ok().cloned();
         let global_config: Result<ConfigRaw, ConfigLoadError> =
-            global.and_then(|file| toml::from_str(&file).map_err(ConfigLoadError::BadConfig));
+            global.0.and_then(|file| toml::from_str(&file).map_err(ConfigLoadError::BadConfig));
         let local_config: Result<ConfigRaw, ConfigLoadError> =
-            local.and_then(|file| toml::from_str(&file).map_err(ConfigLoadError::BadConfig));
+            local.0.and_then(|file| toml::from_str(&file).map_err(ConfigLoadError::BadConfig));
+        let global_failed = global_config.is_err();
         let res = match (global_config, local_config) {
-            (Ok(global), Ok(local)) => {
+            (Ok(global_raw), Ok(local_raw)) => {
                 let mut keys = keymap::default();
-                if let Some(global_keys) = global.keys {
+                if let Some(global_keys) = global_raw.keys {
                     merge_keys(&mut keys, global_keys)
                 }
-                if let Some(local_keys) = local.keys {
+                if let Some(local_keys) = local_raw.keys {
                     merge_keys(&mut keys, local_keys)
                 }
 
-                let editor = match (global.editor, local.editor) {
+                let editor = match (global_raw.editor, local_raw.editor) {
                     (None, None) => helix_view::editor::Config::default(),
                     (None, Some(val)) | (Some(val), None) => {
                         val.try_into().map_err(ConfigLoadError::BadConfig)?
@@ -85,9 +94,11 @@ impl Config {
                 };
 
                 Config {
-                    theme: local.theme.or(global.theme),
+                    theme: local_raw.theme.or(global_raw.theme),
                     keys,
                     editor,
+                    global_location: (global.1, true),
+                    local_location: (local.1, true),
                 }
             }
             // if any configs are invalid return that first
@@ -107,6 +118,8 @@ impl Config {
                         || Ok(helix_view::editor::Config::default()),
                         |val| val.try_into().map_err(ConfigLoadError::BadConfig),
                     )?,
+                    global_location: (global.1, !global_failed),
+                    local_location: (local.1, global_failed),
                 }
             }
 
@@ -118,11 +131,13 @@ impl Config {
     }
 
     pub fn load_default() -> Result<Config, ConfigLoadError> {
+        let global_location = helix_loader::config_file();
         let global_config =
-            fs::read_to_string(helix_loader::config_file()).map_err(ConfigLoadError::Error);
-        let local_config = fs::read_to_string(helix_loader::workspace_config_file())
+            fs::read_to_string(&global_location).map_err(ConfigLoadError::Error);
+        let local_location = helix_loader::workspace_config_file();
+        let local_config = fs::read_to_string(&local_location)
             .map_err(ConfigLoadError::Error);
-        Config::load(global_config, local_config)
+        Config::load((global_config, global_location), (local_config, local_location))
     }
 }
 
@@ -132,7 +147,7 @@ mod tests {
 
     impl Config {
         fn load_test(config: &str) -> Config {
-            Config::load(Ok(config.to_owned()), Err(ConfigLoadError::default())).unwrap()
+            Config::load((Ok(config.to_owned()), PathBuf::new()), (Err(ConfigLoadError::default()), PathBuf::new())).unwrap()
         }
     }
 

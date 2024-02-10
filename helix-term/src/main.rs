@@ -145,6 +145,12 @@ FLAGS:
         }
     };
 
+    if args.print_config_location {
+        println!("Workspace config loaded: {}\nLocation:\n{}", config.local_location.1, config.local_location.0.to_str().unwrap());
+        println!("Global config loaded: {}\nLocation:\n{}", config.global_location.1, config.global_location.0.to_str().unwrap());
+        return Ok(0);
+    }
+
     let syn_loader_conf = helix_core::config::user_syntax_loader().unwrap_or_else(|err| {
         eprintln!("Bad language config: {}", err);
         eprintln!("Press <ENTER> to continue with default language config");

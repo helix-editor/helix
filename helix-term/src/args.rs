@@ -18,6 +18,7 @@ pub struct Args {
     pub config_file: Option<PathBuf>,
     pub files: Vec<(PathBuf, Position)>,
     pub working_directory: Option<PathBuf>,
+    pub print_config_location: bool,
 }
 
 impl Args {
@@ -75,6 +76,7 @@ impl Args {
                         anyhow::bail!("--working-dir must specify an initial working directory")
                     }
                 },
+                "--print-config-location" => args.print_config_location = true,
                 arg if arg.starts_with("--") => {
                     anyhow::bail!("unexpected double dash argument: {}", arg)
                 }
