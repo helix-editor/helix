@@ -1,7 +1,6 @@
 use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
 use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Selection};
-use helix_loader::persistence;
 use helix_lsp::{
     lsp::{self, notification::Notification},
     util::lsp_range_to_range,
@@ -13,7 +12,7 @@ use helix_view::{
     document::DocumentSavedEventResult,
     editor::{ConfigEvent, EditorEvent},
     graphics::Rect,
-    theme,
+    persistence, theme,
     tree::Layout,
     view::ViewPosition,
     Align, Editor,
