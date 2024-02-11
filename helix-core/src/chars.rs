@@ -45,8 +45,8 @@ pub fn char_is_whitespace(ch: char) -> bool {
         '\u{0009}' | // Character Tabulation
         '\u{0020}' | // Space
         '\u{00A0}' | // No-break Space
-        '\u{202F}' | // Narrow No-break Space
         '\u{180E}' | // Mongolian Vowel Separator
+        '\u{202F}' | // Narrow No-break Space
         '\u{205F}' | // Medium Mathematical Space
         '\u{3000}' | // Ideographic Space
         '\u{FEFF}'   // Zero Width No-break Space
