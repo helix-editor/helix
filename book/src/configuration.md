@@ -121,6 +121,7 @@ The following statusline elements can be configured:
 | `workspace-diagnostics` | The number of warnings and/or errors on workspace |
 | `selections` | The number of active selections |
 | `primary-selection-length` | The number of characters currently in primary selection |
+| `selections-line-count` | Number of lines across all selections |
 | `position` | The cursor position |
 | `position-percentage` | The cursor position as a percentage of the total number of lines |
 | `separator` | The string defined in `editor.statusline.separator` (defaults to `"│"`) |

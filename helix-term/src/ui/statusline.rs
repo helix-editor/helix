@@ -145,6 +145,7 @@ fn get_render_function<'a>(
         helix_view::editor::StatusLineElement::Diagnostics => render_diagnostics,
         helix_view::editor::StatusLineElement::WorkspaceDiagnostics => render_workspace_diagnostics,
         helix_view::editor::StatusLineElement::Selections => render_selections,
+        helix_view::editor::StatusLineElement::SelectionsLineCount => render_selections_line_count,
         helix_view::editor::StatusLineElement::PrimarySelectionLength => {
             render_primary_selection_length
         }
@@ -289,6 +290,47 @@ fn render_selections<'a>(context: &RenderContext) -> Spans<'a> {
         " {} sel{} ",
         count,
         if count == 1 { "" } else { "s" }
+    ))
+    .into()
+}
+
+fn render_selections_line_count<'a>(context: &RenderContext) -> Spans<'a> {
+    let selections = context.doc.selection(context.view.id);
+    let lines = selections
+        .iter()
+        .map(|sel| {
+            let text = context.doc.text();
+
+            if sel.anchor == sel.head {
+                let line = text.char_to_line(sel.anchor);
+                return line..line + 1;
+            }
+
+            let anchor_line = text.char_to_line(sel.anchor);
+            let head_line = text.char_to_line(sel.head);
+            if head_line == anchor_line {
+                return head_line..head_line + 1;
+            }
+            if head_line > anchor_line {
+                anchor_line..head_line
+            } else {
+                head_line..anchor_line
+            }
+        })
+        .fold(
+            // TODO: Improve algorithm so we don't need a `set` at all?
+            // TODO: Is `HashSet` the best option here?
+            std::collections::HashSet::with_capacity(selections.len() * 2),
+            |mut all_lines, lines_range| {
+                all_lines.extend(lines_range);
+                all_lines
+            },
+        );
+
+    Span::raw(format!(
+        " {} line{} ",
+        lines.len(),
+        if lines.len() == 1 { "" } else { "s" }
     ))
     .into()
 }
