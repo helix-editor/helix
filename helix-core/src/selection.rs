@@ -10,6 +10,7 @@ use crate::{
     movement::Direction,
     Assoc, ChangeSet, RopeGraphemes, RopeSlice,
 };
+use serde::{Deserialize, Serialize};
 use smallvec::{smallvec, SmallVec};
 use std::borrow::Cow;
 
@@ -47,7 +48,7 @@ use std::borrow::Cow;
 /// single grapheme inward from the range's edge.  There are a
 /// variety of helper methods on `Range` for working in terms of
 /// that block cursor, all of which have `cursor` in their name.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Range {
     /// The anchor of the range: the side that doesn't move when extending.
     pub anchor: usize,
@@ -388,7 +389,7 @@ impl From<(usize, usize)> for Range {
 
 /// A selection consists of one or more selection ranges.
 /// invariant: A selection can never be empty (always contains at least primary range).
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Selection {
     ranges: SmallVec<[Range; 1]>,
     primary_index: usize,
