@@ -250,23 +250,25 @@ language-servers = [ "mylang-lsp" ]
 <p>Helix determines which language configuration to use based on the <code>file-types</code> key
 from the above section. <code>file-types</code> is a list of strings or tables, for
 example:</p>
-<pre><code class="language-toml">file-types = ["Makefile", "toml", { suffix = ".git/config" }]
+<pre><code class="language-toml">file-types = ["toml", { glob = "Makefile" }, { glob = ".git/config" }, { glob = ".github/workflows/*.yaml" } ]
 </code></pre>
 <p>When determining a language configuration to use, Helix searches the file-types
 with the following priorities:</p>
 <ol>
-<li>Exact match: if the filename of a file is an exact match of a string in a
-<code>file-types</code> list, that language wins. In the example above, <code>"Makefile"</code>
-will match against <code>Makefile</code> files.</li>
-<li>Extension: if there are no exact matches, any <code>file-types</code> string that
-matches the file extension of a given file wins. In the example above, the
-<code>"toml"</code> matches files like <code>Cargo.toml</code> or <code>languages.toml</code>.</li>
-<li>Suffix: if there are still no matches, any values in <code>suffix</code> tables
-are checked against the full path of the given file. In the example above,
-the <code>{ suffix = ".git/config" }</code> would match against any <code>config</code> files
-in <code>.git</code> directories. Note: <code>/</code> is used as the directory separator but is
-replaced at runtime with the appropriate path separator for the operating
-system, so this rule would match against <code>.git\config</code> files on Windows.</li>
+<li>Glob: values in <code>glob</code> tables are checked against the full path of the given
+file. Globs are standard Unix-style path globs (e.g. the kind you use in Shell)
+and can be used to match paths for a specific prefix, suffix, directory, etc.
+In the above example, the <code>{ glob = "Makefile" }</code> config would match files
+with the name <code>Makefile</code>, the <code>{ glob = ".git/config" }</code> config would match
+<code>config</code> files in <code>.git</code> directories, and the <code>{ glob = ".github/workflows/*.yaml" }</code>
+config would match any <code>yaml</code> files in <code>.github/workflow</code> directories. Note
+that globs should always use the Unix path separator <code>/</code> even on Windows systems;
+the matcher will automatically take the machine-specific separators into account.
+If the glob isn't an absolute path or doesn't already start with a glob prefix,
+<code>*/</code> will automatically be added to ensure it matches for any subdirectory.</li>
+<li>Extension: if there are no glob matches, any <code>file-types</code> string that matches
+the file extension of a given file wins. In the example above, the <code>"toml"</code>
+config matches files like <code>Cargo.toml</code> or <code>languages.toml</code>.</li>
 </ol>
 <h2 id="language-server-configuration"><a class="header" href="#language-server-configuration">Language Server configuration</a></h2>
 <p>Language servers are configured separately in the table <code>language-server</code> in the same file as the languages <code>languages.toml</code></p>
