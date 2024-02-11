@@ -18,4 +18,4 @@ ropey = { version = "1.6.1", default-features = false }
 which = "6.0"
 
 [dev-dependencies]
-tempfile = "3.9"
+tempfile = "3.10"
