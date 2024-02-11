@@ -1056,7 +1056,7 @@ pub struct Editor {
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
     pub breakpoints: HashMap<PathBuf, Vec<Breakpoint>>,
 
-    pub old_file_locs: HashMap<PathBuf, ViewPosition>,
+    pub old_file_locs: HashMap<PathBuf, (ViewPosition, Selection)>,
 
     pub syn_loader: Arc<ArcSwap<syntax::Loader>>,
     pub theme_loader: Arc<theme::Loader>,
@@ -1176,7 +1176,7 @@ impl Editor {
         syn_loader: Arc<ArcSwap<syntax::Loader>>,
         config: Arc<dyn DynAccess<Config>>,
         handlers: Handlers,
-        old_file_locs: HashMap<PathBuf, ViewPosition>,
+        old_file_locs: HashMap<PathBuf, (ViewPosition, Selection)>,
     ) -> Self {
         let language_servers = helix_lsp::Registry::new(syn_loader.clone());
         let conf = config.load();
@@ -1681,16 +1681,15 @@ impl Editor {
                 // initialize selection for view
                 let doc = doc_mut!(self, &id);
 
-                let view = self.tree.get_mut(view_id);
-                view.offset = self
+                if let Some((view_position, selection)) = self
                     .old_file_locs
                     .get(doc.path().unwrap())
                     .map(|x| x.to_owned())
-                    .unwrap_or_default();
-                doc.set_selection(
-                    view_id,
-                    Selection::single(view.offset.anchor, view.offset.anchor),
-                );
+                {
+                    let view = self.tree.get_mut(view_id);
+                    view.offset = view_position;
+                    doc.set_selection(view_id, selection);
+                }
 
                 doc.ensure_view_init(view_id);
                 doc.mark_as_focused();
@@ -1797,13 +1796,14 @@ impl Editor {
         // TODO: do something about this unwrap
         let doc = self.document(view.doc).unwrap();
         if let Some(path) = doc.path() {
+            // TODO: can the arg here be a reference? would save cloning
             persistence::push_file_history(FileHistoryEntry::new(
                 path.clone(),
-                view.offset.anchor,
-                view.offset.vertical_offset,
-                view.offset.horizontal_offset,
+                view.offset,
+                doc.selection(id).clone(),
             ));
-            self.old_file_locs.insert(path.to_owned(), view.offset);
+            self.old_file_locs
+                .insert(path.to_owned(), (view.offset, doc.selection(id).clone()));
         };
 
         // Remove selections for the closed view on all documents.

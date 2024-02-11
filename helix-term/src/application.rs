@@ -15,7 +15,6 @@ use helix_view::{
     graphics::Rect,
     persistence, theme,
     tree::Layout,
-    view::ViewPosition,
     Align, Editor,
 };
 use serde_json::json;
@@ -152,16 +151,11 @@ impl Application {
                 &config.editor
             })),
             handlers,
-            HashMap::from_iter(persistence::read_file_history().iter().map(|entry| {
-                (
-                    entry.path.clone(),
-                    ViewPosition {
-                        anchor: entry.anchor,
-                        horizontal_offset: entry.horizontal_offset,
-                        vertical_offset: entry.vertical_offset,
-                    },
-                )
-            })),
+            HashMap::from_iter(
+                persistence::read_file_history()
+                    .into_iter()
+                    .map(|entry| (entry.path.clone(), (entry.view_position, entry.selection))),
+            ),
         );
 
         // TODO: do most of this in the background?
