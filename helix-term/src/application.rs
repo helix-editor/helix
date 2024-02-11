@@ -1,7 +1,7 @@
 use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
 use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Selection};
-use helix_loader::session;
+use helix_loader::persistence;
 use helix_lsp::{
     lsp::{self, notification::Notification},
     util::lsp_range_to_range,
@@ -153,7 +153,7 @@ impl Application {
                 &config.editor
             })),
             handlers,
-            HashMap::from_iter(session::read_file_history().iter().map(|entry| {
+            HashMap::from_iter(persistence::read_file_history().iter().map(|entry| {
                 (
                     entry.path.clone(),
                     ViewPosition {
@@ -169,13 +169,13 @@ impl Application {
         #[cfg(not(feature = "integration"))]
         editor
             .registers
-            .write(':', session::read_command_history())
+            .write(':', persistence::read_command_history())
             // TODO: do something about this unwrap
             .unwrap();
         #[cfg(not(feature = "integration"))]
         editor
             .registers
-            .write('/', session::read_search_history())
+            .write('/', persistence::read_search_history())
             // TODO: do something about this unwrap
             .unwrap();
 

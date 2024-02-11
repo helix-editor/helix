@@ -16,7 +16,7 @@ use crate::{
 };
 use dap::StackFrame;
 use helix_event::dispatch;
-use helix_loader::session::{push_file_history, FileHistoryEntry};
+use helix_loader::persistence::{push_file_history, FileHistoryEntry};
 use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
