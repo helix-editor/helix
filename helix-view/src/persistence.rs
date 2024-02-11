@@ -1,3 +1,4 @@
+use helix_core::Selection;
 use helix_loader::{
     command_histfile, file_histfile,
     persistence::{push_history, read_history},
@@ -6,27 +7,21 @@ use helix_loader::{
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-// TODO: should this contain a ViewPosition?
+use crate::view::ViewPosition;
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FileHistoryEntry {
     pub path: PathBuf,
-    pub anchor: usize,
-    pub vertical_offset: usize,
-    pub horizontal_offset: usize,
+    pub view_position: ViewPosition,
+    pub selection: Selection,
 }
 
 impl FileHistoryEntry {
-    pub fn new(
-        path: PathBuf,
-        anchor: usize,
-        vertical_offset: usize,
-        horizontal_offset: usize,
-    ) -> Self {
+    pub fn new(path: PathBuf, view_position: ViewPosition, selection: Selection) -> Self {
         Self {
             path,
-            anchor,
-            vertical_offset,
-            horizontal_offset,
+            view_position,
+            selection,
         }
     }
 }
