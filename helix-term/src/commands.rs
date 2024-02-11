@@ -2395,7 +2395,6 @@ fn global_search(cx: &mut Context) {
     );
 }
 
-#[derive(Clone, Copy)]
 enum Extend {
     Above,
     Below,
@@ -2441,7 +2440,7 @@ fn select_line_impl(cx: &mut Context, extend: Extend) {
         if range.from() != start || range.to() != end {
             count = count.saturating_sub(1)
         }
-        let (anchor_line, head_line) = match (extend, direction) {
+        let (anchor_line, head_line) = match (&extend, direction) {
             (Extend::Above, Direction::Forward) => (start_line, end_line.saturating_sub(count)),
             (Extend::Above, Direction::Backward) => (end_line, start_line.saturating_sub(count)),
             (Extend::Below, Direction::Forward) => {
