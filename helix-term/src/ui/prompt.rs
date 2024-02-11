@@ -2,7 +2,7 @@ use crate::compositor::{Component, Compositor, Context, Event, EventResult};
 use crate::{alt, ctrl, key, shift, ui};
 use arc_swap::ArcSwap;
 use helix_core::syntax;
-use helix_loader::session;
+use helix_loader::persistence;
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;
 use std::sync::Arc;
@@ -593,7 +593,7 @@ impl Component for Prompt {
                                     cx.editor.set_error(err.to_string());
                                 }
                                 #[cfg(not(feature = "integration"))]
-                                session::push_reg_history(register, &self.line);
+                                persistence::push_reg_history(register, &self.line);
                             };
                         }
 
