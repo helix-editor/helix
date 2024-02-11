@@ -1387,6 +1387,7 @@ dependencies = [
  "signal-hook-tokio",
  "smallvec",
  "tempfile",
+ "termini",
  "tokio",
  "tokio-stream",
  "toml",
