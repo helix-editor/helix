@@ -2416,6 +2416,44 @@ fn extend_line_below(cx: &mut Context) {
 fn extend_line_above(cx: &mut Context) {
     extend_line_impl(cx, Extend::Above);
 }
+fn extend_line_impl(cx: &mut Context, extend: Extend) {
+    let count = cx.count();
+    let (view, doc) = current!(cx.editor);
+
+    let text = doc.text();
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let (start_line, end_line) = range.line_range(text.slice(..));
+
+        let start = text.line_to_char(start_line);
+        let end = text.line_to_char(
+            (end_line + 1) // newline of end_line
+                .min(text.len_lines()),
+        );
+
+        // extend to previous/next line if current line is selected
+        let (anchor, head) = if range.from() == start && range.to() == end {
+            match extend {
+                Extend::Above => (end, text.line_to_char(start_line.saturating_sub(count))),
+                Extend::Below => (
+                    start,
+                    text.line_to_char((end_line + count + 1).min(text.len_lines())),
+                ),
+            }
+        } else {
+            match extend {
+                Extend::Above => (end, text.line_to_char(start_line.saturating_sub(count - 1))),
+                Extend::Below => (
+                    start,
+                    text.line_to_char((end_line + count).min(text.len_lines())),
+                ),
+            }
+        };
+
+        Range::new(anchor, head)
+    });
+
+    doc.set_selection(view.id, selection);
+}
 fn select_line_below(cx: &mut Context) {
     select_line_impl(cx, Extend::Below);
 }
@@ -2471,44 +2509,6 @@ fn select_line_impl(cx: &mut Context, extend: Extend) {
                 text.line_to_char(head_line),
             ),
         };
-        Range::new(anchor, head)
-    });
-
-    doc.set_selection(view.id, selection);
-}
-fn extend_line_impl(cx: &mut Context, extend: Extend) {
-    let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-
-    let text = doc.text();
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        let (start_line, end_line) = range.line_range(text.slice(..));
-
-        let start = text.line_to_char(start_line);
-        let end = text.line_to_char(
-            (end_line + 1) // newline of end_line
-                .min(text.len_lines()),
-        );
-
-        // extend to previous/next line if current line is selected
-        let (anchor, head) = if range.from() == start && range.to() == end {
-            match extend {
-                Extend::Above => (end, text.line_to_char(start_line.saturating_sub(count))),
-                Extend::Below => (
-                    start,
-                    text.line_to_char((end_line + count + 1).min(text.len_lines())),
-                ),
-            }
-        } else {
-            match extend {
-                Extend::Above => (end, text.line_to_char(start_line.saturating_sub(count - 1))),
-                Extend::Below => (
-                    start,
-                    text.line_to_char((end_line + count).min(text.len_lines())),
-                ),
-            }
-        };
-
         Range::new(anchor, head)
     });
 
