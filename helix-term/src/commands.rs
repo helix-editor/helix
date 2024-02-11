@@ -2463,15 +2463,12 @@ fn select_line_above(cx: &mut Context) {
 fn select_line_impl(cx: &mut Context, extend: Extend) {
     let mut count = cx.count();
     let (view, doc) = current!(cx.editor);
-
     let text = doc.text();
+    let saturating_add = |a: usize, b: usize| (a + b).min(text.len_lines());
     let selection = doc.selection(view.id).clone().transform(|range| {
         let (start_line, end_line) = range.line_range(text.slice(..));
         let start = text.line_to_char(start_line);
-        let end = text.line_to_char(
-            (end_line + 1) // newline of end_line
-                .min(text.len_lines()),
-        );
+        let end = text.line_to_char(saturating_add(end_line, 1));
         let direction = range.direction();
 
         // Extending to line bounds is counted as one step
@@ -2481,31 +2478,27 @@ fn select_line_impl(cx: &mut Context, extend: Extend) {
         let (anchor_line, head_line) = match (&extend, direction) {
             (Extend::Above, Direction::Forward) => (start_line, end_line.saturating_sub(count)),
             (Extend::Above, Direction::Backward) => (end_line, start_line.saturating_sub(count)),
-            (Extend::Below, Direction::Forward) => {
-                (start_line, (end_line + count).min(text.len_lines()))
-            }
-            (Extend::Below, Direction::Backward) => {
-                (end_line, (start_line + count).min(text.len_lines()))
-            }
+            (Extend::Below, Direction::Forward) => (start_line, saturating_add(end_line, count)),
+            (Extend::Below, Direction::Backward) => (end_line, saturating_add(start_line, count)),
         };
         let (anchor, head) = match anchor_line.cmp(&head_line) {
             Ordering::Less => (
                 text.line_to_char(anchor_line),
-                text.line_to_char((head_line + 1).min(text.len_lines())),
+                text.line_to_char(saturating_add(head_line, 1)),
             ),
             Ordering::Equal => match extend {
                 Extend::Above => (
-                    text.line_to_char((anchor_line + 1).min(text.len_lines())),
+                    text.line_to_char(saturating_add(anchor_line, 1)),
                     text.line_to_char(head_line),
                 ),
                 Extend::Below => (
                     text.line_to_char(head_line),
-                    text.line_to_char((anchor_line + 1).min(text.len_lines())),
+                    text.line_to_char(saturating_add(anchor_line, 1)),
                 ),
             },
 
             Ordering::Greater => (
-                text.line_to_char((anchor_line + 1).min(text.len_lines())),
+                text.line_to_char(saturating_add(anchor_line, 1)),
                 text.line_to_char(head_line),
             ),
         };
