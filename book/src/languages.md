@@ -78,24 +78,26 @@ from the above section. `file-types` is a list of strings or tables, for
 example:
 
 ```toml
-file-types = ["Makefile", "toml", { suffix = ".git/config" }]
+file-types = ["toml", { glob = "Makefile" }, { glob = ".git/config" }, { glob = ".github/workflows/*.yaml" } ]
 ```
 
 When determining a language configuration to use, Helix searches the file-types
 with the following priorities:
 
-1. Exact match: if the filename of a file is an exact match of a string in a
-   `file-types` list, that language wins. In the example above, `"Makefile"`
-   will match against `Makefile` files.
-2. Extension: if there are no exact matches, any `file-types` string that
-   matches the file extension of a given file wins. In the example above, the
-   `"toml"` matches files like `Cargo.toml` or `languages.toml`.
-3. Suffix: if there are still no matches, any values in `suffix` tables
-   are checked against the full path of the given file. In the example above,
-   the `{ suffix = ".git/config" }` would match against any `config` files
-   in `.git` directories. Note: `/` is used as the directory separator but is
-   replaced at runtime with the appropriate path separator for the operating
-   system, so this rule would match against `.git\config` files on Windows.
+1. Glob: values in `glob` tables are checked against the full path of the given
+   file. Globs are standard Unix-style path globs (e.g. the kind you use in Shell)
+   and can be used to match paths for a specific prefix, suffix, directory, etc.
+   In the above example, the `{ glob = "Makefile" }` config would match files
+   with the name `Makefile`, the `{ glob = ".git/config" }` config would match
+   `config` files in `.git` directories, and the `{ glob = ".github/workflows/*.yaml" }`
+   config would match any `yaml` files in `.github/workflow` directories. Note
+   that globs should always use the Unix path separator `/` even on Windows systems;
+   the matcher will automatically take the machine-specific separators into account.
+   If the glob isn't an absolute path or doesn't already start with a glob prefix,
+   `*/` will automatically be added to ensure it matches for any subdirectory.
+2. Extension: if there are no glob matches, any `file-types` string that matches
+   the file extension of a given file wins. In the example above, the `"toml"`
+   config matches files like `Cargo.toml` or `languages.toml`.
 
 ## Language Server configuration
 

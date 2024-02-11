@@ -315,7 +315,7 @@ async fn test_write_auto_format_fails_still_writes() -> anyhow::Result<()> {
     let mut app = helpers::AppBuilder::new()
         .with_file(file.path(), None)
         .with_input_text("#[l|]#et foo = 0;\n")
-        .with_lang_config(helpers::test_syntax_conf(Some(lang_conf.into())))
+        .with_lang_loader(helpers::test_syntax_loader(Some(lang_conf.into())))
         .build()?;
 
     test_key_sequences(&mut app, vec![(Some(":w<ret>"), None)], false).await?;
