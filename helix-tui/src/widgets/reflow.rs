@@ -59,7 +59,8 @@ impl<'a, 'b> LineComposer<'a> for WordWrapper<'a, 'b> {
         let mut symbols_exhausted = true;
         for StyledGrapheme { symbol, style } in &mut self.symbols {
             symbols_exhausted = false;
-            let symbol_whitespace = symbol.chars().all(&char::is_whitespace) && symbol != NBSP && symbol != NNBSP;
+            let symbol_whitespace =
+                symbol.chars().all(&char::is_whitespace) && symbol != NBSP && symbol != NNBSP;
 
             // Ignore characters wider that the total max width.
             if symbol.width() as u16 > self.max_line_width
