@@ -9,6 +9,7 @@ use crate::{
     handlers::Handlers,
     info::Info,
     input::KeyEvent,
+    persistence::{self, FileHistoryEntry},
     register::Registers,
     theme::{self, Theme},
     tree::{self, Tree},
@@ -16,7 +17,6 @@ use crate::{
 };
 use dap::StackFrame;
 use helix_event::dispatch;
-use helix_loader::persistence::{push_file_history, FileHistoryEntry};
 use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
@@ -1797,7 +1797,7 @@ impl Editor {
         // TODO: do something about this unwrap
         let doc = self.document(view.doc).unwrap();
         if let Some(path) = doc.path() {
-            push_file_history(FileHistoryEntry::new(
+            persistence::push_file_history(FileHistoryEntry::new(
                 path.clone(),
                 view.offset.anchor,
                 view.offset.vertical_offset,

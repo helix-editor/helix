@@ -2,7 +2,6 @@ use crate::compositor::{Component, Compositor, Context, Event, EventResult};
 use crate::{alt, ctrl, key, shift, ui};
 use arc_swap::ArcSwap;
 use helix_core::syntax;
-use helix_loader::persistence;
 use helix_view::document::Mode;
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;
@@ -17,7 +16,7 @@ use helix_core::{
 };
 use helix_view::{
     graphics::{CursorKind, Margin, Rect},
-    Editor,
+    persistence, Editor,
 };
 
 type PromptCharHandler = Box<dyn Fn(&mut Prompt, char, &Context)>;
