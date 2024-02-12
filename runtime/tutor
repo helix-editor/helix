@@ -1454,7 +1454,7 @@ this split.
 =                       CHAPTER 13.6 TRANSPOSE SPLITS           =
 =================================================================
 
-Open a split on the left with :vs hello1 , and then a split below
+Open a split on the left with :vs hello1 and then a split below
 with :vs hello2 .
 
 Move to the tutor split, then press Ctrl-w t to transpose the
