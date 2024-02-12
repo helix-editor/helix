@@ -3056,6 +3056,18 @@ name = "log"
 source = { git = "https://github.com/Tudyx/tree-sitter-log", rev = "62cfe307e942af3417171243b599cc7deac5eab9" }
 
 [[language]]
+name = "hoon"
+scope = "source.hoon"
+injection-regex = "hoon"
+file-types = ["hoon"]
+comment-token = "::"
+indent = {tab-width = 2, unit = "  "}
+
+[[grammar]]
+name = "hoon"
+source = { git = "https://github.com/urbit-pilled/tree-sitter-hoon", rev = "1d5df35af3e0afe592832a67b9fb3feeeba1f7b6" }
+
+[[language]]
 name = "hocon"
 scope = "source.conf"
 file-types = ["conf"]

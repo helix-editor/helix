@@ -70,6 +70,7 @@
 | hcl | ✓ |  | ✓ | `terraform-ls` |
 | heex | ✓ | ✓ |  | `elixir-ls` |
 | hocon | ✓ |  | ✓ |  |
+| hoon | ✓ |  |  |  |
 | hosts | ✓ |  |  |  |
 | html | ✓ |  |  | `vscode-html-language-server` |
 | hurl | ✓ |  | ✓ |  |
