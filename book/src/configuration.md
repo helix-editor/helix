@@ -340,7 +340,12 @@ Currently unused
 
 #### `[editor.gutters.diff]` Section
 
-Currently unused
+The `diff` gutter option displays colored bars indicating whether a `git` diff represents that a line was added, removed or changed.
+These colors are controlled by the theme attributes `diff.plus`, `diff.minus` and `diff.delta`.
+
+Other diff providers will eventually be supported by a future plugin system.
+
+There are currently no options for this section.
 
 #### `[editor.gutters.spacer]` Section
 
