@@ -1184,7 +1184,7 @@ source = { git = "https://github.com/postsolar/tree-sitter-purescript", rev = "5
 name = "zig"
 scope = "source.zig"
 injection-regex = "zig"
-file-types = ["zig"]
+file-types = ["zig", "zon"]
 roots = ["build.zig"]
 auto-format = true
 comment-token = "//"
