@@ -1391,7 +1391,7 @@ the left press Ctrl-w o to close all except this split.
 You can also, starting in normal mode, split the view of the
 current buffer: use Ctrl-w s (to split half way the current
 buffer horizontally and open a copy of it on the right too) and
-use again Ctrl-w v (to split half way vertically with the buffer
+again use Ctrl-w v (to split half way vertically with the buffer
 opened on both splits).
 
 Close extra splits with Ctrl-w o to come back to a single window.
