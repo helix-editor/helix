@@ -1432,7 +1432,7 @@ instead of a new empty buffer.
 =                       CHAPTER 13.5 SWAPPING SPLITS            =
 =================================================================
 
-Open a split on the left with :vs hello1 , and then a split below
+Open a split on the left with :vs hello1 and then a split below
 with :hs hello2 .
 
 From hello2, press Ctrl-w K to swap with the split above: now, the
