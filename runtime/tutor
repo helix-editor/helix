@@ -1366,12 +1366,10 @@ horizontal split.
 =                    CHAPTER 13.2 MOVE BETWEEN SPLITS           =
 =================================================================
 
-Use Ctrl-w k or Ctrl-w arrow-up to move to the split above your
-current split. Use Ctrl-w j or Ctrl-w arrow-down to move back
-to the split below. Use Ctrl-w h or Ctrl-w arrow-left to move
-to the split left, and Ctrl-w l or Ctrl-w arrow-right to move
-back to the split right. To move to the next split (in opening
-order), press Ctrl-w w .
+Use Ctrl-w k to move to the split above your current split. Use
+Ctrl-w j to move back to the split below. Use Ctrl-w h to move to
+the split left, and Ctrl-w l to move back to the split right. To
+move to the next split (in opening order), press Ctrl-w w .
 
 You can now do whatever you want in your new buffers and splits.
 Once you are done with using your new buffer split,
@@ -1383,6 +1381,8 @@ You can also close all splits except the current one with Ctrl-w o .
 Open a third vertical split with Ctrl-w nv , then move to the
 leftmost split with Ctrl-w h twice, then from inside the split on
 the left press Ctrl-w o to close all except this split.
+
+
 
 =================================================================
 =                       CHAPTER 13.3 SPLIT CURRENT BUFFER       =
