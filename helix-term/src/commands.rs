@@ -5,6 +5,7 @@ pub(crate) mod typed;
 pub use dap::*;
 use helix_vcs::Hunk;
 pub use lsp::*;
+use std::fs;
 use tui::widgets::Row;
 pub use typed::*;
 
@@ -225,6 +226,7 @@ impl MappableCommand {
 
     #[rustfmt::skip]
     static_commands!(
+        change_directory, "Change the working directory to the directory in the selection",
         no_op, "Do nothing",
         move_char_left, "Move left",
         move_char_right, "Move right",
@@ -582,6 +584,46 @@ impl PartialEq for MappableCommand {
             ) => first_name == second_name,
             _ => false,
         }
+    }
+}
+
+fn change_directory(cx: &mut Context) {
+    // Get the selected text
+    let (view, doc) = current_ref!(cx.editor);
+    let text = doc.text();
+    let primary_selection = doc.selection(view.id).primary();
+    let selected_text = if primary_selection.len() == 1 {
+        let text_slice = text.slice(..);
+        textobject::textobject_word(
+            text_slice,
+            primary_selection,
+            textobject::TextObject::Inside,
+            cx.count(),
+            true,
+        )
+        .fragment(text_slice)
+        .to_string()
+    } else {
+        text.slice(primary_selection.from()..primary_selection.to())
+            .to_string()
+    };
+
+    // Update the working directory
+    match fs::canonicalize(selected_text.trim()) {
+        Ok(absolute_path) => match helix_stdx::env::set_current_working_dir(
+            helix_stdx::path::expand_tilde(absolute_path),
+        ) {
+            Ok(_) => cx.editor.set_status(format!(
+                "Current working directory is now {}",
+                helix_stdx::env::current_working_dir().display()
+            )),
+            Err(e) => cx.editor.set_error(format!(
+                "Failed to change the directory to the text under the cursor: could not expand tilde: {e}"
+            )),
+        },
+        Err(e) => cx.editor.set_error(format!(
+            "Failed to change the directory to the text under the cursor: path relative to {:#?} is not valid: {e}", std::env::current_dir()
+        )),
     }
 }
 
