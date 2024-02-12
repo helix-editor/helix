@@ -1,8 +1,12 @@
-use crate::compositor::{Component, Context, Event, EventResult};
+use crate::{
+    compositor::{Component, Context, Event, EventResult},
+    handlers::trigger_auto_completion,
+};
 use helix_view::{
     document::SavePoint,
     editor::CompleteAction,
     graphics::Margin,
+    handlers::lsp::SignatureHelpInvoked,
     theme::{Modifier, Style},
     ViewId,
 };
@@ -10,7 +14,7 @@ use tui::{buffer::Buffer as Surface, text::Span};
 
 use std::{borrow::Cow, sync::Arc};
 
-use helix_core::{Change, Transaction};
+use helix_core::{chars, Change, Transaction};
 use helix_view::{graphics::Rect, Document, Editor};
 
 use crate::commands;
@@ -95,10 +99,9 @@ pub struct CompletionItem {
 /// Wraps a Menu.
 pub struct Completion {
     popup: Popup<Menu<CompletionItem>>,
-    start_offset: usize,
     #[allow(dead_code)]
     trigger_offset: usize,
-    // TODO: maintain a completioncontext with trigger kind & trigger char
+    filter: String,
 }
 
 impl Completion {
@@ -108,7 +111,6 @@ impl Completion {
         editor: &Editor,
         savepoint: Arc<SavePoint>,
         mut items: Vec<CompletionItem>,
-        start_offset: usize,
         trigger_offset: usize,
     ) -> Self {
         let preview_completion_insert = editor.config().preview_completion_insert;
@@ -246,7 +248,7 @@ impl Completion {
                     // (also without sending the transaction to the LS) *before any further transaction is applied*.
                     // Otherwise incremental sync breaks (since the state of the LS doesn't match the state the transaction
                     // is applied to).
-                    if editor.last_completion.is_none() {
+                    if matches!(editor.last_completion, Some(CompleteAction::Triggered)) {
                         editor.last_completion = Some(CompleteAction::Selected {
                             savepoint: doc.savepoint(view),
                         })
@@ -324,8 +326,18 @@ impl Completion {
                             doc.apply(&transaction, view.id);
                         }
                     }
+                    // we could have just inserted a trigger char (like a `crate::` completion for rust
+                    // so we want to retrigger immediately when accepting a completion.
+                    trigger_auto_completion(&editor.handlers.completions, editor, true);
                 }
             };
+
+            // In case the popup was deleted because of an intersection w/ the auto-complete menu.
+            if event != PromptEvent::Update {
+                editor
+                    .handlers
+                    .trigger_signature_help(SignatureHelpInvoked::Automatic, editor);
+            }
         });
 
         let margin = if editor.menu_border() {
@@ -339,14 +351,30 @@ impl Completion {
             .ignore_escape_key(true)
             .margin(margin);
 
+        let (view, doc) = current_ref!(editor);
+        let text = doc.text().slice(..);
+        let cursor = doc.selection(view.id).primary().cursor(text);
+        let offset = text
+            .chars_at(cursor)
+            .reversed()
+            .take_while(|ch| chars::char_is_word(*ch))
+            .count();
+        let start_offset = cursor.saturating_sub(offset);
+
+        let fragment = doc.text().slice(start_offset..cursor);
         let mut completion = Self {
             popup,
-            start_offset,
             trigger_offset,
+            // TODO: expand nucleo api to allow moving straight to a Utf32String here
+            // and avoid allocation during matching
+            filter: String::from(fragment),
         };
 
         // need to recompute immediately in case start_offset != trigger_offset
-        completion.recompute_filter(editor);
+        completion
+            .popup
+            .contents_mut()
+            .score(&completion.filter, false);
 
         completion
     }
@@ -366,39 +394,22 @@ impl Completion {
         }
     }
 
-    pub fn recompute_filter(&mut self, editor: &Editor) {
+    /// Appends (`c: Some(c)`) or removes (`c: None`) a character to/from the filter
+    /// this should be called whenever the user types or deletes a character in insert mode.
+    pub fn update_filter(&mut self, c: Option<char>) {
         // recompute menu based on matches
         let menu = self.popup.contents_mut();
-        let (view, doc) = current_ref!(editor);
-
-        // cx.hooks()
-        // cx.add_hook(enum type,  ||)
-        // cx.trigger_hook(enum type, &str, ...) <-- there has to be enough to identify doc/view
-        // callback with editor & compositor
-        //
-        // trigger_hook sends event into channel, that's consumed in the global loop and
-        // triggers all registered callbacks
-        // TODO: hooks should get processed immediately so maybe do it after select!(), before
-        // looping?
-
-        let cursor = doc
-            .selection(view.id)
-            .primary()
-            .cursor(doc.text().slice(..));
-        if self.trigger_offset <= cursor {
-            let fragment = doc.text().slice(self.start_offset..cursor);
-            let text = Cow::from(fragment);
-            // TODO: logic is same as ui/picker
-            menu.score(&text);
-        } else {
-            // we backspaced before the start offset, clear the menu
-            // this will cause the editor to remove the completion popup
-            menu.clear();
+        match c {
+            Some(c) => self.filter.push(c),
+            None => {
+                self.filter.pop();
+                if self.filter.is_empty() {
+                    menu.clear();
+                    return;
+                }
+            }
         }
-    }
-
-    pub fn update(&mut self, cx: &mut commands::Context) {
-        self.recompute_filter(cx.editor)
+        menu.score(&self.filter, c.is_some());
     }
 
     pub fn is_empty(&self) -> bool {

@@ -76,6 +76,15 @@ Releases are available in the `extra` repository:
 ```sh
 sudo pacman -S helix
 ```
+
+> 💡 When installed from the `extra` repository, run Helix with `helix` instead of `hx`.
+>
+> For example:
+> ```sh
+> helix --health
+> ```
+> to check health
+
 Additionally, a [helix-git](https://aur.archlinux.org/packages/helix-git/) package is available
 in the AUR, which builds the master branch.
 

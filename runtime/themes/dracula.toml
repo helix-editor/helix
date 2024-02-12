@@ -60,10 +60,10 @@
 "diff.minus"                      = { fg    = "red"                                                         }
 "ui.background"                   = { fg    = "foreground",      bg = "background"                          }
 "ui.cursor.match"                 = { fg    = "foreground",      bg = "grey"                                }
-"ui.cursor"                       = { fg    = "background",      bg = "purple",         modifiers = ["dim"] }
-"ui.cursor.normal"                = { fg    = "background",      bg = "purple",         modifiers = ["dim"] }	
-"ui.cursor.insert"                = { fg    = "background",      bg = "green",          modifiers = ["dim"] }	
-"ui.cursor.select"                = { fg    = "background",      bg = "cyan",           modifiers = ["dim"] }
+"ui.cursor"                       = { fg    = "background",      bg = "purple",        modifiers = ["dim"]  }
+"ui.cursor.normal"                = { fg    = "background",      bg = "purple",        modifiers = ["dim"]  }	
+"ui.cursor.insert"                = { fg    = "background",      bg = "green",         modifiers = ["dim"]  }	
+"ui.cursor.select"                = { fg    = "background",      bg = "cyan",          modifiers = ["dim"]  }
 "ui.cursor.primary.normal"        = { fg    = "background",      bg = "purple"                              }	
 "ui.cursor.primary.insert"        = { fg    = "background",      bg = "green"                               }	
 "ui.cursor.primary.select"        = { fg    = "background",      bg = "cyan"                                }
@@ -74,16 +74,16 @@
 "ui.linenr"                       = { fg    = "comment"                                                     }
 "ui.linenr.selected"              = { fg    = "foreground"                                                  }
 "ui.menu"                         = { fg    = "foreground",      bg = "current_line"                        }
-"ui.menu.selected"                = { fg    = "current_line",    bg = "purple",         modifiers = ["dim"] }
+"ui.menu.selected"                = { fg    = "current_line",    bg = "purple",        modifiers = ["dim"]  }
 "ui.menu.scroll"                  = { fg    = "foreground",      bg = "current_line"                        }
 "ui.popup"                        = { fg    = "foreground",      bg = "black"                               }
 "ui.selection.primary"            = {                            bg = "current_line"                        }
 "ui.selection"                    = {                            bg = "selection"                           }
 "ui.statusline"                   = { fg    = "foreground",      bg = "darker"                              }
 "ui.statusline.inactive"          = { fg    = "comment",         bg = "darker"                              }
-"ui.statusline.normal"            = { fg    = "black",           bg = "purple"                              }
-"ui.statusline.insert"            = { fg    = "black",           bg = "green"                               }
-"ui.statusline.select"            = { fg    = "black",           bg = "cyan"                                }
+"ui.statusline.normal"            = { fg    = "black",           bg = "purple",        modifiers = ["bold"] }
+"ui.statusline.insert"            = { fg    = "black",           bg = "green",         modifiers = ["bold"] }
+"ui.statusline.select"            = { fg    = "black",           bg = "cyan",          modifiers = ["bold"] }
 "ui.text"                         = { fg    = "foreground"                                                  }
 "ui.text.focus"                   = { fg    = "cyan"                                                        }
 "ui.window"                       = { fg    = "foreground"                                                  }
@@ -133,3 +133,4 @@ green             = "#50fa7b"
 purple            = "#BD93F9" 
 cyan              = "#8be9fd"
 pink              = "#ff79c6"
+

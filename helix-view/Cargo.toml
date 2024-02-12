@@ -46,7 +46,6 @@ serde_json = "1.0"
 toml = "0.7"
 log = "~0.4"
 
-which = "5.0.0"
 parking_lot = "0.12.1"
 
 
