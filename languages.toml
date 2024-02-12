@@ -1923,13 +1923,14 @@ source = { git = "https://github.com/fvacek/tree-sitter-cpon", rev = "0d01fcdae5
 
 [[language]]
 name = "odin"
-auto-format = false
+auto-format = true
 scope = "source.odin"
 file-types = ["odin"]
 roots = ["ols.json"]
 language-servers = [ "ols" ]
 comment-token = "//"
 indent = { tab-width = 4, unit = "\t" }
+formatter = { command = "odinfmt", args = [ "-stdin", "true" ] }
 
 [[grammar]]
 name = "odin"
