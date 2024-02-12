@@ -16,4 +16,4 @@ helix-term = { path = "../helix-term" }
 helix-core = { path = "../helix-core" }
 helix-view = { path = "../helix-view" }
 helix-loader = { path = "../helix-loader" }
-toml = "0.7"
+toml = "0.8"

@@ -43,7 +43,7 @@ chardetng = "0.1"
 
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-toml = "0.7"
+toml = "0.8"
 log = "~0.4"
 
 parking_lot = "0.12.1"
