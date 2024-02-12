@@ -1730,7 +1730,7 @@ language-servers = [ "sourcekit-lsp" ]
 
 [[grammar]]
 name = "swift"
-source = { git = "https://github.com/alex-pinkus/tree-sitter-swift", rev = "77c6312c8438f4dbaa0350cec92b3d6dd3d74a66" }
+source = { git = "https://github.com/alex-pinkus/tree-sitter-swift", rev = "b1b66955d420d5cf5ff268ae552f0d6e43ff66e1" }
 
 [[language]]
 name = "erb"
