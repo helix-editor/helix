@@ -22,15 +22,28 @@ use url::Url;
 
 pub use keymap::macros::*;
 
-#[cfg(not(windows))]
-fn true_color() -> bool {
-    std::env::var("COLORTERM")
-        .map(|v| matches!(v.as_str(), "truecolor" | "24bit"))
-        .unwrap_or(false)
-}
 #[cfg(windows)]
 fn true_color() -> bool {
     true
+}
+
+#[cfg(not(windows))]
+fn true_color() -> bool {
+    if matches!(
+        std::env::var("COLORTERM").map(|v| matches!(v.as_str(), "truecolor" | "24bit")),
+        Ok(true)
+    ) {
+        return true;
+    }
+
+    match termini::TermInfo::from_env() {
+        Ok(t) => {
+            t.extended_cap("RGB").is_some()
+                || t.extended_cap("Tc").is_some()
+                || (t.extended_cap("setrgbf").is_some() && t.extended_cap("setrgbb").is_some())
+        }
+        Err(_) => false,
+    }
 }
 
 /// Function used for filtering dir entries in the various file pickers.

@@ -30,7 +30,7 @@ log = "0.4"
 # cloning/compiling tree-sitter grammars
 cc = { version = "1" }
 threadpool = { version = "1.0" }
-tempfile = "3.9.0"
+tempfile = "3.10.0"
 dunce = "1.0.4"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]

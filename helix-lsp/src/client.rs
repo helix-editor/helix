@@ -177,12 +177,11 @@ impl Client {
         args: &[String],
         config: Option<Value>,
         server_environment: HashMap<String, String>,
-        root_markers: &[String],
-        manual_roots: &[PathBuf],
+        root_path: PathBuf,
+        root_uri: Option<lsp::Url>,
         id: usize,
         name: String,
         req_timeout: u64,
-        doc_path: Option<&std::path::PathBuf>,
     ) -> Result<(Self, UnboundedReceiver<(usize, Call)>, Arc<Notify>)> {
         // Resolve path to the binary
         let cmd = helix_stdx::env::which(cmd)?;
@@ -206,22 +205,6 @@ impl Client {
 
         let (server_rx, server_tx, initialize_notify) =
             Transport::start(reader, writer, stderr, id, name.clone());
-        let (workspace, workspace_is_cwd) = find_workspace();
-        let workspace = path::normalize(workspace);
-        let root = find_lsp_workspace(
-            doc_path
-                .and_then(|x| x.parent().and_then(|x| x.to_str()))
-                .unwrap_or("."),
-            root_markers,
-            manual_roots,
-            &workspace,
-            workspace_is_cwd,
-        );
-
-        // `root_uri` and `workspace_folder` can be empty in case there is no workspace
-        // `root_url` can not, use `workspace` as a fallback
-        let root_path = root.clone().unwrap_or_else(|| workspace.clone());
-        let root_uri = root.and_then(|root| lsp::Url::from_file_path(root).ok());
 
         let workspace_folders = root_uri
             .clone()

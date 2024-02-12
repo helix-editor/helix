@@ -14,6 +14,7 @@
 | cabal |  |  |  | `haskell-language-server-wrapper` |
 | cairo | ✓ | ✓ | ✓ | `cairo-language-server` |
 | capnp | ✓ |  | ✓ |  |
+| cel | ✓ |  |  |  |
 | clojure | ✓ |  |  | `clojure-lsp` |
 | cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
 | comment | ✓ |  |  |  |
@@ -68,8 +69,8 @@
 | haskell-persistent | ✓ |  |  |  |
 | hcl | ✓ |  | ✓ | `terraform-ls` |
 | heex | ✓ | ✓ |  | `elixir-ls` |
-| hoon | ✓ |  |  |  |
 | hocon | ✓ |  | ✓ |  |
+| hoon | ✓ |  |  |  |
 | hosts | ✓ |  |  |  |
 | html | ✓ |  |  | `vscode-html-language-server` |
 | hurl | ✓ |  | ✓ |  |
@@ -155,6 +156,7 @@
 | smithy | ✓ |  |  | `cs` |
 | sml | ✓ |  |  |  |
 | solidity | ✓ |  |  | `solc` |
+| spicedb | ✓ |  |  |  |
 | sql | ✓ |  |  |  |
 | sshclientconfig | ✓ |  |  |  |
 | starlark | ✓ | ✓ |  |  |

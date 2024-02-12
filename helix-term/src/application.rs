@@ -96,11 +96,7 @@ fn setup_integration_logging() {
 }
 
 impl Application {
-    pub fn new(
-        args: Args,
-        config: Config,
-        syn_loader_conf: syntax::Configuration,
-    ) -> Result<Self, Error> {
+    pub fn new(args: Args, config: Config, lang_loader: syntax::Loader) -> Result<Self, Error> {
         #[cfg(feature = "integration")]
         setup_integration_logging();
 
@@ -126,7 +122,7 @@ impl Application {
             })
             .unwrap_or_else(|| theme_loader.default_theme(true_color));
 
-        let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
+        let syn_loader = std::sync::Arc::new(lang_loader);
 
         #[cfg(not(feature = "integration"))]
         let backend = CrosstermBackend::new(stdout(), &config.editor);
@@ -394,10 +390,8 @@ impl Application {
 
     /// refresh language config after config change
     fn refresh_language_config(&mut self) -> Result<(), Error> {
-        let syntax_config = helix_core::config::user_syntax_loader()
-            .map_err(|err| anyhow::anyhow!("Failed to load language config: {}", err))?;
-
-        self.syn_loader = std::sync::Arc::new(syntax::Loader::new(syntax_config));
+        let lang_loader = helix_core::config::user_lang_loader()?;
+        self.syn_loader = std::sync::Arc::new(lang_loader);
         self.editor.syn_loader = self.syn_loader.clone();
         for document in self.editor.documents.values_mut() {
             document.detect_language(self.syn_loader.clone());
