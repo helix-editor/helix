@@ -1209,7 +1209,7 @@ move to ], and press mm to jump to [ .
 
 
 =================================================================
-=                   12.2 USING MATCH MODE SELECT INSIDE         =
+=              12.2 USING MATCH MODE SELECT INSIDE              =
 =================================================================
 
 Match mode also lets you select the "inside" content between a
@@ -1231,7 +1231,7 @@ surrounding matching pair). This also works with "" and similar
 --> try ( with nested [ pairs of ( parenthesis) and "brackets" ])
 
 =================================================================
-=                   12.3 USING MATCH MODE SELECT AROUND         =
+=               12.3 USING MATCH MODE SELECT AROUND             =
 =================================================================
 
 You can also select the "around" content, i.e. both the inside
@@ -1253,7 +1253,7 @@ This naturally works with other delimiters too:
 
 
 =================================================================
-=                   12.4 USING MATCH MODE SURROUND              =
+=                12.4 USING MATCH MODE SURROUND                 =
 =================================================================
 
 The match mode can also be used to add surrounding around the
@@ -1275,7 +1275,7 @@ with adding a surrounding pair of "", or {}, or [].
 
 
 =================================================================
-=                   12.5 USING MATCH MODE DELETE SURROUND       =
+=              12.5 USING MATCH MODE DELETE SURROUND            =
 =================================================================
 
 You can delete surrounding pair of delimiters with the md
@@ -1297,7 +1297,7 @@ Trying to delete unexisting surrounding delimiters print an error
 at the bottom bar and does nothing.
 
 =================================================================
-=                   12.6 USING MATCH MODE REPLACE SURROUND      =
+=             12.6 USING MATCH MODE REPLACE SURROUND            =
 =================================================================
 
 You can replace surrounding pairs of delimiters with the mr
@@ -1319,7 +1319,7 @@ an error warning at the bottom bar and do nothing.
 
 
 =================================================================
-=                     CHAPTER 12 RECAP                       =
+=                       CHAPTER 12 RECAP                        =
 =================================================================
 
 You can enter the match mode with the m key; this will show the
@@ -1341,7 +1341,7 @@ actions available in a popup. This will allow you to:
 
 
 =================================================================
-=                  CHAPTER 13.1 CREATE NEW SPLIT                =
+=                CHAPTER 13.1 CREATE NEW SPLIT                  =
 =================================================================
 
 In normal mode, press Ctrl-w to open the Window menu and display
@@ -1363,7 +1363,7 @@ horizontal split.
 
 
 =================================================================
-=                    CHAPTER 13.2 MOVE BETWEEN SPLITS           =
+=                CHAPTER 13.2 MOVE BETWEEN SPLITS               =
 =================================================================
 
 Use Ctrl-w k to move to the split above your current split. Use
@@ -1385,7 +1385,7 @@ the left press Ctrl-w o to close all except this split.
 
 
 =================================================================
-=                       CHAPTER 13.3 SPLIT CURRENT BUFFER       =
+=               CHAPTER 13.3 SPLIT CURRENT BUFFER               =
 =================================================================
 
 You can also split the view of the current buffer: use Ctrl-w
@@ -1407,7 +1407,7 @@ Close extra splits with Ctrl-w o to come back to a single window.
 
 
 =================================================================
-=                       CHAPTER 13.4 USE COMMANDS TO SPLIT      =
+=               CHAPTER 13.4 USE COMMANDS TO SPLIT              =
 =================================================================
 
 You can also use the :vsplit (aliased to :vs for convenience) or
@@ -1429,7 +1429,7 @@ instead of a new empty buffer.
 
 
 =================================================================
-=                       CHAPTER 13.5 SWAPPING SPLITS            =
+=                  CHAPTER 13.5 SWAPPING SPLITS                 =
 =================================================================
 
 Open a split on the left with :vs hello1 and then a split below
@@ -1451,7 +1451,7 @@ this split.
 
 
 =================================================================
-=                       CHAPTER 13.6 TRANSPOSE SPLITS           =
+=                CHAPTER 13.6 TRANSPOSE SPLITS                  =
 =================================================================
 
 Open a split on the left with :vs hello1 and then a split below
@@ -1473,7 +1473,7 @@ the tutor window.
 
 
 =================================================================
-=                 CHAPTER 13.7 OPEN SPLIT FROM FILEPICKER       =
+=             CHAPTER 13.7 OPEN SPLIT FROM FILEPICKER           =
 =================================================================
 
 Splits can also be opened directly from the filepicker. Press
@@ -1495,7 +1495,7 @@ splits except this one.
 
 
 =================================================================
-=                 CHAPTER 13 RECAP                              =
+=                        CHAPTER 13 RECAP                       =
 =================================================================
 
 Splits can be used to display either the same buffer several times,
