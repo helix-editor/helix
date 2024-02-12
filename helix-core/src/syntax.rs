@@ -10,6 +10,7 @@ use crate::{
 use ahash::RandomState;
 use arc_swap::{ArcSwap, Guard};
 use bitflags::bitflags;
+use globset::GlobSet;
 use hashbrown::raw::RawTable;
 use slotmap::{DefaultKey as LayerId, HopSlotMap};
 
@@ -365,6 +366,22 @@ where
     serializer.end()
 }
 
+fn deserialize_required_root_patterns<'de, D>(deserializer: D) -> Result<Option<GlobSet>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let patterns = Vec::<String>::deserialize(deserializer)?;
+    if patterns.is_empty() {
+        return Ok(None);
+    }
+    let mut builder = globset::GlobSetBuilder::new();
+    for pattern in patterns {
+        let glob = globset::Glob::new(&pattern).map_err(serde::de::Error::custom)?;
+        builder.add(glob);
+    }
+    builder.build().map(Some).map_err(serde::de::Error::custom)
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct LanguageServerConfiguration {
@@ -378,6 +395,12 @@ pub struct LanguageServerConfiguration {
     pub config: Option<serde_json::Value>,
     #[serde(default = "default_timeout")]
     pub timeout: u64,
+    #[serde(
+        default,
+        skip_serializing,
+        deserialize_with = "deserialize_required_root_patterns"
+    )]
+    pub required_root_patterns: Option<GlobSet>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
