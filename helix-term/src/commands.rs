@@ -4084,6 +4084,7 @@ fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
         return;
     };
     let values: Vec<_> = values.map(|value| value.to_string()).collect();
+    let scrolloff = editor.config().scrolloff;
 
     let (view, doc) = current!(editor);
     let repeat = std::iter::repeat(
@@ -4106,6 +4107,8 @@ fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
     });
 
     doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view);
+    view.ensure_cursor_in_view(doc, scrolloff);
 }
 
 fn replace_selections_with_clipboard(cx: &mut Context) {
