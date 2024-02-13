@@ -50,7 +50,7 @@ parking_lot = "0.12.1"
 
 
 [target.'cfg(windows)'.dependencies]
-clipboard-win = { version = "5.0", features = ["std"] }
+clipboard-win = { version = "5.1", features = ["std"] }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"
