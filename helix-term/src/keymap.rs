@@ -199,6 +199,7 @@ impl KeyTrie {
         // recursively visit all nodes in keymap
         fn map_node(cmd_map: &mut ReverseKeymap, node: &KeyTrie, keys: &mut Vec<KeyEvent>) {
             match node {
+                KeyTrie::MappableCommand(MappableCommand::Macro { .. }) => {}
                 KeyTrie::MappableCommand(cmd) => {
                     let name = cmd.name();
                     if name != "no_op" {
