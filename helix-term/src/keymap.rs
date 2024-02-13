@@ -177,6 +177,19 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
                     .map_err(serde::de::Error::custom)?,
             )
         }
+
+        // Prevent macro keybindings from being used in command sequences.
+        // This is meant to be a temporary restriction pending a larger
+        // refactor of how command sequences are executed.
+        if commands
+            .iter()
+            .any(|cmd| matches!(cmd, MappableCommand::Macro { .. }))
+        {
+            return Err(serde::de::Error::custom(
+                "macro keybindings may not be used in command sequences",
+            ));
+        }
+
         Ok(KeyTrie::Sequence(commands))
     }
 
