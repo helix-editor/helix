@@ -22,7 +22,7 @@ helix-loader = { path = "../helix-loader" }
 ropey = { version = "1.6.1", default-features = false, features = ["simd"] }
 smallvec = "1.13"
 smartstring = "1.0.1"
-unicode-segmentation = "1.10"
+unicode-segmentation = "1.11"
 unicode-width = "0.1"
 unicode-general-category = "0.6"
 # slab = "0.4.2"

@@ -20,7 +20,7 @@ helix-core = { path = "../helix-core" }
 
 bitflags = "2.4"
 cassowary = "0.3"
-unicode-segmentation = "1.10"
+unicode-segmentation = "1.11"
 crossterm = { version = "0.27", optional = true }
 termini = "1.0"
 serde = { version = "1", "optional" = true, features = ["derive"]}
