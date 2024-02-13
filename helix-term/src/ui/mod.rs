@@ -336,8 +336,8 @@ pub mod completers {
     pub fn language(editor: &Editor, input: &str) -> Vec<Completion> {
         let text: String = "text".into();
 
-        let language_ids = editor
-            .syn_loader
+        let loader = editor.syn_loader.load();
+        let language_ids = loader
             .language_configs()
             .map(|config| &config.language_id)
             .chain(std::iter::once(&text));

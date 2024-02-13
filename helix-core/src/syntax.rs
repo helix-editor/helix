@@ -1000,7 +1000,7 @@ thread_local! {
 pub struct Syntax {
     layers: HopSlotMap<LayerId, LanguageLayer>,
     root: LayerId,
-    loader: Arc<Loader>,
+    loader: Arc<ArcSwap<Loader>>,
 }
 
 fn byte_range_to_str(range: std::ops::Range<usize>, source: RopeSlice) -> Cow<str> {
@@ -1011,7 +1011,7 @@ impl Syntax {
     pub fn new(
         source: RopeSlice,
         config: Arc<HighlightConfiguration>,
-        loader: Arc<Loader>,
+        loader: Arc<ArcSwap<Loader>>,
     ) -> Option<Self> {
         let root_layer = LanguageLayer {
             tree: None,
@@ -1055,9 +1055,10 @@ impl Syntax {
         let mut queue = VecDeque::new();
         queue.push_back(self.root);
 
-        let scopes = self.loader.scopes.load();
+        let loader = self.loader.load();
+        let scopes = loader.scopes.load();
         let injection_callback = |language: &InjectionLanguageMarker| {
-            self.loader
+            loader
                 .language_configuration_for_injection_string(language)
                 .and_then(|language_config| language_config.highlight_config(&scopes))
         };
@@ -2663,7 +2664,12 @@ mod test {
         let mut cursor = QueryCursor::new();
 
         let config = HighlightConfiguration::new(language, "", "", "").unwrap();
-        let syntax = Syntax::new(source.slice(..), Arc::new(config), Arc::new(loader)).unwrap();
+        let syntax = Syntax::new(
+            source.slice(..),
+            Arc::new(config),
+            Arc::new(ArcSwap::from_pointee(loader)),
+        )
+        .unwrap();
 
         let root = syntax.tree().root_node();
         let mut test = |capture, range| {
@@ -2738,7 +2744,12 @@ mod test {
             fn main() {}
         ",
         );
-        let syntax = Syntax::new(source.slice(..), Arc::new(config), Arc::new(loader)).unwrap();
+        let syntax = Syntax::new(
+            source.slice(..),
+            Arc::new(config),
+            Arc::new(ArcSwap::from_pointee(loader)),
+        )
+        .unwrap();
         let tree = syntax.tree();
         let root = tree.root_node();
         assert_eq!(root.kind(), "source_file");
@@ -2829,7 +2840,12 @@ mod test {
         let language = get_language(language_name).unwrap();
 
         let config = HighlightConfiguration::new(language, "", "", "").unwrap();
-        let syntax = Syntax::new(source.slice(..), Arc::new(config), Arc::new(loader)).unwrap();
+        let syntax = Syntax::new(
+            source.slice(..),
+            Arc::new(config),
+            Arc::new(ArcSwap::from_pointee(loader)),
+        )
+        .unwrap();
 
         let root = syntax
             .tree()
