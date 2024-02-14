@@ -9,7 +9,6 @@ use helix_core::syntax::DebuggerQuirks;
 use serde_json::Value;
 
 use anyhow::anyhow;
-pub use log::{error, info};
 use std::{
     collections::HashMap,
     future::Future,
@@ -114,7 +113,7 @@ impl Client {
         id: usize,
     ) -> Result<(Self, UnboundedReceiver<Payload>)> {
         // Resolve path to the binary
-        let cmd = which::which(cmd).map_err(|err| anyhow::anyhow!(err))?;
+        let cmd = helix_stdx::env::which(cmd)?;
 
         let process = Command::new(cmd)
             .args(args)

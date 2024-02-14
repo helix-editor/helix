@@ -1,31 +1,33 @@
 [package]
 name = "helix-lsp"
-version = "0.6.0"
-authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
-edition = "2021"
-license = "MPL-2.0"
 description = "LSP client implementation for Helix project"
-categories = ["editor"]
-repository = "https://github.com/helix-editor/helix"
-homepage = "https://helix-editor.com"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+categories.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-helix-core = { version = "0.6", path = "../helix-core" }
-helix-loader = { version = "0.6", path = "../helix-loader" }
-helix-parsec = { version = "0.6", path = "../helix-parsec" }
+helix-stdx = { path = "../helix-stdx" }
+helix-core = { path = "../helix-core" }
+helix-loader = { path = "../helix-loader" }
+helix-parsec = { path = "../helix-parsec" }
 
 anyhow = "1.0"
 futures-executor = "0.3"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
-globset = "0.4.13"
+globset = "0.4.14"
 log = "0.4"
-lsp-types = { version = "0.94" }
+lsp-types = { version = "0.95" }
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
-tokio = { version = "1.32", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot", "sync"] }
+tokio = { version = "1.36", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot", "sync"] }
 tokio-stream = "0.1.14"
-which = "4.4"
 parking_lot = "0.12.1"
+arc-swap = "1"

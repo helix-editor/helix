@@ -325,7 +325,7 @@ impl std::str::FromStr for KeyEvent {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut tokens: Vec<_> = s.split('-').collect();
-        let code = match tokens.pop().ok_or_else(|| anyhow!("Missing key code"))? {
+        let mut code = match tokens.pop().ok_or_else(|| anyhow!("Missing key code"))? {
             keys::BACKSPACE => KeyCode::Backspace,
             keys::ENTER => KeyCode::Enter,
             keys::LEFT => KeyCode::Left,
@@ -403,6 +403,18 @@ impl std::str::FromStr for KeyEvent {
                 return Err(anyhow!("Repeated key modifier '{}-'", token));
             }
             modifiers.insert(flag);
+        }
+
+        // Normalize character keys so that characters like C-S-r and C-R
+        // are represented by equal KeyEvents.
+        match code {
+            KeyCode::Char(ch)
+                if ch.is_ascii_lowercase() && modifiers.contains(KeyModifiers::SHIFT) =>
+            {
+                code = KeyCode::Char(ch.to_ascii_uppercase());
+                modifiers.remove(KeyModifiers::SHIFT);
+            }
+            _ => (),
         }
 
         Ok(KeyEvent { code, modifiers })
@@ -549,7 +561,7 @@ pub fn parse_macro(keys_str: &str) -> anyhow::Result<Vec<KeyEvent>> {
         if c == ">" {
             keys_res = Err(anyhow!("Unmatched '>'"));
         } else if c != "<" {
-            keys.push(c);
+            keys.push(if c == "-" { keys::MINUS } else { c });
             i += end_i;
         } else {
             match s.find('>').context("'>' expected") {
@@ -684,6 +696,19 @@ mod test {
                 modifiers: KeyModifiers::ALT | KeyModifiers::CONTROL
             }
         );
+
+        assert_eq!(
+            str::parse::<KeyEvent>("C-S-r").unwrap(),
+            str::parse::<KeyEvent>("C-R").unwrap(),
+        );
+
+        assert_eq!(
+            str::parse::<KeyEvent>("S-w").unwrap(),
+            KeyEvent {
+                code: KeyCode::Char('W'),
+                modifiers: KeyModifiers::NONE
+            }
+        );
     }
 
     #[test]
@@ -805,6 +830,64 @@ mod test {
                 },
                 KeyEvent {
                     code: KeyCode::Char('r'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Enter,
+                    modifiers: KeyModifiers::NONE,
+                },
+            ])
+        );
+
+        assert_eq!(
+            parse_macro(":w aa-bb.txt<ret>").ok(),
+            Some(vec![
+                KeyEvent {
+                    code: KeyCode::Char(':'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('w'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char(' '),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('a'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('a'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('-'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('b'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('b'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('.'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('t'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('x'),
+                    modifiers: KeyModifiers::NONE,
+                },
+                KeyEvent {
+                    code: KeyCode::Char('t'),
                     modifiers: KeyModifiers::NONE,
                 },
                 KeyEvent {

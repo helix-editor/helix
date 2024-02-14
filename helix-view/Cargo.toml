@@ -1,32 +1,35 @@
 [package]
 name = "helix-view"
-version = "0.6.0"
-authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
-edition = "2021"
-license = "MPL-2.0"
 description = "UI abstractions for use in backends"
-categories = ["editor"]
-repository = "https://github.com/helix-editor/helix"
-homepage = "https://helix-editor.com"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+categories.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
 [features]
 default = []
 term = ["crossterm"]
 
 [dependencies]
+helix-stdx = { path = "../helix-stdx" }
+helix-core = { path = "../helix-core" }
+helix-event = { path = "../helix-event" }
+helix-loader = { path = "../helix-loader" }
+helix-lsp = { path = "../helix-lsp" }
+helix-dap = { path = "../helix-dap" }
+helix-vcs = { path = "../helix-vcs" }
+
 bitflags = "2.4"
 anyhow = "1"
-helix-core = { version = "0.6", path = "../helix-core" }
-helix-event = { version = "0.6", path = "../helix-event" }
-helix-loader = { version = "0.6", path = "../helix-loader" }
-helix-lsp = { version = "0.6", path = "../helix-lsp" }
-helix-dap = { version = "0.6", path = "../helix-dap" }
 crossterm = { version = "0.27", optional = true }
-helix-vcs = { version = "0.6", path = "../helix-vcs" }
 
 # Conversion traits
-once_cell = "1.18"
-url = "2"
+once_cell = "1.19"
+url = "2.5.0"
 
 arc-swap = { version = "1.6.0" }
 
@@ -40,15 +43,14 @@ chardetng = "0.1"
 
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
-toml = "0.7"
+toml = "0.8"
 log = "~0.4"
 
-which = "4.4"
 parking_lot = "0.12.1"
 
 
 [target.'cfg(windows)'.dependencies]
-clipboard-win = { version = "4.5", features = ["std"] }
+clipboard-win = { version = "5.1", features = ["std"] }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

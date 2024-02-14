@@ -63,7 +63,7 @@ impl PathOrId {
     fn get_canonicalized(self) -> Self {
         use PathOrId::*;
         match self {
-            Path(path) => Path(helix_core::path::get_canonicalized_path(&path)),
+            Path(path) => Path(helix_stdx::path::canonicalize(path)),
             Id(id) => Id(id),
         }
     }
@@ -461,14 +461,17 @@ impl<T: Item + 'static> Picker<T> {
 
         // Then attempt to highlight it if it has no language set
         if doc.language_config().is_none() {
-            if let Some(language_config) = doc.detect_language_config(&cx.editor.syn_loader) {
+            if let Some(language_config) = doc.detect_language_config(&cx.editor.syn_loader.load())
+            {
                 doc.language = Some(language_config.clone());
                 let text = doc.text().clone();
                 let loader = cx.editor.syn_loader.clone();
                 let job = tokio::task::spawn_blocking(move || {
-                    let syntax = language_config.highlight_config(&loader.scopes()).and_then(
-                        |highlight_config| Syntax::new(text.slice(..), highlight_config, loader),
-                    );
+                    let syntax = language_config
+                        .highlight_config(&loader.load().scopes())
+                        .and_then(|highlight_config| {
+                            Syntax::new(text.slice(..), highlight_config, loader)
+                        });
                     let callback = move |editor: &mut Editor, compositor: &mut Compositor| {
                         let Some(syntax) = syntax else {
                             log::info!("highlighting picker item failed");
@@ -480,8 +483,7 @@ impl<T: Item + 'static> Picker<T> {
                                 .find::<Overlay<DynamicPicker<T>>>()
                                 .map(|overlay| &mut overlay.content.file_picker),
                         };
-                        let Some(picker) = picker
-                        else {
+                        let Some(picker) = picker else {
                             log::info!("picker closed before syntax highlighting finished");
                             return;
                         };
@@ -489,7 +491,15 @@ impl<T: Item + 'static> Picker<T> {
                         let doc = match current_file {
                             PathOrId::Id(doc_id) => doc_mut!(editor, &doc_id),
                             PathOrId::Path(path) => match picker.preview_cache.get_mut(&path) {
-                                Some(CachedPreview::Document(ref mut doc)) => doc,
+                                Some(CachedPreview::Document(ref mut doc)) => {
+                                    let diagnostics = Editor::doc_diagnostics(
+                                        &editor.language_servers,
+                                        &editor.diagnostics,
+                                        doc,
+                                    );
+                                    doc.replace_diagnostics(diagnostics, &[], None);
+                                    doc
+                                }
                                 _ => return,
                             },
                         };
@@ -736,17 +746,20 @@ impl<T: Item + 'static> Picker<T> {
                 }
             }
 
-            let mut highlights = EditorView::doc_syntax_highlights(
+            let syntax_highlights = EditorView::doc_syntax_highlights(
                 doc,
                 offset.anchor,
                 area.height,
                 &cx.editor.theme,
             );
+
+            let mut overlay_highlights =
+                EditorView::empty_highlight_iter(doc, offset.anchor, area.height);
             for spans in EditorView::doc_diagnostics_highlights(doc, &cx.editor.theme) {
                 if spans.is_empty() {
                     continue;
                 }
-                highlights = Box::new(helix_core::syntax::merge(highlights, spans));
+                overlay_highlights = Box::new(helix_core::syntax::merge(overlay_highlights, spans));
             }
             let mut decorations: Vec<Box<dyn LineDecoration>> = Vec::new();
 
@@ -777,7 +790,8 @@ impl<T: Item + 'static> Picker<T> {
                 offset,
                 // TODO: compute text annotations asynchronously here (like inlay hints)
                 &TextAnnotations::default(),
-                highlights,
+                syntax_highlights,
+                overlay_highlights,
                 &cx.editor.theme,
                 &mut decorations,
                 &mut [],
@@ -795,7 +809,8 @@ impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
         // |         | |         |
         // +---------+ +---------+
 
-        let render_preview = self.show_preview && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
+        let render_preview =
+            self.show_preview && self.file_fn.is_some() && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
 
         let picker_width = if render_preview {
             area.width / 2

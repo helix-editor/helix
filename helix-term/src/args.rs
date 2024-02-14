@@ -24,6 +24,7 @@ impl Args {
     pub fn parse_args() -> Result<Args> {
         let mut args = Args::default();
         let mut argv = std::env::args().peekable();
+        let mut line_number = 0;
 
         argv.next(); // skip the program, we don't care about that
 
@@ -88,6 +89,12 @@ impl Args {
                         }
                     }
                 }
+                arg if arg.starts_with('+') => {
+                    match arg[1..].parse::<usize>() {
+                        Ok(n) => line_number = n.saturating_sub(1),
+                        _ => args.files.push(parse_file(arg)),
+                    };
+                }
                 arg => args.files.push(parse_file(arg)),
             }
         }
@@ -95,6 +102,12 @@ impl Args {
         // push the remaining args, if any to the files
         for arg in argv {
             args.files.push(parse_file(&arg));
+        }
+
+        if let Some(file) = args.files.first_mut() {
+            if line_number != 0 {
+                file.1.row = line_number;
+            }
         }
 
         Ok(args)

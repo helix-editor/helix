@@ -32,10 +32,21 @@ fn vte_version() -> Option<usize> {
 }
 
 /// Describes terminal capabilities like extended underline, truecolor, etc.
-#[derive(Copy, Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 struct Capabilities {
     /// Support for undercurled, underdashed, etc.
     has_extended_underlines: bool,
+    /// Support for resetting the cursor style back to normal.
+    reset_cursor_command: String,
+}
+
+impl Default for Capabilities {
+    fn default() -> Self {
+        Self {
+            has_extended_underlines: false,
+            reset_cursor_command: "\x1B[0 q".to_string(),
+        }
+    }
 }
 
 impl Capabilities {
@@ -54,6 +65,10 @@ impl Capabilities {
                     || t.extended_cap("Su").is_some()
                     || vte_version() >= Some(5102)
                     || matches!(term_program().as_deref(), Some("WezTerm")),
+                reset_cursor_command: t
+                    .utf8_string_cap(termini::StringCapability::CursorNormal)
+                    .unwrap_or("\x1B[0 q")
+                    .to_string(),
             },
         }
     }
@@ -64,6 +79,7 @@ pub struct CrosstermBackend<W: Write> {
     capabilities: Capabilities,
     supports_keyboard_enhancement_protocol: OnceCell<bool>,
     mouse_capture_enabled: bool,
+    supports_bracketed_paste: bool,
 }
 
 impl<W> CrosstermBackend<W>
@@ -76,6 +92,7 @@ where
             capabilities: Capabilities::from_env_or_default(config),
             supports_keyboard_enhancement_protocol: OnceCell::new(),
             mouse_capture_enabled: false,
+            supports_bracketed_paste: true,
         }
     }
 
@@ -119,9 +136,16 @@ where
         execute!(
             self.buffer,
             terminal::EnterAlternateScreen,
-            EnableBracketedPaste,
             EnableFocusChange
         )?;
+        match execute!(self.buffer, EnableBracketedPaste,) {
+            Err(err) if err.kind() == io::ErrorKind::Unsupported => {
+                log::warn!("Bracketed paste is not supported on this terminal.");
+                self.supports_bracketed_paste = false;
+            }
+            Err(err) => return Err(err),
+            Ok(_) => (),
+        };
         execute!(self.buffer, terminal::Clear(terminal::ClearType::All))?;
         if config.enable_mouse_capture {
             execute!(self.buffer, EnableMouseCapture)?;
@@ -154,16 +178,19 @@ where
 
     fn restore(&mut self, config: Config) -> io::Result<()> {
         // reset cursor shape
-        write!(self.buffer, "\x1B[0 q")?;
+        self.buffer
+            .write_all(self.capabilities.reset_cursor_command.as_bytes())?;
         if config.enable_mouse_capture {
             execute!(self.buffer, DisableMouseCapture)?;
         }
         if self.supports_keyboard_enhancement_protocol() {
             execute!(self.buffer, PopKeyboardEnhancementFlags)?;
         }
+        if self.supports_bracketed_paste {
+            execute!(self.buffer, DisableBracketedPaste,)?;
+        }
         execute!(
             self.buffer,
-            DisableBracketedPaste,
             DisableFocusChange,
             terminal::LeaveAlternateScreen
         )?;
@@ -179,12 +206,8 @@ where
         // disable without calling enable previously
         let _ = execute!(stdout, DisableMouseCapture);
         let _ = execute!(stdout, PopKeyboardEnhancementFlags);
-        execute!(
-            stdout,
-            DisableBracketedPaste,
-            DisableFocusChange,
-            terminal::LeaveAlternateScreen
-        )?;
+        let _ = execute!(stdout, DisableBracketedPaste);
+        execute!(stdout, DisableFocusChange, terminal::LeaveAlternateScreen)?;
         terminal::disable_raw_mode()
     }
 

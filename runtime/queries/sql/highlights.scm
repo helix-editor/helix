@@ -1,6 +1,6 @@
 (invocation
   (object_reference
-    name: (identifier) @function.method))
+    name: (identifier) @function.call))
 
 [
   (keyword_gist)
@@ -10,41 +10,41 @@
   (keyword_gin)
   (keyword_brin)
   (keyword_array)
-] @function.builtin
+] @function.call
 
 (object_reference
-  name: (identifier) @variable.other.member)
+  name: (identifier) @type)
 
 (relation
-  alias: (identifier) @variable.parameter)
+  alias: (identifier) @variable)
 
 (field
-  name: (identifier) @variable.other.member)
+  name: (identifier) @field)
 
 (term
-  alias: (identifier) @variable.parameter)
+  alias: (identifier) @variable)
 
-(term
+((term
    value: (cast
-    name: (keyword_cast) @function.builtin
-    parameter: [(literal)]?))
+    name: (keyword_cast) @function.call
+    parameter: [(literal)]?)))
 
 (literal) @string
-(comment) @comment.line
-(marginalia) @comment.block
+(comment) @comment @spell
+(marginalia) @comment
 
-((literal) @constant.numeric.integer
-  (#match? @constant.numeric.integer "^-?\\d+$"))
+((literal) @number
+   (#match? @number "^%d+$"))
 
-((literal) @constant.numeric.float
-  (#match? @constant.numeric.float "^-?\\d*\\.\\d*$"))
+((literal) @float
+  (#match? @float "^[-|+]?%d*\.%d*$"))
 
-(parameter) @variable.parameter
+(parameter) @parameter
 
 [
  (keyword_true)
  (keyword_false)
-] @constant.builtin.boolean
+] @boolean
 
 [
  (keyword_asc)
@@ -92,14 +92,14 @@
  (keyword_jsonfile)
  (keyword_sequencefile)
  (keyword_volatile)
-] @keyword.storage.type
+] @storageclass
 
 [
  (keyword_case)
  (keyword_when)
  (keyword_then)
  (keyword_else)
-] @keyword.control.conditional
+] @conditional
 
 [
   (keyword_select)
@@ -131,6 +131,7 @@
   (keyword_partition)
   (keyword_group)
   (keyword_with)
+  (keyword_without)
   (keyword_as)
   (keyword_having)
   (keyword_limit)
@@ -227,6 +228,7 @@
   (keyword_input)
   (keyword_name)
   (keyword_oid)
+  (keyword_oids)
   (keyword_options)
   (keyword_plpgsql)
   (keyword_precision)
@@ -264,6 +266,44 @@
   (keyword_user)
   (keyword_valid)
   (keyword_action)
+  (keyword_definer)
+  (keyword_invoker)
+  (keyword_security)
+  (keyword_extension)
+  (keyword_version)
+  (keyword_out)
+  (keyword_inout)
+  (keyword_variadic)
+  (keyword_session)
+  (keyword_isolation)
+  (keyword_level)
+  (keyword_serializable)
+  (keyword_repeatable)
+  (keyword_read)
+  (keyword_write)
+  (keyword_committed)
+  (keyword_uncommitted)
+  (keyword_deferrable)
+  (keyword_names)
+  (keyword_zone)
+  (keyword_immediate)
+  (keyword_deferred)
+  (keyword_constraints)
+  (keyword_snapshot)
+  (keyword_characteristics)
+  (keyword_off)
+  (keyword_follows)
+  (keyword_precedes)
+  (keyword_each)
+  (keyword_instead)
+  (keyword_of)
+  (keyword_initially)
+  (keyword_old)
+  (keyword_new)
+  (keyword_referencing)
+  (keyword_statement)
+  (keyword_execute)
+  (keyword_procedure)
 ] @keyword
 
 [
@@ -290,7 +330,7 @@
  (keyword_statistics)
  (keyword_maxvalue)
  (keyword_minvalue)
-] @keyword
+] @type.qualifier
 
 [
   (keyword_int)
@@ -373,10 +413,8 @@
   ">="
   ">"
   "<>"
-  "->"
-  "->>"
-  "#>"
-  "#>>"
+  (op_other)
+  (op_unary_other)
 ] @operator
 
 [
