@@ -183,9 +183,12 @@
 
 [
   (int_literal)
+] @constant.numeric.integer
+
+[
   (float_literal)
   (imaginary_literal)
-] @constant.numeric.integer
+] @constant.numeric.float
 
 [
   (true)
@@ -197,4 +200,31 @@
   (iota)
 ] @constant.builtin
 
+; Comments
+
 (comment) @comment
+
+; Doc Comments
+(source_file
+  .
+  (comment)+ @comment.block.documentation)
+
+(source_file
+  (comment)+ @comment.block.documentation
+  .
+  (const_declaration))
+
+(source_file
+  (comment)+ @comment.block.documentation
+  .
+  (function_declaration))
+
+(source_file
+  (comment)+ @comment.block.documentation
+  .
+  (type_declaration))
+
+(source_file
+  (comment)+ @comment.block.documentation
+  .
+  (var_declaration))

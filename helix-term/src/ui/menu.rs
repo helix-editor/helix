@@ -427,6 +427,7 @@ impl<T: Item + 'static> Component for Menu<T> {
                     cell.set_fg(scroll_style.fg.unwrap_or(helix_view::theme::Color::Reset));
                 } else if !render_borders {
                     // Draw scroll track
+                    cell.set_symbol(half_block);
                     cell.set_fg(scroll_style.bg.unwrap_or(helix_view::theme::Color::Reset));
                 }
             }

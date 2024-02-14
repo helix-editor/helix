@@ -73,9 +73,9 @@
 
 "ui.statusline" = { fg = "white", bg = "light-black" }
 "ui.statusline.inactive" = { fg = "light-gray", bg = "light-black" }
-"ui.statusline.normal" = { fg = "light-black", bg = "blue" }
-"ui.statusline.insert" = { fg = "light-black", bg = "green" }
-"ui.statusline.select" = { fg = "light-black", bg = "purple" }
+"ui.statusline.normal" = { fg = "light-black", bg = "blue", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "light-black", bg = "green", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "light-black", bg = "purple", modifiers = ["bold"] }
 
 "ui.bufferline" = { fg = "light-gray", bg = "light-black" }
 "ui.bufferline.active" = { fg = "light-black", bg = "blue", underline = { color = "light-black", style = "line" } }

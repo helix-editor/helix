@@ -57,10 +57,10 @@ fn find_pair(
     pos_: usize,
     traverse_parents: bool,
 ) -> Option<usize> {
-    let tree = syntax.tree();
     let pos = doc.char_to_byte(pos_);
 
-    let mut node = tree.root_node().descendant_for_byte_range(pos, pos + 1)?;
+    let root = syntax.tree_for_byte_range(pos, pos + 1).root_node();
+    let mut node = root.descendant_for_byte_range(pos, pos + 1)?;
 
     loop {
         if node.is_named() {
@@ -118,9 +118,7 @@ fn find_pair(
         };
         node = parent;
     }
-    let node = tree
-        .root_node()
-        .named_descendant_for_byte_range(pos, pos + 1)?;
+    let node = root.named_descendant_for_byte_range(pos, pos + 1)?;
     if node.child_count() != 0 {
         return None;
     }

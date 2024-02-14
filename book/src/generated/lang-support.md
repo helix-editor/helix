@@ -14,6 +14,7 @@
 | cabal |  |  |  | `haskell-language-server-wrapper` |
 | cairo | ✓ | ✓ | ✓ | `cairo-language-server` |
 | capnp | ✓ |  | ✓ |  |
+| cel | ✓ |  |  |  |
 | clojure | ✓ |  |  | `clojure-lsp` |
 | cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
 | comment | ✓ |  |  |  |
@@ -69,6 +70,7 @@
 | hcl | ✓ |  | ✓ | `terraform-ls` |
 | heex | ✓ | ✓ |  | `elixir-ls` |
 | hocon | ✓ |  | ✓ |  |
+| hoon | ✓ |  |  |  |
 | hosts | ✓ |  |  |  |
 | html | ✓ |  |  | `vscode-html-language-server` |
 | hurl | ✓ |  | ✓ |  |
@@ -123,6 +125,7 @@
 | pem | ✓ |  |  |  |
 | perl | ✓ | ✓ | ✓ | `perlnavigator` |
 | php | ✓ | ✓ | ✓ | `intelephense` |
+| pkl | ✓ |  | ✓ |  |
 | po | ✓ | ✓ |  |  |
 | pod | ✓ |  |  |  |
 | ponylang | ✓ | ✓ | ✓ |  |
@@ -148,11 +151,12 @@
 | scala | ✓ | ✓ | ✓ | `metals` |
 | scheme | ✓ |  | ✓ |  |
 | scss | ✓ |  |  | `vscode-css-language-server` |
-| slint | ✓ |  | ✓ | `slint-lsp` |
+| slint | ✓ | ✓ | ✓ | `slint-lsp` |
 | smali | ✓ |  | ✓ |  |
 | smithy | ✓ |  |  | `cs` |
 | sml | ✓ |  |  |  |
 | solidity | ✓ |  |  | `solc` |
+| spicedb | ✓ |  |  |  |
 | sql | ✓ |  |  |  |
 | sshclientconfig | ✓ |  |  |  |
 | starlark | ✓ | ✓ |  |  |
@@ -162,6 +166,7 @@
 | swift | ✓ |  |  | `sourcekit-lsp` |
 | t32 | ✓ |  |  |  |
 | tablegen | ✓ | ✓ | ✓ |  |
+| tact | ✓ | ✓ | ✓ |  |
 | task | ✓ |  |  |  |
 | templ | ✓ |  |  | `templ` |
 | tfvars | ✓ |  | ✓ | `terraform-ls` |
@@ -173,7 +178,7 @@
 | typescript | ✓ | ✓ | ✓ | `typescript-language-server` |
 | typst | ✓ |  |  | `typst-lsp` |
 | ungrammar | ✓ |  |  |  |
-| unison | ✓ |  |  |  |
+| unison | ✓ |  | ✓ |  |
 | uxntal | ✓ |  |  |  |
 | v | ✓ | ✓ | ✓ | `v-analyzer` |
 | vala | ✓ |  |  | `vala-language-server` |
