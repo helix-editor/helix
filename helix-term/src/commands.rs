@@ -81,7 +81,6 @@ use ignore::{DirEntry, WalkBuilder, WalkState};
 
 pub type OnKeyCallback = Box<dyn FnOnce(&mut Context, KeyEvent)>;
 
-#[repr(C)]
 pub struct Context<'a> {
     pub register: Option<char>,
     pub count: Option<NonZeroUsize>,

@@ -1,3 +1,4 @@
+mod codegen;
 mod docgen;
 mod helpers;
 mod path;
@@ -9,6 +10,7 @@ use std::{env, error::Error};
 type DynError = Box<dyn Error>;
 
 pub mod tasks {
+    use crate::codegen::code_gen;
     use crate::docgen::{lang_features, typable_commands, write};
     use crate::docgen::{LANG_SUPPORT_MD_OUTPUT, TYPABLE_COMMANDS_MD_OUTPUT};
     use crate::querycheck::query_check;
@@ -30,6 +32,10 @@ pub mod tasks {
 
     pub fn querycheck() -> Result<(), DynError> {
         query_check()
+    }
+
+    pub fn codegen() {
+        code_gen()
     }
 
     pub fn print_help() {
@@ -54,6 +60,7 @@ fn main() -> Result<(), DynError> {
             "docgen" => tasks::docgen()?,
             "themelint" => tasks::themelint(env::args().nth(2))?,
             "query-check" => tasks::querycheck()?,
+            "code-gen" => tasks::codegen(),
             invalid => return Err(format!("Invalid task name: {}", invalid).into()),
         },
     };

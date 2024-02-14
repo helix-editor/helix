@@ -1,6 +1,5 @@
 use arc_swap::ArcSwapAny;
-use helix_core::syntax::Configuration;
-use helix_view::{document::Mode, input::KeyEvent, Theme};
+use helix_view::{document::Mode, input::KeyEvent};
 
 use std::{borrow::Cow, sync::Arc};
 
@@ -11,7 +10,7 @@ use crate::{
     ui::{self, PromptEvent},
 };
 
-use super::{shell_impl, Context, MappableCommand, TYPABLE_COMMAND_LIST};
+use super::{Context, MappableCommand, TYPABLE_COMMAND_LIST};
 
 #[cfg(feature = "steel")]
 mod components;
@@ -138,6 +137,12 @@ impl ScriptingEngine {
             .flat_map(|kind| manual_dispatch!(kind, available_commands()))
             .collect()
     }
+
+    pub fn generate_sources() {
+        for kind in PLUGIN_PRECEDENCE {
+            manual_dispatch!(kind, generate_sources())
+        }
+    }
 }
 
 impl PluginSystem for NoEngine {
@@ -215,4 +220,6 @@ pub trait PluginSystem {
     fn available_commands<'a>(&self) -> Vec<Cow<'a, str>> {
         Vec::new()
     }
+
+    fn generate_sources(&self) {}
 }

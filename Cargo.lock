@@ -1488,9 +1488,9 @@ dependencies = [
 
 [[package]]
 name = "im-lists"
-version = "0.7.1"
+version = "0.8.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0c07eff2c41645923382085ea8627509e5184f7a668f75d0c1e16091f7af4798"
+checksum = "3e7233fb8b1ffc0b1d6033fd311a74a0443164628c62abbc871185ee95098b63"
 dependencies = [
  "smallvec",
 ]
@@ -1742,6 +1742,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "1ba157ca0885411de85d6ca030ba7e2a83a28636056c7c699b07c8b6f7383214"
 dependencies = [
  "num-traits",
+ "serde",
 ]
 
 [[package]]
@@ -1775,6 +1776,7 @@ dependencies = [
  "num-bigint",
  "num-integer",
  "num-traits",
+ "serde",
 ]
 
 [[package]]
@@ -2307,7 +2309,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 [[package]]
 name = "steel-core"
 version = "0.6.0"
-source = "git+https://github.com/mattwparas/steel.git#ad307d9ab163b99ac6dc0bc06a04601042a3f325"
+source = "git+https://github.com/mattwparas/steel.git#1fb88e561474c723a4fd2675553d6091a380aef1"
 dependencies = [
  "abi_stable",
  "anyhow",
@@ -2335,6 +2337,7 @@ dependencies = [
  "steel-derive",
  "steel-gen",
  "steel-parser",
+ "strsim",
  "weak-table",
  "which 4.4.2",
 ]
@@ -2342,7 +2345,7 @@ dependencies = [
 [[package]]
 name = "steel-derive"
 version = "0.5.0"
-source = "git+https://github.com/mattwparas/steel.git#ad307d9ab163b99ac6dc0bc06a04601042a3f325"
+source = "git+https://github.com/mattwparas/steel.git#1fb88e561474c723a4fd2675553d6091a380aef1"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2352,7 +2355,7 @@ dependencies = [
 [[package]]
 name = "steel-gen"
 version = "0.2.0"
-source = "git+https://github.com/mattwparas/steel.git#ad307d9ab163b99ac6dc0bc06a04601042a3f325"
+source = "git+https://github.com/mattwparas/steel.git#1fb88e561474c723a4fd2675553d6091a380aef1"
 dependencies = [
  "codegen",
  "serde",
@@ -2362,15 +2365,16 @@ dependencies = [
 [[package]]
 name = "steel-parser"
 version = "0.6.0"
-source = "git+https://github.com/mattwparas/steel.git#ad307d9ab163b99ac6dc0bc06a04601042a3f325"
+source = "git+https://github.com/mattwparas/steel.git#1fb88e561474c723a4fd2675553d6091a380aef1"
 dependencies = [
  "fxhash",
  "lasso",
- "num-bigint",
+ "num",
  "once_cell",
  "pretty",
  "serde",
  "serde_derive",
+ "smallvec",
 ]
 
 [[package]]
@@ -2378,6 +2382,12 @@ name = "str_indices"
 version = "0.4.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e9557cb6521e8d009c51a8666f09356f4b817ba9ba0981a305bd86aee47bd35c"
+
+[[package]]
+name = "strsim"
+version = "0.11.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5ee073c9e4cd00e28217186dbe12796d692868f432bf2e97ee73bed0c56dfa01"
 
 [[package]]
 name = "syn"

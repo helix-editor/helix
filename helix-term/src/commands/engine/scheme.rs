@@ -21,17 +21,19 @@ use helix_view::{
     Document, DocumentId, Editor, ViewId,
 };
 use once_cell::sync::Lazy;
-use serde_json::Value;
 use steel::{
     gc::unsafe_erased_pointers::CustomReference,
     rerrs::ErrorKind,
     rvals::{as_underlying_type, FromSteelVal, IntoSteelVal, SteelString},
     steel_vm::{engine::Engine, register_fn::RegisterFn},
-    steelerr, List, SteelErr, SteelVal,
+    steelerr, SteelErr, SteelVal,
 };
 
 use std::{
-    borrow::Cow, collections::HashMap, ops::Deref, path::PathBuf, sync::atomic::AtomicUsize,
+    borrow::Cow,
+    collections::HashMap,
+    path::PathBuf,
+    sync::atomic::{AtomicUsize, Ordering},
     time::Duration,
 };
 use std::{
@@ -56,13 +58,20 @@ use components::SteelDynamicComponent;
 use super::{components, Context, MappableCommand, TYPABLE_COMMAND_LIST};
 use insert::{insert_char, insert_string};
 
+static ENGINE_COUNT: AtomicUsize = AtomicUsize::new(0);
+
 // TODO:
 // I'm not entirely sure this is correct, however from observation it seems that
 // interactions with this really only happen on one thread. I haven't yet found
 // multiple instances of the engine getting created. I'll need to go observe how
 // and when the engine gets accessed.
 thread_local! {
-    pub static ENGINE: std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine::Engine>> = configure_engine();
+    pub static ENGINE: std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine::Engine>> = {
+        if ENGINE_COUNT.fetch_add(1, Ordering::SeqCst) != 0 {
+            panic!("More than one instance of the steel runtime is not allowed!");
+        }
+        configure_engine()
+    };
 }
 
 pub struct KeyMapApi {
@@ -94,7 +103,8 @@ impl KeyMapApi {
 // and can instead just refer to the single configuration object.
 //
 // Possibly also introduce buffer / language specific keybindings
-// there as well.
+// there as well, however how that interaction is done is still up
+// for debate.
 thread_local! {
     pub static BUFFER_OR_EXTENSION_KEYBINDING_MAP: SteelVal =
         SteelVal::boxed(SteelVal::empty_hashmap());
@@ -135,11 +145,14 @@ fn load_keymap_api(engine: &mut Engine, api: KeyMapApi) {
     engine.register_module(module);
 }
 
-fn load_static_commands(engine: &mut Engine) {
+fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
     let mut module = BuiltInModule::new("helix/core/static");
 
-    let mut builtin_static_command_module =
-        "(require-builtin helix/core/static as helix.static.)".to_string();
+    let mut builtin_static_command_module = if generate_sources {
+        "(require-builtin helix/core/static as helix.static.)".to_string()
+    } else {
+        "".to_string()
+    };
 
     for command in TYPABLE_COMMAND_LIST {
         let func = |cx: &mut Context| {
@@ -161,26 +174,30 @@ fn load_static_commands(engine: &mut Engine) {
         if let MappableCommand::Static { name, fun, .. } = command {
             module.register_fn(name, fun);
 
-            builtin_static_command_module.push_str(&format!(
-                r#"
+            if generate_sources {
+                builtin_static_command_module.push_str(&format!(
+                    r#"
 (provide {})
 (define ({})
     (helix.static.{} *helix.cx*))
 "#,
-                name, name, name
-            ));
+                    name, name, name
+                ));
+            }
         }
     }
 
     let mut template_function_arity_1 = |name: &str| {
-        builtin_static_command_module.push_str(&format!(
-            r#"
+        if generate_sources {
+            builtin_static_command_module.push_str(&format!(
+                r#"
 (provide {})
 (define ({} arg)
     (helix.static.{} *helix.cx* arg))
 "#,
-            name, name, name
-        ));
+                name, name, name
+            ));
+        }
     };
 
     // Adhoc static commands that probably needs evaluating
@@ -209,14 +226,16 @@ fn load_static_commands(engine: &mut Engine) {
     template_function_arity_1("cx->current-file");
 
     let mut template_function_arity_0 = |name: &str| {
-        builtin_static_command_module.push_str(&format!(
-            r#"
+        if generate_sources {
+            builtin_static_command_module.push_str(&format!(
+                r#"
 (provide {})
 (define ({})
     (helix.static.{} *helix.cx*))
 "#,
-            name, name, name
-        ));
+                name, name, name
+            ));
+        }
     };
 
     // Arity 0
@@ -242,13 +261,15 @@ fn load_static_commands(engine: &mut Engine) {
     template_function_arity_0("move-window-far-right");
 
     let mut template_function_no_context = |name: &str| {
-        builtin_static_command_module.push_str(&format!(
-            r#"
+        if generate_sources {
+            builtin_static_command_module.push_str(&format!(
+                r#"
 (provide {})
 (define {} helix.static.{})                
             "#,
-            name, name, name
-        ))
+                name, name, name
+            ))
+        }
     };
 
     module.register_fn("get-helix-scm-path", get_helix_scm_path);
@@ -257,48 +278,29 @@ fn load_static_commands(engine: &mut Engine) {
     template_function_no_context("get-helix-scm-path");
     template_function_no_context("get-init-scm-path");
 
-    let mut target_directory = helix_runtime_search_path();
+    if generate_sources {
+        let mut target_directory = helix_runtime_search_path();
 
-    if !target_directory.exists() {
-        std::fs::create_dir(&target_directory).unwrap();
+        if !target_directory.exists() {
+            std::fs::create_dir(&target_directory).unwrap();
+        }
+
+        target_directory.push("static.scm");
+
+        std::fs::write(target_directory, builtin_static_command_module).unwrap();
     }
-
-    target_directory.push("static.scm");
-
-    std::fs::write(target_directory, builtin_static_command_module).unwrap();
 
     engine.register_module(module);
 }
 
-fn load_typed_commands(engine: &mut Engine) {
+fn load_typed_commands(engine: &mut Engine, generate_sources: bool) {
     let mut module = BuiltInModule::new("helix/core/typable".to_string());
-    let mut builtin_typable_command_module =
-        "(require-builtin helix/core/typable as helix.)".to_string();
 
-    {
-        let func = |cx: &mut Context, args: &[Cow<str>]| {
-            let mut cx = compositor::Context {
-                editor: cx.editor,
-                scroll: None,
-                jobs: cx.jobs,
-            };
-
-            set_options(&mut cx, args, PromptEvent::Validate)
-        };
-
-        module.register_fn("set-options", func);
-        let name = "set-options";
-
-        builtin_typable_command_module.push_str(&format!(
-            r#"
-(provide {})
-
-(define ({} . args)
-    (helix.{} *helix.cx* args))
-"#,
-            name, name, name
-        ));
-    }
+    let mut builtin_typable_command_module = if generate_sources {
+        "(require-builtin helix/core/typable as helix.)".to_string()
+    } else {
+        "".to_string()
+    };
 
     // Register everything in the typable command list. Now these are all available
     for command in TYPABLE_COMMAND_LIST {
@@ -314,10 +316,11 @@ fn load_typed_commands(engine: &mut Engine) {
 
         module.register_fn(command.name, func);
 
-        // Create an ephemeral builtin module to reference until I figure out how
-        // to wrap the functions with a reference to the engine context better.
-        builtin_typable_command_module.push_str(&format!(
-            r#"
+        if generate_sources {
+            // Create an ephemeral builtin module to reference until I figure out how
+            // to wrap the functions with a reference to the engine context better.
+            builtin_typable_command_module.push_str(&format!(
+                r#"
 (provide {})
 
 ;;@doc
@@ -325,30 +328,33 @@ fn load_typed_commands(engine: &mut Engine) {
 (define ({} . args)
     (helix.{} *helix.cx* args))
 "#,
-            command.name,
-            command
-                .doc
-                .lines()
-                .map(|x| {
-                    let mut line = ";;".to_string();
-                    line.push_str(x);
-                    line.push_str("\n");
-                    line
-                })
-                .collect::<String>(),
-            command.name,
-            command.name
-        ));
+                command.name,
+                command
+                    .doc
+                    .lines()
+                    .map(|x| {
+                        let mut line = ";;".to_string();
+                        line.push_str(x);
+                        line.push_str("\n");
+                        line
+                    })
+                    .collect::<String>(),
+                command.name,
+                command.name
+            ));
+        }
     }
 
-    let mut target_directory = helix_runtime_search_path();
-    if !target_directory.exists() {
-        std::fs::create_dir(&target_directory).unwrap();
+    if generate_sources {
+        let mut target_directory = helix_runtime_search_path();
+        if !target_directory.exists() {
+            std::fs::create_dir(&target_directory).unwrap();
+        }
+
+        target_directory.push("commands.scm");
+
+        std::fs::write(target_directory, builtin_typable_command_module).unwrap();
     }
-
-    target_directory.push("commands.scm");
-
-    std::fs::write(target_directory, builtin_typable_command_module).unwrap();
 
     engine.register_module(module);
 }
@@ -389,7 +395,27 @@ fn fp_max_depth(config: &mut FilePickerConfig, option: Option<usize>) {
     config.max_depth = option;
 }
 
-fn load_configuration_api(engine: &mut Engine) {
+fn sw_enable(config: &mut SoftWrap, option: Option<bool>) {
+    config.enable = option;
+}
+
+fn sw_max_wrap(config: &mut SoftWrap, option: Option<u16>) {
+    config.max_wrap = option;
+}
+
+fn sw_max_indent_retain(config: &mut SoftWrap, option: Option<u16>) {
+    config.max_indent_retain = option;
+}
+
+fn sw_wrap_indicator(config: &mut SoftWrap, option: Option<String>) {
+    config.wrap_indicator = option;
+}
+
+fn wrap_at_text_width(config: &mut SoftWrap, option: Option<bool>) {
+    config.wrap_at_text_width = option;
+}
+
+fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
     let mut module = BuiltInModule::new("helix/core/configuration");
 
     module.register_fn("update-configuration!", |ctx: &mut Context| {
@@ -399,56 +425,6 @@ fn load_configuration_api(engine: &mut Engine) {
             .send(ConfigEvent::Change)
             .unwrap();
     });
-
-    let mut builtin_configuration_module =
-        "(require-builtin helix/core/configuration as helix.)".to_string();
-
-    builtin_configuration_module.push_str(&format!(
-        r#"
-(provide update-configuration!)
-(define (update-configuration!)
-    (helix.update-configuration! *helix.cx*))
-"#,
-    ));
-
-    let mut template_file_picker_function = |name: &str| {
-        builtin_configuration_module.push_str(&format!(
-            r#"
-(provide {})
-(define ({} arg)
-    (lambda (picker) 
-            (helix.{} picker arg)
-            picker))
-"#,
-            name, name, name
-        ));
-    };
-
-    let file_picker_functions = &[
-        "fp-hidden",
-        "fp-follow-symlinks",
-        "fp-deduplicate-links",
-        "fp-parents",
-        "fp-ignore",
-        "fp-git-ignore",
-        "fp-git-global",
-        "fp-git-exclude",
-        "fp-max-depth",
-    ];
-
-    for name in file_picker_functions {
-        template_file_picker_function(name);
-    }
-
-    builtin_configuration_module.push_str(&format!(
-        r#"
-(provide file-picker)
-(define (file-picker . args)
-    (helix.register-file-picker
-        *helix.config*
-        (foldl (lambda (func config) (func config)) (helix.raw-file-picker) args)))
-"#,
-    ));
 
     module
         .register_fn("raw-file-picker", || FilePickerConfig::default())
@@ -463,61 +439,14 @@ fn load_configuration_api(engine: &mut Engine) {
         .register_fn("fp-git-exclude", fp_git_exclude)
         .register_fn("fp-max-depth", fp_max_depth);
 
-    let mut template_function_arity_1 = |name: &str| {
-        builtin_configuration_module.push_str(&format!(
-            r#"
-(provide {})
-(define ({} arg)
-    (helix.{} *helix.config* arg))
-"#,
-            name, name, name
-        ));
-    };
-
-    let functions = &[
-        "scrolloff",
-        "scroll_lines",
-        "mouse",
-        "shell",
-        "line-number",
-        "cursorline",
-        "cursorcolumn",
-        "middle-click-paste",
-        "auto-pairs",
-        "auto-completion",
-        "auto-format",
-        "auto-save",
-        "text-width",
-        "idle-timeout",
-        "completion-timeout",
-        "preview-completion-insert",
-        "completion-trigger-len",
-        "completion-replace",
-        "auto-info",
-        "cursor-shape",
-        "true-color",
-        "insert-final-newline",
-        "color-modes",
-        "gutters",
-        // "file-picker",
-        "statusline",
-        "undercurl",
-        "search",
-        "lsp",
-        "terminal",
-        "rulers",
-        "whitespace",
-        "bufferline",
-        "indent-guides",
-        // "soft-wrap",
-        "workspace-lsp-roots",
-        "default-line-ending",
-        "smart-tab",
-    ];
-
-    for func in functions {
-        template_function_arity_1(func);
-    }
+    module
+        .register_fn("raw-soft-wrap", || SoftWrap::default())
+        .register_fn("register-soft-wrap", HelixConfiguration::soft_wrap)
+        .register_fn("sw-enable", sw_enable)
+        .register_fn("sw-max-wrap", sw_max_wrap)
+        .register_fn("sw-max-indent-retain", sw_max_indent_retain)
+        .register_fn("sw-wrap-indicator", sw_wrap_indicator)
+        .register_fn("sw-wrap-at-text-width", wrap_at_text_width);
 
     module
         .register_fn("scrolloff", HelixConfiguration::scrolloff)
@@ -570,7 +499,7 @@ fn load_configuration_api(engine: &mut Engine) {
         .register_fn("whitespace", HelixConfiguration::whitespace)
         .register_fn("bufferline", HelixConfiguration::bufferline)
         .register_fn("indent-guides", HelixConfiguration::indent_guides)
-        // .register_fn("soft-wrap", HelixConfiguration::soft_wrap)
+        .register_fn("soft-wrap", HelixConfiguration::soft_wrap)
         .register_fn(
             "workspace-lsp-roots",
             HelixConfiguration::workspace_lsp_roots,
@@ -581,35 +510,179 @@ fn load_configuration_api(engine: &mut Engine) {
         )
         .register_fn("smart-tab", HelixConfiguration::smart_tab);
 
-    let mut target_directory = helix_runtime_search_path();
+    // Keybinding stuff
+    module
+        .register_fn("keybindings", HelixConfiguration::keybindings)
+        .register_fn("get-keybindings", HelixConfiguration::get_keybindings);
 
-    if !target_directory.exists() {
-        std::fs::create_dir(&target_directory).unwrap();
+    if generate_sources {
+        let mut builtin_configuration_module =
+            "(require-builtin helix/core/configuration as helix.)".to_string();
+
+        builtin_configuration_module.push_str(&format!(
+            r#"
+(provide update-configuration!)
+(define (update-configuration!)
+    (helix.update-configuration! *helix.cx*))
+"#,
+        ));
+
+        // Register the get keybindings function
+        builtin_configuration_module.push_str(&format!(
+            r#"
+(provide get-keybindings)
+(define (get-keybindings)
+    (helix.get-keybindings *helix.cx*))
+"#,
+        ));
+
+        let mut template_soft_wrap = |name: &str| {
+            builtin_configuration_module.push_str(&format!(
+                r#"
+(provide {})
+(define ({} arg)
+    (lambda (picker) 
+            (helix.{} picker arg)
+            picker))
+"#,
+                name, name, name
+            ));
+        };
+
+        let soft_wrap_functions = &[
+            "sw-enable",
+            "sw-max-wrap",
+            "sw-max-indent-retain",
+            "sw-wrap-indicator",
+            "sw-wrap-at-text-width",
+        ];
+
+        for name in soft_wrap_functions {
+            template_soft_wrap(name);
+        }
+
+        let mut template_file_picker_function = |name: &str| {
+            builtin_configuration_module.push_str(&format!(
+                r#"
+(provide {})
+(define ({} arg)
+    (lambda (picker) 
+            (helix.{} picker arg)
+            picker))
+"#,
+                name, name, name
+            ));
+        };
+
+        let file_picker_functions = &[
+            "fp-hidden",
+            "fp-follow-symlinks",
+            "fp-deduplicate-links",
+            "fp-parents",
+            "fp-ignore",
+            "fp-git-ignore",
+            "fp-git-global",
+            "fp-git-exclude",
+            "fp-max-depth",
+        ];
+
+        for name in file_picker_functions {
+            template_file_picker_function(name);
+        }
+
+        builtin_configuration_module.push_str(&format!(
+            r#"
+(provide file-picker)
+(define (file-picker . args)
+    (helix.register-file-picker
+        *helix.config*
+        (foldl (lambda (func config) (func config)) (helix.raw-file-picker) args)))
+"#,
+        ));
+
+        builtin_configuration_module.push_str(&format!(
+            r#"
+(provide soft-wrap)
+(define (soft-wrap . args)
+    (helix.register-soft-wrap
+        *helix.config*
+        (foldl (lambda (func config) (func config)) (helix.raw-soft-wrap) args)))
+"#,
+        ));
+
+        let mut template_function_arity_1 = |name: &str| {
+            builtin_configuration_module.push_str(&format!(
+                r#"
+(provide {})
+(define ({} arg)
+    (helix.{} *helix.config* arg))
+"#,
+                name, name, name
+            ));
+        };
+
+        let functions = &[
+            "scrolloff",
+            "scroll_lines",
+            "mouse",
+            "shell",
+            "line-number",
+            "cursorline",
+            "cursorcolumn",
+            "middle-click-paste",
+            "auto-pairs",
+            "auto-completion",
+            "auto-format",
+            "auto-save",
+            "text-width",
+            "idle-timeout",
+            "completion-timeout",
+            "preview-completion-insert",
+            "completion-trigger-len",
+            "completion-replace",
+            "auto-info",
+            "cursor-shape",
+            "true-color",
+            "insert-final-newline",
+            "color-modes",
+            "gutters",
+            // "file-picker",
+            "statusline",
+            "undercurl",
+            "search",
+            "lsp",
+            "terminal",
+            "rulers",
+            "whitespace",
+            "bufferline",
+            "indent-guides",
+            // "soft-wrap",
+            "workspace-lsp-roots",
+            "default-line-ending",
+            "smart-tab",
+            "keybindings",
+        ];
+
+        for func in functions {
+            template_function_arity_1(func);
+        }
+
+        let mut target_directory = helix_runtime_search_path();
+
+        if !target_directory.exists() {
+            std::fs::create_dir(&target_directory).unwrap();
+        }
+
+        target_directory.push("configuration.scm");
+
+        std::fs::write(target_directory, builtin_configuration_module).unwrap();
     }
-
-    target_directory.push("configuration.scm");
-
-    std::fs::write(target_directory, builtin_configuration_module).unwrap();
 
     engine.register_module(module);
 }
 
-fn load_editor_api(engine: &mut Engine) {
+fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
     let mut module = BuiltInModule::new("helix/core/editor");
-
-    let mut builtin_editor_command_module =
-        "(require-builtin helix/core/editor as helix.)".to_string();
-
-    let mut template_function_arity_0 = |name: &str| {
-        builtin_editor_command_module.push_str(&format!(
-            r#"
-(provide {})
-(define ({})
-    (helix.{} *helix.cx*))
-"#,
-            name, name, name
-        ));
-    };
 
     // Arity 0
     module.register_fn("editor-focus", cx_current_focus);
@@ -617,23 +690,6 @@ fn load_editor_api(engine: &mut Engine) {
     module.register_fn("cx->themes", get_themes);
     module.register_fn("editor-all-documents", cx_editor_all_documents);
     module.register_fn("cx->cursor", |cx: &mut Context| cx.editor.cursor());
-
-    template_function_arity_0("editor-focus");
-    template_function_arity_0("editor-mode");
-    template_function_arity_0("cx->themes");
-    template_function_arity_0("editor-all-documents");
-    template_function_arity_0("cx->cursor");
-
-    let mut template_function_arity_1 = |name: &str| {
-        builtin_editor_command_module.push_str(&format!(
-            r#"
-(provide {})
-(define ({} arg)
-    (helix.{} *helix.cx* arg))
-"#,
-            name, name, name
-        ));
-    };
 
     // Arity 1
     module.register_fn("editor->doc-id", cx_get_document_id);
@@ -645,18 +701,6 @@ fn load_editor_api(engine: &mut Engine) {
     module.register_fn("editor-doc-in-view?", cx_is_document_in_view);
     module.register_fn("set-scratch-buffer-name!", set_scratch_buffer_name);
     module.register_fn("editor-doc-exists?", cx_document_exists);
-
-    template_function_arity_1("editor->doc-id");
-    template_function_arity_1("editor-switch!");
-    template_function_arity_1("editor-set-focus!");
-    template_function_arity_1("editor-set-mode!");
-    template_function_arity_1("editor-doc-in-view?");
-    template_function_arity_1("set-scratch-buffer-name!");
-    template_function_arity_1("editor-doc-exists?");
-    template_function_arity_1("editor->get-document");
-
-    // Doesn't use the context
-    // module.register_fn("doc-id->usize", document_id_to_usize);
 
     // Arity 1
     RegisterFn::<
@@ -671,34 +715,57 @@ fn load_editor_api(engine: &mut Engine) {
         Document,
     >::register_fn(&mut module, "editor->get-document", cx_get_document); // I do not like this
 
-    // module.register_fn("Document-path", document_path);
+    if generate_sources {
+        let mut builtin_editor_command_module =
+            "(require-builtin helix/core/editor as helix.)".to_string();
 
-    // module.register_fn("helix.context?", is_context);
-    // module.register_type::<DocumentId>("DocumentId?");
+        let mut template_function_arity_0 = |name: &str| {
+            builtin_editor_command_module.push_str(&format!(
+                r#"
+(provide {})
+(define ({})
+    (helix.{} *helix.cx*))
+"#,
+                name, name, name
+            ));
+        };
 
-    // TODO:
-    // Position related functions. These probably should be defined alongside the actual impl for Custom in the core crate
-    // module.register_fn("position", helix_core::Position::new);
-    // module.register_fn("position-default", helix_core::Position::default);
-    // module.register_fn("position-row", |position: helix_core::Position| {
-    // position.row
-    // });
+        template_function_arity_0("editor-focus");
+        template_function_arity_0("editor-mode");
+        template_function_arity_0("cx->themes");
+        template_function_arity_0("editor-all-documents");
+        template_function_arity_0("cx->cursor");
 
-    // module.register_fn("cx->themes", get_themes);
+        let mut template_function_arity_1 = |name: &str| {
+            builtin_editor_command_module.push_str(&format!(
+                r#"
+(provide {})
+(define ({} arg)
+    (helix.{} *helix.cx* arg))
+"#,
+                name, name, name
+            ));
+        };
 
-    // Not the best usage here, duplicating it in a bunch of spots for now
-    // let mut target_directory = PathBuf::from(std::env::var("HELIX_RUNTIME").unwrap());
-    // target_directory.push("cogs");
-    // target_directory.push("helix");
-    let mut target_directory = helix_runtime_search_path();
+        template_function_arity_1("editor->doc-id");
+        template_function_arity_1("editor-switch!");
+        template_function_arity_1("editor-set-focus!");
+        template_function_arity_1("editor-set-mode!");
+        template_function_arity_1("editor-doc-in-view?");
+        template_function_arity_1("set-scratch-buffer-name!");
+        template_function_arity_1("editor-doc-exists?");
+        template_function_arity_1("editor->get-document");
 
-    if !target_directory.exists() {
-        std::fs::create_dir(&target_directory).unwrap();
+        let mut target_directory = helix_runtime_search_path();
+
+        if !target_directory.exists() {
+            std::fs::create_dir(&target_directory).unwrap();
+        }
+
+        target_directory.push("editor.scm");
+
+        std::fs::write(target_directory, builtin_editor_command_module).unwrap();
     }
-
-    target_directory.push("editor.scm");
-
-    std::fs::write(target_directory, builtin_editor_command_module).unwrap();
 
     engine.register_module(module);
 }
@@ -852,6 +919,12 @@ impl super::PluginSystem for SteelScriptingEngine {
             .iter()
             .map(|x| x.clone().into())
             .collect::<Vec<_>>()
+    }
+
+    fn generate_sources(&self) {
+        // Generate sources directly with a fresh engine
+        let mut engine = Engine::new();
+        configure_builtin_sources(&mut engine, true);
     }
 }
 
@@ -1087,6 +1160,17 @@ impl HelixConfiguration {
 
     fn store_config(&self, config: Config) {
         self.configuration.store(Arc::new(config));
+    }
+
+    // Overlay new keybindings
+    fn keybindings(&self, keybindings: EmbeddedKeyMap) {
+        let mut app_config = self.load_config();
+        merge_keys(&mut app_config.keys, keybindings.0);
+        self.store_config(app_config);
+    }
+
+    fn get_keybindings(&self) -> EmbeddedKeyMap {
+        EmbeddedKeyMap(self.load_config().keys.clone())
     }
 
     fn scrolloff(&self, lines: usize) {
@@ -1424,9 +1508,6 @@ fn run_initialization_script(cx: &mut Context, configuration: Arc<ArcSwapAny<Arc
     });
 }
 
-// pub static KEYBINDING_QUEUE: Lazy<SharedKeyBindingsEventQueue> =
-//     Lazy::new(|| SharedKeyBindingsEventQueue::new());
-
 pub static EXPORTED_IDENTIFIERS: Lazy<ExportedIdentifiers> =
     Lazy::new(|| ExportedIdentifiers::default());
 
@@ -1648,7 +1729,7 @@ impl SteelEngine {
     pub fn call_function_by_name(
         &mut self,
         function_name: SteelString,
-        args: List<SteelVal>,
+        args: Vec<SteelVal>,
     ) -> steel::rvals::Result<SteelVal> {
         self.0
             .call_function_by_name_with_args(function_name.as_str(), args.into_iter().collect())
@@ -1659,7 +1740,7 @@ impl SteelEngine {
     pub fn call_function(
         &mut self,
         function: SteelVal,
-        args: List<SteelVal>,
+        args: Vec<SteelVal>,
     ) -> steel::rvals::Result<SteelVal> {
         self.0
             .call_function_with_args(function, args.into_iter().collect())
@@ -1716,20 +1797,26 @@ fn load_engine_api(engine: &mut Engine) {
         .register_fn("helix.controller.id->engine", id_to_engine);
 }
 
-fn load_misc_api(engine: &mut Engine) {
+fn load_misc_api(engine: &mut Engine, generate_sources: bool) {
     let mut module = BuiltInModule::new("helix/core/misc");
 
-    let mut builtin_misc_module = "(require-builtin helix/core/misc as helix.)".to_string();
+    let mut builtin_misc_module = if generate_sources {
+        "(require-builtin helix/core/misc as helix.)".to_string()
+    } else {
+        "".to_string()
+    };
 
     let mut template_function_arity_0 = |name: &str| {
-        builtin_misc_module.push_str(&format!(
-            r#"
+        if generate_sources {
+            builtin_misc_module.push_str(&format!(
+                r#"
 (provide {})
 (define ({})
     (helix.{} *helix.cx*))
 "#,
-            name, name, name
-        ));
+                name, name, name
+            ));
+        }
     };
 
     // Arity 0
@@ -1738,14 +1825,16 @@ fn load_misc_api(engine: &mut Engine) {
     template_function_arity_0("hx.cx->pos");
 
     let mut template_function_arity_1 = |name: &str| {
-        builtin_misc_module.push_str(&format!(
-            r#"
+        if generate_sources {
+            builtin_misc_module.push_str(&format!(
+                r#"
 (provide {})
 (define ({} arg)
     (helix.{} *helix.cx* arg))
 "#,
-            name, name, name
-        ));
+                name, name, name
+            ));
+        }
     };
 
     // Arity 1
@@ -1758,14 +1847,16 @@ fn load_misc_api(engine: &mut Engine) {
     template_function_arity_1("enqueue-thread-local-callback");
 
     let mut template_function_arity_2 = |name: &str| {
-        builtin_misc_module.push_str(&format!(
-            r#"
+        if generate_sources {
+            builtin_misc_module.push_str(&format!(
+                r#"
 (provide {})
 (define ({} arg1 arg2)
     (helix.{} *helix.cx* arg1 arg2))
 "#,
-            name, name, name
-        ));
+                name, name, name
+            ));
+        }
     };
 
     // Arity 2
@@ -1780,21 +1871,36 @@ fn load_misc_api(engine: &mut Engine) {
     template_function_arity_2("enqueue-thread-local-callback-with-delay");
     template_function_arity_2("helix-await-callback");
 
-    let mut target_directory = helix_runtime_search_path();
+    if generate_sources {
+        let mut target_directory = helix_runtime_search_path();
 
-    if !target_directory.exists() {
-        std::fs::create_dir(&target_directory).unwrap();
+        if !target_directory.exists() {
+            std::fs::create_dir(&target_directory).unwrap();
+        }
+
+        target_directory.push("misc.scm");
+
+        std::fs::write(target_directory, builtin_misc_module).unwrap();
     }
-
-    target_directory.push("misc.scm");
-
-    std::fs::write(target_directory, builtin_misc_module).unwrap();
 
     engine.register_module(module);
 }
 
 fn helix_runtime_search_path() -> PathBuf {
     helix_loader::config_dir().join("helix")
+}
+
+pub fn configure_builtin_sources(engine: &mut Engine, generate_sources: bool) {
+    load_editor_api(engine, generate_sources);
+    load_configuration_api(engine, generate_sources);
+    load_typed_commands(engine, generate_sources);
+    load_static_commands(engine, generate_sources);
+    if !generate_sources {
+        // Note: This is going to be completely revamped soon.
+        load_keymap_api(engine, KeyMapApi::new());
+    }
+    load_rope_api(engine);
+    load_misc_api(engine, generate_sources);
 }
 
 fn configure_engine_impl(mut engine: Engine) -> Engine {
@@ -1805,13 +1911,8 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
     engine.register_value("*helix.cx*", SteelVal::Void);
     engine.register_value("*helix.config*", SteelVal::Void);
 
-    load_editor_api(&mut engine);
-    load_configuration_api(&mut engine);
-    load_typed_commands(&mut engine);
-    load_static_commands(&mut engine);
-    load_keymap_api(&mut engine, KeyMapApi::new());
-    load_rope_api(&mut engine);
-    load_misc_api(&mut engine);
+    // Don't generate source directories here
+    configure_builtin_sources(&mut engine, false);
 
     // Hooks
     engine.register_fn("register-hook!", register_hook);
@@ -1922,38 +2023,35 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
         },
     );
 
-    engine.register_fn(
-        "picker",
-        |values: steel::List<String>| -> WrappedDynComponent {
-            let picker = ui::Picker::new(
-                Vec::new(),
-                PathBuf::from(""),
-                move |cx, path: &PathBuf, action| {
-                    if let Err(e) = cx.editor.open(path, action) {
-                        let err = if let Some(err) = e.source() {
-                            format!("{}", err)
-                        } else {
-                            format!("unable to open \"{}\"", path.display())
-                        };
-                        cx.editor.set_error(err);
-                    }
-                },
-            )
-            .with_preview(|_editor, path| Some((path.clone().into(), None)));
-
-            let injector = picker.injector();
-
-            for file in values {
-                if injector.push(PathBuf::from(file)).is_err() {
-                    break;
+    engine.register_fn("picker", |values: Vec<String>| -> WrappedDynComponent {
+        let picker = ui::Picker::new(
+            Vec::new(),
+            PathBuf::from(""),
+            move |cx, path: &PathBuf, action| {
+                if let Err(e) = cx.editor.open(path, action) {
+                    let err = if let Some(err) = e.source() {
+                        format!("{}", err)
+                    } else {
+                        format!("unable to open \"{}\"", path.display())
+                    };
+                    cx.editor.set_error(err);
                 }
-            }
+            },
+        )
+        .with_preview(|_editor, path| Some((path.clone().into(), None)));
 
-            WrappedDynComponent {
-                inner: Some(Box::new(ui::overlay::overlaid(picker))),
+        let injector = picker.injector();
+
+        for file in values {
+            if injector.push(PathBuf::from(file)).is_err() {
+                break;
             }
-        },
-    );
+        }
+
+        WrappedDynComponent {
+            inner: Some(Box::new(ui::overlay::overlaid(picker))),
+        }
+    });
 
     engine.register_fn("Component::Text", |contents: String| WrappedDynComponent {
         inner: Some(Box::new(crate::ui::Text::new(contents))),
@@ -2017,7 +2115,7 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
     engine
 }
 
-fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine::Engine>> {
+pub fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine::Engine>> {
     let engine = configure_engine_impl(steel::steel_vm::engine::Engine::new());
 
     std::rc::Rc::new(std::cell::RefCell::new(engine))
@@ -2364,53 +2462,6 @@ fn create_directory(path: String) {
     } else {
         std::fs::create_dir(path).unwrap();
     }
-}
-
-/// Change config at runtime. Access nested values by dot syntax, for
-/// example to disable smart case search, use `:set search.smart-case false`.
-fn set_options(
-    cx: &mut compositor::Context,
-    args: &[Cow<str>],
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
-
-    if args.len() % 2 != 0 {
-        anyhow::bail!("Bad arguments. Usage: `:set key field`");
-    }
-
-    let mut config = serde_json::json!(&cx.editor.config().deref());
-    // let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
-    // let field_error = |_| anyhow::anyhow!("Could not parse field `{}`", arg);
-
-    for args in args.chunks_exact(2) {
-        let (key, arg) = (&args[0].to_lowercase(), &args[1]);
-
-        let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
-        let field_error = |_| anyhow::anyhow!("Could not parse field `{}`", arg);
-
-        // let mut config = serde_json::json!(&cx.editor.config().deref());
-        let pointer = format!("/{}", key.replace('.', "/"));
-        let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
-
-        *value = if value.is_string() {
-            // JSON strings require quotes, so we can't .parse() directly
-            Value::String(arg.to_string())
-        } else {
-            arg.parse().map_err(field_error)?
-        };
-    }
-
-    let config =
-        serde_json::from_value(config).map_err(|_| anyhow::anyhow!("Could not parse config"))?;
-
-    cx.editor
-        .config_events
-        .0
-        .send(ConfigEvent::Update(config))?;
-    Ok(())
 }
 
 pub fn cx_pos_within_text(cx: &mut Context) -> usize {
