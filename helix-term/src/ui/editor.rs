@@ -903,7 +903,9 @@ impl EditorView {
     fn command_mode(&mut self, mode: Mode, cxt: &mut commands::Context, event: KeyEvent) {
         match (event, cxt.editor.count) {
             // count handling
-            (key!(i @ '0'), Some(_)) | (key!(i @ '1'..='9'), _) => {
+            (key!(i @ '0'), Some(_)) | (key!(i @ '1'..='9'), _)
+                if !self.keymaps.contains_key(mode, event) =>
+            {
                 let i = i.to_digit(10).unwrap() as usize;
                 cxt.editor.count =
                     std::num::NonZeroUsize::new(cxt.editor.count.map_or(i, |c| c.get() * 10 + i));
