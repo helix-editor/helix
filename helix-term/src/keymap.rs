@@ -303,12 +303,13 @@ impl Keymaps {
         self.sticky.as_ref()
     }
 
-    pub fn key_exists(&self, mode: Mode, key: KeyEvent) -> bool {
+    pub fn contains_key(&self, mode: Mode, key: KeyEvent) -> bool {
         let keymaps = &*self.map();
         let keymap = &keymaps[&mode];
-        let mut ks = self.pending().to_vec();
-        ks.push(key);
-        keymap.search(&ks).is_some()
+        keymap
+            .search(self.pending())
+            .and_then(KeyTrie::node)
+            .is_some_and(|node| node.contains_key(&key))
     }
 
     /// Lookup `key` in the keymap to try and find a command to execute. Escape

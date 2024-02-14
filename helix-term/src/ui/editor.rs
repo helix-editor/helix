@@ -887,7 +887,7 @@ impl EditorView {
         match (event, cxt.editor.count) {
             // count handling
             (key!(i @ '0'), Some(_)) | (key!(i @ '1'..='9'), _)
-                if !self.keymaps.key_exists(mode, event) =>
+                if !self.keymaps.contains_key(mode, event) =>
             {
                 let i = i.to_digit(10).unwrap() as usize;
                 cxt.editor.count =
