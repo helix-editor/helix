@@ -228,7 +228,7 @@ impl Editor {
                                     breakpoints[i].verified = breakpoint.verified;
                                     breakpoints[i].message = breakpoint.message.clone();
                                     breakpoints[i].line =
-                                        breakpoint.line.unwrap().saturating_sub(1); // TODO: no unwrap
+                                        breakpoint.line.map_or(0, |line| line.saturating_sub(1));
                                     breakpoints[i].column = breakpoint.column;
                                 }
                             }
