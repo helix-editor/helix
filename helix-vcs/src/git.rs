@@ -1,5 +1,7 @@
 use anyhow::{bail, Context, Result};
 use arc_swap::ArcSwap;
+use gix::filter::plumbing::driver::apply::Delay;
+use std::io::Read;
 use std::path::Path;
 use std::sync::Arc;
 
@@ -76,29 +78,21 @@ impl DiffProvider for Git {
         let file_oid = find_file_in_commit(&repo, &head, file)?;
 
         let file_object = repo.find_object(file_oid)?;
-        let mut data = file_object.detach().data;
-        // convert LF to CRLF if configured to avoid showing every line as changed
-        if repo
-            .config_snapshot()
-            .boolean("core.autocrlf")
-            .unwrap_or(false)
-        {
-            let mut normalized_file = Vec::with_capacity(data.len());
-            let mut at_cr = false;
-            for &byte in &data {
-                if byte == b'\n' {
-                    // if this is a LF instead of a CRLF (last byte was not a CR)
-                    // insert a new CR to generate a CRLF
-                    if !at_cr {
-                        normalized_file.push(b'\r');
-                    }
-                }
-                at_cr = byte == b'\r';
-                normalized_file.push(byte)
-            }
-            data = normalized_file
+        let data = file_object.detach().data;
+        // Get the actual data that git would make out of the git object.
+        // This will apply the user's git config or attributes like crlf conversions.
+        if let Some(work_dir) = repo.work_dir() {
+            let rela_path = file.strip_prefix(work_dir)?;
+            let rela_path = gix::path::try_into_bstr(rela_path)?;
+            let (mut pipeline, _) = repo.filter_pipeline(None)?;
+            let mut worktree_outcome =
+                pipeline.convert_to_worktree(&data, rela_path.as_ref(), Delay::Forbid)?;
+            let mut buf = Vec::with_capacity(data.len());
+            worktree_outcome.read_to_end(&mut buf)?;
+            Ok(buf)
+        } else {
+            Ok(data)
         }
-        Ok(data)
     }
 
     fn get_current_head_name(&self, file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {

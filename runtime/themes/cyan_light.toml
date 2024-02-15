@@ -95,7 +95,8 @@
 "ui.text" = "shade05"
 "ui.text.focus" = { fg = "shade07", bg = "light_blue" }
 "ui.virtual" = "shade03"
-"ui.virtual.ruler" = { bg = "shade04" }
+"ui.virtual.ruler" = { bg = "shade01" }
+"ui.virtual.inlay-hint" = { fg = "shade03_darker" }
 "ui.menu" = { fg = "shade05", bg = "shade01" }
 "ui.menu.selected" = { fg = "shade07", bg = "light_blue" }
 
@@ -119,6 +120,9 @@ shade05 = "#434b6c"
 shade06 = "#343a54"
 shade07 = "#25293c"
 
+shade03_darker = "#9199bb"
+shade04_lighter = "#616d9d"
+
 background = "#f2f3f7"
 foreground = "#25293c"
 
@@ -133,7 +137,6 @@ blue = "#0073E6"
 dark_blue = "#185b93"
 darker_blue = "#000080"
 
-
 purple = "#660E7A"
 light_purple = "#ED9CFF"
 
@@ -141,7 +144,6 @@ gutter_green = "#C9DEC1"
 green = "#00733B"
 light_green = "#5DCE87"
 green_blue = "#458383"
-
 
 yellow = "#808000"
 dark_yellow = "#7A7A43"
