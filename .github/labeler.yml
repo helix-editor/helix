@@ -1,0 +1,31 @@
+A-core:
+  - changed-files:
+    - any-glob-to-any-file: [ helix-core/** ]
+
+A-debug-adapter:
+  - changed-files:
+    - any-glob-to-any-file: [ helix-dap/** ]
+
+A-helix-term:
+  - changed-files:
+    - any-glob-to-any-file: [ helix-term/** ]
+
+A-keymap:
+  - changed-files:
+    - any-glob-to-any-file: [ helix-term/src/keymap/**, helix-term/src/keymap.rs ]
+
+A-language-server:
+  - changed-files:
+    - any-glob-to-any-file: [ helix-lsp/** ]
+
+A-theme:
+  - changed-files:
+    - any-glob-to-any-file: [ runtime/themes/** ]
+
+A-tree-sitter:
+  - changed-files:
+    - any-glob-to-any-file: [ runtime/queries/** ]
+
+A-vcs:
+  - changed-files:
+    - any-glob-to-any-file: [ helix-vcs/** ]
