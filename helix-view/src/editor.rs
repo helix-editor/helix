@@ -426,6 +426,7 @@ pub struct StatusLineConfig {
     pub right: Vec<StatusLineElement>,
     pub separator: String,
     pub mode: ModeConfig,
+    pub date_time_format: String,
 }
 
 impl Default for StatusLineConfig {
@@ -450,6 +451,7 @@ impl Default for StatusLineConfig {
             ],
             separator: String::from("│"),
             mode: ModeConfig::default(),
+            date_time_format: String::from("%A %B %e, %Y %H:%M"),
         }
     }
 }
@@ -528,6 +530,9 @@ pub enum StatusLineElement {
 
     /// A single space
     Spacer,
+
+    /// The date and time
+    DateTime,
 
     /// Current version control information
     VersionControl,

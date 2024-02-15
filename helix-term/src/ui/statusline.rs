@@ -160,6 +160,7 @@ where
         helix_view::editor::StatusLineElement::TotalLineNumbers => render_total_line_numbers,
         helix_view::editor::StatusLineElement::Separator => render_separator,
         helix_view::editor::StatusLineElement::Spacer => render_spacer,
+        helix_view::editor::StatusLineElement::DateTime => render_date_time,
         helix_view::editor::StatusLineElement::VersionControl => render_version_control,
         helix_view::editor::StatusLineElement::Register => render_register,
     }
@@ -491,6 +492,19 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     write(context, String::from(" "), None);
+}
+
+fn render_date_time<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let date_time_format = &context.editor.config().statusline.date_time_format;
+
+    write(
+        context,
+        chrono::Local::now().format(date_time_format).to_string(),
+        None,
+    );
 }
 
 fn render_version_control<F>(context: &mut RenderContext, write: F)
