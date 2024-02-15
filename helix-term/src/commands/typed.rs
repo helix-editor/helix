@@ -3167,8 +3167,7 @@ pub(super) fn command_mode(cx: &mut Context) {
                 if let Err(e) = (cmd.fun)(cx, &args[1..], event) {
                     cx.editor.set_error(format!("{}", e));
                 }
-            } else if ScriptingEngine::call_typed_command_if_global_exists(cx, input, &parts, event)
-            {
+            } else if ScriptingEngine::call_typed_command(cx, input, &parts, event) {
                 // Engine handles the other cases
             } else if event == PromptEvent::Validate {
                 cx.editor

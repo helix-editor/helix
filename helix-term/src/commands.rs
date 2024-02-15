@@ -208,7 +208,7 @@ impl MappableCommand {
                         cx.editor.set_error(format!("{}", e));
                     }
                 } else {
-                    ScriptingEngine::call_function_if_global_exists(cx, name, args);
+                    ScriptingEngine::call_function_by_name(cx, name, args);
                 }
             }
             Self::Static { fun, .. } => (fun)(cx),

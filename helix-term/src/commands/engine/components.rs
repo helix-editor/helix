@@ -8,7 +8,7 @@ use steel::{
 };
 
 use crate::{
-    commands::{engine::scheme::ENGINE, Context},
+    commands::{engine::steel::ENGINE, Context},
     compositor::{self, Component},
     ui::{Popup, Prompt, PromptEvent},
 };

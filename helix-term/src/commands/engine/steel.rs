@@ -329,16 +329,24 @@ fn load_typed_commands(engine: &mut Engine, generate_sources: bool) {
     (helix.{} *helix.cx* args))
 "#,
                 command.name,
-                command
-                    .doc
-                    .lines()
-                    .map(|x| {
-                        let mut line = ";;".to_string();
-                        line.push_str(x);
-                        line.push_str("\n");
-                        line
-                    })
-                    .collect::<String>(),
+                {
+                    // Ugly hack to drop the extra newline from
+                    // the docstring
+                    let mut docstring = command
+                        .doc
+                        .lines()
+                        .map(|x| {
+                            let mut line = ";;".to_string();
+                            line.push_str(x);
+                            line.push_str("\n");
+                            line
+                        })
+                        .collect::<String>();
+
+                    docstring.pop();
+
+                    docstring
+                },
                 command.name,
                 command.name
             ));
@@ -359,6 +367,7 @@ fn load_typed_commands(engine: &mut Engine, generate_sources: bool) {
     engine.register_module(module);
 }
 
+// File picker configurations
 fn fp_hidden(config: &mut FilePickerConfig, option: bool) {
     config.hidden = option;
 }
@@ -395,6 +404,7 @@ fn fp_max_depth(config: &mut FilePickerConfig, option: Option<usize>) {
     config.max_depth = option;
 }
 
+// Soft wrap configurations
 fn sw_enable(config: &mut SoftWrap, option: Option<bool>) {
     config.enable = option;
 }
@@ -646,7 +656,6 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
             "insert-final-newline",
             "color-modes",
             "gutters",
-            // "file-picker",
             "statusline",
             "undercurl",
             "search",
@@ -656,7 +665,6 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
             "whitespace",
             "bufferline",
             "indent-guides",
-            // "soft-wrap",
             "workspace-lsp-roots",
             "default-line-ending",
             "smart-tab",
@@ -809,12 +817,7 @@ impl super::PluginSystem for SteelScriptingEngine {
         })
     }
 
-    fn call_function_if_global_exists(
-        &self,
-        cx: &mut Context,
-        name: &str,
-        args: &[Cow<str>],
-    ) -> bool {
+    fn call_function_by_name(&self, cx: &mut Context, name: &str, args: &[Cow<str>]) -> bool {
         if ENGINE.with(|x| x.borrow().global_exists(name)) {
             let args = args
                 .iter()
@@ -844,7 +847,7 @@ impl super::PluginSystem for SteelScriptingEngine {
         }
     }
 
-    fn call_typed_command_if_global_exists<'a>(
+    fn call_typed_command<'a>(
         &self,
         cx: &mut compositor::Context,
         input: &'a str,
@@ -1525,7 +1528,6 @@ fn get_themes(cx: &mut Context) -> Vec<String> {
 }
 
 /// A dynamic component, used for rendering thing
-
 impl Custom for compositor::EventResult {}
 impl FromSteelVal for compositor::EventResult {
     fn from_steelval(val: &SteelVal) -> steel::rvals::Result<Self> {

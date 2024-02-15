@@ -16,7 +16,7 @@ use super::{Context, MappableCommand, TYPABLE_COMMAND_LIST};
 mod components;
 
 #[cfg(feature = "steel")]
-pub mod scheme;
+pub mod steel;
 
 pub enum PluginSystemKind {
     None,
@@ -27,14 +27,14 @@ pub enum PluginSystemKind {
 pub enum PluginSystemTypes {
     None(NoEngine),
     #[cfg(feature = "steel")]
-    Steel(scheme::SteelScriptingEngine),
+    Steel(steel::SteelScriptingEngine),
 }
 
 // The order in which the plugins will be evaluated against - if we wanted to include, lets say `rhai`,
 // we would have to order the precedence for searching for exported commands, or somehow merge them?
 const PLUGIN_PRECEDENCE: &[PluginSystemTypes] = &[
     #[cfg(feature = "steel")]
-    PluginSystemTypes::Steel(scheme::SteelScriptingEngine),
+    PluginSystemTypes::Steel(steel::SteelScriptingEngine),
     PluginSystemTypes::None(NoEngine),
 ];
 
@@ -87,13 +87,9 @@ impl ScriptingEngine {
         None
     }
 
-    pub fn call_function_if_global_exists(
-        cx: &mut Context,
-        name: &str,
-        args: Vec<Cow<str>>,
-    ) -> bool {
+    pub fn call_function_by_name(cx: &mut Context, name: &str, args: Vec<Cow<str>>) -> bool {
         for kind in PLUGIN_PRECEDENCE {
-            if manual_dispatch!(kind, call_function_if_global_exists(cx, name, &args)) {
+            if manual_dispatch!(kind, call_function_by_name(cx, name, &args)) {
                 return true;
             }
         }
@@ -101,17 +97,14 @@ impl ScriptingEngine {
         false
     }
 
-    pub fn call_typed_command_if_global_exists<'a>(
+    pub fn call_typed_command<'a>(
         cx: &mut compositor::Context,
         input: &'a str,
         parts: &'a [&'a str],
         event: PromptEvent,
     ) -> bool {
         for kind in PLUGIN_PRECEDENCE {
-            if manual_dispatch!(
-                kind,
-                call_typed_command_if_global_exists(cx, input, parts, event)
-            ) {
+            if manual_dispatch!(kind, call_typed_command(cx, input, parts, event)) {
                 return true;
             }
         }
@@ -186,12 +179,7 @@ pub trait PluginSystem {
     /// This attempts to call a function in the engine with the name `name` using the args `args`. The context
     /// is available here. Returns a bool indicating whether the function exists or not.
     #[inline(always)]
-    fn call_function_if_global_exists(
-        &self,
-        _cx: &mut Context,
-        _name: &str,
-        _args: &[Cow<str>],
-    ) -> bool {
+    fn call_function_by_name(&self, _cx: &mut Context, _name: &str, _args: &[Cow<str>]) -> bool {
         false
     }
 
@@ -199,7 +187,7 @@ pub trait PluginSystem {
     /// that is available is more limited than the context available in `call_function_if_global_exists`. This also
     /// gives the ability to handle in progress commands with `PromptEvent`.
     #[inline(always)]
-    fn call_typed_command_if_global_exists<'a>(
+    fn call_typed_command<'a>(
         &self,
         _cx: &mut compositor::Context,
         _input: &'a str,
