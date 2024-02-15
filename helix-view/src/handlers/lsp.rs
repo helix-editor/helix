@@ -75,7 +75,7 @@ impl ToString for ApplyEditErrorKind {
 
 impl Editor {
     fn uri_to_file_path(&mut self, uri: &helix_lsp::Url) -> Result<PathBuf, ApplyEditErrorKind> {
-        match uri_to_file_path(&uri) {
+        match uri_to_file_path(uri) {
             Ok(path) => Ok(path),
             Err(err) => {
                 let err = format!("{err}: {uri}");
