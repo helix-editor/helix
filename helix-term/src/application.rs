@@ -3,10 +3,10 @@ use futures_util::Stream;
 use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Selection};
 use helix_lsp::{
     lsp::{self, notification::Notification},
-    util::{lsp_range_to_range, uri_to_file_path},
+    util::lsp_range_to_range,
     LspProgressMap,
 };
-use helix_stdx::path::get_relative_path;
+use helix_stdx::{path::get_relative_path, uri::uri_to_file_path};
 use helix_view::{
     align_view,
     document::DocumentSavedEventResult,
@@ -726,7 +726,7 @@ impl Application {
                         let path = match uri_to_file_path(&params.uri) {
                             Ok(path) => path,
                             Err(err) => {
-                                log::error!("{err}: {}", params.uri);
+                                log::error!("{err}");
                                 return;
                             }
                         };
@@ -1130,7 +1130,7 @@ impl Application {
         let path = match uri_to_file_path(&uri) {
             Ok(path) => path,
             Err(err) => {
-                log::error!("{err}: {uri}");
+                log::error!("{err}");
                 return lsp::ShowDocumentResult { success: false };
             }
         };

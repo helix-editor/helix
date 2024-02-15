@@ -1346,6 +1346,8 @@ dependencies = [
  "etcetera",
  "ropey",
  "tempfile",
+ "thiserror",
+ "url",
  "which",
 ]
 

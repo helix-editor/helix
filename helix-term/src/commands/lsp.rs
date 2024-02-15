@@ -5,10 +5,7 @@ use helix_lsp::{
         self, CodeAction, CodeActionOrCommand, CodeActionTriggerKind, DiagnosticSeverity,
         NumberOrString,
     },
-    util::{
-        diagnostic_to_lsp_diagnostic, lsp_range_to_range, range_to_lsp_range, uri_to_file_path,
-        FilePathError,
-    },
+    util::{diagnostic_to_lsp_diagnostic, lsp_range_to_range, range_to_lsp_range},
     Client, OffsetEncoding,
 };
 use tokio_stream::StreamExt;
@@ -20,7 +17,7 @@ use tui::{
 use super::{align_view, push_jump, Align, Context, Editor};
 
 use helix_core::{syntax::LanguageServerFeature, text_annotations::InlineAnnotation, Selection};
-use helix_stdx::path;
+use helix_stdx::{path, uri::uri_to_file_path};
 use helix_view::{
     document::{DocumentInlayHints, DocumentInlayHintsId},
     editor::Action,
@@ -198,11 +195,7 @@ fn location_to_file_location(location: &lsp::Location) -> Option<FileLocation> {
             ));
             Some((path.into(), line))
         }
-        Err(FilePathError::UnsupportedScheme) => None,
-        Err(FilePathError::UnableToConvert) => unreachable!(
-            "file path should be able to be acquired from URI: {}",
-            location.uri
-        ),
+        Err(_) => None,
     }
 }
 
@@ -218,8 +211,7 @@ fn jump_to_location(
     let path = match uri_to_file_path(&location.uri) {
         Ok(path) => path,
         Err(conversion_err) => {
-            let err = format!("{conversion_err}: {}", location.uri);
-            editor.set_error(err);
+            editor.set_error(conversion_err.to_string());
             return;
         }
     };

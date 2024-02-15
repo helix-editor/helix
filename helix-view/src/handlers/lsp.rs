@@ -3,8 +3,9 @@ use std::path::PathBuf;
 use crate::editor::Action;
 use crate::Editor;
 use crate::{DocumentId, ViewId};
-use helix_lsp::util::{generate_transaction_from_edits, uri_to_file_path};
+use helix_lsp::util::generate_transaction_from_edits;
 use helix_lsp::{lsp, OffsetEncoding};
+use helix_stdx::uri::uri_to_file_path;
 
 pub enum CompletionEvent {
     /// Auto completion was triggered by typing a word char
@@ -62,6 +63,12 @@ pub enum ApplyEditErrorKind {
     // InvalidEdit,
 }
 
+impl From<std::io::Error> for ApplyEditErrorKind {
+    fn from(err: std::io::Error) -> Self {
+        ApplyEditErrorKind::IoError(err)
+    }
+}
+
 impl ToString for ApplyEditErrorKind {
     fn to_string(&self) -> String {
         match self {
@@ -78,9 +85,8 @@ impl Editor {
         match uri_to_file_path(uri) {
             Ok(path) => Ok(path),
             Err(err) => {
-                let err = format!("{err}: {uri}");
                 log::error!("{err}");
-                self.set_error(err);
+                self.set_error(err.to_string());
                 Err(ApplyEditErrorKind::UnknownURISchema)
             }
         }
@@ -224,10 +230,6 @@ impl Editor {
         &mut self,
         op: &lsp::ResourceOp,
     ) -> Result<(), ApplyEditErrorKind> {
-        fn wrap_io(err: std::io::Error) -> ApplyEditErrorKind {
-            ApplyEditErrorKind::IoError(err)
-        }
-
         use lsp::ResourceOp;
         use std::fs;
         match op {
@@ -240,11 +242,11 @@ impl Editor {
                     // Create directory if it does not exist
                     if let Some(dir) = path.parent() {
                         if !dir.is_dir() {
-                            fs::create_dir_all(dir).map_err(wrap_io)?;
+                            fs::create_dir_all(dir)?;
                         }
                     }
 
-                    fs::write(&path, []).map_err(wrap_io)?;
+                    fs::write(&path, [])?;
                     self.language_servers.file_event_handler.file_changed(path);
                 }
             }
@@ -258,13 +260,13 @@ impl Editor {
                         .unwrap_or(false);
 
                     if recursive {
-                        fs::remove_dir_all(&path).map_err(wrap_io)?
+                        fs::remove_dir_all(&path)?
                     } else {
-                        fs::remove_dir(&path).map_err(wrap_io)?
+                        fs::remove_dir(&path)?
                     }
                     self.language_servers.file_event_handler.file_changed(path);
                 } else if path.is_file() {
-                    fs::remove_file(&path).map_err(wrap_io)?;
+                    fs::remove_file(&path)?;
                 }
             }
             ResourceOp::Rename(op) => {
@@ -274,7 +276,7 @@ impl Editor {
                     !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
                 });
                 if !ignore_if_exists || !to.exists() {
-                    self.move_path(&from, &to).map_err(wrap_io)?;
+                    self.move_path(&from, &to)?;
                 }
             }
         }

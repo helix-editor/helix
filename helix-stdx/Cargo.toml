@@ -15,6 +15,8 @@ homepage.workspace = true
 dunce = "1.0"
 etcetera = "0.8"
 ropey = { version = "1.6.1", default-features = false }
+thiserror = "1.0.57"
+url = "2.5.0"
 which = "6.0"
 
 [dev-dependencies]
