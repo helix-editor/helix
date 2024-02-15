@@ -68,6 +68,27 @@ pub mod util {
     use helix_core::{chars, RopeSlice, SmallVec};
     use helix_core::{diagnostic::NumberOrString, Range, Rope, Selection, Tendril, Transaction};
 
+    #[derive(Debug, Error)]
+    pub enum FilePathError {
+        #[error("unsupported scheme in URI")]
+        UnsupportedScheme,
+        #[error("unable to convert URI to file path")]
+        UnableToConvert,
+    }
+
+    /// Converts a [`Url`] into a [`PathBuf`].
+    ///
+    /// Unlike [`Url::to_file_path`], this method respects the uri's scheme
+    /// and returns `Ok(None)` if the scheme was not "file".
+    pub fn uri_to_file_path(uri: &Url) -> ::core::result::Result<PathBuf, FilePathError> {
+        if uri.scheme() == "file" {
+            uri.to_file_path()
+                .map_err(|_| FilePathError::UnableToConvert)
+        } else {
+            Err(FilePathError::UnsupportedScheme)
+        }
+    }
+
     /// Converts a diagnostic in the document to [`lsp::Diagnostic`].
     ///
     /// Panics when [`pos_to_lsp_pos`] would for an invalid range on the diagnostic.

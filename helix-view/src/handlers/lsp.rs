@@ -1,7 +1,9 @@
+use std::path::PathBuf;
+
 use crate::editor::Action;
 use crate::Editor;
 use crate::{DocumentId, ViewId};
-use helix_lsp::util::generate_transaction_from_edits;
+use helix_lsp::util::{generate_transaction_from_edits, uri_to_file_path};
 use helix_lsp::{lsp, OffsetEncoding};
 
 pub enum CompletionEvent {
@@ -72,6 +74,18 @@ impl ToString for ApplyEditErrorKind {
 }
 
 impl Editor {
+    fn uri_to_file_path(&mut self, uri: &helix_lsp::Url) -> Result<PathBuf, ApplyEditErrorKind> {
+        match uri_to_file_path(&uri) {
+            Ok(path) => Ok(path),
+            Err(err) => {
+                let err = format!("{err}: {uri}");
+                log::error!("{err}");
+                self.set_error(err);
+                Err(ApplyEditErrorKind::UnknownURISchema)
+            }
+        }
+    }
+
     fn apply_text_edits(
         &mut self,
         uri: &helix_lsp::Url,
@@ -79,15 +93,7 @@ impl Editor {
         text_edits: Vec<lsp::TextEdit>,
         offset_encoding: OffsetEncoding,
     ) -> Result<(), ApplyEditErrorKind> {
-        let path = match uri.to_file_path() {
-            Ok(path) => path,
-            Err(_) => {
-                let err = format!("unable to convert URI to filepath: {}", uri);
-                log::error!("{}", err);
-                self.set_error(err);
-                return Err(ApplyEditErrorKind::UnknownURISchema);
-            }
-        };
+        let path = self.uri_to_file_path(uri)?;
 
         let doc_id = match self.open(&path, Action::Load) {
             Ok(doc_id) => doc_id,
@@ -158,9 +164,9 @@ impl Editor {
                     for (i, operation) in operations.iter().enumerate() {
                         match operation {
                             lsp::DocumentChangeOperation::Op(op) => {
-                                self.apply_document_resource_op(op).map_err(|io| {
+                                self.apply_document_resource_op(op).map_err(|err| {
                                     ApplyEditError {
-                                        kind: ApplyEditErrorKind::IoError(io),
+                                        kind: err,
                                         failed_change_idx: i,
                                     }
                                 })?;
@@ -214,12 +220,19 @@ impl Editor {
         Ok(())
     }
 
-    fn apply_document_resource_op(&mut self, op: &lsp::ResourceOp) -> std::io::Result<()> {
+    fn apply_document_resource_op(
+        &mut self,
+        op: &lsp::ResourceOp,
+    ) -> Result<(), ApplyEditErrorKind> {
+        fn wrap_io(err: std::io::Error) -> ApplyEditErrorKind {
+            ApplyEditErrorKind::IoError(err)
+        }
+
         use lsp::ResourceOp;
         use std::fs;
         match op {
             ResourceOp::Create(op) => {
-                let path = op.uri.to_file_path().unwrap();
+                let path = self.uri_to_file_path(&op.uri)?;
                 let ignore_if_exists = op.options.as_ref().map_or(false, |options| {
                     !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
                 });
@@ -227,16 +240,16 @@ impl Editor {
                     // Create directory if it does not exist
                     if let Some(dir) = path.parent() {
                         if !dir.is_dir() {
-                            fs::create_dir_all(dir)?;
+                            fs::create_dir_all(dir).map_err(wrap_io)?;
                         }
                     }
 
-                    fs::write(&path, [])?;
+                    fs::write(&path, []).map_err(wrap_io)?;
                     self.language_servers.file_event_handler.file_changed(path);
                 }
             }
             ResourceOp::Delete(op) => {
-                let path = op.uri.to_file_path().unwrap();
+                let path = self.uri_to_file_path(&op.uri)?;
                 if path.is_dir() {
                     let recursive = op
                         .options
@@ -245,23 +258,23 @@ impl Editor {
                         .unwrap_or(false);
 
                     if recursive {
-                        fs::remove_dir_all(&path)?
+                        fs::remove_dir_all(&path).map_err(wrap_io)?
                     } else {
-                        fs::remove_dir(&path)?
+                        fs::remove_dir(&path).map_err(wrap_io)?
                     }
                     self.language_servers.file_event_handler.file_changed(path);
                 } else if path.is_file() {
-                    fs::remove_file(&path)?;
+                    fs::remove_file(&path).map_err(wrap_io)?;
                 }
             }
             ResourceOp::Rename(op) => {
-                let from = op.old_uri.to_file_path().unwrap();
-                let to = op.new_uri.to_file_path().unwrap();
+                let from = self.uri_to_file_path(&op.old_uri)?;
+                let to = self.uri_to_file_path(&op.new_uri)?;
                 let ignore_if_exists = op.options.as_ref().map_or(false, |options| {
                     !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
                 });
                 if !ignore_if_exists || !to.exists() {
-                    self.move_path(&from, &to)?;
+                    self.move_path(&from, &to).map_err(wrap_io)?;
                 }
             }
         }

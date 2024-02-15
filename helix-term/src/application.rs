@@ -3,7 +3,7 @@ use futures_util::Stream;
 use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Selection};
 use helix_lsp::{
     lsp::{self, notification::Notification},
-    util::lsp_range_to_range,
+    util::{lsp_range_to_range, uri_to_file_path},
     LspProgressMap,
 };
 use helix_stdx::path::get_relative_path;
@@ -723,10 +723,10 @@ impl Application {
                         }
                     }
                     Notification::PublishDiagnostics(mut params) => {
-                        let path = match params.uri.to_file_path() {
+                        let path = match uri_to_file_path(&params.uri) {
                             Ok(path) => path,
-                            Err(_) => {
-                                log::error!("Unsupported file URI: {}", params.uri);
+                            Err(err) => {
+                                log::error!("{err}: {}", params.uri);
                                 return;
                             }
                         };
@@ -1127,10 +1127,10 @@ impl Application {
             ..
         } = params;
 
-        let path = match uri.to_file_path() {
+        let path = match uri_to_file_path(&uri) {
             Ok(path) => path,
             Err(err) => {
-                log::error!("unsupported file URI: {}: {:?}", uri, err);
+                log::error!("{err}: {uri}");
                 return lsp::ShowDocumentResult { success: false };
             }
         };

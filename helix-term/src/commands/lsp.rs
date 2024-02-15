@@ -5,7 +5,10 @@ use helix_lsp::{
         self, CodeAction, CodeActionOrCommand, CodeActionTriggerKind, DiagnosticSeverity,
         NumberOrString,
     },
-    util::{diagnostic_to_lsp_diagnostic, lsp_range_to_range, range_to_lsp_range},
+    util::{
+        diagnostic_to_lsp_diagnostic, lsp_range_to_range, range_to_lsp_range, uri_to_file_path,
+        FilePathError,
+    },
     Client, OffsetEncoding,
 };
 use tokio_stream::StreamExt;
@@ -79,6 +82,7 @@ impl ui::menu::Item for lsp::Location {
             // With the preallocation above and UTF-8 paths already, this closure will do one (1)
             // allocation, for `to_file_path`, else there will be two (2), with `to_string_lossy`.
             let mut write_path_to_res = || -> Option<()> {
+                // We don't use `uri_to_file_path` here, since we've already checked the scheme.
                 let path = self.uri.to_file_path().ok()?;
                 res.push_str(&path.strip_prefix(cwdir).unwrap_or(&path).to_string_lossy());
                 Some(())
@@ -110,7 +114,7 @@ impl ui::menu::Item for SymbolInformationItem {
         if current_doc_path.as_ref() == Some(&self.symbol.location.uri) {
             self.symbol.name.as_str().into()
         } else {
-            match self.symbol.location.uri.to_file_path() {
+            match uri_to_file_path(&self.symbol.location.uri) {
                 Ok(path) => {
                     let get_relative_path = path::get_relative_path(path.as_path());
                     format!(
@@ -120,7 +124,7 @@ impl ui::menu::Item for SymbolInformationItem {
                     )
                     .into()
                 }
-                Err(_) => format!("{} ({})", &self.symbol.name, &self.symbol.location.uri).into(),
+                _ => format!("{} ({})", &self.symbol.name, &self.symbol.location.uri).into(),
             }
         }
     }
@@ -182,13 +186,24 @@ impl ui::menu::Item for PickerDiagnostic {
     }
 }
 
-fn location_to_file_location(location: &lsp::Location) -> FileLocation {
-    let path = location.uri.to_file_path().unwrap();
-    let line = Some((
-        location.range.start.line as usize,
-        location.range.end.line as usize,
-    ));
-    (path.into(), line)
+/// Creates a [`FileLocation`] from an [`lsp::Location`], for use with picker previews.
+///
+/// This will return [`None`] if the location uri's scheme is not "file".
+fn location_to_file_location(location: &lsp::Location) -> Option<FileLocation> {
+    match uri_to_file_path(&location.uri) {
+        Ok(path) => {
+            let line = Some((
+                location.range.start.line as usize,
+                location.range.end.line as usize,
+            ));
+            Some((path.into(), line))
+        }
+        Err(FilePathError::UnsupportedScheme) => None,
+        Err(FilePathError::UnableToConvert) => unreachable!(
+            "file path should be able to be acquired from URI: {}",
+            location.uri
+        ),
+    }
 }
 
 fn jump_to_location(
@@ -200,10 +215,10 @@ fn jump_to_location(
     let (view, doc) = current!(editor);
     push_jump(view, doc);
 
-    let path = match location.uri.to_file_path() {
+    let path = match uri_to_file_path(&location.uri) {
         Ok(path) => path,
-        Err(_) => {
-            let err = format!("unable to convert URI to filepath: {}", location.uri);
+        Err(conversion_err) => {
+            let err = format!("{conversion_err}: {}", location.uri);
             editor.set_error(err);
             return;
         }
@@ -246,7 +261,7 @@ fn sym_picker(symbols: Vec<SymbolInformationItem>, current_path: Option<lsp::Url
             action,
         );
     })
-    .with_preview(move |_editor, item| Some(location_to_file_location(&item.symbol.location)))
+    .with_preview(move |_editor, item| location_to_file_location(&item.symbol.location))
     .truncate_start(false)
 }
 
@@ -307,7 +322,7 @@ fn diag_picker(
     )
     .with_preview(move |_editor, PickerDiagnostic { url, diag, .. }| {
         let location = lsp::Location::new(url.clone(), diag.range);
-        Some(location_to_file_location(&location))
+        location_to_file_location(&location)
     })
     .truncate_start(false)
 }
@@ -831,7 +846,7 @@ fn goto_impl(
             let picker = Picker::new(locations, cwdir, move |cx, location, action| {
                 jump_to_location(cx.editor, location, offset_encoding, action)
             })
-            .with_preview(move |_editor, location| Some(location_to_file_location(location)));
+            .with_preview(move |_editor, location| location_to_file_location(location));
             compositor.push(Box::new(overlaid(picker)));
         }
     }
