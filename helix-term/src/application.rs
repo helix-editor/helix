@@ -535,6 +535,16 @@ impl Application {
         }
     }
 
+    pub async fn handle_save_delay_timeout(&mut self) {
+        let mut cx = crate::compositor::Context {
+            editor: &mut self.editor,
+            jobs: &mut self.jobs,
+            scroll: None,
+        };
+
+        self.compositor.handle_event(&Event::SaveDelayTimeout, &mut cx);
+    }
+
     pub fn handle_document_write(&mut self, doc_save_event: DocumentSavedEventResult) {
         let doc_save_event = match doc_save_event {
             Ok(event) => event,
@@ -613,6 +623,10 @@ impl Application {
                 {
                     return true;
                 }
+            }
+            EditorEvent::SaveDelayTimer => {
+                self.editor.clear_save_delay_timer();
+                self.handle_save_delay_timeout().await;
             }
         }
 

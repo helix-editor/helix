@@ -277,6 +277,13 @@ pub struct Config {
         deserialize_with = "deserialize_duration_millis"
     )]
     pub idle_timeout: Duration,
+    /// Time in milliseconds since last keypress before auto save timers trigger.
+    /// Used for various UI timeouts. Defaults to 1000ms.
+    #[serde(
+        serialize_with = "serialize_duration_millis",
+        deserialize_with = "deserialize_duration_millis"
+    )]
+    pub save_delay_timeout: Duration,
     /// Time in milliseconds after typing a word character before auto completions
     /// are shown, set to 5 for instant. Defaults to 250ms.
     #[serde(
@@ -883,6 +890,7 @@ impl Default for Config {
             auto_format: true,
             auto_save: false,
             idle_timeout: Duration::from_millis(250),
+            save_delay_timeout: Duration::from_millis(1000),
             completion_timeout: Duration::from_millis(250),
             preview_completion_insert: true,
             completion_trigger_len: 2,
@@ -988,6 +996,7 @@ pub struct Editor {
     pub auto_pairs: Option<AutoPairs>,
 
     pub idle_timer: Pin<Box<Sleep>>,
+    pub save_delay_timer: Pin<Box<Sleep>>,
     redraw_timer: Pin<Box<Sleep>>,
     last_motion: Option<Motion>,
     pub last_completion: Option<CompleteAction>,
@@ -1023,6 +1032,7 @@ pub enum EditorEvent {
     LanguageServerMessage((LanguageServerId, Call)),
     DebuggerEvent(dap::Payload),
     IdleTimer,
+    SaveDelayTimer,
     Redraw,
 }
 
@@ -1118,6 +1128,7 @@ impl Editor {
             status_msg: None,
             autoinfo: None,
             idle_timer: Box::pin(sleep(conf.idle_timeout)),
+            save_delay_timer: Box::pin(sleep(conf.save_delay_timeout)),
             redraw_timer: Box::pin(sleep(Duration::MAX)),
             last_motion: None,
             last_completion: None,
@@ -1185,6 +1196,19 @@ impl Editor {
         self.idle_timer
             .as_mut()
             .reset(Instant::now() + config.idle_timeout);
+    }
+
+    pub fn clear_save_delay_timer(&mut self) {
+        self.save_delay_timer
+            .as_mut()
+            .reset(Instant::now() + Duration::from_secs(86400 * 365 * 30));
+    }
+
+    pub fn reset_save_delay_timer(&mut self) {
+        let config = self.config();
+        self.save_delay_timer
+            .as_mut()
+            .reset(Instant::now() + config.save_delay_timeout);
     }
 
     pub fn clear_status(&mut self) {
@@ -2003,6 +2027,9 @@ impl Editor {
                 }
                 _ = &mut self.idle_timer  => {
                     return EditorEvent::IdleTimer
+                }
+                _ = &mut self.save_delay_timer => {
+                    return EditorEvent::SaveDelayTimer
                 }
             }
         }
