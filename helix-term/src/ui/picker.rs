@@ -10,9 +10,11 @@ use crate::{
         EditorView,
     },
 };
-use futures_util::{future::BoxFuture, FutureExt};
+use futures_util::future::BoxFuture;
+use helix_event::AsyncHook;
 use nucleo::pattern::CaseMatching;
 use nucleo::{Config, Nucleo, Utf32String};
+use tokio::time::Instant;
 use tui::{
     buffer::Buffer as Surface,
     layout::Constraint,
@@ -30,6 +32,7 @@ use std::{
         atomic::{self, AtomicBool},
         Arc,
     },
+    time::Duration,
 };
 
 use crate::ui::{Prompt, PromptEvent};
@@ -201,6 +204,8 @@ pub struct Picker<T: Item> {
     read_buffer: Vec<u8>,
     /// Given an item in the picker, return the file path and line number to display.
     file_fn: Option<FileCallback<T>>,
+    /// An event handler for syntax highlighting the currently previewed file.
+    preview_highlight_handler: tokio::sync::mpsc::Sender<Arc<PathBuf>>,
 }
 
 impl<T: Item + 'static> Picker<T> {
@@ -265,6 +270,8 @@ impl<T: Item + 'static> Picker<T> {
             |_editor: &mut Context, _pattern: &str, _event: PromptEvent| {},
         );
 
+        let preview_highlight_handler = PreviewHighlightHandler::<T>::default().spawn();
+
         Self {
             matcher,
             editor_data,
@@ -280,6 +287,7 @@ impl<T: Item + 'static> Picker<T> {
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
             file_fn: None,
+            preview_highlight_handler,
         }
     }
 
@@ -403,13 +411,22 @@ impl<T: Item + 'static> Picker<T> {
     ) -> Preview<'picker, 'editor> {
         match path_or_id {
             PathOrId::Path(path) => {
-                let path = &path;
+                let path_arc = Arc::new(path);
+                let path: &PathBuf = &path_arc.clone();
                 if let Some(doc) = editor.document_by_path(path) {
                     return Preview::EditorDocument(doc);
                 }
 
                 if self.preview_cache.contains_key(path) {
-                    return Preview::Cached(&self.preview_cache[path]);
+                    let preview = &self.preview_cache[path];
+                    match preview {
+                        // If the document isn't highlighted yet, attempt to highlight it.
+                        CachedPreview::Document(doc) if doc.language_config().is_none() => {
+                            helix_event::send_blocking(&self.preview_highlight_handler, path_arc);
+                        }
+                        _ => (),
+                    }
+                    return Preview::Cached(preview);
                 }
 
                 let data = std::fs::File::open(path).and_then(|file| {
@@ -428,7 +445,14 @@ impl<T: Item + 'static> Picker<T> {
                                 CachedPreview::LargeFile
                             }
                             _ => Document::open(path, None, None, editor.config.clone())
-                                .map(|doc| CachedPreview::Document(Box::new(doc)))
+                                .map(|doc| {
+                                    // Asynchronously highlight the new document
+                                    helix_event::send_blocking(
+                                        &self.preview_highlight_handler,
+                                        path_arc,
+                                    );
+                                    CachedPreview::Document(Box::new(doc))
+                                })
                                 .unwrap_or(CachedPreview::NotFound),
                         },
                     )
@@ -441,84 +465,6 @@ impl<T: Item + 'static> Picker<T> {
                 Preview::EditorDocument(doc)
             }
         }
-    }
-
-    fn handle_idle_timeout(&mut self, cx: &mut Context) -> EventResult {
-        let Some((current_file, _)) = self.current_file(cx.editor) else {
-            return EventResult::Consumed(None);
-        };
-
-        // Try to find a document in the cache
-        let doc = match &current_file {
-            PathOrId::Id(doc_id) => doc_mut!(cx.editor, doc_id),
-            PathOrId::Path(path) => match self.preview_cache.get_mut(path) {
-                Some(CachedPreview::Document(ref mut doc)) => doc,
-                _ => return EventResult::Consumed(None),
-            },
-        };
-
-        let mut callback: Option<compositor::Callback> = None;
-
-        // Then attempt to highlight it if it has no language set
-        if doc.language_config().is_none() {
-            if let Some(language_config) = doc.detect_language_config(&cx.editor.syn_loader.load())
-            {
-                doc.language = Some(language_config.clone());
-                let text = doc.text().clone();
-                let loader = cx.editor.syn_loader.clone();
-                let job = tokio::task::spawn_blocking(move || {
-                    let syntax = language_config
-                        .highlight_config(&loader.load().scopes())
-                        .and_then(|highlight_config| {
-                            Syntax::new(text.slice(..), highlight_config, loader)
-                        });
-                    let callback = move |editor: &mut Editor, compositor: &mut Compositor| {
-                        let Some(syntax) = syntax else {
-                            log::info!("highlighting picker item failed");
-                            return;
-                        };
-                        let picker = match compositor.find::<Overlay<Self>>() {
-                            Some(Overlay { content, .. }) => Some(content),
-                            None => compositor
-                                .find::<Overlay<DynamicPicker<T>>>()
-                                .map(|overlay| &mut overlay.content.file_picker),
-                        };
-                        let Some(picker) = picker else {
-                            log::info!("picker closed before syntax highlighting finished");
-                            return;
-                        };
-                        // Try to find a document in the cache
-                        let doc = match current_file {
-                            PathOrId::Id(doc_id) => doc_mut!(editor, &doc_id),
-                            PathOrId::Path(path) => match picker.preview_cache.get_mut(&path) {
-                                Some(CachedPreview::Document(ref mut doc)) => {
-                                    let diagnostics = Editor::doc_diagnostics(
-                                        &editor.language_servers,
-                                        &editor.diagnostics,
-                                        doc,
-                                    );
-                                    doc.replace_diagnostics(diagnostics, &[], None);
-                                    doc
-                                }
-                                _ => return,
-                            },
-                        };
-                        doc.syntax = Some(syntax);
-                    };
-                    Callback::EditorCompositor(Box::new(callback))
-                });
-                let tmp: compositor::Callback = Box::new(move |_, ctx| {
-                    ctx.jobs
-                        .callback(job.map(|res| res.map_err(anyhow::Error::from)))
-                });
-                callback = Some(Box::new(tmp))
-            }
-        }
-
-        // QUESTION: do we want to compute inlay hints in pickers too ? Probably not for now
-        // but it could be interesting in the future
-
-        EventResult::Consumed(callback)
     }
 
     fn render_picker(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
@@ -828,9 +774,6 @@ impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
     }
 
     fn handle_event(&mut self, event: &Event, ctx: &mut Context) -> EventResult {
-        if let Event::IdleTimeout = event {
-            return self.handle_idle_timeout(ctx);
-        }
         // TODO: keybinds for scrolling preview
 
         let key_event = match event {
@@ -862,9 +805,6 @@ impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
             };
             EventResult::Consumed(Some(callback))
         };
-
-        // So that idle timeout retriggers
-        ctx.editor.reset_idle_timer();
 
         match key_event {
             shift!(Tab) | key!(Up) | ctrl!('p') => {
@@ -949,6 +889,105 @@ impl<T: Item> Drop for Picker<T> {
 
 type PickerCallback<T> = Box<dyn Fn(&mut Context, &T, Action)>;
 
+struct PreviewHighlightHandler<T: ui::menu::Item> {
+    trigger: Option<Arc<PathBuf>>,
+    phantom_data: std::marker::PhantomData<T>,
+}
+
+impl<T: ui::menu::Item> Default for PreviewHighlightHandler<T> {
+    fn default() -> Self {
+        Self {
+            trigger: None,
+            phantom_data: Default::default(),
+        }
+    }
+}
+
+impl<T: ui::menu::Item> AsyncHook for PreviewHighlightHandler<T> {
+    type Event = Arc<PathBuf>;
+
+    fn handle_event(
+        &mut self,
+        path: Self::Event,
+        timeout: Option<tokio::time::Instant>,
+    ) -> Option<tokio::time::Instant> {
+        if self
+            .trigger
+            .as_ref()
+            .is_some_and(|trigger| trigger == &path)
+        {
+            // If the path hasn't changed, don't reset the debounce
+            timeout
+        } else {
+            self.trigger = Some(path);
+            Some(Instant::now() + Duration::from_millis(250))
+        }
+    }
+
+    fn finish_debounce(&mut self) {
+        let Some(path) = self.trigger.take() else { return };
+
+        crate::job::dispatch_blocking(move |editor, compositor| {
+            let picker = match compositor.find::<Overlay<Picker<T>>>() {
+                Some(Overlay { content, .. }) => content,
+                None => match compositor.find::<Overlay<DynamicPicker<T>>>() {
+                    Some(Overlay { content, .. }) => &mut content.file_picker,
+                    None => return,
+                },
+            };
+
+            let Some(CachedPreview::Document(ref mut doc)) = picker.preview_cache.get_mut(&*path) else {
+                return
+            };
+
+            if doc.language_config().is_some() {
+                return;
+            }
+
+            let Some(language_config) = doc.detect_language_config(&editor.syn_loader.load()) else { return };
+            doc.language = Some(language_config.clone());
+            let text = doc.text().clone();
+            let loader = editor.syn_loader.clone();
+
+            tokio::task::spawn_blocking(move || {
+                let Some(syntax) =
+                    language_config
+                        .highlight_config(&loader.load().scopes())
+                        .and_then(|highlight_config| {
+                            Syntax::new(
+                                text.slice(..),
+                                highlight_config,
+                                loader,
+                            )
+                        }) else {
+                    log::info!("highlighting picker item failed");
+                    return;
+                };
+
+                crate::job::dispatch_blocking(move |editor, compositor| {
+                    let picker = match compositor.find::<Overlay<Picker<T>>>() {
+                        Some(Overlay { content, .. }) => Some(content),
+                        None => compositor
+                            .find::<Overlay<DynamicPicker<T>>>()
+                            .map(|overlay| &mut overlay.content.file_picker),
+                    };
+                    let Some(picker) = picker else {
+                        log::info!("picker closed before syntax highlighting finished");
+                        return;
+                    };
+                    let Some(CachedPreview::Document(ref mut doc)) = picker.preview_cache.get_mut(&*path) else {
+                        return
+                    };
+                    let diagnostics =
+                        Editor::doc_diagnostics(&editor.language_servers, &editor.diagnostics, doc);
+                    doc.replace_diagnostics(diagnostics, &[], None);
+                    doc.syntax = Some(syntax);
+                });
+            });
+        });
+    }
+}
+
 /// Returns a new list of options to replace the contents of the picker
 /// when called with the current picker query,
 pub type DynQueryCallback<T> =
@@ -991,7 +1030,7 @@ impl<T: Item + Send + Sync + 'static> Component for DynamicPicker<T> {
 
         cx.jobs.callback(async move {
             let new_options = new_options.await?;
-            let callback = Callback::EditorCompositor(Box::new(move |editor, compositor| {
+            let callback = Callback::EditorCompositor(Box::new(move |_editor, compositor| {
                 // Wrapping of pickers in overlay is done outside the picker code,
                 // so this is fragile and will break if wrapped in some other widget.
                 let picker = match compositor.find_id::<Overlay<DynamicPicker<T>>>(ID) {
@@ -999,7 +1038,6 @@ impl<T: Item + Send + Sync + 'static> Component for DynamicPicker<T> {
                     None => return,
                 };
                 picker.set_options(new_options);
-                editor.reset_idle_timer();
             }));
             anyhow::Ok(callback)
         });
