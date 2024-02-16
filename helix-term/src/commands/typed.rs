@@ -134,7 +134,8 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
                 doc.set_selection(view.id, pos);
             }
             // does not affect opening a buffer without pos
-            align_view(doc, view, Align::Center);
+            // TODO: ensure removing this will not cause problems
+            // align_view(doc, view, Align::Center);
         }
     }
     Ok(())
