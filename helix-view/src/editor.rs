@@ -268,6 +268,8 @@ pub struct Config {
     pub auto_format: bool,
     /// Automatic save on focus lost. Defaults to false.
     pub auto_save: bool,
+    /// When saves are performed. Defaults to on focus lost.
+    pub save_style: SaveStyle,
     /// Set a global text_width
     pub text_width: usize,
     /// Time in milliseconds since last keypress before idle timers trigger.
@@ -779,6 +781,13 @@ impl WhitespaceRender {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum SaveStyle {
+    Focus,
+    Delay    
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct WhitespaceCharacters {
     pub space: char,
@@ -889,6 +898,7 @@ impl Default for Config {
             auto_completion: true,
             auto_format: true,
             auto_save: false,
+            save_style: SaveStyle::Focus,
             idle_timeout: Duration::from_millis(250),
             save_delay_timeout: Duration::from_millis(1000),
             completion_timeout: Duration::from_millis(250),
