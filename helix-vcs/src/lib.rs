@@ -10,6 +10,9 @@ pub use Dummy as Git;
 #[cfg(feature = "git")]
 mod git;
 
+#[cfg(feature = "jujutsu")]
+mod jujutsu;
+
 mod diff;
 
 pub use diff::{DiffHandle, Hunk};
@@ -72,7 +75,14 @@ impl Default for DiffProviderRegistry {
         // currently only git is supported
         // TODO make this configurable when more providers are added
         let git: Box<dyn DiffProvider> = Box::new(Git);
-        let providers = vec![git];
+        #[cfg(feature = "jujutsu")]
+        let jj: Box<dyn DiffProvider> = Box::new(jujutsu::Jujutsu);
+
+        let providers = vec![
+            git,
+            #[cfg(feature = "jujutsu")]
+            jj,
+        ];
         DiffProviderRegistry { providers }
     }
 }
