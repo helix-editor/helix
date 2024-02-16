@@ -388,6 +388,7 @@ impl MappableCommand {
         yank_main_selection_to_clipboard, "Yank main selection to clipboard",
         yank_joined_to_primary_clipboard, "Join and yank selections to primary clipboard",
         yank_main_selection_to_primary_clipboard, "Yank main selection to primary clipboard",
+        yank_diagnostic, "Yank diagnostic(s) under primary cursor to register, or clipboard by default",
         replace_with_yanked, "Replace with yanked text",
         replace_selections_with_clipboard, "Replace selections by clipboard content",
         replace_selections_with_primary_clipboard, "Replace selections by primary clipboard",
@@ -5516,6 +5517,24 @@ fn increment_impl(cx: &mut Context, increment_direction: IncrementDirection) {
         let transaction = transaction.with_selection(new_selection);
         doc.apply(&transaction, view.id);
         exit_select_mode(cx);
+    }
+}
+
+fn yank_diagnostic(cx: &mut Context) {
+    let (view, doc) = current_ref!(cx.editor);
+    let primary = doc.selection(view.id).primary();
+
+    let diag = doc
+        .diagnostics()
+        .iter()
+        .filter(|d| primary.overlaps(&helix_core::Range::new(d.range.start, d.range.end)))
+        .map(|d| d.message.clone());
+    let reg = cx.register.unwrap_or('+');
+    match cx.editor.registers.write(reg, diag.collect()) {
+        Ok(_) => cx
+            .editor
+            .set_status(format!("Yanked diagnostic(s) to register {reg}")),
+        Err(err) => cx.editor.set_error(err.to_string()),
     }
 }
 
