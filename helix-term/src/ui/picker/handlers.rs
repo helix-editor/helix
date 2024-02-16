@@ -3,19 +3,16 @@ use std::{path::Path, sync::Arc, time::Duration};
 use helix_event::AsyncHook;
 use tokio::time::Instant;
 
-use crate::{
-    job,
-    ui::{menu::Item, overlay::Overlay},
-};
+use crate::{job, ui::overlay::Overlay};
 
 use super::{CachedPreview, DynamicPicker, Picker};
 
-pub(super) struct PreviewHighlightHandler<T: Item> {
+pub(super) struct PreviewHighlightHandler<T: 'static + Send + Sync, D: 'static + Send + Sync> {
     trigger: Option<Arc<Path>>,
-    phantom_data: std::marker::PhantomData<T>,
+    phantom_data: std::marker::PhantomData<(T, D)>,
 }
 
-impl<T: Item> Default for PreviewHighlightHandler<T> {
+impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Default for PreviewHighlightHandler<T, D> {
     fn default() -> Self {
         Self {
             trigger: None,
@@ -24,7 +21,9 @@ impl<T: Item> Default for PreviewHighlightHandler<T> {
     }
 }
 
-impl<T: Item> AsyncHook for PreviewHighlightHandler<T> {
+impl<T: 'static + Send + Sync, D: 'static + Send + Sync> AsyncHook
+    for PreviewHighlightHandler<T, D>
+{
     type Event = Arc<Path>;
 
     fn handle_event(
@@ -51,9 +50,9 @@ impl<T: Item> AsyncHook for PreviewHighlightHandler<T> {
         };
 
         job::dispatch_blocking(move |editor, compositor| {
-            let picker = match compositor.find::<Overlay<Picker<T>>>() {
+            let picker = match compositor.find::<Overlay<Picker<T, D>>>() {
                 Some(Overlay { content, .. }) => content,
-                None => match compositor.find::<Overlay<DynamicPicker<T>>>() {
+                None => match compositor.find::<Overlay<DynamicPicker<T, D>>>() {
                     Some(Overlay { content, .. }) => &mut content.file_picker,
                     None => return,
                 },
@@ -88,10 +87,10 @@ impl<T: Item> AsyncHook for PreviewHighlightHandler<T> {
                 };
 
                 job::dispatch_blocking(move |editor, compositor| {
-                    let picker = match compositor.find::<Overlay<Picker<T>>>() {
+                    let picker = match compositor.find::<Overlay<Picker<T, D>>>() {
                         Some(Overlay { content, .. }) => Some(content),
                         None => compositor
-                            .find::<Overlay<DynamicPicker<T>>>()
+                            .find::<Overlay<DynamicPicker<T, D>>>()
                             .map(|overlay| &mut overlay.content.file_picker),
                     };
                     let Some(picker) = picker else {

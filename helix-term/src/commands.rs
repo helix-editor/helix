@@ -2317,7 +2317,9 @@ fn global_search(cx: &mut Context) {
                     return;
                 }
 
-                let (picker, injector) = Picker::stream(current_path);
+                // TODO
+                let columns = vec![];
+                let (picker, injector) = Picker::stream(columns, current_path);
 
                 let dedup_symlinks = file_picker_config.deduplicate_links;
                 let absolute_root = search_root
@@ -2420,6 +2422,7 @@ fn global_search(cx: &mut Context) {
                     let call = move |_: &mut Editor, compositor: &mut Compositor| {
                         let picker = Picker::with_stream(
                             picker,
+                            0,
                             injector,
                             move |cx, FileResult { path, line_num }, action| {
                                 let doc = match cx.editor.open(path, action) {
@@ -2937,7 +2940,8 @@ fn buffer_picker(cx: &mut Context) {
     // mru
     items.sort_unstable_by_key(|item| std::cmp::Reverse(item.focused_at));
 
-    let picker = Picker::new(items, (), |cx, meta, action| {
+    let columns = vec![];
+    let picker = Picker::new(columns, 0, items, (), |cx, meta, action| {
         cx.editor.switch(meta.id, action);
     })
     .with_preview(|editor, meta| {
@@ -3014,7 +3018,10 @@ fn jumplist_picker(cx: &mut Context) {
         }
     };
 
+    let columns = vec![];
     let picker = Picker::new(
+        columns,
+        0,
         cx.editor
             .tree
             .views()
@@ -3180,7 +3187,8 @@ pub fn command_palette(cx: &mut Context) {
                 }
             }));
 
-            let picker = Picker::new(commands, keymap, move |cx, command, _action| {
+            let columns = vec![];
+            let picker = Picker::new(columns, 0, commands, keymap, move |cx, command, _action| {
                 let mut ctx = Context {
                     register,
                     count,

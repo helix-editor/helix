@@ -9,7 +9,6 @@ use super::*;
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::{line_ending, shellwords::Shellwords};
-use helix_lsp::LanguageServerId;
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
 use serde_json::Value;
@@ -1378,16 +1377,6 @@ fn lsp_workspace_command(
         return Ok(());
     }
 
-    struct LsIdCommand(LanguageServerId, helix_lsp::lsp::Command);
-
-    impl ui::menu::Item for LsIdCommand {
-        type Data = ();
-
-        fn format(&self, _data: &Self::Data) -> Row {
-            self.1.title.as_str().into()
-        }
-    }
-
     let doc = doc!(cx.editor);
     let ls_id_commands = doc
         .language_servers_with_feature(LanguageServerFeature::WorkspaceCommand)
@@ -1402,7 +1391,7 @@ fn lsp_workspace_command(
     if args.is_empty() {
         let commands = ls_id_commands
             .map(|(ls_id, command)| {
-                LsIdCommand(
+                (
                     ls_id,
                     helix_lsp::lsp::Command {
                         title: command.clone(),
@@ -1415,10 +1404,13 @@ fn lsp_workspace_command(
         let callback = async move {
             let call: job::Callback = Callback::EditorCompositor(Box::new(
                 move |_editor: &mut Editor, compositor: &mut Compositor| {
+                    let columns = vec![];
                     let picker = ui::Picker::new(
+                        columns,
+                        0,
                         commands,
                         (),
-                        move |cx, LsIdCommand(ls_id, command), _action| {
+                        move |cx, (ls_id, command), _action| {
                             execute_lsp_command(cx.editor, *ls_id, command.clone());
                         },
                     );

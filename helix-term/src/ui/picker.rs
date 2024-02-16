@@ -21,12 +21,13 @@ use tui::{
     buffer::Buffer as Surface,
     layout::Constraint,
     text::{Span, Spans},
-    widgets::{Block, BorderType, Cell, Table},
+    widgets::{Block, BorderType, Cell, Row, Table},
 };
 
 use tui::widgets::Widget;
 
 use std::{
+    borrow::Cow,
     collections::HashMap,
     io::Read,
     path::{Path, PathBuf},
@@ -49,9 +50,9 @@ use helix_view::{
     Document, DocumentId, Editor,
 };
 
-use self::handlers::PreviewHighlightHandler;
+use super::overlay::Overlay;
 
-use super::{menu::Item, overlay::Overlay};
+use self::handlers::PreviewHighlightHandler;
 
 pub const ID: &str = "picker";
 
@@ -129,38 +130,36 @@ impl Preview<'_, '_> {
     }
 }
 
-fn item_to_nucleo<T: Item>(item: T, editor_data: &T::Data) -> Option<(T, Utf32String)> {
-    let row = item.format(editor_data);
-    let mut cells = row.cells.iter();
-    let mut text = String::with_capacity(row.cell_text().map(|cell| cell.len()).sum());
-    let cell = cells.next()?;
-    if let Some(cell) = cell.content.lines.first() {
-        for span in &cell.0 {
-            text.push_str(&span.content);
+fn inject_nucleo_item<T, D>(
+    injector: &nucleo::Injector<T>,
+    columns: &[Column<T, D>],
+    item: T,
+    editor_data: &D,
+) {
+    let column_texts: Vec<Utf32String> = columns
+        .iter()
+        .filter(|column| column.filter)
+        .map(|column| column.format_text(&item, editor_data).into())
+        .collect();
+    injector.push(item, |dst| {
+        for (i, text) in column_texts.into_iter().enumerate() {
+            dst[i] = text;
         }
-    }
-
-    for cell in cells {
-        text.push(' ');
-        if let Some(cell) = cell.content.lines.first() {
-            for span in &cell.0 {
-                text.push_str(&span.content);
-            }
-        }
-    }
-    Some((item, text.into()))
+    });
 }
 
-pub struct Injector<T: Item> {
+pub struct Injector<T, D> {
     dst: nucleo::Injector<T>,
-    editor_data: Arc<T::Data>,
+    columns: Arc<[Column<T, D>]>,
+    editor_data: Arc<D>,
     shutown: Arc<AtomicBool>,
 }
 
-impl<T: Item> Clone for Injector<T> {
+impl<I, D> Clone for Injector<I, D> {
     fn clone(&self) -> Self {
         Injector {
             dst: self.dst.clone(),
+            columns: self.columns.clone(),
             editor_data: self.editor_data.clone(),
             shutown: self.shutown.clone(),
         }
@@ -169,21 +168,56 @@ impl<T: Item> Clone for Injector<T> {
 
 pub struct InjectorShutdown;
 
-impl<T: Item> Injector<T> {
+impl<T, D> Injector<T, D> {
     pub fn push(&self, item: T) -> Result<(), InjectorShutdown> {
         if self.shutown.load(atomic::Ordering::Relaxed) {
             return Err(InjectorShutdown);
         }
 
-        if let Some((item, matcher_text)) = item_to_nucleo(item, &self.editor_data) {
-            self.dst.push(item, |dst| dst[0] = matcher_text);
-        }
+        inject_nucleo_item(&self.dst, &self.columns, item, &self.editor_data);
         Ok(())
     }
 }
 
-pub struct Picker<T: Item> {
-    editor_data: Arc<T::Data>,
+type ColumnFormatFn<T, D> = for<'a> fn(&'a T, &'a D) -> Cell<'a>;
+
+pub struct Column<T, D> {
+    name: Arc<str>,
+    format: ColumnFormatFn<T, D>,
+    /// Whether the column should be passed to nucleo for matching and filtering.
+    /// `DynamicPicker` uses this so that the dynamic column (for example regex in
+    /// global search) is not used for filtering twice.
+    filter: bool,
+}
+
+impl<T, D> Column<T, D> {
+    pub fn new(name: impl Into<Arc<str>>, format: ColumnFormatFn<T, D>) -> Self {
+        Self {
+            name: name.into(),
+            format,
+            filter: true,
+        }
+    }
+
+    pub fn without_filtering(mut self) -> Self {
+        self.filter = false;
+        self
+    }
+
+    fn format<'a>(&self, item: &'a T, data: &'a D) -> Cell<'a> {
+        (self.format)(item, data)
+    }
+
+    fn format_text<'a>(&self, item: &'a T, data: &'a D) -> Cow<'a, str> {
+        let text: String = self.format(item, data).content.into();
+        text.into()
+    }
+}
+
+pub struct Picker<T: 'static + Send + Sync, D: 'static> {
+    columns: Arc<[Column<T, D>]>,
+    primary_column: usize,
+    editor_data: Arc<D>,
     shutdown: Arc<AtomicBool>,
     matcher: Nucleo<T>,
 
@@ -211,16 +245,19 @@ pub struct Picker<T: Item> {
     preview_highlight_handler: Sender<Arc<Path>>,
 }
 
-impl<T: Item + 'static> Picker<T> {
-    pub fn stream(editor_data: T::Data) -> (Nucleo<T>, Injector<T>) {
+impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
+    pub fn stream(columns: Vec<Column<T, D>>, editor_data: D) -> (Nucleo<T>, Injector<T, D>) {
+        let matcher_columns = columns.iter().filter(|col| col.filter).count() as u32;
+        assert!(matcher_columns > 0);
         let matcher = Nucleo::new(
             Config::DEFAULT,
             Arc::new(helix_event::request_redraw),
             None,
-            1,
+            matcher_columns,
         );
         let streamer = Injector {
             dst: matcher.injector(),
+            columns: columns.into(),
             editor_data: Arc::new(editor_data),
             shutown: Arc::new(AtomicBool::new(false)),
         };
@@ -228,24 +265,28 @@ impl<T: Item + 'static> Picker<T> {
     }
 
     pub fn new(
+        columns: Vec<Column<T, D>>,
+        primary_column: usize,
         options: Vec<T>,
-        editor_data: T::Data,
+        editor_data: D,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
     ) -> Self {
+        let matcher_columns = columns.iter().filter(|col| col.filter).count() as u32;
+        assert!(matcher_columns > 0);
         let matcher = Nucleo::new(
             Config::DEFAULT,
             Arc::new(helix_event::request_redraw),
             None,
-            1,
+            matcher_columns,
         );
         let injector = matcher.injector();
         for item in options {
-            if let Some((item, matcher_text)) = item_to_nucleo(item, &editor_data) {
-                injector.push(item, |dst| dst[0] = matcher_text);
-            }
+            inject_nucleo_item(&injector, &columns, item, &editor_data);
         }
         Self::with(
             matcher,
+            columns.into(),
+            primary_column,
             Arc::new(editor_data),
             Arc::new(AtomicBool::new(false)),
             callback_fn,
@@ -254,18 +295,30 @@ impl<T: Item + 'static> Picker<T> {
 
     pub fn with_stream(
         matcher: Nucleo<T>,
-        injector: Injector<T>,
+        primary_column: usize,
+        injector: Injector<T, D>,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
     ) -> Self {
-        Self::with(matcher, injector.editor_data, injector.shutown, callback_fn)
+        Self::with(
+            matcher,
+            injector.columns,
+            primary_column,
+            injector.editor_data,
+            injector.shutown,
+            callback_fn,
+        )
     }
 
     fn with(
         matcher: Nucleo<T>,
-        editor_data: Arc<T::Data>,
+        columns: Arc<[Column<T, D>]>,
+        default_column: usize,
+        editor_data: Arc<D>,
         shutdown: Arc<AtomicBool>,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
     ) -> Self {
+        assert!(!columns.is_empty());
+
         let prompt = Prompt::new(
             "".into(),
             None,
@@ -273,7 +326,14 @@ impl<T: Item + 'static> Picker<T> {
             |_editor: &mut Context, _pattern: &str, _event: PromptEvent| {},
         );
 
+        let widths = columns
+            .iter()
+            .map(|column| Constraint::Length(column.name.chars().count() as u16))
+            .collect();
+
         Self {
+            columns,
+            primary_column: default_column,
             matcher,
             editor_data,
             shutdown,
@@ -284,17 +344,18 @@ impl<T: Item + 'static> Picker<T> {
             show_preview: true,
             callback_fn: Box::new(callback_fn),
             completion_height: 0,
-            widths: Vec::new(),
+            widths,
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
             file_fn: None,
-            preview_highlight_handler: PreviewHighlightHandler::<T>::default().spawn(),
+            preview_highlight_handler: PreviewHighlightHandler::<T, D>::default().spawn(),
         }
     }
 
-    pub fn injector(&self) -> Injector<T> {
+    pub fn injector(&self) -> Injector<T, D> {
         Injector {
             dst: self.matcher.injector(),
+            columns: self.columns.clone(),
             editor_data: self.editor_data.clone(),
             shutown: self.shutdown.clone(),
         }
@@ -316,13 +377,17 @@ impl<T: Item + 'static> Picker<T> {
         self
     }
 
+    pub fn with_line(mut self, line: String, editor: &Editor) -> Self {
+        self.prompt.set_line(line, editor);
+        self.handle_prompt_change();
+        self
+    }
+
     pub fn set_options(&mut self, new_options: Vec<T>) {
         self.matcher.restart(false);
         let injector = self.matcher.injector();
         for item in new_options {
-            if let Some((item, matcher_text)) = item_to_nucleo(item, &self.editor_data) {
-                injector.push(item, |dst| dst[0] = matcher_text);
-            }
+            inject_nucleo_item(&injector, &self.columns, item, &self.editor_data);
         }
     }
 
@@ -376,25 +441,37 @@ impl<T: Item + 'static> Picker<T> {
             .map(|item| item.data)
     }
 
+    fn header_height(&self) -> u16 {
+        if self.columns.len() > 1 {
+            1
+        } else {
+            0
+        }
+    }
+
     pub fn toggle_preview(&mut self) {
         self.show_preview = !self.show_preview;
     }
 
     fn prompt_handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
-            let pattern = self.prompt.line();
-            // TODO: better track how the pattern has changed
-            if pattern != &self.previous_pattern {
-                self.matcher.pattern.reparse(
-                    0,
-                    pattern,
-                    CaseMatching::Smart,
-                    pattern.starts_with(&self.previous_pattern),
-                );
-                self.previous_pattern = pattern.clone();
-            }
+            self.handle_prompt_change();
         }
         EventResult::Consumed(None)
+    }
+
+    fn handle_prompt_change(&mut self) {
+        let pattern = self.prompt.line();
+        // TODO: better track how the pattern has changed
+        if pattern != &self.previous_pattern {
+            self.matcher.pattern.reparse(
+                0,
+                pattern,
+                CaseMatching::Smart,
+                pattern.starts_with(&self.previous_pattern),
+            );
+            self.previous_pattern = pattern.clone();
+        }
     }
 
     fn current_file(&self, editor: &Editor) -> Option<FileLocation> {
@@ -526,7 +603,7 @@ impl<T: Item + 'static> Picker<T> {
         // -- Render the contents:
         // subtract area of prompt from top
         let inner = inner.clip_top(2);
-        let rows = inner.height as u32;
+        let rows = inner.height.saturating_sub(self.header_height()) as u32;
         let offset = self.cursor - (self.cursor % std::cmp::max(1, rows));
         let cursor = self.cursor.saturating_sub(offset);
         let end = offset
@@ -540,82 +617,93 @@ impl<T: Item + 'static> Picker<T> {
         }
 
         let options = snapshot.matched_items(offset..end).map(|item| {
-            snapshot.pattern().column_pattern(0).indices(
-                item.matcher_columns[0].slice(..),
-                &mut matcher,
-                &mut indices,
-            );
-            indices.sort_unstable();
-            indices.dedup();
-            let mut row = item.data.format(&self.editor_data);
-
-            let mut grapheme_idx = 0u32;
-            let mut indices = indices.drain(..);
-            let mut next_highlight_idx = indices.next().unwrap_or(u32::MAX);
-            if self.widths.len() < row.cells.len() {
-                self.widths.resize(row.cells.len(), Constraint::Length(0));
-            }
             let mut widths = self.widths.iter_mut();
-            for cell in &mut row.cells {
+            let mut matcher_index = 0;
+
+            Row::new(self.columns.iter().map(|column| {
                 let Some(Constraint::Length(max_width)) = widths.next() else {
                     unreachable!();
                 };
+                let mut cell = column.format(item.data, &self.editor_data);
+                let width = if column.filter {
+                    snapshot.pattern().column_pattern(matcher_index).indices(
+                        item.matcher_columns[matcher_index].slice(..),
+                        &mut matcher,
+                        &mut indices,
+                    );
+                    indices.sort_unstable();
+                    indices.dedup();
+                    let mut indices = indices.drain(..);
+                    let mut next_highlight_idx = indices.next().unwrap_or(u32::MAX);
+                    let mut span_list = Vec::new();
+                    let mut current_span = String::new();
+                    let mut current_style = Style::default();
+                    let mut grapheme_idx = 0u32;
+                    let mut width = 0;
 
-                // merge index highlights on top of existing hightlights
-                let mut span_list = Vec::new();
-                let mut current_span = String::new();
-                let mut current_style = Style::default();
-                let mut width = 0;
-
-                let spans: &[Span] = cell.content.lines.first().map_or(&[], |it| it.0.as_slice());
-                for span in spans {
-                    // this looks like a bug on first glance, we are iterating
-                    // graphemes but treating them as char indices. The reason that
-                    // this is correct is that nucleo will only ever consider the first char
-                    // of a grapheme (and discard the rest of the grapheme) so the indices
-                    // returned by nucleo are essentially grapheme indecies
-                    for grapheme in span.content.graphemes(true) {
-                        let style = if grapheme_idx == next_highlight_idx {
-                            next_highlight_idx = indices.next().unwrap_or(u32::MAX);
-                            span.style.patch(highlight_style)
-                        } else {
-                            span.style
-                        };
-                        if style != current_style {
-                            if !current_span.is_empty() {
-                                span_list.push(Span::styled(current_span, current_style))
+                    let spans: &[Span] =
+                        cell.content.lines.first().map_or(&[], |it| it.0.as_slice());
+                    for span in spans {
+                        // this looks like a bug on first glance, we are iterating
+                        // graphemes but treating them as char indices. The reason that
+                        // this is correct is that nucleo will only ever consider the first char
+                        // of a grapheme (and discard the rest of the grapheme) so the indices
+                        // returned by nucleo are essentially grapheme indecies
+                        for grapheme in span.content.graphemes(true) {
+                            let style = if grapheme_idx == next_highlight_idx {
+                                next_highlight_idx = indices.next().unwrap_or(u32::MAX);
+                                span.style.patch(highlight_style)
+                            } else {
+                                span.style
+                            };
+                            if style != current_style {
+                                if !current_span.is_empty() {
+                                    span_list.push(Span::styled(current_span, current_style))
+                                }
+                                current_span = String::new();
+                                current_style = style;
                             }
-                            current_span = String::new();
-                            current_style = style;
+                            current_span.push_str(grapheme);
+                            grapheme_idx += 1;
                         }
-                        current_span.push_str(grapheme);
-                        grapheme_idx += 1;
+                        width += span.width();
                     }
-                    width += span.width();
-                }
 
-                span_list.push(Span::styled(current_span, current_style));
+                    span_list.push(Span::styled(current_span, current_style));
+                    cell = Cell::from(Spans::from(span_list));
+                    matcher_index += 1;
+                    width
+                } else {
+                    cell.content
+                        .lines
+                        .first()
+                        .map(|line| line.width())
+                        .unwrap_or_default()
+                };
+
                 if width as u16 > *max_width {
                     *max_width = width as u16;
                 }
-                *cell = Cell::from(Spans::from(span_list));
 
-                // spacer
-                if grapheme_idx == next_highlight_idx {
-                    next_highlight_idx = indices.next().unwrap_or(u32::MAX);
-                }
-                grapheme_idx += 1;
-            }
-
-            row
+                cell
+            }))
         });
 
-        let table = Table::new(options)
+        let mut table = Table::new(options)
             .style(text_style)
             .highlight_style(selected)
             .highlight_symbol(" > ")
             .column_spacing(1)
             .widths(&self.widths);
+
+        // -- Header
+        if self.columns.len() > 1 {
+            let header_style = cx.editor.theme.get("ui.picker.header");
+
+            table = table.header(Row::new(self.columns.iter().map(|column| {
+                Cell::from(Span::styled(Cow::from(&*column.name), header_style))
+            })));
+        }
 
         use tui::widgets::TableState;
 
@@ -746,7 +834,7 @@ impl<T: Item + 'static> Picker<T> {
     }
 }
 
-impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
+impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I, D> {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         // +---------+ +---------+
         // |prompt   | |preview  |
@@ -872,7 +960,7 @@ impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
     }
 
     fn required_size(&mut self, (width, height): (u16, u16)) -> Option<(u16, u16)> {
-        self.completion_height = height.saturating_sub(4);
+        self.completion_height = height.saturating_sub(4 + self.header_height());
         Some((width, height))
     }
 
@@ -880,7 +968,7 @@ impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
         Some(ID)
     }
 }
-impl<T: Item> Drop for Picker<T> {
+impl<T: 'static + Send + Sync, D> Drop for Picker<T, D> {
     fn drop(&mut self) {
         // ensure we cancel any ongoing background threads streaming into the picker
         self.shutdown.store(true, atomic::Ordering::Relaxed)
@@ -896,14 +984,14 @@ pub type DynQueryCallback<T> =
 
 /// A picker that updates its contents via a callback whenever the
 /// query string changes. Useful for live grep, workspace symbols, etc.
-pub struct DynamicPicker<T: ui::menu::Item + Send + Sync> {
-    file_picker: Picker<T>,
+pub struct DynamicPicker<T: 'static + Send + Sync, D: 'static + Send + Sync> {
+    file_picker: Picker<T, D>,
     query_callback: DynQueryCallback<T>,
     query: String,
 }
 
-impl<T: ui::menu::Item + Send + Sync> DynamicPicker<T> {
-    pub fn new(file_picker: Picker<T>, query_callback: DynQueryCallback<T>) -> Self {
+impl<T: Send + Sync, D: Send + Sync> DynamicPicker<T, D> {
+    pub fn new(file_picker: Picker<T, D>, query_callback: DynQueryCallback<T>) -> Self {
         Self {
             file_picker,
             query_callback,
@@ -912,20 +1000,22 @@ impl<T: ui::menu::Item + Send + Sync> DynamicPicker<T> {
     }
 }
 
-impl<T: Item + Send + Sync + 'static> Component for DynamicPicker<T> {
+impl<T: Send + Sync + 'static, D: Send + Sync + 'static> Component for DynamicPicker<T, D> {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         self.file_picker.render(area, surface, cx);
     }
 
     fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         let event_result = self.file_picker.handle_event(event, cx);
-        let current_query = self.file_picker.prompt.line();
+        let Some(current_query) = self.file_picker.primary_query() else {
+            return event_result;
+        };
 
         if !matches!(event, Event::IdleTimeout) || self.query == *current_query {
             return event_result;
         }
 
-        self.query.clone_from(current_query);
+        self.query = current_query.to_string();
 
         let new_options = (self.query_callback)(current_query.to_owned(), cx.editor);
 
@@ -934,7 +1024,7 @@ impl<T: Item + Send + Sync + 'static> Component for DynamicPicker<T> {
             let callback = Callback::EditorCompositor(Box::new(move |_editor, compositor| {
                 // Wrapping of pickers in overlay is done outside the picker code,
                 // so this is fragile and will break if wrapped in some other widget.
-                let picker = match compositor.find_id::<Overlay<DynamicPicker<T>>>(ID) {
+                let picker = match compositor.find_id::<Overlay<Self>>(ID) {
                     Some(overlay) => &mut overlay.content.file_picker,
                     None => return,
                 };
