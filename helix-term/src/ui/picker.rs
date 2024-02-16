@@ -34,7 +34,7 @@ use std::{
     io::Read,
     path::{Path, PathBuf},
     sync::{
-        atomic::{self, AtomicBool},
+        atomic::{self, AtomicUsize},
         Arc,
     },
 };
@@ -154,7 +154,8 @@ pub struct Injector<T, D> {
     dst: nucleo::Injector<T>,
     columns: Arc<[Column<T, D>]>,
     editor_data: Arc<D>,
-    shutown: Arc<AtomicBool>,
+    version: usize,
+    picker_version: Arc<AtomicUsize>,
 }
 
 impl<I, D> Clone for Injector<I, D> {
@@ -163,7 +164,8 @@ impl<I, D> Clone for Injector<I, D> {
             dst: self.dst.clone(),
             columns: self.columns.clone(),
             editor_data: self.editor_data.clone(),
-            shutown: self.shutown.clone(),
+            version: self.version,
+            picker_version: self.picker_version.clone(),
         }
     }
 }
@@ -172,7 +174,7 @@ pub struct InjectorShutdown;
 
 impl<T, D> Injector<T, D> {
     pub fn push(&self, item: T) -> Result<(), InjectorShutdown> {
-        if self.shutown.load(atomic::Ordering::Relaxed) {
+        if self.version != self.picker_version.load(atomic::Ordering::Relaxed) {
             return Err(InjectorShutdown);
         }
 
@@ -220,7 +222,7 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     columns: Arc<[Column<T, D>]>,
     primary_column: usize,
     editor_data: Arc<D>,
-    shutdown: Arc<AtomicBool>,
+    version: Arc<AtomicUsize>,
     matcher: Nucleo<T>,
 
     /// Current height of the completions box
@@ -261,7 +263,8 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             dst: matcher.injector(),
             columns: columns.into(),
             editor_data: Arc::new(editor_data),
-            shutown: Arc::new(AtomicBool::new(false)),
+            version: 0,
+            picker_version: Arc::new(AtomicUsize::new(0)),
         };
         (matcher, streamer)
     }
@@ -290,7 +293,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             columns.into(),
             primary_column,
             Arc::new(editor_data),
-            Arc::new(AtomicBool::new(false)),
+            Arc::new(AtomicUsize::new(0)),
             callback_fn,
         )
     }
@@ -306,7 +309,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             injector.columns,
             primary_column,
             injector.editor_data,
-            injector.shutown,
+            injector.picker_version,
             callback_fn,
         )
     }
@@ -316,7 +319,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         columns: Arc<[Column<T, D>]>,
         default_column: usize,
         editor_data: Arc<D>,
-        shutdown: Arc<AtomicBool>,
+        version: Arc<AtomicUsize>,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
     ) -> Self {
         assert!(!columns.is_empty());
@@ -340,7 +343,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             primary_column: default_column,
             matcher,
             editor_data,
-            shutdown,
+            version,
             cursor: 0,
             prompt,
             query,
@@ -361,7 +364,8 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             dst: self.matcher.injector(),
             columns: self.columns.clone(),
             editor_data: self.editor_data.clone(),
-            shutown: self.shutdown.clone(),
+            version: self.version.load(atomic::Ordering::Relaxed),
+            picker_version: self.version.clone(),
         }
     }
 
@@ -916,7 +920,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                 // be restarting the stream somehow once the picker gets
                 // reopened instead (like for an FS crawl) that would also remove the
                 // need for the special case above but that is pretty tricky
-                picker.shutdown.store(true, atomic::Ordering::Relaxed);
+                picker.version.fetch_add(1, atomic::Ordering::Relaxed);
                 Box::new(|compositor: &mut Compositor, _ctx| {
                     // remove the layer
                     compositor.last_picker = compositor.pop();
@@ -1002,7 +1006,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
 impl<T: 'static + Send + Sync, D> Drop for Picker<T, D> {
     fn drop(&mut self) {
         // ensure we cancel any ongoing background threads streaming into the picker
-        self.shutdown.store(true, atomic::Ordering::Relaxed)
+        self.version.fetch_add(1, atomic::Ordering::Relaxed);
     }
 }
 
