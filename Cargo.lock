@@ -1467,6 +1467,7 @@ dependencies = [
  "smallvec",
  "tempfile",
  "termini",
+ "thiserror",
  "tokio",
  "tokio-stream",
  "toml",

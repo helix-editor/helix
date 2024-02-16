@@ -18,6 +18,7 @@ use futures_util::future::BoxFuture;
 use helix_event::AsyncHook;
 use nucleo::pattern::CaseMatching;
 use nucleo::{Config, Nucleo, Utf32String};
+use thiserror::Error;
 use tokio::sync::mpsc::Sender;
 use tui::{
     buffer::Buffer as Surface,
@@ -170,6 +171,8 @@ impl<I, D> Clone for Injector<I, D> {
     }
 }
 
+#[derive(Error, Debug)]
+#[error("picker has been shut down")]
 pub struct InjectorShutdown;
 
 impl<T, D> Injector<T, D> {
