@@ -233,8 +233,9 @@ impl Application {
                 ));
                 // align the view to center after all files are loaded,
                 // does not affect views without pos since it is at the top
-                let (view, doc) = current!(editor);
-                align_view(doc, view, Align::Center);
+                // TODO: ensure removing this doesn't break anything
+                // let (view, doc) = current!(editor);
+                // align_view(doc, view, Align::Center);
             } else {
                 editor.new_file(Action::VerticalSplit);
             }
