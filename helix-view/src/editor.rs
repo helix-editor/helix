@@ -13,6 +13,7 @@ use crate::{
     register::Registers,
     theme::{self, Theme},
     tree::{self, Tree},
+    view::ViewPosition,
     Document, DocumentId, View, ViewId,
 };
 use dap::StackFrame;
@@ -1575,6 +1576,7 @@ impl Editor {
     fn replace_document_in_view(&mut self, current_view: ViewId, doc_id: DocumentId) {
         let scrolloff = self.config().scrolloff;
         let view = self.tree.get_mut(current_view);
+        view.doc = doc_id;
 
         view.doc = doc_id;
         let doc = doc_mut!(self, &doc_id);
@@ -1681,16 +1683,6 @@ impl Editor {
                 // initialize selection for view
                 let doc = doc_mut!(self, &id);
 
-                if let Some((view_position, selection)) = self
-                    .old_file_locs
-                    .get(doc.path().unwrap())
-                    .map(|x| x.to_owned())
-                {
-                    let view = self.tree.get_mut(view_id);
-                    view.offset = view_position;
-                    doc.set_selection(view_id, selection);
-                }
-
                 doc.ensure_view_init(view_id);
                 doc.mark_as_focused();
                 focus_lost
@@ -1762,9 +1754,14 @@ impl Editor {
         let path = helix_stdx::path::canonicalize(path);
         let id = self.document_id_by_path(&path);
 
+        // TODO: surely there's a neater way to do this?
+        let mut new_doc = false;
+
         let id = if let Some(id) = id {
             id
         } else {
+            new_doc = true;
+
             let mut doc = Document::open(
                 &path,
                 None,
@@ -1788,28 +1785,44 @@ impl Editor {
         };
 
         self.switch(id, action);
+
+        if new_doc {
+            if let Some((view_position, selection)) =
+                self.old_file_locs.get(&path).map(|x| x.to_owned())
+            {
+                let (view, doc) = current!(self);
+                view.offset = view_position;
+                doc.set_selection(view.id, selection);
+            }
+        }
+
         Ok(id)
     }
 
     pub fn close(&mut self, id: ViewId) {
-        let view = self.tree.get(id);
-        // TODO: do something about this unwrap
-        let doc = self.document(view.doc).unwrap();
-        if let Some(path) = doc.path() {
-            // TODO: can the arg here be a reference? would save cloning
-            persistence::push_file_history(FileHistoryEntry::new(
-                path.clone(),
-                view.offset,
-                doc.selection(id).clone(),
-            ));
-            self.old_file_locs
-                .insert(path.to_owned(), (view.offset, doc.selection(id).clone()));
-        };
+        let offset = self.tree.get(id).offset.clone();
+
+        let mut file_locs = Vec::new();
 
         // Remove selections for the closed view on all documents.
         for doc in self.documents_mut() {
+            if let Some(path) = doc.path() {
+                file_locs.push((path.clone(), offset, doc.selection(id).clone()));
+            };
+
             doc.remove_view(id);
         }
+
+        for loc in file_locs {
+            // TODO: can the arg here be a reference? would save cloning
+            persistence::push_file_history(FileHistoryEntry::new(
+                loc.0.clone(),
+                loc.1,
+                loc.2.clone(),
+            ));
+            self.old_file_locs.insert(loc.0, (loc.1, loc.2));
+        }
+
         self.tree.remove(id);
         self._refresh();
     }
@@ -1831,10 +1844,13 @@ impl Editor {
             tokio::spawn(language_server.text_document_did_close(doc.identifier()));
         }
 
+        #[derive(Debug)]
         enum Action {
             Close(ViewId),
             ReplaceDoc(ViewId, DocumentId),
         }
+
+        let mut file_locs = Vec::new();
 
         let actions: Vec<Action> = self
             .tree
@@ -1843,6 +1859,10 @@ impl Editor {
                 view.remove_document(&doc_id);
 
                 if view.doc == doc_id {
+                    if let Some(path) = doc.path() {
+                        file_locs.push((path.clone(), view.offset, doc.selection(view.id).clone()));
+                    };
+
                     // something was previously open in the view, switch to previous doc
                     if let Some(prev_doc) = view.docs_access_history.pop() {
                         Some(Action::ReplaceDoc(view.id, prev_doc))
@@ -1855,6 +1875,16 @@ impl Editor {
                 }
             })
             .collect();
+
+        for loc in file_locs {
+            // TODO: can the arg here be a reference? would save cloning
+            persistence::push_file_history(FileHistoryEntry::new(
+                loc.0.clone(),
+                loc.1,
+                loc.2.clone(),
+            ));
+            self.old_file_locs.insert(loc.0, (loc.1, loc.2));
+        }
 
         for action in actions {
             match action {
