@@ -783,8 +783,8 @@ impl WhitespaceRender {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub enum SaveStyle {
-    Focus,
-    Delay    
+    FocusLost,
+    AfterDelay    
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -898,7 +898,7 @@ impl Default for Config {
             auto_completion: true,
             auto_format: true,
             auto_save: false,
-            save_style: SaveStyle::Focus,
+            save_style: SaveStyle::FocusLost,
             idle_timeout: Duration::from_millis(250),
             save_delay_timeout: Duration::from_millis(1000),
             completion_timeout: Duration::from_millis(250),
