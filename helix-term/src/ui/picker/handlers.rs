@@ -1,11 +1,15 @@
-use std::{path::Path, sync::Arc, time::Duration};
+use std::{
+    path::Path,
+    sync::{atomic, Arc},
+    time::Duration,
+};
 
 use helix_event::AsyncHook;
 use tokio::time::Instant;
 
 use crate::{job, ui::overlay::Overlay};
 
-use super::{CachedPreview, DynamicPicker, Picker};
+use super::{CachedPreview, DynQueryCallback, Picker};
 
 pub(super) struct PreviewHighlightHandler<T: 'static + Send + Sync, D: 'static + Send + Sync> {
     trigger: Option<Arc<Path>>,
@@ -50,12 +54,11 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> AsyncHook
         };
 
         job::dispatch_blocking(move |editor, compositor| {
-            let picker = match compositor.find::<Overlay<Picker<T, D>>>() {
-                Some(Overlay { content, .. }) => content,
-                None => match compositor.find::<Overlay<DynamicPicker<T, D>>>() {
-                    Some(Overlay { content, .. }) => &mut content.file_picker,
-                    None => return,
-                },
+            let Some(Overlay {
+                content: picker, ..
+            }) = compositor.find::<Overlay<Picker<T, D>>>()
+            else {
+                return;
             };
 
             let Some(CachedPreview::Document(ref mut doc)) = picker.preview_cache.get_mut(&path)
@@ -87,13 +90,10 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> AsyncHook
                 };
 
                 job::dispatch_blocking(move |editor, compositor| {
-                    let picker = match compositor.find::<Overlay<Picker<T, D>>>() {
-                        Some(Overlay { content, .. }) => Some(content),
-                        None => compositor
-                            .find::<Overlay<DynamicPicker<T, D>>>()
-                            .map(|overlay| &mut overlay.content.file_picker),
-                    };
-                    let Some(picker) = picker else {
+                    let Some(Overlay {
+                        content: picker, ..
+                    }) = compositor.find::<Overlay<Picker<T, D>>>()
+                    else {
                         log::info!("picker closed before syntax highlighting finished");
                         return;
                     };
@@ -112,5 +112,74 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> AsyncHook
                 });
             });
         });
+    }
+}
+
+pub(super) struct DynamicQueryHandler<T: 'static + Send + Sync, D: 'static + Send + Sync> {
+    callback: Arc<DynQueryCallback<T, D>>,
+    // Duration used as a debounce.
+    // Defaults to 100ms if not provided via `Picker::with_dynamic_query`. Callers may want to set
+    // this higher if the dynamic query is expensive - for example global search.
+    debounce: Duration,
+    last_query: Arc<str>,
+    query: Option<Arc<str>>,
+}
+
+impl<T: 'static + Send + Sync, D: 'static + Send + Sync> DynamicQueryHandler<T, D> {
+    pub(super) fn new(callback: DynQueryCallback<T, D>, duration_ms: Option<u64>) -> Self {
+        Self {
+            callback: Arc::new(callback),
+            debounce: Duration::from_millis(duration_ms.unwrap_or(100)),
+            last_query: "".into(),
+            query: None,
+        }
+    }
+}
+
+impl<T: 'static + Send + Sync, D: 'static + Send + Sync> AsyncHook for DynamicQueryHandler<T, D> {
+    type Event = Arc<str>;
+
+    fn handle_event(&mut self, query: Self::Event, _timeout: Option<Instant>) -> Option<Instant> {
+        if query == self.last_query {
+            // If the search query reverts to the last one we requested, no need to
+            // make a new request.
+            self.query = None;
+            None
+        } else {
+            self.query = Some(query);
+            Some(Instant::now() + self.debounce)
+        }
+    }
+
+    fn finish_debounce(&mut self) {
+        let Some(query) = self.query.take() else {
+            return;
+        };
+        self.last_query = query.clone();
+        let callback = self.callback.clone();
+
+        job::dispatch_blocking(move |editor, compositor| {
+            let Some(Overlay {
+                content: picker, ..
+            }) = compositor.find::<Overlay<Picker<T, D>>>()
+            else {
+                return;
+            };
+            // Increment the version number to cancel any ongoing requests.
+            picker.version.fetch_add(1, atomic::Ordering::Relaxed);
+            picker.matcher.restart(false);
+            let injector = picker.injector();
+            let get_options = (callback)(&query, editor, picker.editor_data.clone(), &injector);
+            tokio::spawn(async move {
+                if let Err(err) = get_options.await {
+                    log::info!("Dynamic request failed: {err}");
+                }
+                // The picker's shows its running indicator when there are any active
+                // injectors. When we're done injecting new options, drop the injector
+                // and request a redraw to remove the running indicator.
+                drop(injector);
+                helix_event::request_redraw();
+            });
+        })
     }
 }

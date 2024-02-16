@@ -4,9 +4,7 @@ mod query;
 use crate::{
     alt,
     compositor::{self, Component, Compositor, Context, Event, EventResult},
-    ctrl,
-    job::Callback,
-    key, shift,
+    ctrl, key, shift,
     ui::{
         self,
         document::{render_document, LineDecoration, LinePos, TextRenderer},
@@ -53,9 +51,7 @@ use helix_view::{
     Document, DocumentId, Editor,
 };
 
-use super::overlay::Overlay;
-
-use self::handlers::PreviewHighlightHandler;
+use self::handlers::{DynamicQueryHandler, PreviewHighlightHandler};
 
 pub const ID: &str = "picker";
 
@@ -221,6 +217,11 @@ impl<T, D> Column<T, D> {
     }
 }
 
+/// Returns a new list of options to replace the contents of the picker
+/// when called with the current picker query,
+type DynQueryCallback<T, D> =
+    fn(&str, &mut Editor, Arc<D>, &Injector<T, D>) -> BoxFuture<'static, anyhow::Result<()>>;
+
 pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     columns: Arc<[Column<T, D>]>,
     primary_column: usize,
@@ -250,6 +251,7 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     file_fn: Option<FileCallback<T>>,
     /// An event handler for syntax highlighting the currently previewed file.
     preview_highlight_handler: Sender<Arc<Path>>,
+    dynamic_query_handler: Option<Sender<Arc<str>>>,
 }
 
 impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
@@ -359,6 +361,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             read_buffer: Vec::with_capacity(1024),
             file_fn: None,
             preview_highlight_handler: PreviewHighlightHandler::<T, D>::default().spawn(),
+            dynamic_query_handler: None,
         }
     }
 
@@ -394,12 +397,15 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         self
     }
 
-    pub fn set_options(&mut self, new_options: Vec<T>) {
-        self.matcher.restart(false);
-        let injector = self.matcher.injector();
-        for item in new_options {
-            inject_nucleo_item(&injector, &self.columns, item, &self.editor_data);
-        }
+    pub fn with_dynamic_query(
+        mut self,
+        callback: DynQueryCallback<T, D>,
+        debounce_ms: Option<u64>,
+    ) -> Self {
+        let handler = DynamicQueryHandler::new(callback, debounce_ms).spawn();
+        helix_event::send_blocking(&handler, self.primary_query());
+        self.dynamic_query_handler = Some(handler);
+        self
     }
 
     /// Move the cursor by a number of lines, either down (`Forward`) or up (`Backward`)
@@ -514,6 +520,11 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 is_append,
             );
         }
+        // If this is a dynamic picker, notify the query hook that the primary
+        // query might have been updated.
+        if let Some(handler) = &self.dynamic_query_handler {
+            helix_event::send_blocking(handler, self.primary_query());
+        }
     }
 
     fn current_file(&self, editor: &Editor) -> Option<FileLocation> {
@@ -621,7 +632,11 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
 
         let count = format!(
             "{}{}/{}",
-            if status.running { "(running) " } else { "" },
+            if status.running || self.matcher.active_injectors() > 0 {
+                "(running) "
+            } else {
+                ""
+            },
             snapshot.matched_item_count(),
             snapshot.item_count(),
         );
@@ -1018,74 +1033,3 @@ impl<T: 'static + Send + Sync, D> Drop for Picker<T, D> {
 }
 
 type PickerCallback<T> = Box<dyn Fn(&mut Context, &T, Action)>;
-
-/// Returns a new list of options to replace the contents of the picker
-/// when called with the current picker query,
-pub type DynQueryCallback<T> =
-    Box<dyn Fn(String, &mut Editor) -> BoxFuture<'static, anyhow::Result<Vec<T>>>>;
-
-/// A picker that updates its contents via a callback whenever the
-/// query string changes. Useful for live grep, workspace symbols, etc.
-pub struct DynamicPicker<T: 'static + Send + Sync, D: 'static + Send + Sync> {
-    file_picker: Picker<T, D>,
-    query_callback: DynQueryCallback<T>,
-    query: String,
-}
-
-impl<T: Send + Sync, D: Send + Sync> DynamicPicker<T, D> {
-    pub fn new(file_picker: Picker<T, D>, query_callback: DynQueryCallback<T>) -> Self {
-        Self {
-            file_picker,
-            query_callback,
-            query: String::new(),
-        }
-    }
-}
-
-impl<T: Send + Sync + 'static, D: Send + Sync + 'static> Component for DynamicPicker<T, D> {
-    fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        self.file_picker.render(area, surface, cx);
-    }
-
-    fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
-        let event_result = self.file_picker.handle_event(event, cx);
-        let Some(current_query) = self.file_picker.primary_query() else {
-            return event_result;
-        };
-
-        if !matches!(event, Event::IdleTimeout) || self.query == *current_query {
-            return event_result;
-        }
-
-        self.query = current_query.to_string();
-
-        let new_options = (self.query_callback)(current_query.to_owned(), cx.editor);
-
-        cx.jobs.callback(async move {
-            let new_options = new_options.await?;
-            let callback = Callback::EditorCompositor(Box::new(move |_editor, compositor| {
-                // Wrapping of pickers in overlay is done outside the picker code,
-                // so this is fragile and will break if wrapped in some other widget.
-                let picker = match compositor.find_id::<Overlay<Self>>(ID) {
-                    Some(overlay) => &mut overlay.content.file_picker,
-                    None => return,
-                };
-                picker.set_options(new_options);
-            }));
-            anyhow::Ok(callback)
-        });
-        EventResult::Consumed(None)
-    }
-
-    fn cursor(&self, area: Rect, ctx: &Editor) -> (Option<Position>, CursorKind) {
-        self.file_picker.cursor(area, ctx)
-    }
-
-    fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
-        self.file_picker.required_size(viewport)
-    }
-
-    fn id(&self) -> Option<&'static str> {
-        Some(ID)
-    }
-}
