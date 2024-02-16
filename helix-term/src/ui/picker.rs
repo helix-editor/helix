@@ -1,4 +1,5 @@
 mod handlers;
+mod query;
 
 use crate::{
     alt,
@@ -9,6 +10,7 @@ use crate::{
     ui::{
         self,
         document::{render_document, LineDecoration, LinePos, TextRenderer},
+        picker::query::PickerQuery,
         EditorView,
     },
 };
@@ -226,7 +228,7 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
 
     cursor: u32,
     prompt: Prompt,
-    previous_pattern: String,
+    query: PickerQuery,
 
     /// Whether to show the preview panel (default true)
     show_preview: bool,
@@ -331,6 +333,8 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             .map(|column| Constraint::Length(column.name.chars().count() as u16))
             .collect();
 
+        let query = PickerQuery::new(columns.iter().map(|col| &col.name).cloned(), default_column);
+
         Self {
             columns,
             primary_column: default_column,
@@ -339,7 +343,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             shutdown,
             cursor: 0,
             prompt,
-            previous_pattern: String::new(),
+            query,
             truncate_start: true,
             show_preview: true,
             callback_fn: Box::new(callback_fn),
@@ -441,6 +445,13 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             .map(|item| item.data)
     }
 
+    fn primary_query(&self) -> Arc<str> {
+        self.query
+            .get(&self.columns[self.primary_column].name)
+            .cloned()
+            .unwrap_or_else(|| "".into())
+    }
+
     fn header_height(&self) -> u16 {
         if self.columns.len() > 1 {
             1
@@ -461,16 +472,36 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
     }
 
     fn handle_prompt_change(&mut self) {
-        let pattern = self.prompt.line();
         // TODO: better track how the pattern has changed
-        if pattern != &self.previous_pattern {
-            self.matcher.pattern.reparse(
-                0,
-                pattern,
-                CaseMatching::Smart,
-                pattern.starts_with(&self.previous_pattern),
-            );
-            self.previous_pattern = pattern.clone();
+        let line = self.prompt.line();
+        let old_query = self.query.parse(line);
+        if self.query == old_query {
+            return;
+        }
+        // Have nucleo reparse each changed column.
+        for (i, column) in self
+            .columns
+            .iter()
+            .filter(|column| column.filter)
+            .enumerate()
+        {
+            let pattern = self
+                .query
+                .get(&column.name)
+                .map(|f| &**f)
+                .unwrap_or_default();
+            let old_pattern = old_query
+                .get(&column.name)
+                .map(|f| &**f)
+                .unwrap_or_default();
+            // Fastlane: most columns will remain unchanged after each edit.
+            if pattern == old_pattern {
+                continue;
+            }
+            let is_append = pattern.starts_with(old_pattern);
+            self.matcher
+                .pattern
+                .reparse(i, pattern, CaseMatching::Smart, is_append);
         }
     }
 
