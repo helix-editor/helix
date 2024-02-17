@@ -306,6 +306,8 @@ impl MappableCommand {
         ensure_selections_forward, "Ensure all selections face forward",
         insert_mode, "Insert before selection",
         append_mode, "Append after selection",
+        view_mode, "Enter view mode",
+        exit_view_mode, "Exit view mode",
         command_mode, "Enter command mode",
         file_picker, "Open file picker",
         file_picker_in_current_buffer_directory, "Open file picker at current buffers's directory",
@@ -2695,6 +2697,31 @@ fn append_mode(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
+fn view_mode(cx: &mut Context) {
+    cx.editor.mode = Mode::View;
+
+    let callback = move |compositor: &mut Compositor, cx: &mut compositor::Context| {
+        let editor_view = compositor.find::<ui::EditorView>().unwrap();
+
+        let node = editor_view.keymaps.map()[&cx.editor.mode].node().cloned();
+        let infobox = node.as_ref().map(|node| node.infobox());
+        cx.editor.autoinfo = infobox;
+        editor_view.keymaps.sticky = node;
+    };
+
+    cx.callback = Some(Box::new(callback));
+}
+
+fn exit_view_mode(cx: &mut Context) {
+    let callback = move |compositor: &mut Compositor, _: &mut compositor::Context| {
+        let editor_view = compositor.find::<ui::EditorView>().unwrap();
+        editor_view.keymaps.sticky = None;
+    };
+    cx.callback = Some(Box::new(callback));
+
+    normal_mode(cx);
+}
+
 fn file_picker(cx: &mut Context) {
     let root = find_workspace().0;
     if !root.exists() {
@@ -4043,7 +4070,7 @@ pub(crate) fn paste_bracketed_value(cx: &mut Context, contents: String) {
     let count = cx.count();
     let paste = match cx.editor.mode {
         Mode::Insert | Mode::Select => Paste::Cursor,
-        Mode::Normal => Paste::Before,
+        Mode::Normal | Mode::View => Paste::Before,
     };
     let (view, doc) = current!(cx.editor);
     paste_impl(&[contents], doc, view, paste, count, cx.editor.mode);
