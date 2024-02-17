@@ -1261,6 +1261,7 @@ dependencies = [
  "unicode-general-category",
  "unicode-segmentation",
  "unicode-width",
+ "url",
 ]
 
 [[package]]
