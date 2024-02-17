@@ -1,5 +1,6 @@
 pub(crate) mod dap;
 pub(crate) mod lsp;
+pub(crate) mod mouse;
 pub(crate) mod typed;
 
 pub use dap::*;

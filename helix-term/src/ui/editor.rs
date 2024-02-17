@@ -4,6 +4,7 @@ use crate::{
     events::{OnModeSwitch, PostCommand},
     key,
     keymap::{KeymapResult, Keymaps},
+    mousemap::{MousemapResult, Mousemaps},
     ui::{
         document::{render_document, LinePos, TextRenderer, TranslatedPosition},
         Completion, ProgressSpinners,
@@ -15,11 +16,10 @@ use helix_core::{
     graphemes::{
         ensure_grapheme_boundary_next_byte, next_grapheme_boundary, prev_grapheme_boundary,
     },
-    movement::Direction,
     syntax::{self, HighlightEvent},
     text_annotations::TextAnnotations,
     unicode::width::UnicodeWidthStr,
-    visual_offset_from_block, Change, Position, Range, Selection, Transaction,
+    visual_offset_from_block, Change, Position, Transaction,
 };
 use helix_view::{
     document::{Mode, SavePoint, SCRATCH_BUFFER_NAME},
@@ -27,7 +27,7 @@ use helix_view::{
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
-    Document, Editor, Theme, View,
+    Document, Editor, Theme, View, ViewId,
 };
 use std::{mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc, sync::Arc};
 
@@ -38,6 +38,8 @@ use super::{completion::CompletionItem, statusline};
 
 pub struct EditorView {
     pub keymaps: Keymaps,
+    mousemaps: Mousemaps,
+    is_dragging: bool,
     on_next_key: Option<OnKeyCallback>,
     pseudo_pending: Vec<KeyEvent>,
     pub(crate) last_insert: (commands::MappableCommand, Vec<InsertEvent>),
@@ -60,14 +62,16 @@ pub enum InsertEvent {
 
 impl Default for EditorView {
     fn default() -> Self {
-        Self::new(Keymaps::default())
+        Self::new(Keymaps::default(), Mousemaps::default())
     }
 }
 
 impl EditorView {
-    pub fn new(keymaps: Keymaps) -> Self {
+    pub fn new(keymaps: Keymaps, mousemaps: Mousemaps) -> Self {
         Self {
             keymaps,
+            mousemaps,
+            is_dragging: false,
             on_next_key: None,
             pseudo_pending: Vec::new(),
             last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
@@ -1045,11 +1049,31 @@ impl EditorView {
         event: &MouseEvent,
         cxt: &mut commands::Context,
     ) -> EventResult {
-        if event.kind != MouseEventKind::Moved {
-            cxt.editor.reset_idle_timer();
+        if event.kind == MouseEventKind::Moved {
+            self.is_dragging = false;
+            return EventResult::Ignored(None);
         }
+        cxt.editor.reset_idle_timer();
 
         let config = cxt.editor.config();
+
+        match self
+            .mousemaps
+            .get(cxt.editor.mode, event, &config.idle_timeout)
+        {
+            MousemapResult::Matched(cmd) => {
+                cmd.execute(cxt, event, self);
+                self.is_dragging = false;
+                return EventResult::Consumed(None);
+            }
+            MousemapResult::MatchedSequence(cmds) => {
+                self.is_dragging = false;
+                cmds.iter().for_each(|cmd| cmd.execute(cxt, event, self));
+                return EventResult::Consumed(None);
+            }
+            MousemapResult::NotFound => (),
+        };
+
         let MouseEvent {
             kind,
             row,
@@ -1058,73 +1082,10 @@ impl EditorView {
             ..
         } = *event;
 
-        let pos_and_view = |editor: &Editor, row, column, ignore_virtual_text| {
-            editor.tree.views().find_map(|(view, _focus)| {
-                view.pos_at_screen_coords(
-                    &editor.documents[&view.doc],
-                    row,
-                    column,
-                    ignore_virtual_text,
-                )
-                .map(|pos| (pos, view.id))
-            })
-        };
-
-        let gutter_coords_and_view = |editor: &Editor, row, column| {
-            editor.tree.views().find_map(|(view, _focus)| {
-                view.gutter_coords_at_screen_coords(row, column)
-                    .map(|coords| (coords, view.id))
-            })
-        };
-
         match kind {
-            MouseEventKind::Down(MouseButton::Left) => {
-                let editor = &mut cxt.editor;
-
-                if let Some((pos, view_id)) = pos_and_view(editor, row, column, true) {
-                    let prev_view_id = view!(editor).id;
-                    let doc = doc_mut!(editor, &view!(editor, view_id).doc);
-
-                    if modifiers == KeyModifiers::ALT {
-                        let selection = doc.selection(view_id).clone();
-                        doc.set_selection(view_id, selection.push(Range::point(pos)));
-                    } else {
-                        doc.set_selection(view_id, Selection::point(pos));
-                    }
-
-                    if view_id != prev_view_id {
-                        self.clear_completion(editor);
-                    }
-
-                    editor.focus(view_id);
-                    editor.ensure_cursor_in_view(view_id);
-
-                    return EventResult::Consumed(None);
-                }
-
-                if let Some((coords, view_id)) = gutter_coords_and_view(editor, row, column) {
-                    editor.focus(view_id);
-
-                    let (view, doc) = current!(cxt.editor);
-
-                    let path = match doc.path() {
-                        Some(path) => path.clone(),
-                        None => return EventResult::Ignored(None),
-                    };
-
-                    if let Some(char_idx) =
-                        view.pos_at_visual_coords(doc, coords.row as u16, coords.col as u16, true)
-                    {
-                        let line = doc.text().char_to_line(char_idx);
-                        commands::dap_toggle_breakpoint_impl(cxt, path, line);
-                        return EventResult::Consumed(None);
-                    }
-                }
-
-                EventResult::Ignored(None)
-            }
-
+            // this type of event is not and should not be handled by the mousemaps
             MouseEventKind::Drag(MouseButton::Left) => {
+                self.is_dragging = true;
                 let (view, doc) = current!(cxt.editor);
 
                 let pos = match view.pos_at_screen_coords(doc, row, column, true) {
@@ -1141,99 +1102,24 @@ impl EditorView {
                 EventResult::Consumed(None)
             }
 
-            MouseEventKind::ScrollUp | MouseEventKind::ScrollDown => {
-                let current_view = cxt.editor.tree.focus;
-
-                let direction = match event.kind {
-                    MouseEventKind::ScrollUp => Direction::Backward,
-                    MouseEventKind::ScrollDown => Direction::Forward,
-                    _ => unreachable!(),
-                };
-
-                match pos_and_view(cxt.editor, row, column, false) {
-                    Some((_, view_id)) => cxt.editor.tree.focus = view_id,
-                    None => return EventResult::Ignored(None),
-                }
-
-                let offset = config.scroll_lines.unsigned_abs();
-                commands::scroll(cxt, offset, direction);
-
-                cxt.editor.tree.focus = current_view;
-                cxt.editor.ensure_cursor_in_view(current_view);
-
-                EventResult::Consumed(None)
-            }
-
             MouseEventKind::Up(MouseButton::Left) => {
-                if !config.middle_click_paste {
-                    return EventResult::Ignored(None);
-                }
-
-                let (view, doc) = current!(cxt.editor);
-
-                if doc
-                    .selection(view.id)
-                    .primary()
-                    .slice(doc.text().slice(..))
-                    .len_chars()
-                    <= 1
+                // must be dragging, and ALT avoids copying the selected text
+                if !config.middle_click_paste
+                    || !self.is_dragging
+                    || modifiers.contains(KeyModifiers::ALT)
                 {
                     return EventResult::Ignored(None);
                 }
 
-                commands::MappableCommand::yank_main_selection_to_primary_clipboard.execute(cxt);
+                commands::mouse::yank_main_selection_to_primary_clipboard_mouse(cxt, event, self);
 
                 EventResult::Consumed(None)
             }
 
-            MouseEventKind::Up(MouseButton::Right) => {
-                if let Some((coords, view_id)) = gutter_coords_and_view(cxt.editor, row, column) {
-                    cxt.editor.focus(view_id);
-
-                    let (view, doc) = current!(cxt.editor);
-                    if let Some(pos) =
-                        view.pos_at_visual_coords(doc, coords.row as u16, coords.col as u16, true)
-                    {
-                        doc.set_selection(view_id, Selection::point(pos));
-                        if modifiers == KeyModifiers::ALT {
-                            commands::MappableCommand::dap_edit_log.execute(cxt);
-                        } else {
-                            commands::MappableCommand::dap_edit_condition.execute(cxt);
-                        }
-
-                        return EventResult::Consumed(None);
-                    }
-                }
-
+            _ => {
+                self.is_dragging = false;
                 EventResult::Ignored(None)
             }
-
-            MouseEventKind::Up(MouseButton::Middle) => {
-                let editor = &mut cxt.editor;
-                if !config.middle_click_paste {
-                    return EventResult::Ignored(None);
-                }
-
-                if modifiers == KeyModifiers::ALT {
-                    commands::MappableCommand::replace_selections_with_primary_clipboard
-                        .execute(cxt);
-
-                    return EventResult::Consumed(None);
-                }
-
-                if let Some((pos, view_id)) = pos_and_view(editor, row, column, true) {
-                    let doc = doc_mut!(editor, &view!(editor, view_id).doc);
-                    doc.set_selection(view_id, Selection::point(pos));
-                    cxt.editor.focus(view_id);
-                    commands::MappableCommand::paste_primary_clipboard_before.execute(cxt);
-
-                    return EventResult::Consumed(None);
-                }
-
-                EventResult::Ignored(None)
-            }
-
-            _ => EventResult::Ignored(None),
         }
     }
 }
@@ -1377,7 +1263,14 @@ impl Component for EditorView {
                 EventResult::Consumed(callback)
             }
 
-            Event::Mouse(event) => self.handle_mouse_event(event, &mut cx),
+            Event::Mouse(event) => {
+                let res = self.handle_mouse_event(event, &mut cx);
+                // set cursor in view if cursor was moved by mouse
+                let config = cx.editor.config();
+                let (view, doc) = current!(cx.editor);
+                view.ensure_cursor_in_view(doc, config.scrolloff);
+                res
+            }
             Event::IdleTimeout => self.handle_idle_timeout(&mut cx),
             Event::FocusGained => {
                 self.terminal_focused = true;
@@ -1521,4 +1414,31 @@ fn canonicalize_key(key: &mut KeyEvent) {
     {
         key.modifiers.remove(KeyModifiers::SHIFT)
     }
+}
+pub fn pos_and_view(
+    editor: &Editor,
+    row: u16,
+    column: u16,
+    ignore_virtual_text: bool,
+) -> Option<(usize, ViewId)> {
+    editor.tree.views().find_map(|(view, _focus)| {
+        view.pos_at_screen_coords(
+            &editor.documents[&view.doc],
+            row,
+            column,
+            ignore_virtual_text,
+        )
+        .map(|pos| (pos, view.id))
+    })
+}
+
+pub fn gutter_coords_and_view(
+    editor: &Editor,
+    row: u16,
+    column: u16,
+) -> Option<(Position, ViewId)> {
+    editor.tree.views().find_map(|(view, _focus)| {
+        view.gutter_coords_at_screen_coords(row, column)
+            .map(|coords| (coords, view.id))
+    })
 }

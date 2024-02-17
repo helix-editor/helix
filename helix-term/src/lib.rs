@@ -10,6 +10,7 @@ pub mod events;
 pub mod health;
 pub mod job;
 pub mod keymap;
+pub mod mousemap;
 pub mod ui;
 
 use std::path::Path;
