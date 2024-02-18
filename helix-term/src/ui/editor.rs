@@ -1,7 +1,6 @@
 use crate::{
     commands::{self, OnKeyCallback},
     compositor::{Component, Context, Event, EventResult},
-    events::{OnModeSwitch, PostCommand},
     key,
     keymap::{KeymapResult, Keymaps},
     ui::{
@@ -867,17 +866,10 @@ impl EditorView {
         cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
 
         let mut execute_command = |command: &commands::MappableCommand| {
-            command.execute(cxt);
-            helix_event::dispatch(PostCommand { command, cx: cxt });
+            cxt.execute_command(command);
 
             let current_mode = cxt.editor.mode();
             if current_mode != last_mode {
-                helix_event::dispatch(OnModeSwitch {
-                    old_mode: last_mode,
-                    new_mode: current_mode,
-                    cx: cxt,
-                });
-
                 // HAXX: if we just entered insert mode from normal, clear key buf
                 // and record the command that got us into this mode.
                 if current_mode == Mode::Insert {
@@ -887,7 +879,6 @@ impl EditorView {
                     self.last_insert.1.clear();
                 }
             }
-
             last_mode = current_mode;
         };
 
@@ -911,18 +902,18 @@ impl EditorView {
             match keyresult {
                 KeymapResult::NotFound => {
                     if let Some(ch) = event.char() {
-                        commands::insert::insert_char(cx, ch)
+                        cx.execute(|cx| commands::insert::insert_char(cx, ch))
                     }
                 }
                 KeymapResult::Cancelled(pending) => {
                     for ev in pending {
                         match ev.char() {
-                            Some(ch) => commands::insert::insert_char(cx, ch),
+                            Some(ch) => cx.execute(|cx| commands::insert::insert_char(cx, ch)),
                             None => {
                                 if let KeymapResult::Matched(command) =
                                     self.keymaps.get(Mode::Insert, ev)
                                 {
-                                    command.execute(cx);
+                                    cx.execute_command(&command);
                                 }
                             }
                         }
@@ -949,7 +940,7 @@ impl EditorView {
             (key!('.'), _) if self.keymaps.pending().is_empty() => {
                 for _ in 0..cxt.editor.count.map_or(1, NonZeroUsize::into) {
                     // first execute whatever put us into insert mode
-                    self.last_insert.0.execute(cxt);
+                    cxt.execute_command(&self.last_insert.0);
                     let mut last_savepoint = None;
                     let mut last_request_savepoint = None;
                     // then replay the inputs
@@ -1240,8 +1231,9 @@ impl EditorView {
                 };
 
                 if should_yank {
-                    commands::MappableCommand::yank_main_selection_to_primary_clipboard
-                        .execute(cxt);
+                    cxt.execute_command(
+                        &commands::MappableCommand::yank_main_selection_to_primary_clipboard,
+                    );
                     EventResult::Consumed(None)
                 } else {
                     EventResult::Ignored(None)
@@ -1261,9 +1253,11 @@ impl EditorView {
                             doc.set_selection(view_id, Selection::point(pos));
                             match modifiers {
                                 KeyModifiers::ALT => {
-                                    commands::MappableCommand::dap_edit_log.execute(cxt)
+                                    cxt.execute_command(&commands::MappableCommand::dap_edit_log)
                                 }
-                                _ => commands::MappableCommand::dap_edit_condition.execute(cxt),
+                                _ => cxt.execute_command(
+                                    &commands::MappableCommand::dap_edit_condition,
+                                ),
                             };
                         }
                     }
@@ -1281,8 +1275,9 @@ impl EditorView {
                 }
 
                 if modifiers == KeyModifiers::ALT {
-                    commands::MappableCommand::replace_selections_with_primary_clipboard
-                        .execute(cxt);
+                    cxt.execute_command(
+                        &commands::MappableCommand::replace_selections_with_primary_clipboard,
+                    );
 
                     return EventResult::Consumed(None);
                 }
@@ -1291,7 +1286,7 @@ impl EditorView {
                     let doc = doc_mut!(editor, &view!(editor, view_id).doc);
                     doc.set_selection(view_id, Selection::point(pos));
                     cxt.editor.focus(view_id);
-                    commands::MappableCommand::paste_primary_clipboard_before.execute(cxt);
+                    cxt.execute_command(&commands::MappableCommand::paste_primary_clipboard_before);
 
                     return EventResult::Consumed(None);
                 }
@@ -1323,19 +1318,8 @@ impl Component for EditorView {
             Event::Paste(contents) => {
                 self.handle_non_key_input(&mut cx);
                 cx.count = cx.editor.count;
-                commands::paste_bracketed_value(&mut cx, contents.clone());
+                cx.execute(|cx| commands::paste_bracketed_value(cx, contents.clone()));
                 cx.editor.count = None;
-
-                let config = cx.editor.config();
-                let mode = cx.editor.mode();
-                let (view, doc) = current!(cx.editor);
-                view.ensure_cursor_in_view(doc, config.scrolloff);
-
-                // Store a history state if not in insert mode. Otherwise wait till we exit insert
-                // to include any edits to the paste in the history state.
-                if mode != Mode::Insert {
-                    doc.append_changes_to_history(view);
-                }
 
                 EventResult::Consumed(None)
             }
@@ -1355,7 +1339,7 @@ impl Component for EditorView {
 
                 if let Some(on_next_key) = self.on_next_key.take() {
                     // if there's a command waiting input, do that first
-                    on_next_key(&mut cx, key);
+                    cx.execute(|cx| on_next_key(cx, key));
                 } else {
                     match mode {
                         Mode::Insert => {
@@ -1419,17 +1403,6 @@ impl Component for EditorView {
                     return EventResult::Ignored(None);
                 }
 
-                let config = cx.editor.config();
-                let mode = cx.editor.mode();
-                let (view, doc) = current!(cx.editor);
-
-                view.ensure_cursor_in_view(doc, config.scrolloff);
-
-                // Store a history state if not in insert mode. This also takes care of
-                // committing changes when leaving insert mode.
-                if mode != Mode::Insert {
-                    doc.append_changes_to_history(view);
-                }
                 let callback = if callbacks.is_empty() {
                     None
                 } else {

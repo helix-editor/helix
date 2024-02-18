@@ -1269,11 +1269,8 @@ fn reload(
         return Ok(());
     }
 
-    let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
-    doc.reload(view, &cx.editor.diff_providers).map(|_| {
-        view.ensure_cursor_in_view(doc, scrolloff);
-    })?;
+    doc.reload(view, &cx.editor.diff_providers)?;
     if let Some(path) = doc.path() {
         cx.editor
             .language_servers
@@ -2029,7 +2026,6 @@ fn sort_impl(
     _args: &[Cow<str>],
     reverse: bool,
 ) -> anyhow::Result<()> {
-    let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
@@ -2054,8 +2050,6 @@ fn sort_impl(
     );
 
     doc.apply(&transaction, view.id);
-    doc.append_changes_to_history(view);
-    view.ensure_cursor_in_view(doc, scrolloff);
 
     Ok(())
 }
@@ -2069,7 +2063,6 @@ fn reflow(
         return Ok(());
     }
 
-    let scrolloff = cx.editor.config().scrolloff;
     let cfg_text_width: usize = cx.editor.config().text_width;
     let (view, doc) = current!(cx.editor);
 
@@ -2095,8 +2088,6 @@ fn reflow(
     });
 
     doc.apply(&transaction, view.id);
-    doc.append_changes_to_history(view);
-    view.ensure_cursor_in_view(doc, scrolloff);
 
     Ok(())
 }
@@ -2296,7 +2287,6 @@ fn reset_diff_change(
     ensure!(args.is_empty(), ":reset-diff-change takes no arguments");
 
     let editor = &mut cx.editor;
-    let scrolloff = editor.config().scrolloff;
 
     let (view, doc) = current!(editor);
     let Some(handle) = doc.diff_handle() else {
@@ -2334,8 +2324,6 @@ fn reset_diff_change(
     // select inserted text
     let text_len = before_end - before_start;
     doc.set_selection(view.id, Selection::single(anchor, anchor + text_len));
-    doc.append_changes_to_history(view);
-    view.ensure_cursor_in_view(doc, scrolloff);
     Ok(())
 }
 
@@ -2460,7 +2448,6 @@ fn read(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
         return Ok(());
     }
 
-    let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
 
     ensure!(!args.is_empty(), "file name is expected");
@@ -2482,8 +2469,6 @@ fn read(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     let selection = doc.selection(view.id);
     let transaction = Transaction::insert(doc.text(), selection, contents);
     doc.apply(&transaction, view.id);
-    doc.append_changes_to_history(view);
-    view.ensure_cursor_in_view(doc, scrolloff);
 
     Ok(())
 }
@@ -3190,8 +3175,16 @@ pub(super) fn command_mode(cx: &mut Context) {
                 let shellwords = Shellwords::from(input);
                 let args = shellwords.words();
 
+                let (view, doc) = current!(cx.editor);
+                doc.append_changes_to_history(view);
                 if let Err(e) = (cmd.fun)(cx, &args[1..], event) {
                     cx.editor.set_error(format!("{}", e));
+                }
+                if !cx.editor.tree.is_empty() {
+                    let scrolloff = cx.editor.config().scrolloff;
+                    let (view, doc) = current!(cx.editor);
+                    doc.append_changes_to_history(view);
+                    view.ensure_cursor_in_view(doc, scrolloff);
                 }
             } else if event == PromptEvent::Validate {
                 cx.editor
