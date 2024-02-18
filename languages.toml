@@ -1093,7 +1093,7 @@ name = "lua"
 injection-regex = "lua"
 scope = "source.lua"
 file-types = ["lua"]
-shebangs = ["lua"]
+shebangs = ["lua", "luajit"]
 roots = [".luarc.json", ".luacheckrc", ".stylua.toml", "selene.toml", ".git"]
 comment-token = "--"
 indent = { tab-width = 2, unit = "  " }
