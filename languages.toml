@@ -23,6 +23,7 @@ cuelsp = { command = "cuelsp" }
 dart = { command = "dart", args = ["language-server", "--client-id=helix"] }
 dhall-lsp-server = { command = "dhall-lsp-server" }
 docker-langserver = { command = "docker-langserver", args = ["--stdio"] }
+docker-compose-langserver = { command = "docker-compose-langserver", args = ["--stdio"]}
 dot-language-server = { command = "dot-language-server", args = ["--stdio"] }
 elixir-ls = { command = "elixir-ls", config = { elixirLS.dialyzerEnabled = false } }
 elm-language-server = { command = "elm-language-server" }
@@ -1092,7 +1093,7 @@ name = "lua"
 injection-regex = "lua"
 scope = "source.lua"
 file-types = ["lua"]
-shebangs = ["lua"]
+shebangs = ["lua", "luajit"]
 roots = [".luarc.json", ".luacheckrc", ".stylua.toml", "selene.toml", ".git"]
 comment-token = "--"
 indent = { tab-width = 2, unit = "  " }
@@ -1459,6 +1460,16 @@ language-servers = [ "docker-langserver" ]
 [[grammar]]
 name = "dockerfile"
 source = { git = "https://github.com/camdencheek/tree-sitter-dockerfile", rev = "8ee3a0f7587b2bd8c45c8cb7d28bd414604aec62" }
+
+[[language]]
+name = "docker-compose"
+scope = "source.yaml.docker-compose"
+roots = ["docker-compose.yaml", "docker-compose.yml"]
+language-servers = [ "docker-compose-langserver" ]
+file-types = [{ glob = "docker-compose.yaml" }, { glob = "docker-compose.yml" }]
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+grammar = "yaml"
 
 [[language]]
 name = "git-commit"
