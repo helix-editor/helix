@@ -5524,16 +5524,25 @@ fn yank_diagnostic(cx: &mut Context) {
     let (view, doc) = current_ref!(cx.editor);
     let primary = doc.selection(view.id).primary();
 
-    let diag = doc
+    let diag: Vec<_> = doc
         .diagnostics()
         .iter()
         .filter(|d| primary.overlaps(&helix_core::Range::new(d.range.start, d.range.end)))
-        .map(|d| d.message.clone());
+        .map(|d| d.message.clone())
+        .collect();
+    let n = diag.len();
+    if n == 0 {
+        cx.editor
+            .set_error("No diagnostics under primary selection");
+        return;
+    }
+
     let reg = cx.register.unwrap_or('+');
-    match cx.editor.registers.write(reg, diag.collect()) {
-        Ok(_) => cx
-            .editor
-            .set_status(format!("Yanked diagnostic(s) to register {reg}")),
+    match cx.editor.registers.write(reg, diag) {
+        Ok(_) => cx.editor.set_status(format!(
+            "Yanked {n} diagnostic{} to register {reg}",
+            if n == 1 { "" } else { "s" }
+        )),
         Err(err) => cx.editor.set_error(err.to_string()),
     }
 }
