@@ -57,7 +57,7 @@ use movement::Movement;
 use crate::{
     args,
     compositor::{self, Component, Compositor},
-    filter_picker_entry,
+    events, filter_picker_entry,
     job::Callback,
     ui::{self, overlay::overlaid, Picker, PickerColumn, Popup, Prompt, PromptEvent},
 };
@@ -150,6 +150,45 @@ impl<'a> Context<'a> {
             scroll: None,
         }
         .block_try_flush_writes()
+    }
+
+    pub fn execute<F: FnOnce(&mut Self)>(&mut self, execute_fn: F) {
+        self.execute_impl(execute_fn)
+    }
+
+    pub fn execute_command(&mut self, command: &MappableCommand) {
+        self.execute_impl(|cx| {
+            command.execute(cx);
+            helix_event::dispatch(events::PostCommand { command, cx });
+        })
+    }
+
+    fn execute_impl<F: FnOnce(&mut Self)>(&mut self, execute_fn: F) {
+        let pre_command_mode = self.editor.mode();
+        if pre_command_mode != Mode::Insert {
+            let (view, doc) = current!(self.editor);
+            doc.append_changes_to_history(view);
+        }
+
+        execute_fn(self);
+
+        let post_command_mode = self.editor.mode();
+        if post_command_mode != pre_command_mode {
+            helix_event::dispatch(events::OnModeSwitch {
+                old_mode: pre_command_mode,
+                new_mode: post_command_mode,
+                cx: self,
+            });
+        }
+
+        if !self.editor.tree.is_empty() {
+            let scrolloff = self.editor.config().scrolloff;
+            let (view, doc) = current!(self.editor);
+            if post_command_mode != Mode::Insert {
+                doc.append_changes_to_history(view);
+            }
+            view.ensure_cursor_in_view(doc, scrolloff);
+        }
     }
 }
 
@@ -2082,7 +2121,6 @@ fn search_impl(
     regex: &rope::Regex,
     movement: Movement,
     direction: Direction,
-    scrolloff: usize,
     wrap_around: bool,
     show_warnings: bool,
 ) {
@@ -2155,7 +2193,6 @@ fn search_impl(
         };
 
         doc.set_selection(view.id, selection);
-        view.ensure_cursor_in_view_center(doc, scrolloff);
     };
 }
 
@@ -2179,7 +2216,6 @@ fn rsearch(cx: &mut Context) {
 fn searcher(cx: &mut Context, direction: Direction) {
     let reg = cx.register.unwrap_or('/');
     let config = cx.editor.config();
-    let scrolloff = config.scrolloff;
     let wrap_around = config.search.wrap_around;
     let movement = if cx.editor.mode() == Mode::Select {
         Movement::Extend
@@ -2207,15 +2243,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
             } else if event != PromptEvent::Update {
                 return;
             }
-            search_impl(
-                cx.editor,
-                &regex,
-                movement,
-                direction,
-                scrolloff,
-                wrap_around,
-                false,
-            );
+            search_impl(cx.editor, &regex, movement, direction, wrap_around, false);
         },
     );
 }
@@ -2226,7 +2254,6 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
         .register
         .unwrap_or(cx.editor.registers.last_search_register);
     let config = cx.editor.config();
-    let scrolloff = config.scrolloff;
     if let Some(query) = cx.editor.registers.first(register, cx.editor) {
         let search_config = &config.search;
         let case_insensitive = if search_config.smart_case {
@@ -2244,15 +2271,7 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
             .build(&query)
         {
             for _ in 0..count {
-                search_impl(
-                    cx.editor,
-                    &regex,
-                    movement,
-                    direction,
-                    scrolloff,
-                    wrap_around,
-                    true,
-                );
+                search_impl(cx.editor, &regex, movement, direction, wrap_around, true);
             }
         } else {
             let error = format!("Invalid regex: {}", query);
@@ -3273,22 +3292,8 @@ pub fn command_palette(cx: &mut Context) {
                     on_next_key_callback: None,
                     jobs: cx.jobs,
                 };
-                let focus = view!(ctx.editor).id;
 
-                command.execute(&mut ctx);
-
-                if ctx.editor.tree.contains(focus) {
-                    let config = ctx.editor.config();
-                    let mode = ctx.editor.mode();
-                    let view = view_mut!(ctx.editor, focus);
-                    let doc = doc_mut!(ctx.editor, &view.doc);
-
-                    view.ensure_cursor_in_view(doc, config.scrolloff);
-
-                    if mode != Mode::Insert {
-                        doc.append_changes_to_history(view);
-                    }
-                }
+                ctx.execute_command(command);
             });
             compositor.push(Box::new(overlaid(picker)));
         },
@@ -4452,7 +4457,6 @@ fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
         return;
     };
     let values: Vec<_> = values.map(|value| value.to_string()).collect();
-    let scrolloff = editor.config().scrolloff;
 
     let (view, doc) = current!(editor);
     let repeat = std::iter::repeat(
@@ -4475,8 +4479,6 @@ fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
     });
 
     doc.apply(&transaction, view.id);
-    doc.append_changes_to_history(view);
-    view.ensure_cursor_in_view(doc, scrolloff);
 }
 
 fn replace_selections_with_clipboard(cx: &mut Context) {
@@ -5960,10 +5962,6 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
         doc.apply(&transaction, view.id);
         doc.append_changes_to_history(view);
     }
-
-    // after replace cursor may be out of bounds, do this to
-    // make sure cursor is in view and update scroll as well
-    view.ensure_cursor_in_view(doc, config.scrolloff);
 }
 
 fn shell_prompt(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
