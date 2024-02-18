@@ -860,6 +860,7 @@ file-types = [
   "tcshrc",
   "bashrc_Apple_Terminal",
   "zshrc_Apple_Terminal",
+  { glob = "tmux.conf" },
   { glob = ".bash_history" },
   { glob = ".bash_login" },
   { glob = ".bash_logout" },
