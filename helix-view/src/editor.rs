@@ -1791,8 +1791,13 @@ impl Editor {
                 self.old_file_locs.get(&path).map(|x| x.to_owned())
             {
                 let (view, doc) = current!(self);
-                view.offset = view_position;
-                doc.set_selection(view.id, selection);
+
+                let doc_len = doc.text().len_chars();
+                // don't restore the view and selection if the selection goes beyond the file's end
+                if !selection.ranges().iter().any(|range| range.to() >= doc_len) {
+                    view.offset = view_position;
+                    doc.set_selection(view.id, selection);
+                }
             }
         }
 
@@ -1800,16 +1805,22 @@ impl Editor {
     }
 
     pub fn close(&mut self, id: ViewId) {
-        let offset = self.tree.get(id).offset.clone();
+        let offset = self.tree.get(id).offset;
 
         let mut file_locs = Vec::new();
 
-        // Remove selections for the closed view on all documents.
         for doc in self.documents_mut() {
-            if let Some(path) = doc.path() {
-                file_locs.push((path.clone(), offset, doc.selection(id).clone()));
-            };
+            // Persist file location history for this view
+            // FIXME: The view offset here is currently wrong when a doc is not current for that view.
+            // Right now it uses the current offset of the view, which is on a another document.
+            // We need to persist ViewPositions on documents a la PR #7568, then fetch that here.
+            if doc.selections().contains_key(&id) {
+                if let Some(path) = doc.path() {
+                    file_locs.push((path.clone(), offset, doc.selection(id).clone()));
+                }
+            }
 
+            // Remove selections for the closed view on all documents.
             doc.remove_view(id);
         }
 

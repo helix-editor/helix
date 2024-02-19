@@ -159,13 +159,11 @@ impl Application {
         );
 
         // TODO: do most of this in the background?
-        #[cfg(not(feature = "integration"))]
         editor
             .registers
             .write(':', persistence::read_command_history())
             // TODO: do something about this unwrap
             .unwrap();
-        #[cfg(not(feature = "integration"))]
         editor
             .registers
             .write('/', persistence::read_search_history())
