@@ -1178,7 +1178,7 @@ impl EditorView {
 
                 let (view, doc) = current!(cxt.editor);
 
-                let should_yank = match cxt.editor.mouse_down_range {
+                let should_yank = match cxt.editor.mouse_down_range.take() {
                     Some(down_range) => doc.selection(view.id).primary() != down_range,
                     None => {
                         // This should not happen under normal cases. We fall back to the original
@@ -1190,8 +1190,6 @@ impl EditorView {
                             > 1
                     }
                 };
-
-                cxt.editor.mouse_down_range = None;
 
                 if should_yank {
                     commands::MappableCommand::yank_main_selection_to_primary_clipboard
