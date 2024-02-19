@@ -3125,3 +3125,16 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "pkl"
 source = { git = "https://github.com/apple/tree-sitter-pkl", rev = "c03f04a313b712f8ab00a2d862c10b37318699ae" }
+
+[[language]]
+name = "groovy"
+language-id = "groovy"
+scope = "source.groovy"
+file-types = ["groovy", "jenkinsfile", { glob = "Jenkinsfile" },  { glob = "Jenkinsfile.*" }]
+shebangs = ["groovy"]
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "groovy"
+source = { git = "https://github.com/Decodetalkers/tree-sitter-groovy", rev = "7e023227f46fee428b16a0288eeb0f65ee2523ec" }
