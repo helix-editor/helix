@@ -6,7 +6,7 @@ use std::{
     path::PathBuf,
 };
 
-pub fn push_history<T: Serialize>(filepath: PathBuf, entry: T) {
+pub fn push_history<T: Serialize>(filepath: PathBuf, entry: &T) {
     let file = OpenOptions::new()
         .append(true)
         .create(true)
@@ -15,7 +15,7 @@ pub fn push_history<T: Serialize>(filepath: PathBuf, entry: T) {
         .unwrap();
 
     // TODO: do something about this unwrap
-    serialize_into(file, &entry).unwrap();
+    serialize_into(file, entry).unwrap();
 }
 
 pub fn read_history<T: for<'a> Deserialize<'a>>(filepath: PathBuf) -> Vec<T> {
