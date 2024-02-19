@@ -42,7 +42,7 @@ pub use helix_core::diagnostic::Severity;
 use helix_core::{
     auto_pairs::AutoPairs,
     syntax::{self, AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
-    Change, LineEnding, Position, Selection, NATIVE_LINE_ENDING,
+    Change, LineEnding, Position, Range, Selection, NATIVE_LINE_ENDING,
 };
 use helix_dap as dap;
 use helix_lsp::lsp;
@@ -964,6 +964,8 @@ pub struct Editor {
     /// times during rendering and should not be set by other functions.
     pub cursor_cache: Cell<Option<Option<Position>>>,
     pub handlers: Handlers,
+
+    pub mouse_down_range: Option<Range>,
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
@@ -1080,6 +1082,7 @@ impl Editor {
             needs_redraw: false,
             cursor_cache: Cell::new(None),
             handlers,
+            mouse_down_range: None,
         }
     }
 
@@ -1978,7 +1981,7 @@ impl Editor {
 
     /// Switches the editor into normal mode.
     pub fn enter_normal_mode(&mut self) {
-        use helix_core::{graphemes, Range};
+        use helix_core::graphemes;
 
         if self.mode == Mode::Normal {
             return;

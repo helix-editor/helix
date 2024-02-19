@@ -1088,6 +1088,15 @@ impl EditorView {
                     if modifiers == KeyModifiers::ALT {
                         let selection = doc.selection(view_id).clone();
                         doc.set_selection(view_id, selection.push(Range::point(pos)));
+                    } else if editor.mode == Mode::Select {
+                        // Discards non-primary selections for consistent UX with normal mode
+                        let primary = doc.selection(view_id).primary().put_cursor(
+                            doc.text().slice(..),
+                            pos,
+                            true,
+                        );
+                        editor.mouse_down_range = Some(primary);
+                        doc.set_selection(view_id, Selection::single(primary.anchor, primary.head));
                     } else {
                         doc.set_selection(view_id, Selection::point(pos));
                     }
@@ -1171,19 +1180,26 @@ impl EditorView {
 
                 let (view, doc) = current!(cxt.editor);
 
-                if doc
-                    .selection(view.id)
-                    .primary()
-                    .slice(doc.text().slice(..))
-                    .len_chars()
-                    <= 1
-                {
-                    return EventResult::Ignored(None);
+                let should_yank = match cxt.editor.mouse_down_range.take() {
+                    Some(down_range) => doc.selection(view.id).primary() != down_range,
+                    None => {
+                        // This should not happen under normal cases. We fall back to the original
+                        // behavior of yanking on non-single-char selections.
+                        doc.selection(view.id)
+                            .primary()
+                            .slice(doc.text().slice(..))
+                            .len_chars()
+                            > 1
+                    }
+                };
+
+                if should_yank {
+                    commands::MappableCommand::yank_main_selection_to_primary_clipboard
+                        .execute(cxt);
+                    EventResult::Consumed(None)
+                } else {
+                    EventResult::Ignored(None)
                 }
-
-                commands::MappableCommand::yank_main_selection_to_primary_clipboard.execute(cxt);
-
-                EventResult::Consumed(None)
             }
 
             MouseEventKind::Up(MouseButton::Right) => {
