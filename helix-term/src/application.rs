@@ -169,6 +169,11 @@ impl Application {
             .write('/', persistence::read_search_history())
             // TODO: do something about this unwrap
             .unwrap();
+        editor
+            .registers
+            .write('"', persistence::read_clipboard_file())
+            // TODO: do something about this unwrap
+            .unwrap();
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys

@@ -47,6 +47,7 @@ async fn main_impl() -> Result<i32> {
     helix_loader::initialize_command_histfile(None);
     helix_loader::initialize_search_histfile(None);
     helix_loader::initialize_file_histfile(None);
+    helix_loader::initialize_clipboard_file(None);
 
     // Help has a higher priority and should be handled separately.
     if args.display_help {

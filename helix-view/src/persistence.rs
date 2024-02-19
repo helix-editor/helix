@@ -1,7 +1,7 @@
 use helix_core::Selection;
 use helix_loader::{
-    command_histfile, file_histfile,
-    persistence::{push_history, read_history},
+    clipboard_file, command_histfile, file_histfile,
+    persistence::{push_history, read_history, write_history},
     search_histfile,
 };
 use serde::{Deserialize, Serialize};
@@ -58,4 +58,12 @@ pub fn read_search_history() -> Vec<String> {
     let mut hist = read_reg_history(search_histfile());
     hist.reverse();
     hist
+}
+
+pub fn write_clipboard_file(values: &Vec<String>) {
+    write_history(clipboard_file(), values)
+}
+
+pub fn read_clipboard_file() -> Vec<String> {
+    read_history(clipboard_file())
 }
