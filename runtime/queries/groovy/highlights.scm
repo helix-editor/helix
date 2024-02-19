@@ -19,7 +19,7 @@
   (#any-of? @constant.builtin.boolean "true" "false"))
 
 ((identifier) @constant
-  (#match? @constant "^[A-Z][A-Z\d_]*$"))
+  (#match? @constant "^[A-Z][A-Z\\d_]*$"))
 
 ((identifier) @constant.builtin
   (#eq? @constant.builtin "null"))
