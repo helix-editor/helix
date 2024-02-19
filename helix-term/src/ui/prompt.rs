@@ -591,7 +591,6 @@ impl Component for Prompt {
                                 {
                                     cx.editor.set_error(err.to_string());
                                 }
-                                #[cfg(not(feature = "integration"))]
                                 persistence::push_reg_history(register, &self.line);
                             };
                         }
