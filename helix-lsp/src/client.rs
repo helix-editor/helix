@@ -1017,7 +1017,7 @@ impl Client {
     pub fn resolve_completion_item(
         &self,
         completion_item: lsp::CompletionItem,
-    ) -> Option<impl Future<Output = Result<Value>>> {
+    ) -> Option<impl Future<Output = Result<lsp::CompletionItem>>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support resolving completion items.
@@ -1029,7 +1029,8 @@ impl Client {
             _ => return None,
         }
 
-        Some(self.call::<lsp::request::ResolveCompletionItem>(completion_item))
+        let res = self.call::<lsp::request::ResolveCompletionItem>(completion_item);
+        Some(async move { Ok(serde_json::from_value(res.await?)?) })
     }
 
     pub fn resolve_code_action(
