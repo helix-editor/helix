@@ -34,6 +34,11 @@ fn setup_logging(verbosity: u64) -> Result<()> {
 }
 
 fn main() -> Result<()> {
+    // Print backtraces by default
+    if std::env::var_os("RUST_BACKTRACE").is_none() {
+        std::env::set_var("RUST_BACKTRACE", "1");
+    }
+
     let exit_code = main_impl()?;
     std::process::exit(exit_code);
 }
