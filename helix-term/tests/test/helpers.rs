@@ -230,7 +230,7 @@ pub fn test_syntax_loader(overrides: Option<String>) -> helix_core::syntax::Load
     helix_core::syntax::Loader::new(lang.try_into().unwrap()).unwrap()
 }
 
-fn init_persistence_files() -> anyhow::Result<(TempPath, TempPath, TempPath)> {
+fn init_persistence_files() -> anyhow::Result<(TempPath, TempPath, TempPath, TempPath)> {
     let command_file = NamedTempFile::new()?;
     let command_path = command_file.into_temp_path();
     helix_loader::initialize_command_histfile(Some(command_path.to_path_buf()));
@@ -243,7 +243,11 @@ fn init_persistence_files() -> anyhow::Result<(TempPath, TempPath, TempPath)> {
     let file_path = file_file.into_temp_path();
     helix_loader::initialize_file_histfile(Some(file_path.to_path_buf()));
 
-    Ok((command_path, search_path, file_path))
+    let clipboard_file = NamedTempFile::new()?;
+    let clipboard_path = clipboard_file.into_temp_path();
+    helix_loader::initialize_clipboard_file(Some(clipboard_path.to_path_buf()));
+
+    Ok((command_path, search_path, file_path, clipboard_path))
 }
 
 /// Use this for very simple test cases where there is one input
@@ -253,7 +257,7 @@ pub async fn test_with_config<T: Into<TestCase>>(
     app_builder: AppBuilder,
     test_case: T,
 ) -> anyhow::Result<()> {
-    let (_, _, _) = init_persistence_files()?;
+    let (_, _, _, _) = init_persistence_files()?;
     let test_case = test_case.into();
     let app = app_builder.build()?;
 
