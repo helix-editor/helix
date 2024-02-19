@@ -1816,7 +1816,11 @@ impl Editor {
             // We need to persist ViewPositions on documents a la PR #7568, then fetch that here.
             if doc.selections().contains_key(&id) {
                 if let Some(path) = doc.path() {
-                    file_locs.push((path.clone(), offset, doc.selection(id).clone()));
+                    file_locs.push(FileHistoryEntry::new(
+                        path.clone(),
+                        offset,
+                        doc.selection(id).clone(),
+                    ));
                 }
             }
 
@@ -1825,13 +1829,9 @@ impl Editor {
         }
 
         for loc in file_locs {
-            // TODO: can the arg here be a reference? would save cloning
-            persistence::push_file_history(FileHistoryEntry::new(
-                loc.0.clone(),
-                loc.1,
-                loc.2.clone(),
-            ));
-            self.old_file_locs.insert(loc.0, (loc.1, loc.2));
+            persistence::push_file_history(&loc);
+            self.old_file_locs
+                .insert(loc.path, (loc.view_position, loc.selection));
         }
 
         self.tree.remove(id);
@@ -1871,7 +1871,11 @@ impl Editor {
 
                 if view.doc == doc_id {
                     if let Some(path) = doc.path() {
-                        file_locs.push((path.clone(), view.offset, doc.selection(view.id).clone()));
+                        file_locs.push(FileHistoryEntry::new(
+                            path.clone(),
+                            view.offset,
+                            doc.selection(view.id).clone(),
+                        ));
                     };
 
                     // something was previously open in the view, switch to previous doc
@@ -1888,13 +1892,9 @@ impl Editor {
             .collect();
 
         for loc in file_locs {
-            // TODO: can the arg here be a reference? would save cloning
-            persistence::push_file_history(FileHistoryEntry::new(
-                loc.0.clone(),
-                loc.1,
-                loc.2.clone(),
-            ));
-            self.old_file_locs.insert(loc.0, (loc.1, loc.2));
+            persistence::push_file_history(&loc);
+            self.old_file_locs
+                .insert(loc.path, (loc.view_position, loc.selection));
         }
 
         for action in actions {

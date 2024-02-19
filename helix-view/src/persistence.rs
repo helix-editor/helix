@@ -26,7 +26,7 @@ impl FileHistoryEntry {
     }
 }
 
-pub fn push_file_history(entry: FileHistoryEntry) {
+pub fn push_file_history(entry: &FileHistoryEntry) {
     push_history(file_histfile(), entry)
 }
 
@@ -34,7 +34,7 @@ pub fn read_file_history() -> Vec<FileHistoryEntry> {
     read_history(file_histfile())
 }
 
-pub fn push_reg_history(register: char, line: &str) {
+pub fn push_reg_history(register: char, line: &String) {
     let filepath = match register {
         ':' => command_histfile(),
         '/' => search_histfile(),
