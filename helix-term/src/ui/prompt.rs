@@ -38,7 +38,6 @@ pub struct Prompt {
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
-#[repr(C)]
 pub enum PromptEvent {
     /// The prompt input has been updated.
     Update,
