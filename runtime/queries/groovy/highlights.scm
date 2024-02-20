@@ -1,96 +1,268 @@
-(unit
-  (identifier) @variable)
+[
+  "!instanceof"
+  "assert"
+  "class"
+  "extends"
+  "instanceof"
+  "package"
+] @keyword
 
-(string
-  (identifier) @variable)
+[
+  "!in"
+  "as"
+  "in"
+] @keyword.operator
 
-(escape_sequence) @constant.character.escape
+[
+  "case"
+  "default"
+  "else"
+  "if"
+  "switch"
+] @keyword.conditional
 
-(block
-  (unit
-    (identifier) @namespace))
+[
+  "catch"
+  "finally"
+  "try"
+] @keyword.exception
 
-(func
-  (identifier) @function)
+"def" @keyword.function
 
-(number) @constant.numeric
+"import" @keyword.import
 
-((identifier) @constant.builtin.boolean
-  (#any-of? @constant.builtin.boolean "true" "false"))
+[
+  "for"
+  "while"
+  (break)
+  (continue)
+] @keyword.repeat
 
-((identifier) @constant
-  (#match? @constant "^[A-Z][A-Z\\d_]*$"))
+"return" @keyword.return
 
-((identifier) @constant.builtin
-  (#eq? @constant.builtin "null"))
+[
+  "true"
+  "false"
+] @boolean
 
-((identifier) @type
-  (#any-of? @type
-    "String"
-    "Map"
-    "Object"
-    "Boolean"
-    "Integer"
-    "List"))
+(null) @constant.builtin
 
-((identifier) @function.builtin
-  (#any-of? @function.builtin
-    "void"
-    "id"
-    "version"
-    "apply"
-    "implementation"
-    "testImplementation"
-    "androidTestImplementation"
-    "debugImplementation"))
+"this" @variable.builtin
 
-((identifier) @keyword.storage.modifier
-  (#eq? @keyword.storage.modifier "static"))
+[
+  "int"
+  "char"
+  "short"
+  "long"
+  "boolean"
+  "float"
+  "double"
+  "void"
+] @type.builtin
 
-((identifier) @keyword.storage.type
-  (#any-of? @keyword.storage.type "class" "def" "interface"))
+[
+  "final"
+  "private"
+  "protected"
+  "public"
+  "static"
+  "synchronized"
+] @type.qualifier
 
-((identifier) @keyword
-  (#any-of? @keyword
-    "assert"
-    "new"
-    "extends"
-    "implements"
-    "instanceof"))
+(comment) @comment @spell
 
-((identifier) @keyword.control.import
-  (#any-of? @keyword.control.import "import" "package"))
-
-((identifier) @keyword.storage.modifier
-  (#any-of? @keyword.storage.modifier
-    "abstract"
-    "protected"
-    "private"
-    "public"))
-
-((identifier) @keyword.control.exception
-  (#any-of? @keyword.control.exception
-    "throw"
-    "finally"
-    "try"
-    "catch"))
+(shebang) @keyword.directive
 
 (string) @string
 
-[
-  (line_comment)
-  (block_comment)
-] @comment
+(string
+  (escape_sequence) @string.escape)
 
-((block_comment) @comment.block.documentation
-  (#match? @comment.block.documentation "^/[*][*][^*](?s:.)*[*]/$"))
-
-((line_comment) @comment.block.documentation
-  (#match? @comment.block.documentation "^///[^/]*.*$"))
+(string
+  (interpolation
+    "$" @punctuation.special))
 
 [
-  (operators)
-  (leading_key)
+  "("
+  ")"
+  "["
+  "]"
+  "{"
+  "}"
+] @punctuation.bracket
+
+[
+  ":"
+  ","
+  "."
+] @punctuation.delimiter
+
+(number_literal) @number
+
+(identifier) @variable
+
+((identifier) @constant
+  (#match? @constant "^[A-Z][A-Z_]+"))
+
+[
+  "%"
+  "*"
+  "/"
+  "+"
+  "-"
+  "<<"
+  ">>"
+  ">>>"
+  ".."
+  "..<"
+  "<..<"
+  "<.."
+  "<"
+  "<="
+  ">"
+  ">="
+  "=="
+  "!="
+  "<=>"
+  "==="
+  "!=="
+  "=~"
+  "==~"
+  "&"
+  "^"
+  "|"
+  "&&"
+  "||"
+  "?:"
+  "+"
+  "*"
+  ".&"
+  ".@"
+  "?."
+  "*."
+  "*"
+  "*:"
+  "++"
+  "--"
+  "!"
 ] @operator
 
-["(" ")" "[" "]" "{" "}"]  @punctuation.bracket
+(string
+  "/" @string)
+
+(ternary_op
+  ([
+    "?"
+    ":"
+  ]) @keyword.conditional.ternary)
+
+(map
+  (map_item
+    key: (identifier) @variable.parameter))
+
+(parameter
+  type: (identifier) @type
+  name: (identifier) @variable.parameter)
+
+(generic_param
+  name: (identifier) @variable.parameter)
+
+(declaration
+  type: (identifier) @type)
+
+(function_definition
+  type: (identifier) @type)
+
+(function_declaration
+  type: (identifier) @type)
+
+(class_definition
+  name: (identifier) @type)
+
+(class_definition
+  superclass: (identifier) @type)
+
+(generic_param
+  superclass: (identifier) @type)
+
+(type_with_generics
+  (identifier) @type)
+
+(type_with_generics
+  (generics
+    (identifier) @type))
+
+(generics
+  [
+    "<"
+    ">"
+  ] @punctuation.bracket)
+
+(generic_parameters
+  [
+    "<"
+    ">"
+  ] @punctuation.bracket)
+
+; TODO: Class literals with PascalCase
+(declaration
+  "=" @operator)
+
+(assignment
+  "=" @operator)
+
+(function_call
+  function: (identifier) @function)
+
+(function_call
+  function:
+    (dotted_identifier
+      (identifier) @function .))
+
+(function_call
+  (argument_list
+    (map_item
+      key: (identifier) @variable.parameter)))
+
+(juxt_function_call
+  function: (identifier) @function)
+
+(juxt_function_call
+  function:
+    (dotted_identifier
+      (identifier) @function .))
+
+(juxt_function_call
+  (argument_list
+    (map_item
+      key: (identifier) @variable.parameter)))
+
+(function_definition
+  function: (identifier) @function)
+
+(function_declaration
+  function: (identifier) @function)
+
+(annotation) @function.macro
+
+(annotation
+  (identifier) @function.macro)
+
+"@interface" @function.macro
+
+(groovy_doc) @comment.documentation @spell
+
+(groovy_doc
+  [
+    (groovy_doc_param)
+    (groovy_doc_throws)
+    (groovy_doc_tag)
+  ] @string.special @nospell)
+
+(groovy_doc
+  (groovy_doc_param
+    (identifier) @variable.parameter) @nospell)
+
+(groovy_doc
+  (groovy_doc_throws
+    (identifier) @type @nospell))
