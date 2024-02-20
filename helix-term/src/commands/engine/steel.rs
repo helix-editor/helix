@@ -75,7 +75,6 @@ thread_local! {
 }
 
 pub struct KeyMapApi {
-    get_keymap: fn() -> EmbeddedKeyMap,
     default_keymap: fn() -> EmbeddedKeyMap,
     empty_keymap: fn() -> EmbeddedKeyMap,
     string_to_embedded_keymap: fn(String) -> EmbeddedKeyMap,
@@ -87,7 +86,6 @@ pub struct KeyMapApi {
 impl KeyMapApi {
     fn new() -> Self {
         KeyMapApi {
-            get_keymap,
             default_keymap,
             empty_keymap,
             string_to_embedded_keymap,
@@ -117,7 +115,6 @@ thread_local! {
 fn load_keymap_api(engine: &mut Engine, api: KeyMapApi) {
     let mut module = BuiltInModule::new("helix/core/keymaps");
 
-    module.register_fn("helix-current-keymap", api.get_keymap);
     module.register_fn("helix-empty-keymap", api.empty_keymap);
     module.register_fn("helix-default-keymap", api.default_keymap);
     module.register_fn("helix-merge-keybindings", api.merge_keybindings);
@@ -1091,16 +1088,6 @@ pub fn present_error(cx: &mut Context, e: SteelErr) {
 #[derive(Clone, Debug)]
 pub struct EmbeddedKeyMap(pub HashMap<Mode, KeyTrie>);
 impl Custom for EmbeddedKeyMap {}
-
-pub fn get_keymap() -> EmbeddedKeyMap {
-    // Snapsnot current configuration for use in forking the keymap
-    let keymap = Config::load_default().unwrap();
-
-    // These are the actual mappings that we want
-    let map = keymap.keys;
-
-    EmbeddedKeyMap(map)
-}
 
 // Will deep copy a value by default when using a value type
 pub fn deep_copy_keymap(copied: EmbeddedKeyMap) -> EmbeddedKeyMap {
