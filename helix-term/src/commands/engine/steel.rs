@@ -112,7 +112,6 @@ thread_local! {
     pub static REVERSE_BUFFER_MAP: SteelVal =
         SteelVal::boxed(SteelVal::empty_hashmap());
 
-    pub static GLOBAL_KEYBINDING_MAP: SteelVal = get_keymap().into_steelval().unwrap();
 }
 
 fn load_keymap_api(engine: &mut Engine, api: KeyMapApi) {
@@ -135,11 +134,6 @@ fn load_keymap_api(engine: &mut Engine, api: KeyMapApi) {
     module.register_value(
         "*reverse-buffer-map*",
         REVERSE_BUFFER_MAP.with(|x| x.clone()),
-    );
-
-    module.register_value(
-        "*global-keybinding-map*",
-        GLOBAL_KEYBINDING_MAP.with(|x| x.clone()),
     );
 
     engine.register_module(module);
@@ -533,7 +527,7 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
             r#"
 (provide update-configuration!)
 (define (update-configuration!)
-    (helix.update-configuration! *helix.cx*))
+    (helix.update-configuration! *helix.config*))
 "#,
         ));
 
@@ -542,7 +536,7 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
             r#"
 (provide get-keybindings)
 (define (get-keybindings)
-    (helix.get-keybindings *helix.cx*))
+    (helix.get-keybindings *helix.config*))
 "#,
         ));
 
@@ -1007,8 +1001,7 @@ impl SteelScriptingEngine {
             }
         }
 
-        // Refer to the global keybinding map for the rest
-        Some(GLOBAL_KEYBINDING_MAP.with(|x| x.clone()))
+        None
     }
 }
 
