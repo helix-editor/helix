@@ -6,7 +6,7 @@ use helix_core::str_utils::char_to_byte_idx;
 use helix_core::syntax::Highlight;
 use helix_core::syntax::HighlightEvent;
 use helix_core::text_annotations::TextAnnotations;
-use helix_core::{visual_offset_from_block, Position, Range, RopeSlice};
+use helix_core::{visual_offset_from_block, Position, RopeSlice};
 use helix_view::editor::{WhitespaceConfig, WhitespaceRenderValue};
 use helix_view::graphics::Rect;
 use helix_view::theme::Style;
