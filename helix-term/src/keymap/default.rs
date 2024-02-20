@@ -6,57 +6,103 @@ use helix_core::hashmap;
 
 pub fn default() -> HashMap<Mode, KeyTrie> {
     let normal = keymap!({ "Normal mode"
-        "h" | "left" => move_char_left,
-        "j" | "down" => move_visual_line_down,
-        "k" | "up" => move_visual_line_up,
-        "l" | "right" => move_char_right,
+        // I     󰁔 
+        // "h" | "left" => move_char_left,
+        // "j" | "down" => move_visual_line_down,
+        // "k" | "up" => move_visual_line_up,
+        // "l" | "right" => move_char_right,
+        
+        "left" => move_char_left,
+        "down" => move_visual_line_down,
+        "up" => move_visual_line_up,
+        "right" => move_char_right,
 
         "t" => find_till_char,
-        "f" => find_next_char,
         "T" => till_prev_char,
+        
+        "f" => find_next_char,
         "F" => find_prev_char,
+        
         "r" => replace,
         "R" => replace_with_yanked,
-        "A-." =>  repeat_last_motion,
+        
+        // "A-." => repeat_last_motion,
+        "A-." => no_op, // how this work?
+        
+        "C-u" => switch_case,
 
-        "~" => switch_case,
-        "`" => switch_to_lowercase,
-        "A-`" => switch_to_uppercase,
+        // "`" => switch_to_lowercase,
+        "`" => no_op,
+
+        // "A-`" => switch_to_uppercase,
+        "A-`" => no_op,
 
         "home" => goto_line_start,
         "end" => goto_line_end,
 
         "w" => move_next_word_start,
+        // "W" => move_next_long_word_start,
+        "W" => no_op,
+        "C-right" => move_next_long_word_start,
+        
         "b" => move_prev_word_start,
+        // "B" => move_prev_long_word_start,
+        "B" => no_op,
+        "C-left" => move_prev_long_word_start,
+        
         "e" => move_next_word_end,
+        // "E" => move_next_long_word_end,
+        "E" => no_op,
 
-        "W" => move_next_long_word_start,
-        "B" => move_prev_long_word_start,
-        "E" => move_next_long_word_end,
-
+        // new to normal mode
+        "C-tab" => goto_next_buffer, // works ok
+        "C-S-tab" => goto_previous_buffer, // works ok
+        "C-home" => goto_file_start,
+        "C-end" => goto_last_line,
+        "C-up" => goto_window_top,
+        "C-down" => goto_window_bottom,
+        
         "v" => select_mode,
         "G" => goto_line,
-        "g" => { "Goto"
-            "g" => goto_file_start,
-            "e" => goto_last_line,
-            "f" => goto_file,
-            "h" => goto_line_start,
-            "l" => goto_line_end,
+        "g" => { "Goto 󱞬 "
+            // "g" => goto_file_start,
+            "g" => no_op,
+            // "e" => goto_last_line,
+            "e" => no_op,
+            
+            // "f" => goto_file,
+            "f" => no_op,
+            
+            // "h" => goto_line_start,
+            // "l" => goto_line_end,
+            
             "s" => goto_first_nonwhitespace,
+            
             "d" => goto_definition,
             "D" => goto_declaration,
             "y" => goto_type_definition,
             "r" => goto_reference,
             "i" => goto_implementation,
-            "t" => goto_window_top,
+            
+            // "t" => goto_window_top,
+            "t" => no_op,
             "c" => goto_window_center,
-            "b" => goto_window_bottom,
+            // "b" => goto_window_bottom,
+            "b" => no_op,
+            
             "a" => goto_last_accessed_file,
             "m" => goto_last_modified_file,
-            "n" => goto_next_buffer,
-            "p" => goto_previous_buffer,
-            "k" => move_line_up,
-            "j" => move_line_down,
+            
+            // "n" => goto_next_buffer,
+            // "p" => goto_previous_buffer,
+            "n" => no_op,
+            "p" => no_op,
+            
+            // "k" => move_line_up,
+            // "j" => move_line_down,
+            "k" => no_op,
+            "j" => no_op,
+            
             "." => goto_last_modification,
         },
         ":" => command_mode,
@@ -91,7 +137,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "A-e" => move_parent_node_end,
         "A-b" => move_parent_node_start,
 
-        "%" => select_all,
+        // "%" => select_all,
+        "C-a" => select_all,
         "x" => extend_line_below,
         "X" => extend_to_line_bounds,
         "A-x" => shrink_to_line_bounds,
@@ -178,7 +225,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "esc" => normal_mode,
         "C-b" | "pageup" => page_up,
         "C-f" | "pagedown" => page_down,
-        "C-u" => page_cursor_half_up,
+        // "C-u" => page_cursor_half_up,
         "C-d" => page_cursor_half_down,
 
         "C-w" => { "Window"
@@ -205,7 +252,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         },
 
         // move under <space>c
-        "C-c" => toggle_comments,
+        // "C-c" => toggle_comments,
+        "C-/" => toggle_comments,
 
         // z family for save/restore/combine from/to sels from register
 
@@ -324,7 +372,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "$" => shell_keep_pipe,
         "C-z" => suspend,
 
-        "C-a" => increment,
+        // "C-a" => increment,
         "C-x" => decrement,
     });
     let mut select = normal.clone();

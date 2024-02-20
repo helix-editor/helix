@@ -226,143 +226,219 @@ impl MappableCommand {
 
     #[rustfmt::skip]
     static_commands!(
-        no_op, "Do nothing",
-        move_char_left, "Move left",
-        move_char_right, "Move right",
-        move_line_up, "Move up",
-        move_line_down, "Move down",
-        move_visual_line_up, "Move up",
-        move_visual_line_down, "Move down",
-        extend_char_left, "Extend left",
-        extend_char_right, "Extend right",
-        extend_line_up, "Extend up",
-        extend_line_down, "Extend down",
-        extend_visual_line_up, "Extend up",
-        extend_visual_line_down, "Extend down",
-        copy_selection_on_next_line, "Copy selection on next line",
-        copy_selection_on_prev_line, "Copy selection on previous line",
-        move_next_word_start, "Move to start of next word",
-        move_prev_word_start, "Move to start of previous word",
-        move_next_word_end, "Move to end of next word",
-        move_prev_word_end, "Move to end of previous word",
-        move_next_long_word_start, "Move to start of next long word",
-        move_prev_long_word_start, "Move to start of previous long word",
-        move_next_long_word_end, "Move to end of next long word",
-        move_prev_long_word_end, "Move to end of previous long word",
-        move_parent_node_end, "Move to end of the parent node",
-        move_parent_node_start, "Move to beginning of the parent node",
-        extend_next_word_start, "Extend to start of next word",
-        extend_prev_word_start, "Extend to start of previous word",
-        extend_next_word_end, "Extend to end of next word",
-        extend_prev_word_end, "Extend to end of previous word",
-        extend_next_long_word_start, "Extend to start of next long word",
-        extend_prev_long_word_start, "Extend to start of previous long word",
-        extend_next_long_word_end, "Extend to end of next long word",
-        extend_prev_long_word_end, "Extend to end of prev long word",
-        extend_parent_node_end, "Extend to end of the parent node",
-        extend_parent_node_start, "Extend to beginning of the parent node",
-        find_till_char, "Move till next occurrence of char",
-        find_next_char, "Move to next occurrence of char",
-        extend_till_char, "Extend till next occurrence of char",
-        extend_next_char, "Extend to next occurrence of char",
-        till_prev_char, "Move till previous occurrence of char",
-        find_prev_char, "Move to previous occurrence of char",
-        extend_till_prev_char, "Extend till previous occurrence of char",
-        extend_prev_char, "Extend to previous occurrence of char",
+        no_op, "Do nothing 󰜺 ",
+        
+        move_char_left, " Move left",
+        move_char_right, "Move right  ",
+        move_line_up, "Move up  ",
+        move_line_down, "Move down  ",
+        
+        move_visual_line_up, "Move up  ",
+        move_visual_line_down, "Move down  ",
+        
+        extend_char_left, " Extend left",
+        extend_char_right, "Extend right  ",
+        extend_line_up, "Extend up ",
+        extend_line_down, "Extend down ",
+        
+        extend_visual_line_up, "Extend up ",
+        extend_visual_line_down, "Extend down ",
+        
+        copy_selection_on_next_line, "Copy selection on next line ",
+        copy_selection_on_prev_line, "Copy selection on previous line ",
+        
+        move_next_word_start, "Move to start of next word  ",
+        move_next_word_end, "Move to end of next word  ",
+        
+        move_prev_word_start, " Move to start of previous word",
+        move_prev_word_end, " Move to end of previous word",
+        
+        move_next_long_word_start, "Move to start of next long word  ",
+        move_next_long_word_end, "Move to end of next long word  ",
+        
+        move_prev_long_word_start, " Move to start of previous long word",
+        move_prev_long_word_end, " Move to end of previous long word",
+        
+        move_parent_node_end, "Move to end of the parent node ",
+        move_parent_node_start, "Move to beginning of the parent node ",
+        
+        extend_next_word_start, "Extend to start of next word  ",
+        extend_next_word_end, "Extend to end of next word  ",
+        
+        extend_prev_word_start, " Extend to start of previous word",
+        extend_prev_word_end, " Extend to end of previous word",
+        
+        extend_next_long_word_start, "Extend to start of next long word  ",
+        extend_next_long_word_end, "Extend to end of next long word  ",
+        
+        extend_prev_long_word_start, "  Extend to start of previous long word",
+        extend_prev_long_word_end, "  Extend to end of prev long word",
+        
+        extend_parent_node_end, "Extend to end of the parent node ",
+        extend_parent_node_start, "Extend to beginning of the parent node ",
+        
+        find_till_char, "Move till next occurrence of char  ",
+        find_next_char, "Move to next occurrence of char  ",
+        
+        extend_till_char, "Extend till next occurrence of char  ",
+        extend_next_char, "Extend to next occurrence of char  ",
+        
+        till_prev_char, " Move till previous occurrence of char",
+        find_prev_char, " Move to previous occurrence of char",
+        
+        extend_till_prev_char, " Extend till previous occurrence of char",
+        extend_prev_char, " Extend to previous occurrence of char",
+        
         repeat_last_motion, "Repeat last motion",
+        
         replace, "Replace with new char",
-        switch_case, "Switch (toggle) case",
+        
+        switch_case, "toggle case  ",
+        
         switch_to_uppercase, "Switch to uppercase",
         switch_to_lowercase, "Switch to lowercase",
-        page_up, "Move page up",
-        page_down, "Move page down",
+        
+        page_up, "PgUp 󱞿 ",
+        page_down, "PgDn 󱞣 ",
+        
         half_page_up, "Move half page up",
         half_page_down, "Move half page down",
+        
         page_cursor_up, "Move page and cursor up",
         page_cursor_down, "Move page and cursor down",
+        
         page_cursor_half_up, "Move page and cursor half up",
         page_cursor_half_down, "Move page and cursor half down",
-        select_all, "Select whole document",
+        
+        select_all, "Select all 󰒆 ",
         select_regex, "Select all regex matches inside selections",
+        
         split_selection, "Split selections on regex matches",
         split_selection_on_newline, "Split selection on newlines",
+        
         merge_selections, "Merge selections",
         merge_consecutive_selections, "Merge consecutive selections",
+        
         search, "Search for regex pattern",
         rsearch, "Reverse search for regex pattern",
+        
         search_next, "Select next search match",
         search_prev, "Select previous search match",
+        
         extend_search_next, "Add next search match to selection",
         extend_search_prev, "Add previous search match to selection",
+        
         search_selection, "Use current selection as search pattern",
+        
         make_search_word_bounded, "Modify current search to make it word bounded",
+        
         global_search, "Global search in workspace folder",
+        
         extend_line, "Select current line, if already selected, extend to another line based on the anchor",
+        
         extend_line_below, "Select current line, if already selected, extend to next line",
         extend_line_above, "Select current line, if already selected, extend to previous line",
+        
         extend_to_line_bounds, "Extend selection to line bounds",
         shrink_to_line_bounds, "Shrink selection to line bounds",
+        
         delete_selection, "Delete selection",
         delete_selection_noyank, "Delete selection without yanking",
+        
         change_selection, "Change selection",
         change_selection_noyank, "Change selection without yanking",
+        
         collapse_selection, "Collapse selection into single cursor",
+        
         flip_selections, "Flip selection cursor and anchor",
+        
         ensure_selections_forward, "Ensure all selections face forward",
-        insert_mode, "Insert before selection",
-        append_mode, "Append after selection",
-        command_mode, "Enter command mode",
-        file_picker, "Open file picker",
-        file_picker_in_current_buffer_directory, "Open file picker at current buffers's directory",
-        file_picker_in_current_directory, "Open file picker at current working directory",
-        code_action, "Perform code action",
-        buffer_picker, "Open buffer picker",
-        jumplist_picker, "Open jumplist picker",
-        symbol_picker, "Open symbol picker",
+        
+        insert_mode, "Insert 󰬐 ",
+        append_mode, "Append 󰬈 ",
+        command_mode, "Command  ",
+        
+        file_picker, "File picker  ",
+        
+        file_picker_in_current_buffer_directory, "File picker at buffer 󰥩 ",
+        file_picker_in_current_directory, "File picker at cwd 󱎱 ",
+        
+        code_action, "Code action  ",
+        
+        buffer_picker, "Buffer picker  ",
+        
+        jumplist_picker, "Jumplist picker 󱎸 ",
+        
+        symbol_picker, "Symbol picker 󱈇 ",
+        
         select_references_to_symbol_under_cursor, "Select symbol references",
+        
         workspace_symbol_picker, "Open workspace symbol picker",
+        
         diagnostics_picker, "Open diagnostic picker",
+        
         workspace_diagnostics_picker, "Open workspace diagnostic picker",
+        
         last_picker, "Open last picker",
-        insert_at_line_start, "Insert at start of line",
-        insert_at_line_end, "Insert at end of line",
+        
+        insert_at_line_start, "󰞓 Insert at start of line",
+        insert_at_line_end, "Insert at end of line 󰞔 ",
+        
         open_below, "Open new line below selection",
         open_above, "Open new line above selection",
+        
         normal_mode, "Enter normal mode",
         select_mode, "Enter selection extend mode",
         exit_select_mode, "Exit selection mode",
-        goto_definition, "Goto definition",
-        goto_declaration, "Goto declaration",
+        
+        goto_definition, "Definition  ",
+        goto_declaration, "DECLARATION  ",
+        
         add_newline_above, "Add newline above",
         add_newline_below, "Add newline below",
-        goto_type_definition, "Goto type definition",
-        goto_implementation, "Goto implementation",
-        goto_file_start, "Goto line number <n> else file start",
-        goto_file_end, "Goto file end",
-        goto_file, "Goto files/URLs in selections",
+        
+        goto_type_definition, "Type definition  ",
+        goto_implementation, "Implementation  ",
+        
+        goto_file_start, "Line number <n> else file start",
+        goto_file_end, "File end 󰞒 ",
+        
+        goto_file, "Files/URLs in selections",
+        
         goto_file_hsplit, "Goto files in selections (hsplit)",
         goto_file_vsplit, "Goto files in selections (vsplit)",
-        goto_reference, "Goto references",
-        goto_window_top, "Goto window top",
-        goto_window_center, "Goto window center",
-        goto_window_bottom, "Goto window bottom",
-        goto_last_accessed_file, "Goto last accessed file",
-        goto_last_modified_file, "Goto last modified file",
-        goto_last_modification, "Goto last modification",
+        
+        goto_reference, "References  ",
+        
+        goto_window_top, "Window top 󱔓 ",
+        goto_window_center, "Window center 󰝔 ",
+        goto_window_bottom, "Window bottom 󱂩 ",
+        
+        goto_last_accessed_file, "Last accessed file 󱋢 ",
+        goto_last_modified_file, "Last modified file 󱇨 ",
+        goto_last_modification, "Last modification 󰏫 ",
+        
         goto_line, "Goto line",
-        goto_last_line, "Goto last line",
+        
+        goto_last_line, "Last line 󰞒 ",
+        
         goto_first_diag, "Goto first diagnostic",
         goto_last_diag, "Goto last diagnostic",
         goto_next_diag, "Goto next diagnostic",
         goto_prev_diag, "Goto previous diagnostic",
+        
         goto_next_change, "Goto next change",
         goto_prev_change, "Goto previous change",
+        
         goto_first_change, "Goto first change",
         goto_last_change, "Goto last change",
-        goto_line_start, "Goto line start",
-        goto_line_end, "Goto line end",
-        goto_next_buffer, "Goto next buffer",
-        goto_previous_buffer, "Goto previous buffer",
+        
+        goto_line_start, "󰞓 Line start",
+        goto_line_end, "Line end 󰞔 ",
+        
+        goto_next_buffer, "Next buffer  ",
+        goto_previous_buffer, "󰞓 Prev buffer",
+        
         goto_line_end_newline, "Goto newline at line end",
         goto_first_nonwhitespace, "Goto first non-blank in line",
         trim_selections, "Trim whitespace from selections",
