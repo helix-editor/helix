@@ -358,10 +358,10 @@ impl MappableCommand {
         append_mode, "Append 󰬈 ",
         command_mode, "Command  ",
         
-        file_picker, "File picker  ",
+        file_picker, "Open file  ",
         
-        file_picker_in_current_buffer_directory, "File picker at buffer 󰥩 ",
-        file_picker_in_current_directory, "File picker at cwd 󱎱 ",
+        file_picker_in_current_buffer_directory, "Open file next to buffer 󰥩 ",
+        file_picker_in_current_directory, "Open file at cwd 󱎱 ",
         
         code_action, "Code action  ",
         
