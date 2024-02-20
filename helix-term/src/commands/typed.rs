@@ -35,7 +35,6 @@ impl TypableCommand {
 }
 
 #[derive(Clone)]
-#[repr(C)]
 pub struct CommandSignature {
     // Arguments with specific completion methods based on their position.
     positional_args: &'static [Completer],
