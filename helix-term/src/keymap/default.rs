@@ -6,7 +6,8 @@ use helix_core::hashmap;
 
 pub fn default() -> HashMap<Mode, KeyTrie> {
     let normal = keymap!({ "Normal mode"
-        // I     󰁔 
+        //     󰁔 
+
         // "h" | "left" => move_char_left,
         // "j" | "down" => move_visual_line_down,
         // "k" | "up" => move_visual_line_up,
@@ -27,7 +28,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "R" => replace_with_yanked,
         
         // "A-." => repeat_last_motion,
-        "A-." => no_op, // how this work?
+        "A-." => no_op, // disabled until knowing how this actually work
         
         "C-u" => switch_case,
 
@@ -61,6 +62,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "C-end" => goto_last_line,
         "C-up" => goto_window_top,
         "C-down" => goto_window_bottom,
+        "C-," => file_picker,
+        "C-." => file_picker,
         
         "v" => select_mode,
         "G" => goto_line,
@@ -262,7 +265,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "C-s" => save_selection,
 
         "space" => { "Space"
-            "f" => file_picker,
+            // "f" => file_picker,
+            "f" => no_op,
             "F" => file_picker_in_current_directory,
             "b" => buffer_picker,
             "j" => jumplist_picker,
