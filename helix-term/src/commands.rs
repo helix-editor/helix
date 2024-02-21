@@ -10,6 +10,7 @@ pub use typed::*;
 
 use helix_core::{
     char_idx_at_visual_offset, comment,
+    diagnostic::Severity,
     doc_formatter::TextFormat,
     encoding, find_first_non_whitespace_char, find_workspace, graphemes,
     history::UndoKind,
@@ -354,6 +355,8 @@ impl MappableCommand {
         goto_last_diag, "Goto last diagnostic",
         goto_next_diag, "Goto next diagnostic",
         goto_prev_diag, "Goto previous diagnostic",
+        goto_next_error, "Goto next error",
+        goto_prev_error, "Goto prev error",
         goto_next_change, "Goto next change",
         goto_prev_change, "Goto previous change",
         goto_first_change, "Goto first change",
@@ -3395,7 +3398,7 @@ fn goto_last_diag(cx: &mut Context) {
     doc.set_selection(view.id, selection);
 }
 
-fn goto_next_diag(cx: &mut Context) {
+fn goto_diagnostic_impl(cx: &mut Context, min_severity: Severity, direction: Direction) {
     let (view, doc) = current!(cx.editor);
 
     let cursor_pos = doc
@@ -3403,41 +3406,44 @@ fn goto_next_diag(cx: &mut Context) {
         .primary()
         .cursor(doc.text().slice(..));
 
-    let diag = doc
+    let mut iter = doc
         .diagnostics()
         .iter()
-        .find(|diag| diag.range.start > cursor_pos)
-        .or_else(|| doc.diagnostics().first());
+        .filter(|diag| diag.severity.unwrap_or(Severity::Hint) >= min_severity);
 
-    let selection = match diag {
-        Some(diag) => Selection::single(diag.range.start, diag.range.end),
-        None => return,
+    // Find the next diagnostic or start again at the first one.
+    // The `iter.clone()` is required as find exhausts the iterator, and we reuse iter in the `or_else`
+    let diag = match direction {
+        Direction::Forward => iter
+            .clone()
+            .find(|diag| diag.range.start > cursor_pos)
+            .or_else(|| iter.next()),
+        Direction::Backward => {
+            let mut iter = iter.rev();
+            iter.clone()
+                .find(|diag| diag.range.start < cursor_pos)
+                .or_else(|| iter.next())
+        }
     };
-    doc.set_selection(view.id, selection);
+
+    let Some(diag) = diag else {return};
+    doc.set_selection(view.id, Selection::single(diag.range.start, diag.range.end));
+}
+
+fn goto_next_diag(cx: &mut Context) {
+    goto_diagnostic_impl(cx, Severity::Hint, Direction::Forward)
 }
 
 fn goto_prev_diag(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
+    goto_diagnostic_impl(cx, Severity::Hint, Direction::Backward)
+}
 
-    let cursor_pos = doc
-        .selection(view.id)
-        .primary()
-        .cursor(doc.text().slice(..));
+fn goto_next_error(cx: &mut Context) {
+    goto_diagnostic_impl(cx, Severity::Error, Direction::Forward)
+}
 
-    let diag = doc
-        .diagnostics()
-        .iter()
-        .rev()
-        .find(|diag| diag.range.start < cursor_pos)
-        .or_else(|| doc.diagnostics().last());
-
-    let selection = match diag {
-        // NOTE: the selection is reversed because we're jumping to the
-        // previous diagnostic.
-        Some(diag) => Selection::single(diag.range.end, diag.range.start),
-        None => return,
-    };
-    doc.set_selection(view.id, selection);
+fn goto_prev_error(cx: &mut Context) {
+    goto_diagnostic_impl(cx, Severity::Error, Direction::Backward)
 }
 
 fn goto_first_change(cx: &mut Context) {
