@@ -69,6 +69,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         
         "v" => select_mode,
         "G" => goto_line,
+
+        // Menu
         "g" => { " 󱞨 Goto "
             // "g" => goto_file_start,
             "g" => no_op,
@@ -81,7 +83,9 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             // "h" => goto_line_start,
             // "l" => goto_line_end,
             
-            "s" => goto_first_nonwhitespace,
+            // "s" => goto_first_nonwhitespace,
+            "s" => no_op,
+            "n" => goto_first_nonwhitespace,
             
             "d" => goto_definition,
             "D" => goto_declaration,
@@ -100,7 +104,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             
             // "n" => goto_next_buffer,
             // "p" => goto_previous_buffer,
-            "n" => no_op,
             "p" => no_op,
             
             // "k" => move_line_up,
@@ -233,6 +236,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         // "C-u" => page_cursor_half_up,
         "C-d" => page_cursor_half_down,
 
+        // Menu
         "C-w" => { "  Window"
             "C-w" | "w" => rotate_view,
             "C-s" | "s" => hsplit,
@@ -266,9 +270,10 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "C-o" => jump_backward,
         "C-s" => save_selection,
 
+        // Menu
         "space" => { " 󰫣 Space"
-            // "f" => file_picker,
-            "f" => no_op,
+            "f" => file_picker,
+            // "f" => no_op,
             "F" => file_picker_in_current_directory,
             "b" => buffer_picker,
             "j" => jumplist_picker,
@@ -278,12 +283,18 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "D" => workspace_diagnostics_picker,
             "a" => code_action,
             "'" => last_picker,
+
+            // Submenu
             "g" => { " debug " sticky=true
                 "l" => dap_launch,
                 "r" => dap_restart,
                 "b" => dap_toggle_breakpoint,
                 "c" => dap_continue,
-                "h" => dap_pause,
+                
+                // "h" => dap_pause,
+                "h" => no_op,
+                "p" => dap_pause,
+                
                 "i" => dap_step_in,
                 "o" => dap_step_out,
                 "n" => dap_next,
@@ -297,8 +308,12 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
                     // sl, sb
                 },
                 "e" => dap_enable_exceptions,
-                "E" => dap_disable_exceptions,
+                // "E" => dap_disable_exceptions,
+                "E" => no_op,
+                "d" => dap_disable_exceptions,
             },
+
+            // Submenu
             "w" => { " window "
                 "C-w" | "w" => rotate_view,
                 "C-s" | "s" => hsplit,
@@ -332,6 +347,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "h" => select_references_to_symbol_under_cursor,
             "?" => command_palette,
         },
+
+        // Menu
         "z" => { " 󰛐 View"
             "z" | "c" => align_view_center,
             "t" => align_view_top,
@@ -349,6 +366,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "n" => search_next,
             "N" => search_prev,
         },
+
+        // Menu
         "Z" => { "  VIEW" sticky=true
             "z" | "c" => align_view_center,
             "t" => align_view_top,
@@ -378,6 +397,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         // "C-a" => increment,
         "C-x" => decrement,
     });
+
     let mut select = normal.clone();
     select.merge_nodes(keymap!({ "Select mode"
         "h" | "left" => extend_char_left,
@@ -413,6 +433,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "j" => extend_line_down,
         },
     }));
+
     let insert = keymap!({ "Insert mode"
         "esc" => normal_mode,
 
