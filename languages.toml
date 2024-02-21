@@ -3130,7 +3130,7 @@ source = { git = "https://github.com/apple/tree-sitter-pkl", rev = "c03f04a313b7
 name = "groovy"
 language-id = "groovy"
 scope = "source.groovy"
-file-types = ["groovy", "jenkinsfile", { glob = "Jenkinsfile" },  { glob = "Jenkinsfile.*" }]
+file-types = ["gradle", "groovy", "jenkinsfile", { glob = "Jenkinsfile" },  { glob = "Jenkinsfile.*" }]
 shebangs = ["groovy"]
 comment-token = "//"
 indent = { tab-width = 2, unit = "  " }
