@@ -227,81 +227,81 @@ impl MappableCommand {
     static_commands!(
         no_op, "Do nothing 󰜺 ",
         
-        move_char_left, " Move left",
-        move_char_right, "Move right  ",
-        move_line_up, "Move up  ",
-        move_line_down, "Move down  ",
+        move_char_left, " Move",
+        move_char_right, "Move  ",
+        move_line_up, "Move  ",
+        move_line_down, "Move  ",
         
-        move_visual_line_up, "Move up  ",
-        move_visual_line_down, "Move down  ",
+        move_visual_line_up, "Move visual  ",
+        move_visual_line_down, "Move visual  ",
         
-        extend_char_left, " Extend left",
-        extend_char_right, "Extend right  ",
-        extend_line_up, "Extend up ",
-        extend_line_down, "Extend down ",
+        extend_char_left, " Extend",
+        extend_char_right, "Extend  ",
+        extend_line_up, "Extend ",
+        extend_line_down, "Extend ",
         
-        extend_visual_line_up, "Extend up ",
-        extend_visual_line_down, "Extend down ",
+        extend_visual_line_up, "Extend visual ",
+        extend_visual_line_down, "Extend visual ",
         
-        copy_selection_on_next_line, "Copy selection on next line ",
-        copy_selection_on_prev_line, "Copy selection on previous line ",
+        copy_selection_on_next_line, "Copy on ",
+        copy_selection_on_prev_line, "Copy on ",
         
-        move_next_word_start, "Move to start of next word  ",
-        move_next_word_end, "Move to end of next word  ",
+        move_next_word_start, " Word",
+        move_next_word_end, "Word ",
         
-        move_prev_word_start, " Move to start of previous word",
-        move_prev_word_end, " Move to end of previous word",
+        move_prev_word_start, " Word",
+        move_prev_word_end, "Word ",
         
-        move_next_long_word_start, "Move to start of next long word  ",
-        move_next_long_word_end, "Move to end of next long word  ",
+        move_next_long_word_start, " Worrrd",
+        move_next_long_word_end, "Worrrd ",
         
-        move_prev_long_word_start, " Move to start of previous long word",
-        move_prev_long_word_end, " Move to end of previous long word",
+        move_prev_long_word_start, " Worrrd",
+        move_prev_long_word_end, "Worrrd ",
         
-        move_parent_node_end, "Move to end of the parent node ",
-        move_parent_node_start, "Move to beginning of the parent node ",
+        move_parent_node_end, "Parent ",
+        move_parent_node_start, " Parent",
         
-        extend_next_word_start, "Extend to start of next word  ",
-        extend_next_word_end, "Extend to end of next word  ",
+        extend_next_word_start, "Extend  word",
+        extend_next_word_end, "Extend word  ",
         
-        extend_prev_word_start, " Extend to start of previous word",
-        extend_prev_word_end, " Extend to end of previous word",
+        extend_prev_word_start, " Word extend",
+        extend_prev_word_end, "Word  Extend",
         
-        extend_next_long_word_start, "Extend to start of next long word  ",
-        extend_next_long_word_end, "Extend to end of next long word  ",
+        extend_next_long_word_start, "Extend  worrrd",
+        extend_next_long_word_end, "Extend worrrd ",
         
-        extend_prev_long_word_start, "  Extend to start of previous long word",
-        extend_prev_long_word_end, "  Extend to end of prev long word",
+        extend_prev_long_word_start, " Worrrd extend",
+        extend_prev_long_word_end, "Worrrd extend",
         
-        extend_parent_node_end, "Extend to end of the parent node ",
-        extend_parent_node_start, "Extend to beginning of the parent node ",
+        extend_parent_node_end, "Extend parent ",
+        extend_parent_node_start, "Extend  parent",
         
-        find_till_char, "Move till next occurrence of char  ",
-        find_next_char, "Move to next occurrence of char  ",
+        find_till_char, "Find  char",
+        find_next_char, "Find  (char) ",
         
-        extend_till_char, "Extend till next occurrence of char  ",
-        extend_next_char, "Extend to next occurrence of char  ",
+        extend_till_char, "Extend  char",
+        extend_next_char, "Extend  (char)",
         
-        till_prev_char, " Move till previous occurrence of char",
-        find_prev_char, " Move to previous occurrence of char",
+        till_prev_char, "Char ",
+        find_prev_char, "(Char) ",
         
-        extend_till_prev_char, " Extend till previous occurrence of char",
-        extend_prev_char, " Extend to previous occurrence of char",
+        extend_till_prev_char, "Char extend",
+        extend_prev_char, "(Char) extend",
         
-        repeat_last_motion, "Repeat last motion",
+        repeat_last_motion, "Repeat motion",
         
-        replace, "Replace with new char",
+        replace, "Replace w/ char",
         
-        switch_case, "toggle case  ",
+        switch_case, "Toggle case  ",
         
-        switch_to_uppercase, "Switch to uppercase",
-        switch_to_lowercase, "Switch to lowercase",
+        switch_to_uppercase, "Uppercase 󰬶 ",
+        switch_to_lowercase, "Lowercase 󰬵 ",
         
         page_up, "PgUp 󱞿 ",
         page_down, "PgDn 󱞣 ",
         
-        half_page_up, "Move half page up",
-        half_page_down, "Move half page down",
+        half_page_up, "1/2 PgUp 󱞿 ",
+        half_page_down, "1/2 PgDn 󱞣 ",
         
         page_cursor_up, "Move page and cursor up",
         page_cursor_down, "Move page and cursor down",
@@ -331,7 +331,7 @@ impl MappableCommand {
         
         make_search_word_bounded, "Modify current search to make it word bounded",
         
-        global_search, "Global search in workspace folder",
+        global_search, "search all 󱁵 ",
         
         extend_line, "Select current line, if already selected, extend to another line based on the anchor",
         
@@ -357,28 +357,28 @@ impl MappableCommand {
         append_mode, "Append 󰬈 ",
         command_mode, "Command  ",
         
-        file_picker, "Open file  ",
+        file_picker, "Files  ",
         
-        file_picker_in_current_buffer_directory, "Open file next to buffer 󰥩 ",
-        file_picker_in_current_directory, "Open file at cwd 󱎱 ",
+        file_picker_in_current_buffer_directory, "files 󰥩 ",
+        file_picker_in_current_directory, "FILES 󱎱 ",
         
-        code_action, "Code action  ",
+        code_action, "actions  ",
         
-        buffer_picker, "Buffer picker  ",
+        buffer_picker, "buffers  ",
         
-        jumplist_picker, "Jumplist picker 󱎸 ",
+        jumplist_picker, "jump 󱎸 ",
         
-        symbol_picker, "Symbol picker 󱈇 ",
+        symbol_picker, "symbols 󱈇 ",
         
-        select_references_to_symbol_under_cursor, "Select symbol references",
+        select_references_to_symbol_under_cursor, "references  ",
         
-        workspace_symbol_picker, "Open workspace symbol picker",
+        workspace_symbol_picker, "SYMBOLS  ",
         
-        diagnostics_picker, "Open diagnostic picker",
+        diagnostics_picker, "diagnostics 󰿷 ",
         
-        workspace_diagnostics_picker, "Open workspace diagnostic picker",
+        workspace_diagnostics_picker, "DIAGNOSTICS 󰋠 ",
         
-        last_picker, "Open last picker",
+        last_picker, "more  ",
         
         insert_at_line_start, "󰞓 Insert at start of line",
         insert_at_line_end, "Insert at end of line 󰞔 ",
@@ -390,14 +390,14 @@ impl MappableCommand {
         select_mode, "Enter selection extend mode",
         exit_select_mode, "Exit selection mode",
         
-        goto_definition, "Definition  ",
+        goto_definition, "definition  ",
         goto_declaration, "DECLARATION  ",
         
         add_newline_above, "Add newline above",
         add_newline_below, "Add newline below",
         
-        goto_type_definition, "Type definition  ",
-        goto_implementation, "Implementation  ",
+        goto_type_definition, "type definition  ",
+        goto_implementation, "implementation  ",
         
         goto_file_start, "Line number <n> else file start",
         goto_file_end, "File end 󰞒 ",
@@ -407,15 +407,15 @@ impl MappableCommand {
         goto_file_hsplit, "Goto files in selections (hsplit)",
         goto_file_vsplit, "Goto files in selections (vsplit)",
         
-        goto_reference, "References  ",
+        goto_reference, "references  ",
         
-        goto_window_top, "Window top 󱔓 ",
-        goto_window_center, "Window center 󰝔 ",
-        goto_window_bottom, "Window bottom 󱂩 ",
+        goto_window_top, "window top 󱔓 ",
+        goto_window_center, "window center 󰞢 ",
+        goto_window_bottom, "window bottom 󱂩 ",
         
-        goto_last_accessed_file, "Last accessed file 󱋢 ",
-        goto_last_modified_file, "Last modified file 󱇨 ",
-        goto_last_modification, "Last modification 󰏫 ",
+        goto_last_accessed_file, "last accessed file 󱋢 ",
+        goto_last_modified_file, "last modified file 󱇨 ",
+        goto_last_modification, "last modification 󰏫 ",
         
         goto_line, "Goto line",
         
@@ -439,7 +439,7 @@ impl MappableCommand {
         goto_previous_buffer, "󰞓 Prev buffer",
         
         goto_line_end_newline, "Goto newline at line end",
-        goto_first_nonwhitespace, "Goto first non-blank in line",
+        goto_first_nonwhitespace, "first non-blank 󰾹",
         trim_selections, "Trim whitespace from selections",
         extend_to_line_start, "Extend to line start",
         extend_to_first_nonwhitespace, "Extend to first non-blank in line",
@@ -460,23 +460,23 @@ impl MappableCommand {
         earlier, "Move backward in history",
         later, "Move forward in history",
         commit_undo_checkpoint, "Commit changes to new checkpoint",
-        yank, "Yank selection",
-        yank_to_clipboard, "Yank selections to clipboard",
-        yank_to_primary_clipboard, "Yank selections to primary clipboard",
-        yank_joined, "Join and yank selections",
-        yank_joined_to_clipboard, "Join and yank selections to clipboard",
-        yank_main_selection_to_clipboard, "Yank main selection to clipboard",
-        yank_joined_to_primary_clipboard, "Join and yank selections to primary clipboard",
-        yank_main_selection_to_primary_clipboard, "Yank main selection to primary clipboard",
-        replace_with_yanked, "Replace with yanked text",
-        replace_selections_with_clipboard, "Replace selections by clipboard content",
-        replace_selections_with_primary_clipboard, "Replace selections by primary clipboard",
-        paste_after, "Paste after selection",
-        paste_before, "Paste before selection",
-        paste_clipboard_after, "Paste clipboard after selections",
-        paste_clipboard_before, "Paste clipboard before selections",
-        paste_primary_clipboard_after, "Paste primary clipboard after selections",
-        paste_primary_clipboard_before, "Paste primary clipboard before selections",
+        yank, "Yank",
+        yank_to_clipboard, "yank 󰅌 ",
+        yank_to_primary_clipboard, "Yank to primary 󰅌 ",
+        yank_joined, "Join and yank",
+        yank_joined_to_clipboard, "Join and yank 󰅌 ",
+        yank_main_selection_to_clipboard, "YANK main 󰅌 ",
+        yank_joined_to_primary_clipboard, "Join and yank to primary 󰅌 ",
+        yank_main_selection_to_primary_clipboard, "Yank main to primary 󰅌 ",
+        replace_with_yanked, "Replace  ",
+        replace_selections_with_clipboard, "REPLACE w/ 󰅌 ",
+        replace_selections_with_primary_clipboard, "replace w/ primary 󰅌 ",
+        paste_after, "paste after ",
+        paste_before, "PASTE before ",
+        paste_clipboard_after, "paste after 󰅌",
+        paste_clipboard_before, "PASTE before 󰅌 ",
+        paste_primary_clipboard_after, "Paste w/ primary after 󰅌 ",
+        paste_primary_clipboard_before, "Paste w/ primary before 󰅌 ",
         indent, "Indent selection",
         unindent, "Unindent selection",
         format_selections, "Format selection",
@@ -488,7 +488,7 @@ impl MappableCommand {
         keep_primary_selection, "Keep primary selection",
         remove_primary_selection, "Remove primary selection",
         completion, "Invoke completion popup",
-        hover, "Show docs for item under cursor",
+        hover, "docs 󰧮 ",
         toggle_comments, "Comment/uncomment selections",
         rotate_selections_forward, "Rotate selections forward",
         rotate_selections_backward, "Rotate selections backward",
@@ -527,12 +527,12 @@ impl MappableCommand {
         align_view_bottom, "Align view bottom",
         scroll_up, "Scroll view up",
         scroll_down, "Scroll view down",
-        match_brackets, "Goto matching bracket",
+        match_brackets, "bracket",
         surround_add, "Surround add",
         surround_replace, "Surround replace",
         surround_delete, "Surround delete",
-        select_textobject_around, "Select around object",
-        select_textobject_inner, "Select inside object",
+        select_textobject_around, "around",
+        select_textobject_inner, "inside",
         goto_next_function, "Goto next function",
         goto_prev_function, "Goto previous function",
         goto_next_class, "Goto next type definition",
@@ -567,12 +567,12 @@ impl MappableCommand {
         shell_append_output, "Append shell command output after selections",
         shell_keep_pipe, "Filter selections with shell predicate",
         suspend, "Suspend and return to shell",
-        rename_symbol, "Rename symbol",
+        rename_symbol, "rename symbol 󰑕 ",
         increment, "Increment item under cursor",
         decrement, "Decrement item under cursor",
         record_macro, "Record macro",
         replay_macro, "Replay macro",
-        command_palette, "Open command palette",
+        command_palette, "commands  ",
     );
 }
 
@@ -5159,15 +5159,15 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
         _ => return,
     };
     let help_text = [
-        ("w", "Word"),
+        ("w", "word"),
         ("W", "WORD"),
-        ("p", "Paragraph"),
-        ("t", "Type definition (tree-sitter)"),
-        ("f", "Function (tree-sitter)"),
-        ("a", "Argument/parameter (tree-sitter)"),
-        ("c", "Comment (tree-sitter)"),
-        ("T", "Test (tree-sitter)"),
-        ("m", "Closest surrounding pair"),
+        ("p", "paragraph"),
+        ("t", "type definition (tree-sitter)"),
+        ("f", "gunction (tree-sitter)"),
+        ("a", "argument/parameter (tree-sitter)"),
+        ("c", "comment (tree-sitter)"),
+        ("T", "TEST (tree-sitter)"),
+        ("m", "closest surrounding pair"),
         (" ", "... or any character acting as a pair"),
     ];
 
