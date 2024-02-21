@@ -60,11 +60,22 @@ use insert::{insert_char, insert_string};
 
 static ENGINE_COUNT: AtomicUsize = AtomicUsize::new(0);
 
-// TODO:
-// I'm not entirely sure this is correct, however from observation it seems that
-// interactions with this really only happen on one thread. I haven't yet found
-// multiple instances of the engine getting created. I'll need to go observe how
-// and when the engine gets accessed.
+// The Steel scripting engine instance. This is what drives the whole integration.
+// Since the engine is not thread safe, we instead (more or less) pin the engine
+// to a single thread by panicking if it is access on another thread. The only way
+// this can really happen is if a callback is made that touches this variable.
+//
+// As long as the `local_callback` queue is used for any callbacks, all accesses
+// to this variable will stay on the main thread. If you make a mistake, it will be
+// obvious since the editor will immediately crash when running anything that
+// violates this constraint.
+//
+// It isn't explicitly an issue if another thread spins up another instance of
+// the engine, the overhead here is relatively minimal. However the assumption
+// based on the way the integration works is that only one instance of the engine
+// exists at any point in time. Since this is the case, we want to minimize the chance
+// that that isn't true. This assumption could also be revisited at some point in
+// the future.
 thread_local! {
     pub static ENGINE: std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine::Engine>> = {
         if ENGINE_COUNT.fetch_add(1, Ordering::SeqCst) != 0 {
@@ -96,13 +107,7 @@ impl KeyMapApi {
     }
 }
 
-// TODO: Refactor this into the configuration object instead.
-// that way, we don't have to have multiple layers of objects,
-// and can instead just refer to the single configuration object.
-//
-// Possibly also introduce buffer / language specific keybindings
-// there as well, however how that interaction is done is still up
-// for debate.
+// Handle buffer and extension specific keybindings in userspace.
 thread_local! {
     pub static BUFFER_OR_EXTENSION_KEYBINDING_MAP: SteelVal =
         SteelVal::boxed(SteelVal::empty_hashmap());
@@ -192,12 +197,6 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
     };
 
     // Adhoc static commands that probably needs evaluating
-    // Note: The current templating here to generate the wrapper functions
-    // does not need to happen every time. This can probably just happen
-    // once, and then wired up to the xtask framework. Otherwise, for dev
-    // builds we can have it happen each time so that the functions are
-    // consistent.
-
     // Arity 1
     module.register_fn("insert_char", insert_char);
     template_function_arity_1("insert_char");
@@ -205,8 +204,7 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
     template_function_arity_1("insert_string");
     module.register_fn("set-current-selection-object!", set_selection);
     template_function_arity_1("set-current-selection-object!");
-    module.register_fn("run-in-engine!", run_in_engine);
-    template_function_arity_1("run-in-engine!");
+
     module.register_fn("search-in-directory", search_in_directory);
     template_function_arity_1("search-in-directory");
     module.register_fn("regex-selection", regex_selection);
@@ -232,6 +230,10 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
     // Arity 0
     module.register_fn("current_selection", get_selection);
     template_function_arity_0("current_selection");
+
+    // Execute a whole buffer to change configurations.
+    module.register_fn("load-buffer!", load_buffer);
+    template_function_arity_0("load-buffer!");
 
     module.register_fn("current-highlighted-text!", get_highlighted_text);
     template_function_arity_0("current-highlighted-text!");
@@ -881,7 +883,18 @@ impl super::PluginSystem for SteelScriptingEngine {
 
                     res
                 }) {
-                    compositor_present_error(cx, e);
+                    let mut ctx = Context {
+                        register: None,
+                        count: None,
+                        editor: &mut cx.editor,
+                        callback: Vec::new(),
+                        on_next_key_callback: None,
+                        jobs: &mut cx.jobs,
+                    };
+
+                    ENGINE.with(|x| {
+                        present_error_inside_engine_context(&mut ctx, &mut x.borrow_mut(), e)
+                    });
                 };
             }
 
@@ -1006,62 +1019,10 @@ pub fn initialize_engine() {
     ENGINE.with(|x| x.borrow().globals().first().copied());
 }
 
-pub fn compositor_present_error(cx: &mut compositor::Context, e: SteelErr) {
-    cx.editor.set_error(format!("{}", e));
-
-    let backtrace = ENGINE.with(|x| x.borrow_mut().raise_error_to_string(e));
-
-    let callback = async move {
-        let call: job::Callback = Callback::EditorCompositor(Box::new(
-            move |editor: &mut Editor, compositor: &mut Compositor| {
-                if let Some(backtrace) = backtrace {
-                    let contents = ui::Markdown::new(
-                        format!("```\n{}\n```", backtrace),
-                        editor.syn_loader.clone(),
-                    );
-                    ui::Text::new(format!("```\n{}\n```", backtrace));
-                    let popup = Popup::new("engine", contents).position(Some(
-                        helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
-                    ));
-                    compositor.replace_or_push("engine", popup);
-                }
-            },
-        ));
-        Ok(call)
-    };
-    cx.jobs.callback(callback);
-}
-
 pub fn present_error_inside_engine_context(cx: &mut Context, engine: &mut Engine, e: SteelErr) {
-    cx.editor.set_error(format!("{}", e));
+    cx.editor.set_error(e.to_string());
 
     let backtrace = engine.raise_error_to_string(e);
-
-    let callback = async move {
-        let call: job::Callback = Callback::EditorCompositor(Box::new(
-            move |editor: &mut Editor, compositor: &mut Compositor| {
-                if let Some(backtrace) = backtrace {
-                    let contents = ui::Markdown::new(
-                        format!("```\n{}\n```", backtrace),
-                        editor.syn_loader.clone(),
-                    );
-                    ui::Text::new(format!("```\n{}\n```", backtrace));
-                    let popup = Popup::new("engine", contents).position(Some(
-                        helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
-                    ));
-                    compositor.replace_or_push("engine", popup);
-                }
-            },
-        ));
-        Ok(call)
-    };
-    cx.jobs.callback(callback);
-}
-
-pub fn present_error(cx: &mut Context, e: SteelErr) {
-    cx.editor.set_error(format!("{}", e));
-
-    let backtrace = ENGINE.with(|x| x.borrow_mut().raise_error_to_string(e));
 
     let callback = async move {
         let call: job::Callback = Callback::EditorCompositor(Box::new(
@@ -1588,10 +1549,6 @@ impl Component for BoxDynComponent {
     }
 }
 
-// OnModeSwitch<'a, 'cx> { old_mode: Mode, new_mode: Mode, cx: &'a mut commands::Context<'cx> }
-// PostInsertChar<'a, 'cx> { c: char, cx: &'a mut commands::Context<'cx> }
-// PostCommand<'a, 'cx> { command: & 'a MappableCommand, cx: &'a mut commands::Context<'cx> }
-
 #[derive(Debug, Clone, Copy)]
 struct OnModeSwitchEvent {
     old_mode: Mode,
@@ -1599,8 +1556,6 @@ struct OnModeSwitchEvent {
 }
 
 impl Custom for OnModeSwitchEvent {}
-
-// MappableCommands can be values too!
 impl Custom for MappableCommand {}
 
 fn register_hook(event_kind: String, function_name: String) -> steel::UnRecoverableResult {
@@ -1624,7 +1579,7 @@ fn register_hook(event_kind: String, function_name: String) -> steel::UnRecovera
                             engine.call_function_by_name_with_args(&function_name, args)
                         })
                     }) {
-                        event.cx.editor.set_error(format!("{}", e));
+                        event.cx.editor.set_error(e.to_string());
                     }
                 }
 
@@ -1650,7 +1605,7 @@ fn register_hook(event_kind: String, function_name: String) -> steel::UnRecovera
                             )
                         })
                     }) {
-                        event.cx.editor.set_error(format!("{}", e));
+                        event.cx.editor.set_error(e.to_string());
                     }
                 }
 
@@ -1676,7 +1631,7 @@ fn register_hook(event_kind: String, function_name: String) -> steel::UnRecovera
                             )
                         })
                     }) {
-                        event.cx.editor.set_error(format!("{}", e));
+                        event.cx.editor.set_error(e.to_string());
                     }
                 }
 
@@ -1975,27 +1930,25 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
 
                     let cloned_func = callback_fn_guard.value();
 
-                    if let Err(e) = ENGINE.with(|x| {
-                        x.borrow_mut()
+                    ENGINE.with(|x| {
+                        let mut guard = x.borrow_mut();
+
+                        if let Err(e) = guard
                             .with_mut_reference::<Context, Context>(&mut ctx)
                             .consume(move |engine, args| {
                                 let context = args[0].clone();
 
-                                // Should work I believe, but this way we can start taking out the references
-                                // to typed commands directly using this
                                 engine.update_value("*helix.cx*", context);
-
-                                // Add the string as an argument to the callback
-                                // args.push(input.into_steelval().unwrap());
 
                                 engine.call_function_with_args(
                                     cloned_func.clone(),
                                     vec![input.into_steelval().unwrap()],
                                 )
                             })
-                    }) {
-                        present_error(&mut ctx, e);
-                    }
+                        {
+                            present_error_inside_engine_context(&mut ctx, &mut guard, e);
+                        }
+                    })
                 },
             );
 
@@ -2175,39 +2128,70 @@ fn get_selection(cx: &mut Context) -> String {
     printable
 }
 
-fn run_in_engine(cx: &mut Context, arg: String) -> anyhow::Result<()> {
+pub fn load_buffer(cx: &mut Context) -> anyhow::Result<()> {
+    let (text, path) = {
+        let (_, doc) = current!(cx.editor);
+
+        let text = doc.text().to_string();
+        let path = current_path(cx);
+
+        (text, path)
+    };
+
     let callback = async move {
-        let output = ENGINE
-            .with(|x| x.borrow_mut().run(arg))
-            .map(|x| format!("{:?}", x));
+        let call: Box<dyn FnOnce(&mut Editor, &mut Compositor, &mut job::Jobs)> = Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor, jobs: &mut job::Jobs| {
+                let mut ctx = Context {
+                    register: None,
+                    count: None,
+                    editor,
+                    callback: Vec::new(),
+                    on_next_key_callback: None,
+                    jobs,
+                };
 
-        let (output, success) = match output {
-            Ok(v) => (Tendril::from(v), true),
-            Err(e) => (Tendril::from(e.to_string()), false),
-        };
+                let output = ENGINE.with(|x| {
+                    let mut guard = x.borrow_mut();
 
-        let call: job::Callback = Callback::EditorCompositor(Box::new(
-            move |editor: &mut Editor, compositor: &mut Compositor| {
-                if !output.is_empty() {
-                    let contents = ui::Markdown::new(
-                        format!("```\n{}\n```", output),
-                        editor.syn_loader.clone(),
-                    );
-                    let popup = Popup::new("engine", contents).position(Some(
-                        helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
-                    ));
-                    compositor.replace_or_push("engine", popup);
-                }
-                if success {
-                    editor.set_status("Command succeeded");
-                } else {
-                    editor.set_error("Command failed");
+                    guard
+                        .with_mut_reference::<Context, Context>(&mut ctx)
+                        .consume(move |engine, args| {
+                            let context = args[0].clone();
+                            engine.update_value("*helix.cx*", context);
+
+                            match path.clone() {
+                                Some(path) => engine.compile_and_run_raw_program_with_path(
+                                    // TODO: Figure out why I have to clone this text here.
+                                    text.clone(),
+                                    PathBuf::from(path),
+                                ),
+                                None => engine.compile_and_run_raw_program(text.clone()),
+                            }
+                        })
+                });
+
+                match output {
+                    Ok(output) => {
+                        let (output, _success) = (Tendril::from(format!("{:?}", output)), true);
+
+                        let contents = ui::Markdown::new(
+                            format!("```\n{}\n```", output),
+                            editor.syn_loader.clone(),
+                        );
+                        let popup = Popup::new("engine", contents).position(Some(
+                            helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
+                        ));
+                        compositor.replace_or_push("engine", popup);
+                    }
+                    Err(e) => ENGINE.with(|x| {
+                        present_error_inside_engine_context(&mut ctx, &mut x.borrow_mut(), e)
+                    }),
                 }
             },
-        ));
+        );
         Ok(call)
     };
-    cx.jobs.callback(callback);
+    cx.jobs.local_callback(callback);
 
     Ok(())
 }
@@ -2325,8 +2309,10 @@ fn enqueue_command(cx: &mut Context, callback_fn: SteelVal) {
 
                 let cloned_func = rooted.value();
 
-                if let Err(e) = ENGINE.with(|x| {
-                    x.borrow_mut()
+                ENGINE.with(|x| {
+                    let mut guard = x.borrow_mut();
+
+                    if let Err(e) = guard
                         .with_mut_reference::<Context, Context>(&mut ctx)
                         .consume(move |engine, args| {
                             let context = args[0].clone();
@@ -2334,9 +2320,10 @@ fn enqueue_command(cx: &mut Context, callback_fn: SteelVal) {
 
                             engine.call_function_with_args(cloned_func.clone(), Vec::new())
                         })
-                }) {
-                    present_error(&mut ctx, e);
-                }
+                    {
+                        present_error_inside_engine_context(&mut ctx, &mut guard, e);
+                    }
+                })
             },
         );
         Ok(call)
@@ -2366,17 +2353,21 @@ fn enqueue_command_with_delay(cx: &mut Context, delay: SteelVal, callback_fn: St
 
                 let cloned_func = rooted.value();
 
-                if let Err(e) = ENGINE.with(|x| {
-                    x.borrow_mut()
+                ENGINE.with(|x| {
+                    let mut guard = x.borrow_mut();
+
+                    if let Err(e) = guard
                         .with_mut_reference::<Context, Context>(&mut ctx)
                         .consume(move |engine, args| {
                             let context = args[0].clone();
                             engine.update_value("*helix.cx*", context);
+
                             engine.call_function_with_args(cloned_func.clone(), Vec::new())
                         })
-                }) {
-                    present_error(&mut ctx, e);
-                }
+                    {
+                        present_error_inside_engine_context(&mut ctx, &mut guard, e);
+                    }
+                })
             },
         );
         Ok(call)
@@ -2417,17 +2408,21 @@ fn await_value(cx: &mut Context, value: SteelVal, callback_fn: SteelVal) {
                             // args.push(inner);
                             engine.call_function_with_args(cloned_func.clone(), vec![inner])
                         };
-                        if let Err(e) = ENGINE.with(|x| {
-                            x.borrow_mut()
+
+                        ENGINE.with(|x| {
+                            let mut guard = x.borrow_mut();
+
+                            if let Err(e) = guard
                                 .with_mut_reference::<Context, Context>(&mut ctx)
                                 .consume_once(callback)
-                        }) {
-                            present_error(&mut ctx, e);
-                        }
+                            {
+                                present_error_inside_engine_context(&mut ctx, &mut guard, e);
+                            }
+                        })
                     }
-                    Err(e) => {
-                        present_error(&mut ctx, e);
-                    }
+                    Err(e) => ENGINE.with(|x| {
+                        present_error_inside_engine_context(&mut ctx, &mut x.borrow_mut(), e)
+                    }),
                 }
             },
         );
