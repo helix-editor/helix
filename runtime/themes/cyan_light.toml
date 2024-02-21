@@ -1,5 +1,9 @@
+# Cyan Light
+# Adapted from JetBrains' Cyan Light Theme https://plugins.jetbrains.com/plugin/12102-cyan-light-theme 
 # Author: Abderrahmane Tahri Jouti <tj.abderrahmane@gmail.com>
-# Adapted from https://plugins.jetbrains.com/plugin/12102-cyan-light-theme, JetBrains' Cyan Light Theme by Olga Berdnikova
+
+# Original Author : Olga Berdnikova
+# LICENSE : MIT
 # Source: https://github.com/OlyaB/CyanTheme
 
 "attribute" = "blue"
