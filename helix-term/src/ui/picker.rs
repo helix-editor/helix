@@ -16,7 +16,7 @@ use crate::{
 };
 use futures_util::future::BoxFuture;
 use helix_event::AsyncHook;
-use nucleo::pattern::CaseMatching;
+use nucleo::pattern::{CaseMatching, Normalization};
 use nucleo::{Config, Nucleo, Utf32String};
 use thiserror::Error;
 use tokio::sync::mpsc::Sender;
@@ -506,9 +506,13 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 continue;
             }
             let is_append = pattern.starts_with(old_pattern);
-            self.matcher
-                .pattern
-                .reparse(i, pattern, CaseMatching::Smart, is_append);
+            self.matcher.pattern.reparse(
+                i,
+                pattern,
+                CaseMatching::Smart,
+                Normalization::Smart,
+                is_append,
+            );
         }
     }
 
