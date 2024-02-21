@@ -1,6 +1,6 @@
-# An approximation/port of the Cyan Light Theme from Jetbrains
-# 
-# Original Color Scheme here https://plugins.jetbrains.com/plugin/12102-cyan-light-theme
+# Author: Abderrahmane Tahri Jouti <tj.abderrahmane@gmail.com>
+# Adapted from https://plugins.jetbrains.com/plugin/12102-cyan-light-theme, JetBrains' Cyan Light Theme by Olga Berdnikova
+# Source: https://github.com/OlyaB/CyanTheme
 
 "attribute" = "blue"
 "type" = "shade07"
