@@ -29,14 +29,16 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         
         // "A-." => repeat_last_motion,
         "A-." => no_op, // disabled until knowing how this actually work
-        
-        "C-u" => switch_case,
+
+        "C-A-u" => switch_case,
 
         // "`" => switch_to_lowercase,
         "`" => no_op,
-
+        "C-l" => switch_to_lowercase,
+        
         // "A-`" => switch_to_uppercase,
         "A-`" => no_op,
+        "C-u" => switch_to_uppercase,
 
         "home" => goto_line_start,
         "end" => goto_line_end,
@@ -67,7 +69,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         
         "v" => select_mode,
         "G" => goto_line,
-        "g" => { "Goto 󱞬 "
+        "g" => { " 󱞨 Goto "
             // "g" => goto_file_start,
             "g" => no_op,
             // "e" => goto_last_line,
@@ -87,11 +89,11 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "r" => goto_reference,
             "i" => goto_implementation,
             
-            // "t" => goto_window_top,
-            "t" => no_op,
+            "t" => goto_window_top,
+            // "t" => no_op,
             "c" => goto_window_center,
-            // "b" => goto_window_bottom,
-            "b" => no_op,
+            "b" => goto_window_bottom,
+            // "b" => no_op,
             
             "a" => goto_last_accessed_file,
             "m" => goto_last_modified_file,
@@ -146,7 +148,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "X" => extend_to_line_bounds,
         "A-x" => shrink_to_line_bounds,
 
-        "m" => { "Match"
+        "m" => { " 󰾹 Match"
             "m" => match_brackets,
             "s" => surround_add,
             "r" => surround_replace,
@@ -154,7 +156,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "a" => select_textobject_around,
             "i" => select_textobject_inner,
         },
-        "[" => { "Left bracket"
+        "[" => { " 󰅪 Left bracket"
             "d" => goto_prev_diag,
             "D" => goto_first_diag,
             "g" => goto_prev_change,
@@ -167,7 +169,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "p" => goto_prev_paragraph,
             "space" => add_newline_above,
         },
-        "]" => { "Right bracket"
+        "]" => { " 󰅪 Right bracket"
             "d" => goto_next_diag,
             "D" => goto_last_diag,
             "g" => goto_next_change,
@@ -231,7 +233,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         // "C-u" => page_cursor_half_up,
         "C-d" => page_cursor_half_down,
 
-        "C-w" => { "Window"
+        "C-w" => { "  Window"
             "C-w" | "w" => rotate_view,
             "C-s" | "s" => hsplit,
             "C-v" | "v" => vsplit,
@@ -264,7 +266,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "C-o" => jump_backward,
         "C-s" => save_selection,
 
-        "space" => { "Space"
+        "space" => { " 󰫣 Space"
             // "f" => file_picker,
             "f" => no_op,
             "F" => file_picker_in_current_directory,
@@ -276,7 +278,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "D" => workspace_diagnostics_picker,
             "a" => code_action,
             "'" => last_picker,
-            "g" => { "Debug (experimental)" sticky=true
+            "g" => { " debug " sticky=true
                 "l" => dap_launch,
                 "r" => dap_restart,
                 "b" => dap_toggle_breakpoint,
@@ -289,7 +291,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
                 "t" => dap_terminate,
                 "C-c" => dap_edit_condition,
                 "C-l" => dap_edit_log,
-                "s" => { "Switch"
+                "s" => { " Switch "
                     "t" => dap_switch_thread,
                     "f" => dap_switch_stack_frame,
                     // sl, sb
@@ -297,7 +299,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
                 "e" => dap_enable_exceptions,
                 "E" => dap_disable_exceptions,
             },
-            "w" => { "Window"
+            "w" => { " window "
                 "C-w" | "w" => rotate_view,
                 "C-s" | "s" => hsplit,
                 "C-v" | "v" => vsplit,
@@ -333,7 +335,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "A-c" => toggle_line_comments,
             "?" => command_palette,
         },
-        "z" => { "View"
+        "z" => { " 󰛐 View"
             "z" | "c" => align_view_center,
             "t" => align_view_top,
             "b" => align_view_bottom,
@@ -350,7 +352,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "n" => search_next,
             "N" => search_prev,
         },
-        "Z" => { "View" sticky=true
+        "Z" => { "  VIEW" sticky=true
             "z" | "c" => align_view_center,
             "t" => align_view_top,
             "b" => align_view_bottom,
