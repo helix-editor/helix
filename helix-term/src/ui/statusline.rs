@@ -75,20 +75,6 @@ pub fn render_statusline<'a>(context: &mut RenderContext, width: usize) -> Spans
         .flat_map(|render| render(context).0)
         .collect::<Vec<Span>>();
 
-    let element_ids = &config.statusline.left;
-    let mut left = element_ids
-        .iter()
-        .map(|element_id| get_render_function(*element_id))
-        .flat_map(|render| render(context).0)
-        .collect::<Vec<Span>>();
-
-    let element_ids = &config.statusline.center;
-    let mut center = element_ids
-        .iter()
-        .map(|element_id| get_render_function(*element_id))
-        .flat_map(|render| render(context).0)
-        .collect::<Vec<Span>>();
-
     let element_ids = &config.statusline.right;
     let mut right = element_ids
         .iter()
@@ -187,15 +173,18 @@ fn render_mode<'a>(context: &RenderContext) -> Spans<'a> {
     }
 }
 
-// TODO think about handling multiple language servers
 fn render_lsp_spinner<'a>(context: &RenderContext) -> Spans<'a> {
     let frame = context
         .doc
         .language_servers()
-        .next()
-        .and_then(|srv| context.spinners.get(srv.id()))
-        .and_then(|spinner| spinner.frame());
-    if let Some(frame) = frame {
+        .map(|srv| {
+            context
+                .spinners
+                .get(srv.id())
+                .and_then(|spinner| spinner.frame())
+        })
+        .find(|frame| frame.is_some());
+    if let Some(Some(frame)) = frame {
         Span::raw(format!(" {} ", frame)).into()
     } else {
         Spans::default()
