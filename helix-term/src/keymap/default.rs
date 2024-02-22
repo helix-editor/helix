@@ -147,7 +147,11 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
         // "%" => select_all,
         "C-a" => select_all,
-        "x" => extend_line_below,
+
+        // "x" => extend_line_below,
+        "x" => no_op,
+        "S-down" => extend_line_down,
+        "S-up" => extend_line_up,
         "X" => extend_to_line_bounds,
         "A-x" => shrink_to_line_bounds,
 
