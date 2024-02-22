@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashMap};
+use std::{borrow::Cow, collections::HashMap, iter};
 
 use helix_stdx::rope::RopeSliceExt;
 use tree_sitter::{Query, QueryCursor, QueryPredicateArg};
@@ -8,7 +8,7 @@ use crate::{
     graphemes::{grapheme_width, tab_width_at},
     syntax::{IndentationHeuristic, LanguageConfiguration, RopeProvider, Syntax},
     tree_sitter::Node,
-    Position, Rope, RopeGraphemes, RopeSlice,
+    Position, Rope, RopeGraphemes, RopeSlice, Tendril,
 };
 
 /// Enum representing indentation style.
@@ -208,6 +208,36 @@ fn whitespace_with_same_width(text: RopeSlice) -> String {
         }
     }
     s
+}
+
+/// normalizes indentation to tabs/spaces based on user configuration
+/// This function does not change the actual indentation width, just the character
+/// composition.
+pub fn normalize_indentation(
+    prefix: RopeSlice<'_>,
+    line: RopeSlice<'_>,
+    dst: &mut Tendril,
+    indent_style: IndentStyle,
+    tab_width: usize,
+) -> usize {
+    #[allow(deprecated)]
+    let off = crate::visual_coords_at_pos(prefix, prefix.len_chars(), tab_width).col;
+    let mut len = 0;
+    let mut original_len = 0;
+    for ch in line.chars() {
+        match ch {
+            '\t' => len += tab_width_at(len + off, tab_width as u16),
+            ' ' => len += 1,
+            _ => break,
+        }
+        original_len += 1;
+    }
+    if indent_style == IndentStyle::Tabs {
+        dst.extend(iter::repeat('\t').take(len / tab_width));
+        len %= tab_width;
+    }
+    dst.extend(iter::repeat(' ').take(len));
+    original_len
 }
 
 fn add_indent_level(
