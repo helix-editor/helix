@@ -1219,6 +1219,7 @@ name = "helix-core"
 version = "24.7.0"
 dependencies = [
  "ahash",
+ "anyhow",
  "arc-swap",
  "bitflags",
  "chrono",
@@ -1228,6 +1229,7 @@ dependencies = [
  "globset",
  "hashbrown",
  "helix-loader",
+ "helix-parsec",
  "helix-stdx",
  "imara-diff",
  "indoc",
@@ -1237,6 +1239,7 @@ dependencies = [
  "parking_lot",
  "quickcheck",
  "regex",
+ "regex-cursor",
  "ropey",
  "serde",
  "serde_json",
