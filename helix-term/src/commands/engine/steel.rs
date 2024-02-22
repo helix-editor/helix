@@ -55,7 +55,10 @@ use crate::{
 
 use components::SteelDynamicComponent;
 
-use super::{components, Context, MappableCommand, TYPABLE_COMMAND_LIST};
+use super::{
+    components::{self, helix_component_module},
+    Context, MappableCommand, TYPABLE_COMMAND_LIST,
+};
 use insert::{insert_char, insert_string};
 
 static ENGINE_COUNT: AtomicUsize = AtomicUsize::new(0);
@@ -115,6 +118,11 @@ thread_local! {
     pub static REVERSE_BUFFER_MAP: SteelVal =
         SteelVal::boxed(SteelVal::empty_hashmap());
 
+}
+
+fn load_component_api(engine: &mut Engine) {
+    let module = helix_component_module();
+    engine.register_module(module);
 }
 
 fn load_keymap_api(engine: &mut Engine, api: KeyMapApi) {
@@ -1032,7 +1040,6 @@ pub fn present_error_inside_engine_context(cx: &mut Context, engine: &mut Engine
                         format!("```\n{}\n```", backtrace),
                         editor.syn_loader.clone(),
                     );
-                    ui::Text::new(format!("```\n{}\n```", backtrace));
                     let popup = Popup::new("engine", contents).position(Some(
                         helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
                     ));
@@ -1470,30 +1477,14 @@ fn get_themes(cx: &mut Context) -> Vec<String> {
 
 /// A dynamic component, used for rendering thing
 impl Custom for compositor::EventResult {}
-impl FromSteelVal for compositor::EventResult {
-    fn from_steelval(val: &SteelVal) -> steel::rvals::Result<Self> {
-        match val {
-            SteelVal::SymbolV(v) if v.as_str() == "EventResult::Ignored" => {
-                Ok(compositor::EventResult::Ignored(None))
-            }
-            SteelVal::SymbolV(v) if v.as_str() == "EventResult::Consumed" => {
-                Ok(compositor::EventResult::Consumed(None))
-            }
-            _ => Err(steel::SteelErr::new(
-                steel::rerrs::ErrorKind::TypeMismatch,
-                "Unable to convert value to event result".to_string(),
-            )),
-        }
-    }
-}
 
-struct WrappedDynComponent {
-    inner: Option<Box<dyn Component>>,
+pub struct WrappedDynComponent {
+    pub(crate) inner: Option<Box<dyn Component>>,
 }
 
 impl Custom for WrappedDynComponent {}
 
-struct BoxDynComponent {
+pub struct BoxDynComponent {
     inner: Box<dyn Component>,
 }
 
@@ -1838,6 +1829,9 @@ pub fn configure_builtin_sources(engine: &mut Engine, generate_sources: bool) {
     }
     load_rope_api(engine);
     load_misc_api(engine, generate_sources);
+    if !generate_sources {
+        load_component_api(engine);
+    }
 }
 
 fn configure_engine_impl(mut engine: Engine) -> Engine {

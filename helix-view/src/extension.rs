@@ -16,7 +16,7 @@ mod steel_implementations {
             LineEndingConfig, LineNumber, LspConfig, SearchConfig, SmartTabConfig,
             StatusLineConfig, TerminalConfig, WhitespaceConfig,
         },
-        graphics::Rect,
+        graphics::{Color, Rect, Style, UnderlineStyle},
         input::Event,
         Document, DocumentId, Editor, ViewId,
     };
@@ -26,6 +26,9 @@ mod steel_implementations {
 
     impl steel::rvals::Custom for Mode {}
     impl steel::rvals::Custom for Event {}
+    impl Custom for Style {}
+    impl Custom for Color {}
+    impl Custom for UnderlineStyle {}
 
     impl CustomReference for Event {}
     impl Custom for Rect {}

@@ -175,7 +175,9 @@ impl Compositor {
 
     pub fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         for layer in &mut self.layers {
-            layer.render(area, surface, cx);
+            if layer.should_update() {
+                layer.render(area, surface, cx)
+            };
         }
     }
 
