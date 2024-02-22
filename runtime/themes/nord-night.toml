@@ -1,0 +1,23 @@
+# Nord Night
+#
+# Based on the Nord theme, with minor modifications.
+# The Background and the Primary Text color have been slightly darkened.
+# The Aurora color palette has been used more generously.
+
+inherits = 'nord'
+
+'constant' = 'nord13'
+'constant.builtin.boolean' = 'nord13'
+'constant.numeric' = 'nord13'
+
+'keyword.control' = 'nord11'
+'keyword.control.conditional' = 'nord11'
+'keyword.control.exception' = 'nord11'
+'keyword.control.repeat' = 'nord11'
+'keyword.control.return' = 'nord11'
+
+'variable.parameter' = 'nord15'
+
+[palette]
+nord0 = '#252933'
+nord4 = '#C0C5CF'

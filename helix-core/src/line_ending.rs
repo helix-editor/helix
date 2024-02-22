@@ -1,9 +1,9 @@
 use crate::{Rope, RopeSlice};
 
 #[cfg(target_os = "windows")]
-pub const DEFAULT_LINE_ENDING: LineEnding = LineEnding::Crlf;
+pub const NATIVE_LINE_ENDING: LineEnding = LineEnding::Crlf;
 #[cfg(not(target_os = "windows"))]
-pub const DEFAULT_LINE_ENDING: LineEnding = LineEnding::LF;
+pub const NATIVE_LINE_ENDING: LineEnding = LineEnding::LF;
 
 /// Represents one of the valid Unicode line endings.
 #[derive(PartialEq, Eq, Copy, Clone, Debug)]

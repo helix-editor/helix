@@ -481,7 +481,7 @@ impl<'a> From<String> for GraphemeStr<'a> {
         let ptr = Box::into_raw(g.into_bytes().into_boxed_slice()) as *mut u8;
         GraphemeStr {
             ptr: unsafe { NonNull::new_unchecked(ptr) },
-            len: i32::try_from(len).unwrap() as u32,
+            len: (i32::try_from(len).unwrap() as u32) | Self::MASK_OWNED,
             phantom: PhantomData,
         }
     }

@@ -1,6 +1,6 @@
 use super::*;
 
-use helix_core::path::get_normalized_path;
+use helix_stdx::path;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_split_write_quit_all() -> anyhow::Result<()> {
@@ -27,21 +27,21 @@ async fn test_split_write_quit_all() -> anyhow::Result<()> {
 
                     let doc1 = docs
                         .iter()
-                        .find(|doc| doc.path().unwrap() == &get_normalized_path(file1.path()))
+                        .find(|doc| doc.path().unwrap() == &path::normalize(file1.path()))
                         .unwrap();
 
                     assert_eq!("hello1", doc1.text().to_string());
 
                     let doc2 = docs
                         .iter()
-                        .find(|doc| doc.path().unwrap() == &get_normalized_path(file2.path()))
+                        .find(|doc| doc.path().unwrap() == &path::normalize(file2.path()))
                         .unwrap();
 
                     assert_eq!("hello2", doc2.text().to_string());
 
                     let doc3 = docs
                         .iter()
-                        .find(|doc| doc.path().unwrap() == &get_normalized_path(file3.path()))
+                        .find(|doc| doc.path().unwrap() == &path::normalize(file3.path()))
                         .unwrap();
 
                     assert_eq!("hello3", doc3.text().to_string());
@@ -62,9 +62,9 @@ async fn test_split_write_quit_all() -> anyhow::Result<()> {
     )
     .await?;
 
-    helpers::assert_file_has_content(file1.as_file_mut(), "hello1")?;
-    helpers::assert_file_has_content(file2.as_file_mut(), "hello2")?;
-    helpers::assert_file_has_content(file3.as_file_mut(), "hello3")?;
+    helpers::assert_file_has_content(file1.as_file_mut(), &platform_line("hello1"))?;
+    helpers::assert_file_has_content(file2.as_file_mut(), &platform_line("hello2"))?;
+    helpers::assert_file_has_content(file3.as_file_mut(), &platform_line("hello3"))?;
 
     Ok(())
 }

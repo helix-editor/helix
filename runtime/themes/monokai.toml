@@ -78,6 +78,11 @@
 "ui.statusline" = { fg = "active_text", bg = "#414339" }
 "ui.statusline.inactive" = { fg = "active_text", bg = "#75715e" }
 
+"ui.bufferline" = { fg = "grey2", bg = "bg3" }
+"ui.bufferline.active" = { fg = "active_text", bg = "selection", modifiers = [
+  "bold",
+] }
+
 "ui.text" = { fg = "text" }
 "ui.text.focus" = { fg = "active_text" }
 

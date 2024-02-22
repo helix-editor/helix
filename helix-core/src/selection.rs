@@ -161,34 +161,35 @@ impl Range {
         self.from() <= pos && pos < self.to()
     }
 
-    /// Map a range through a set of changes. Returns a new range representing the same position
-    /// after the changes are applied.
-    pub fn map(self, changes: &ChangeSet) -> Self {
+    /// Map a range through a set of changes. Returns a new range representing
+    /// the same position after the changes are applied. Note that this
+    /// function runs in O(N) (N is number of changes) and can therefore
+    /// cause performance problems if run for a large number of ranges as the
+    /// complexity is then O(MN) (for multicuror M=N usually). Instead use
+    /// [Selection::map] or [ChangeSet::update_positions] instead
+    pub fn map(mut self, changes: &ChangeSet) -> Self {
         use std::cmp::Ordering;
-        let (anchor, head) = match self.anchor.cmp(&self.head) {
-            Ordering::Equal => (
-                changes.map_pos(self.anchor, Assoc::After),
-                changes.map_pos(self.head, Assoc::After),
-            ),
-            Ordering::Less => (
-                changes.map_pos(self.anchor, Assoc::After),
-                changes.map_pos(self.head, Assoc::Before),
-            ),
-            Ordering::Greater => (
-                changes.map_pos(self.anchor, Assoc::Before),
-                changes.map_pos(self.head, Assoc::After),
-            ),
-        };
-
-        // We want to return a new `Range` with `horiz == None` every time,
-        // even if the anchor and head haven't changed, because we don't
-        // know if the *visual* position hasn't changed due to
-        // character-width or grapheme changes earlier in the text.
-        Self {
-            anchor,
-            head,
-            old_visual_position: None,
+        if changes.is_empty() {
+            return self;
         }
+
+        let positions_to_map = match self.anchor.cmp(&self.head) {
+            Ordering::Equal => [
+                (&mut self.anchor, Assoc::After),
+                (&mut self.head, Assoc::After),
+            ],
+            Ordering::Less => [
+                (&mut self.anchor, Assoc::After),
+                (&mut self.head, Assoc::Before),
+            ],
+            Ordering::Greater => [
+                (&mut self.head, Assoc::After),
+                (&mut self.anchor, Assoc::Before),
+            ],
+        };
+        changes.update_positions(positions_to_map.into_iter());
+        self.old_visual_position = None;
+        self
     }
 
     /// Extend the range to cover at least `from` `to`.
@@ -451,17 +452,36 @@ impl Selection {
     /// Map selections over a set of changes. Useful for adjusting the selection position after
     /// applying changes to a document.
     pub fn map(self, changes: &ChangeSet) -> Self {
+        self.map_no_normalize(changes).normalize()
+    }
+
+    /// Map selections over a set of changes. Useful for adjusting the selection position after
+    /// applying changes to a document. Doesn't normalize the selection
+    pub fn map_no_normalize(mut self, changes: &ChangeSet) -> Self {
         if changes.is_empty() {
             return self;
         }
 
-        Self::new(
-            self.ranges
-                .into_iter()
-                .map(|range| range.map(changes))
-                .collect(),
-            self.primary_index,
-        )
+        let positions_to_map = self.ranges.iter_mut().flat_map(|range| {
+            use std::cmp::Ordering;
+            range.old_visual_position = None;
+            match range.anchor.cmp(&range.head) {
+                Ordering::Equal => [
+                    (&mut range.anchor, Assoc::After),
+                    (&mut range.head, Assoc::After),
+                ],
+                Ordering::Less => [
+                    (&mut range.anchor, Assoc::After),
+                    (&mut range.head, Assoc::Before),
+                ],
+                Ordering::Greater => [
+                    (&mut range.head, Assoc::After),
+                    (&mut range.anchor, Assoc::Before),
+                ],
+            }
+        });
+        changes.update_positions(positions_to_map);
+        self
     }
 
     pub fn ranges(&self) -> &[Range] {
@@ -497,6 +517,9 @@ impl Selection {
 
     /// Normalizes a `Selection`.
     fn normalize(mut self) -> Self {
+        if self.len() < 2 {
+            return self;
+        }
         let mut primary = self.ranges[self.primary_index];
         self.ranges.sort_unstable_by_key(Range::from);
 
@@ -561,17 +584,12 @@ impl Selection {
         assert!(!ranges.is_empty());
         debug_assert!(primary_index < ranges.len());
 
-        let mut selection = Self {
+        let selection = Self {
             ranges,
             primary_index,
         };
 
-        if selection.ranges.len() > 1 {
-            // TODO: only normalize if needed (any ranges out of order)
-            selection = selection.normalize();
-        }
-
-        selection
+        selection.normalize()
     }
 
     /// Takes a closure and maps each `Range` over the closure.
@@ -612,11 +630,19 @@ impl Selection {
         self.transform(|range| Range::point(range.cursor(text)))
     }
 
-    pub fn fragments<'a>(&'a self, text: RopeSlice<'a>) -> impl Iterator<Item = Cow<str>> + 'a {
+    pub fn fragments<'a>(
+        &'a self,
+        text: RopeSlice<'a>,
+    ) -> impl DoubleEndedIterator<Item = Cow<'a, str>> + ExactSizeIterator<Item = Cow<str>> + 'a
+    {
         self.ranges.iter().map(move |range| range.fragment(text))
     }
 
-    pub fn slices<'a>(&'a self, text: RopeSlice<'a>) -> impl Iterator<Item = RopeSlice> + 'a {
+    pub fn slices<'a>(
+        &'a self,
+        text: RopeSlice<'a>,
+    ) -> impl DoubleEndedIterator<Item = RopeSlice<'a>> + ExactSizeIterator<Item = RopeSlice<'a>> + 'a
+    {
         self.ranges.iter().map(move |range| range.slice(text))
     }
 

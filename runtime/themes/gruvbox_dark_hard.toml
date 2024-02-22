@@ -4,8 +4,6 @@
 
 inherits = "gruvbox"
 
-"ui.selection" = { bg = "bg3", modifiers = ["reversed"] }
-"ui.selection.primary" = { bg = "bg4", modifiers = ["reversed"] }
 "ui.cursor.primary" = { modifiers = ["reversed"] }
 "ui.cursor.match" = { bg = "bg2" }
 

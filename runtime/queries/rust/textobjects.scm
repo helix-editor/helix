@@ -1,5 +1,8 @@
 (function_item
-  body: (_) @function.inside) @function.around(closure_expression body: (_) @function.inside) @function.around
+  body: (_) @function.inside) @function.around
+
+(closure_expression
+  body: (_) @function.inside) @function.around
 
 (struct_item
   body: (_) @class.inside) @class.around
@@ -29,6 +32,9 @@
   ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
 
 (arguments
+  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
+
+(field_initializer_list  
   ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
 
 [

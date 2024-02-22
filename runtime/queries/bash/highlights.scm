@@ -10,22 +10,36 @@
 (variable_name) @variable.other.member
 
 [
+  "if"
+  "then"
+  "else"
+  "elif"
+  "fi"
   "case"
+  "in"
+  "esac"
+] @keyword.control.conditional
+
+[
+  "for"
   "do"
   "done"
-  "elif"
-  "else"
-  "esac"
-  "export"
-  "fi"
-  "for"
-  "function"
-  "if"
-  "in"
-  "unset"
+  "select"
+  "until"
   "while"
-  "then"
+] @keyword.control.repeat
+
+[
+  "declare"
+  "typeset"
+  "export"
+  "readonly"
+  "local"
+  "unset"
+  "unsetenv"
 ] @keyword
+
+"function" @keyword.function
 
 (comment) @comment
 

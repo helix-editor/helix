@@ -1,6 +1,7 @@
 [Desktop Entry]
 Name=Helix
 GenericName=Text Editor
+GenericName[ar]=مُحَرِّرُ نُصُوص
 GenericName[de]=Texteditor
 GenericName[fr]=Éditeur de texte
 GenericName[ru]=Текстовый редактор
@@ -9,7 +10,7 @@ GenericName[tr]=Metin Düzenleyici
 Comment=Edit text files
 Comment[af]=Redigeer tekslêers
 Comment[am]=የጽሑፍ ፋይሎች ያስተካክሉ
-Comment[ar]=حرّر ملفات نصية
+Comment[ar]=مُحَرِّرُ مِلَفَّاتٍ نَصِّيَّة
 Comment[az]=Mətn fayllarını redaktə edin
 Comment[be]=Рэдагаваньне тэкставых файлаў
 Comment[bg]=Редактиране на текстови файлове
@@ -79,6 +80,7 @@ Exec=hx %F
 Terminal=true
 Type=Application
 Keywords=Text;editor;
+Keywords[ar]=نص;نصوص;محرر;
 Keywords[fr]=Texte;éditeur;
 Keywords[ru]=текст;текстовый редактор;
 Keywords[sr]=Текст;едитор;

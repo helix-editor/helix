@@ -1,8 +1,11 @@
 mod client;
+pub mod file_event;
+mod file_operations;
 pub mod jsonrpc;
 pub mod snippet;
 mod transport;
 
+use arc_swap::ArcSwap;
 pub use client::Client;
 pub use futures_executor::block_on;
 pub use jsonrpc::Call;
@@ -10,10 +13,10 @@ pub use lsp::{Position, Url};
 pub use lsp_types as lsp;
 
 use futures_util::stream::select_all::SelectAll;
-use helix_core::{
-    path,
-    syntax::{LanguageConfiguration, LanguageServerConfiguration, LanguageServerFeatures},
+use helix_core::syntax::{
+    LanguageConfiguration, LanguageServerConfiguration, LanguageServerFeatures,
 };
+use helix_stdx::path;
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use std::{
@@ -42,6 +45,8 @@ pub enum Error {
     StreamClosed,
     #[error("Unhandled")]
     Unhandled,
+    #[error(transparent)]
+    ExecutableNotFound(#[from] helix_stdx::env::ExecutableNotFoundError),
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -377,7 +382,7 @@ pub mod util {
         .expect("transaction must be valid for primary selection");
         let removed_text = text.slice(removed_start..removed_end);
 
-        let (transaction, selection) = Transaction::change_by_selection_ignore_overlapping(
+        let (transaction, mut selection) = Transaction::change_by_selection_ignore_overlapping(
             doc,
             selection,
             |range| {
@@ -420,6 +425,11 @@ pub mod util {
             return transaction;
         }
 
+        // Don't normalize to avoid merging/reording selections which would
+        // break the association between tabstops and selections. Most ranges
+        // will be replaced by tabstops anyways and the final selection will be
+        // normalized anyways
+        selection = selection.map_no_normalize(changes);
         let mut mapped_selection = SmallVec::with_capacity(selection.len());
         let mut mapped_primary_idx = 0;
         let primary_range = selection.primary();
@@ -428,9 +438,8 @@ pub mod util {
                 mapped_primary_idx = mapped_selection.len()
             }
 
-            let range = range.map(changes);
             let tabstops = tabstops.first().filter(|tabstops| !tabstops.is_empty());
-            let Some(tabstops) = tabstops else{
+            let Some(tabstops) = tabstops else {
                 // no tabstop normal mapping
                 mapped_selection.push(range);
                 continue;
@@ -440,36 +449,36 @@ pub mod util {
             // the tabstop closest to the range simply replaces `head` while anchor remains in place
             // the remaining tabstops receive their own single-width cursor
             if range.head < range.anchor {
-                let first_tabstop = tabstop_anchor + tabstops[0].1;
+                let last_idx = tabstops.len() - 1;
+                let last_tabstop = tabstop_anchor + tabstops[last_idx].0;
 
                 // if selection is forward but was moved to the right it is
                 // contained entirely in the replacement text, just do a point
                 // selection (fallback below)
-                if range.anchor >= first_tabstop {
-                    let range = Range::new(range.anchor, first_tabstop);
+                if range.anchor > last_tabstop {
+                    let range = Range::new(range.anchor, last_tabstop);
                     mapped_selection.push(range);
-                    let rem_tabstops = tabstops[1..]
+                    let rem_tabstops = tabstops[..last_idx]
                         .iter()
-                        .map(|tabstop| Range::point(tabstop_anchor + tabstop.1));
+                        .map(|tabstop| Range::point(tabstop_anchor + tabstop.0));
                     mapped_selection.extend(rem_tabstops);
                     continue;
                 }
             } else {
-                let last_idx = tabstops.len() - 1;
-                let last_tabstop = tabstop_anchor + tabstops[last_idx].1;
+                let first_tabstop = tabstop_anchor + tabstops[0].0;
 
                 // if selection is forward but was moved to the right it is
                 // contained entirely in the replacement text, just do a point
                 // selection (fallback below)
-                if range.anchor <= last_tabstop {
+                if range.anchor < first_tabstop {
                     // we can't properly compute the the next grapheme
                     // here because the transaction hasn't been applied yet
                     // that is not a problem because the range gets grapheme aligned anyway
                     // tough so just adding one will always cause head to be grapheme
                     // aligned correctly when applied to the document
-                    let range = Range::new(range.anchor, last_tabstop + 1);
+                    let range = Range::new(range.anchor, first_tabstop + 1);
                     mapped_selection.push(range);
-                    let rem_tabstops = tabstops[..last_idx]
+                    let rem_tabstops = tabstops[1..]
                         .iter()
                         .map(|tabstop| Range::point(tabstop_anchor + tabstop.0));
                     mapped_selection.extend(rem_tabstops);
@@ -543,6 +552,8 @@ pub enum MethodCall {
     WorkspaceFolders,
     WorkspaceConfiguration(lsp::ConfigurationParams),
     RegisterCapability(lsp::RegistrationParams),
+    UnregisterCapability(lsp::UnregistrationParams),
+    ShowDocument(lsp::ShowDocumentParams),
 }
 
 impl MethodCall {
@@ -565,6 +576,14 @@ impl MethodCall {
             lsp::request::RegisterCapability::METHOD => {
                 let params: lsp::RegistrationParams = params.parse()?;
                 Self::RegisterCapability(params)
+            }
+            lsp::request::UnregisterCapability::METHOD => {
+                let params: lsp::UnregistrationParams = params.parse()?;
+                Self::UnregisterCapability(params)
+            }
+            lsp::request::ShowDocument::METHOD => {
+                let params: lsp::ShowDocumentParams = params.parse()?;
+                Self::ShowDocument(params)
             }
             _ => {
                 return Err(Error::Unhandled);
@@ -622,18 +641,20 @@ impl Notification {
 #[derive(Debug)]
 pub struct Registry {
     inner: HashMap<LanguageServerName, Vec<Arc<Client>>>,
-    syn_loader: Arc<helix_core::syntax::Loader>,
+    syn_loader: Arc<ArcSwap<helix_core::syntax::Loader>>,
     counter: usize,
     pub incoming: SelectAll<UnboundedReceiverStream<(usize, Call)>>,
+    pub file_event_handler: file_event::Handler,
 }
 
 impl Registry {
-    pub fn new(syn_loader: Arc<helix_core::syntax::Loader>) -> Self {
+    pub fn new(syn_loader: Arc<ArcSwap<helix_core::syntax::Loader>>) -> Self {
         Self {
             inner: HashMap::new(),
             syn_loader,
             counter: 0,
             incoming: SelectAll::new(),
+            file_event_handler: file_event::Handler::new(),
         }
     }
 
@@ -646,6 +667,7 @@ impl Registry {
     }
 
     pub fn remove_by_id(&mut self, id: usize) {
+        self.file_event_handler.remove_client(id);
         self.inner.retain(|_, language_servers| {
             language_servers.retain(|ls| id != ls.id());
             !language_servers.is_empty()
@@ -659,15 +681,15 @@ impl Registry {
         doc_path: Option<&std::path::PathBuf>,
         root_dirs: &[PathBuf],
         enable_snippets: bool,
-    ) -> Result<Arc<Client>> {
-        let config = self
-            .syn_loader
+    ) -> Result<Option<Arc<Client>>> {
+        let syn_loader = self.syn_loader.load();
+        let config = syn_loader
             .language_server_configs()
             .get(&name)
             .ok_or_else(|| anyhow::anyhow!("Language server '{name}' not defined"))?;
         let id = self.counter;
         self.counter += 1;
-        let NewClient(client, incoming) = start_client(
+        if let Some(NewClient(client, incoming)) = start_client(
             id,
             name,
             ls_config,
@@ -675,9 +697,12 @@ impl Registry {
             doc_path,
             root_dirs,
             enable_snippets,
-        )?;
-        self.incoming.push(UnboundedReceiverStream::new(incoming));
-        Ok(client)
+        )? {
+            self.incoming.push(UnboundedReceiverStream::new(incoming));
+            Ok(Some(client))
+        } else {
+            Ok(None)
+        }
     }
 
     /// If this method is called, all documents that have a reference to language servers used by the language config have to refresh their language servers,
@@ -702,8 +727,8 @@ impl Registry {
                         root_dirs,
                         enable_snippets,
                     ) {
-                        Ok(client) => client,
-                        error => return Some(error),
+                        Ok(client) => client?,
+                        Err(error) => return Some(Err(error)),
                     };
                     let old_clients = self
                         .inner
@@ -711,6 +736,7 @@ impl Registry {
                         .unwrap();
 
                     for old_client in old_clients {
+                        self.file_event_handler.remove_client(old_client.id());
                         tokio::spawn(async move {
                             let _ = old_client.force_shutdown().await;
                         });
@@ -727,6 +753,7 @@ impl Registry {
     pub fn stop(&mut self, name: &str) {
         if let Some(clients) = self.inner.remove(name) {
             for client in clients {
+                self.file_event_handler.remove_client(client.id());
                 tokio::spawn(async move {
                     let _ = client.force_shutdown().await;
                 });
@@ -734,36 +761,41 @@ impl Registry {
         }
     }
 
-    pub fn get(
-        &mut self,
-        language_config: &LanguageConfiguration,
-        doc_path: Option<&std::path::PathBuf>,
-        root_dirs: &[PathBuf],
+    pub fn get<'a>(
+        &'a mut self,
+        language_config: &'a LanguageConfiguration,
+        doc_path: Option<&'a std::path::PathBuf>,
+        root_dirs: &'a [PathBuf],
         enable_snippets: bool,
-    ) -> Result<HashMap<LanguageServerName, Arc<Client>>> {
-        language_config
-            .language_servers
-            .iter()
-            .map(|LanguageServerFeatures { name, .. }| {
+    ) -> impl Iterator<Item = (LanguageServerName, Result<Arc<Client>>)> + 'a {
+        language_config.language_servers.iter().filter_map(
+            move |LanguageServerFeatures { name, .. }| {
                 if let Some(clients) = self.inner.get(name) {
                     if let Some((_, client)) = clients.iter().enumerate().find(|(i, client)| {
                         client.try_add_doc(&language_config.roots, root_dirs, doc_path, *i == 0)
                     }) {
-                        return Ok((name.to_owned(), client.clone()));
+                        return Some((name.to_owned(), Ok(client.clone())));
                     }
                 }
-                let client = self.start_client(
+                match self.start_client(
                     name.clone(),
                     language_config,
                     doc_path,
                     root_dirs,
                     enable_snippets,
-                )?;
-                let clients = self.inner.entry(name.clone()).or_default();
-                clients.push(client.clone());
-                Ok((name.clone(), client))
-            })
-            .collect()
+                ) {
+                    Ok(client) => {
+                        let client = client?;
+                        self.inner
+                            .entry(name.to_owned())
+                            .or_default()
+                            .push(client.clone());
+                        Some((name.clone(), Ok(client)))
+                    }
+                    Err(err) => Some((name.to_owned(), Err(err))),
+                }
+            },
+        )
     }
 
     pub fn iter_clients(&self) -> impl Iterator<Item = &Arc<Client>> {
@@ -861,18 +893,45 @@ fn start_client(
     doc_path: Option<&std::path::PathBuf>,
     root_dirs: &[PathBuf],
     enable_snippets: bool,
-) -> Result<NewClient> {
+) -> Result<Option<NewClient>> {
+    let (workspace, workspace_is_cwd) = helix_loader::find_workspace();
+    let workspace = path::normalize(workspace);
+    let root = find_lsp_workspace(
+        doc_path
+            .and_then(|x| x.parent().and_then(|x| x.to_str()))
+            .unwrap_or("."),
+        &config.roots,
+        config.workspace_lsp_roots.as_deref().unwrap_or(root_dirs),
+        &workspace,
+        workspace_is_cwd,
+    );
+
+    // `root_uri` and `workspace_folder` can be empty in case there is no workspace
+    // `root_url` can not, use `workspace` as a fallback
+    let root_path = root.clone().unwrap_or_else(|| workspace.clone());
+    let root_uri = root.and_then(|root| lsp::Url::from_file_path(root).ok());
+
+    if let Some(globset) = &ls_config.required_root_patterns {
+        if !root_path
+            .read_dir()?
+            .flatten()
+            .map(|entry| entry.file_name())
+            .any(|entry| globset.is_match(entry))
+        {
+            return Ok(None);
+        }
+    }
+
     let (client, incoming, initialize_notify) = Client::start(
         &ls_config.command,
         &ls_config.args,
         ls_config.config.clone(),
         ls_config.environment.clone(),
-        &config.roots,
-        config.workspace_lsp_roots.as_deref().unwrap_or(root_dirs),
+        root_path,
+        root_uri,
         id,
         name,
         ls_config.timeout,
-        doc_path,
     )?;
 
     let client = Arc::new(client);
@@ -896,15 +955,22 @@ fn start_client(
         }
 
         // next up, notify<initialized>
-        _client
+        let notification_result = _client
             .notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
-            .await
-            .unwrap();
+            .await;
+
+        if let Err(e) = notification_result {
+            log::error!(
+                "failed to notify language server of its initialization: {}",
+                e
+            );
+            return;
+        }
 
         initialize_notify.notify_one();
     });
 
-    Ok(NewClient(client, incoming))
+    Ok(Some(NewClient(client, incoming)))
 }
 
 /// Find an LSP workspace of a file using the following mechanism:
@@ -927,10 +993,10 @@ pub fn find_lsp_workspace(
     let mut file = if file.is_absolute() {
         file.to_path_buf()
     } else {
-        let current_dir = std::env::current_dir().expect("unable to determine current directory");
+        let current_dir = helix_stdx::env::current_working_dir();
         current_dir.join(file)
     };
-    file = path::get_normalized_path(&file);
+    file = path::normalize(&file);
 
     if !file.starts_with(workspace) {
         return None;
@@ -947,7 +1013,7 @@ pub fn find_lsp_workspace(
 
         if root_dirs
             .iter()
-            .any(|root_dir| path::get_normalized_path(&workspace.join(root_dir)) == ancestor)
+            .any(|root_dir| path::normalize(workspace.join(root_dir)) == ancestor)
         {
             // if the worskapce is the cwd do not search any higher for workspaces
             // but specify

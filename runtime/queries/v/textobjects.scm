@@ -6,7 +6,7 @@
    body: (block)? @test.inside) @test.around
  (#match? @_name "^test"))
 
-(fn_literal
+(function_literal
   body: (block)? @function.inside) @function.around
 
 (parameter_list
@@ -17,9 +17,9 @@
     ((_) @parameter.inside) @parameter.around))
 
 (struct_declaration
-  (struct_field_declaration_list) @class.inside) @class.around
+    (struct_field_declaration) @class.inside) @class.around
 
-(struct_field_declaration_list
+(struct_field_declaration
   ((_) @parameter.inside) @parameter.around)
 
 (comment) @comment.inside

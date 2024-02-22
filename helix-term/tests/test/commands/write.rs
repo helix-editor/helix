@@ -3,7 +3,8 @@ use std::{
     ops::RangeInclusive,
 };
 
-use helix_core::{diagnostic::Severity, path::get_normalized_path};
+use helix_core::diagnostic::Severity;
+use helix_stdx::path;
 use helix_view::doc;
 
 use super::*;
@@ -23,7 +24,7 @@ async fn test_write_quit_fail() -> anyhow::Result<()> {
             assert_eq!(1, docs.len());
 
             let doc = docs.pop().unwrap();
-            assert_eq!(Some(&get_normalized_path(file.path())), doc.path());
+            assert_eq!(Some(&path::normalize(file.path())), doc.path());
             assert_eq!(&Severity::Error, app.editor.get_status().unwrap().1);
         }),
         false,
@@ -93,7 +94,7 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
     )
     .await?;
 
-    helpers::assert_file_has_content(file.as_file_mut(), &RANGE.end().to_string())?;
+    helpers::assert_file_has_content(file.as_file_mut(), &platform_line(&RANGE.end().to_string()))?;
 
     Ok(())
 }
@@ -209,7 +210,7 @@ async fn test_write_concurrent() -> anyhow::Result<()> {
 
     let mut file_content = String::new();
     file.as_file_mut().read_to_string(&mut file_content)?;
-    assert_eq!(RANGE.end().to_string(), file_content);
+    assert_eq!(platform_line(&RANGE.end().to_string()), file_content);
 
     Ok(())
 }
@@ -269,7 +270,7 @@ async fn test_write_scratch_to_new_path() -> anyhow::Result<()> {
             assert_eq!(1, docs.len());
 
             let doc = docs.pop().unwrap();
-            assert_eq!(Some(&get_normalized_path(file.path())), doc.path());
+            assert_eq!(Some(&path::normalize(file.path())), doc.path());
         }),
         false,
     )
@@ -314,7 +315,7 @@ async fn test_write_auto_format_fails_still_writes() -> anyhow::Result<()> {
     let mut app = helpers::AppBuilder::new()
         .with_file(file.path(), None)
         .with_input_text("#[l|]#et foo = 0;\n")
-        .with_lang_config(helpers::test_syntax_conf(Some(lang_conf.into())))
+        .with_lang_loader(helpers::test_syntax_loader(Some(lang_conf.into())))
         .build()?;
 
     test_key_sequences(&mut app, vec![(Some(":w<ret>"), None)], false).await?;
@@ -341,7 +342,7 @@ async fn test_write_new_path() -> anyhow::Result<()> {
                 Some(&|app| {
                     let doc = doc!(app.editor);
                     assert!(!app.editor.is_err());
-                    assert_eq!(&get_normalized_path(file1.path()), doc.path().unwrap());
+                    assert_eq!(&path::normalize(file1.path()), doc.path().unwrap());
                 }),
             ),
             (
@@ -349,7 +350,7 @@ async fn test_write_new_path() -> anyhow::Result<()> {
                 Some(&|app| {
                     let doc = doc!(app.editor);
                     assert!(!app.editor.is_err());
-                    assert_eq!(&get_normalized_path(file2.path()), doc.path().unwrap());
+                    assert_eq!(&path::normalize(file2.path()), doc.path().unwrap());
                     assert!(app.editor.document_by_path(file1.path()).is_none());
                 }),
             ),
@@ -424,13 +425,132 @@ async fn test_write_utf_bom_file() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_insert_final_newline_added_if_missing() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .with_input_text("#[h|]#ave you tried chamomile tea?")
+        .build()?;
+
+    test_key_sequence(&mut app, Some(":w<ret>"), None, false).await?;
+
+    helpers::assert_file_has_content(
+        file.as_file_mut(),
+        &helpers::platform_line("have you tried chamomile tea?\n"),
+    )?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_insert_final_newline_unchanged_if_not_missing() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .with_input_text(&helpers::platform_line("#[t|]#en minutes, please\n"))
+        .build()?;
+
+    test_key_sequence(&mut app, Some(":w<ret>"), None, false).await?;
+
+    helpers::assert_file_has_content(
+        file.as_file_mut(),
+        &helpers::platform_line("ten minutes, please\n"),
+    )?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_insert_final_newline_unchanged_if_missing_and_false() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_config(Config {
+            editor: helix_view::editor::Config {
+                insert_final_newline: false,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
+        .with_file(file.path(), None)
+        .with_input_text("#[t|]#he quiet rain continued through the night")
+        .build()?;
+
+    test_key_sequence(&mut app, Some(":w<ret>"), None, false).await?;
+
+    helpers::assert_file_has_content(
+        file.as_file_mut(),
+        "the quiet rain continued through the night",
+    )?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_all_insert_final_newline_add_if_missing_and_modified() -> anyhow::Result<()> {
+    let mut file1 = tempfile::NamedTempFile::new()?;
+    let mut file2 = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file1.path(), None)
+        .with_input_text("#[w|]#e don't serve time travelers here")
+        .build()?;
+
+    test_key_sequence(
+        &mut app,
+        Some(&format!(
+            ":o {}<ret>ia time traveler walks into a bar<esc>:wa<ret>",
+            file2.path().to_string_lossy()
+        )),
+        None,
+        false,
+    )
+    .await?;
+
+    helpers::assert_file_has_content(
+        file1.as_file_mut(),
+        &helpers::platform_line("we don't serve time travelers here\n"),
+    )?;
+
+    helpers::assert_file_has_content(
+        file2.as_file_mut(),
+        &helpers::platform_line("a time traveler walks into a bar\n"),
+    )?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_write_all_insert_final_newline_do_not_add_if_unmodified() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .build()?;
+
+    file.write_all(b"i lost on Jeopardy!")?;
+    file.rewind()?;
+
+    test_key_sequence(&mut app, Some(":wa<ret>"), None, false).await?;
+
+    helpers::assert_file_has_content(file.as_file_mut(), "i lost on Jeopardy!")?;
+
+    Ok(())
+}
+
 async fn edit_file_with_content(file_content: &[u8]) -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
 
     file.as_file_mut().write_all(&file_content)?;
 
     helpers::test_key_sequence(
-        &mut helpers::AppBuilder::new().build()?,
+        &mut helpers::AppBuilder::new()
+            .with_config(Config {
+                editor: helix_view::editor::Config {
+                    insert_final_newline: false,
+                    ..Default::default()
+                },
+                ..Default::default()
+            })
+            .build()?,
         Some(&format!(":o {}<ret>:x<ret>", file.path().to_string_lossy())),
         None,
         true,

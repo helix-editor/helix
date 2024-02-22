@@ -99,7 +99,8 @@ pub fn render_document(
     doc: &Document,
     offset: ViewPosition,
     doc_annotations: &TextAnnotations,
-    highlight_iter: impl Iterator<Item = HighlightEvent>,
+    syntax_highlight_iter: impl Iterator<Item = HighlightEvent>,
+    overlay_highlight_iter: impl Iterator<Item = HighlightEvent>,
     theme: &Theme,
     line_decoration: &mut [Box<dyn LineDecoration + '_>],
     translated_positions: &mut [TranslatedPosition],
@@ -111,7 +112,8 @@ pub fn render_document(
         offset,
         &doc.text_format(viewport.width, Some(theme)),
         doc_annotations,
-        highlight_iter,
+        syntax_highlight_iter,
+        overlay_highlight_iter,
         theme,
         line_decoration,
         translated_positions,
@@ -159,7 +161,8 @@ pub fn render_text<'t>(
     offset: ViewPosition,
     text_fmt: &TextFormat,
     text_annotations: &TextAnnotations,
-    highlight_iter: impl Iterator<Item = HighlightEvent>,
+    syntax_highlight_iter: impl Iterator<Item = HighlightEvent>,
+    overlay_highlight_iter: impl Iterator<Item = HighlightEvent>,
     theme: &Theme,
     line_decorations: &mut [Box<dyn LineDecoration + '_>],
     translated_positions: &mut [TranslatedPosition],
@@ -180,10 +183,16 @@ pub fn render_text<'t>(
 
     let (mut formatter, mut first_visible_char_idx) =
         DocumentFormatter::new_at_prev_checkpoint(text, text_fmt, text_annotations, offset.anchor);
-    let mut styles = StyleIter {
+    let mut syntax_styles = StyleIter {
         text_style: renderer.text_style,
         active_highlights: Vec::with_capacity(64),
-        highlight_iter,
+        highlight_iter: syntax_highlight_iter,
+        theme,
+    };
+    let mut overlay_styles = StyleIter {
+        text_style: Style::default(),
+        active_highlights: Vec::with_capacity(64),
+        highlight_iter: overlay_highlight_iter,
         theme,
     };
 
@@ -195,7 +204,10 @@ pub fn render_text<'t>(
     };
     let mut is_in_indent_area = true;
     let mut last_line_indent_level = 0;
-    let mut style_span = styles
+    let mut syntax_style_span = syntax_styles
+        .next()
+        .unwrap_or_else(|| (Style::default(), usize::MAX));
+    let mut overlay_style_span = overlay_styles
         .next()
         .unwrap_or_else(|| (Style::default(), usize::MAX));
 
@@ -223,9 +235,16 @@ pub fn render_text<'t>(
 
         // skip any graphemes on visual lines before the block start
         if pos.row < row_off {
-            if char_pos >= style_span.1 {
-                style_span = if let Some(style_span) = styles.next() {
-                    style_span
+            if char_pos >= syntax_style_span.1 {
+                syntax_style_span = if let Some(syntax_style_span) = syntax_styles.next() {
+                    syntax_style_span
+                } else {
+                    break;
+                }
+            }
+            if char_pos >= overlay_style_span.1 {
+                overlay_style_span = if let Some(overlay_style_span) = overlay_styles.next() {
+                    overlay_style_span
                 } else {
                     break;
                 }
@@ -262,8 +281,15 @@ pub fn render_text<'t>(
         }
 
         // acquire the correct grapheme style
-        if char_pos >= style_span.1 {
-            style_span = styles.next().unwrap_or((Style::default(), usize::MAX));
+        if char_pos >= syntax_style_span.1 {
+            syntax_style_span = syntax_styles
+                .next()
+                .unwrap_or((Style::default(), usize::MAX));
+        }
+        if char_pos >= overlay_style_span.1 {
+            overlay_style_span = overlay_styles
+                .next()
+                .unwrap_or((Style::default(), usize::MAX));
         }
         char_pos += grapheme.doc_chars();
 
@@ -277,22 +303,25 @@ pub fn render_text<'t>(
             pos,
         );
 
-        let grapheme_style = if let GraphemeSource::VirtualText { highlight } = grapheme.source {
-            let style = renderer.text_style;
-            if let Some(highlight) = highlight {
-                style.patch(theme.highlight(highlight.0))
+        let (syntax_style, overlay_style) =
+            if let GraphemeSource::VirtualText { highlight } = grapheme.source {
+                let mut style = renderer.text_style;
+                if let Some(highlight) = highlight {
+                    style = style.patch(theme.highlight(highlight.0))
+                }
+                (style, Style::default())
             } else {
-                style
-            }
-        } else {
-            style_span.0
-        };
+                (syntax_style_span.0, overlay_style_span.0)
+            };
 
-        let virt = grapheme.is_virtual();
+        let is_virtual = grapheme.is_virtual();
         renderer.draw_grapheme(
             grapheme.grapheme,
-            grapheme_style,
-            virt,
+            GraphemeStyle {
+                syntax_style,
+                overlay_style,
+            },
+            is_virtual,
             &mut last_line_indent_level,
             &mut is_in_indent_area,
             pos,
@@ -323,6 +352,11 @@ pub struct TextRenderer<'a> {
     pub col_offset: usize,
     pub viewport: Rect,
     pub trailing_whitespace_tracker: TrailingWhitespaceTracker,
+}
+
+pub struct GraphemeStyle {
+    syntax_style: Style,
+    overlay_style: Style,
 }
 
 impl<'a> TextRenderer<'a> {
@@ -374,7 +408,7 @@ impl<'a> TextRenderer<'a> {
     pub fn draw_grapheme(
         &mut self,
         grapheme: Grapheme,
-        mut style: Style,
+        grapheme_style: GraphemeStyle,
         is_virtual: bool,
         last_indent_level: &mut usize,
         is_in_indent_area: &mut bool,
@@ -384,9 +418,11 @@ impl<'a> TextRenderer<'a> {
         let is_whitespace = grapheme.is_whitespace();
 
         // TODO is it correct to apply the whitespace style to all unicode white spaces?
+        let mut style = grapheme_style.syntax_style;
         if is_whitespace {
             style = style.patch(self.whitespace_style);
         }
+        style = style.patch(grapheme_style.overlay_style);
 
         let width = grapheme.width();
         let space = if is_virtual { " " } else { &self.space };

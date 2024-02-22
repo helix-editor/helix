@@ -27,6 +27,11 @@
 "ui.cursor.match" = { bg = "base4" }
 "ui.cursorline" = { bg = "base1" }
 
+# bufferline, inlay hints
+"ui.bufferline" = { fg = "base6", bg = "base8x0c" }
+"ui.bufferline.active" = { fg = "base8", bg = "base4" }
+"ui.virtual.inlay-hint" = { fg = "base6" }
+
 # comments, nord3 based lighter color
 "comment" = { fg = "base5", modifiers = ["italic"] }
 "ui.linenr" = { fg = "base5" }

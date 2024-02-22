@@ -2,10 +2,10 @@ use std::ops::Range;
 use std::sync::Arc;
 
 use helix_core::Rope;
+use helix_event::RenderLockGuard;
 use imara_diff::Algorithm;
 use parking_lot::{Mutex, MutexGuard};
 use tokio::sync::mpsc::{unbounded_channel, UnboundedSender};
-use tokio::sync::{Notify, OwnedRwLockReadGuard, RwLock};
 use tokio::task::JoinHandle;
 use tokio::time::Instant;
 
@@ -14,11 +14,9 @@ use crate::diff::worker::DiffWorker;
 mod line_cache;
 mod worker;
 
-type RedrawHandle = (Arc<Notify>, Arc<RwLock<()>>);
-
 /// A rendering lock passed to the differ the prevents redraws from occurring
 struct RenderLock {
-    pub lock: OwnedRwLockReadGuard<()>,
+    pub lock: RenderLockGuard,
     pub timeout: Option<Instant>,
 }
 
@@ -38,28 +36,22 @@ struct DiffInner {
 #[derive(Clone, Debug)]
 pub struct DiffHandle {
     channel: UnboundedSender<Event>,
-    render_lock: Arc<RwLock<()>>,
     diff: Arc<Mutex<DiffInner>>,
     inverted: bool,
 }
 
 impl DiffHandle {
-    pub fn new(diff_base: Rope, doc: Rope, redraw_handle: RedrawHandle) -> DiffHandle {
-        DiffHandle::new_with_handle(diff_base, doc, redraw_handle).0
+    pub fn new(diff_base: Rope, doc: Rope) -> DiffHandle {
+        DiffHandle::new_with_handle(diff_base, doc).0
     }
 
-    fn new_with_handle(
-        diff_base: Rope,
-        doc: Rope,
-        redraw_handle: RedrawHandle,
-    ) -> (DiffHandle, JoinHandle<()>) {
+    fn new_with_handle(diff_base: Rope, doc: Rope) -> (DiffHandle, JoinHandle<()>) {
         let (sender, receiver) = unbounded_channel();
         let diff: Arc<Mutex<DiffInner>> = Arc::default();
         let worker = DiffWorker {
             channel: receiver,
             diff: diff.clone(),
             new_hunks: Vec::default(),
-            redraw_notify: redraw_handle.0,
             diff_finished_notify: Arc::default(),
         };
         let handle = tokio::spawn(worker.run(diff_base, doc));
@@ -67,7 +59,6 @@ impl DiffHandle {
             channel: sender,
             diff,
             inverted: false,
-            render_lock: redraw_handle.1,
         };
         (differ, handle)
     }
@@ -87,11 +78,7 @@ impl DiffHandle {
     /// This function is only intended to be called from within the rendering loop
     /// if called from elsewhere it may fail to acquire the render lock and panic
     pub fn update_document(&self, doc: Rope, block: bool) -> bool {
-        // unwrap is ok here because the rendering lock is
-        // only exclusively locked during redraw.
-        // This function is only intended to be called
-        // from the core rendering loop where no redraw can happen in parallel
-        let lock = self.render_lock.clone().try_read_owned().unwrap();
+        let lock = helix_event::lock_frame();
         let timeout = if block {
             None
         } else {

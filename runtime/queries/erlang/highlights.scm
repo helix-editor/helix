@@ -145,8 +145,9 @@
 ((atom) @constant.builtin.boolean
  (#match? @constant.builtin.boolean "^(true|false)$"))
 (atom) @string.special.symbol
-(string) @string
+[(string) (sigil)] @string
 (character) @constant.character
+(escape_sequence) @constant.character.escape
 
 (integer) @constant.numeric.integer
 (float) @constant.numeric.float

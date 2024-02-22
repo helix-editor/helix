@@ -9,8 +9,7 @@ use crate::{
 };
 
 fn count_digits(n: usize) -> usize {
-    // TODO: use checked_log10 when MSRV reaches 1.67
-    std::iter::successors(Some(n), |&n| (n >= 10).then_some(n / 10)).count()
+    (usize::checked_ilog10(n).unwrap_or(0) + 1) as usize
 }
 
 pub type GutterFn<'doc> = Box<dyn FnMut(usize, bool, bool, &mut String) -> Option<Style> + 'doc>;
@@ -94,9 +93,9 @@ pub fn diff<'doc>(
     theme: &Theme,
     _is_focused: bool,
 ) -> GutterFn<'doc> {
-    let added = theme.get("diff.plus");
-    let deleted = theme.get("diff.minus");
-    let modified = theme.get("diff.delta");
+    let added = theme.get("diff.plus.gutter");
+    let deleted = theme.get("diff.minus.gutter");
+    let modified = theme.get("diff.delta.gutter");
     if let Some(diff_handle) = doc.diff_handle() {
         let hunks = diff_handle.load();
         let mut hunk_i = 0;

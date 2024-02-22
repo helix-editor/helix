@@ -11,7 +11,7 @@ impl ProgressSpinners {
     }
 
     pub fn get_or_create(&mut self, id: usize) -> &mut Spinner {
-        self.inner.entry(id).or_insert_with(Spinner::default)
+        self.inner.entry(id).or_default()
     }
 }
 

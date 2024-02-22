@@ -1,0 +1,113 @@
+# Author : eemilhaa <eemil.haapanen@gmail.com> 
+# Palette from : https://github.com/CosmicToast/starlight
+
+# Syntax
+"function"               = "green"
+"constructor"            = "green"
+
+"type"                   = "cyan"
+"string.special"         = "cyan"
+"string.regexp"          = "cyan"
+"constant"               = "cyan"
+"punctuation.special"    = "cyan"
+
+"namespace"              = "white"
+"module"                 = "white"
+"variable"               = "white"
+
+"attribute"              = "magenta"
+"variable.parameter"     = "magenta"
+"variable.other.member"  = "magenta"
+"type.parameter"         = "magenta"
+
+"keyword"                = "blue"
+"variable.builtin"       = "blue"
+"label"                  = "blue"
+"tag"                    = "blue"
+"operator"               = "blue"
+"special"                = "blue"
+
+"string"                 = "yellow"
+
+"punctuation"            = "punct"
+
+"comment"                = "dark-fg"
+
+# Markup
+"markup.heading.marker"  = { fg = "blue", modifiers = ["bold"] }
+"markup.heading"         = { fg = "white", modifiers = ["bold"] }
+"markup.list"            = "blue"
+"markup.bold"            = { fg = "magenta", modifiers = ["bold"] }
+"markup.italic"          = { fg = "magenta", modifiers = ["italic"] }
+"markup.strikethrough"   = "red"
+"markup.link"            = "cyan"
+"markup.link.text"       = "yellow"
+"markup.quote"           = "magenta"
+"markup.raw"             = "green"
+
+# UI
+"diff.plus"   = "green"
+"diff.minus"  = "red"
+"diff.delta"  = "blue"
+
+"ui.background"             = { fg = "dark-fg", bg = "dark-bg" }
+"ui.cursor"                 = { fg = "black", bg = "light-fg" }
+"ui.cursor.primary"         = { fg = "black", bg = "yellow" }
+"ui.cursor.match"           = { fg = "black", bg = "dark-blue", modifiers = ["bold"] }
+"ui.linenr"                 = "dark-fg"
+"ui.linenr.selected"        = "yellow"
+"ui.statusline"             = { fg = "light-fg", bg = "light-bg" }
+"ui.statusline.inactive"    = { fg = "dark-fg", bg = "light-bg" }
+"ui.statusline.insert"      = { fg = "black", bg = "green" }
+"ui.statusline.select"      = { fg = "black", bg = "magenta" }
+"ui.statusline.normal"      = { fg = "black", bg = "blue" }
+"ui.popup"                  = { fg = "dark-fg", bg = "light-bg" }
+"ui.window"                 = { fg = "light-bg", bg = "dark-bg" }
+"ui.help"                   = { fg = "light-fg", bg = "light-bg" }
+"ui.text"                   = "light-fg"
+"ui.text.focus"             = { fg = "white", bg = "light-bg", modifiers = ["bold"] }
+"ui.virtual"                = "dark-fg"
+"ui.virtual.ruler"          = { bg = "medium-bg" }
+"ui.virtual.indent-guide"   = "indent"
+"ui.virtual.whitespace"     = "indent"
+"ui.menu"                   = { fg = "light-fg", bg = "light-bg" }
+"ui.menu.selected"          = { fg = "white", bg = "dark-fg", modifiers = ["bold"] }
+"ui.selection"              = { fg = "light-fg", bg = "dark-fg" }
+"ui.selection.primary"      = { fg = "white", bg = "dark-blue" }
+"ui.highlight"              = { bg = "light-bg" }
+"ui.cursorline.primary"     = { bg = "black" }
+"ui.cursorcolumn.primary"   = { bg = "black" }
+"ui.bufferline.background"  = { bg = "dark-bg" }
+"ui.bufferline"             = { fg = "light-fg", bg = "light-bg" }
+"ui.bufferline.active"      = { fg = "white", bg = "dark-fg" }
+
+"diagnostic.error"    = { underline = { color = "red", style = "curl" } }
+"diagnostic.warning"  = { underline = { color = "yellow", style = "curl" } }
+"diagnostic.info"     = { underline = { color = "blue", style = "curl" } }
+"diagnostic.hint"     = { underline = { color = "blue", style = "curl" } }
+
+"info"     = "blue"
+"hint"     = "blue"
+"warning"  = "yellow"
+"error"    = "red"
+
+[palette]
+# Colors
+red        = "#FF4D51"
+green      = "#35D450"
+yellow     = "#E9E836"
+blue       = "#5DC5F8"
+dark-blue  = "#24ACD4"
+magenta    = "#FEABF2"
+cyan       = "#24DFC4"
+white      = "#ffffff"
+punct      = "#C9C9C9"
+
+# Grays
+black      = "#1e1e1e"
+dark-bg    = "#242424"
+medium-bg  = "#2D2D2D"
+light-bg   = "#353535"
+indent     = "#616161"
+dark-fg    = "#929292"
+light-fg   = "#E6E6E6"

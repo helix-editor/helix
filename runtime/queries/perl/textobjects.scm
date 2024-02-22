@@ -1,17 +1,14 @@
-(function_definition 
-  (identifier) (_) @function.inside) @function.around
+(subroutine_declaration_statement
+  body: (_) @function.inside) @function.around
+(anonymous_subroutine_expression
+  body: (_) @function.inside) @function.around
 
-(anonymous_function 
-  (_) @function.inside) @function.around
+(package_statement) @class.around
+(package_statement
+  (block) @class.inside)
 
-(argument 
+(list_expression
   (_) @parameter.inside)
 
-[
-  (comments)
-  (pod_statement)
-] @comment.inside
-
-(comments)+ @comment.around
-
-(pod_statement) @comment.around
+(comment) @comment.around
+(pod) @comment.around

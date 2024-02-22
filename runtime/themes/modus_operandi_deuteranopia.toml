@@ -1,0 +1,46 @@
+# Author: Alexis Mousset <contact@amousset.me>
+# modus_operandi.toml variant
+#
+# This variant is optimized for users with red-green color deficiency (deuteranopia)
+
+inherits = "modus_operandi"
+
+"constant.character.escape" = "magenta"
+"comment" = "yellow-cooler"
+"function" = "magenta"
+"tag" = "magenta"
+
+"ui.cursor" = { fg = "bg-main", bg = "blue-intense" }
+"ui.cursor.primary.normal" = { fg = "bg-main", bg = "blue-intense" }
+
+"diagnostic.error" = { underline = { color = "yellow-intense", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "magenta-faint", style = "curl" } }
+"diagnostic.info" = { underline = { color = "cyan", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "blue", style = "curl" } }
+
+error = "yellow-intense"
+warning = "magenta-faint"
+info = "cyan"
+hint = "blue"
+
+[palette]
+
+yellow = "#695500"
+yellow-warmer = "#973300"
+yellow-cooler = "#77492f"
+
+bg-mode-line-active = "#d0d6ff"
+fg-mode-line-active = "#0f0f0f"
+border-mode-line-active = "#4f4f74"
+
+modeline-err = "#603a00"
+modeline-warning = "#454500"
+modeline-info = "#023d92"
+
+# Diffs
+bg-added = "#d5d7ff"
+fg-added = "#303099"
+bg-changed = "#eecfdf"
+fg-changed = "#6f1343"
+bg-removed = "#f4f099"
+fg-removed = "#553d00"

@@ -125,7 +125,7 @@
 "keyword.control.exception" = { fg = "magenta" } # `try`, `catch`, `raise`/`throw` and related.
 "keyword.operator" = { fg = "fg2", modifiers = ["bold"] } # 'or', 'and', 'in'.
 "keyword.directive" = { fg = "pink-bright" } # Preprocessor directives (#if in C...).
-"keyword.function" = { fg = "red" } # The keyword to define a funtion: 'def', 'fun', 'fn'.
+"keyword.function" = { fg = "red" } # The keyword to define a function: 'def', 'fun', 'fn'.
 "keyword.storage" = { fg = "magenta" } # Keywords describing how things are stored
 "keyword.storage.type" = { fg = "magenta" } #  The type of something, class, function, var, let, etc.
 "keyword.storage.modifier" = { fg = "yellow" } # Storage modifiers like static, mut, const, ref, etc.
@@ -183,6 +183,6 @@ bg4            = "#39506d" # Conceal, border fg
 fg0            = "#d6d6d7" # Lighter fg
 fg1            = "#cdcecf" # Default fg
 fg2            = "#aeafb0" # Darker fg (status line)
-fg3            = "#71839b" # Darker fg (line numbers, fold colums)
+fg3            = "#71839b" # Darker fg (line numbers, fold columns)
 sel0           = "#2b3b51" # Popup bg, visual selection bg
 sel1           = "#3c5372" # Popup sel bg, search bg

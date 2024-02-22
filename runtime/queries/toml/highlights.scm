@@ -1,10 +1,23 @@
 ; Properties
 ;-----------
 
-[
+(table [
   (bare_key)
+  (dotted_key)
   (quoted_key)
-] @variable.other.member
+] @type)
+
+(table_array_element [
+  (bare_key)
+  (dotted_key)
+  (quoted_key)
+] @type)
+
+(pair [
+  (bare_key)
+  (dotted_key)
+  (quoted_key)
+] @variable.other.member)
 
 ; Literals
 ;---------

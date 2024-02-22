@@ -187,11 +187,17 @@ impl View {
     }
 
     pub fn gutter_offset(&self, doc: &Document) -> u16 {
-        self.gutters
+        let total_width = self
+            .gutters
             .layout
             .iter()
             .map(|gutter| gutter.width(self, doc) as u16)
-            .sum()
+            .sum();
+        if total_width < self.area.width {
+            total_width
+        } else {
+            0
+        }
     }
 
     //
