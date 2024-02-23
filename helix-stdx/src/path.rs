@@ -21,12 +21,12 @@ pub fn fold_home_dir(path: &Path) -> PathBuf {
 /// and only slash follows it.
 pub fn expand_tilde(path: impl AsRef<Path>) -> PathBuf {
     let path = path.as_ref();
-    let mut components = path.components().peekable();
-    if let Some(Component::Normal(c)) = components.peek() {
-        if c == &"~" {
-            if let Ok(home) = home_dir() {
-                // it's ok to unwrap, the path starts with `~`
-                return home.join(path.strip_prefix("~").unwrap());
+    let mut components = path.components();
+    if let Some(Component::Normal(c)) = components.next() {
+        if c == "~" {
+            if let Ok(mut buf) = home_dir() {
+                buf.push(components);
+                return buf;
             }
         }
     }
