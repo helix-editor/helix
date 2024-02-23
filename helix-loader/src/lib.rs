@@ -4,7 +4,10 @@ pub mod grammar;
 use helix_stdx::{env::current_working_dir, path};
 
 use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
-use std::path::{Path, PathBuf};
+use std::{
+    borrow::Cow,
+    path::{Path, PathBuf},
+};
 
 pub const VERSION_AND_GIT_HASH: &str = env!("VERSION_AND_GIT_HASH");
 
@@ -53,7 +56,7 @@ fn prioritize_runtime_dirs() -> Vec<PathBuf> {
     rt_dirs.push(conf_rt_dir);
 
     if let Ok(dir) = std::env::var("HELIX_RUNTIME") {
-        let dir = path::expand_tilde(dir);
+        let dir = path::expand_tilde(Cow::Borrowed(Path::new(&dir)));
         rt_dirs.push(path::normalize(dir));
     }
 

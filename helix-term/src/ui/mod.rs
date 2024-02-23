@@ -409,7 +409,7 @@ pub mod completers {
         use std::path::Path;
 
         let is_tilde = input == "~";
-        let path = helix_stdx::path::expand_tilde(Path::new(input));
+        let path = helix_stdx::path::expand_tilde(Cow::Borrowed(Path::new(input)));
 
         let (dir, file_name) = if input.ends_with(std::path::MAIN_SEPARATOR) {
             (path, None)
@@ -428,9 +428,9 @@ pub mod completers {
                 path
             } else {
                 match path.parent() {
-                    Some(path) if !path.as_os_str().is_empty() => path.to_path_buf(),
+                    Some(path) if !path.as_os_str().is_empty() => Cow::Borrowed(path),
                     // Path::new("h")'s parent is Some("")...
-                    _ => helix_stdx::env::current_working_dir(),
+                    _ => Cow::Owned(helix_stdx::env::current_working_dir()),
                 }
             };
 
