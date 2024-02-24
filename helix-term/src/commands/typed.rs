@@ -1273,6 +1273,7 @@ fn reload(
     doc.reload(view, &cx.editor.diff_providers).map(|_| {
         view.ensure_cursor_in_view(doc, scrolloff);
     })?;
+    doc.detect_language(cx.editor.syn_loader.clone());
     if let Some(path) = doc.path() {
         cx.editor
             .language_servers
