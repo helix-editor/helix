@@ -1192,18 +1192,15 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
             valid_chars.contains(c) || c.is_alphabetic()
         };
 
-        let start_pos = {
-            let cursor_pos = primary.cursor(text.slice(..));
-            let pre_cursor_pos = cursor_pos.saturating_sub(1);
-            let post_cursor_pos = cursor_pos.saturating_add(1);
-
-            if is_valid_path_char(&text.char(cursor_pos)) {
-                cursor_pos
-            } else if is_valid_path_char(&text.char(pre_cursor_pos)) {
-                pre_cursor_pos
-            } else {
-                post_cursor_pos
-            }
+        let cursor_pos = primary.cursor(text.slice(..));
+        let pre_cursor_pos = cursor_pos.saturating_sub(1);
+        let post_cursor_pos = cursor_pos.saturating_add(1);
+        let start_pos = if is_valid_path_char(&text.char(cursor_pos)) {
+            cursor_pos
+        } else if is_valid_path_char(&text.char(pre_cursor_pos)) {
+            pre_cursor_pos
+        } else {
+            post_cursor_pos
         };
 
         let prefix_len = text
