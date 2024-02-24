@@ -2371,6 +2371,8 @@ file-types = [
   "menu",
   "mxml",
   "nuspec",
+  "osc",
+  "osm",
   "pt",
   "publishsettings",
   "pubxml",
