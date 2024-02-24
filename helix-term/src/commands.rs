@@ -3,6 +3,7 @@ pub(crate) mod lsp;
 pub(crate) mod typed;
 
 pub use dap::*;
+use helix_stdx::path::expand_tilde;
 use helix_vcs::Hunk;
 pub use lsp::*;
 use tui::widgets::Row;
@@ -1222,9 +1223,9 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
             .into();
         log::debug!("Goto file path: {}", path);
 
-        match shellexpand::full(&path) {
-            Ok(path) => paths.push(path.to_string()),
-            Err(e) => cx.editor.set_error(format!("{}", e)),
+        match expand_tilde(PathBuf::from(path.as_ref())).to_str() {
+            Some(path) => paths.push(path.to_string()),
+            None => cx.editor.set_error("Couldn't get string out of path."),
         };
     }
 
