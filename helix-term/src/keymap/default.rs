@@ -66,6 +66,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "C-down" => goto_window_bottom,
         "C-," => file_picker,
         "C-." => file_picker,
+        "F2" => rename_symbol,
+
         
         "v" => select_mode,
         "G" => goto_line,
