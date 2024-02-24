@@ -1,9 +1,11 @@
 mod client;
 pub mod file_event;
+mod file_operations;
 pub mod jsonrpc;
 pub mod snippet;
 mod transport;
 
+use arc_swap::ArcSwap;
 pub use client::Client;
 pub use futures_executor::block_on;
 pub use jsonrpc::Call;
@@ -11,10 +13,10 @@ pub use lsp::{Position, Url};
 pub use lsp_types as lsp;
 
 use futures_util::stream::select_all::SelectAll;
-use helix_core::{
-    path,
-    syntax::{LanguageConfiguration, LanguageServerConfiguration, LanguageServerFeatures},
+use helix_core::syntax::{
+    LanguageConfiguration, LanguageServerConfiguration, LanguageServerFeatures,
 };
+use helix_stdx::path;
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use std::{
@@ -43,6 +45,8 @@ pub enum Error {
     StreamClosed,
     #[error("Unhandled")]
     Unhandled,
+    #[error(transparent)]
+    ExecutableNotFound(#[from] helix_stdx::env::ExecutableNotFoundError),
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -549,6 +553,7 @@ pub enum MethodCall {
     WorkspaceConfiguration(lsp::ConfigurationParams),
     RegisterCapability(lsp::RegistrationParams),
     UnregisterCapability(lsp::UnregistrationParams),
+    ShowDocument(lsp::ShowDocumentParams),
 }
 
 impl MethodCall {
@@ -575,6 +580,10 @@ impl MethodCall {
             lsp::request::UnregisterCapability::METHOD => {
                 let params: lsp::UnregistrationParams = params.parse()?;
                 Self::UnregisterCapability(params)
+            }
+            lsp::request::ShowDocument::METHOD => {
+                let params: lsp::ShowDocumentParams = params.parse()?;
+                Self::ShowDocument(params)
             }
             _ => {
                 return Err(Error::Unhandled);
@@ -632,14 +641,14 @@ impl Notification {
 #[derive(Debug)]
 pub struct Registry {
     inner: HashMap<LanguageServerName, Vec<Arc<Client>>>,
-    syn_loader: Arc<helix_core::syntax::Loader>,
+    syn_loader: Arc<ArcSwap<helix_core::syntax::Loader>>,
     counter: usize,
     pub incoming: SelectAll<UnboundedReceiverStream<(usize, Call)>>,
     pub file_event_handler: file_event::Handler,
 }
 
 impl Registry {
-    pub fn new(syn_loader: Arc<helix_core::syntax::Loader>) -> Self {
+    pub fn new(syn_loader: Arc<ArcSwap<helix_core::syntax::Loader>>) -> Self {
         Self {
             inner: HashMap::new(),
             syn_loader,
@@ -672,15 +681,15 @@ impl Registry {
         doc_path: Option<&std::path::PathBuf>,
         root_dirs: &[PathBuf],
         enable_snippets: bool,
-    ) -> Result<Arc<Client>> {
-        let config = self
-            .syn_loader
+    ) -> Result<Option<Arc<Client>>> {
+        let syn_loader = self.syn_loader.load();
+        let config = syn_loader
             .language_server_configs()
             .get(&name)
             .ok_or_else(|| anyhow::anyhow!("Language server '{name}' not defined"))?;
         let id = self.counter;
         self.counter += 1;
-        let NewClient(client, incoming) = start_client(
+        if let Some(NewClient(client, incoming)) = start_client(
             id,
             name,
             ls_config,
@@ -688,9 +697,12 @@ impl Registry {
             doc_path,
             root_dirs,
             enable_snippets,
-        )?;
-        self.incoming.push(UnboundedReceiverStream::new(incoming));
-        Ok(client)
+        )? {
+            self.incoming.push(UnboundedReceiverStream::new(incoming));
+            Ok(Some(client))
+        } else {
+            Ok(None)
+        }
     }
 
     /// If this method is called, all documents that have a reference to language servers used by the language config have to refresh their language servers,
@@ -715,8 +727,8 @@ impl Registry {
                         root_dirs,
                         enable_snippets,
                     ) {
-                        Ok(client) => client,
-                        error => return Some(error),
+                        Ok(client) => client?,
+                        Err(error) => return Some(Err(error)),
                     };
                     let old_clients = self
                         .inner
@@ -756,13 +768,13 @@ impl Registry {
         root_dirs: &'a [PathBuf],
         enable_snippets: bool,
     ) -> impl Iterator<Item = (LanguageServerName, Result<Arc<Client>>)> + 'a {
-        language_config.language_servers.iter().map(
+        language_config.language_servers.iter().filter_map(
             move |LanguageServerFeatures { name, .. }| {
                 if let Some(clients) = self.inner.get(name) {
                     if let Some((_, client)) = clients.iter().enumerate().find(|(i, client)| {
                         client.try_add_doc(&language_config.roots, root_dirs, doc_path, *i == 0)
                     }) {
-                        return (name.to_owned(), Ok(client.clone()));
+                        return Some((name.to_owned(), Ok(client.clone())));
                     }
                 }
                 match self.start_client(
@@ -773,13 +785,14 @@ impl Registry {
                     enable_snippets,
                 ) {
                     Ok(client) => {
+                        let client = client?;
                         self.inner
                             .entry(name.to_owned())
                             .or_default()
                             .push(client.clone());
-                        (name.clone(), Ok(client))
+                        Some((name.clone(), Ok(client)))
                     }
-                    Err(err) => (name.to_owned(), Err(err)),
+                    Err(err) => Some((name.to_owned(), Err(err))),
                 }
             },
         )
@@ -880,18 +893,45 @@ fn start_client(
     doc_path: Option<&std::path::PathBuf>,
     root_dirs: &[PathBuf],
     enable_snippets: bool,
-) -> Result<NewClient> {
+) -> Result<Option<NewClient>> {
+    let (workspace, workspace_is_cwd) = helix_loader::find_workspace();
+    let workspace = path::normalize(workspace);
+    let root = find_lsp_workspace(
+        doc_path
+            .and_then(|x| x.parent().and_then(|x| x.to_str()))
+            .unwrap_or("."),
+        &config.roots,
+        config.workspace_lsp_roots.as_deref().unwrap_or(root_dirs),
+        &workspace,
+        workspace_is_cwd,
+    );
+
+    // `root_uri` and `workspace_folder` can be empty in case there is no workspace
+    // `root_url` can not, use `workspace` as a fallback
+    let root_path = root.clone().unwrap_or_else(|| workspace.clone());
+    let root_uri = root.and_then(|root| lsp::Url::from_file_path(root).ok());
+
+    if let Some(globset) = &ls_config.required_root_patterns {
+        if !root_path
+            .read_dir()?
+            .flatten()
+            .map(|entry| entry.file_name())
+            .any(|entry| globset.is_match(entry))
+        {
+            return Ok(None);
+        }
+    }
+
     let (client, incoming, initialize_notify) = Client::start(
         &ls_config.command,
         &ls_config.args,
         ls_config.config.clone(),
         ls_config.environment.clone(),
-        &config.roots,
-        config.workspace_lsp_roots.as_deref().unwrap_or(root_dirs),
+        root_path,
+        root_uri,
         id,
         name,
         ls_config.timeout,
-        doc_path,
     )?;
 
     let client = Arc::new(client);
@@ -915,15 +955,22 @@ fn start_client(
         }
 
         // next up, notify<initialized>
-        _client
+        let notification_result = _client
             .notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
-            .await
-            .unwrap();
+            .await;
+
+        if let Err(e) = notification_result {
+            log::error!(
+                "failed to notify language server of its initialization: {}",
+                e
+            );
+            return;
+        }
 
         initialize_notify.notify_one();
     });
 
-    Ok(NewClient(client, incoming))
+    Ok(Some(NewClient(client, incoming)))
 }
 
 /// Find an LSP workspace of a file using the following mechanism:
@@ -946,10 +993,10 @@ pub fn find_lsp_workspace(
     let mut file = if file.is_absolute() {
         file.to_path_buf()
     } else {
-        let current_dir = helix_loader::current_working_dir();
+        let current_dir = helix_stdx::env::current_working_dir();
         current_dir.join(file)
     };
-    file = path::get_normalized_path(&file);
+    file = path::normalize(&file);
 
     if !file.starts_with(workspace) {
         return None;
@@ -966,7 +1013,7 @@ pub fn find_lsp_workspace(
 
         if root_dirs
             .iter()
-            .any(|root_dir| path::get_normalized_path(&workspace.join(root_dir)) == ancestor)
+            .any(|root_dir| path::normalize(workspace.join(root_dir)) == ancestor)
         {
             // if the worskapce is the cwd do not search any higher for workspaces
             // but specify

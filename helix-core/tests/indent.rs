@@ -1,10 +1,11 @@
+use arc_swap::ArcSwap;
 use helix_core::{
     indent::{indent_level_for_line, treesitter_indent_for_pos, IndentStyle},
     syntax::{Configuration, Loader},
     Syntax,
 };
 use ropey::Rope;
-use std::{ops::Range, path::PathBuf, process::Command};
+use std::{ops::Range, path::PathBuf, process::Command, sync::Arc};
 
 #[test]
 fn test_treesitter_indent_rust() {
@@ -186,7 +187,7 @@ fn test_treesitter_indent(
     lang_scope: &str,
     ignored_lines: Vec<std::ops::Range<usize>>,
 ) {
-    let loader = Loader::new(indent_tests_config());
+    let loader = Loader::new(indent_tests_config()).unwrap();
 
     // set runtime path so we can find the queries
     let mut runtime = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -197,7 +198,12 @@ fn test_treesitter_indent(
     let indent_style = IndentStyle::from_str(&language_config.indent.as_ref().unwrap().unit);
     let highlight_config = language_config.highlight_config(&[]).unwrap();
     let text = doc.slice(..);
-    let syntax = Syntax::new(text, highlight_config, std::sync::Arc::new(loader)).unwrap();
+    let syntax = Syntax::new(
+        text,
+        highlight_config,
+        Arc::new(ArcSwap::from_pointee(loader)),
+    )
+    .unwrap();
     let indent_query = language_config.indent_query().unwrap();
 
     for i in 0..doc.len_lines() {
@@ -210,7 +216,6 @@ fn test_treesitter_indent(
             let suggested_indent = treesitter_indent_for_pos(
                 indent_query,
                 &syntax,
-                &indent_style,
                 tab_width,
                 indent_style.indent_width(tab_width),
                 text,
@@ -218,7 +223,8 @@ fn test_treesitter_indent(
                 text.line_to_char(i) + pos,
                 false,
             )
-            .unwrap();
+            .unwrap()
+            .to_string(&indent_style, tab_width);
             assert!(
                 line.get_slice(..pos).map_or(false, |s| s == suggested_indent),
                 "Wrong indentation for file {:?} on line {}:\n\"{}\" (original line)\n\"{}\" (suggested indentation)\n",

@@ -134,6 +134,15 @@
 "ui.bufferline" = { fg = "nord5", bg = "nord1" }
 "ui.bufferline.active" = { fg = "nord6", bg = "nord2", underline = { color = "nord8", style = "line" }, modifiers = [ "italic" ] }
 
+# Markup
+"markup.heading" = "nord8"
+"markup.list" = "nord9"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.text" = "nord8"
+"markup.raw" = "nord7"
+
 [palette]
 # Polar Night is made up of four darker colors that are commonly used for base elements like backgrounds or text color in bright ambiance designs.
 #

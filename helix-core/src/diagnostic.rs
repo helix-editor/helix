@@ -39,6 +39,10 @@ pub enum DiagnosticTag {
 #[derive(Debug, Clone)]
 pub struct Diagnostic {
     pub range: Range,
+    // whether this diagnostic ends at the end of(or inside) a word
+    pub ends_at_word: bool,
+    pub starts_at_word: bool,
+    pub zero_width: bool,
     pub line: usize,
     pub message: String,
     pub severity: Option<Severity>,

@@ -13,6 +13,7 @@ homepage.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+helix-stdx = { path = "../helix-stdx" }
 helix-core = { path = "../helix-core" }
 
 anyhow = "1.0"
@@ -21,7 +22,6 @@ serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 thiserror = "1.0"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot", "net", "sync"] }
-which = "5.0.0"
 
 [dev-dependencies]
 fern = "0.6"
