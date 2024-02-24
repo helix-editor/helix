@@ -56,9 +56,34 @@
 
 (documentation_comment)+ @comment.around
 
-(formal_parameter) @parameter.inside
+(formal_parameter_list
+  (
+    (formal_parameter) @parameter.inside . ","? @parameter.around
+  ) @parameter.around
+)
 
-(formal_parameter_list) @parameter.around
+(optional_formal_parameters
+  (
+    (formal_parameter) @parameter.inside . ","? @parameter.around
+  ) @parameter.around
+)
+
+(arguments
+  (
+    [
+      (argument) @parameter.inside
+      (named_argument (label) . (_)* @parameter.inside)
+    ]
+    . ","? @parameter.around
+  ) @parameter.around
+)
+
+(type_arguments
+  (
+    ((_) . ("." . (_) @parameter.inside @parameter.around)?) @parameter.inside
+    . ","? @parameter.around
+  ) @parameter.around
+)
 
 (expression_statement
   ((identifier) @_name (#any-of? @_name "test" "testWidgets"))

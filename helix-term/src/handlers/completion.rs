@@ -221,9 +221,17 @@ fn request_completion(
                                 .iter()
                                 .find(|&trigger| trigger_text.ends_with(trigger))
                         });
-                lsp::CompletionContext {
-                    trigger_kind: lsp::CompletionTriggerKind::TRIGGER_CHARACTER,
-                    trigger_character: trigger_char.cloned(),
+
+                if trigger_char.is_some() {
+                    lsp::CompletionContext {
+                        trigger_kind: lsp::CompletionTriggerKind::TRIGGER_CHARACTER,
+                        trigger_character: trigger_char.cloned(),
+                    }
+                } else {
+                    lsp::CompletionContext {
+                        trigger_kind: lsp::CompletionTriggerKind::INVOKED,
+                        trigger_character: None,
+                    }
                 }
             };
 
