@@ -1,8 +1,6 @@
 #![cfg(windows)]
 
 use std::{
-    assert_eq,
-    borrow::Cow,
     env::set_current_dir,
     error::Error,
     path::{Component, Path, PathBuf},
