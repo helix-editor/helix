@@ -48,6 +48,7 @@ log = "~0.4"
 
 parking_lot = "0.12.1"
 
+ignore.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 clipboard-win = { version = "5.1", features = ["std"] }

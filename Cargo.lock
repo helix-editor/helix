@@ -1443,6 +1443,7 @@ dependencies = [
  "helix-stdx",
  "helix-tui",
  "helix-vcs",
+ "ignore",
  "libc",
  "log",
  "once_cell",
