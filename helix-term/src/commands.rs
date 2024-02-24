@@ -440,6 +440,7 @@ impl MappableCommand {
         wclose, "Close window",
         wonly, "Close windows except current",
         select_register, "Select register",
+        copy_between_registers, "Copy contents of selected register to another",
         insert_register, "Insert register",
         align_view_middle, "Align view middle",
         align_view_top, "Align view top",
@@ -4801,6 +4802,24 @@ fn select_register(cx: &mut Context) {
         if let Some(ch) = event.char() {
             cx.editor.autoinfo = None;
             cx.editor.selected_register = Some(ch);
+        }
+    })
+}
+
+fn copy_between_registers(cx: &mut Context) {
+    // Copy from selected register to the register of the next keypress
+    let Some(values) = cx.editor.registers.read(cx.register.unwrap_or('"'), cx.editor) else {
+       return; 
+    }; 
+
+    let values: Vec<String> = values.map(|value| value.to_string()).collect();
+
+    cx.on_next_key(move |cx, event| {
+        if let Some(ch) = event.char() {
+            if let Err(err) = cx.editor.registers.write(ch, values) {
+                cx.editor.set_error(err.to_string());
+                return;
+            }
         }
     })
 }
