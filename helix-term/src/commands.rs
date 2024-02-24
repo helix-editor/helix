@@ -1205,7 +1205,6 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
 
         let prefix_len = text
             .chars_at(start_pos)
-            .clone()
             .reversed()
             .take_while(is_valid_path_char)
             .count();
