@@ -164,6 +164,17 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
     )
     .await?;
 
+    // allow numeric values in path
+    test_key_sequence(
+        &mut AppBuilder::new().with_file(file.path(), None).build()?,
+        Some("iimport 'one123.js'<esc>B;gf"),
+        Some(&|app| {
+            assert_eq!(1, match_paths(app, vec!["one123.js"]));
+        }),
+        false,
+    )
+    .await?;
+
     Ok(())
 }
 
