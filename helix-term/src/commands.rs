@@ -1216,11 +1216,9 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
             .take_while(is_valid_path_char)
             .count();
 
-        let path = Cow::Borrowed(
-            text.slice((start_pos - prefix_len)..(start_pos + postfix_len))
-                .as_str()
-                .unwrap(),
-        );
+        let path: Cow<str> = text
+            .slice((start_pos - prefix_len)..(start_pos + postfix_len))
+            .into();
         log::debug!("Goto file path: {}", path);
 
         match shellexpand::full(&path) {
