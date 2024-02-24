@@ -1,7 +1,9 @@
 use crate::{
     compositor::{Component, Context, Event, EventResult},
     handlers::trigger_auto_completion,
+    job,
 };
+use helix_event::AsyncHook;
 use helix_view::{
     document::SavePoint,
     editor::CompleteAction,
@@ -10,14 +12,14 @@ use helix_view::{
     theme::{Modifier, Style},
     ViewId,
 };
+use tokio::time::Instant;
 use tui::{buffer::Buffer as Surface, text::Span};
 
-use std::{borrow::Cow, sync::Arc};
+use std::{borrow::Cow, sync::Arc, time::Duration};
 
 use helix_core::{chars, Change, Transaction};
 use helix_view::{graphics::Rect, Document, Editor};
 
-use crate::commands;
 use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
 
 use helix_lsp::{lsp, util, OffsetEncoding};
@@ -102,6 +104,7 @@ pub struct Completion {
     #[allow(dead_code)]
     trigger_offset: usize,
     filter: String,
+    resolve_handler: tokio::sync::mpsc::Sender<CompletionItem>,
 }
 
 impl Completion {
@@ -368,6 +371,7 @@ impl Completion {
             // TODO: expand nucleo api to allow moving straight to a Utf32String here
             // and avoid allocation during matching
             filter: String::from(fragment),
+            resolve_handler: ResolveHandler::default().spawn(),
         };
 
         // need to recompute immediately in case start_offset != trigger_offset
@@ -379,6 +383,8 @@ impl Completion {
         completion
     }
 
+    /// Synchronously resolve the given completion item. This is used when
+    /// accepting a completion.
     fn resolve_completion_item(
         language_server: &helix_lsp::Client,
         completion_item: lsp::CompletionItem,
@@ -386,7 +392,7 @@ impl Completion {
         let future = language_server.resolve_completion_item(completion_item)?;
         let response = helix_lsp::block_on(future);
         match response {
-            Ok(value) => serde_json::from_value(value).ok(),
+            Ok(item) => Some(item),
             Err(err) => {
                 log::error!("Failed to resolve completion item: {}", err);
                 None
@@ -420,62 +426,6 @@ impl Completion {
         self.popup.contents_mut().replace_option(old_item, new_item);
     }
 
-    /// Asynchronously requests that the currently selection completion item is
-    /// resolved through LSP `completionItem/resolve`.
-    pub fn ensure_item_resolved(&mut self, cx: &mut commands::Context) -> bool {
-        // > If computing full completion items is expensive, servers can additionally provide a
-        // > handler for the completion item resolve request. ...
-        // > A typical use case is for example: the `textDocument/completion` request doesn't fill
-        // > in the `documentation` property for returned completion items since it is expensive
-        // > to compute. When the item is selected in the user interface then a
-        // > 'completionItem/resolve' request is sent with the selected completion item as a parameter.
-        // > The returned completion item should have the documentation property filled in.
-        // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_completion
-        let current_item = match self.popup.contents().selection() {
-            Some(item) if !item.resolved => item.clone(),
-            _ => return false,
-        };
-
-        let Some(language_server) = cx
-            .editor
-            .language_server_by_id(current_item.language_server_id)
-        else {
-            return false;
-        };
-
-        // This method should not block the compositor so we handle the response asynchronously.
-        let Some(future) = language_server.resolve_completion_item(current_item.item.clone())
-        else {
-            return false;
-        };
-
-        cx.callback(
-            future,
-            move |_editor, compositor, response: Option<lsp::CompletionItem>| {
-                let resolved_item = match response {
-                    Some(item) => item,
-                    None => return,
-                };
-
-                if let Some(completion) = &mut compositor
-                    .find::<crate::ui::EditorView>()
-                    .unwrap()
-                    .completion
-                {
-                    let resolved_item = CompletionItem {
-                        item: resolved_item,
-                        language_server_id: current_item.language_server_id,
-                        resolved: true,
-                    };
-
-                    completion.replace_item(current_item, resolved_item);
-                }
-            },
-        );
-
-        true
-    }
-
     pub fn area(&mut self, viewport: Rect, editor: &Editor) -> Rect {
         self.popup.area(viewport, editor)
     }
@@ -498,6 +448,9 @@ impl Component for Completion {
             Some(option) => option,
             None => return,
         };
+        if !option.resolved {
+            helix_event::send_blocking(&self.resolve_handler, option.clone());
+        }
         // need to render:
         // option.detail
         // ---
@@ -598,4 +551,89 @@ impl Component for Completion {
 
         markdown_doc.render(doc_area, surface, cx);
     }
+}
+
+/// A hook for resolving incomplete completion items.
+///
+/// From the [LSP spec](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_completion):
+///
+/// > If computing full completion items is expensive, servers can additionally provide a
+/// > handler for the completion item resolve request. ...
+/// > A typical use case is for example: the `textDocument/completion` request doesn't fill
+/// > in the `documentation` property for returned completion items since it is expensive
+/// > to compute. When the item is selected in the user interface then a
+/// > 'completionItem/resolve' request is sent with the selected completion item as a parameter.
+/// > The returned completion item should have the documentation property filled in.
+#[derive(Debug, Default)]
+struct ResolveHandler {
+    trigger: Option<CompletionItem>,
+    request: Option<helix_event::CancelTx>,
+}
+
+impl AsyncHook for ResolveHandler {
+    type Event = CompletionItem;
+
+    fn handle_event(
+        &mut self,
+        item: Self::Event,
+        timeout: Option<tokio::time::Instant>,
+    ) -> Option<tokio::time::Instant> {
+        if self
+            .trigger
+            .as_ref()
+            .is_some_and(|trigger| trigger == &item)
+        {
+            timeout
+        } else {
+            self.trigger = Some(item);
+            self.request = None;
+            Some(Instant::now() + Duration::from_millis(150))
+        }
+    }
+
+    fn finish_debounce(&mut self) {
+        let Some(item) = self.trigger.take() else { return };
+        let (tx, rx) = helix_event::cancelation();
+        self.request = Some(tx);
+        job::dispatch_blocking(move |editor, _| resolve_completion_item(editor, item, rx))
+    }
+}
+
+fn resolve_completion_item(
+    editor: &mut Editor,
+    item: CompletionItem,
+    cancel: helix_event::CancelRx,
+) {
+    let Some(language_server) = editor.language_server_by_id(item.language_server_id) else {
+        return;
+    };
+
+    let Some(future) = language_server.resolve_completion_item(item.item.clone()) else {
+        return;
+    };
+
+    tokio::spawn(async move {
+        match helix_event::cancelable_future(future, cancel).await {
+            Some(Ok(resolved_item)) => {
+                job::dispatch(move |_, compositor| {
+                    if let Some(completion) = &mut compositor
+                        .find::<crate::ui::EditorView>()
+                        .unwrap()
+                        .completion
+                    {
+                        let resolved_item = CompletionItem {
+                            item: resolved_item,
+                            language_server_id: item.language_server_id,
+                            resolved: true,
+                        };
+
+                        completion.replace_item(item, resolved_item);
+                    };
+                })
+                .await
+            }
+            Some(Err(err)) => log::error!("completion resolve request failed: {err}"),
+            None => (),
+        }
+    });
 }

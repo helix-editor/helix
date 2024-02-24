@@ -428,9 +428,9 @@ pub mod completers {
                 path
             } else {
                 match path.parent() {
-                    Some(path) if !path.as_os_str().is_empty() => path.to_path_buf(),
+                    Some(path) if !path.as_os_str().is_empty() => Cow::Borrowed(path),
                     // Path::new("h")'s parent is Some("")...
-                    _ => helix_stdx::env::current_working_dir(),
+                    _ => Cow::Owned(helix_stdx::env::current_working_dir()),
                 }
             };
 

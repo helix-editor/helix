@@ -277,6 +277,10 @@ impl MappableCommand {
         page_down, "Move page down",
         half_page_up, "Move half page up",
         half_page_down, "Move half page down",
+        page_cursor_up, "Move page and cursor up",
+        page_cursor_down, "Move page and cursor down",
+        page_cursor_half_up, "Move page and cursor half up",
+        page_cursor_half_down, "Move page and cursor half down",
         select_all, "Select whole document",
         select_regex, "Select all regex matches inside selections",
         split_selection, "Split selections on regex matches",
@@ -1608,7 +1612,7 @@ fn switch_to_lowercase(cx: &mut Context) {
     });
 }
 
-pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
+pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor: bool) {
     use Direction::*;
     let config = cx.editor.config();
     let (view, doc) = current!(cx.editor);
@@ -1628,7 +1632,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
     let doc_text = doc.text().slice(..);
     let viewport = view.inner_area(doc);
     let text_fmt = doc.text_format(viewport.width, None);
-    let annotations = view.text_annotations(doc, None);
+    let mut annotations = view.text_annotations(doc, None);
     (view.offset.anchor, view.offset.vertical_offset) = char_idx_at_visual_offset(
         doc_text,
         view.offset.anchor,
@@ -1637,6 +1641,30 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
         &text_fmt,
         &annotations,
     );
+
+    if sync_cursor {
+        let movement = match cx.editor.mode {
+            Mode::Select => Movement::Extend,
+            _ => Movement::Move,
+        };
+        // TODO: When inline diagnostics gets merged- 1. move_vertically_visual removes
+        // line annotations/diagnostics so the cursor may jump further than the view.
+        // 2. If the cursor lands on a complete line of virtual text, the cursor will
+        // jump a different distance than the view.
+        let selection = doc.selection(view.id).clone().transform(|range| {
+            move_vertically_visual(
+                doc_text,
+                range,
+                direction,
+                offset.unsigned_abs(),
+                movement,
+                &text_fmt,
+                &mut annotations,
+            )
+        });
+        doc.set_selection(view.id, selection);
+        return;
+    }
 
     let mut head;
     match direction {
@@ -1688,25 +1716,49 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction) {
 fn page_up(cx: &mut Context) {
     let view = view!(cx.editor);
     let offset = view.inner_height();
-    scroll(cx, offset, Direction::Backward);
+    scroll(cx, offset, Direction::Backward, false);
 }
 
 fn page_down(cx: &mut Context) {
     let view = view!(cx.editor);
     let offset = view.inner_height();
-    scroll(cx, offset, Direction::Forward);
+    scroll(cx, offset, Direction::Forward, false);
 }
 
 fn half_page_up(cx: &mut Context) {
     let view = view!(cx.editor);
     let offset = view.inner_height() / 2;
-    scroll(cx, offset, Direction::Backward);
+    scroll(cx, offset, Direction::Backward, false);
 }
 
 fn half_page_down(cx: &mut Context) {
     let view = view!(cx.editor);
     let offset = view.inner_height() / 2;
-    scroll(cx, offset, Direction::Forward);
+    scroll(cx, offset, Direction::Forward, false);
+}
+
+fn page_cursor_up(cx: &mut Context) {
+    let view = view!(cx.editor);
+    let offset = view.inner_height();
+    scroll(cx, offset, Direction::Backward, true);
+}
+
+fn page_cursor_down(cx: &mut Context) {
+    let view = view!(cx.editor);
+    let offset = view.inner_height();
+    scroll(cx, offset, Direction::Forward, true);
+}
+
+fn page_cursor_half_up(cx: &mut Context) {
+    let view = view!(cx.editor);
+    let offset = view.inner_height() / 2;
+    scroll(cx, offset, Direction::Backward, true);
+}
+
+fn page_cursor_half_down(cx: &mut Context) {
+    let view = view!(cx.editor);
+    let offset = view.inner_height() / 2;
+    scroll(cx, offset, Direction::Forward, true);
 }
 
 #[allow(deprecated)]
@@ -4856,11 +4908,11 @@ fn align_view_middle(cx: &mut Context) {
 }
 
 fn scroll_up(cx: &mut Context) {
-    scroll(cx, cx.count(), Direction::Backward);
+    scroll(cx, cx.count(), Direction::Backward, false);
 }
 
 fn scroll_down(cx: &mut Context) {
-    scroll(cx, cx.count(), Direction::Forward);
+    scroll(cx, cx.count(), Direction::Forward, false);
 }
 
 fn goto_ts_object_impl(cx: &mut Context, object: &'static str, direction: Direction) {
