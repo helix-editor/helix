@@ -3140,3 +3140,21 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "groovy"
 source = { git = "https://github.com/Decodetalkers/tree-sitter-groovy", rev = "7e023227f46fee428b16a0288eeb0f65ee2523ec" }
+
+[[language]]
+name = "fidl"
+scope = "source.fidl"
+injection-regex = "fidl"
+file-types = ["fidl"]
+comment-token = "//"
+indent = { tab-width = 4, unit = "    " }
+
+[language.auto-pairs]
+'"' = '"'
+'{' = '}'
+'(' = ')'
+'<' = '>'
+
+[[grammar]]
+name = "fidl"
+source = { git = "https://github.com/google/tree-sitter-fidl", rev = "bdbb635a7f5035e424f6173f2f11b9cd79703f8d" }
