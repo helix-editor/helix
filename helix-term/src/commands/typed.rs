@@ -340,6 +340,8 @@ fn write_impl(
         insert_final_newline(doc, view);
     }
 
+    doc.detect_language(cx.editor.syn_loader.clone());
+
     let fmt = if config.auto_format {
         doc.auto_format().map(|fmt| {
             let callback = make_format_callback(
@@ -704,6 +706,8 @@ pub fn write_all_impl(
         if config.insert_final_newline {
             insert_final_newline(doc, view_mut!(cx.editor, target_view));
         }
+
+        doc.detect_language(cx.editor.syn_loader.clone());
 
         let fmt = if config.auto_format {
             doc.auto_format().map(|fmt| {
@@ -1320,6 +1324,7 @@ fn reload_all(
         view.sync_changes(doc);
 
         doc.reload(view, &cx.editor.diff_providers)?;
+        doc.detect_language(cx.editor.syn_loader.clone());
         if let Some(path) = doc.path() {
             cx.editor
                 .language_servers
