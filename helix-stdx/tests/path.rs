@@ -1,5 +1,4 @@
 use std::{
-    borrow::Cow,
     ffi::OsStr,
     path::{Component, Path},
 };
@@ -9,7 +8,7 @@ use helix_stdx::path;
 #[test]
 fn expand_tilde() {
     for path in ["~", "~/foo"] {
-        let expanded = path::expand_tilde(Cow::Borrowed(Path::new(path)));
+        let expanded = path::expand_tilde(Path::new(path));
 
         let tilde = Component::Normal(OsStr::new("~"));
 

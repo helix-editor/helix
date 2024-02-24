@@ -409,7 +409,7 @@ pub mod completers {
         use std::path::Path;
 
         let is_tilde = input == "~";
-        let path = helix_stdx::path::expand_tilde(Cow::Borrowed(Path::new(input)));
+        let path = helix_stdx::path::expand_tilde(Path::new(input));
 
         let (dir, file_name) = if input.ends_with(std::path::MAIN_SEPARATOR) {
             (path, None)

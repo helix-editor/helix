@@ -22,7 +22,11 @@ pub fn fold_home_dir(path: &Path) -> PathBuf {
 /// Expands tilde `~` into users home directory if available, otherwise returns the path
 /// unchanged. The tilde will only be expanded when present as the first component of the path
 /// and only slash follows it.
-pub fn expand_tilde(path: Cow<'_, Path>) -> Cow<'_, Path> {
+pub fn expand_tilde<'a, P>(path: P) -> Cow<'a, Path>
+where
+    P: Into<Cow<'a, Path>>,
+{
+    let path = path.into();
     let mut components = path.components();
     if let Some(Component::Normal(c)) = components.next() {
         if c == "~" {
@@ -111,7 +115,7 @@ pub fn normalize(path: impl AsRef<Path>) -> PathBuf {
 /// This function is used instead of [`std::fs::canonicalize`] because we don't want to verify
 /// here if the path exists, just normalize it's components.
 pub fn canonicalize(path: impl AsRef<Path>) -> PathBuf {
-    let path = expand_tilde(Cow::Borrowed(path.as_ref()));
+    let path = expand_tilde(path.as_ref());
     let path = if path.is_relative() {
         Cow::Owned(current_working_dir().join(path))
     } else {
