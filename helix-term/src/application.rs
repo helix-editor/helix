@@ -12,7 +12,7 @@ use helix_view::{
     document::DocumentSavedEventResult,
     editor::{ConfigEvent, EditorEvent},
     graphics::Rect,
-    theme,
+    persistence, theme,
     tree::Layout,
     Align, Editor,
 };
@@ -32,7 +32,12 @@ use crate::{
 use log::{debug, error, info, warn};
 #[cfg(not(feature = "integration"))]
 use std::io::stdout;
-use std::{collections::btree_map::Entry, io::stdin, path::Path, sync::Arc};
+use std::{
+    collections::{btree_map::Entry, HashMap},
+    io::stdin,
+    path::Path,
+    sync::Arc,
+};
 
 use anyhow::{Context, Error};
 
@@ -143,7 +148,29 @@ impl Application {
                 &config.editor
             })),
             handlers,
+            HashMap::from_iter(
+                persistence::read_file_history()
+                    .into_iter()
+                    .map(|entry| (entry.path.clone(), (entry.view_position, entry.selection))),
+            ),
         );
+
+        // TODO: do most of this in the background?
+        editor
+            .registers
+            .write(':', persistence::read_command_history())
+            // TODO: do something about this unwrap
+            .unwrap();
+        editor
+            .registers
+            .write('/', persistence::read_search_history())
+            // TODO: do something about this unwrap
+            .unwrap();
+        editor
+            .registers
+            .write('"', persistence::read_clipboard_file())
+            // TODO: do something about this unwrap
+            .unwrap();
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
@@ -193,10 +220,13 @@ impl Application {
                         // NOTE: this isn't necessarily true anymore. If
                         // `--vsplit` or `--hsplit` are used, the file which is
                         // opened last is focused on.
-                        let view_id = editor.tree.focus;
-                        let doc = doc_mut!(editor, &doc_id);
-                        let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
-                        doc.set_selection(view_id, pos);
+                        if let Some(pos) = pos {
+                            let view_id = editor.tree.focus;
+                            let doc = doc_mut!(editor, &doc_id);
+                            let pos =
+                                Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+                            doc.set_selection(view_id, pos);
+                        }
                     }
                 }
                 editor.set_status(format!(
@@ -206,8 +236,9 @@ impl Application {
                 ));
                 // align the view to center after all files are loaded,
                 // does not affect views without pos since it is at the top
-                let (view, doc) = current!(editor);
-                align_view(doc, view, Align::Center);
+                // TODO: ensure removing this doesn't break anything
+                // let (view, doc) = current!(editor);
+                // align_view(doc, view, Align::Center);
             } else {
                 editor.new_file(Action::VerticalSplit);
             }
