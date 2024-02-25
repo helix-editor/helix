@@ -16,7 +16,9 @@ use tui::{
 
 use super::{align_view, push_jump, Align, Context, Editor};
 
-use helix_core::{syntax::LanguageServerFeature, text_annotations::InlineAnnotation, Selection};
+use helix_core::{
+    syntax::LanguageServerFeature, text_annotations::InlineAnnotation, Selection, Uri,
+};
 use helix_stdx::path;
 use helix_view::{
     document::{DocumentInlayHints, DocumentInlayHintsId},
@@ -79,6 +81,8 @@ impl ui::menu::Item for lsp::Location {
             // With the preallocation above and UTF-8 paths already, this closure will do one (1)
             // allocation, for `to_file_path`, else there will be two (2), with `to_string_lossy`.
             let mut write_path_to_res = || -> Option<()> {
+                // We don't convert to a `helix_core::Uri` here because we've already checked the scheme.
+                // This path won't be normalized but it's only used for display.
                 let path = self.uri.to_file_path().ok()?;
                 res.push_str(&path.strip_prefix(cwdir).unwrap_or(&path).to_string_lossy());
                 Some(())
@@ -104,25 +108,28 @@ struct SymbolInformationItem {
 
 impl ui::menu::Item for SymbolInformationItem {
     /// Path to currently focussed document
-    type Data = Option<lsp::Url>;
+    type Data = Option<Uri>;
 
-    fn format(&self, current_doc_path: &Self::Data) -> Row {
-        if current_doc_path.as_ref() == Some(&self.symbol.location.uri) {
-            self.symbol.name.as_str().into()
-        } else {
-            match self.symbol.location.uri.to_file_path() {
-                Ok(path) => {
-                    let get_relative_path = path::get_relative_path(path.as_path());
-                    format!(
-                        "{} ({})",
-                        &self.symbol.name,
-                        get_relative_path.to_string_lossy()
-                    )
-                    .into()
-                }
-                Err(_) => format!("{} ({})", &self.symbol.name, &self.symbol.location.uri).into(),
+    fn format(&self, current_doc_uri: &Self::Data) -> Row {
+        if let Ok(uri) = Uri::try_from(&self.symbol.location.uri) {
+            if current_doc_uri
+                .as_ref()
+                .is_some_and(|doc_uri| doc_uri == &uri)
+            {
+                return self.symbol.name.as_str().into();
+            }
+            if let Some(path) = uri.as_path() {
+                let relative_path = path::get_relative_path(path);
+                return format!(
+                    "{} ({})",
+                    &self.symbol.name,
+                    relative_path.to_string_lossy()
+                )
+                .into();
             }
         }
+
+        format!("{} ({})", &self.symbol.name, &self.symbol.location.uri).into()
     }
 }
 
@@ -134,7 +141,7 @@ struct DiagnosticStyles {
 }
 
 struct PickerDiagnostic {
-    url: lsp::Url,
+    uri: Uri,
     diag: lsp::Diagnostic,
     offset_encoding: OffsetEncoding,
 }
@@ -164,13 +171,12 @@ impl ui::menu::Item for PickerDiagnostic {
             None => String::new(),
         };
 
-        let path = match format {
-            DiagnosticsFormat::HideSourcePath => String::new(),
-            DiagnosticsFormat::ShowSourcePath => {
-                let file_path = self.url.to_file_path().unwrap();
-                let path = path::get_truncated_path(file_path);
+        let path = match (format, self.uri.as_path()) {
+            (DiagnosticsFormat::ShowSourcePath, Some(path)) => {
+                let path = path::get_truncated_path(path);
                 format!("{}: ", path.to_string_lossy())
             }
+            _ => String::new(),
         };
 
         Spans::from(vec![
@@ -182,13 +188,13 @@ impl ui::menu::Item for PickerDiagnostic {
     }
 }
 
-fn location_to_file_location(location: &lsp::Location) -> FileLocation {
-    let path = location.uri.to_file_path().unwrap();
+fn location_to_file_location(location: &lsp::Location) -> Option<FileLocation> {
+    let path = Uri::try_from(&location.uri).ok()?.as_path_buf()?.into();
     let line = Some((
         location.range.start.line as usize,
         location.range.end.line as usize,
     ));
-    (path.into(), line)
+    Some((path, line))
 }
 
 fn jump_to_location(
@@ -200,16 +206,17 @@ fn jump_to_location(
     let (view, doc) = current!(editor);
     push_jump(view, doc);
 
-    let path = match location.uri.to_file_path() {
-        Ok(path) => path,
-        Err(_) => {
-            let err = format!("unable to convert URI to filepath: {}", location.uri);
-            editor.set_error(err);
+    let uri = match Uri::try_from(&location.uri) {
+        Ok(uri) => uri,
+        Err(err) => {
+            editor.set_error(err.to_string());
             return;
         }
     };
+    // If `Uri` gets another variant other than `Path` this may not be valid.
+    let path = uri.as_path().expect("URIs are valid paths");
 
-    let doc = match editor.open(&path, action) {
+    let doc = match editor.open(path, action) {
         Ok(id) => doc_mut!(editor, &id),
         Err(err) => {
             let err = format!("failed to open path: {:?}: {:?}", location.uri, err);
@@ -236,9 +243,9 @@ fn jump_to_location(
 
 type SymbolPicker = Picker<SymbolInformationItem>;
 
-fn sym_picker(symbols: Vec<SymbolInformationItem>, current_path: Option<lsp::Url>) -> SymbolPicker {
+fn sym_picker(symbols: Vec<SymbolInformationItem>, current_uri: Option<Uri>) -> SymbolPicker {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
-    Picker::new(symbols, current_path, move |cx, item, action| {
+    Picker::new(symbols, current_uri, move |cx, item, action| {
         jump_to_location(
             cx.editor,
             &item.symbol.location,
@@ -246,7 +253,7 @@ fn sym_picker(symbols: Vec<SymbolInformationItem>, current_path: Option<lsp::Url
             action,
         );
     })
-    .with_preview(move |_editor, item| Some(location_to_file_location(&item.symbol.location)))
+    .with_preview(move |_editor, item| location_to_file_location(&item.symbol.location))
     .truncate_start(false)
 }
 
@@ -258,21 +265,21 @@ enum DiagnosticsFormat {
 
 fn diag_picker(
     cx: &Context,
-    diagnostics: BTreeMap<lsp::Url, Vec<(lsp::Diagnostic, usize)>>,
-    _current_path: Option<lsp::Url>,
+    diagnostics: BTreeMap<Uri, Vec<(lsp::Diagnostic, usize)>>,
+    _current_path: Option<Uri>,
     format: DiagnosticsFormat,
 ) -> Picker<PickerDiagnostic> {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
 
     // flatten the map to a vec of (url, diag) pairs
     let mut flat_diag = Vec::new();
-    for (url, diags) in diagnostics {
+    for (uri, diags) in diagnostics {
         flat_diag.reserve(diags.len());
 
         for (diag, ls) in diags {
             if let Some(ls) = cx.editor.language_server_by_id(ls) {
                 flat_diag.push(PickerDiagnostic {
-                    url: url.clone(),
+                    uri: uri.clone(),
                     diag,
                     offset_encoding: ls.offset_encoding(),
                 });
@@ -292,22 +299,25 @@ fn diag_picker(
         (styles, format),
         move |cx,
               PickerDiagnostic {
-                  url,
+                  uri,
                   diag,
                   offset_encoding,
               },
               action| {
+            let Ok(url) = uri.to_url() else {
+                return;
+            };
             jump_to_location(
                 cx.editor,
-                &lsp::Location::new(url.clone(), diag.range),
+                &lsp::Location::new(url, diag.range),
                 *offset_encoding,
                 action,
             )
         },
     )
-    .with_preview(move |_editor, PickerDiagnostic { url, diag, .. }| {
-        let location = lsp::Location::new(url.clone(), diag.range);
-        Some(location_to_file_location(&location))
+    .with_preview(move |_editor, PickerDiagnostic { uri, diag, .. }| {
+        let line = Some((diag.range.start.line as usize, diag.range.end.line as usize));
+        Some((uri.clone().as_path_buf()?.into(), line))
     })
     .truncate_start(false)
 }
@@ -376,7 +386,7 @@ pub fn symbol_picker(cx: &mut Context) {
             }
         })
         .collect();
-    let current_url = doc.url();
+    let current_uri = doc.uri();
 
     if futures.is_empty() {
         cx.editor
@@ -391,7 +401,7 @@ pub fn symbol_picker(cx: &mut Context) {
             symbols.append(&mut lsp_items);
         }
         let call = move |_editor: &mut Editor, compositor: &mut Compositor| {
-            let picker = sym_picker(symbols, current_url);
+            let picker = sym_picker(symbols, current_uri);
             compositor.push(Box::new(overlaid(picker)))
         };
 
@@ -453,13 +463,13 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
         .boxed()
     };
 
-    let current_url = doc.url();
+    let current_uri = doc.uri();
     let initial_symbols = get_symbols("".to_owned(), cx.editor);
 
     cx.jobs.callback(async move {
         let symbols = initial_symbols.await?;
         let call = move |_editor: &mut Editor, compositor: &mut Compositor| {
-            let picker = sym_picker(symbols, current_url);
+            let picker = sym_picker(symbols, current_uri);
             let dyn_picker = DynamicPicker::new(picker, Box::new(get_symbols));
             compositor.push(Box::new(overlaid(dyn_picker)))
         };
@@ -470,17 +480,17 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
 
 pub fn diagnostics_picker(cx: &mut Context) {
     let doc = doc!(cx.editor);
-    if let Some(current_url) = doc.url() {
+    if let Some(current_uri) = doc.uri() {
         let diagnostics = cx
             .editor
             .diagnostics
-            .get(&current_url)
+            .get(&current_uri)
             .cloned()
             .unwrap_or_default();
         let picker = diag_picker(
             cx,
-            [(current_url.clone(), diagnostics)].into(),
-            Some(current_url),
+            [(current_uri.clone(), diagnostics)].into(),
+            Some(current_uri),
             DiagnosticsFormat::HideSourcePath,
         );
         cx.push_layer(Box::new(overlaid(picker)));
@@ -489,13 +499,13 @@ pub fn diagnostics_picker(cx: &mut Context) {
 
 pub fn workspace_diagnostics_picker(cx: &mut Context) {
     let doc = doc!(cx.editor);
-    let current_url = doc.url();
+    let current_uri = doc.uri();
     // TODO not yet filtered by LanguageServerFeature, need to do something similar as Document::shown_diagnostics here for all open documents
     let diagnostics = cx.editor.diagnostics.clone();
     let picker = diag_picker(
         cx,
         diagnostics,
-        current_url,
+        current_uri,
         DiagnosticsFormat::ShowSourcePath,
     );
     cx.push_layer(Box::new(overlaid(picker)));
@@ -831,7 +841,7 @@ fn goto_impl(
             let picker = Picker::new(locations, cwdir, move |cx, location, action| {
                 jump_to_location(cx.editor, location, offset_encoding, action)
             })
-            .with_preview(move |_editor, location| Some(location_to_file_location(location)));
+            .with_preview(move |_editor, location| location_to_file_location(location));
             compositor.push(Box::new(overlaid(picker)));
         }
     }
