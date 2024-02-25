@@ -43,7 +43,6 @@ jsonnet-language-server = { command = "jsonnet-language-server", args= ["-t", "-
 julia = { command = "julia", timeout = 60, args = [ "--startup-file=no", "--history-file=no", "--quiet", "-e", "using LanguageServer; runserver()", ] }
 kotlin-language-server = { command = "kotlin-language-server" }
 lean = { command = "lean", args = [ "--server" ] }
-ltex-ls = { command = "ltex-ls" }
 markdoc-ls = { command = "markdoc-ls", args = ["--stdio"] }
 marksman = { command = "marksman", args = ["server"] }
 metals = { command = "metals", config = { "isHttpEnabled" = true } }
@@ -94,6 +93,27 @@ yaml-language-server = { command = "yaml-language-server", args = ["--stdio"] }
 zls = { command = "zls" }
 blueprint-compiler = { command = "blueprint-compiler", args = ["lsp"] }
 typst-lsp = { command = "typst-lsp" }
+
+[language-server.gpt]
+command = "helix-gpt"
+
+[language-server.ltex-ls]
+command = "ltex-ls"
+
+[language-server.ltex-ls.config.ltex.dictionary]
+"en-US" = [
+  "EndeavourOS", 
+  "Neovim", 
+  "Interflex", 
+  "Allegion", 
+  "Honza", 
+  "AlleGPT", 
+  "Ciklum", 
+  "IONOS", 
+  "pgAdmin",
+  "Blockhelden",
+  "MoonBoard"
+]
 
 [language-server.ansible-language-server]
 command = "ansible-language-server"
@@ -192,7 +212,7 @@ file-types = ["rs"]
 roots = ["Cargo.toml", "Cargo.lock"]
 auto-format = true
 comment-token = "//"
-language-servers = [ "rust-analyzer" ]
+language-servers = [ "rust-analyzer", "gpt"]
 indent = { tab-width = 4, unit = "    " }
 persistent-diagnostic-sources = ["rustc", "clippy"]
 
@@ -1402,8 +1422,13 @@ scope = "source.md"
 injection-regex = "md|markdown"
 file-types = ["md", "markdown", "mkd", "mdwn", "mdown", "markdn", "mdtxt", "mdtext", "workbook", { glob = "PULLREQ_EDITMSG" }]
 roots = [".marksman.toml"]
-language-servers = [ "marksman" ]
+language-servers = [ "marksman", "ltex-ls", "gpt" ]
 indent = { tab-width = 2, unit = "  " }
+soft-wrap.enable = true
+soft-wrap.wrap-at-text-width = true
+# No formatting for now, since with tab width 4 that causes more than one space after each bullet point
+# formatter = { command = 'prettier', args = ["--parser", "markdown", "--tab-width", "4"] }
+# auto-format = true
 
 [[grammar]]
 name = "markdown"
