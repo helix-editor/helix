@@ -69,6 +69,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "F2" => rename_symbol,
         "F12" => goto_definition,
         "S-F12" => goto_reference,
+        "K" => hover,
         
         "v" => select_mode,
         "G" => goto_line,
@@ -132,7 +133,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
         "C" => copy_selection_on_next_line,
         "A-C" => copy_selection_on_prev_line,
-
 
         "s" => select_regex,
         "A-s" => split_selection_on_newline,
@@ -218,8 +218,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "=" => format_selections,
         "J" => join_selections,
         "A-J" => join_selections_space,
-        "K" => keep_selections,
-        "A-K" => remove_selections,
+        "k" => keep_selections,
+        "A-k" => remove_selections,
 
         "," => keep_primary_selection,
         "A-," => remove_primary_selection,
