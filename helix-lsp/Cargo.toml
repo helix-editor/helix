@@ -21,7 +21,7 @@ helix-parsec = { path = "../helix-parsec" }
 anyhow = "1.0"
 futures-executor = "0.3"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
-globset = "0.4.14"
+globset.workspace = true
 log = "0.4"
 lsp-types = { version = "0.95" }
 serde = { version = "1.0", features = ["derive"] }

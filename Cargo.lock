@@ -1360,6 +1360,7 @@ dependencies = [
  "crossterm",
  "fern",
  "futures-util",
+ "globset",
  "grep-regex",
  "grep-searcher",
  "helix-core",
