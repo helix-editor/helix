@@ -28,30 +28,35 @@ impl menu::Item for CompletionItem {
 
     #[inline]
     fn filter_text(&self, _data: &Self::Data) -> Cow<str> {
-        self.item
-            .filter_text
-            .as_ref()
-            .unwrap_or(&self.item.label)
-            .as_str()
-            .into()
+        match self {
+            CompletionItem::Lsp(LspCompletionItem { item, .. }) => item
+                .filter_text
+                .as_ref()
+                .unwrap_or(&item.label)
+                .as_str()
+                .into(),
+            CompletionItem::Path(PathCompletionItem { item, .. }) => Cow::from(&item.label),
+        }
     }
 
     fn format(&self, _data: &Self::Data) -> menu::Row {
-        let deprecated = self.item.deprecated.unwrap_or_default()
-            || self.item.tags.as_ref().map_or(false, |tags| {
-                tags.contains(&lsp::CompletionItemTag::DEPRECATED)
-            });
+        let deprecated = match self {
+            CompletionItem::Lsp(LspCompletionItem { item, .. }) => {
+                item.deprecated.unwrap_or_default()
+                    || item.tags.as_ref().map_or(false, |tags| {
+                        tags.contains(&lsp::CompletionItemTag::DEPRECATED)
+                    })
+            }
+            CompletionItem::Path(_) => false,
+        };
 
-        menu::Row::new(vec![
-            menu::Cell::from(Span::styled(
-                self.item.label.as_str(),
-                if deprecated {
-                    Style::default().add_modifier(Modifier::CROSSED_OUT)
-                } else {
-                    Style::default()
-                },
-            )),
-            menu::Cell::from(match self.item.kind {
+        let label = match self {
+            CompletionItem::Lsp(LspCompletionItem { item, .. }) => &item.label,
+            CompletionItem::Path(PathCompletionItem { item, .. }) => &item.label,
+        };
+
+        let kind = match self {
+            CompletionItem::Lsp(LspCompletionItem { item, .. }) => match item.kind {
                 Some(lsp::CompletionItemKind::TEXT) => "text",
                 Some(lsp::CompletionItemKind::METHOD) => "method",
                 Some(lsp::CompletionItemKind::FUNCTION) => "function",
@@ -82,16 +87,81 @@ impl menu::Item for CompletionItem {
                     ""
                 }
                 None => "",
-            }),
+            },
+            CompletionItem::Path(PathCompletionItem { kind, .. }) => kind.as_str(),
+        };
+
+        menu::Row::new(vec![
+            menu::Cell::from(Span::styled(
+                label,
+                if deprecated {
+                    Style::default().add_modifier(Modifier::CROSSED_OUT)
+                } else {
+                    Style::default()
+                },
+            )),
+            menu::Cell::from(kind),
         ])
     }
 }
 
-#[derive(Debug, PartialEq, Default, Clone)]
-pub struct CompletionItem {
+#[derive(Debug, PartialEq, Clone)]
+pub enum PathKind {
+    Folder,
+    File,
+    Link,
+    Block,
+    Socket,
+    CharacterDevice,
+    Fifo,
+}
+
+impl PathKind {
+    fn as_str(&self) -> &'static str {
+        match self {
+            PathKind::Folder => "folder",
+            PathKind::File => "file",
+            PathKind::Link => "link",
+            PathKind::Block => "block",
+            PathKind::Socket => "socket",
+            PathKind::CharacterDevice => "char_device",
+            PathKind::Fifo => "fifo",
+        }
+    }
+}
+
+impl std::fmt::Display for PathKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "{}", self.as_str())
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct LspCompletionItem {
     pub item: lsp::CompletionItem,
     pub provider: LanguageServerId,
     pub resolved: bool,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct PathCompletionItem {
+    pub kind: PathKind,
+    pub item: helix_core::CompletionItem,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum CompletionItem {
+    Lsp(LspCompletionItem),
+    Path(PathCompletionItem),
+}
+
+impl CompletionItem {
+    pub fn preselect(&self) -> bool {
+        match self {
+            CompletionItem::Lsp(LspCompletionItem { item, .. }) => item.preselect.unwrap_or(false),
+            CompletionItem::Path(_) => false,
+        }
+    }
 }
 
 /// Wraps a Menu.
@@ -115,11 +185,11 @@ impl Completion {
         let preview_completion_insert = editor.config().preview_completion_insert;
         let replace_mode = editor.config().completion_replace;
         // Sort completion items according to their preselect status (given by the LSP server)
-        items.sort_by_key(|item| !item.item.preselect.unwrap_or(false));
+        items.sort_by_key(|item| !item.preselect());
 
         // Then create the menu
         let menu = Menu::new(items, (), move |editor: &mut Editor, item, event| {
-            fn item_to_transaction(
+            fn lsp_item_to_transaction(
                 doc: &Document,
                 view_id: ViewId,
                 item: &lsp::CompletionItem,
@@ -257,16 +327,23 @@ impl Completion {
                     // always present here
                     let item = item.unwrap();
 
-                    let transaction = item_to_transaction(
-                        doc,
-                        view.id,
-                        &item.item,
-                        language_server!(item).offset_encoding(),
-                        trigger_offset,
-                        true,
-                        replace_mode,
-                    );
-                    doc.apply_temporary(&transaction, view.id);
+                    match item {
+                        CompletionItem::Lsp(item) => doc.apply_temporary(
+                            &lsp_item_to_transaction(
+                                doc,
+                                view.id,
+                                &item.item,
+                                language_server!(item).offset_encoding(),
+                                trigger_offset,
+                                true,
+                                replace_mode,
+                            ),
+                            view.id,
+                        ),
+                        CompletionItem::Path(PathCompletionItem { item, .. }) => {
+                            doc.apply_temporary(&item.transaction, view.id)
+                        }
+                    };
                 }
                 PromptEvent::Update => {}
                 PromptEvent::Validate => {
@@ -275,32 +352,62 @@ impl Completion {
                     {
                         doc.restore(view, &savepoint, false);
                     }
-                    // always present here
-                    let mut item = item.unwrap().clone();
 
-                    let language_server = language_server!(item);
-                    let offset_encoding = language_server.offset_encoding();
-
-                    if !item.resolved {
-                        if let Some(resolved) =
-                            Self::resolve_completion_item(language_server, item.item.clone())
-                        {
-                            item.item = resolved;
-                        }
-                    };
                     // if more text was entered, remove it
                     doc.restore(view, &savepoint, true);
                     // save an undo checkpoint before the completion
                     doc.append_changes_to_history(view);
-                    let transaction = item_to_transaction(
-                        doc,
-                        view.id,
-                        &item.item,
-                        offset_encoding,
-                        trigger_offset,
-                        false,
-                        replace_mode,
-                    );
+
+                    // item always present here
+                    let (mut transaction, additional_edits) = match item.unwrap().clone() {
+                        CompletionItem::Lsp(mut item) => {
+                            let language_server = language_server!(item);
+
+                            // resolve item if not yet resolved
+                            if !item.resolved {
+                                if let Some(resolved_item) = Self::resolve_completion_item(
+                                    language_server,
+                                    item.item.clone(),
+                                ) {
+                                    item.item = resolved_item;
+                                }
+                            };
+
+                            let encoding = language_server.offset_encoding();
+                            (
+                                lsp_item_to_transaction(
+                                    doc,
+                                    view.id,
+                                    &item.item,
+                                    encoding,
+                                    trigger_offset,
+                                    false,
+                                    replace_mode,
+                                ),
+                                item.item.additional_text_edits.map(|e| (e, encoding)),
+                            )
+                        }
+                        CompletionItem::Path(PathCompletionItem { item, .. }) => {
+                            (item.transaction, None)
+                        }
+                    };
+
+                    if let Some((additional_edits, offset_encoding)) = additional_edits {
+                        if !additional_edits.is_empty() {
+                            // use the selection of the completion, instead of the (empty) one from the additional text edits
+                            let selection = transaction.selection().cloned();
+                            transaction =
+                                transaction.compose(util::generate_transaction_from_edits(
+                                    doc.text(),
+                                    additional_edits,
+                                    offset_encoding, // TODO: should probably transcode in Client
+                                ));
+                            if let Some(selection) = selection {
+                                transaction = transaction.with_selection(selection);
+                            }
+                        }
+                    }
+
                     doc.apply(&transaction, view.id);
 
                     editor.last_completion = Some(CompleteAction::Applied {
@@ -308,17 +415,6 @@ impl Completion {
                         changes: completion_changes(&transaction, trigger_offset),
                     });
 
-                    // TODO: add additional _edits to completion_changes?
-                    if let Some(additional_edits) = item.item.additional_text_edits {
-                        if !additional_edits.is_empty() {
-                            let transaction = util::generate_transaction_from_edits(
-                                doc.text(),
-                                additional_edits,
-                                offset_encoding, // TODO: should probably transcode in Client
-                            );
-                            doc.apply(&transaction, view.id);
-                        }
-                    }
                     // we could have just inserted a trigger char (like a `crate::` completion for rust
                     // so we want to retrigger immediately when accepting a completion.
                     trigger_auto_completion(&editor.handlers.completions, editor, true);
@@ -440,7 +536,7 @@ impl Component for Completion {
             Some(option) => option,
             None => return,
         };
-        if !option.resolved {
+        if let CompletionItem::Lsp(option) = option {
             self.resolve_handler.ensure_item_resolved(cx.editor, option);
         }
         // need to render:
@@ -465,27 +561,32 @@ impl Component for Completion {
             Markdown::new(md, cx.editor.syn_loader.clone())
         };
 
-        let mut markdown_doc = match &option.item.documentation {
-            Some(lsp::Documentation::String(contents))
-            | Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {
-                kind: lsp::MarkupKind::PlainText,
-                value: contents,
-            })) => {
-                // TODO: convert to wrapped text
-                markdowned(language, option.item.detail.as_deref(), Some(contents))
+        let mut markdown_doc = match option {
+            CompletionItem::Lsp(option) => match &option.item.documentation {
+                Some(lsp::Documentation::String(contents))
+                | Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {
+                    kind: lsp::MarkupKind::PlainText,
+                    value: contents,
+                })) => {
+                    // TODO: convert to wrapped text
+                    markdowned(language, option.item.detail.as_deref(), Some(contents))
+                }
+                Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {
+                    kind: lsp::MarkupKind::Markdown,
+                    value: contents,
+                })) => {
+                    // TODO: set language based on doc scope
+                    markdowned(language, option.item.detail.as_deref(), Some(contents))
+                }
+                None if option.item.detail.is_some() => {
+                    // TODO: set language based on doc scope
+                    markdowned(language, option.item.detail.as_deref(), None)
+                }
+                None => return,
+            },
+            CompletionItem::Path(option) => {
+                markdowned(language, None, Some(&option.item.documentation))
             }
-            Some(lsp::Documentation::MarkupContent(lsp::MarkupContent {
-                kind: lsp::MarkupKind::Markdown,
-                value: contents,
-            })) => {
-                // TODO: set language based on doc scope
-                markdowned(language, option.item.detail.as_deref(), Some(contents))
-            }
-            None if option.item.detail.is_some() => {
-                // TODO: set language based on doc scope
-                markdowned(language, option.item.detail.as_deref(), None)
-            }
-            None => return,
         };
 
         let popup_area = self.popup.area(area, cx.editor);

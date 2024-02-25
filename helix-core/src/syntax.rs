@@ -125,6 +125,9 @@ pub struct LanguageConfiguration {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub formatter: Option<FormatterConfiguration>,
 
+    /// If set, overrides `editor.path-completion`.
+    pub path_completion: Option<bool>,
+
     #[serde(default)]
     pub diagnostic_severity: Severity,
 
