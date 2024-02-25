@@ -834,6 +834,10 @@ impl EditorView {
         cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
 
         let mut execute_command = |command: &commands::MappableCommand| {
+            let doc = doc_mut!(cxt.editor);
+            let view = view_mut!(cxt.editor);
+            doc.append_changes_to_history(view);
+
             command.execute(cxt);
             helix_event::dispatch(PostCommand { command, cx: cxt });
 
