@@ -5,9 +5,11 @@ use crate::job::Job;
 
 use super::*;
 
+use globset::{Glob, GlobBuilder, GlobSet};
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::{encoding, line_ending, shellwords::Shellwords};
+use helix_stdx::env::current_working_dir;
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::editor::{Action, CloseError, ConfigEvent};
 use serde_json::Value;
@@ -108,16 +110,16 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     }
 
     ensure!(!args.is_empty(), "wrong argument count");
-    for arg in args {
-        let (path, pos) = args::parse_file(arg);
-        let path = helix_stdx::path::expand_tilde(path);
-        // If the path is a directory, open a file picker on that directory and update the status
-        // message
-        if let Ok(true) = std::fs::canonicalize(&path).map(|p| p.is_dir()) {
+
+    fn open(cx: &mut compositor::Context, path: Cow<Path>, pos: Position) -> anyhow::Result<()> {
+        // If the path is a directory, open a file picker on that directory and update
+        // the status message
+        if path.is_dir() {
+            let path = path.into_owned();
             let callback = async move {
                 let call: job::Callback = job::Callback::EditorCompositor(Box::new(
                     move |editor: &mut Editor, compositor: &mut Compositor| {
-                        let picker = ui::file_picker(path.into_owned(), &editor.config());
+                        let picker = ui::file_picker(path, &editor.config());
                         compositor.push(Box::new(overlaid(picker)));
                     },
                 ));
@@ -132,6 +134,71 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
             doc.set_selection(view.id, pos);
             // does not affect opening a buffer without pos
             align_view(doc, view, Align::Center);
+        }
+        Ok(())
+    }
+
+    fn glob(path: &Path) -> anyhow::Result<Glob> {
+        let path_str = path.to_str().context("invalid unicode")?;
+        GlobBuilder::new(path_str)
+            .literal_separator(true)
+            .empty_alternates(true)
+            .build()
+            .context("invalid glob")
+    }
+
+    for arg in args {
+        let (path, pos) = args::parse_file(arg);
+        let path = helix_stdx::path::canonicalize(path);
+
+        if path.exists() {
+            // Shortcut for opening a path without globbing
+            open(cx, Cow::Owned(path), pos)?;
+            continue;
+        }
+
+        let mut glob_set_builder = GlobSet::builder();
+        glob_set_builder.add(glob(&path)?);
+
+        let mut root = None;
+        let mut comps = path.components();
+
+        // Iterate over all parents
+        while comps.next_back().is_some() {
+            let parent = comps.as_path();
+            if parent.as_os_str().is_empty() {
+                // No parents left
+                break;
+            }
+
+            // Add each parent as a glob for filtering in the recursive walker
+            glob_set_builder.add(glob(parent)?);
+
+            if root.is_none() && parent.exists() {
+                // Found the first parent that exists
+                root = Some(parent.to_path_buf());
+            }
+        }
+
+        let glob_set = glob_set_builder.build().context("invalid glob")?;
+        let root = root.unwrap_or_else(current_working_dir);
+
+        let mut walk = cx
+            .editor
+            .config()
+            .file_picker
+            .walk_builder(root)
+            .filter_entry(move |entry| glob_set.is_match(entry.path()))
+            .build();
+
+        // Ignore the root directory which is yielded first
+        if walk.next().is_none() {
+            continue;
+        }
+
+        for entry in walk {
+            let entry = entry.context("recursive walking failed")?;
+            open(cx, Cow::Borrowed(entry.path()), pos)?;
         }
     }
     Ok(())
