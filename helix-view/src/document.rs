@@ -37,9 +37,12 @@ use helix_core::{
     ChangeSet, Diagnostic, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax, Transaction,
 };
 
-use crate::editor::Config;
-use crate::events::{DocumentDidChange, SelectionDidChange};
-use crate::{DocumentId, Editor, Theme, View, ViewId};
+use crate::{
+    editor::Config,
+    events::{DocumentDidChange, SelectionDidChange},
+    view::ViewPosition,
+    DocumentId, Editor, Theme, View, ViewId,
+};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
 const BUF_SIZE: usize = 8192;
@@ -130,6 +133,7 @@ pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
     selections: HashMap<ViewId, Selection>,
+    pub view_data: HashMap<ViewId, ViewData>,
 
     /// Inlay hints annotations for the document, by view.
     ///
@@ -265,6 +269,7 @@ impl fmt::Debug for Document {
             .field("selections", &self.selections)
             .field("inlay_hints_oudated", &self.inlay_hints_oudated)
             .field("text_annotations", &self.inlay_hints)
+            .field("view_data", &self.view_data)
             .field("path", &self.path)
             .field("encoding", &self.encoding)
             .field("restore_cursor", &self.restore_cursor)
@@ -656,6 +661,7 @@ impl Document {
             selections: HashMap::default(),
             inlay_hints: HashMap::default(),
             inlay_hints_oudated: false,
+            view_data: Default::default(), // TODO: verify this is what we want
             indent_style: DEFAULT_INDENT,
             line_ending,
             restore_cursor: false,
@@ -1759,6 +1765,14 @@ impl Document {
         &self.selections
     }
 
+    pub fn view_data(&self, view_id: ViewId) -> Option<&ViewData> {
+        self.view_data.get(&view_id)
+    }
+
+    pub fn view_data_mut(&mut self, view_id: ViewId) -> &mut ViewData {
+        self.view_data.entry(view_id).or_default()
+    }
+
     pub fn relative_path(&self) -> Option<Cow<Path>> {
         self.path
             .as_deref()
@@ -2032,6 +2046,11 @@ impl Document {
     pub fn reset_all_inlay_hints(&mut self) {
         self.inlay_hints = Default::default();
     }
+}
+
+#[derive(Debug, Default)]
+pub struct ViewData {
+    pub view_position: ViewPosition,
 }
 
 #[derive(Clone, Debug)]
