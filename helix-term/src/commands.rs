@@ -62,7 +62,9 @@ use crate::{
     filter_picker_entry,
     job::Callback,
     keymap::ReverseKeymap,
-    ui::{self, menu::Item, overlay::overlaid, Picker, Popup, Prompt, PromptEvent},
+    ui::{
+        self, menu::Item, overlay::overlaid, CompletionResult, Picker, Popup, Prompt, PromptEvent,
+    },
 };
 
 use crate::job::{self, Jobs};
@@ -2094,12 +2096,14 @@ fn searcher(cx: &mut Context, direction: Direction) {
         "search:".into(),
         Some(reg),
         move |_editor: &Editor, input: &str| {
-            completions
-                .iter()
-                .filter(|comp| comp.starts_with(input))
-                .map(|comp| (0.., std::borrow::Cow::Owned(comp.clone())))
-                .collect::<Vec<_>>()
-                .into()
+            CompletionResult::new(
+                completions
+                    .iter()
+                    .filter(|comp| comp.starts_with(input))
+                    .map(|comp| (0.., std::borrow::Cow::Owned(comp.clone())))
+                    .collect::<Vec<_>>(),
+                false,
+            )
         },
         move |cx, regex, event| {
             if event == PromptEvent::Validate {
@@ -2287,12 +2291,14 @@ fn global_search(cx: &mut Context) {
         "global-search:".into(),
         Some(reg),
         move |_editor: &Editor, input: &str| {
-            completions
-                .iter()
-                .filter(|comp| comp.starts_with(input))
-                .map(|comp| (0.., std::borrow::Cow::Owned(comp.clone())))
-                .collect::<Vec<_>>()
-                .into()
+            CompletionResult::new(
+                completions
+                    .iter()
+                    .filter(|comp| comp.starts_with(input))
+                    .map(|comp| (0.., std::borrow::Cow::Owned(comp.clone())))
+                    .collect::<Vec<_>>(),
+                false,
+            )
         },
         move |cx, _, input, event| {
             if event != PromptEvent::Validate {

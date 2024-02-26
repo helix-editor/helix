@@ -3134,18 +3134,17 @@ pub(super) fn command_mode(cx: &mut Context) {
             let words = shellwords.words();
 
             if words.is_empty() || (words.len() == 1 && !shellwords.ends_with_whitespace()) {
-                let mut result: CompletionResult = fuzzy_match(
-                    input,
-                    TYPABLE_COMMAND_LIST.iter().map(|command| command.name),
-                    false,
+                CompletionResult::new(
+                    fuzzy_match(
+                        input,
+                        TYPABLE_COMMAND_LIST.iter().map(|command| command.name),
+                        false,
+                    )
+                    .into_iter()
+                    .map(|(name, _)| (0.., name.into()))
+                    .collect(),
+                    matches!(editor.config().command_hints, CommandHints::Always),
                 )
-                .into_iter()
-                .map(|(name, _)| (0.., name.into()))
-                .collect::<Vec<_>>()
-                .into();
-                result.show_popup = matches!(editor.config().command_hints, CommandHints::Always);
-
-                result
             } else {
                 // Otherwise, use the command's completer and the last shellword
                 // as completion input.
@@ -3161,19 +3160,21 @@ pub(super) fn command_mode(cx: &mut Context) {
                     .get(&words[0] as &str)
                     .map(|tc| tc.completer_for_argument_number(argument_number))
                 {
-                    completer(editor, word)
-                        .completions
-                        .into_iter()
-                        .map(|(range, file)| {
-                            let file = shellwords::escape(file);
+                    CompletionResult::new(
+                        completer(editor, word)
+                            .completions
+                            .into_iter()
+                            .map(|(range, file)| {
+                                let file = shellwords::escape(file);
 
-                            // offset ranges to input
-                            let offset = input.len() - word_len;
-                            let range = (range.start + offset)..;
-                            (range, file)
-                        })
-                        .collect::<Vec<_>>()
-                        .into()
+                                // offset ranges to input
+                                let offset = input.len() - word_len;
+                                let range = (range.start + offset)..;
+                                (range, file)
+                            })
+                            .collect::<Vec<_>>(),
+                        false,
+                    )
                 } else {
                     CompletionResult::default()
                 };

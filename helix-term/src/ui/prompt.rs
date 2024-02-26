@@ -29,11 +29,11 @@ pub struct CompletionResult {
     pub show_popup: bool,
 }
 
-impl From<Vec<Completion>> for CompletionResult {
-    fn from(completions: Vec<Completion>) -> Self {
+impl CompletionResult {
+    pub fn new(completions: Vec<Completion>, show_popup: bool) -> Self {
         Self {
-            show_popup: true,
             completions,
+            show_popup,
         }
     }
 }
