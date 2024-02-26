@@ -262,11 +262,13 @@ pub mod completers {
                 .unwrap_or_else(|| Cow::from(SCRATCH_BUFFER_NAME))
         });
 
-        fuzzy_match(input, names, true)
-            .into_iter()
-            .map(|(name, _)| ((0..), name))
-            .collect::<Vec<Completion>>()
-            .into()
+        CompletionResult::new(
+            fuzzy_match(input, names, true)
+                .into_iter()
+                .map(|(name, _)| ((0..), name))
+                .collect::<Vec<Completion>>(),
+            false,
+        )
     }
 
     pub fn theme(_editor: &Editor, input: &str) -> CompletionResult {
@@ -279,11 +281,13 @@ pub mod completers {
         names.sort();
         names.dedup();
 
-        fuzzy_match(input, names, false)
-            .into_iter()
-            .map(|(name, _)| ((0..), name.into()))
-            .collect::<Vec<Completion>>()
-            .into()
+        CompletionResult::new(
+            fuzzy_match(input, names, false)
+                .into_iter()
+                .map(|(name, _)| ((0..), name.into()))
+                .collect::<Vec<Completion>>(),
+            false,
+        )
     }
 
     /// Recursive function to get all keys from this value and add them to vec
@@ -310,11 +314,13 @@ pub mod completers {
             keys
         });
 
-        fuzzy_match(input, &*KEYS, false)
-            .into_iter()
-            .map(|(name, _)| ((0..), name.into()))
-            .collect::<Vec<Completion>>()
-            .into()
+        CompletionResult::new(
+            fuzzy_match(input, &*KEYS, false)
+                .into_iter()
+                .map(|(name, _)| ((0..), name.into()))
+                .collect::<Vec<Completion>>(),
+            false,
+        )
     }
 
     pub fn filename(editor: &Editor, input: &str) -> CompletionResult {
@@ -347,11 +353,13 @@ pub mod completers {
             .map(|config| &config.language_id)
             .chain(std::iter::once(&text));
 
-        fuzzy_match(input, language_ids, false)
-            .into_iter()
-            .map(|(name, _)| ((0..), name.to_owned().into()))
-            .collect::<Vec<Completion>>()
-            .into()
+        CompletionResult::new(
+            fuzzy_match(input, language_ids, false)
+                .into_iter()
+                .map(|(name, _)| ((0..), name.to_owned().into()))
+                .collect::<Vec<Completion>>(),
+            false,
+        )
     }
 
     pub fn lsp_workspace_command(editor: &Editor, input: &str) -> CompletionResult {
@@ -362,11 +370,13 @@ pub mod completers {
             return CompletionResult::default();
         };
 
-        fuzzy_match(input, &options.commands, false)
-            .into_iter()
-            .map(|(name, _)| ((0..), name.to_owned().into()))
-            .collect::<Vec<Completion>>()
-            .into()
+        CompletionResult::new(
+            fuzzy_match(input, &options.commands, false)
+                .into_iter()
+                .map(|(name, _)| ((0..), name.to_owned().into()))
+                .collect::<Vec<Completion>>(),
+            false,
+        )
     }
 
     pub fn directory(editor: &Editor, input: &str) -> CompletionResult {
@@ -488,17 +498,19 @@ pub mod completers {
         // if empty, return a list of dirs and files in current dir
         if let Some(file_name) = file_name {
             let range = (input.len().saturating_sub(file_name.len()))..;
-            fuzzy_match(&file_name, files, true)
-                .into_iter()
-                .map(|(name, _)| (range.clone(), name))
-                .collect::<Vec<Completion>>()
-                .into()
+            CompletionResult::new(
+                fuzzy_match(&file_name, files, true)
+                    .into_iter()
+                    .map(|(name, _)| (range.clone(), name))
+                    .collect::<Vec<Completion>>(),
+                false,
+            )
 
             // TODO: complete to longest common match
         } else {
             let mut files: Vec<_> = files.map(|file| (end.clone(), file)).collect();
             files.sort_unstable_by(|(_, path1), (_, path2)| path1.cmp(path2));
-            files.into()
+            CompletionResult::new(files, false)
         }
     }
 }
