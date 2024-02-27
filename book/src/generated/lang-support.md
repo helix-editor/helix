@@ -44,6 +44,7 @@
 | erb | ✓ |  |  |  |
 | erlang | ✓ | ✓ |  | `erlang_ls` |
 | esdl | ✓ |  |  |  |
+| fidl | ✓ |  |  |  |
 | fish | ✓ | ✓ | ✓ |  |
 | forth | ✓ |  |  | `forth-lsp` |
 | fortran | ✓ |  | ✓ | `fortls` |
