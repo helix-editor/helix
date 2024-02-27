@@ -38,7 +38,7 @@ use std::{
     collections::{BTreeMap, HashSet},
     fmt::Write,
     future::Future,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 /// Gets the first language server that is attached to a document which supports a specific feature.
@@ -134,7 +134,7 @@ struct DiagnosticStyles {
 }
 
 struct PickerDiagnostic {
-    url: lsp::Url,
+    path: PathBuf,
     diag: lsp::Diagnostic,
     offset_encoding: OffsetEncoding,
 }
@@ -167,8 +167,7 @@ impl ui::menu::Item for PickerDiagnostic {
         let path = match format {
             DiagnosticsFormat::HideSourcePath => String::new(),
             DiagnosticsFormat::ShowSourcePath => {
-                let file_path = self.url.to_file_path().unwrap();
-                let path = path::get_truncated_path(file_path);
+                let path = path::get_truncated_path(&self.path);
                 format!("{}: ", path.to_string_lossy())
             }
         };
@@ -208,24 +207,33 @@ fn jump_to_location(
             return;
         }
     };
+    jump_to_position(editor, &path, location.range, offset_encoding, action);
+}
 
-    let doc = match editor.open(&path, action) {
+fn jump_to_position(
+    editor: &mut Editor,
+    path: &Path,
+    range: lsp::Range,
+    offset_encoding: OffsetEncoding,
+    action: Action,
+) {
+    let doc = match editor.open(path, action) {
         Ok(id) => doc_mut!(editor, &id),
         Err(err) => {
-            let err = format!("failed to open path: {:?}: {:?}", location.uri, err);
+            let err = format!("failed to open path: {:?}: {:?}", path, err);
             editor.set_error(err);
             return;
         }
     };
     let view = view_mut!(editor);
     // TODO: convert inside server
-    let new_range =
-        if let Some(new_range) = lsp_range_to_range(doc.text(), location.range, offset_encoding) {
-            new_range
-        } else {
-            log::warn!("lsp position out of bounds - {:?}", location.range);
-            return;
-        };
+    let new_range = if let Some(new_range) = lsp_range_to_range(doc.text(), range, offset_encoding)
+    {
+        new_range
+    } else {
+        log::warn!("lsp position out of bounds - {:?}", range);
+        return;
+    };
     // we flip the range so that the cursor sits on the start of the symbol
     // (for example start of the function).
     doc.set_selection(view.id, Selection::single(new_range.head, new_range.anchor));
@@ -258,21 +266,20 @@ enum DiagnosticsFormat {
 
 fn diag_picker(
     cx: &Context,
-    diagnostics: BTreeMap<lsp::Url, Vec<(lsp::Diagnostic, usize)>>,
-    _current_path: Option<lsp::Url>,
+    diagnostics: BTreeMap<PathBuf, Vec<(lsp::Diagnostic, usize)>>,
     format: DiagnosticsFormat,
 ) -> Picker<PickerDiagnostic> {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
 
     // flatten the map to a vec of (url, diag) pairs
     let mut flat_diag = Vec::new();
-    for (url, diags) in diagnostics {
+    for (path, diags) in diagnostics {
         flat_diag.reserve(diags.len());
 
         for (diag, ls) in diags {
             if let Some(ls) = cx.editor.language_server_by_id(ls) {
                 flat_diag.push(PickerDiagnostic {
-                    url: url.clone(),
+                    path: path.clone(),
                     diag,
                     offset_encoding: ls.offset_encoding(),
                 });
@@ -292,22 +299,17 @@ fn diag_picker(
         (styles, format),
         move |cx,
               PickerDiagnostic {
-                  url,
+                  path,
                   diag,
                   offset_encoding,
               },
               action| {
-            jump_to_location(
-                cx.editor,
-                &lsp::Location::new(url.clone(), diag.range),
-                *offset_encoding,
-                action,
-            )
+            jump_to_position(cx.editor, path, diag.range, *offset_encoding, action)
         },
     )
-    .with_preview(move |_editor, PickerDiagnostic { url, diag, .. }| {
-        let location = lsp::Location::new(url.clone(), diag.range);
-        Some(location_to_file_location(&location))
+    .with_preview(move |_editor, PickerDiagnostic { path, diag, .. }| {
+        let line = Some((diag.range.start.line as usize, diag.range.end.line as usize));
+        Some((path.clone().into(), line))
     })
     .truncate_start(false)
 }
@@ -470,17 +472,16 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
 
 pub fn diagnostics_picker(cx: &mut Context) {
     let doc = doc!(cx.editor);
-    if let Some(current_url) = doc.url() {
+    if let Some(current_path) = doc.path() {
         let diagnostics = cx
             .editor
             .diagnostics
-            .get(&current_url)
+            .get(current_path)
             .cloned()
             .unwrap_or_default();
         let picker = diag_picker(
             cx,
-            [(current_url.clone(), diagnostics)].into(),
-            Some(current_url),
+            [(current_path.clone(), diagnostics)].into(),
             DiagnosticsFormat::HideSourcePath,
         );
         cx.push_layer(Box::new(overlaid(picker)));
@@ -488,16 +489,9 @@ pub fn diagnostics_picker(cx: &mut Context) {
 }
 
 pub fn workspace_diagnostics_picker(cx: &mut Context) {
-    let doc = doc!(cx.editor);
-    let current_url = doc.url();
     // TODO not yet filtered by LanguageServerFeature, need to do something similar as Document::shown_diagnostics here for all open documents
     let diagnostics = cx.editor.diagnostics.clone();
-    let picker = diag_picker(
-        cx,
-        diagnostics,
-        current_url,
-        DiagnosticsFormat::ShowSourcePath,
-    );
+    let picker = diag_picker(cx, diagnostics, DiagnosticsFormat::ShowSourcePath);
     cx.push_layer(Box::new(overlaid(picker)));
 }
 

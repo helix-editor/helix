@@ -724,7 +724,7 @@ impl Application {
                     }
                     Notification::PublishDiagnostics(mut params) => {
                         let path = match params.uri.to_file_path() {
-                            Ok(path) => path,
+                            Ok(path) => helix_stdx::path::normalize(&path),
                             Err(_) => {
                                 log::error!("Unsupported file URI: {}", params.uri);
                                 return;
@@ -753,9 +753,7 @@ impl Application {
                             let lang_conf = doc.language.clone();
 
                             if let Some(lang_conf) = &lang_conf {
-                                if let Some(old_diagnostics) =
-                                    self.editor.diagnostics.get(&params.uri)
-                                {
+                                if let Some(old_diagnostics) = self.editor.diagnostics.get(&path) {
                                     if !lang_conf.persistent_diagnostic_sources.is_empty() {
                                         // Sort diagnostics first by severity and then by line numbers.
                                         // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
@@ -788,7 +786,7 @@ impl Application {
                         // Insert the original lsp::Diagnostics here because we may have no open document
                         // for diagnosic message and so we can't calculate the exact position.
                         // When using them later in the diagnostics picker, we calculate them on-demand.
-                        let diagnostics = match self.editor.diagnostics.entry(params.uri) {
+                        let diagnostics = match self.editor.diagnostics.entry(path) {
                             Entry::Occupied(o) => {
                                 let current_diagnostics = o.into_mut();
                                 // there may entries of other language servers, which is why we can't overwrite the whole entry
