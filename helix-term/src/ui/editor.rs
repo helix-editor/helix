@@ -716,7 +716,8 @@ impl EditorView {
             }
         }
 
-        let paragraph = Paragraph::new(lines)
+        let text = Text::from(lines);
+        let paragraph = Paragraph::new(&text)
             .alignment(Alignment::Right)
             .wrap(Wrap { trim: true });
         let width = 100.min(viewport.width);

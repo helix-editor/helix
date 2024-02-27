@@ -2,6 +2,7 @@ use crate::compositor::{Component, Context};
 use helix_view::graphics::{Margin, Rect};
 use helix_view::info::Info;
 use tui::buffer::Buffer as Surface;
+use tui::text::Text;
 use tui::widgets::{Block, Borders, Paragraph, Widget};
 
 impl Component for Info {
@@ -31,7 +32,7 @@ impl Component for Info {
         let inner = block.inner(area).inner(&margin);
         block.render(area, surface);
 
-        Paragraph::new(self.text.as_str())
+        Paragraph::new(&Text::from(self.text.as_str()))
             .style(text_style)
             .render(inner, surface);
     }

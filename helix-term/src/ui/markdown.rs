@@ -346,7 +346,7 @@ impl Component for Markdown {
 
         let text = self.parse(Some(&cx.editor.theme));
 
-        let par = Paragraph::new(text)
+        let par = Paragraph::new(&text)
             .wrap(Wrap { trim: false })
             .scroll((cx.scroll.unwrap_or_default() as u16, 0));
 

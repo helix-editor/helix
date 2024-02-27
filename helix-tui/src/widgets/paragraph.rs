@@ -51,7 +51,7 @@ pub struct Paragraph<'a> {
     /// How to wrap the text
     wrap: Option<Wrap>,
     /// The text to display
-    text: Text<'a>,
+    text: &'a Text<'a>,
     /// Scroll
     scroll: (u16, u16),
     /// Alignment of the text
@@ -92,15 +92,12 @@ pub struct Wrap {
 }
 
 impl<'a> Paragraph<'a> {
-    pub fn new<T>(text: T) -> Paragraph<'a>
-    where
-        T: Into<Text<'a>>,
-    {
+    pub fn new(text: &'a Text) -> Paragraph<'a> {
         Paragraph {
             block: None,
             style: Default::default(),
             wrap: None,
-            text: text.into(),
+            text,
             scroll: (0, 0),
             alignment: Alignment::Left,
         }
