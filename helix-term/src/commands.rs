@@ -2330,7 +2330,7 @@ fn global_search(cx: &mut Context) {
                                 // search the buffer instead of the file because it's faster
                                 // and captures new edits without requiring a save
                                 if searcher.multi_line_with_matcher(&matcher) {
-                                    // in this case a continous buffer is required
+                                    // in this case a continuous buffer is required
                                     // convert the rope to a string
                                     let text = doc.to_string();
                                     searcher.search_slice(&matcher, text.as_bytes(), sink)

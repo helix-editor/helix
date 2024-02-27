@@ -40,7 +40,7 @@ label = "honey"
 "diff.minus" = "#f22c86"
 "diff.delta" = "#6f44f0"
 
-# TODO: diferentiate doc comment
+# TODO: differentiate doc comment
 # concat (ERROR) @error.syntax and "MISSING ;" selectors for errors
 
 "ui.background" = { bg = "midnight" }
