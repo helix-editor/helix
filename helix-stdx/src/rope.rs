@@ -14,6 +14,8 @@ pub trait RopeSliceExt<'a>: Sized {
         byte_range: R,
     ) -> RegexInput<RopeyCursor<'a>>;
     fn regex_input_at<R: RangeBounds<usize>>(self, char_range: R) -> RegexInput<RopeyCursor<'a>>;
+    fn first_non_whitespace_char(self) -> Option<usize>;
+    fn last_non_whitespace_char(self) -> Option<usize>;
 }
 
 impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
@@ -63,5 +65,14 @@ impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
             Bound::Unbounded => RegexInput::new(self),
         };
         input.range(byte_range)
+    }
+    fn first_non_whitespace_char(self) -> Option<usize> {
+        self.chars().position(|ch| !ch.is_whitespace())
+    }
+    fn last_non_whitespace_char(self) -> Option<usize> {
+        self.chars_at(self.len_chars())
+            .reversed()
+            .position(|ch| !ch.is_whitespace())
+            .map(|pos| self.len_chars() - pos - 1)
     }
 }

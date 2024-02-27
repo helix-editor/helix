@@ -99,7 +99,19 @@ pub struct LanguageConfiguration {
     pub shebangs: Vec<String>, // interpreter(s) associated with language
     #[serde(default)]
     pub roots: Vec<String>, // these indicate project roots <.git, Cargo.toml>
-    pub comment_token: Option<String>,
+    #[serde(
+        default,
+        skip_serializing,
+        deserialize_with = "from_comment_tokens",
+        alias = "comment-token"
+    )]
+    pub comment_tokens: Option<Vec<String>>,
+    #[serde(
+        default,
+        skip_serializing,
+        deserialize_with = "from_block_comment_tokens"
+    )]
+    pub block_comment_tokens: Option<Vec<BlockCommentToken>>,
     pub text_width: Option<usize>,
     pub soft_wrap: Option<SoftWrap>,
 
@@ -238,6 +250,59 @@ impl<'de> Deserialize<'de> for FileType {
 
         deserializer.deserialize_any(FileTypeVisitor)
     }
+}
+
+fn from_comment_tokens<'de, D>(deserializer: D) -> Result<Option<Vec<String>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum CommentTokens {
+        Multiple(Vec<String>),
+        Single(String),
+    }
+    Ok(
+        Option::<CommentTokens>::deserialize(deserializer)?.map(|tokens| match tokens {
+            CommentTokens::Single(val) => vec![val],
+            CommentTokens::Multiple(vals) => vals,
+        }),
+    )
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct BlockCommentToken {
+    pub start: String,
+    pub end: String,
+}
+
+impl Default for BlockCommentToken {
+    fn default() -> Self {
+        BlockCommentToken {
+            start: "/*".to_string(),
+            end: "*/".to_string(),
+        }
+    }
+}
+
+fn from_block_comment_tokens<'de, D>(
+    deserializer: D,
+) -> Result<Option<Vec<BlockCommentToken>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum BlockCommentTokens {
+        Multiple(Vec<BlockCommentToken>),
+        Single(BlockCommentToken),
+    }
+    Ok(
+        Option::<BlockCommentTokens>::deserialize(deserializer)?.map(|tokens| match tokens {
+            BlockCommentTokens::Single(val) => vec![val],
+            BlockCommentTokens::Multiple(vals) => vals,
+        }),
+    )
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
