@@ -19,31 +19,31 @@
   "else"
   "if"
   "switch"
-] @keyword.conditional
+] @keyword.control.conditional
 
 [
   "catch"
   "finally"
   "try"
-] @keyword.exception
+] @keyword.control.exception
 
 "def" @keyword.function
 
-"import" @keyword.import
+"import" @keyword.control.import
 
 [
   "for"
   "while"
   (break)
   (continue)
-] @keyword.repeat
+] @keyword.control.repeat
 
-"return" @keyword.return
+"return" @keyword.control.return
 
 [
   "true"
   "false"
-] @boolean
+] @constant.builtin.boolean
 
 (null) @constant.builtin
 
@@ -67,16 +67,16 @@
   "public"
   "static"
   "synchronized"
-] @type.qualifier
+] @keyword.storage.modifier
 
-(comment) @comment @spell
+(comment) @comment
 
 (shebang) @keyword.directive
 
 (string) @string
 
 (string
-  (escape_sequence) @string.escape)
+  (escape_sequence) @constant.character.escape)
 
 (string
   (interpolation
@@ -97,7 +97,7 @@
   "."
 ] @punctuation.delimiter
 
-(number_literal) @number
+(number_literal) @constant.numeric
 
 (identifier) @variable
 
@@ -154,7 +154,7 @@
   ([
     "?"
     ":"
-  ]) @keyword.conditional.ternary)
+  ]) @keyword.operator)
 
 (map
   (map_item
@@ -250,19 +250,19 @@
 
 "@interface" @function.macro
 
-(groovy_doc) @comment.documentation @spell
+(groovy_doc) @comment.block.documentation
 
 (groovy_doc
   [
     (groovy_doc_param)
     (groovy_doc_throws)
     (groovy_doc_tag)
-  ] @string.special @nospell)
+  ] @string.special)
 
 (groovy_doc
   (groovy_doc_param
-    (identifier) @variable.parameter) @nospell)
+    (identifier) @variable.parameter))
 
 (groovy_doc
   (groovy_doc_throws
-    (identifier) @type @nospell))
+    (identifier) @type))
