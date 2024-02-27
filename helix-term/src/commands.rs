@@ -1186,14 +1186,14 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         paths.clear();
 
         let is_valid_path_char = |c: &char| {
-            let valid_chars: &[char] = if cfg!(target_os = "windows") {
-                &[
-                    '@', '/', '\\', '.', '-', '_', '+', '#', '$', '%', '{', '}', '[', ']', ':',
-                    '!', '~', '=',
-                ]
-            } else {
-                &['@', '/', '.', '-', '_', '+', '#', '$', '%', '~', '=']
-            };
+            #[cfg(target_os = "windows")]
+            let valid_chars: &[char] = &[
+                '@', '/', '\\', '.', '-', '_', '+', '#', '$', '%', '{', '}', '[', ']', ':', '!',
+                '~', '=',
+            ];
+            #[cfg(not(target_os = "windows"))]
+            let valid_chars: &[char] = &['@', '/', '.', '-', '_', '+', '#', '$', '%', '~', '='];
+
             valid_chars.contains(c) || c.is_alphabetic() || c.is_numeric()
         };
 
