@@ -4642,6 +4642,7 @@ fn reorder_selection_contents(cx: &mut Context, strategy: ReorderStrategy) {
     );
 
     doc.apply(&transaction, view.id);
+    exit_select_mode(cx);
 }
 
 fn rotate_selection_contents_forward(cx: &mut Context) {
