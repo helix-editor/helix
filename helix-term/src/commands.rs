@@ -1199,7 +1199,7 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
 
         let cursor_pos = primary.cursor(text.slice(..));
         let pre_cursor_pos = cursor_pos.saturating_sub(1);
-        let post_cursor_pos = cursor_pos.saturating_add(1);
+        let post_cursor_pos = cursor_pos + 1;
         let start_pos = if is_valid_path_char(&text.char(cursor_pos)) {
             cursor_pos
         } else if is_valid_path_char(&text.char(pre_cursor_pos)) {
