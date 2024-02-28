@@ -128,9 +128,9 @@
 
 ;; Tables
 
-(field name: (identifier) @field)
+(field name: (identifier) @variable.other.member)
 
-(dot_index_expression field: (identifier) @field)
+(dot_index_expression field: (identifier) @variable.other.member)
 
 (table_constructor
 [
@@ -198,7 +198,7 @@
 ;; Nodes
 (comment) @comment
 (string) @string
-(escape_sequence) @string.escape
+(escape_sequence) @constant.character.escape
 (number) @constant.numeric.integer
 (label_statement) @label
 ; A bit of a tricky one, this will only match field names
