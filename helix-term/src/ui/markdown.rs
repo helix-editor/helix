@@ -338,6 +338,10 @@ impl Markdown {
 
         Text::from(lines)
     }
+
+    pub fn contents_mut(&mut self) -> &mut String {
+        &mut self.contents
+    }
 }
 
 impl Component for Markdown {
