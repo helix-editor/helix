@@ -741,7 +741,7 @@ impl WhitespaceRender {
 #[serde(rename_all = "kebab-case")]
 pub enum SaveStyle {
     FocusLost,
-    AfterDelay    
+    AfterDelay,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -960,7 +960,6 @@ pub struct Editor {
     pub auto_pairs: Option<AutoPairs>,
 
     pub idle_timer: Pin<Box<Sleep>>,
-    pub save_delay_timer: Pin<Box<Sleep>>,
     redraw_timer: Pin<Box<Sleep>>,
     last_motion: Option<Motion>,
     pub last_completion: Option<CompleteAction>,
@@ -996,7 +995,6 @@ pub enum EditorEvent {
     LanguageServerMessage((usize, Call)),
     DebuggerEvent(dap::Payload),
     IdleTimer,
-    SaveDelayTimer,
     Redraw,
 }
 
@@ -1092,7 +1090,6 @@ impl Editor {
             status_msg: None,
             autoinfo: None,
             idle_timer: Box::pin(sleep(conf.idle_timeout)),
-            save_delay_timer: Box::pin(sleep(conf.save_delay_timeout)),
             redraw_timer: Box::pin(sleep(Duration::MAX)),
             last_motion: None,
             last_completion: None,
@@ -1160,19 +1157,6 @@ impl Editor {
         self.idle_timer
             .as_mut()
             .reset(Instant::now() + config.idle_timeout);
-    }
-
-    pub fn clear_save_delay_timer(&mut self) {
-        self.save_delay_timer
-            .as_mut()
-            .reset(Instant::now() + Duration::from_secs(86400 * 365 * 30));
-    }
-
-    pub fn reset_save_delay_timer(&mut self) {
-        let config = self.config();
-        self.save_delay_timer
-            .as_mut()
-            .reset(Instant::now() + config.save_delay_timeout);
     }
 
     pub fn clear_status(&mut self) {
@@ -1987,9 +1971,6 @@ impl Editor {
                 }
                 _ = &mut self.idle_timer  => {
                     return EditorEvent::IdleTimer
-                }
-                _ = &mut self.save_delay_timer => {
-                    return EditorEvent::SaveDelayTimer
                 }
             }
         }

@@ -1287,7 +1287,6 @@ impl Component for EditorView {
             }
             Event::Key(mut key) => {
                 cx.editor.reset_idle_timer();
-                cx.editor.reset_save_delay_timer();
                 canonicalize_key(&mut key);
 
                 // clear status
@@ -1389,7 +1388,9 @@ impl Component for EditorView {
             Event::Mouse(event) => self.handle_mouse_event(event, &mut cx),
             Event::IdleTimeout => self.handle_idle_timeout(&mut cx),
             Event::SaveDelayTimeout => {
-                if context.editor.config().auto_save && context.editor.config().save_style == SaveStyle::AfterDelay {
+                if context.editor.config().auto_save
+                    && context.editor.config().save_style == SaveStyle::AfterDelay
+                {
                     if let Err(e) = commands::typed::write_all_impl(context, false, false) {
                         context.editor.set_error(format!("{}", e));
                     }
@@ -1401,7 +1402,9 @@ impl Component for EditorView {
                 EventResult::Consumed(None)
             }
             Event::FocusLost => {
-                if context.editor.config().auto_save && context.editor.config().save_style == SaveStyle::FocusLost {
+                if context.editor.config().auto_save
+                    && context.editor.config().save_style == SaveStyle::FocusLost
+                {
                     if let Err(e) = commands::typed::write_all_impl(context, false, false) {
                         context.editor.set_error(format!("{}", e));
                     }
