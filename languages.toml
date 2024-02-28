@@ -1028,7 +1028,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-julia", rev = "8fb3
 name = "java"
 scope = "source.java"
 injection-regex = "java"
-file-types = ["java", "jav"]
+file-types = ["java", "jav", "pde"]
 roots = ["pom.xml", "build.gradle", "build.gradle.kts"]
 language-servers = [ "jdtls" ]
 indent = { tab-width = 2, unit = "  " }
