@@ -4391,10 +4391,9 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
     use movement::skip_while;
     let (view, doc) = current!(cx.editor);
     let text = doc.text();
-    let slice = doc.text().slice(..);
+    let slice = text.slice(..);
 
     let mut changes = Vec::new();
-    let fragment = Tendril::from(" ");
 
     for selection in doc.selection(view.id) {
         let (start, mut end) = selection.line_range(slice);
@@ -4410,9 +4409,13 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
             let mut end = text.line_to_char(line + 1);
             end = skip_while(slice, end, |ch| matches!(ch, ' ' | '\t')).unwrap_or(end);
 
-            // need to skip from start, not end
-            let change = (start, end, Some(fragment.clone()));
-            changes.push(change);
+            let separator = if end == line_end_char_index(&slice, line + 1) {
+                // the joining line contains only space-characters => don't include a whitespace when joining
+                None
+            } else {
+                Some(Tendril::from(" "))
+            };
+            changes.push((start, end, separator));
         }
     }
 
@@ -4423,9 +4426,6 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
 
     changes.sort_unstable_by_key(|(from, _to, _text)| *from);
     changes.dedup();
-
-    // TODO: joining multiple empty lines should be replaced by a single space.
-    // need to merge change ranges that touch
 
     // select inserted spaces
     let transaction = if select_space {
@@ -4438,9 +4438,9 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
             })
             .collect();
         let selection = Selection::new(ranges, 0);
-        Transaction::change(doc.text(), changes.into_iter()).with_selection(selection)
+        Transaction::change(text, changes.into_iter()).with_selection(selection)
     } else {
-        Transaction::change(doc.text(), changes.into_iter())
+        Transaction::change(text, changes.into_iter())
     };
 
     doc.apply(&transaction, view.id);
