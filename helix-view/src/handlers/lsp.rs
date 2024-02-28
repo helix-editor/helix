@@ -46,12 +46,11 @@ pub enum SignatureHelpEvent {
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum AutoSaveInvoked {
-    AfterDelay,
-    FocusLost,
+    Automatic,
 }
 
 pub enum AutoSaveEvent {
-    Invoked,
+    Trigger,
     Cancel,
 }
 
