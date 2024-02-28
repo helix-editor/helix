@@ -6,8 +6,8 @@ use crate::job::Job;
 use super::*;
 
 use helix_core::fuzzy::fuzzy_match;
-use helix_core::{encoding, line_ending, path::get_canonicalized_path, shellwords::Shellwords};
-use helix_lsp::{OffsetEncoding, Url};
+use helix_core::indent::MAX_INDENT;
+use helix_core::{encoding, line_ending, shellwords::Shellwords};
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::editor::{Action, CloseError, ConfigEvent};
 use serde_json::Value;
@@ -110,14 +110,14 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     ensure!(!args.is_empty(), "wrong argument count");
     for arg in args {
         let (path, pos) = args::parse_file(arg);
-        let path = helix_core::path::expand_tilde(&path);
+        let path = helix_stdx::path::expand_tilde(path);
         // If the path is a directory, open a file picker on that directory and update the status
         // message
         if let Ok(true) = std::fs::canonicalize(&path).map(|p| p.is_dir()) {
             let callback = async move {
                 let call: job::Callback = job::Callback::EditorCompositor(Box::new(
                     move |editor: &mut Editor, compositor: &mut Compositor| {
-                        let picker = ui::file_picker(path, &editor.config());
+                        let picker = ui::file_picker(path.into_owned(), &editor.config());
                         compositor.push(Box::new(overlaid(picker)));
                     },
                 ));
@@ -476,20 +476,19 @@ fn set_indent_style(
         cx.editor.set_status(match style {
             Tabs => "tabs".to_owned(),
             Spaces(1) => "1 space".to_owned(),
-            Spaces(n) if (2..=8).contains(&n) => format!("{} spaces", n),
-            _ => unreachable!(), // Shouldn't happen.
+            Spaces(n) => format!("{} spaces", n),
         });
         return Ok(());
     }
 
     // Attempt to parse argument as an indent style.
-    let style = match args.get(0) {
+    let style = match args.first() {
         Some(arg) if "tabs".starts_with(&arg.to_lowercase()) => Some(Tabs),
         Some(Cow::Borrowed("0")) => Some(Tabs),
         Some(arg) => arg
             .parse::<u8>()
             .ok()
-            .filter(|n| (1..=8).contains(n))
+            .filter(|n| (1..=MAX_INDENT).contains(n))
             .map(Spaces),
         _ => None,
     };
@@ -535,7 +534,7 @@ fn set_line_ending(
     }
 
     let arg = args
-        .get(0)
+        .first()
         .context("argument missing")?
         .to_ascii_lowercase();
 
@@ -574,7 +573,6 @@ fn set_line_ending(
 
     Ok(())
 }
-
 fn earlier(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -675,13 +673,15 @@ pub fn write_all_impl(
     let mut errors: Vec<&'static str> = Vec::new();
     let config = cx.editor.config();
     let jobs = &mut cx.jobs;
-    let current_view = view!(cx.editor);
-
     let saves: Vec<_> = cx
         .editor
         .documents
-        .values_mut()
-        .filter_map(|doc| {
+        .keys()
+        .cloned()
+        .collect::<Vec<_>>()
+        .into_iter()
+        .filter_map(|id| {
+            let doc = doc!(cx.editor, &id);
             if !doc.is_modified() {
                 return None;
             }
@@ -692,22 +692,9 @@ pub fn write_all_impl(
                 return None;
             }
 
-            // Look for a view to apply the formatting change to. If the document
-            // is in the current view, just use that. Otherwise, since we don't
-            // have any other metric available for better selection, just pick
-            // the first view arbitrarily so that we still commit the document
-            // state for undos. If somehow we have a document that has not been
-            // initialized with any view, initialize it with the current view.
-            let target_view = if doc.selections().contains_key(&current_view.id) {
-                current_view.id
-            } else if let Some(view) = doc.selections().keys().next() {
-                *view
-            } else {
-                doc.ensure_view_init(current_view.id);
-                current_view.id
-            };
-
-            Some((doc.id(), target_view))
+            // Look for a view to apply the formatting change to.
+            let target_view = cx.editor.get_synced_view_id(doc.id());
+            Some((id, target_view))
         })
         .collect();
 
@@ -1091,18 +1078,17 @@ fn change_current_directory(
         return Ok(());
     }
 
-    let dir = helix_core::path::expand_tilde(
-        args.first()
-            .context("target directory not provided")?
-            .as_ref()
-            .as_ref(),
-    );
+    let dir = args
+        .first()
+        .context("target directory not provided")?
+        .as_ref();
+    let dir = helix_stdx::path::expand_tilde(Path::new(dir));
 
-    helix_loader::set_current_working_dir(dir)?;
+    helix_stdx::env::set_current_working_dir(dir)?;
 
     cx.editor.set_status(format!(
         "Current working directory is now {}",
-        helix_loader::current_working_dir().display()
+        helix_stdx::env::current_working_dir().display()
     ));
     Ok(())
 }
@@ -1116,7 +1102,7 @@ fn show_current_directory(
         return Ok(());
     }
 
-    let cwd = helix_loader::current_working_dir();
+    let cwd = helix_stdx::env::current_working_dir();
     let message = format!("Current working directory is {}", cwd.display());
 
     if cwd.exists() {
@@ -1503,7 +1489,7 @@ fn lsp_stop(
 
         for doc in cx.editor.documents_mut() {
             if let Some(client) = doc.remove_language_server_by_name(ls_name) {
-                doc.clear_diagnostics(client.id());
+                doc.clear_diagnostics(Some(client.id()));
             }
         }
     }
@@ -1559,10 +1545,7 @@ fn tree_sitter_highlight_name(
         let text = doc.text().slice(..);
         let cursor = doc.selection(view.id).primary().cursor(text);
         let byte = text.char_to_byte(cursor);
-        let node = syntax
-            .tree()
-            .root_node()
-            .descendant_for_byte_range(byte, byte)?;
+        let node = syntax.descendant_for_byte_range(byte, byte)?;
         // Query the same range as the one used in syntax highlighting.
         let range = {
             // Calculate viewport byte ranges:
@@ -2009,6 +1992,10 @@ fn language(
 
     let id = doc.id();
     cx.editor.refresh_language_servers(id);
+    let doc = doc_mut!(cx.editor);
+    let diagnostics =
+        Editor::doc_diagnostics(&cx.editor.language_servers, &cx.editor.diagnostics, doc);
+    doc.replace_diagnostics(diagnostics, &[], None);
     Ok(())
 }
 
@@ -2086,7 +2073,7 @@ fn reflow(
     //   - The configured text-width for this language in languages.toml
     //   - The configured text-width in the config.toml
     let text_width: usize = args
-        .get(0)
+        .first()
         .map(|num| num.parse::<usize>())
         .transpose()?
         .or_else(|| doc.language_config().and_then(|config| config.text_width))
@@ -2125,11 +2112,7 @@ fn tree_sitter_subtree(
         let text = doc.text();
         let from = text.char_to_byte(primary_selection.from());
         let to = text.char_to_byte(primary_selection.to());
-        if let Some(selected_node) = syntax
-            .tree()
-            .root_node()
-            .descendant_for_byte_range(from, to)
-        {
+        if let Some(selected_node) = syntax.descendant_for_byte_range(from, to) {
             let mut contents = String::from("```tsq\n");
             helix_core::syntax::pretty_print_tree(&mut contents, selected_node)?;
             contents.push_str("\n```");
@@ -2420,66 +2403,14 @@ fn move_buffer(
 
     ensure!(args.len() == 1, format!(":move takes one argument"));
     let doc = doc!(cx.editor);
-
-    let new_path = get_canonicalized_path(&PathBuf::from(args.first().unwrap().to_string()));
     let old_path = doc
         .path()
-        .ok_or_else(|| anyhow!("Scratch buffer cannot be moved. Use :write instead"))?
+        .context("Scratch buffer cannot be moved. Use :write instead")?
         .clone();
-    let old_path_as_url = doc.url().unwrap();
-    let new_path_as_url = Url::from_file_path(&new_path).unwrap();
-
-    let edits: Vec<(
-        helix_lsp::Result<helix_lsp::lsp::WorkspaceEdit>,
-        OffsetEncoding,
-        String,
-    )> = doc
-        .language_servers()
-        .map(|lsp| {
-            (
-                lsp.prepare_file_rename(&old_path_as_url, &new_path_as_url),
-                lsp.offset_encoding(),
-                lsp.name().to_owned(),
-            )
-        })
-        .filter(|(f, _, _)| f.is_some())
-        .map(|(f, encoding, name)| (helix_lsp::block_on(f.unwrap()), encoding, name))
-        .collect();
-
-    for (lsp_reply, encoding, name) in edits {
-        match lsp_reply {
-            Ok(edit) => {
-                if let Err(e) = apply_workspace_edit(cx.editor, encoding, &edit) {
-                    log::error!(
-                        ":move command failed to apply edits from lsp {}: {:?}",
-                        name,
-                        e
-                    );
-                };
-            }
-            Err(e) => {
-                log::error!("LSP {} failed to treat willRename request: {:?}", name, e);
-            }
-        };
+    let new_path = args.first().unwrap().to_string();
+    if let Err(err) = cx.editor.move_path(&old_path, new_path.as_ref()) {
+        bail!("Could not move file: {err}");
     }
-
-    let doc = doc_mut!(cx.editor);
-
-    doc.set_path(Some(new_path.as_path()));
-    if let Err(e) = std::fs::rename(&old_path, &new_path) {
-        doc.set_path(Some(old_path.as_path()));
-        bail!("Could not move file: {}", e);
-    };
-
-    doc.language_servers().for_each(|lsp| {
-        lsp.did_file_rename(&old_path_as_url, &new_path_as_url);
-    });
-
-    cx.editor
-        .language_servers
-        .file_event_handler
-        .file_changed(new_path);
-
     Ok(())
 }
 
@@ -2606,7 +2537,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "indent-style",
         aliases: &[],
-        doc: "Set the indentation style for editing. ('t' for tabs or 1-8 for number of spaces.)",
+        doc: "Set the indentation style for editing. ('t' for tabs or 1-16 for number of spaces.)",
         fun: set_indent_style,
         signature: CommandSignature::none(),
     },

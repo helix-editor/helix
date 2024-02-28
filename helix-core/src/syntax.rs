@@ -10,7 +10,9 @@ use crate::{
 use ahash::RandomState;
 use arc_swap::{ArcSwap, Guard};
 use bitflags::bitflags;
+use globset::GlobSet;
 use hashbrown::raw::RawTable;
+use helix_stdx::rope::{self, RopeSliceExt};
 use slotmap::{DefaultKey as LayerId, HopSlotMap};
 
 use std::{
@@ -82,12 +84,6 @@ pub struct Configuration {
     pub language_server: HashMap<String, LanguageServerConfiguration>,
 }
 
-impl Default for Configuration {
-    fn default() -> Self {
-        crate::config::default_syntax_loader()
-    }
-}
-
 // largely based on tree-sitter/cli/src/loader.rs
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
@@ -103,7 +99,19 @@ pub struct LanguageConfiguration {
     pub shebangs: Vec<String>, // interpreter(s) associated with language
     #[serde(default)]
     pub roots: Vec<String>, // these indicate project roots <.git, Cargo.toml>
-    pub comment_token: Option<String>,
+    #[serde(
+        default,
+        skip_serializing,
+        deserialize_with = "from_comment_tokens",
+        alias = "comment-token"
+    )]
+    pub comment_tokens: Option<Vec<String>>,
+    #[serde(
+        default,
+        skip_serializing,
+        deserialize_with = "from_block_comment_tokens"
+    )]
+    pub block_comment_tokens: Option<Vec<BlockCommentToken>>,
     pub text_width: Option<usize>,
     pub soft_wrap: Option<SoftWrap>,
 
@@ -155,6 +163,8 @@ pub struct LanguageConfiguration {
     /// Hardcoded LSP root directories relative to the workspace root, like `examples` or `tools/fuzz`.
     /// Falling back to the current working directory if none are configured.
     pub workspace_lsp_roots: Option<Vec<PathBuf>>,
+    #[serde(default)]
+    pub persistent_diagnostic_sources: Vec<String>,
 }
 
 #[derive(Debug, PartialEq, Eq, Hash)]
@@ -162,9 +172,11 @@ pub enum FileType {
     /// The extension of the file, either the `Path::extension` or the full
     /// filename if the file does not have an extension.
     Extension(String),
-    /// The suffix of a file. This is compared to a given file's absolute
-    /// path, so it can be used to detect files based on their directories.
-    Suffix(String),
+    /// A Unix-style path glob. This is compared to the file's absolute path, so
+    /// it can be used to detect files based on their directories. If the glob
+    /// is not an absolute path and does not already start with a glob pattern,
+    /// a glob pattern will be prepended to it.
+    Glob(globset::Glob),
 }
 
 impl Serialize for FileType {
@@ -176,9 +188,9 @@ impl Serialize for FileType {
 
         match self {
             FileType::Extension(extension) => serializer.serialize_str(extension),
-            FileType::Suffix(suffix) => {
+            FileType::Glob(glob) => {
                 let mut map = serializer.serialize_map(Some(1))?;
-                map.serialize_entry("suffix", &suffix.replace(std::path::MAIN_SEPARATOR, "/"))?;
+                map.serialize_entry("glob", glob.glob())?;
                 map.end()
             }
         }
@@ -211,9 +223,20 @@ impl<'de> Deserialize<'de> for FileType {
                 M: serde::de::MapAccess<'de>,
             {
                 match map.next_entry::<String, String>()? {
-                    Some((key, suffix)) if key == "suffix" => Ok(FileType::Suffix({
-                        suffix.replace('/', std::path::MAIN_SEPARATOR_STR)
-                    })),
+                    Some((key, mut glob)) if key == "glob" => {
+                        // If the glob isn't an absolute path or already starts
+                        // with a glob pattern, add a leading glob so we
+                        // properly match relative paths.
+                        if !glob.starts_with('/') && !glob.starts_with("*/") {
+                            glob.insert_str(0, "*/");
+                        }
+
+                        globset::Glob::new(glob.as_str())
+                            .map(FileType::Glob)
+                            .map_err(|err| {
+                                serde::de::Error::custom(format!("invalid `glob` pattern: {}", err))
+                            })
+                    }
                     Some((key, _value)) => Err(serde::de::Error::custom(format!(
                         "unknown key in `file-types` list: {}",
                         key
@@ -227,6 +250,59 @@ impl<'de> Deserialize<'de> for FileType {
 
         deserializer.deserialize_any(FileTypeVisitor)
     }
+}
+
+fn from_comment_tokens<'de, D>(deserializer: D) -> Result<Option<Vec<String>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum CommentTokens {
+        Multiple(Vec<String>),
+        Single(String),
+    }
+    Ok(
+        Option::<CommentTokens>::deserialize(deserializer)?.map(|tokens| match tokens {
+            CommentTokens::Single(val) => vec![val],
+            CommentTokens::Multiple(vals) => vals,
+        }),
+    )
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct BlockCommentToken {
+    pub start: String,
+    pub end: String,
+}
+
+impl Default for BlockCommentToken {
+    fn default() -> Self {
+        BlockCommentToken {
+            start: "/*".to_string(),
+            end: "*/".to_string(),
+        }
+    }
+}
+
+fn from_block_comment_tokens<'de, D>(
+    deserializer: D,
+) -> Result<Option<Vec<BlockCommentToken>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum BlockCommentTokens {
+        Multiple(Vec<BlockCommentToken>),
+        Single(BlockCommentToken),
+    }
+    Ok(
+        Option::<BlockCommentTokens>::deserialize(deserializer)?.map(|tokens| match tokens {
+            BlockCommentTokens::Single(val) => vec![val],
+            BlockCommentTokens::Multiple(vals) => vals,
+        }),
+    )
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -261,7 +337,7 @@ impl Display for LanguageServerFeature {
             GotoDeclaration => "goto-declaration",
             GotoDefinition => "goto-definition",
             GotoTypeDefinition => "goto-type-definition",
-            GotoReference => "goto-type-definition",
+            GotoReference => "goto-reference",
             GotoImplementation => "goto-implementation",
             SignatureHelp => "signature-help",
             Hover => "hover",
@@ -356,6 +432,22 @@ where
     serializer.end()
 }
 
+fn deserialize_required_root_patterns<'de, D>(deserializer: D) -> Result<Option<GlobSet>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let patterns = Vec::<String>::deserialize(deserializer)?;
+    if patterns.is_empty() {
+        return Ok(None);
+    }
+    let mut builder = globset::GlobSetBuilder::new();
+    for pattern in patterns {
+        let glob = globset::Glob::new(&pattern).map_err(serde::de::Error::custom)?;
+        builder.add(glob);
+    }
+    builder.build().map(Some).map_err(serde::de::Error::custom)
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct LanguageServerConfiguration {
@@ -369,6 +461,12 @@ pub struct LanguageServerConfiguration {
     pub config: Option<serde_json::Value>,
     #[serde(default = "default_timeout")]
     pub timeout: u64,
+    #[serde(
+        default,
+        skip_serializing,
+        deserialize_with = "deserialize_required_root_patterns"
+    )]
+    pub required_root_patterns: Option<GlobSet>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -440,6 +538,22 @@ pub struct IndentationConfiguration {
     #[serde(deserialize_with = "deserialize_tab_width")]
     pub tab_width: usize,
     pub unit: String,
+}
+
+/// How the indentation for a newly inserted line should be determined.
+/// If the selected heuristic is not available (e.g. because the current
+/// language has no tree-sitter indent queries), a simpler one will be used.
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum IndentationHeuristic {
+    /// Just copy the indentation of the line that the cursor is currently on.
+    Simple,
+    /// Use tree-sitter indent queries to compute the expected absolute indentation level of the new line.
+    TreeSitter,
+    /// Use tree-sitter indent queries to compute the expected difference in indentation between the new line
+    /// and the line before. Add this to the actual indentation level of the line before.
+    #[default]
+    Hybrid,
 }
 
 /// Configuration for auto pairs
@@ -734,6 +848,47 @@ pub struct SoftWrap {
     pub wrap_at_text_width: Option<bool>,
 }
 
+#[derive(Debug)]
+struct FileTypeGlob {
+    glob: globset::Glob,
+    language_id: usize,
+}
+
+impl FileTypeGlob {
+    fn new(glob: globset::Glob, language_id: usize) -> Self {
+        Self { glob, language_id }
+    }
+}
+
+#[derive(Debug)]
+struct FileTypeGlobMatcher {
+    matcher: globset::GlobSet,
+    file_types: Vec<FileTypeGlob>,
+}
+
+impl FileTypeGlobMatcher {
+    fn new(file_types: Vec<FileTypeGlob>) -> Result<Self, globset::Error> {
+        let mut builder = globset::GlobSetBuilder::new();
+        for file_type in &file_types {
+            builder.add(file_type.glob.clone());
+        }
+
+        Ok(Self {
+            matcher: builder.build()?,
+            file_types,
+        })
+    }
+
+    fn language_id_for_path(&self, path: &Path) -> Option<&usize> {
+        self.matcher
+            .matches(path)
+            .iter()
+            .filter_map(|idx| self.file_types.get(*idx))
+            .max_by_key(|file_type| file_type.glob.glob().len())
+            .map(|file_type| &file_type.language_id)
+    }
+}
+
 // Expose loader as Lazy<> global since it's always static?
 
 #[derive(Debug)]
@@ -741,7 +896,7 @@ pub struct Loader {
     // highlight_names ?
     language_configs: Vec<Arc<LanguageConfiguration>>,
     language_config_ids_by_extension: HashMap<String, usize>, // Vec<usize>
-    language_config_ids_by_suffix: HashMap<String, usize>,
+    language_config_ids_glob_matcher: FileTypeGlobMatcher,
     language_config_ids_by_shebang: HashMap<String, usize>,
 
     language_server_configs: HashMap<String, LanguageServerConfiguration>,
@@ -749,66 +904,57 @@ pub struct Loader {
     scopes: ArcSwap<Vec<String>>,
 }
 
+pub type LoaderError = globset::Error;
+
 impl Loader {
-    pub fn new(config: Configuration) -> Self {
-        let mut loader = Self {
-            language_configs: Vec::new(),
-            language_server_configs: config.language_server,
-            language_config_ids_by_extension: HashMap::new(),
-            language_config_ids_by_suffix: HashMap::new(),
-            language_config_ids_by_shebang: HashMap::new(),
-            scopes: ArcSwap::from_pointee(Vec::new()),
-        };
+    pub fn new(config: Configuration) -> Result<Self, LoaderError> {
+        let mut language_configs = Vec::new();
+        let mut language_config_ids_by_extension = HashMap::new();
+        let mut language_config_ids_by_shebang = HashMap::new();
+        let mut file_type_globs = Vec::new();
 
         for config in config.language {
             // get the next id
-            let language_id = loader.language_configs.len();
+            let language_id = language_configs.len();
 
             for file_type in &config.file_types {
                 // entry().or_insert(Vec::new).push(language_id);
                 match file_type {
-                    FileType::Extension(extension) => loader
-                        .language_config_ids_by_extension
-                        .insert(extension.clone(), language_id),
-                    FileType::Suffix(suffix) => loader
-                        .language_config_ids_by_suffix
-                        .insert(suffix.clone(), language_id),
+                    FileType::Extension(extension) => {
+                        language_config_ids_by_extension.insert(extension.clone(), language_id);
+                    }
+                    FileType::Glob(glob) => {
+                        file_type_globs.push(FileTypeGlob::new(glob.to_owned(), language_id));
+                    }
                 };
             }
             for shebang in &config.shebangs {
-                loader
-                    .language_config_ids_by_shebang
-                    .insert(shebang.clone(), language_id);
+                language_config_ids_by_shebang.insert(shebang.clone(), language_id);
             }
 
-            loader.language_configs.push(Arc::new(config));
+            language_configs.push(Arc::new(config));
         }
 
-        loader
+        Ok(Self {
+            language_configs,
+            language_config_ids_by_extension,
+            language_config_ids_glob_matcher: FileTypeGlobMatcher::new(file_type_globs)?,
+            language_config_ids_by_shebang,
+            language_server_configs: config.language_server,
+            scopes: ArcSwap::from_pointee(Vec::new()),
+        })
     }
 
     pub fn language_config_for_file_name(&self, path: &Path) -> Option<Arc<LanguageConfiguration>> {
         // Find all the language configurations that match this file name
         // or a suffix of the file name.
-        let configuration_id = path
-            .file_name()
-            .and_then(|n| n.to_str())
-            .and_then(|file_name| self.language_config_ids_by_extension.get(file_name))
+        let configuration_id = self
+            .language_config_ids_glob_matcher
+            .language_id_for_path(path)
             .or_else(|| {
                 path.extension()
                     .and_then(|extension| extension.to_str())
                     .and_then(|extension| self.language_config_ids_by_extension.get(extension))
-            })
-            .or_else(|| {
-                self.language_config_ids_by_suffix
-                    .iter()
-                    .find_map(|(file_type, id)| {
-                        if path.to_str()?.ends_with(file_type) {
-                            Some(id)
-                        } else {
-                            None
-                        }
-                    })
             });
 
         configuration_id.and_then(|&id| self.language_configs.get(id).cloned())
@@ -920,7 +1066,7 @@ thread_local! {
 pub struct Syntax {
     layers: HopSlotMap<LayerId, LanguageLayer>,
     root: LayerId,
-    loader: Arc<Loader>,
+    loader: Arc<ArcSwap<Loader>>,
 }
 
 fn byte_range_to_str(range: std::ops::Range<usize>, source: RopeSlice) -> Cow<str> {
@@ -931,7 +1077,7 @@ impl Syntax {
     pub fn new(
         source: RopeSlice,
         config: Arc<HighlightConfiguration>,
-        loader: Arc<Loader>,
+        loader: Arc<ArcSwap<Loader>>,
     ) -> Option<Self> {
         let root_layer = LanguageLayer {
             tree: None,
@@ -975,9 +1121,10 @@ impl Syntax {
         let mut queue = VecDeque::new();
         queue.push_back(self.root);
 
-        let scopes = self.loader.scopes.load();
+        let loader = self.loader.load();
+        let scopes = loader.scopes.load();
         let injection_callback = |language: &InjectionLanguageMarker| {
-            self.loader
+            loader
                 .language_configuration_for_injection_string(language)
                 .and_then(|language_config| language_config.highlight_config(&scopes))
         };
@@ -1320,6 +1467,32 @@ impl Syntax {
         result
     }
 
+    pub fn tree_for_byte_range(&self, start: usize, end: usize) -> &Tree {
+        let mut container_id = self.root;
+
+        for (layer_id, layer) in self.layers.iter() {
+            if layer.depth > self.layers[container_id].depth
+                && layer.contains_byte_range(start, end)
+            {
+                container_id = layer_id;
+            }
+        }
+
+        self.layers[container_id].tree()
+    }
+
+    pub fn named_descendant_for_byte_range(&self, start: usize, end: usize) -> Option<Node<'_>> {
+        self.tree_for_byte_range(start, end)
+            .root_node()
+            .named_descendant_for_byte_range(start, end)
+    }
+
+    pub fn descendant_for_byte_range(&self, start: usize, end: usize) -> Option<Node<'_>> {
+        self.tree_for_byte_range(start, end)
+            .root_node()
+            .descendant_for_byte_range(start, end)
+    }
+
     // Commenting
     // comment_strings_for_pos
     // is_commented
@@ -1415,6 +1588,32 @@ impl LanguageLayer {
         // unsafe { ts_parser.parser.set_cancellation_flag(None) };
         self.tree = Some(tree);
         Ok(())
+    }
+
+    /// Whether the layer contains the given byte range.
+    ///
+    /// If the layer has multiple ranges (i.e. combined injections), the
+    /// given range is considered contained if it is within the start and
+    /// end bytes of the first and last ranges **and** if the given range
+    /// starts or ends within any of the layer's ranges.
+    fn contains_byte_range(&self, start: usize, end: usize) -> bool {
+        let layer_start = self
+            .ranges
+            .first()
+            .expect("ranges should not be empty")
+            .start_byte;
+        let layer_end = self
+            .ranges
+            .last()
+            .expect("ranges should not be empty")
+            .end_byte;
+
+        layer_start <= start
+            && layer_end >= end
+            && self.ranges.iter().any(|range| {
+                let byte_range = range.start_byte..range.end_byte;
+                byte_range.contains(&start) || byte_range.contains(&end)
+            })
     }
 }
 
@@ -1709,7 +1908,7 @@ impl HighlightConfiguration {
         let mut local_scope_capture_index = None;
         for (i, name) in query.capture_names().iter().enumerate() {
             let i = Some(i as u32);
-            match name.as_str() {
+            match *name {
                 "local.definition" => local_def_capture_index = i,
                 "local.definition-value" => local_def_value_capture_index = i,
                 "local.reference" => local_ref_capture_index = i,
@@ -1720,7 +1919,7 @@ impl HighlightConfiguration {
 
         for (i, name) in injections_query.capture_names().iter().enumerate() {
             let i = Some(i as u32);
-            match name.as_str() {
+            match *name {
                 "injection.content" => injection_content_capture_index = i,
                 "injection.language" => injection_language_capture_index = i,
                 "injection.filename" => injection_filename_capture_index = i,
@@ -1750,7 +1949,7 @@ impl HighlightConfiguration {
     }
 
     /// Get a slice containing all of the highlight names used in the configuration.
-    pub fn names(&self) -> &[String] {
+    pub fn names(&self) -> &[&str] {
         self.query.capture_names()
     }
 
@@ -1777,7 +1976,6 @@ impl HighlightConfiguration {
                 let mut best_index = None;
                 let mut best_match_len = 0;
                 for (i, recognized_name) in recognized_names.iter().enumerate() {
-                    let recognized_name = recognized_name;
                     let mut len = 0;
                     let mut matches = true;
                     for (i, part) in recognized_name.split('.').enumerate() {
@@ -1829,11 +2027,16 @@ impl HighlightConfiguration {
                     node_slice
                 };
 
-                static SHEBANG_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(SHEBANG).unwrap());
+                static SHEBANG_REGEX: Lazy<rope::Regex> =
+                    Lazy::new(|| rope::Regex::new(SHEBANG).unwrap());
 
                 injection_capture = SHEBANG_REGEX
-                    .captures(&Cow::from(lines))
-                    .map(|cap| InjectionLanguageMarker::Shebang(cap[1].to_owned()))
+                    .captures_iter(lines.regex_input())
+                    .map(|cap| {
+                        let cap = lines.byte_slice(cap.get_group(1).unwrap().range());
+                        InjectionLanguageMarker::Shebang(cap.into())
+                    })
+                    .next()
             } else if index == self.injection_content_capture_index {
                 content_node = Some(capture.node);
             }
@@ -2246,6 +2449,7 @@ impl<'a> Iterator for HighlightIter<'a> {
             // highlighting patterns that are disabled for local variables.
             if definition_highlight.is_some() || reference_highlight.is_some() {
                 while layer.config.non_local_variable_patterns[match_.pattern_index] {
+                    match_.remove();
                     if let Some((next_match, next_capture_index)) = captures.peek() {
                         let next_capture = next_match.captures[*next_capture_index];
                         if next_capture.node == capture.node {
@@ -2522,7 +2726,8 @@ mod test {
         let loader = Loader::new(Configuration {
             language: vec![],
             language_server: HashMap::new(),
-        });
+        })
+        .unwrap();
         let language = get_language("rust").unwrap();
 
         let query = Query::new(language, query_str).unwrap();
@@ -2530,7 +2735,12 @@ mod test {
         let mut cursor = QueryCursor::new();
 
         let config = HighlightConfiguration::new(language, "", "", "").unwrap();
-        let syntax = Syntax::new(source.slice(..), Arc::new(config), Arc::new(loader)).unwrap();
+        let syntax = Syntax::new(
+            source.slice(..),
+            Arc::new(config),
+            Arc::new(ArcSwap::from_pointee(loader)),
+        )
+        .unwrap();
 
         let root = syntax.tree().root_node();
         let mut test = |capture, range| {
@@ -2584,7 +2794,8 @@ mod test {
         let loader = Loader::new(Configuration {
             language: vec![],
             language_server: HashMap::new(),
-        });
+        })
+        .unwrap();
 
         let language = get_language("rust").unwrap();
         let config = HighlightConfiguration::new(
@@ -2604,7 +2815,12 @@ mod test {
             fn main() {}
         ",
         );
-        let syntax = Syntax::new(source.slice(..), Arc::new(config), Arc::new(loader)).unwrap();
+        let syntax = Syntax::new(
+            source.slice(..),
+            Arc::new(config),
+            Arc::new(ArcSwap::from_pointee(loader)),
+        )
+        .unwrap();
         let tree = syntax.tree();
         let root = tree.root_node();
         assert_eq!(root.kind(), "source_file");
@@ -2690,11 +2906,17 @@ mod test {
         let loader = Loader::new(Configuration {
             language: vec![],
             language_server: HashMap::new(),
-        });
+        })
+        .unwrap();
         let language = get_language(language_name).unwrap();
 
         let config = HighlightConfiguration::new(language, "", "", "").unwrap();
-        let syntax = Syntax::new(source.slice(..), Arc::new(config), Arc::new(loader)).unwrap();
+        let syntax = Syntax::new(
+            source.slice(..),
+            Arc::new(config),
+            Arc::new(ArcSwap::from_pointee(loader)),
+        )
+        .unwrap();
 
         let root = syntax
             .tree()

@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use arc_swap::ArcSwap;
 use helix_core::syntax;
 use helix_view::graphics::{Margin, Rect, Style};
 use tui::buffer::Buffer;
@@ -18,13 +19,17 @@ pub struct SignatureHelp {
     active_param_range: Option<(usize, usize)>,
 
     language: String,
-    config_loader: Arc<syntax::Loader>,
+    config_loader: Arc<ArcSwap<syntax::Loader>>,
 }
 
 impl SignatureHelp {
     pub const ID: &'static str = "signature-help";
 
-    pub fn new(signature: String, language: String, config_loader: Arc<syntax::Loader>) -> Self {
+    pub fn new(
+        signature: String,
+        language: String,
+        config_loader: Arc<ArcSwap<syntax::Loader>>,
+    ) -> Self {
         Self {
             signature,
             signature_doc: None,
@@ -72,7 +77,7 @@ impl Component for SignatureHelp {
         let (_, sig_text_height) = crate::ui::text::required_size(&sig_text, area.width);
         let sig_text_area = area.clip_top(1).with_height(sig_text_height);
         let sig_text_area = sig_text_area.inner(&margin).intersection(surface.area);
-        let sig_text_para = Paragraph::new(sig_text).wrap(Wrap { trim: false });
+        let sig_text_para = Paragraph::new(&sig_text).wrap(Wrap { trim: false });
         sig_text_para.render(sig_text_area, surface);
 
         if self.signature_doc.is_none() {
@@ -92,8 +97,10 @@ impl Component for SignatureHelp {
             Some(doc) => Markdown::new(doc.clone(), Arc::clone(&self.config_loader)),
         };
         let sig_doc = sig_doc.parse(Some(&cx.editor.theme));
-        let sig_doc_area = area.clip_top(sig_text_area.height + 2);
-        let sig_doc_para = Paragraph::new(sig_doc)
+        let sig_doc_area = area
+            .clip_top(sig_text_area.height + 2)
+            .clip_bottom(u16::from(cx.editor.popup_border()));
+        let sig_doc_para = Paragraph::new(&sig_doc)
             .wrap(Wrap { trim: false })
             .scroll((cx.scroll.unwrap_or_default() as u16, 0));
         sig_doc_para.render(sig_doc_area.inner(&margin), surface);

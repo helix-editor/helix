@@ -21,8 +21,8 @@
 //         terminal
 //             .draw(|f| {
 //                 let size = f.size();
-//                 let text = vec![Spans::from(SAMPLE_STRING)];
-//                 let paragraph = Paragraph::new(text)
+//                 let text = Text::from(SAMPLE_STRING);
+//                 let paragraph = Paragraph::new(&text)
 //                     .block(Block::default().borders(Borders::ALL))
 //                     .alignment(alignment)
 //                     .wrap(Wrap { trim: true });
@@ -88,8 +88,8 @@
 //     terminal
 //         .draw(|f| {
 //             let size = f.size();
-//             let text = vec![Spans::from(s)];
-//             let paragraph = Paragraph::new(text)
+//             let text = Text::from(s);
+//             let paragraph = Paragraph::new(&text)
 //                 .block(Block::default().borders(Borders::ALL))
 //                 .wrap(Wrap { trim: true });
 //             f.render_widget(paragraph, size);
@@ -120,8 +120,8 @@
 //     terminal
 //         .draw(|f| {
 //             let size = f.size();
-//             let text = vec![Spans::from(s)];
-//             let paragraph = Paragraph::new(text)
+//             let text = Text::from(s);
+//             let paragraph = Paragraph::new(&text)
 //                 .block(Block::default().borders(Borders::ALL))
 //                 .wrap(Wrap { trim: true });
 //             f.render_widget(paragraph, size);
@@ -155,8 +155,8 @@
 //     terminal
 //         .draw(|f| {
 //             let size = f.size();
-
-//             let paragraph = Paragraph::new(line).block(Block::default().borders(Borders::ALL));
+//             let text = Text::from(line);
+//             let paragraph = Paragraph::new(&text).block(Block::default().borders(Borders::ALL));
 //             f.render_widget(paragraph, size);
 //         })
 //         .unwrap();
@@ -174,7 +174,7 @@
 //                 let text = Text::from(
 //                     "段落现在可以水平滚动了！\nParagraph can scroll horizontally!\nShort line",
 //                 );
-//                 let paragraph = Paragraph::new(text)
+//                 let paragraph = Paragraph::new(&text)
 //                     .block(Block::default().borders(Borders::ALL))
 //                     .alignment(alignment)
 //                     .scroll(scroll);

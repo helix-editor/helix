@@ -12,6 +12,7 @@
     - [Match mode](#match-mode)
     - [Window mode](#window-mode)
     - [Space mode](#space-mode)
+      - [Comment mode](#comment-mode)
       - [Popup](#popup)
     - [Unimpaired](#unimpaired)
 - [Insert mode](#insert-mode)
@@ -25,7 +26,7 @@
 
 ## Normal mode
 
-Normal mode is the default mode when you launch helix. Return to it from other modes by typing `Escape`.
+Normal mode is the default mode when you launch helix. You can return to it from other modes by pressing the `Escape` key.
 
 ### Movement
 
@@ -53,8 +54,8 @@ Normal mode is the default mode when you launch helix. Return to it from other m
 | `End`                 | Move to the end of the line                        | `goto_line_end`             |
 | `Ctrl-b`, `PageUp`    | Move page up                                       | `page_up`                   |
 | `Ctrl-f`, `PageDown`  | Move page down                                     | `page_down`                 |
-| `Ctrl-u`              | Move half page up                                  | `half_page_up`              |
-| `Ctrl-d`              | Move half page down                                | `half_page_down`            |
+| `Ctrl-u`              | Move cursor and page half page up                  | `page_cursor_half_up`       |
+| `Ctrl-d`              | Move cursor and page half page down                | `page_cursor_half_down`     |
 | `Ctrl-i`              | Jump forward on the jumplist                       | `jump_forward`              |
 | `Ctrl-o`              | Jump backward on the jumplist                      | `jump_backward`             |
 | `Ctrl-s`              | Save the current selection to the jumplist         | `save_selection`            |
@@ -182,18 +183,18 @@ normal mode) is persistent and can be exited using the escape key. This is
 useful when you're simply looking over text and not actively editing it.
 
 
-| Key                  | Description                                               | Command             |
-| -----                | -----------                                               | -------             |
-| `z`, `c`             | Vertically center the line                                | `align_view_center` |
-| `t`                  | Align the line to the top of the screen                   | `align_view_top`    |
-| `b`                  | Align the line to the bottom of the screen                | `align_view_bottom` |
-| `m`                  | Align the line to the middle of the screen (horizontally) | `align_view_middle` |
-| `j`, `down`          | Scroll the view downwards                                 | `scroll_down`       |
-| `k`, `up`            | Scroll the view upwards                                   | `scroll_up`         |
-| `Ctrl-f`, `PageDown` | Move page down                                            | `page_down`         |
-| `Ctrl-b`, `PageUp`   | Move page up                                              | `page_up`           |
-| `Ctrl-d`             | Move half page down                                       | `half_page_down`    |
-| `Ctrl-u`             | Move half page up                                         | `half_page_up`      |
+| Key                  | Description                                               | Command                 |
+| -----                | -----------                                               | -------                 |
+| `z`, `c`             | Vertically center the line                                | `align_view_center`     |
+| `t`                  | Align the line to the top of the screen                   | `align_view_top`        |
+| `b`                  | Align the line to the bottom of the screen                | `align_view_bottom`     |
+| `m`                  | Align the line to the middle of the screen (horizontally) | `align_view_middle`     |
+| `j`, `down`          | Scroll the view downwards                                 | `scroll_down`           |
+| `k`, `up`            | Scroll the view upwards                                   | `scroll_up`             |
+| `Ctrl-f`, `PageDown` | Move page down                                            | `page_down`             |
+| `Ctrl-b`, `PageUp`   | Move page up                                              | `page_up`               |
+| `Ctrl-u`             | Move cursor and page half page up                         | `page_cursor_half_up`   |
+| `Ctrl-d`             | Move cursor and page half page down                       | `page_cursor_half_down` |
 
 #### Goto mode
 
@@ -205,7 +206,7 @@ Jumps to various locations.
 | ----- | -----------                                      | -------                    |
 | `g`   | Go to line number `<n>` else start of file       | `goto_file_start`          |
 | `e`   | Go to the end of the file                        | `goto_last_line`           |
-| `f`   | Go to files in the selection                     | `goto_file`                |
+| `f`   | Go to files in the selections                    | `goto_file`                |
 | `h`   | Go to the start of the line                      | `goto_line_start`          |
 | `l`   | Go to the end of the line                        | `goto_line_end`            |
 | `s`   | Go to first non-whitespace character of the line | `goto_first_nonwhitespace` |
@@ -253,8 +254,8 @@ This layer is similar to Vim keybindings as Kakoune does not support windows.
 | `w`, `Ctrl-w`          | Switch to next window                                | `rotate_view`     |
 | `v`, `Ctrl-v`          | Vertical right split                                 | `vsplit`          |
 | `s`, `Ctrl-s`          | Horizontal bottom split                              | `hsplit`          |
-| `f`                    | Go to files in the selection in horizontal splits    | `goto_file`       |
-| `F`                    | Go to files in the selection in vertical splits      | `goto_file`       |
+| `f`                    | Go to files in the selections in horizontal splits   | `goto_file`       |
+| `F`                    | Go to files in the selections in vertical splits     | `goto_file`       |
 | `h`, `Ctrl-h`, `Left`  | Move to left split                                   | `jump_view_left`  |
 | `j`, `Ctrl-j`, `Down`  | Move to split below                                  | `jump_view_down`  |
 | `k`, `Ctrl-k`, `Up`    | Move to split above                                  | `jump_view_up`    |
@@ -289,6 +290,9 @@ This layer is a kludge of mappings, mostly pickers.
 | `h`     | Select symbol references (**LSP**)                                      | `select_references_to_symbol_under_cursor` |
 | `'`     | Open last fuzzy picker                                                  | `last_picker`                              |
 | `w`     | Enter [window mode](#window-mode)                                       | N/A                                        |
+| `c`     | Comment/uncomment selections                                            | `toggle_comments`                          |
+| `C`     | Block comment/uncomment selections                                      | `toggle_block_comments`                    |
+| `Alt-c` | Line comment/uncomment selections                                       | `toggle_line_comments`                     |
 | `p`     | Paste system clipboard after selections                                 | `paste_clipboard_after`                    |
 | `P`     | Paste system clipboard before selections                                | `paste_clipboard_before`                   |
 | `y`     | Yank selections to clipboard                                            | `yank_to_clipboard`                        |
