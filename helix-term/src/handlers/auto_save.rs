@@ -1,23 +1,27 @@
+use std::time::Duration;
+
+use anyhow::Ok;
 use arc_swap::access::Access;
 
-use helix_event::{cancelation, register_hook, send_blocking, CancelRx, CancelTx};
+use helix_event::{register_hook, send_blocking};
 use helix_view::{
     editor::SaveStyle,
     events::DocumentDidChange,
     handlers::{
         lsp::{AutoSaveEvent, AutoSaveInvoked},
         Handlers,
-    }, Editor,
+    },
+    Editor,
 };
 use tokio::time::Instant;
 
-use crate::job;
+use crate::{
+    commands, compositor, job::{self, Jobs}
+};
 
 #[derive(Debug)]
 enum State {
-    Open,
     Closed,
-    Pending { request: CancelTx },
 }
 
 #[derive(Debug)]
@@ -40,32 +44,44 @@ impl helix_event::AsyncHook for AutoSaveHandler {
 
     fn handle_event(
         &mut self,
-        event: Self::Event,
-        timeout: Option<tokio::time::Instant>,
+        _: Self::Event,
+        _: Option<tokio::time::Instant>,
     ) -> Option<Instant> {
-        match event {
-            AutoSaveEvent::Invoked => todo!(),
-            AutoSaveEvent::Cancel => {
-                self.state = State::Closed;
-                None
-            },
-        }
+        // match event {
+        //     AutoSaveEvent::Trigger => {
+        //         if matches!(self.state, State::Closed) {
+        //             self.trigger = Some(AutoSaveInvoked::Automatic);
+        //             return Some(Instant::now() + Duration::from_millis(1000));
+        //         }
+        //     }
+        //     AutoSaveEvent::Cancel => {
+        //         self.state = State::Closed;
+        //         return None;
+        //     }
+        // }
+
+        // if self.trigger.is_none() {
+        //     self.trigger = Some(AutoSaveInvoked::Automatic)
+        // }
+
+        Some(Instant::now() + Duration::from_millis(1000))
     }
 
     fn finish_debounce(&mut self) {
-        let invocation = self.trigger.take().unwrap();
-        let (tx, rx) = cancelation();
-        self.state = State::Pending { request: tx };
-        job::dispatch_blocking(move |editor, _| request_auto_save(editor, invocation, rx))
+        job::dispatch_blocking(move |editor, _| request_auto_save(editor))
     }
 }
 
-fn request_auto_save(
-    editor: &mut Editor,
-    invoked: AutoSaveInvoked,
-    cancel: CancelRx,
-) {
+fn request_auto_save(editor: &mut Editor) {
+    let context = &mut compositor::Context {
+        editor,
+        scroll: Some(0),
+        jobs: &mut Jobs::new(),
+    };
 
+    if let Err(e) = commands::typed::write_all_impl(context, false, false) {
+        context.editor.set_error(format!("{}", e));
+    }
 }
 
 pub(super) fn register_hooks(handlers: &Handlers) {
@@ -73,8 +89,7 @@ pub(super) fn register_hooks(handlers: &Handlers) {
     register_hook!(move |event: &mut DocumentDidChange<'_>| {
         let config = event.doc.config.load();
         if config.auto_save && config.save_style == SaveStyle::AfterDelay {
-            send_blocking(&tx, AutoSaveEvent::Cancel);
-            send_blocking(&tx, AutoSaveEvent::Invoked);
+            send_blocking(&tx, AutoSaveEvent::Trigger);
         }
         Ok(())
     });
