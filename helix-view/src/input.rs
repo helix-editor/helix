@@ -15,7 +15,7 @@ pub enum Event {
     Paste(String),
     Resize(u16, u16),
     IdleTimeout,
-    SaveDelayTimeout
+    SaveDelayTimeout,
 }
 
 #[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Copy, Hash)]
