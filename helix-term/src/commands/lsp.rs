@@ -955,9 +955,11 @@ pub fn hover(cx: &mut Context) {
         .map(|language_server| {
             // TODO: factor out a doc.position_identifier() that returns lsp::TextDocumentPositionIdentifier
             let pos = doc.position(view.id, language_server.offset_encoding());
-            language_server
+            let name = language_server.name().to_string();
+            let request = language_server
                 .text_document_hover(doc.identifier(), pos, None)
-                .unwrap()
+                .unwrap();
+            (name, request)
         })
         .collect();
 
@@ -970,7 +972,9 @@ pub fn hover(cx: &mut Context) {
         return;
     }
 
-    for future in requests {
+    let lsp_count = requests.len();
+
+    for (name, future) in requests {
         cx.callback(
             future,
             move |editor, compositor, response: Option<lsp::Hover>| {
@@ -990,7 +994,7 @@ pub fn hover(cx: &mut Context) {
                         }
                     }
 
-                    let contents = match hover.contents {
+                    let mut contents = match hover.contents {
                         lsp::HoverContents::Scalar(contents) => marked_string_to_markdown(contents),
                         lsp::HoverContents::Array(contents) => contents
                             .into_iter()
@@ -999,6 +1003,11 @@ pub fn hover(cx: &mut Context) {
                             .join("\n\n"),
                         lsp::HoverContents::Markup(contents) => contents.value,
                     };
+
+                    // attach lsp name if more than one is available
+                    if lsp_count > 1 {
+                        contents = format!("# {}:\n\n{}", name, contents);
+                    }
 
                     if let Some(popup) = compositor.find_id::<Popup<ui::Markdown>>("hover") {
                         // append to existing popup
