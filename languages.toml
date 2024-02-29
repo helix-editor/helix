@@ -50,6 +50,7 @@ metals = { command = "metals", config = { "isHttpEnabled" = true } }
 mint = { command = "mint", args = ["ls"] }
 nil = { command = "nil" }
 nimlangserver = { command = "nimlangserver" }
+nimlsp = { command = "nimlsp" }
 nls = { command = "nls" }
 nu-lsp = { command = "nu", args = [ "--lsp" ] }
 ocamllsp = { command = "ocamllsp" }
@@ -2858,10 +2859,9 @@ language-servers = [ "nimlangserver" ]
 "'" = "'"
 '{' = '}'
 
-# Nim's tree-sitter grammar is in heavy development.
 [[grammar]]
 name = "nim"
-source = { git = "https://github.com/aMOPel/tree-sitter-nim", rev = "240239b232550e431d67de250d1b5856209e7f06" }
+source = { git = "https://github.com/alaviss/tree-sitter-nim", rev = "c5f0ce3b65222f5dbb1a12f9fe894524881ad590" }
 
 [[language]]
 name = "cabal"
