@@ -104,7 +104,7 @@
 | lua | ✓ | ✓ | ✓ | `lua-language-server` |
 | make | ✓ |  | ✓ |  |
 | markdoc | ✓ |  |  | `markdoc-ls` |
-| markdown | ✓ |  |  | `marksman` |
+| markdown | ✓ |  |  | `marksman`, `markdown-oxide` |
 | markdown.inline | ✓ |  |  |  |
 | matlab | ✓ | ✓ | ✓ |  |
 | mermaid | ✓ |  |  |  |
