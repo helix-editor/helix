@@ -482,7 +482,7 @@ where
         let rel_path = context.doc.relative_path();
         let path = rel_path
             .as_ref()
-            .and_then(|p| p.as_path().file_name().map(|s| s.to_string_lossy()))
+            .and_then(|p| p.file_name().map(|s| s.to_string_lossy()))
             .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
         format!(" {} ", path)
     };
