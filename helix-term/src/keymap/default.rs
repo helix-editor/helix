@@ -6,13 +6,7 @@ use helix_core::hashmap;
 
 pub fn default() -> HashMap<Mode, KeyTrie> {
     let normal = keymap!({ "Normal mode"
-        //     󰁔 
 
-        // "h" | "left" => move_char_left,
-        // "j" | "down" => move_visual_line_down,
-        // "k" | "up" => move_visual_line_up,
-        // "l" | "right" => move_char_right,
-        
         "left" => move_char_left,
         "down" => move_visual_line_down,
         "up" => move_visual_line_up,
@@ -20,23 +14,20 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
         "t" => find_till_char,
         "T" => till_prev_char,
-        
+
         "f" => find_next_char,
         "F" => find_prev_char,
-        
+
         "r" => replace,
         "R" => replace_with_yanked,
-        
-        // "A-." => repeat_last_motion,
+
         "A-." => no_op, // disabled until knowing how this actually work
 
         "C-A-u" => switch_case,
 
-        // "`" => switch_to_lowercase,
         "`" => no_op,
         "C-l" => switch_to_lowercase,
-        
-        // "A-`" => switch_to_uppercase,
+
         "A-`" => no_op,
         "C-u" => switch_to_uppercase,
 
@@ -44,79 +35,16 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "end" => goto_line_end,
 
         "w" => move_next_word_start,
-        // "W" => move_next_long_word_start,
         "W" => no_op,
         "C-right" => move_next_long_word_start,
-        
+
         "b" => move_prev_word_start,
-        // "B" => move_prev_long_word_start,
         "B" => no_op,
         "C-left" => move_prev_long_word_start,
-        
+
         "e" => move_next_word_end,
-        // "E" => move_next_long_word_end,
         "E" => no_op,
 
-        // new to normal mode
-        "C-tab" => goto_next_buffer, // works ok
-        "C-S-tab" => goto_previous_buffer, // works ok
-        "C-home" => goto_file_start,
-        "C-end" => goto_last_line,
-        "C-up" => goto_window_top,
-        "C-down" => goto_window_bottom,
-        "C-," => file_picker,
-        "C-." => file_picker,
-        "F2" => rename_symbol,
-        "F12" => goto_definition,
-        "S-F12" => goto_reference,
-        "K" => hover,
-        
-        "v" => select_mode,
-        "G" => goto_line,
-
-        // Menu
-        "g" => { " 󱞨 Goto "
-            // "g" => goto_file_start,
-            "g" => no_op,
-            // "e" => goto_last_line,
-            "e" => no_op,
-            
-            // "f" => goto_file,
-            "f" => no_op,
-            
-            // "h" => goto_line_start,
-            // "l" => goto_line_end,
-            
-            // "s" => goto_first_nonwhitespace,
-            "s" => no_op,
-            "n" => goto_first_nonwhitespace,
-            
-            "d" => goto_definition,
-            "D" => goto_declaration,
-            "y" => goto_type_definition,
-            "r" => goto_reference,
-            "i" => goto_implementation,
-            
-            "t" => goto_window_top,
-            // "t" => no_op,
-            "c" => goto_window_center,
-            "b" => goto_window_bottom,
-            // "b" => no_op,
-            
-            "a" => goto_last_accessed_file,
-            "m" => goto_last_modified_file,
-            
-            // "n" => goto_next_buffer,
-            // "p" => goto_previous_buffer,
-            "p" => no_op,
-            
-            // "k" => move_line_up,
-            // "j" => move_line_down,
-            "k" => no_op,
-            "j" => no_op,
-            
-            "." => goto_last_modification,
-        },
         ":" => command_mode,
 
         "i" => insert_mode,
@@ -148,50 +76,13 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "A-e" => move_parent_node_end,
         "A-b" => move_parent_node_start,
 
-        // "%" => select_all,
         "C-a" => select_all,
 
-        // "x" => extend_line_below,
         "x" => no_op,
         "S-down" => extend_line_down,
         "S-up" => extend_line_up,
         "X" => extend_to_line_bounds,
         "A-x" => shrink_to_line_bounds,
-
-        "m" => { " 󰾹 Match"
-            "m" => match_brackets,
-            "s" => surround_add,
-            "r" => surround_replace,
-            "d" => surround_delete,
-            "a" => select_textobject_around,
-            "i" => select_textobject_inner,
-        },
-        "[" => { " 󰅪 Left bracket"
-            "d" => goto_prev_diag,
-            "D" => goto_first_diag,
-            "g" => goto_prev_change,
-            "G" => goto_first_change,
-            "f" => goto_prev_function,
-            "t" => goto_prev_class,
-            "a" => goto_prev_parameter,
-            "c" => goto_prev_comment,
-            "T" => goto_prev_test,
-            "p" => goto_prev_paragraph,
-            "space" => add_newline_above,
-        },
-        "]" => { " 󰅪 Right bracket"
-            "d" => goto_next_diag,
-            "D" => goto_last_diag,
-            "g" => goto_next_change,
-            "G" => goto_last_change,
-            "f" => goto_next_function,
-            "t" => goto_next_class,
-            "a" => goto_next_parameter,
-            "c" => goto_next_comment,
-            "T" => goto_next_test,
-            "p" => goto_next_paragraph,
-            "space" => add_newline_below,
-        },
 
         "/" => search,
         "?" => rsearch,
@@ -205,9 +96,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "A-U" => later,
 
         "y" => yank,
-        // yank_all
         "p" => paste_after,
-        // paste_all
         "P" => paste_before,
 
         "Q" => record_macro,
@@ -224,9 +113,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "," => keep_primary_selection,
         "A-," => remove_primary_selection,
 
-        // "q" => record_macro,
-        // "Q" => replay_macro,
-
         "&" => align_selections,
         "_" => trim_selections,
 
@@ -240,11 +126,101 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "esc" => normal_mode,
         "C-b" | "pageup" => page_up,
         "C-f" | "pagedown" => page_down,
-        // "C-u" => page_cursor_half_up,
         "C-d" => page_cursor_half_down,
 
+        "v" => select_mode,
+        "G" => goto_line,
+
+        "C-/" => toggle_comments,
+        "C-S-/" => toggle_block_comments,
+        "A-c" => toggle_line_comments,
+
+        "C-i" | "tab" => jump_forward,
+        "C-o" => jump_backward,
+        "C-s" => save_selection,
+
+        // new to normal mode
+        "C-tab" => goto_next_buffer,
+        "C-S-tab" => goto_previous_buffer,
+        "C-home" => goto_file_start,
+        "C-end" => goto_last_line,
+        "C-up" => goto_window_top,
+        "C-down" => goto_window_bottom,
+        "C-," => file_picker,
+        "C-." => file_picker,
+        "F2" => rename_symbol,
+        "F12" => goto_definition,
+        "S-F12" => goto_reference,
+        "K" => hover,
+
         // Menu
-        "C-w" => { "  Window"
+        "g" => { " 🚀 Goto "
+            "g" => no_op,
+            "e" => no_op,
+            "f" => no_op,
+            "s" => no_op,
+
+            "n" => goto_first_nonwhitespace,
+
+            "d" => goto_definition,
+            "D" => goto_declaration,
+            "y" => goto_type_definition,
+            "r" => goto_reference,
+            "i" => goto_implementation,
+
+            "t" => goto_window_top,
+            "c" => goto_window_center,
+            "b" => goto_window_bottom,
+
+            "a" => goto_last_accessed_file,
+            "m" => goto_last_modified_file,
+
+            "p" => no_op,
+            "k" => no_op,
+            "j" => no_op,
+
+            "." => goto_last_modification,
+        },
+
+        "m" => { " 󰾹 Match"
+            "m" => match_brackets,
+            "s" => surround_add,
+            "r" => surround_replace,
+            "d" => surround_delete,
+            "a" => select_textobject_around,
+            "i" => select_textobject_inner,
+        },
+
+        "[" => { " 󰅪 Left bracket"
+            "d" => goto_prev_diag,
+            "D" => goto_first_diag,
+            "g" => goto_prev_change,
+            "G" => goto_first_change,
+            "f" => goto_prev_function,
+            "t" => goto_prev_class,
+            "a" => goto_prev_parameter,
+            "c" => goto_prev_comment,
+            "T" => goto_prev_test,
+            "p" => goto_prev_paragraph,
+            "space" => add_newline_above,
+        },
+
+        "]" => { " 󰅪 Right bracket"
+            "d" => goto_next_diag,
+            "D" => goto_last_diag,
+            "g" => goto_next_change,
+            "G" => goto_last_change,
+            "f" => goto_next_function,
+            "t" => goto_next_class,
+            "a" => goto_next_parameter,
+            "c" => goto_next_comment,
+            "T" => goto_next_test,
+            "p" => goto_next_paragraph,
+            "space" => add_newline_below,
+        },
+
+        // Menu
+        "C-w" => { " 🪟 Window"
             "C-w" | "w" => rotate_view,
             "C-s" | "s" => hsplit,
             "C-v" | "v" => vsplit,
@@ -267,41 +243,54 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             },
         },
 
-        // move under <space>c
-        // "C-c" => toggle_comments,
-        "C-/" => toggle_comments,
-
-        // z family for save/restore/combine from/to sels from register
-
-        "C-i" | "tab" => jump_forward, // tab == <C-i>
-        "C-o" => jump_backward,
-        "C-s" => save_selection,
-
         // Menu
-        "space" => { " 󰫣 Space"
-            "f" => file_picker,
-            // "f" => no_op,
-            "F" => file_picker_in_current_directory,
+        "space" => { " ⭐ Space"
+
+            "🔎" => menu_separator_open,
+
             "b" => buffer_picker,
+            "d" => diagnostics_picker,
+            "f" => file_picker,
             "j" => jumplist_picker,
             "s" => symbol_picker,
-            "S" => workspace_symbol_picker,
-            "d" => diagnostics_picker,
-            "D" => workspace_diagnostics_picker,
-            "a" => code_action,
             "'" => last_picker,
 
+            "📋" => menu_separator_clipboard,
+
+            "y" => yank_to_clipboard,
+            "Y" => yank_main_selection_to_clipboard,
+            "P" => paste_clipboard_before,
+            "p" => paste_clipboard_after,
+            "R" => replace_selections_with_clipboard,
+
+            "🖉" => menu_separator_code,
+
+            "a" => code_action,
+            "k" => hover,
+            "r" => rename_symbol,
+            "h" => select_references_to_symbol_under_cursor,
+
+            "🌐" => menu_separator_global,
+
+            "F" => file_picker_in_current_directory,
+            "S" => workspace_symbol_picker,
+            "D" => workspace_diagnostics_picker,
+            "/" => global_search,
+            "?" => command_palette,
+
+            "🧰" => menu_separator_more,
+
             // Submenu
-            "g" => { " debug " sticky=true
+            "g" => { "🐞 debug " sticky=true
                 "l" => dap_launch,
                 "r" => dap_restart,
                 "b" => dap_toggle_breakpoint,
                 "c" => dap_continue,
-                
+
                 // "h" => dap_pause,
                 "h" => no_op,
                 "p" => dap_pause,
-                
+
                 "i" => dap_step_in,
                 "o" => dap_step_out,
                 "n" => dap_next,
@@ -321,7 +310,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             },
 
             // Submenu
-            "w" => { " window "
+            "w" => { "🪟 window "
                 "C-w" | "w" => rotate_view,
                 "C-s" | "s" => hsplit,
                 "C-v" | "v" => vsplit,
@@ -343,19 +332,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
                     "C-v" | "v" => vsplit_new,
                 },
             },
-            "y" => yank_to_clipboard,
-            "Y" => yank_main_selection_to_clipboard,
-            "p" => paste_clipboard_after,
-            "P" => paste_clipboard_before,
-            "R" => replace_selections_with_clipboard,
-            "/" => global_search,
-            "k" => hover,
-            "r" => rename_symbol,
-            "h" => select_references_to_symbol_under_cursor,
-            "c" => toggle_comments,
-            "C" => toggle_block_comments,
-            "A-c" => toggle_line_comments,
-            "?" => command_palette,
         },
 
         // Menu
