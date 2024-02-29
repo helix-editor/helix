@@ -1685,7 +1685,7 @@ impl Document {
         &self.selections
     }
 
-    pub fn relative_path(&self) -> Option<PathBuf> {
+    pub fn relative_path(&self) -> Option<Cow<Path>> {
         self.path
             .as_deref()
             .map(helix_stdx::path::get_relative_path)

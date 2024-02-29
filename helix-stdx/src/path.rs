@@ -10,17 +10,21 @@ use crate::env::current_working_dir;
 
 /// Replaces users home directory from `path` with tilde `~` if the directory
 /// is available, otherwise returns the path unchanged.
-pub fn fold_home_dir(path: &Path) -> PathBuf {
+pub fn fold_home_dir<'a, P>(path: P) -> Cow<'a, Path>
+where
+    P: Into<Cow<'a, Path>>,
+{
+    let path = path.into();
     if let Ok(home) = home_dir() {
         if let Ok(stripped) = path.strip_prefix(&home) {
             let mut path = OsString::with_capacity(2 + stripped.as_os_str().len());
             path.push("~/");
             path.push(stripped);
-            return PathBuf::from(path);
+            return Cow::Owned(PathBuf::from(path));
         }
     }
 
-    path.to_path_buf()
+    path
 }
 
 /// Expands tilde `~` into users home directory if available, otherwise returns the path
@@ -129,18 +133,21 @@ pub fn canonicalize(path: impl AsRef<Path>) -> PathBuf {
     normalize(path)
 }
 
-pub fn get_relative_path(path: impl AsRef<Path>) -> PathBuf {
-    let path = PathBuf::from(path.as_ref());
-    let path = if path.is_absolute() {
+pub fn get_relative_path<'a, P>(path: P) -> Cow<'a, Path>
+where
+    P: Into<Cow<'a, Path>>,
+{
+    let path = path.into();
+    if path.is_absolute() {
         let cwdir = normalize(current_working_dir());
-        normalize(&path)
-            .strip_prefix(cwdir)
-            .map(PathBuf::from)
-            .unwrap_or(path)
-    } else {
-        path
-    };
-    fold_home_dir(&path)
+        if let Ok(stripped) = normalize(&path).strip_prefix(cwdir) {
+            return Cow::Owned(PathBuf::from(stripped));
+        }
+
+        return fold_home_dir(path);
+    }
+
+    path
 }
 
 /// Returns a truncated filepath where the basepart of the path is reduced to the first
