@@ -226,6 +226,11 @@ impl MappableCommand {
     #[rustfmt::skip]
     static_commands!(
         no_op, "Do nothing 󰜺 ",
+        menu_separator_open,      "𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋 Open 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
+        menu_separator_clipboard, "𑁋𑁋𑁋𑁋𑁋𑁋𑁋 Clipboard 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
+        menu_separator_code,      "𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋 Code 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
+        menu_separator_global,    "𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋 Global 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
+        menu_separator_more,      "𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋 More 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
         
         move_char_left, " Move",
         move_char_right, "Move  ",
@@ -331,7 +336,7 @@ impl MappableCommand {
         
         make_search_word_bounded, "Modify current search to make it word bounded",
         
-        global_search, "search all 󱁵 ",
+        global_search, "search all 🔭 ",
         
         extend_line, "Select current line, if already selected, extend to another line based on the anchor",
         
@@ -353,45 +358,43 @@ impl MappableCommand {
         
         ensure_selections_forward, "Ensure all selections face forward",
         
-        insert_mode, "Insert 󰬐 ",
-        append_mode, "Append 󰬈 ",
-        command_mode, "Command  ",
+        insert_mode, "insert 📝",
+        append_mode, "append 🅰️ ",
+        command_mode, "command  ",
         
-        file_picker, "Files  ",
+        file_picker, "file 📄 ",
+        file_picker_in_current_buffer_directory, "file in 📁",
+        file_picker_in_current_directory, "file in 📂",
         
-        file_picker_in_current_buffer_directory, "files 󰥩 ",
-        file_picker_in_current_directory, "FILES 󱎱 ",
+        code_action, "actions 💥", 
         
-        code_action, "actions  ",
+        buffer_picker, "buffer 🧮",
         
-        buffer_picker, "buffers  ",
+        jumplist_picker, "jumplist 🦘",
         
-        jumplist_picker, "jumplist 󱎸 ",
+        symbol_picker, "symbol 💲",
+        workspace_symbol_picker, "symbols 📡",
         
-        symbol_picker, "symbols 󱈇 ",
+        select_references_to_symbol_under_cursor, "references 🔗",
         
-        select_references_to_symbol_under_cursor, "references  ",
+        diagnostics_picker, "diagnostic 💔",
+        workspace_diagnostics_picker, "diagnostics 💔",
         
-        workspace_symbol_picker, "SYMBOLS  ",
+        last_picker, "similar 🔍",
         
-        diagnostics_picker, "diagnostics 󰿷 ",
+        insert_at_line_start, "⏮️  Insert at start of line",
+        insert_at_line_end, "Insert at end of line ⏭️ ",
         
-        workspace_diagnostics_picker, "DIAGNOSTICS 󰋠 ",
+        open_below, "Open new line below selection 🔽",
+        open_above, "Open new line above selection 🔼",
         
-        last_picker, "more  ",
-        
-        insert_at_line_start, "󰞓 Insert at start of line",
-        insert_at_line_end, "Insert at end of line 󰞔 ",
-        
-        open_below, "Open new line below selection",
-        open_above, "Open new line above selection",
-        
-        normal_mode, "Enter normal mode",
-        select_mode, "Enter selection extend mode",
+        normal_mode, "Enter normal mode ⏹️ ",
+        select_mode, "Enter selection extend mode 🔛",
         exit_select_mode, "Exit selection mode",
         
-        goto_definition, "definition  ",
-        goto_declaration, "DECLARATION  ",
+        goto_definition, "definition 📖",
+        goto_declaration, "declaration  ",
+        goto_reference, "references 🔗",
         
         add_newline_above, "Add newline above",
         add_newline_below, "Add newline below",
@@ -406,9 +409,7 @@ impl MappableCommand {
         
         goto_file_hsplit, "Goto files in selections (hsplit)",
         goto_file_vsplit, "Goto files in selections (vsplit)",
-        
-        goto_reference, "references  ",
-        
+                
         goto_window_top, "top 󱔓 ",
         goto_window_center, "center 󰞢 ",
         goto_window_bottom, "bottom 󱂩 ",
@@ -440,138 +441,204 @@ impl MappableCommand {
         
         goto_line_end_newline, "Goto newline at line end",
         goto_first_nonwhitespace, "non-blank 󰾹",
+        
         trim_selections, "Trim whitespace from selections",
+        
         extend_to_line_start, "Extend to line start",
-        extend_to_first_nonwhitespace, "Extend to first non-blank in line",
         extend_to_line_end, "Extend to line end",
         extend_to_line_end_newline, "Extend to line end",
+        
+        extend_to_first_nonwhitespace, "Extend to first non-blank in line",
+        
         signature_help, "Show signature help",
+        
         smart_tab, "Insert tab if all cursors have all whitespace to their left; otherwise, run a separate command.",
+        
         insert_tab, "Insert tab char",
+        
         insert_newline, "Insert newline char",
+        
         delete_char_backward, "Delete previous char",
         delete_char_forward, "Delete next char",
         delete_word_backward, "Delete previous word",
         delete_word_forward, "Delete next word",
+        
         kill_to_line_start, "Delete till start of line",
         kill_to_line_end, "Delete till end of line",
+        
         undo, "Undo change",
         redo, "Redo change",
+        
         earlier, "Move backward in history",
         later, "Move forward in history",
+        
         commit_undo_checkpoint, "Commit changes to new checkpoint",
-        yank, "Yank",
-        yank_to_clipboard, "yank 󰅌 ",
-        yank_to_primary_clipboard, "Yank to primary 󰅌 ",
-        yank_joined, "Join and yank",
-        yank_joined_to_clipboard, "Join and yank 󰅌 ",
-        yank_main_selection_to_clipboard, "YANK main 󰅌 ",
-        yank_joined_to_primary_clipboard, "Join and yank to primary 󰅌 ",
-        yank_main_selection_to_primary_clipboard, "Yank main to primary 󰅌 ",
-        replace_with_yanked, "Replace  ",
-        replace_selections_with_clipboard, "REPLACE w/ 󰅌 ",
-        replace_selections_with_primary_clipboard, "replace w/ primary 󰅌 ",
-        paste_after, "paste after ",
-        paste_before, "PASTE before ",
-        paste_clipboard_after, "paste after 󰅌",
-        paste_clipboard_before, "PASTE before 󰅌 ",
-        paste_primary_clipboard_after, "Paste w/ primary after 󰅌 ",
-        paste_primary_clipboard_before, "Paste w/ primary before 󰅌 ",
+        
+        yank, "yank 📥",
+        yank_joined, "yank joined 📥",
+        paste_before, "⮬ paste 📥",
+        paste_after, "📥 paste ⮯",
+        replace_with_yanked, "replace 📥",
+
+        yank_to_clipboard, "copy 🗒️ ",
+        yank_joined_to_clipboard, "copy joined 🗒️ ",
+        yank_main_selection_to_clipboard, "copy selected 🗒️ ",
+        paste_clipboard_before, "⮬ paste 🗒️ ",
+        paste_clipboard_after, "🗒️ paste ⮯",
+        replace_selections_with_clipboard, "replace 🗒️ ",
+        
+        yank_to_primary_clipboard, "export 💻",
+        yank_joined_to_primary_clipboard, "export joined 💻",
+        yank_main_selection_to_primary_clipboard, "export main 💻",
+        paste_primary_clipboard_before, "⮬ paste 💻",
+        paste_primary_clipboard_after, "💻 paste ⮯",
+        replace_selections_with_primary_clipboard, "replace 💻",
+        
         indent, "Indent selection",
         unindent, "Unindent selection",
+        
         format_selections, "Format selection",
+        
         join_selections, "Join lines inside selection",
         join_selections_space, "Join lines inside selection and select spaces",
+        
         keep_selections, "Keep selections matching regex",
         remove_selections, "Remove selections matching regex",
+        
         align_selections, "Align selections in column",
+        
         keep_primary_selection, "Keep primary selection",
         remove_primary_selection, "Remove primary selection",
+        
         completion, "Invoke completion popup",
+        
         hover, "docs 󰧮 ",
+        
         toggle_comments, "Comment/uncomment selections",
+        
         rotate_selections_forward, "Rotate selections forward",
         rotate_selections_backward, "Rotate selections backward",
+        
         rotate_selection_contents_forward, "Rotate selection contents forward",
         rotate_selection_contents_backward, "Rotate selections contents backward",
+        
         reverse_selection_contents, "Reverse selections contents",
+        
         expand_selection, "Expand selection to parent syntax node",
         shrink_selection, "Shrink selection to previously expanded syntax node",
+        
         select_next_sibling, "Select next sibling in syntax tree",
         select_prev_sibling, "Select previous sibling in syntax tree",
+        
         jump_forward, "Jump forward on jumplist",
         jump_backward, "Jump backward on jumplist",
+        
         save_selection, "Save current selection to jumplist",
+        
         jump_view_right, "Jump to right split",
         jump_view_left, "Jump to left split",
         jump_view_up, "Jump to split above",
         jump_view_down, "Jump to split below",
+        
         swap_view_right, "Swap with right split",
         swap_view_left, "Swap with left split",
         swap_view_up, "Swap with split above",
         swap_view_down, "Swap with split below",
+        
         transpose_view, "Transpose splits",
+        
         rotate_view, "Goto next window",
         rotate_view_reverse, "Goto previous window",
+        
         hsplit, "Horizontal bottom split",
         hsplit_new, "Horizontal bottom split scratch buffer",
+        
         vsplit, "Vertical right split",
         vsplit_new, "Vertical right split scratch buffer",
+        
         wclose, "Close window",
         wonly, "Close windows except current",
+        
         select_register, "Select register",
         insert_register, "Insert register",
+        
         align_view_middle, "Align view middle",
         align_view_top, "Align view top",
         align_view_center, "Align view center",
         align_view_bottom, "Align view bottom",
+        
         scroll_up, "Scroll view up",
         scroll_down, "Scroll view down",
+        
         match_brackets, "bracket",
+        
         surround_add, "Surround add",
         surround_replace, "Surround replace",
         surround_delete, "Surround delete",
+        
         select_textobject_around, "around",
         select_textobject_inner, "inside",
+        
         goto_next_function, "Goto next function",
         goto_prev_function, "Goto previous function",
+        
         goto_next_class, "Goto next type definition",
         goto_prev_class, "Goto previous type definition",
+        
         goto_next_parameter, "Goto next parameter",
         goto_prev_parameter, "Goto previous parameter",
+        
         goto_next_comment, "Goto next comment",
         goto_prev_comment, "Goto previous comment",
+        
         goto_next_test, "Goto next test",
         goto_prev_test, "Goto previous test",
+        
         goto_next_paragraph, "Goto next paragraph",
         goto_prev_paragraph, "Goto previous paragraph",
+        
         dap_launch, "launch",
         dap_restart, "restart",
         dap_toggle_breakpoint, "breakpoint",
         dap_continue, "continue",
         dap_pause, "pause",
+        
         dap_step_in, "step in",
         dap_step_out, "step out",
+        
         dap_next, "next",
+        
         dap_variables, "variables",
+        
         dap_terminate, "terminate",
+        
         dap_edit_condition, "condition",
         dap_edit_log, "log",
+        
         dap_switch_thread, "Switch current thread",
         dap_switch_stack_frame, "Switch stack frame",
+        
         dap_enable_exceptions, "Enable breakpoints",
         dap_disable_exceptions, "Disable breakpoints",
+        
         shell_pipe, "Pipe selections through shell command",
         shell_pipe_to, "Pipe selections into shell command ignoring output",
+        
         shell_insert_output, "Insert shell command output before selections",
         shell_append_output, "Append shell command output after selections",
+        
         shell_keep_pipe, "Filter selections with shell predicate",
+        
         suspend, "Suspend and return to shell",
+        
         rename_symbol, "rename symbol 󰑕 ",
+        
         increment, "Increment item under cursor",
         decrement, "Decrement item under cursor",
+        
         record_macro, "Record macro",
         replay_macro, "Replay macro",
+        
         command_palette, "commands  ",
     );
 }
@@ -666,6 +733,30 @@ impl PartialEq for MappableCommand {
 }
 
 fn no_op(_cx: &mut Context) {}
+
+fn menu_separator(_cx: &mut Context) {
+    normal_mode(_cx);
+}
+
+fn menu_separator_open(_cx: &mut Context) {
+    menu_separator(_cx);
+}
+
+fn menu_separator_clipboard(_cx: &mut Context) {
+    menu_separator(_cx);
+}
+
+fn menu_separator_code(_cx: &mut Context) {
+    menu_separator(_cx);
+}
+
+fn menu_separator_global(_cx: &mut Context) {
+    menu_separator(_cx);
+}
+
+fn menu_separator_more(_cx: &mut Context) {
+    menu_separator(_cx);
+}
 
 type MoveFn =
     fn(RopeSlice, Range, Direction, usize, Movement, &TextFormat, &mut TextAnnotations) -> Range;
