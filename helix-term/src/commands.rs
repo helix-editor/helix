@@ -483,14 +483,14 @@ impl MappableCommand {
 
         yank_to_clipboard, "copy 📄",
         yank_joined_to_clipboard, "copy joined ☯️ ",
-        yank_main_selection_to_clipboard, "copy at cursor ⚓",
+        yank_main_selection_to_clipboard, "copy primary ⚓",
         paste_clipboard_before, "⮬paste 📋",
         paste_clipboard_after, "📋 paste⮯",
         replace_selections_with_clipboard, "replace 💣",
 
         yank_to_primary_clipboard, "copy 💻",
         yank_joined_to_primary_clipboard, "copy joined ☯️ ",
-        yank_main_selection_to_primary_clipboard, "copy at cursor ⚓",
+        yank_main_selection_to_primary_clipboard, "copy primary ⚓",
         paste_primary_clipboard_before, "⮬ paste 💻",
         paste_primary_clipboard_after, "💻 paste ⮯",
         replace_selections_with_primary_clipboard, "replace 💣",
