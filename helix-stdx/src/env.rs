@@ -42,8 +42,9 @@ pub fn binary_exists<T: AsRef<OsStr>>(binary_name: T) -> bool {
 pub fn which<T: AsRef<OsStr>>(
     binary_name: T,
 ) -> Result<std::path::PathBuf, ExecutableNotFoundError> {
-    which::which(binary_name.as_ref()).map_err(|err| ExecutableNotFoundError {
-        command: binary_name.as_ref().to_string_lossy().into_owned(),
+    let binary_name = binary_name.as_ref();
+    which::which(binary_name).map_err(|err| ExecutableNotFoundError {
+        command: binary_name.to_string_lossy().into_owned(),
         inner: err,
     })
 }
