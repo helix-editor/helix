@@ -15,6 +15,10 @@ use helix_view::editor::{Action, CloseError, ConfigEvent};
 use serde_json::Value;
 use ui::completers::{self, Completer};
 
+// The maximum number of files to open with globbing to avoid freezing while trying to open too many files.
+// It is kind of arbitrary and can be raised or offered as a configuration option.
+const GLOBBING_MAX_N_FILES: usize = 32;
+
 #[derive(Clone)]
 pub struct TypableCommand {
     pub name: &'static str,
@@ -111,30 +115,13 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
 
     ensure!(!args.is_empty(), "wrong argument count");
 
-    fn open(cx: &mut compositor::Context, path: Cow<Path>, pos: Position) -> anyhow::Result<()> {
-        // If the path is a directory, open a file picker on that directory and update
-        // the status message
-        if path.is_dir() {
-            let path = path.into_owned();
-            let callback = async move {
-                let call: job::Callback = job::Callback::EditorCompositor(Box::new(
-                    move |editor: &mut Editor, compositor: &mut Compositor| {
-                        let picker = ui::file_picker(path, &editor.config());
-                        compositor.push(Box::new(overlaid(picker)));
-                    },
-                ));
-                Ok(call)
-            };
-            cx.jobs.callback(callback);
-        } else {
-            // Otherwise, just open the file
-            let _ = cx.editor.open(&path, Action::Replace)?;
-            let (view, doc) = current!(cx.editor);
-            let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
-            doc.set_selection(view.id, pos);
-            // does not affect opening a buffer without pos
-            align_view(doc, view, Align::Center);
-        }
+    fn open_file(cx: &mut compositor::Context, path: &Path, pos: Position) -> anyhow::Result<()> {
+        let _ = cx.editor.open(path, Action::Replace)?;
+        let (view, doc) = current!(cx.editor);
+        let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+        doc.set_selection(view.id, pos);
+        // does not affect opening a buffer without pos
+        align_view(doc, view, Align::Center);
         Ok(())
     }
 
@@ -150,10 +137,24 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     for arg in args {
         let (path, pos) = args::parse_file(arg);
         let path = helix_stdx::path::canonicalize(path);
-
-        if path.exists() {
+        if let Ok(metadata) = path.metadata() {
+            // Path exists
             // Shortcut for opening a path without globbing
-            open(cx, Cow::Owned(path), pos)?;
+            if metadata.is_dir() {
+                // If the path is a directory, open a file picker on that directory
+                let callback = async move {
+                    let call: job::Callback = job::Callback::EditorCompositor(Box::new(
+                        move |editor: &mut Editor, compositor: &mut Compositor| {
+                            let picker = ui::file_picker(path, &editor.config());
+                            compositor.push(Box::new(overlaid(picker)));
+                        },
+                    ));
+                    Ok(call)
+                };
+                cx.jobs.callback(callback);
+            } else {
+                open_file(cx, &path, pos)?;
+            }
             continue;
         }
 
@@ -191,14 +192,29 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
             .filter_entry(move |entry| glob_set.is_match(entry.path()))
             .build();
 
-        // Ignore the root directory which is yielded first
+        // Call `next` to ignore the root directory which is yielded first
         if walk.next().is_none() {
             continue;
         }
 
+        let mut to_open = Vec::with_capacity(GLOBBING_MAX_N_FILES);
         for entry in walk {
             let entry = entry.context("recursive walking failed")?;
-            open(cx, Cow::Borrowed(entry.path()), pos)?;
+            let Some(file_type) = entry.file_type() else {
+                // Entry is stdin
+                continue;
+            };
+            // Don't open directories when globbing
+            if file_type.is_dir() {
+                continue;
+            }
+            if to_open.len() == GLOBBING_MAX_N_FILES {
+                bail!("tried to open more than {GLOBBING_MAX_N_FILES} files at once");
+            }
+            to_open.push(entry.into_path());
+        }
+        for path in to_open {
+            open_file(cx, &path, pos)?;
         }
     }
     Ok(())
