@@ -255,11 +255,15 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
             "📋" => menu_separator_clipboard,
 
-            "y" => yank_to_clipboard,
-            "Y" => yank_main_selection_to_clipboard,
-            "P" => paste_clipboard_before,
-            "p" => paste_clipboard_after,
-            "R" => replace_selections_with_clipboard,
+            "y" => no_op,
+            "Y" => no_op,
+
+            "C-c" => yank_to_clipboard,
+            "C-C" => yank_joined_to_clipboard,
+            "C-A-c" => yank_main_selection_to_clipboard,
+            "C-P" => paste_clipboard_before,
+            "C-p" => paste_clipboard_after,
+            "C-R" => replace_selections_with_clipboard,
 
             "🖉" => menu_separator_code,
 
