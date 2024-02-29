@@ -2,6 +2,7 @@ pub use etcetera::home_dir;
 
 use std::{
     borrow::Cow,
+    ffi::OsString,
     path::{Component, Path, PathBuf},
 };
 
@@ -12,7 +13,10 @@ use crate::env::current_working_dir;
 pub fn fold_home_dir(path: &Path) -> PathBuf {
     if let Ok(home) = home_dir() {
         if let Ok(stripped) = path.strip_prefix(&home) {
-            return PathBuf::from("~").join(stripped);
+            let mut path = OsString::with_capacity(2 + stripped.as_os_str().len());
+            path.push("~/");
+            path.push(stripped);
+            return PathBuf::from(path);
         }
     }
 
