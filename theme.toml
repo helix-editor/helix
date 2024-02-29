@@ -80,6 +80,8 @@ label = "honey"
 "diagnostic.info" = { underline = { color = "delta", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "lightning", style = "curl" } }
 "diagnostic.error" = { underline = { color = "apricot", style = "curl" } }
+"diagnostic.unnecessary" = { underline = { color = "silver", style = "curl" }, modifiers = ["dim"] }
+"diagnostic.deprecated" = { underline = { color = "silver", style = "curl" }, modifiers = ["crossed_out"] }
 
 warning = "lightning"
 error = "apricot"
