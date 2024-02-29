@@ -360,7 +360,7 @@ impl EditorView {
         doc: &Document,
         theme: &Theme,
     ) -> [Vec<(usize, std::ops::Range<usize>)>; 5] {
-        use helix_core::diagnostic::Severity;
+        use helix_core::diagnostic::{DiagnosticTag, Severity};
         let get_scope_of = |scope| {
             theme
             .find_scope_index_exact(scope)
@@ -380,6 +380,10 @@ impl EditorView {
         let error = get_scope_of("diagnostic.error");
         let r#default = get_scope_of("diagnostic"); // this is a bit redundant but should be fine
 
+        // Diagnostic tags
+        let unnecessary = theme.find_scope_index_exact("diagnostic.unnecessary");
+        let deprecated = theme.find_scope_index_exact("diagnostic.deprecated");
+
         let mut default_vec: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
         let mut info_vec = Vec::new();
         let mut hint_vec = Vec::new();
@@ -395,6 +399,15 @@ impl EditorView {
                 Some(Severity::Error) => (&mut error_vec, error),
                 _ => (&mut default_vec, r#default),
             };
+
+            let scope = diagnostic
+                .tags
+                .first()
+                .and_then(|tag| match tag {
+                    DiagnosticTag::Unnecessary => unnecessary,
+                    DiagnosticTag::Deprecated => deprecated,
+                })
+                .unwrap_or(scope);
 
             // If any diagnostic overlaps ranges with the prior diagnostic,
             // merge the two together. Otherwise push a new span.
