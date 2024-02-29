@@ -181,21 +181,20 @@ where
 ///
 pub fn get_truncated_path(path: impl AsRef<Path>) -> PathBuf {
     let cwd = current_working_dir();
-    let path = path
-        .as_ref()
-        .strip_prefix(cwd)
-        .unwrap_or_else(|_| path.as_ref());
+    let path = path.as_ref();
+    let path = path.strip_prefix(cwd).unwrap_or(path);
     let file = path.file_name().unwrap_or_default();
     let base = path.parent().unwrap_or_else(|| Path::new(""));
-    let mut ret = PathBuf::new();
+    let mut ret = PathBuf::with_capacity(file.len());
+    // A char can't be directly pushed to a PathBuf
+    let mut first_char_buffer = String::new();
     for d in base {
-        ret.push(
-            d.to_string_lossy()
-                .chars()
-                .next()
-                .unwrap_or_default()
-                .to_string(),
-        );
+        let Some(first_char) = d.to_string_lossy().chars().next() else {
+            break;
+        };
+        first_char_buffer.push(first_char);
+        ret.push(&first_char_buffer);
+        first_char_buffer.clear();
     }
     ret.push(file);
     ret
