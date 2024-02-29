@@ -44,6 +44,16 @@ pub enum SignatureHelpEvent {
     RequestComplete { open: bool },
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+pub enum AutoSaveInvoked {
+    Automatic,
+}
+
+pub enum AutoSaveEvent {
+    Trigger,
+    Cancel,
+}
+
 #[derive(Debug)]
 pub struct ApplyEditError {
     pub kind: ApplyEditErrorKind,
