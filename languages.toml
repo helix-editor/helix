@@ -2470,7 +2470,8 @@ file-types = [
   "xul",
   "xoml",
   "musicxml",
-  "glif"
+  "glif",
+  "ui"
 ]
 block-comment-tokens = { start = "<!--", end = "-->" }
 indent = { tab-width = 2, unit = "  " }
