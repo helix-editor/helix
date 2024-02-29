@@ -773,12 +773,12 @@ pub fn split_on_newline(text: RopeSlice, selection: &Selection) -> Selection {
 
         let mut start = sel_start;
 
-        for mat in sel.slice(text).lines() {
-            let len = mat.len_chars();
-            let line_end_len = get_line_ending(&mat).map(|le| le.len_chars()).unwrap_or(0);
+        for line in sel.slice(text).lines() {
+            let Some(line_ending) = get_line_ending(&line) else { break };
+            let line_end = start + line.len_chars();
             // TODO: retain range direction
-            result.push(Range::new(start, start + len - line_end_len));
-            start += len;
+            result.push(Range::new(start, line_end - line_ending.len_chars()));
+            start = line_end;
         }
 
         if start < sel_end {
