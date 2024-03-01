@@ -29,8 +29,9 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "end" => goto_line_end,
 
         "w" => move_next_word_start,
-        "b" => move_prev_word_start,
         "e" => move_next_word_end,
+
+        "b" => move_prev_word_start,
 
         "C-left" => move_prev_word_start,
         "C-right" => move_next_word_start,
@@ -39,13 +40,16 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
         "i" => insert_mode,
         "I" => insert_at_line_start,
+
         "a" => append_mode,
         "A" => insert_at_line_end,
+
         "o" => open_below,
         "O" => open_above,
 
         "d" => delete_selection,
         "A-d" => delete_selection_noyank,
+
         "c" => change_selection,
         "A-c" => change_selection_noyank,
 
@@ -54,11 +58,15 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
         "s" => select_regex,
         "A-s" => split_selection_on_newline,
+
         "A-minus" => merge_selections,
         "A-_" => merge_consecutive_selections,
+
         "S" => split_selection,
         ";" => collapse_selection,
+
         "A-;" => flip_selections,
+
         "A-o" | "A-up" => expand_selection,
         "A-i" | "A-down" => shrink_selection,
         "A-p" | "A-left" => select_prev_sibling,
@@ -142,6 +150,140 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "K" => hover,
 
         // Menu
+        "space" => { " ⭐ Space "
+
+            "🗿" => menu_separator_local,
+
+            "b" => buffer_picker,
+            "d" => diagnostics_picker,
+            "f" => file_picker,
+            "j" => jumplist_picker,
+            "s" => symbol_picker,
+            "." => last_picker,
+
+            "🌐" => menu_separator_global,
+
+            "F" => file_picker_in_current_directory,
+            "S" => workspace_symbol_picker,
+            "D" => workspace_diagnostics_picker,
+            "/" => global_search,
+            "?" => command_palette,
+
+            "⌨" => menu_separator_code,
+
+            "a" => code_action,
+            "k" => hover,
+            "r" => rename_symbol,
+            "h" => select_references_to_symbol_under_cursor,
+
+            "📋" => menu_separator_clipboard,
+
+            // Submenu
+            "y" => { "📤 yank  " sticky=true
+                "y" => yank,
+                "j" => yank_joined,
+                "P" => paste_before,
+                "p" => paste_after,
+                "r" => replace_with_yanked,
+            },
+
+            // Submenu
+            "c" => { "📋 copy  " sticky=true
+                "c" => yank_to_clipboard,
+                "j" => yank_joined_to_clipboard,
+                "m" => yank_main_selection_to_clipboard,
+                "P" => paste_clipboard_before,
+                "p" => paste_clipboard_after,
+                "r" => replace_selections_with_clipboard,
+            },
+
+            // Submenu
+            "e" => { "💻 export  " sticky=true
+                "e" => yank_to_primary_clipboard,
+                "E" => yank_joined_to_primary_clipboard,
+                "A-e" => yank_main_selection_to_primary_clipboard,
+                "P" => paste_primary_clipboard_before,
+                "p" => paste_primary_clipboard_after,
+                "R" => replace_selections_with_primary_clipboard,
+            },
+
+
+            "🧰" => menu_separator_more,
+
+            // Submenu
+            "g" => { "🐞 debug  " sticky=true
+                "l" => dap_launch,
+                "r" => dap_restart,
+                "b" => dap_toggle_breakpoint,
+                "c" => dap_continue,
+
+                // "h" => dap_pause,
+                "h" => no_op,
+                "p" => dap_pause,
+
+                "i" => dap_step_in,
+                "o" => dap_step_out,
+                "n" => dap_next,
+                "v" => dap_variables,
+                "t" => dap_terminate,
+                "C-c" => dap_edit_condition,
+                "C-l" => dap_edit_log,
+                "s" => { " Switch  "
+                    "t" => dap_switch_thread,
+                    "f" => dap_switch_stack_frame,
+                    // sl, sb
+                },
+                "e" => dap_enable_exceptions,
+                // "E" => dap_disable_exceptions,
+                "E" => no_op,
+                "d" => dap_disable_exceptions,
+            },
+
+            // Submenu
+            "v" => { "🧿 View  "
+                "z" | "c" => align_view_center,
+                "t" => align_view_top,
+                "b" => align_view_bottom,
+                "m" => align_view_middle,
+                "k" | "up" => scroll_up,
+                "j" | "down" => scroll_down,
+                "C-b" | "pageup" => page_up,
+                "C-f" | "pagedown" => page_down,
+                "C-u" | "backspace" => page_cursor_half_up,
+                "C-d" | "space" => page_cursor_half_down,
+
+                "/" => search,
+                "?" => rsearch,
+                "n" => search_next,
+                "N" => search_prev,
+            },
+
+            // Submenu
+            "w" => { "🪟 window  "
+                "C-w" | "w" => rotate_view,
+                "C-s" | "s" => hsplit,
+                "C-v" | "v" => vsplit,
+                "C-t" | "t" => transpose_view,
+                "f" => goto_file_hsplit,
+                "F" => goto_file_vsplit,
+                "C-q" | "q" => wclose,
+                "C-o" | "o" => wonly,
+                "C-h" | "h" | "left" => jump_view_left,
+                "C-j" | "j" | "down" => jump_view_down,
+                "C-k" | "k" | "up" => jump_view_up,
+                "C-l" | "l" | "right" => jump_view_right,
+                "H" => swap_view_left,
+                "J" => swap_view_down,
+                "K" => swap_view_up,
+                "L" => swap_view_right,
+                "n" => { "New split scratch buffer"
+                    "C-s" | "s" => hsplit_new,
+                    "C-v" | "v" => vsplit_new,
+                },
+            },
+        },
+
+        // Menu
         "g" => { " 🚀 Goto "
             "g" => no_op,
             "e" => no_op,
@@ -170,7 +312,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "." => goto_last_modification,
         },
 
-        "m" => { " 󰾹 Match"
+        "m" => { " 󰾹 Match "
             "m" => match_brackets,
             "s" => surround_add,
             "r" => surround_replace,
@@ -179,7 +321,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "i" => select_textobject_inner,
         },
 
-        "[" => { " 󰅪 Left bracket"
+        "[" => { " 〚 Left bracket "
             "d" => goto_prev_diag,
             "D" => goto_first_diag,
             "g" => goto_prev_change,
@@ -193,7 +335,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "space" => add_newline_above,
         },
 
-        "]" => { " 󰅪 Right bracket"
+        "]" => { " Right bracket 〛"
             "d" => goto_next_diag,
             "D" => goto_last_diag,
             "g" => goto_next_change,
@@ -205,163 +347,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "T" => goto_next_test,
             "p" => goto_next_paragraph,
             "space" => add_newline_below,
-        },
-
-        // Menu
-        "C-w" => { " 🪟 Window"
-            "C-w" | "w" => rotate_view,
-            "C-s" | "s" => hsplit,
-            "C-v" | "v" => vsplit,
-            "C-t" | "t" => transpose_view,
-            "f" => goto_file_hsplit,
-            "F" => goto_file_vsplit,
-            "C-q" | "q" => wclose,
-            "C-o" | "o" => wonly,
-            "C-h" | "h" | "left" => jump_view_left,
-            "C-j" | "j" | "down" => jump_view_down,
-            "C-k" | "k" | "up" => jump_view_up,
-            "C-l" | "l" | "right" => jump_view_right,
-            "L" => swap_view_right,
-            "K" => swap_view_up,
-            "H" => swap_view_left,
-            "J" => swap_view_down,
-            "n" => { "New split scratch buffer"
-                "C-s" | "s" => hsplit_new,
-                "C-v" | "v" => vsplit_new,
-            },
-        },
-
-        // Menu
-        "space" => { " ⭐ Space"
-
-            "🔎" => menu_separator_open,
-
-            "b" => buffer_picker,
-            "d" => diagnostics_picker,
-            "f" => file_picker,
-            "j" => jumplist_picker,
-            "s" => symbol_picker,
-            "'" => last_picker,
-
-            "📋" => menu_separator_clipboard,
-
-            "y" => no_op,
-            "Y" => no_op,
-
-            "C-c" => yank_to_clipboard,
-            "C-C" => yank_joined_to_clipboard,
-            "C-A-c" => yank_main_selection_to_clipboard,
-            "C-P" => paste_clipboard_before,
-            "C-p" => paste_clipboard_after,
-            "C-R" => replace_selections_with_clipboard,
-
-            "🖉" => menu_separator_code,
-
-            "a" => code_action,
-            "k" => hover,
-            "r" => rename_symbol,
-            "h" => select_references_to_symbol_under_cursor,
-
-            "🌐" => menu_separator_global,
-
-            "F" => file_picker_in_current_directory,
-            "S" => workspace_symbol_picker,
-            "D" => workspace_diagnostics_picker,
-            "/" => global_search,
-            "?" => command_palette,
-
-            "🧰" => menu_separator_more,
-
-            // Submenu
-            "g" => { "🐞 debug " sticky=true
-                "l" => dap_launch,
-                "r" => dap_restart,
-                "b" => dap_toggle_breakpoint,
-                "c" => dap_continue,
-
-                // "h" => dap_pause,
-                "h" => no_op,
-                "p" => dap_pause,
-
-                "i" => dap_step_in,
-                "o" => dap_step_out,
-                "n" => dap_next,
-                "v" => dap_variables,
-                "t" => dap_terminate,
-                "C-c" => dap_edit_condition,
-                "C-l" => dap_edit_log,
-                "s" => { " Switch "
-                    "t" => dap_switch_thread,
-                    "f" => dap_switch_stack_frame,
-                    // sl, sb
-                },
-                "e" => dap_enable_exceptions,
-                // "E" => dap_disable_exceptions,
-                "E" => no_op,
-                "d" => dap_disable_exceptions,
-            },
-
-            // Submenu
-            "w" => { "🪟 window "
-                "C-w" | "w" => rotate_view,
-                "C-s" | "s" => hsplit,
-                "C-v" | "v" => vsplit,
-                "C-t" | "t" => transpose_view,
-                "f" => goto_file_hsplit,
-                "F" => goto_file_vsplit,
-                "C-q" | "q" => wclose,
-                "C-o" | "o" => wonly,
-                "C-h" | "h" | "left" => jump_view_left,
-                "C-j" | "j" | "down" => jump_view_down,
-                "C-k" | "k" | "up" => jump_view_up,
-                "C-l" | "l" | "right" => jump_view_right,
-                "H" => swap_view_left,
-                "J" => swap_view_down,
-                "K" => swap_view_up,
-                "L" => swap_view_right,
-                "n" => { "New split scratch buffer"
-                    "C-s" | "s" => hsplit_new,
-                    "C-v" | "v" => vsplit_new,
-                },
-            },
-        },
-
-        // Menu
-        "z" => { " 󰛐 View"
-            "z" | "c" => align_view_center,
-            "t" => align_view_top,
-            "b" => align_view_bottom,
-            "m" => align_view_middle,
-            "k" | "up" => scroll_up,
-            "j" | "down" => scroll_down,
-            "C-b" | "pageup" => page_up,
-            "C-f" | "pagedown" => page_down,
-            "C-u" | "backspace" => page_cursor_half_up,
-            "C-d" | "space" => page_cursor_half_down,
-
-            "/" => search,
-            "?" => rsearch,
-            "n" => search_next,
-            "N" => search_prev,
-        },
-
-        // Menu
-        "Z" => { "  VIEW" sticky=true
-            "z" | "c" => align_view_center,
-            "t" => align_view_top,
-            "b" => align_view_bottom,
-            "m" => align_view_middle,
-            "k" | "up" => scroll_up,
-            "j" | "down" => scroll_down,
-            "C-b" | "pageup" => page_up,
-            "C-f" | "pagedown" => page_down,
-            "C-u" | "backspace" => page_cursor_half_up,
-            "C-d" | "space" => page_cursor_half_down,
-
-            "/" => search,
-            "?" => rsearch,
-            "n" => search_next,
-            "N" => search_prev,
         },
 
         "\"" => select_register,

@@ -226,10 +226,10 @@ impl MappableCommand {
     #[rustfmt::skip]
     static_commands!(
         no_op, "Do nothing 󰜺 ",
-        menu_separator_open,      "𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋 Open 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
+        menu_separator_local,      "𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋 Local 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
+        menu_separator_global,    "𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋 Global 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
         menu_separator_clipboard, "𑁋𑁋𑁋𑁋𑁋𑁋𑁋 Clipboard 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
         menu_separator_code,      "𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋 Code 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
-        menu_separator_global,    "𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋 Global 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
         menu_separator_more,      "𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋 More 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
         
         move_char_left, " Move",
@@ -336,7 +336,7 @@ impl MappableCommand {
         
         make_search_word_bounded, "Modify current search to make it word bounded",
         
-        global_search, "search all 🔭 ",
+        global_search, "search 🔭 ",
         
         extend_line, "Select current line, if already selected, extend to another line based on the anchor",
         
@@ -363,24 +363,24 @@ impl MappableCommand {
         command_mode, "command  ",
         
         file_picker, "file 📄 ",
-        file_picker_in_current_buffer_directory, "file in 📁",
-        file_picker_in_current_directory, "file in 📂",
+        file_picker_in_current_buffer_directory, "file 📁",
+        file_picker_in_current_directory, "file 📂",
         
-        code_action, "actions 💥", 
+        code_action, "action 💥", 
         
         buffer_picker, "buffer 🧮",
         
         jumplist_picker, "jumplist 🦘",
         
         symbol_picker, "symbol 💲",
-        workspace_symbol_picker, "symbols 📡",
+        workspace_symbol_picker, "symbols 💲",
         
         select_references_to_symbol_under_cursor, "references 🔗",
         
         diagnostics_picker, "diagnostic 💔",
         workspace_diagnostics_picker, "diagnostics 💔",
         
-        last_picker, "similar 🔍",
+        last_picker, "repeat 🔍",
         
         insert_at_line_start, "⏮️  Insert at start of line",
         insert_at_line_end, "Insert at end of line ⏭️ ",
@@ -475,23 +475,23 @@ impl MappableCommand {
         commit_undo_checkpoint, "Commit changes to new checkpoint",
         
         yank, "yank 📤",
-        yank_joined, "yank joined ☯️ ",
-        paste_before, "⮬paste 📥",
-        paste_after, "📥 paste⮯",
+        yank_joined, "yank joined ⧉ ",
+        paste_before, "⮬ paste",
+        paste_after, "paste ⮯",
         replace_with_yanked, "replace 💣",
 
         yank_to_clipboard, "copy 📄",
-        yank_joined_to_clipboard, "copy joined ☯️ ",
-        yank_main_selection_to_clipboard, "copy primary ⚓",
-        paste_clipboard_before, "⮬paste 📋",
-        paste_clipboard_after, "📋 paste⮯",
+        yank_joined_to_clipboard, "copy joined ⧉ ",
+        yank_main_selection_to_clipboard, "copy main 🮰 ",
+        paste_clipboard_before, "⮬ paste",
+        paste_clipboard_after, "paste ⮯",
         replace_selections_with_clipboard, "replace 💣",
         
-        yank_to_primary_clipboard, "copy 💻",
-        yank_joined_to_primary_clipboard, "copy joined ☯️ ",
-        yank_main_selection_to_primary_clipboard, "copy primary ⚓",
-        paste_primary_clipboard_before, "⮬ paste 💻",
-        paste_primary_clipboard_after, "💻 paste ⮯",
+        yank_to_primary_clipboard, "export 💻",
+        yank_joined_to_primary_clipboard, "export joined ⧉ ",
+        yank_main_selection_to_primary_clipboard, "export main 🮰 ",
+        paste_primary_clipboard_before, "⮬ paste",
+        paste_primary_clipboard_after, "paste ⮯",
         replace_selections_with_primary_clipboard, "replace 💣",
         
         indent, "Indent selection",
@@ -512,7 +512,7 @@ impl MappableCommand {
         
         completion, "Invoke completion popup",
         
-        hover, "docs 󰧮 ",
+        hover, "signature 💡",
         
         toggle_comments, "Comment/uncomment selections",
         
@@ -631,7 +631,7 @@ impl MappableCommand {
         
         suspend, "Suspend and return to shell",
         
-        rename_symbol, "rename symbol 󰑕 ",
+        rename_symbol, "rename 🖊️ ",
         
         increment, "Increment item under cursor",
         decrement, "Decrement item under cursor",
@@ -738,11 +738,11 @@ fn menu_separator(_cx: &mut Context) {
     normal_mode(_cx);
 }
 
-fn menu_separator_open(_cx: &mut Context) {
+fn menu_separator_local(_cx: &mut Context) {
     menu_separator(_cx);
 }
 
-fn menu_separator_clipboard(_cx: &mut Context) {
+fn menu_separator_global(_cx: &mut Context) {
     menu_separator(_cx);
 }
 
@@ -750,7 +750,7 @@ fn menu_separator_code(_cx: &mut Context) {
     menu_separator(_cx);
 }
 
-fn menu_separator_global(_cx: &mut Context) {
+fn menu_separator_clipboard(_cx: &mut Context) {
     menu_separator(_cx);
 }
 
