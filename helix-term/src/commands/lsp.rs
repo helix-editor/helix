@@ -3,7 +3,7 @@ use helix_lsp::{
     block_on,
     lsp::{
         self, CodeAction, CodeActionOrCommand, CodeActionTriggerKind, DiagnosticSeverity,
-        NumberOrString,
+        NumberOrString, SymbolKind,
     },
     util::{diagnostic_to_lsp_diagnostic, lsp_range_to_range, range_to_lsp_range},
     Client, OffsetEncoding,
@@ -107,22 +107,52 @@ impl ui::menu::Item for SymbolInformationItem {
     type Data = Option<lsp::Url>;
 
     fn format(&self, current_doc_path: &Self::Data) -> Row {
-        if current_doc_path.as_ref() == Some(&self.symbol.location.uri) {
-            self.symbol.name.as_str().into()
-        } else {
+        let mut row = String::new();
+
+        match self.symbol.kind {
+            SymbolKind::FILE => write!(row, "FIL"),
+            SymbolKind::MODULE => write!(row, "MOD"),
+            SymbolKind::NAMESPACE => write!(row, "NAM"),
+            SymbolKind::PACKAGE => write!(row, "PAK"),
+            SymbolKind::CLASS => write!(row, "CLA"),
+            SymbolKind::METHOD => write!(row, "MET"),
+            SymbolKind::PROPERTY => write!(row, "PRP"),
+            SymbolKind::FIELD => write!(row, "FLD"),
+            SymbolKind::CONSTRUCTOR => write!(row, "COS"),
+            SymbolKind::ENUM => write!(row, "ENM"),
+            SymbolKind::INTERFACE => write!(row, "ITF"),
+            SymbolKind::FUNCTION => write!(row, "FUN"),
+            SymbolKind::VARIABLE => write!(row, "VAR"),
+            SymbolKind::CONSTANT => write!(row, "CST"),
+            SymbolKind::STRING => write!(row, "STR"),
+            SymbolKind::NUMBER => write!(row, "NUM"),
+            SymbolKind::BOOLEAN => write!(row, "BOL"),
+            SymbolKind::ARRAY => write!(row, "ARA"),
+            SymbolKind::OBJECT => write!(row, "OBJ"),
+            SymbolKind::KEY => write!(row, "KEY"),
+            SymbolKind::NULL => write!(row, "NUL"),
+            SymbolKind::ENUM_MEMBER => write!(row, "EME"),
+            SymbolKind::STRUCT => write!(row, "SCT"),
+            SymbolKind::EVENT => write!(row, "EVT"),
+            SymbolKind::OPERATOR => write!(row, "OPT"),
+            SymbolKind::TYPE_PARAMETER => write!(row, "TYP"),
+            _ => todo!("error"),
+        }
+        .unwrap();
+
+        write!(row, " {} ", &self.symbol.name).unwrap();
+
+        if current_doc_path.as_ref() != Some(&self.symbol.location.uri) {
             match self.symbol.location.uri.to_file_path() {
                 Ok(path) => {
                     let get_relative_path = path::get_relative_path(path.as_path());
-                    format!(
-                        "{} ({})",
-                        &self.symbol.name,
-                        get_relative_path.to_string_lossy()
-                    )
-                    .into()
+                    write!(row, "({})", get_relative_path.to_string_lossy()).unwrap();
                 }
-                Err(_) => format!("{} ({})", &self.symbol.name, &self.symbol.location.uri).into(),
+                Err(_) => write!(row, "({})", &self.symbol.location.uri).unwrap(),
             }
-        }
+        };
+
+        row.into()
     }
 }
 
