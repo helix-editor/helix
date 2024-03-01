@@ -227,11 +227,11 @@ impl MappableCommand {
     #[rustfmt::skip]
     static_commands!(
         no_op, "Do nothing 󰜺 ",
-        menu_separator_local,      "𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋 Local 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
+        menu_separator_local,     "𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋 Local 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
         menu_separator_global,    "𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋 Global 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
         menu_separator_clipboard, "𑁋𑁋𑁋𑁋𑁋𑁋𑁋 Clipboard 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
         menu_separator_code,      "𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋 Code 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
-        menu_separator_more,      "𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋 More 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
+        menu_separator,           "𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
 
         move_char_left, " Move",
         move_char_right, "Move  ",
@@ -363,9 +363,9 @@ impl MappableCommand {
         append_mode, "append 🅰️ ",
         command_mode, "command  ",
         
-        file_picker, "file 📄 ",
-        file_picker_in_current_buffer_directory, "file 📁",
-        file_picker_in_current_directory, "file 📂",
+        file_picker, "file 📁",
+        file_picker_in_current_buffer_directory, "files 📁",
+        file_picker_in_current_directory, "files 📂",
         
         code_action, "action 💥",
         
@@ -376,7 +376,7 @@ impl MappableCommand {
         symbol_picker, "symbol 💲",
         workspace_symbol_picker, "symbols 💲",
         
-        select_references_to_symbol_under_cursor, "references 🔗",
+        select_references_to_symbol_under_cursor, "highlight 🖍️ ",
         
         diagnostics_picker, "diagnostic 💔",
         workspace_diagnostics_picker, "diagnostics 💔",
@@ -513,7 +513,7 @@ impl MappableCommand {
 
         completion, "Invoke completion popup",
 
-        hover, "signature 💡",
+        hover, "siknature 💡",
 
         toggle_comments, "Comment/uncomment selections",
         toggle_line_comments, "Line comment/uncomment selections",
@@ -754,10 +754,6 @@ fn menu_separator_code(_cx: &mut Context) {
 }
 
 fn menu_separator_clipboard(_cx: &mut Context) {
-    menu_separator(_cx);
-}
-
-fn menu_separator_more(_cx: &mut Context) {
     menu_separator(_cx);
 }
 

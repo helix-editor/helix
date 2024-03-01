@@ -210,7 +210,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             },
 
 
-            "🧰" => menu_separator_more,
+            "‒" => menu_separator,
 
             // Submenu
             "g" => { "🐞 debug  " sticky=true
