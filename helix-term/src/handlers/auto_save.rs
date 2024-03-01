@@ -16,7 +16,8 @@ use helix_view::{
 use tokio::time::Instant;
 
 use crate::{
-    commands, compositor, job::{self, Jobs}
+    commands, compositor,
+    job::{self, Jobs},
 };
 
 #[derive(Debug)]
@@ -44,25 +45,25 @@ impl helix_event::AsyncHook for AutoSaveHandler {
 
     fn handle_event(
         &mut self,
-        _: Self::Event,
+        event: Self::Event,
         _: Option<tokio::time::Instant>,
     ) -> Option<Instant> {
-        // match event {
-        //     AutoSaveEvent::Trigger => {
-        //         if matches!(self.state, State::Closed) {
-        //             self.trigger = Some(AutoSaveInvoked::Automatic);
-        //             return Some(Instant::now() + Duration::from_millis(1000));
-        //         }
-        //     }
-        //     AutoSaveEvent::Cancel => {
-        //         self.state = State::Closed;
-        //         return None;
-        //     }
-        // }
+        match event {
+            AutoSaveEvent::Trigger => {
+                if matches!(self.state, State::Closed) {
+                    self.trigger = Some(AutoSaveInvoked::Automatic);
+                    return Some(Instant::now() + Duration::from_millis(1000));
+                }
+            }
+            AutoSaveEvent::Cancel => {
+                self.state = State::Closed;
+                return None;
+            }
+        }
 
-        // if self.trigger.is_none() {
-        //     self.trigger = Some(AutoSaveInvoked::Automatic)
-        // }
+        if self.trigger.is_none() {
+            self.trigger = Some(AutoSaveInvoked::Automatic)
+        }
 
         Some(Instant::now() + Duration::from_millis(1000))
     }
@@ -80,6 +81,10 @@ fn request_auto_save(editor: &mut Editor) {
     };
 
     if let Err(e) = commands::typed::write_all_impl(context, false, false) {
+        context.editor.set_error(format!("{}", e));
+    }
+
+    if let Err(e) = context.block_try_flush_writes() {
         context.editor.set_error(format!("{}", e));
     }
 }
