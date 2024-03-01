@@ -21,29 +21,19 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "r" => replace,
         "R" => replace_with_yanked,
 
-        "A-." => no_op, // disabled until knowing how this actually work
-
         "C-A-u" => switch_case,
-
-        "`" => no_op,
-        "C-l" => switch_to_lowercase,
-
-        "A-`" => no_op,
         "C-u" => switch_to_uppercase,
+        "C-l" => switch_to_lowercase,
 
         "home" => goto_line_start,
         "end" => goto_line_end,
 
         "w" => move_next_word_start,
-        "W" => no_op,
-        "C-right" => move_next_long_word_start,
-
         "b" => move_prev_word_start,
-        "B" => no_op,
-        "C-left" => move_prev_long_word_start,
-
         "e" => move_next_word_end,
-        "E" => no_op,
+
+        "C-left" => move_prev_word_start,
+        "C-right" => move_next_word_start,
 
         ":" => command_mode,
 
