@@ -1455,7 +1455,7 @@ this split.
 =================================================================
 
 Open a split on the left with :vs hello1 and then a split below
-with :vs hello2 .
+with :vs hello2.
 
 Move to the tutor split, then press Ctrl-w t to transpose the
 vertical split that was opened from this window: now hello1 and
