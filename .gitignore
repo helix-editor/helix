@@ -3,3 +3,8 @@ target
 helix-term/rustfmt.toml
 result
 runtime/grammars
+/.idea/.gitignore
+/.idea/helixis.iml
+/.idea/modules.xml
+/.idea/inspectionProfiles/Project_Default.xml
+/.idea/vcs.xml
