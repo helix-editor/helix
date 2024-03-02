@@ -226,423 +226,285 @@ impl MappableCommand {
 
     #[rustfmt::skip]
     static_commands!(
-        no_op, "Do nothing 󰜺 ",
-        menu_separator_local,     "𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋 Local 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
-        menu_separator_global,    "𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋 Global 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
-        menu_separator_code,      "𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋 Code 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
-        menu_separator_clipboard, "𑁋𑁋𑁋𑁋𑁋𑁋𑁋 Clipboard 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
-        menu_separator,           "𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
-
-        move_char_left, " move",
-        move_char_right, "move  ",
-        move_visual_line_up, "move  ",
-        move_visual_line_down, "move  ",
-
-        move_line_up, "move line  ",
-        move_line_down, "move line  ",
-
-        extend_char_left, " Extend",
-        extend_char_right, "Extend  ",
-        extend_line_up, "Extend ",
-        extend_line_down, "Extend ",
-
-        extend_visual_line_up, "Extend visual ",
-        extend_visual_line_down, "Extend visual ",
-
-        copy_selection_on_next_line, "Copy on ",
-        copy_selection_on_prev_line, "Copy on ",
-
-        move_next_word_start, " Word",
-        move_next_word_end, "Word ",
-
-        move_prev_word_start, " Word",
-        move_prev_word_end, "Word ",
-
-        move_next_long_word_start, " Worrrd",
-        move_next_long_word_end, "Worrrd ",
-
-        move_prev_long_word_start, " Worrrd",
-        move_prev_long_word_end, "Worrrd ",
-
-        move_parent_node_end, "Parent ",
-        move_parent_node_start, " Parent",
-
-        extend_next_word_start, "Extend  word",
-        extend_next_word_end, "Extend word  ",
-
-        extend_prev_word_start, " Word extend",
-        extend_prev_word_end, "Word  Extend",
-
-        extend_next_long_word_start, "Extend  worrrd",
-        extend_next_long_word_end, "Extend worrrd ",
-
-        extend_prev_long_word_start, " Worrrd extend",
-        extend_prev_long_word_end, "Worrrd extend",
-
-        extend_parent_node_end, "Extend parent ",
-        extend_parent_node_start, "Extend  parent",
-
-        find_till_char, "Find  char",
-        find_next_char, "Find  (char) ",
-
-        extend_till_char, "Extend  char",
-        extend_next_char, "Extend  (char)",
-
-        till_prev_char, "Char ",
-        find_prev_char, "(Char) ",
-
-        extend_till_prev_char, "Char extend",
-        extend_prev_char, "(Char) extend",
-
-        repeat_last_motion, "Repeat motion",
-
-        replace, "Replace w/ char",
-
-        switch_case, "Toggle case  ",
-
-        switch_to_uppercase, "Uppercase 󰬶 ",
-        switch_to_lowercase, "Lowercase 󰬵 ",
-
-        page_up, "PgUp 󱞿 ",
-        page_down, "PgDn 󱞣 ",
-
-        half_page_up, "1/2 PgUp 󱞿 ",
-        half_page_down, "1/2 PgDn 󱞣 ",
-
-        page_cursor_up, "Move page and cursor up",
-        page_cursor_down, "Move page and cursor down",
-
-        page_cursor_half_up, "Move page and cursor half up",
-        page_cursor_half_down, "Move page and cursor half down",
-
-        select_all, "Select all 󰒆 ",
-        select_regex, "Select all regex matches inside selections",
-
-        split_selection, "Split selections on regex matches",
-        split_selection_on_newline, "Split selection on newlines",
-
-        merge_selections, "Merge selections",
-        merge_consecutive_selections, "Merge consecutive selections",
-
-        search, "Search for regex pattern",
-        rsearch, "Reverse search for regex pattern",
-
-        search_next, "Select next search match",
-        search_prev, "Select previous search match",
-
-        extend_search_next, "Add next search match to selection",
-        extend_search_prev, "Add previous search match to selection",
-
-        search_selection, "Use current selection as search pattern",
-
-        make_search_word_bounded, "Modify current search to make it word bounded",
-
-        global_search, "search 🔭 ",
-
-        extend_line, "Select current line, if already selected, extend to another line based on the anchor",
-
-        extend_line_below, "Select current line, if already selected, extend to next line",
-        extend_line_above, "Select current line, if already selected, extend to previous line",
-
-        extend_to_line_bounds, "Extend selection to line bounds",
-        shrink_to_line_bounds, "Shrink selection to line bounds",
-
-        delete_selection, "Delete selection",
-        delete_selection_noyank, "Delete selection without yanking",
-
+        add_newline_above, "Add newline above",
+        add_newline_below, "Add newline below",
+        align_selections, "Align selections in column",
+        align_view_bottom, "Align view bottom",
+        align_view_center, "Align view center",
+        align_view_middle, "Align view middle",
+        align_view_top, "Align view top",
+        append_mode, "append 🅰️ ",
+        buffer_picker, "buffer 🧮",
         change_selection, "Change selection",
         change_selection_noyank, "Change selection without yanking",
-
+        code_action, "action 💥",
         collapse_selection, "Collapse selection into single cursor",
-
-        flip_selections, "Flip selection cursor and anchor",
-
-        ensure_selections_forward, "Ensure all selections face forward",
-
-        insert_mode, "insert 📝",
-        append_mode, "append 🅰️ ",
         command_mode, "command  ",
-
+        command_palette, "commands  ",
+        commit_undo_checkpoint, "Commit changes to new checkpoint",
+        completion, "Invoke completion popup",
+        copy_selection_on_next_line, "Copy on ",
+        copy_selection_on_prev_line, "Copy on ",
+        dap_continue, "continue",
+        dap_disable_exceptions, "Disable breakpoints",
+        dap_edit_condition, "condition",
+        dap_edit_log, "log",
+        dap_enable_exceptions, "Enable breakpoints",
+        dap_launch, "launch",
+        dap_next, "next",
+        dap_pause, "pause",
+        dap_restart, "restart",
+        dap_step_in, "step in",
+        dap_step_out, "step out",
+        dap_switch_stack_frame, "Switch stack frame",
+        dap_switch_thread, "Switch current thread",
+        dap_terminate, "terminate",
+        dap_toggle_breakpoint, "breakpoint",
+        dap_variables, "variables",
+        decrement, "Decrement item under cursor",
+        delete_char_backward, "Delete previous char",
+        delete_char_forward, "Delete next char",
+        delete_selection, "Delete selection",
+        delete_selection_noyank, "Delete selection without yanking",
+        delete_word_backward, "Delete previous word",
+        delete_word_forward, "Delete next word",
+        diagnostics_picker, "diagnostic 💔",
+        earlier, "Move backward in history",
+        ensure_selections_forward, "Ensure all selections face forward",
+        exit_select_mode, "Exit selection mode",
+        expand_selection, "Expand selection to parent syntax node",
+        extend_char_left, " Extend",
+        extend_char_right, "Extend  ",
+        extend_line, "Select current line, if already selected, extend to another line based on the anchor",
+        extend_line_above, "Select current line, if already selected, extend to previous line",
+        extend_line_below, "Select current line, if already selected, extend to next line",
+        extend_line_down, "Extend ",
+        extend_line_up, "Extend ",
+        extend_next_char, "Extend  (char)",
+        extend_next_long_word_end, "Extend worrrd ",
+        extend_next_long_word_start, "Extend  worrrd",
+        extend_next_word_end, "Extend word  ",
+        extend_next_word_start, "Extend  word",
+        extend_parent_node_end, "Extend parent ",
+        extend_parent_node_start, "Extend  parent",
+        extend_prev_char, "(Char) extend",
+        extend_prev_long_word_end, "Worrrd extend",
+        extend_prev_long_word_start, " Worrrd extend",
+        extend_prev_word_end, "Word  Extend",
+        extend_prev_word_start, " Word extend",
+        extend_search_next, "Add next search match to selection",
+        extend_search_prev, "Add previous search match to selection",
+        extend_till_char, "Extend  char",
+        extend_till_prev_char, "Char extend",
+        extend_to_first_nonwhitespace, "Extend to first non-blank in line",
+        extend_to_line_bounds, "Extend selection to line bounds",
+        extend_to_line_end, "Extend to line end",
+        extend_to_line_end_newline, "Extend to line end",
+        extend_to_line_start, "Extend to line start",
+        extend_visual_line_down, "Extend visual ",
+        extend_visual_line_up, "Extend visual ",
         file_picker, "file 📁",
         file_picker_in_current_buffer_directory, "files 📁",
         file_picker_in_current_directory, "files 📂",
-
-        code_action, "action 💥",
-
-        buffer_picker, "buffer 🧮",
-
-        jumplist_picker, "jumplist 🦘",
-
-        symbol_picker, "symbol 💲",
-        workspace_symbol_picker, "symbols 💲",
-
-        select_references_to_symbol_under_cursor, "highlight 🖍️ ",
-
-        diagnostics_picker, "diagnostic 💔",
-        workspace_diagnostics_picker, "diagnostics 💔",
-
-        last_picker, "repeat 🔍",
-
-        insert_at_line_start, "⏮️  Insert at start of line",
-        insert_at_line_end, "Insert at end of line ⏭️ ",
-
-        open_below, "Open new line below selection 🔽",
-        open_above, "Open new line above selection 🔼",
-
-        normal_mode, "Enter normal mode ⏹️ ",
-        select_mode, "Enter selection extend mode 🔛",
-        exit_select_mode, "Exit selection mode",
-
-        goto_definition, "definition 📖",
-        goto_declaration, "declaration  ",
-        goto_reference, "references 🔗",
-
-        add_newline_above, "Add newline above",
-        add_newline_below, "Add newline below",
-
-        goto_type_definition, "type definition  ",
-        goto_implementation, "implementation  ",
-
-        goto_file_start, "Line number <n> else file start",
-        goto_file_end, "File end 󰞒 ",
-
-        goto_file, "Files/URLs in selections",
-
-        goto_file_hsplit, "Goto files in selections (hsplit)",
-        goto_file_vsplit, "Goto files in selections (vsplit)",
-
-        goto_window_top, "top 󱔓 ",
-        goto_window_center, "center 󰞢 ",
-        goto_window_bottom, "bottom 󱂩 ",
-
-        goto_last_accessed_file, "last accessed 󱋢 ",
-        goto_last_modified_file, "last modified 󱇨 ",
-        goto_last_modification, "last modification 󰏫 ",
-
-        goto_line, "Goto line",
-
-        goto_last_line, "Last line 󰞒 ",
-
-        goto_first_diag,"first diagnostic",
-        goto_last_diag, "last diagnostic",
-        goto_next_diag, "next diagnostic",
-        goto_prev_diag, "previous diagnostic",
-
-        goto_next_change, "next change",
-        goto_prev_change, "previous change",
-
-        goto_first_change, "first change",
-        goto_last_change, "last change",
-
-        goto_line_start, "󰞓 Line start",
-        goto_line_end, "Line end 󰞔 ",
-
-        goto_next_buffer, "Next buffer  ",
-        goto_previous_buffer, "󰞓 Prev buffer",
-
-        goto_line_end_newline, "Goto newline at line end",
-        goto_first_nonwhitespace, "non-blank 󰾹",
-
-        trim_selections, "Trim whitespace from selections",
-
-        extend_to_line_start, "Extend to line start",
-        extend_to_line_end, "Extend to line end",
-        extend_to_line_end_newline, "Extend to line end",
-
-        extend_to_first_nonwhitespace, "Extend to first non-blank in line",
-
-        signature_help, "Show signature help",
-
-        smart_tab, "Insert tab if all cursors have all whitespace to their left; otherwise, run a separate command.",
-
-        insert_tab, "Insert tab char",
-
-        insert_newline, "Insert newline char",
-
-        delete_char_backward, "Delete previous char",
-        delete_char_forward, "Delete next char",
-        delete_word_backward, "Delete previous word",
-        delete_word_forward, "Delete next word",
-
-        kill_to_line_start, "Delete till start of line",
-        kill_to_line_end, "Delete till end of line",
-
-        undo, "Undo change",
-        redo, "Redo change",
-
-        earlier, "Move backward in history",
-        later, "Move forward in history",
-
-        commit_undo_checkpoint, "Commit changes to new checkpoint",
-
-        yank, "yank 📤",
-        yank_joined, "yank joined ⧉ ",
-        paste_before, "⮬ paste",
-        paste_after, "paste ⮯",
-        replace_with_yanked, "replace 💣",
-
-        yank_to_clipboard, "copy 📄",
-        yank_joined_to_clipboard, "copy joined ⧉ ",
-        yank_main_selection_to_clipboard, "copy main 🮰 ",
-        paste_clipboard_before, "⮬ paste",
-        paste_clipboard_after, "paste ⮯",
-        replace_selections_with_clipboard, "replace 💣",
-
-        yank_to_primary_clipboard, "export 💻",
-        yank_joined_to_primary_clipboard, "export joined ⧉ ",
-        yank_main_selection_to_primary_clipboard, "export main 🮰 ",
-        paste_primary_clipboard_before, "⮬ paste",
-        paste_primary_clipboard_after, "paste ⮯",
-        replace_selections_with_primary_clipboard, "replace 💣",
-
-        indent, "Indent selection",
-        unindent, "Unindent selection",
-
+        find_next_char, "Find  (char) ",
+        find_prev_char, "(Char) ",
+        find_till_char, "Find  char",
+        flip_selections, "Flip selection cursor and anchor",
         format_selections, "Format selection",
-
-        join_selections, "Join lines inside selection",
-        join_selections_space, "Join lines inside selection and select spaces",
-
-        keep_selections, "Keep selections matching regex",
-        remove_selections, "Remove selections matching regex",
-
-        align_selections, "Align selections in column",
-
-        keep_primary_selection, "Keep primary selection",
-        remove_primary_selection, "Remove primary selection",
-
-        completion, "Invoke completion popup",
-
+        global_search, "search 🔭 ",
+        goto_declaration, "declaration  ",
+        goto_definition, "definition 📖",
+        goto_file, "Files/URLs in selections",
+        goto_file_end, "File end 󰞒 ",
+        goto_file_hsplit, "Goto files in selections (hsplit)",
+        goto_file_start, "Line number <n> else file start",
+        goto_file_vsplit, "Goto files in selections (vsplit)",
+        goto_first_change, "first change",
+        goto_first_diag,"first diagnostic",
+        goto_first_nonwhitespace, "non-blank 󰾹",
+        goto_implementation, "implementation  ",
+        goto_last_accessed_file, "last accessed 󱋢 ",
+        goto_last_change, "last change",
+        goto_last_diag, "last diagnostic",
+        goto_last_line, "Last line 󰞒 ",
+        goto_last_modification, "last modification 󰏫 ",
+        goto_last_modified_file, "last modified 󱇨 ",
+        goto_line, "Goto line",
+        goto_line_end, "Line end 󰞔 ",
+        goto_line_end_newline, "Goto newline at line end",
+        goto_line_start, "󰞓 Line start",
+        goto_next_buffer, "Next buffer  ",
+        goto_next_change, "next change",
+        goto_next_class, "next type definition",
+        goto_next_comment, "next comment",
+        goto_next_diag, "next diagnostic",
+        goto_next_function, "next function",
+        goto_next_paragraph, "next paragraph",
+        goto_next_parameter, "next parameter",
+        goto_next_test, "next test",
+        goto_prev_change, "previous change",
+        goto_prev_class, "previous type definition",
+        goto_prev_comment, "previous comment",
+        goto_prev_diag, "previous diagnostic",
+        goto_prev_function, "previous function",
+        goto_prev_paragraph, "previous paragraph",
+        goto_prev_parameter, "previous parameter",
+        goto_prev_test, "previous test",
+        goto_previous_buffer, "󰞓 Prev buffer",
+        goto_reference, "references 🔗",
+        goto_type_definition, "type definition  ",
+        goto_window_bottom, "bottom 󱂩 ",
+        goto_window_center, "center 󰞢 ",
+        goto_window_top, "top 󱔓 ",
+        half_page_down, "1/2 PgDn 󱞣 ",
+        half_page_up, "1/2 PgUp 󱞿 ",
         hover, "siknature 💡",
-
-        toggle_comments, "Comment/uncomment selections",
-        toggle_line_comments, "Line comment/uncomment selections",
-        toggle_block_comments, "Block comment/uncomment selections",
-
-        rotate_selections_forward, "Rotate selections forward",
-        rotate_selections_backward, "Rotate selections backward",
-
-        rotate_selection_contents_forward, "Rotate selection contents forward",
-        rotate_selection_contents_backward, "Rotate selections contents backward",
-
-        reverse_selection_contents, "Reverse selections contents",
-
-        expand_selection, "Expand selection to parent syntax node",
-        shrink_selection, "Shrink selection to previously expanded syntax node",
-
-        select_next_sibling, "Select next sibling in syntax tree",
-        select_prev_sibling, "Select previous sibling in syntax tree",
-
-        jump_forward, "Jump forward on jumplist",
-        jump_backward, "Jump backward on jumplist",
-
-        save_selection, "Save current selection to jumplist",
-
-        jump_view_right, "Jump to right split",
-        jump_view_left, "Jump to left split",
-        jump_view_up, "Jump to split above",
-        jump_view_down, "Jump to split below",
-
-        swap_view_right, "Swap with right split",
-        swap_view_left, "Swap with left split",
-        swap_view_up, "Swap with split above",
-        swap_view_down, "Swap with split below",
-
-        transpose_view, "Transpose splits",
-
-        rotate_view, "Goto next window",
-        rotate_view_reverse, "Goto previous window",
-
         hsplit, "Horizontal bottom split",
         hsplit_new, "Horizontal bottom split scratch buffer",
-
-        vsplit, "Vertical right split",
-        vsplit_new, "Vertical right split scratch buffer",
-
-        wclose, "Close window",
-        wonly, "Close windows except current",
-
-        select_register, "Select register",
+        increment, "Increment item under cursor",
+        indent, "Indent selection",
+        insert_at_line_end, "Insert at end of line ⏭️ ",
+        insert_at_line_start, "⏮️  Insert at start of line",
+        insert_mode, "insert 📝",
+        insert_newline, "Insert newline char",
         insert_register, "Insert register",
-
-        align_view_middle, "Align view middle",
-        align_view_top, "Align view top",
-        align_view_center, "Align view center",
-        align_view_bottom, "Align view bottom",
-
-        scroll_up, "Scroll view up",
-        scroll_down, "Scroll view down",
-
+        insert_tab, "Insert tab char",
+        join_selections, "Join lines inside selection",
+        join_selections_space, "Join lines inside selection and select spaces",
+        jump_backward, "Jump backward on jumplist",
+        jump_forward, "Jump forward on jumplist",
+        jump_view_down, "Jump to split below",
+        jump_view_left, "Jump to left split",
+        jump_view_right, "Jump to right split",
+        jump_view_up, "Jump to split above",
+        jumplist_picker, "jumplist 🦘",
+        keep_primary_selection, "Keep primary selection",
+        keep_selections, "Keep selections matching regex",
+        kill_to_line_end, "Delete till end of line",
+        kill_to_line_start, "Delete till start of line",
+        last_picker, "repeat 🔍",
+        later, "Move forward in history",
+        make_search_word_bounded, "Modify current search to make it word bounded",
         match_brackets, "bracket",
-
-        surround_add, "Surround add",
-        surround_replace, "Surround replace",
-        surround_delete, "Surround delete",
-
+        menu_separator,           "𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
+        menu_separator_clipboard, "𑁋𑁋𑁋𑁋𑁋𑁋𑁋 Clipboard 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
+        menu_separator_code,      "𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋 Code 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
+        menu_separator_global,    "𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋 Global 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
+        menu_separator_local,     "𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋 Local 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
+        merge_consecutive_selections, "Merge consecutive selections",
+        merge_selections, "Merge selections",
+        move_char_left, " move",
+        move_char_right, "move  ",
+        move_line_down, "move line  ",
+        move_line_up, "move line  ",
+        move_next_long_word_end, "Worrrd ",
+        move_next_long_word_start, " Worrrd",
+        move_next_word_end, "Word ",
+        move_next_word_start, " Word",
+        move_parent_node_end, "Parent ",
+        move_parent_node_start, " Parent",
+        move_prev_long_word_end, "Worrrd ",
+        move_prev_long_word_start, " Worrrd",
+        move_prev_word_end, "Word ",
+        move_prev_word_start, " Word",
+        move_visual_line_down, "move  ",
+        move_visual_line_up, "move  ",
+        no_op, "Do nothing 󰜺 ",
+        normal_mode, "Enter normal mode ⏹️ ",
+        open_above, "Open new line above selection 🔼",
+        open_below, "Open new line below selection 🔽",
+        page_cursor_down, "Move page and cursor down",
+        page_cursor_half_down, "Move page and cursor half down",
+        page_cursor_half_up, "Move page and cursor half up",
+        page_cursor_up, "Move page and cursor up",
+        page_down, "PgDn 󱞣 ",
+        page_up, "PgUp 󱞿 ",
+        paste_after, "paste ⮯",
+        paste_before, "⮬ paste",
+        paste_clipboard_after, "paste ⮯",
+        paste_clipboard_before, "⮬ paste",
+        paste_primary_clipboard_after, "paste ⮯",
+        paste_primary_clipboard_before, "⮬ paste",
+        record_macro, "Record macro",
+        redo, "Redo change",
+        remove_primary_selection, "Remove primary selection",
+        remove_selections, "Remove selections matching regex",
+        rename_symbol, "rename 🖊️ ",
+        repeat_last_motion, "Repeat motion",
+        replace, "Replace w/ char",
+        replace_selections_with_clipboard, "replace 💣",
+        replace_selections_with_primary_clipboard, "replace 💣",
+        replace_with_yanked, "replace 💣",
+        replay_macro, "Replay macro",
+        reverse_selection_contents, "Reverse selections contents",
+        rotate_selection_contents_backward, "Rotate selections contents backward",
+        rotate_selection_contents_forward, "Rotate selection contents forward",
+        rotate_selections_backward, "Rotate selections backward",
+        rotate_selections_forward, "Rotate selections forward",
+        rotate_view, "Goto next window",
+        rotate_view_reverse, "Goto previous window",
+        rsearch, "Reverse search for regex pattern",
+        save_selection, "Save current selection to jumplist",
+        scroll_down, "Scroll view down",
+        scroll_up, "Scroll view up",
+        search, "Search for regex pattern",
+        search_next, "Select next search match",
+        search_prev, "Select previous search match",
+        search_selection, "Use current selection as search pattern",
+        select_all, "Select all 󰒆 ",
+        select_mode, "Enter selection extend mode 🔛",
+        select_next_sibling, "Select next sibling in syntax tree",
+        select_prev_sibling, "Select previous sibling in syntax tree",
+        select_references_to_symbol_under_cursor, "highlight 🖍️ ",
+        select_regex, "Select all regex matches inside selections",
+        select_register, "Select register",
         select_textobject_around, "around",
         select_textobject_inner, "inside",
-
-        goto_next_function, "next function",
-        goto_prev_function, "previous function",
-
-        goto_next_class, "next type definition",
-        goto_prev_class, "previous type definition",
-
-        goto_next_parameter, "next parameter",
-        goto_prev_parameter, "previous parameter",
-
-        goto_next_comment, "next comment",
-        goto_prev_comment, "previous comment",
-
-        goto_next_test, "next test",
-        goto_prev_test, "previous test",
-
-        goto_next_paragraph, "next paragraph",
-        goto_prev_paragraph, "previous paragraph",
-
-        dap_launch, "launch",
-        dap_restart, "restart",
-        dap_toggle_breakpoint, "breakpoint",
-        dap_continue, "continue",
-        dap_pause, "pause",
-
-        dap_step_in, "step in",
-        dap_step_out, "step out",
-
-        dap_next, "next",
-
-        dap_variables, "variables",
-
-        dap_terminate, "terminate",
-
-        dap_edit_condition, "condition",
-        dap_edit_log, "log",
-
-        dap_switch_thread, "Switch current thread",
-        dap_switch_stack_frame, "Switch stack frame",
-
-        dap_enable_exceptions, "Enable breakpoints",
-        dap_disable_exceptions, "Disable breakpoints",
-
+        shell_append_output, "Append shell command output after selections",
+        shell_insert_output, "Insert shell command output before selections",
+        shell_keep_pipe, "Filter selections with shell predicate",
         shell_pipe, "Pipe selections through shell command",
         shell_pipe_to, "Pipe selections into shell command ignoring output",
-
-        shell_insert_output, "Insert shell command output before selections",
-        shell_append_output, "Append shell command output after selections",
-
-        shell_keep_pipe, "Filter selections with shell predicate",
-
+        shrink_selection, "Shrink selection to previously expanded syntax node",
+        shrink_to_line_bounds, "Shrink selection to line bounds",
+        signature_help, "Show signature help",
+        smart_tab, "Insert tab if all cursors have all whitespace to their left; otherwise, run a separate command.",
+        split_selection, "Split selections on regex matches",
+        split_selection_on_newline, "Split selection on newlines",
+        surround_add, "Surround add",
+        surround_delete, "Surround delete",
+        surround_replace, "Surround replace",
         suspend, "Suspend and return to shell",
-
-        rename_symbol, "rename 🖊️ ",
-
-        increment, "Increment item under cursor",
-        decrement, "Decrement item under cursor",
-
-        record_macro, "Record macro",
-        replay_macro, "Replay macro",
-
-        command_palette, "commands  ",
+        swap_view_down, "Swap with split below",
+        swap_view_left, "Swap with left split",
+        swap_view_right, "Swap with right split",
+        swap_view_up, "Swap with split above",
+        switch_case, "Toggle case  ",
+        switch_to_lowercase, "Lowercase 󰬵 ",
+        switch_to_uppercase, "Uppercase 󰬶 ",
+        symbol_picker, "symbol 💲",
+        till_prev_char, "Char ",
+        toggle_block_comments, "Block comment/uncomment selections",
+        toggle_comments, "Comment/uncomment selections",
+        toggle_line_comments, "Line comment/uncomment selections",
+        transpose_view, "Transpose splits",
+        trim_selections, "Trim whitespace from selections",
+        undo, "Undo change",
+        unindent, "Unindent selection",
+        vsplit, "Vertical right split",
+        vsplit_new, "Vertical right split scratch buffer",
+        wclose, "Close window",
+        wonly, "Close windows except current",
+        workspace_diagnostics_picker, "diagnostics 💔",
+        workspace_symbol_picker, "symbols 💲",
+        yank, "yank 📤",
+        yank_joined, "yank joined ⧉ ",
+        yank_joined_to_clipboard, "copy joined ⧉ ",
+        yank_joined_to_primary_clipboard, "export joined ⧉ ",
+        yank_main_selection_to_clipboard, "copy main 🮰 ",
+        yank_main_selection_to_primary_clipboard, "export main 🮰 ",
+        yank_to_clipboard, "copy 📄",
+        yank_to_primary_clipboard, "export 💻",
     );
 }
 
