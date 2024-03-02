@@ -10,6 +10,10 @@ impl ProgressSpinners {
         self.inner.get(&id)
     }
 
+    pub fn get_mut(&mut self, id: usize) -> Option<&mut Spinner> {
+        self.inner.get_mut(&id)
+    }
+
     pub fn get_or_create(&mut self, id: usize) -> &mut Spinner {
         self.inner.entry(id).or_default()
     }
@@ -17,7 +21,7 @@ impl ProgressSpinners {
 
 impl Default for Spinner {
     fn default() -> Self {
-        Self::dots(80)
+        Self::dots(100)
     }
 }
 
@@ -25,8 +29,10 @@ impl Default for Spinner {
 pub struct Spinner {
     frames: Vec<&'static str>,
     count: usize,
-    start: Option<Instant>,
+    last_frame: Instant,
+    is_stopped: bool,
     interval: u64,
+    idx: usize,
 }
 
 impl Spinner {
@@ -40,8 +46,10 @@ impl Spinner {
         Self {
             frames,
             count,
+            last_frame: Instant::now(),
+            is_stopped: true,
             interval,
-            start: None,
+            idx: 0,
         }
     }
 
@@ -50,25 +58,26 @@ impl Spinner {
     }
 
     pub fn start(&mut self) {
-        self.start = Some(Instant::now());
+        self.is_stopped = false;
     }
 
-    pub fn frame(&self) -> Option<&str> {
-        let idx = (self
-            .start
-            .map(|time| Instant::now().duration_since(time))?
-            .as_millis()
-            / self.interval as u128) as usize
-            % self.count;
-
-        self.frames.get(idx).copied()
+    pub fn frame(&mut self) -> Option<&str> {
+        if self.is_stopped {
+            None
+        } else {
+            if Instant::now().duration_since(self.last_frame).as_millis() as u64 >= self.interval {
+                self.idx = (self.idx + 1) % self.count;
+                self.last_frame = Instant::now();
+            }
+            self.frames.get(self.idx).copied()
+        }
     }
 
     pub fn stop(&mut self) {
-        self.start = None;
+        self.is_stopped = true;
     }
 
     pub fn is_stopped(&self) -> bool {
-        self.start.is_none()
+        self.is_stopped
     }
 }

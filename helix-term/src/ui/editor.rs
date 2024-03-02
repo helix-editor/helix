@@ -82,7 +82,7 @@ impl EditorView {
     }
 
     pub fn render_view(
-        &self,
+        &mut self,
         editor: &Editor,
         doc: &Document,
         view: &View,
@@ -228,7 +228,7 @@ impl EditorView {
             .clip_bottom(1); // -1 from bottom to remove commandline
 
         let mut context =
-            statusline::RenderContext::new(editor, doc, view, is_focused, &self.spinners);
+            statusline::RenderContext::new(editor, doc, view, is_focused, &mut self.spinners);
 
         statusline::render(&mut context, statusline_area, surface);
     }

@@ -19,7 +19,7 @@ pub struct RenderContext<'a> {
     pub doc: &'a Document,
     pub view: &'a View,
     pub focused: bool,
-    pub spinners: &'a ProgressSpinners,
+    pub spinners: &'a mut ProgressSpinners,
     pub parts: RenderBuffer<'a>,
 }
 
@@ -29,7 +29,7 @@ impl<'a> RenderContext<'a> {
         doc: &'a Document,
         view: &'a View,
         focused: bool,
-        spinners: &'a ProgressSpinners,
+        spinners: &'a mut ProgressSpinners,
     ) -> Self {
         RenderContext {
             editor,
@@ -205,18 +205,20 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     let language_server = context.doc.language_servers().next();
+    let spinner_frame = language_server
+        .and_then(|srv| {
+            context
+                .spinners
+                .get_mut(srv.id())
+                .and_then(|spinner| spinner.frame())
+        })
+        // Even if there's no spinner; reserve its space to avoid elements frequently shifting.
+        .unwrap_or(" ")
+        .to_string();
+    
     write(
         context,
-        language_server
-            .and_then(|srv| {
-                context
-                    .spinners
-                    .get(srv.id())
-                    .and_then(|spinner| spinner.frame())
-            })
-            // Even if there's no spinner; reserve its space to avoid elements frequently shifting.
-            .unwrap_or(" ")
-            .to_string(),
+        spinner_frame,
         None,
     );
 }
