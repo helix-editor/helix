@@ -91,6 +91,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
         "C-z" | "u" => undo,
         "C-y" | "U" => redo,
+
         "A-u" => earlier,
         "A-U" => later,
 
@@ -128,7 +129,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "C-d" => page_cursor_half_down,
 
         "v" => select_mode,
-        "G" => goto_line,
+
+        "C-g" => goto_line,
 
         "C-/" => toggle_comments,
 
