@@ -2915,9 +2915,9 @@ scope = "source.just"
 file-types = [{ glob = "justfile" }, { glob = "Justfile" }, { glob = ".justfile" }, { glob = ".Justfile" }]
 injection-regex = "just"
 comment-token = "#"
-indent = { tab-width = 4, unit = "\t" }
-auto-format = true
-formatter = { command = "just", args = ["--dump"] }
+indent = { tab-width = 4, unit = "    " }
+# auto-format = true
+# formatter = { command = "just", args = ["--dump"] } # Please see: https://github.com/helix-editor/helix/issues/9703
 
 [[grammar]]
 name = "just"
