@@ -134,7 +134,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
         "C-/" => toggle_comments,
         "C-S-/" => toggle_block_comments,
-        "A-c" => toggle_line_comments,
+        "C-A-/" => toggle_line_comments,
 
         "C-i" | "tab" => jump_forward,
         "C-o" => jump_backward,
