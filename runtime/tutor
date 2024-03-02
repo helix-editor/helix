@@ -1458,9 +1458,9 @@ Open a split on the left with :vs hello1 and then a split below
 with :vs hello2.
 
 Move to the tutor split, then press Ctrl-w t to transpose the
-vertical split that was opened from this window: now hello1 and
-hello2 and below, rather than on the right, of the tutor. Press
-Ctrl-w t to transpose back.
+vertical split opened from this window: now, hello1 and
+hello2 are below, rather than to the right of, the tutor. Press
+Ctrl-w t again to transpose back.
 
 Move to the hello1 split, then press Ctrl-w t to transpose the
 horizontal split that was opened from this window: now hello2
