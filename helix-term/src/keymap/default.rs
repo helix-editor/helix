@@ -221,8 +221,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
                 "b" => dap_toggle_breakpoint,
                 "c" => dap_continue,
 
-                // "h" => dap_pause,
-                "h" => no_op,
                 "p" => dap_pause,
 
                 "i" => dap_step_in,
@@ -235,11 +233,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
                 "s" => { " Switch  "
                     "t" => dap_switch_thread,
                     "f" => dap_switch_stack_frame,
-                    // sl, sb
                 },
                 "e" => dap_enable_exceptions,
-                // "E" => dap_disable_exceptions,
-                "E" => no_op,
                 "d" => dap_disable_exceptions,
             },
 
@@ -249,12 +244,12 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
                 "t" => align_view_top,
                 "b" => align_view_bottom,
                 "m" => align_view_middle,
-                "k" | "up" => scroll_up,
-                "j" | "down" => scroll_down,
-                "C-b" | "pageup" => page_up,
-                "C-f" | "pagedown" => page_down,
-                "C-u" | "backspace" => page_cursor_half_up,
-                "C-d" | "space" => page_cursor_half_down,
+                "up" => scroll_up,
+                "down" => scroll_down,
+                "pageup" => page_up,
+                "pagedown" => page_down,
+                "backspace" => page_cursor_half_up,
+                "space" => page_cursor_half_down,
 
                 "/" => search,
                 "?" => rsearch,
@@ -264,25 +259,25 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
             // Submenu
             "w" => { "🪟 window  "
-                "C-w" | "w" => rotate_view,
-                "C-s" | "s" => hsplit,
-                "C-v" | "v" => vsplit,
-                "C-t" | "t" => transpose_view,
+                "w" => rotate_view,
+                "s" => hsplit,
+                "v" => vsplit,
+                "t" => transpose_view,
                 "f" => goto_file_hsplit,
                 "F" => goto_file_vsplit,
-                "C-q" | "q" => wclose,
-                "C-o" | "o" => wonly,
-                "C-h" | "h" | "left" => jump_view_left,
-                "C-j" | "j" | "down" => jump_view_down,
-                "C-k" | "k" | "up" => jump_view_up,
-                "C-l" | "l" | "right" => jump_view_right,
+                "q" => wclose,
+                "o" => wonly,
+                "left" => jump_view_left,
+                "down" => jump_view_down,
+                "up" => jump_view_up,
+                "right" => jump_view_right,
                 "H" => swap_view_left,
                 "J" => swap_view_down,
                 "K" => swap_view_up,
                 "L" => swap_view_right,
                 "n" => { "New split scratch buffer"
-                    "C-s" | "s" => hsplit_new,
-                    "C-v" | "v" => vsplit_new,
+                    "s" => hsplit_new,
+                    "v" => vsplit_new,
                 },
             },
         },
@@ -367,10 +362,10 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
     let mut select = normal.clone();
     select.merge_nodes(keymap!({ "Select mode"
-        "h" | "left" => extend_char_left,
-        "j" | "down" => extend_visual_line_down,
-        "k" | "up" => extend_visual_line_up,
-        "l" | "right" => extend_char_right,
+        "left" => extend_char_left,
+        "down" => extend_visual_line_down,
+        "up" => extend_visual_line_up,
+        "right" => extend_char_right,
 
         "w" => extend_next_word_start,
         "b" => extend_prev_word_start,
