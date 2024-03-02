@@ -180,6 +180,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "C-f" | "pagedown" => page_down,
         "C-u" => page_cursor_half_up,
         "C-d" => page_cursor_half_down,
+        "C-y" => scroll_line_up,
+        "C-e" => scroll_line_down,
 
         "C-w" => { "Window"
             "C-w" | "w" => rotate_view,

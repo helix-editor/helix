@@ -56,6 +56,8 @@ Normal mode is the default mode when you launch helix. You can return to it from
 | `Ctrl-f`, `PageDown`  | Move page down                                     | `page_down`                 |
 | `Ctrl-u`              | Move cursor and page half page up                  | `page_cursor_half_up`       |
 | `Ctrl-d`              | Move cursor and page half page down                | `page_cursor_half_down`     |
+| `Ctrl-y`              | Scroll one line up                                 | `scroll_line_up`            |
+| `Ctrl-e`              | Scroll one line down                               | `scroll_line_down`          |
 | `Ctrl-i`              | Jump forward on the jumplist                       | `jump_forward`              |
 | `Ctrl-o`              | Jump backward on the jumplist                      | `jump_backward`             |
 | `Ctrl-s`              | Save the current selection to the jumplist         | `save_selection`            |

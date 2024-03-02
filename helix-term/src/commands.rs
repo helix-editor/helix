@@ -282,6 +282,8 @@ impl MappableCommand {
         page_cursor_down, "Move page and cursor down",
         page_cursor_half_up, "Move page and cursor half up",
         page_cursor_half_down, "Move page and cursor half down",
+        scroll_line_up, "Scroll one line up",
+        scroll_line_down, "Scroll one line down",
         select_all, "Select whole document",
         select_regex, "Select all regex matches inside selections",
         split_selection, "Split selections on regex matches",
@@ -1762,6 +1764,14 @@ fn page_cursor_half_down(cx: &mut Context) {
     let view = view!(cx.editor);
     let offset = view.inner_height() / 2;
     scroll(cx, offset, Direction::Forward, true);
+}
+
+fn scroll_line_up(cx: &mut Context) {
+    scroll(cx, cx.count(), Direction::Backward, false);
+}
+
+fn scroll_line_down(cx: &mut Context) {
+    scroll(cx, cx.count(), Direction::Forward, false);
 }
 
 #[allow(deprecated)]
