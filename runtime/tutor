@@ -1423,8 +1423,8 @@ to open it in a new buffer. Similarly, you can enter the command:
 
 :hs some_more
 
-to open a new buffer called some_more in the lower half.
-some_more could be any file or path to open this specific file or path
+to open a new buffer named "some_more" in the lower half.
+"some_more" could be any file or path to open this specific file or path
 instead of a new empty buffer.
 
 
