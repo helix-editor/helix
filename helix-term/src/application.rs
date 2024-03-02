@@ -32,7 +32,9 @@ use crate::{
 use log::{debug, error, info, warn};
 #[cfg(not(feature = "integration"))]
 use std::io::stdout;
-use std::{collections::btree_map::Entry, io::stdin, path::Path, sync::Arc};
+use std::{
+    collections::btree_map::Entry, future, io::stdin, path::Path, sync::Arc, time::Duration
+};
 
 use anyhow::{Context, Error};
 
@@ -297,6 +299,10 @@ impl Application {
         }
     }
 
+    fn should_autoredraw(&self) -> bool {
+        self.lsp_progress.is_progressing_any()
+    }
+
     pub async fn event_loop_until_idle<S>(&mut self, input_stream: &mut S) -> bool
     where
         S: Stream<Item = std::io::Result<crossterm::event::Event>> + Unpin,
@@ -347,6 +353,10 @@ impl Application {
                             return true;
                         }
                     }
+                }
+                // If the view should auto-redraw, then redraw it if there are no events during 100ms
+                _ = tokio::time::timeout(Duration::from_millis(100), future::pending::<()>()), if self.should_autoredraw() => {
+                    helix_event::request_redraw();
                 }
             }
 
