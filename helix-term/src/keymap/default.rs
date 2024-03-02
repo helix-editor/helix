@@ -191,6 +191,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "k" => hover,
             "r" => rename_symbol,
             "h" => select_references_to_symbol_under_cursor,
+            "C-space" => add_newline_above,
+            "space" => add_newline_below,
 
             "📋" => menu_separator_clipboard,
 
