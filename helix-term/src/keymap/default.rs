@@ -137,7 +137,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "C-i" | "tab" => jump_forward,
         "C-o" => jump_backward,
         "C-s" => save_selection,
-        
+
         "\"" => select_register,
         "|" => shell_pipe,
         "A-|" => shell_pipe_to,
@@ -332,44 +332,33 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "i" => select_textobject_inner,
         },
 
-        "[" => { " 〚 Left bracket "
-            "d" => goto_prev_diag,
+        "[" => { " ⮬ Goto "
             "D" => goto_first_diag,
-            "g" => goto_prev_change,
-            "G" => goto_first_change,
+            "C" => goto_first_change,
+
+            "d" => goto_prev_diag,
+            "c" => goto_prev_change,
             "f" => goto_prev_function,
             "t" => goto_prev_class,
             "a" => goto_prev_parameter,
-            "c" => goto_prev_comment,
+            "/" => goto_prev_comment,
             "T" => goto_prev_test,
             "p" => goto_prev_paragraph,
-            "space" => add_newline_above,
         },
 
-        "]" => { " Right bracket 〛"
+        "]" => { " Goto ⮯ "
             "d" => goto_next_diag,
-            "D" => goto_last_diag,
-            "g" => goto_next_change,
-            "G" => goto_last_change,
+            "c" => goto_next_change,
             "f" => goto_next_function,
             "t" => goto_next_class,
             "a" => goto_next_parameter,
-            "c" => goto_next_comment,
+            "/" => goto_next_comment,
             "T" => goto_next_test,
             "p" => goto_next_paragraph,
-            "space" => add_newline_below,
+
+            "D" => goto_last_diag,
+            "G" => goto_last_change,
         },
-
-        "\"" => select_register,
-        "|" => shell_pipe,
-        "A-|" => shell_pipe_to,
-        "!" => shell_insert_output,
-        "A-!" => shell_append_output,
-        "$" => shell_keep_pipe,
-        "C-z" => suspend,
-
-        // "C-a" => increment,
-        "C-x" => decrement,
     });
 
     let mut select = normal.clone();
