@@ -423,16 +423,16 @@ impl MappableCommand {
         
         goto_last_line, "Last line 󰞒 ",
         
-        goto_first_diag, "Goto first diagnostic",
-        goto_last_diag, "Goto last diagnostic",
-        goto_next_diag, "Goto next diagnostic",
-        goto_prev_diag, "Goto previous diagnostic",
+        goto_first_diag,"first diagnostic",
+        goto_last_diag, "last diagnostic",
+        goto_next_diag, "next diagnostic",
+        goto_prev_diag, "previous diagnostic",
         
-        goto_next_change, "Goto next change",
-        goto_prev_change, "Goto previous change",
+        goto_next_change, "next change",
+        goto_prev_change, "previous change",
         
-        goto_first_change, "Goto first change",
-        goto_last_change, "Goto last change",
+        goto_first_change, "first change",
+        goto_last_change, "last change",
         
         goto_line_start, "󰞓 Line start",
         goto_line_end, "Line end 󰞔 ",
@@ -582,23 +582,23 @@ impl MappableCommand {
         select_textobject_around, "around",
         select_textobject_inner, "inside",
 
-        goto_next_function, "Goto next function",
-        goto_prev_function, "Goto previous function",
+        goto_next_function, "next function",
+        goto_prev_function, "previous function",
 
-        goto_next_class, "Goto next type definition",
-        goto_prev_class, "Goto previous type definition",
+        goto_next_class, "next type definition",
+        goto_prev_class, "previous type definition",
 
-        goto_next_parameter, "Goto next parameter",
-        goto_prev_parameter, "Goto previous parameter",
+        goto_next_parameter, "next parameter",
+        goto_prev_parameter, "previous parameter",
 
-        goto_next_comment, "Goto next comment",
-        goto_prev_comment, "Goto previous comment",
+        goto_next_comment, "next comment",
+        goto_prev_comment, "previous comment",
 
-        goto_next_test, "Goto next test",
-        goto_prev_test, "Goto previous test",
+        goto_next_test, "next test",
+        goto_prev_test, "previous test",
 
-        goto_next_paragraph, "Goto next paragraph",
-        goto_prev_paragraph, "Goto previous paragraph",
+        goto_next_paragraph, "next paragraph",
+        goto_prev_paragraph, "previous paragraph",
 
         dap_launch, "launch",
         dap_restart, "restart",
