@@ -1354,9 +1354,9 @@ window will now split in 2 vertically, a new empty buffer split
 will appear on the right half, and your cursor will jump to the
 new vertical split.
 
-To create a new empty buffer in an horizontal split, press
-Ctrl-w ns . This will split your current window in 2 horizontally
-and create a new buffer, and your cursor will jump to the new
+To create a new empty buffer in a horizontal split, press
+Ctrl-w ns. This action divides your current window into two horizontally,
+creates a new buffer, and moves your cursor to the new
 horizontal split.
 
 
