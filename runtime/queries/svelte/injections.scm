@@ -19,13 +19,6 @@
    (quoted_attribute_value (attribute_value) @css))
  (#eq? @_attr "style"))
 
-((script_element
-  (raw_text) @injection.content)
-  (#set! injection.language "javascript"))
-
-((raw_text_expr) @injection.content
- (#set! injection.language "javascript"))
-
 (
   (script_element
     (start_tag
@@ -35,6 +28,13 @@
   (#match? @_lang "(ts|typescript)")
   (#set! injection.language "typescript")
 )
+
+((script_element
+  (raw_text) @injection.content)
+  (#set! injection.language "javascript"))
+
+((raw_text_expr) @injection.content
+ (#set! injection.language "javascript"))
 
 ((comment) @injection.content
  (#set! injection.language "comment"))
