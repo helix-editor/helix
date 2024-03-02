@@ -140,14 +140,14 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "C-S-tab" => goto_previous_buffer,
         "C-home" => goto_file_start,
         "C-end" => goto_last_line,
-        "C-up" => goto_window_top,
-        "C-down" => goto_window_bottom,
         "C-," => file_picker,
         "C-." => file_picker,
         "F2" => rename_symbol,
         "F12" => goto_definition,
         "S-F12" => goto_reference,
         "K" => hover,
+        "C-up" => scroll_up,
+        "C-down" => scroll_down,
 
         // Menu
         "space" => { " ⭐ Space "
