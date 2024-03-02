@@ -1344,7 +1344,7 @@ actions available in a popup. This will allow you to:
 =                CHAPTER 13.1 CREATE NEW SPLIT                  =
 =================================================================
 
-In normal mode, press Ctrl-w to open the Window menu and display
+In Normal mode, press Ctrl-w to open the Window menu, which displays
 a list of available commands.
 
 To open a new empty buffer in a vertical split on the right half
