@@ -13,7 +13,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "C-S-left" => select_prev_sibling,
         "C-S-right" => select_next_sibling,
 
-        // up / down combinations
         "up" => move_line_up,
         "down" => move_line_down,
 
@@ -90,8 +89,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "N" => search_prev,
         "*" => search_selection,
 
-        "u" => undo,
-        "U" => redo,
+        "C-z" | "u" => undo,
+        "C-y" | "U" => redo,
         "A-u" => earlier,
         "A-U" => later,
 
@@ -136,6 +135,17 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "C-i" | "tab" => jump_forward,
         "C-o" => jump_backward,
         "C-s" => save_selection,
+        
+        "\"" => select_register,
+        "|" => shell_pipe,
+        "A-|" => shell_pipe_to,
+        "!" => shell_insert_output,
+        "A-!" => shell_append_output,
+        "$" => shell_keep_pipe,
+        // "C-z" => suspend,
+
+        // "C-a" => increment,
+        "C-x" => decrement,
 
         // new to normal mode
         "C-tab" => goto_next_buffer,
