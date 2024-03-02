@@ -33,8 +33,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
         "b" => move_prev_word_start,
 
-        "C-left" => move_prev_word_start,
-        "C-right" => move_next_word_start,
+        "C-S-left" => move_prev_word_start,
+        "C-S-right" => move_next_word_start,
 
         ":" => command_mode,
 
@@ -67,8 +67,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
         "A-;" => flip_selections,
 
-        "A-o" | "A-up" => expand_selection,
-        "A-i" | "A-down" => shrink_selection,
+        "C-S-up" => expand_selection,
+        "C-S-down" => shrink_selection,
         "A-p" | "A-left" => select_prev_sibling,
         "A-n" | "A-right" => select_next_sibling,
         "A-e" => move_parent_node_end,
