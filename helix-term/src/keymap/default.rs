@@ -19,7 +19,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         // "" => change_selection_noyank,
         // "" => code_action,
         // "" => collapse_selection,
-        // "" => command_mode,
+        ":" => command_mode,
         // "" => command_palette,
         // "" => commit_undo_checkpoint,
         // "" => completion,
