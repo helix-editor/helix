@@ -8,9 +8,20 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
     let normal = keymap!({ "Normal mode"
 
         "left" => move_char_left,
-        "down" => move_visual_line_down,
-        "up" => move_visual_line_up,
         "right" => move_char_right,
+
+        "C-S-left" => select_prev_sibling,
+        "C-S-right" => select_next_sibling,
+
+        // up / down combinations
+        "up" => move_line_up,
+        "down" => move_line_down,
+
+        "S-down" => extend_line_down,
+        "S-up" => extend_line_up,
+
+        "C-S-up" => expand_selection,
+        "C-S-down" => shrink_selection,
 
         "t" => find_till_char,
         "T" => till_prev_char,
@@ -32,9 +43,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "e" => move_next_word_end,
 
         "b" => move_prev_word_start,
-
-        "C-S-left" => move_prev_word_start,
-        "C-S-right" => move_next_word_start,
 
         ":" => command_mode,
 
@@ -67,18 +75,12 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
         "A-;" => flip_selections,
 
-        "C-S-up" => expand_selection,
-        "C-S-down" => shrink_selection,
-        "A-p" | "A-left" => select_prev_sibling,
-        "A-n" | "A-right" => select_next_sibling,
         "A-e" => move_parent_node_end,
         "A-b" => move_parent_node_start,
 
         "C-a" => select_all,
 
         "x" => no_op,
-        "S-down" => extend_line_down,
-        "S-up" => extend_line_up,
         "X" => extend_to_line_bounds,
         "A-x" => shrink_to_line_bounds,
 
