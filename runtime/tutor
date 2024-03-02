@@ -1416,10 +1416,10 @@ also be used to split a specific buffer vertically or horizontally. For example,
 
 :vs something
 
-to open a new vertical split called something to the right. Here
-something is not an existing file, so this will open a new buffer
-under this name, but you could replace something with any file name
-to open it in a new buffer. Similarly, you can type the command:
+to open a new vertical split named "something" to the right. Here,
+"something" is not an existing file, so a new buffer with this name
+will open; however, you can replace "something" with any file name
+to open it in a new buffer. Similarly, you can enter the command:
 
 :hs some_more
 
