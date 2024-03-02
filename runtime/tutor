@@ -1367,9 +1367,9 @@ horizontal split.
 =================================================================
 
 Use Ctrl-w k to move to the split above your current split. Use
-Ctrl-w j to move back to the split below. Use Ctrl-w h to move to
-the split left, and Ctrl-w l to move back to the split right. To
-move to the next split (in opening order), press Ctrl-w w .
+Ctrl-w j to move to the split below. Use Ctrl-w h to move to the
+split on the left, and Ctrl-w l to move to the split on the right. To
+navigate to the next split (in the order they were opened), press Ctrl-w w.
 
 You can now do whatever you want in your new buffers and splits.
 Once you are done with using your new buffer split,
