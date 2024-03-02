@@ -197,7 +197,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "📋" => menu_separator_clipboard,
 
             // Submenu
-            "y" => { "📤 yank  " sticky=true
+            "y" => { "📤 Yank  " sticky=true
                 "y" => yank,
                 "j" => yank_joined,
                 "P" => paste_before,
@@ -206,7 +206,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             },
 
             // Submenu
-            "c" => { "📋 copy  " sticky=true
+            "c" => { "📋 Copy  " sticky=true
                 "c" => yank_to_clipboard,
                 "j" => yank_joined_to_clipboard,
                 "m" => yank_main_selection_to_clipboard,
@@ -216,7 +216,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             },
 
             // Submenu
-            "e" => { "💻 export  " sticky=true
+            "e" => { "💻 Export  " sticky=true
                 "e" => yank_to_primary_clipboard,
                 "E" => yank_joined_to_primary_clipboard,
                 "A-e" => yank_main_selection_to_primary_clipboard,
@@ -229,7 +229,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "‒" => menu_separator,
 
             // Submenu
-            "g" => { "🐞 debug  " sticky=true
+            "g" => { "🐞 Debug  " sticky=true
                 "l" => dap_launch,
                 "r" => dap_restart,
                 "b" => dap_toggle_breakpoint,
@@ -272,7 +272,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             },
 
             // Submenu
-            "w" => { "🪟 window  "
+            "w" => { "🪟 Window  "
                 "w" => rotate_view,
                 "s" => hsplit,
                 "v" => vsplit,
