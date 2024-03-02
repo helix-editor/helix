@@ -1410,9 +1410,9 @@ Close extra splits with Ctrl-w o to return to a single window view.
 =               CHAPTER 13.4 USE COMMANDS TO SPLIT              =
 =================================================================
 
-You can also use the :vsplit (aliased to :vs for convenience) or
-the :hsplit (aliased to :hs ) to split vertically or horizontally
-a specific buffer. For example, type in the command:
+The :vsplit (or :vs for short) and :hsplit (or :hs) commands can
+also be used to split a specific buffer vertically or horizontally. For example, enter the command:
+
 
 :vs something
 
