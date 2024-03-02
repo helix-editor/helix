@@ -1355,9 +1355,9 @@ will appear on the right half, and your cursor will jump to the
 new vertical split.
 
 To create a new empty buffer in a horizontal split, press
-Ctrl-w ns. This action divides your current window into two horizontally,
-creates a new buffer, and moves your cursor to the new
-horizontal split.
+Ctrl-w ns. This action divides your current window into two
+horizontally, creates a new buffer, and moves your cursor to the
+new horizontal split.
 
 
 
@@ -1367,9 +1367,10 @@ horizontal split.
 =================================================================
 
 Use Ctrl-w k to move to the split above your current split. Use
-Ctrl-w j to move to the split below. Use Ctrl-w h to move to the
-split on the left, and Ctrl-w l to move to the split on the right. To
-navigate to the next split (in the order they were opened), press Ctrl-w w.
+Ctrl-w j to move to the split below. Use Ctrl-w h to move to
+the split on the left, and Ctrl-w l to move to the split on the
+right. To navigate to the next split (in the order they were
+opened), press Ctrl-w w.
 
 You can now do whatever you want in your new buffers and splits.
 Once you are done with using your new buffer split,
@@ -1381,7 +1382,6 @@ You can also close all splits except the current one with Ctrl-w o .
 Open a third vertical split with Ctrl-w nv , then move to the
 leftmost split with Ctrl-w h twice, then from inside the split on
 the left press Ctrl-w o to close all except this split.
-
 
 
 =================================================================
@@ -1411,8 +1411,8 @@ Close extra splits with Ctrl-w o to return to a single window view.
 =================================================================
 
 The :vsplit (or :vs for short) and :hsplit (or :hs) commands can
-also be used to split a specific buffer vertically or horizontally. For example, enter the command:
-
+also be used to split a specific buffer vertically or horizontally.
+For example, enter the command:
 
 :vs something
 
@@ -1424,8 +1424,8 @@ to open it in a new buffer. Similarly, you can enter the command:
 :hs some_more
 
 to open a new buffer named "some_more" in the lower half.
-"some_more" could be any file or path to open this specific file or path
-instead of a new empty buffer.
+"some_more" could be any file or path to open this specific file
+or path instead of a new empty buffer.
 
 
 =================================================================
