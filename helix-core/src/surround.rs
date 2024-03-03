@@ -260,7 +260,8 @@ pub fn get_surround_pos(
         if change_pos.contains(&open_pos) || change_pos.contains(&close_pos) {
             return Err(Error::CursorOverlap);
         }
-        change_pos.extend_from_slice(&[open_pos, close_pos]);
+        // ensure the positions are always paired in the forward direction
+        change_pos.extend_from_slice(&[open_pos.min(close_pos), close_pos.max(open_pos)]);
     }
     Ok(change_pos)
 }
