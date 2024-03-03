@@ -105,16 +105,22 @@ pub struct Completion {
     trigger_offset: usize,
     filter: String,
     resolve_handler: tokio::sync::mpsc::Sender<CompletionItem>,
+    is_incomplete: bool
 }
 
 impl Completion {
     pub const ID: &'static str = "completion";
+
+    pub fn is_incomplete(&self) -> bool {
+        self.is_incomplete
+    }
 
     pub fn new(
         editor: &Editor,
         savepoint: Arc<SavePoint>,
         mut items: Vec<CompletionItem>,
         trigger_offset: usize,
+        is_incomplete: bool,
     ) -> Self {
         let preview_completion_insert = editor.config().preview_completion_insert;
         let replace_mode = editor.config().completion_replace;
@@ -372,6 +378,7 @@ impl Completion {
             // and avoid allocation during matching
             filter: String::from(fragment),
             resolve_handler: ResolveHandler::default().spawn(),
+            is_incomplete,
         };
 
         // need to recompute immediately in case start_offset != trigger_offset
