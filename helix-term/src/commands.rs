@@ -585,6 +585,8 @@ impl MappableCommand {
         command_palette, "Open command palette",
         goto_word, "Jump to a two-character label",
         extend_to_word, "Extend to a two-character label",
+        goto_next_tabstop, "goto next snippet placeholder",
+        goto_prev_tabstop, "goto next snippet placeholder",
     );
 }
 
@@ -3948,7 +3950,11 @@ pub mod insert {
             });
 
             if !cursors_after_whitespace {
-                move_parent_node_end(cx);
+                if doc.active_snippet.is_some() {
+                    goto_next_tabstop(cx);
+                } else {
+                    move_parent_node_end(cx);
+                }
                 return;
             }
         }
@@ -6184,6 +6190,47 @@ fn increment_impl(cx: &mut Context, increment_direction: IncrementDirection) {
         let transaction = transaction.with_selection(new_selection);
         doc.apply(&transaction, view.id);
         exit_select_mode(cx);
+    }
+}
+
+fn goto_next_tabstop(cx: &mut Context) {
+    goto_next_tabstop_impl(cx, Direction::Forward)
+}
+
+fn goto_prev_tabstop(cx: &mut Context) {
+    goto_next_tabstop_impl(cx, Direction::Backward)
+}
+
+fn goto_next_tabstop_impl(cx: &mut Context, direction: Direction) {
+    let (view, doc) = current!(cx.editor);
+    let view_id = view.id;
+    let Some(mut snippet) = doc.active_snippet.take() else {
+        cx.editor.set_error("no snippet is currently active");
+        return;
+    };
+    let tabstop = match direction {
+        Direction::Forward => Some(snippet.next_tabstop(doc.selection(view_id))),
+        Direction::Backward => snippet
+            .prev_tabstop(doc.selection(view_id))
+            .map(|selection| (selection, false)),
+    };
+    let Some((selection, last_tabstop)) = tabstop else {
+        return;
+    };
+    doc.set_selection(view_id, selection);
+    if !last_tabstop {
+        doc.active_snippet = Some(snippet)
+    }
+    if cx.editor.mode() == Mode::Insert {
+        cx.on_next_key_fallback(|cx, key| {
+            if let Some(c) = key.char() {
+                let (view, doc) = current!(cx.editor);
+                if let Some(snippet) = &doc.active_snippet {
+                    doc.apply(&snippet.delete_placeholder(doc.text()), view.id);
+                }
+                insert_char(cx, c);
+            }
+        })
     }
 }
 
