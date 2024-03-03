@@ -1,5 +1,5 @@
 use crate::{
-    commands::{self, OnKeyCallback},
+    commands::{self, OnKeyCallback, OnKeyCallbackKind},
     compositor::{Component, Context, Event, EventResult},
     events::{OnModeSwitch, PostCommand},
     handlers::completion::CompletionItem,
@@ -37,7 +37,7 @@ use tui::{buffer::Buffer as Surface, text::Span};
 
 pub struct EditorView {
     pub keymaps: Keymaps,
-    on_next_key: Option<OnKeyCallback>,
+    on_next_key: Option<(OnKeyCallback, OnKeyCallbackKind)>,
     pseudo_pending: Vec<KeyEvent>,
     pub(crate) last_insert: (commands::MappableCommand, Vec<InsertEvent>),
     pub(crate) completion: Option<Completion>,
@@ -918,8 +918,10 @@ impl EditorView {
         if let Some(keyresult) = self.handle_keymap_event(Mode::Insert, cx, event) {
             match keyresult {
                 KeymapResult::NotFound => {
-                    if let Some(ch) = event.char() {
-                        commands::insert::insert_char(cx, ch)
+                    if !self.on_next_key(OnKeyCallbackKind::Fallback, cx, event) {
+                        if let Some(ch) = event.char() {
+                            commands::insert::insert_char(cx, ch)
+                        }
                     }
                 }
                 KeymapResult::Cancelled(pending) => {
@@ -1015,7 +1017,10 @@ impl EditorView {
                 // set the register
                 cxt.register = cxt.editor.selected_register.take();
 
-                self.handle_keymap_event(mode, cxt, event);
+                let res = self.handle_keymap_event(mode, cxt, event);
+                if matches!(&res, Some(KeymapResult::NotFound)) {
+                    self.on_next_key(OnKeyCallbackKind::Fallback, cxt, event);
+                }
                 if self.keymaps.pending().is_empty() {
                     cxt.editor.count = None
                 } else {
@@ -1091,7 +1096,7 @@ impl EditorView {
             modifiers: KeyModifiers::empty(),
         };
         // dismiss any pending keys
-        if let Some(on_next_key) = self.on_next_key.take() {
+        if let Some((on_next_key, _)) = self.on_next_key.take() {
             on_next_key(cxt, null_key_event);
         }
         self.handle_keymap_event(cxt.editor.mode, cxt, null_key_event);
@@ -1314,6 +1319,24 @@ impl EditorView {
             _ => EventResult::Ignored(None),
         }
     }
+    fn on_next_key(
+        &mut self,
+        kind: OnKeyCallbackKind,
+        ctx: &mut commands::Context,
+        event: KeyEvent,
+    ) -> bool {
+        if let Some((on_next_key, kind_)) = self.on_next_key.take() {
+            if kind == kind_ {
+                on_next_key(ctx, event);
+                true
+            } else {
+                self.on_next_key = Some((on_next_key, kind_));
+                false
+            }
+        } else {
+            false
+        }
+    }
 }
 
 impl Component for EditorView {
@@ -1365,10 +1388,7 @@ impl Component for EditorView {
 
                 let mode = cx.editor.mode();
 
-                if let Some(on_next_key) = self.on_next_key.take() {
-                    // if there's a command waiting input, do that first
-                    on_next_key(&mut cx, key);
-                } else {
+                if !self.on_next_key(OnKeyCallbackKind::PseudoPending, &mut cx, key) {
                     match mode {
                         Mode::Insert => {
                             // let completion swallow the event if necessary
@@ -1418,8 +1438,8 @@ impl Component for EditorView {
 
                 self.on_next_key = cx.on_next_key_callback.take();
                 match self.on_next_key {
-                    Some(_) => self.pseudo_pending.push(key),
-                    None => self.pseudo_pending.clear(),
+                    Some((_, OnKeyCallbackKind::PseudoPending)) => self.pseudo_pending.push(key),
+                    _ => self.pseudo_pending.clear(),
                 }
 
                 // appease borrowck
