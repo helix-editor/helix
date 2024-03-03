@@ -1412,6 +1412,8 @@ impl Document {
             doc: self,
             view: view_id,
             old_text: &old_doc,
+            changes,
+            ghost_transaction: !emit_lsp_notification,
         });
 
         // if specified, the current selection should instead be replaced by transaction.selection
