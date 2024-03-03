@@ -268,7 +268,7 @@ impl MappableCommand {
         delete_selection_noyank, "Delete selection without yanking",
         delete_word_backward, "Delete previous word",
         delete_word_forward, "Delete next word",
-        diagnostics_picker, "diagnostic 💔",
+        diagnostics_picker, "file diagnostic 💔",
         earlier, "Move backward in history",
         ensure_selections_forward, "Ensure all selections face forward",
         exit_select_mode, "Exit selection mode",
@@ -303,9 +303,9 @@ impl MappableCommand {
         extend_to_line_start, "Extend to line start",
         extend_visual_line_down, "Extend visual ",
         extend_visual_line_up, "Extend visual ",
-        file_picker, "file 📁",
-        file_picker_in_current_buffer_directory, "files 📁",
-        file_picker_in_current_directory, "files 📂",
+        file_picker, "file picker",
+        file_picker_in_current_buffer_directory, "sibling buffer 🧮",
+        file_picker_in_current_directory, "project file 📂",
         find_next_char, "Find  (char) ",
         find_prev_char, "(Char) ",
         find_till_char, "Find  char",
@@ -358,7 +358,7 @@ impl MappableCommand {
         goto_window_top, "top 󱔓 ",
         half_page_down, "1/2 PgDn 󱞣 ",
         half_page_up, "1/2 PgUp 󱞿 ",
-        hover, "siknature 💡",
+        hover, "hover 💡",
         hsplit, "Horizontal bottom split",
         hsplit_new, "Horizontal bottom split scratch buffer",
         increment, "Increment item under cursor",
@@ -377,7 +377,7 @@ impl MappableCommand {
         jump_view_left, "Jump to left split",
         jump_view_right, "Jump to right split",
         jump_view_up, "Jump to split above",
-        jumplist_picker, "jumplist 🦘",
+        jumplist_picker, "jumper 🦘",
         keep_primary_selection, "Keep primary selection",
         keep_selections, "Keep selections matching regex",
         kill_to_line_end, "Delete till end of line",
@@ -386,11 +386,7 @@ impl MappableCommand {
         later, "Move forward in history",
         make_search_word_bounded, "Modify current search to make it word bounded",
         match_brackets, "bracket",
-        menu_separator,           "𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
-        menu_separator_clipboard, "𑁋𑁋𑁋𑁋𑁋𑁋𑁋 Clipboard 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
-        menu_separator_code,      "𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋 Code 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
-        menu_separator_global,    "𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋 Global 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
-        menu_separator_local,     "𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋 Local 𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋𑁋",
+        menu_divider, "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈",
         merge_consecutive_selections, "Merge consecutive selections",
         merge_selections, "Merge selections",
         move_char_left, " move",
@@ -495,8 +491,8 @@ impl MappableCommand {
         vsplit_new, "Vertical right split scratch buffer",
         wclose, "Close window",
         wonly, "Close windows except current",
-        workspace_diagnostics_picker, "diagnostics 💔",
-        workspace_symbol_picker, "symbols 💲",
+        workspace_diagnostics_picker, "project diagnostic 💔",
+        workspace_symbol_picker, "project symbol 💲",
         yank, "yank 📤",
         yank_joined, "yank joined ⧉ ",
         yank_joined_to_clipboard, "copy joined ⧉ ",
@@ -599,24 +595,8 @@ impl PartialEq for MappableCommand {
 
 fn no_op(_cx: &mut Context) {}
 
-fn menu_separator(_cx: &mut Context) {
+fn menu_divider(_cx: &mut Context) {
     normal_mode(_cx);
-}
-
-fn menu_separator_local(_cx: &mut Context) {
-    menu_separator(_cx);
-}
-
-fn menu_separator_global(_cx: &mut Context) {
-    menu_separator(_cx);
-}
-
-fn menu_separator_code(_cx: &mut Context) {
-    menu_separator(_cx);
-}
-
-fn menu_separator_clipboard(_cx: &mut Context) {
-    menu_separator(_cx);
 }
 
 type MoveFn =
