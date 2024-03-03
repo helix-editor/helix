@@ -552,3 +552,57 @@ async fn find_char_line_ending() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_surround_replace() -> anyhow::Result<()> {
+    test((
+        platform_line(indoc! {"\
+            (#[|a]#)
+            "}),
+        "mrm{",
+        platform_line(indoc! {"\
+            {#[|a]#}
+            "}),
+    ))
+    .await?;
+
+    test((
+        platform_line(indoc! {"\
+            (#[a|]#)
+            "}),
+        "mrm{",
+        platform_line(indoc! {"\
+            {#[a|]#}
+            "}),
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_surround_delete() -> anyhow::Result<()> {
+    test((
+        platform_line(indoc! {"\
+            (#[|a]#)
+            "}),
+        "mdm",
+        platform_line(indoc! {"\
+            #[|a]#
+            "}),
+    ))
+    .await?;
+
+    test((
+        platform_line(indoc! {"\
+            (#[a|]#)
+            "}),
+        "mdm",
+        platform_line(indoc! {"\
+            #[a|]#
+            "}),
+    ))
+    .await?;
+
+    Ok(())
+}
