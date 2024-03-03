@@ -147,6 +147,9 @@ impl EditorView {
         }
 
         if is_focused {
+            if let Some(tabstops) = Self::tabstop_highlights(doc, theme) {
+                overlay_highlights = Box::new(syntax::merge(overlay_highlights, tabstops));
+            }
             let highlights = syntax::merge(
                 overlay_highlights,
                 Self::doc_selection_highlights(
@@ -590,6 +593,24 @@ impl EditorView {
             }
         }
         Vec::new()
+    }
+
+    pub fn tabstop_highlights(
+        doc: &Document,
+        theme: &Theme,
+    ) -> Option<Vec<(usize, std::ops::Range<usize>)>> {
+        let snippet = doc.active_snippet.as_ref()?;
+        let highlight = theme.find_scope_index_exact("tabstop")?;
+        let mut highlights = Vec::new();
+        for tabstop in snippet.tabstops() {
+            highlights.extend(
+                tabstop
+                    .ranges
+                    .iter()
+                    .map(|range| (highlight, range.start..range.end)),
+            );
+        }
+        (!highlights.is_empty()).then_some(highlights)
     }
 
     /// Render bufferline at the top
@@ -1055,24 +1076,38 @@ impl EditorView {
         Some(area)
     }
 
-    pub fn clear_completion(&mut self, editor: &mut Editor) {
+    pub fn clear_completion(&mut self, editor: &mut Editor) -> Option<OnKeyCallback> {
         self.completion = None;
+        let mut on_next_key: Option<OnKeyCallback> = None;
         if let Some(last_completion) = editor.last_completion.take() {
             match last_completion {
                 CompleteAction::Triggered => (),
                 CompleteAction::Applied {
                     trigger_offset,
                     changes,
-                } => self.last_insert.1.push(InsertEvent::CompletionApply {
-                    trigger_offset,
-                    changes,
-                }),
+                    placeholder,
+                } => {
+                    self.last_insert.1.push(InsertEvent::CompletionApply {
+                        trigger_offset,
+                        changes,
+                    });
+                    on_next_key = placeholder.then_some(Box::new(|cx, key| {
+                        if let Some(c) = key.char() {
+                            let (view, doc) = current!(cx.editor);
+                            if let Some(snippet) = &doc.active_snippet {
+                                doc.apply(&snippet.delete_placeholder(doc.text()), view.id);
+                            }
+                            commands::insert::insert_char(cx, c);
+                        }
+                    }))
+                }
                 CompleteAction::Selected { savepoint } => {
                     let (view, doc) = current!(editor);
                     doc.restore(view, &savepoint, false);
                 }
             }
         }
+        on_next_key
     }
 
     pub fn handle_idle_timeout(&mut self, cx: &mut commands::Context) -> EventResult {
@@ -1419,7 +1454,15 @@ impl Component for EditorView {
                                 if let Some(callback) = res {
                                     if callback.is_some() {
                                         // assume close_fn
-                                        self.clear_completion(cx.editor);
+                                        if let Some(cb) = self.clear_completion(cx.editor) {
+                                            if consumed {
+                                                cx.on_next_key_callback =
+                                                    Some((cb, OnKeyCallbackKind::Fallback))
+                                            } else {
+                                                self.on_next_key =
+                                                    Some((cb, OnKeyCallbackKind::Fallback));
+                                            }
+                                        }
                                     }
                                 }
                             }
