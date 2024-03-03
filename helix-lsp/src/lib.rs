@@ -471,7 +471,7 @@ pub mod util {
                 // contained entirely in the replacement text, just do a point
                 // selection (fallback below)
                 if range.anchor < first_tabstop {
-                    // we can't properly compute the the next grapheme
+                    // we can't properly compute the next grapheme
                     // here because the transaction hasn't been applied yet
                     // that is not a problem because the range gets grapheme aligned anyway
                     // tough so just adding one will always cause head to be grapheme

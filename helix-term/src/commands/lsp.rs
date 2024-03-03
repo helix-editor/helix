@@ -626,7 +626,7 @@ pub fn code_action(cx: &mut Context) {
             // that is marked with `is_preferred` is shown first. The codeactions are then shown in separate
             // submenus that only contain a certain category (see `action_category`) of actions.
             //
-            // Below this done in in a single sorting step
+            // Below this done in a single sorting step
             actions.sort_by(|action1, action2| {
                 // sort actions by category
                 let order = action_category(action1).cmp(&action_category(action2));
