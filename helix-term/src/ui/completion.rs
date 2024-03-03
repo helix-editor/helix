@@ -105,7 +105,7 @@ pub struct Completion {
     trigger_offset: usize,
     filter: String,
     resolve_handler: tokio::sync::mpsc::Sender<CompletionItem>,
-    is_incomplete: bool
+    is_incomplete: bool,
 }
 
 impl Completion {

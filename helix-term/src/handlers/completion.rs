@@ -258,7 +258,6 @@ fn request_completion(
                     })
                     .collect();
 
-
                 anyhow::Ok((is_incomplete, items))
             }
         })
@@ -322,7 +321,8 @@ fn show_completion(
         return;
     }
 
-    let completion_area = ui.set_completion(editor, savepoint, items, trigger.pos, size, is_incomplete);
+    let completion_area =
+        ui.set_completion(editor, savepoint, items, trigger.pos, size, is_incomplete);
     let signature_help_area = compositor
         .find_id::<Popup<SignatureHelp>>(SignatureHelp::ID)
         .map(|signature_help| signature_help.area(size, editor));
