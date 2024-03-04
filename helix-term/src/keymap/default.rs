@@ -150,8 +150,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         // "tab" => insert_tab,
         // "" => join_selections, // put all in a single line
         // "" => join_selections_space,
-        // "" => jump_backward,
-        // "?" => jump_forward,
+        "A-left" => jump_backward,
+        "A-right" => jump_forward,
         // "?" => jump_view_down,
         // "" => jump_view_left,
         // "?" => jump_view_right,
@@ -637,8 +637,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "tab" => insert_tab,
         // "" => join_selections, // put all in a single line
         // "" => join_selections_space,
-        // "" => jump_backward,
-        // "?" => jump_forward,
+        "A-left" => jump_backward,
+        "A-right" => jump_forward,
         // "?" => jump_view_down,
         // "" => jump_view_left,
         // "?" => jump_view_right,
