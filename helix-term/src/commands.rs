@@ -387,6 +387,9 @@ impl MappableCommand {
         make_search_word_bounded, "Modify current search to make it word bounded",
         match_brackets, "bracket",
         menu_divider, "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈",
+        menu_new_file, "📄 File",
+        menu_new_directory_at_buffer_path, "📁 Directory",
+        menu_new_scratch_file, "📜 Scratch File",
         merge_consecutive_selections, "Merge consecutive selections",
         merge_selections, "Merge selections",
         move_char_left, " move",
@@ -504,6 +507,22 @@ impl MappableCommand {
     );
 }
 
+fn menu_divider(_cx: &mut Context) {
+    normal_mode(_cx);
+}
+
+fn menu_new_file(_cx: &mut Context) {
+    _cx.editor.set_status("Not implemented yet: menu_new_file");
+}
+
+fn menu_new_directory_at_buffer_path(_cx: &mut Context) {
+    _cx.editor.set_status("Not implemented yet: menu_new_directory_at_buffer_path");
+}
+
+fn menu_new_scratch_file(_cx: &mut Context) {
+    _cx.editor.set_status("Not implemented yet: menu_new_scratch_file");
+}
+
 impl fmt::Debug for MappableCommand {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -593,10 +612,8 @@ impl PartialEq for MappableCommand {
     }
 }
 
-fn no_op(_cx: &mut Context) {}
-
-fn menu_divider(_cx: &mut Context) {
-    normal_mode(_cx);
+fn no_op(_cx: &mut Context) {
+    _cx.editor.set_status("No operation: no_op");
 }
 
 type MoveFn =
