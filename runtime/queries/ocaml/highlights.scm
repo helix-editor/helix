@@ -63,20 +63,20 @@
 ; Properties
 ;-----------
 
-[(label_name) (field_name) (instance_variable_name)] @property
+[(label_name) (field_name) (instance_variable_name)] @variable.other.member
 
 ; Constants
 ;----------
 
-(boolean) @constant
+(boolean) @constant.builtin.boolean
 
-[(number) (signed_number)] @number
+[(number) (signed_number)] @constant.numeric
 
 [(string) (character)] @string
 
 (quoted_string "{" @string "}" @string) @string
 
-(escape_sequence) @escape
+(escape_sequence) @constant.character.escape
 
 (conversion_specification) @string.special
 
