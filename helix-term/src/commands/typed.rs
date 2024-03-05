@@ -2257,7 +2257,7 @@ fn run_shell_command(
     let args = args.join(" ");
 
     let callback = async move {
-        let (output, success) = shell_impl_async(&shell, &args, None).await?;
+        let output = shell_impl_async(&shell, &args, None).await?;
         let call: job::Callback = Callback::EditorCompositor(Box::new(
             move |editor: &mut Editor, compositor: &mut Compositor| {
                 if !output.is_empty() {
@@ -2270,11 +2270,7 @@ fn run_shell_command(
                     ));
                     compositor.replace_or_push("shell", popup);
                 }
-                if success {
-                    editor.set_status("Command succeeded");
-                } else {
-                    editor.set_error("Command failed");
-                }
+                editor.set_status("Command succeeded");
             },
         ));
         Ok(call)
