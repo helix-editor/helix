@@ -281,15 +281,15 @@ impl MappableCommand {
         extend_line_down, "Extend ",
         extend_line_up, "Extend ",
         extend_next_char, "Extend  (char)",
-        extend_next_long_word_end, "Extend worrrd ",
-        extend_next_long_word_start, "Extend  worrrd",
+        extend_next_long_word_end, "Extend WORD  ",
+        extend_next_long_word_start, "Extend  WORD ",
         extend_next_word_end, "Extend word  ",
         extend_next_word_start, "Extend  word",
         extend_parent_node_end, "Extend parent ",
         extend_parent_node_start, "Extend  parent",
         extend_prev_char, "(Char) extend",
-        extend_prev_long_word_end, "Worrrd extend",
-        extend_prev_long_word_start, " Worrrd extend",
+        extend_prev_long_word_end, "WORD  extend",
+        extend_prev_long_word_start, " WORD  extend",
         extend_prev_word_end, "Word  Extend",
         extend_prev_word_start, " Word extend",
         extend_search_next, "Add next search match to selection",
@@ -396,14 +396,14 @@ impl MappableCommand {
         move_char_right, "move  ",
         move_line_down, "move line  ",
         move_line_up, "move line  ",
-        move_next_long_word_end, "Worrrd ",
-        move_next_long_word_start, " Worrrd",
+        move_next_long_word_end, "WORD  ",
+        move_next_long_word_start, " WORD ",
         move_next_word_end, "Word ",
         move_next_word_start, " Word",
         move_parent_node_end, "Parent ",
         move_parent_node_start, " Parent",
-        move_prev_long_word_end, "Worrrd ",
-        move_prev_long_word_start, " Worrrd",
+        move_prev_long_word_end, "WORD  ",
+        move_prev_long_word_start, " WORD ",
         move_prev_word_end, "Word ",
         move_prev_word_start, " Word",
         move_visual_line_down, "move  ",
@@ -516,11 +516,13 @@ fn menu_new_file(_cx: &mut Context) {
 }
 
 fn menu_new_directory_at_buffer_path(_cx: &mut Context) {
-    _cx.editor.set_status("Not implemented yet: menu_new_directory_at_buffer_path");
+    _cx.editor
+        .set_status("Not implemented yet: menu_new_directory_at_buffer_path");
 }
 
 fn menu_new_scratch_file(_cx: &mut Context) {
-    _cx.editor.set_status("Not implemented yet: menu_new_scratch_file");
+    _cx.editor
+        .set_status("Not implemented yet: menu_new_scratch_file");
 }
 
 impl fmt::Debug for MappableCommand {

@@ -279,79 +279,351 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         // "" => yank_to_primary_clipboard,
 
         "space" => {" ⭐ Space "
-            "┈" => menu_divider,
+            // "" => commit_undo_checkpoint,
+            // "" => decrement,
+            // "" => earlier,
+            // "" => increment,
+            // "" => kill_to_line_end,
+            // "" => kill_to_line_start,
+            // "" => later,
+            // "" => make_search_word_bounded,
+            // "" => match_brackets,
+            // "" => record_macro,
+            "C-y" | "U" => redo,
+            "F2" => rename_symbol,
+            // "" => repeat_last_motion, // too dangerous
+            // "" => replace, // replaces with typed character (so weird)
+            "C-r" => replace_selections_with_clipboard,
+            // "?" => replace_selections_with_primary_clipboard,
+            //"r" => replace_with_yanked,
+            // "" => replay_macro,
+            // "" => reverse_selection_contents,
+            // "" => rotate_selection_contents_backward,
+            // "" => rotate_selection_contents_forward,
+            // "" => rotate_selections_backward,
+            // "" => rotate_selections_forward,
+            // "" => rotate_view,
+            // "" => rotate_view_reverse,
+            // "?" => rsearch,
+            // "" => save_selection,
+            "C-down" => scroll_down,
+            "C-up" => scroll_up,
+            "C-f" | "/" => search,
+            "F3" | "n" => search_next,
+            "S-F3" | "N" => search_prev,
+            "C-F3" => search_selection,
+            "C-a" => select_all,
+            "v" | "s" => select_mode,
+            // "C-S-A-right" => select_next_sibling, // short it
+            // "" => select_prev_sibling,
+            "h" => select_references_to_symbol_under_cursor, // h: highlight
+            // "" => select_regex,
+            // "" => select_register,
+            // "" => select_textobject_around,
+            // "" => select_textobject_inner,
+            // "" => shell_append_output,
+            // "" => shell_insert_output,
+            // "" => shell_keep_pipe,
+            // "" => shell_pipe,
+            // "" => shell_pipe_to,
+            // "" => shrink_selection,
+            // "" => shrink_to_line_bounds, // oposite to Shift + Xi (seems not needed)
+            // "?" => signature_help, // fail
+            // "" => smart_tab,
+            // "" => split_selection,
+            // "" => split_selection_on_newline,
+            // "" => surround_add,
+            // "" => surround_delete,
+            // "" => surround_replace,
+            // "" => suspend,
+            // "" => swap_view_down,
+            // "" => swap_view_left,
+            // "?" => swap_view_right,
+            // "" => swap_view_up,
+            "C-A-u" => switch_case,
+            "C-l" => switch_to_lowercase,
+            "C-u" => switch_to_uppercase,
+            // "" => symbol_picker, // i dont like this
+            "T" => till_prev_char,
+            // "" => toggle_block_comments,
+            "C-/" => toggle_comments,
+            // "" => toggle_line_comments,
+            // "" => transpose_view,
+            // "" => trim_selections,
+            "C-z" | "u" => undo,
+            "S-tab" => unindent,
+            // "" => wclose,
+            // "" => wonly,
+            "A-^" => workspace_diagnostics_picker, // Alt + Shift + 6
+            // "" => workspace_symbol_picker,
+            //"y" => yank,
+            // "" => yank_joined,
+            // "" => yank_joined_to_clipboard,
+            // "" => yank_joined_to_primary_clipboard,
+            // "" => yank_main_selection_to_clipboard,
+            // "" => yank_main_selection_to_primary_clipboard,
+            "C-c" => yank_to_clipboard,
+            // "" => yank_to_primary_clipboard,
         },
 
         "A-." => {" 🧬 Main Menu "
-            "f" => { "📂 File  " sticky=false
-                "n" => { "  New  " sticky=false
-                    "f" => menu_new_file,
-                    "s" => menu_new_scratch_file,
-                    "d" => menu_new_directory_at_buffer_path,
-                    "┈" => menu_divider,
-                },
-                "o" => { "  Open  " sticky=false
-                    "C-," | "C-." => file_picker_in_current_directory,
-                    "C-<" | "C->" => file_picker_in_current_buffer_directory,
-                },
+            "f" => { "📂 File  "
+                "esc" => normal_mode,
             },
-
-            "e" => { "📝️  Edit  " sticky=true
-                "C-z" | "u" => undo,
-                "C-y" | "U" => redo,
-                "┈" => menu_divider,
-
-                "y" => { "📤 Yank  " sticky=true
-                    "y" => yank,
-                    "j" => yank_joined,
-                    "P" => paste_before,
-                    "p" => paste_after,
-                    "r" => replace_with_yanked,
+            "e" => { "📝️  Edit  "
+                "A" => { "Add new line  "
+                    "a" => add_newline_above,
+                    "b" => add_newline_below,
                 },
-
-                "C" => { "📋 Clipboard  " sticky=true
-                    "C-c" => yank_to_clipboard,
-                    "C-C" => yank_joined_to_clipboard,
-                    // "" => yank_main_selection_to_clipboard, // so weird
-                    "C-v" => paste_clipboard_after,
-                    "C-V" => paste_clipboard_before,
-                    "C-r" => replace_selections_with_clipboard,
+                "a" => append_mode,
+                "s" => { "Selection  "
+                    "c" => change_selection,
+                    "C" => change_selection_noyank,
+                    "l" => collapse_selection,
+                    "C-S-down" => copy_selection_on_next_line, // multi-cursor
+                    "C-S-up" => copy_selection_on_prev_line, // multi-cursor
+                    "e" => expand_selection,
+                    "f" => ensure_selections_forward,
+                    "F" => flip_selections,
+                    "C-t" => format_selections,
+                    "k" => keep_primary_selection,
+                    "K" => keep_selections,
+                    "m" => merge_consecutive_selections,
+                    "A-minus" | "esc" => merge_selections, // cancel multi-cursor + keeps selection
+                    "R" => remove_primary_selection,
+                    "r" => remove_selections,
                 },
-
-                "P" => { "🎬 Primary Clipboard  " sticky=true
-                    "esc" => normal_mode,
-                    //"" => yank_to_primary_clipboard, // what is this?
-                    //"" => yank_joined_to_primary_clipboard,
-                    //"" => yank_main_selection_to_primary_clipboard,
-                    //"" => paste_primary_clipboard_before,
-                    //"" => paste_primary_clipboard_after,
-                    //"" => replace_selections_with_primary_clipboard,
+                "d" => { "Delete  "
+                    "backspace" => delete_char_backward,
+                    "del" => delete_char_forward,
+                    "C-x" | "d" => delete_selection, // cut
+                    "D" => delete_selection_noyank,
+                    "A-backspace" | "C-backspace" => delete_word_backward,
+                    "A-del" | "C-del" => delete_word_forward,
                 },
-                "." => menu_divider,
-                "F1" => hover,
-                "F2" => rename_symbol,
-                "A-ret" => code_action,
-                "h" => select_references_to_symbol_under_cursor, // h: highlight
+                "e" => { "Extend  "
+                    "c" => { "Char  "
+                        "S-left" => extend_char_left,
+                        "S-right" => extend_char_right,
+                        "n" => extend_next_char,
+                    },
+                    "l" => { "Line  "
+                        "l" => extend_line,
+                        "a" => extend_line_above,
+                        "b" => extend_line_below,
+                        "S-down" => extend_line_down,
+                        "S-up" => extend_line_up,
+                    },
+                    "n" => { "Next  "
+                        "W" => extend_next_long_word_end,
+                        "C-S-A-right" => extend_next_long_word_start,
+                        "w" => extend_next_word_end,
+                        "C-S-right" => extend_next_word_start,
+                    },
+                    "P" => { "Parent  "
+                        "C-S-pagedown" | "S-pagedown" => extend_parent_node_end,
+                        "C-S-pageup" | "S-pageup" => extend_parent_node_start,
+                    },
+                    "p" => { "Prev  "
+                        "c" => extend_prev_char,
+                        "C-S-A-left" => extend_prev_long_word_end,
+                        "W" => extend_prev_long_word_start,
+                        "C-S-left" => extend_prev_word_end,
+                        "w" => extend_prev_word_start,
+                    },
+                    "s" => { "Search  "
+                        "A-j" => extend_search_next,
+                        "A-S-j" => extend_search_prev,
+                    },
+                    "t" => { "Till  "
+                        "c" => extend_till_char,
+                        "C" => extend_till_prev_char,
+                    },
+                    "T" => { "To  "
+                        "S-home" => extend_to_first_nonwhitespace,
+                        "b" => extend_to_line_bounds,
+                        "e" => extend_to_line_end,
+                        "S-end" => extend_to_line_end_newline,
+                        "s" => extend_to_line_start,
+                    },
+                    "v" => { "Visual  "
+                        "d" => extend_visual_line_down,
+                        "u" => extend_visual_line_up,
+                    },
+                },
+                "f" => { "Find  "
+                    "f" => find_next_char,
+                    "F" => find_prev_char,
+                    "t" => find_till_char,
+                    "C-F" => global_search,
+                },
+                "tab" => indent,
+                "I" => { "Insert  "
+                    "A" => insert_at_line_end,
+                    "I" => insert_at_line_start,
+                    "n" => insert_newline,
+                    "r" => insert_register,
+                    "tab" => insert_tab,
+                },
+                "ins" | "i" => insert_mode,
+                "j" => { "Join Selections  "
+                    "j" => join_selections, // put all in a single line
+                    "s" => join_selections_space,
+                },
+                "m" => { "Move  "
+                    "c" => { "Char  "
+                        "left" => move_char_left,
+                        "right" => move_char_right,
+                    },
+                    "l" => { "Line  "
+                        "down" => move_line_down,
+                        "up" => move_line_up,
+                    },
+                    "n" => { "Next  "
+                        "e" => move_next_long_word_end,
+                        "C-A-right" => move_next_long_word_start,
+                        "W" => move_next_word_end,
+                        "C-right" | "w" => move_next_word_start,
+                    },
+                    "P" => { "Parent  "
+                        "C-pagedown" => move_parent_node_end,
+                        "C-pageup" => move_parent_node_start,
+                    },
+                    "p" => { "Prev  "
+                        "C-A-left" => move_prev_long_word_end,
+                        "W" => move_prev_long_word_start,
+                        "C-left" => move_prev_word_end,
+                        "w" => move_prev_word_start,
+                    },
+                    "v" => { "Visual  "
+                        "d" => move_visual_line_down,
+                        "u" => move_visual_line_up,
+                    },
+                },
+                "o" => { "Open  "
+                    "O" => open_above,
+                    "o" => open_below,
+                },
+                "p" => { "Page  "
+                    "pagedown" => page_cursor_down,
+                    "d" => page_cursor_half_down,
+                    "u" => page_cursor_half_up,
+                    "pageup" => page_cursor_up,
+                    "D" => page_down,
+                    "U" => page_up,
+                },
+                "P" => { "Paste  "
+                    "y" => { "Yank  "
+                        "p" => paste_after,
+                        "P" => paste_before,
+                    },
+                    "c" => { "Clipboard  "
+                        "C-V" => paste_clipboard_after,
+                        "C-v" => paste_clipboard_before,
+                    },
+                    "p" => { "Primary  "
+                        "p" => paste_primary_clipboard_after,
+                        "P" => paste_primary_clipboard_before,
+                    },
+                },
             },
 
             "v" => { "🧿 View  "
-                "t" => { "  Tool Windows  " sticky=false
-                    "A-1" => buffer_picker,
-                    "A-2" => jumplist_picker,
-                    "A-6" => diagnostics_picker,
-                    "┈" => menu_divider,
-                    "A-^" => workspace_diagnostics_picker,
-                    "s" => symbol_picker,
-                    "S" => workspace_symbol_picker,
-                },
+                "A-1" => buffer_picker,
+                "A-2" => jumplist_picker,
+                "A-6" => diagnostics_picker,
+                "f" => file_picker, // seems redundant
+                "C-<" | "C->" => file_picker_in_current_buffer_directory,
+                "C-," | "C-." => file_picker_in_current_directory,
+                "." => last_picker, // too weird
             },
 
             "n" => { "⛵ Navigate  "
-                "esc" => normal_mode,
+                "g" => { "Goto  "
+                    "C-F12" => goto_declaration,
+                    "F12" => goto_definition,
+                    "f" => { "File  "
+                        "f" => goto_file,
+                        "C-end" => goto_file_end,
+                        "h" => goto_file_hsplit,
+                        "C-home" => goto_file_start,
+                        "v" => goto_file_vsplit,
+                    },
+                    "F" => { "First  "
+                        "c" => goto_first_change,
+                        "f" => goto_first_diag,
+                        "home" => goto_first_nonwhitespace,
+                    },
+                    "i" => goto_implementation,
+                    "l" => { "Last  "
+                        "a" => goto_last_accessed_file,
+                        "c" => goto_last_change,
+                        "d" => goto_last_diag,
+                        "l" => goto_last_line,
+                        "C-A-." => goto_last_modification,
+                        "m" => goto_last_modified_file,
+                    },
+                    "L" => { "Line  "
+                        "C-g" => goto_line,
+                        "e" => goto_line_end,
+                        "end" => goto_line_end_newline,
+                        "s" => goto_line_start,
+                    },
+                    "n" => { "Next  "
+                        "C-tab" => goto_next_buffer,
+                        "C-A-g" => goto_next_change, // g: git
+                        "C-A-c" => goto_next_class,
+                        "C-A-/" => goto_next_comment,
+                        "C-A-d" => goto_next_diag,
+                        "C-A-f" => goto_next_function,
+                        "C-A-p" => goto_next_paragraph,
+                        "C-A-a" => goto_next_parameter, // a: argument
+                        "C-A-t" => goto_next_test, // failed: try other lsp
+                    },
+                    "p" => { "Prev  "
+                        "C-A-G" => goto_prev_change,
+                        "C-A-C" => goto_prev_class,
+                        "C-A-S-/" => goto_prev_comment,
+                        "C-A-D" => goto_prev_diag,
+                        "C-A-F" => goto_prev_function,
+                        "C-A-P" => goto_prev_paragraph,
+                        "C-A-A" => goto_prev_parameter,
+                        "C-A-T" => goto_prev_test,
+                    },
+                    "C-S-tab" => goto_previous_buffer,
+                    "S-F12" => goto_reference,
+                    "t" => goto_type_definition,
+                    "w" => { "Window  "
+                        "b" => goto_window_bottom,
+                        "c" => goto_window_center,
+                        "t" => goto_window_top,
+                    },
+                },
+                "h" => { "half  "
+                    "d" => half_page_down,
+                    "u" => half_page_up,
+                },
+                "j" => { "jump  "
+                    "A-left" => jump_backward,
+                    "A-right" => jump_forward,
+                    "d" => jump_view_down,
+                    "l" => jump_view_left,
+                    "r" => jump_view_right,
+                    "u" => jump_view_up,
+                },
             },
 
             "c" => { "💻 Code  "
-                "esc" => normal_mode,
+                "a" => { "Align View  "
+                    "a" => align_selections,
+                    "b" => align_view_bottom,
+                    "c" => align_view_center,
+                    "m" => align_view_middle,
+                    "t" => align_view_top,
+                },
+                "A-ret" => code_action,
+                "C-space" => completion,
+                "F1" => hover,
             },
 
             "r" => { "🔧 Refactor  "
@@ -359,122 +631,67 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             },
 
             "u" => { "▶️ Run  "
-                "d" => { "🐞 Debug  " sticky=true
-                    "esc" => normal_mode,
-                    //"" => dap_launch,
-                    //"" => dap_restart,
-                    //"" => dap_toggle_breakpoint,
-                    //"" => dap_continue,
-                    //"" => dap_pause,
-                    //"" => dap_step_in,
-                    //"" => dap_step_out,
-                    //"" => dap_next,
-                    //"" => dap_variables,
-                    //"" => dap_terminate,
-                    //"" => dap_edit_condition,
-                    //"" => dap_edit_log,
-                    //"" => { " Switch  "
-                    //    "" => dap_switch_thread,
-                    //    "" => dap_switch_stack_frame,
-                    //},
-                    //"" => dap_enable_exceptions,
-                    //"" => dap_disable_exceptions,
+                "d" => { "Debug  "
+                    "F8" => dap_continue,
+                    "d" => dap_disable_exceptions,
+                    "e" => dap_edit_condition,
+                    "l" => dap_edit_log,
+                    "x" => dap_enable_exceptions,
+                    "F5" => dap_launch,
+                    "F10" => dap_next,
+                    "p" => dap_pause,
+                    "C-S-F5" => dap_restart,
+                    "F11" => dap_step_in,
+                    "S-F11" => dap_step_out,
+                    "f" => dap_switch_stack_frame,
+                    "t" => dap_switch_thread,
+                    "S-F5" => dap_terminate,
+                    "F9" => dap_toggle_breakpoint,
+                    "C-S-F9" => dap_variables,
                 },
             },
 
-            "t" => { "🧰 Tools  " sticky=true
-                "esc" => normal_mode,
+            "t" => { "🧰 Tools  "
+                "c" => { "Command  "
+                    ":" => command_mode,
+                    ";" => command_palette,
+                },
             },
 
-            "g" => { " Git  " sticky=true
+            "g" => { " Git  "
                 "esc" => normal_mode,
             },
 
             "w" => { "🪟 Window  "
-                "esc" => normal_mode,
-                //"" => rotate_view,
-                //"" => hsplit,
-                //"" => vsplit,
-                //"" => transpose_view,
-                //"" => goto_file_hsplit,
-                //"" => goto_file_vsplit,
-                //"" => wclose,
-                //"" => wonly,
-                //"" => jump_view_left,
-                //"" => jump_view_down,
-                //"" => jump_view_up,
-                //"?" => jump_view_right,
-                //"" => swap_view_left,
-                //"" => swap_view_down,
-                //"" => swap_view_up,
-                //"?" => swap_view_right,
-                //"" => { "New split scratch buffer"
-                //    "" => hsplit_new,
-                //    "" => vsplit_new,
-                //},
+                "h" => { "Horizontal  "
+                    "h" => hsplit,
+                    "n" => hsplit_new,
+                },
+                "v" => { "Vertical  "
+                    "v" => vsplit,
+                    "n" => vsplit_new,
+                },
             },
 
-            "h" => { "❓ Help  " sticky=true
+            "h" => { "❓ Help  "
                 "esc" => normal_mode,
             },
         },
 
-        // Menu (normal mode)
         "g" => { " 🚀 Goto "
             "esc" => normal_mode,
-            //"" => goto_first_nonwhitespace,
-            //"" => goto_definition,
-            //"" => goto_declaration,
-            //"" => goto_type_definition,
-            //"" => goto_reference,
-            //"" => goto_implementation,
-            //"" => goto_window_top,
-            //"" => goto_window_center,
-            //"" => goto_window_bottom,
-            //"" => goto_last_accessed_file,
-            //"" => goto_last_modified_file,
-            //"" => goto_last_modification,
         },
 
-        // Menu (normal mode)
         "m" => { " 󰾹 Match "
             "esc" => normal_mode,
-            //"" => match_brackets,
-            //"" => surround_add,
-            //"" => surround_replace,
-            //"" => surround_delete,
-            //"" => select_textobject_around,
-            //"" => select_textobject_inner,
         },
 
-        // Menu (normal mode)
         "[" => { " ⮬ Goto "
             "esc" => normal_mode,
-            //"" => goto_first_diag,
-            //"" => goto_first_change,
-            //"" => goto_prev_diag,
-            //"" => goto_prev_change,
-            //"" => goto_prev_function,
-            //"" => goto_prev_class,
-            //"" => goto_prev_parameter,
-            //"" => goto_prev_comment,
-            //"" => goto_prev_test,
-            //"" => goto_prev_paragraph,
         },
 
-        // Menu (normal mode)
         "]" => { " Goto ⮯ "
             "esc" => normal_mode,
-            //"" => goto_next_diag,
-            //"" => goto_next_change,
-            //"" => goto_next_function,
-            //"" => goto_next_class,
-            //"" => goto_next_parameter,
-            //"" => goto_next_comment,
-            //"" => goto_next_test,
-            //"" => goto_next_paragraph,
-            //"" => goto_last_diag,
-            //"" => goto_last_change,
         },
     });
 
