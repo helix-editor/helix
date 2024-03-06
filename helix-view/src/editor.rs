@@ -1737,8 +1737,9 @@ impl Editor {
             self.ensure_cursor_in_view(view_id);
 
             // Update jumplist selections with new document changes.
-            for (view, _focused) in self.tree.views_mut() {
-                let doc = doc_mut!(self, &view.doc);
+            let view = view_mut!(self, view_id);
+            for doc_id in view.jumps.iter().map(|e| e.0).collect::<Vec<_>>().iter() {
+                let doc = doc_mut!(self, doc_id);
                 view.sync_changes(doc);
             }
         }
