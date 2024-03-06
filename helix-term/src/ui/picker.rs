@@ -391,9 +391,8 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         self
     }
 
-    pub fn with_line(mut self, line: String, editor: &Editor) -> Self {
-        self.prompt.set_line(line, editor);
-        self.handle_prompt_change();
+    pub fn with_history_register(mut self, history_register: Option<char>) -> Self {
+        self.prompt.with_history_register(history_register);
         self
     }
 
@@ -977,10 +976,21 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                 }
             }
             key!(Enter) => {
-                if let Some(option) = self.selection() {
-                    (self.callback_fn)(ctx, option, Action::Replace);
+                // If the prompt has a history completion and is empty, use enter to accept
+                // that completion
+                if let Some(completion) = self
+                    .prompt
+                    .first_history_completion(ctx.editor)
+                    .filter(|_| self.prompt.line().is_empty())
+                {
+                    self.prompt.set_line(completion.to_string(), ctx.editor);
+                    self.handle_prompt_change();
+                } else {
+                    if let Some(option) = self.selection() {
+                        (self.callback_fn)(ctx, option, Action::Replace);
+                    }
+                    return close_fn(self);
                 }
-                return close_fn(self);
             }
             ctrl!('s') => {
                 if let Some(option) = self.selection() {

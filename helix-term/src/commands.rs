@@ -2407,7 +2407,10 @@ fn global_search(cx: &mut Context) {
         .boxed()
     };
 
-    let mut picker = Picker::new(
+    let reg = cx.register.unwrap_or('/');
+    cx.editor.registers.last_search_register = reg;
+
+    let picker = Picker::new(
         columns,
         1, // contents
         vec![],
@@ -2443,15 +2446,8 @@ fn global_search(cx: &mut Context) {
     .with_preview(|_editor, FileResult { path, line_num, .. }| {
         Some((path.clone().into(), Some((*line_num, *line_num))))
     })
+    .with_history_register(Some(reg))
     .with_dynamic_query(get_files, Some(275));
-
-    if let Some((reg, line)) = cx
-        .register
-        .and_then(|reg| Some((reg, cx.editor.registers.first(reg, cx.editor)?)))
-    {
-        picker = picker.with_line(line.into_owned(), cx.editor);
-        cx.editor.registers.last_search_register = reg;
-    }
 
     cx.push_layer(Box::new(overlaid(picker)));
 }
