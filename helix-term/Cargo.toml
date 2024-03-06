@@ -41,7 +41,7 @@ crossterm = { version = "0.27", features = ["event-stream"] }
 signal-hook = "0.3"
 tokio-stream = "0.1"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
-arc-swap = { version = "1.6.0" }
+arc-swap = { version = "1.7.0" }
 termini = "1"
 
 # Logging
@@ -84,4 +84,4 @@ helix-loader = { path = "../helix-loader" }
 [dev-dependencies]
 smallvec = "1.13"
 indoc = "2.0.4"
-tempfile = "3.10.0"
+tempfile = "3.10.1"

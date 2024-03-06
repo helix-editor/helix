@@ -4,6 +4,7 @@ use helix_core::{
     syntax::{Configuration, Loader},
     Syntax,
 };
+use helix_stdx::rope::RopeSliceExt;
 use ropey::Rope;
 use std::{ops::Range, path::PathBuf, process::Command, sync::Arc};
 
@@ -211,7 +212,7 @@ fn test_treesitter_indent(
         if ignored_lines.iter().any(|range| range.contains(&(i + 1))) {
             continue;
         }
-        if let Some(pos) = helix_core::find_first_non_whitespace_char(line) {
+        if let Some(pos) = line.first_non_whitespace_char() {
             let tab_width: usize = 4;
             let suggested_indent = treesitter_indent_for_pos(
                 indent_query,

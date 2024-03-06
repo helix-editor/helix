@@ -1,10 +1,10 @@
 use std::{borrow::Cow, collections::HashMap};
 
+use helix_stdx::rope::RopeSliceExt;
 use tree_sitter::{Query, QueryCursor, QueryPredicateArg};
 
 use crate::{
     chars::{char_is_line_ending, char_is_whitespace},
-    find_first_non_whitespace_char,
     graphemes::{grapheme_width, tab_width_at},
     syntax::{IndentationHeuristic, LanguageConfiguration, RopeProvider, Syntax},
     tree_sitter::Node,
@@ -970,7 +970,7 @@ pub fn indent_for_newline(
                 let mut num_attempts = 0;
                 for line_idx in (0..=line_before).rev() {
                     let line = text.line(line_idx);
-                    let first_non_whitespace_char = match find_first_non_whitespace_char(line) {
+                    let first_non_whitespace_char = match line.first_non_whitespace_char() {
                         Some(i) => i,
                         None => {
                             continue;

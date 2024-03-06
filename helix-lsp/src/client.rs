@@ -631,6 +631,12 @@ impl Client {
                     }),
                     publish_diagnostics: Some(lsp::PublishDiagnosticsClientCapabilities {
                         version_support: Some(true),
+                        tag_support: Some(lsp::TagSupport {
+                            value_set: vec![
+                                lsp::DiagnosticTag::UNNECESSARY,
+                                lsp::DiagnosticTag::DEPRECATED,
+                            ],
+                        }),
                         ..Default::default()
                     }),
                     inlay_hint: Some(lsp::InlayHintClientCapabilities {
@@ -1017,7 +1023,7 @@ impl Client {
     pub fn resolve_completion_item(
         &self,
         completion_item: lsp::CompletionItem,
-    ) -> Option<impl Future<Output = Result<Value>>> {
+    ) -> Option<impl Future<Output = Result<lsp::CompletionItem>>> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support resolving completion items.
@@ -1029,7 +1035,8 @@ impl Client {
             _ => return None,
         }
 
-        Some(self.call::<lsp::request::ResolveCompletionItem>(completion_item))
+        let res = self.call::<lsp::request::ResolveCompletionItem>(completion_item);
+        Some(async move { Ok(serde_json::from_value(res.await?)?) })
     }
 
     pub fn resolve_code_action(

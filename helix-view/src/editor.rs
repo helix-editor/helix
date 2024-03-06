@@ -42,7 +42,7 @@ pub use helix_core::diagnostic::Severity;
 use helix_core::{
     auto_pairs::AutoPairs,
     syntax::{self, AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
-    Change, LineEnding, Position, Selection, NATIVE_LINE_ENDING,
+    Change, LineEnding, Position, Range, Selection, NATIVE_LINE_ENDING,
 };
 use helix_dap as dap;
 use helix_lsp::lsp;
@@ -914,7 +914,7 @@ pub struct Editor {
     pub macro_recording: Option<(char, Vec<KeyEvent>)>,
     pub macro_replaying: Vec<char>,
     pub language_servers: helix_lsp::Registry,
-    pub diagnostics: BTreeMap<lsp::Url, Vec<(lsp::Diagnostic, usize)>>,
+    pub diagnostics: BTreeMap<PathBuf, Vec<(lsp::Diagnostic, usize)>>,
     pub diff_providers: DiffProviderRegistry,
 
     pub debugger: Option<dap::Client>,
@@ -964,6 +964,8 @@ pub struct Editor {
     /// times during rendering and should not be set by other functions.
     pub cursor_cache: Cell<Option<Option<Position>>>,
     pub handlers: Handlers,
+
+    pub mouse_down_range: Option<Range>,
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
@@ -1080,6 +1082,7 @@ impl Editor {
             needs_redraw: false,
             cursor_cache: Cell::new(None),
             handlers,
+            mouse_down_range: None,
         }
     }
 
@@ -1812,7 +1815,7 @@ impl Editor {
     /// Returns all supported diagnostics for the document
     pub fn doc_diagnostics<'a>(
         language_servers: &'a helix_lsp::Registry,
-        diagnostics: &'a BTreeMap<lsp::Url, Vec<(lsp::Diagnostic, usize)>>,
+        diagnostics: &'a BTreeMap<PathBuf, Vec<(lsp::Diagnostic, usize)>>,
         document: &Document,
     ) -> impl Iterator<Item = helix_core::Diagnostic> + 'a {
         Editor::doc_diagnostics_with_filter(language_servers, diagnostics, document, |_, _| true)
@@ -1822,7 +1825,7 @@ impl Editor {
     /// filtered by `filter` which is invocated with the raw `lsp::Diagnostic` and the language server id it came from
     pub fn doc_diagnostics_with_filter<'a>(
         language_servers: &'a helix_lsp::Registry,
-        diagnostics: &'a BTreeMap<lsp::Url, Vec<(lsp::Diagnostic, usize)>>,
+        diagnostics: &'a BTreeMap<PathBuf, Vec<(lsp::Diagnostic, usize)>>,
 
         document: &Document,
         filter: impl Fn(&lsp::Diagnostic, usize) -> bool + 'a,
@@ -1831,8 +1834,7 @@ impl Editor {
         let language_config = document.language.clone();
         document
             .path()
-            .and_then(|path| url::Url::from_file_path(path).ok()) // TODO log error?
-            .and_then(|uri| diagnostics.get(&uri))
+            .and_then(|path| diagnostics.get(path))
             .map(|diags| {
                 diags.iter().filter_map(move |(diagnostic, lsp_id)| {
                     let ls = language_servers.get_by_id(*lsp_id)?;
@@ -1978,7 +1980,7 @@ impl Editor {
 
     /// Switches the editor into normal mode.
     pub fn enter_normal_mode(&mut self) {
-        use helix_core::{graphemes, Range};
+        use helix_core::graphemes;
 
         if self.mode == Mode::Normal {
             return;

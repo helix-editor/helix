@@ -58,13 +58,13 @@ variable = { fg = "fg" }
 "diff.plus" = { fg = "add" }
 
 error = { fg = "error" }
-hint = { fg = "hint" }
-info = { fg = "info" }
 warning = { fg = "yellow" }
-"diagnostic.error" = { underline = { style = "curl" } }
-"diagnostic.warning" = { underline = { style = "curl" } }
-"diagnostic.info" = { underline = { style = "curl" } }
-"diagnostic.hint" = { underline = { style = "curl" } }
+info = { fg = "info" }
+hint = { fg = "hint" }
+"diagnostic.error" = { underline = { style = "curl", color = "error" } }
+"diagnostic.warning" = { underline = { style = "curl", color = "yellow"} }
+"diagnostic.info" = { underline = { style = "curl", color = "info"} }
+"diagnostic.hint" = { underline = { style = "curl", color = "hint" } }
 
 "ui.background" = { bg = "bg", fg = "fg" }
 "ui.cursor" = { modifiers = ["reversed"] }
@@ -114,8 +114,8 @@ change = "#6183bb"
 delete = "#914c54"
 
 error = "#db4b4b"
-hint = "#1abc9c"
 info = "#0db9d7"
+hint = "#1abc9c"
 
 fg = "#c0caf5"
 fg-dark = "#a9b1d6"
