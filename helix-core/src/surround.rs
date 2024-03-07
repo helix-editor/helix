@@ -167,6 +167,10 @@ fn find_nth_open_pair(
     mut pos: usize,
     n: usize,
 ) -> Option<usize> {
+    if pos >= text.len_chars() {
+        return None;
+    }
+
     let mut chars = text.chars_at(pos + 1);
 
     // Adjusts pos for the first iteration, and handles the case of the
@@ -380,6 +384,21 @@ mod test {
         assert_eq!(
             find_nth_pairs_pos(doc.slice(..), '\'', selection.primary(), 1),
             Err(Error::CursorOnAmbiguousPair)
+        )
+    }
+
+    #[test]
+    fn test_find_nth_closest_pairs_pos_index_range_panic() {
+        #[rustfmt::skip]
+        let (doc, selection, _) =
+            rope_with_selections_and_expectations(
+                "(a)c)",
+                "^^^^^"
+            );
+
+        assert_eq!(
+            find_nth_closest_pairs_pos(doc.slice(..), selection.primary(), 1),
+            Err(Error::PairNotFound)
         )
     }
 
