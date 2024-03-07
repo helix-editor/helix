@@ -577,6 +577,23 @@ async fn test_surround_replace() -> anyhow::Result<()> {
     ))
     .await?;
 
+    test((
+        platform_line(indoc! {"\
+            {{
+
+            #(}|)#
+            #[}|]#
+            "}),
+        "mrm)",
+        platform_line(indoc! {"\
+            ((
+
+            #()|)#
+            #[)|]#
+            "}),
+    ))
+    .await?;
+
     Ok(())
 }
 
@@ -601,6 +618,18 @@ async fn test_surround_delete() -> anyhow::Result<()> {
         platform_line(indoc! {"\
             #[a|]#
             "}),
+    ))
+    .await?;
+
+    test((
+        platform_line(indoc! {"\
+            {{
+
+            #(}|)#
+            #[}|]#
+            "}),
+        "mdm",
+        platform_line("\n\n#(\n|)##[\n|]#"),
     ))
     .await?;
 

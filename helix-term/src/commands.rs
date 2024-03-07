@@ -5282,12 +5282,21 @@ fn surround_replace(cx: &mut Context) {
                 None => return doc.set_selection(view.id, selection),
             };
             let (open, close) = surround::get_pair(to);
+
+            // the changeset has to be sorted to allow nested surrounds
+            let mut sorted_pos: Vec<(usize, char)> = Vec::new();
+            for p in change_pos.chunks(2) {
+                sorted_pos.push((p[0], open));
+                sorted_pos.push((p[1], close));
+            }
+            sorted_pos.sort_unstable();
+
             let transaction = Transaction::change(
                 doc.text(),
-                change_pos.iter().enumerate().map(|(i, &pos)| {
+                sorted_pos.iter().map(|&pos| {
                     let mut t = Tendril::new();
-                    t.push(if i % 2 == 0 { open } else { close });
-                    (pos, pos + 1, Some(t))
+                    t.push(pos.1);
+                    (pos.0, pos.0 + 1, Some(t))
                 }),
             );
             doc.set_selection(view.id, selection);
@@ -5309,14 +5318,14 @@ fn surround_delete(cx: &mut Context) {
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id);
 
-        let change_pos = match surround::get_surround_pos(text, selection, surround_ch, count) {
+        let mut change_pos = match surround::get_surround_pos(text, selection, surround_ch, count) {
             Ok(c) => c,
             Err(err) => {
                 cx.editor.set_error(err.to_string());
                 return;
             }
         };
-
+        change_pos.sort_unstable(); // the changeset has to be sorted to allow nested surrounds
         let transaction =
             Transaction::change(doc.text(), change_pos.into_iter().map(|p| (p, p + 1, None)));
         doc.apply(&transaction, view.id);
