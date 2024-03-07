@@ -132,6 +132,7 @@
 | po | ✓ | ✓ |  |  |
 | pod | ✓ |  |  |  |
 | ponylang | ✓ | ✓ | ✓ |  |
+| powershell | ✓ |  |  |  |
 | prisma | ✓ |  |  | `prisma-language-server` |
 | prolog |  |  |  | `swipl` |
 | protobuf | ✓ | ✓ | ✓ | `bufls`, `pb` |
