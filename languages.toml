@@ -1095,7 +1095,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "ocaml"
-source = { git = "https://github.com/tree-sitter/tree-sitter-ocaml", rev = "23d419ba45789c5a47d31448061557716b02750a", subpath = "ocaml" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-ocaml", rev = "9965d208337d88bbf1a38ad0b0fe49e5f5ec9677", subpath = "ocaml" }
 
 [[language]]
 name = "ocaml-interface"
@@ -1115,7 +1115,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "ocaml-interface"
-source = { git = "https://github.com/tree-sitter/tree-sitter-ocaml", rev = "23d419ba45789c5a47d31448061557716b02750a", subpath = "interface" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-ocaml", rev = "9965d208337d88bbf1a38ad0b0fe49e5f5ec9677", subpath = "interface" }
 
 [[language]]
 name = "lua"
