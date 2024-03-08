@@ -67,6 +67,22 @@ are joined with newlines. Pasting from these registers will paste multiple
 selections if the clipboard was last yanked to by the Helix session. Otherwise
 the clipboard contents are pasted as one selection.
 
+### Tmux clipboard issues
+
+Tmux clipboard support has bad interactions with some specific remote shell
+and terminal combinations (e.g. kitty + mosh + tmux). Tmux allows for escaping
+strings directly to the terminal, bypassing the remote shell and allowing work
+arounds to this problem. Helix is able to work around this problem by escaping
+the OSC52 sequences in tmux. To use this feature, you need to enable the tmux
+option with the tmux command:
+
+```
+set-window-option -g allow-passthrough on
+```
+
+Helix will detect this and use the feature to bypass tmux and the remote
+shell. You can find more information [here](https://sunaku.github.io/tmux-yank-osc52.html).
+
 ## Surround
 
 Helix includes built-in functionality similar to [vim-surround](https://github.com/tpope/vim-surround).
