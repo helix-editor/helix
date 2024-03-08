@@ -7,7 +7,7 @@ use crate::{
     input::KeyEvent,
     register::Registers,
     theme::{self, Theme},
-    tree::{self, Tree},
+    tree::{self, Tree, ZoomMode},
     view::ViewPosition,
     Align, Document, DocumentId, View, ViewId,
 };
@@ -325,6 +325,9 @@ pub struct Config {
     /// labels characters used in jumpmode
     #[serde(skip_serializing, deserialize_with = "deserialize_alphabet")]
     pub jump_label_alphabet: Vec<char>,
+    /// Zen-view config.
+    #[serde(default)]
+    pub zen_view: ZenViewConfig,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -458,6 +461,7 @@ impl Default for StatusLineConfig {
                 E::Spinner,
                 E::FileName,
                 E::ReadOnlyIndicator,
+                E::Zoom,
                 E::FileModificationIndicator,
             ],
             center: vec![],
@@ -557,6 +561,9 @@ pub enum StatusLineElement {
 
     /// Indicator for selected register
     Register,
+
+    /// Current zoom/zen state
+    Zoom,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs
@@ -851,6 +858,69 @@ pub enum PopupBorderConfig {
     Menu,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct ZenViewConfig {
+    #[serde(default = "ZenViewConfig::default_max_width")]
+    pub max_width: u16,
+    #[serde(default)]
+    pub auto_enter: ZenViewAutoEnter,
+    // Currently the line-numbers option isn't used, but it will
+    // be once the updated config system is implemented in #9318
+    // TODO(lizclipse): Once that PR is in implement the per-mode line_numbers config
+    #[serde(default = "ZenViewConfig::default_gutters")]
+    pub gutters: GutterConfig,
+}
+
+impl ZenViewConfig {
+    const fn default_max_width() -> u16 {
+        120
+    }
+
+    fn default_gutters() -> GutterConfig {
+        GutterConfig {
+            layout: vec![],
+            ..Default::default()
+        }
+    }
+}
+
+impl Default for ZenViewConfig {
+    fn default() -> Self {
+        Self {
+            max_width: Self::default_max_width(),
+            auto_enter: ZenViewAutoEnter::default(),
+            gutters: Self::default_gutters(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum ZenViewAutoEnter {
+    Off,
+    SingleFile,
+    MultiFile,
+    Always,
+}
+
+impl ZenViewAutoEnter {
+    pub fn should_enter(&self, files: i32) -> Option<ZoomMode> {
+        match self {
+            Self::Always => Some(ZoomMode::Zen),
+            Self::SingleFile if files == 1 => Some(ZoomMode::Zen),
+            Self::MultiFile if files > 1 => Some(ZoomMode::Zen),
+            _ => None,
+        }
+    }
+}
+
+impl Default for ZenViewAutoEnter {
+    fn default() -> Self {
+        Self::Off
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -902,6 +972,7 @@ impl Default for Config {
             popup_border: PopupBorderConfig::None,
             indent_heuristic: IndentationHeuristic::default(),
             jump_label_alphabet: ('a'..='z').collect(),
+            zen_view: ZenViewConfig::default(),
         }
     }
 }
@@ -1076,13 +1147,19 @@ impl Editor {
         let language_servers = helix_lsp::Registry::new(syn_loader.clone());
         let conf = config.load();
         let auto_pairs = (&conf.auto_pairs).into();
+        let mut tree = Tree::new(area);
+        tree.zen_max_width = conf.zen_view.max_width;
+        tree.zoom = match conf.zen_view.auto_enter {
+            ZenViewAutoEnter::Always => Some(ZoomMode::Zen),
+            _ => None,
+        };
 
         // HAXX: offset the render area height by 1 to account for prompt/commandline
         area.height -= 1;
 
         Self {
             mode: Mode::Normal,
-            tree: Tree::new(area),
+            tree,
             next_document_id: DocumentId::default(),
             documents: BTreeMap::new(),
             saves: HashMap::new(),
@@ -1158,6 +1235,8 @@ impl Editor {
     pub fn refresh_config(&mut self) {
         let config = self.config();
         self.auto_pairs = (&config.auto_pairs).into();
+        self.tree.zen_max_width = config.zen_view.max_width;
+        self.tree.recalculate();
         self.reset_idle_timer();
         self._refresh();
     }

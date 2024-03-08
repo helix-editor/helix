@@ -155,6 +155,7 @@ fn get_render_function<'a>(
         helix_view::editor::StatusLineElement::Spacer => render_spacer,
         helix_view::editor::StatusLineElement::VersionControl => render_version_control,
         helix_view::editor::StatusLineElement::Register => render_register,
+        helix_view::editor::StatusLineElement::Zoom => render_zoom,
     }
 }
 
@@ -457,5 +458,15 @@ fn render_register<'a>(context: &RenderContext) -> Spans<'a> {
         Span::raw(format!(" reg={} ", reg)).into()
     } else {
         Spans::default()
+    }
+}
+
+fn render_zoom<'a>(context: &RenderContext) -> Spans<'a> {
+    let Some(zoom) = context.editor.tree.zoom else { return Spans::default() };
+
+    use helix_view::tree::ZoomMode as E;
+    match zoom {
+        E::Normal => "[zoom]".into(),
+        E::Zen => "[zen]".into(),
     }
 }

@@ -8,8 +8,11 @@ pub struct Tree {
     root: ViewId,
     // (container, index inside the container)
     pub focus: ViewId,
-    // fullscreen: bool,
     area: Rect,
+    // Maximum width to aim for when in zen-view.
+    pub zen_max_width: u16,
+    // The current zoom state.
+    pub zoom: Option<ZoomMode>,
 
     nodes: HopSlotMap<ViewId, Node>,
 
@@ -27,6 +30,12 @@ pub struct Node {
 pub enum Content {
     View(Box<View>),
     Container(Box<Container>),
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ZoomMode {
+    Normal,
+    Zen,
 }
 
 impl Node {
@@ -98,6 +107,8 @@ impl Tree {
             focus: root,
             // fullscreen: false,
             area,
+            zen_max_width: 150,
+            zoom: None,
             nodes,
             stack: Vec::new(),
         }
@@ -333,6 +344,26 @@ impl Tree {
         if self.is_empty() {
             // There are no more views, so the tree should focus itself again.
             self.focus = self.root;
+
+            return;
+        }
+
+        if let Some(zoom) = self.zoom {
+            let width = match (zoom, self.zen_max_width) {
+                (ZoomMode::Normal, _) => self.area.width,
+                (ZoomMode::Zen, max_width) if max_width == 0 => self.area.width,
+                (ZoomMode::Zen, max_width) => std::cmp::min(max_width, self.area.width),
+            };
+            let area = Rect::new(
+                self.area.width / 2 - width / 2,
+                self.area.y,
+                width,
+                self.area.height,
+            );
+
+            for (view, _focused) in self.views_mut() {
+                view.area = area;
+            }
 
             return;
         }

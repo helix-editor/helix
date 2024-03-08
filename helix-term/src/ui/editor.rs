@@ -634,7 +634,14 @@ impl EditorView {
         let gutter_style_virtual = theme.get("ui.gutter.virtual");
         let gutter_selected_style_virtual = theme.get("ui.gutter.selected.virtual");
 
-        for gutter_type in view.gutters() {
+        let config = editor.config();
+        let gutters = if matches!(editor.tree.zoom, Some(helix_view::tree::ZoomMode::Zen)) {
+            &config.zen_view.gutters.layout
+        } else {
+            view.gutters()
+        };
+
+        for gutter_type in gutters {
             let mut gutter = gutter_type.style(editor, doc, view, theme, is_focused);
             let width = gutter_type.width(view, doc);
             // avoid lots of small allocations by reusing a text buffer for each line
@@ -1467,8 +1474,10 @@ impl Component for EditorView {
         }
 
         for (view, is_focused) in cx.editor.tree.views() {
-            let doc = cx.editor.document(view.doc).unwrap();
-            self.render_view(cx.editor, doc, view, area, surface, is_focused);
+            if cx.editor.tree.zoom.is_none() || is_focused {
+                let doc = cx.editor.document(view.doc).unwrap();
+                self.render_view(cx.editor, doc, view, area, surface, is_focused);
+            }
         }
 
         if config.auto_info {
