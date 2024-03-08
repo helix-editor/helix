@@ -96,7 +96,39 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     Box::new(provider::FallbackProvider::new())
 }
 
-#[cfg(not(any(windows, target_arch = "wasm32", target_os = "macos")))]
+#[cfg(not(any(windows, target_arch = "wasm32")))]
+// Check if we are in tmux and the allow-passthrough is on.
+fn tmux_allow_passthrough() -> bool {
+    use helix_stdx::env::env_var_is_set;
+
+    if !env_var_is_set("TMUX") {
+        return false;
+    }
+
+    use std::process::Command;
+    let result = Command::new("tmux")
+        .arg("show")
+        .arg("-gw")
+        .arg("allow-passthrough")
+        .output();
+    let output = match result {
+        Ok(out) => out,
+        Err(_) => return false,
+    };
+
+    if !output.status.success() {
+        return false;
+    }
+
+    let output = match String::from_utf8(output.stdout) {
+        Ok(out) => out,
+        Err(_) => return false,
+    };
+
+    output.contains("on")
+}
+
+#[cfg(not(any(windows, target_os = "wasm32", target_os = "macos")))]
 pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     use helix_stdx::env::{binary_exists, env_var_is_set};
     use provider::command::is_exit_success;
@@ -138,7 +170,7 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
             paste => "termux-clipboard-get";
             copy => "termux-clipboard-set";
         }
-    } else if env_var_is_set("TMUX") && binary_exists("tmux") {
+    } else if env_var_is_set("TMUX") && binary_exists("tmux") && !tmux_allow_passthrough() {
         command_provider! {
             paste => "tmux", "save-buffer", "-";
             copy => "tmux", "load-buffer", "-w", "-";
@@ -148,7 +180,7 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     }
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(not(windows))]
 pub mod provider {
     use super::{ClipboardProvider, ClipboardType};
     use anyhow::Result;
@@ -156,6 +188,7 @@ pub mod provider {
 
     #[cfg(feature = "term")]
     mod osc52 {
+        use crate::clipboard::tmux_allow_passthrough;
         use {super::ClipboardType, crate::base64};
 
         #[derive(Debug)]
@@ -179,8 +212,14 @@ pub mod provider {
                     ClipboardType::Clipboard => "c",
                     ClipboardType::Selection => "p",
                 };
+
                 // Send an OSC 52 set command: https://terminalguide.namepad.de/seq/osc-52/
-                write!(f, "\x1b]52;{};{}\x1b\\", kind, &self.encoded_content)
+                let mut osc52 = format!("\x1b]52;{};{}\x07", kind, &self.encoded_content);
+                if tmux_allow_passthrough() {
+                    // If we are inside tmux and we are allow to passthrough, escape it too.
+                    osc52 = format!("\x1bPtmux;\x1b{}\x1b\\", osc52);
+                }
+                f.write_str(&osc52)
             }
         }
     }
