@@ -94,6 +94,7 @@
 | kdl | ✓ | ✓ | ✓ |  |
 | kotlin | ✓ |  |  | `kotlin-language-server` |
 | latex | ✓ | ✓ |  | `texlab` |
+| ld | ✓ |  | ✓ |  |
 | lean | ✓ |  |  | `lean` |
 | ledger | ✓ |  |  |  |
 | llvm | ✓ | ✓ | ✓ |  |
@@ -132,6 +133,7 @@
 | po | ✓ | ✓ |  |  |
 | pod | ✓ |  |  |  |
 | ponylang | ✓ | ✓ | ✓ |  |
+| powershell | ✓ |  |  |  |
 | prisma | ✓ |  |  | `prisma-language-server` |
 | prolog |  |  |  | `swipl` |
 | protobuf | ✓ | ✓ | ✓ | `bufls`, `pb` |

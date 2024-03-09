@@ -1095,7 +1095,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "ocaml"
-source = { git = "https://github.com/tree-sitter/tree-sitter-ocaml", rev = "23d419ba45789c5a47d31448061557716b02750a", subpath = "ocaml" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-ocaml", rev = "9965d208337d88bbf1a38ad0b0fe49e5f5ec9677", subpath = "ocaml" }
 
 [[language]]
 name = "ocaml-interface"
@@ -1115,7 +1115,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "ocaml-interface"
-source = { git = "https://github.com/tree-sitter/tree-sitter-ocaml", rev = "23d419ba45789c5a47d31448061557716b02750a", subpath = "interface" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-ocaml", rev = "9965d208337d88bbf1a38ad0b0fe49e5f5ec9677", subpath = "interface" }
 
 [[language]]
 name = "lua"
@@ -1494,7 +1494,20 @@ name = "dockerfile"
 scope = "source.dockerfile"
 injection-regex = "docker|dockerfile"
 roots = ["Dockerfile", "Containerfile"]
-file-types = [{ glob = "Dockerfile*" }, { glob = "dockerfile*" }, { glob = "Containerfile*" }, { glob = "containerfile*" }]
+file-types = [
+  "Dockerfile",
+  { glob = "Dockerfile" },
+  { glob = "Dockerfile.*" },
+  "dockerfile",
+  { glob = "dockerfile" },
+  { glob = "dockerfile.*" },
+  "Containerfile",
+  { glob = "Containerfile" },
+  { glob = "Containerfile.*" },
+  "containerfile",
+  { glob = "containerfile" },
+  { glob = "containerfile.*" },
+]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 language-servers = [ "docker-langserver" ]
@@ -2157,6 +2170,7 @@ grammar = "python"
 [[language]]
 name = "elvish"
 scope = "source.elvish"
+shebangs = ["elvish"]
 file-types = ["elv"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
@@ -3245,3 +3259,29 @@ indent = { tab-width = 4, unit = "    " }
 [[grammar]]
 name = "fidl"
 source = { git = "https://github.com/google/tree-sitter-fidl", rev = "bdbb635a7f5035e424f6173f2f11b9cd79703f8d" }
+
+[[language]]
+name = "powershell"
+scope = "source.powershell"
+injection-regex = "(pwsh|powershell)"
+file-types = [ "ps1", "psm1", "psd1", "pscc", "psrc" ]
+shebangs = [ "pwsh", "powershell" ]
+comment-token = '#'
+block-comment-tokens = { start = "<#", end = "#>" }
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "powershell"
+source = { git = "https://github.com/airbus-cert/tree-sitter-powershell", rev = "c9316be0faca5d5b9fd3b57350de650755f42dc0" }
+
+[[language]]
+name = "ld"
+scope = "source.ld"
+injection-regex = "ld"
+file-types = ["ld"]
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "ld"
+source = { git = "https://github.com/mtoohey31/tree-sitter-ld", rev = "81978cde3844bfc199851e39c80a20ec6444d35e" }

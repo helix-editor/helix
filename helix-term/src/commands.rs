@@ -4396,16 +4396,27 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
 
     // select inserted spaces
     let transaction = if select_space {
+        let mut offset: usize = 0;
         let ranges: SmallVec<_> = changes
             .iter()
-            .scan(0, |offset, change| {
-                let range = Range::point(change.0 - *offset);
-                *offset += change.1 - change.0 - 1; // -1 because cursor is 0-sized
-                Some(range)
+            .filter_map(|change| {
+                if change.2.is_some() {
+                    let range = Range::point(change.0 - offset);
+                    offset += change.1 - change.0 - 1; // -1 adjusts for the replacement of the range by a space
+                    Some(range)
+                } else {
+                    offset += change.1 - change.0;
+                    None
+                }
             })
             .collect();
-        let selection = Selection::new(ranges, 0);
-        Transaction::change(text, changes.into_iter()).with_selection(selection)
+        let t = Transaction::change(text, changes.into_iter());
+        if ranges.is_empty() {
+            t
+        } else {
+            let selection = Selection::new(ranges, 0);
+            t.with_selection(selection)
+        }
     } else {
         Transaction::change(text, changes.into_iter())
     };
@@ -5295,12 +5306,21 @@ fn surround_replace(cx: &mut Context) {
                 None => return doc.set_selection(view.id, selection),
             };
             let (open, close) = surround::get_pair(to);
+
+            // the changeset has to be sorted to allow nested surrounds
+            let mut sorted_pos: Vec<(usize, char)> = Vec::new();
+            for p in change_pos.chunks(2) {
+                sorted_pos.push((p[0], open));
+                sorted_pos.push((p[1], close));
+            }
+            sorted_pos.sort_unstable();
+
             let transaction = Transaction::change(
                 doc.text(),
-                change_pos.iter().enumerate().map(|(i, &pos)| {
+                sorted_pos.iter().map(|&pos| {
                     let mut t = Tendril::new();
-                    t.push(if i % 2 == 0 { open } else { close });
-                    (pos, pos + 1, Some(t))
+                    t.push(pos.1);
+                    (pos.0, pos.0 + 1, Some(t))
                 }),
             );
             doc.set_selection(view.id, selection);
@@ -5322,14 +5342,14 @@ fn surround_delete(cx: &mut Context) {
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id);
 
-        let change_pos = match surround::get_surround_pos(text, selection, surround_ch, count) {
+        let mut change_pos = match surround::get_surround_pos(text, selection, surround_ch, count) {
             Ok(c) => c,
             Err(err) => {
                 cx.editor.set_error(err.to_string());
                 return;
             }
         };
-
+        change_pos.sort_unstable(); // the changeset has to be sorted to allow nested surrounds
         let transaction =
             Transaction::change(doc.text(), change_pos.into_iter().map(|p| (p, p + 1, None)));
         doc.apply(&transaction, view.id);
