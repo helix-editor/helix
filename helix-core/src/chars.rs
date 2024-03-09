@@ -36,26 +36,28 @@ pub fn char_is_line_ending(ch: char) -> bool {
 /// whitespace.
 #[inline]
 pub fn char_is_whitespace(ch: char) -> bool {
-    // TODO: this is a naive binary categorization of whitespace
-    // characters.  For display, word wrapping, etc. we'll need a better
-    // categorization based on e.g. breaking vs non-breaking spaces
-    // and whether they're zero-width or not.
     match ch {
-        //'\u{1680}' | // Ogham Space Mark (here for completeness, but usually displayed as a dash, not as whitespace)
+        // Common whitespace characters
         '\u{0009}' | // Character Tabulation
         '\u{0020}' | // Space
+        '\u{3000}'   // Ideographic Space
+        => true,
+
+        // Non-breaking spaces
         '\u{00A0}' | // No-break Space
-        '\u{180E}' | // Mongolian Vowel Separator
         '\u{202F}' | // Narrow No-break Space
-        '\u{205F}' | // Medium Mathematical Space
-        '\u{3000}' | // Ideographic Space
+        '\u{205F}'   // Medium Mathematical Space
+        => true,
+
+        // Zero-width spaces
+        '\u{180E}' | // Mongolian Vowel Separator
+        '\u{200B}' | // Zero Width Space
         '\u{FEFF}'   // Zero Width No-break Space
         => true,
 
-        // En Quad, Em Quad, En Space, Em Space, Three-per-em Space,
-        // Four-per-em Space, Six-per-em Space, Figure Space,
-        // Punctuation Space, Thin Space, Hair Space, Zero Width Space.
-        ch if ('\u{2000}' ..= '\u{200B}').contains(&ch) => true,
+        // Ranges for various space characters
+        ch if ('\u{2000}' ..= '\u{200A}').contains(&ch) // En Quad to Hair Space
+        => true,
 
         _ => false,
     }

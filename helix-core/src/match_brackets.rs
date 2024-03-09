@@ -253,14 +253,18 @@ fn as_open_pair(doc: RopeSlice, node: &Node) -> Option<char> {
 
 /// If node is a single char return it (and its char position)
 fn as_char(doc: RopeSlice, node: &Node) -> Option<(usize, char)> {
-    // TODO: multi char/non ASCII pairs
-    if node.byte_range().len() != 1 {
-        return None;
-    }
-    let pos = doc.try_byte_to_char(node.start_byte()).ok()?;
-    Some((pos, doc.char(pos)))
-}
+    let byte_range = node.byte_range();
 
+    // Handle multi-char pairs or non-ASCII characters
+    let start_pos = doc.try_byte_to_char(byte_range.start).ok()?;
+    let end_pos = doc.try_byte_to_char(byte_range.end - 1).ok()?;
+
+    if end_pos - start_pos == 1 {
+        Some((start_pos, doc.char(start_pos)))
+    } else {
+       None
+    }
+}
 #[cfg(test)]
 mod tests {
     use super::*;
