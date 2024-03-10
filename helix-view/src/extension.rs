@@ -26,8 +26,16 @@ mod steel_implementations {
 
     impl steel::rvals::Custom for Mode {}
     impl steel::rvals::Custom for Event {}
-    impl Custom for Style {}
-    impl Custom for Color {}
+    impl Custom for Style {
+        fn fmt(&self) -> Option<std::result::Result<String, std::fmt::Error>> {
+            Some(Ok(format!("{:?}", self)))
+        }
+    }
+    impl Custom for Color {
+        fn fmt(&self) -> Option<std::result::Result<String, std::fmt::Error>> {
+            Some(Ok(format!("{:?}", self)))
+        }
+    }
     impl Custom for UnderlineStyle {}
 
     impl CustomReference for Event {}

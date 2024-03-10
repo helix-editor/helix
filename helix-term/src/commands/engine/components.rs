@@ -1,25 +1,23 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Arc};
 
 use helix_core::Position;
 use helix_view::{
     graphics::{Color, CursorKind, Rect, UnderlineStyle},
-    input::{Event, KeyEvent},
+    input::{Event, KeyEvent, MouseEvent},
     keyboard::{KeyCode, KeyModifiers},
     theme::Style,
     Editor,
 };
 use steel::{
-    rvals::{Custom, FromSteelVal, IntoSteelVal},
-    steel_vm::{
-        builtin::BuiltInModule,
-        engine::Engine,
-        register_fn::{MarkerWrapper1, RegisterFn},
-    },
+    rvals::{Custom, FromSteelVal, IntoSteelVal, SteelString},
+    steel_vm::{builtin::BuiltInModule, engine::Engine, register_fn::RegisterFn},
     SteelVal,
 };
+use tokio::sync::Mutex;
 use tui::{
     buffer::Buffer,
-    widgets::{Block, BorderType, Borders, Widget},
+    text::Text,
+    widgets::{self, Block, BorderType, Borders, ListItem, Widget},
 };
 
 use crate::{
@@ -29,20 +27,115 @@ use crate::{
     },
     compositor::{self, Component},
     ctrl, key,
-    ui::{overlay::overlaid, Popup, Prompt, PromptEvent},
+    ui::overlay::overlaid,
 };
 
-use super::steel::WrappedDynComponent;
+use super::steel::{present_error_inside_engine_context, WrappedDynComponent};
+
+#[derive(Clone)]
+struct AsyncReader {
+    // Take that, and write it back to a terminal session that is
+    // getting rendered.
+    channel: Arc<Mutex<tokio::sync::mpsc::UnboundedReceiver<String>>>,
+}
+
+impl AsyncReader {
+    // TODO: Add &mut references to these async functions
+    // to avoid the cloning, and to ditch the arc and mutex
+    async fn read_line(self) -> Option<String> {
+        let mut buf = String::new();
+
+        let mut guard = self.channel.lock().await;
+
+        while let Ok(v) = guard.try_recv() {
+            buf.push_str(&v);
+        }
+
+        let fut = guard.recv();
+
+        match tokio::time::timeout(std::time::Duration::from_millis(2), fut).await {
+            Ok(Some(v)) => {
+                buf.push_str(&v);
+                Some(buf)
+            }
+            Ok(None) => {
+                if buf.is_empty() {
+                    None
+                } else {
+                    Some(buf)
+                }
+            }
+            Err(_) => Some(buf),
+        }
+    }
+}
+
+impl Custom for AsyncReader {}
+
+struct AsyncWriter {
+    channel: tokio::sync::mpsc::UnboundedSender<String>,
+}
+
+impl std::io::Write for AsyncWriter {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        if let Err(_) = self.channel.send(String::from_utf8_lossy(buf).to_string()) {
+            Ok(0)
+        } else {
+            Ok(buf.len())
+        }
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
 
 // TODO: Move the main configuration function to use this instead
 pub fn helix_component_module() -> BuiltInModule {
-    let mut module = BuiltInModule::new("helix/components".to_string());
+    let mut module = BuiltInModule::new("helix/components");
 
     module
+        .register_fn("async-read-line", AsyncReader::read_line)
+        // TODO:
+        .register_fn("make-async-reader-writer", || {
+            let (sender, receiver) = tokio::sync::mpsc::unbounded_channel();
+
+            let writer = AsyncWriter { channel: sender };
+            let reader = AsyncReader {
+                channel: Arc::new(Mutex::new(receiver)),
+            };
+
+            vec![
+                SteelVal::new_dyn_writer_port(writer),
+                reader.into_steelval().unwrap(),
+            ]
+        })
+        // Attempt to pop off a specific component
+        .register_fn(
+            "pop-dynamic-component-by-name",
+            |ctx: &mut Context, name: SteelString| {
+                // Removing a component by name here will be important!
+                todo!()
+            },
+        )
+        .register_fn("buffer-area", |buffer: &mut Buffer| buffer.area)
         .register_fn("frame-set-string!", buffer_set_string)
+        .register_fn("new-component!", SteelDynamicComponent::new_dyn)
         .register_fn("position", Position::new)
         .register_fn("position-row", |position: &Position| position.row)
         .register_fn("position-col", |position: &Position| position.col)
+        .register_fn(
+            "set-position-row!",
+            |position: &mut Position, row: usize| {
+                position.row = row;
+            },
+        )
+        .register_fn(
+            "set-position-col!",
+            |position: &mut Position, col: usize| {
+                position.col = col;
+            },
+        )
         .register_fn("area", helix_view::graphics::Rect::new)
         .register_fn("area-x", |area: &helix_view::graphics::Rect| area.x)
         .register_fn("area-y", |area: &helix_view::graphics::Rect| area.y)
@@ -58,6 +151,19 @@ pub fn helix_component_module() -> BuiltInModule {
 
             component.inner = inner;
         })
+        .register_fn("widget/list", |items: Vec<String>| {
+            widgets::List::new(
+                items
+                    .into_iter()
+                    .map(|x| ListItem::new(Text::from(x)))
+                    .collect::<Vec<_>>(),
+            )
+        })
+        // Pass references in as well?
+        .register_fn(
+            "widget/list/render",
+            |buf: &mut Buffer, area: Rect, list: widgets::List| list.render(area, buf),
+        )
         .register_fn("block", || {
             Block::default()
                 .borders(Borders::ALL)
@@ -71,6 +177,16 @@ pub fn helix_component_module() -> BuiltInModule {
         )
         .register_fn("buffer/clear", Buffer::clear)
         .register_fn("buffer/clear-with", Buffer::clear_with)
+        // Mutate a color in place, to save some headache.
+        .register_fn(
+            "set-color-rgb!",
+            |color: &mut Color, r: u8, g: u8, b: u8| {
+                *color = Color::Rgb(r, g, b);
+            },
+        )
+        .register_fn("set-color-indexed!", |color: &mut Color, index: u8| {
+            *color = Color::Indexed(index);
+        })
         .register_value("Color/Reset", Color::Reset.into_steelval().unwrap())
         .register_value("Color/Black", Color::Black.into_steelval().unwrap())
         .register_value("Color/Red", Color::Red.into_steelval().unwrap())
@@ -99,8 +215,14 @@ pub fn helix_component_module() -> BuiltInModule {
         .register_value("Color/LightGray", Color::LightGray.into_steelval().unwrap())
         .register_fn("Color/rgb", Color::Rgb)
         .register_fn("Color/Indexed", Color::Indexed)
+        .register_fn("set-style-fg!", |style: &mut Style, color: Color| {
+            style.fg = Some(color);
+        })
         .register_fn("style-fg", Style::fg)
         .register_fn("style-bg", Style::bg)
+        .register_fn("set-style-bg!", |style: &mut Style, color: Color| {
+            style.bg = Some(color);
+        })
         .register_fn("style-underline-color", Style::underline_color)
         .register_fn("style-underline-style", Style::underline_style)
         .register_value(
@@ -167,38 +289,90 @@ pub fn helix_component_module() -> BuiltInModule {
             "key-modifier-alt",
             SteelVal::IntV(KeyModifiers::ALT.bits() as isize),
         )
-        .register_fn("key-event-escape?", |event: Event| {
-            if let Event::Key(KeyEvent {
-                code: KeyCode::Esc, ..
-            }) = event
-            {
-                true
+        .register_fn("key-event-F?", |event: Event, number: u8| match event {
+            Event::Key(KeyEvent {
+                code: KeyCode::F(x),
+                ..
+            }) if number == x => true,
+            _ => false,
+        })
+        .register_fn("mouse-event?", |event: Event| {
+            matches!(event, Event::Mouse(_))
+        })
+        .register_fn("event-mouse-kind", |event: Event| {
+            if let Event::Mouse(MouseEvent { .. }) = event {
+                todo!()
             } else {
-                false
+                todo!()
             }
         })
-        .register_fn("key-event-backspace?", |event: Event| {
-            if let Event::Key(KeyEvent {
-                code: KeyCode::Backspace,
-                ..
-            }) = event
-            {
-                true
+        .register_fn("event-mouse-row", |event: Event| {
+            if let Event::Mouse(MouseEvent { .. }) = event {
+                todo!()
             } else {
-                false
+                todo!()
             }
         })
-        .register_fn("key-event-enter?", |event: Event| {
-            if let Event::Key(KeyEvent {
-                code: KeyCode::Enter,
-                ..
-            }) = event
-            {
-                true
+        .register_fn("event-mouse-col", |event: Event| {
+            if let Event::Mouse(MouseEvent { .. }) = event {
+                todo!()
+            } else {
+                todo!()
+            }
+        })
+        // Is this mouse event within the area provided
+        .register_fn("mouse-event-within-area?", |event: Event, area: Rect| {
+            if let Event::Mouse(MouseEvent { row, column, .. }) = event {
+                column > area.x
+                    && column < area.x + area.width
+                    && row > area.y
+                    && row < area.y + area.height
             } else {
                 false
             }
         });
+
+    macro_rules! register_key_events {
+        ($ ( $name:expr => $key:tt ) , *, ) => {
+            $(
+              module.register_fn(concat!("key-event-", $name, "?"), |event: Event| {
+                  matches!(
+                      event,
+                      Event::Key(
+                          KeyEvent {
+                              code: KeyCode::$key,
+                              ..
+                          }
+                      ))
+                  });
+            )*
+        };
+    }
+
+    // Key events for individual key codes
+    register_key_events!(
+        "escape" => Esc,
+        "backspace" => Backspace,
+        "enter" => Enter,
+        "left" => Left,
+        "right" => Right,
+        "up" => Up,
+        "down" => Down,
+        "home" => Home,
+        "page-up" => PageUp,
+        "page-down" => PageDown,
+        "tab" => Tab,
+        "delete" => Delete,
+        "insert" => Insert,
+        "null" => Null,
+        "caps-lock" => CapsLock,
+        "scroll-lock" => ScrollLock,
+        "num-lock" => NumLock,
+        "print-screen" => PrintScreen,
+        "pause" => Pause,
+        "menu" => Menu,
+        "keypad-begin" => KeypadBegin,
+    );
 
     module
 }
@@ -325,29 +499,32 @@ impl Component for SteelDynamicComponent {
         // Pass the `state` object through - this can be used for storing the state of whatever plugin thing we're
         // attempting to render
         let thunk = |engine: &mut Engine, f| {
-            engine.call_function_with_args(
+            engine.call_function_with_args_from_mut_slice(
                 self.render.clone(),
-                vec![self.state.clone(), area.into_steelval().unwrap(), f],
+                &mut [self.state.clone(), area.into_steelval().unwrap(), f],
             )
         };
 
-        ENGINE
-            .with(|x| {
-                x.borrow_mut()
-                    .with_mut_reference::<tui::buffer::Buffer, tui::buffer::Buffer>(frame)
-                    .with_mut_reference::<Context, Context>(&mut ctx)
-                    .consume(|engine, args| {
-                        let mut arg_iter = args.into_iter();
+        ENGINE.with(|x| {
+            let mut guard = x.borrow_mut();
 
-                        let buffer = arg_iter.next().unwrap();
-                        let context = arg_iter.next().unwrap();
+            if let Err(e) = guard
+                .with_mut_reference::<tui::buffer::Buffer, tui::buffer::Buffer>(frame)
+                .with_mut_reference::<Context, Context>(&mut ctx)
+                .consume(|engine, args| {
+                    let mut arg_iter = args.into_iter();
 
-                        engine.update_value("*helix.cx*", context);
+                    let buffer = arg_iter.next().unwrap();
+                    let context = arg_iter.next().unwrap();
 
-                        (thunk)(engine, buffer)
-                    })
-            })
-            .unwrap();
+                    engine.update_value("*helix.cx*", context);
+
+                    (thunk)(engine, buffer)
+                })
+            {
+                present_error_inside_engine_context(&mut ctx, &mut guard, e)
+            }
+        })
     }
 
     // TODO: Pass in event as well? Need to have immutable reference type
@@ -367,8 +544,6 @@ impl Component for SteelDynamicComponent {
                 on_next_key_callback: None,
                 jobs: ctx.jobs,
             };
-
-            log::info!("Handling custom event: {:?}", event);
 
             match self.key_event.as_mut() {
                 Some(SteelVal::Custom(key_event)) => {
@@ -391,9 +566,9 @@ impl Component for SteelDynamicComponent {
             // Pass the `state` object through - this can be used for storing the state of whatever plugin thing we're
             // attempting to render
             let thunk = |engine: &mut Engine| {
-                engine.call_function_with_args(
+                engine.call_function_with_args_from_mut_slice(
                     handle_event.clone(),
-                    vec![self.state.clone(), self.key_event.clone().unwrap()],
+                    &mut [self.state.clone(), self.key_event.clone().unwrap()],
                 )
             };
 
@@ -432,7 +607,14 @@ impl Component for SteelDynamicComponent {
                         },
                     }
                 }
-                Err(_) => compositor::EventResult::Ignored(None),
+                Err(e) => {
+                    // Present the error
+                    ENGINE.with(|x| {
+                        present_error_inside_engine_context(&mut ctx, &mut x.borrow_mut(), e)
+                    });
+
+                    compositor::EventResult::Ignored(None)
+                }
             }
         } else {
             compositor::EventResult::Ignored(None)
@@ -440,20 +622,22 @@ impl Component for SteelDynamicComponent {
     }
 
     fn should_update(&self) -> bool {
-        if let Some(should_update) = &self.should_update {
-            match ENGINE.with(|x| {
-                let res = x
-                    .borrow_mut()
-                    .call_function_with_args(should_update.clone(), vec![self.state.clone()]);
+        true
 
-                res
-            }) {
-                Ok(v) => bool::from_steelval(&v).unwrap_or(true),
-                Err(_) => true,
-            }
-        } else {
-            true
-        }
+        // if let Some(should_update) = &self.should_update {
+        //     match ENGINE.with(|x| {
+        //         let res = x
+        //             .borrow_mut()
+        //             .call_function_with_args(should_update.clone(), vec![self.state.clone()]);
+
+        //         res
+        //     }) {
+        //         Ok(v) => bool::from_steelval(&v).unwrap_or(true),
+        //         Err(_) => true,
+        //     }
+        // } else {
+        //     true
+        // }
     }
 
     // TODO: Implement immutable references. Right now I'm only supporting mutable references.
@@ -465,7 +649,6 @@ impl Component for SteelDynamicComponent {
         Option<helix_core::Position>,
         helix_view::graphics::CursorKind,
     ) {
-        log::info!("Calling cursor with area: {:?}", area);
         if let Some(cursor) = &self.cursor {
             // Pass the `state` object through - this can be used for storing the state of whatever plugin thing we're
             // attempting to render
@@ -480,9 +663,11 @@ impl Component for SteelDynamicComponent {
                 &ENGINE.with(|x| thunk(&mut (x.borrow_mut())).unwrap()),
             );
 
-            log::info!("Setting cursor at position: {:?}", result);
-
-            (result.unwrap(), CursorKind::Block)
+            match result {
+                Ok(v) => (v, CursorKind::Block),
+                // TODO: Figure out how to pop up an error message
+                Err(_e) => (None, CursorKind::Block),
+            }
         } else {
             (None, helix_view::graphics::CursorKind::Hidden)
         }
@@ -504,7 +689,7 @@ impl Component for SteelDynamicComponent {
             // re-entrant attempting to grab the ENGINE instead mutably, since we have to break the recursion
             // somehow. By putting it at the edge, we then say - hey for these functions on this interface,
             // call the engine instance. Otherwise, all computation happens inside the engine.
-            let res = ENGINE
+            match ENGINE
                 .with(|x| {
                     x.borrow_mut().call_function_with_args(
                         required_size.clone(),
@@ -512,9 +697,11 @@ impl Component for SteelDynamicComponent {
                     )
                 })
                 .and_then(|x| Option::<(u16, u16)>::from_steelval(&x))
-                .unwrap();
-
-            res
+            {
+                Ok(v) => v,
+                // TODO: Figure out how to present an error
+                Err(_e) => None,
+            }
         } else {
             None
         }

@@ -2286,6 +2286,16 @@ fn push_component(cx: &mut Context, component: &mut WrappedDynComponent) {
     cx.jobs.local_callback(callback);
 }
 
+fn render(cx: &mut Context) {
+    let callback = async move {
+        let call: Box<dyn FnOnce(&mut Editor, &mut Compositor, &mut job::Jobs)> = Box::new(
+            move |_editor: &mut Editor, _compositor: &mut Compositor, _jobs: &mut job::Jobs| {},
+        );
+        Ok(call)
+    };
+    cx.jobs.local_callback(callback);
+}
+
 fn enqueue_command(cx: &mut Context, callback_fn: SteelVal) {
     let rooted = callback_fn.as_rooted();
 
