@@ -674,10 +674,10 @@ impl Component for SteelDynamicComponent {
     }
 
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
-        let name = self.type_name();
+        // let name = self.type_name();
 
         if let Some(required_size) = &mut self.required_size {
-            log::info!("Calling required-size inside: {}", name);
+            // log::info!("Calling required-size inside: {}", name);
 
             // TODO: Create some token that we can grab to enqueue function calls internally. Referencing
             // the external API would cause problems - we just need to include a handle to the interpreter
