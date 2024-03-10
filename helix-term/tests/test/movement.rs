@@ -411,6 +411,23 @@ async fn cursor_position_append_eof() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn repeated_key_movement() -> anyhow::Result<()> {
+    test((
+        "#[|f]#oo",
+        "]]<space>",
+        helpers::platform_line("#[|f]#oo\n"),
+    ))
+    .await?;
+    test((
+        "#[|f]#oo\n\nbar",
+        "]]p",
+        helpers::platform_line("#[foo\n|]#\nbar"),
+    ))
+    .await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn select_mode_tree_sitter_next_function_is_union_of_objects() -> anyhow::Result<()> {
     test_with_config(
         AppBuilder::new().with_file("foo.rs", None),
