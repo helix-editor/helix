@@ -278,8 +278,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "C-ins" => yank_to_clipboard,
         // "" => yank_to_primary_clipboard,
 
-        "C-F1" => { " 🔰 Cheat Sheet (Memorized) "
-            "b" => { " buffer  "
+        "C-F1" => { " 🔰 CHEAT SHEET - BY HEART "
+           "b" => { " buffer  "
                 "C-lt" => buffer_picker,
             },
             "c" => { " change, code, command, copy  "
@@ -376,7 +376,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
                 "A-right" => jump_forward,
                 "A-2" => jumplist_picker,
             },
-            "m" => { " merge,. move  "
+            "m" => { " merge, move  "
                 "esc" | "A-minus" => merge_selections, // cancel multi-cursor + keeps selection
                 "left" => move_char_left,
                 "right" => move_char_right,
@@ -432,11 +432,11 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             },
         },
 
-        "space" => { " 🆘 Commands (Casual) "
+        "space" => { " 🆘 COMMANDS - CASUAL USE "
             "a" => { " add, align, append  "
-                "n" => add_newline_above,
-                "N" => add_newline_below,
-                "s" => align_selections,
+                "N" => add_newline_above,
+                "n" => add_newline_below,
+                "A" => align_selections,
                 "b" => align_view_bottom,
                 "c" => align_view_center,
                 "m" => align_view_middle,
@@ -516,6 +516,20 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
                 "h" => hsplit,
                 "H" => hsplit_new,
             },
+            "i" => { " increment, insert  "
+                "I" => increment,
+                "i" => insert_newline,
+                "r" => insert_register,
+                "t" => insert_tab,
+            },
+             "j" => { " join, jump  "
+                "j" => join_selections, // put all in a single line
+                "J" => join_selections_space,
+                "down" => jump_view_down,
+                "left" => jump_view_left,
+                "right" => jump_view_right,
+                "up" => jump_view_up,
+            },
             // "" => { "  "
             //    "esc" => normal_mode,
             //},
@@ -528,19 +542,17 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             // "" => { "  "
             //    "esc" => normal_mode,
             //},
-            // "" => { "  "
-            //    "esc" => normal_mode,
-            //},
-            // "" => { "  "
-            //    "esc" => normal_mode,
-            //},
+            "v" => { " vsplit  "
+                "v" => vsplit,
+                "V" => vsplit_new,
+            },
             "y" => { " yank  "
                 "j" => yank_joined,
-                "c" => yank_joined_to_clipboard,
-                "p" => yank_joined_to_primary_clipboard,
+                "J" => yank_joined_to_clipboard,
+                "C-j" => yank_joined_to_primary_clipboard,
                 "m" => yank_main_selection_to_clipboard,
                 "M" => yank_main_selection_to_primary_clipboard,
-                "y" => yank_to_primary_clipboard,
+                "C-m" => yank_to_primary_clipboard,
             },
             "┈" => _menu_divider,
             "C-F1" => _menu_cheat_sheet,
