@@ -25,8 +25,14 @@
 (error_declaration 
   ((error_parameter) @parameter.inside . ","? @parameter.around) @parameter.around)
 
+(call_argument
+  ((call_struct_argument) @parameter.inside . ","? @parameter.around) @parameter.around)
+
 (call_expression
   ((call_argument) @parameter.inside . ","? @parameter.around) @parameter.around)
+
+(variable_declaration_tuple
+  ((variable_declaration) @parameter.inside . ","? @parameter.around) @parameter.around)
 
 (struct_declaration
   body: (_) @class.inside) @class.around
