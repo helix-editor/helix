@@ -8,6 +8,7 @@ use helix_lsp::{
     util::{diagnostic_to_lsp_diagnostic, lsp_range_to_range, range_to_lsp_range},
     Client, OffsetEncoding,
 };
+
 use tokio_stream::StreamExt;
 use tui::{
     text::{Span, Spans},
@@ -680,24 +681,18 @@ pub fn code_action(cx: &mut Context) {
                 editor.set_error("No code actions available");
                 return;
             }
-            let mut picker = ui::Menu::new(actions, (), move |editor, action, event| {
-                if event != PromptEvent::Validate {
-                    return;
-                }
-
-                // always present here
-                let action = action.unwrap();
-                let Some(language_server) = editor.language_server_by_id(action.language_server_id)
+            let picker = ui::Picker::new(actions, (), move |cx, lsp_item, _event| {
+                let Some(language_server) = cx.editor.language_server_by_id(lsp_item.language_server_id)
                 else {
-                    editor.set_error("Language Server disappeared");
+                    cx.editor.set_error("Language Server disappeared");
                     return;
                 };
                 let offset_encoding = language_server.offset_encoding();
 
-                match &action.lsp_item {
+                match &lsp_item.lsp_item {
                     lsp::CodeActionOrCommand::Command(command) => {
                         log::debug!("code action command: {:?}", command);
-                        execute_lsp_command(editor, action.language_server_id, command.clone());
+                        execute_lsp_command(cx.editor, lsp_item.language_server_id, command.clone());
                     }
                     lsp::CodeActionOrCommand::CodeAction(code_action) => {
                         log::debug!("code action: {:?}", code_action);
@@ -717,33 +712,21 @@ pub fn code_action(cx: &mut Context) {
                             }
                         }
                         let resolved_code_action =
-                            resolved_code_action.as_ref().unwrap_or(code_action);
+                            resolved_code_action.as_ref().unwrap_or(&code_action);
 
                         if let Some(ref workspace_edit) = resolved_code_action.edit {
-                            let _ = editor.apply_workspace_edit(offset_encoding, workspace_edit);
+                            let _ = cx.editor.apply_workspace_edit(offset_encoding, workspace_edit);
                         }
 
                         // if code action provides both edit and command first the edit
                         // should be applied and then the command
                         if let Some(command) = &code_action.command {
-                            execute_lsp_command(editor, action.language_server_id, command.clone());
+                            execute_lsp_command(cx.editor, lsp_item.language_server_id, command.clone());
                         }
                     }
                 }
             });
-            picker.move_down(); // pre-select the first item
-
-            let margin = if editor.menu_border() {
-                Margin::vertical(1)
-            } else {
-                Margin::none()
-            };
-
-            let popup = Popup::new("code-action", picker)
-                .with_scrollbar(false)
-                .margin(margin);
-
-            compositor.replace_or_push("code-action", popup);
+            compositor.push(Box::new(overlaid(picker)));
         };
 
         Ok(Callback::EditorCompositor(Box::new(call)))
