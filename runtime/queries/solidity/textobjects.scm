@@ -40,6 +40,9 @@
 (emit_statement
   ((call_argument) @parameter.inside . ","? @parameter.around) @parameter.around)
 
+(revert_arguments
+  ((call_argument) @parameter.inside . ","? @parameter.around) @parameter.around)
+
 (struct_declaration
   body: (_) @class.inside) @class.around
 
