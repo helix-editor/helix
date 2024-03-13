@@ -7,6 +7,9 @@
 (fallback_receive_definition
   body: (_) @function.inside) @function.around
 
+(yul_function_definition
+  (yul_block) @function.inside) @function.around
+
 (function_definition 
   ((parameter) @parameter.inside . ","? @parameter.around) @parameter.around)
 
