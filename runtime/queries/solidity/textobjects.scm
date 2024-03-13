@@ -37,6 +37,9 @@
 (variable_declaration_tuple
   ((variable_declaration) @parameter.inside . ","? @parameter.around) @parameter.around)
 
+(emit_statement
+  ((call_argument) @parameter.inside . ","? @parameter.around) @parameter.around)
+
 (struct_declaration
   body: (_) @class.inside) @class.around
 
