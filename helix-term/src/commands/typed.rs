@@ -2414,6 +2414,101 @@ fn move_buffer(
     Ok(())
 }
 
+fn trim_whitespace_impl(doc: &Document, selection: &Selection) -> Transaction {
+    /// Maps reverse index to non-reverse index
+    fn map_reverse(len: usize, rev: usize) -> usize {
+        // This function won't be correct if len is 0
+        debug_assert_ne!(len, 0);
+        (len - 1) - rev
+    }
+
+    /// Find the last non-whitespace char of a line
+    fn find_trailing(l: RopeSlice) -> Option<usize> {
+        // Handle empty docs
+        if l.len_chars() == 0 {
+            return None;
+        }
+
+        // Returns the left-wise beginning of the trailing whitespace
+        // It is +1 the index of that char so that char is not deleted
+        l.chars_at(l.len_chars())
+            .reversed()
+            .position(|ch| !ch.is_whitespace())
+            .map(|n| l.len_chars() - n)
+            .or(Some(0))
+    }
+
+    let mut deletions: Vec<helix_core::Deletion> = Vec::new();
+    let mut delete = |start, end| {
+        // Don't push empty changes
+        if start != end {
+            deletions.push((start, end));
+        }
+    };
+
+    // Assume ranges are in order and not overlapping
+    for range in selection.ranges().iter().rev() {
+        let slice = range.slice(doc.text().slice(..));
+        let lines = slice.lines_at(slice.len_lines()).reversed();
+
+        // Cap the `end` to not delete the line ending
+        let end_account_le = |line: RopeSlice, n: usize| {
+            let le_len = helix_core::line_ending::get_line_ending(&line)
+                .map(|le| le.len_chars())
+                .unwrap_or(0);
+            // Map `end` with respect to the whole doc
+            range.from() + n - le_len
+        };
+
+        // Ignore empty lines if `trailing` is true.
+        // If not `trailing`, delete trailing whitespace on lines.
+        let mut trailing = true;
+        for (idx, line) in lines
+            .enumerate()
+            .map(|(idx, line)| (map_reverse(slice.len_lines(), idx), line))
+        {
+            if trailing {
+                // `n @ 1..` will ignore `Some(0)` from empty lines
+                if let Some(n @ 1..) = find_trailing(line) {
+                    let start = range.from() + slice.line_to_char(idx) + n;
+                    // Needed to retain the last EOL of the selection, which would be selected. e.g. in `%:trim`
+                    let end = end_account_le(slice, slice.len_chars());
+                    delete(start, end);
+                    trailing = false;
+                }
+            } else if let Some(n) = find_trailing(line) {
+                let start = range.from() + slice.line_to_char(idx) + n;
+                let end = end_account_le(line, slice.line_to_char(idx + 1));
+                delete(start, end);
+            }
+        }
+
+        // Delete empty selections
+        if trailing {
+            let start = range.from();
+            let end = end_account_le(slice, slice.len_chars());
+            delete(start, end);
+        }
+    }
+    Transaction::delete(doc.text(), deletions.into_iter().rev())
+}
+
+fn trim_whitespace(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    let (view, doc) = current!(cx.editor);
+    let selection = doc.selection(view.id);
+    let tx = trim_whitespace_impl(doc, selection);
+    doc.apply(&tx, view.id);
+    doc.append_changes_to_history(view);
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "quit",
@@ -3020,6 +3115,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         doc: "Move the current buffer and its corresponding file to a different path",
         fun: move_buffer,
         signature: CommandSignature::positional(&[completers::filename]),
+    },
+    TypableCommand {
+        name: "trim-trailing-whitespace",
+        aliases: &["trim"],
+        doc: "Delete whitespace",
+        fun: trim_whitespace,
+        signature: CommandSignature::none(),
     },
 ];
 
