@@ -1,3 +1,6 @@
+mod variable_expansion;
+pub use variable_expansion::VARIABLES;
+
 use crate::{
     align_view,
     document::{DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint},

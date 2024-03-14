@@ -8,6 +8,7 @@
 - [Selecting and manipulating text with textobjects](#selecting-and-manipulating-text-with-textobjects)
 - [Navigating using tree-sitter textobjects](#navigating-using-tree-sitter-textobjects)
 - [Moving the selection with syntax-aware motions](#moving-the-selection-with-syntax-aware-motions)
+- [Using variables in typed commands and mapped shortcuts](#using-variables-in-typed-commands-and-mapped-shortcuts)
 <!--toc:end-->
 
 For a full interactive introduction to Helix, refer to the
@@ -202,6 +203,26 @@ child node will be selected. In the event that `arg1` does not have a previous
 sibling, the selection will move up the syntax tree and select the previous
 element. As a result, using `Alt-p` with a selection on `arg1` will move the
 selection to the "func" `identifier`.
+
+## Using variables in typed commands and mapped shortcuts
+Helix provides several variables that can be used when typing commands or creating custom shortcuts. These variables are listed below:
+
+| Variable        | Description |
+| ---             | ---                      |
+| `%{basename}`   | The name and extension of the currently focused file. |
+| `%{filename}`   | The absolute path of the currently focused file. |
+| `%{dirname}`    | The absolute path of the parent directory of the currently focused file. |
+| `%{cwd}`        | The absolute path of the current working directory of Helix. |
+| `%{linenumber}` | The line number where the primary cursor is positioned. |
+| `%{selection}`  | The text selected by the primary cursor. |
+| `%sh{cmd}`      | Executes `cmd` with the default shell and returns the command output, if any. |
+
+### Example
+```toml
+[keys.normal]
+# Print blame info for the line where the main cursor is.
+C-b = ":echo %sh{git blame -L %{linenumber} %{filename}}"
+```
 
 [lang-support]: ./lang-support.md
 [unimpaired-keybinds]: ./keymap.md#unimpaired

@@ -86,3 +86,4 @@
 | `:clear-register` | Clear given register. If no argument is provided, clear all registers. |
 | `:redraw` | Clear and re-render the whole UI |
 | `:move` | Move the current buffer and its corresponding file to a different path |
+| `:echo` | Print the processed input to the editor status |

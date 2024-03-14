@@ -194,16 +194,29 @@ impl MappableCommand {
     pub fn execute(&self, cx: &mut Context) {
         match &self {
             Self::Typable { name, args, doc: _ } => {
-                let args: Vec<Cow<str>> = args.iter().map(Cow::from).collect();
                 if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
                     let mut cx = compositor::Context {
                         editor: cx.editor,
                         jobs: cx.jobs,
                         scroll: None,
                     };
-                    if let Err(e) = (command.fun)(&mut cx, &args[..], PromptEvent::Validate) {
-                        cx.editor.set_error(format!("{}", e));
-                    }
+
+                    let args = args.join(" ");
+
+                    match cx.editor.expand_variables(&args) {
+                        Ok(args) => {
+                            let args = args.split_whitespace();
+                            let args: Vec<Cow<str>> = args.map(Cow::Borrowed).collect();
+
+                            if let Err(e) = (command.fun)(&mut cx, &args[..], PromptEvent::Validate)
+                            {
+                                cx.editor.set_error(format!("{}", e));
+                            }
+                        }
+                        Err(err) => {
+                            cx.editor.set_error(err.to_string());
+                        }
+                    };
                 }
             }
             Self::Static { fun, .. } => (fun)(cx),
