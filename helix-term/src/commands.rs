@@ -226,8 +226,9 @@ impl MappableCommand {
 
     #[rustfmt::skip]
     static_commands!(
-        _menu_cheat_sheet, " 🔰 CHEAT SHEET - BY HEART ",
-        _menu_divider, "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈",
+        _menu_cheat_sheet, " 🔰 CHEAT SHEET - FREQUENT KEYBINDS ",
+        _menu_divider, "┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈┈",
+        _menu_sos_commands, " 🆘 COMMANDS - RARE KEYBINDS ",
         add_newline_above, "⮬ [add_newline_above] Add newline above",
         add_newline_below, "⮯ [add_newline_below] Add newline below",
         align_selections, "▥ [align_selections] Align selections in column",
@@ -597,8 +598,14 @@ impl PartialEq for MappableCommand {
 fn _menu_cheat_sheet(_cx: &mut Context) {
     // TODO: do not print message, open right away
     _cx.editor
-        .set_error("Hit [Ctrl + F1] again to open Cheat Sheet!");
+        .set_error("Hit [Ctrl + F1] again to open 🔰 Cheat Sheet!");
 }
+fn _menu_sos_commands(_cx: &mut Context) {
+    // TODO: do not print message, open right away
+    _cx.editor
+        .set_error("Hit [space] again to open 🆘 Commands!");
+}
+
 fn _menu_divider(_cx: &mut Context) {
     normal_mode(_cx);
 }

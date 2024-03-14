@@ -278,7 +278,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "C-ins" => yank_to_clipboard,
         // "" => yank_to_primary_clipboard,
 
-        "C-F1" => { " 🔰 CHEAT SHEET - BY HEART "
+        "C-F1" => { " 🔰 CHEAT SHEET - FREQUENT KEYBINDS "
            "b" => { " buffer  "
                 "C-lt" => buffer_picker,
             },
@@ -430,9 +430,11 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
                 "C-c" => yank,
                 "C-ins" => yank_to_clipboard,
             },
+            "┈" => _menu_divider,
+            "space" => _menu_sos_commands,
         },
 
-        "space" => { " 🆘 COMMANDS - CASUAL USE "
+        "space" => { " 🆘 COMMANDS - RARE KEYBINDS "
             "a" => { " add, align, append  "
                 "N" => add_newline_above,
                 "n" => add_newline_below,
@@ -522,7 +524,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
                 "r" => insert_register,
                 "t" => insert_tab,
             },
-             "j" => { " join, jump  "
+            "j" => { " join, jump  "
                 "j" => join_selections, // put all in a single line
                 "J" => join_selections_space,
                 "down" => jump_view_down,
@@ -530,21 +532,105 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
                 "right" => jump_view_right,
                 "up" => jump_view_up,
             },
-            // "" => { "  "
-            //    "esc" => normal_mode,
-            //},
-            // "" => { "  "
-            //    "esc" => normal_mode,
-            //},
-            // "" => { "  "
-            //    "esc" => normal_mode,
-            //},
-            // "" => { "  "
-            //    "esc" => normal_mode,
-            //},
+            "k" => { " keep, kill  "
+                "k" => keep_primary_selection,
+                "K" => keep_selections,
+                "end" => kill_to_line_end,
+                "home" => kill_to_line_start,
+            },
+            "l" => { " last  "
+                "p" => last_picker, // too weird
+                "l" => later,
+            },
+            "m" => { " make, match, merge, move  "
+                 "w" => make_search_word_bounded,
+                 "b" => match_brackets,
+                 "c" => merge_consecutive_selections,
+                 "A-C-right" => move_next_long_word_end,
+                 "C-right" => move_next_word_end,
+                 "A-C-left" => move_prev_long_word_start,
+                 "C-left" => move_prev_word_start,
+                 "down" => move_visual_line_down,
+                 "up" => move_visual_line_up,
+            },
+            "p" => { " page, paste "
+                "C-pagedown" => page_cursor_half_down,
+                "C-pageup" => page_cursor_half_up,
+                "pagedown" => page_down,
+                "pageup" => page_up,
+                "C-v" => paste_after,
+                "A-C-V" => paste_clipboard_after,
+                "A-C-v" => paste_clipboard_before,
+                "C-ins" => paste_primary_clipboard_after,
+            },
+            "r" => { " record, remove, repeat, replace  "
+                "q" => record_macro,
+                "r" => remove_primary_selection,
+                "R" => remove_selections,
+                "." => repeat_last_motion, // too dangerous
+                "C-r" => replace, // replaces with typed character (so weird)
+                "C-R" => replace_selections_with_clipboard,
+                "A-C-r" => replace_selections_with_primary_clipboard,
+                "C-v" => replace_with_yanked,
+            },
+            "R" => { " REPLAY, REVERSE, ROTATE  "
+                "." => replay_macro,
+                "r" => reverse_selection_contents,
+                "C-left" => rotate_selection_contents_backward,
+                "C-right" => rotate_selection_contents_forward,
+                "A-C-left" => rotate_selections_backward,
+                "A-C-right" => rotate_selections_forward,
+                "v" => rotate_view,
+                "R" => rotate_view_reverse,
+                "/" => rsearch,
+            },
+            "s" => { " save, select, shell, shrink, signature  "
+                "s" => save_selection,
+                "v" => select_mode,
+                "right" => select_next_sibling, // short it
+                "left" => select_prev_sibling,
+                "r" => select_regex,
+                "R" => select_register,
+                "a" => select_textobject_around,
+                "i" => select_textobject_inner,
+                "C-a" => shell_append_output,
+                "C-ins" => shell_insert_output,
+                "C-k" => shell_keep_pipe,
+                "C-p" => shell_pipe,
+                "C-P" => shell_pipe_to,
+                "S" => shrink_selection,
+                "B" => shrink_to_line_bounds, // oposite to Shift + Xi (seems not needed)
+                "F1" => signature_help, // fail
+            },
+            "S" => { " SMART, SPLIT, SURROUND, SUSPEND, SWAP, SYMBOL  "
+                "tab" => smart_tab,
+                "s" => split_selection,
+                "S" => split_selection_on_newline,
+                "C-a" => surround_add,
+                "C-d" => surround_delete,
+                "C-r" => surround_replace,
+                "C-s" => suspend,
+                "down" => swap_view_down,
+                "left" => swap_view_left,
+                "right" => swap_view_right,
+                "up" => swap_view_up,
+                "t" => symbol_picker, // i dont like this
+            },
+            "t" => { " till, toggle, transpose, trim  "
+                "T" => till_prev_char,
+                "A-C-/" => toggle_block_comments,
+                "C-/" => toggle_line_comments,
+                "t" => transpose_view,
+                "C-t" => trim_selections,
+            },
             "v" => { " vsplit  "
                 "v" => vsplit,
                 "V" => vsplit_new,
+            },
+            "w" => { " wclose, wonly, workspace  "
+                "w" => wclose,
+                "C-w" => wonly,
+                "T" => workspace_symbol_picker,
             },
             "y" => { " yank  "
                 "j" => yank_joined,
