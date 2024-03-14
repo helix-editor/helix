@@ -316,6 +316,7 @@ impl MappableCommand {
         file_picker_in_current_buffer_directory, "Open file picker at current buffers's directory",
         file_picker_in_current_directory, "Open file picker at current working directory",
         code_action, "Perform code action",
+        code_action_picker, "Perform code action in a picker",
         buffer_picker, "Open buffer picker",
         jumplist_picker, "Open jumplist picker",
         symbol_picker, "Open symbol picker",
