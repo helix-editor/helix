@@ -2414,6 +2414,46 @@ fn move_buffer(
     Ok(())
 }
 
+fn yank_diagnostic(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (view, doc) = current_ref!(cx.editor);
+    let primary = doc.selection(view.id).primary();
+
+    // Look only for diagnostics that intersect with the primary selection
+    let diag: Vec<_> = doc
+        .diagnostics()
+        .iter()
+        .filter(|d| primary.overlaps(&helix_core::Range::new(d.range.start, d.range.end)))
+        .map(|d| d.message.clone())
+        .collect();
+    let n = diag.len();
+    if n == 0 {
+        bail!("No diagnostics under primary selection");
+    }
+
+    let reg = match args.get(0) {
+        Some(s) => {
+            ensure!(s.chars().count() == 1, format!("Invalid register {s}"));
+            s.chars().next().unwrap()
+        }
+        None => '+',
+    };
+
+    cx.editor.registers.write(reg, diag)?;
+    cx.editor.set_status(format!(
+        "Yanked {n} diagnostic{} to register {reg}",
+        if n == 1 { "" } else { "s" }
+    ));
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "quit",
@@ -3020,6 +3060,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         doc: "Move the current buffer and its corresponding file to a different path",
         fun: move_buffer,
         signature: CommandSignature::positional(&[completers::filename]),
+    },
+    TypableCommand {
+        name: "yank-diagnostic",
+        aliases: &[],
+        doc: "Yank diagnostic(s) under primary cursor to register, or clipboard by default",
+        fun: yank_diagnostic,
+        signature: CommandSignature::none(),
     },
 ];
 
