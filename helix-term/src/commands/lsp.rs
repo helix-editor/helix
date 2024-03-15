@@ -741,7 +741,7 @@ fn code_action_inner_picker(
             (),
             move |cx: &mut crate::compositor::Context, lsp_item, _event| {
                 code_action_handle_lsp_item(
-                    &mut cx.editor,
+                    cx.editor,
                     &lsp_item.lsp_item,
                     lsp_item.language_server_id,
                 );
@@ -782,7 +782,7 @@ fn code_action_handle_lsp_item(
                     }
                 }
             }
-            let resolved_code_action = resolved_code_action.as_ref().unwrap_or(&code_action);
+            let resolved_code_action = resolved_code_action.as_ref().unwrap_or(code_action);
 
             if let Some(ref workspace_edit) = resolved_code_action.edit {
                 let _ = editor.apply_workspace_edit(offset_encoding, workspace_edit);
