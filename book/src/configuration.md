@@ -397,3 +397,17 @@ S-tab = "move_parent_node_start"
 tab = "extend_parent_node_end"
 S-tab = "extend_parent_node_start"
 ```
+
+### `[editor.vcs]` Section
+
+Options for configuring VCSs (version control systems).
+
+| Key         | Description                                                                                                | Default  |
+| `providers` | VCSs to try (in the given order) for diff computations and the `version-control` element in the statusline | See note |
+
+The only valid provider is `git` at the moment (if Helix is compiled with git support)
+
+Note: the default providers change based on how Helix was compiled:
+
+- If the `git` feature was used (the default): `["git"]`
+- Else: `[]`

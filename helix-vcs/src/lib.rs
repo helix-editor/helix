@@ -1,18 +1,14 @@
-use anyhow::{bail, Result};
+use anyhow::Result;
 use arc_swap::ArcSwap;
 use std::{path::Path, sync::Arc};
-
-#[cfg(feature = "git")]
-pub use git::Git;
-#[cfg(not(feature = "git"))]
-pub use Dummy as Git;
 
 #[cfg(feature = "git")]
 mod git;
 
 mod diff;
-
 pub use diff::{DiffHandle, Hunk};
+
+pub mod config;
 
 pub trait DiffProvider {
     /// Returns the data that a diff should be computed against
@@ -23,19 +19,8 @@ pub trait DiffProvider {
     fn get_current_head_name(&self, file: &Path) -> Result<Arc<ArcSwap<Box<str>>>>;
 }
 
-#[doc(hidden)]
-pub struct Dummy;
-impl DiffProvider for Dummy {
-    fn get_diff_base(&self, _file: &Path) -> Result<Vec<u8>> {
-        bail!("helix was compiled without git support")
-    }
-
-    fn get_current_head_name(&self, _file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
-        bail!("helix was compiled without git support")
-    }
-}
-
 pub struct DiffProviderRegistry {
+    /// Built from the list in the user configuration.
     providers: Vec<Box<dyn DiffProvider>>,
 }
 
@@ -67,12 +52,17 @@ impl DiffProviderRegistry {
     }
 }
 
-impl Default for DiffProviderRegistry {
-    fn default() -> Self {
-        // currently only git is supported
-        // TODO make this configurable when more providers are added
-        let git: Box<dyn DiffProvider> = Box::new(Git);
-        let providers = vec![git];
-        DiffProviderRegistry { providers }
+impl From<&config::Vcs> for DiffProviderRegistry {
+    fn from(value: &config::Vcs) -> Self {
+        fn mapper(p: &config::Provider) -> Box<dyn DiffProvider> {
+            match p {
+                #[cfg(feature = "git")]
+                config::Provider::Git => Box::new(git::Git),
+            }
+        }
+
+        Self {
+            providers: value.providers.iter().map(mapper).collect(),
+        }
     }
 }

@@ -305,6 +305,9 @@ pub struct Config {
     /// Which indent heuristic to use when a new line is inserted
     #[serde(default)]
     pub indent_heuristic: IndentationHeuristic,
+    /// VCS configuration (notably which to activate, in which order)
+    #[serde(default)]
+    pub vcs: helix_vcs::config::Vcs,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -867,6 +870,7 @@ impl Default for Config {
             smart_tab: Some(SmartTabConfig::default()),
             popup_border: PopupBorderConfig::None,
             indent_heuristic: IndentationHeuristic::default(),
+            vcs: Default::default(),
         }
     }
 }
@@ -1060,7 +1064,7 @@ impl Editor {
             theme: theme_loader.default(),
             language_servers,
             diagnostics: BTreeMap::new(),
-            diff_providers: DiffProviderRegistry::default(),
+            diff_providers: DiffProviderRegistry::from(&conf.vcs),
             debugger: None,
             debugger_events: SelectAll::new(),
             breakpoints: HashMap::new(),
