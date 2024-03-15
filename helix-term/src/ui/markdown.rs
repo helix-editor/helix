@@ -54,7 +54,14 @@ pub fn highlighted_code_block<'a>(
             language.into(),
         ))
         .and_then(|config| config.highlight_config(theme.scopes()))
-        .and_then(|config| Syntax::new(ropeslice, config, Arc::clone(&config_loader)));
+        .and_then(|config| {
+            Syntax::new(ropeslice, config, |injection| {
+                config_loader
+                    .load()
+                    .language_configuration_for_injection_string(injection)
+                    .and_then(|config| config.get_highlight_config())
+            })
+        });
 
     let syntax = match syntax {
         Some(s) => s,

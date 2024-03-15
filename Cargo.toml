@@ -12,6 +12,7 @@ members = [
   "helix-vcs",
   "helix-parsec",
   "helix-stdx",
+  "helix-syntax",
   "xtask",
 ]
 

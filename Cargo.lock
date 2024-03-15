@@ -1311,6 +1311,7 @@ dependencies = [
  "hashbrown 0.14.5",
  "helix-loader",
  "helix-stdx",
+ "helix-syntax",
  "imara-diff",
  "indoc",
  "log",
@@ -1423,6 +1424,23 @@ dependencies = [
  "tempfile",
  "which",
  "windows-sys 0.52.0",
+]
+
+[[package]]
+name = "helix-syntax"
+version = "24.7.0"
+dependencies = [
+ "ahash",
+ "arc-swap",
+ "bitflags 2.6.0",
+ "hashbrown 0.14.5",
+ "helix-stdx",
+ "log",
+ "once_cell",
+ "regex",
+ "ropey",
+ "slotmap",
+ "tree-sitter",
 ]
 
 [[package]]

@@ -738,18 +738,9 @@ fn init_indent_query<'a, 'b>(
             .map(|prec| prec.byte_range().end - 1..byte_pos + 1)
             .unwrap_or(byte_pos..byte_pos + 1);
 
-        crate::syntax::PARSER.with(|ts_parser| {
-            let mut ts_parser = ts_parser.borrow_mut();
-            let mut cursor = ts_parser.cursors.pop().unwrap_or_default();
-            let query_result = query_indents(
-                query,
-                syntax,
-                &mut cursor,
-                text,
-                query_range,
-                new_line_byte_pos,
-            );
-            ts_parser.cursors.push(cursor);
+        crate::syntax::with_cursor(|cursor| {
+            let query_result =
+                query_indents(query, syntax, cursor, text, query_range, new_line_byte_pos);
             (query_result, deepest_preceding)
         })
     };

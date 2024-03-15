@@ -7,7 +7,7 @@ use helix_core::auto_pairs::AutoPairs;
 use helix_core::chars::char_is_word;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
-use helix_core::syntax::{Highlight, LanguageServerFeature};
+use helix_core::syntax::{generate_edits, Highlight, LanguageServerFeature};
 use helix_core::text_annotations::{InlineAnnotation, Overlay};
 use helix_lsp::util::lsp_pos_to_pos;
 use helix_stdx::faccess::{copy_metadata, readonly};
@@ -156,6 +156,7 @@ pub struct Document {
     pub syntax: Option<Syntax>,
     /// Corresponding language scope name. Usually `source.<lang>`.
     pub language: Option<Arc<LanguageConfiguration>>,
+    loader: Option<Arc<ArcSwap<helix_core::syntax::Loader>>>,
 
     /// Pending changes since last history commit.
     changes: ChangeSet,
@@ -678,6 +679,7 @@ impl Document {
             focused_at: std::time::Instant::now(),
             readonly: false,
             jump_labels: HashMap::new(),
+            loader: None,
         }
     }
 
@@ -1131,9 +1133,15 @@ impl Document {
             if let Some(highlight_config) =
                 language_config.highlight_config(&(*loader).load().scopes())
             {
-                self.syntax = Syntax::new(self.text.slice(..), highlight_config, loader);
+                let loader_ = loader.load_full();
+                self.syntax = Syntax::new(self.text.slice(..), highlight_config, |injection| {
+                    loader_
+                        .language_configuration_for_injection_string(injection)
+                        .and_then(|config| config.get_highlight_config())
+                });
             }
 
+            self.loader = Some(loader);
             self.language = Some(language_config);
         } else {
             self.syntax = None;
@@ -1275,11 +1283,16 @@ impl Document {
 
             // update tree-sitter syntax tree
             if let Some(syntax) = &mut self.syntax {
+                let loader = self.loader.as_ref().unwrap().load_full();
                 // TODO: no unwrap
                 let res = syntax.update(
-                    old_doc.slice(..),
                     self.text.slice(..),
-                    transaction.changes(),
+                    generate_edits(old_doc.slice(..), transaction.changes()),
+                    |injection| {
+                        loader
+                            .language_configuration_for_injection_string(injection)
+                            .and_then(|config| config.get_highlight_config())
+                    },
                 );
                 if res.is_err() {
                     log::error!("TS parser failed, disabling TS for the current buffer: {res:?}");
