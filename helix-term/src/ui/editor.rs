@@ -23,7 +23,7 @@ use helix_core::{
 };
 use helix_view::{
     document::{Mode, SavePoint, SCRATCH_BUFFER_NAME},
-    editor::{CompleteAction, CursorShapeConfig},
+    editor::{BufferLineAlignment, CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
@@ -579,25 +579,52 @@ impl EditorView {
             .try_get("ui.bufferline")
             .unwrap_or_else(|| editor.theme.get("ui.statusline.inactive"));
 
-        let mut x = viewport.x;
         let current_doc = view!(editor).doc;
 
-        for doc in editor.documents() {
-            let fname = doc
-                .path()
-                .unwrap_or(&scratch)
-                .file_name()
-                .unwrap_or_default()
-                .to_str()
-                .unwrap_or_default();
+        let mut total_width_needed = 0;
 
-            let style = if current_doc == doc.id() {
-                bufferline_active
-            } else {
-                bufferline_inactive
-            };
+        let entries: Vec<(String, Style)> = editor
+            .documents()
+            .map(|doc| {
+                let fname = doc
+                    .path()
+                    .unwrap_or(&scratch)
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_str()
+                    .unwrap_or_default();
 
-            let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
+                let style = if current_doc == doc.id() {
+                    bufferline_active
+                } else {
+                    bufferline_inactive
+                };
+
+                let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
+
+                total_width_needed += text.len();
+
+                (text, style)
+            })
+            .collect();
+
+        // Figure out the X offset into the view depending on the requested bufferline alignment.
+        let x_offset = match editor.config().bufferline_alignment {
+            BufferLineAlignment::Left => 0u16,
+            BufferLineAlignment::Center => surface
+                .area
+                .width
+                .saturating_sub(total_width_needed.min(surface.area.width as usize) as u16)
+                .div_euclid(2),
+            BufferLineAlignment::Right => surface
+                .area
+                .width
+                .saturating_sub(total_width_needed.min(surface.area.width as usize) as u16),
+        };
+
+        let mut x = viewport.x + x_offset;
+
+        for (text, style) in entries {
             let used_width = viewport.x.saturating_sub(x);
             let rem_width = surface.area.width.saturating_sub(used_width);
 
