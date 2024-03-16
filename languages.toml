@@ -1083,7 +1083,6 @@ injection-regex = "ocaml"
 file-types = ["ml"]
 shebangs = ["ocaml", "ocamlrun", "ocamlscript"]
 block-comment-tokens = { start = "(*", end = "*)" }
-comment-token = "(**)"
 language-servers = [ "ocamllsp" ]
 indent = { tab-width = 2, unit = "  " }
 
