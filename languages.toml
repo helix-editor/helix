@@ -367,7 +367,6 @@ scope = "source.json"
 injection-regex = "json"
 file-types = [
   "json",
-  "jsonc",
   "arb",
   "ipynb",
   "geojson",
@@ -396,6 +395,15 @@ indent = { tab-width = 2, unit = "  " }
 name = "json"
 source = { git = "https://github.com/tree-sitter/tree-sitter-json", rev = "73076754005a460947cafe8e03a8cf5fa4fa2938" }
 
+[[language]]
+name = "jsonc"
+scope = "source.json"
+injection-regex = "jsonc"
+file-types = ["jsonc"]
+grammar = "json"
+language-servers = [ "vscode-json-language-server" ]
+auto-format = true
+indent = { tab-width = 2, unit = "  " }
 
 [[language]]
 name = "json5"
