@@ -1,6 +1,6 @@
-(section) @indent.begin
+(section) @indent
 
 (section
-  "}" @indent.end)
+  "}" @outdent)
 
-"}" @indent.branch
+"}" @extend
