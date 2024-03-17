@@ -71,7 +71,10 @@ impl Config {
                 let mut keys;
                 match local.unbind_default_keys {
                     true => keys = HashMap::default(),
-                    false => keys = keymap::default(),
+                    false => match global.unbind_default_keys {
+                        true => keys = HashMap::default(),
+                        false => keys = keymap::default(),
+                    },
                 }
                 if let Some(global_keys) = global.keys {
                     merge_keys(&mut keys, global_keys)
