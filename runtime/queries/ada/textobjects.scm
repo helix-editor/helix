@@ -7,17 +7,17 @@
 ;;
 ;; https://github.com/nvim-treesitter/nvim-treesitter-textobjects/blob/master/README.md
 
-(subprogram_body) @function.outer
-(subprogram_body (non_empty_declarative_part) @function.inner)
-(subprogram_body (handled_sequence_of_statements) @function.inner)
-(function_specification) @function.outer
-(procedure_specification) @function.outer
-(package_declaration) @function.outer
-(generic_package_declaration) @function.outer
-(package_body) @function.outer
-(if_statement) @block.outer
-(if_statement statements: (_) @block.inner)
-(if_statement else_statements: (_) @block.inner)
-(elsif_statement_item statements: (_) @block.inner)
-(loop_statement) @block.outer
-(loop_statement statements: (_) @block.inner)
+(subprogram_body) @function.around
+(subprogram_body (non_empty_declarative_part) @function.inside)
+(subprogram_body (handled_sequence_of_statements) @function.inside)
+(function_specification) @function.around
+(procedure_specification) @function.around
+(package_declaration) @function.around
+(generic_package_declaration) @function.around
+(package_body) @function.around
+(if_statement) @object.around
+(if_statement statements: (_) @object.inside)
+(if_statement else_statements: (_) @object.inside)
+(elsif_statement_item statements: (_) @object.inside)
+(loop_statement) @object.around
+(loop_statement statements: (_) @object.inside)

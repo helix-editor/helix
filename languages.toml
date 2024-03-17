@@ -7,6 +7,7 @@ use-grammars = { except = [ "hare", "wren", "gemini" ] }
 
 als = { command = "als" }
 ada-language-server = { command = "ada_language_server" }
+ada-gpr-language-server = {command = "ada_language_server", args = ["--language-gpr"]}
 awk-language-server = { command = "awk-language-server" }
 bash-language-server = { command = "bash-language-server", args = ["start"] }
 bass = { command = "bass", args = ["--lsp"] }
@@ -2341,11 +2342,12 @@ source = { git = "https://github.com/sourcegraph/tree-sitter-jsonnet", rev = "04
 name = "ada"
 scope = "source.ada"
 injection-regex = "ada"
-file-types = ["adb", "ads"]
+file-types = ["adb", "ads", "gpr"]
 roots = ["alire.toml", "*.gpr"]
 comment-token = "--"
 indent = { tab-width = 3, unit = " " }
-language-servers = [ "ada-language-server" ]
+language-servers = ["ada-language-server", "ada-gpr-language-server"]
+
 
 [[grammar]]
 name = "ada"

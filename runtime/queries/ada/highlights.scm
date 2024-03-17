@@ -46,7 +46,7 @@
    "aliased"
    "constant"
    "renames"
-] @storageclass
+] @keyword.storage
 [
    "mod"
    "new"
@@ -54,7 +54,7 @@
    "record"
    "subtype"
    "type"
-] @type
+] @type.builtin
 [
    "with"
    "use"
@@ -135,29 +135,29 @@
 (subprogram_declaration "is" @keyword.function "abstract"  @keyword.function)
 (aspect_specification "with" @keyword.function)
 
-(full_type_declaration "is" @type)
-(subtype_declaration "is" @type)
-(record_definition "end" @type)
-(full_type_declaration (_ "access" @type))
-(array_type_definition "array" @type "of" @type)
-(access_to_object_definition "access" @type)
-(access_to_object_definition "access" @type
+(full_type_declaration "is" @type.builtin)
+(subtype_declaration "is" @type.builtin)
+(record_definition "end" @type.builtin)
+(full_type_declaration (_ "access" @type.builtin))
+(array_type_definition "array" @type.builtin "of" @type.builtin)
+(access_to_object_definition "access" @type.builtin)
+(access_to_object_definition "access" @type.builtin
    [
-      (general_access_modifier "constant" @type)
-      (general_access_modifier "all" @type)
+      (general_access_modifier "constant" @type.builtin)
+      (general_access_modifier "all" @type.builtin)
    ]
 )
-(range_constraint "range" @type)
-(signed_integer_type_definition "range" @type)
-(index_subtype_definition "range" @type)
-(record_type_definition "abstract" @type)
-(record_type_definition "tagged" @type)
-(record_type_definition "limited" @type)
-(record_type_definition (record_definition "null" @type))
-(private_type_declaration "is" @type "private" @type)
-(private_type_declaration "tagged" @type)
-(private_type_declaration "limited" @type)
-(task_type_declaration "task" @type "is" @type)
+(range_constraint "range" @type.builtin)
+(signed_integer_type_definition "range" @type.builtin)
+(index_subtype_definition "range" @type.builtin)
+(record_type_definition "abstract" @type.builtin)
+(record_type_definition "tagged" @type.builtin)
+(record_type_definition "limited" @type.builtin)
+(record_type_definition (record_definition "null" @type.builtin))
+(private_type_declaration "is" @type.builtin "private" @type.builtin)
+(private_type_declaration "tagged" @type.builtin)
+(private_type_declaration "limited" @type.builtin)
+(task_type_declaration "task" @type.builtin "is" @type.builtin)
 
 ;; Gray the body of expression functions
 (expression_function_declaration
@@ -168,11 +168,11 @@
 (subprogram_declaration (aspect_specification) @attribute)
 
 ;; Highlight full subprogram specifications
-;(subprogram_body
-;    [
-;       (procedure_specification)
-;       (function_specification)
-;    ] @function.builtin.spec
-;)
+; (subprogram_body
+;     [
+;        (procedure_specification)
+;        (function_specification)
+;     ] @function.builtin.spec
+; )
 
 
