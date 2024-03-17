@@ -134,6 +134,7 @@
 | perl | ✓ | ✓ | ✓ | `perlnavigator` |
 | php | ✓ | ✓ | ✓ | `intelephense` |
 | php-only | ✓ |  |  |  |
+| pkgbuild | ✓ | ✓ | ✓ | `pkgbuild-language-server`, `bash-language-server` |
 | pkl | ✓ |  | ✓ |  |
 | po | ✓ | ✓ |  |  |
 | pod | ✓ |  |  |  |
