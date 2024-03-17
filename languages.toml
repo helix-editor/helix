@@ -96,6 +96,7 @@ yaml-language-server = { command = "yaml-language-server", args = ["--stdio"] }
 zls = { command = "zls" }
 blueprint-compiler = { command = "blueprint-compiler", args = ["lsp"] }
 typst-lsp = { command = "typst-lsp" }
+pkgbuild-language-server = { command = "pkgbuild-language-server" }
 
 [language-server.ansible-language-server]
 command = "ansible-language-server"
@@ -906,7 +907,6 @@ file-types = [
   { glob = ".zshrc" },
   { glob = ".zimrc" },
   { glob = "APKBUILD" },
-  { glob = "PKGBUILD" },
   { glob = ".bash_aliases" },
   { glob = ".Renviron" },
   { glob = ".xprofile" },
@@ -3352,3 +3352,15 @@ indent = { tab-width = 4, unit = "\t" }
 [[grammar]]
 name = "supercollider"
 source = { git = "https://github.com/madskjeldgaard/tree-sitter-supercollider", rev = "3b35bd0fded4423c8fb30e9585c7bacbcd0e8095" }
+
+[[language]]
+name = "pkgbuild"
+scope = "source.bash"
+file-types = [{ glob = "PKGBUILD" }]
+grammar = "bash"
+language-servers = [
+  "pkgbuild-language-server",
+  { except-features = [
+    "diagnostics",
+  ], name = "bash-language-server" },
+]
