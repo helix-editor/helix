@@ -40,10 +40,11 @@
   ])
   (#not-match? @variable "yield|outlet|this|else"))
 ; As are arguments in a block statement
-(block_statement_start argument: [
+((block_statement_start argument: [
   (path_expression (identifier) @variable)
   (identifier) @variable
   ])
+ (#not-match? @variable "this"))
 ; As is an identifier in a block param
 (block_params (identifier) @variable)
 ; As are helper arguments
