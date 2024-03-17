@@ -1,7 +1,7 @@
 use crate::{
     commands::{self, OnKeyCallback},
     compositor::{Component, Context, Event, EventResult},
-    job::{self, Callback},
+    events::{OnModeSwitch, PostCommand},
     key,
     keymap::{KeymapResult, Keymaps},
     ui::{
@@ -33,8 +33,8 @@ use std::{mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc, sync::Arc};
 
 use tui::{buffer::Buffer as Surface, text::Span};
 
+use super::document::LineDecoration;
 use super::{completion::CompletionItem, statusline};
-use super::{document::LineDecoration, lsp::SignatureHelp};
 
 pub struct EditorView {
     pub keymaps: Keymaps,
@@ -360,7 +360,7 @@ impl EditorView {
         doc: &Document,
         theme: &Theme,
     ) -> [Vec<(usize, std::ops::Range<usize>)>; 5] {
-        use helix_core::diagnostic::Severity;
+        use helix_core::diagnostic::{DiagnosticTag, Severity};
         let get_scope_of = |scope| {
             theme
             .find_scope_index_exact(scope)
@@ -380,6 +380,10 @@ impl EditorView {
         let error = get_scope_of("diagnostic.error");
         let r#default = get_scope_of("diagnostic"); // this is a bit redundant but should be fine
 
+        // Diagnostic tags
+        let unnecessary = theme.find_scope_index_exact("diagnostic.unnecessary");
+        let deprecated = theme.find_scope_index_exact("diagnostic.deprecated");
+
         let mut default_vec: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
         let mut info_vec = Vec::new();
         let mut hint_vec = Vec::new();
@@ -395,6 +399,15 @@ impl EditorView {
                 Some(Severity::Error) => (&mut error_vec, error),
                 _ => (&mut default_vec, r#default),
             };
+
+            let scope = diagnostic
+                .tags
+                .first()
+                .and_then(|tag| match tag {
+                    DiagnosticTag::Unnecessary => unnecessary,
+                    DiagnosticTag::Deprecated => deprecated,
+                })
+                .unwrap_or(scope);
 
             // If any diagnostic overlaps ranges with the prior diagnostic,
             // merge the two together. Otherwise push a new span.
@@ -716,7 +729,8 @@ impl EditorView {
             }
         }
 
-        let paragraph = Paragraph::new(lines)
+        let text = Text::from(lines);
+        let paragraph = Paragraph::new(&text)
             .alignment(Alignment::Right)
             .wrap(Wrap { trim: true });
         let width = 100.min(viewport.width);
@@ -835,35 +849,26 @@ impl EditorView {
 
         let mut execute_command = |command: &commands::MappableCommand| {
             command.execute(cxt);
-            let current_mode = cxt.editor.mode();
-            match (last_mode, current_mode) {
-                (Mode::Normal, Mode::Insert) => {
-                    // HAXX: if we just entered insert mode from normal, clear key buf
-                    // and record the command that got us into this mode.
+            helix_event::dispatch(PostCommand { command, cx: cxt });
 
+            let current_mode = cxt.editor.mode();
+            if current_mode != last_mode {
+                helix_event::dispatch(OnModeSwitch {
+                    old_mode: last_mode,
+                    new_mode: current_mode,
+                    cx: cxt,
+                });
+
+                // HAXX: if we just entered insert mode from normal, clear key buf
+                // and record the command that got us into this mode.
+                if current_mode == Mode::Insert {
                     // how we entered insert mode is important, and we should track that so
                     // we can repeat the side effect.
                     self.last_insert.0 = command.clone();
                     self.last_insert.1.clear();
-
-                    commands::signature_help_impl(cxt, commands::SignatureHelpInvoked::Automatic);
                 }
-                (Mode::Insert, Mode::Normal) => {
-                    // if exiting insert mode, remove completion
-                    self.clear_completion(cxt.editor);
-                    cxt.editor.completion_request_handle = None;
-
-                    // TODO: Use an on_mode_change hook to remove signature help
-                    cxt.jobs.callback(async {
-                        let call: job::Callback =
-                            Callback::EditorCompositor(Box::new(|_editor, compositor| {
-                                compositor.remove(SignatureHelp::ID);
-                            }));
-                        Ok(call)
-                    });
-                }
-                _ => (),
             }
+
             last_mode = current_mode;
         };
 
@@ -911,11 +916,15 @@ impl EditorView {
 
     fn command_mode(&mut self, mode: Mode, cxt: &mut commands::Context, event: KeyEvent) {
         match (event, cxt.editor.count) {
-            // count handling
-            (key!(i @ '0'), Some(_)) | (key!(i @ '1'..='9'), _) => {
+            // If the count is already started and the input is a number, always continue the count.
+            (key!(i @ '0'..='9'), Some(count)) => {
                 let i = i.to_digit(10).unwrap() as usize;
-                cxt.editor.count =
-                    std::num::NonZeroUsize::new(cxt.editor.count.map_or(i, |c| c.get() * 10 + i));
+                cxt.editor.count = NonZeroUsize::new(count.get() * 10 + i);
+            }
+            // A non-zero digit will start the count if that number isn't used by a keymap.
+            (key!(i @ '1'..='9'), None) if !self.keymaps.contains_key(mode, event) => {
+                let i = i.to_digit(10).unwrap() as usize;
+                cxt.editor.count = NonZeroUsize::new(i);
             }
             // special handling for repeat operator
             (key!('.'), _) if self.keymaps.pending().is_empty() => {
@@ -991,12 +1000,10 @@ impl EditorView {
         editor: &mut Editor,
         savepoint: Arc<SavePoint>,
         items: Vec<CompletionItem>,
-        start_offset: usize,
         trigger_offset: usize,
         size: Rect,
     ) -> Option<Rect> {
-        let mut completion =
-            Completion::new(editor, savepoint, items, start_offset, trigger_offset);
+        let mut completion = Completion::new(editor, savepoint, items, trigger_offset);
 
         if completion.is_empty() {
             // skip if we got no completion results
@@ -1004,7 +1011,7 @@ impl EditorView {
         }
 
         let area = completion.area(size, editor);
-        editor.last_completion = None;
+        editor.last_completion = Some(CompleteAction::Triggered);
         self.last_insert.1.push(InsertEvent::TriggerCompletion);
 
         // TODO : propagate required size on resize to completion too
@@ -1017,6 +1024,7 @@ impl EditorView {
         self.completion = None;
         if let Some(last_completion) = editor.last_completion.take() {
             match last_completion {
+                CompleteAction::Triggered => (),
                 CompleteAction::Applied {
                     trigger_offset,
                     changes,
@@ -1030,29 +1038,12 @@ impl EditorView {
                 }
             }
         }
-
-        // Clear any savepoints
-        editor.clear_idle_timer(); // don't retrigger
     }
 
     pub fn handle_idle_timeout(&mut self, cx: &mut commands::Context) -> EventResult {
         commands::compute_inlay_hints_for_all_views(cx.editor, cx.jobs);
 
-        if let Some(completion) = &mut self.completion {
-            return if completion.ensure_item_resolved(cx) {
-                EventResult::Consumed(None)
-            } else {
-                EventResult::Ignored(None)
-            };
-        }
-
-        if cx.editor.mode != Mode::Insert || !cx.editor.config().auto_completion {
-            return EventResult::Ignored(None);
-        }
-
-        crate::commands::insert::idle_completion(cx);
-
-        EventResult::Consumed(None)
+        EventResult::Ignored(None)
     }
 }
 
@@ -1105,6 +1096,15 @@ impl EditorView {
                     if modifiers == KeyModifiers::ALT {
                         let selection = doc.selection(view_id).clone();
                         doc.set_selection(view_id, selection.push(Range::point(pos)));
+                    } else if editor.mode == Mode::Select {
+                        // Discards non-primary selections for consistent UX with normal mode
+                        let primary = doc.selection(view_id).primary().put_cursor(
+                            doc.text().slice(..),
+                            pos,
+                            true,
+                        );
+                        editor.mouse_down_range = Some(primary);
+                        doc.set_selection(view_id, Selection::single(primary.anchor, primary.head));
                     } else {
                         doc.set_selection(view_id, Selection::point(pos));
                     }
@@ -1173,7 +1173,7 @@ impl EditorView {
                 }
 
                 let offset = config.scroll_lines.unsigned_abs();
-                commands::scroll(cxt, offset, direction);
+                commands::scroll(cxt, offset, direction, false);
 
                 cxt.editor.tree.focus = current_view;
                 cxt.editor.ensure_cursor_in_view(current_view);
@@ -1188,19 +1188,26 @@ impl EditorView {
 
                 let (view, doc) = current!(cxt.editor);
 
-                if doc
-                    .selection(view.id)
-                    .primary()
-                    .slice(doc.text().slice(..))
-                    .len_chars()
-                    <= 1
-                {
-                    return EventResult::Ignored(None);
+                let should_yank = match cxt.editor.mouse_down_range.take() {
+                    Some(down_range) => doc.selection(view.id).primary() != down_range,
+                    None => {
+                        // This should not happen under normal cases. We fall back to the original
+                        // behavior of yanking on non-single-char selections.
+                        doc.selection(view.id)
+                            .primary()
+                            .slice(doc.text().slice(..))
+                            .len_chars()
+                            > 1
+                    }
+                };
+
+                if should_yank {
+                    commands::MappableCommand::yank_main_selection_to_primary_clipboard
+                        .execute(cxt);
+                    EventResult::Consumed(None)
+                } else {
+                    EventResult::Ignored(None)
                 }
-
-                commands::MappableCommand::yank_main_selection_to_primary_clipboard.execute(cxt);
-
-                EventResult::Consumed(None)
             }
 
             MouseEventKind::Up(MouseButton::Right) => {
@@ -1265,7 +1272,7 @@ impl Component for EditorView {
             editor: context.editor,
             count: None,
             register: None,
-            callback: None,
+            callback: Vec::new(),
             on_next_key_callback: None,
             jobs: context.jobs,
         };
@@ -1338,12 +1345,6 @@ impl Component for EditorView {
                                     if callback.is_some() {
                                         // assume close_fn
                                         self.clear_completion(cx.editor);
-
-                                        // In case the popup was deleted because of an intersection w/ the auto-complete menu.
-                                        commands::signature_help_impl(
-                                            &mut cx,
-                                            commands::SignatureHelpInvoked::Automatic,
-                                        );
                                     }
                                 }
                             }
@@ -1354,14 +1355,6 @@ impl Component for EditorView {
 
                                 // record last_insert key
                                 self.last_insert.1.push(InsertEvent::Key(key));
-
-                                // lastly we recalculate completion
-                                if let Some(completion) = &mut self.completion {
-                                    completion.update(&mut cx);
-                                    if completion.is_empty() {
-                                        self.clear_completion(cx.editor);
-                                    }
-                                }
                             }
                         }
                         mode => self.command_mode(mode, &mut cx, key),
@@ -1375,7 +1368,7 @@ impl Component for EditorView {
                 }
 
                 // appease borrowck
-                let callback = cx.callback.take();
+                let callbacks = take(&mut cx.callback);
 
                 // if the command consumed the last view, skip the render.
                 // on the next loop cycle the Application will then terminate.
@@ -1394,6 +1387,16 @@ impl Component for EditorView {
                 if mode != Mode::Insert {
                     doc.append_changes_to_history(view);
                 }
+                let callback = if callbacks.is_empty() {
+                    None
+                } else {
+                    let callback: crate::compositor::Callback = Box::new(move |compositor, cx| {
+                        for callback in callbacks {
+                            callback(compositor, cx)
+                        }
+                    });
+                    Some(callback)
+                };
 
                 EventResult::Consumed(callback)
             }

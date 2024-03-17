@@ -24,20 +24,20 @@
 (term
   alias: (identifier) @variable.parameter)
 
-(term
+((term
    value: (cast
     name: (keyword_cast) @function.builtin
-    parameter: [(literal)]?))
+    parameter: [(literal)]?)))
 
 (literal) @string
 (comment) @comment.line
 (marginalia) @comment.block
 
 ((literal) @constant.numeric.integer
-  (#match? @constant.numeric.integer "^-?\\d+$"))
+   (#match? @constant.numeric.integer "^[-+]?\\d+$"))
 
 ((literal) @constant.numeric.float
-  (#match? @constant.numeric.float "^-?\\d*\\.\\d*$"))
+  (#match? @constant.numeric.float "^[-+]?\\d*\\.\\d*$"))
 
 (parameter) @variable.parameter
 

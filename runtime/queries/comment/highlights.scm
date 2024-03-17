@@ -1,8 +1,3 @@
-[
- "("
- ")"
-] @punctuation.bracket
-
 ":" @punctuation.delimiter
 
 ; Hint level tags
