@@ -1,8 +1,13 @@
 use std::cmp::Ordering;
 
-use helix_core::doc_formatter::FormattedGrapheme;
 use helix_core::Position;
-use helix_view::editor::CursorCache;
+use helix_core::{
+    doc_formatter::{DocumentFormatter, FormattedGrapheme, TextFormat},
+    text_annotations::TextAnnotations,
+};
+
+use helix_view::{editor::CursorCache, theme::Style};
+use helix_view::Document;
 
 use crate::ui::document::{LinePos, TextRenderer};
 
@@ -169,5 +174,86 @@ impl Decoration for Cursor<'_> {
             self.cache.set(Some(position));
         }
         usize::MAX
+    }
+}
+
+pub struct CopilotDecoration<'a> {
+    display_text: &'a str,
+    display_coords: Position,
+    text_format: TextFormat,
+    style: Style,
+    additional_softwrap: usize,
+}
+
+impl<'a> CopilotDecoration<'a> {
+    pub fn new(doc: &'a Document, text_format: TextFormat, style: Style) -> CopilotDecoration<'a> {
+        if let Some(completion) = doc.get_copilot_completion_for_rendering() {
+            return CopilotDecoration {
+                display_text: &completion.display_text,
+                display_coords: completion.display_coords,
+                text_format,
+                style,
+                additional_softwrap: completion.additional_softwrap,
+            };
+        }
+
+        Self {
+            display_text: "",
+            display_coords: Position {
+                row: usize::MAX,
+                col: 0,
+            },
+            text_format,
+            style,
+            additional_softwrap: 0,
+        }
+    }
+}
+
+impl<'a> Decoration for CopilotDecoration<'a> {
+    fn render_virt_lines(
+        &mut self,
+        _renderer: &mut TextRenderer,
+        _pos: LinePos,
+        _virt_off: Position,
+    ) -> Position {
+        if _pos.doc_line != self.display_coords.row {
+            return Position::new(0, 0);
+        }
+        self.display_coords = Position::new(usize::MAX, 0);
+
+        let mut row = 0;
+        let mut softwrap_height = 0;
+        for line in self.display_text.lines() {
+            let annotations = TextAnnotations::default();
+            let formatter = DocumentFormatter::new_at_prev_checkpoint(
+                line.into(),
+                &self.text_format,
+                &annotations,
+                0,
+            );
+
+            let mut prev_grapheme_row = 0;
+            for grapheme in formatter {
+                if row == 0
+                    && grapheme.visual_pos.row == 0
+                    && grapheme.visual_pos.col < self.display_coords.col
+                {
+                    continue;
+                }
+                _renderer.draw_decoration_grapheme(
+                    grapheme.raw,
+                    self.style,
+                    _pos.visual_line + grapheme.visual_pos.row as u16 + row + softwrap_height,
+                    grapheme.visual_pos.col as u16,
+                );
+                prev_grapheme_row = grapheme.visual_pos.row;
+            }
+
+            row += 1;
+            softwrap_height += prev_grapheme_row as u16;
+        }
+
+        return Position::new(self.additional_softwrap, 0);
     }
 }

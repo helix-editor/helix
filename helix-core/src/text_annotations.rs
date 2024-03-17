@@ -1,12 +1,11 @@
+use crate::doc_formatter::FormattedGrapheme;
+use crate::syntax::Highlight;
+use crate::{Position, Tendril};
 use std::cell::Cell;
 use std::cmp::Ordering;
 use std::fmt::Debug;
 use std::ops::Range;
 use std::ptr::NonNull;
-
-use crate::doc_formatter::FormattedGrapheme;
-use crate::syntax::Highlight;
-use crate::{Position, Tendril};
 
 /// An inline annotation is continuous text shown
 /// on the screen before the grapheme that starts at
@@ -422,5 +421,34 @@ impl<'a> TextAnnotations<'a> {
             };
         }
         virt_off.row
+    }
+}
+
+pub struct CopilotLineAnnotation {
+    doc_line: usize,
+    softwrap: usize,
+}
+
+impl CopilotLineAnnotation {
+    pub fn new(display_pos: Position, softwrap: usize) -> Box<Self> {
+        Box::new(CopilotLineAnnotation {
+            doc_line: display_pos.row,
+            softwrap,
+        })
+    }
+}
+
+impl LineAnnotation for CopilotLineAnnotation {
+    fn insert_virtual_lines(
+        &mut self,
+        _line_end_char_idx: usize,
+        _vertical_off: Position,
+        _doc_line: usize,
+    ) -> Position {
+        if self.doc_line != _doc_line {
+            return Position::new(0, 0);
+        }
+        self.doc_line = usize::MAX;
+        return Position::new(self.softwrap, 0);
     }
 }

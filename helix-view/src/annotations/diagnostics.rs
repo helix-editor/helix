@@ -50,6 +50,7 @@ impl SeverityFilter {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
 pub struct InlineDiagnosticsConfig {
+    pub enabled: bool,
     pub cursor_line: SeverityFilter,
     pub other_lines: SeverityFilter,
     pub min_diagnostic_width: u16,
@@ -104,6 +105,7 @@ impl InlineDiagnosticsConfig {
 impl Default for InlineDiagnosticsConfig {
     fn default() -> Self {
         InlineDiagnosticsConfig {
+            enabled: false,
             cursor_line: SeverityFilter(Box::new([Severity::Warning, Severity::Error])),
             other_lines: SeverityFilter(Box::default()),
             min_diagnostic_width: 40,

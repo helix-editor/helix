@@ -46,7 +46,7 @@ impl<T: Component> Popup<T> {
         Self {
             contents,
             position: None,
-            position_bias: Open::Below,
+            position_bias: Open::Above,
             area: Rect::new(0, 0, 0, 0),
             scroll_half_pages: 0,
             auto_close: false,

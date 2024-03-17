@@ -652,25 +652,21 @@ impl Document {
         self.copilot = None;
     }
 
-    pub fn get_copilot_completion(&self) -> Option<&DocCompletion> {
-        let Some(copilot) = self.copilot.as_ref() else {
-            return None;
-        };
-        let completion = copilot.completions.get(copilot.idx)?;
+    pub fn get_copilot_completion_for_rendering(&self) -> Option<&DocCompletion> {
+        let Some(copilot) = self.copilot.as_ref() else {return None;};
+        if !copilot.should_render {return None;}
 
+        let completion = copilot.completions.get(copilot.idx)?;
         if self.version as usize != completion.doc_version {
             return None;
         }
         return Some(completion);
     }
 
-    pub fn apply_copilot(&mut self, view_id: ViewId) {
-        let Some(copilot) = self.copilot.as_ref() else {
-            return;
-        };
-        let Some(completion) = copilot.completions.get(copilot.idx) else {
-            return;
-        };
+     pub fn apply_copilot_completion(&mut self, view_id: ViewId) {
+        if let None = self.get_copilot_completion_for_rendering() {return;}
+        let Some(copilot) = self.copilot.as_ref() else {return;};
+        let Some(completion) = copilot.completions.get(copilot.idx) else {return;};
         if completion.doc_version != self.version as usize {
             return;
         }

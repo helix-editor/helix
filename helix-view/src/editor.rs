@@ -449,7 +449,7 @@ impl Default for LspConfig {
             snippets: true,
             goto_reference_include_declaration: true,
             inline_diagnostics: InlineDiagnosticsConfig::default(),
-            display_diagnostic_message: false,
+            display_diagnostic_message: true,
         }
     }
 }
