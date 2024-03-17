@@ -146,8 +146,6 @@ pub struct LanguageConfiguration {
 
     #[serde(skip)]
     pub(crate) indent_query: OnceCell<Option<Query>>,
-    #[serde(skip)]
-    pub(crate) textobject_query: OnceCell<Option<TextObjectQuery>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub debugger: Option<DebugAdapterConfig>,
 
@@ -600,11 +598,6 @@ impl FromStr for AutoPairConfig {
 }
 
 #[derive(Debug)]
-pub struct TextObjectQuery {
-    pub query: Query,
-}
-
-#[derive(Debug)]
 pub enum CapturedNode<'a> {
     Single(Node<'a>),
     /// Guaranteed to be not empty
@@ -651,118 +644,57 @@ impl<'a> CapturedNode<'a> {
 /// This number can be increased if new syntax highlight breakages are found, as long as the performance penalty is not too high.
 const TREE_SITTER_MATCH_LIMIT: u32 = 256;
 
-impl TextObjectQuery {
-    /// Run the query on the given node and return sub nodes which match given
-    /// capture ("function.inside", "class.around", etc).
-    ///
-    /// Captures may contain multiple nodes by using quantifiers (+, *, etc),
-    /// and support for this is partial and could use improvement.
-    ///
-    /// ```query
-    /// (comment)+ @capture
-    ///
-    /// ; OR
-    /// (
-    ///   (comment)*
-    ///   .
-    ///   (function)
-    /// ) @capture
-    /// ```
-    pub fn capture_nodes<'a>(
-        &'a self,
-        capture_name: &str,
-        node: Node<'a>,
-        slice: RopeSlice<'a>,
-        cursor: &'a mut QueryCursor,
-    ) -> Option<impl Iterator<Item = CapturedNode<'a>>> {
-        self.capture_nodes_any(&[capture_name], node, slice, cursor)
-    }
-
-    /// Find the first capture that exists out of all given `capture_names`
-    /// and return sub nodes that match this capture.
-    pub fn capture_nodes_any<'a>(
-        &'a self,
-        capture_names: &[&str],
-        node: Node<'a>,
-        slice: RopeSlice<'a>,
-        cursor: &'a mut QueryCursor,
-    ) -> Option<impl Iterator<Item = CapturedNode<'a>>> {
-        let capture_idx = capture_names
-            .iter()
-            .find_map(|cap| self.query.capture_index_for_name(cap))?;
-
-        cursor.set_match_limit(TREE_SITTER_MATCH_LIMIT);
-
-        let nodes = cursor
-            .captures(&self.query, node, RopeProvider(slice))
-            .filter_map(move |(mat, _)| {
-                let nodes: Vec<_> = mat
-                    .captures
-                    .iter()
-                    .filter_map(|cap| (cap.index == capture_idx).then_some(cap.node))
-                    .collect();
-
-                if nodes.len() > 1 {
-                    Some(CapturedNode::Grouped(nodes))
-                } else {
-                    nodes.into_iter().map(CapturedNode::Single).next()
-                }
-            });
-
-        Some(nodes)
-    }
-}
-
-pub fn read_query(language: &str, filename: &str) -> String {
+pub fn read_query(language: &str, filename: &str) -> Option<String> {
     static INHERITS_REGEX: Lazy<Regex> =
         Lazy::new(|| Regex::new(r";+\s*inherits\s*:?\s*([a-z_,()-]+)\s*").unwrap());
 
-    let query = load_runtime_file(language, filename).unwrap_or_default();
+    let query = load_runtime_file(language, filename).ok()?;
 
     // replaces all "; inherits <language>(,<language>)*" with the queries of the given language(s)
-    INHERITS_REGEX
+    let contents = INHERITS_REGEX
         .replace_all(&query, |captures: &regex::Captures| {
             captures[1]
                 .split(',')
-                .map(|language| format!("\n{}\n", read_query(language, filename)))
+                .filter_map(|language| Some(format!("\n{}\n", read_query(language, filename)?)))
                 .collect::<String>()
         })
-        .to_string()
+        .to_string();
+
+    Some(contents)
 }
 
 impl LanguageConfiguration {
     fn initialize_highlight(&self, scopes: &[String]) -> Option<Arc<HighlightConfiguration>> {
-        let highlights_query = read_query(&self.language_id, "highlights.scm");
+        let highlights_query = read_query(&self.language_id, "highlights.scm")?;
         // always highlight syntax errors
         // highlights_query += "\n(ERROR) @error";
+
+        let textobjects_query = read_query(&self.language_id, "textobjects.scm");
 
         let injections_query = read_query(&self.language_id, "injections.scm");
         let locals_query = read_query(&self.language_id, "locals.scm");
 
-        if highlights_query.is_empty() {
-            None
-        } else {
-            let language = get_language(self.grammar.as_deref().unwrap_or(&self.language_id))
-                .map_err(|err| {
-                    log::error!(
-                        "Failed to load tree-sitter parser for language {:?}: {}",
-                        self.language_id,
-                        err
-                    )
-                })
-                .ok()?;
-            let config = HighlightConfiguration::new(
-                language,
-                &highlights_query,
-                &injections_query,
-                &locals_query,
-            )
-            .map_err(|err| log::error!("Could not parse queries for language {:?}. Are your grammars out of sync? Try running 'hx --grammar fetch' and 'hx --grammar build'. This query could not be parsed: {:?}", self.language_id, err))
+        let language = get_language(self.grammar.as_deref().unwrap_or(&self.language_id))
+            .map_err(|err| {
+                log::error!(
+                    "Failed to load tree-sitter parser for language {:?}: {}",
+                    self.language_id,
+                    err
+                )
+            })
             .ok()?;
+        let config = HighlightConfiguration::new(
+            language,
+            &highlights_query,
+            textobjects_query.as_deref(),
+            &injections_query.unwrap_or_default(),
+            &locals_query.unwrap_or_default(),
+        )
+        .map_err(|err| log::error!("Could not parse queries for language {:?}. Are your grammars out of sync? Try running 'hx --grammar fetch' and 'hx --grammar build'. This query could not be parsed: {:?}", self.language_id, err))
+        .ok()?;
 
-            config.configure(scopes);
-            Some(Arc::new(config))
-        }
+        config.configure(scopes);
+        Some(Arc::new(config))
     }
 
     pub fn reconfigure(&self, scopes: &[String]) {
@@ -787,24 +719,12 @@ impl LanguageConfiguration {
             .as_ref()
     }
 
-    pub fn textobject_query(&self) -> Option<&TextObjectQuery> {
-        self.textobject_query
-            .get_or_init(|| {
-                self.load_query("textobjects.scm")
-                    .map(|query| TextObjectQuery { query })
-            })
-            .as_ref()
-    }
-
     pub fn scope(&self) -> &str {
         &self.scope
     }
 
     fn load_query(&self, kind: &str) -> Option<Query> {
-        let query_text = read_query(&self.language_id, kind);
-        if query_text.is_empty() {
-            return None;
-        }
+        let query_text = read_query(&self.language_id, kind)?;
         let lang = self.highlight_config.get()?.as_ref()?.language;
         Query::new(lang, &query_text)
             .map_err(|e| {
@@ -1060,6 +980,39 @@ thread_local! {
         parser: Parser::new(),
         cursors: Vec::new(),
     })
+}
+
+/// Creates an iterator over the captures in a query within the given range,
+/// re-using a cursor from the pool if available.
+/// SAFETY: The `QueryCaptures` must be droped before the `QueryCursor` is dropped.
+unsafe fn query_captures<'a, 'tree>(
+    query: &'a Query,
+    root: Node<'tree>,
+    source: RopeSlice<'a>,
+    range: Option<std::ops::Range<usize>>,
+) -> (
+    QueryCursor,
+    QueryCaptures<'a, 'tree, RopeProvider<'a>, &'a [u8]>,
+) {
+    // Reuse a cursor from the pool if available.
+    let mut cursor = PARSER.with(|ts_parser| {
+        let highlighter = &mut ts_parser.borrow_mut();
+        highlighter.cursors.pop().unwrap_or_else(QueryCursor::new)
+    });
+
+    // This is the unsafe line:
+    // The `captures` iterator borrows the `Tree` and the `QueryCursor`, which
+    // prevents them from being moved. But both of these values are really just
+    // pointers, so it's actually ok to move them.
+    let cursor_ref = mem::transmute::<_, &'static mut QueryCursor>(&mut cursor);
+
+    // if reusing cursors & no range this resets to whole range
+    cursor_ref.set_byte_range(range.unwrap_or(0..usize::MAX));
+    cursor_ref.set_match_limit(TREE_SITTER_MATCH_LIMIT);
+
+    let captures = cursor_ref.captures(query, root, RopeProvider(source));
+
+    (cursor, captures)
 }
 
 #[derive(Debug)]
@@ -1396,6 +1349,42 @@ impl Syntax {
         self.layers[self.root].tree()
     }
 
+    /// Iterate over all captures for a query across injection layers.
+    fn query_iter<'a, F>(
+        &'a self,
+        query_fn: F,
+        source: RopeSlice<'a>,
+        range: Option<std::ops::Range<usize>>,
+    ) -> impl Iterator<Item = (&'a LanguageLayer, QueryMatch<'a, 'a>, usize)>
+    where
+        F: Fn(&'a HighlightConfiguration) -> Option<&'a Query>,
+    {
+        let mut layers: Vec<_> = self
+            .layers
+            .iter()
+            .filter_map(|(_, layer)| {
+                let query = query_fn(&layer.config)?;
+                let (cursor, captures) = unsafe {
+                    query_captures(query, layer.tree().root_node(), source, range.clone())
+                };
+                let mut captures = captures.peekable();
+
+                // If there aren't any captures for this layer, skip the layer.
+                captures.peek()?;
+
+                Some(QueryIterLayer {
+                    cursor,
+                    captures: RefCell::new(captures),
+                    layer,
+                })
+            })
+            .collect();
+
+        layers.sort_unstable_by_key(|layer| layer.sort_key());
+
+        QueryIter { layers }
+    }
+
     /// Iterate over the highlighted regions for a given slice of source code.
     pub fn highlight_iter<'a>(
         &'a self,
@@ -1403,37 +1392,23 @@ impl Syntax {
         range: Option<std::ops::Range<usize>>,
         cancellation_flag: Option<&'a AtomicUsize>,
     ) -> impl Iterator<Item = Result<HighlightEvent, Error>> + 'a {
-        let mut layers = self
+        let mut layers: Vec<_> = self
             .layers
             .iter()
             .filter_map(|(_, layer)| {
                 // TODO: if range doesn't overlap layer range, skip it
 
-                // Reuse a cursor from the pool if available.
-                let mut cursor = PARSER.with(|ts_parser| {
-                    let highlighter = &mut ts_parser.borrow_mut();
-                    highlighter.cursors.pop().unwrap_or_else(QueryCursor::new)
-                });
-
-                // The `captures` iterator borrows the `Tree` and the `QueryCursor`, which
-                // prevents them from being moved. But both of these values are really just
-                // pointers, so it's actually ok to move them.
-                let cursor_ref =
-                    unsafe { mem::transmute::<_, &'static mut QueryCursor>(&mut cursor) };
-
-                // if reusing cursors & no range this resets to whole range
-                cursor_ref.set_byte_range(range.clone().unwrap_or(0..usize::MAX));
-                cursor_ref.set_match_limit(TREE_SITTER_MATCH_LIMIT);
-
-                let mut captures = cursor_ref
-                    .captures(
+                let (cursor, captures) = unsafe {
+                    query_captures(
                         &layer.config.query,
                         layer.tree().root_node(),
-                        RopeProvider(source),
+                        source,
+                        range.clone(),
                     )
-                    .peekable();
+                };
+                let mut captures = captures.peekable();
 
-                // If there's no captures, skip the layer
+                // If there are no captures, skip the layer
                 captures.peek()?;
 
                 Some(HighlightIterLayer {
@@ -1450,11 +1425,13 @@ impl Syntax {
                     depth: layer.depth,            // TODO: just reuse `layer`
                 })
             })
-            .collect::<Vec<_>>();
+            .collect();
 
         layers.sort_unstable_by_key(|layer| layer.sort_key());
 
-        let mut result = HighlightIter {
+        sort_layers(&mut layers);
+
+        HighlightIter {
             source,
             byte_offset: range.map_or(0, |r| r.start),
             cancellation_flag,
@@ -1462,9 +1439,43 @@ impl Syntax {
             layers,
             next_event: None,
             last_highlight_range: None,
-        };
-        result.sort_layers();
-        result
+        }
+    }
+
+    pub fn textobject_nodes<'a>(
+        &'a self,
+        capture_names: &'a [&str],
+        source: RopeSlice<'a>,
+        query_range: Option<std::ops::Range<usize>>,
+    ) -> impl Iterator<Item = CapturedNode<'a>> {
+        self.query_iter(
+            |config| config.textobjects_query.as_ref(),
+            source,
+            query_range,
+        )
+        .filter_map(move |(layer, match_, _)| {
+            // TODO: cache this per-language with a hashmap?
+            let capture_idx = capture_names.iter().find_map(|name| {
+                layer
+                    .config
+                    .textobjects_query
+                    .as_ref()
+                    .expect("layer must have textobjects query in order to match")
+                    .capture_index_for_name(name)
+            })?;
+
+            let nodes: Vec<_> = match_
+                .captures
+                .iter()
+                .filter_map(|cap| (cap.index == capture_idx).then_some(cap.node))
+                .collect();
+
+            if nodes.len() > 1 {
+                Some(CapturedNode::Grouped(nodes))
+            } else {
+                nodes.into_iter().map(CapturedNode::Single).next()
+            }
+        })
     }
 
     pub fn tree_for_byte_range(&self, start: usize, end: usize) -> &Tree {
@@ -1758,7 +1769,8 @@ pub enum HighlightEvent {
 #[derive(Debug)]
 pub struct HighlightConfiguration {
     pub language: Grammar,
-    pub query: Query,
+    query: Query,
+    textobjects_query: Option<Query>,
     injections_query: Query,
     combined_injections_patterns: Vec<usize>,
     highlights_pattern_index: usize,
@@ -1856,6 +1868,7 @@ impl HighlightConfiguration {
     pub fn new(
         language: Grammar,
         highlights_query: &str,
+        textobjects_query: Option<&str>,
         injection_query: &str,
         locals_query: &str,
     ) -> Result<Self, QueryError> {
@@ -1875,6 +1888,9 @@ impl HighlightConfiguration {
                 highlights_pattern_index += 1;
             }
         }
+        let textobjects_query = textobjects_query
+            .map(|source| Query::new(language, source))
+            .transpose()?;
 
         let injections_query = Query::new(language, injection_query)?;
         let combined_injections_patterns = (0..injections_query.pattern_count())
@@ -1932,6 +1948,7 @@ impl HighlightConfiguration {
         Ok(Self {
             language,
             query,
+            textobjects_query,
             injections_query,
             combined_injections_patterns,
             highlights_pattern_index,
@@ -2089,11 +2106,21 @@ impl HighlightConfiguration {
     }
 }
 
-impl<'a> HighlightIterLayer<'a> {
-    // First, sort scope boundaries by their byte offset in the document. At a
-    // given position, emit scope endings before scope beginnings. Finally, emit
-    // scope boundaries from deeper layers first.
-    fn sort_key(&self) -> Option<(usize, bool, isize)> {
+trait IterLayer {
+    type SortKey: PartialOrd;
+
+    fn sort_key(&self) -> Option<Self::SortKey>;
+
+    fn cursor(self) -> QueryCursor;
+}
+
+impl<'a> IterLayer for HighlightIterLayer<'a> {
+    type SortKey = (usize, bool, isize);
+
+    fn sort_key(&self) -> Option<Self::SortKey> {
+        // First, sort scope boundaries by their byte offset in the document. At a
+        // given position, emit scope endings before scope beginnings. Finally, emit
+        // scope boundaries from deeper layers first.
         let depth = -(self.depth as isize);
         let next_start = self
             .captures
@@ -2112,6 +2139,82 @@ impl<'a> HighlightIterLayer<'a> {
             (Some(i), None) => Some((i, true, depth)),
             (None, Some(j)) => Some((j, false, depth)),
             _ => None,
+        }
+    }
+
+    fn cursor(self) -> QueryCursor {
+        self.cursor
+    }
+}
+
+impl<'a> IterLayer for QueryIterLayer<'a> {
+    type SortKey = (usize, isize);
+
+    fn sort_key(&self) -> Option<Self::SortKey> {
+        // Sort the layers so that the first layer in the Vec has the next
+        // capture ordered by start byte and depth (descending).
+        let depth = -(self.layer.depth as isize);
+        let mut captures = self.captures.borrow_mut();
+        let (match_, capture_index) = captures.peek()?;
+        let start = match_.captures[*capture_index].node.start_byte();
+
+        Some((start, depth))
+    }
+
+    fn cursor(self) -> QueryCursor {
+        self.cursor
+    }
+}
+
+/// Re-sort the given layers so that the next capture for the `layers[0]` is
+/// the earliest capture in the document for all layers.
+///
+/// This function assumes that `layers` is already sorted except for the
+/// first layer in the `Vec`. This function shifts the first layer later in
+/// the `Vec` after any layers with earlier captures.
+///
+/// This is quicker than a regular full sort: it can only take as many
+/// iterations as the number of layers and usually takes many fewer than
+/// the full number of layers. The case when `layers[0]` is already the
+/// layer with the earliest capture and the sort is a no-op is a fast-lane
+/// which only takes one comparison operation.
+///
+/// This function also removes any layers which have no more query captures
+/// to emit.
+fn sort_layers<L: IterLayer>(layers: &mut Vec<L>) {
+    while !layers.is_empty() {
+        // If `Layer::sort_key` returns `None`, the layer has no more captures
+        // to emit and can be removed.
+        if let Some(sort_key) = layers[0].sort_key() {
+            let mut i = 0;
+            while i + 1 < layers.len() {
+                if let Some(next_offset) = layers[i + 1].sort_key() {
+                    // Compare `0`'s sort key to `i + 1`'s. If `i + 1` comes
+                    // before `0`, shift the `0` layer so it comes after the
+                    // `i + 1` layers.
+                    if next_offset < sort_key {
+                        i += 1;
+                        continue;
+                    }
+                } else {
+                    let layer = layers.remove(i + 1);
+                    PARSER.with(|ts_parser| {
+                        let highlighter = &mut ts_parser.borrow_mut();
+                        highlighter.cursors.push(layer.cursor());
+                    });
+                }
+                break;
+            }
+            if i > 0 {
+                layers[0..(i + 1)].rotate_left(1);
+            }
+            break;
+        } else {
+            let layer = layers.remove(0);
+            PARSER.with(|ts_parser| {
+                let highlighter = &mut ts_parser.borrow_mut();
+                highlighter.cursors.push(layer.cursor());
+            });
         }
     }
 }
@@ -2244,41 +2347,8 @@ impl<'a> HighlightIter<'a> {
         } else {
             result = event.map(Ok);
         }
-        self.sort_layers();
+        sort_layers(&mut self.layers);
         result
-    }
-
-    fn sort_layers(&mut self) {
-        while !self.layers.is_empty() {
-            if let Some(sort_key) = self.layers[0].sort_key() {
-                let mut i = 0;
-                while i + 1 < self.layers.len() {
-                    if let Some(next_offset) = self.layers[i + 1].sort_key() {
-                        if next_offset < sort_key {
-                            i += 1;
-                            continue;
-                        }
-                    } else {
-                        let layer = self.layers.remove(i + 1);
-                        PARSER.with(|ts_parser| {
-                            let highlighter = &mut ts_parser.borrow_mut();
-                            highlighter.cursors.push(layer.cursor);
-                        });
-                    }
-                    break;
-                }
-                if i > 0 {
-                    self.layers[0..(i + 1)].rotate_left(1);
-                }
-                break;
-            } else {
-                let layer = self.layers.remove(0);
-                PARSER.with(|ts_parser| {
-                    let highlighter = &mut ts_parser.borrow_mut();
-                    highlighter.cursors.push(layer.cursor);
-                });
-            }
-        }
     }
 }
 
@@ -2431,7 +2501,7 @@ impl<'a> Iterator for HighlightIter<'a> {
                     }
                 }
 
-                self.sort_layers();
+                sort_layers(&mut self.layers);
                 continue 'main;
             }
 
@@ -2440,7 +2510,7 @@ impl<'a> Iterator for HighlightIter<'a> {
             // a different layer, then skip over this one.
             if let Some((last_start, last_end, last_depth)) = self.last_highlight_range {
                 if range.start == last_start && range.end == last_end && layer.depth < last_depth {
-                    self.sort_layers();
+                    sort_layers(&mut self.layers);
                     continue 'main;
                 }
             }
@@ -2459,7 +2529,7 @@ impl<'a> Iterator for HighlightIter<'a> {
                         }
                     }
 
-                    self.sort_layers();
+                    sort_layers(&mut self.layers);
                     continue 'main;
                 }
             }
@@ -2494,7 +2564,7 @@ impl<'a> Iterator for HighlightIter<'a> {
                     .emit_event(range.start, Some(HighlightEvent::HighlightStart(highlight)));
             }
 
-            self.sort_layers();
+            sort_layers(&mut self.layers);
         }
     }
 }
@@ -2704,6 +2774,42 @@ fn pretty_print_tree_impl<W: fmt::Write>(
     Ok(())
 }
 
+struct QueryIterLayer<'a> {
+    cursor: QueryCursor,
+    captures: RefCell<iter::Peekable<QueryCaptures<'a, 'a, RopeProvider<'a>, &'a [u8]>>>,
+    layer: &'a LanguageLayer,
+}
+
+impl<'a> fmt::Debug for QueryIterLayer<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("QueryIterLayer").finish()
+    }
+}
+
+#[derive(Debug)]
+pub struct QueryIter<'a> {
+    layers: Vec<QueryIterLayer<'a>>,
+}
+
+impl<'a> Iterator for QueryIter<'a> {
+    type Item = (&'a LanguageLayer, QueryMatch<'a, 'a>, usize);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        // Sort the layers so that the first layer contains the next capture.
+        sort_layers(&mut self.layers);
+
+        // Emit the next capture from the lowest layer. If there are no more
+        // layers, terminate.
+        let layer = self.layers.get_mut(0)?;
+        let inner = layer.layer;
+        layer
+            .captures
+            .borrow_mut()
+            .next()
+            .map(|(match_, index)| (inner, match_, index))
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -2730,11 +2836,7 @@ mod test {
         .unwrap();
         let language = get_language("rust").unwrap();
 
-        let query = Query::new(language, query_str).unwrap();
-        let textobject = TextObjectQuery { query };
-        let mut cursor = QueryCursor::new();
-
-        let config = HighlightConfiguration::new(language, "", "", "").unwrap();
+        let config = HighlightConfiguration::new(language, "", Some(query_str), "", "").unwrap();
         let syntax = Syntax::new(
             source.slice(..),
             Arc::new(config),
@@ -2742,11 +2844,10 @@ mod test {
         )
         .unwrap();
 
-        let root = syntax.tree().root_node();
-        let mut test = |capture, range| {
-            let matches: Vec<_> = textobject
-                .capture_nodes(capture, root, source.slice(..), &mut cursor)
-                .unwrap()
+        let test = |capture, range| {
+            let capture_names = &[capture];
+            let matches: Vec<_> = syntax
+                .textobject_nodes(capture_names, source.slice(..), None)
                 .collect();
 
             assert_eq!(
@@ -2802,6 +2903,7 @@ mod test {
             language,
             &std::fs::read_to_string("../runtime/grammars/sources/rust/queries/highlights.scm")
                 .unwrap(),
+            None, // textobjects.scm
             &std::fs::read_to_string("../runtime/grammars/sources/rust/queries/injections.scm")
                 .unwrap(),
             "", // locals.scm
@@ -2910,7 +3012,7 @@ mod test {
         .unwrap();
         let language = get_language(language_name).unwrap();
 
-        let config = HighlightConfiguration::new(language, "", "", "").unwrap();
+        let config = HighlightConfiguration::new(language, "", None, "", "").unwrap();
         let syntax = Syntax::new(
             source.slice(..),
             Arc::new(config),
