@@ -72,7 +72,12 @@
 ((helper_invocation helper: (identifier) @keyword.control.conditional)
   (#match? @keyword.control.conditional "yield"))
 
-(hash_pair key: (identifier) @variable.parameter)
+(hash_pair key: (identifier) @variable)
+(hash_pair value: (identifier) @variable)
+(hash_pair [
+  (path_expression (identifier) @variable)
+  (identifier) @variable
+  ])
 
 (comment_statement) @comment
 
