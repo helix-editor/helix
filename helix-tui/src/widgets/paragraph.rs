@@ -28,15 +28,15 @@ fn get_line_offset(line_width: u16, text_area_width: u16, alignment: Alignment) 
 /// # use helix_tui::widgets::{Block, Borders, Paragraph, Wrap};
 /// # use helix_tui::layout::{Alignment};
 /// # use helix_view::graphics::{Style, Color, Modifier};
-/// let text = vec![
+/// let text = Text::from(vec![
 ///     Spans::from(vec![
 ///         Span::raw("First"),
 ///         Span::styled("line",Style::default().add_modifier(Modifier::ITALIC)),
 ///         Span::raw("."),
 ///     ]),
 ///     Spans::from(Span::styled("Second line", Style::default().fg(Color::Red))),
-/// ];
-/// Paragraph::new(text)
+/// ]);
+/// Paragraph::new(&text)
 ///     .block(Block::default().title("Paragraph").borders(Borders::ALL))
 ///     .style(Style::default().fg(Color::White).bg(Color::Black))
 ///     .alignment(Alignment::Center)
@@ -51,7 +51,7 @@ pub struct Paragraph<'a> {
     /// How to wrap the text
     wrap: Option<Wrap>,
     /// The text to display
-    text: Text<'a>,
+    text: &'a Text<'a>,
     /// Scroll
     scroll: (u16, u16),
     /// Alignment of the text
@@ -70,7 +70,7 @@ pub struct Paragraph<'a> {
 ///     - Here is another point that is long enough to wrap"#);
 ///
 /// // With leading spaces trimmed (window width of 30 chars):
-/// Paragraph::new(bullet_points.clone()).wrap(Wrap { trim: true });
+/// Paragraph::new(&bullet_points).wrap(Wrap { trim: true });
 /// // Some indented points:
 /// // - First thing goes here and is
 /// // long so that it wraps
@@ -78,7 +78,7 @@ pub struct Paragraph<'a> {
 /// // is long enough to wrap
 ///
 /// // But without trimming, indentation is preserved:
-/// Paragraph::new(bullet_points).wrap(Wrap { trim: false });
+/// Paragraph::new(&bullet_points).wrap(Wrap { trim: false });
 /// // Some indented points:
 /// //     - First thing goes here
 /// // and is long so that it wraps
@@ -92,15 +92,12 @@ pub struct Wrap {
 }
 
 impl<'a> Paragraph<'a> {
-    pub fn new<T>(text: T) -> Paragraph<'a>
-    where
-        T: Into<Text<'a>>,
-    {
+    pub fn new(text: &'a Text) -> Paragraph<'a> {
         Paragraph {
             block: None,
             style: Default::default(),
             wrap: None,
-            text: text.into(),
+            text,
             scroll: (0, 0),
             alignment: Alignment::Left,
         }

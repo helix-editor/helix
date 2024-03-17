@@ -1,4 +1,7 @@
 (method_declaration
+  body: (_)? @function.inside) @function.around
+
+(constructor_declaration
   body: (_) @function.inside) @function.around
 
 (interface_declaration

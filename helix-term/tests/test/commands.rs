@@ -526,3 +526,86 @@ async fn test_join_selections() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_join_selections_space() -> anyhow::Result<()> {
+    // join with empty lines panic
+    test((
+        platform_line(indoc! {"\
+            #[a
+
+            b
+
+            c
+
+            d
+
+            e|]#
+        "}),
+        "<A-J>",
+        platform_line(indoc! {"\
+            a#[ |]#b#( |)#c#( |)#d#( |)#e
+        "}),
+    ))
+    .await?;
+
+    // normal join
+    test((
+        platform_line(indoc! {"\
+            #[a|]#bc
+            def
+        "}),
+        "<A-J>",
+        platform_line(indoc! {"\
+            abc#[ |]#def
+        "}),
+    ))
+    .await?;
+
+    // join with empty line
+    test((
+        platform_line(indoc! {"\
+            #[a|]#bc
+
+            def
+        "}),
+        "<A-J>",
+        platform_line(indoc! {"\
+            #[a|]#bc
+            def
+        "}),
+    ))
+    .await?;
+
+    // join with additional space in non-empty line
+    test((
+        platform_line(indoc! {"\
+            #[a|]#bc
+
+                def
+        "}),
+        "<A-J><A-J>",
+        platform_line(indoc! {"\
+            abc#[ |]#def
+        "}),
+    ))
+    .await?;
+
+    // join with retained trailing spaces
+    test((
+        platform_line(indoc! {"\
+            #[aaa   
+
+            bb  
+
+            c |]#
+        "}),
+        "<A-J>",
+        platform_line(indoc! {"\
+            aaa   #[ |]#bb  #( |)#c 
+        "}),
+    ))
+    .await?;
+
+    Ok(())
+}

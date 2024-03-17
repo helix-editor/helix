@@ -76,6 +76,15 @@ Releases are available in the `extra` repository:
 ```sh
 sudo pacman -S helix
 ```
+
+> 💡 When installed from the `extra` repository, run Helix with `helix` instead of `hx`.
+>
+> For example:
+> ```sh
+> helix --health
+> ```
+> to check health
+
 Additionally, a [helix-git](https://aur.archlinux.org/packages/helix-git/) package is available
 in the AUR, which builds the master branch.
 
@@ -216,12 +225,12 @@ RUSTFLAGS="-C target-feature=-crt-static"
 
 #### Linux and macOS
 
-The **runtime** directory is one below the Helix source, so either set a
+The **runtime** directory is one below the Helix source, so either export a
 `HELIX_RUNTIME` environment variable to point to that directory and add it to
 your `~/.bashrc` or equivalent:
 
 ```sh
-HELIX_RUNTIME=~/src/helix/runtime
+export HELIX_RUNTIME=~/src/helix/runtime
 ```
 
 Or, create a symbolic link:

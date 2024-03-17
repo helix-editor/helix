@@ -11,6 +11,7 @@ keyword = "purple"
 function = "blue"
 label = "orange"
 type = "orange"
+constructor = "orange"
 namespace = "orange"
 
 # User Interface

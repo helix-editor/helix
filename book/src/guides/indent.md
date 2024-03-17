@@ -315,6 +315,10 @@ The first argument (a capture) must/must not be equal to the second argument
 The first argument (a capture) must/must not match the regex given in the
 second argument (a string).
 
+- `#any-of?`/`#not-any-of?`:
+The first argument (a capture) must/must not be one of the other arguments
+(strings).
+
 Additionally, we support some custom predicates for indent queries:
 
 - `#not-kind-eq?`:

@@ -1,10 +1,10 @@
-; Upstream: https://github.com/alex-pinkus/tree-sitter-swift/blob/8d2fd80e3322df51e3f70952e60d57f5d4077eb8/queries/highlights.scm
+; Upstream: https://github.com/alex-pinkus/tree-sitter-swift/blob/1c586339fb00014b23d6933f2cc32b588a226f3b/queries/highlights.scm
 
 (line_string_literal
   ["\\(" ")"] @punctuation.special)
 
 ["." ";" ":" "," ] @punctuation.delimiter
-["(" ")" "[" "]" "{" "}"] @punctuation.bracket ; TODO: "\\(" ")" in interpolations should be @punctuation.special
+["(" ")" "[" "]" "{" "}"] @punctuation.bracket
 
 ; Identifiers
 (attribute) @variable
@@ -26,6 +26,7 @@
 (function_declaration "init" @constructor)
 (throws) @keyword
 "async" @keyword
+"await" @keyword
 (where_keyword) @keyword
 (parameter external_name: (simple_identifier) @variable.parameter)
 (parameter name: (simple_identifier) @variable.parameter)
@@ -48,6 +49,7 @@
   "convenience"
   "required"
   "some"
+  "any"
 ] @keyword
 
 [

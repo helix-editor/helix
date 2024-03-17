@@ -1,10 +1,12 @@
 use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
-use helix_core::{path::get_relative_path, pos_at_coords, syntax, Selection};
+use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Selection};
 use helix_lsp::{
     lsp::{self, notification::Notification},
+    util::lsp_range_to_range,
     LspProgressMap,
 };
+use helix_stdx::path::get_relative_path;
 use helix_view::{
     align_view,
     document::DocumentSavedEventResult,
@@ -19,15 +21,15 @@ use tui::backend::Backend;
 
 use crate::{
     args::Args,
-    commands::apply_workspace_edit,
     compositor::{Compositor, Event},
     config::Config,
+    handlers,
     job::Jobs,
     keymap::Keymaps,
     ui::{self, overlay::overlaid},
 };
 
-use log::{debug, error, warn};
+use log::{debug, error, info, warn};
 #[cfg(not(feature = "integration"))]
 use std::io::stdout;
 use std::{collections::btree_map::Entry, io::stdin, path::Path, sync::Arc};
@@ -64,7 +66,7 @@ pub struct Application {
     #[allow(dead_code)]
     theme_loader: Arc<theme::Loader>,
     #[allow(dead_code)]
-    syn_loader: Arc<syntax::Loader>,
+    syn_loader: Arc<ArcSwap<syntax::Loader>>,
 
     signals: Signals,
     jobs: Jobs,
@@ -94,11 +96,7 @@ fn setup_integration_logging() {
 }
 
 impl Application {
-    pub fn new(
-        args: Args,
-        config: Config,
-        syn_loader_conf: syntax::Configuration,
-    ) -> Result<Self, Error> {
+    pub fn new(args: Args, config: Config, lang_loader: syntax::Loader) -> Result<Self, Error> {
         #[cfg(feature = "integration")]
         setup_integration_logging();
 
@@ -124,7 +122,7 @@ impl Application {
             })
             .unwrap_or_else(|| theme_loader.default_theme(true_color));
 
-        let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
+        let syn_loader = Arc::new(ArcSwap::from_pointee(lang_loader));
 
         #[cfg(not(feature = "integration"))]
         let backend = CrosstermBackend::new(stdout(), &config.editor);
@@ -136,6 +134,7 @@ impl Application {
         let area = terminal.size().expect("couldn't get terminal size");
         let mut compositor = Compositor::new(area);
         let config = Arc::new(ArcSwap::from_pointee(config));
+        let handlers = handlers::setup(config.clone());
         let mut editor = Editor::new(
             area,
             theme_loader.clone(),
@@ -143,6 +142,7 @@ impl Application {
             Arc::new(Map::new(Arc::clone(&config), |config: &Config| {
                 &config.editor
             })),
+            handlers,
         );
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
@@ -319,9 +319,20 @@ impl Application {
                 Some(event) = input_stream.next() => {
                     self.handle_terminal_events(event).await;
                 }
-                Some(callback) = self.jobs.futures.next() => {
-                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
+                Some(callback) = self.jobs.callbacks.recv() => {
+                    self.jobs.handle_callback(&mut self.editor, &mut self.compositor, Ok(Some(callback)));
                     self.render().await;
+                }
+                Some(msg) = self.jobs.status_messages.recv() => {
+                    let severity = match msg.severity{
+                        helix_event::status::Severity::Hint => Severity::Hint,
+                        helix_event::status::Severity::Info => Severity::Info,
+                        helix_event::status::Severity::Warning => Severity::Warning,
+                        helix_event::status::Severity::Error => Severity::Error,
+                    };
+                    // TODO: show multiple status messages at once to avoid clobbering
+                    self.editor.status_msg = Some((msg.message, severity));
+                    helix_event::request_redraw();
                 }
                 Some(callback) = self.jobs.wait_futures.next() => {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
@@ -379,10 +390,9 @@ impl Application {
 
     /// refresh language config after config change
     fn refresh_language_config(&mut self) -> Result<(), Error> {
-        let syntax_config = helix_core::config::user_syntax_loader()
-            .map_err(|err| anyhow::anyhow!("Failed to load language config: {}", err))?;
+        let lang_loader = helix_core::config::user_lang_loader()?;
 
-        self.syn_loader = std::sync::Arc::new(syntax::Loader::new(syntax_config));
+        self.syn_loader.store(Arc::new(lang_loader));
         self.editor.syn_loader = self.syn_loader.clone();
         for document in self.editor.documents.values_mut() {
             document.detect_language(self.syn_loader.clone());
@@ -557,26 +567,8 @@ impl Application {
         let lines = doc_save_event.text.len_lines();
         let bytes = doc_save_event.text.len_bytes();
 
-        if doc.path() != Some(&doc_save_event.path) {
-            doc.set_path(Some(&doc_save_event.path));
-
-            let loader = self.editor.syn_loader.clone();
-
-            // borrowing the same doc again to get around the borrow checker
-            let doc = doc_mut!(self.editor, &doc_save_event.doc_id);
-            let id = doc.id();
-            doc.detect_language(loader);
-            self.editor.refresh_language_servers(id);
-            // and again a borrow checker workaround...
-            let doc = doc_mut!(self.editor, &doc_save_event.doc_id);
-            let diagnostics = Editor::doc_diagnostics(
-                &self.editor.language_servers,
-                &self.editor.diagnostics,
-                doc,
-            );
-            doc.replace_diagnostics(diagnostics, &[], None);
-        }
-
+        self.editor
+            .set_doc_path(doc_save_event.doc_id, &doc_save_event.path);
         // TODO: fix being overwritten by lsp
         self.editor.set_status(format!(
             "'{}' written, {}L {}B",
@@ -683,9 +675,13 @@ impl Application {
             Call::Notification(helix_lsp::jsonrpc::Notification { method, params, .. }) => {
                 let notification = match Notification::parse(&method, params) {
                     Ok(notification) => notification,
+                    Err(helix_lsp::Error::Unhandled) => {
+                        info!("Ignoring Unhandled notification from Language Server");
+                        return;
+                    }
                     Err(err) => {
-                        log::error!(
-                            "received malformed notification from Language Server: {}",
+                        error!(
+                            "Ignoring unknown notification from Language Server: {}",
                             err
                         );
                         return;
@@ -728,7 +724,7 @@ impl Application {
                     }
                     Notification::PublishDiagnostics(mut params) => {
                         let path = match params.uri.to_file_path() {
-                            Ok(path) => path,
+                            Ok(path) => helix_stdx::path::normalize(&path),
                             Err(_) => {
                                 log::error!("Unsupported file URI: {}", params.uri);
                                 return;
@@ -757,9 +753,7 @@ impl Application {
                             let lang_conf = doc.language.clone();
 
                             if let Some(lang_conf) = &lang_conf {
-                                if let Some(old_diagnostics) =
-                                    self.editor.diagnostics.get(&params.uri)
-                                {
+                                if let Some(old_diagnostics) = self.editor.diagnostics.get(&path) {
                                     if !lang_conf.persistent_diagnostic_sources.is_empty() {
                                         // Sort diagnostics first by severity and then by line numbers.
                                         // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
@@ -792,7 +786,7 @@ impl Application {
                         // Insert the original lsp::Diagnostics here because we may have no open document
                         // for diagnosic message and so we can't calculate the exact position.
                         // When using them later in the diagnostics picker, we calculate them on-demand.
-                        let diagnostics = match self.editor.diagnostics.entry(params.uri) {
+                        let diagnostics = match self.editor.diagnostics.entry(path) {
                             Entry::Occupied(o) => {
                                 let current_diagnostics = o.into_mut();
                                 // there may entries of other language servers, which is why we can't overwrite the whole entry
@@ -991,11 +985,9 @@ impl Application {
                         let language_server = language_server!();
                         if language_server.is_initialized() {
                             let offset_encoding = language_server.offset_encoding();
-                            let res = apply_workspace_edit(
-                                &mut self.editor,
-                                offset_encoding,
-                                &params.edit,
-                            );
+                            let res = self
+                                .editor
+                                .apply_workspace_edit(offset_encoding, &params.edit);
 
                             Ok(json!(lsp::ApplyWorkspaceEditResponse {
                                 applied: res.is_ok(),
@@ -1096,12 +1088,81 @@ impl Application {
                         }
                         Ok(serde_json::Value::Null)
                     }
+                    Ok(MethodCall::ShowDocument(params)) => {
+                        let language_server = language_server!();
+                        let offset_encoding = language_server.offset_encoding();
+
+                        let result = self.handle_show_document(params, offset_encoding);
+                        Ok(json!(result))
+                    }
                 };
 
                 tokio::spawn(language_server!().reply(id, reply));
             }
             Call::Invalid { id } => log::error!("LSP invalid method call id={:?}", id),
         }
+    }
+
+    fn handle_show_document(
+        &mut self,
+        params: lsp::ShowDocumentParams,
+        offset_encoding: helix_lsp::OffsetEncoding,
+    ) -> lsp::ShowDocumentResult {
+        if let lsp::ShowDocumentParams {
+            external: Some(true),
+            uri,
+            ..
+        } = params
+        {
+            self.jobs.callback(crate::open_external_url_callback(uri));
+            return lsp::ShowDocumentResult { success: true };
+        };
+
+        let lsp::ShowDocumentParams {
+            uri,
+            selection,
+            take_focus,
+            ..
+        } = params;
+
+        let path = match uri.to_file_path() {
+            Ok(path) => path,
+            Err(err) => {
+                log::error!("unsupported file URI: {}: {:?}", uri, err);
+                return lsp::ShowDocumentResult { success: false };
+            }
+        };
+
+        let action = match take_focus {
+            Some(true) => helix_view::editor::Action::Replace,
+            _ => helix_view::editor::Action::VerticalSplit,
+        };
+
+        let doc_id = match self.editor.open(&path, action) {
+            Ok(id) => id,
+            Err(err) => {
+                log::error!("failed to open path: {:?}: {:?}", uri, err);
+                return lsp::ShowDocumentResult { success: false };
+            }
+        };
+
+        let doc = doc_mut!(self.editor, &doc_id);
+        if let Some(range) = selection {
+            // TODO: convert inside server
+            if let Some(new_range) = lsp_range_to_range(doc.text(), range, offset_encoding) {
+                let view = view_mut!(self.editor);
+
+                // we flip the range so that the cursor sits on the start of the symbol
+                // (for example start of the function).
+                doc.set_selection(view.id, Selection::single(new_range.head, new_range.anchor));
+                if action.align_view(view, doc.id()) {
+                    align_view(doc, view, Align::Center);
+                }
+            } else {
+                log::warn!("lsp position out of bounds - {:?}", range);
+            };
+        };
+        lsp::ShowDocumentResult { success: true }
     }
 
     async fn claim_term(&mut self) -> std::io::Result<()> {

@@ -58,13 +58,13 @@ variable = { fg = "fg" }
 "diff.plus" = { fg = "add" }
 
 error = { fg = "error" }
-hint = { fg = "hint" }
-info = { fg = "info" }
 warning = { fg = "yellow" }
-"diagnostic.error" = { underline = { style = "curl" } }
-"diagnostic.warning" = { underline = { style = "curl" } }
-"diagnostic.info" = { underline = { style = "curl" } }
-"diagnostic.hint" = { underline = { style = "curl" } }
+info = { fg = "info" }
+hint = { fg = "hint" }
+"diagnostic.error" = { underline = { style = "curl", color = "error" } }
+"diagnostic.warning" = { underline = { style = "curl", color = "yellow"} }
+"diagnostic.info" = { underline = { style = "curl", color = "info"} }
+"diagnostic.hint" = { underline = { style = "curl", color = "hint" } }
 
 "ui.background" = { bg = "bg", fg = "fg" }
 "ui.cursor" = { modifiers = ["reversed"] }
@@ -76,15 +76,15 @@ warning = { fg = "yellow" }
 "ui.menu" = { bg = "bg-menu", fg = "fg" }
 "ui.menu.selected" = { bg = "fg-selected" }
 "ui.popup" = { bg = "bg-menu", fg = "border-highlight" }
-"ui.selection" = { bg = "bg-highlight" }
-"ui.selection.primary" = { bg = "bg-highlight" }
+"ui.selection" = { bg = "bg-selection" }
+"ui.selection.primary" = { bg = "bg-selection" }
 "ui.statusline" = { bg = "bg-menu", fg = "fg-dark" }
 "ui.statusline.inactive" = { bg = "bg-menu", fg = "fg-gutter" }
 "ui.statusline.normal" = { bg = "blue", fg = "bg", modifiers = ["bold"] }
 "ui.statusline.insert" = { bg = "light-green", fg = "bg", modifiers = ["bold"] }
 "ui.statusline.select" = { bg = "magenta", fg = "bg", modifiers = ["bold"] }
 "ui.text" = { bg = "bg", fg = "fg" }
-"ui.text.focus" = { bg = "bg-visual" }
+"ui.text.focus" = { bg = "bg-focus" }
 "ui.text.inactive" = { fg = "comment", modifiers = ["italic"] }
 "ui.text.info" = { bg = "bg-menu", fg = "fg" }
 "ui.virtual.ruler" = { bg = "fg-gutter" }
@@ -114,8 +114,8 @@ change = "#6183bb"
 delete = "#914c54"
 
 error = "#db4b4b"
-hint = "#1abc9c"
 info = "#0db9d7"
+hint = "#1abc9c"
 
 fg = "#c0caf5"
 fg-dark = "#a9b1d6"
@@ -126,6 +126,6 @@ border = "#15161e"
 border-highlight = "#27a1b9"
 bg = "#1a1b26"
 bg-inlay = "#1a2b32"
-bg-highlight = "#292e42"
+bg-selection = "#283457"
 bg-menu = "#16161e"
-bg-visual = "#283457"
+bg-focus = "#292e42"

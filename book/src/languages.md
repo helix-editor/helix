@@ -42,7 +42,7 @@ name = "mylang"
 scope = "source.mylang"
 injection-regex = "mylang"
 file-types = ["mylang", "myl"]
-comment-token = "#"
+comment-tokens = "#"
 indent = { tab-width = 2, unit = "  " }
 formatter = { command = "mylang-formatter" , args = ["--stdin"] }
 language-servers = [ "mylang-lsp" ]
@@ -61,7 +61,8 @@ These configuration keys are available:
 | `roots`               | A set of marker files to look for when trying to find the workspace root. For example `Cargo.lock`, `yarn.lock` |
 | `auto-format`         | Whether to autoformat this language when saving               |
 | `diagnostic-severity` | Minimal severity of diagnostic for it to be displayed. (Allowed values: `Error`, `Warning`, `Info`, `Hint`) |
-| `comment-token`       | The token to use as a comment-token                           |
+| `comment-tokens`      | The tokens to use as a comment token, either a single token `"//"` or an array `["//", "///", "//!"]` (the first token will be used for commenting). Also configurable as `comment-token` for backwards compatibility|
+| `block-comment-tokens`| The start and end tokens for a multiline comment either an array or single table of `{ start = "/*", end = "*/"}`. The first set of tokens will be used for commenting, any pairs in the array can be uncommented |
 | `indent`              | The indent to use. Has sub keys `unit` (the text inserted into the document when indenting; usually set to N spaces or `"\t"` for tabs) and `tab-width` (the number of spaces rendered for a tab) |
 | `language-servers`    | The Language Servers used for this language. See below for more information in the section [Configuring Language Servers for a language](#configuring-language-servers-for-a-language)   |
 | `grammar`             | The tree-sitter grammar to use (defaults to the value of `name`) |
@@ -78,24 +79,26 @@ from the above section. `file-types` is a list of strings or tables, for
 example:
 
 ```toml
-file-types = ["Makefile", "toml", { suffix = ".git/config" }]
+file-types = ["toml", { glob = "Makefile" }, { glob = ".git/config" }, { glob = ".github/workflows/*.yaml" } ]
 ```
 
 When determining a language configuration to use, Helix searches the file-types
 with the following priorities:
 
-1. Exact match: if the filename of a file is an exact match of a string in a
-   `file-types` list, that language wins. In the example above, `"Makefile"`
-   will match against `Makefile` files.
-2. Extension: if there are no exact matches, any `file-types` string that
-   matches the file extension of a given file wins. In the example above, the
-   `"toml"` matches files like `Cargo.toml` or `languages.toml`.
-3. Suffix: if there are still no matches, any values in `suffix` tables
-   are checked against the full path of the given file. In the example above,
-   the `{ suffix = ".git/config" }` would match against any `config` files
-   in `.git` directories. Note: `/` is used as the directory separator but is
-   replaced at runtime with the appropriate path separator for the operating
-   system, so this rule would match against `.git\config` files on Windows.
+1. Glob: values in `glob` tables are checked against the full path of the given
+   file. Globs are standard Unix-style path globs (e.g. the kind you use in Shell)
+   and can be used to match paths for a specific prefix, suffix, directory, etc.
+   In the above example, the `{ glob = "Makefile" }` config would match files
+   with the name `Makefile`, the `{ glob = ".git/config" }` config would match
+   `config` files in `.git` directories, and the `{ glob = ".github/workflows/*.yaml" }`
+   config would match any `yaml` files in `.github/workflow` directories. Note
+   that globs should always use the Unix path separator `/` even on Windows systems;
+   the matcher will automatically take the machine-specific separators into account.
+   If the glob isn't an absolute path or doesn't already start with a glob prefix,
+   `*/` will automatically be added to ensure it matches for any subdirectory.
+2. Extension: if there are no glob matches, any `file-types` string that matches
+   the file extension of a given file wins. In the example above, the `"toml"`
+   config matches files like `Cargo.toml` or `languages.toml`.
 
 ## Language Server configuration
 
@@ -120,13 +123,14 @@ languages = { typescript = [ { formatCommand ="prettier --stdin-filepath ${INPUT
 
 These are the available options for a language server.
 
-| Key                   | Description                                                                              |
-| ----                  | -----------                                                                              |
-| `command`             | The name or path of the language server binary to execute. Binaries must be in `$PATH`   |
-| `args`                | A list of arguments to pass to the language server binary                                |
-| `config`              | LSP initialization options                               |
-| `timeout`             | The maximum time a request to the language server may take, in seconds. Defaults to `20` |
-| `environment`         | Any environment variables that will be used when starting the language server `{ "KEY1" = "Value1", "KEY2" = "Value2" }` |
+| Key                        | Description                                                                                                                       |
+| ----                       | -----------                                                                                                                       |
+| `command`                  | The name or path of the language server binary to execute. Binaries must be in `$PATH`                                            |
+| `args`                     | A list of arguments to pass to the language server binary                                                                         |
+| `config`                   | LSP initialization options                                                                                                        |
+| `timeout`                  | The maximum time a request to the language server may take, in seconds. Defaults to `20`                                          |
+| `environment`              | Any environment variables that will be used when starting the language server `{ "KEY1" = "Value1", "KEY2" = "Value2" }`          |
+| `required-root-patterns`   | A list of `glob` patterns to look for in the working directory. The language server is started if at least one of them is found.  |
 
 A `format` sub-table within `config` can be used to pass extra formatting options to
 [Document Formatting Requests](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_formatting).

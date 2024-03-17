@@ -7,8 +7,7 @@ use super::*;
 
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
-use helix_core::{encoding, line_ending, path::get_canonicalized_path, shellwords::Shellwords};
-use helix_lsp::{OffsetEncoding, Url};
+use helix_core::{encoding, line_ending, shellwords::Shellwords};
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::editor::{Action, CloseError, ConfigEvent};
 use serde_json::Value;
@@ -111,14 +110,14 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     ensure!(!args.is_empty(), "wrong argument count");
     for arg in args {
         let (path, pos) = args::parse_file(arg);
-        let path = helix_core::path::expand_tilde(&path);
+        let path = helix_stdx::path::expand_tilde(path);
         // If the path is a directory, open a file picker on that directory and update the status
         // message
         if let Ok(true) = std::fs::canonicalize(&path).map(|p| p.is_dir()) {
             let callback = async move {
                 let call: job::Callback = job::Callback::EditorCompositor(Box::new(
                     move |editor: &mut Editor, compositor: &mut Compositor| {
-                        let picker = ui::file_picker(path, &editor.config());
+                        let picker = ui::file_picker(path.into_owned(), &editor.config());
                         compositor.push(Box::new(overlaid(picker)));
                     },
                 ));
@@ -483,7 +482,7 @@ fn set_indent_style(
     }
 
     // Attempt to parse argument as an indent style.
-    let style = match args.get(0) {
+    let style = match args.first() {
         Some(arg) if "tabs".starts_with(&arg.to_lowercase()) => Some(Tabs),
         Some(Cow::Borrowed("0")) => Some(Tabs),
         Some(arg) => arg
@@ -535,7 +534,7 @@ fn set_line_ending(
     }
 
     let arg = args
-        .get(0)
+        .first()
         .context("argument missing")?
         .to_ascii_lowercase();
 
@@ -1079,18 +1078,17 @@ fn change_current_directory(
         return Ok(());
     }
 
-    let dir = helix_core::path::expand_tilde(
-        args.first()
-            .context("target directory not provided")?
-            .as_ref()
-            .as_ref(),
-    );
+    let dir = args
+        .first()
+        .context("target directory not provided")?
+        .as_ref();
+    let dir = helix_stdx::path::expand_tilde(Path::new(dir));
 
-    helix_loader::set_current_working_dir(dir)?;
+    helix_stdx::env::set_current_working_dir(dir)?;
 
     cx.editor.set_status(format!(
         "Current working directory is now {}",
-        helix_loader::current_working_dir().display()
+        helix_stdx::env::current_working_dir().display()
     ));
     Ok(())
 }
@@ -1104,7 +1102,7 @@ fn show_current_directory(
         return Ok(());
     }
 
-    let cwd = helix_loader::current_working_dir();
+    let cwd = helix_stdx::env::current_working_dir();
     let message = format!("Current working directory is {}", cwd.display());
 
     if cwd.exists() {
@@ -1547,10 +1545,7 @@ fn tree_sitter_highlight_name(
         let text = doc.text().slice(..);
         let cursor = doc.selection(view.id).primary().cursor(text);
         let byte = text.char_to_byte(cursor);
-        let node = syntax
-            .tree()
-            .root_node()
-            .descendant_for_byte_range(byte, byte)?;
+        let node = syntax.descendant_for_byte_range(byte, byte)?;
         // Query the same range as the one used in syntax highlighting.
         let range = {
             // Calculate viewport byte ranges:
@@ -2078,7 +2073,7 @@ fn reflow(
     //   - The configured text-width for this language in languages.toml
     //   - The configured text-width in the config.toml
     let text_width: usize = args
-        .get(0)
+        .first()
         .map(|num| num.parse::<usize>())
         .transpose()?
         .or_else(|| doc.language_config().and_then(|config| config.text_width))
@@ -2117,11 +2112,7 @@ fn tree_sitter_subtree(
         let text = doc.text();
         let from = text.char_to_byte(primary_selection.from());
         let to = text.char_to_byte(primary_selection.to());
-        if let Some(selected_node) = syntax
-            .tree()
-            .root_node()
-            .descendant_for_byte_range(from, to)
-        {
+        if let Some(selected_node) = syntax.descendant_for_byte_range(from, to) {
             let mut contents = String::from("```tsq\n");
             helix_core::syntax::pretty_print_tree(&mut contents, selected_node)?;
             contents.push_str("\n```");
@@ -2412,66 +2403,54 @@ fn move_buffer(
 
     ensure!(args.len() == 1, format!(":move takes one argument"));
     let doc = doc!(cx.editor);
-
-    let new_path = get_canonicalized_path(&PathBuf::from(args.first().unwrap().to_string()));
     let old_path = doc
         .path()
-        .ok_or_else(|| anyhow!("Scratch buffer cannot be moved. Use :write instead"))?
+        .context("Scratch buffer cannot be moved. Use :write instead")?
         .clone();
-    let old_path_as_url = doc.url().unwrap();
-    let new_path_as_url = Url::from_file_path(&new_path).unwrap();
+    let new_path = args.first().unwrap().to_string();
+    if let Err(err) = cx.editor.move_path(&old_path, new_path.as_ref()) {
+        bail!("Could not move file: {err}");
+    }
+    Ok(())
+}
 
-    let edits: Vec<(
-        helix_lsp::Result<helix_lsp::lsp::WorkspaceEdit>,
-        OffsetEncoding,
-        String,
-    )> = doc
-        .language_servers()
-        .map(|lsp| {
-            (
-                lsp.prepare_file_rename(&old_path_as_url, &new_path_as_url),
-                lsp.offset_encoding(),
-                lsp.name().to_owned(),
-            )
-        })
-        .filter(|(f, _, _)| f.is_some())
-        .map(|(f, encoding, name)| (helix_lsp::block_on(f.unwrap()), encoding, name))
-        .collect();
-
-    for (lsp_reply, encoding, name) in edits {
-        match lsp_reply {
-            Ok(edit) => {
-                if let Err(e) = apply_workspace_edit(cx.editor, encoding, &edit) {
-                    log::error!(
-                        ":move command failed to apply edits from lsp {}: {:?}",
-                        name,
-                        e
-                    );
-                };
-            }
-            Err(e) => {
-                log::error!("LSP {} failed to treat willRename request: {:?}", name, e);
-            }
-        };
+fn yank_diagnostic(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
     }
 
-    let doc = doc_mut!(cx.editor);
+    let (view, doc) = current_ref!(cx.editor);
+    let primary = doc.selection(view.id).primary();
 
-    doc.set_path(Some(new_path.as_path()));
-    if let Err(e) = std::fs::rename(&old_path, &new_path) {
-        doc.set_path(Some(old_path.as_path()));
-        bail!("Could not move file: {}", e);
+    // Look only for diagnostics that intersect with the primary selection
+    let diag: Vec<_> = doc
+        .diagnostics()
+        .iter()
+        .filter(|d| primary.overlaps(&helix_core::Range::new(d.range.start, d.range.end)))
+        .map(|d| d.message.clone())
+        .collect();
+    let n = diag.len();
+    if n == 0 {
+        bail!("No diagnostics under primary selection");
+    }
+
+    let reg = match args.get(0) {
+        Some(s) => {
+            ensure!(s.chars().count() == 1, format!("Invalid register {s}"));
+            s.chars().next().unwrap()
+        }
+        None => '+',
     };
 
-    doc.language_servers().for_each(|lsp| {
-        lsp.did_file_rename(&old_path_as_url, &new_path_as_url);
-    });
-
-    cx.editor
-        .language_servers
-        .file_event_handler
-        .file_changed(new_path);
-
+    cx.editor.registers.write(reg, diag)?;
+    cx.editor.set_status(format!(
+        "Yanked {n} diagnostic{} to register {reg}",
+        if n == 1 { "" } else { "s" }
+    ));
     Ok(())
 }
 
@@ -3081,6 +3060,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         doc: "Move the current buffer and its corresponding file to a different path",
         fun: move_buffer,
         signature: CommandSignature::positional(&[completers::filename]),
+    },
+    TypableCommand {
+        name: "yank-diagnostic",
+        aliases: &[],
+        doc: "Yank diagnostic(s) under primary cursor to register, or clipboard by default",
+        fun: yank_diagnostic,
+        signature: CommandSignature::none(),
     },
 ];
 
