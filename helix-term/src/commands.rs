@@ -57,6 +57,7 @@ use crate::{
 
 use crate::job::{self, Jobs};
 use std::{
+    cmp::Ordering,
     collections::{HashMap, HashSet},
     fmt,
     future::Future,
@@ -300,6 +301,8 @@ impl MappableCommand {
         extend_line, "Select current line, if already selected, extend to another line based on the anchor",
         extend_line_below, "Select current line, if already selected, extend to next line",
         extend_line_above, "Select current line, if already selected, extend to previous line",
+        select_line_above, "Select current line, if already selected, extend or shrink line above based on the anchor",
+        select_line_below, "Select current line, if already selected, extend or shrink line below based on the anchor",
         extend_to_line_bounds, "Extend selection to line bounds",
         shrink_to_line_bounds, "Shrink selection to line bounds",
         delete_selection, "Delete selection",
@@ -2435,7 +2438,6 @@ fn extend_line_below(cx: &mut Context) {
 fn extend_line_above(cx: &mut Context) {
     extend_line_impl(cx, Extend::Above);
 }
-
 fn extend_line_impl(cx: &mut Context, extend: Extend) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
@@ -2469,6 +2471,59 @@ fn extend_line_impl(cx: &mut Context, extend: Extend) {
             }
         };
 
+        Range::new(anchor, head)
+    });
+
+    doc.set_selection(view.id, selection);
+}
+fn select_line_below(cx: &mut Context) {
+    select_line_impl(cx, Extend::Below);
+}
+fn select_line_above(cx: &mut Context) {
+    select_line_impl(cx, Extend::Above);
+}
+fn select_line_impl(cx: &mut Context, extend: Extend) {
+    let mut count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text();
+    let saturating_add = |a: usize, b: usize| (a + b).min(text.len_lines());
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let (start_line, end_line) = range.line_range(text.slice(..));
+        let start = text.line_to_char(start_line);
+        let end = text.line_to_char(saturating_add(end_line, 1));
+        let direction = range.direction();
+
+        // Extending to line bounds is counted as one step
+        if range.from() != start || range.to() != end {
+            count = count.saturating_sub(1)
+        }
+        let (anchor_line, head_line) = match (&extend, direction) {
+            (Extend::Above, Direction::Forward) => (start_line, end_line.saturating_sub(count)),
+            (Extend::Above, Direction::Backward) => (end_line, start_line.saturating_sub(count)),
+            (Extend::Below, Direction::Forward) => (start_line, saturating_add(end_line, count)),
+            (Extend::Below, Direction::Backward) => (end_line, saturating_add(start_line, count)),
+        };
+        let (anchor, head) = match anchor_line.cmp(&head_line) {
+            Ordering::Less => (
+                text.line_to_char(anchor_line),
+                text.line_to_char(saturating_add(head_line, 1)),
+            ),
+            Ordering::Equal => match extend {
+                Extend::Above => (
+                    text.line_to_char(saturating_add(anchor_line, 1)),
+                    text.line_to_char(head_line),
+                ),
+                Extend::Below => (
+                    text.line_to_char(head_line),
+                    text.line_to_char(saturating_add(anchor_line, 1)),
+                ),
+            },
+
+            Ordering::Greater => (
+                text.line_to_char(saturating_add(anchor_line, 1)),
+                text.line_to_char(head_line),
+            ),
+        };
         Range::new(anchor, head)
     });
 
