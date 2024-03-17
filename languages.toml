@@ -2901,11 +2901,12 @@ scope = "source.hurl"
 injection-regex = "hurl"
 file-types = ["hurl"]
 comment-token = "#"
+formatter = { command = "hurlfmt" }
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "hurl"
-source = { git = "https://github.com/pfeiferj/tree-sitter-hurl", rev = "264c42064b61ee21abe88d0061f29a0523352e22" }
+source = { git = "https://github.com/pfeiferj/tree-sitter-hurl", rev = "cd1a0ada92cc73dd0f4d7eedc162be4ded758591" }
 
 [[language]]
 name = "markdoc"
