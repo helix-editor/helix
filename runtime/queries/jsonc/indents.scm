@@ -1,9 +1,1 @@
-[
-  (object)
-  (array)
-] @indent
-
-[
-  "]"
-  "}"
-] @outdent
+; inherits: json
