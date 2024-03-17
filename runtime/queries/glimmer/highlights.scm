@@ -8,7 +8,7 @@
 ((tag_name) @constructor
   (#match? @constructor "^[A-Z]"))
 
-(attribute_name) @variable.other.member
+(attribute_name) @attribute
 
 (string_literal) @string
 (number_literal) @constant.numeric.integer
