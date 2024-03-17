@@ -232,10 +232,22 @@ impl Transport {
         if let Some(tx) = self.pending_requests.lock().await.remove(&id) {
             match tx.send(result).await {
                 Ok(_) => (),
-                Err(_) => error!(
-                    "Tried sending response into a closed channel (id={:?}), original request likely timed out",
-                    id
-                ),
+                Err(_) => {
+                    /*
+                    If a copilot-completion request is cancelled (eg via the async hook) before the copilot-lsp responds, 
+                    this channel's receiver will be immediately dropped, but the transport struct will still try send the reponse to it.
+                    This is theoretically possible to occur with regular lsp completions, but in praptice I don't think 
+                    this happens since lsps respond very quick, where as copilot completions take significantly longer with the round 
+                    trip to the github servers.
+                    For the time being just ignore this error is the ls is copilot
+                    */
+                    if language_server_name != "copilot" {
+                        error!(
+                            "Tried sending response into a closed channel (id={:?}), original request likely timed out",
+                            id
+                        )
+                    }
+                }
             };
         } else {
             log::error!(
