@@ -20,6 +20,7 @@ cl-lsp = { command = "cl-lsp", args = [ "stdio" ] }
 clangd = { command = "clangd" }
 clojure-lsp = { command = "clojure-lsp" }
 cmake-language-server = { command = "cmake-language-server" }
+copilot = { command = "copilot", args = ["--stdio"]}
 crystalline = { command = "crystalline", args = ["--stdio"] }
 cs = { command = "cs", args = ["launch", "--contrib", "smithy-language-server", "--", "0"] }
 csharp-ls = { command = "csharp-ls" }

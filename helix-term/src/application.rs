@@ -134,7 +134,7 @@ impl Application {
         let area = terminal.size().expect("couldn't get terminal size");
         let mut compositor = Compositor::new(area);
         let config = Arc::new(ArcSwap::from_pointee(config));
-        let handlers = handlers::setup(config.clone());
+        let handlers = handlers::setup(config.clone(), args.enable_copilot);
         let mut editor = Editor::new(
             area,
             theme_loader.clone(),

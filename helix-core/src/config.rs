@@ -1,4 +1,10 @@
-use crate::syntax::{Configuration, Loader, LoaderError};
+use std::collections::HashSet;
+
+use crate::syntax::{
+    Configuration, LanguageServerFeatures, Loader, LoaderError,
+};
+
+static ENABLE_COPILOT: once_cell::sync::OnceCell<bool> = once_cell::sync::OnceCell::new();
 
 /// Language configuration based on built-in languages.toml.
 pub fn default_lang_config() -> Configuration {
@@ -9,7 +15,11 @@ pub fn default_lang_config() -> Configuration {
 
 /// Language configuration loader based on built-in languages.toml.
 pub fn default_lang_loader() -> Loader {
-    Loader::new(default_lang_config()).expect("Could not compile loader for default config")
+    let mut config = default_lang_config();
+    if ENABLE_COPILOT.get().map_or(false, |v| *v) {
+        append_copilot_lsp_to_language_configs(&mut config);
+    }
+    Loader::new(config).expect("Could not compile loader for default config")
 }
 
 #[derive(Debug)]
@@ -36,10 +46,29 @@ pub fn user_lang_config() -> Result<Configuration, toml::de::Error> {
 
 /// Language configuration loader based on user configured languages.toml.
 pub fn user_lang_loader() -> Result<Loader, LanguageLoaderError> {
-    let config: Configuration = helix_loader::config::user_lang_config()
+    let mut config: Configuration = helix_loader::config::user_lang_config()
         .map_err(LanguageLoaderError::DeserializeError)?
         .try_into()
         .map_err(LanguageLoaderError::DeserializeError)?;
 
+    if ENABLE_COPILOT.get().map_or(false, |v| *v) {
+        append_copilot_lsp_to_language_configs(&mut config);
+    }
+
     Loader::new(config).map_err(LanguageLoaderError::LoaderError)
+}
+
+fn append_copilot_lsp_to_language_configs(config: &mut Configuration) {
+    let copilot_ls = LanguageServerFeatures {
+        name: "copilot".into(),
+        only: HashSet::new(),
+        excluded: HashSet::new(),
+    };
+    for lan_config in config.language.iter_mut() {
+        lan_config.language_servers.push(copilot_ls.clone());
+    }
+}
+
+pub fn initialize_enable_copilot(enable_copilot: bool) {
+    ENABLE_COPILOT.set(enable_copilot).ok();
 }

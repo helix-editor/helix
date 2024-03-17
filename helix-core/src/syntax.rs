@@ -373,7 +373,7 @@ enum LanguageServerFeatureConfiguration {
     Simple(String),
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct LanguageServerFeatures {
     pub name: String,
     pub only: HashSet<LanguageServerFeature>,
