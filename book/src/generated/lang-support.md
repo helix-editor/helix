@@ -190,7 +190,7 @@
 | unison | ✓ |  | ✓ |  |
 | uxntal | ✓ |  |  |  |
 | v | ✓ | ✓ | ✓ | `v-analyzer` |
-| vala | ✓ |  |  | `vala-language-server` |
+| vala | ✓ | ✓ |  | `vala-language-server` |
 | verilog | ✓ | ✓ |  | `svlangserver` |
 | vhdl | ✓ |  |  | `vhdl_ls` |
 | vhs | ✓ |  |  |  |
