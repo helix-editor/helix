@@ -1,19 +1,19 @@
-(comment) @comment @spell
+(comment) @comment
 
 [
   "source"
   "exec"
   "exec-once"
-] @keyword
+] @function.builtin
 
 (keyword
   (name) @keyword)
 
 (assignment
-  (name) @property)
+  (name) @variable.other.member)
 
 (section
-  (name) @module)
+  (name) @namespace)
 
 (section
   device: (device_name) @type)
@@ -22,7 +22,9 @@
 
 "$" @punctuation.special
 
-(boolean) @boolean
+(boolean) @constant.builtin.boolean
+
+(string) @string
 
 (mod) @constant
 
@@ -36,7 +38,7 @@
   (legacy_hex)
   (angle)
   (hex)
-] @number
+] @constant.numeric
 
 "deg" @type
 
