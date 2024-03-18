@@ -95,6 +95,7 @@
 | julia | ✓ | ✓ | ✓ | `julia` |
 | just | ✓ | ✓ | ✓ |  |
 | kdl | ✓ | ✓ | ✓ |  |
+| koka | ✓ |  | ✓ |  |
 | kotlin | ✓ |  |  | `kotlin-language-server` |
 | latex | ✓ | ✓ |  | `texlab` |
 | ld | ✓ |  | ✓ |  |

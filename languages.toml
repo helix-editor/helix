@@ -3231,6 +3231,18 @@ name = "hocon"
 source = { git = "https://github.com/antosha417/tree-sitter-hocon", rev = "c390f10519ae69fdb03b3e5764f5592fb6924bcc" }
 
 [[language]]
+name = "koka"
+scope = "source.koka"
+injection-regex = "koka"
+file-types = ["kk"]
+comment-token = "//"
+indent = { tab-width = 8, unit = "  " }
+
+[[grammar]]
+name = "koka"
+source = { git = "https://github.com/mtoohey31/tree-sitter-koka", rev = "2527e152d4b6a79fd50aebd8d0b4b4336c94a034" }
+
+[[language]]
 name = "tact"
 scope = "source.tact"
 injection-regex = "tact"
