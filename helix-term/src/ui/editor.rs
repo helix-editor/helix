@@ -360,7 +360,7 @@ impl EditorView {
         doc: &Document,
         theme: &Theme,
     ) -> [Vec<(usize, std::ops::Range<usize>)>; 5] {
-        use helix_core::diagnostic::Severity;
+        use helix_core::diagnostic::{DiagnosticTag, Severity};
         let get_scope_of = |scope| {
             theme
             .find_scope_index_exact(scope)
@@ -380,6 +380,10 @@ impl EditorView {
         let error = get_scope_of("diagnostic.error");
         let r#default = get_scope_of("diagnostic"); // this is a bit redundant but should be fine
 
+        // Diagnostic tags
+        let unnecessary = theme.find_scope_index_exact("diagnostic.unnecessary");
+        let deprecated = theme.find_scope_index_exact("diagnostic.deprecated");
+
         let mut default_vec: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
         let mut info_vec = Vec::new();
         let mut hint_vec = Vec::new();
@@ -395,6 +399,15 @@ impl EditorView {
                 Some(Severity::Error) => (&mut error_vec, error),
                 _ => (&mut default_vec, r#default),
             };
+
+            let scope = diagnostic
+                .tags
+                .first()
+                .and_then(|tag| match tag {
+                    DiagnosticTag::Unnecessary => unnecessary,
+                    DiagnosticTag::Deprecated => deprecated,
+                })
+                .unwrap_or(scope);
 
             // If any diagnostic overlaps ranges with the prior diagnostic,
             // merge the two together. Otherwise push a new span.
@@ -716,7 +729,8 @@ impl EditorView {
             }
         }
 
-        let paragraph = Paragraph::new(lines)
+        let text = Text::from(lines);
+        let paragraph = Paragraph::new(&text)
             .alignment(Alignment::Right)
             .wrap(Wrap { trim: true });
         let width = 100.min(viewport.width);
@@ -902,13 +916,15 @@ impl EditorView {
 
     fn command_mode(&mut self, mode: Mode, cxt: &mut commands::Context, event: KeyEvent) {
         match (event, cxt.editor.count) {
-            // count handling
-            (key!(i @ '0'), Some(_)) | (key!(i @ '1'..='9'), _)
-                if !self.keymaps.contains_key(mode, event) =>
-            {
+            // If the count is already started and the input is a number, always continue the count.
+            (key!(i @ '0'..='9'), Some(count)) => {
                 let i = i.to_digit(10).unwrap() as usize;
-                cxt.editor.count =
-                    std::num::NonZeroUsize::new(cxt.editor.count.map_or(i, |c| c.get() * 10 + i));
+                cxt.editor.count = NonZeroUsize::new(count.get() * 10 + i);
+            }
+            // A non-zero digit will start the count if that number isn't used by a keymap.
+            (key!(i @ '1'..='9'), None) if !self.keymaps.contains_key(mode, event) => {
+                let i = i.to_digit(10).unwrap() as usize;
+                cxt.editor.count = NonZeroUsize::new(i);
             }
             // special handling for repeat operator
             (key!('.'), _) if self.keymaps.pending().is_empty() => {

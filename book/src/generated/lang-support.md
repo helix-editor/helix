@@ -8,6 +8,7 @@
 | beancount | ✓ |  |  |  |
 | bibtex | ✓ |  |  | `texlab` |
 | bicep | ✓ |  |  | `bicep-langserver` |
+| blade | ✓ |  |  |  |
 | blueprint | ✓ |  |  | `blueprint-compiler` |
 | c | ✓ | ✓ | ✓ | `clangd` |
 | c-sharp | ✓ | ✓ |  | `OmniSharp` |
@@ -44,6 +45,7 @@
 | erb | ✓ |  |  |  |
 | erlang | ✓ | ✓ |  | `erlang_ls` |
 | esdl | ✓ |  |  |  |
+| fidl | ✓ |  |  |  |
 | fish | ✓ | ✓ | ✓ |  |
 | forth | ✓ |  |  | `forth-lsp` |
 | fortran | ✓ |  | ✓ | `fortls` |
@@ -76,6 +78,7 @@
 | hosts | ✓ |  |  |  |
 | html | ✓ |  |  | `vscode-html-language-server` |
 | hurl | ✓ |  | ✓ |  |
+| hyprlang | ✓ |  | ✓ |  |
 | idris |  |  |  | `idris2-lsp` |
 | iex | ✓ |  |  |  |
 | ini | ✓ |  |  |  |
@@ -86,13 +89,16 @@
 | jsdoc | ✓ |  |  |  |
 | json | ✓ |  | ✓ | `vscode-json-language-server` |
 | json5 | ✓ |  |  |  |
+| jsonc | ✓ |  | ✓ | `vscode-json-language-server` |
 | jsonnet | ✓ |  |  | `jsonnet-language-server` |
 | jsx | ✓ | ✓ | ✓ | `typescript-language-server` |
 | julia | ✓ | ✓ | ✓ | `julia` |
 | just | ✓ | ✓ | ✓ |  |
 | kdl | ✓ | ✓ | ✓ |  |
+| koka | ✓ |  | ✓ |  |
 | kotlin | ✓ |  |  | `kotlin-language-server` |
 | latex | ✓ | ✓ |  | `texlab` |
+| ld | ✓ |  | ✓ |  |
 | lean | ✓ |  |  | `lean` |
 | ledger | ✓ |  |  |  |
 | llvm | ✓ | ✓ | ✓ |  |
@@ -103,7 +109,7 @@
 | lua | ✓ | ✓ | ✓ | `lua-language-server` |
 | make | ✓ |  | ✓ |  |
 | markdoc | ✓ |  |  | `markdoc-ls` |
-| markdown | ✓ |  |  | `marksman` |
+| markdown | ✓ |  |  | `marksman`, `markdown-oxide` |
 | markdown.inline | ✓ |  |  |  |
 | matlab | ✓ | ✓ | ✓ |  |
 | mermaid | ✓ |  |  |  |
@@ -127,10 +133,12 @@
 | pem | ✓ |  |  |  |
 | perl | ✓ | ✓ | ✓ | `perlnavigator` |
 | php | ✓ | ✓ | ✓ | `intelephense` |
+| php-only | ✓ |  |  |  |
 | pkl | ✓ |  | ✓ |  |
 | po | ✓ | ✓ |  |  |
 | pod | ✓ |  |  |  |
 | ponylang | ✓ | ✓ | ✓ |  |
+| powershell | ✓ |  |  |  |
 | prisma | ✓ |  |  | `prisma-language-server` |
 | prolog |  |  |  | `swipl` |
 | protobuf | ✓ | ✓ | ✓ | `bufls`, `pb` |
@@ -163,6 +171,7 @@
 | sshclientconfig | ✓ |  |  |  |
 | starlark | ✓ | ✓ |  |  |
 | strace | ✓ |  |  |  |
+| supercollider | ✓ |  |  |  |
 | svelte | ✓ |  | ✓ | `svelteserver` |
 | sway | ✓ | ✓ | ✓ | `forc` |
 | swift | ✓ |  |  | `sourcekit-lsp` |
@@ -183,7 +192,7 @@
 | unison | ✓ |  | ✓ |  |
 | uxntal | ✓ |  |  |  |
 | v | ✓ | ✓ | ✓ | `v-analyzer` |
-| vala | ✓ |  |  | `vala-language-server` |
+| vala | ✓ | ✓ |  | `vala-language-server` |
 | verilog | ✓ | ✓ |  | `svlangserver` |
 | vhdl | ✓ |  |  | `vhdl_ls` |
 | vhs | ✓ |  |  |  |

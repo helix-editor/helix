@@ -631,6 +631,12 @@ impl Client {
                     }),
                     publish_diagnostics: Some(lsp::PublishDiagnosticsClientCapabilities {
                         version_support: Some(true),
+                        tag_support: Some(lsp::TagSupport {
+                            value_set: vec![
+                                lsp::DiagnosticTag::UNNECESSARY,
+                                lsp::DiagnosticTag::DEPRECATED,
+                            ],
+                        }),
                         ..Default::default()
                     }),
                     inlay_hint: Some(lsp::InlayHintClientCapabilities {

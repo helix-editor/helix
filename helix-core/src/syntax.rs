@@ -12,6 +12,7 @@ use arc_swap::{ArcSwap, Guard};
 use bitflags::bitflags;
 use globset::GlobSet;
 use hashbrown::raw::RawTable;
+use helix_stdx::rope::{self, RopeSliceExt};
 use slotmap::{DefaultKey as LayerId, HopSlotMap};
 
 use std::{
@@ -20,7 +21,7 @@ use std::{
     collections::{HashMap, HashSet, VecDeque},
     fmt::{self, Display},
     hash::{Hash, Hasher},
-    mem::{replace, transmute},
+    mem::replace,
     path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
@@ -98,7 +99,19 @@ pub struct LanguageConfiguration {
     pub shebangs: Vec<String>, // interpreter(s) associated with language
     #[serde(default)]
     pub roots: Vec<String>, // these indicate project roots <.git, Cargo.toml>
-    pub comment_token: Option<String>,
+    #[serde(
+        default,
+        skip_serializing,
+        deserialize_with = "from_comment_tokens",
+        alias = "comment-token"
+    )]
+    pub comment_tokens: Option<Vec<String>>,
+    #[serde(
+        default,
+        skip_serializing,
+        deserialize_with = "from_block_comment_tokens"
+    )]
+    pub block_comment_tokens: Option<Vec<BlockCommentToken>>,
     pub text_width: Option<usize>,
     pub soft_wrap: Option<SoftWrap>,
 
@@ -237,6 +250,59 @@ impl<'de> Deserialize<'de> for FileType {
 
         deserializer.deserialize_any(FileTypeVisitor)
     }
+}
+
+fn from_comment_tokens<'de, D>(deserializer: D) -> Result<Option<Vec<String>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum CommentTokens {
+        Multiple(Vec<String>),
+        Single(String),
+    }
+    Ok(
+        Option::<CommentTokens>::deserialize(deserializer)?.map(|tokens| match tokens {
+            CommentTokens::Single(val) => vec![val],
+            CommentTokens::Multiple(vals) => vals,
+        }),
+    )
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct BlockCommentToken {
+    pub start: String,
+    pub end: String,
+}
+
+impl Default for BlockCommentToken {
+    fn default() -> Self {
+        BlockCommentToken {
+            start: "/*".to_string(),
+            end: "*/".to_string(),
+        }
+    }
+}
+
+fn from_block_comment_tokens<'de, D>(
+    deserializer: D,
+) -> Result<Option<Vec<BlockCommentToken>>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    #[serde(untagged)]
+    enum BlockCommentTokens {
+        Multiple(Vec<BlockCommentToken>),
+        Single(BlockCommentToken),
+    }
+    Ok(
+        Option::<BlockCommentTokens>::deserialize(deserializer)?.map(|tokens| match tokens {
+            BlockCommentTokens::Single(val) => vec![val],
+            BlockCommentTokens::Multiple(vals) => vals,
+        }),
+    )
 }
 
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash)]
@@ -739,7 +805,7 @@ impl LanguageConfiguration {
         if query_text.is_empty() {
             return None;
         }
-        let lang = self.highlight_config.get()?.as_ref()?.language;
+        let lang = &self.highlight_config.get()?.as_ref()?.language;
         Query::new(lang, &query_text)
             .map_err(|e| {
                 log::error!(
@@ -1478,13 +1544,7 @@ impl PartialEq for LanguageLayer {
 impl Hash for LanguageLayer {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.depth.hash(state);
-        // The transmute is necessary here because tree_sitter::Language does not derive Hash at the moment.
-        // However it does use #[repr] transparent so the transmute here is safe
-        // as `Language` (which `Grammar` is an alias for) is just a newtype wrapper around a (thin) pointer.
-        // This is also compatible with the PartialEq implementation of language
-        // as that is just a pointer comparison.
-        let language: *const () = unsafe { transmute(self.config.language) };
-        language.hash(state);
+        self.config.language.hash(state);
         self.ranges.hash(state);
     }
 }
@@ -1501,7 +1561,7 @@ impl LanguageLayer {
             .map_err(|_| Error::InvalidRanges)?;
 
         parser
-            .set_language(self.config.language)
+            .set_language(&self.config.language)
             .map_err(|_| Error::InvalidLanguage)?;
 
         // unsafe { syntax.parser.set_cancellation_flag(cancellation_flag) };
@@ -1801,7 +1861,7 @@ impl HighlightConfiguration {
 
         // Construct a single query by concatenating the three query strings, but record the
         // range of pattern indices that belong to each individual string.
-        let query = Query::new(language, &query_source)?;
+        let query = Query::new(&language, &query_source)?;
         let mut highlights_pattern_index = 0;
         for i in 0..(query.pattern_count()) {
             let pattern_offset = query.start_byte_for_pattern(i);
@@ -1810,7 +1870,7 @@ impl HighlightConfiguration {
             }
         }
 
-        let injections_query = Query::new(language, injection_query)?;
+        let injections_query = Query::new(&language, injection_query)?;
         let combined_injections_patterns = (0..injections_query.pattern_count())
             .filter(|&i| {
                 injections_query
@@ -1961,11 +2021,16 @@ impl HighlightConfiguration {
                     node_slice
                 };
 
-                static SHEBANG_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(SHEBANG).unwrap());
+                static SHEBANG_REGEX: Lazy<rope::Regex> =
+                    Lazy::new(|| rope::Regex::new(SHEBANG).unwrap());
 
                 injection_capture = SHEBANG_REGEX
-                    .captures(&Cow::from(lines))
-                    .map(|cap| InjectionLanguageMarker::Shebang(cap[1].to_owned()))
+                    .captures_iter(lines.regex_input())
+                    .map(|cap| {
+                        let cap = lines.byte_slice(cap.get_group(1).unwrap().range());
+                        InjectionLanguageMarker::Shebang(cap.into())
+                    })
+                    .next()
             } else if index == self.injection_content_capture_index {
                 content_node = Some(capture.node);
             }
@@ -2659,7 +2724,7 @@ mod test {
         .unwrap();
         let language = get_language("rust").unwrap();
 
-        let query = Query::new(language, query_str).unwrap();
+        let query = Query::new(&language, query_str).unwrap();
         let textobject = TextObjectQuery { query };
         let mut cursor = QueryCursor::new();
 

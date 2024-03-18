@@ -3,6 +3,7 @@ pub(crate) mod lsp;
 pub(crate) mod typed;
 
 pub use dap::*;
+use helix_stdx::rope::{self, RopeSliceExt};
 use helix_vcs::Hunk;
 pub use lsp::*;
 use tui::widgets::Row;
@@ -11,7 +12,7 @@ pub use typed::*;
 use helix_core::{
     char_idx_at_visual_offset, comment,
     doc_formatter::TextFormat,
-    encoding, find_first_non_whitespace_char, find_workspace, graphemes,
+    encoding, find_workspace, graphemes,
     history::UndoKind,
     increment, indent,
     indent::IndentStyle,
@@ -19,10 +20,10 @@ use helix_core::{
     match_brackets,
     movement::{self, move_vertically_visual, Direction},
     object, pos_at_coords,
-    regex::{self, Regex, RegexBuilder},
+    regex::{self, Regex},
     search::{self, CharMatcher},
     selection, shellwords, surround,
-    syntax::LanguageServerFeature,
+    syntax::{BlockCommentToken, LanguageServerFeature},
     text_annotations::TextAnnotations,
     textobject,
     tree_sitter::Node,
@@ -56,6 +57,7 @@ use crate::{
 
 use crate::job::{self, Jobs};
 use std::{
+    cmp::Ordering,
     collections::{HashMap, HashSet},
     fmt,
     future::Future,
@@ -299,6 +301,8 @@ impl MappableCommand {
         extend_line, "Select current line, if already selected, extend to another line based on the anchor",
         extend_line_below, "Select current line, if already selected, extend to next line",
         extend_line_above, "Select current line, if already selected, extend to previous line",
+        select_line_above, "Select current line, if already selected, extend or shrink line above based on the anchor",
+        select_line_below, "Select current line, if already selected, extend or shrink line below based on the anchor",
         extend_to_line_bounds, "Extend selection to line bounds",
         shrink_to_line_bounds, "Shrink selection to line bounds",
         delete_selection, "Delete selection",
@@ -414,6 +418,8 @@ impl MappableCommand {
         completion, "Invoke completion popup",
         hover, "Show docs for item under cursor",
         toggle_comments, "Comment/uncomment selections",
+        toggle_line_comments, "Line comment/uncomment selections",
+        toggle_block_comments, "Block comment/uncomment selections",
         rotate_selections_forward, "Rotate selections forward",
         rotate_selections_backward, "Rotate selections backward",
         rotate_selection_contents_forward, "Rotate selection contents forward",
@@ -821,7 +827,7 @@ fn kill_to_line_start(cx: &mut Context) {
             let head = if anchor == first_char && line != 0 {
                 // select until previous line
                 line_end_char_index(&text, line - 1)
-            } else if let Some(pos) = find_first_non_whitespace_char(text.line(line)) {
+            } else if let Some(pos) = text.line(line).first_non_whitespace_char() {
                 if first_char + pos < anchor {
                     // select until first non-blank in line if cursor is after it
                     first_char + pos
@@ -883,7 +889,7 @@ fn goto_first_nonwhitespace_impl(view: &mut View, doc: &mut Document, movement: 
     let selection = doc.selection(view.id).clone().transform(|range| {
         let line = range.cursor_line(text);
 
-        if let Some(pos) = find_first_non_whitespace_char(text.line(line)) {
+        if let Some(pos) = text.line(line).first_non_whitespace_char() {
             let pos = pos + text.line_to_char(line);
             range.put_cursor(text, pos, movement == Movement::Extend)
         } else {
@@ -1907,11 +1913,7 @@ fn split_selection(cx: &mut Context) {
 fn split_selection_on_newline(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
-    // only compile the regex once
-    #[allow(clippy::trivial_regex)]
-    static REGEX: Lazy<Regex> =
-        Lazy::new(|| Regex::new(r"\r\n|[\n\r\u{000B}\u{000C}\u{0085}\u{2028}\u{2029}]").unwrap());
-    let selection = selection::split_on_matches(text, doc.selection(view.id), &REGEX);
+    let selection = selection::split_on_newline(text, doc.selection(view.id));
     doc.set_selection(view.id, selection);
 }
 
@@ -1930,8 +1932,7 @@ fn merge_consecutive_selections(cx: &mut Context) {
 #[allow(clippy::too_many_arguments)]
 fn search_impl(
     editor: &mut Editor,
-    contents: &str,
-    regex: &Regex,
+    regex: &rope::Regex,
     movement: Movement,
     direction: Direction,
     scrolloff: usize,
@@ -1959,23 +1960,20 @@ fn search_impl(
     // do a reverse search and wraparound to the end, we don't need to search
     // the text before the current cursor position for matches, but by slicing
     // it out, we need to add it back to the position of the selection.
-    let mut offset = 0;
+    let doc = doc!(editor).text().slice(..);
 
     // use find_at to find the next match after the cursor, loop around the end
     // Careful, `Regex` uses `bytes` as offsets, not character indices!
     let mut mat = match direction {
-        Direction::Forward => regex.find_at(contents, start),
-        Direction::Backward => regex.find_iter(&contents[..start]).last(),
+        Direction::Forward => regex.find(doc.regex_input_at_bytes(start..)),
+        Direction::Backward => regex.find_iter(doc.regex_input_at_bytes(..start)).last(),
     };
 
     if mat.is_none() {
         if wrap_around {
             mat = match direction {
-                Direction::Forward => regex.find(contents),
-                Direction::Backward => {
-                    offset = start;
-                    regex.find_iter(&contents[start..]).last()
-                }
+                Direction::Forward => regex.find(doc.regex_input()),
+                Direction::Backward => regex.find_iter(doc.regex_input_at_bytes(start..)).last(),
             };
         }
         if show_warnings {
@@ -1992,8 +1990,8 @@ fn search_impl(
     let selection = doc.selection(view.id);
 
     if let Some(mat) = mat {
-        let start = text.byte_to_char(mat.start() + offset);
-        let end = text.byte_to_char(mat.end() + offset);
+        let start = text.byte_to_char(mat.start());
+        let end = text.byte_to_char(mat.end());
 
         if end == 0 {
             // skip empty matches that don't make sense
@@ -2037,13 +2035,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
     let scrolloff = config.scrolloff;
     let wrap_around = config.search.wrap_around;
 
-    let doc = doc!(cx.editor);
-
     // TODO: could probably share with select_on_matches?
-
-    // HAXX: sadly we can't avoid allocating a single string for the whole buffer since we can't
-    // feed chunks into the regex yet
-    let contents = doc.text().slice(..).to_string();
     let completions = search_completions(cx, Some(reg));
 
     ui::regex_prompt(
@@ -2065,7 +2057,6 @@ fn searcher(cx: &mut Context, direction: Direction) {
             }
             search_impl(
                 cx.editor,
-                &contents,
                 &regex,
                 Movement::Move,
                 direction,
@@ -2085,8 +2076,6 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
     let config = cx.editor.config();
     let scrolloff = config.scrolloff;
     if let Some(query) = cx.editor.registers.first(register, cx.editor) {
-        let doc = doc!(cx.editor);
-        let contents = doc.text().slice(..).to_string();
         let search_config = &config.search;
         let case_insensitive = if search_config.smart_case {
             !query.chars().any(char::is_uppercase)
@@ -2094,15 +2083,17 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
             false
         };
         let wrap_around = search_config.wrap_around;
-        if let Ok(regex) = RegexBuilder::new(&query)
-            .case_insensitive(case_insensitive)
-            .multi_line(true)
-            .build()
+        if let Ok(regex) = rope::RegexBuilder::new()
+            .syntax(
+                rope::Config::new()
+                    .case_insensitive(case_insensitive)
+                    .multi_line(true),
+            )
+            .build(&query)
         {
             for _ in 0..count {
                 search_impl(
                     cx.editor,
-                    &contents,
                     &regex,
                     movement,
                     direction,
@@ -2239,7 +2230,7 @@ fn global_search(cx: &mut Context) {
 
     let reg = cx.register.unwrap_or('/');
     let completions = search_completions(cx, Some(reg));
-    ui::regex_prompt(
+    ui::raw_regex_prompt(
         cx,
         "global-search:".into(),
         Some(reg),
@@ -2250,7 +2241,7 @@ fn global_search(cx: &mut Context) {
                 .map(|comp| (0.., std::borrow::Cow::Owned(comp.clone())))
                 .collect()
         },
-        move |cx, regex, event| {
+        move |cx, _, input, event| {
             if event != PromptEvent::Validate {
                 return;
             }
@@ -2265,7 +2256,7 @@ fn global_search(cx: &mut Context) {
 
             if let Ok(matcher) = RegexMatcherBuilder::new()
                 .case_smart(smart_case)
-                .build(regex.as_str())
+                .build(input)
             {
                 let search_root = helix_stdx::env::current_working_dir();
                 if !search_root.exists() {
@@ -2447,7 +2438,6 @@ fn extend_line_below(cx: &mut Context) {
 fn extend_line_above(cx: &mut Context) {
     extend_line_impl(cx, Extend::Above);
 }
-
 fn extend_line_impl(cx: &mut Context, extend: Extend) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
@@ -2481,6 +2471,59 @@ fn extend_line_impl(cx: &mut Context, extend: Extend) {
             }
         };
 
+        Range::new(anchor, head)
+    });
+
+    doc.set_selection(view.id, selection);
+}
+fn select_line_below(cx: &mut Context) {
+    select_line_impl(cx, Extend::Below);
+}
+fn select_line_above(cx: &mut Context) {
+    select_line_impl(cx, Extend::Above);
+}
+fn select_line_impl(cx: &mut Context, extend: Extend) {
+    let mut count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text();
+    let saturating_add = |a: usize, b: usize| (a + b).min(text.len_lines());
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let (start_line, end_line) = range.line_range(text.slice(..));
+        let start = text.line_to_char(start_line);
+        let end = text.line_to_char(saturating_add(end_line, 1));
+        let direction = range.direction();
+
+        // Extending to line bounds is counted as one step
+        if range.from() != start || range.to() != end {
+            count = count.saturating_sub(1)
+        }
+        let (anchor_line, head_line) = match (&extend, direction) {
+            (Extend::Above, Direction::Forward) => (start_line, end_line.saturating_sub(count)),
+            (Extend::Above, Direction::Backward) => (end_line, start_line.saturating_sub(count)),
+            (Extend::Below, Direction::Forward) => (start_line, saturating_add(end_line, count)),
+            (Extend::Below, Direction::Backward) => (end_line, saturating_add(start_line, count)),
+        };
+        let (anchor, head) = match anchor_line.cmp(&head_line) {
+            Ordering::Less => (
+                text.line_to_char(anchor_line),
+                text.line_to_char(saturating_add(head_line, 1)),
+            ),
+            Ordering::Equal => match extend {
+                Extend::Above => (
+                    text.line_to_char(saturating_add(anchor_line, 1)),
+                    text.line_to_char(head_line),
+                ),
+                Extend::Below => (
+                    text.line_to_char(head_line),
+                    text.line_to_char(saturating_add(anchor_line, 1)),
+                ),
+            },
+
+            Ordering::Greater => (
+                text.line_to_char(saturating_add(anchor_line, 1)),
+                text.line_to_char(head_line),
+            ),
+        };
         Range::new(anchor, head)
     });
 
@@ -3101,11 +3144,11 @@ fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
         } else {
             // move cursor to the fallback position
             let pos = match cursor_fallback {
-                IndentFallbackPos::LineStart => {
-                    find_first_non_whitespace_char(text.line(cursor_line))
-                        .map(|ws_offset| ws_offset + cursor_line_start)
-                        .unwrap_or(cursor_line_start)
-                }
+                IndentFallbackPos::LineStart => text
+                    .line(cursor_line)
+                    .first_non_whitespace_char()
+                    .map(|ws_offset| ws_offset + cursor_line_start)
+                    .unwrap_or(cursor_line_start),
                 IndentFallbackPos::LineEnd => line_end_char_index(&text, cursor_line),
             };
 
@@ -4384,16 +4427,27 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
 
     // select inserted spaces
     let transaction = if select_space {
+        let mut offset: usize = 0;
         let ranges: SmallVec<_> = changes
             .iter()
-            .scan(0, |offset, change| {
-                let range = Range::point(change.0 - *offset);
-                *offset += change.1 - change.0 - 1; // -1 because cursor is 0-sized
-                Some(range)
+            .filter_map(|change| {
+                if change.2.is_some() {
+                    let range = Range::point(change.0 - offset);
+                    offset += change.1 - change.0 - 1; // -1 adjusts for the replacement of the range by a space
+                    Some(range)
+                } else {
+                    offset += change.1 - change.0;
+                    None
+                }
             })
             .collect();
-        let selection = Selection::new(ranges, 0);
-        Transaction::change(text, changes.into_iter()).with_selection(selection)
+        let t = Transaction::change(text, changes.into_iter());
+        if ranges.is_empty() {
+            t
+        } else {
+            let selection = Selection::new(ranges, 0);
+            t.with_selection(selection)
+        }
     } else {
         Transaction::change(text, changes.into_iter())
     };
@@ -4476,16 +4530,122 @@ pub fn completion(cx: &mut Context) {
 }
 
 // comments
-fn toggle_comments(cx: &mut Context) {
+type CommentTransactionFn = fn(
+    line_token: Option<&str>,
+    block_tokens: Option<&[BlockCommentToken]>,
+    doc: &Rope,
+    selection: &Selection,
+) -> Transaction;
+
+fn toggle_comments_impl(cx: &mut Context, comment_transaction: CommentTransactionFn) {
     let (view, doc) = current!(cx.editor);
-    let token = doc
+    let line_token: Option<&str> = doc
         .language_config()
-        .and_then(|lc| lc.comment_token.as_ref())
-        .map(|tc| tc.as_ref());
-    let transaction = comment::toggle_line_comments(doc.text(), doc.selection(view.id), token);
+        .and_then(|lc| lc.comment_tokens.as_ref())
+        .and_then(|tc| tc.first())
+        .map(|tc| tc.as_str());
+    let block_tokens: Option<&[BlockCommentToken]> = doc
+        .language_config()
+        .and_then(|lc| lc.block_comment_tokens.as_ref())
+        .map(|tc| &tc[..]);
+
+    let transaction =
+        comment_transaction(line_token, block_tokens, doc.text(), doc.selection(view.id));
 
     doc.apply(&transaction, view.id);
     exit_select_mode(cx);
+}
+
+/// commenting behavior:
+/// 1. only line comment tokens -> line comment
+/// 2. each line block commented -> uncomment all lines
+/// 3. whole selection block commented -> uncomment selection
+/// 4. all lines not commented and block tokens -> comment uncommented lines
+/// 5. no comment tokens and not block commented -> line comment
+fn toggle_comments(cx: &mut Context) {
+    toggle_comments_impl(cx, |line_token, block_tokens, doc, selection| {
+        let text = doc.slice(..);
+
+        // only have line comment tokens
+        if line_token.is_some() && block_tokens.is_none() {
+            return comment::toggle_line_comments(doc, selection, line_token);
+        }
+
+        let split_lines = comment::split_lines_of_selection(text, selection);
+
+        let default_block_tokens = &[BlockCommentToken::default()];
+        let block_comment_tokens = block_tokens.unwrap_or(default_block_tokens);
+
+        let (line_commented, line_comment_changes) =
+            comment::find_block_comments(block_comment_tokens, text, &split_lines);
+
+        // block commented by line would also be block commented so check this first
+        if line_commented {
+            return comment::create_block_comment_transaction(
+                doc,
+                &split_lines,
+                line_commented,
+                line_comment_changes,
+            )
+            .0;
+        }
+
+        let (block_commented, comment_changes) =
+            comment::find_block_comments(block_comment_tokens, text, selection);
+
+        // check if selection has block comments
+        if block_commented {
+            return comment::create_block_comment_transaction(
+                doc,
+                selection,
+                block_commented,
+                comment_changes,
+            )
+            .0;
+        }
+
+        // not commented and only have block comment tokens
+        if line_token.is_none() && block_tokens.is_some() {
+            return comment::create_block_comment_transaction(
+                doc,
+                &split_lines,
+                line_commented,
+                line_comment_changes,
+            )
+            .0;
+        }
+
+        // not block commented at all and don't have any tokens
+        comment::toggle_line_comments(doc, selection, line_token)
+    })
+}
+
+fn toggle_line_comments(cx: &mut Context) {
+    toggle_comments_impl(cx, |line_token, block_tokens, doc, selection| {
+        if line_token.is_none() && block_tokens.is_some() {
+            let default_block_tokens = &[BlockCommentToken::default()];
+            let block_comment_tokens = block_tokens.unwrap_or(default_block_tokens);
+            comment::toggle_block_comments(
+                doc,
+                &comment::split_lines_of_selection(doc.slice(..), selection),
+                block_comment_tokens,
+            )
+        } else {
+            comment::toggle_line_comments(doc, selection, line_token)
+        }
+    });
+}
+
+fn toggle_block_comments(cx: &mut Context) {
+    toggle_comments_impl(cx, |line_token, block_tokens, doc, selection| {
+        if line_token.is_some() && block_tokens.is_none() {
+            comment::toggle_line_comments(doc, selection, line_token)
+        } else {
+            let default_block_tokens = &[BlockCommentToken::default()];
+            let block_comment_tokens = block_tokens.unwrap_or(default_block_tokens);
+            comment::toggle_block_comments(doc, selection, block_comment_tokens)
+        }
+    });
 }
 
 fn rotate_selections(cx: &mut Context, direction: Direction) {
@@ -5177,12 +5337,21 @@ fn surround_replace(cx: &mut Context) {
                 None => return doc.set_selection(view.id, selection),
             };
             let (open, close) = surround::get_pair(to);
+
+            // the changeset has to be sorted to allow nested surrounds
+            let mut sorted_pos: Vec<(usize, char)> = Vec::new();
+            for p in change_pos.chunks(2) {
+                sorted_pos.push((p[0], open));
+                sorted_pos.push((p[1], close));
+            }
+            sorted_pos.sort_unstable();
+
             let transaction = Transaction::change(
                 doc.text(),
-                change_pos.iter().enumerate().map(|(i, &pos)| {
+                sorted_pos.iter().map(|&pos| {
                     let mut t = Tendril::new();
-                    t.push(if i % 2 == 0 { open } else { close });
-                    (pos, pos + 1, Some(t))
+                    t.push(pos.1);
+                    (pos.0, pos.0 + 1, Some(t))
                 }),
             );
             doc.set_selection(view.id, selection);
@@ -5204,14 +5373,14 @@ fn surround_delete(cx: &mut Context) {
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id);
 
-        let change_pos = match surround::get_surround_pos(text, selection, surround_ch, count) {
+        let mut change_pos = match surround::get_surround_pos(text, selection, surround_ch, count) {
             Ok(c) => c,
             Err(err) => {
                 cx.editor.set_error(err.to_string());
                 return;
             }
         };
-
+        change_pos.sort_unstable(); // the changeset has to be sorted to allow nested surrounds
         let transaction =
             Transaction::change(doc.text(), change_pos.into_iter().map(|p| (p, p + 1, None)));
         doc.apply(&transaction, view.id);

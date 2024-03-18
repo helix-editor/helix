@@ -7,9 +7,11 @@ use crate::{
         ensure_grapheme_boundary_next, ensure_grapheme_boundary_prev, next_grapheme_boundary,
         prev_grapheme_boundary,
     },
+    line_ending::get_line_ending,
     movement::Direction,
     Assoc, ChangeSet, RopeGraphemes, RopeSlice,
 };
+use helix_stdx::rope::{self, RopeSliceExt};
 use smallvec::{smallvec, SmallVec};
 use std::borrow::Cow;
 
@@ -708,12 +710,12 @@ impl IntoIterator for Selection {
 pub fn keep_or_remove_matches(
     text: RopeSlice,
     selection: &Selection,
-    regex: &crate::regex::Regex,
+    regex: &rope::Regex,
     remove: bool,
 ) -> Option<Selection> {
     let result: SmallVec<_> = selection
         .iter()
-        .filter(|range| regex.is_match(&range.fragment(text)) ^ remove)
+        .filter(|range| regex.is_match(text.regex_input_at(range.from()..range.to())) ^ remove)
         .copied()
         .collect();
 
@@ -724,25 +726,20 @@ pub fn keep_or_remove_matches(
     None
 }
 
+// TODO: support to split on capture #N instead of whole match
 pub fn select_on_matches(
     text: RopeSlice,
     selection: &Selection,
-    regex: &crate::regex::Regex,
+    regex: &rope::Regex,
 ) -> Option<Selection> {
     let mut result = SmallVec::with_capacity(selection.len());
 
     for sel in selection {
-        // TODO: can't avoid occasional allocations since Regex can't operate on chunks yet
-        let fragment = sel.fragment(text);
-
-        let sel_start = sel.from();
-        let start_byte = text.char_to_byte(sel_start);
-
-        for mat in regex.find_iter(&fragment) {
+        for mat in regex.find_iter(text.regex_input_at(sel.from()..sel.to())) {
             // TODO: retain range direction
 
-            let start = text.byte_to_char(start_byte + mat.start());
-            let end = text.byte_to_char(start_byte + mat.end());
+            let start = text.byte_to_char(mat.start());
+            let end = text.byte_to_char(mat.end());
 
             let range = Range::new(start, end);
             // Make sure the match is not right outside of the selection.
@@ -761,12 +758,7 @@ pub fn select_on_matches(
     None
 }
 
-// TODO: support to split on capture #N instead of whole match
-pub fn split_on_matches(
-    text: RopeSlice,
-    selection: &Selection,
-    regex: &crate::regex::Regex,
-) -> Selection {
+pub fn split_on_newline(text: RopeSlice, selection: &Selection) -> Selection {
     let mut result = SmallVec::with_capacity(selection.len());
 
     for sel in selection {
@@ -776,21 +768,47 @@ pub fn split_on_matches(
             continue;
         }
 
-        // TODO: can't avoid occasional allocations since Regex can't operate on chunks yet
-        let fragment = sel.fragment(text);
-
         let sel_start = sel.from();
         let sel_end = sel.to();
 
-        let start_byte = text.char_to_byte(sel_start);
-
         let mut start = sel_start;
 
-        for mat in regex.find_iter(&fragment) {
+        for line in sel.slice(text).lines() {
+            let Some(line_ending) = get_line_ending(&line) else { break };
+            let line_end = start + line.len_chars();
             // TODO: retain range direction
-            let end = text.byte_to_char(start_byte + mat.start());
+            result.push(Range::new(start, line_end - line_ending.len_chars()));
+            start = line_end;
+        }
+
+        if start < sel_end {
+            result.push(Range::new(start, sel_end));
+        }
+    }
+
+    // TODO: figure out a new primary index
+    Selection::new(result, 0)
+}
+
+pub fn split_on_matches(text: RopeSlice, selection: &Selection, regex: &rope::Regex) -> Selection {
+    let mut result = SmallVec::with_capacity(selection.len());
+
+    for sel in selection {
+        // Special case: zero-width selection.
+        if sel.from() == sel.to() {
+            result.push(*sel);
+            continue;
+        }
+
+        let sel_start = sel.from();
+        let sel_end = sel.to();
+        let mut start = sel_start;
+
+        for mat in regex.find_iter(text.regex_input_at(sel_start..sel_end)) {
+            // TODO: retain range direction
+            let end = text.byte_to_char(mat.start());
             result.push(Range::new(start, end));
-            start = text.byte_to_char(start_byte + mat.end());
+            start = text.byte_to_char(mat.end());
         }
 
         if start < sel_end {
@@ -1021,14 +1039,12 @@ mod test {
 
     #[test]
     fn test_select_on_matches() {
-        use crate::regex::{Regex, RegexBuilder};
-
         let r = Rope::from_str("Nobody expects the Spanish inquisition");
         let s = r.slice(..);
 
         let selection = Selection::single(0, r.len_chars());
         assert_eq!(
-            select_on_matches(s, &selection, &Regex::new(r"[A-Z][a-z]*").unwrap()),
+            select_on_matches(s, &selection, &rope::Regex::new(r"[A-Z][a-z]*").unwrap()),
             Some(Selection::new(
                 smallvec![Range::new(0, 6), Range::new(19, 26)],
                 0
@@ -1038,8 +1054,14 @@ mod test {
         let r = Rope::from_str("This\nString\n\ncontains multiple\nlines");
         let s = r.slice(..);
 
-        let start_of_line = RegexBuilder::new(r"^").multi_line(true).build().unwrap();
-        let end_of_line = RegexBuilder::new(r"$").multi_line(true).build().unwrap();
+        let start_of_line = rope::RegexBuilder::new()
+            .syntax(rope::Config::new().multi_line(true))
+            .build(r"^")
+            .unwrap();
+        let end_of_line = rope::RegexBuilder::new()
+            .syntax(rope::Config::new().multi_line(true))
+            .build(r"$")
+            .unwrap();
 
         // line without ending
         assert_eq!(
@@ -1077,9 +1099,9 @@ mod test {
             select_on_matches(
                 s,
                 &Selection::single(0, s.len_chars()),
-                &RegexBuilder::new(r"^[a-z ]*$")
-                    .multi_line(true)
-                    .build()
+                &rope::RegexBuilder::new()
+                    .syntax(rope::Config::new().multi_line(true))
+                    .build(r"^[a-z ]*$")
                     .unwrap()
             ),
             Some(Selection::new(
@@ -1171,13 +1193,15 @@ mod test {
 
     #[test]
     fn test_split_on_matches() {
-        use crate::regex::Regex;
-
         let text = Rope::from(" abcd efg wrs   xyz 123 456");
 
         let selection = Selection::new(smallvec![Range::new(0, 9), Range::new(11, 20),], 0);
 
-        let result = split_on_matches(text.slice(..), &selection, &Regex::new(r"\s+").unwrap());
+        let result = split_on_matches(
+            text.slice(..),
+            &selection,
+            &rope::Regex::new(r"\s+").unwrap(),
+        );
 
         assert_eq!(
             result.ranges(),
