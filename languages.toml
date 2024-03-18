@@ -3231,6 +3231,18 @@ name = "hocon"
 source = { git = "https://github.com/antosha417/tree-sitter-hocon", rev = "c390f10519ae69fdb03b3e5764f5592fb6924bcc" }
 
 [[language]]
+name = "koka"
+scope = "source.koka"
+injection-regex = "koka"
+file-types = ["kk"]
+comment-token = "//"
+indent = { tab-width = 8, unit = "  " }
+
+[[grammar]]
+name = "koka"
+source = { git = "https://github.com/mtoohey31/tree-sitter-koka", rev = "2527e152d4b6a79fd50aebd8d0b4b4336c94a034" }
+
+[[language]]
 name = "tact"
 scope = "source.tact"
 injection-regex = "tact"
@@ -3306,7 +3318,6 @@ name = "powershell"
 source = { git = "https://github.com/airbus-cert/tree-sitter-powershell", rev = "c9316be0faca5d5b9fd3b57350de650755f42dc0" }
 
 [[language]]
-<<<<<<< HEAD
 name = "ld"
 scope = "source.ld"
 injection-regex = "ld"
@@ -3330,6 +3341,7 @@ grammar = "hyprlang"
 name = "hyprlang"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-hyprlang", rev = "27af9b74acf89fa6bed4fb8cb8631994fcb2e6f3"}
 
+[[language]]
 name = "tcl"
 scope = "source.tcl"
 injection-regex = "tcl"
@@ -3340,3 +3352,15 @@ comment-token = '#'
 [[grammar]]
 name = "tcl"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-tcl", rev = "56ad1fa6a34ba800e5495d1025a9b0fda338d5b8" }
+
+[[language]]
+name = "supercollider"
+scope = "source.supercollider"
+injection-regex = "supercollider"
+file-types = ["scd", "sc", "quark"]
+comment-token = "//"
+indent = { tab-width = 4, unit = "\t" }
+
+[[grammar]]
+name = "supercollider"
+source = { git = "https://github.com/madskjeldgaard/tree-sitter-supercollider", rev = "3b35bd0fded4423c8fb30e9585c7bacbcd0e8095" }

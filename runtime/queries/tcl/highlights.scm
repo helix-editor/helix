@@ -136,10 +136,10 @@
  ";"
  ] @punctuation.delimiter
 
-((simple_word) @constant.numberic
-               (#match? @constant.numberic "^[0-9]+$"))
+((simple_word) @constant.numeric
+               (#match? @constant.numeric "^[0-9]+$"))
 
-((simple_word) @contant.builtin.boolean
+((simple_word) @constant.builtin.boolean
                (#any-of? @constant.builtin.boolean "true" "false"))
 
 ; after apply array auto_execok auto_import auto_load auto_mkindex auto_qualify

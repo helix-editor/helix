@@ -95,6 +95,7 @@
 | julia | ✓ | ✓ | ✓ | `julia` |
 | just | ✓ | ✓ | ✓ |  |
 | kdl | ✓ | ✓ | ✓ |  |
+| koka | ✓ |  | ✓ |  |
 | kotlin | ✓ |  |  | `kotlin-language-server` |
 | latex | ✓ | ✓ |  | `texlab` |
 | ld | ✓ |  | ✓ |  |
@@ -170,6 +171,7 @@
 | sshclientconfig | ✓ |  |  |  |
 | starlark | ✓ | ✓ |  |  |
 | strace | ✓ |  |  |  |
+| supercollider | ✓ |  |  |  |
 | svelte | ✓ |  | ✓ | `svelteserver` |
 | sway | ✓ | ✓ | ✓ | `forc` |
 | swift | ✓ |  |  | `sourcekit-lsp` |
