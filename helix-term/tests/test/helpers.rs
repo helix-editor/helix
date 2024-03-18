@@ -14,6 +14,46 @@ use helix_view::{current_ref, doc, editor::LspConfig, input::parse_macro, Editor
 use tempfile::NamedTempFile;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
+/// Specify how to set up the input text with line feeds
+#[derive(Clone, Debug)]
+pub enum LineFeedHandling {
+    /// Replaces all LF chars with the system's appropriate line feed character,
+    /// and if one doesn't exist already, appends the system's appropriate line
+    /// ending to the end of a string.
+    Native,
+
+    /// Do not modify the input text in any way. What you give is what you test.
+    AsIs,
+}
+
+impl LineFeedHandling {
+    /// Apply the line feed handling to the input string, yielding a set of
+    /// resulting texts with the appropriate line feed substitutions.
+    pub fn apply(&self, text: &str) -> String {
+        let line_end = match self {
+            LineFeedHandling::Native => helix_core::NATIVE_LINE_ENDING,
+            LineFeedHandling::AsIs => return text.into(),
+        }
+        .as_str();
+
+        // we can assume that the source files in this code base will always
+        // be LF, so indoc strings will always insert LF
+        let mut output = text.replace('\n', line_end);
+
+        if !output.ends_with(line_end) {
+            output.push_str(line_end);
+        }
+
+        output
+    }
+}
+
+impl Default for LineFeedHandling {
+    fn default() -> Self {
+        Self::Native
+    }
+}
+
 #[derive(Clone, Debug)]
 pub struct TestCase {
     pub in_text: String,
@@ -21,6 +61,8 @@ pub struct TestCase {
     pub in_keys: String,
     pub out_text: String,
     pub out_selection: Selection,
+
+    pub line_feed_handling: LineFeedHandling,
 }
 
 impl<S, R, V> From<(S, R, V)> for TestCase
@@ -30,8 +72,19 @@ where
     V: Into<String>,
 {
     fn from((input, keys, output): (S, R, V)) -> Self {
-        let (in_text, in_selection) = test::print(&input.into());
-        let (out_text, out_selection) = test::print(&output.into());
+        TestCase::from((input, keys, output, LineFeedHandling::default()))
+    }
+}
+
+impl<S, R, V> From<(S, R, V, LineFeedHandling)> for TestCase
+where
+    S: Into<String>,
+    R: Into<String>,
+    V: Into<String>,
+{
+    fn from((input, keys, output, line_feed_handling): (S, R, V, LineFeedHandling)) -> Self {
+        let (in_text, in_selection) = test::print(&line_feed_handling.apply(&input.into()));
+        let (out_text, out_selection) = test::print(&line_feed_handling.apply(&output.into()));
 
         TestCase {
             in_text,
@@ -39,6 +92,7 @@ where
             in_keys: keys.into(),
             out_text,
             out_selection,
+            line_feed_handling,
         }
     }
 }
@@ -137,6 +191,7 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
     should_exit: bool,
 ) -> anyhow::Result<()> {
     let test_case = test_case.into();
+
     let mut app = match app {
         Some(app) => app,
         None => Application::new(Args::default(), test_config(), test_syntax_loader(None))?,
@@ -238,23 +293,6 @@ pub fn test_editor_config() -> helix_view::editor::Config {
         },
         ..Default::default()
     }
-}
-
-/// Replaces all LF chars with the system's appropriate line feed
-/// character, and if one doesn't exist already, appends the system's
-/// appropriate line ending to the end of a string.
-pub fn platform_line(input: &str) -> String {
-    let line_end = helix_core::NATIVE_LINE_ENDING.as_str();
-
-    // we can assume that the source files in this code base will always
-    // be LF, so indoc strings will always insert LF
-    let mut output = input.replace('\n', line_end);
-
-    if !output.ends_with(line_end) {
-        output.push_str(line_end);
-    }
-
-    output
 }
 
 /// Creates a new temporary file that is set to read only. Useful for

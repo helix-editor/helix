@@ -6,7 +6,7 @@ async fn auto_indent() -> anyhow::Result<()> {
 
     let below_tests = [
         (
-            helpers::platform_line(indoc! {r##"
+            indoc! {r##"
                 #[t|]#op:
                   baz: foo
                   bazi:
@@ -17,9 +17,9 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:
-            "##}),
+            "##},
             "o",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   #[\n|]#
                   baz: foo
@@ -31,10 +31,10 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {r##"
+            indoc! {r##"
                 top:
                   b#[a|]#z: foo
                   bazi:
@@ -45,9 +45,9 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:
-            "##}),
+            "##},
             "o",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   #[\n|]#
@@ -59,10 +59,10 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {r##"
+            indoc! {r##"
                 top:
                   baz: foo
                   bazi#[:|]#
@@ -73,9 +73,9 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:
-            "##}),
+            "##},
             "o",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bazi:
@@ -87,10 +87,10 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {r##"
+            indoc! {r##"
                 top:
                   baz: foo
                   bazi:
@@ -101,9 +101,9 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:
-            "##}),
+            "##},
             "o",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bazi:
@@ -115,10 +115,10 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {r##"
+            indoc! {r##"
                 top:
                   baz: foo
                   bazi:
@@ -129,9 +129,9 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:
-            "##}),
+            "##},
             "o",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bazi:
@@ -143,10 +143,10 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bazi:
@@ -157,9 +157,9 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:
-            "}),
+            "},
             "o",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bazi:
@@ -171,10 +171,10 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bazi:
@@ -185,9 +185,9 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:
-            "}),
+            "},
             "o",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bazi:
@@ -199,10 +199,10 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bazi:
@@ -213,9 +213,9 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:#[\n|]#
-            "}),
+            "},
             "o",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bazi:
@@ -227,10 +227,10 @@ async fn auto_indent() -> anyhow::Result<()> {
                   bax: foox
                 fook:
                   #[\n|]#
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bax: |
@@ -239,9 +239,9 @@ async fn auto_indent() -> anyhow::Result<()> {
                     line
                     string#[\n|]#
                 fook:
-            "}),
+            "},
             "o",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bax: |
@@ -251,10 +251,10 @@ async fn auto_indent() -> anyhow::Result<()> {
                     string
                     #[\n|]#
                 fook:
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bax: >
@@ -263,9 +263,9 @@ async fn auto_indent() -> anyhow::Result<()> {
                     line#[\n|]#
                     string
                 fook:
-            "}),
+            "},
             "o",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bax: >
@@ -275,74 +275,74 @@ async fn auto_indent() -> anyhow::Result<()> {
                     #[\n|]#
                     string
                 fook:
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bax: >#[\n|]#
                 fook:
-            "}),
+            "},
             "o",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bax: >
                     #[\n|]#
                 fook:
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
               - top:#[\n|]#
                   baz: foo
                   bax: foox
                 fook:
-            "}),
+            "},
             "o",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
               - top:
                   #[\n|]#
                   baz: foo
                   bax: foox
                 fook:
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
               - top:
                   baz: foo#[\n|]#
                   bax: foox
                 fook:
-            "}),
+            "},
             "o",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
               - top:
                   baz: foo
                   #[\n|]#
                   bax: foox
                 fook:
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
               - top:
                   baz: foo
                   bax: foox#[\n|]#
                 fook:
-            "}),
+            "},
             "o",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
               - top:
                   baz: foo
                   bax: foox
                   #[\n|]#
                 fook:
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
               top:
                 baz:
                   - one: two#[\n|]#
@@ -350,9 +350,9 @@ async fn auto_indent() -> anyhow::Result<()> {
                   - top:
                       baz: foo
                       bax: foox
-            "}),
+            "},
             "o",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
               top:
                 baz:
                   - one: two
@@ -361,42 +361,42 @@ async fn auto_indent() -> anyhow::Result<()> {
                   - top:
                       baz: foo
                       bax: foox
-            "}),
+            "},
         ),
         // yaml map without a key
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
               top:#[\n|]#
-            "}),
+            "},
             "o",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
               top:
                 #[\n|]#
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
               top#[:|]#
               bottom: withvalue
-            "}),
+            "},
             "o",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
               top:
                 #[\n|]#
               bottom: withvalue
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
               bottom: withvalue
               top#[:|]#
-            "}),
+            "},
             "o",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
               bottom: withvalue
               top:
                 #[\n|]#
-            "}),
+            "},
         ),
     ];
 
@@ -406,7 +406,7 @@ async fn auto_indent() -> anyhow::Result<()> {
 
     let above_tests = [
         (
-            helpers::platform_line(indoc! {r##"
+            indoc! {r##"
                 #[t|]#op:
                   baz: foo
                   bazi:
@@ -417,9 +417,9 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:
-            "##}),
+            "##},
             "O",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 #[\n|]#
                 top:
                   baz: foo
@@ -431,10 +431,10 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {r##"
+            indoc! {r##"
                 top:
                   b#[a|]#z: foo
                   bazi:
@@ -445,9 +445,9 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:
-            "##}),
+            "##},
             "O",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   #[\n|]#
                   baz: foo
@@ -459,10 +459,10 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {r##"
+            indoc! {r##"
                 top:
                   baz: foo
                   bazi#[:|]#
@@ -473,9 +473,9 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:
-            "##}),
+            "##},
             "O",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   #[\n|]#
@@ -487,10 +487,10 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {r##"
+            indoc! {r##"
                 top:
                   baz: foo
                   bazi:
@@ -501,9 +501,9 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:
-            "##}),
+            "##},
             "O",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bazi:
@@ -515,10 +515,10 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {r##"
+            indoc! {r##"
                 top:
                   baz: foo
                   bazi:
@@ -529,9 +529,9 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:
-            "##}),
+            "##},
             "O",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bazi:
@@ -543,10 +543,10 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bazi:
@@ -557,9 +557,9 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:
-            "}),
+            "},
             "O",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bazi:
@@ -571,10 +571,10 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bazi:
@@ -585,9 +585,9 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:
-            "}),
+            "},
             "O",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bazi:
@@ -599,10 +599,10 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bazi:
@@ -613,9 +613,9 @@ async fn auto_indent() -> anyhow::Result<()> {
                     - 2
                   bax: foox
                 fook:#[\n|]#
-            "}),
+            "},
             "O",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bazi:
@@ -627,10 +627,10 @@ async fn auto_indent() -> anyhow::Result<()> {
                   bax: foox
                   #[\n|]#
                 fook:
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bax: |
@@ -639,9 +639,9 @@ async fn auto_indent() -> anyhow::Result<()> {
                     line
                     string#[\n|]#
                 fook:
-            "}),
+            "},
             "O",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bax: |
@@ -651,10 +651,10 @@ async fn auto_indent() -> anyhow::Result<()> {
                     #[\n|]#
                     string
                 fook:
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bax: >
@@ -663,9 +663,9 @@ async fn auto_indent() -> anyhow::Result<()> {
                     line
                     string
                 fook:
-            "}),
+            "},
             "O",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bax: >
@@ -675,58 +675,58 @@ async fn auto_indent() -> anyhow::Result<()> {
                     line
                     string
                 fook:
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bax: >
                 fook:#[\n|]#
-            "}),
+            "},
             "O",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 top:
                   baz: foo
                   bax: >
                     #[\n|]#
                 fook:
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
               - top:
                   baz: foo#[\n|]#
                   bax: foox
                 fook:
-            "}),
+            "},
             "O",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
               - top:
                   #[\n|]#
                   baz: foo
                   bax: foox
                 fook:
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
               - top:
                   baz: foo
                   bax: foox
                 fook:#[\n|]#
-            "}),
+            "},
             "O",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
               - top:
                   baz: foo
                   bax: foox
                   #[\n|]#
                 fook:
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
               top:
                 baz:
                   - one: two#[\n|]#
@@ -734,9 +734,9 @@ async fn auto_indent() -> anyhow::Result<()> {
                   - top:
                       baz: foo
                       bax: foox
-            "}),
+            "},
             "O",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
               top:
                 baz:
                   #[\n|]#
@@ -745,42 +745,42 @@ async fn auto_indent() -> anyhow::Result<()> {
                   - top:
                       baz: foo
                       bax: foox
-            "}),
+            "},
         ),
         // yaml map without a key
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
               top:#[\n|]#
-            "}),
+            "},
             "O",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
               #[\n|]#
               top:
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
               bottom: withvalue
               top#[:|]#
-            "}),
+            "},
             "O",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
               bottom: withvalue
               #[\n|]#
               top:
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
               top:
               bottom:#[ |]#withvalue
-            "}),
+            "},
             "O",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
               top:
                 #[\n|]#
               bottom: withvalue
-            "}),
+            "},
         ),
     ];
 
@@ -790,24 +790,24 @@ async fn auto_indent() -> anyhow::Result<()> {
 
     let enter_tests = [
         (
-            helpers::platform_line(indoc! {r##"
+            indoc! {r##"
                 foo: #[b|]#ar
-            "##}),
+            "##},
             "i<ret>",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 foo: 
                   #[|b]#ar
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 foo:#[\n|]#
-            "}),
+            "},
             "i<ret>",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 foo:
                   #[|\n]#
-            "}),
+            "},
         ),
     ];
 
