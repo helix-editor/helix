@@ -262,6 +262,7 @@ name = "toml"
 scope = "source.toml"
 injection-regex = "toml"
 file-types = ["toml", { glob = "poetry.lock" }, { glob = "Cargo.lock" }]
+roots = ["."]
 comment-token = "#"
 language-servers = [ "taplo" ]
 indent = { tab-width = 2, unit = "  " }
