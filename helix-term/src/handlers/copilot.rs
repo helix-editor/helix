@@ -8,6 +8,7 @@ use helix_lsp::util::{lsp_pos_to_pos, lsp_range_to_range};
 use helix_view::document::{Copilot, Mode};
 use helix_view::Editor;
 use tokio::time::Instant;
+use crate::commands::MappableCommand;
 use crate::events::{OnModeSwitch, PostCommand, PostInsertChar};
 use crate::handlers::Handlers;
 use helix_view::{handlers::lsp::CopilotEvent, DocumentId};
@@ -140,6 +141,7 @@ fn copilot_completion(editor: &mut Editor, doc_id: DocumentId, cancel: CancelRx)
                         .collect::<Vec<DocCompletion>>();
 
                     doc.copilot = Some(Copilot {
+                        should_render: editor.auto_render_copilot,
                         completions: doc_completion,
                         idx: 0,
                         offset_encoding,
@@ -155,6 +157,10 @@ pub(super) fn try_register_hooks(handlers: &Handlers) {
     let Some(copilot_handler) = handlers.copilot.clone() else {return;};
 
     register_hook!(move |event: &mut PostCommand<'_, '_>| {
+        if let MappableCommand::Static { name: "copilot_show_completion", .. } = event.command {
+            return Ok(());
+        };
+
         let (_, doc) = current!(event.cx.editor);
         doc.clear_copilot_completions();
         Ok(())

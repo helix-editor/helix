@@ -249,7 +249,9 @@ impl MappableCommand {
 
     #[rustfmt::skip]
     static_commands!(
-        apply_copilot_completion, "Apply a copilot completion",
+        copilot_apply_completion, "Apply a copilot completion",
+        copilot_show_completion, "Show the copilot completion",
+        copilot_toggle_auto_render, "Toggle the automatic rendering of copilot completions",
         no_op, "Do nothing",
         move_char_left, "Move left",
         move_char_right, "Move right",
@@ -6114,9 +6116,24 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
     });
 }
 
-fn apply_copilot_completion(cx: &mut Context) {
+fn copilot_apply_completion(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    doc.apply_copilot(view.id);
+    doc.apply_copilot_completion(view.id);
+}
+
+fn copilot_show_completion(cx: &mut Context) {
+    let (_, doc) = current!(cx.editor);
+    if let Some(copilot) = doc.copilot.as_mut() {
+        copilot.should_render = true;
+    }
+}
+
+fn copilot_toggle_auto_render(cx: &mut Context) {
+    cx.editor.auto_render_copilot = !cx.editor.auto_render_copilot;
+    cx.editor.set_status(format!(
+        "copilot-auto-render = {}",
+        cx.editor.auto_render_copilot
+    ));
 }
 
 fn jump_to_word(cx: &mut Context, behaviour: Movement) {

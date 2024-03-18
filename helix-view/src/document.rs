@@ -129,8 +129,9 @@ pub enum DocumentOpenError {
     IoError(#[from] io::Error),
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Copilot {
+    pub should_render: bool,
     pub completions: Vec<DocCompletion>,
     pub idx: usize,
     pub offset_encoding: OffsetEncoding,
@@ -653,8 +654,12 @@ impl Document {
     }
 
     pub fn get_copilot_completion_for_rendering(&self) -> Option<&DocCompletion> {
-        let Some(copilot) = self.copilot.as_ref() else {return None;};
-        if !copilot.should_render {return None;}
+        let Some(copilot) = self.copilot.as_ref() else {
+            return None;
+        };
+        if !copilot.should_render {
+            return None;
+        }
 
         let completion = copilot.completions.get(copilot.idx)?;
         if self.version as usize != completion.doc_version {
@@ -663,10 +668,17 @@ impl Document {
         return Some(completion);
     }
 
-     pub fn apply_copilot_completion(&mut self, view_id: ViewId) {
-        if let None = self.get_copilot_completion_for_rendering() {return;}
-        let Some(copilot) = self.copilot.as_ref() else {return;};
-        let Some(completion) = copilot.completions.get(copilot.idx) else {return;};
+    pub fn apply_copilot_completion(&mut self, view_id: ViewId) {
+        if let None = self.get_copilot_completion_for_rendering() {
+            return;
+        }
+        let Some(copilot) = self.copilot.as_ref() else {
+            return;
+        };
+
+        let Some(completion) = copilot.completions.get(copilot.idx) else {
+            return;
+        };
         if completion.doc_version != self.version as usize {
             return;
         }
