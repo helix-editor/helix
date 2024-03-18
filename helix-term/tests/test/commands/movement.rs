@@ -6,7 +6,7 @@ async fn test_move_parent_node_end() -> anyhow::Result<()> {
         // single cursor stays single cursor, first goes to end of current
         // node, then parent
         (
-            helpers::platform_line(indoc! {r##"
+            indoc! {r##"
                 fn foo() {
                     let result = if true {
                         "yes"
@@ -14,9 +14,9 @@ async fn test_move_parent_node_end() -> anyhow::Result<()> {
                         "no#["|]#
                     }
                 }
-            "##}),
+            "##},
             "<A-e>",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                         \"yes\"
@@ -24,10 +24,10 @@ async fn test_move_parent_node_end() -> anyhow::Result<()> {
                         \"no\"#[\n|]#
                     }
                 }
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                         \"yes\"
@@ -35,9 +35,9 @@ async fn test_move_parent_node_end() -> anyhow::Result<()> {
                         \"no\"#[\n|]#
                     }
                 }
-            "}),
+            "},
             "<A-e>",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                         \"yes\"
@@ -45,11 +45,11 @@ async fn test_move_parent_node_end() -> anyhow::Result<()> {
                         \"no\"
                     }#[\n|]#
                 }
-            "}),
+            "},
         ),
         // select mode extends
         (
-            helpers::platform_line(indoc! {r##"
+            indoc! {r##"
                 fn foo() {
                     let result = if true {
                         "yes"
@@ -57,9 +57,9 @@ async fn test_move_parent_node_end() -> anyhow::Result<()> {
                         #["no"|]#
                     }
                 }
-            "##}),
+            "##},
             "v<A-e><A-e>",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                         \"yes\"
@@ -67,7 +67,7 @@ async fn test_move_parent_node_end() -> anyhow::Result<()> {
                         #[\"no\"
                     }\n|]#
                 }
-            "}),
+            "},
         ),
     ];
 
@@ -84,7 +84,7 @@ async fn test_move_parent_node_start() -> anyhow::Result<()> {
         // single cursor stays single cursor, first goes to end of current
         // node, then parent
         (
-            helpers::platform_line(indoc! {r##"
+            indoc! {r##"
                 fn foo() {
                     let result = if true {
                         "yes"
@@ -92,9 +92,9 @@ async fn test_move_parent_node_start() -> anyhow::Result<()> {
                         "no#["|]#
                     }
                 }
-            "##}),
+            "##},
             "<A-b>",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                         \"yes\"
@@ -102,10 +102,10 @@ async fn test_move_parent_node_start() -> anyhow::Result<()> {
                         #[\"|]#no\"
                     }
                 }
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                         \"yes\"
@@ -113,9 +113,9 @@ async fn test_move_parent_node_start() -> anyhow::Result<()> {
                         \"no\"#[\n|]#
                     }
                 }
-            "}),
+            "},
             "<A-b>",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                         \"yes\"
@@ -123,10 +123,10 @@ async fn test_move_parent_node_start() -> anyhow::Result<()> {
                         \"no\"
                     }
                 }
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                         \"yes\"
@@ -134,9 +134,9 @@ async fn test_move_parent_node_start() -> anyhow::Result<()> {
                         \"no\"
                     }
                 }
-            "}),
+            "},
             "<A-b>",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                         \"yes\"
@@ -144,11 +144,11 @@ async fn test_move_parent_node_start() -> anyhow::Result<()> {
                         \"no\"
                     }
                 }
-            "}),
+            "},
         ),
         // select mode extends
         (
-            helpers::platform_line(indoc! {r##"
+            indoc! {r##"
                 fn foo() {
                     let result = if true {
                         "yes"
@@ -156,9 +156,9 @@ async fn test_move_parent_node_start() -> anyhow::Result<()> {
                         #["no"|]#
                     }
                 }
-            "##}),
+            "##},
             "v<A-b><A-b>",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                         \"yes\"
@@ -166,10 +166,10 @@ async fn test_move_parent_node_start() -> anyhow::Result<()> {
                         ]#\"no\"
                     }
                 }
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {r##"
+            indoc! {r##"
                 fn foo() {
                     let result = if true {
                         "yes"
@@ -177,9 +177,9 @@ async fn test_move_parent_node_start() -> anyhow::Result<()> {
                         #["no"|]#
                     }
                 }
-            "##}),
+            "##},
             "v<A-b><A-b><A-b>",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                         \"yes\"
@@ -187,7 +187,7 @@ async fn test_move_parent_node_start() -> anyhow::Result<()> {
                         ]#\"no\"
                     }
                 }
-            "}),
+            "},
         ),
     ];
 
@@ -204,7 +204,7 @@ async fn test_smart_tab_move_parent_node_end() -> anyhow::Result<()> {
         // single cursor stays single cursor, first goes to end of current
         // node, then parent
         (
-            helpers::platform_line(indoc! {r##"
+            indoc! {r##"
                 fn foo() {
                     let result = if true {
                         "yes"
@@ -212,9 +212,9 @@ async fn test_smart_tab_move_parent_node_end() -> anyhow::Result<()> {
                         "no#["|]#
                     }
                 }
-            "##}),
+            "##},
             "i<tab>",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                         \"yes\"
@@ -222,10 +222,10 @@ async fn test_smart_tab_move_parent_node_end() -> anyhow::Result<()> {
                         \"no\"#[|\n]#
                     }
                 }
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                         \"yes\"
@@ -233,9 +233,9 @@ async fn test_smart_tab_move_parent_node_end() -> anyhow::Result<()> {
                         \"no\"#[\n|]#
                     }
                 }
-            "}),
+            "},
             "i<tab>",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                         \"yes\"
@@ -243,12 +243,12 @@ async fn test_smart_tab_move_parent_node_end() -> anyhow::Result<()> {
                         \"no\"
                     }#[|\n]#
                 }
-            "}),
+            "},
         ),
         // appending to the end of a line should still look at the current
         // line, not the next one
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                         \"yes\"
@@ -256,9 +256,9 @@ async fn test_smart_tab_move_parent_node_end() -> anyhow::Result<()> {
                         \"no#[\"|]#
                     }
                 }
-            "}),
+            "},
             "a<tab>",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                         \"yes\"
@@ -266,11 +266,11 @@ async fn test_smart_tab_move_parent_node_end() -> anyhow::Result<()> {
                         \"no\"
                     }#[\n|]#
                 }
-            "}),
+            "},
         ),
         // before cursor is all whitespace, so insert tab
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                         \"yes\"
@@ -278,9 +278,9 @@ async fn test_smart_tab_move_parent_node_end() -> anyhow::Result<()> {
                         #[\"no\"|]#
                     }
                 }
-            "}),
+            "},
             "i<tab>",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                         \"yes\"
@@ -288,12 +288,12 @@ async fn test_smart_tab_move_parent_node_end() -> anyhow::Result<()> {
                             #[|\"no\"]#
                     }
                 }
-            "}),
+            "},
         ),
         // if selection spans multiple lines, it should still only look at the
         // line on which the head is
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                         #[\"yes\"
@@ -301,9 +301,9 @@ async fn test_smart_tab_move_parent_node_end() -> anyhow::Result<()> {
                         \"no\"|]#
                     }
                 }
-            "}),
+            "},
             "a<tab>",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                         \"yes\"
@@ -311,10 +311,10 @@ async fn test_smart_tab_move_parent_node_end() -> anyhow::Result<()> {
                         \"no\"
                     }#[\n|]#
                 }
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                         #[\"yes\"
@@ -322,9 +322,9 @@ async fn test_smart_tab_move_parent_node_end() -> anyhow::Result<()> {
                         \"no\"|]#
                     }
                 }
-            "}),
+            "},
             "i<tab>",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                             #[|\"yes\"
@@ -332,10 +332,10 @@ async fn test_smart_tab_move_parent_node_end() -> anyhow::Result<()> {
                         \"no\"]#
                     }
                 }
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     #[l|]#et result = if true {
                         #(\"yes\"
@@ -343,9 +343,9 @@ async fn test_smart_tab_move_parent_node_end() -> anyhow::Result<()> {
                         \"no\"|)#
                     }
                 }
-            "}),
+            "},
             "i<tab>",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                         #[|l]#et result = if true {
                             #(|\"yes\"
@@ -353,10 +353,10 @@ async fn test_smart_tab_move_parent_node_end() -> anyhow::Result<()> {
                         \"no\")#
                     }
                 }
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                         \"yes\"#[\n|]#
@@ -364,9 +364,9 @@ async fn test_smart_tab_move_parent_node_end() -> anyhow::Result<()> {
                         \"no\"#(\n|)#
                     }
                 }
-            "}),
+            "},
             "i<tab>",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                         \"yes\"
@@ -374,10 +374,10 @@ async fn test_smart_tab_move_parent_node_end() -> anyhow::Result<()> {
                         \"no\"
                     }#(|\n)#
                 }
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                         #[\"yes\"|]#
@@ -385,9 +385,9 @@ async fn test_smart_tab_move_parent_node_end() -> anyhow::Result<()> {
                         #(\"no\"|)#
                     }
                 }
-            "}),
+            "},
             "i<tab>",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                             #[|\"yes\"]#
@@ -395,12 +395,12 @@ async fn test_smart_tab_move_parent_node_end() -> anyhow::Result<()> {
                             #(|\"no\")#
                     }
                 }
-            "}),
+            "},
         ),
         // if any cursors are not preceded by all whitespace, then do the
         // smart_tab action
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                         #[\"yes\"\n|]#
@@ -408,9 +408,9 @@ async fn test_smart_tab_move_parent_node_end() -> anyhow::Result<()> {
                         \"no#(\"\n|)#
                     }
                 }
-            "}),
+            "},
             "i<tab>",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                         \"yes\"
@@ -418,11 +418,11 @@ async fn test_smart_tab_move_parent_node_end() -> anyhow::Result<()> {
                         \"no\"
                     }#(|\n)#
                 }
-            "}),
+            "},
         ),
         // Ctrl-tab always inserts a tab
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                         #[\"yes\"\n|]#
@@ -430,9 +430,9 @@ async fn test_smart_tab_move_parent_node_end() -> anyhow::Result<()> {
                         \"no#(\"\n|)#
                     }
                 }
-            "}),
+            "},
             "i<S-tab>",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 fn foo() {
                     let result = if true {
                             #[|\"yes\"\n]#
@@ -440,7 +440,7 @@ async fn test_smart_tab_move_parent_node_end() -> anyhow::Result<()> {
                         \"no    #(|\"\n)#
                     }
                 }
-            "}),
+            "},
         ),
     ];
 

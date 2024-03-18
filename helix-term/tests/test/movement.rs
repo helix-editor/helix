@@ -8,6 +8,7 @@ async fn insert_mode_cursor_position() -> anyhow::Result<()> {
         in_keys: "i".into(),
         out_text: String::new(),
         out_selection: Selection::single(0, 0),
+        line_feed_handling: LineFeedHandling::AsIs,
     })
     .await?;
 
@@ -392,20 +393,10 @@ async fn cursor_position_newly_opened_file() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn cursor_position_append_eof() -> anyhow::Result<()> {
     // Selection is forwards
-    test((
-        "#[foo|]#",
-        "abar<esc>",
-        helpers::platform_line("#[foobar|]#\n"),
-    ))
-    .await?;
+    test(("#[foo|]#", "abar<esc>", "#[foobar|]#\n")).await?;
 
     // Selection is backwards
-    test((
-        "#[|foo]#",
-        "abar<esc>",
-        helpers::platform_line("#[foobar|]#\n"),
-    ))
-    .await?;
+    test(("#[|foo]#", "abar<esc>", "#[foobar|]#\n")).await?;
 
     Ok(())
 }
@@ -415,19 +406,19 @@ async fn select_mode_tree_sitter_next_function_is_union_of_objects() -> anyhow::
     test_with_config(
         AppBuilder::new().with_file("foo.rs", None),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 #[/|]#// Increments
                 fn inc(x: usize) -> usize { x + 1 }
                 /// Decrements
                 fn dec(x: usize) -> usize { x - 1 }
-            "}),
+            "},
             "]fv]f",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 /// Increments
                 #[fn inc(x: usize) -> usize { x + 1 }
                 /// Decrements
                 fn dec(x: usize) -> usize { x - 1 }|]#
-            "}),
+            "},
         ),
     )
     .await?;
@@ -440,19 +431,19 @@ async fn select_mode_tree_sitter_prev_function_unselects_object() -> anyhow::Res
     test_with_config(
         AppBuilder::new().with_file("foo.rs", None),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 /// Increments
                 #[fn inc(x: usize) -> usize { x + 1 }
                 /// Decrements
                 fn dec(x: usize) -> usize { x - 1 }|]#
-            "}),
+            "},
             "v[f",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 /// Increments
                 #[fn inc(x: usize) -> usize { x + 1 }|]#
                 /// Decrements
                 fn dec(x: usize) -> usize { x - 1 }
-            "}),
+            "},
         ),
     )
     .await?;
@@ -466,23 +457,23 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
     test_with_config(
         AppBuilder::new().with_file("foo.rs", None),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 /// Increments
                 fn inc(x: usize) -> usize { x + 1 }
                 /// Decrements
                 fn dec(x: usize) -> usize { x - 1 }
                 /// Identity
                 #[fn ident(x: usize) -> usize { x }|]#
-            "}),
+            "},
             "v[f",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 /// Increments
                 fn inc(x: usize) -> usize { x + 1 }
                 /// Decrements
                 #[|fn dec(x: usize) -> usize { x - 1 }
                 /// Identity
                 ]#fn ident(x: usize) -> usize { x }
-            "}),
+            "},
         ),
     )
     .await?;
@@ -490,23 +481,23 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
     test_with_config(
         AppBuilder::new().with_file("foo.rs", None),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 /// Increments
                 fn inc(x: usize) -> usize { x + 1 }
                 /// Decrements
                 fn dec(x: usize) -> usize { x - 1 }
                 /// Identity
                 #[fn ident(x: usize) -> usize { x }|]#
-            "}),
+            "},
             "v[f[f",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 /// Increments
                 #[|fn inc(x: usize) -> usize { x + 1 }
                 /// Decrements
                 fn dec(x: usize) -> usize { x - 1 }
                 /// Identity
                 ]#fn ident(x: usize) -> usize { x }
-            "}),
+            "},
         ),
     )
     .await?;
@@ -517,36 +508,36 @@ async fn select_mode_tree_sitter_prev_function_goes_backwards_to_object() -> any
 #[tokio::test(flavor = "multi_thread")]
 async fn find_char_line_ending() -> anyhow::Result<()> {
     test((
-        helpers::platform_line(indoc! {
+        indoc! {
             "\
             one
             #[|t]#wo
             three"
-        }),
+        },
         "T<ret>gll2f<ret>",
-        helpers::platform_line(indoc! {
+        indoc! {
             "\
             one
             two#[
             |]#three"
-        }),
+        },
     ))
     .await?;
 
     test((
-        helpers::platform_line(indoc! {
+        indoc! {
             "\
             #[|o]#ne
             two
             three"
-        }),
+        },
         "f<ret>2t<ret>ghT<ret>F<ret>",
-        helpers::platform_line(indoc! {
+        indoc! {
             "\
             one#[|
             t]#wo
             three"
-        }),
+        },
     ))
     .await?;
 
@@ -556,41 +547,41 @@ async fn find_char_line_ending() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_surround_replace() -> anyhow::Result<()> {
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             (#[|a]#)
-            "}),
+            "},
         "mrm{",
-        platform_line(indoc! {"\
+        indoc! {"\
             {#[|a]#}
-            "}),
+            "},
     ))
     .await?;
 
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             (#[a|]#)
-            "}),
+            "},
         "mrm{",
-        platform_line(indoc! {"\
+        indoc! {"\
             {#[a|]#}
-            "}),
+            "},
     ))
     .await?;
 
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             {{
 
             #(}|)#
             #[}|]#
-            "}),
+            "},
         "mrm)",
-        platform_line(indoc! {"\
+        indoc! {"\
             ((
 
             #()|)#
             #[)|]#
-            "}),
+            "},
     ))
     .await?;
 
@@ -600,36 +591,36 @@ async fn test_surround_replace() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_surround_delete() -> anyhow::Result<()> {
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             (#[|a]#)
-            "}),
+            "},
         "mdm",
-        platform_line(indoc! {"\
+        indoc! {"\
             #[|a]#
-            "}),
+            "},
     ))
     .await?;
 
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             (#[a|]#)
-            "}),
+            "},
         "mdm",
-        platform_line(indoc! {"\
+        indoc! {"\
             #[a|]#
-            "}),
+            "},
     ))
     .await?;
 
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             {{
 
             #(}|)#
             #[}|]#
-            "}),
+            "},
         "mdm",
-        platform_line("\n\n#(\n|)##[\n|]#"),
+        "\n\n#(\n|)##[\n|]#",
     ))
     .await?;
 
