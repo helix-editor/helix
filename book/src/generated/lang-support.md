@@ -31,7 +31,7 @@
 | devicetree | ✓ |  |  |  |
 | dhall | ✓ | ✓ |  | `dhall-lsp-server` |
 | diff | ✓ |  |  |  |
-| docker-compose | ✓ |  | ✓ | `docker-compose-langserver` |
+| docker-compose | ✓ |  | ✓ | `docker-compose-langserver`, `yaml-language-server` |
 | dockerfile | ✓ |  |  | `docker-langserver` |
 | dot | ✓ |  |  | `dot-language-server` |
 | dtd | ✓ |  |  |  |

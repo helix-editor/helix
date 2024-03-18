@@ -1550,7 +1550,7 @@ source = { git = "https://github.com/camdencheek/tree-sitter-dockerfile", rev = 
 name = "docker-compose"
 scope = "source.yaml.docker-compose"
 roots = ["docker-compose.yaml", "docker-compose.yml"]
-language-servers = [ "docker-compose-langserver" ]
+language-servers = [ "docker-compose-langserver", "yaml-language-server" ]
 file-types = [{ glob = "docker-compose.yaml" }, { glob = "docker-compose.yml" }]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
