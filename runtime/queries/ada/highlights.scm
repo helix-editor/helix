@@ -98,9 +98,7 @@
    "raise"
 ] @keyword.control.exception
 (comment)         @comment
-(comment)         @spell       ;; spell-check comments
 (string_literal)  @string
-(string_literal)  @spell       ;; spell-check strings
 (character_literal) @string
 (numeric_literal) @constant.numeric
 
@@ -128,9 +126,9 @@
 
 (raise_statement "with" @keyword.control.exception)
 
-(gnatprep_declarative_if_statement)  @preproc
-(gnatprep_if_statement)              @preproc
-(gnatprep_identifier)                @preproc
+(gnatprep_declarative_if_statement)  @keyword.directive
+(gnatprep_if_statement)              @keyword.directive
+(gnatprep_identifier)                @keyword.directive
 
 (subprogram_declaration "is" @keyword.function "abstract"  @keyword.function)
 (aspect_specification "with" @keyword.function)
