@@ -815,6 +815,8 @@ shebangs = []
 comment-token = "#"
 language-servers = [ "nil" ]
 indent = { tab-width = 2, unit = "  " }
+auto-format = true
+formatter = { command = "alejandra", args = ["-q"] }
 
 [[grammar]]
 name = "nix"
