@@ -658,7 +658,7 @@ impl Selection {
         self.ranges.len()
     }
 
-    // returns true if self ⊇ other
+    /// returns true if self ⊇ other
     pub fn contains(&self, other: &Selection) -> bool {
         let (mut iter_self, mut iter_other) = (self.iter(), other.iter());
         let (mut ele_self, mut ele_other) = (iter_self.next(), iter_other.next());
@@ -685,22 +685,161 @@ impl Selection {
             }
         }
     }
+
+    /// returns true if self has at least one range that overlaps with at least one range from other
+    pub fn overlaps(&self, other: &Selection) -> bool {
+        let (mut iter_self, mut iter_other) = (self.iter(), other.iter());
+        let (mut ele_self, mut ele_other) = (iter_self.next(), iter_other.next());
+
+        loop {
+            match (ele_self, ele_other) {
+                (Some(ra), Some(rb)) => {
+                    if ra.overlaps(rb) {
+                        return true;
+                    } else if ra.from() > rb.from() {
+                        ele_self = iter_self.next();
+                    } else {
+                        ele_other = iter_other.next();
+                    }
+                }
+                _ => return false,
+            }
+        }
+    }
+
+    /// Returns the given selection with the overlapping portions of `other`
+    /// cut out. If one range from this selection is equal to one from `other`,
+    /// this range is removed. If this results in an entirely empty selection,
+    /// `None` is returned.
+    pub fn without(self, other: &Selection) -> Option<Self> {
+        if other.contains(&self) {
+            return None;
+        }
+
+        let mut primary_index = self.primary_index;
+        let mut ranges = smallvec!();
+        let (mut iter_self, mut iter_other) = (self.into_iter(), other.iter());
+        let (mut ele_self, mut ele_other) = (iter_self.next(), iter_other.next());
+        let mut cur_index = 0;
+
+        loop {
+            match (ele_self, ele_other) {
+                (Some(ra), Some(rb)) => {
+                    if !ra.overlaps(rb) {
+                        // there's no overlap and it's on the left of rb
+                        if ra.to() <= rb.from() {
+                            ranges.push(ra);
+                            ele_self = iter_self.next();
+                            cur_index += 1;
+
+                        // otherwise it must be on the right, so move rb forward
+                        } else {
+                            ele_other = iter_other.next();
+                        }
+
+                        continue;
+                    }
+
+                    // otherwise there is overlap, so truncate or split
+                    if rb.contains_range(&ra) {
+                        ele_self = iter_self.next();
+                        cur_index += 1;
+                        continue;
+                    }
+
+                    // [ ra  ]
+                    //     [ rb  ]
+                    if ra.from() <= rb.from() && ra.to() <= rb.to() && ra.to() >= rb.from() {
+                        let new = if ra.direction() == Direction::Backward {
+                            Range::new(rb.from(), ra.head)
+                        } else {
+                            Range::new(ra.anchor, rb.from())
+                        };
+
+                        ranges.push(new);
+                        ele_self = iter_self.next();
+                        cur_index += 1;
+
+                    //     [ ra  ]
+                    // [ rb  ]
+                    } else if ra.from() >= rb.from() && ra.to() >= rb.to() && ra.from() <= rb.to() {
+                        let new = if ra.direction() == Direction::Backward {
+                            Range::new(ra.anchor, rb.to() + 1)
+                        } else {
+                            Range::new(rb.to(), ra.head)
+                        };
+
+                        // don't settle on the new range yet because the next
+                        // rb could chop off the other end of ra
+                        ele_self = Some(new);
+                        ele_other = iter_other.next();
+
+                    // [    ra    ]
+                    //    [ rb ]
+                    } else if ra.from() < rb.from() && ra.to() > rb.to() {
+                        // we must split the range into two
+                        let left = if ra.direction() == Direction::Backward {
+                            Range::new(rb.from(), ra.head)
+                        } else {
+                            Range::new(ra.anchor, rb.from())
+                        };
+
+                        let right = if ra.direction() == Direction::Backward {
+                            Range::new(ra.anchor, rb.to())
+                        } else {
+                            Range::new(rb.to(), ra.head)
+                        };
+
+                        // We do NOT push right onto the results right away.
+                        // We must put it back into the iterator and check it
+                        // again in case a further range splits it again.
+                        ranges.push(left);
+                        ele_other = iter_other.next();
+
+                        // offset the primary index whenever we split
+                        if cur_index < primary_index {
+                            primary_index += 1;
+                        }
+
+                        cur_index += 1;
+                        ele_self = Some(right);
+                    }
+                }
+                // the rest just get included as is
+                (Some(range), None) => {
+                    ranges.push(range);
+                    ele_self = iter_self.next();
+                    cur_index += 1;
+                }
+                // exhausted `self`, nothing left to do
+                (None, _) => {
+                    break;
+                }
+            }
+        }
+
+        if ranges.is_empty() {
+            return None;
+        }
+
+        Some(Selection::new(ranges, primary_index))
+    }
 }
 
 impl<'a> IntoIterator for &'a Selection {
     type Item = &'a Range;
     type IntoIter = std::slice::Iter<'a, Range>;
 
-    fn into_iter(self) -> std::slice::Iter<'a, Range> {
+    fn into_iter(self) -> Self::IntoIter {
         self.ranges().iter()
     }
 }
 
 impl IntoIterator for Selection {
     type Item = Range;
-    type IntoIter = smallvec::IntoIter<[Range; 1]>;
+    type IntoIter = smallvec::IntoIter<[Self::Item; 1]>;
 
-    fn into_iter(self) -> smallvec::IntoIter<[Range; 1]> {
+    fn into_iter(self) -> Self::IntoIter {
         self.ranges.into_iter()
     }
 }
@@ -823,6 +962,7 @@ pub fn split_on_matches(text: RopeSlice, selection: &Selection, regex: &rope::Re
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::test;
     use crate::Rope;
 
     #[test]
@@ -913,7 +1053,7 @@ mod test {
     }
 
     #[test]
-    fn test_overlaps() {
+    fn test_range_overlaps() {
         fn overlaps(a: (usize, usize), b: (usize, usize)) -> bool {
             Range::new(a.0, a.1).overlaps(&Range::new(b.0, b.1))
         }
@@ -961,6 +1101,160 @@ mod test {
 
         // Two zero-width ranges, overlap.
         assert!(overlaps((1, 1), (1, 1)));
+    }
+
+    #[test]
+    fn test_selection_overlaps() {
+        fn overlaps(a: &[(usize, usize)], b: &[(usize, usize)]) -> bool {
+            let a = Selection::new(
+                a.iter()
+                    .map(|(anchor, head)| Range::new(*anchor, *head))
+                    .collect(),
+                0,
+            );
+            let b = Selection::new(
+                b.iter()
+                    .map(|(anchor, head)| Range::new(*anchor, *head))
+                    .collect(),
+                0,
+            );
+            a.overlaps(&b)
+        }
+
+        // Two non-zero-width ranges, no overlap.
+        assert!(!overlaps(&[(0, 3)], &[(3, 6)]));
+        assert!(!overlaps(&[(0, 3)], &[(6, 3)]));
+        assert!(!overlaps(&[(3, 0)], &[(3, 6)]));
+        assert!(!overlaps(&[(3, 0)], &[(6, 3)]));
+        assert!(!overlaps(&[(3, 6)], &[(0, 3)]));
+        assert!(!overlaps(&[(3, 6)], &[(3, 0)]));
+        assert!(!overlaps(&[(6, 3)], &[(0, 3)]));
+        assert!(!overlaps(&[(6, 3)], &[(3, 0)]));
+
+        // more ranges in one or the other, no overlap
+        assert!(!overlaps(&[(6, 3), (9, 6)], &[(3, 0)]));
+        assert!(!overlaps(&[(6, 3), (6, 9)], &[(3, 0)]));
+        assert!(!overlaps(&[(3, 6), (9, 6)], &[(3, 0)]));
+        assert!(!overlaps(&[(3, 6), (6, 9)], &[(3, 0)]));
+        assert!(!overlaps(&[(6, 3), (9, 6)], &[(0, 3)]));
+        assert!(!overlaps(&[(6, 3), (6, 9)], &[(0, 3)]));
+        assert!(!overlaps(&[(3, 6), (9, 6)], &[(0, 3)]));
+        assert!(!overlaps(&[(3, 6), (6, 9)], &[(0, 3)]));
+
+        assert!(!overlaps(&[(6, 3)], &[(3, 0), (9, 6)]));
+        assert!(!overlaps(&[(6, 3)], &[(3, 0), (6, 9)]));
+        assert!(!overlaps(&[(3, 6)], &[(3, 0), (9, 6)]));
+        assert!(!overlaps(&[(3, 6)], &[(3, 0), (6, 9)]));
+        assert!(!overlaps(&[(6, 3)], &[(0, 3), (9, 6)]));
+        assert!(!overlaps(&[(6, 3)], &[(0, 3), (6, 9)]));
+        assert!(!overlaps(&[(3, 6)], &[(0, 3), (9, 6)]));
+        assert!(!overlaps(&[(3, 6)], &[(0, 3), (6, 9)]));
+
+        // Two non-zero-width ranges, overlap.
+        assert!(overlaps(&[(0, 4)], &[(3, 6)]));
+        assert!(overlaps(&[(0, 4)], &[(6, 3)]));
+        assert!(overlaps(&[(4, 0)], &[(3, 6)]));
+        assert!(overlaps(&[(4, 0)], &[(6, 3)]));
+        assert!(overlaps(&[(3, 6)], &[(0, 4)]));
+        assert!(overlaps(&[(3, 6)], &[(4, 0)]));
+        assert!(overlaps(&[(6, 3)], &[(0, 4)]));
+        assert!(overlaps(&[(6, 3)], &[(4, 0)]));
+
+        // Two non-zero-width ranges, overlap, extra from one or the other
+        assert!(overlaps(&[(0, 4), (7, 10)], &[(3, 6)]));
+        assert!(overlaps(&[(0, 4), (7, 10)], &[(6, 3)]));
+        assert!(overlaps(&[(4, 0), (7, 10)], &[(3, 6)]));
+        assert!(overlaps(&[(4, 0), (7, 10)], &[(6, 3)]));
+        assert!(overlaps(&[(3, 6), (7, 10)], &[(0, 4)]));
+        assert!(overlaps(&[(3, 6), (7, 10)], &[(4, 0)]));
+        assert!(overlaps(&[(6, 3), (7, 10)], &[(0, 4)]));
+        assert!(overlaps(&[(6, 3), (7, 10)], &[(4, 0)]));
+        assert!(overlaps(&[(0, 4), (10, 7)], &[(3, 6)]));
+        assert!(overlaps(&[(0, 4), (10, 7)], &[(6, 3)]));
+        assert!(overlaps(&[(4, 0), (10, 7)], &[(3, 6)]));
+        assert!(overlaps(&[(4, 0), (10, 7)], &[(6, 3)]));
+        assert!(overlaps(&[(3, 6), (10, 7)], &[(0, 4)]));
+        assert!(overlaps(&[(3, 6), (10, 7)], &[(4, 0)]));
+        assert!(overlaps(&[(6, 3), (10, 7)], &[(0, 4)]));
+        assert!(overlaps(&[(6, 3), (10, 7)], &[(4, 0)]));
+
+        assert!(overlaps(&[(0, 4)], &[(3, 6), (7, 10)]));
+        assert!(overlaps(&[(0, 4)], &[(6, 3), (7, 10)]));
+        assert!(overlaps(&[(4, 0)], &[(3, 6), (7, 10)]));
+        assert!(overlaps(&[(4, 0)], &[(6, 3), (7, 10)]));
+        assert!(overlaps(&[(3, 6)], &[(0, 4), (7, 10)]));
+        assert!(overlaps(&[(3, 6)], &[(4, 0), (7, 10)]));
+        assert!(overlaps(&[(6, 3)], &[(0, 4), (7, 10)]));
+        assert!(overlaps(&[(6, 3)], &[(4, 0), (7, 10)]));
+        assert!(overlaps(&[(0, 4)], &[(3, 6), (10, 7)]));
+        assert!(overlaps(&[(0, 4)], &[(6, 3), (10, 7)]));
+        assert!(overlaps(&[(4, 0)], &[(3, 6), (10, 7)]));
+        assert!(overlaps(&[(4, 0)], &[(6, 3), (10, 7)]));
+        assert!(overlaps(&[(3, 6)], &[(0, 4), (10, 7)]));
+        assert!(overlaps(&[(3, 6)], &[(4, 0), (10, 7)]));
+        assert!(overlaps(&[(6, 3)], &[(0, 4), (10, 7)]));
+        assert!(overlaps(&[(6, 3)], &[(4, 0), (10, 7)]));
+
+        // Zero-width and non-zero-width range, no overlap.
+        assert!(!overlaps(&[(0, 3)], &[(3, 3)]));
+        assert!(!overlaps(&[(3, 0)], &[(3, 3)]));
+        assert!(!overlaps(&[(3, 3)], &[(0, 3)]));
+        assert!(!overlaps(&[(3, 3)], &[(3, 0)]));
+
+        assert!(!overlaps(&[(0, 3), (7, 10)], &[(3, 3)]));
+        assert!(!overlaps(&[(3, 0), (7, 10)], &[(3, 3)]));
+        assert!(!overlaps(&[(3, 3), (7, 10)], &[(0, 3)]));
+        assert!(!overlaps(&[(3, 3), (7, 10)], &[(3, 0)]));
+
+        assert!(!overlaps(&[(0, 3)], &[(3, 3), (7, 10)]));
+        assert!(!overlaps(&[(3, 0)], &[(3, 3), (7, 10)]));
+        assert!(!overlaps(&[(3, 3)], &[(0, 3), (7, 10)]));
+        assert!(!overlaps(&[(3, 3)], &[(3, 0), (7, 10)]));
+
+        // Zero-width and non-zero-width range, overlap.
+        assert!(overlaps(&[(1, 4)], &[(1, 1)]));
+        assert!(overlaps(&[(4, 1)], &[(1, 1)]));
+        assert!(overlaps(&[(1, 1)], &[(1, 4)]));
+        assert!(overlaps(&[(1, 1)], &[(4, 1)]));
+
+        assert!(overlaps(&[(1, 4)], &[(3, 3)]));
+        assert!(overlaps(&[(4, 1)], &[(3, 3)]));
+        assert!(overlaps(&[(3, 3)], &[(1, 4)]));
+        assert!(overlaps(&[(3, 3)], &[(4, 1)]));
+
+        assert!(overlaps(&[(1, 4), (7, 10)], &[(1, 1)]));
+        assert!(overlaps(&[(4, 1), (7, 10)], &[(1, 1)]));
+        assert!(overlaps(&[(1, 1), (7, 10)], &[(1, 4)]));
+        assert!(overlaps(&[(1, 1), (7, 10)], &[(4, 1)]));
+
+        assert!(overlaps(&[(1, 4), (7, 10)], &[(3, 3)]));
+        assert!(overlaps(&[(4, 1), (7, 10)], &[(3, 3)]));
+        assert!(overlaps(&[(3, 3), (7, 10)], &[(1, 4)]));
+        assert!(overlaps(&[(3, 3), (7, 10)], &[(4, 1)]));
+
+        assert!(overlaps(&[(1, 4)], &[(1, 1), (7, 10)]));
+        assert!(overlaps(&[(4, 1)], &[(1, 1), (7, 10)]));
+        assert!(overlaps(&[(1, 1)], &[(1, 4), (7, 10)]));
+        assert!(overlaps(&[(1, 1)], &[(4, 1), (7, 10)]));
+
+        assert!(overlaps(&[(1, 4)], &[(3, 3), (7, 10)]));
+        assert!(overlaps(&[(4, 1)], &[(3, 3), (7, 10)]));
+        assert!(overlaps(&[(3, 3)], &[(1, 4), (7, 10)]));
+        assert!(overlaps(&[(3, 3)], &[(4, 1), (7, 10)]));
+
+        // Two zero-width ranges, no overlap.
+        assert!(!overlaps(&[(0, 0)], &[(1, 1)]));
+        assert!(!overlaps(&[(1, 1)], &[(0, 0)]));
+
+        assert!(!overlaps(&[(0, 0), (2, 2)], &[(1, 1)]));
+        assert!(!overlaps(&[(0, 0), (2, 2)], &[(1, 1)]));
+        assert!(!overlaps(&[(1, 1)], &[(0, 0), (2, 2)]));
+        assert!(!overlaps(&[(1, 1)], &[(0, 0), (2, 2)]));
+
+        // Two zero-width ranges, overlap.
+        assert!(overlaps(&[(1, 1)], &[(1, 1)]));
+        assert!(overlaps(&[(1, 1), (2, 2)], &[(1, 1)]));
+        assert!(overlaps(&[(1, 1)], &[(1, 1), (2, 2)]));
     }
 
     #[test]
@@ -1293,8 +1587,14 @@ mod test {
         // multiple matches
         assert!(contains(vec!((1, 1), (2, 2)), vec!((1, 1), (2, 2))));
 
-        // smaller set can't contain bigger
+        // extra items out of range
         assert!(!contains(vec!((1, 1)), vec!((1, 1), (2, 2))));
+
+        // one big range can contain multiple smaller ranges
+        assert!(contains(
+            vec!((1, 10)),
+            vec!((1, 1), (2, 2), (3, 3), (3, 5), (7, 10))
+        ));
 
         assert!(contains(
             vec!((1, 1), (2, 4), (5, 6), (7, 9), (10, 13)),
@@ -1307,5 +1607,144 @@ mod test {
             vec!((1, 4), (7, 10)),
             vec!((1, 2), (3, 4), (7, 9))
         ));
+    }
+
+    #[test]
+    fn test_selection_without() {
+        let without = |one, two, expected: Option<_>| {
+            println!("one: {:?}", one);
+            println!("two: {:?}", two);
+            println!("expected: {:?}", expected);
+
+            let (one_text, one_sel) = test::print(one);
+            let (two_text, two_sel) = test::print(two);
+            assert_eq!(one_text, two_text); // sanity
+            let actual_sel = one_sel.without(&two_sel);
+
+            let expected_sel = expected.map(|exp| {
+                let (expected_text, expected_sel) = test::print(exp);
+                assert_eq!(two_text, expected_text);
+                expected_sel
+            });
+            let actual = actual_sel
+                .as_ref()
+                .map(|sel| test::plain(two_text.to_string(), sel));
+
+            println!("actual: {:?}\n\n", actual);
+
+            assert_eq!(
+                expected_sel,
+                actual_sel,
+                "expected: {:?}, got: {:?}",
+                expected_sel
+                    .as_ref()
+                    .map(|sel| test::plain(two_text.to_string(), sel)),
+                actual,
+            );
+        };
+
+        without(
+            "#[foo bar baz|]#",
+            "foo #[bar|]# baz",
+            Some("#[foo |]#bar#( baz|)#"),
+        );
+
+        without("#[foo bar baz|]#", "#[foo bar baz|]#", None);
+        without("#[foo bar|]# baz", "#[foo bar baz|]#", None);
+        without("foo #[bar|]# baz", "#[foo bar baz|]#", None);
+
+        // direction is preserved
+        without(
+            "#[|foo bar baz]#",
+            "foo #[|bar]# baz",
+            Some("#[|foo ]#bar#(| baz)#"),
+        );
+
+        // preference for direction is given to the left
+        without(
+            "#[|foo bar baz]#",
+            "foo #[bar|]# baz",
+            Some("#[|foo ]#bar#(| baz)#"),
+        );
+
+        // disjoint ranges on the right are ignored
+        without(
+            "#[foo bar|]# baz",
+            "foo bar #[baz|]#",
+            Some("#[foo bar|]# baz"),
+        );
+        without(
+            "#[foo bar|]# baz",
+            "foo bar#[ baz|]#",
+            Some("#[foo bar|]# baz"),
+        );
+        without(
+            "#(foo|)# #[bar|]# baz",
+            "foo#[ b|]#ar ba#(z|)#",
+            Some("#(foo|)# b#[ar|]# baz"),
+        );
+
+        // ranges contained by those one on the right are removed
+        without(
+            "#[foo bar|]# #(b|)#az",
+            "foo bar#[ b|]#a#(z|)#",
+            Some("#[foo bar|]# baz"),
+        );
+        without(
+            "#[foo|]# bar #(baz|)#",
+            "foo bar#[ b|]#a#(z|)#",
+            Some("#[foo|]# bar b#(a|)#z"),
+        );
+        without(
+            "#[foo bar|]# #(b|)#az",
+            "foo bar #[b|]#a#(z|)#",
+            Some("#[foo bar|]# baz"),
+        );
+        without(
+            "#[foo bar|]# #(b|)#a#(z|)#",
+            "foo bar #[b|]#a#(z|)#",
+            Some("#[foo bar|]# baz"),
+        );
+        without(
+            "#[foo bar|]# #(b|)#a#(z|)#",
+            "foo bar #[b|]#a#(z|)#",
+            Some("#[foo bar|]# baz"),
+        );
+
+        // more than one range intersected by a single range on the right
+        without(
+            "#[foo bar|]# #(baz|)#",
+            "foo b#[ar ba|]#z",
+            Some("#[foo b|]#ar ba#(z|)#"),
+        );
+
+        // partial overlap
+        without(
+            "#[foo bar|]# baz",
+            "foo #[bar baz|]#",
+            Some("#[foo |]#bar baz"),
+        );
+        without(
+            "#[foo bar|]# baz",
+            "foo#[ bar baz|]#",
+            Some("#[foo|]# bar baz"),
+        );
+        without(
+            "#[foo bar|]# baz",
+            "foo ba#[r baz|]#",
+            Some("#[foo ba|]#r baz"),
+        );
+        without(
+            "foo ba#[r baz|]#",
+            "#[foo bar|]# baz",
+            Some("foo bar#[ baz|]#"),
+        );
+
+        // primary selection is moved - preference given to the left of a split
+        without(
+            "#(|foo)# #(|bar baz)# #[|quux]#",
+            "f#(o|)#o ba#[r b|]#az q#(uu|)#x",
+            Some("#(|f)#o#(|o)# #(|ba)#r b#(|az)# #[|q]#uu#(|x)#"),
+        );
     }
 }

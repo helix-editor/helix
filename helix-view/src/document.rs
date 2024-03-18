@@ -121,6 +121,7 @@ pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
     selections: HashMap<ViewId, Selection>,
+    view_data: HashMap<ViewId, ViewData>,
 
     /// Inlay hints annotations for the document, by view.
     ///
@@ -255,6 +256,7 @@ impl fmt::Debug for Document {
             .field("selections", &self.selections)
             .field("inlay_hints_oudated", &self.inlay_hints_oudated)
             .field("text_annotations", &self.inlay_hints)
+            .field("view_data", &self.view_data)
             .field("path", &self.path)
             .field("encoding", &self.encoding)
             .field("restore_cursor", &self.restore_cursor)
@@ -646,6 +648,7 @@ impl Document {
             selections: HashMap::default(),
             inlay_hints: HashMap::default(),
             inlay_hints_oudated: false,
+            view_data: Default::default(),
             indent_style: DEFAULT_INDENT,
             line_ending,
             restore_cursor: false,
@@ -1091,15 +1094,27 @@ impl Document {
         Ok(())
     }
 
-    /// Select text within the [`Document`].
-    pub fn set_selection(&mut self, view_id: ViewId, selection: Selection) {
+    /// Select text within the [`Document`], optionally clearing the previous selection state.
+    pub fn set_selection_clear(&mut self, view_id: ViewId, selection: Selection, clear_prev: bool) {
         // TODO: use a transaction?
         self.selections
             .insert(view_id, selection.ensure_invariants(self.text().slice(..)));
+
         helix_event::dispatch(SelectionDidChange {
             doc: self,
             view: view_id,
-        })
+        });
+
+        if clear_prev {
+            self.view_data
+                .entry(view_id)
+                .and_modify(|view_data| view_data.object_selections.clear());
+        }
+    }
+
+    /// Select text within the [`Document`].
+    pub fn set_selection(&mut self, view_id: ViewId, selection: Selection) {
+        self.set_selection_clear(view_id, selection, true);
     }
 
     /// Find the origin selection of the text in a document, i.e. where
@@ -1290,6 +1305,12 @@ impl Document {
                 apply_inlay_hint_changes(other_inlay_hints);
                 apply_inlay_hint_changes(padding_after_inlay_hints);
             }
+
+            // clear out all associated view object selections, as they are no
+            // longer valid
+            self.view_data
+                .values_mut()
+                .for_each(|view_data| view_data.object_selections.clear());
 
             if emit_lsp_notification {
                 // TODO: move to hook
@@ -1685,6 +1706,14 @@ impl Document {
         &self.selections
     }
 
+    pub fn view_data(&mut self, view_id: ViewId) -> &ViewData {
+        self.view_data.entry(view_id).or_default()
+    }
+
+    pub fn view_data_mut(&mut self, view_id: ViewId) -> &mut ViewData {
+        self.view_data.entry(view_id).or_default()
+    }
+
     pub fn relative_path(&self) -> Option<PathBuf> {
         self.path
             .as_deref()
@@ -1961,6 +1990,13 @@ impl Document {
     }
 }
 
+/// Stores data needed for views that are tied to this specific Document.
+#[derive(Debug, Default)]
+pub struct ViewData {
+    /// used to store previous selections of tree-sitter objects
+    pub object_selections: HashMap<&'static str, Vec<Selection>>,
+}
+
 #[derive(Clone, Debug)]
 pub enum FormatterError {
     SpawningFailed {
@@ -2010,6 +2046,7 @@ mod test {
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
         );
         let view = ViewId::default();
+        doc.ensure_view_init(view);
         doc.set_selection(view, Selection::single(0, 0));
 
         let transaction =
@@ -2047,7 +2084,9 @@ mod test {
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
         );
+
         let view = ViewId::default();
+        doc.ensure_view_init(view);
         doc.set_selection(view, Selection::single(5, 5));
 
         // insert

@@ -11,8 +11,9 @@ pub fn expand_selection(syntax: &Syntax, text: RopeSlice, selection: Selection) 
 }
 
 pub fn shrink_selection(syntax: &Syntax, text: RopeSlice, selection: Selection) -> Selection {
-    select_node_impl(syntax, text, selection, |descendant, _from, _to| {
-        descendant.child(0).or(Some(descendant))
+    select_node_impl(syntax, text, selection, |descendant, from, to| {
+        let range = Range::new(from, to);
+        crate::movement::find_first_contained_child(descendant, &range, text).or(Some(descendant))
     })
 }
 

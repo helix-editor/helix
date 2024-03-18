@@ -630,6 +630,25 @@ pub fn move_parent_node_end(
     })
 }
 
+/// Finds the first child node under the given input node that is fully
+/// contained (i.e. strictly inside, non-inclusive) within the given range.
+pub fn find_first_contained_child<'n>(
+    mut node: Node<'n>,
+    range: &Range,
+    text: RopeSlice,
+) -> Option<Node<'n>> {
+    let start = text.char_to_byte(range.from());
+    let end = text.char_to_byte(range.to());
+    let mut cursor = node.walk();
+    let mut children = node.children(&mut cursor);
+
+    while node.start_byte() <= start || node.end_byte() >= end {
+        node = children.next()?;
+    }
+
+    Some(node)
+}
+
 #[cfg(test)]
 mod test {
     use ropey::Rope;
