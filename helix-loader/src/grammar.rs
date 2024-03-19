@@ -1,6 +1,5 @@
 use anyhow::{anyhow, bail, Context, Result};
 use serde::{Deserialize, Serialize};
-use std::fs;
 use std::time::SystemTime;
 use std::{
     collections::HashSet,
@@ -8,6 +7,7 @@ use std::{
     process::Command,
     sync::mpsc::channel,
 };
+use std::{fs, thread};
 use tempfile::TempPath;
 use tree_sitter::Language;
 
@@ -225,25 +225,28 @@ where
     F: Fn(GrammarConfiguration) -> Result<Res> + Send + 'static + Clone,
     Res: Send + 'static,
 {
-    let pool = threadpool::Builder::new().build();
     let (tx, rx) = channel();
+    let mut handles = Vec::new();
 
     for grammar in grammars {
-        let tx = tx.clone();
-        let job = job.clone();
+        let tx = tx.to_owned();
+        let job = job.to_owned();
 
-        pool.execute(move || {
-            // Ignore any SendErrors, if any job in another thread has encountered an
-            // error the Receiver will be closed causing this send to fail.
-            let _ = tx.send((grammar.grammar_id.clone(), job(grammar)));
+        let handle = thread::spawn(move || {
+            let result = (grammar.grammar_id.to_owned(), job(grammar));
+            let _ = tx.send(result);
         });
+
+        handles.push(handle);
+    }
+
+    for handle in handles {
+        handle.join().unwrap();
     }
 
     drop(tx);
-
     rx.iter().collect()
 }
-
 enum FetchStatus {
     GitUpToDate,
     GitUpdated { revision: String },
