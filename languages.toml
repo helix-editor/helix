@@ -2345,7 +2345,7 @@ injection-regex = "ada"
 file-types = ["adb", "ads", "gpr"]
 roots = ["alire.toml"]
 comment-token = "--"
-indent = { tab-width = 3, unit = " " }
+indent = { tab-width = 3, unit = "   " }
 language-servers = ["ada-language-server", "ada-gpr-language-server"]
 
 
