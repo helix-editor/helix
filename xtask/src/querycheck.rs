@@ -12,6 +12,7 @@ pub fn query_check() -> Result<(), DynError> {
         "textobjects.scm",
         "indents.scm",
         "rainbows.scm",
+        "symbols.scm",
     ];
 
     for language in lang_config().language {
@@ -19,7 +20,9 @@ pub fn query_check() -> Result<(), DynError> {
         let grammar_name = language.grammar.as_ref().unwrap_or(language_name);
         for query_file in query_files {
             let language = get_language(grammar_name);
-            let query_text = read_query(language_name, query_file);
+            let Some(query_text) = read_query(language_name, query_file) else {
+                continue;
+            };
             if let Ok(lang) = language {
                 if !query_text.is_empty() {
                     if let Err(reason) = Query::new(&lang, &query_text) {

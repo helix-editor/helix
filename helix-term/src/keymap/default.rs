@@ -223,8 +223,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "F" => file_picker_in_current_directory,
             "b" => buffer_picker,
             "j" => jumplist_picker,
-            "s" => symbol_picker,
-            "S" => workspace_symbol_picker,
+            "s" => lsp_or_syntax_symbol_picker,
+            "S" => lsp_or_syntax_workspace_symbol_picker,
             "d" => diagnostics_picker,
             "D" => workspace_diagnostics_picker,
             "g" => changed_file_picker,
@@ -285,6 +285,11 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "c" => toggle_comments,
             "C" => toggle_block_comments,
             "A-c" => toggle_line_comments,
+            // TODO change bindings?
+            "t" => { "Syntax"
+                "s" => syntax_symbol_picker,
+                "S" => syntax_workspace_symbol_picker,
+            },
             "?" => command_palette,
         },
         "z" => { "View"

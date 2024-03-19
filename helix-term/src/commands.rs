@@ -1,5 +1,6 @@
 pub(crate) mod dap;
 pub(crate) mod lsp;
+pub(crate) mod syntax;
 pub(crate) mod typed;
 
 pub use dap::*;
@@ -12,6 +13,7 @@ use helix_stdx::{
 use helix_vcs::{FileChange, Hunk};
 pub use lsp::*;
 use tui::text::Span;
+pub use syntax::*;
 pub use typed::*;
 
 use helix_core::{
@@ -606,6 +608,10 @@ impl MappableCommand {
         command_palette, "Open command palette",
         goto_word, "Jump to a two-character label",
         extend_to_word, "Extend to a two-character label",
+        syntax_symbol_picker, "Open a picker of syntax-tree symbols",
+        syntax_workspace_symbol_picker, "Open a picker of syntax-tree symbols across the workspace",
+        lsp_or_syntax_symbol_picker, "Open an LSP symbol picker if available, or syntax otherwise",
+        lsp_or_syntax_workspace_symbol_picker, "Open an LSP workspace symbol picker if available, or syntax otherwise",
     );
 }
 
@@ -5985,6 +5991,42 @@ fn shell_prompt(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBeha
             shell(cx, input, &behavior);
         },
     );
+}
+
+// TODO: move somewhere else. This is in a random spot to avoid conflicts.
+
+fn lsp_or_syntax_symbol_picker(cx: &mut Context) {
+    let doc = doc!(cx.editor);
+
+    if doc
+        .language_servers_with_feature(LanguageServerFeature::DocumentSymbols)
+        .next()
+        .is_some()
+    {
+        symbol_picker(cx);
+    } else if doc
+        .syntax()
+        .is_some_and(|syntax| syntax.has_symbols_query())
+    {
+        syntax_symbol_picker(cx);
+    } else {
+        cx.editor
+            .set_error("No language server supporting document symbols or syntax info available");
+    }
+}
+
+fn lsp_or_syntax_workspace_symbol_picker(cx: &mut Context) {
+    let doc = doc!(cx.editor);
+
+    if doc
+        .language_servers_with_feature(LanguageServerFeature::WorkspaceSymbols)
+        .next()
+        .is_some()
+    {
+        workspace_symbol_picker(cx);
+    } else {
+        syntax_workspace_symbol_picker(cx);
+    }
 }
 
 fn suspend(_cx: &mut Context) {

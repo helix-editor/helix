@@ -43,6 +43,7 @@ tokio-stream = "0.1"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
 arc-swap = { version = "1.7.1" }
 termini = "1"
+dashmap = "6.0"
 
 # Logging
 fern = "0.6"

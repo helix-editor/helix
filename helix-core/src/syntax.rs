@@ -653,64 +653,64 @@ impl<'a> CapturedNode<'a> {
 /// This number can be increased if new syntax highlight breakages are found, as long as the performance penalty is not too high.
 const TREE_SITTER_MATCH_LIMIT: u32 = 256;
 
-pub fn read_query(language: &str, filename: &str) -> String {
+pub fn read_query(language: &str, filename: &str) -> Option<String> {
     static INHERITS_REGEX: Lazy<Regex> =
         Lazy::new(|| Regex::new(r";+\s*inherits\s*:?\s*([a-z_,()-]+)\s*").unwrap());
 
-    let query = load_runtime_file(language, filename).unwrap_or_default();
+    let query = load_runtime_file(language, filename).ok()?;
 
     // replaces all "; inherits <language>(,<language>)*" with the queries of the given language(s)
-    INHERITS_REGEX
+    let contents = INHERITS_REGEX
         .replace_all(&query, |captures: &regex::Captures| {
             captures[1]
                 .split(',')
-                .fold(String::new(), |mut output, language| {
+                .filter_map(|language| read_query(language, filename))
+                .fold(String::new(), |mut output, query_text| {
                     // `write!` to a String cannot fail.
-                    write!(output, "\n{}\n", read_query(language, filename)).unwrap();
+                    write!(output, "\n{}\n", query_text).unwrap();
                     output
                 })
         })
-        .to_string()
+        .to_string();
+    Some(contents)
 }
 
 impl LanguageConfiguration {
     fn initialize_highlight(&self, scopes: &[String]) -> Option<Arc<HighlightConfiguration>> {
-        let highlights_query = read_query(&self.language_id, "highlights.scm");
+        let highlights_query = read_query(&self.language_id, "highlights.scm")?;
         // always highlight syntax errors
         // highlights_query += "\n(ERROR) @error";
 
         let textobjects_query = read_query(&self.language_id, "textobjects.scm");
         let rainbows_query = read_query(&self.language_id, "rainbows.scm");
+        let symbols_query = read_query(&self.language_id, "symbols.scm");
 
         let injections_query = read_query(&self.language_id, "injections.scm");
         let locals_query = read_query(&self.language_id, "locals.scm");
 
-        if highlights_query.is_empty() {
-            None
-        } else {
-            let language = get_language(self.grammar.as_deref().unwrap_or(&self.language_id))
-                .map_err(|err| {
-                    log::error!(
-                        "Failed to load tree-sitter parser for language {:?}: {}",
-                        self.language_id,
-                        err
-                    )
-                })
-                .ok()?;
-            let config = HighlightConfiguration::new(
-                language,
-                &highlights_query,
-                &textobjects_query,
-                &rainbows_query,
-                &injections_query,
-                &locals_query,
-            )
-            .map_err(|err| log::error!("Could not parse queries for language {:?}. Are your grammars out of sync? Try running 'hx --grammar fetch' and 'hx --grammar build'. This query could not be parsed: {:?}", self.language_id, err))
+        let language = get_language(self.grammar.as_deref().unwrap_or(&self.language_id))
+            .map_err(|err| {
+                log::error!(
+                    "Failed to load tree-sitter parser for language {:?}: {}",
+                    self.language_id,
+                    err
+                )
+            })
             .ok()?;
+        let config = HighlightConfiguration::new(
+            language,
+            &highlights_query,
+            textobjects_query.as_deref(),
+            rainbows_query.as_deref(),
+            symbols_query.as_deref(),
+            &injections_query.unwrap_or_default(),
+            &locals_query.unwrap_or_default(),
+        )
+        .map_err(|err| log::error!("Could not parse queries for language {:?}. Are your grammars out of sync? Try running 'hx --grammar fetch' and 'hx --grammar build'. This query could not be parsed: {:?}", self.language_id, err))
+        .ok()?;
 
-            config.configure(scopes);
-            Some(Arc::new(config))
-        }
+        config.configure(scopes);
+        Some(Arc::new(config))
     }
 
     pub fn reconfigure(&self, scopes: &[String]) {
@@ -740,10 +740,7 @@ impl LanguageConfiguration {
     }
 
     fn load_query(&self, kind: &str) -> Option<Query> {
-        let query_text = read_query(&self.language_id, kind);
-        if query_text.is_empty() {
-            return None;
-        }
+        let query_text = read_query(&self.language_id, kind)?;
         let lang = &self.highlight_config.get()?.as_ref()?.language;
         Query::new(lang, &query_text)
             .map_err(|e| {
@@ -1381,19 +1378,16 @@ impl Syntax {
         range: Option<std::ops::Range<usize>>,
     ) -> impl Iterator<Item = (&'a LanguageLayer, QueryMatch<'a, 'a>, usize)>
     where
-        F: Fn(&'a HighlightConfiguration) -> &'a Query,
+        F: Fn(&'a HighlightConfiguration) -> Option<&'a Query>,
     {
         let mut layers: Vec<_> = self
             .layers
             .iter()
             .filter_map(|(_, layer)| {
+                let query = query_fn(&layer.config)?;
+
                 let (cursor, captures) = unsafe {
-                    query_captures(
-                        query_fn(&layer.config),
-                        layer.tree().root_node(),
-                        source,
-                        range.clone(),
-                    )
+                    query_captures(query, layer.tree().root_node(), source, range.clone())
                 };
                 let mut captures = captures.peekable();
 
@@ -1476,25 +1470,49 @@ impl Syntax {
         source: RopeSlice<'a>,
         query_range: Option<std::ops::Range<usize>>,
     ) -> impl Iterator<Item = CapturedNode<'a>> {
-        self.query_iter(|config| &config.textobjects_query, source, query_range)
-            .filter_map(move |(layer, match_, _)| {
-                // TODO: cache this per-language with a hashmap?
-                let capture_idx = capture_names
-                    .iter()
-                    .find_map(|name| layer.config.textobjects_query.capture_index_for_name(name))?;
+        self.query_iter(
+            |config| config.textobjects_query.as_ref(),
+            source,
+            query_range,
+        )
+        .filter_map(move |(layer, match_, _)| {
+            // TODO: cache this per-language with a hashmap?
+            let capture_idx = capture_names.iter().find_map(|name| {
+                layer
+                    .config
+                    .textobjects_query
+                    .as_ref()
+                    .expect("layer must have a textobjects query to match")
+                    .capture_index_for_name(name)
+            })?;
 
-                let nodes: Vec<_> = match_
-                    .captures
-                    .iter()
-                    .filter_map(|cap| (cap.index == capture_idx).then_some(cap.node))
-                    .collect();
+            let nodes: Vec<_> = match_
+                .captures
+                .iter()
+                .filter_map(|cap| (cap.index == capture_idx).then_some(cap.node))
+                .collect();
 
-                if nodes.len() > 1 {
-                    Some(CapturedNode::Grouped(nodes))
-                } else {
-                    nodes.into_iter().map(CapturedNode::Single).next()
-                }
-            })
+            if nodes.len() > 1 {
+                Some(CapturedNode::Grouped(nodes))
+            } else {
+                nodes.into_iter().map(CapturedNode::Single).next()
+            }
+        })
+    }
+
+    pub fn symbols<'a>(
+        &'a self,
+        source: RopeSlice<'a>,
+        query_range: Option<std::ops::Range<usize>>,
+    ) -> impl Iterator<Item = (&'a LanguageLayer, QueryMatch<'a, 'a>, usize)> {
+        self.query_iter(|config| config.symbols_query.as_ref(), source, query_range)
+    }
+
+    /// Returns true if any injection layer has a symbols query.
+    pub fn has_symbols_query(&self) -> bool {
+        self.layers
+            .values()
+            .any(|layer| layer.config.symbols_query.is_some())
     }
 
     /// Queries for rainbow highlights in the given range.
@@ -1534,7 +1552,7 @@ impl Syntax {
 
         // Iterate over all of the captures for rainbow queries across injections.
         for (layer, match_, capture_index) in
-            self.query_iter(|config| &config.rainbow_query, source, query_range)
+            self.query_iter(|config| config.rainbow_query.as_ref(), source, query_range)
         {
             let capture = match_.captures[capture_index];
             let range = capture.node.byte_range();
@@ -1559,6 +1577,8 @@ impl Syntax {
                 for prop in layer
                     .config
                     .rainbow_query
+                    .as_ref()
+                    .expect("layer must have rainbows query in order to match")
                     .property_settings(match_.pattern_index)
                 {
                     if prop.key.as_ref() == "rainbow.include-children" {
@@ -1890,8 +1910,9 @@ pub enum HighlightEvent {
 pub struct HighlightConfiguration {
     pub language: Grammar,
     query: Query,
-    textobjects_query: Query,
-    rainbow_query: Query,
+    textobjects_query: Option<Query>,
+    rainbow_query: Option<Query>,
+    pub symbols_query: Option<Query>,
     injections_query: Query,
     combined_injections_patterns: Vec<usize>,
     highlights_pattern_index: usize,
@@ -1991,8 +2012,9 @@ impl HighlightConfiguration {
     pub fn new(
         language: Grammar,
         highlights_query: &str,
-        textobjects_query: &str,
-        rainbow_query: &str,
+        textobjects_query: Option<&str>,
+        rainbow_query: Option<&str>,
+        symbols_query: Option<&str>,
         injection_query: &str,
         locals_query: &str,
     ) -> Result<Self, QueryError> {
@@ -2012,8 +2034,15 @@ impl HighlightConfiguration {
                 highlights_pattern_index += 1;
             }
         }
-        let textobjects_query = Query::new(&language, textobjects_query)?;
-        let rainbow_query = Query::new(&language, rainbow_query)?;
+        let textobjects_query = textobjects_query
+            .map(|source| Query::new(&language, source))
+            .transpose()?;
+        let rainbow_query = rainbow_query
+            .map(|source| Query::new(&language, source))
+            .transpose()?;
+        let symbols_query = symbols_query
+            .map(|source| Query::new(&language, source))
+            .transpose()?;
 
         let injections_query = Query::new(&language, injection_query)?;
         let combined_injections_patterns = (0..injections_query.pattern_count())
@@ -2058,12 +2087,14 @@ impl HighlightConfiguration {
             }
         }
 
-        for (i, name) in rainbow_query.capture_names().iter().enumerate() {
-            let i = Some(i as u32);
-            match *name {
-                "rainbow.scope" => rainbow_scope_capture_index = i,
-                "rainbow.bracket" => rainbow_bracket_capture_index = i,
-                _ => {}
+        if let Some(rainbow_query) = &rainbow_query {
+            for (i, name) in rainbow_query.capture_names().iter().enumerate() {
+                let i = Some(i as u32);
+                match *name {
+                    "rainbow.scope" => rainbow_scope_capture_index = i,
+                    "rainbow.bracket" => rainbow_bracket_capture_index = i,
+                    _ => {}
+                }
             }
         }
 
@@ -2084,6 +2115,7 @@ impl HighlightConfiguration {
             query,
             textobjects_query,
             rainbow_query,
+            symbols_query,
             injections_query,
             combined_injections_patterns,
             highlights_pattern_index,
@@ -2975,7 +3007,8 @@ mod test {
         .unwrap();
         let language = get_language("rust").unwrap();
 
-        let config = HighlightConfiguration::new(language, "", query_str, "", "", "").unwrap();
+        let config =
+            HighlightConfiguration::new(language, "", Some(query_str), None, None, "", "").unwrap();
         let syntax = Syntax::new(
             source.slice(..),
             Arc::new(config),
@@ -3042,8 +3075,9 @@ mod test {
             language,
             &std::fs::read_to_string("../runtime/grammars/sources/rust/queries/highlights.scm")
                 .unwrap(),
-            "", // textobjects.scm
-            "", // rainbows.scm
+            None, // textobjects.scm
+            None, // rainbows.scm
+            None, // symbols.scm
             &std::fs::read_to_string("../runtime/grammars/sources/rust/queries/injections.scm")
                 .unwrap(),
             "", // locals.scm
@@ -3152,7 +3186,7 @@ mod test {
         .unwrap();
         let language = get_language(language_name).unwrap();
 
-        let config = HighlightConfiguration::new(language, "", "", "", "", "").unwrap();
+        let config = HighlightConfiguration::new(language, "", None, None, None, "", "").unwrap();
         let syntax = Syntax::new(
             source.slice(..),
             Arc::new(config),
