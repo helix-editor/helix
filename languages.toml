@@ -6,6 +6,8 @@ use-grammars = { except = [ "hare", "wren", "gemini" ] }
 [language-server]
 
 als = { command = "als" }
+ada-language-server = { command = "ada_language_server" }
+ada-gpr-language-server = {command = "ada_language_server", args = ["--language-gpr"]}
 awk-language-server = { command = "awk-language-server" }
 bash-language-server = { command = "bash-language-server", args = ["start"] }
 bass = { command = "bass", args = ["--lsp"] }
@@ -2366,6 +2368,21 @@ language-servers = [ "jsonnet-language-server" ]
 [[grammar]]
 name = "jsonnet"
 source = { git = "https://github.com/sourcegraph/tree-sitter-jsonnet", rev = "0475a5017ad7dc84845d1d33187f2321abcb261d" }
+
+[[language]]
+name = "ada"
+scope = "source.ada"
+injection-regex = "ada"
+file-types = ["adb", "ads", "gpr"]
+roots = ["alire.toml"]
+comment-token = "--"
+indent = { tab-width = 3, unit = "   " }
+language-servers = ["ada-language-server", "ada-gpr-language-server"]
+
+
+[[grammar]]
+name = "ada"
+source = { git = "https://github.com/briot/tree-sitter-ada", rev = "ba0894efa03beb70780156b91e28c716b7a4764d" }
 
 [[language]]
 name = "astro"
