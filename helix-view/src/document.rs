@@ -10,7 +10,7 @@ use helix_core::encoding::Encoding;
 use helix_core::syntax::{Highlight, LanguageServerFeature};
 use helix_core::text_annotations::{InlineAnnotation, Overlay};
 use helix_lsp::util::lsp_pos_to_pos;
-use helix_vcs::{DiffHandle, DiffProviderRegistry};
+use helix_vcs::{DiffHandle, DiffHead, DiffSource};
 
 use ::parking_lot::Mutex;
 use serde::de::{self, Deserialize, Deserializer};
@@ -170,13 +170,21 @@ pub struct Document {
     pub(crate) diagnostics: Vec<Diagnostic>,
     pub(crate) language_servers: HashMap<LanguageServerName, Arc<Client>>,
 
-    diff_handle: Option<DiffHandle>,
-    version_control_head: Option<Arc<ArcSwap<Box<str>>>>,
+    /// Data to compute diffs for the file, if possible and set to do so.
+    diff_data: DiffData,
 
     // when document was used for most-recent-used buffer picker
     pub focused_at: std::time::Instant,
 
     pub readonly: bool,
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct DiffData {
+    source: DiffSource,
+
+    handle: Option<DiffHandle>,
+    version_control_head: Option<DiffHead>,
 }
 
 /// Inlay hints for a single `(Document, View)` combo.
@@ -661,9 +669,8 @@ impl Document {
             last_saved_revision: 0,
             modified_since_accessed: false,
             language_servers: HashMap::new(),
-            diff_handle: None,
+            diff_data: DiffData::default(),
             config,
-            version_control_head: None,
             focused_at: std::time::Instant::now(),
             readonly: false,
             jump_labels: HashMap::new(),
@@ -705,6 +712,12 @@ impl Document {
         }
 
         doc.detect_indent_and_line_ending();
+
+        doc.diff_data = DiffData {
+            source: DiffSource::auto_detect(path),
+            ..Default::default()
+        };
+        doc.reload_diff_data(path);
 
         Ok(doc)
     }
@@ -988,11 +1001,7 @@ impl Document {
     }
 
     /// Reload the document from its path.
-    pub fn reload(
-        &mut self,
-        view: &mut View,
-        provider_registry: &DiffProviderRegistry,
-    ) -> Result<(), Error> {
+    pub fn reload(&mut self, view: &mut View) -> Result<(), Error> {
         let encoding = self.encoding;
         let path = match self.path() {
             None => return Ok(()),
@@ -1020,14 +1029,53 @@ impl Document {
 
         self.detect_indent_and_line_ending();
 
-        match provider_registry.get_diff_base(&path) {
-            Some(diff_base) => self.set_diff_base(diff_base),
-            None => self.diff_handle = None,
-        }
-
-        self.version_control_head = provider_registry.get_current_head_name(&path);
+        self.reload_diff_data(&path);
 
         Ok(())
+    }
+
+    fn reload_diff_data(&mut self, path: &Path) {
+        let diff_data = &mut self.diff_data;
+
+        diff_data.version_control_head = match diff_data.source.get_current_head_name(path) {
+            None => None,
+            Some(Err(err)) => {
+                log::info!("Failed to get VCS head for {}: {err:?}", path.display());
+                None
+            }
+            Some(Ok(head)) => Some(head),
+        };
+
+        match diff_data.source.get_diff_base(path) {
+            Ok(None) => (),
+            Ok(Some(diff_base)) => self.set_diff_base(diff_base),
+            Err(err) => {
+                log::info!("Failed to get diff base for {}: {err:?}", path.display());
+                diff_data.handle = None;
+            }
+        }
+    }
+
+    pub fn diff_source(&self) -> DiffSource {
+        self.diff_data.source
+    }
+
+    pub fn set_diff_data(&mut self, source: DiffSource) {
+        // Completely reset the diff source
+        self.diff_data = DiffData {
+            source,
+            ..Default::default()
+        };
+
+        let path = match self.path() {
+            None => return,
+            Some(path) => match path.exists() {
+                true => path.to_owned(),
+                false => return,
+            },
+        };
+
+        self.reload_diff_data(&path);
     }
 
     /// Sets the [`Document`]'s encoding with the encoding correspondent to `label`.
@@ -1192,7 +1240,7 @@ impl Document {
         if !transaction.changes().is_empty() {
             self.version += 1;
             // start computing the diff in parallel
-            if let Some(diff_handle) = &self.diff_handle {
+            if let Some(diff_handle) = self.diff_handle() {
                 diff_handle.update_document(self.text.clone(), false);
             }
 
@@ -1613,31 +1661,31 @@ impl Document {
     }
 
     pub fn diff_handle(&self) -> Option<&DiffHandle> {
-        self.diff_handle.as_ref()
+        self.diff_data.handle.as_ref()
     }
 
     /// Intialize/updates the differ for this document with a new base.
     pub fn set_diff_base(&mut self, diff_base: Vec<u8>) {
-        if let Ok((diff_base, ..)) = from_reader(&mut diff_base.as_slice(), Some(self.encoding)) {
-            if let Some(differ) = &self.diff_handle {
-                differ.update_diff_base(diff_base);
-                return;
+        let diff_data = &mut self.diff_data;
+
+        diff_data.handle = match from_reader(&mut diff_base.as_slice(), Some(self.encoding)) {
+            Ok((diff_base, ..)) => {
+                if let Some(differ) = &diff_data.handle {
+                    differ.update_diff_base(diff_base);
+                    return;
+                }
+
+                Some(DiffHandle::new(diff_base, self.text.clone()))
             }
-            self.diff_handle = Some(DiffHandle::new(diff_base, self.text.clone()))
-        } else {
-            self.diff_handle = None;
+            Err(_) => None,
         }
     }
 
     pub fn version_control_head(&self) -> Option<Arc<Box<str>>> {
-        self.version_control_head.as_ref().map(|a| a.load_full())
-    }
-
-    pub fn set_version_control_head(
-        &mut self,
-        version_control_head: Option<Arc<ArcSwap<Box<str>>>>,
-    ) {
-        self.version_control_head = version_control_head;
+        self.diff_data
+            .version_control_head
+            .as_ref()
+            .map(|a| a.load_full())
     }
 
     #[inline]

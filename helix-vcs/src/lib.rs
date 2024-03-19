@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use arc_swap::ArcSwap;
 use std::{path::Path, sync::Arc};
 
@@ -9,57 +9,64 @@ mod diff;
 
 pub use diff::{DiffHandle, Hunk};
 
-pub trait DiffProvider {
-    /// Returns the data that a diff should be computed against
-    /// if this provider is used.
-    /// The data is returned as raw byte without any decoding or encoding performed
-    /// to ensure all file encodings are handled correctly.
-    fn get_diff_base(&self, file: &Path) -> Result<Vec<u8>>;
-    fn get_current_head_name(&self, file: &Path) -> Result<Arc<ArcSwap<Box<str>>>>;
+/// Diff source for a file.
+///
+/// The one selected for each file is set on opening the file.
+// TODO: provide a command to set the diff source for a file
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub enum DiffSource {
+    /// No diffs computations.
+    #[default]
+    None,
+    /// Diffs are computed against the on-disk version of the file.
+    File,
+    /// Diff are computed from the in-tree version last registered in git.
+    #[cfg(feature = "git")]
+    Git,
 }
 
-pub struct DiffProviderRegistry {
-    providers: Vec<Box<dyn DiffProvider>>,
-}
+pub type DiffHead = Arc<ArcSwap<Box<str>>>;
 
-impl DiffProviderRegistry {
-    pub fn get_diff_base(&self, file: &Path) -> Option<Vec<u8>> {
-        self.providers
-            .iter()
-            .find_map(|provider| match provider.get_diff_base(file) {
-                Ok(res) => Some(res),
-                Err(err) => {
-                    log::info!("{err:#?}");
-                    log::info!("failed to open diff base for {}", file.display());
-                    None
-                }
-            })
-    }
+impl DiffSource {
+    /// Auto detection of the diff source to use for a file.
+    pub fn auto_detect(file: &Path) -> Self {
+        debug_assert!(!file.exists() || file.is_file());
+        debug_assert!(file.is_absolute());
 
-    pub fn get_current_head_name(&self, file: &Path) -> Option<Arc<ArcSwap<Box<str>>>> {
-        self.providers
-            .iter()
-            .find_map(|provider| match provider.get_current_head_name(file) {
-                Ok(res) => Some(res),
-                Err(err) => {
-                    log::info!("{err:#?}");
-                    log::info!("failed to obtain current head name for {}", file.display());
-                    None
-                }
-            })
-    }
-}
-
-impl Default for DiffProviderRegistry {
-    fn default() -> Self {
-        // currently only git is supported
-        // TODO make this configurable when more providers are added
         #[cfg(feature = "git")]
-        let git: Box<dyn DiffProvider> = Box::new(git::Git);
-        let providers = vec![
+        if let Some(parent) = file.parent() {
+            if git::open_repo(parent, None).is_ok() {
+                return Self::Git;
+            }
+        }
+
+        Self::File
+    }
+
+    /// Returns the data that a diff should be computed against.
+    ///
+    /// The data is returned as raw bytes without any decoding or encoding performed
+    /// to ensure all file encodings are handled correctly.
+    pub fn get_diff_base(&self, file: &Path) -> Result<Option<Vec<u8>>> {
+        debug_assert!(!file.exists() || file.is_file());
+        debug_assert!(file.is_absolute());
+
+        match self {
+            Self::None => Ok(None),
+            Self::File => std::fs::read(file)
+                .context("Failed to read file for diff base")
+                .map(Some),
             #[cfg(feature = "git")]
-            git,
-        ];
-        DiffProviderRegistry { providers }
+            Self::Git => git::get_diff_base(file).map(Some),
+        }
+    }
+
+    pub fn get_current_head_name(&self, file: &Path) -> Option<Result<DiffHead>> {
+        match self {
+            Self::None => None,
+            Self::File => None,
+            #[cfg(feature = "git")]
+            Self::Git => Some(git::get_current_head_name(file)),
+        }
     }
 }
