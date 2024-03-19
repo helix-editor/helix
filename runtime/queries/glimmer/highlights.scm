@@ -26,7 +26,7 @@
 (block_statement_start path: (identifier) @keyword.control.conditional)
 (block_statement_end path: (identifier) @keyword.control.conditional)
 ((mustache_statement (identifier) @keyword.control.conditional)
- (#match? @keyword.control.conditional "else"))
+ (#eq? @keyword.control.conditional "else"))
 
 ; == Mustache Statements ===
 
@@ -38,13 +38,13 @@
   (path_expression (identifier) @variable)
   (identifier) @variable
   ])
-  (#not-match? @variable "yield|outlet|this|else"))
+  (#not-any-of? @variable "yield" "outlet" "this" "else"))
 ; As are arguments in a block statement
 ((block_statement_start argument: [
   (path_expression (identifier) @variable)
   (identifier) @variable
   ])
- (#not-match? @variable "this"))
+ (#not-eq? @variable "this"))
 ; As is an identifier in a block param
 (block_params (identifier) @variable)
 ; As are helper arguments
@@ -52,25 +52,24 @@
   (path_expression (identifier) @variable)
   (identifier) @variable
   ])
-  (#not-match? @variable "this"))
+  (#not-eq? @variable "this"))
 ; `this` should be highlighted as a built-in variable
 ((identifier) @variable.builtin
-  (#match? @variable.builtin "this"))
+  (#eq? @variable.builtin "this"))
 
 ; If the identifier is just "yield" or "outlet", it's a keyword
 ((mustache_statement (identifier) @keyword.control.return)
-  (#match? @keyword.control.return "yield|outlet"))
+  (#any-of? @keyword.control.return "yield" "outlet"))
 
 ; Helpers are functions
 ((helper_invocation helper: [
   (path_expression (identifier) @function)
   (identifier) @function
   ])
-  (#not-match? @function "if|yield"))
+  (#not-any-of? @function "if" "yield"))
+
 ((helper_invocation helper: (identifier) @keyword.control.conditional)
-  (#match? @keyword.control.conditional "if"))
-((helper_invocation helper: (identifier) @keyword.control.conditional)
-  (#match? @keyword.control.conditional "yield"))
+  (#any-of? @keyword.control.conditional "if" "yield"))
 
 (hash_pair key: (identifier) @variable)
 (hash_pair value: (identifier) @variable)
@@ -92,3 +91,4 @@
   "</"
   "/>"
 ] @punctuation.delimiter
+
