@@ -2,7 +2,7 @@ use std::{fs::File, io::Write, path::Path, process::Command};
 
 use tempfile::TempDir;
 
-use crate::{DiffProvider, Git};
+use crate::{git::Git, DiffProvider};
 
 fn exec_git_cmd(args: &str, git_dir: &Path) {
     let res = Command::new("git")

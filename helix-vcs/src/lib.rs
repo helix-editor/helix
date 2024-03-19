@@ -1,11 +1,6 @@
-use anyhow::{bail, Result};
+use anyhow::Result;
 use arc_swap::ArcSwap;
 use std::{path::Path, sync::Arc};
-
-#[cfg(feature = "git")]
-pub use git::Git;
-#[cfg(not(feature = "git"))]
-pub use Dummy as Git;
 
 #[cfg(feature = "git")]
 mod git;
@@ -21,18 +16,6 @@ pub trait DiffProvider {
     /// to ensure all file encodings are handled correctly.
     fn get_diff_base(&self, file: &Path) -> Result<Vec<u8>>;
     fn get_current_head_name(&self, file: &Path) -> Result<Arc<ArcSwap<Box<str>>>>;
-}
-
-#[doc(hidden)]
-pub struct Dummy;
-impl DiffProvider for Dummy {
-    fn get_diff_base(&self, _file: &Path) -> Result<Vec<u8>> {
-        bail!("helix was compiled without git support")
-    }
-
-    fn get_current_head_name(&self, _file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
-        bail!("helix was compiled without git support")
-    }
 }
 
 pub struct DiffProviderRegistry {
@@ -71,8 +54,12 @@ impl Default for DiffProviderRegistry {
     fn default() -> Self {
         // currently only git is supported
         // TODO make this configurable when more providers are added
-        let git: Box<dyn DiffProvider> = Box::new(Git);
-        let providers = vec![git];
+        #[cfg(feature = "git")]
+        let git: Box<dyn DiffProvider> = Box::new(git::Git);
+        let providers = vec![
+            #[cfg(feature = "git")]
+            git,
+        ];
         DiffProviderRegistry { providers }
     }
 }
