@@ -60,6 +60,7 @@
 | git-ignore | ✓ |  |  |  |
 | git-rebase | ✓ |  |  |  |
 | gleam | ✓ | ✓ |  | `gleam` |
+| glimmer | ✓ |  |  | `ember-language-server` |
 | glsl | ✓ | ✓ | ✓ |  |
 | gn | ✓ |  |  |  |
 | go | ✓ | ✓ | ✓ | `gopls`, `golangci-lint-langserver` |
