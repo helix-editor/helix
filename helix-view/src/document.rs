@@ -993,11 +993,13 @@ impl Document {
         provider_registry: &DiffProviderRegistry,
     ) -> Result<(), Error> {
         let encoding = self.encoding;
-        let path = self
-            .path()
-            .filter(|path| path.exists())
-            .ok_or_else(|| anyhow!("can't find file to reload from {:?}", self.display_name()))?
-            .to_owned();
+        let path = match self.path() {
+            None => return Ok(()),
+            Some(path) => match path.exists() {
+                true => path.to_owned(),
+                false => bail!("can't find file to reload from {:?}", self.display_name()),
+            },
+        };
 
         // Once we have a valid path we check if its readonly status has changed
         self.detect_readonly();

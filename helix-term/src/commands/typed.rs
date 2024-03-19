@@ -1318,7 +1318,11 @@ fn reload_all(
         // Ensure that the view is synced with the document's history.
         view.sync_changes(doc);
 
-        doc.reload(view, &cx.editor.diff_providers)?;
+        if let Err(error) = doc.reload(view, &cx.editor.diff_providers) {
+            cx.editor.set_error(format!("{}", error));
+            continue;
+        }
+
         if let Some(path) = doc.path() {
             cx.editor
                 .language_servers
