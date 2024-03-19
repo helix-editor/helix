@@ -2338,6 +2338,37 @@ fn reset_diff_change(
     Ok(())
 }
 
+fn diff_source(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let editor = &mut cx.editor;
+    let doc = doc_mut!(editor);
+    let current_diff_source = doc.diff_source();
+
+    let arg = match args {
+        [arg] => arg.as_ref(),
+        [_, _, ..] => bail!(":diff-source takes at most 1 argument"),
+        [] => {
+            editor.set_status(format!("Active diff source: {current_diff_source}"));
+            return Ok(());
+        }
+    };
+
+    match arg.parse() {
+        Ok(ds) if ds == current_diff_source => editor.set_status("Diff source unchanged"),
+        Ok(ds) => doc.set_diff_data(ds),
+        Err(err) => editor.set_error(format!("Could not set diff source: {err}")),
+    }
+
+    Ok(())
+}
+
 fn clear_register(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -3038,6 +3069,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["diffget", "diffg"],
         doc: "Reset the diff change at the cursor position.",
         fun: reset_diff_change,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "diff-source",
+        aliases: &[],
+        doc: "Set the diff source for the file. If no argument is provided, show the current source.",
+        fun: diff_source,
         signature: CommandSignature::none(),
     },
     TypableCommand {

@@ -83,6 +83,7 @@
 | `:pipe-to` | Pipe each selection to the shell command, ignoring output. |
 | `:run-shell-command`, `:sh` | Run a shell command |
 | `:reset-diff-change`, `:diffget`, `:diffg` | Reset the diff change at the cursor position. |
+| `:diff-source` | Set the diff source for the file. If no argument is provided, show the current source. |
 | `:clear-register` | Clear given register. If no argument is provided, clear all registers. |
 | `:redraw` | Clear and re-render the whole UI |
 | `:move` | Move the current buffer and its corresponding file to a different path |

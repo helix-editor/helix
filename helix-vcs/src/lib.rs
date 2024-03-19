@@ -1,5 +1,7 @@
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
 use arc_swap::ArcSwap;
+use std::fmt::Display;
+use std::str::FromStr;
 use std::{path::Path, sync::Arc};
 
 #[cfg(feature = "git")]
@@ -68,5 +70,55 @@ impl DiffSource {
             #[cfg(feature = "git")]
             Self::Git => Some(git::get_current_head_name(file)),
         }
+    }
+}
+
+impl FromStr for DiffSource {
+    type Err = anyhow::Error;
+
+    fn from_str(s: &str) -> Result<Self> {
+        match s {
+            "none" => Ok(Self::None),
+            "file" => Ok(Self::File),
+            #[cfg(feature = "git")]
+            "git" => Ok(Self::Git),
+            s => bail!("invalid diff source '{s}', pick one of 'none', 'file' or 'git'"),
+        }
+    }
+}
+
+impl Display for DiffSource {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::None => "none",
+            Self::File => "file",
+            #[cfg(feature = "git")]
+            Self::Git => "git",
+        })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_diff_source_parse() {
+        assert_eq!(DiffSource::from_str("none").unwrap(), DiffSource::None);
+        assert_eq!(DiffSource::from_str("file").unwrap(), DiffSource::File);
+        #[cfg(feature = "git")]
+        assert_eq!(DiffSource::from_str("git").unwrap(), DiffSource::Git);
+
+        assert!(DiffSource::from_str("Git").is_err());
+        assert!(DiffSource::from_str("NONE").is_err());
+        assert!(DiffSource::from_str("fIlE").is_err());
+    }
+
+    #[test]
+    fn test_diff_source_display() {
+        assert_eq!(DiffSource::None.to_string(), "none");
+        assert_eq!(DiffSource::File.to_string(), "file");
+        #[cfg(feature = "git")]
+        assert_eq!(DiffSource::Git.to_string(), "git");
     }
 }
