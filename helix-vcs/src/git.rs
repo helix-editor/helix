@@ -14,7 +14,7 @@ use crate::DiffHead;
 #[cfg(test)]
 mod test;
 
-pub fn open_repo(path: &Path, ceiling_dir: Option<&Path>) -> Result<ThreadSafeRepository> {
+pub fn open_repo(path: &Path) -> Result<ThreadSafeRepository> {
     // custom open options
     let mut git_open_opts_map = gix::sec::trust::Mapping::<gix::open::Options>::default();
 
@@ -43,9 +43,6 @@ pub fn open_repo(path: &Path, ceiling_dir: Option<&Path>) -> Result<ThreadSafeRe
     });
 
     let open_options = gix::discover::upwards::Options {
-        ceiling_dirs: ceiling_dir
-            .map(|dir| vec![dir.to_owned()])
-            .unwrap_or_default(),
         dot_git_only: true,
         ..Default::default()
     };
@@ -66,7 +63,7 @@ pub fn get_diff_base(file: &Path) -> Result<Vec<u8>> {
     // TODO cache repository lookup
 
     let repo_dir = file.parent().context("file has no parent directory")?;
-    let repo = open_repo(repo_dir, None)
+    let repo = open_repo(repo_dir)
         .context("failed to open git repo")?
         .to_thread_local();
     let head = repo.head_commit()?;
@@ -95,7 +92,7 @@ pub fn get_current_head_name(file: &Path) -> Result<DiffHead> {
     debug_assert!(file.is_absolute());
 
     let repo_dir = file.parent().context("file has no parent directory")?;
-    let repo = open_repo(repo_dir, None)
+    let repo = open_repo(repo_dir)
         .context("failed to open git repo")?
         .to_thread_local();
     let head_ref = repo.head_ref()?;

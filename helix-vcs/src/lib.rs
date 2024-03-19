@@ -35,7 +35,7 @@ impl DiffSource {
 
         #[cfg(feature = "git")]
         if let Some(parent) = file.parent() {
-            if git::open_repo(parent, None).is_ok() {
+            if git::open_repo(parent).is_ok() {
                 return Self::Git;
             }
         }
