@@ -74,6 +74,7 @@
 | haskell-persistent | ✓ |  |  |  |
 | hcl | ✓ | ✓ | ✓ | `terraform-ls` |
 | heex | ✓ | ✓ |  | `elixir-ls` |
+| helm | ✓ |  |  | `helm_ls` |
 | hocon | ✓ |  | ✓ |  |
 | hoon | ✓ |  |  |  |
 | hosts | ✓ |  |  |  |

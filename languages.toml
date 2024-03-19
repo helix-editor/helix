@@ -99,6 +99,7 @@ zls = { command = "zls" }
 blueprint-compiler = { command = "blueprint-compiler", args = ["lsp"] }
 typst-lsp = { command = "typst-lsp" }
 pkgbuild-language-server = { command = "pkgbuild-language-server" }
+helm_ls = { command = "helm_ls", args = ["serve"] }
 
 [language-server.ansible-language-server]
 command = "ansible-language-server"
@@ -3381,3 +3382,12 @@ language-servers = [
     "diagnostics",
   ], name = "bash-language-server" },
 ]
+
+[[language]]
+name = "helm"
+grammar = "gotmpl"
+scope = "source.helm"
+roots = ["Chart.yaml"]
+comment-token = "#"
+language-servers = ["helm_ls"]
+file-types = [ { glob = "templates/*.yaml" }, { glob = "templates/_helpers.tpl"}, { glob = "templates/NOTES.txt" } ]
