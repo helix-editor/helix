@@ -2423,6 +2423,14 @@ fn yank_diagnostic(
         return Ok(());
     }
 
+    let reg = match args.first() {
+        Some(s) => {
+            ensure!(s.chars().count() == 1, format!("Invalid register {s}"));
+            s.chars().next().unwrap()
+        }
+        None => '+',
+    };
+
     let (view, doc) = current_ref!(cx.editor);
     let primary = doc.selection(view.id).primary();
 
@@ -2437,14 +2445,6 @@ fn yank_diagnostic(
     if n == 0 {
         bail!("No diagnostics under primary selection");
     }
-
-    let reg = match args.get(0) {
-        Some(s) => {
-            ensure!(s.chars().count() == 1, format!("Invalid register {s}"));
-            s.chars().next().unwrap()
-        }
-        None => '+',
-    };
 
     cx.editor.registers.write(reg, diag)?;
     cx.editor.set_status(format!(
@@ -3045,7 +3045,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Clear given register. If no argument is provided, clear all registers.",
         fun: clear_register,
-        signature: CommandSignature::none(),
+        signature: CommandSignature::all(completers::register),
     },
     TypableCommand {
         name: "redraw",
@@ -3066,7 +3066,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Yank diagnostic(s) under primary cursor to register, or clipboard by default",
         fun: yank_diagnostic,
-        signature: CommandSignature::none(),
+        signature: CommandSignature::all(completers::register),
     },
 ];
 
