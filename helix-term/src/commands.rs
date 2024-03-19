@@ -5436,16 +5436,9 @@ fn shell_keep_pipe(cx: &mut Context) {
 
             for (i, range) in selection.ranges().iter().enumerate() {
                 let fragment = range.slice(text);
-                let (_output, success) = match shell_impl(shell, input, Some(fragment.into())) {
-                    Ok(result) => result,
-                    Err(err) => {
-                        cx.editor.set_error(err.to_string());
-                        return;
-                    }
-                };
-
-                // if the process exits successfully, keep the selection
-                if success {
+                if let Err(err) = shell_impl(shell, input, Some(fragment.into())) {
+                    log::debug!("Shell command failed: {}", err);
+                } else {
                     ranges.push(*range);
                     if i >= old_index && index.is_none() {
                         index = Some(ranges.len() - 1);
@@ -5464,7 +5457,7 @@ fn shell_keep_pipe(cx: &mut Context) {
     );
 }
 
-fn shell_impl(shell: &[String], cmd: &str, input: Option<Rope>) -> anyhow::Result<(Tendril, bool)> {
+fn shell_impl(shell: &[String], cmd: &str, input: Option<Rope>) -> anyhow::Result<Tendril> {
     tokio::task::block_in_place(|| helix_lsp::block_on(shell_impl_async(shell, cmd, input)))
 }
 
@@ -5472,7 +5465,7 @@ async fn shell_impl_async(
     shell: &[String],
     cmd: &str,
     input: Option<Rope>,
-) -> anyhow::Result<(Tendril, bool)> {
+) -> anyhow::Result<Tendril> {
     use std::process::Stdio;
     use tokio::process::Command;
     ensure!(!shell.is_empty(), "No shell set");
@@ -5535,7 +5528,7 @@ async fn shell_impl_async(
     let str = std::str::from_utf8(&output.stdout)
         .map_err(|_| anyhow!("Process did not output valid UTF-8"))?;
     let tendril = Tendril::from(str);
-    Ok((tendril, output.status.success()))
+    Ok(tendril)
 }
 
 fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
@@ -5556,14 +5549,14 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
     let mut shell_output: Option<Tendril> = None;
     let mut offset = 0isize;
     for range in selection.ranges() {
-        let (output, success) = if let Some(output) = shell_output.as_ref() {
-            (output.clone(), true)
+        let output = if let Some(output) = shell_output.as_ref() {
+            output.clone()
         } else {
             let fragment = range.slice(text);
             match shell_impl(shell, cmd, pipe.then(|| fragment.into())) {
                 Ok(result) => {
                     if !pipe {
-                        shell_output = Some(result.0.clone());
+                        shell_output = Some(result.clone());
                     }
                     result
                 }
@@ -5573,11 +5566,6 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
                 }
             }
         };
-
-        if !success {
-            cx.editor.set_error("Command failed");
-            return;
-        }
 
         let output_len = output.chars().count();
 
