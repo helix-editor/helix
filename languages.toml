@@ -3376,6 +3376,7 @@ source = { git = "https://github.com/madskjeldgaard/tree-sitter-supercollider", 
 name = "pkgbuild"
 scope = "source.bash"
 file-types = [{ glob = "PKGBUILD" }]
+comment-token = "#"
 grammar = "bash"
 language-servers = [
   "pkgbuild-language-server",
