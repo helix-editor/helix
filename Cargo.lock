@@ -1228,7 +1228,7 @@ dependencies = [
 
 [[package]]
 name = "helix-core"
-version = "23.10.0"
+version = "24.3.0"
 dependencies = [
  "ahash",
  "arc-swap",
@@ -1265,7 +1265,7 @@ dependencies = [
 
 [[package]]
 name = "helix-dap"
-version = "23.10.0"
+version = "24.3.0"
 dependencies = [
  "anyhow",
  "fern",
@@ -1280,7 +1280,7 @@ dependencies = [
 
 [[package]]
 name = "helix-event"
-version = "23.10.0"
+version = "24.3.0"
 dependencies = [
  "ahash",
  "anyhow",
@@ -1294,7 +1294,7 @@ dependencies = [
 
 [[package]]
 name = "helix-loader"
-version = "23.10.0"
+version = "24.3.0"
 dependencies = [
  "anyhow",
  "cc",
@@ -1313,7 +1313,7 @@ dependencies = [
 
 [[package]]
 name = "helix-lsp"
-version = "23.10.0"
+version = "24.3.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -1336,11 +1336,11 @@ dependencies = [
 
 [[package]]
 name = "helix-parsec"
-version = "23.10.0"
+version = "24.3.0"
 
 [[package]]
 name = "helix-stdx"
-version = "23.10.0"
+version = "24.3.0"
 dependencies = [
  "dunce",
  "etcetera",
@@ -1352,7 +1352,7 @@ dependencies = [
 
 [[package]]
 name = "helix-term"
-version = "23.10.0"
+version = "24.3.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -1395,7 +1395,7 @@ dependencies = [
 
 [[package]]
 name = "helix-tui"
-version = "23.10.0"
+version = "24.3.0"
 dependencies = [
  "bitflags 2.4.2",
  "cassowary",
@@ -1411,7 +1411,7 @@ dependencies = [
 
 [[package]]
 name = "helix-vcs"
-version = "23.10.0"
+version = "24.3.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -1427,7 +1427,7 @@ dependencies = [
 
 [[package]]
 name = "helix-view"
-version = "23.10.0"
+version = "24.3.0"
 dependencies = [
  "anyhow",
  "arc-swap",
@@ -2822,7 +2822,7 @@ dependencies = [
 
 [[package]]
 name = "xtask"
-version = "23.10.0"
+version = "24.3.0"
 dependencies = [
  "helix-core",
  "helix-loader",
