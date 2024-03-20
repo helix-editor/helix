@@ -3076,7 +3076,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Set the diff source for the file. If no argument is provided, show the current source.",
         fun: diff_source,
-        signature: CommandSignature::none(),
+        signature: CommandSignature::all(completers::diff_source),
     },
     TypableCommand {
         name: "clear-register",

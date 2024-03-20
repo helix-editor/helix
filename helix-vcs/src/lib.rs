@@ -71,6 +71,24 @@ impl DiffSource {
             Self::Git => Some(git::get_current_head_name(file)),
         }
     }
+
+    /// Used to offer completion options for the `diff-source` command
+    pub fn all_values() -> &'static [&'static str] {
+        // To force a miscompilation and remember to add the value to the list
+        match Self::None {
+            Self::None => (),
+            Self::File => (),
+            Self::Git => (),
+        }
+
+        // Keep it sorted alphabetically
+        &[
+            "file",
+            #[cfg(feature = "git")]
+            "git",
+            "none",
+        ]
+    }
 }
 
 impl FromStr for DiffSource {
@@ -82,7 +100,7 @@ impl FromStr for DiffSource {
             "file" => Ok(Self::File),
             #[cfg(feature = "git")]
             "git" => Ok(Self::Git),
-            s => bail!("invalid diff source '{s}', pick one of 'none', 'file' or 'git'"),
+            s => bail!("invalid diff source '{s}'"),
         }
     }
 }
@@ -120,5 +138,13 @@ mod tests {
         assert_eq!(DiffSource::File.to_string(), "file");
         #[cfg(feature = "git")]
         assert_eq!(DiffSource::Git.to_string(), "git");
+    }
+
+    #[test]
+    fn test_diff_source_all_values() {
+        let all = DiffSource::all_values();
+        let mut all_sorted = all.to_vec();
+        all_sorted.sort_unstable();
+        assert_eq!(all, all_sorted);
     }
 }

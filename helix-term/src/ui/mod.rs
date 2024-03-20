@@ -259,6 +259,7 @@ pub mod completers {
     use crate::ui::prompt::Completion;
     use helix_core::fuzzy::fuzzy_match;
     use helix_core::syntax::LanguageServerFeature;
+    use helix_vcs::DiffSource;
     use helix_view::document::SCRATCH_BUFFER_NAME;
     use helix_view::theme;
     use helix_view::{editor::Config, Editor};
@@ -521,6 +522,15 @@ pub mod completers {
         fuzzy_match(input, iter, false)
             .into_iter()
             .map(|(name, _)| ((0..), name.into()))
+            .collect()
+    }
+
+    pub fn diff_source(_editor: &Editor, input: &str) -> Vec<Completion> {
+        let iter = DiffSource::all_values();
+
+        fuzzy_match(input, iter, false)
+            .into_iter()
+            .map(|(&name, _)| ((0..), name.into()))
             .collect()
     }
 }
