@@ -47,6 +47,9 @@
 "ui.statusline.insert" = { fg = "fg1", bg = "blue0" }
 "ui.statusline.select" = { fg = "fg1", bg = "orange0" }
 "ui.statusline.inactive" = { fg = "fg4", bg = "bg1" }
+"ui.bufferline" = { fg = "fg1", bg = "bg1" }
+"ui.bufferline.active" = { fg = "bg0", bg = "yellow0" }
+"ui.bufferline.background" = { bg = "bg2" }
 "ui.popup" = { bg = "bg1" }
 "ui.window" = { bg = "bg1" }
 "ui.help" = { bg = "bg1", fg = "fg1" }
