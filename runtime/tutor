@@ -1388,9 +1388,9 @@ the left press Ctrl-w o to close all except this split.
 =               CHAPTER 13.3 SPLIT CURRENT BUFFER               =
 =================================================================
 
-To split the view of the current buffer, use Ctrl-w s to split it
-horizontally and open a copy on the right, and Ctrl-w v to split it
-vertically with the buffer opened in both splits.
+Use Ctrl-w s to split the view of the current buffer horizontally
+and Ctrl-w v to split it vertically with the buffer opened in both
+splits.
 
 Close extra splits with Ctrl-w o to return to a single window view.
 
