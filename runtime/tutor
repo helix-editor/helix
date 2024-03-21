@@ -1435,8 +1435,8 @@ or path instead of a new empty buffer.
 Open a split on the left with :vs hello1 and then a split below
 with :hs hello2.
 
-From hello2, press Ctrl-w K to swap it with the split above. Now,
-hello2 is at the top, while hello1 is at the bottom.
+From hello2, press Ctrl-w K to swap it with the split above. Now
+hello2 is at the top while hello1 is at the bottom.
 
 Still from hello2, press Ctrl-w H to swap with the split on the
 left: now, hello2 is on the left, and the tutor is on the top
