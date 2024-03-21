@@ -17,7 +17,11 @@ use tui::{buffer::Buffer as Surface, text::Span};
 
 use std::{borrow::Cow, sync::Arc, time::Duration};
 
-use helix_core::{chars, Change, Transaction};
+use helix_core::{
+    chars,
+    snippets::{ActiveSnippet, RenderedSnippet, Snippet},
+    Change, Transaction,
+};
 use helix_view::{graphics::Rect, Document, Editor};
 
 use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
@@ -123,101 +127,6 @@ impl Completion {
 
         // Then create the menu
         let menu = Menu::new(items, (), move |editor: &mut Editor, item, event| {
-            fn item_to_transaction(
-                doc: &Document,
-                view_id: ViewId,
-                item: &lsp::CompletionItem,
-                offset_encoding: OffsetEncoding,
-                trigger_offset: usize,
-                include_placeholder: bool,
-                replace_mode: bool,
-            ) -> Transaction {
-                use helix_lsp::snippet;
-                let selection = doc.selection(view_id);
-                let text = doc.text().slice(..);
-                let primary_cursor = selection.primary().cursor(text);
-
-                let (edit_offset, new_text) = if let Some(edit) = &item.text_edit {
-                    let edit = match edit {
-                        lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
-                        lsp::CompletionTextEdit::InsertAndReplace(item) => {
-                            let range = if replace_mode {
-                                item.replace
-                            } else {
-                                item.insert
-                            };
-                            lsp::TextEdit::new(range, item.new_text.clone())
-                        }
-                    };
-
-                    let Some(range) =
-                        util::lsp_range_to_range(doc.text(), edit.range, offset_encoding)
-                    else {
-                        return Transaction::new(doc.text());
-                    };
-
-                    let start_offset = range.anchor as i128 - primary_cursor as i128;
-                    let end_offset = range.head as i128 - primary_cursor as i128;
-
-                    (Some((start_offset, end_offset)), edit.new_text)
-                } else {
-                    let new_text = item
-                        .insert_text
-                        .clone()
-                        .unwrap_or_else(|| item.label.clone());
-                    // check that we are still at the correct savepoint
-                    // we can still generate a transaction regardless but if the
-                    // document changed (and not just the selection) then we will
-                    // likely delete the wrong text (same if we applied an edit sent by the LS)
-                    debug_assert!(primary_cursor == trigger_offset);
-                    (None, new_text)
-                };
-
-                if matches!(item.kind, Some(lsp::CompletionItemKind::SNIPPET))
-                    || matches!(
-                        item.insert_text_format,
-                        Some(lsp::InsertTextFormat::SNIPPET)
-                    )
-                {
-                    match snippet::parse(&new_text) {
-                        Ok(snippet) => util::generate_transaction_from_snippet(
-                            doc.text(),
-                            selection,
-                            edit_offset,
-                            replace_mode,
-                            snippet,
-                            doc.line_ending.as_str(),
-                            include_placeholder,
-                            doc.tab_width(),
-                            doc.indent_width(),
-                        ),
-                        Err(err) => {
-                            log::error!(
-                                "Failed to parse snippet: {:?}, remaining output: {}",
-                                &new_text,
-                                err
-                            );
-                            Transaction::new(doc.text())
-                        }
-                    }
-                } else {
-                    util::generate_transaction_from_completion_edit(
-                        doc.text(),
-                        selection,
-                        edit_offset,
-                        replace_mode,
-                        new_text,
-                    )
-                }
-            }
-
-            fn completion_changes(transaction: &Transaction, trigger_offset: usize) -> Vec<Change> {
-                transaction
-                    .changes_iter()
-                    .filter(|(start, end, _)| (*start..=*end).contains(&trigger_offset))
-                    .collect()
-            }
-
             let (view, doc) = current!(editor);
 
             macro_rules! language_server {
@@ -261,13 +170,12 @@ impl Completion {
                     // always present here
                     let item = item.unwrap();
 
-                    let transaction = item_to_transaction(
+                    let (transaction, _) = item_to_transaction(
                         doc,
                         view.id,
                         &item.item,
                         language_server!(item).offset_encoding(),
                         trigger_offset,
-                        true,
                         replace_mode,
                     );
                     doc.apply_temporary(&transaction, view.id);
@@ -302,20 +210,27 @@ impl Completion {
                     doc.restore(view, &savepoint, true);
                     // save an undo checkpoint before the completion
                     doc.append_changes_to_history(view);
-                    let transaction = item_to_transaction(
+                    let (transaction, snippet) = item_to_transaction(
                         doc,
                         view.id,
                         &item.item,
                         offset_encoding,
                         trigger_offset,
-                        false,
                         replace_mode,
                     );
                     doc.apply(&transaction, view.id);
+                    let placeholder = snippet.is_some();
+                    if let Some(snippet) = snippet {
+                        doc.active_snippet = match doc.active_snippet.take() {
+                            Some(active) => active.insert_subsnippet(snippet),
+                            None => ActiveSnippet::new(snippet),
+                        };
+                    }
 
                     editor.last_completion = Some(CompleteAction::Applied {
                         trigger_offset,
                         changes: completion_changes(&transaction, trigger_offset),
+                        placeholder,
                     });
 
                     // TODO: add additional _edits to completion_changes?
@@ -551,6 +466,94 @@ impl Component for Completion {
 
         markdown_doc.render(doc_area, surface, cx);
     }
+}
+
+fn item_to_transaction(
+    doc: &Document,
+    view_id: ViewId,
+    item: &lsp::CompletionItem,
+    offset_encoding: OffsetEncoding,
+    trigger_offset: usize,
+    replace_mode: bool,
+) -> (Transaction, Option<RenderedSnippet>) {
+    let selection = doc.selection(view_id);
+    let text = doc.text().slice(..);
+    let primary_cursor = selection.primary().cursor(text);
+
+    let (edit_offset, new_text) = if let Some(edit) = &item.text_edit {
+        let edit = match edit {
+            lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
+            lsp::CompletionTextEdit::InsertAndReplace(item) => {
+                let range = if replace_mode {
+                    item.replace
+                } else {
+                    item.insert
+                };
+                lsp::TextEdit::new(range, item.new_text.clone())
+            }
+        };
+
+        let Some(range) =
+            util::lsp_range_to_range(doc.text(), edit.range, offset_encoding)
+        else {
+            return (Transaction::new(doc.text()), None);
+        };
+
+        let start_offset = range.anchor as i128 - primary_cursor as i128;
+        let end_offset = range.head as i128 - primary_cursor as i128;
+
+        (Some((start_offset, end_offset)), edit.new_text)
+    } else {
+        let new_text = item
+            .insert_text
+            .clone()
+            .unwrap_or_else(|| item.label.clone());
+        // check that we are still at the correct savepoint
+        // we can still generate a transaction regardless but if the
+        // document changed (and not just the selection) then we will
+        // likely delete the wrong text (same if we applied an edit sent by the LS)
+        debug_assert!(primary_cursor == trigger_offset);
+        (None, new_text)
+    };
+
+    if matches!(item.kind, Some(lsp::CompletionItemKind::SNIPPET))
+        || matches!(
+            item.insert_text_format,
+            Some(lsp::InsertTextFormat::SNIPPET)
+        )
+    {
+        let Ok(snippet) = Snippet::parse(&new_text) else {
+            log::error!(
+                "Failed to parse snippet: {new_text:?}",
+            );
+            return (Transaction::new(doc.text()), None);
+        };
+        let (transaction, snippet) = util::generate_transaction_from_snippet(
+            doc.text(),
+            selection,
+            edit_offset,
+            replace_mode,
+            snippet,
+            &mut doc.snippet_ctx(),
+        );
+        (transaction, Some(snippet))
+    } else {
+        let transaction = util::generate_transaction_from_completion_edit(
+            doc.text(),
+            selection,
+            edit_offset,
+            replace_mode,
+            new_text,
+        );
+        (transaction, None)
+    }
+}
+
+fn completion_changes(transaction: &Transaction, trigger_offset: usize) -> Vec<Change> {
+    transaction
+        .changes_iter()
+        .filter(|(start, end, _)| (*start..=*end).contains(&trigger_offset))
+        .collect()
 }
 
 /// A hook for resolving incomplete completion items.

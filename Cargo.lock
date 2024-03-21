@@ -1227,6 +1227,7 @@ name = "helix-core"
 version = "23.10.0"
 dependencies = [
  "ahash",
+ "anyhow",
  "arc-swap",
  "bitflags 2.5.0",
  "chrono",
@@ -1236,6 +1237,7 @@ dependencies = [
  "globset",
  "hashbrown 0.14.3",
  "helix-loader",
+ "helix-parsec",
  "helix-stdx",
  "imara-diff",
  "indoc",
