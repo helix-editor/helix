@@ -2616,6 +2616,7 @@ file-types = [
   "kube",
   "network",
   { glob = ".editorconfig" },
+  { glob = "rclone.conf" },
   "properties",
   "cfg",
   "directory"
