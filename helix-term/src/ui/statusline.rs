@@ -93,11 +93,26 @@ pub fn render_statusline<'a>(context: &mut RenderContext, width: usize) -> Spans
     let mut statusline: Vec<Span> = vec![];
 
     if center_area_width > 0 && total_space_required <= width {
+        // SAFETY: this subtraction cannot underflow because `left_area_width + center_area_width + right_area_width`
+        // is smaller than `total_space_required`, which is smaller than `width` in this branch.
+        let total_spacers = width - (left_area_width + center_area_width + right_area_width);
+        // This is how much padding space it would take on either side to align the center area to the middle.
         let center_margin = (width - center_area_width) / 2;
+        let left_spacers = if left_area_width < center_margin && right_area_width < center_margin {
+            // Align the center area to the middle if there is enough space on both sides.
+            center_margin - left_area_width
+        } else {
+            // Otherwise split the available space evenly and use it as margin.
+            // The center element won't be aligned to the middle but it will be evenly
+            // spaced between the left and right areas.
+            total_spacers / 2
+        };
+        let right_spacers = total_spacers - left_spacers;
+
         statusline.append(&mut left);
-        statusline.push(" ".repeat(center_margin - left_area_width).into());
+        statusline.push(" ".repeat(left_spacers).into());
         statusline.append(&mut center);
-        statusline.push(" ".repeat(center_margin - right_area_width).into());
+        statusline.push(" ".repeat(right_spacers).into());
         statusline.append(&mut right);
     } else if right_area_width > 0 && sides_space_required <= width {
         let side_areas_width = left_area_width + right_area_width;
