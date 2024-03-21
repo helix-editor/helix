@@ -1350,8 +1350,8 @@ a list of available commands.
 To open a new empty buffer in a vertical split on the right half
 of your current window, use Ctrl-w nv (i.e., press Ctrl
 and w simultaneously, then press n, followed by v). Your current
-window will now split in 2 vertically, a new empty buffer split
-will appear on the right half, and your cursor will jump to the
+window will now split in 2 vertically. A new empty buffer split
+will appear on the right half and your cursor will jump to the
 new vertical split.
 
 To create a new empty buffer in a horizontal split, press
