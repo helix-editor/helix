@@ -1498,7 +1498,7 @@ splits except this one.
 =                        CHAPTER 13 RECAP                       =
 =================================================================
 
-Splits can be used to display either the same buffer several times,
+Splits can be used to display either the same buffer several times
 or several buffers. To access the main windows and splits commands,
 press Ctrl-w . You can move between splits with Ctrl-w hjkl ,
 you can close a split with Ctrl-w q , and you can close all but
