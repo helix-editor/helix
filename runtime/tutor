@@ -1476,8 +1476,8 @@ the tutor window.
 =             CHAPTER 13.7 OPEN SPLIT FROM FILEPICKER           =
 =================================================================
 
-Splits can also be opened directly from the filepicker. Press
-space f to open the filepicker. From there, you can type in text
+Splits can also be opened directly from the file picker. Press
+space f to open the file picker. From there, you can type in text
 to perform file lookup with fuzzy matching, and use the arrows
 up and down to move the selected file (indicated by the > symbol).
 If you want to exit the file picker, press Escape.
