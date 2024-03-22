@@ -427,7 +427,7 @@ impl<T: Item + 'static> Picker<T> {
                             (size, _) if size > MAX_FILE_SIZE_FOR_PREVIEW => {
                                 CachedPreview::LargeFile
                             }
-                            _ => Document::open(path, None, None, editor.config.clone())
+                            _ => Document::open(path, None, None, editor.config.clone(), false)
                                 .map(|doc| CachedPreview::Document(Box::new(doc)))
                                 .unwrap_or(CachedPreview::NotFound),
                         },

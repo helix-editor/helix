@@ -60,6 +60,7 @@ FLAGS:
                                    or 'all'. 'all' is the default if not specified.
     -g, --grammar {{fetch|build}}    Fetches or builds tree-sitter grammars listed in languages.toml
     -c, --config <file>            Specifies a file to use for configuration
+    --readonly                     Open all files in readonly mode
     -v                             Increases logging verbosity each use for up to 3 times
     --log <file>                   Specifies a file to use for logging
                                    (default file: {})
@@ -154,9 +155,11 @@ FLAGS:
         helix_core::config::default_lang_loader()
     });
 
+    let readonly = args.readonly;
+
     // TODO: use the thread local executor to spawn the application task separately from the work pool
-    let mut app =
-        Application::new(args, config, lang_loader).context("unable to create new application")?;
+    let mut app = Application::new(args, config, lang_loader, readonly)
+        .context("unable to create new application")?;
 
     let exit_code = app.run(&mut EventStream::new()).await?;
 

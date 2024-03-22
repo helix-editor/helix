@@ -966,9 +966,15 @@ pub struct Editor {
     /// avoid calculating the cursor position multiple
     /// times during rendering and should not be set by other functions.
     pub cursor_cache: Cell<Option<Option<Position>>>,
+
     pub handlers: Handlers,
 
     pub mouse_down_range: Option<Range>,
+
+    /// Whether the editor is running in readonly mode
+    /// If true, files are opened in read-only mode and
+    /// cannot be written to
+    pub readonly: bool,
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
@@ -1040,6 +1046,7 @@ impl Editor {
         syn_loader: Arc<ArcSwap<syntax::Loader>>,
         config: Arc<dyn DynAccess<Config>>,
         handlers: Handlers,
+        readonly: bool,
     ) -> Self {
         let language_servers = helix_lsp::Registry::new(syn_loader.clone());
         let conf = config.load();
@@ -1086,6 +1093,7 @@ impl Editor {
             cursor_cache: Cell::new(None),
             handlers,
             mouse_down_range: None,
+            readonly,
         }
     }
 
@@ -1554,6 +1562,7 @@ impl Editor {
             helix_core::Rope::default(),
             Some((encoding, has_bom)),
             self.config.clone(),
+            false,
         );
         let doc_id = self.new_file_from_document(action, doc);
         let doc = doc_mut!(self, &doc_id);
@@ -1580,6 +1589,7 @@ impl Editor {
                 None,
                 Some(self.syn_loader.clone()),
                 self.config.clone(),
+                self.readonly,
             )?;
 
             let diagnostics =
