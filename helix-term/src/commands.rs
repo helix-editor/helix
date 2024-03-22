@@ -3439,48 +3439,55 @@ fn goto_last_diag(cx: &mut Context) {
 }
 
 fn goto_next_diag(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
+    let motion = move |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
 
-    let cursor_pos = doc
-        .selection(view.id)
-        .primary()
-        .cursor(doc.text().slice(..));
+        let cursor_pos = doc
+            .selection(view.id)
+            .primary()
+            .cursor(doc.text().slice(..));
 
-    let diag = doc
-        .diagnostics()
-        .iter()
-        .find(|diag| diag.range.start > cursor_pos)
-        .or_else(|| doc.diagnostics().first());
+        let diag = doc
+            .diagnostics()
+            .iter()
+            .find(|diag| diag.range.start > cursor_pos)
+            .or_else(|| doc.diagnostics().first());
 
-    let selection = match diag {
-        Some(diag) => Selection::single(diag.range.start, diag.range.end),
-        None => return,
+        let selection = match diag {
+            Some(diag) => Selection::single(diag.range.start, diag.range.end),
+            None => return,
+        };
+        doc.set_selection(view.id, selection);
     };
-    doc.set_selection(view.id, selection);
+
+    cx.editor.apply_motion(motion);
 }
 
 fn goto_prev_diag(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
+    let motion = move |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
 
-    let cursor_pos = doc
-        .selection(view.id)
-        .primary()
-        .cursor(doc.text().slice(..));
+        let cursor_pos = doc
+            .selection(view.id)
+            .primary()
+            .cursor(doc.text().slice(..));
 
-    let diag = doc
-        .diagnostics()
-        .iter()
-        .rev()
-        .find(|diag| diag.range.start < cursor_pos)
-        .or_else(|| doc.diagnostics().last());
+        let diag = doc
+            .diagnostics()
+            .iter()
+            .rev()
+            .find(|diag| diag.range.start < cursor_pos)
+            .or_else(|| doc.diagnostics().last());
 
-    let selection = match diag {
-        // NOTE: the selection is reversed because we're jumping to the
-        // previous diagnostic.
-        Some(diag) => Selection::single(diag.range.end, diag.range.start),
-        None => return,
+        let selection = match diag {
+            // NOTE: the selection is reversed because we're jumping to the
+            // previous diagnostic.
+            Some(diag) => Selection::single(diag.range.end, diag.range.start),
+            None => return,
+        };
+        doc.set_selection(view.id, selection);
     };
-    doc.set_selection(view.id, selection);
+    cx.editor.apply_motion(motion)
 }
 
 fn goto_first_change(cx: &mut Context) {
