@@ -214,7 +214,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
         // z family for save/restore/combine from/to sels from register
 
-        "C-i" | "tab" => jump_forward, // tab == <C-i>
+        "C-i" => jump_forward,
         "C-o" => jump_backward,
         "C-s" => save_selection,
 
