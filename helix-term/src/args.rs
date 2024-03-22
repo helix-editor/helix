@@ -129,7 +129,7 @@ pub(crate) fn parse_file(s: &str) -> (PathBuf, Position) {
 ///
 /// Does not validate if file.rs is a file or directory.
 fn split_path_row_col(s: &str) -> Option<(PathBuf, Position)> {
-    let mut s = s.rsplitn(3, ':');
+    let mut s = s.trim_end_matches(':').rsplitn(3, ':');
     let col: usize = s.next()?.parse().ok()?;
     let row: usize = s.next()?.parse().ok()?;
     let path = s.next()?.into();
@@ -141,7 +141,7 @@ fn split_path_row_col(s: &str) -> Option<(PathBuf, Position)> {
 ///
 /// Does not validate if file.rs is a file or directory.
 fn split_path_row(s: &str) -> Option<(PathBuf, Position)> {
-    let (path, row) = s.rsplit_once(':')?;
+    let (path, row) = s.trim_end_matches(':').rsplit_once(':')?;
     let row: usize = row.parse().ok()?;
     let path = path.into();
     let pos = Position::new(row.saturating_sub(1), 0);
