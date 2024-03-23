@@ -300,8 +300,6 @@ impl AppBuilder {
         self
     }
 
-    // Remove this attribute once `with_config` is used in a test:
-    #[allow(dead_code)]
     pub fn with_config(mut self, mut config: Config) -> Self {
         let keys = replace(&mut config.keys, helix_term::keymap::default());
         merge_keys(&mut config.keys, keys);
