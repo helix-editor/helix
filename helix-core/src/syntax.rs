@@ -59,11 +59,11 @@ where
     D: serde::Deserializer<'de>,
 {
     usize::deserialize(deserializer).and_then(|n| {
-        if n > 0 && n <= 16 {
+        if n > 0 && n <= 64 {
             Ok(n)
         } else {
             Err(serde::de::Error::custom(
-                "tab width must be a value from 1 to 16 inclusive",
+                "tab width must be a value from 1 to 64 inclusive",
             ))
         }
     })
