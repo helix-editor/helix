@@ -43,6 +43,7 @@
 "ui.text" = { fg = "foreground" }
 "ui.text.focus" = { fg = "cyan" }
 "ui.window" = { fg = "foreground" }
+"ui.virtual.jump-label" = { fg = "pink", modifiers = ["bold"] }
 "ui.virtual.ruler" = { bg = "background_dark" }
 
 "error" = { fg = "red" }
