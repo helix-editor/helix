@@ -56,6 +56,7 @@
 "ui.virtual.whitespace" = { fg = "light-gray" }
 "ui.virtual.ruler" = { bg = "gray" }
 "ui.virtual.inlay-hint" = { fg = "light-gray" }
+"ui.virtual.jump-label" = { fg = "light-gray", modifiers = ["bold"] }
 
 "ui.cursor" = { fg = "white", modifiers = ["reversed"] }
 "ui.cursor.primary" = { fg = "white", modifiers = ["reversed"] }
