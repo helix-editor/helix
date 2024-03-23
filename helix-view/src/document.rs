@@ -7,7 +7,7 @@ use helix_core::auto_pairs::AutoPairs;
 use helix_core::chars::char_is_word;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
-use helix_core::syntax::{Highlight, LanguageServerFeature};
+use helix_core::syntax::{Highlight, LanguageServerFeature, IndentationConfiguration};
 use helix_core::text_annotations::{InlineAnnotation, Overlay};
 use helix_lsp::util::lsp_pos_to_pos;
 use helix_stdx::faccess::{copy_metadata, readonly};
@@ -653,7 +653,7 @@ impl Document {
         let changes = ChangeSet::new(text.slice(..));
         let old_state = None;
 
-        Self {
+        let mut doc = Self {
             id: DocumentId::default(),
             path: None,
             encoding,
@@ -684,7 +684,9 @@ impl Document {
             focused_at: std::time::Instant::now(),
             readonly: false,
             jump_labels: HashMap::new(),
-        }
+        };
+        doc.detect_indent_and_line_ending();
+        doc
     }
 
     pub fn default(config: Arc<dyn DynAccess<Config>>) -> Self {
@@ -1065,14 +1067,13 @@ impl Document {
             .or_else(|| config_loader.language_config_for_shebang(self.text().slice(..)))
     }
 
-    /// Detect the indentation used in the file, or otherwise defaults to the language indentation
-    /// configured in `languages.toml`, with a fallback to tabs if it isn't specified. Line ending
+    /// Detect the indentation used in the file, or otherwise defaults to the global indentation
+    /// configured in `config.toml` and then the language indentation configured in 
+    /// `languages.toml`, with a fallback to tabs if it isn't specified. Line ending
     /// is likewise auto-detected, and will remain unchanged if no line endings were detected.
     pub fn detect_indent_and_line_ending(&mut self) {
         self.indent_style = auto_detect_indent_style(&self.text).unwrap_or_else(|| {
-            self.language_config()
-                .and_then(|config| config.indent.as_ref())
-                .map_or(DEFAULT_INDENT, |config| IndentStyle::from_str(&config.unit))
+            self.indent_config(DEFAULT_INDENT, |config| IndentStyle::from_str(&config.unit))
         });
         if let Some(line_ending) = auto_detect_line_ending(&self.text) {
             self.line_ending = line_ending;
@@ -1105,6 +1106,20 @@ impl Document {
             None => false,
             Some(p) => readonly(p),
         };
+    }
+
+    fn indent_config<T, F: Fn(&IndentationConfiguration) -> T>(&self, default: T, mapper: F) -> T {
+        self.language_config()
+            .and_then(|config| config.indent.as_ref())
+            .filter(|config| config.required)
+            .map(|config| mapper(&config.indent))
+            .or_else(|| self.config.load().indent.as_ref().map(&mapper))
+            .or_else(|| {
+                self.language_config()
+                    .and_then(|config| config.indent.as_ref())
+                    .map(|config| mapper(&config.indent))
+            })
+            .unwrap_or(default)
     }
 
     /// Reload the document from its path.
@@ -1790,9 +1805,7 @@ impl Document {
 
     /// The width that the tab character is rendered at
     pub fn tab_width(&self) -> usize {
-        self.language_config()
-            .and_then(|config| config.indent.as_ref())
-            .map_or(4, |config| config.tab_width) // fallback to 4 columns
+        self.indent_config(4, |config| config.tab_width) // fallback to 4 columns
     }
 
     // The width (in spaces) of a level of indentation.
