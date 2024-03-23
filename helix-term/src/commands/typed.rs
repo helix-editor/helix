@@ -213,6 +213,12 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
             }
             to_open.push(entry.into_path());
         }
+
+        if to_open.is_empty() {
+            open_file(cx, &path, pos)?;
+            continue;
+        }
+
         for path in to_open {
             open_file(cx, &path, pos)?;
         }
