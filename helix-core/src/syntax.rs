@@ -146,7 +146,7 @@ pub struct LanguageConfiguration {
     )]
     pub language_servers: Vec<LanguageServerFeatures>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub indent: Option<IndentationConfiguration>,
+    pub indent: Option<LanguageIndentationConfiguration>,
 
     #[serde(skip)]
     pub(crate) indent_query: OnceCell<Option<Query>>,
@@ -537,12 +537,20 @@ pub struct DebuggerQuirks {
     pub absolute_paths: bool,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, PartialEq, Eq, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct IndentationConfiguration {
     #[serde(deserialize_with = "deserialize_tab_width")]
     pub tab_width: usize,
     pub unit: String,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct LanguageIndentationConfiguration {
+    #[serde(flatten)]
+    pub indent: IndentationConfiguration,
+    #[serde(default)]
+    pub required: bool,
 }
 
 /// How the indentation for a newly inserted line should be determined.

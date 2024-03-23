@@ -863,7 +863,7 @@ roots = ["pyproject.toml", "setup.py", "poetry.lock", "pyrightconfig.json"]
 comment-token = "#"
 language-servers = ["ruff", "jedi", "pylsp"]
 # TODO: pyls needs utf-8 offsets
-indent = { tab-width = 4, unit = "    " }
+indent = { tab-width = 4, unit = "    ", required = true }
 
 [[grammar]]
 name = "python"
@@ -1308,7 +1308,7 @@ name = "yaml"
 scope = "source.yaml"
 file-types = ["yml", "yaml"]
 comment-token = "#"
-indent = { tab-width = 2, unit = "  " }
+indent = { tab-width = 2, unit = "  ", required = true }
 language-servers = [ "yaml-language-server", "ansible-language-server" ]
 injection-regex = "yml|yaml"
 
