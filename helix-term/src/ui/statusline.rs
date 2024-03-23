@@ -327,7 +327,7 @@ fn render_total_line_numbers<'a>(context: &RenderContext) -> Spans<'a> {
 fn render_position_percentage<'a>(context: &RenderContext) -> Spans<'a> {
     let position = get_position(context);
     let maxrows = context.doc.text().len_lines();
-    Span::raw(format!("{}%", (position.row + 1) * 100 / maxrows)).into()
+    Span::raw(format!(" {}% ", (position.row + 1) * 100 / maxrows)).into()
 }
 
 fn render_file_encoding<'a>(context: &RenderContext) -> Spans<'a> {
