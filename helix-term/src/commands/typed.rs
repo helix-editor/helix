@@ -215,6 +215,8 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
         }
 
         if to_open.is_empty() {
+            // Nothing found to open after globbing.
+            // Open a new file.
             open_file(cx, &path, pos)?;
             continue;
         }
