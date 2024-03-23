@@ -98,6 +98,8 @@
 
 "diagnostic.error".underline = { color = "red", style = "curl" }
 "diagnostic".underline = { color = "gold", style = "curl" }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 [palette]
 white = "#ffffff"

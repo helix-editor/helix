@@ -77,7 +77,7 @@ impl Component for SignatureHelp {
         let (_, sig_text_height) = crate::ui::text::required_size(&sig_text, area.width);
         let sig_text_area = area.clip_top(1).with_height(sig_text_height);
         let sig_text_area = sig_text_area.inner(&margin).intersection(surface.area);
-        let sig_text_para = Paragraph::new(sig_text).wrap(Wrap { trim: false });
+        let sig_text_para = Paragraph::new(&sig_text).wrap(Wrap { trim: false });
         sig_text_para.render(sig_text_area, surface);
 
         if self.signature_doc.is_none() {
@@ -100,7 +100,7 @@ impl Component for SignatureHelp {
         let sig_doc_area = area
             .clip_top(sig_text_area.height + 2)
             .clip_bottom(u16::from(cx.editor.popup_border()));
-        let sig_doc_para = Paragraph::new(sig_doc)
+        let sig_doc_para = Paragraph::new(&sig_doc)
             .wrap(Wrap { trim: false })
             .scroll((cx.scroll.unwrap_or_default() as u16, 0));
         sig_doc_para.render(sig_doc_area.inner(&margin), surface);

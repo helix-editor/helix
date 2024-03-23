@@ -12,7 +12,7 @@ homepage.workspace = true
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-ahash = "0.8.3"
+ahash = "0.8.11"
 hashbrown = "0.14.0"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "time", "sync", "parking_lot", "macros"] }
 # the event registry is essentially read only but must be an rwlock so we can

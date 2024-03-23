@@ -314,6 +314,7 @@ These scopes are used for theming the editor interface:
 | `ui.virtual.inlay-hint.parameter` | Style for inlay hints of kind `parameter` (LSPs are not required to set a kind)                |
 | `ui.virtual.inlay-hint.type`      | Style for inlay hints of kind `type` (LSPs are not required to set a kind)                     |
 | `ui.virtual.wrap`                 | Soft-wrap indicator (see the [`editor.soft-wrap` config][editor-section])                      |
+| `ui.virtual.jump-label`           | Style for virtual jump labels                                                                  |
 | `ui.menu`                         | Code and command completion menus                                                              |
 | `ui.menu.selected`                | Selected autocomplete item                                                                     |
 | `ui.menu.scroll`                  | `fg` sets thumb color, `bg` sets track color of scrollbar                                      |
@@ -333,5 +334,7 @@ These scopes are used for theming the editor interface:
 | `diagnostic.info`                 | Diagnostics info (editing area)                                                                |
 | `diagnostic.warning`              | Diagnostics warning (editing area)                                                             |
 | `diagnostic.error`                | Diagnostics error (editing area)                                                               |
+| `diagnostic.unnecessary`          | Diagnostics with unnecessary tag (editing area)                                                |
+| `diagnostic.deprecated`           | Diagnostics with deprecated tag (editing area)                                                 |
 
 [editor-section]: ./configuration.md#editor-section

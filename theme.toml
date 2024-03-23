@@ -52,11 +52,11 @@ label = "honey"
 "ui.popup" = { bg = "revolver" }
 "ui.window" = { fg = "bossanova" }
 "ui.help" = { bg = "#7958DC", fg = "#171452" }
-
 "ui.text" = { fg = "lavender" }
 "ui.text.focus" = { fg = "white" }
 "ui.text.inactive" = "sirocco"
 "ui.virtual" = { fg = "comet" }
+"ui.virtual.jump-label" = { fg = "apricot", modifiers = ["bold"] }
 
 "ui.virtual.indent-guide" = { fg = "comet" }
 
@@ -80,6 +80,8 @@ label = "honey"
 "diagnostic.info" = { underline = { color = "delta", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "lightning", style = "curl" } }
 "diagnostic.error" = { underline = { color = "apricot", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 warning = "lightning"
 error = "apricot"

@@ -19,7 +19,6 @@ use helix_core::{
 use std::{
     collections::{HashMap, VecDeque},
     fmt,
-    rc::Rc,
 };
 
 const JUMP_LIST_CAPACITY: usize = 30;
@@ -409,10 +408,19 @@ impl View {
     }
 
     /// Get the text annotations to display in the current view for the given document and theme.
-    pub fn text_annotations(&self, doc: &Document, theme: Option<&Theme>) -> TextAnnotations {
-        // TODO custom annotations for custom views like side by side diffs
+    pub fn text_annotations<'a>(
+        &self,
+        doc: &'a Document,
+        theme: Option<&Theme>,
+    ) -> TextAnnotations<'a> {
+        let mut text_annotations = TextAnnotations::default();
 
-        let mut text_annotations = doc.text_annotations(theme);
+        if let Some(labels) = doc.jump_labels.get(&self.id) {
+            let style = theme
+                .and_then(|t| t.find_scope_index("ui.virtual.jump-label"))
+                .map(Highlight);
+            text_annotations.add_overlay(labels, style);
+        }
 
         let DocumentInlayHints {
             id: _,
@@ -436,20 +444,15 @@ impl View {
             .and_then(|t| t.find_scope_index("ui.virtual.inlay-hint"))
             .map(Highlight);
 
-        let mut add_annotations = |annotations: &Rc<[_]>, style| {
-            if !annotations.is_empty() {
-                text_annotations.add_inline_annotations(Rc::clone(annotations), style);
-            }
-        };
-
         // Overlapping annotations are ignored apart from the first so the order here is not random:
         // types -> parameters -> others should hopefully be the "correct" order for most use cases,
         // with the padding coming before and after as expected.
-        add_annotations(padding_before_inlay_hints, None);
-        add_annotations(type_inlay_hints, type_style);
-        add_annotations(parameter_inlay_hints, parameter_style);
-        add_annotations(other_inlay_hints, other_style);
-        add_annotations(padding_after_inlay_hints, None);
+        text_annotations
+            .add_inline_annotations(padding_before_inlay_hints, None)
+            .add_inline_annotations(type_inlay_hints, type_style)
+            .add_inline_annotations(parameter_inlay_hints, parameter_style)
+            .add_inline_annotations(other_inlay_hints, other_style)
+            .add_inline_annotations(padding_after_inlay_hints, None);
 
         text_annotations
     }

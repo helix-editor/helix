@@ -360,7 +360,7 @@ impl EditorView {
         doc: &Document,
         theme: &Theme,
     ) -> [Vec<(usize, std::ops::Range<usize>)>; 5] {
-        use helix_core::diagnostic::Severity;
+        use helix_core::diagnostic::{DiagnosticTag, Severity};
         let get_scope_of = |scope| {
             theme
             .find_scope_index_exact(scope)
@@ -380,6 +380,10 @@ impl EditorView {
         let error = get_scope_of("diagnostic.error");
         let r#default = get_scope_of("diagnostic"); // this is a bit redundant but should be fine
 
+        // Diagnostic tags
+        let unnecessary = theme.find_scope_index_exact("diagnostic.unnecessary");
+        let deprecated = theme.find_scope_index_exact("diagnostic.deprecated");
+
         let mut default_vec: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
         let mut info_vec = Vec::new();
         let mut hint_vec = Vec::new();
@@ -395,6 +399,15 @@ impl EditorView {
                 Some(Severity::Error) => (&mut error_vec, error),
                 _ => (&mut default_vec, r#default),
             };
+
+            let scope = diagnostic
+                .tags
+                .first()
+                .and_then(|tag| match tag {
+                    DiagnosticTag::Unnecessary => unnecessary,
+                    DiagnosticTag::Deprecated => deprecated,
+                })
+                .unwrap_or(scope);
 
             // If any diagnostic overlaps ranges with the prior diagnostic,
             // merge the two together. Otherwise push a new span.
@@ -716,7 +729,8 @@ impl EditorView {
             }
         }
 
-        let paragraph = Paragraph::new(lines)
+        let text = Text::from(lines);
+        let paragraph = Paragraph::new(&text)
             .alignment(Alignment::Right)
             .wrap(Wrap { trim: true });
         let width = 100.min(viewport.width);
@@ -902,13 +916,15 @@ impl EditorView {
 
     fn command_mode(&mut self, mode: Mode, cxt: &mut commands::Context, event: KeyEvent) {
         match (event, cxt.editor.count) {
-            // count handling
-            (key!(i @ '0'), Some(_)) | (key!(i @ '1'..='9'), _)
-                if !self.keymaps.contains_key(mode, event) =>
-            {
+            // If the count is already started and the input is a number, always continue the count.
+            (key!(i @ '0'..='9'), Some(count)) => {
                 let i = i.to_digit(10).unwrap() as usize;
-                cxt.editor.count =
-                    std::num::NonZeroUsize::new(cxt.editor.count.map_or(i, |c| c.get() * 10 + i));
+                cxt.editor.count = NonZeroUsize::new(count.get() * 10 + i);
+            }
+            // A non-zero digit will start the count if that number isn't used by a keymap.
+            (key!(i @ '1'..='9'), None) if !self.keymaps.contains_key(mode, event) => {
+                let i = i.to_digit(10).unwrap() as usize;
+                cxt.editor.count = NonZeroUsize::new(i);
             }
             // special handling for repeat operator
             (key!('.'), _) if self.keymaps.pending().is_empty() => {
@@ -1032,13 +1048,33 @@ impl EditorView {
 }
 
 impl EditorView {
+    /// must be called whenever the editor processed input that
+    /// is not a `KeyEvent`. In these cases any pending keys/on next
+    /// key callbacks must be canceled.
+    fn handle_non_key_input(&mut self, cxt: &mut commands::Context) {
+        cxt.editor.status_msg = None;
+        cxt.editor.reset_idle_timer();
+        // HACKS: create a fake key event that will never trigger any actual map
+        // and therefore simply acts as "dismiss"
+        let null_key_event = KeyEvent {
+            code: KeyCode::Null,
+            modifiers: KeyModifiers::empty(),
+        };
+        // dismiss any pending keys
+        if let Some(on_next_key) = self.on_next_key.take() {
+            on_next_key(cxt, null_key_event);
+        }
+        self.handle_keymap_event(cxt.editor.mode, cxt, null_key_event);
+        self.pseudo_pending.clear();
+    }
+
     fn handle_mouse_event(
         &mut self,
         event: &MouseEvent,
         cxt: &mut commands::Context,
     ) -> EventResult {
         if event.kind != MouseEventKind::Moved {
-            cxt.editor.reset_idle_timer();
+            self.handle_non_key_input(cxt)
         }
 
         let config = cxt.editor.config();
@@ -1263,6 +1299,7 @@ impl Component for EditorView {
 
         match event {
             Event::Paste(contents) => {
+                self.handle_non_key_input(&mut cx);
                 cx.count = cx.editor.count;
                 commands::paste_bracketed_value(&mut cx, contents.clone());
                 cx.editor.count = None;
