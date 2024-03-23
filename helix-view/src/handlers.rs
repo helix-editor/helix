@@ -38,4 +38,12 @@ impl Handlers {
         };
         send_blocking(&self.signature_hints, event)
     }
+
+    pub fn next_signature_help(&self) {
+        send_blocking(&self.signature_hints, lsp::SignatureHelpEvent::Next)
+    }
+
+    pub fn previous_signature_help(&self) {
+        send_blocking(&self.signature_hints, lsp::SignatureHelpEvent::Previous)
+    }
 }

@@ -41,7 +41,13 @@ pub enum SignatureHelpEvent {
     Trigger,
     ReTrigger,
     Cancel,
-    RequestComplete { open: bool },
+    RequestComplete {
+        open: bool,
+        signature_count: usize,
+        active_signature: Option<usize>,
+    },
+    Next,
+    Previous,
 }
 
 #[derive(Debug)]

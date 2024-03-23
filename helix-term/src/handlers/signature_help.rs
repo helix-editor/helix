@@ -24,7 +24,7 @@ use crate::{job, ui};
 
 #[derive(Debug)]
 enum State {
-    Open,
+    Open { signature_count: usize },
     Closed,
     Pending { request: CancelTx },
 }
@@ -37,6 +37,7 @@ const TIMEOUT: u64 = 120;
 pub(super) struct SignatureHelpHandler {
     trigger: Option<SignatureHelpInvoked>,
     state: State,
+    active_signature: Option<usize>,
 }
 
 impl SignatureHelpHandler {
@@ -44,7 +45,40 @@ impl SignatureHelpHandler {
         SignatureHelpHandler {
             trigger: None,
             state: State::Closed,
+            active_signature: None,
         }
+    }
+
+    fn next_signature(&mut self) {
+        let State::Open { signature_count } = self.state else {
+            return;
+        };
+
+        let value = self
+            .active_signature
+            .map(|x| if x >= signature_count - 1 { 0 } else { x + 1 })
+            .unwrap_or_default();
+
+        self.active_signature.replace(value);
+    }
+
+    fn previous_signature(&mut self) {
+        let State::Open { signature_count } = self.state else {
+            return;
+        };
+
+        let value = self
+            .active_signature
+            .map(|x| if x == 0 { signature_count - 1 } else { x - 1 })
+            .unwrap_or(signature_count - 1);
+
+        self.active_signature.replace(value);
+    }
+
+    /// set the state to closed and clear active_signature
+    fn close(&mut self) {
+        self.state = State::Closed;
+        self.active_signature = None;
     }
 }
 
@@ -59,7 +93,7 @@ impl helix_event::AsyncHook for SignatureHelpHandler {
         match event {
             SignatureHelpEvent::Invoked => {
                 self.trigger = Some(SignatureHelpInvoked::Manual);
-                self.state = State::Closed;
+                self.close();
                 self.finish_debounce();
                 return None;
             }
@@ -71,19 +105,35 @@ impl helix_event::AsyncHook for SignatureHelpHandler {
                 }
             }
             SignatureHelpEvent::Cancel => {
-                self.state = State::Closed;
+                self.close();
                 return None;
             }
-            SignatureHelpEvent::RequestComplete { open } => {
+            SignatureHelpEvent::RequestComplete {
+                open,
+                signature_count,
+                active_signature,
+            } => {
                 // don't cancel rerequest that was already triggered
                 if let State::Pending { request } = &self.state {
                     if !request.is_closed() {
                         return timeout;
                     }
                 }
-                self.state = if open { State::Open } else { State::Closed };
+                if open {
+                    if self.active_signature.is_none()
+                        || self.active_signature.unwrap() >= signature_count
+                    {
+                        self.active_signature = active_signature;
+                    }
+                    self.state = State::Open { signature_count };
+                } else {
+                    self.close();
+                }
+
                 return timeout;
             }
+            SignatureHelpEvent::Next => self.next_signature(),
+            SignatureHelpEvent::Previous => self.previous_signature(),
         }
         if self.trigger.is_none() {
             self.trigger = Some(SignatureHelpInvoked::Automatic)
@@ -95,7 +145,11 @@ impl helix_event::AsyncHook for SignatureHelpHandler {
         let invocation = self.trigger.take().unwrap();
         let (tx, rx) = cancelation();
         self.state = State::Pending { request: tx };
-        job::dispatch_blocking(move |editor, _| request_signature_help(editor, invocation, rx))
+        let active_signature = self.active_signature;
+
+        job::dispatch_blocking(move |editor, _| {
+            request_signature_help(editor, invocation, rx, active_signature)
+        })
     }
 }
 
@@ -103,6 +157,7 @@ pub fn request_signature_help(
     editor: &mut Editor,
     invoked: SignatureHelpInvoked,
     cancel: CancelRx,
+    signature_index: Option<usize>,
 ) {
     let (view, doc) = current!(editor);
 
@@ -128,7 +183,7 @@ pub fn request_signature_help(
         match cancelable_future(future, cancel).await {
             Some(Ok(res)) => {
                 job::dispatch(move |editor, compositor| {
-                    show_signature_help(editor, compositor, invoked, res)
+                    show_signature_help(editor, compositor, invoked, res, signature_index)
                 })
                 .await
             }
@@ -143,6 +198,7 @@ pub fn show_signature_help(
     compositor: &mut Compositor,
     invoked: SignatureHelpInvoked,
     response: Option<lsp::SignatureHelp>,
+    signature_index: Option<usize>,
 ) {
     let config = &editor.config();
 
@@ -170,7 +226,11 @@ pub fn show_signature_help(
         _ => {
             send_blocking(
                 &editor.handlers.signature_hints,
-                SignatureHelpEvent::RequestComplete { open: false },
+                SignatureHelpEvent::RequestComplete {
+                    open: false,
+                    signature_count: 0,
+                    active_signature: None,
+                },
             );
             compositor.remove(SignatureHelp::ID);
             return;
@@ -178,16 +238,20 @@ pub fn show_signature_help(
     };
     send_blocking(
         &editor.handlers.signature_hints,
-        SignatureHelpEvent::RequestComplete { open: true },
+        SignatureHelpEvent::RequestComplete {
+            open: true,
+            signature_count: response.signatures.len(),
+            active_signature: response.active_signature.map(|x| x as usize),
+        },
     );
 
     let doc = doc!(editor);
     let language = doc.language_name().unwrap_or("");
 
-    let signature = match response
-        .signatures
-        .get(response.active_signature.unwrap_or(0) as usize)
-    {
+    let signature_index =
+        signature_index.unwrap_or_else(|| response.active_signature.unwrap_or_default() as usize);
+
+    let signature = match response.signatures.get(signature_index) {
         Some(s) => s,
         None => return,
     };
@@ -196,6 +260,14 @@ pub fn show_signature_help(
         language.to_string(),
         Arc::clone(&editor.syn_loader),
     );
+
+    if response.signatures.len() > 1 {
+        contents.set_signature_index(format!(
+            "{}/{}",
+            signature_index + 1,
+            response.signatures.len()
+        ));
+    }
 
     let signature_doc = if config.lsp.display_signature_help_docs {
         signature.documentation.as_ref().map(|doc| match doc {
