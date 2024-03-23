@@ -144,8 +144,12 @@ pub fn workspace_config_file() -> PathBuf {
     find_workspace().0.join(".helix").join("config.toml")
 }
 
-pub fn lang_config_file() -> PathBuf {
+pub fn languages_file() -> PathBuf {
     config_dir().join("languages.toml")
+}
+
+pub fn workspace_lang_file() -> PathBuf {
+    find_workspace().0.join(".helix").join("languages.toml")
 }
 
 pub fn default_log_file() -> PathBuf {
