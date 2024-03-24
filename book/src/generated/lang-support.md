@@ -128,6 +128,7 @@
 | ocaml | ✓ |  | ✓ | `ocamllsp` |
 | ocaml-interface | ✓ |  |  | `ocamllsp` |
 | odin | ✓ |  | ✓ | `ols` |
+| ohm | ✓ | ✓ | ✓ |  |
 | opencl | ✓ | ✓ | ✓ | `clangd` |
 | openscad | ✓ |  |  | `openscad-lsp` |
 | org | ✓ |  |  |  |
