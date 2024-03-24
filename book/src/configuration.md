@@ -68,7 +68,7 @@ Its settings will be merged with the configuration directory `config.toml` and t
 | `insert-final-newline` | Whether to automatically insert a trailing line-ending on write if missing | `true` |
 | `popup-border` | Draw border around `popup`, `menu`, `all`, or `none` | `none` |
 | `indent-heuristic` | How the indentation for a newly inserted line is computed: `simple` just copies the indentation level from the previous line, `tree-sitter` computes the indentation based on the syntax tree and `hybrid` combines both approaches. If the chosen heuristic is not available, a different one will be used as a fallback (the fallback order being `hybrid` -> `tree-sitter` -> `simple`). | `hybrid`
-| `jump-label-alphabet` | The characters that are used to generate two character jump labels. Characters at the start of the alphabet are used first. | "abcdefghijklmnopqrstuvwxyz"
+| `jump-label-alphabet` | The characters that are used to generate two character jump labels. Characters at the start of the alphabet are used first. | `"abcdefghijklmnopqrstuvwxyz"`
 
 ### `[editor.statusline]` Section
 
@@ -76,7 +76,7 @@ Allows configuring the statusline at the bottom of the editor.
 
 The configuration distinguishes between three areas of the status line:
 
-`[ ... ... LEFT ... ... | ... ... ... ... CENTER ... ... ... ... | ... ... RIGHT ... ... ]`
+`[ ... ... LEFT ... ... | ... ... ... CENTER ... ... ... | ... ... RIGHT ... ... ]`
 
 Statusline elements can be defined as follows:
 
@@ -179,7 +179,7 @@ All git related options are only enabled in a git repository.
 |`git-ignore` | Enables reading `.gitignore` files | `true`
 |`git-global` | Enables reading global `.gitignore`, whose path is specified in git's config: `core.excludesfile` option | `true`
 |`git-exclude` | Enables reading `.git/info/exclude` files | `true`
-|`max-depth` | Set with an integer value for maximum depth to recurse | Defaults to `None`.
+|`max-depth` | Set with an integer value for maximum depth to recurse | Unset by default
 
 Ignore files can be placed locally as `.ignore` or put in your home directory as `~/.ignore`. They support the usual ignore and negative ignore (unignore) rules used in `.gitignore` files.
 
@@ -225,7 +225,7 @@ Additionally, this setting can be used in a language config. Unless
 the editor setting is `false`, this will override the editor config in
 documents with this language.
 
-Example `languages.toml` that adds <> and removes ''
+Example `languages.toml` that adds `<>` and removes `''`
 
 ```toml
 [[language]]
@@ -255,7 +255,7 @@ Options for rendering whitespace with visible characters. Use `:set whitespace.r
 
 | Key | Description | Default |
 |-----|-------------|---------|
-| `render` | Whether to render whitespace. May either be `"all"` or `"none"`, or a table with sub-keys `space`, `nbsp`, `nnbsp`, `tab`, and `newline` | `"none"` |
+| `render` | Whether to render whitespace. May either be `all` or `none`, or a table with sub-keys `space`, `nbsp`, `nnbsp`, `tab`, and `newline` | `none` |
 | `characters` | Literal characters to use when rendering whitespace. Sub-keys may be any of `tab`, `space`, `nbsp`, `nnbsp`, `newline` or `tabpad` | See example below |
 
 Example
