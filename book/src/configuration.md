@@ -270,7 +270,7 @@ tab = "all"
 newline = "none"
 
 [editor.whitespace.characters]
-space = "·"
+space = "␣"
 nbsp = "⍽"
 tab = "→"
 newline = "⏎"
