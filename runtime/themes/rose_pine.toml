@@ -37,6 +37,7 @@
 "ui.text.focus" = { bg = "overlay" }
 "ui.text.info" = { fg = "subtle" }
 
+"ui.virtual.jump-label" = { fg = "love", modifiers = ["bold"] }
 "ui.virtual.ruler" = { bg = "overlay" }
 "ui.virtual.whitespace" = { fg = "highlight_high" }
 "ui.virtual.indent-guide" = { fg = "muted" }
