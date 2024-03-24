@@ -56,6 +56,57 @@
   (identifier) @label)
 
 ; ---
+; Prelude
+; ---
+
+((identifier) @constant.builtin
+ (#any-of? @constant.builtin "Some" "None" "Ok" "Err"))
+
+
+
+((type_identifier) @type.builtin
+ (#any-of?
+    @type.builtin
+    "Send"
+    "Sized"
+    "Sync"
+    "Unpin"
+    "Drop"
+    "Fn"
+    "FnMut"
+    "FnOnce"
+    "drop"
+    "AsMut"
+    "AsRef"
+    "From"
+    "Into"
+    "DoubleEndedIterator"
+    "ExactSizeIterator"
+    "Extend"
+    "IntoIterator"
+    "Iterator"
+    "Option"
+    "Result"
+    "Clone"
+    "Copy"
+    "Debug"
+    "Default"
+    "Eq"
+    "Hash"
+    "Ord"
+    "Ord"
+    "PartialEq"
+    "PartialOrd"
+    "ToOwned"
+    "Box"
+    "String"
+    "ToString"
+    "Vec"
+    "FromIterator"
+    "TryFrom"
+    "TryInto"))
+
+; ---
 ; Punctuation
 ; ---
 
