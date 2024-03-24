@@ -66,22 +66,25 @@ impl Item for FileChange {
     type Data = FileChangeData;
 
     fn format(&self, data: &Self::Data) -> Row {
-        let (sign, style) = match self {
-            Self::Untracked { .. } => ("[+]", data.style_untracked),
-            Self::Modified { .. } => ("[~]", data.style_modified),
-            Self::Deleted { .. } => ("[-]", data.style_deleted),
-            Self::Renamed { .. } => ("[>]", data.style_modified),
-        };
-        let path = self.path();
-
-        Row::new(vec![
-            sign.to_owned(),
+        let process_path = |path: &PathBuf| {
             path.strip_prefix(&data.cwd)
                 .unwrap_or(path)
-                .to_string_lossy()
-                .to_string(),
-        ])
-        .style(style)
+                .display()
+                .to_string()
+        };
+
+        let (sign, style, content) = match self {
+            Self::Untracked { path } => ("[+]", data.style_untracked, process_path(path)),
+            Self::Modified { path } => ("[~]", data.style_modified, process_path(path)),
+            Self::Deleted { path } => ("[-]", data.style_deleted, process_path(path)),
+            Self::Renamed { from_path, to_path } => (
+                "[>]",
+                data.style_modified,
+                format!("{} -> {}", process_path(from_path), process_path(to_path)),
+            ),
+        };
+
+        Row::new(vec![sign.to_owned(), content]).style(style)
     }
 }
 

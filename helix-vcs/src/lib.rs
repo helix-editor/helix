@@ -1,7 +1,6 @@
+use anyhow::{bail, Result};
 use arc_swap::ArcSwap;
 use std::{path::Path, sync::Arc};
-
-use anyhow::{bail, Result};
 
 #[cfg(feature = "git")]
 pub use git::Git;
