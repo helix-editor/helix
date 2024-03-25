@@ -28,8 +28,13 @@ There are three possible locations for a `languages.toml` file:
 
 3. In a `.helix` folder in your project. Language configuration may also be
    overridden local to a project by creating a `languages.toml` file in a
-   `.helix` folder. Its settings will be merged with the language configuration
-   in the configuration directory and the built-in configuration.
+   `.helix` folder and adding `workspace-config = true` to the top of your
+   configuration directory `languages.toml`. Its settings will be merged with
+   the language configuration in the configuration directory and the built-in
+   configuration. Enabling workspace configs is a potential security risk.
+   A project from an untrusted sources may e.g. contain a
+   `.helix/languages.toml` that modifies a language server command to execute
+   malicious code on your machine.
 
 ## Language configuration
 
