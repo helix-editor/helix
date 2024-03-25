@@ -23,10 +23,12 @@ pub trait DiffProvider {
 
     fn get_current_head_name(&self, file: &Path) -> Result<Arc<ArcSwap<Box<str>>>>;
 
-    fn get_changed_files(&self, cwd: &Path) -> Result<Vec<FileChange>>;
+    fn get_changed_files(&self, cwd: &Path)
+        -> Result<Box<dyn Iterator<Item = Result<FileChange>>>>;
 }
 
 #[doc(hidden)]
+#[derive(Clone, Copy)]
 pub struct Dummy;
 impl DiffProvider for Dummy {
     fn get_diff_base(&self, _file: &Path) -> Result<Vec<u8>> {
@@ -37,13 +39,23 @@ impl DiffProvider for Dummy {
         bail!("helix was compiled without git support")
     }
 
-    fn get_changed_files(&self, _cwd: &Path) -> Result<Vec<FileChange>> {
+    fn get_changed_files(
+        &self,
+        _cwd: &Path,
+    ) -> Result<Box<dyn Iterator<Item = Result<FileChange>>>> {
         anyhow::bail!("dummy diff provider")
     }
 }
 
+impl From<Dummy> for DiffProviderImpls {
+    fn from(value: Dummy) -> Self {
+        DiffProviderImpls::Dummy(value)
+    }
+}
+
+#[derive(Clone)]
 pub struct DiffProviderRegistry {
-    providers: Vec<Box<dyn DiffProvider>>,
+    providers: Vec<DiffProviderImpls>,
 }
 
 impl DiffProviderRegistry {
@@ -73,7 +85,10 @@ impl DiffProviderRegistry {
             })
     }
 
-    pub fn get_changed_files(&self, cwd: &Path) -> Result<Vec<FileChange>> {
+    pub fn get_changed_files(
+        &self,
+        cwd: &Path,
+    ) -> Result<Box<dyn Iterator<Item = Result<FileChange>>>> {
         self.providers
             .iter()
             .find_map(|provider| provider.get_changed_files(cwd).ok())
@@ -85,8 +100,45 @@ impl Default for DiffProviderRegistry {
     fn default() -> Self {
         // currently only git is supported
         // TODO make this configurable when more providers are added
-        let git: Box<dyn DiffProvider> = Box::new(Git);
-        let providers = vec![git];
+        let providers = vec![Git.into()];
         DiffProviderRegistry { providers }
+    }
+}
+
+/// A union type that includes all types that implement [DiffProvider]. We need this type to allow
+/// cloning [DiffProviderRegistry] as `Clone` cannot be used in trait objects (or use `dyn-clone`?).
+#[derive(Clone)]
+pub enum DiffProviderImpls {
+    Dummy(Dummy),
+    #[cfg(feature = "git")]
+    Git(Git),
+}
+
+impl DiffProvider for DiffProviderImpls {
+    fn get_diff_base(&self, file: &Path) -> Result<Vec<u8>> {
+        match self {
+            Self::Dummy(inner) => inner.get_diff_base(file),
+            #[cfg(feature = "git")]
+            Self::Git(inner) => inner.get_diff_base(file),
+        }
+    }
+
+    fn get_current_head_name(&self, file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
+        match self {
+            Self::Dummy(inner) => inner.get_current_head_name(file),
+            #[cfg(feature = "git")]
+            Self::Git(inner) => inner.get_current_head_name(file),
+        }
+    }
+
+    fn get_changed_files(
+        &self,
+        cwd: &Path,
+    ) -> Result<Box<dyn Iterator<Item = Result<FileChange>>>> {
+        match self {
+            Self::Dummy(inner) => inner.get_changed_files(cwd),
+            #[cfg(feature = "git")]
+            Self::Git(inner) => inner.get_changed_files(cwd),
+        }
     }
 }

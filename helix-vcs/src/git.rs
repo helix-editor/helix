@@ -2,7 +2,7 @@ use anyhow::{bail, Context, Result};
 use arc_swap::ArcSwap;
 use gix::filter::plumbing::driver::apply::Delay;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use gix::bstr::ByteSlice;
@@ -15,12 +15,19 @@ use gix::status::{
 };
 use gix::{Commit, ObjectId, Repository, ThreadSafeRepository};
 
-use crate::{DiffProvider, FileChange};
+use crate::{DiffProvider, DiffProviderImpls, FileChange};
 
 #[cfg(test)]
 mod test;
 
+#[derive(Clone, Copy)]
 pub struct Git;
+
+/// An adapter around the status iter from `gix` that outputs [FileChange].
+pub struct StatusIter {
+    work_dir: PathBuf,
+    inner: gix::status::index_worktree::Iter,
+}
 
 impl Git {
     fn open_repo(path: &Path, ceiling_dir: Option<&Path>) -> Result<ThreadSafeRepository> {
@@ -69,10 +76,11 @@ impl Git {
     }
 
     /// Emulates the result of running `git status` from the command line.
-    fn status(repo: &Repository) -> Result<Vec<FileChange>> {
+    fn status(repo: &Repository) -> Result<Box<dyn Iterator<Item = Result<FileChange>>>> {
         let work_dir = repo
             .work_dir()
-            .ok_or_else(|| anyhow::anyhow!("working tree not found"))?;
+            .ok_or_else(|| anyhow::anyhow!("working tree not found"))?
+            .to_path_buf();
 
         // Here we discard the `status.showUntrackedFiles` config, as it makes little sense in our
         // case to not list new (untracked) files. We could have respected this config if the
@@ -83,49 +91,10 @@ impl Git {
             .untracked_files(UntrackedFiles::Files)
             .index_worktree_rewrites(Some(Default::default()));
 
-        Ok(status_platform
-            .into_index_worktree_iter(Default::default())?
-            .map(|item| {
-                let item = item?;
-
-                Result::<Option<FileChange>, _>::Ok(match item {
-                    Item::Modification {
-                        rela_path, status, ..
-                    } => {
-                        let full_path = work_dir.join(rela_path.to_path()?);
-
-                        match status {
-                            EntryStatus::Conflict(_) => {
-                                // We treat conflict as change for now for simplicity
-                                Some(FileChange::Modified { path: full_path })
-                            }
-                            EntryStatus::Change(change) => match change {
-                                Change::Removed => Some(FileChange::Deleted { path: full_path }),
-                                Change::Modification { .. } => {
-                                    Some(FileChange::Modified { path: full_path })
-                                }
-                                Change::Type | Change::SubmoduleModification(_) => None,
-                            },
-                            EntryStatus::NeedsUpdate(_) | EntryStatus::IntentToAdd => None,
-                        }
-                    }
-                    Item::DirectoryContents { entry, .. } => Some(FileChange::Untracked {
-                        path: work_dir.join(entry.rela_path.to_path()?),
-                    }),
-                    Item::Rewrite {
-                        source,
-                        dirwalk_entry,
-                        ..
-                    } => Some(FileChange::Renamed {
-                        from_path: work_dir.join(source.rela_path().to_path()?),
-                        to_path: work_dir.join(dirwalk_entry.rela_path.to_path()?),
-                    }),
-                })
-            })
-            .collect::<Result<Vec<Option<FileChange>>>>()?
-            .into_iter()
-            .flatten()
-            .collect::<Vec<_>>())
+        Ok(Box::new(StatusIter {
+            work_dir,
+            inner: status_platform.into_index_worktree_iter(Default::default())?,
+        }))
     }
 }
 
@@ -179,8 +148,67 @@ impl DiffProvider for Git {
         Ok(Arc::new(ArcSwap::from_pointee(name.into_boxed_str())))
     }
 
-    fn get_changed_files(&self, cwd: &Path) -> Result<Vec<FileChange>> {
+    fn get_changed_files(
+        &self,
+        cwd: &Path,
+    ) -> Result<Box<dyn Iterator<Item = Result<FileChange>>>> {
         Self::status(&Self::open_repo(cwd, None)?.to_thread_local())
+    }
+}
+
+impl From<Git> for DiffProviderImpls {
+    fn from(value: Git) -> Self {
+        DiffProviderImpls::Git(value)
+    }
+}
+
+impl std::iter::Iterator for StatusIter {
+    type Item = Result<FileChange>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let mapper = |item: std::result::Result<Item, _>| {
+            Result::<Option<FileChange>>::Ok(match item? {
+                Item::Modification {
+                    rela_path, status, ..
+                } => {
+                    let full_path = self.work_dir.join(rela_path.to_path()?);
+
+                    match status {
+                        EntryStatus::Conflict(_) => {
+                            // We treat conflict as change for now for simplicity
+                            Some(FileChange::Modified { path: full_path })
+                        }
+                        EntryStatus::Change(change) => match change {
+                            Change::Removed => Some(FileChange::Deleted { path: full_path }),
+                            Change::Modification { .. } => {
+                                Some(FileChange::Modified { path: full_path })
+                            }
+                            // No submodule support for now
+                            Change::Type | Change::SubmoduleModification(_) => None,
+                        },
+                        EntryStatus::NeedsUpdate(_) | EntryStatus::IntentToAdd => None,
+                    }
+                }
+                Item::DirectoryContents { entry, .. } => Some(FileChange::Untracked {
+                    path: self.work_dir.join(entry.rela_path.to_path()?),
+                }),
+                Item::Rewrite {
+                    source,
+                    dirwalk_entry,
+                    ..
+                } => Some(FileChange::Renamed {
+                    from_path: self.work_dir.join(source.rela_path().to_path()?),
+                    to_path: self.work_dir.join(dirwalk_entry.rela_path.to_path()?),
+                }),
+            })
+        };
+
+        self.inner.by_ref().map(mapper).find_map(|item| match item {
+            Ok(Some(item)) => Some(Ok(item)),
+            Err(err) => Some(Err(err)),
+            // Our mapper returns `None` for gix items that we're not interested in
+            Ok(None) => None,
+        })
     }
 }
 

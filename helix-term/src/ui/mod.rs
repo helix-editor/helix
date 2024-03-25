@@ -19,8 +19,9 @@ use crate::job::{self, Callback};
 pub use completion::{Completion, CompletionItem};
 pub use editor::EditorView;
 use helix_stdx::rope;
+use helix_vcs::FileChange;
 pub use markdown::Markdown;
-pub use menu::Menu;
+pub use menu::{FileChangeData, Menu};
 pub use picker::{DynamicPicker, FileLocation, Picker};
 pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};
@@ -252,6 +253,54 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> Picker
             }
         });
     }
+    picker
+}
+
+pub fn changed_file_picker(editor: &helix_view::Editor) -> Picker<FileChange> {
+    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("./"));
+
+    let added = editor.theme.get("diff.plus");
+    let deleted = editor.theme.get("diff.minus");
+    let modified = editor.theme.get("diff.delta");
+
+    let picker = Picker::new(
+        Vec::new(),
+        menu::FileChangeData {
+            cwd: cwd.clone(),
+            style_untracked: added,
+            style_modified: modified,
+            style_deleted: deleted,
+            style_renamed: modified,
+        },
+        |cx, meta: &FileChange, action| {
+            let path_to_open = meta.path();
+            if let Err(e) = cx.editor.open(path_to_open, action) {
+                let err = if let Some(err) = e.source() {
+                    format!("{}", err)
+                } else {
+                    format!("unable to open \"{}\"", path_to_open.display())
+                };
+                cx.editor.set_error(err);
+            }
+        },
+    )
+    .with_preview(|_editor, meta| Some((meta.path().to_path_buf().into(), None)));
+    let injector = picker.injector();
+
+    let diff_providers = editor.diff_providers.clone();
+
+    std::thread::spawn(move || {
+        // There's no way we can notify the editor since we're in a background thread. This just
+        // silently fails.
+        if let Ok(change_iter) = diff_providers.get_changed_files(&cwd) {
+            // We ignore errors as they could be caused by permission issues etc
+            for change in change_iter.flatten() {
+                if injector.push(change).is_err() {
+                    break;
+                }
+            }
+        }
+    });
     picker
 }
 
