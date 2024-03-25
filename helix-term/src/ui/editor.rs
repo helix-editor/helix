@@ -1002,8 +1002,10 @@ impl EditorView {
         items: Vec<CompletionItem>,
         trigger_offset: usize,
         size: Rect,
+        is_incomplete: bool,
     ) -> Option<Rect> {
-        let mut completion = Completion::new(editor, savepoint, items, trigger_offset);
+        let mut completion =
+            Completion::new(editor, savepoint, items, trigger_offset, is_incomplete);
 
         if completion.is_empty() {
             // skip if we got no completion results

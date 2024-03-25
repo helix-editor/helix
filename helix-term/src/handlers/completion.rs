@@ -239,38 +239,46 @@ fn request_completion(
             async move {
                 let json = completion_response.await?;
                 let response: Option<lsp::CompletionResponse> = serde_json::from_value(json)?;
-                let items = match response {
-                    Some(lsp::CompletionResponse::Array(items)) => items,
+                let (is_incomplete, items) = match response {
+                    Some(lsp::CompletionResponse::Array(items)) => (false, items),
                     // TODO: do something with is_incomplete
                     Some(lsp::CompletionResponse::List(lsp::CompletionList {
-                        is_incomplete: _is_incomplete,
+                        is_incomplete,
                         items,
-                    })) => items,
-                    None => Vec::new(),
-                }
-                .into_iter()
-                .map(|item| CompletionItem {
-                    item,
-                    language_server_id,
-                    resolved: false,
-                })
-                .collect();
-                anyhow::Ok(items)
+                    })) => (is_incomplete, items),
+                    None => (false, Vec::new()),
+                };
+
+                let items = items
+                    .into_iter()
+                    .map(|item| CompletionItem {
+                        item,
+                        language_server_id,
+                        resolved: false,
+                    })
+                    .collect();
+
+                anyhow::Ok((is_incomplete, items))
             }
         })
         .collect();
 
     let future = async move {
         let mut items = Vec::new();
-        while let Some(lsp_items) = futures.next().await {
-            match lsp_items {
-                Ok(mut lsp_items) => items.append(&mut lsp_items),
+        let mut is_incomplete_mut = false;
+
+        while let Some(lsp_comp_response) = futures.next().await {
+            match lsp_comp_response {
+                Ok((is_incomplete, mut lsp_items)) => {
+                    items.append(&mut lsp_items);
+                    is_incomplete_mut = is_incomplete;
+                }
                 Err(err) => {
                     log::debug!("completion request failed: {err:?}");
                 }
             };
         }
-        items
+        (is_incomplete_mut, items)
     };
 
     let savepoint = doc.savepoint(view);
@@ -278,12 +286,12 @@ fn request_completion(
     let ui = compositor.find::<ui::EditorView>().unwrap();
     ui.last_insert.1.push(InsertEvent::RequestCompletion);
     tokio::spawn(async move {
-        let items = cancelable_future(future, cancel).await.unwrap_or_default();
+        let (is_incomplete, items) = cancelable_future(future, cancel).await.unwrap_or_default();
         if items.is_empty() {
             return;
         }
         dispatch(move |editor, compositor| {
-            show_completion(editor, compositor, items, trigger, savepoint)
+            show_completion(editor, compositor, items, trigger, savepoint, is_incomplete)
         })
         .await
     });
@@ -295,6 +303,7 @@ fn show_completion(
     items: Vec<CompletionItem>,
     trigger: Trigger,
     savepoint: Arc<SavePoint>,
+    is_incomplete: bool,
 ) {
     let (view, doc) = current_ref!(editor);
     // check if the completion request is stale.
@@ -312,7 +321,8 @@ fn show_completion(
         return;
     }
 
-    let completion_area = ui.set_completion(editor, savepoint, items, trigger.pos, size);
+    let completion_area =
+        ui.set_completion(editor, savepoint, items, trigger.pos, size, is_incomplete);
     let signature_help_area = compositor
         .find_id::<Popup<SignatureHelp>>(SignatureHelp::ID)
         .map(|signature_help| signature_help.area(size, editor));
@@ -381,7 +391,7 @@ fn update_completions(cx: &mut commands::Context, c: Option<char>) {
         let editor_view = compositor.find::<ui::EditorView>().unwrap();
         if let Some(completion) = &mut editor_view.completion {
             completion.update_filter(c);
-            if completion.is_empty() {
+            if completion.is_empty() || completion.is_incomplete() {
                 editor_view.clear_completion(cx.editor);
                 // clearing completions might mean we want to immediately rerequest them (usually
                 // this occurs if typing a trigger char)
