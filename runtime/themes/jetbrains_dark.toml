@@ -37,6 +37,8 @@ tag = "red213"
 "ui.statusline.select" = { fg = "blue48", bg = "red194", modifiers = ["bold"] }
 "ui.popup" = { bg = "blue48" }
 "ui.text.focus" = "blue247"
+"ui.virtual" = "blue122"
+"ui.virtual.ruler" = { bg = "blue64" }
 "ui.virtual.whitespace" = "blue122"
 "ui.virtual.indent-guide" = "blue56"
 "ui.virtual.inlay-hint" = { fg = "blue145", bg = "blue50" }
