@@ -21,6 +21,8 @@ Features:
 - Toggle block comments (#4718, #9894)
 - Support LSP diagnostic tags (#9780)
 - Add a `file-absolute-path` statusline element (#4535)
+- Cross injection layers in tree-sitter motions (`A-p`/`A-o`/`A-i`/`A-n`) (#5176)
+- Add a Amp-editor-like jumping command (#8875)
 
 Commands:
 
@@ -55,6 +57,8 @@ Usability improvements:
 - Respect undercurl config when terminfo is not available (#9897)
 - Ignore `.pijul`, `.hg`, `.jj` in addition to `.git` in file pickers configured to show hidden files (#9935)
 - Add completion for registers to `:clear-register` and `:yank-diagnostic` (#9936)
+- Repeat last motion for goto next/prev diagnostic (#9966)
+- Allow configuring a character to use when rendering narrow no-breaking space (#9604)
 
 Fixes:
 
@@ -118,6 +122,14 @@ Themes:
 - Add `curzon` (#9553)
 - Add `monokai_soda` (#9651)
 - Update catppuccin themes (#9859)
+- Update `rasmus` (#9939)
+- Update `dark_plus` (#9949, 628dcd5)
+- Update gruvbox themes (#9960)
+- Add jump label theming to `dracula` (#9973)
+- Add jump label theming to `horizon-dark` (#9984)
+- Add jump label theming to catppuccin themes (2178adf, #9983)
+- Add jump label theming to `onedark` themes (da2dec1)
+- Add jump label theming to rose-pine themes (#9981)
 
 New languages:
 
@@ -150,6 +162,7 @@ New languages:
 - Ada (#9908)
 - Helm charts (#9900)
 - Ember.js templates (#9902)
+- Ohm (#9991)
 
 Updated languages and queries:
 
@@ -168,7 +181,7 @@ Updated languages and queries:
 - Update tree-sitter-rescript (#8962)
 - Update tree-sitter-python (#8976)
 - Recognize `.envrc.local` and `.envrc.private` as env (#8988)
-- Update tree-sitter-gleam (#9003)
+- Update tree-sitter-gleam (#9003, 9ceeea5)
 - Update tree-sitter-d (#9021)
 - Fix R-markdown language name for LSP detection (#9012)
 - Add haskell-language-server LSP configuration (#9111)
@@ -194,7 +207,7 @@ Updated languages and queries:
 - Add `fish_indent` as formatter for fish (78ed3ad)
 - Recognize `zon` as Zig (#9582)
 - Add a formatter for Odin (#9537)
-- Update tree-sitter-erlang (#9627)
+- Update tree-sitter-erlang (#9627, fdcd461)
 - Capture Rust fields as argument textobjects (#9637)
 - Improve Dart textobjects (#9644)
 - Recognize `tmux.conf` as a bash file-type (#9653)
@@ -215,6 +228,11 @@ Updated languages and queries:
 - Fix "braket" typeo in JSX highlights (#9910)
 - Update tree-sitter-hurl (#9775)
 - Add textobjects queries for Vala (#8541)
+- Update tree-sitter-git-config (9610254)
+- Recognize 'mmd' as Mermaid (459eb9a)
+- Highlight Rust extern crate aliases (c099dde)
+- Improve parameter highlighting in C++ (f5d95de)
+- Recognize 'rclone.conf' as INI (#9959)
 
 Packaging:
 
