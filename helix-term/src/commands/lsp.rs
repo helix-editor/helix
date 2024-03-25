@@ -35,7 +35,7 @@ use crate::{
 
 use std::{
     cmp::Ordering,
-    collections::{BTreeMap, HashSet},
+    collections::{BTreeMap, HashMap, HashSet},
     fmt::Write,
     future::Future,
     path::{Path, PathBuf},
@@ -1311,6 +1311,36 @@ fn compute_inlay_hints_for_view(
                 }
             }
 
+            let vimmise_inlays = |hints: &mut Vec<InlineAnnotation>, prefix| {
+                hints.iter_mut().map(|it| {
+                    it.char_idx = helix_core::line_ending::line_end_char_index(&doc_text.slice(..), doc_text.char_to_line(it.char_idx));
+                    (it.char_idx, it)
+                }).fold(HashMap::<usize, Vec<&mut InlineAnnotation>>::new(), |mut map, (id, annot)| {
+                    match map.get_mut(&id) {
+                        Some(v) => v.push(annot),
+                        None => {map.insert(id, vec![annot]);}
+                    };
+                    map
+                }).into_iter().for_each(|(_, mut v)| {
+                    v[0].text.insert_str(0, prefix);
+                    v.iter_mut().for_each(|s| s.text.push_str(","));
+                    let last = v.last_mut().unwrap();
+                    last.text.truncate(last.text.len() - 1);
+                });
+            };
+
+            {
+                let cfg = doc.config.load();
+                let vim_cfg = &cfg.lsp.vim_inlay_hints;
+                if vim_cfg.enable {
+                    vimmise_inlays(&mut type_inlay_hints, vim_cfg.type_inlay_prefix.as_str());
+                    vimmise_inlays(&mut parameter_inlay_hints, vim_cfg.parameter_inlay_prefix.as_str());
+                    vimmise_inlays(&mut other_inlay_hints, vim_cfg.other_inlay_prefix.as_str());
+                    padding_after_inlay_hints = vec![];
+                    padding_before_inlay_hints = vec![];
+                }
+            }
+
             doc.set_inlay_hints(
                 view_id,
                 DocumentInlayHints {
@@ -1322,6 +1352,7 @@ fn compute_inlay_hints_for_view(
                     padding_after_inlay_hints,
                 },
             );
+
             doc.inlay_hints_oudated = false;
         },
     );
