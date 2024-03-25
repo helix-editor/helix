@@ -326,6 +326,61 @@ fn buffer_previous(
     Ok(())
 }
 
+fn buffer_first(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    match cx.editor.documents.keys().nth(0) {
+        Some(doc_id) => cx.editor.switch(*doc_id, Action::Replace),
+        None => bail!("The first buffer not found"),
+    }
+    Ok(())
+}
+
+fn buffer_last(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    match cx.editor.documents.keys().last() {
+        Some(doc_id) => cx.editor.switch(*doc_id, Action::Replace),
+        None => bail!("The last buffer not found"),
+    }
+    Ok(())
+}
+fn buffer_index(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    if args.is_empty() {
+        bail!("At least one index must be provided");
+    } else if args.len() > 1 {
+        bail!("Only one index must be provided");
+    }
+    let mut index = args[0].parse::<usize>()?;
+    if index == 0 {
+        bail!("The index must be greater than 0");
+    }
+
+    let mut document_keys = cx.editor.documents.keys();
+    if index > document_keys.len() {
+        index = document_keys.len()
+    }
+    let doc_id = document_keys.nth(index - 1).unwrap();
+    cx.editor.switch(*doc_id, Action::Replace);
+    Ok(())
+}
 fn write_impl(
     cx: &mut compositor::Context,
     path: Option<&Cow<str>>,
@@ -2530,6 +2585,27 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["bp", "bprev"],
         doc: "Goto previous buffer.",
         fun: buffer_previous,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "buffer-index",
+        aliases: &["bi"],
+        doc: "Goto buffer by number <n>.",
+        fun: buffer_index,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "buffer-first",
+        aliases: &["bf"],
+        doc: "Goto first buffer.",
+        fun: buffer_first,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "buffer-last",
+        aliases: &["bl"],
+        doc: "Goto last buffer.",
+        fun: buffer_last,
         signature: CommandSignature::none(),
     },
     TypableCommand {
