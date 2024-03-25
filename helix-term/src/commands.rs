@@ -37,7 +37,7 @@ use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
     editor::Action,
     info::Info,
-    input::KeyEvent,
+    input::{Event,  KeyEvent, KeyModifiers},
     keyboard::KeyCode,
     tree,
     view::View,
@@ -477,6 +477,8 @@ impl MappableCommand {
         goto_prev_test, "Goto previous test",
         goto_next_paragraph, "Goto next paragraph",
         goto_prev_paragraph, "Goto previous paragraph",
+        goto_next_in_last_picker, "Goto next in last picker",
+        goto_prev_in_last_picker, "Goto previous in last picker",
         dap_launch, "Launch debug target",
         dap_restart, "Restart debugging session",
         dap_toggle_breakpoint, "Toggle breakpoint",
@@ -3494,6 +3496,28 @@ fn goto_prev_diag(cx: &mut Context) {
         doc.set_selection(view.id, selection);
     };
     cx.editor.apply_motion(motion)
+}
+
+fn goto_next_in_last_picker(cx: &mut Context) {
+    cx.callback = Some(Box::new(|compositor, cx| {
+        if let Some(picker) = &mut compositor.last_picker {
+            picker.handle_event( &Event::Key(KeyEvent { code: KeyCode::Down, modifiers: KeyModifiers::NONE }), cx);
+            picker.handle_event( &Event::Key(KeyEvent { code: KeyCode::Enter, modifiers: KeyModifiers::NONE }), cx);
+        } else {
+            cx.editor.set_error("no last picker")
+        }
+    }));
+}
+
+fn goto_prev_in_last_picker(cx: &mut Context) {
+    cx.callback = Some(Box::new(|compositor, cx| {
+        if let Some(picker) = &mut compositor.last_picker {
+            picker.handle_event( &Event::Key(KeyEvent { code: KeyCode::Up, modifiers: KeyModifiers::NONE }), cx);
+            picker.handle_event( &Event::Key(KeyEvent { code: KeyCode::Enter, modifiers: KeyModifiers::NONE }), cx);
+        } else {
+            cx.editor.set_error("no last picker")
+        }
+    }));
 }
 
 fn goto_first_change(cx: &mut Context) {
