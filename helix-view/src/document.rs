@@ -1,7 +1,7 @@
 use anyhow::{anyhow, bail, Context, Error};
 use arc_swap::access::DynAccess;
 use arc_swap::ArcSwap;
-use futures_util::future::BoxFuture;
+use futures_util::future::{self, BoxFuture};
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
 use helix_core::chars::char_is_word;
@@ -871,6 +871,31 @@ impl Document {
         // We encode the file according to the `Document`'s encoding.
         let future = async move {
             use tokio::{fs, fs::File};
+
+            if let Some(identifier) = &identifier {
+                for language_server in language_servers.values() {
+                    let mut notifications = Vec::new();
+
+                    if language_server.is_initialized() {
+                        let Some(notification) =
+                            language_server.text_document_will_save(identifier.clone())
+                        else {
+                            continue
+                        };
+
+                        notifications.push(async move {
+                            if let Err(err) = notification.await {
+                                log::error!(
+                                    "failed to send textDocument/willSave notification: {err:?}"
+                                );
+                            }
+                        });
+                    }
+
+                    future::join_all(notifications).await;
+                }
+            };
+
             if let Some(parent) = path.parent() {
                 // TODO: display a prompt asking the user if the directories should be created
                 if !parent.exists() {
@@ -903,17 +928,27 @@ impl Document {
                 text: text.clone(),
             };
 
-            for (_, language_server) in language_servers {
-                if !language_server.is_initialized() {
-                    return Ok(event);
-                }
-                if let Some(identifier) = &identifier {
-                    if let Some(notification) =
-                        language_server.text_document_did_save(identifier.clone(), &text)
-                    {
-                        notification.await?;
+            if let Some(identifier) = &identifier {
+                let mut notifications = Vec::new();
+                for language_server in language_servers.values() {
+                    if language_server.is_initialized() {
+                        let Some(notification) =
+                            language_server.text_document_did_save(identifier.clone(), &text)
+                        else {
+                            continue
+                        };
+
+                        notifications.push(async move {
+                            if let Err(err) = notification.await {
+                                log::error!(
+                                    "failed to send textDocument/didSave notification: {err:?}"
+                                );
+                            }
+                        });
                     }
                 }
+
+                future::join_all(notifications).await;
             }
 
             Ok(event)
