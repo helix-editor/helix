@@ -1013,7 +1013,7 @@ pub fn hover(cx: &mut Context) {
 
             // attach lsp name if more than one is available
             if lsp_count > 1 {
-                contents = format!("# {}:\n\n{}", lsp_name, contents);
+                contents = format!("# [**LSP**] {}:\n\n{}", lsp_name, contents);
             }
 
             contents
