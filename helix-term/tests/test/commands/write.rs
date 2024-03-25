@@ -539,7 +539,7 @@ async fn test_write_all_insert_final_newline_do_not_add_if_unmodified() -> anyho
 async fn edit_file_with_content(file_content: &[u8]) -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
 
-    file.as_file_mut().write_all(&file_content)?;
+    file.as_file_mut().write_all(file_content)?;
 
     helpers::test_key_sequence(
         &mut helpers::AppBuilder::new()
