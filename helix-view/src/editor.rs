@@ -238,8 +238,8 @@ impl From<lsp::CompletionItemKind> for CompletionItemKindWrapper {
     }
 }
 
-impl ToString for CompletionItemKindWrapper {
-    fn to_string(&self) -> String {
+impl CompletionItemKindWrapper {
+    pub fn name(&self) -> &str {
         match self.0 {
             CompletionItemKind::TEXT => "text",
             CompletionItemKind::METHOD => "method",
@@ -268,7 +268,6 @@ impl ToString for CompletionItemKindWrapper {
             CompletionItemKind::TYPE_PARAMETER => "type_parameter",
             _ => "invalid", // invalid, but should never get one.
         }
-        .into()
     }
 }
 
@@ -277,8 +276,8 @@ impl Serialize for CompletionItemKindWrapper {
     where
         S: Serializer,
     {
-        let name = self.to_string();
-        serializer.serialize_str(&name)
+        let name = self.name();
+        serializer.serialize_str(name)
     }
 }
 
@@ -297,34 +296,7 @@ impl<'de> Deserialize<'de> for CompletionItemKindWrapper {
 
 impl std::hash::Hash for CompletionItemKindWrapper {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-        state.write_i32(match self.0 {
-            CompletionItemKind::TEXT => 1,
-            CompletionItemKind::METHOD => 2,
-            CompletionItemKind::FUNCTION => 3,
-            CompletionItemKind::CONSTRUCTOR => 4,
-            CompletionItemKind::FIELD => 5,
-            CompletionItemKind::VARIABLE => 6,
-            CompletionItemKind::CLASS => 7,
-            CompletionItemKind::INTERFACE => 8,
-            CompletionItemKind::MODULE => 9,
-            CompletionItemKind::PROPERTY => 10,
-            CompletionItemKind::UNIT => 11,
-            CompletionItemKind::VALUE => 12,
-            CompletionItemKind::ENUM => 13,
-            CompletionItemKind::KEYWORD => 14,
-            CompletionItemKind::SNIPPET => 15,
-            CompletionItemKind::COLOR => 16,
-            CompletionItemKind::FILE => 17,
-            CompletionItemKind::REFERENCE => 18,
-            CompletionItemKind::FOLDER => 19,
-            CompletionItemKind::ENUM_MEMBER => 20,
-            CompletionItemKind::CONSTANT => 21,
-            CompletionItemKind::STRUCT => 22,
-            CompletionItemKind::EVENT => 23,
-            CompletionItemKind::OPERATOR => 24,
-            CompletionItemKind::TYPE_PARAMETER => 25,
-            _ => 0xFFFF, // invalid, but should never get one.
-        })
+        state.write(self.name().as_bytes())
     }
 }
 

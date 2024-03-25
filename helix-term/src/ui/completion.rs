@@ -36,8 +36,8 @@ impl RenderContext {
         let mut completion_item_kinds = HashMap::new();
         let mut insert_item_kind = |kind: lsp::CompletionItemKind| {
             let kind = CompletionItemKindWrapper(kind);
-            let name = kind.to_string();
-            let style = if &name == "unknown" {
+            let name = kind.name();
+            let style = if name == "unknown" {
                 editor.theme.get("ui.menu.kind")
             } else {
                 editor.theme.get(&format!("ui.menu.kind.{name}"))
@@ -47,7 +47,7 @@ impl RenderContext {
                 .completion_item_kinds
                 .get(&kind)
                 .cloned()
-                .unwrap_or(name);
+                .unwrap_or_else(|| name.to_string());
 
             completion_item_kinds.insert(kind, (text, style))
         };
@@ -129,7 +129,7 @@ impl menu::Item for CompletionItem {
                                 .get(&CompletionItemKindWrapper(kind))
                         })
                         .cloned()
-                        .unwrap_or_else(|| ("".into(), Style::default()));
+                        .unwrap_or_else(|| (String::new(), Style::default()));
                     menu::Cell::from(Span::styled(content, style))
                 }
             });
