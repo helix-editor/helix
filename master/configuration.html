@@ -394,8 +394,8 @@ name = "rust"
 <h3 id="editorwhitespace-section"><a class="header" href="#editorwhitespace-section"><code>[editor.whitespace]</code> Section</a></h3>
 <p>Options for rendering whitespace with visible characters. Use <code>:set whitespace.render all</code> to temporarily enable visible whitespace.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
-<tr><td><code>render</code></td><td>Whether to render whitespace. May either be <code>"all"</code> or <code>"none"</code>, or a table with sub-keys <code>space</code>, <code>nbsp</code>, <code>tab</code>, and <code>newline</code></td><td><code>"none"</code></td></tr>
-<tr><td><code>characters</code></td><td>Literal characters to use when rendering whitespace. Sub-keys may be any of <code>tab</code>, <code>space</code>, <code>nbsp</code>, <code>newline</code> or <code>tabpad</code></td><td>See example below</td></tr>
+<tr><td><code>render</code></td><td>Whether to render whitespace. May either be <code>"all"</code> or <code>"none"</code>, or a table with sub-keys <code>space</code>, <code>nbsp</code>, <code>nnbsp</code>, <code>tab</code>, and <code>newline</code></td><td><code>"none"</code></td></tr>
+<tr><td><code>characters</code></td><td>Literal characters to use when rendering whitespace. Sub-keys may be any of <code>tab</code>, <code>space</code>, <code>nbsp</code>, <code>nnbsp</code>, <code>newline</code> or <code>tabpad</code></td><td>See example below</td></tr>
 </tbody></table>
 </div>
 <p>Example</p>
@@ -405,11 +405,14 @@ render = "all"
 [editor.whitespace.render]
 space = "all"
 tab = "all"
+nbsp = "none"
+nnbsp = "none"
 newline = "none"
 
 [editor.whitespace.characters]
 space = "·"
 nbsp = "⍽"
+nnbsp = "␣"
 tab = "→"
 newline = "⏎"
 tabpad = "·" # Tabs will look like "→···" (depending on tab width)
