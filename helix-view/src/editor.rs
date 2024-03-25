@@ -16,7 +16,7 @@ use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
-use helix_lsp::Call;
+use helix_lsp::{lsp::CompletionItemKind, Call};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
@@ -229,6 +229,113 @@ where
     Ok(chars)
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct CompletionItemKindWrapper(pub CompletionItemKind);
+
+impl From<lsp::CompletionItemKind> for CompletionItemKindWrapper {
+    fn from(value: lsp::CompletionItemKind) -> Self {
+        Self(value)
+    }
+}
+
+impl ToString for CompletionItemKindWrapper {
+    fn to_string(&self) -> String {
+        match self.0 {
+            CompletionItemKind::TEXT => "text",
+            CompletionItemKind::METHOD => "method",
+            CompletionItemKind::FUNCTION => "function",
+            CompletionItemKind::CONSTRUCTOR => "constructor",
+            CompletionItemKind::FIELD => "field",
+            CompletionItemKind::VARIABLE => "variable",
+            CompletionItemKind::CLASS => "class",
+            CompletionItemKind::INTERFACE => "interface",
+            CompletionItemKind::MODULE => "module",
+            CompletionItemKind::PROPERTY => "property",
+            CompletionItemKind::UNIT => "unit",
+            CompletionItemKind::VALUE => "value",
+            CompletionItemKind::ENUM => "enum",
+            CompletionItemKind::KEYWORD => "keyword",
+            CompletionItemKind::SNIPPET => "snippet",
+            CompletionItemKind::COLOR => "color",
+            CompletionItemKind::FILE => "file",
+            CompletionItemKind::REFERENCE => "reference",
+            CompletionItemKind::FOLDER => "folder",
+            CompletionItemKind::ENUM_MEMBER => "enum_member",
+            CompletionItemKind::CONSTANT => "constant",
+            CompletionItemKind::STRUCT => "struct",
+            CompletionItemKind::EVENT => "event",
+            CompletionItemKind::OPERATOR => "operator",
+            CompletionItemKind::TYPE_PARAMETER => "type_parameter",
+            _ => "invalid", // invalid, but should never get one.
+        }
+        .into()
+    }
+}
+
+impl Serialize for CompletionItemKindWrapper {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let name = self.to_string();
+        serializer.serialize_str(&name)
+    }
+}
+
+impl<'de> Deserialize<'de> for CompletionItemKindWrapper {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let name = String::deserialize(deserializer)?;
+        let Ok(kind) = CompletionItemKind::try_from(name.as_str()) else {
+            return Err(<D::Error as serde::de::Error>::invalid_value(serde::de::Unexpected::Str(&name), &"No such item kind!"));
+        };
+        Ok(Self(kind))
+    }
+}
+
+impl std::hash::Hash for CompletionItemKindWrapper {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        state.write_i32(match self.0 {
+            CompletionItemKind::TEXT => 1,
+            CompletionItemKind::METHOD => 2,
+            CompletionItemKind::FUNCTION => 3,
+            CompletionItemKind::CONSTRUCTOR => 4,
+            CompletionItemKind::FIELD => 5,
+            CompletionItemKind::VARIABLE => 6,
+            CompletionItemKind::CLASS => 7,
+            CompletionItemKind::INTERFACE => 8,
+            CompletionItemKind::MODULE => 9,
+            CompletionItemKind::PROPERTY => 10,
+            CompletionItemKind::UNIT => 11,
+            CompletionItemKind::VALUE => 12,
+            CompletionItemKind::ENUM => 13,
+            CompletionItemKind::KEYWORD => 14,
+            CompletionItemKind::SNIPPET => 15,
+            CompletionItemKind::COLOR => 16,
+            CompletionItemKind::FILE => 17,
+            CompletionItemKind::REFERENCE => 18,
+            CompletionItemKind::FOLDER => 19,
+            CompletionItemKind::ENUM_MEMBER => 20,
+            CompletionItemKind::CONSTANT => 21,
+            CompletionItemKind::STRUCT => 22,
+            CompletionItemKind::EVENT => 23,
+            CompletionItemKind::OPERATOR => 24,
+            CompletionItemKind::TYPE_PARAMETER => 25,
+            _ => 0xFFFF, // invalid, but should never get one.
+        })
+    }
+}
+
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+pub enum CompletionItemColumn {
+    #[default]
+    Name,
+    Kind,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
@@ -279,6 +386,9 @@ pub struct Config {
     /// Whether to insert the completion suggestion on hover. Defaults to true.
     pub preview_completion_insert: bool,
     pub completion_trigger_len: u8,
+    /// Custom text for completion item kinds.
+    pub completion_item_kinds: HashMap<CompletionItemKindWrapper, String>,
+    pub completion_item_columns: Vec<CompletionItemColumn>,
     /// Whether to instruct the LSP to replace the entire word when applying a completion
     /// or to only insert new text
     pub completion_replace: bool,
@@ -875,6 +985,8 @@ impl Default for Config {
             completion_timeout: Duration::from_millis(250),
             preview_completion_insert: true,
             completion_trigger_len: 2,
+            completion_item_kinds: HashMap::new(),
+            completion_item_columns: vec![CompletionItemColumn::Name, CompletionItemColumn::Kind],
             auto_info: true,
             file_picker: FilePickerConfig::default(),
             statusline: StatusLineConfig::default(),
