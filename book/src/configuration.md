@@ -56,6 +56,8 @@ Its settings will be merged with the configuration directory `config.toml` and t
 | `preview-completion-insert` | Whether to apply completion item instantly when selected | `true` |
 | `completion-trigger-len` | The min-length of word under cursor to trigger autocompletion | `2` |
 | `completion-replace` | Set to `true` to make completions always replace the entire word and not just the part before the cursor | `false` |
+| `completion-item-kinds` | Custom kind text for completion items | `{}` |
+| `completion-item-columns` | Which columns should be displayed on each completion menu row | `["name", "kind"]` |
 | `auto-info` | Whether to display info boxes | `true` |
 | `true-color` | Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative | `false` |
 | `undercurl` | Set to `true` to override automatic detection of terminal undercurl support in the event of a false negative | `false` |
