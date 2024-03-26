@@ -6,6 +6,8 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use gix::bstr::ByteSlice;
+use gix::diff::Rewrites;
+use gix::dir::entry::Status;
 use gix::objs::tree::EntryKind;
 use gix::sec::trust::DefaultForLevel;
 use gix::status::{
@@ -82,18 +84,26 @@ impl Git {
             .ok_or_else(|| anyhow::anyhow!("working tree not found"))?
             .to_path_buf();
 
-        // Here we discard the `status.showUntrackedFiles` config, as it makes little sense in our
-        // case to not list new (untracked) files. We could have respected this config if the
-        // default value weren't `Collapsed` though, as this default value would render the feature
-        // unusable to many.
         let status_platform = repo
             .status(gix::progress::Discard)?
+            // Here we discard the `status.showUntrackedFiles` config, as it makes little sense in
+            // our case to not list new (untracked) files. We could have respected this config
+            // if the default value weren't `Collapsed` though, as this default value would render
+            // the feature unusable to many.
             .untracked_files(UntrackedFiles::Files)
-            .index_worktree_rewrites(Some(Default::default()));
+            // Turn on file rename detection, which is off by default.
+            .index_worktree_rewrites(Some(Rewrites {
+                copies: None,
+                percentage: Some(0.5),
+                limit: 1000,
+            }));
+
+        // No filtering based on path
+        let empty_patterns = vec![];
 
         Ok(Box::new(StatusIter {
             work_dir,
-            inner: status_platform.into_index_worktree_iter(Default::default())?,
+            inner: status_platform.into_index_worktree_iter(empty_patterns)?,
         }))
     }
 }
@@ -189,9 +199,12 @@ impl std::iter::Iterator for StatusIter {
                         EntryStatus::NeedsUpdate(_) | EntryStatus::IntentToAdd => None,
                     }
                 }
-                Item::DirectoryContents { entry, .. } => Some(FileChange::Untracked {
-                    path: self.work_dir.join(entry.rela_path.to_path()?),
-                }),
+                Item::DirectoryContents { entry, .. } => match entry.status {
+                    Status::Untracked => Some(FileChange::Untracked {
+                        path: self.work_dir.join(entry.rela_path.to_path()?),
+                    }),
+                    Status::Pruned | Status::Tracked | Status::Ignored(_) => None,
+                },
                 Item::Rewrite {
                     source,
                     dirwalk_entry,
