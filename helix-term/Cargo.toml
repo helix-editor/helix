@@ -13,10 +13,11 @@ repository.workspace = true
 homepage.workspace = true
 
 [features]
-default = ["git"]
+default = ["git", "hg"]
 unicode-lines = ["helix-core/unicode-lines"]
 integration = ["helix-event/integration_test"]
 git = ["helix-vcs/git"]
+hg = ["helix-vcs/hg"]
 
 [[bin]]
 name = "hx"
