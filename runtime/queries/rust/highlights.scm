@@ -51,7 +51,7 @@
 (lifetime
   "'" @label
   (identifier) @label)
-(loop_label
+(label
   "'" @label
   (identifier) @label)
 
