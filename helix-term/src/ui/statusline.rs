@@ -155,6 +155,7 @@ fn get_render_function<'a>(
         helix_view::editor::StatusLineElement::Spacer => render_spacer,
         helix_view::editor::StatusLineElement::VersionControl => render_version_control,
         helix_view::editor::StatusLineElement::Register => render_register,
+        helix_view::editor::StatusLineElement::WorkingDirectory => render_cwd,
     }
 }
 
@@ -458,4 +459,24 @@ fn render_register<'a>(context: &RenderContext) -> Spans<'a> {
     } else {
         Spans::default()
     }
+}
+
+fn render_cwd<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let cwd = std::env::current_dir();
+    let title: String = match cwd {
+        // Errors converting resolve to String::Default
+        Ok(path) => path
+            .iter()
+            .last()
+            .unwrap_or_default()
+            .to_owned()
+            .into_string()
+            .unwrap_or_default(),
+        Err(_) => "".into(),
+    };
+
+    write(context, title, None);
 }
