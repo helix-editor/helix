@@ -34,7 +34,9 @@
 use anyhow::Result;
 pub use cancel::{cancelable_future, cancelation, CancelRx, CancelTx};
 pub use debounce::{send_blocking, AsyncHook};
-pub use redraw::{lock_frame, redraw_requested, request_redraw, start_frame, RenderLockGuard};
+pub use redraw::{
+    lock_frame, redraw_requested, request_redraw, start_frame, RenderLockGuard, RequestRedrawOnDrop,
+};
 pub use registry::Event;
 
 mod cancel;

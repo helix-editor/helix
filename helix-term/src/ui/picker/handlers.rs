@@ -174,11 +174,8 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> AsyncHook for DynamicQu
                 if let Err(err) = get_options.await {
                     log::info!("Dynamic request failed: {err}");
                 }
-                // The picker's shows its running indicator when there are any active
-                // injectors. When we're done injecting new options, drop the injector
-                // and request a redraw to remove the running indicator.
-                drop(injector);
-                helix_event::request_redraw();
+                // NOTE: the Drop implementation of Injector will request a redraw when the
+                // injector falls out of scope here, clearing the "running" indicator.
             });
         })
     }

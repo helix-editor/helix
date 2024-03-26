@@ -153,6 +153,12 @@ pub struct Injector<T, D> {
     editor_data: Arc<D>,
     version: usize,
     picker_version: Arc<AtomicUsize>,
+    /// A marker that requests a redraw when the injector drops.
+    /// This marker causes the "running" indicator to disappear when a background job
+    /// providing items is finished and drops. This could be wrapped in an [Arc] to ensure
+    /// that the redraw is only requested when all Injectors drop for a Picker (which removes
+    /// the "running" indicator) but the redraw handle is debounced so this is unnecessary.
+    _redraw: helix_event::RequestRedrawOnDrop,
 }
 
 impl<I, D> Clone for Injector<I, D> {
@@ -163,6 +169,7 @@ impl<I, D> Clone for Injector<I, D> {
             editor_data: self.editor_data.clone(),
             version: self.version,
             picker_version: self.picker_version.clone(),
+            _redraw: helix_event::RequestRedrawOnDrop,
         }
     }
 }
@@ -284,6 +291,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             editor_data: Arc::new(editor_data),
             version: 0,
             picker_version: Arc::new(AtomicUsize::new(0)),
+            _redraw: helix_event::RequestRedrawOnDrop,
         };
         (matcher, streamer)
     }
@@ -386,6 +394,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             editor_data: self.editor_data.clone(),
             version: self.version.load(atomic::Ordering::Relaxed),
             picker_version: self.version.clone(),
+            _redraw: helix_event::RequestRedrawOnDrop,
         }
     }
 
