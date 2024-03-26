@@ -32,6 +32,7 @@ tag = "red213"
 "ui.linenr" = "blue89"
 "ui.linenr.selected" = "blue171"
 "ui.statusline" = { bg = "blue48" }
+"ui.statusline.inactive" = "blue89"
 "ui.statusline.normal" = { fg = "blue48", bg = "green156", modifiers = ["bold"] }
 "ui.statusline.insert" = { fg = "blue48", bg = "blue247", modifiers = ["bold"] }
 "ui.statusline.select" = { fg = "blue48", bg = "red194", modifiers = ["bold"] }
