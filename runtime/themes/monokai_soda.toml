@@ -102,6 +102,7 @@
 "ui.text.focus" = { fg = "yellow", modifiers = ["bold"] }
 "ui.virtual" = "darkgray"
 "ui.virtual.ruler" = { bg = "darkgray" }
+"ui.virtual.jump-label" = { fg = "softorange", modifiers = ["bold"] }
 
 # Palette
 

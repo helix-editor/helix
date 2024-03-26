@@ -8,6 +8,7 @@
 "ui.menu.selected" = { fg = "base2", bg = "yellow" }
 "ui.virtual.whitespace" = "base4"
 "ui.virtual.ruler" = { bg = "base1" }
+"ui.virtual.jump-label" = { fg = "red", modifiers = ["bold"] }
 
 "info" = "base8"
 "hint" = "base8"
