@@ -7,6 +7,7 @@ use helix_view::{
     Document, Editor, View,
 };
 
+use crate::job::job_count;
 use crate::ui::ProgressSpinners;
 
 use helix_view::editor::StatusLineElement as StatusLineElementID;
@@ -155,6 +156,7 @@ fn get_render_function<'a>(
         helix_view::editor::StatusLineElement::Spacer => render_spacer,
         helix_view::editor::StatusLineElement::VersionControl => render_version_control,
         helix_view::editor::StatusLineElement::Register => render_register,
+        helix_view::editor::StatusLineElement::Jobs => render_jobs,
     }
 }
 
@@ -457,5 +459,15 @@ fn render_register<'a>(context: &RenderContext) -> Spans<'a> {
         Span::raw(format!(" reg={} ", reg)).into()
     } else {
         Spans::default()
+    }
+}
+
+fn render_jobs<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let job_count = job_count();
+    if job_count > 0 {
+        write(context, format!("# {}", job_count), None)
     }
 }
