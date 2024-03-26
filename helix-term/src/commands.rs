@@ -2999,8 +2999,10 @@ fn changed_file_picker(cx: &mut Context) {
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("./"));
 
     let added = cx.editor.theme.get("diff.plus");
-    let deleted = cx.editor.theme.get("diff.minus");
     let modified = cx.editor.theme.get("diff.delta");
+    let conflict = cx.editor.theme.get("diff.delta.conflict");
+    let deleted = cx.editor.theme.get("diff.minus");
+    let renamed = cx.editor.theme.get("diff.delta.moved");
 
     let picker = Picker::new(
         Vec::new(),
@@ -3008,9 +3010,9 @@ fn changed_file_picker(cx: &mut Context) {
             cwd: cwd.clone(),
             style_untracked: added,
             style_modified: modified,
-            style_conflict: deleted,
+            style_conflict: conflict,
             style_deleted: deleted,
-            style_renamed: modified,
+            style_renamed: renamed,
         },
         |cx, meta: &FileChange, action| {
             let path_to_open = meta.path();
