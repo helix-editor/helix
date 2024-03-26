@@ -9,6 +9,7 @@ use nucleo::pattern::{Atom, AtomKind, CaseMatching};
 use nucleo::{Config, Utf32Str};
 use tui::{
     buffer::Buffer as Surface,
+    text::Span,
     widgets::{Block, Borders, Table, Widget},
 };
 
@@ -84,7 +85,10 @@ impl Item for FileChange {
             ),
         };
 
-        Row::new(vec![sign.to_owned(), content]).style(style)
+        Row::new(vec![
+            Cell::from(Span::styled(sign, style)),
+            Cell::from(content),
+        ])
     }
 }
 
