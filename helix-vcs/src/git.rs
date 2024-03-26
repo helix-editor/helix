@@ -2,7 +2,7 @@ use anyhow::{bail, Context, Result};
 use arc_swap::ArcSwap;
 use gix::filter::plumbing::driver::apply::Delay;
 use std::io::Read;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 use std::sync::Arc;
 
 use gix::bstr::ByteSlice;
@@ -24,12 +24,6 @@ mod test;
 
 #[derive(Clone, Copy)]
 pub struct Git;
-
-/// An adapter around the status iter from `gix` that outputs [FileChange].
-pub struct StatusIter {
-    work_dir: PathBuf,
-    inner: gix::status::index_worktree::Iter,
-}
 
 impl Git {
     fn open_repo(path: &Path, ceiling_dir: Option<&Path>) -> Result<ThreadSafeRepository> {
@@ -78,11 +72,55 @@ impl Git {
     }
 
     /// Emulates the result of running `git status` from the command line.
-    fn status(repo: &Repository) -> Result<Box<dyn Iterator<Item = Result<FileChange>>>> {
+    fn status<FC, FE>(repo: &Repository, on_change: FC, on_err: FE) -> Result<()>
+    where
+        FC: Fn(FileChange) -> bool,
+        FE: Fn(anyhow::Error),
+    {
         let work_dir = repo
             .work_dir()
             .ok_or_else(|| anyhow::anyhow!("working tree not found"))?
             .to_path_buf();
+
+        let mapper = |item: std::result::Result<Item, gix::status::index_worktree::Error>| {
+            Result::<Option<FileChange>>::Ok(match item? {
+                Item::Modification {
+                    rela_path, status, ..
+                } => {
+                    let full_path = work_dir.join(rela_path.to_path()?);
+
+                    match status {
+                        EntryStatus::Conflict(_) => {
+                            // We treat conflict as change for now for simplicity
+                            Some(FileChange::Modified { path: full_path })
+                        }
+                        EntryStatus::Change(change) => match change {
+                            Change::Removed => Some(FileChange::Deleted { path: full_path }),
+                            Change::Modification { .. } => {
+                                Some(FileChange::Modified { path: full_path })
+                            }
+                            // No submodule support for now
+                            Change::Type | Change::SubmoduleModification(_) => None,
+                        },
+                        EntryStatus::NeedsUpdate(_) | EntryStatus::IntentToAdd => None,
+                    }
+                }
+                Item::DirectoryContents { entry, .. } => match entry.status {
+                    Status::Untracked => Some(FileChange::Untracked {
+                        path: work_dir.join(entry.rela_path.to_path()?),
+                    }),
+                    Status::Pruned | Status::Tracked | Status::Ignored(_) => None,
+                },
+                Item::Rewrite {
+                    source,
+                    dirwalk_entry,
+                    ..
+                } => Some(FileChange::Renamed {
+                    from_path: work_dir.join(source.rela_path().to_path()?),
+                    to_path: work_dir.join(dirwalk_entry.rela_path.to_path()?),
+                }),
+            })
+        };
 
         let status_platform = repo
             .status(gix::progress::Discard)?
@@ -101,10 +139,24 @@ impl Git {
         // No filtering based on path
         let empty_patterns = vec![];
 
-        Ok(Box::new(StatusIter {
-            work_dir,
-            inner: status_platform.into_index_worktree_iter(empty_patterns)?,
-        }))
+        let status_iter = status_platform.into_index_worktree_iter(empty_patterns)?;
+
+        for item in status_iter.map(mapper) {
+            match item {
+                Ok(Some(item)) => {
+                    if !on_change(item) {
+                        break;
+                    }
+                }
+                Err(err) => {
+                    on_err(err);
+                }
+                // Our mapper returns `None` for gix items that we're not interested in
+                Ok(None) => {}
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -158,70 +210,22 @@ impl DiffProvider for Git {
         Ok(Arc::new(ArcSwap::from_pointee(name.into_boxed_str())))
     }
 
-    fn get_changed_files(
-        &self,
-        cwd: &Path,
-    ) -> Result<Box<dyn Iterator<Item = Result<FileChange>>>> {
-        Self::status(&Self::open_repo(cwd, None)?.to_thread_local())
+    fn for_each_changed_file<FC, FE>(&self, cwd: &Path, on_change: FC, on_err: FE) -> Result<()>
+    where
+        FC: Fn(FileChange) -> bool,
+        FE: Fn(anyhow::Error),
+    {
+        Self::status(
+            &Self::open_repo(cwd, None)?.to_thread_local(),
+            on_change,
+            on_err,
+        )
     }
 }
 
 impl From<Git> for DiffProviderImpls {
     fn from(value: Git) -> Self {
         DiffProviderImpls::Git(value)
-    }
-}
-
-impl std::iter::Iterator for StatusIter {
-    type Item = Result<FileChange>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        let mapper = |item: std::result::Result<Item, _>| {
-            Result::<Option<FileChange>>::Ok(match item? {
-                Item::Modification {
-                    rela_path, status, ..
-                } => {
-                    let full_path = self.work_dir.join(rela_path.to_path()?);
-
-                    match status {
-                        EntryStatus::Conflict(_) => {
-                            // We treat conflict as change for now for simplicity
-                            Some(FileChange::Modified { path: full_path })
-                        }
-                        EntryStatus::Change(change) => match change {
-                            Change::Removed => Some(FileChange::Deleted { path: full_path }),
-                            Change::Modification { .. } => {
-                                Some(FileChange::Modified { path: full_path })
-                            }
-                            // No submodule support for now
-                            Change::Type | Change::SubmoduleModification(_) => None,
-                        },
-                        EntryStatus::NeedsUpdate(_) | EntryStatus::IntentToAdd => None,
-                    }
-                }
-                Item::DirectoryContents { entry, .. } => match entry.status {
-                    Status::Untracked => Some(FileChange::Untracked {
-                        path: self.work_dir.join(entry.rela_path.to_path()?),
-                    }),
-                    Status::Pruned | Status::Tracked | Status::Ignored(_) => None,
-                },
-                Item::Rewrite {
-                    source,
-                    dirwalk_entry,
-                    ..
-                } => Some(FileChange::Renamed {
-                    from_path: self.work_dir.join(source.rela_path().to_path()?),
-                    to_path: self.work_dir.join(dirwalk_entry.rela_path.to_path()?),
-                }),
-            })
-        };
-
-        self.inner.by_ref().map(mapper).find_map(|item| match item {
-            Ok(Some(item)) => Some(Ok(item)),
-            Err(err) => Some(Err(err)),
-            // Our mapper returns `None` for gix items that we're not interested in
-            Ok(None) => None,
-        })
     }
 }
 

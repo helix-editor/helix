@@ -1,6 +1,9 @@
 use anyhow::{bail, Result};
 use arc_swap::ArcSwap;
-use std::{path::Path, sync::Arc};
+use std::{
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 #[cfg(feature = "git")]
 pub use git::Git;
@@ -23,8 +26,12 @@ pub trait DiffProvider {
 
     fn get_current_head_name(&self, file: &Path) -> Result<Arc<ArcSwap<Box<str>>>>;
 
-    fn get_changed_files(&self, cwd: &Path)
-        -> Result<Box<dyn Iterator<Item = Result<FileChange>>>>;
+    /// Returns `Err` in case of an _initialization_ failure. Iteration errors must be reported via
+    /// `on_err` instead.
+    fn for_each_changed_file<FC, FE>(&self, cwd: &Path, on_change: FC, on_err: FE) -> Result<()>
+    where
+        FC: Fn(FileChange) -> bool,
+        FE: Fn(anyhow::Error);
 }
 
 #[doc(hidden)]
@@ -39,10 +46,11 @@ impl DiffProvider for Dummy {
         bail!("helix was compiled without git support")
     }
 
-    fn get_changed_files(
-        &self,
-        _cwd: &Path,
-    ) -> Result<Box<dyn Iterator<Item = Result<FileChange>>>> {
+    fn for_each_changed_file<FC, FE>(&self, _cwd: &Path, _on_item: FC, _on_err: FE) -> Result<()>
+    where
+        FC: Fn(FileChange) -> bool,
+        FE: Fn(anyhow::Error),
+    {
         anyhow::bail!("dummy diff provider")
     }
 }
@@ -85,14 +93,27 @@ impl DiffProviderRegistry {
             })
     }
 
-    pub fn get_changed_files(
-        &self,
-        cwd: &Path,
-    ) -> Result<Box<dyn Iterator<Item = Result<FileChange>>>> {
-        self.providers
-            .iter()
-            .find_map(|provider| provider.get_changed_files(cwd).ok())
-            .ok_or_else(|| anyhow::anyhow!("no diff provider returns success"))
+    /// Fire-and-forget changed file iteration. Runs everything in a background task. Keeps
+    /// iteration until `on_change` returns `false`.
+    pub fn for_each_changed_file<FC, FE>(self, cwd: PathBuf, on_change: FC, on_err: FE)
+    where
+        FC: Fn(FileChange) -> bool + Clone + Send + 'static,
+        FE: Fn(anyhow::Error) + Clone + Send + 'static,
+    {
+        tokio::task::spawn_blocking(move || {
+            if self
+                .providers
+                .iter()
+                .find_map(|provider| {
+                    provider
+                        .for_each_changed_file(&cwd, on_change.clone(), on_err.clone())
+                        .ok()
+                })
+                .is_none()
+            {
+                on_err(anyhow::anyhow!("no diff provider returns success"))
+            }
+        });
     }
 }
 
@@ -131,14 +152,15 @@ impl DiffProvider for DiffProviderImpls {
         }
     }
 
-    fn get_changed_files(
-        &self,
-        cwd: &Path,
-    ) -> Result<Box<dyn Iterator<Item = Result<FileChange>>>> {
+    fn for_each_changed_file<FC, FE>(&self, cwd: &Path, on_change: FC, on_err: FE) -> Result<()>
+    where
+        FC: Fn(FileChange) -> bool,
+        FE: Fn(anyhow::Error),
+    {
         match self {
-            Self::Dummy(inner) => inner.get_changed_files(cwd),
+            Self::Dummy(inner) => inner.for_each_changed_file(cwd, on_change, on_err),
             #[cfg(feature = "git")]
-            Self::Git(inner) => inner.get_changed_files(cwd),
+            Self::Git(inner) => inner.for_each_changed_file(cwd, on_change, on_err),
         }
     }
 }

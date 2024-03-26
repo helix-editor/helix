@@ -287,20 +287,13 @@ pub fn changed_file_picker(editor: &helix_view::Editor) -> Picker<FileChange> {
     .with_preview(|_editor, meta| Some((meta.path().to_path_buf().into(), None)));
     let injector = picker.injector();
 
-    let diff_providers = editor.diff_providers.clone();
-
-    std::thread::spawn(move || {
-        // There's no way we can notify the editor since we're in a background thread. This just
-        // silently fails.
-        if let Ok(change_iter) = diff_providers.get_changed_files(&cwd) {
-            // We ignore errors as they could be caused by permission issues etc
-            for change in change_iter.flatten() {
-                if injector.push(change).is_err() {
-                    break;
-                }
-            }
-        }
-    });
+    editor.diff_providers.clone().for_each_changed_file(
+        cwd,
+        move |change| injector.push(change).is_ok(),
+        |err| {
+            helix_event::status::report_blocking(err);
+        },
+    );
     picker
 }
 
