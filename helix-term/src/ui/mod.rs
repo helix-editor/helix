@@ -20,7 +20,7 @@ pub use completion::{Completion, CompletionItem};
 pub use editor::EditorView;
 use helix_stdx::rope;
 pub use markdown::Markdown;
-pub use menu::{FileChangeData, Menu};
+pub use menu::Menu;
 pub use picker::{DynamicPicker, FileLocation, Picker};
 pub use popup::Popup;
 pub use prompt::{Prompt, PromptEvent};

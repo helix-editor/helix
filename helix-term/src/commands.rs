@@ -6,7 +6,10 @@ pub use dap::*;
 use helix_stdx::rope::{self, RopeSliceExt};
 use helix_vcs::{FileChange, Hunk};
 pub use lsp::*;
-use tui::widgets::Row;
+use tui::{
+    text::Span,
+    widgets::{Cell, Row},
+};
 pub use typed::*;
 
 use helix_core::{
@@ -39,6 +42,7 @@ use helix_view::{
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
+    theme::Style,
     tree,
     view::View,
     Document, DocumentId, Editor, ViewId,
@@ -54,7 +58,7 @@ use crate::{
     filter_picker_entry,
     job::Callback,
     keymap::ReverseKeymap,
-    ui::{self, overlay::overlaid, Picker, Popup, Prompt, PromptEvent},
+    ui::{self, menu::Item, overlay::overlaid, Picker, Popup, Prompt, PromptEvent},
 };
 
 use crate::job::{self, Jobs};
@@ -2996,6 +3000,45 @@ fn jumplist_picker(cx: &mut Context) {
 }
 
 fn changed_file_picker(cx: &mut Context) {
+    pub struct FileChangeData {
+        cwd: PathBuf,
+        style_untracked: Style,
+        style_modified: Style,
+        style_conflict: Style,
+        style_deleted: Style,
+        style_renamed: Style,
+    }
+
+    impl Item for FileChange {
+        type Data = FileChangeData;
+
+        fn format(&self, data: &Self::Data) -> Row {
+            let process_path = |path: &PathBuf| {
+                path.strip_prefix(&data.cwd)
+                    .unwrap_or(path)
+                    .display()
+                    .to_string()
+            };
+
+            let (sign, style, content) = match self {
+                Self::Untracked { path } => ("[+]", data.style_untracked, process_path(path)),
+                Self::Modified { path } => ("[~]", data.style_modified, process_path(path)),
+                Self::Conflict { path } => ("[x]", data.style_conflict, process_path(path)),
+                Self::Deleted { path } => ("[-]", data.style_deleted, process_path(path)),
+                Self::Renamed { from_path, to_path } => (
+                    "[>]",
+                    data.style_renamed,
+                    format!("{} -> {}", process_path(from_path), process_path(to_path)),
+                ),
+            };
+
+            Row::new(vec![
+                Cell::from(Span::styled(sign, style)),
+                Cell::from(content),
+            ])
+        }
+    }
+
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("./"));
 
     let added = cx.editor.theme.get("diff.plus");
@@ -3006,7 +3049,7 @@ fn changed_file_picker(cx: &mut Context) {
 
     let picker = Picker::new(
         Vec::new(),
-        ui::menu::FileChangeData {
+        FileChangeData {
             cwd: cwd.clone(),
             style_untracked: added,
             style_modified: modified,

@@ -9,17 +9,14 @@ use nucleo::pattern::{Atom, AtomKind, CaseMatching};
 use nucleo::{Config, Utf32Str};
 use tui::{
     buffer::Buffer as Surface,
-    text::Span,
     widgets::{Block, Borders, Table, Widget},
 };
 
 pub use tui::widgets::{Cell, Row};
 
-use helix_vcs::FileChange;
 use helix_view::{
     editor::SmartTabConfig,
     graphics::{Margin, Rect},
-    theme::Style,
     Editor,
 };
 use tui::layout::Constraint;
@@ -54,45 +51,6 @@ impl Item for PathBuf {
 }
 
 pub type MenuCallback<T> = Box<dyn Fn(&mut Editor, Option<&T>, MenuEvent)>;
-
-pub struct FileChangeData {
-    pub cwd: PathBuf,
-    pub style_untracked: Style,
-    pub style_modified: Style,
-    pub style_conflict: Style,
-    pub style_deleted: Style,
-    pub style_renamed: Style,
-}
-
-impl Item for FileChange {
-    type Data = FileChangeData;
-
-    fn format(&self, data: &Self::Data) -> Row {
-        let process_path = |path: &PathBuf| {
-            path.strip_prefix(&data.cwd)
-                .unwrap_or(path)
-                .display()
-                .to_string()
-        };
-
-        let (sign, style, content) = match self {
-            Self::Untracked { path } => ("[+]", data.style_untracked, process_path(path)),
-            Self::Modified { path } => ("[~]", data.style_modified, process_path(path)),
-            Self::Conflict { path } => ("[x]", data.style_conflict, process_path(path)),
-            Self::Deleted { path } => ("[-]", data.style_deleted, process_path(path)),
-            Self::Renamed { from_path, to_path } => (
-                "[>]",
-                data.style_modified,
-                format!("{} -> {}", process_path(from_path), process_path(to_path)),
-            ),
-        };
-
-        Row::new(vec![
-            Cell::from(Span::styled(sign, style)),
-            Cell::from(content),
-        ])
-    }
-}
 
 pub struct Menu<T: Item> {
     options: Vec<T>,
