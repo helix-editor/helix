@@ -4,7 +4,7 @@ pub(crate) mod typed;
 
 pub use dap::*;
 use helix_stdx::rope::{self, RopeSliceExt};
-use helix_vcs::Hunk;
+use helix_vcs::{FileChange, Hunk};
 pub use lsp::*;
 use tui::widgets::Row;
 pub use typed::*;
@@ -2996,7 +2996,43 @@ fn jumplist_picker(cx: &mut Context) {
 }
 
 fn changed_file_picker(cx: &mut Context) {
-    let picker = ui::changed_file_picker(cx.editor);
+    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("./"));
+
+    let added = cx.editor.theme.get("diff.plus");
+    let deleted = cx.editor.theme.get("diff.minus");
+    let modified = cx.editor.theme.get("diff.delta");
+
+    let picker = Picker::new(
+        Vec::new(),
+        ui::menu::FileChangeData {
+            cwd: cwd.clone(),
+            style_untracked: added,
+            style_modified: modified,
+            style_deleted: deleted,
+            style_renamed: modified,
+        },
+        |cx, meta: &FileChange, action| {
+            let path_to_open = meta.path();
+            if let Err(e) = cx.editor.open(path_to_open, action) {
+                let err = if let Some(err) = e.source() {
+                    format!("{}", err)
+                } else {
+                    format!("unable to open \"{}\"", path_to_open.display())
+                };
+                cx.editor.set_error(err);
+            }
+        },
+    )
+    .with_preview(|_editor, meta| Some((meta.path().to_path_buf().into(), None)));
+    let injector = picker.injector();
+
+    cx.editor.diff_providers.clone().for_each_changed_file(
+        cwd,
+        move |change| injector.push(change).is_ok(),
+        |err| {
+            helix_event::status::report_blocking(err);
+        },
+    );
     cx.push_layer(Box::new(overlaid(picker)));
 }
 

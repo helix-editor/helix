@@ -19,7 +19,6 @@ use crate::job::{self, Callback};
 pub use completion::{Completion, CompletionItem};
 pub use editor::EditorView;
 use helix_stdx::rope;
-use helix_vcs::FileChange;
 pub use markdown::Markdown;
 pub use menu::{FileChangeData, Menu};
 pub use picker::{DynamicPicker, FileLocation, Picker};
@@ -253,47 +252,6 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> Picker
             }
         });
     }
-    picker
-}
-
-pub fn changed_file_picker(editor: &helix_view::Editor) -> Picker<FileChange> {
-    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("./"));
-
-    let added = editor.theme.get("diff.plus");
-    let deleted = editor.theme.get("diff.minus");
-    let modified = editor.theme.get("diff.delta");
-
-    let picker = Picker::new(
-        Vec::new(),
-        menu::FileChangeData {
-            cwd: cwd.clone(),
-            style_untracked: added,
-            style_modified: modified,
-            style_deleted: deleted,
-            style_renamed: modified,
-        },
-        |cx, meta: &FileChange, action| {
-            let path_to_open = meta.path();
-            if let Err(e) = cx.editor.open(path_to_open, action) {
-                let err = if let Some(err) = e.source() {
-                    format!("{}", err)
-                } else {
-                    format!("unable to open \"{}\"", path_to_open.display())
-                };
-                cx.editor.set_error(err);
-            }
-        },
-    )
-    .with_preview(|_editor, meta| Some((meta.path().to_path_buf().into(), None)));
-    let injector = picker.injector();
-
-    editor.diff_providers.clone().for_each_changed_file(
-        cwd,
-        move |change| injector.push(change).is_ok(),
-        |err| {
-            helix_event::status::report_blocking(err);
-        },
-    );
     picker
 }
 
