@@ -4,7 +4,6 @@
 
 Breaking changes:
 
-- Swap `*` and `+` registers (#8703, #8708)
 - `suffix` file-types in the `file-types` key in language configuration have been removed (#8006)
 - The `file-types` key in language configuration no longer matches full filenames without a glob pattern (#8006)
 
@@ -12,12 +11,14 @@ Features:
 
 - Open URLs with the `goto_file` command (#5820)
 - Support drawing a border around popups and menus (#4313, #9508)
-- Track long lived diagnostics (#6447)
+- Track long lived diagnostic sources like Clippy or `rustc` (#6447, #9280)
+    - This improves the handling of diagnostics from sources that only update the diagnostic positions on save.
 - Add support for LSP `window/showDocument` requests (#8865)
-- Refactor ad-hoc hooks to use a new generic event system (#8021, #9668)
+- Refactor ad-hoc hooks to use a new generic event system (#8021, #9668, #9660)
+    - This improves the behavior of autocompletions. For example navigating in insert mode no longer automatically triggers completions.
 - Allow using globs in the language configuration `file-types` key (#8006)
+- Allow specifying required roots for situational LSP activation (#8696)
 - Extend selections using mouse clicks in select mode (#5436)
-- Switch to regex-cursor for regex-based commands and features (#9422, #9756, #9891)
 - Toggle block comments (#4718, #9894)
 - Support LSP diagnostic tags (#9780)
 - Add a `file-absolute-path` statusline element (#4535)
@@ -27,16 +28,18 @@ Features:
 Commands:
 
 - `:move` - move buffers with LSP support (#8584)
+     - Also see #8949 which made path changes conform to the LSP spec and fixed the behavior of this command.
 - `page_cursor_up`, `page_cursor_down`, `page_cursor_half_up`, `page_cursor_half_down` - commands for scrolling the cursor and page together (#8015)
 - `:yank-diagnostic` - yank the diagnostic(s) under the primary cursor (#9640)
 - `select_line_above` / `select_line_below` - extend or shrink a selection based on the direction and anchor (#9080)
 
 Usability improvements:
 
-- Default `roots` key of `[[language]]` entries in `languages.toml` configuration (#8803)
+- Make `roots` key of `[[language]]` entries in `languages.toml` configuration optional (#8803)
 - Exit select mode in commands that modify the buffer (#8689)
 - Use crossterm cursor when out of focus (#6858, #8934)
 - Join empty lines with only one space in `join_selections` (#8989)
+- Introduce a hybrid tree-sitter and contextual indentation heuristic (#8307)
 - Allow configuring the indentation heuristic (#8307)
 - Check for LSP rename support before showing rename prompt (#9277)
 - Normalize `S-<lower-ascii>` keymaps to uppercase ascii (#9213)
@@ -50,7 +53,6 @@ Usability improvements:
 - Respect injections in `move_parent_node_end` (035b8ea)
 - Use `gix` pipeline filter instead of manual CRLF implementation (#9503)
 - Follow Neovim's truecolor detection (#9577)
-- Allow specifying required roots for situational LSP activation (#8696)
 - Reload language configuration with `:reload`, SIGHUP (#9415)
 - Allow numbers as bindings (#8471, #9887)
 - Exit prompts with backspace when the prompt is empty (#9828)
@@ -59,19 +61,21 @@ Usability improvements:
 - Add completion for registers to `:clear-register` and `:yank-diagnostic` (#9936)
 - Repeat last motion for goto next/prev diagnostic (#9966)
 - Allow configuring a character to use when rendering narrow no-breaking space (#9604)
+- Switch to a streaming regex engine (regex-cursor crate) to significantly speed up regex-based commands and features (#9422, #9756, #9891)
 
 Fixes:
 
+- Swap `*` and `+` registers (#8703, #8708)
 - Use terminfo to reset terminal cursor style (#8591)
 - Fix precedence of `@align` captures in indentat computation (#8659)
 - Only render the preview if a Picker has a preview function (#8667)
 - Fix the precedence of `ui.virtual.whitespace` (#8750, #8879)
 - Fix crash in `:indent-style` (#9087)
 - Fix `didSave` text inclusion when sync capability is a kind variant (#9101)
-- Don't automatically dismiss zero width diagnostics (#9280)
 - Update the history of newly focused views (#9271)
 - Initialize diagnostics when opening a document (#8873)
 - Sync views when applying edits to unfocused views (#9173)
+    - This fixes crashes that could occur from LSP workspace edits or `:write-all`.
 - Treat non-numeric `+arg`s passed in the CLI args as filenames (#9333)
 - Fix crash when using `mm` on an empty plaintext file (2fb7e50)
 - Ignore empty tree-sitter nodes in match bracket (445f7a2)
@@ -83,7 +87,6 @@ Fixes:
 - Fix division by zero when prompt completion area is too small (#9524)
 - Add changes to history in clipboard replacement typable commands (#9625)
 - Fix a crash in DAP with an unspecified `line` in breakpoints (#9632)
-- Fix LSP CompletionTriggerKind for automatic completion triggers (#9660)
 - Fix space handling for filenames in bash completion (#9702, #9708)
 - Key diagnostics off of paths instead of LSP URIs (#7367)
 - Fix panic when using `join_selections_space` (#9783)
