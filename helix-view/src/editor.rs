@@ -260,6 +260,8 @@ pub struct Config {
     pub auto_format: bool,
     /// Automatic save on focus lost. Defaults to false.
     pub auto_save: bool,
+    /// When saves are performed. Defaults to on focus lost.
+    pub save_style: SaveStyle,
     /// Set a global text_width
     pub text_width: usize,
     /// Time in milliseconds since last keypress before idle timers trigger.
@@ -269,6 +271,13 @@ pub struct Config {
         deserialize_with = "deserialize_duration_millis"
     )]
     pub idle_timeout: Duration,
+    /// Time in milliseconds since last keypress before auto save timers trigger.
+    /// Used for various UI timeouts. Defaults to 1000ms.
+    #[serde(
+        serialize_with = "serialize_duration_millis",
+        deserialize_with = "deserialize_duration_millis"
+    )]
+    pub save_delay_timeout: Duration,
     /// Time in milliseconds after typing a word character before auto completions
     /// are shown, set to 5 for instant. Defaults to 250ms.
     #[serde(
@@ -761,6 +770,13 @@ impl WhitespaceRender {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum SaveStyle {
+    FocusLost,
+    AfterDelay,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct WhitespaceCharacters {
     pub space: char,
@@ -871,7 +887,9 @@ impl Default for Config {
             auto_completion: true,
             auto_format: true,
             auto_save: false,
+            save_style: SaveStyle::FocusLost,
             idle_timeout: Duration::from_millis(250),
+            save_delay_timeout: Duration::from_millis(1000),
             completion_timeout: Duration::from_millis(250),
             preview_completion_insert: true,
             completion_trigger_len: 2,
