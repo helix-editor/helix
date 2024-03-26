@@ -56,4 +56,4 @@ globset = "0.4.14"
 
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }
-indoc = "2.0.4"
+indoc = "2.0.5"
