@@ -6,7 +6,7 @@ use crate::{
 use helix_event::AsyncHook;
 use helix_view::{
     document::SavePoint,
-    editor::{CompleteAction, CompletionItemColumn, CompletionItemKindWrapper},
+    editor::{completion_item_kind_name, CompleteAction, CompletionItemColumn},
     graphics::Margin,
     handlers::lsp::SignatureHelpInvoked,
     theme::{Modifier, Style},
@@ -15,7 +15,7 @@ use helix_view::{
 use tokio::time::Instant;
 use tui::{buffer::Buffer as Surface, text::Span};
 
-use std::{borrow::Cow, collections::HashMap, sync::Arc, time::Duration};
+use std::{borrow::Cow, sync::Arc, time::Duration};
 
 use helix_core::{chars, Change, Transaction};
 use helix_view::{graphics::Rect, Document, Editor};
@@ -25,7 +25,7 @@ use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
 use helix_lsp::{lsp, util, OffsetEncoding};
 
 pub struct RenderContext {
-    completion_item_kinds: HashMap<CompletionItemKindWrapper, (String, Style)>,
+    completion_item_kinds: Vec<(lsp::CompletionItemKind, String, Style)>,
     completion_item_columns: Vec<CompletionItemColumn>,
 }
 
@@ -33,10 +33,9 @@ impl RenderContext {
     fn new(editor: &Editor) -> Self {
         let completion_item_columns = editor.config().completion_item_columns.clone();
 
-        let mut completion_item_kinds = HashMap::new();
+        let mut completion_item_kinds = Vec::new();
         let mut insert_item_kind = |kind: lsp::CompletionItemKind| {
-            let kind = CompletionItemKindWrapper(kind);
-            let name = kind.name();
+            let name = completion_item_kind_name(kind);
             let style = if name == "unknown" {
                 editor.theme.get("ui.menu.kind")
             } else {
@@ -45,11 +44,12 @@ impl RenderContext {
             let text = editor
                 .config()
                 .completion_item_kinds
-                .get(&kind)
-                .cloned()
+                .iter()
+                .find(|(k, _)| *k == kind)
+                .map(|(_, text)| text.clone()) // FIXME: No alloc?
                 .unwrap_or_else(|| name.to_string());
 
-            completion_item_kinds.insert(kind, (text, style))
+            completion_item_kinds.push((kind, text, style));
         };
 
         insert_item_kind(lsp::CompletionItemKind::TEXT);
@@ -126,9 +126,10 @@ impl menu::Item for CompletionItem {
                         .kind
                         .and_then(|kind| {
                             data.completion_item_kinds
-                                .get(&CompletionItemKindWrapper(kind))
+                                .iter()
+                                .find(|(k, _, _)| *k == kind)
+                                .map(|(_, text, style)| (text.clone(), *style))
                         })
-                        .cloned()
                         .unwrap_or_else(|| (String::new(), Style::default()));
                     menu::Cell::from(Span::styled(content, style))
                 }
@@ -176,8 +177,8 @@ impl Completion {
             // offset only if the kind icons are the first, otherwise the popup is fine where it is.
             render_context
                 .completion_item_kinds
-                .values()
-                .map(|(content, _)| content.len())
+                .iter()
+                .map(|(_, text, _)| text.len())
                 .max()
                 .unwrap_or_default()
         } else {
