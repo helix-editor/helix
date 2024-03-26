@@ -15,7 +15,11 @@ mod git;
 
 mod diff;
 
-pub use diff::{DiffHandle, FileChange, Hunk};
+pub use diff::{DiffHandle, Hunk};
+
+mod status;
+
+pub use status::FileChange;
 
 pub trait DiffProvider {
     /// Returns the data that a diff should be computed against

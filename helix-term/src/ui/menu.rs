@@ -59,6 +59,7 @@ pub struct FileChangeData {
     pub cwd: PathBuf,
     pub style_untracked: Style,
     pub style_modified: Style,
+    pub style_conflict: Style,
     pub style_deleted: Style,
     pub style_renamed: Style,
 }
@@ -77,6 +78,7 @@ impl Item for FileChange {
         let (sign, style, content) = match self {
             Self::Untracked { path } => ("[+]", data.style_untracked, process_path(path)),
             Self::Modified { path } => ("[~]", data.style_modified, process_path(path)),
+            Self::Conflict { path } => ("[x]", data.style_conflict, process_path(path)),
             Self::Deleted { path } => ("[-]", data.style_deleted, process_path(path)),
             Self::Renamed { from_path, to_path } => (
                 "[>]",

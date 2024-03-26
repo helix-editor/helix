@@ -3008,6 +3008,7 @@ fn changed_file_picker(cx: &mut Context) {
             cwd: cwd.clone(),
             style_untracked: added,
             style_modified: modified,
+            style_conflict: deleted,
             style_deleted: deleted,
             style_renamed: modified,
         },

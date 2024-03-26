@@ -90,10 +90,7 @@ impl Git {
                     let full_path = work_dir.join(rela_path.to_path()?);
 
                     match status {
-                        EntryStatus::Conflict(_) => {
-                            // We treat conflict as change for now for simplicity
-                            Some(FileChange::Modified { path: full_path })
-                        }
+                        EntryStatus::Conflict(_) => Some(FileChange::Conflict { path: full_path }),
                         EntryStatus::Change(change) => match change {
                             Change::Removed => Some(FileChange::Deleted { path: full_path }),
                             Change::Modification { .. } => {
