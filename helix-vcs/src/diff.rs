@@ -306,6 +306,10 @@ impl Diff<'_> {
             }
         }
     }
+
+    pub fn hunks(&self) -> impl Iterator<Item = &Hunk> {
+        self.diff.hunks.iter()
+    }
 }
 
 pub struct HunksInLineRangesIter<'a, I: Iterator<Item = (usize, usize)>> {
