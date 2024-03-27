@@ -20,8 +20,6 @@ mod handlers;
 use ignore::DirEntry;
 use url::Url;
 
-pub use keymap::macros::*;
-
 #[cfg(windows)]
 fn true_color() -> bool {
     true
