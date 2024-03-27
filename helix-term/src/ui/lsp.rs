@@ -15,6 +15,7 @@ use super::Popup;
 pub struct SignatureHelp {
     signature: String,
     signature_doc: Option<String>,
+    signature_index: Option<String>,
     /// Part of signature text
     active_param_range: Option<(usize, usize)>,
 
@@ -36,6 +37,7 @@ impl SignatureHelp {
             active_param_range: None,
             language,
             config_loader,
+            signature_index: None,
         }
     }
 
@@ -49,6 +51,10 @@ impl SignatureHelp {
 
     pub fn visible_popup(compositor: &mut Compositor) -> Option<&mut Popup<Self>> {
         compositor.find_id::<Popup<Self>>(Self::ID)
+    }
+
+    pub fn set_signature_index(&mut self, signature_index: String) {
+        self.signature_index = Some(signature_index);
     }
 }
 
@@ -73,6 +79,13 @@ impl Component for SignatureHelp {
             Arc::clone(&self.config_loader),
             active_param_span,
         );
+
+        if let Some(signature_index) = &self.signature_index {
+            let sig_index = Markdown::new(signature_index.clone(), self.config_loader.clone());
+            let sig_index = sig_index.parse(Some(&cx.editor.theme));
+            let sig_index_para = Paragraph::new(&sig_index);
+            sig_index_para.render(area.with_height(1).clip_left(1), surface);
+        }
 
         let (_, sig_text_height) = crate::ui::text::required_size(&sig_text, area.width);
         let sig_text_area = area.clip_top(1).with_height(sig_text_height);

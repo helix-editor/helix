@@ -376,6 +376,8 @@ impl MappableCommand {
         extend_to_line_end, "Extend to line end",
         extend_to_line_end_newline, "Extend to line end",
         signature_help, "Show signature help",
+        signature_next, "Show next signature",
+        signature_previous, "Show previous signature",
         smart_tab, "Insert tab if all cursors have all whitespace to their left; otherwise, run a separate command.",
         insert_tab, "Insert tab char",
         insert_newline, "Insert newline char",
@@ -5997,4 +5999,12 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
         }
     }
     jump_to_label(cx, words, behaviour)
+}
+
+fn signature_next(cx: &mut Context) {
+    cx.editor.handlers.next_signature_help();
+}
+
+fn signature_previous(cx: &mut Context) {
+    cx.editor.handlers.previous_signature_help();
 }

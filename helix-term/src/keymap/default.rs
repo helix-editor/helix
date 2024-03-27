@@ -389,6 +389,9 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "pagedown" => page_down,
         "home" => goto_line_start,
         "end" => goto_line_end_newline,
+
+        "S-down" => signature_next,
+        "S-up" => signature_previous,
     });
     hashmap!(
         Mode::Normal => normal,
