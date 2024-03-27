@@ -91,10 +91,16 @@ impl menu::Item for CompletionItem {
     }
 }
 
-#[derive(Debug, PartialEq, Default, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum CompletionItemSource {
+    LanguageServer(usize),
+    Path,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub struct CompletionItem {
     pub item: lsp::CompletionItem,
-    pub language_server_id: usize,
+    pub source: CompletionItemSource,
     pub resolved: bool,
 }
 
@@ -221,10 +227,10 @@ impl Completion {
             let (view, doc) = current!(editor);
 
             macro_rules! language_server {
-                ($item:expr) => {
+                ($language_server_id:expr) => {
                     match editor
                         .language_servers
-                        .get_by_id($item.language_server_id)
+                        .get_by_id($language_server_id)
                     {
                         Some(ls) => ls,
                         None => {
@@ -261,11 +267,18 @@ impl Completion {
                     // always present here
                     let item = item.unwrap();
 
+                    let offset_encoding = match item.source {
+                        CompletionItemSource::LanguageServer(id) => {
+                            language_server!(id).offset_encoding()
+                        }
+                        CompletionItemSource::Path => Default::default(),
+                    };
+
                     let transaction = item_to_transaction(
                         doc,
                         view.id,
                         &item.item,
-                        language_server!(item).offset_encoding(),
+                        offset_encoding,
                         trigger_offset,
                         true,
                         replace_mode,
@@ -282,22 +295,24 @@ impl Completion {
                     // always present here
                     let mut item = item.unwrap().clone();
 
-                    let language_server = language_server!(item);
-                    let offset_encoding = language_server.offset_encoding();
+                    let offset_encoding = match item.source {
+                        CompletionItemSource::LanguageServer(ls_id) => {
+                            let language_server = language_server!(ls_id);
 
-                    let language_server = editor
-                        .language_servers
-                        .get_by_id(item.language_server_id)
-                        .unwrap();
-
-                    // resolve item if not yet resolved
-                    if !item.resolved {
-                        if let Some(resolved) =
-                            Self::resolve_completion_item(language_server, item.item.clone())
-                        {
-                            item.item = resolved;
+                            // resolve item if not yet resolved
+                            if !item.resolved {
+                                if let Some(resolved) = Self::resolve_completion_item(
+                                    language_server,
+                                    item.item.clone(),
+                                ) {
+                                    item.item = resolved;
+                                }
+                            };
+                            language_server.offset_encoding()
                         }
+                        CompletionItemSource::Path => Default::default(),
                     };
+
                     // if more text was entered, remove it
                     doc.restore(view, &savepoint, true);
                     // save an undo checkpoint before the completion
@@ -592,7 +607,9 @@ impl AsyncHook for ResolveHandler {
     }
 
     fn finish_debounce(&mut self) {
-        let Some(item) = self.trigger.take() else { return };
+        let Some(item) = self.trigger.take() else {
+            return;
+        };
         let (tx, rx) = helix_event::cancelation();
         self.request = Some(tx);
         job::dispatch_blocking(move |editor, _| resolve_completion_item(editor, item, rx))
@@ -604,7 +621,11 @@ fn resolve_completion_item(
     item: CompletionItem,
     cancel: helix_event::CancelRx,
 ) {
-    let Some(language_server) = editor.language_server_by_id(item.language_server_id) else {
+    let CompletionItemSource::LanguageServer(language_server_id) = item.source else {
+        return;
+    };
+
+    let Some(language_server) = editor.language_server_by_id(language_server_id) else {
         return;
     };
 
@@ -623,7 +644,7 @@ fn resolve_completion_item(
                     {
                         let resolved_item = CompletionItem {
                             item: resolved_item,
-                            language_server_id: item.language_server_id,
+                            source: item.source,
                             resolved: true,
                         };
 
