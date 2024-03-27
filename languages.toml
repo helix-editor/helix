@@ -2038,7 +2038,7 @@ name = "odin"
 auto-format = true
 scope = "source.odin"
 file-types = ["odin"]
-roots = ["ols.json"]
+roots = ["ols.json", "main.odin"]
 language-servers = [ "ols" ]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
