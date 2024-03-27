@@ -29,7 +29,6 @@ log = "0.4"
 
 # cloning/compiling tree-sitter grammars
 cc = { version = "1" }
-threadpool = { version = "1.0" }
 tempfile = "3.10.1"
 dunce = "1.0.4"
 
