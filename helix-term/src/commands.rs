@@ -3032,7 +3032,7 @@ fn changed_file_picker(cx: &mut Context) {
                 ),
             };
 
-            Row::new(vec![
+            Row::new([
                 Cell::from(Span::styled(sign, style)),
                 Cell::from(content),
             ])
