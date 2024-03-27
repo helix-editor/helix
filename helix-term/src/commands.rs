@@ -5115,7 +5115,7 @@ fn goto_ts_object_impl(cx: &mut Context, object: &'static str, direction: Direct
 
                     Range::new(range.anchor, head)
                 } else {
-                    new_range.with_direction(direction)
+                    new_range.with_direction(Direction::Backward)
                 }
             });
 
