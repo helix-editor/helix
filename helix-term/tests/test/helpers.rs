@@ -1,5 +1,4 @@
 use std::{
-    fs::File,
     io::{Read, Write},
     mem::replace,
     path::PathBuf,
@@ -352,9 +351,8 @@ pub async fn run_event_loop_until_idle(app: &mut Application) {
     app.event_loop_until_idle(&mut rx_stream).await;
 }
 
-pub fn assert_file_has_content(file: &mut File, content: &str) -> anyhow::Result<()> {
-    file.flush()?;
-    file.sync_all()?;
+pub fn assert_file_has_content(file: &mut NamedTempFile, content: &str) -> anyhow::Result<()> {
+    reload_file(file)?;
 
     let mut file_content = String::new();
     file.read_to_string(&mut file_content)?;
@@ -367,4 +365,14 @@ pub fn assert_status_not_error(editor: &Editor) {
     if let Some((_, sev)) = editor.get_status() {
         assert_ne!(&Severity::Error, sev);
     }
+}
+
+pub fn reload_file(file: &mut NamedTempFile) -> anyhow::Result<()> {
+    let path = file.path();
+    let f = std::fs::OpenOptions::new()
+        .write(true)
+        .read(true)
+        .open(&path)?;
+    *file.as_file_mut() = f;
+    Ok(())
 }

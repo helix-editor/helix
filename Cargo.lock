@@ -1338,12 +1338,15 @@ version = "23.10.0"
 name = "helix-stdx"
 version = "23.10.0"
 dependencies = [
+ "bitflags 2.4.2",
  "dunce",
  "etcetera",
  "regex-cursor",
  "ropey",
+ "rustix",
  "tempfile",
  "which",
+ "windows-sys 0.52.0",
 ]
 
 [[package]]
@@ -1448,6 +1451,7 @@ dependencies = [
  "serde",
  "serde_json",
  "slotmap",
+ "tempfile",
  "tokio",
  "tokio-stream",
  "toml",
