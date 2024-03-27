@@ -38,7 +38,7 @@ impl<T: Component> Popup<T> {
             position: None,
             margin: Margin::none(),
             size: (0, 0),
-            position_bias: Open::Below,
+            position_bias: Open::Above,
             child_size: (0, 0),
             scroll: 0,
             auto_close: false,

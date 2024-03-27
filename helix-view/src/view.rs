@@ -1,5 +1,6 @@
 use crate::{
     align_view,
+    annotations::diagnostics::InlineDiagnostics,
     document::DocumentInlayHints,
     editor::{GutterConfig, GutterType},
     graphics::Rect,
@@ -10,7 +11,7 @@ use helix_core::{
     char_idx_at_visual_offset,
     doc_formatter::TextFormat,
     syntax::Highlight,
-    text_annotations::TextAnnotations,
+    text_annotations::{CopilotLineAnnotation, TextAnnotations},
     visual_offset_from_anchor, visual_offset_from_block, Position, RopeSlice, Selection,
     Transaction,
     VisualOffsetError::{PosAfterMaxRow, PosBeforeAnchorRow},
@@ -376,11 +377,6 @@ impl View {
         text: RopeSlice,
         pos: usize,
     ) -> Option<Position> {
-        if pos < self.offset.anchor {
-            // Line is not visible on screen
-            return None;
-        }
-
         let viewport = self.inner_area(doc);
         let text_fmt = doc.text_format(viewport.width, None);
         let annotations = self.text_annotations(doc, None);
@@ -422,37 +418,58 @@ impl View {
             text_annotations.add_overlay(labels, style);
         }
 
-        let DocumentInlayHints {
+        if let Some(DocumentInlayHints {
             id: _,
             type_inlay_hints,
             parameter_inlay_hints,
             other_inlay_hints,
             padding_before_inlay_hints,
             padding_after_inlay_hints,
-        } = match doc.inlay_hints.get(&self.id) {
-            Some(doc_inlay_hints) => doc_inlay_hints,
-            None => return text_annotations,
+        }) = doc.inlay_hints.get(&self.id)
+        {
+            let type_style = theme
+                .and_then(|t| t.find_scope_index("ui.virtual.inlay-hint.type"))
+                .map(Highlight);
+            let parameter_style = theme
+                .and_then(|t| t.find_scope_index("ui.virtual.inlay-hint.parameter"))
+                .map(Highlight);
+            let other_style = theme
+                .and_then(|t| t.find_scope_index("ui.virtual.inlay-hint"))
+                .map(Highlight);
+
+            // Overlapping annotations are ignored apart from the first so the order here is not random:
+            // types -> parameters -> others should hopefully be the "correct" order for most use cases,
+            // with the padding coming before and after as expected.
+            text_annotations
+                .add_inline_annotations(padding_before_inlay_hints, None)
+                .add_inline_annotations(type_inlay_hints, type_style)
+                .add_inline_annotations(parameter_inlay_hints, parameter_style)
+                .add_inline_annotations(other_inlay_hints, other_style)
+                .add_inline_annotations(padding_after_inlay_hints, None);
         };
+        let width = self.inner_width(doc);
+        let config = doc.config.load();
+        if config.lsp.inline_diagnostics.enable(width) && config.lsp.inline_diagnostics.enabled {
+            let config = config.lsp.inline_diagnostics.clone();
+            let cursor = doc
+                .selection(self.id)
+                .primary()
+                .cursor(doc.text().slice(..));
+            text_annotations.add_line_annotation(InlineDiagnostics::new(
+                doc,
+                cursor,
+                width,
+                self.offset.horizontal_offset,
+                config,
+            ));
+        }
 
-        let type_style = theme
-            .and_then(|t| t.find_scope_index("ui.virtual.inlay-hint.type"))
-            .map(Highlight);
-        let parameter_style = theme
-            .and_then(|t| t.find_scope_index("ui.virtual.inlay-hint.parameter"))
-            .map(Highlight);
-        let other_style = theme
-            .and_then(|t| t.find_scope_index("ui.virtual.inlay-hint"))
-            .map(Highlight);
-
-        // Overlapping annotations are ignored apart from the first so the order here is not random:
-        // types -> parameters -> others should hopefully be the "correct" order for most use cases,
-        // with the padding coming before and after as expected.
-        text_annotations
-            .add_inline_annotations(padding_before_inlay_hints, None)
-            .add_inline_annotations(type_inlay_hints, type_style)
-            .add_inline_annotations(parameter_inlay_hints, parameter_style)
-            .add_inline_annotations(other_inlay_hints, other_style)
-            .add_inline_annotations(padding_after_inlay_hints, None);
+        if let Some(completion) = doc.get_copilot_completion_for_rendering() {
+            text_annotations.add_line_annotation(CopilotLineAnnotation::new(
+                completion.display_coords,
+                completion.additional_softwrap,
+            ));
+        }
 
         text_annotations
     }

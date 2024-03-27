@@ -6,7 +6,8 @@ use crate::{
     key, shift,
     ui::{
         self,
-        document::{render_document, LineDecoration, LinePos, TextRenderer},
+        document::{render_document, LinePos, TextRenderer},
+        text_decorations::DecorationManager,
         EditorView,
     },
 };
@@ -761,7 +762,7 @@ impl<T: Item + 'static> Picker<T> {
                 }
                 overlay_highlights = Box::new(helix_core::syntax::merge(overlay_highlights, spans));
             }
-            let mut decorations: Vec<Box<dyn LineDecoration>> = Vec::new();
+            let mut decorations = DecorationManager::default();
 
             if let Some((start, end)) = range {
                 let style = cx
@@ -773,14 +774,14 @@ impl<T: Item + 'static> Picker<T> {
                     if (start..=end).contains(&pos.doc_line) {
                         let area = Rect::new(
                             renderer.viewport.x,
-                            renderer.viewport.y + pos.visual_line,
+                            pos.visual_line,
                             renderer.viewport.width,
                             1,
                         );
-                        renderer.surface.set_style(area, style)
+                        renderer.set_style(area, style)
                     }
                 };
-                decorations.push(Box::new(draw_highlight))
+                decorations.add_decoration(draw_highlight);
             }
 
             render_document(
@@ -793,8 +794,7 @@ impl<T: Item + 'static> Picker<T> {
                 syntax_highlights,
                 overlay_highlights,
                 &cx.editor.theme,
-                &mut decorations,
-                &mut [],
+                decorations,
             );
         }
     }
