@@ -163,6 +163,16 @@ impl Range {
         self.from() <= pos && pos < self.to()
     }
 
+    /// Returns equal if anchor and head are the same, and disregards old_visual_position
+    pub fn eq(&self, other: Range) -> bool {
+        self.anchor == other.anchor && self.head == other.head
+            // When a single character is selected, the orientation is indistinguishable
+            // and should be disregarded
+            // TODO: this does not work for graphemes like \r\n
+            || (self.anchor == other.anchor + 1 && self.head + 1 == other.head)
+            || (self.anchor == other.anchor - 1 && self.head - 1 == other.head)
+    }
+
     /// Map a range through a set of changes. Returns a new range representing
     /// the same position after the changes are applied. Note that this
     /// function runs in O(N) (N is number of changes) and can therefore
