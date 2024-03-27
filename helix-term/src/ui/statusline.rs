@@ -188,22 +188,22 @@ fn render_mode<'a>(context: &RenderContext) -> Spans<'a> {
     }
 }
 
-// TODO think about handling multiple language servers
 fn render_lsp_spinner<'a>(context: &RenderContext) -> Spans<'a> {
-    let language_server = context.doc.language_servers().next();
-    Span::raw(
-        language_server
-            .and_then(|srv| {
-                context
-                    .spinners
-                    .get(srv.id())
-                    .and_then(|spinner| spinner.frame())
-            })
-            // Even if there's no spinner; reserve its space to avoid elements frequently shifting.
-            .unwrap_or(" ")
-            .to_string(),
-    )
-    .into()
+    let frame = context
+        .doc
+        .language_servers()
+        .map(|srv| {
+            context
+                .spinners
+                .get(srv.id())
+                .and_then(|spinner| spinner.frame())
+        })
+        .find(|frame| frame.is_some());
+    if let Some(Some(frame)) = frame {
+        Span::raw(format!(" {} ", frame)).into()
+    } else {
+        Spans::default()
+    }
 }
 
 fn render_diagnostics<'a>(context: &RenderContext) -> Spans<'a> {
@@ -224,6 +224,7 @@ fn render_diagnostics<'a>(context: &RenderContext) -> Spans<'a> {
     let mut output = Spans::default();
 
     if warnings > 0 {
+        output.0.push(Span::raw(" "));
         output.0.push(Span::styled(
             "●".to_string(),
             context.editor.theme.get("warning"),
@@ -232,6 +233,9 @@ fn render_diagnostics<'a>(context: &RenderContext) -> Spans<'a> {
     }
 
     if errors > 0 {
+        if warnings > 0 {
+            output.0.push(Span::raw(" "));
+        }
         output.0.push(Span::styled(
             "●".to_string(),
             context.editor.theme.get("error"),
@@ -273,6 +277,9 @@ fn render_workspace_diagnostics<'a>(context: &RenderContext) -> Spans<'a> {
     }
 
     if errors > 0 {
+        if warnings > 0 {
+            output.0.push(Span::raw(" "));
+        }
         output.0.push(Span::styled(
             "●".to_string(),
             context.editor.theme.get("error"),
@@ -327,7 +334,7 @@ fn render_total_line_numbers<'a>(context: &RenderContext) -> Spans<'a> {
 fn render_position_percentage<'a>(context: &RenderContext) -> Spans<'a> {
     let position = get_position(context);
     let maxrows = context.doc.text().len_lines();
-    Span::raw(format!("{}%", (position.row + 1) * 100 / maxrows)).into()
+    Span::raw(format!(" {}% ", (position.row + 1) * 100 / maxrows)).into()
 }
 
 fn render_file_encoding<'a>(context: &RenderContext) -> Spans<'a> {
@@ -395,24 +402,19 @@ fn render_file_absolute_path<'a>(context: &RenderContext) -> Spans<'a> {
 }
 
 fn render_file_modification_indicator<'a>(context: &RenderContext) -> Spans<'a> {
-    let title = (if context.doc.is_modified() {
-        "[+]"
+    if context.doc.is_modified() {
+        Span::raw(" [+] ").into()
     } else {
-        "   "
-    })
-    .to_string();
-
-    Span::raw(title).into()
+        Spans::default()
+    }
 }
 
 fn render_read_only_indicator<'a>(context: &RenderContext) -> Spans<'a> {
-    let title = if context.doc.readonly {
-        " [readonly] "
+    if context.doc.readonly {
+        Span::raw(" [readonly] ").into()
     } else {
-        ""
+        Spans::default()
     }
-    .to_string();
-    Span::raw(title).into()
 }
 
 fn render_file_base_name<'a>(context: &RenderContext) -> Spans<'a> {
@@ -443,13 +445,13 @@ fn render_spacer<'a>(_context: &RenderContext) -> Spans<'a> {
 }
 
 fn render_version_control<'a>(context: &RenderContext) -> Spans<'a> {
-    let head = context
-        .doc
-        .version_control_head()
-        .unwrap_or_default()
-        .to_string();
+    let head = context.doc.version_control_head();
 
-    Span::raw(head).into()
+    if let Some(branch) = head {
+        Span::raw(format!(" {} ", branch)).into()
+    } else {
+        Spans::default()
+    }
 }
 
 fn render_register<'a>(context: &RenderContext) -> Spans<'a> {

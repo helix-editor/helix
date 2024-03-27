@@ -455,10 +455,10 @@ impl Default for StatusLineConfig {
         Self {
             left: vec![
                 E::Mode,
-                E::Spinner,
                 E::FileName,
                 E::ReadOnlyIndicator,
                 E::FileModificationIndicator,
+                E::Spinner,
             ],
             center: vec![],
             right: vec![
