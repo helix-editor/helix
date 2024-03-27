@@ -191,6 +191,28 @@ inlayHints.functionLikeReturnTypes.enabled = true
 inlayHints.enumMemberValues.enabled = true
 inlayHints.parameterNames.enabled = "all"
 
+[language-server.vscode-eslint-language-server]
+command = "vscode-eslint-language-server"
+args = ["--stdio"]
+
+[language-server.vscode-eslint-language-server.config]
+validate = "on"
+experimental = { useFlatConfig = false }
+rulesCustomizations = []
+run = "onType"
+problems = { shortenToSingleLine = false }
+nodePath = ""
+
+[language-server.vscode-eslint-language-server.config.codeAction.disableRuleComment]
+enable = true
+location = "separateLine"
+
+[language-server.vscode-eslint-language-server.config.codeAction.showDocumentation]
+enable = true
+
+[language-server.vscode-eslint-language-server.config.workingDirectory]
+mode = "location"
+
 [[language]]
 name = "rust"
 scope = "source.rust"
@@ -3430,3 +3452,52 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "ohm"
 source = { git = "https://github.com/novusnota/tree-sitter-ohm", rev = "80f14f0e477ddacc1e137d5ed8e830329e3fb7a3" }
+
+[[language]]
+name = "gjs"
+scope = "source.gjs"
+file-types = ["gjs"]
+roots = ["package.json", "ember-cli-build.js"]
+comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
+language-servers = [
+    { except-features = [
+        "format", "diagnostics",
+    ], name = "typescript-language-server" },
+    "vscode-eslint-language-server",
+    "ember-language-server",
+]
+indent = { tab-width = 2, unit = "  " }
+grammar = "javascript"
+
+[language.auto-pairs]
+'<' = '>'
+"'" = "'"
+"{" = "}"
+"(" = ")"
+'"' = '"'
+
+[[language]]
+name = "gts"
+scope = "source.gts"
+file-types = ["gts"]
+roots = ["package.json", "ember-cli-build.js"]
+comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
+language-servers = [
+    { except-features = [
+        "format", "diagnostics",
+    ], name = "typescript-language-server" },
+    "vscode-eslint-language-server",
+    "ember-language-server",
+]
+indent = { tab-width = 2, unit = "  " }
+grammar = "typescript"
+
+[language.auto-pairs]
+'<' = '>'
+"'" = "'"
+"{" = "}"
+"(" = ")"
+'"' = '"'
+
