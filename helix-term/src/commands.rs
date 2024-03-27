@@ -3032,14 +3032,16 @@ fn changed_file_picker(cx: &mut Context) {
                 ),
             };
 
-            Row::new([
-                Cell::from(Span::styled(sign, style)),
-                Cell::from(content),
-            ])
+            Row::new([Cell::from(Span::styled(sign, style)), Cell::from(content)])
         }
     }
 
-    let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("./"));
+    let cwd = helix_stdx::env::current_working_dir();
+    if !cwd.exists() {
+        cx.editor
+            .set_error("Current working directory does not exist");
+        return;
+    }
 
     let added = cx.editor.theme.get("diff.plus");
     let modified = cx.editor.theme.get("diff.delta");
