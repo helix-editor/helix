@@ -1,4 +1,4 @@
-use futures_util::{stream::FuturesUnordered, FutureExt};
+use futures_util::{stream::FuturesOrdered, stream::FuturesUnordered, FutureExt};
 use helix_lsp::{
     block_on,
     lsp::{
@@ -942,54 +942,104 @@ pub fn signature_help(cx: &mut Context) {
 }
 
 pub fn hover(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
+    let doc = doc!(cx.editor);
+    if doc
+        .language_servers_with_feature(LanguageServerFeature::Hover)
+        .count()
+        == 0
+    {
+        cx.editor.set_status(format!(
+            "No configured language server supports {}",
+            LanguageServerFeature::Hover
+        ));
+        return;
+    }
 
-    // TODO support multiple language servers (merge UI somehow)
-    let language_server =
-        language_server_with_feature!(cx.editor, doc, LanguageServerFeature::Hover);
-    // TODO: factor out a doc.position_identifier() that returns lsp::TextDocumentPositionIdentifier
-    let pos = doc.position(view.id, language_server.offset_encoding());
-    let future = language_server
-        .text_document_hover(doc.identifier(), pos, None)
-        .unwrap();
+    let get_hovers = move |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
 
-    cx.callback(
-        future,
-        move |editor, compositor, response: Option<lsp::Hover>| {
-            if let Some(hover) = response {
-                // hover.contents / .range <- used for visualizing
+        let mut seen_language_servers = HashSet::new();
+        let mut futures: FuturesOrdered<_> = doc
+            .language_servers_with_feature(LanguageServerFeature::Hover)
+            .filter(|ls| seen_language_servers.insert(ls.id()))
+            .map(|language_server| {
+                let lsp_name = language_server.name().to_string();
+                // TODO: factor out a doc.position_identifier() that returns lsp::TextDocumentPositionIdentifier
+                let pos = doc.position(view.id, language_server.offset_encoding());
+                let request = language_server
+                    .text_document_hover(doc.identifier(), pos, None)
+                    .unwrap();
 
-                fn marked_string_to_markdown(contents: lsp::MarkedString) -> String {
-                    match contents {
-                        lsp::MarkedString::String(contents) => contents,
-                        lsp::MarkedString::LanguageString(string) => {
-                            if string.language == "markdown" {
-                                string.value
-                            } else {
-                                format!("```{}\n{}\n```", string.language, string.value)
-                            }
+                async move {
+                    let json = request.await?;
+                    let response = serde_json::from_value::<Option<lsp::Hover>>(json)?;
+                    anyhow::Ok((lsp_name, response))
+                }
+            })
+            .collect();
+
+        let lsp_count = futures.len();
+        let format_contents = move |lsp_name: String, hover: lsp::Hover| {
+            // hover.contents / .range <- used for visualizing
+
+            fn marked_string_to_markdown(contents: lsp::MarkedString) -> String {
+                match contents {
+                    lsp::MarkedString::String(contents) => contents,
+                    lsp::MarkedString::LanguageString(string) => {
+                        if string.language == "markdown" {
+                            string.value
+                        } else {
+                            format!("```{}\n{}\n```", string.language, string.value)
                         }
                     }
                 }
-
-                let contents = match hover.contents {
-                    lsp::HoverContents::Scalar(contents) => marked_string_to_markdown(contents),
-                    lsp::HoverContents::Array(contents) => contents
-                        .into_iter()
-                        .map(marked_string_to_markdown)
-                        .collect::<Vec<_>>()
-                        .join("\n\n"),
-                    lsp::HoverContents::Markup(contents) => contents.value,
-                };
-
-                // skip if contents empty
-
-                let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
-                let popup = Popup::new("hover", contents).auto_close(true);
-                compositor.replace_or_push("hover", popup);
             }
-        },
-    );
+
+            let mut contents = match hover.contents {
+                lsp::HoverContents::Scalar(contents) => marked_string_to_markdown(contents),
+                lsp::HoverContents::Array(contents) => contents
+                    .into_iter()
+                    .map(marked_string_to_markdown)
+                    .collect::<Vec<_>>()
+                    .join("\n\n"),
+                lsp::HoverContents::Markup(contents) => contents.value,
+            };
+
+            // attach lsp name if more than one is available
+            if lsp_count > 1 {
+                contents = format!("# [**LSP**] {}:\n\n{}", lsp_name, contents);
+            }
+
+            contents
+        };
+
+        async move {
+            let mut contents: Vec<String> = Vec::new();
+
+            while let Some((lsp_name, hover)) = futures.try_next().await? {
+                if let Some(hover) = hover {
+                    contents.push(format_contents(lsp_name, hover));
+                }
+            }
+
+            let contents = contents.join("\n\n---\n\n");
+            anyhow::Ok(contents)
+        }
+        .boxed()
+    };
+
+    let contents = get_hovers(cx.editor);
+
+    cx.jobs.callback(async move {
+        let contents = contents.await?;
+        let call = move |editor: &mut Editor, compositor: &mut Compositor| {
+            // create new popup
+            let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
+            let popup = Popup::new("hover", contents).auto_close(true);
+            compositor.replace_or_push("hover", popup);
+        };
+        Ok(Callback::EditorCompositor(Box::new(call)))
+    });
 }
 
 pub fn rename_symbol(cx: &mut Context) {
