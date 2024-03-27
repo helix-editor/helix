@@ -94,7 +94,7 @@ The `[editor.statusline]` key takes the following sub-keys:
 
 | Key           | Description | Default |
 | ---           | ---         | ---     |
-| `left`        | A list of elements aligned to the left of the statusline | `["mode", "spinner", "file-name", "read-only-indicator", "file-modification-indicator"]` |
+| `left`        | A list of elements aligned to the left of the statusline | `["mode", "spinner", "file-name", "read-only-indicator", "zoom", "file-modification-indicator"]` |
 | `center`      | A list of elements aligned to the middle of the statusline | `[]` |
 | `right`       | A list of elements aligned to the right of the statusline | `["diagnostics", "selections", "register", "position", "file-encoding"]` |
 | `separator`   | The character used to separate elements in the statusline | `"│"` |
@@ -127,6 +127,7 @@ The following statusline elements can be configured:
 | `spacer` | Inserts a space between elements (multiple/contiguous spacers may be specified) |
 | `version-control` | The current branch name or detached commit hash of the opened workspace |
 | `register` | The current selected register |
+| `zoom` | The current window zoom/zen state |
 
 ### `[editor.lsp]` Section
 
@@ -402,3 +403,20 @@ S-tab = "move_parent_node_start"
 tab = "extend_parent_node_end"
 S-tab = "extend_parent_node_start"
 ```
+
+### `[editor.zen-view]` Section
+
+Options for the zen-view mode.
+
+Zen-view will center the currently-focused editor on the screen and hide all the others, useful for when you want to focus on editing
+a single file with either a wider monitor or if you have a lot of splits at once.
+
+| Key          | Description | Default |
+|--------------|-------------|---------|
+| `max-width`  | The maximum width that the zen-view will take up. | `150` |
+| `auto-enter` | Whether zen-view should be automatically entered on startup. Can be one of `"off"` (never auto-enter), `"single-file"` (only auto-enter if Helix is opened with a single file), `"multi-file"` (only auto-enter if opened with >1 files), `"always"` (always start in zen-view). | `"off"` |
+
+#### `[editor.zen-view.gutters]` Section
+
+Same as the [normal gutters](#editorgutters-section) option, but specifically for zen-view.
+It only supports the `layout` option currently (including setting `gutters = [...]` directly).

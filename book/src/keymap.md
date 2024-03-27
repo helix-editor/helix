@@ -195,6 +195,7 @@ useful when you're simply looking over text and not actively editing it.
 | `Ctrl-b`, `PageUp`   | Move page up                                              | `page_up`               |
 | `Ctrl-u`             | Move cursor and page half page up                         | `page_cursor_half_up`   |
 | `Ctrl-d`             | Move cursor and page half page down                       | `page_cursor_half_down` |
+| `Z`                  | Toggle 'zen-mode' for the focused view                    | `toggle_zen_view`       |
 
 #### Goto mode
 
