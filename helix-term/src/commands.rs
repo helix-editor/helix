@@ -5232,6 +5232,13 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                         'c' => textobject_treesitter("comment", range),
                         'T' => textobject_treesitter("test", range),
                         'p' => textobject::textobject_paragraph(text, range, objtype, count),
+                        'i' => textobject::textobject_indentation_level(
+                            text,
+                            range,
+                            count,
+                            doc.indent_width(),
+                            doc.tab_width(),
+                        ),
                         'm' => textobject::textobject_pair_surround_closest(
                             text, range, objtype, count,
                         ),
@@ -5258,6 +5265,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
         ("w", "Word"),
         ("W", "WORD"),
         ("p", "Paragraph"),
+        ("i", "Indentation level"),
         ("t", "Type definition (tree-sitter)"),
         ("f", "Function (tree-sitter)"),
         ("a", "Argument/parameter (tree-sitter)"),
