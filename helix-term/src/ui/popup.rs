@@ -61,6 +61,10 @@ impl<T: Component> Popup<T> {
         self.position
     }
 
+    pub fn set_position(&mut self, position: Position) {
+        self.position = Some(position);
+    }
+
     /// Set the popup to prefer to render above or below the anchor position.
     ///
     /// This preference will be ignored if the viewport doesn't have enough space in the
