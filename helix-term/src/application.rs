@@ -161,7 +161,7 @@ impl Application {
 
             // If the first file is a directory, skip it and open a picker
             if let Some((first, _)) = files_it.next_if(|(p, _)| p.is_dir()) {
-                let picker = ui::file_picker(first, &config.load().editor);
+                let picker = ui::file_picker(first, editor.config().file_picker);
                 compositor.push(Box::new(overlaid(picker)));
             }
 

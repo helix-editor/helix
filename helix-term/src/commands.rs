@@ -1221,7 +1221,7 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
 
         let path = &rel_path.join(p);
         if path.is_dir() {
-            let picker = ui::file_picker(path.into(), &cx.editor.config());
+            let picker = ui::file_picker(path.into(), cx.editor.config().file_picker);
             cx.push_layer(Box::new(overlaid(picker)));
         } else if let Err(e) = cx.editor.open(path, action) {
             cx.editor.set_error(format!("Open file failed: {:?}", e));
@@ -1258,7 +1258,7 @@ fn open_url(cx: &mut Context, url: Url, action: Action) {
         Ok(_) | Err(_) => {
             let path = &rel_path.join(url.path());
             if path.is_dir() {
-                let picker = ui::file_picker(path.into(), &cx.editor.config());
+                let picker = ui::file_picker(path.into(), cx.editor.config().file_picker);
                 cx.push_layer(Box::new(overlaid(picker)));
             } else if let Err(e) = cx.editor.open(path, action) {
                 cx.editor.set_error(format!("Open file failed: {:?}", e));
@@ -2213,6 +2213,7 @@ fn global_search(cx: &mut Context) {
 
     impl ui::menu::Item for FileResult {
         type Data = Option<PathBuf>;
+        type Config = ();
 
         fn format(&self, current_path: &Self::Data) -> Row {
             let relative_path = helix_stdx::path::get_relative_path(&self.path)
@@ -2232,7 +2233,7 @@ fn global_search(cx: &mut Context) {
 
     let config = cx.editor.config();
     let smart_case = config.search.smart_case;
-    let file_picker_config = config.file_picker.clone();
+    let file_picker_config = config.file_picker;
 
     let reg = cx.register.unwrap_or('/');
     let completions = search_completions(cx, Some(reg));
@@ -2802,7 +2803,7 @@ fn file_picker(cx: &mut Context) {
         cx.editor.set_error("Workspace directory does not exist");
         return;
     }
-    let picker = ui::file_picker(root, &cx.editor.config());
+    let picker = ui::file_picker(root, cx.editor.config().file_picker);
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
@@ -2819,7 +2820,7 @@ fn file_picker_in_current_buffer_directory(cx: &mut Context) {
         }
     };
 
-    let picker = ui::file_picker(path, &cx.editor.config());
+    let picker = ui::file_picker(path, cx.editor.config().file_picker);
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
@@ -2830,7 +2831,7 @@ fn file_picker_in_current_directory(cx: &mut Context) {
             .set_error("Current working directory does not exist");
         return;
     }
-    let picker = ui::file_picker(cwd, &cx.editor.config());
+    let picker = ui::file_picker(cwd, cx.editor.config().file_picker);
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
@@ -2847,6 +2848,7 @@ fn buffer_picker(cx: &mut Context) {
 
     impl ui::menu::Item for BufferMeta {
         type Data = ();
+        type Config = ();
 
         fn format(&self, _data: &Self::Data) -> Row {
             let path = self
@@ -2888,7 +2890,7 @@ fn buffer_picker(cx: &mut Context) {
     // mru
     items.sort_unstable_by_key(|item| std::cmp::Reverse(item.focused_at));
 
-    let picker = Picker::new(items, (), |cx, meta, action| {
+    let picker = Picker::new((), items, (), |cx, meta, action| {
         cx.editor.switch(meta.id, action);
     })
     .with_preview(|editor, meta| {
@@ -2914,6 +2916,7 @@ fn jumplist_picker(cx: &mut Context) {
 
     impl ui::menu::Item for JumpMeta {
         type Data = ();
+        type Config = ();
 
         fn format(&self, _data: &Self::Data) -> Row {
             let path = self
@@ -2966,6 +2969,7 @@ fn jumplist_picker(cx: &mut Context) {
     };
 
     let picker = Picker::new(
+        (),
         cx.editor
             .tree
             .views()
@@ -2996,6 +3000,7 @@ fn jumplist_picker(cx: &mut Context) {
 
 impl ui::menu::Item for MappableCommand {
     type Data = ReverseKeymap;
+    type Config = ();
 
     fn format(&self, keymap: &Self::Data) -> Row {
         let fmt_binding = |bindings: &Vec<Vec<KeyEvent>>| -> String {
@@ -3042,7 +3047,7 @@ pub fn command_palette(cx: &mut Context) {
                 }
             }));
 
-            let picker = Picker::new(commands, keymap, move |cx, command, _action| {
+            let picker = Picker::new((), commands, keymap, move |cx, command, _action| {
                 let mut ctx = Context {
                     register,
                     count,

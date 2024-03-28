@@ -25,7 +25,8 @@ use tui::widgets::Widget;
 use std::{
     collections::HashMap,
     io::Read,
-    path::PathBuf,
+    ops::Deref,
+    path::{Path, PathBuf},
     sync::{
         atomic::{self, AtomicBool},
         Arc,
@@ -47,7 +48,7 @@ use helix_view::{
 };
 
 pub const ID: &str = "picker";
-use super::{menu::Item, overlay::Overlay};
+use super::{inject_files, menu::Item, overlay::Overlay, walk_dir};
 
 pub const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
 /// Biggest file size to preview in bytes
@@ -201,6 +202,8 @@ pub struct Picker<T: Item> {
     read_buffer: Vec<u8>,
     /// Given an item in the picker, return the file path and line number to display.
     file_fn: Option<FileCallback<T>>,
+
+    config: T::Config,
 }
 
 impl<T: Item + 'static> Picker<T> {
@@ -220,6 +223,7 @@ impl<T: Item + 'static> Picker<T> {
     }
 
     pub fn new(
+        config: T::Config,
         options: Vec<T>,
         editor_data: T::Data,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
@@ -237,6 +241,7 @@ impl<T: Item + 'static> Picker<T> {
             }
         }
         Self::with(
+            config,
             matcher,
             Arc::new(editor_data),
             Arc::new(AtomicBool::new(false)),
@@ -248,11 +253,21 @@ impl<T: Item + 'static> Picker<T> {
         matcher: Nucleo<T>,
         injector: Injector<T>,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
-    ) -> Self {
-        Self::with(matcher, injector.editor_data, injector.shutown, callback_fn)
+    ) -> Self
+    where
+        T::Config: Default,
+    {
+        Self::with(
+            T::Config::default(),
+            matcher,
+            injector.editor_data,
+            injector.shutown,
+            callback_fn,
+        )
     }
 
     fn with(
+        config: T::Config,
         matcher: Nucleo<T>,
         editor_data: Arc<T::Data>,
         shutdown: Arc<AtomicBool>,
@@ -280,6 +295,7 @@ impl<T: Item + 'static> Picker<T> {
             preview_cache: HashMap::new(),
             read_buffer: Vec::with_capacity(1024),
             file_fn: None,
+            config,
         }
     }
 
@@ -800,6 +816,41 @@ impl<T: Item + 'static> Picker<T> {
     }
 }
 
+impl Picker<PathBuf> {
+    fn change_root(&mut self, root: Arc<PathBuf>, cx: &mut Context) {
+        cx.editor.set_status(root.display().to_string());
+        self.editor_data = root;
+        let files = walk_dir(&self.editor_data, self.config);
+        self.matcher.restart(true);
+        inject_files(self, files);
+        self.cursor = 0;
+    }
+
+    pub fn goto_parent(&mut self, cx: &mut Context) {
+        if let Some(parent) = &self.editor_data.parent() {
+            self.change_root(Arc::new(parent.to_path_buf()), cx);
+        }
+    }
+
+    pub fn goto_child(&mut self, cx: &mut Context) {
+        if let Some(selection) = self.selection() {
+            let component = selection
+                .strip_prefix(&*self.editor_data)
+                .ok()
+                .map(Path::components)
+                .and_then(|mut iter| iter.next());
+            if let Some(comp) = component {
+                let mut child = self.editor_data.deref().clone();
+                child.push(comp);
+                if child.is_dir() {
+                    self.prompt.clear(cx.editor);
+                    self.change_root(Arc::new(child), cx);
+                }
+            }
+        }
+    }
+}
+
 impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         // +---------+ +---------+
@@ -911,6 +962,12 @@ impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
             }
             ctrl!('t') => {
                 self.toggle_preview();
+            }
+            ctrl!('a') => {
+                T::goto_parent(self, ctx);
+            }
+            ctrl!('e') => {
+                T::goto_child(self, ctx);
             }
             _ => {
                 self.prompt_handle_event(event, ctx);

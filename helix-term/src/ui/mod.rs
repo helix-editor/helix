@@ -19,6 +19,7 @@ use crate::job::{self, Callback};
 pub use completion::{Completion, CompletionItem};
 pub use editor::EditorView;
 use helix_stdx::rope;
+use helix_view::editor::FilePickerConfig;
 pub use markdown::Markdown;
 pub use menu::Menu;
 pub use picker::{DynamicPicker, FileLocation, Picker};
@@ -29,7 +30,7 @@ pub use text::Text;
 
 use helix_view::Editor;
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 
 pub fn prompt(
     cx: &mut crate::commands::Context,
@@ -172,26 +173,22 @@ pub fn raw_regex_prompt(
     cx.push_layer(Box::new(prompt));
 }
 
-pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> Picker<PathBuf> {
+pub fn walk_dir(root: &Path, config: FilePickerConfig) -> impl Iterator<Item = PathBuf> {
     use ignore::{types::TypesBuilder, WalkBuilder};
-    use std::time::Instant;
+    let dedup_symlinks = config.deduplicate_links;
+    let absolute_root = root.canonicalize().unwrap_or_else(|_| root.to_owned());
 
-    let now = Instant::now();
-
-    let dedup_symlinks = config.file_picker.deduplicate_links;
-    let absolute_root = root.canonicalize().unwrap_or_else(|_| root.clone());
-
-    let mut walk_builder = WalkBuilder::new(&root);
+    let mut walk_builder = WalkBuilder::new(root);
     walk_builder
-        .hidden(config.file_picker.hidden)
-        .parents(config.file_picker.parents)
-        .ignore(config.file_picker.ignore)
-        .follow_links(config.file_picker.follow_symlinks)
-        .git_ignore(config.file_picker.git_ignore)
-        .git_global(config.file_picker.git_global)
-        .git_exclude(config.file_picker.git_exclude)
+        .hidden(config.hidden)
+        .parents(config.parents)
+        .ignore(config.ignore)
+        .follow_links(config.follow_symlinks)
+        .git_ignore(config.git_ignore)
+        .git_global(config.git_global)
+        .git_exclude(config.git_exclude)
         .sort_by_file_name(|name1, name2| name1.cmp(name2))
-        .max_depth(config.file_picker.max_depth)
+        .max_depth(config.max_depth)
         .filter_entry(move |entry| filter_picker_entry(entry, &absolute_root, dedup_symlinks));
 
     walk_builder.add_custom_ignore_filename(helix_loader::config_dir().join("ignore"));
@@ -210,26 +207,20 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> Picker
         .build()
         .expect("failed to build excluded_types");
     walk_builder.types(excluded_types);
-    let mut files = walk_builder.build().filter_map(|entry| {
+
+    walk_builder.build().filter_map(|entry| {
         let entry = entry.ok()?;
         if !entry.file_type()?.is_file() {
             return None;
         }
         Some(entry.into_path())
-    });
-    log::debug!("file_picker init {:?}", Instant::now().duration_since(now));
-
-    let picker = Picker::new(Vec::new(), root, move |cx, path: &PathBuf, action| {
-        if let Err(e) = cx.editor.open(path, action) {
-            let err = if let Some(err) = e.source() {
-                format!("{}", err)
-            } else {
-                format!("unable to open \"{}\"", path.display())
-            };
-            cx.editor.set_error(err);
-        }
     })
-    .with_preview(|_editor, path| Some((path.clone().into(), None)));
+}
+
+pub fn inject_files(
+    picker: &Picker<PathBuf>,
+    mut files: impl Iterator<Item = PathBuf> + Send + 'static,
+) {
     let injector = picker.injector();
     let timeout = std::time::Instant::now() + std::time::Duration::from_millis(30);
 
@@ -252,6 +243,34 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> Picker
             }
         });
     }
+}
+
+pub fn file_picker(root: PathBuf, config: FilePickerConfig) -> Picker<PathBuf> {
+    use std::time::Instant;
+
+    let now = Instant::now();
+
+    let files = walk_dir(&root, config);
+    log::debug!("file_picker init {:?}", Instant::now().duration_since(now));
+
+    let picker = Picker::new(
+        config,
+        Vec::new(),
+        root,
+        move |cx, path: &PathBuf, action| {
+            if let Err(e) = cx.editor.open(path, action) {
+                let err = if let Some(err) = e.source() {
+                    format!("{}", err)
+                } else {
+                    format!("unable to open \"{}\"", path.display())
+                };
+                cx.editor.set_error(err);
+            }
+        },
+    )
+    .with_preview(|_editor, path| Some((path.clone().into(), None)));
+
+    inject_files(&picker, files);
     picker
 }
 
