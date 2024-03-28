@@ -969,7 +969,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "julia"
-source = { git = "https://github.com/tree-sitter/tree-sitter-julia", rev = "8fb38abff74652c4faddbf04d2d5bbbc6b4bae25" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-julia", rev = "e84f10db8eeb8b9807786bfc658808edaa1b4fa2" }
 
 [[language]]
 name = "java"
