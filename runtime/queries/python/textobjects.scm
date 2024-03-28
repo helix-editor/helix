@@ -21,3 +21,15 @@
    name: (identifier) @_name
    body: (block)? @test.inside) @test.around
  (#match? @_name "^test_"))
+
+(list
+  (_) @entry.around)
+
+(tuple
+  (_) @entry.around)
+
+(set
+  (_) @entry.around)
+
+(pair
+  (_) @entry.inside) @entry.around
