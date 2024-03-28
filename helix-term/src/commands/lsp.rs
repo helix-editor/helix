@@ -1,4 +1,4 @@
-use futures_util::{future::join_all, stream::FuturesUnordered, FutureExt};
+use futures_util::{stream::FuturesOrdered, FutureExt};
 use helix_lsp::{
     block_on,
     lsp::{
@@ -946,7 +946,7 @@ where
     let (view, doc) = current!(cx.editor);
 
     let mut seen_language_servers = HashSet::new();
-    let mut future: FuturesUnordered<_> = doc
+    let mut future: FuturesOrdered<_> = doc
         .language_servers_with_feature(feature)
         .filter(|ls| seen_language_servers.insert(ls.id()))
         .map(|ls| {
@@ -1007,6 +1007,10 @@ where
                     .into_iter()
                     .flat_map(to_locations)
                     .collect::<Vec<_>>();
+                if locations.is_empty() {
+                    editor.set_status("No definitions found.");
+                    return;
+                }
                 goto_impl(editor, compositor, locations, MAPPINGS[unique_encodings[0]]);
                 return;
             }
@@ -1017,13 +1021,15 @@ where
                         goto_impl(editor, compositor, vec![single], MAPPINGS[encodings[idx]]);
                         return;
                     }
-                    lsp::GotoDefinitionResponse::Array(many) => {
+                    lsp::GotoDefinitionResponse::Array(many) if !many.is_empty() => {
                         goto_impl(editor, compositor, many, MAPPINGS[encodings[idx]]);
                         return;
                     }
                     _ => {}
                 }
             }
+            editor.set_status("No definitions found.");
+            return;
         },
     );
 }
@@ -1102,30 +1108,39 @@ pub fn hover(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
     let language_servers = doc.language_servers_with_feature(LanguageServerFeature::Hover);
-    let mut future = vec![];
-    for server in language_servers {
-        // TODO: factor out a doc.position_identifier() that returns lsp::TextDocumentPositionIdentifier
-        let pos = doc.position(view.id, server.offset_encoding());
-        if let Some(resp) = server.text_document_hover(doc.identifier(), pos, None) {
-            future.push(resp);
-        }
-    }
-
-    if future.is_empty() {
+    let mut futures: FuturesOrdered<_> = language_servers
+        .map(|server| {
+            // TODO: factor out a doc.position_identifier() that returns lsp::TextDocumentPositionIdentifier
+            let pos = doc.position(view.id, server.offset_encoding());
+            server
+                .text_document_hover(doc.identifier(), pos, None)
+                .unwrap()
+        })
+        .collect();
+    if futures.is_empty() {
         cx.editor
             .set_status("No configured language server supports hover");
         return;
     }
 
-    let future = join_all(future).map(|data| {
-        Ok(data
-            .into_iter()
-            .flat_map(|resp| {
-                let resp = resp.ok()?;
-                (!resp.is_null()).then_some(resp)
-            })
-            .collect())
-    });
+    let future = async move {
+        let mut responses = Vec::with_capacity(futures.len());
+
+        loop {
+            let res = match futures.try_next().await {
+                Ok(Some(res)) => res,
+                Ok(None) => break,
+                Err(err) => {
+                    log::error!(target: "hover", "{err}");
+                    continue;
+                }
+            };
+            if !res.is_null() {
+                responses.push(res);
+            }
+        }
+        Ok(serde_json::Value::Array(responses))
+    };
 
     cx.callback(future, move |editor, compositor, hover: Vec<lsp::Hover>| {
         // hover.contents / .range <- used for visualizing
