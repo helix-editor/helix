@@ -1395,9 +1395,14 @@ fn lsp_workspace_command(
         let callback = async move {
             let call: job::Callback = Callback::EditorCompositor(Box::new(
                 move |_editor: &mut Editor, compositor: &mut Compositor| {
-                    let picker = ui::Picker::new(commands, (), move |cx, command, _action| {
-                        execute_lsp_command(cx.editor, language_server_id, command.clone());
-                    });
+                    let columns = vec![ui::PickerColumn::new(
+                        "title",
+                        |command: &helix_lsp::lsp::Command, _| command.title.as_str().into(),
+                    )];
+                    let picker =
+                        ui::Picker::new(columns, 0, commands, (), move |cx, command, _action| {
+                            execute_lsp_command(cx.editor, language_server_id, command.clone());
+                        });
                     compositor.push(Box::new(overlaid(picker)))
                 },
             ));

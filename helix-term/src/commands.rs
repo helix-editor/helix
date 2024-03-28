@@ -3,10 +3,10 @@ pub(crate) mod lsp;
 pub(crate) mod typed;
 
 pub use dap::*;
+use futures_util::FutureExt;
 use helix_stdx::rope::{self, RopeSliceExt};
 use helix_vcs::Hunk;
 pub use lsp::*;
-use tui::widgets::Row;
 pub use typed::*;
 
 use helix_core::{
@@ -53,8 +53,7 @@ use crate::{
     compositor::{self, Component, Compositor},
     filter_picker_entry,
     job::Callback,
-    keymap::ReverseKeymap,
-    ui::{self, overlay::overlaid, Picker, Popup, Prompt, PromptEvent},
+    ui::{self, overlay::overlaid, Picker, PickerColumn, Popup, Prompt, PromptEvent},
 };
 
 use crate::job::{self, Jobs};
@@ -2211,216 +2210,195 @@ fn global_search(cx: &mut Context) {
         }
     }
 
-    impl ui::menu::Item for FileResult {
-        type Data = Option<PathBuf>;
-
-        fn format(&self, current_path: &Self::Data) -> Row {
-            let relative_path = helix_stdx::path::get_relative_path(&self.path)
-                .to_string_lossy()
-                .into_owned();
-            if current_path
-                .as_ref()
-                .map(|p| p == &self.path)
-                .unwrap_or(false)
-            {
-                format!("{} (*)", relative_path).into()
-            } else {
-                relative_path.into()
-            }
-        }
+    struct GlobalSearchConfig {
+        smart_case: bool,
+        file_picker_config: helix_view::editor::FilePickerConfig,
     }
 
     let config = cx.editor.config();
-    let smart_case = config.search.smart_case;
-    let file_picker_config = config.file_picker.clone();
+    let config = GlobalSearchConfig {
+        smart_case: config.search.smart_case,
+        file_picker_config: config.file_picker.clone(),
+    };
 
-    let reg = cx.register.unwrap_or('/');
-    let completions = search_completions(cx, Some(reg));
-    ui::raw_regex_prompt(
-        cx,
-        "global-search:".into(),
-        Some(reg),
-        move |_editor: &Editor, input: &str| {
-            completions
-                .iter()
-                .filter(|comp| comp.starts_with(input))
-                .map(|comp| (0.., std::borrow::Cow::Owned(comp.clone())))
-                .collect()
-        },
-        move |cx, _, input, event| {
-            if event != PromptEvent::Validate {
-                return;
+    let columns = vec![
+        PickerColumn::new("path", |item: &FileResult, _| {
+            helix_stdx::path::get_relative_path(&item.path)
+                .to_string_lossy()
+                .into_owned()
+                .into()
+        }),
+        PickerColumn::hidden("contents"),
+    ];
+
+    let get_files = |query: &str,
+                     editor: &mut Editor,
+                     config: std::sync::Arc<GlobalSearchConfig>,
+                     injector: &ui::picker::Injector<_, _>| {
+        if query.is_empty() {
+            return async { Ok(()) }.boxed();
+        }
+
+        let search_root = helix_stdx::env::current_working_dir();
+        if !search_root.exists() {
+            return async { Err(anyhow::anyhow!("Current working directory does not exist")) }
+                .boxed();
+        }
+
+        let documents: Vec<_> = editor
+            .documents()
+            .map(|doc| (doc.path().cloned(), doc.text().to_owned()))
+            .collect();
+
+        let matcher = match RegexMatcherBuilder::new()
+            .case_smart(config.smart_case)
+            .build(query)
+        {
+            Ok(matcher) => {
+                // Clear any "Failed to compile regex" errors out of the statusline.
+                editor.clear_status();
+                matcher
             }
-            cx.editor.registers.last_search_register = reg;
+            Err(err) => {
+                log::info!("Failed to compile search pattern in global search: {}", err);
+                return async { Err(anyhow::anyhow!("Failed to compile regex")) }.boxed();
+            }
+        };
 
-            let current_path = doc_mut!(cx.editor).path().cloned();
-            let documents: Vec<_> = cx
-                .editor
-                .documents()
-                .map(|doc| (doc.path().cloned(), doc.text().to_owned()))
-                .collect();
+        let dedup_symlinks = config.file_picker_config.deduplicate_links;
+        let absolute_root = search_root
+            .canonicalize()
+            .unwrap_or_else(|_| search_root.clone());
 
-            if let Ok(matcher) = RegexMatcherBuilder::new()
-                .case_smart(smart_case)
-                .build(input)
-            {
-                let search_root = helix_stdx::env::current_working_dir();
-                if !search_root.exists() {
-                    cx.editor
-                        .set_error("Current working directory does not exist");
-                    return;
-                }
+        let injector = injector.clone();
+        async move {
+            let searcher = SearcherBuilder::new()
+                .binary_detection(BinaryDetection::quit(b'\x00'))
+                .build();
+            WalkBuilder::new(search_root)
+                .hidden(config.file_picker_config.hidden)
+                .parents(config.file_picker_config.parents)
+                .ignore(config.file_picker_config.ignore)
+                .follow_links(config.file_picker_config.follow_symlinks)
+                .git_ignore(config.file_picker_config.git_ignore)
+                .git_global(config.file_picker_config.git_global)
+                .git_exclude(config.file_picker_config.git_exclude)
+                .max_depth(config.file_picker_config.max_depth)
+                .filter_entry(move |entry| {
+                    filter_picker_entry(entry, &absolute_root, dedup_symlinks)
+                })
+                .add_custom_ignore_filename(helix_loader::config_dir().join("ignore"))
+                .add_custom_ignore_filename(".helix/ignore")
+                .build_parallel()
+                .run(|| {
+                    let mut searcher = searcher.clone();
+                    let matcher = matcher.clone();
+                    let injector = injector.clone();
+                    let documents = &documents;
+                    Box::new(move |entry: Result<DirEntry, ignore::Error>| -> WalkState {
+                        let entry = match entry {
+                            Ok(entry) => entry,
+                            Err(_) => return WalkState::Continue,
+                        };
 
-                let (picker, injector) = Picker::stream(current_path);
+                        match entry.file_type() {
+                            Some(entry) if entry.is_file() => {}
+                            // skip everything else
+                            _ => return WalkState::Continue,
+                        };
 
-                let dedup_symlinks = file_picker_config.deduplicate_links;
-                let absolute_root = search_root
-                    .canonicalize()
-                    .unwrap_or_else(|_| search_root.clone());
-                let injector_ = injector.clone();
+                        let mut stop = false;
+                        let sink = sinks::UTF8(|line_num, _line_content| {
+                            stop = injector
+                                .push(FileResult::new(entry.path(), line_num as usize - 1))
+                                .is_err();
 
-                std::thread::spawn(move || {
-                    let searcher = SearcherBuilder::new()
-                        .binary_detection(BinaryDetection::quit(b'\x00'))
-                        .build();
-
-                    let mut walk_builder = WalkBuilder::new(search_root);
-
-                    walk_builder
-                        .hidden(file_picker_config.hidden)
-                        .parents(file_picker_config.parents)
-                        .ignore(file_picker_config.ignore)
-                        .follow_links(file_picker_config.follow_symlinks)
-                        .git_ignore(file_picker_config.git_ignore)
-                        .git_global(file_picker_config.git_global)
-                        .git_exclude(file_picker_config.git_exclude)
-                        .max_depth(file_picker_config.max_depth)
-                        .filter_entry(move |entry| {
-                            filter_picker_entry(entry, &absolute_root, dedup_symlinks)
+                            Ok(!stop)
+                        });
+                        let doc = documents.iter().find(|&(doc_path, _)| {
+                            doc_path
+                                .as_ref()
+                                .map_or(false, |doc_path| doc_path == entry.path())
                         });
 
-                    walk_builder
-                        .add_custom_ignore_filename(helix_loader::config_dir().join("ignore"));
-                    walk_builder.add_custom_ignore_filename(".helix/ignore");
-
-                    walk_builder.build_parallel().run(|| {
-                        let mut searcher = searcher.clone();
-                        let matcher = matcher.clone();
-                        let injector = injector_.clone();
-                        let documents = &documents;
-                        Box::new(move |entry: Result<DirEntry, ignore::Error>| -> WalkState {
-                            let entry = match entry {
-                                Ok(entry) => entry,
-                                Err(_) => return WalkState::Continue,
-                            };
-
-                            match entry.file_type() {
-                                Some(entry) if entry.is_file() => {}
-                                // skip everything else
-                                _ => return WalkState::Continue,
-                            };
-
-                            let mut stop = false;
-                            let sink = sinks::UTF8(|line_num, _| {
-                                stop = injector
-                                    .push(FileResult::new(entry.path(), line_num as usize - 1))
-                                    .is_err();
-
-                                Ok(!stop)
-                            });
-                            let doc = documents.iter().find(|&(doc_path, _)| {
-                                doc_path
-                                    .as_ref()
-                                    .map_or(false, |doc_path| doc_path == entry.path())
-                            });
-
-                            let result = if let Some((_, doc)) = doc {
-                                // there is already a buffer for this file
-                                // search the buffer instead of the file because it's faster
-                                // and captures new edits without requiring a save
-                                if searcher.multi_line_with_matcher(&matcher) {
-                                    // in this case a continous buffer is required
-                                    // convert the rope to a string
-                                    let text = doc.to_string();
-                                    searcher.search_slice(&matcher, text.as_bytes(), sink)
-                                } else {
-                                    searcher.search_reader(
-                                        &matcher,
-                                        RopeReader::new(doc.slice(..)),
-                                        sink,
-                                    )
-                                }
+                        let result = if let Some((_, doc)) = doc {
+                            // there is already a buffer for this file
+                            // search the buffer instead of the file because it's faster
+                            // and captures new edits without requiring a save
+                            if searcher.multi_line_with_matcher(&matcher) {
+                                // in this case a continous buffer is required
+                                // convert the rope to a string
+                                let text = doc.to_string();
+                                searcher.search_slice(&matcher, text.as_bytes(), sink)
                             } else {
-                                searcher.search_path(&matcher, entry.path(), sink)
-                            };
+                                searcher.search_reader(
+                                    &matcher,
+                                    RopeReader::new(doc.slice(..)),
+                                    sink,
+                                )
+                            }
+                        } else {
+                            searcher.search_path(&matcher, entry.path(), sink)
+                        };
 
-                            if let Err(err) = result {
-                                log::error!(
-                                    "Global search error: {}, {}",
-                                    entry.path().display(),
-                                    err
-                                );
-                            }
-                            if stop {
-                                WalkState::Quit
-                            } else {
-                                WalkState::Continue
-                            }
-                        })
-                    });
+                        if let Err(err) = result {
+                            log::error!("Global search error: {}, {}", entry.path().display(), err);
+                        }
+                        if stop {
+                            WalkState::Quit
+                        } else {
+                            WalkState::Continue
+                        }
+                    })
                 });
+            Ok(())
+        }
+        .boxed()
+    };
 
-                cx.jobs.callback(async move {
-                    let call = move |_: &mut Editor, compositor: &mut Compositor| {
-                        let picker = Picker::with_stream(
-                            picker,
-                            injector,
-                            move |cx, FileResult { path, line_num }, action| {
-                                let doc = match cx.editor.open(path, action) {
-                                    Ok(id) => doc_mut!(cx.editor, &id),
-                                    Err(e) => {
-                                        cx.editor.set_error(format!(
-                                            "Failed to open file '{}': {}",
-                                            path.display(),
-                                            e
-                                        ));
-                                        return;
-                                    }
-                                };
+    let reg = cx.register.unwrap_or('/');
+    cx.editor.registers.last_search_register = reg;
 
-                                let line_num = *line_num;
-                                let view = view_mut!(cx.editor);
-                                let text = doc.text();
-                                if line_num >= text.len_lines() {
-                                    cx.editor.set_error(
+    let picker = Picker::new(
+        columns,
+        1, // contents
+        vec![],
+        config,
+        move |cx, FileResult { path, line_num, .. }, action| {
+            let doc = match cx.editor.open(path, action) {
+                Ok(id) => doc_mut!(cx.editor, &id),
+                Err(e) => {
+                    cx.editor
+                        .set_error(format!("Failed to open file '{}': {}", path.display(), e));
+                    return;
+                }
+            };
+
+            let line_num = *line_num;
+            let view = view_mut!(cx.editor);
+            let text = doc.text();
+            if line_num >= text.len_lines() {
+                cx.editor.set_error(
                     "The line you jumped to does not exist anymore because the file has changed.",
                 );
-                                    return;
-                                }
-                                let start = text.line_to_char(line_num);
-                                let end = text.line_to_char((line_num + 1).min(text.len_lines()));
+                return;
+            }
+            let start = text.line_to_char(line_num);
+            let end = text.line_to_char((line_num + 1).min(text.len_lines()));
 
-                                doc.set_selection(view.id, Selection::single(start, end));
-                                if action.align_view(view, doc.id()) {
-                                    align_view(doc, view, Align::Center);
-                                }
-                            },
-                        )
-                        .with_preview(
-                            |_editor, FileResult { path, line_num }| {
-                                Some((path.clone().into(), Some((*line_num, *line_num))))
-                            },
-                        );
-                        compositor.push(Box::new(overlaid(picker)))
-                    };
-                    Ok(Callback::EditorCompositor(Box::new(call)))
-                })
-            } else {
-                // Otherwise do nothing
-                // log::warn!("Global Search Invalid Pattern")
+            doc.set_selection(view.id, Selection::single(start, end));
+            if action.align_view(view, doc.id()) {
+                align_view(doc, view, Align::Center);
             }
         },
-    );
+    )
+    .with_preview(|_editor, FileResult { path, line_num, .. }| {
+        Some((path.clone().into(), Some((*line_num, *line_num))))
+    })
+    .with_history_register(Some(reg))
+    .with_dynamic_query(get_files, Some(275));
+
+    cx.push_layer(Box::new(overlaid(picker)));
 }
 
 enum Extend {
@@ -2845,31 +2823,6 @@ fn buffer_picker(cx: &mut Context) {
         focused_at: std::time::Instant,
     }
 
-    impl ui::menu::Item for BufferMeta {
-        type Data = ();
-
-        fn format(&self, _data: &Self::Data) -> Row {
-            let path = self
-                .path
-                .as_deref()
-                .map(helix_stdx::path::get_relative_path);
-            let path = match path.as_deref().and_then(Path::to_str) {
-                Some(path) => path,
-                None => SCRATCH_BUFFER_NAME,
-            };
-
-            let mut flags = String::new();
-            if self.is_modified {
-                flags.push('+');
-            }
-            if self.is_current {
-                flags.push('*');
-            }
-
-            Row::new([self.id.to_string(), flags, path.to_string()])
-        }
-    }
-
     let new_meta = |doc: &Document| BufferMeta {
         id: doc.id(),
         path: doc.path().cloned(),
@@ -2888,7 +2841,31 @@ fn buffer_picker(cx: &mut Context) {
     // mru
     items.sort_unstable_by_key(|item| std::cmp::Reverse(item.focused_at));
 
-    let picker = Picker::new(items, (), |cx, meta, action| {
+    let columns = vec![
+        PickerColumn::new("id", |meta: &BufferMeta, _| meta.id.to_string().into()),
+        PickerColumn::new("flags", |meta: &BufferMeta, _| {
+            let mut flags = String::new();
+            if meta.is_modified {
+                flags.push('+');
+            }
+            if meta.is_current {
+                flags.push('*');
+            }
+            flags.into()
+        }),
+        PickerColumn::new("path", |meta: &BufferMeta, _| {
+            let path = meta
+                .path
+                .as_deref()
+                .map(helix_stdx::path::get_relative_path);
+            path.as_deref()
+                .and_then(Path::to_str)
+                .unwrap_or(SCRATCH_BUFFER_NAME)
+                .to_string()
+                .into()
+        }),
+    ];
+    let picker = Picker::new(columns, 2, items, (), |cx, meta, action| {
         cx.editor.switch(meta.id, action);
     })
     .with_preview(|editor, meta| {
@@ -2910,33 +2887,6 @@ fn jumplist_picker(cx: &mut Context) {
         selection: Selection,
         text: String,
         is_current: bool,
-    }
-
-    impl ui::menu::Item for JumpMeta {
-        type Data = ();
-
-        fn format(&self, _data: &Self::Data) -> Row {
-            let path = self
-                .path
-                .as_deref()
-                .map(helix_stdx::path::get_relative_path);
-            let path = match path.as_deref().and_then(Path::to_str) {
-                Some(path) => path,
-                None => SCRATCH_BUFFER_NAME,
-            };
-
-            let mut flags = Vec::new();
-            if self.is_current {
-                flags.push("*");
-            }
-
-            let flag = if flags.is_empty() {
-                "".into()
-            } else {
-                format!(" ({})", flags.join(""))
-            };
-            format!("{} {}{} {}", self.id, path, flag, self.text).into()
-        }
     }
 
     for (view, _) in cx.editor.tree.views_mut() {
@@ -2965,7 +2915,37 @@ fn jumplist_picker(cx: &mut Context) {
         }
     };
 
+    let columns = vec![
+        ui::PickerColumn::new("id", |item: &JumpMeta, _| item.id.to_string().into()),
+        ui::PickerColumn::new("path", |item: &JumpMeta, _| {
+            let path = item
+                .path
+                .as_deref()
+                .map(helix_stdx::path::get_relative_path);
+            path.as_deref()
+                .and_then(Path::to_str)
+                .unwrap_or(SCRATCH_BUFFER_NAME)
+                .to_string()
+                .into()
+        }),
+        ui::PickerColumn::new("flags", |item: &JumpMeta, _| {
+            let mut flags = Vec::new();
+            if item.is_current {
+                flags.push("*");
+            }
+
+            if flags.is_empty() {
+                "".into()
+            } else {
+                format!(" ({})", flags.join("")).into()
+            }
+        }),
+        ui::PickerColumn::new("contents", |item: &JumpMeta, _| item.text.as_str().into()),
+    ];
+
     let picker = Picker::new(
+        columns,
+        1, // path
         cx.editor
             .tree
             .views()
@@ -2994,35 +2974,6 @@ fn jumplist_picker(cx: &mut Context) {
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
-impl ui::menu::Item for MappableCommand {
-    type Data = ReverseKeymap;
-
-    fn format(&self, keymap: &Self::Data) -> Row {
-        let fmt_binding = |bindings: &Vec<Vec<KeyEvent>>| -> String {
-            bindings.iter().fold(String::new(), |mut acc, bind| {
-                if !acc.is_empty() {
-                    acc.push(' ');
-                }
-                for key in bind {
-                    acc.push_str(&key.key_sequence_format());
-                }
-                acc
-            })
-        };
-
-        match self {
-            MappableCommand::Typable { doc, name, .. } => match keymap.get(name as &String) {
-                Some(bindings) => format!("{} ({}) [:{}]", doc, fmt_binding(bindings), name).into(),
-                None => format!("{} [:{}]", doc, name).into(),
-            },
-            MappableCommand::Static { doc, name, .. } => match keymap.get(*name) {
-                Some(bindings) => format!("{} ({}) [{}]", doc, fmt_binding(bindings), name).into(),
-                None => format!("{} [{}]", doc, name).into(),
-            },
-        }
-    }
-}
-
 pub fn command_palette(cx: &mut Context) {
     let register = cx.register;
     let count = cx.count;
@@ -3042,7 +2993,35 @@ pub fn command_palette(cx: &mut Context) {
                 }
             }));
 
-            let picker = Picker::new(commands, keymap, move |cx, command, _action| {
+            let columns = vec![
+                ui::PickerColumn::new("name", |item, _| match item {
+                    MappableCommand::Typable { name, .. } => format!(":{name}").into(),
+                    MappableCommand::Static { name, .. } => (*name).into(),
+                }),
+                ui::PickerColumn::new(
+                    "bindings",
+                    |item: &MappableCommand, keymap: &crate::keymap::ReverseKeymap| {
+                        keymap
+                            .get(item.name())
+                            .map(|bindings| {
+                                bindings.iter().fold(String::new(), |mut acc, bind| {
+                                    if !acc.is_empty() {
+                                        acc.push(' ');
+                                    }
+                                    for key in bind {
+                                        acc.push_str(&key.key_sequence_format());
+                                    }
+                                    acc
+                                })
+                            })
+                            .unwrap_or_default()
+                            .into()
+                    },
+                ),
+                ui::PickerColumn::new("doc", |item: &MappableCommand, _| item.doc().into()),
+            ];
+
+            let picker = Picker::new(columns, 0, commands, keymap, move |cx, command, _action| {
                 let mut ctx = Context {
                     register,
                     count,

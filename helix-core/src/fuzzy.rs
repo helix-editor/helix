@@ -1,6 +1,6 @@
 use std::ops::DerefMut;
 
-use nucleo::pattern::{Atom, AtomKind, CaseMatching};
+use nucleo::pattern::{Atom, AtomKind, CaseMatching, Normalization};
 use nucleo::Config;
 use parking_lot::Mutex;
 
@@ -38,6 +38,12 @@ pub fn fuzzy_match<T: AsRef<str>>(
     if path {
         matcher.config.set_match_paths();
     }
-    let pattern = Atom::new(pattern, CaseMatching::Smart, AtomKind::Fuzzy, false);
+    let pattern = Atom::new(
+        pattern,
+        CaseMatching::Smart,
+        Normalization::Smart,
+        AtomKind::Fuzzy,
+        false,
+    );
     pattern.match_list(items, &mut matcher)
 }
