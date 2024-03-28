@@ -159,9 +159,16 @@ where
 
 use helix_view::{align_view, Align};
 
-/// A MappableCommand is either a static command like "jump_view_up" or a Typable command like
-/// :format. It causes a side-effect on the state (usually by creating and applying a transaction).
-/// Both of these types of commands can be mapped with keybindings in the config.toml.
+/// MappableCommands are commands that can be bound to keys, executable in
+/// normal, insert or select mode.
+///
+/// There are three kinds:
+///
+/// * Static: commands usually bound to keys and used for editing, movement,
+///   etc., for example `move_char_left`.
+/// * Typable: commands executable from command mode, prefixed with a `:`,
+///   for example `:write!`.
+/// * Macro: a sequence of keys to execute, for example `@miw`.
 #[derive(Clone)]
 pub enum MappableCommand {
     Typable {
@@ -173,6 +180,10 @@ pub enum MappableCommand {
         name: &'static str,
         fun: fn(cx: &mut Context),
         doc: &'static str,
+    },
+    Macro {
+        name: String,
+        keys: Vec<KeyEvent>,
     },
 }
 
@@ -210,6 +221,23 @@ impl MappableCommand {
                 }
             }
             Self::Static { fun, .. } => (fun)(cx),
+            Self::Macro { keys, .. } => {
+                // Protect against recursive macros.
+                if cx.editor.macro_replaying.contains(&'@') {
+                    cx.editor.set_error(
+                        "Cannot execute macro because the [@] register is already playing a macro",
+                    );
+                    return;
+                }
+                cx.editor.macro_replaying.push('@');
+                let keys = keys.clone();
+                cx.callback.push(Box::new(move |compositor, cx| {
+                    for key in keys.into_iter() {
+                        compositor.handle_event(&compositor::Event::Key(key), cx);
+                    }
+                    cx.editor.macro_replaying.pop();
+                }));
+            }
         }
     }
 
@@ -217,6 +245,7 @@ impl MappableCommand {
         match &self {
             Self::Typable { name, .. } => name,
             Self::Static { name, .. } => name,
+            Self::Macro { name, .. } => name,
         }
     }
 
@@ -224,6 +253,7 @@ impl MappableCommand {
         match &self {
             Self::Typable { doc, .. } => doc,
             Self::Static { doc, .. } => doc,
+            Self::Macro { name, .. } => name,
         }
     }
 
@@ -521,6 +551,11 @@ impl fmt::Debug for MappableCommand {
                 .field(name)
                 .field(args)
                 .finish(),
+            MappableCommand::Macro { name, keys, .. } => f
+                .debug_tuple("MappableCommand")
+                .field(name)
+                .field(keys)
+                .finish(),
         }
     }
 }
@@ -551,6 +586,11 @@ impl std::str::FromStr for MappableCommand {
                     args,
                 })
                 .ok_or_else(|| anyhow!("No TypableCommand named '{}'", s))
+        } else if let Some(suffix) = s.strip_prefix('@') {
+            helix_view::input::parse_macro(suffix).map(|keys| Self::Macro {
+                name: s.to_string(),
+                keys,
+            })
         } else {
             MappableCommand::STATIC_COMMAND_LIST
                 .iter()
@@ -3019,6 +3059,9 @@ impl ui::menu::Item for MappableCommand {
                 Some(bindings) => format!("{} ({}) [{}]", doc, fmt_binding(bindings), name).into(),
                 None => format!("{} [{}]", doc, name).into(),
             },
+            MappableCommand::Macro { .. } => {
+                unreachable!("macros aren't included in the command palette")
+            }
         }
     }
 }
