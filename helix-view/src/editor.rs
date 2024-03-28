@@ -12,7 +12,6 @@ use crate::{
     Align, Document, DocumentId, View, ViewId,
 };
 use dap::StackFrame;
-use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
@@ -950,7 +949,6 @@ pub struct Editor {
     pub macro_replaying: Vec<char>,
     pub language_servers: helix_lsp::Registry,
     pub diagnostics: BTreeMap<PathBuf, Vec<(lsp::Diagnostic, usize)>>,
-    pub diff_providers: DiffProviderRegistry,
 
     pub debugger: Option<dap::Client>,
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
@@ -1095,7 +1093,6 @@ impl Editor {
             theme: theme_loader.default(),
             language_servers,
             diagnostics: BTreeMap::new(),
-            diff_providers: DiffProviderRegistry::default(),
             debugger: None,
             debugger_events: SelectAll::new(),
             breakpoints: HashMap::new(),
@@ -1617,11 +1614,6 @@ impl Editor {
             let diagnostics =
                 Editor::doc_diagnostics(&self.language_servers, &self.diagnostics, &doc);
             doc.replace_diagnostics(diagnostics, &[], None);
-
-            if let Some(diff_base) = self.diff_providers.get_diff_base(&path) {
-                doc.set_diff_base(diff_base);
-            }
-            doc.set_version_control_head(self.diff_providers.get_current_head_name(&path));
 
             let id = self.new_document(doc);
             self.launch_language_servers(id);
