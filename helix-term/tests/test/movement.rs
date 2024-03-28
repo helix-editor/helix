@@ -411,7 +411,33 @@ async fn cursor_position_append_eof() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn select_mode_tree_sitter_next_function_is_union_of_objects() -> anyhow::Result<()> {
+async fn select_mode_tree_sitter_next_function() -> anyhow::Result<()> {
+    test_with_config(
+        AppBuilder::new().with_file("foo.rs", None),
+        (
+            helpers::platform_line(indoc! {"\
+                #[/|]#// Increments
+                fn inc(x: usize) -> usize { x + 1 }
+                /// Decrements
+                fn dec(x: usize) -> usize { x - 1 }
+            "}),
+            "]f",
+            helpers::platform_line(indoc! {"\
+                /// Increments
+                #[|fn inc(x: usize) -> usize { x + 1 }]#
+                /// Decrements
+                fn dec(x: usize) -> usize { x - 1 }
+            "}),
+        ),
+    )
+    .await?;
+
+    Ok(())
+}
+
+// cause by: https://github.com/helix-editor/helix/pull/10022
+#[tokio::test(flavor = "multi_thread")]
+async fn select_mode_tree_sitter_next_function_is_not_union_of_objects() -> anyhow::Result<()> {
     test_with_config(
         AppBuilder::new().with_file("foo.rs", None),
         (
@@ -424,7 +450,7 @@ async fn select_mode_tree_sitter_next_function_is_union_of_objects() -> anyhow::
             "]fv]f",
             helpers::platform_line(indoc! {"\
                 /// Increments
-                #[fn inc(x: usize) -> usize { x + 1 }
+                fn inc(x: usize) -> usize { x + 1 }#[
                 /// Decrements
                 fn dec(x: usize) -> usize { x - 1 }|]#
             "}),
