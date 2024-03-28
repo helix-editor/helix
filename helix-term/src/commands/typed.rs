@@ -3083,6 +3083,14 @@ pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableComma
 
 #[allow(clippy::unnecessary_unwrap)]
 pub(super) fn command_mode(cx: &mut Context) {
+    let mut prompt = command_mode_prompt();
+
+    // Calculate initial completion
+    prompt.recalculate_completion(cx.editor);
+    cx.push_layer(Box::new(prompt));
+}
+
+pub(super) fn command_mode_prompt() -> Prompt {
     let mut prompt = Prompt::new(
         ":".into(),
         Some(':'),
@@ -3173,9 +3181,7 @@ pub(super) fn command_mode(cx: &mut Context) {
         None
     });
 
-    // Calculate initial completion
-    prompt.recalculate_completion(cx.editor);
-    cx.push_layer(Box::new(prompt));
+    prompt
 }
 
 fn argument_number_of(shellwords: &Shellwords) -> usize {
