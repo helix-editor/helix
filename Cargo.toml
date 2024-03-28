@@ -39,6 +39,8 @@ package.helix-term.opt-level = 2
 [workspace.dependencies]
 tree-sitter = { version = "0.22" }
 nucleo = "0.2.0"
+ignore = "0.4"
+globset = "0.4.14"
 
 [workspace.package]
 version = "23.10.0"

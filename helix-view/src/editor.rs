@@ -17,6 +17,7 @@ use helix_vcs::DiffProviderRegistry;
 use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
 use helix_lsp::Call;
+use ignore::WalkBuilder;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
@@ -209,6 +210,25 @@ impl Default for FilePickerConfig {
             git_exclude: true,
             max_depth: None,
         }
+    }
+}
+
+impl FilePickerConfig {
+    pub fn walk_builder<P>(&self, path: P) -> WalkBuilder
+    where
+        P: AsRef<Path>,
+    {
+        let mut builder = WalkBuilder::new(path);
+        builder
+            .hidden(self.hidden)
+            .follow_links(self.follow_symlinks)
+            .parents(self.parents)
+            .ignore(self.ignore)
+            .git_ignore(self.git_ignore)
+            .git_global(self.git_global)
+            .git_exclude(self.git_exclude)
+            .max_depth(self.max_depth);
+        builder
     }
 }
 

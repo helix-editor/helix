@@ -5,13 +5,19 @@ use crate::job::Job;
 
 use super::*;
 
+use globset::{Glob, GlobBuilder, GlobSet};
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::{encoding, line_ending, shellwords::Shellwords};
+use helix_stdx::env::current_working_dir;
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::editor::{Action, CloseError, ConfigEvent};
 use serde_json::Value;
 use ui::completers::{self, Completer};
+
+// The maximum number of files to open with globbing to avoid freezing while trying to open too many files.
+// It is kind of arbitrary and can be raised or offered as a configuration option.
+const GLOBBING_MAX_N_FILES: usize = 32;
 
 #[derive(Clone)]
 pub struct TypableCommand {
@@ -108,30 +114,115 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     }
 
     ensure!(!args.is_empty(), "wrong argument count");
+
+    fn open_file(cx: &mut compositor::Context, path: &Path, pos: Position) -> anyhow::Result<()> {
+        let _ = cx.editor.open(path, Action::Replace)?;
+        let (view, doc) = current!(cx.editor);
+        let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+        doc.set_selection(view.id, pos);
+        // does not affect opening a buffer without pos
+        align_view(doc, view, Align::Center);
+        Ok(())
+    }
+
+    fn glob(path: &Path) -> anyhow::Result<Glob> {
+        let path_str = path.to_str().context("invalid unicode")?;
+        GlobBuilder::new(path_str)
+            .literal_separator(true)
+            .empty_alternates(true)
+            .build()
+            .context("invalid glob")
+    }
+
     for arg in args {
         let (path, pos) = args::parse_file(arg);
-        let path = helix_stdx::path::expand_tilde(path);
-        // If the path is a directory, open a file picker on that directory and update the status
-        // message
-        if let Ok(true) = std::fs::canonicalize(&path).map(|p| p.is_dir()) {
-            let callback = async move {
-                let call: job::Callback = job::Callback::EditorCompositor(Box::new(
-                    move |editor: &mut Editor, compositor: &mut Compositor| {
-                        let picker = ui::file_picker(path.into_owned(), &editor.config());
-                        compositor.push(Box::new(overlaid(picker)));
-                    },
-                ));
-                Ok(call)
+        let path = helix_stdx::path::canonicalize(path);
+        if let Ok(metadata) = path.metadata() {
+            // Path exists
+            // Shortcut for opening a path without globbing
+            if metadata.is_dir() {
+                // If the path is a directory, open a file picker on that directory
+                let callback = async move {
+                    let call: job::Callback = job::Callback::EditorCompositor(Box::new(
+                        move |editor: &mut Editor, compositor: &mut Compositor| {
+                            let picker = ui::file_picker(path, &editor.config());
+                            compositor.push(Box::new(overlaid(picker)));
+                        },
+                    ));
+                    Ok(call)
+                };
+                cx.jobs.callback(callback);
+            } else {
+                open_file(cx, &path, pos)?;
+            }
+            continue;
+        }
+
+        let mut glob_set_builder = GlobSet::builder();
+        glob_set_builder.add(glob(&path)?);
+
+        let mut root = None;
+        let mut comps = path.components();
+
+        // Iterate over all parents
+        while comps.next_back().is_some() {
+            let parent = comps.as_path();
+            if parent.as_os_str().is_empty() {
+                // No parents left
+                break;
+            }
+
+            // Add each parent as a glob for filtering in the recursive walker
+            glob_set_builder.add(glob(parent)?);
+
+            if root.is_none() && parent.exists() {
+                // Found the first parent that exists
+                root = Some(parent.to_path_buf());
+            }
+        }
+
+        let glob_set = glob_set_builder.build().context("invalid glob")?;
+        let root = root.unwrap_or_else(current_working_dir);
+
+        let mut walk = cx
+            .editor
+            .config()
+            .file_picker
+            .walk_builder(root)
+            .filter_entry(move |entry| glob_set.is_match(entry.path()))
+            .build();
+
+        // Call `next` to ignore the root directory which is yielded first
+        if walk.next().is_none() {
+            continue;
+        }
+
+        let mut to_open = Vec::with_capacity(GLOBBING_MAX_N_FILES);
+        for entry in walk {
+            let entry = entry.context("recursive walking failed")?;
+            let Some(file_type) = entry.file_type() else {
+                // Entry is stdin
+                continue;
             };
-            cx.jobs.callback(callback);
-        } else {
-            // Otherwise, just open the file
-            let _ = cx.editor.open(&path, Action::Replace)?;
-            let (view, doc) = current!(cx.editor);
-            let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
-            doc.set_selection(view.id, pos);
-            // does not affect opening a buffer without pos
-            align_view(doc, view, Align::Center);
+            // Don't open directories when globbing
+            if file_type.is_dir() {
+                continue;
+            }
+            if to_open.len() == GLOBBING_MAX_N_FILES {
+                bail!("tried to open more than {GLOBBING_MAX_N_FILES} files at once");
+            }
+            to_open.push(entry.into_path());
+        }
+
+        if to_open.is_empty() {
+            // Nothing found to open after globbing.
+            // Open a new file.
+            open_file(cx, &path, pos)?;
+            continue;
+        }
+
+        for path in to_open {
+            open_file(cx, &path, pos)?;
         }
     }
     Ok(())
