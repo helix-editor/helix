@@ -1934,7 +1934,7 @@ source = { git = "https://github.com/PrestonKnopp/tree-sitter-godot-resource", r
 name = "nu"
 scope = "source.nu"
 injection-regex = "nu"
-file-types = ["nu"]
+file-types = ["nu", "nuon"]
 shebangs = ["nu"]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
