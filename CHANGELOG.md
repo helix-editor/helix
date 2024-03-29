@@ -1,6 +1,6 @@
 # 24.03 (2024-03-31)
 
-... Current contributors - 124. ...
+... Current contributors - 125. ...
 
 Breaking changes:
 
@@ -55,7 +55,6 @@ Usability improvements:
 - Follow Neovim's truecolor detection (#9577)
 - Reload language configuration with `:reload`, SIGHUP (#9415)
 - Allow numbers as bindings (#8471, #9887)
-- Exit prompts with backspace when the prompt is empty (#9828)
 - Respect undercurl config when terminfo is not available (#9897)
 - Ignore `.pijul`, `.hg`, `.jj` in addition to `.git` in file pickers configured to show hidden files (#9935)
 - Add completion for registers to `:clear-register` and `:yank-diagnostic` (#9936)
@@ -133,6 +132,12 @@ Themes:
 - Add jump label theming to catppuccin themes (2178adf, #9983)
 - Add jump label theming to `onedark` themes (da2dec1)
 - Add jump label theming to rose-pine themes (#9981)
+- Add jump label theming to Nord themes (#10008)
+- Add jump label theming to Monokai themes (#10009)
+- Add jump label theming to gruvbox themes (#10012)
+- Add jump label theming to `kanagawa` (#10030)
+- Update material themes (#10043)
+- Add `jetbrains_dark` (#9967)
 
 New languages:
 
@@ -171,10 +176,10 @@ Updated languages and queries:
 
 - Add HTML injection queries for Rust (#8603)
 - Switch to tree-sitter-ron for RON (#8624)
-- Update and improve comment highlighting (#8564)
+- Update and improve comment highlighting (#8564, #9253, #9800, #10014)
 - Highlight type parameters in Rust (#8660)
 - Change KDL tree-sitter parsers (#8652)
-- Update tree-sitter-markdown (#8721)
+- Update tree-sitter-markdown (#8721, #10039)
 - Update tree-sitter-purescript (#8712)
 - Add type parameter highlighting to TypeScript, Go, Haskell, OCaml and Kotlin (#8718)
 - Add indentation queries for Scheme and lisps using tree-sitter-scheme (#8720)
@@ -194,7 +199,6 @@ Updated languages and queries:
 - Add textobject queries for Scala (#9191)
 - Add textobject queries for Protobuf (#9184)
 - Update tree-sitter-wren (#8544)
-- Update tree-sitter-comment (#9253, #9800)
 - Add `spago.yaml` as an LSP root for PureScript (#9362)
 - Improve highlight and indent queries for Bash, Make and CSS (#9393)
 - Update tree-sitter-scala (#9348, #9340, #9475)
@@ -236,6 +240,8 @@ Updated languages and queries:
 - Highlight Rust extern crate aliases (c099dde)
 - Improve parameter highlighting in C++ (f5d95de)
 - Recognize 'rclone.conf' as INI (#9959)
+- Add injections for GraphQL and ERB in Ruby heredocs (#10036)
+- Add `main.odin` to Odin LSP roots (#9968)
 
 Packaging:
 
