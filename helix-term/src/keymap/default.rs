@@ -445,7 +445,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
                 "t" => align_view_top,
                 "a" => append_mode,
             },
-            "c" => { " change, collapse  "
+            "c" => { " change, collapse, commit, completion  "
                 "c" => change_selection,
                 "C" => collapse_selection,
                 "u" => commit_undo_checkpoint,
