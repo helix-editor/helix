@@ -3,13 +3,13 @@ use std::{collections::HashMap, sync::Arc};
 use helix_core::Position;
 use helix_view::{
     graphics::{Color, CursorKind, Rect, UnderlineStyle},
-    input::{Event, KeyEvent, MouseEvent},
+    input::{Event, KeyEvent, MouseButton, MouseEvent},
     keyboard::{KeyCode, KeyModifiers},
     theme::Style,
     Editor,
 };
 use steel::{
-    rvals::{Custom, FromSteelVal, IntoSteelVal, SteelString},
+    rvals::{as_underlying_type, Custom, FromSteelVal, IntoSteelVal, SteelString},
     steel_vm::{builtin::BuiltInModule, engine::Engine, register_fn::RegisterFn},
     SteelVal,
 };
@@ -300,24 +300,40 @@ pub fn helix_component_module() -> BuiltInModule {
             matches!(event, Event::Mouse(_))
         })
         .register_fn("event-mouse-kind", |event: Event| {
-            if let Event::Mouse(MouseEvent { .. }) = event {
-                todo!()
+            if let Event::Mouse(MouseEvent { kind, .. }) = event {
+                match kind {
+                    helix_view::input::MouseEventKind::Down(MouseButton::Left) => 0,
+                    helix_view::input::MouseEventKind::Down(MouseButton::Right) => 1,
+                    helix_view::input::MouseEventKind::Down(MouseButton::Middle) => 2,
+                    helix_view::input::MouseEventKind::Up(MouseButton::Left) => 3,
+                    helix_view::input::MouseEventKind::Up(MouseButton::Right) => 4,
+                    helix_view::input::MouseEventKind::Up(MouseButton::Middle) => 5,
+                    helix_view::input::MouseEventKind::Drag(MouseButton::Left) => 6,
+                    helix_view::input::MouseEventKind::Drag(MouseButton::Right) => 7,
+                    helix_view::input::MouseEventKind::Drag(MouseButton::Middle) => 8,
+                    helix_view::input::MouseEventKind::Moved => 9,
+                    helix_view::input::MouseEventKind::ScrollDown => 10,
+                    helix_view::input::MouseEventKind::ScrollUp => 11,
+                    helix_view::input::MouseEventKind::ScrollLeft => 12,
+                    helix_view::input::MouseEventKind::ScrollRight => 13,
+                }
+                .into_steelval()
             } else {
-                todo!()
+                false.into_steelval()
             }
         })
         .register_fn("event-mouse-row", |event: Event| {
-            if let Event::Mouse(MouseEvent { .. }) = event {
-                todo!()
+            if let Event::Mouse(MouseEvent { row, .. }) = event {
+                row.into_steelval()
             } else {
-                todo!()
+                false.into_steelval()
             }
         })
         .register_fn("event-mouse-col", |event: Event| {
-            if let Event::Mouse(MouseEvent { .. }) = event {
-                todo!()
+            if let Event::Mouse(MouseEvent { column, .. }) = event {
+                column.into_steelval()
             } else {
-                todo!()
+                false.into_steelval()
             }
         })
         // Is this mouse event within the area provided
@@ -377,14 +393,44 @@ pub fn helix_component_module() -> BuiltInModule {
     module
 }
 
+// fn buffer_set_string(
+//     buffer: &mut tui::buffer::Buffer,
+//     x: u16,
+//     y: u16,
+//     string: steel::rvals::SteelString,
+//     style: Style,
+// ) {
+//     buffer.set_string(x, y, string.as_str(), style)
+// }
+
 fn buffer_set_string(
     buffer: &mut tui::buffer::Buffer,
     x: u16,
     y: u16,
-    string: steel::rvals::SteelString,
+    string: SteelVal,
     style: Style,
-) {
-    buffer.set_string(x, y, string.as_str(), style)
+) -> steel::rvals::Result<()> {
+    match string {
+        SteelVal::StringV(string) => {
+            buffer.set_string(x, y, string.as_str(), style);
+            Ok(())
+        }
+        SteelVal::Custom(c) => {
+            if let Some(string) =
+                as_underlying_type::<steel::steel_vm::ffi::MutableString>(c.borrow().as_ref())
+            {
+                buffer.set_string(x, y, string.string.as_str(), style);
+                Ok(())
+            } else {
+                steel::stop!(TypeMismatch => "buffer-set-string! expected a string")
+            }
+        }
+        _ => {
+            steel::stop!(TypeMismatch => "buffer-set-string! expected a string")
+        }
+    }
+
+    // buffer.set_string(x, y, string.as_str(), style)
 }
 
 /// A dynamic component, used for rendering
@@ -579,10 +625,10 @@ impl Component for SteelDynamicComponent {
                 },
             )));
 
-            let event = match event {
-                Event::Key(event) => *event,
-                _ => return compositor::EventResult::Ignored(None),
-            };
+            // let event = match event {
+            //     Event::Key(event) => *event,
+            //     _ => return compositor::EventResult::Ignored(None),
+            // };
 
             match ENGINE.with(|x| {
                 x.borrow_mut()
@@ -602,7 +648,7 @@ impl Component for SteelDynamicComponent {
                         Ok(SteelEventResult::Consumed) => compositor::EventResult::Consumed(None),
                         Ok(SteelEventResult::Ignored) => compositor::EventResult::Ignored(None),
                         _ => match event {
-                            ctrl!('c') | key!(Esc) => close_fn,
+                            // ctrl!('c') | key!(Esc) => close_fn,
                             _ => compositor::EventResult::Ignored(None),
                         },
                     }
@@ -653,9 +699,9 @@ impl Component for SteelDynamicComponent {
             // Pass the `state` object through - this can be used for storing the state of whatever plugin thing we're
             // attempting to render
             let thunk = |engine: &mut Engine| {
-                engine.call_function_with_args(
+                engine.call_function_with_args_from_mut_slice(
                     cursor.clone(),
-                    vec![self.state.clone(), area.into_steelval().unwrap()],
+                    &mut [self.state.clone(), area.into_steelval().unwrap()],
                 )
             };
 
@@ -666,7 +712,10 @@ impl Component for SteelDynamicComponent {
             match result {
                 Ok(v) => (v, CursorKind::Block),
                 // TODO: Figure out how to pop up an error message
-                Err(_e) => (None, CursorKind::Block),
+                Err(_e) => {
+                    log::info!("Error: {:?}", _e);
+                    (None, CursorKind::Block)
+                },
             }
         } else {
             (None, helix_view::graphics::CursorKind::Hidden)
@@ -691,9 +740,9 @@ impl Component for SteelDynamicComponent {
             // call the engine instance. Otherwise, all computation happens inside the engine.
             match ENGINE
                 .with(|x| {
-                    x.borrow_mut().call_function_with_args(
+                    x.borrow_mut().call_function_with_args_from_mut_slice(
                         required_size.clone(),
-                        vec![self.state.clone(), viewport.into_steelval().unwrap()],
+                        &mut [self.state.clone(), viewport.into_steelval().unwrap()],
                     )
                 })
                 .and_then(|x| Option::<(u16, u16)>::from_steelval(&x))

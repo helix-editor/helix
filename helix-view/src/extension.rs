@@ -7,7 +7,10 @@ pub fn document_id_to_usize(doc_id: &DocumentId) -> usize {
 #[cfg(feature = "steel")]
 mod steel_implementations {
 
-    use steel::{gc::unsafe_erased_pointers::CustomReference, rvals::Custom};
+    use steel::{
+        gc::unsafe_erased_pointers::CustomReference,
+        rvals::{as_underlying_type, Custom},
+    };
 
     use crate::{
         document::Mode,
@@ -39,7 +42,15 @@ mod steel_implementations {
     impl Custom for UnderlineStyle {}
 
     impl CustomReference for Event {}
-    impl Custom for Rect {}
+    impl Custom for Rect {
+        fn equality_hint(&self, other: &dyn steel::rvals::CustomType) -> bool {
+            if let Some(other) = as_underlying_type::<Rect>(other) {
+                self == other
+            } else {
+                false
+            }
+        }
+    }
     impl Custom for crate::graphics::CursorKind {}
     impl Custom for DocumentId {}
     impl Custom for ViewId {}
