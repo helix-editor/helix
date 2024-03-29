@@ -76,7 +76,7 @@
 "ui.cursor" = { bg = "highlight", fg = "white" }
 
 "ui.cursor.primary" = { bg = "white", fg = "gray" }
-"ui.cursorline.primary" = { bg = "white" }
+"ui.cursorline.primary" = { bg = "active" }
 
 "ui.virtual" = { fg = "gray" }
 "ui.virtual.ruler" = { bg = "highlight" }
@@ -114,6 +114,7 @@ disabled = "#464b5d"
 
 accent = "#84ffff"
 
+active = "#1a1c25"
 highlight = "#1f2233"
 
 comment = "#464b5d"
