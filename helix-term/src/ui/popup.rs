@@ -213,6 +213,13 @@ impl<T: Component> Popup<T> {
             _ => EventResult::Ignored(None),
         }
     }
+
+    fn close_cb(&self) -> Callback {
+        Box::new(|compositor, _| {
+            // remove the layer
+            compositor.remove(self.id.as_ref());
+        })
+    }
 }
 
 impl<T: Component> Component for Popup<T> {
@@ -231,16 +238,11 @@ impl<T: Component> Component for Popup<T> {
             return EventResult::Ignored(None);
         }
 
-        let close_fn: Callback = Box::new(|compositor, _| {
-            // remove the layer
-            compositor.remove(self.id.as_ref());
-        });
-
         match key {
             // esc or ctrl-c aborts the completion and closes the menu
             key!(Esc) | ctrl!('c') => {
                 let _ = self.contents.handle_event(event, cx);
-                EventResult::Consumed(Some(close_fn))
+                EventResult::Consumed(Some(self.close_cb()))
             }
             ctrl!('d') => {
                 self.scroll_half_page_down();
@@ -255,7 +257,7 @@ impl<T: Component> Component for Popup<T> {
 
                 if self.auto_close {
                     if let EventResult::Ignored(None) = contents_event_result {
-                        return EventResult::Ignored(Some(close_fn));
+                        return EventResult::Ignored(Some(self.close_cb()));
                     }
                 }
 
