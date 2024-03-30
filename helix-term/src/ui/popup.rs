@@ -146,6 +146,14 @@ impl<T: Component> Popup<T> {
         }
     }
 
+    pub fn scroll_half_page_down(&mut self) {
+        self.scroll(self.size.1 as usize / 2, true)
+    }
+
+    pub fn scroll_half_page_up(&mut self) {
+        self.scroll(self.size.1 as usize / 2, false)
+    }
+
     /// Toggles the Popup's scrollbar.
     /// Consider disabling the scrollbar in case the child
     /// already has its own.
@@ -200,11 +208,11 @@ impl<T: Component> Component for Popup<T> {
                 EventResult::Consumed(Some(close_fn))
             }
             ctrl!('d') => {
-                self.scroll(self.size.1 as usize / 2, true);
+                self.scroll_half_page_down();
                 EventResult::Consumed(None)
             }
             ctrl!('u') => {
-                self.scroll(self.size.1 as usize / 2, false);
+                self.scroll_half_page_up();
                 EventResult::Consumed(None)
             }
             _ => {
