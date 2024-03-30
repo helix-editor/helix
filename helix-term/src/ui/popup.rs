@@ -204,14 +204,16 @@ impl<T: Component> Popup<T> {
         match kind {
             MouseEventKind::ScrollDown if self.has_scrollbar => {
                 self.scroll_half_page_down();
-                EventResult::Consumed(None)
             }
             MouseEventKind::ScrollUp if self.has_scrollbar => {
                 self.scroll_half_page_up();
-                EventResult::Consumed(None)
             }
-            _ => EventResult::Ignored(None),
-        }
+            _ => {}
+        };
+
+        // Mouse event happened within the popup; consume the event so that
+        // it doesn't bleed into the editor.
+        EventResult::Consumed(None)
     }
 
     fn close_cb(&self) -> Callback {
