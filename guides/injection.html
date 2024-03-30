@@ -185,7 +185,7 @@ In addition to the <a href="http://tree-sitter.github.io/tree-sitter/syntax-high
 are a few Helix specific extensions that allow for more control.</p>
 <p>And example of a simple query that would highlight all strings as bash in Nix:</p>
 <pre><code class="language-scm">((string_expression (string_fragment) @injection.content)
-  (#set! injection.language &quot;bash&quot;))
+  (#set! injection.language "bash"))
 </code></pre>
 <h2 id="capture-types"><a class="header" href="#capture-types">Capture Types</a></h2>
 <ul>
@@ -242,6 +242,10 @@ The first argument (a capture) must be equal to the second argument
 <p><code>#match?</code> (standard):
 The first argument (a capture) must match the regex given in the
 second argument (a string).</p>
+</li>
+<li>
+<p><code>#any-of?</code> (standard):
+The first argument (a capture) must be one of the other arguments (strings).</p>
 </li>
 </ul>
 

@@ -3,6 +3,8 @@
 
 :root {
     --sidebar-width: 300px;
+    --sidebar-resize-indicator-width: 8px;
+    --sidebar-resize-indicator-space: 2px;
     --page-padding: 15px;
     --content-max-width: 750px;
     --menu-bar-height: 50px;

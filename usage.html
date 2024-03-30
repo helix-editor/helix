@@ -204,19 +204,19 @@ can be accessed via the command <code>hx --tutor</code> or <code>:tutor</code>.<
 <h2 id="registers"><a class="header" href="#registers">Registers</a></h2>
 <p>In Helix, registers are storage locations for text and other data, such as the
 result of a search. Registers can be used to cut, copy, and paste text, similar
-to the clipboard in other text editors. Usage is similar to Vim, with <code>&quot;</code> being
+to the clipboard in other text editors. Usage is similar to Vim, with <code>"</code> being
 used to select a register.</p>
 <h3 id="user-defined-registers"><a class="header" href="#user-defined-registers">User-defined registers</a></h3>
 <p>Helix allows you to create your own named registers for storing text, for
 example:</p>
 <ul>
-<li><code>&quot;ay</code> - Yank the current selection to register <code>a</code>.</li>
-<li><code>&quot;op</code> - Paste the text in register <code>o</code> after the selection.</li>
+<li><code>"ay</code> - Yank the current selection to register <code>a</code>.</li>
+<li><code>"op</code> - Paste the text in register <code>o</code> after the selection.</li>
 </ul>
 <p>If a register is selected before invoking a change or delete command, the selection will be stored in the register and the action will be carried out:</p>
 <ul>
-<li><code>&quot;hc</code> - Store the selection in register <code>h</code> and then change it (delete and enter insert mode).</li>
-<li><code>&quot;md</code> - Store the selection in register <code>m</code> and delete it.</li>
+<li><code>"hc</code> - Store the selection in register <code>h</code> and then change it (delete and enter insert mode).</li>
+<li><code>"md</code> - Store the selection in register <code>m</code> and delete it.</li>
 </ul>
 <h3 id="default-registers"><a class="header" href="#default-registers">Default registers</a></h3>
 <p>Commands that use registers, like yank (<code>y</code>), use a default register if none is specified.
@@ -224,7 +224,7 @@ These registers are used as defaults:</p>
 <div class="table-wrapper"><table><thead><tr><th>Register character</th><th>Contains</th></tr></thead><tbody>
 <tr><td><code>/</code></td><td>Last search</td></tr>
 <tr><td><code>:</code></td><td>Last executed command</td></tr>
-<tr><td><code>&quot;</code></td><td>Last yanked text</td></tr>
+<tr><td><code>"</code></td><td>Last yanked text</td></tr>
 <tr><td><code>@</code></td><td>Last recorded macro</td></tr>
 </tbody></table>
 </div>
@@ -235,8 +235,8 @@ These registers are used as defaults:</p>
 <tr><td><code>#</code></td><td>Selection indices (first selection is <code>1</code>, second is <code>2</code>, etc.)</td><td>This register is not writable</td></tr>
 <tr><td><code>.</code></td><td>Contents of the current selections</td><td>This register is not writable</td></tr>
 <tr><td><code>%</code></td><td>Name of the current file</td><td>This register is not writable</td></tr>
-<tr><td><code>*</code></td><td>Reads from the system clipboard</td><td>Joins and yanks to the system clipboard</td></tr>
-<tr><td><code>+</code></td><td>Reads from the primary clipboard</td><td>Joins and yanks to the primary clipboard</td></tr>
+<tr><td><code>+</code></td><td>Reads from the system clipboard</td><td>Joins and yanks to the system clipboard</td></tr>
+<tr><td><code>*</code></td><td>Reads from the primary clipboard</td><td>Joins and yanks to the primary clipboard</td></tr>
 </tbody></table>
 </div>
 <p>When yanking multiple selections to the clipboard registers, the selections
@@ -306,7 +306,7 @@ documentation.</p>
 and requires the corresponding query file to work properly.</p>
 </blockquote>
 <h2 id="moving-the-selection-with-syntax-aware-motions"><a class="header" href="#moving-the-selection-with-syntax-aware-motions">Moving the selection with syntax-aware motions</a></h2>
-<p><code>Alt-p</code>, <code>Alt-o</code>, <code>Alt-i</code>, and <code>Alt-n</code> (or <code>Alt</code> and arrow keys) allow you to move the 
+<p><code>Alt-p</code>, <code>Alt-o</code>, <code>Alt-i</code>, and <code>Alt-n</code> (or <code>Alt</code> and arrow keys) allow you to move the
 selection according to its location in the syntax tree. For example, many languages have the
 following syntax for function calls:</p>
 <pre><code class="language-js">func(arg1, arg2, arg3);
@@ -328,12 +328,12 @@ a more intuitive tree format:</p>
       │                │
 ┌─────▼────┐      ┌────▼────┐
 │identifier│      │arguments│
-│  &quot;func&quot;  │ ┌────┴───┬─────┴───┐
+│  "func"  │ ┌────┴───┬─────┴───┐
 └──────────┘ │        │         │
              │        │         │
    ┌─────────▼┐  ┌────▼─────┐  ┌▼─────────┐
    │identifier│  │identifier│  │identifier│
-   │  &quot;arg1&quot;  │  │  &quot;arg2&quot;  │  │  &quot;arg3&quot;  │
+   │  "arg1"  │  │  "arg2"  │  │  "arg3"  │
    └──────────┘  └──────────┘  └──────────┘
 </code></pre>
 <p>If you have a selection that wraps <code>arg1</code> (see the tree above), and you use
@@ -352,7 +352,7 @@ node with no sibling. When using <code>Alt-p</code> with a selection on <code>ar
 child node will be selected. In the event that <code>arg1</code> does not have a previous
 sibling, the selection will move up the syntax tree and select the previous
 element. As a result, using <code>Alt-p</code> with a selection on <code>arg1</code> will move the
-selection to the &quot;func&quot; <code>identifier</code>.</p>
+selection to the "func" <code>identifier</code>.</p>
 
                     </main>
 

@@ -199,6 +199,7 @@
 <li><a href="#window-mode">Window mode</a></li>
 <li><a href="#space-mode">Space mode</a>
 <ul>
+<li><a href="#comment-mode">Comment mode</a></li>
 <li><a href="#popup">Popup</a></li>
 </ul>
 </li>
@@ -219,7 +220,7 @@
 <p>💡 Mappings marked (<strong>TS</strong>) require a tree-sitter grammar for the file type.</p>
 </blockquote>
 <h2 id="normal-mode"><a class="header" href="#normal-mode">Normal mode</a></h2>
-<p>Normal mode is the default mode when you launch helix. Return to it from other modes by typing <code>Escape</code>.</p>
+<p>Normal mode is the default mode when you launch helix. You can return to it from other modes by pressing the <code>Escape</code> key.</p>
 <h3 id="movement"><a class="header" href="#movement">Movement</a></h3>
 <blockquote>
 <p>NOTE: Unlike Vim, <code>f</code>, <code>F</code>, <code>t</code> and <code>T</code> are not confined to the current line.</p>
@@ -240,13 +241,13 @@
 <tr><td><code>T</code></td><td>Find 'till previous char</td><td><code>till_prev_char</code></td></tr>
 <tr><td><code>F</code></td><td>Find previous char</td><td><code>find_prev_char</code></td></tr>
 <tr><td><code>G</code></td><td>Go to line number <code>&lt;n&gt;</code></td><td><code>goto_line</code></td></tr>
-<tr><td><code>Alt-.</code></td><td>Repeat last motion (<code>f</code>, <code>t</code> or <code>m</code>)</td><td><code>repeat_last_motion</code></td></tr>
+<tr><td><code>Alt-.</code></td><td>Repeat last motion (<code>f</code>, <code>t</code>, <code>m</code>, <code>[</code> or <code>]</code>)</td><td><code>repeat_last_motion</code></td></tr>
 <tr><td><code>Home</code></td><td>Move to the start of the line</td><td><code>goto_line_start</code></td></tr>
 <tr><td><code>End</code></td><td>Move to the end of the line</td><td><code>goto_line_end</code></td></tr>
 <tr><td><code>Ctrl-b</code>, <code>PageUp</code></td><td>Move page up</td><td><code>page_up</code></td></tr>
 <tr><td><code>Ctrl-f</code>, <code>PageDown</code></td><td>Move page down</td><td><code>page_down</code></td></tr>
-<tr><td><code>Ctrl-u</code></td><td>Move half page up</td><td><code>half_page_up</code></td></tr>
-<tr><td><code>Ctrl-d</code></td><td>Move half page down</td><td><code>half_page_down</code></td></tr>
+<tr><td><code>Ctrl-u</code></td><td>Move cursor and page half page up</td><td><code>page_cursor_half_up</code></td></tr>
+<tr><td><code>Ctrl-d</code></td><td>Move cursor and page half page down</td><td><code>page_cursor_half_down</code></td></tr>
 <tr><td><code>Ctrl-i</code></td><td>Jump forward on the jumplist</td><td><code>jump_forward</code></td></tr>
 <tr><td><code>Ctrl-o</code></td><td>Jump backward on the jumplist</td><td><code>jump_backward</code></td></tr>
 <tr><td><code>Ctrl-s</code></td><td>Save the current selection to the jumplist</td><td><code>save_selection</code></td></tr>
@@ -273,7 +274,7 @@
 <tr><td><code>y</code></td><td>Yank selection</td><td><code>yank</code></td></tr>
 <tr><td><code>p</code></td><td>Paste after selection</td><td><code>paste_after</code></td></tr>
 <tr><td><code>P</code></td><td>Paste before selection</td><td><code>paste_before</code></td></tr>
-<tr><td><code>&quot;</code> <code>&lt;reg&gt;</code></td><td>Select a register to yank to or paste from</td><td><code>select_register</code></td></tr>
+<tr><td><code>"</code> <code>&lt;reg&gt;</code></td><td>Select a register to yank to or paste from</td><td><code>select_register</code></td></tr>
 <tr><td><code>&gt;</code></td><td>Indent selection</td><td><code>indent</code></td></tr>
 <tr><td><code>&lt;</code></td><td>Unindent selection</td><td><code>unindent</code></td></tr>
 <tr><td><code>=</code></td><td>Format selection (currently nonfunctional/disabled) (<strong>LSP</strong>)</td><td><code>format_selections</code></td></tr>
@@ -332,7 +333,7 @@
 </tbody></table>
 </div>
 <h3 id="search"><a class="header" href="#search">Search</a></h3>
-<p>Search commands all operate on the <code>/</code> register by default. To use a different register, use <code>&quot;&lt;char&gt;</code>.</p>
+<p>Search commands all operate on the <code>/</code> register by default. To use a different register, use <code>"&lt;char&gt;</code>.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>/</code></td><td>Search for regex pattern</td><td><code>search</code></td></tr>
 <tr><td><code>?</code></td><td>Search for previous pattern</td><td><code>rsearch</code></td></tr>
@@ -359,7 +360,7 @@
 <h4 id="view-mode"><a class="header" href="#view-mode">View mode</a></h4>
 <p>Accessed by typing <code>z</code> in <a href="#normal-mode">normal mode</a>.</p>
 <p>View mode is intended for scrolling and manipulating the view without changing
-the selection. The &quot;sticky&quot; variant of this mode (accessed by typing <code>Z</code> in
+the selection. The "sticky" variant of this mode (accessed by typing <code>Z</code> in
 normal mode) is persistent and can be exited using the escape key. This is
 useful when you're simply looking over text and not actively editing it.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
@@ -371,8 +372,8 @@ useful when you're simply looking over text and not actively editing it.</p>
 <tr><td><code>k</code>, <code>up</code></td><td>Scroll the view upwards</td><td><code>scroll_up</code></td></tr>
 <tr><td><code>Ctrl-f</code>, <code>PageDown</code></td><td>Move page down</td><td><code>page_down</code></td></tr>
 <tr><td><code>Ctrl-b</code>, <code>PageUp</code></td><td>Move page up</td><td><code>page_up</code></td></tr>
-<tr><td><code>Ctrl-d</code></td><td>Move half page down</td><td><code>half_page_down</code></td></tr>
-<tr><td><code>Ctrl-u</code></td><td>Move half page up</td><td><code>half_page_up</code></td></tr>
+<tr><td><code>Ctrl-u</code></td><td>Move cursor and page half page up</td><td><code>page_cursor_half_up</code></td></tr>
+<tr><td><code>Ctrl-d</code></td><td>Move cursor and page half page down</td><td><code>page_cursor_half_down</code></td></tr>
 </tbody></table>
 </div>
 <h4 id="goto-mode"><a class="header" href="#goto-mode">Goto mode</a></h4>
@@ -381,7 +382,7 @@ useful when you're simply looking over text and not actively editing it.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
 <tr><td><code>g</code></td><td>Go to line number <code>&lt;n&gt;</code> else start of file</td><td><code>goto_file_start</code></td></tr>
 <tr><td><code>e</code></td><td>Go to the end of the file</td><td><code>goto_last_line</code></td></tr>
-<tr><td><code>f</code></td><td>Go to files in the selection</td><td><code>goto_file</code></td></tr>
+<tr><td><code>f</code></td><td>Go to files in the selections</td><td><code>goto_file</code></td></tr>
 <tr><td><code>h</code></td><td>Go to the start of the line</td><td><code>goto_line_start</code></td></tr>
 <tr><td><code>l</code></td><td>Go to the end of the line</td><td><code>goto_line_end</code></td></tr>
 <tr><td><code>s</code></td><td>Go to first non-whitespace character of the line</td><td><code>goto_first_nonwhitespace</code></td></tr>
@@ -399,6 +400,7 @@ useful when you're simply looking over text and not actively editing it.</p>
 <tr><td><code>.</code></td><td>Go to last modification in current file</td><td><code>goto_last_modification</code></td></tr>
 <tr><td><code>j</code></td><td>Move down textual (instead of visual) line</td><td><code>move_line_down</code></td></tr>
 <tr><td><code>k</code></td><td>Move up textual (instead of visual) line</td><td><code>move_line_up</code></td></tr>
+<tr><td><code>w</code></td><td>Show labels at each word and select the word that belongs to the entered labels</td><td><code>goto_word</code></td></tr>
 </tbody></table>
 </div>
 <h4 id="match-mode"><a class="header" href="#match-mode">Match mode</a></h4>
@@ -422,8 +424,8 @@ useful when you're simply looking over text and not actively editing it.</p>
 <tr><td><code>w</code>, <code>Ctrl-w</code></td><td>Switch to next window</td><td><code>rotate_view</code></td></tr>
 <tr><td><code>v</code>, <code>Ctrl-v</code></td><td>Vertical right split</td><td><code>vsplit</code></td></tr>
 <tr><td><code>s</code>, <code>Ctrl-s</code></td><td>Horizontal bottom split</td><td><code>hsplit</code></td></tr>
-<tr><td><code>f</code></td><td>Go to files in the selection in horizontal splits</td><td><code>goto_file</code></td></tr>
-<tr><td><code>F</code></td><td>Go to files in the selection in vertical splits</td><td><code>goto_file</code></td></tr>
+<tr><td><code>f</code></td><td>Go to files in the selections in horizontal splits</td><td><code>goto_file</code></td></tr>
+<tr><td><code>F</code></td><td>Go to files in the selections in vertical splits</td><td><code>goto_file</code></td></tr>
 <tr><td><code>h</code>, <code>Ctrl-h</code>, <code>Left</code></td><td>Move to left split</td><td><code>jump_view_left</code></td></tr>
 <tr><td><code>j</code>, <code>Ctrl-j</code>, <code>Down</code></td><td>Move to split below</td><td><code>jump_view_down</code></td></tr>
 <tr><td><code>k</code>, <code>Ctrl-k</code>, <code>Up</code></td><td>Move to split above</td><td><code>jump_view_up</code></td></tr>
@@ -455,6 +457,9 @@ useful when you're simply looking over text and not actively editing it.</p>
 <tr><td><code>h</code></td><td>Select symbol references (<strong>LSP</strong>)</td><td><code>select_references_to_symbol_under_cursor</code></td></tr>
 <tr><td><code>'</code></td><td>Open last fuzzy picker</td><td><code>last_picker</code></td></tr>
 <tr><td><code>w</code></td><td>Enter <a href="#window-mode">window mode</a></td><td>N/A</td></tr>
+<tr><td><code>c</code></td><td>Comment/uncomment selections</td><td><code>toggle_comments</code></td></tr>
+<tr><td><code>C</code></td><td>Block comment/uncomment selections</td><td><code>toggle_block_comments</code></td></tr>
+<tr><td><code>Alt-c</code></td><td>Line comment/uncomment selections</td><td><code>toggle_line_comments</code></td></tr>
 <tr><td><code>p</code></td><td>Paste system clipboard after selections</td><td><code>paste_clipboard_after</code></td></tr>
 <tr><td><code>P</code></td><td>Paste system clipboard before selections</td><td><code>paste_clipboard_before</code></td></tr>
 <tr><td><code>y</code></td><td>Yank selections to clipboard</td><td><code>yank_to_clipboard</code></td></tr>
@@ -541,14 +546,14 @@ with modal editors.</p>
 <p>As you become more comfortable with modal editing, you may want to disable some
 insert mode bindings. You can do this by editing your <code>config.toml</code> file.</p>
 <pre><code class="language-toml">[keys.insert]
-up = &quot;no_op&quot;
-down = &quot;no_op&quot;
-left = &quot;no_op&quot;
-right = &quot;no_op&quot;
-pageup = &quot;no_op&quot;
-pagedown = &quot;no_op&quot;
-home = &quot;no_op&quot;
-end = &quot;no_op&quot;
+up = "no_op"
+down = "no_op"
+left = "no_op"
+right = "no_op"
+pageup = "no_op"
+pagedown = "no_op"
+home = "no_op"
+end = "no_op"
 </code></pre>
 <h2 id="select--extend-mode"><a class="header" href="#select--extend-mode">Select / extend mode</a></h2>
 <p>Accessed by typing <code>v</code> in <a href="#normal-mode">normal mode</a>.</p>

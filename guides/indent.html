@@ -189,6 +189,14 @@ the capture.</p>
 <p>Note that it matters where these added indents begin. For example,
 multiple indent level increases that start on the same line only increase
 the total indent level by 1. See <a href="#capture-types">Capture types</a>.</p>
+<p>By default, Helix uses the <code>hybrid</code> indentation heuristic. This means that
+indent queries are not used to compute the expected absolute indentation of a
+line but rather the expected difference in indentation between the new and an
+already existing line. This difference is then added to the actual indentation
+of the already existing line. Since this makes errors in the indent queries
+harder to find, it is recommended to disable it when testing via
+<code>:set indent-heuristic tree-sitter</code>. The rest of this guide assumes that
+the <code>tree-sitter</code> heuristic is used.</p>
 <h2 id="indent-queries"><a class="header" href="#indent-queries">Indent queries</a></h2>
 <p>When Helix is inserting a new line through <code>o</code>, <code>O</code>, or <code>&lt;ret&gt;</code>, to determine
 the indent level for the new line, the query in <code>indents.scm</code> is run on the
@@ -283,7 +291,7 @@ actually have been extended).</li>
 // 3x @outdent
 <span class="boring">}</span></code></pre></pre>
 <pre><code class="language-scm">((block) @indent)
-[&quot;}&quot; &quot;)&quot;] @outdent
+["}" ")"] @outdent
 </code></pre>
 <p>Note how on the second line, we have two blocks begin on the same line. In this
 case, since both captures occur on the same line, they are combined and only
@@ -323,7 +331,7 @@ whitespace-sensitive.</p>
 the cursor on a line feed ends up being the entire inside of the class. Because
 of this, it will miss the entire function node and its indent capture, leading
 to an indent level one too small.</p>
-<p>To address this case, <code>@extend</code> tells helix to &quot;extend&quot; the captured node's span
+<p>To address this case, <code>@extend</code> tells helix to "extend" the captured node's span
 to the line feed and every consecutive line that has a greater indent level than
 the line of the node.</p>
 <pre><code class="language-scm">(parenthesized_expression) @indent
@@ -431,7 +439,7 @@ similar to how <code>#set!</code> declarations work:</p>
 )
 </code></pre>
 <p>The number of arguments depends on the predicate that's used.
-Each argument is either a capture (<code>@name</code>) or a string (<code>&quot;some string&quot;</code>).
+Each argument is either a capture (<code>@name</code>) or a string (<code>"some string"</code>).
 The following predicates are supported by tree-sitter:</p>
 <ul>
 <li>
@@ -443,6 +451,11 @@ The first argument (a capture) must/must not be equal to the second argument
 <p><code>#match?</code>/<code>#not-match?</code>:
 The first argument (a capture) must/must not match the regex given in the
 second argument (a string).</p>
+</li>
+<li>
+<p><code>#any-of?</code>/<code>#not-any-of?</code>:
+The first argument (a capture) must/must not be one of the other arguments
+(strings).</p>
 </li>
 </ul>
 <p>Additionally, we support some custom predicates for indent queries:</p>
@@ -478,21 +491,21 @@ This scope applies to the whole captured node. This is only different from
 <pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
 </span><span class="boring">fn main() {
 </span>fn aha() { // ←─────────────────────────────────────╮
-  let take = &quot;on me&quot;;  // ←──────────────╮  scope:  │
-  let take = &quot;me on&quot;;             //     ├─ &quot;tail&quot;  ├─ (block) @indent
+  let take = "on me";  // ←──────────────╮  scope:  │
+  let take = "me on";             //     ├─ "tail"  ├─ (block) @indent
   let ill = be_gone_days(1 || 2); //     │          │
-} // ←───────────────────────────────────┴──────────┴─ &quot;}&quot; @outdent
-                                         //                scope: &quot;all&quot;
+} // ←───────────────────────────────────┴──────────┴─ "}" @outdent
+                                         //                scope: "all"
 <span class="boring">}</span></code></pre></pre>
 <p>We can write the following query with the <code>#set!</code> declaration:</p>
 <pre><code class="language-scm">((block) @indent
- (#set! &quot;scope&quot; &quot;tail&quot;))
-(&quot;}&quot; @outdent
- (#set! &quot;scope&quot; &quot;all&quot;))
+ (#set! "scope" "tail"))
+("}" @outdent
+ (#set! "scope" "all"))
 </code></pre>
-<p>As we can see, the &quot;tail&quot; scope covers the node, except for the first line.
+<p>As we can see, the "tail" scope covers the node, except for the first line.
 Everything up to and including the closing brace gets an indent level of 1.
-Then, on the closing brace, we encounter an outdent with a scope of &quot;all&quot;, which
+Then, on the closing brace, we encounter an outdent with a scope of "all", which
 means the first line is included, and the indent level is cancelled out on this
 line. (Note these scopes are the defaults for <code>@indent</code> and <code>@outdent</code>—they are
 written explicitly for demonstration.)</p>

@@ -180,23 +180,23 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="themes"><a class="header" href="#themes">Themes</a></h1>
-<p>To use a theme add <code>theme = &quot;&lt;name&gt;&quot;</code> to the top of your <a href="./configuration.html"><code>config.toml</code></a> file, or select it during runtime using <code>:theme &lt;name&gt;</code>.</p>
+<p>To use a theme add <code>theme = "&lt;name&gt;"</code> to the top of your <a href="./configuration.html"><code>config.toml</code></a> file, or select it during runtime using <code>:theme &lt;name&gt;</code>.</p>
 <h2 id="creating-a-theme"><a class="header" href="#creating-a-theme">Creating a theme</a></h2>
 <p>Create a file with the name of your theme as the file name (i.e <code>mytheme.toml</code>) and place it in your <code>themes</code> directory (i.e <code>~/.config/helix/themes</code> or <code>%AppData%\helix\themes</code> on Windows). The directory might have to be created beforehand.</p>
 <blockquote>
-<p>💡 The names &quot;default&quot; and &quot;base16_default&quot; are reserved for built-in themes
+<p>💡 The names "default" and "base16_default" are reserved for built-in themes
 and cannot be overridden by user-defined themes.</p>
 </blockquote>
 <h3 id="overview"><a class="header" href="#overview">Overview</a></h3>
 <p>Each line in the theme file is specified as below:</p>
-<pre><code class="language-toml">key = { fg = &quot;#ffffff&quot;, bg = &quot;#000000&quot;, underline = { color = &quot;#ff0000&quot;, style = &quot;curl&quot;}, modifiers = [&quot;bold&quot;, &quot;italic&quot;] }
+<pre><code class="language-toml">key = { fg = "#ffffff", bg = "#000000", underline = { color = "#ff0000", style = "curl"}, modifiers = ["bold", "italic"] }
 </code></pre>
 <p>Where <code>key</code> represents what you want to style, <code>fg</code> specifies the foreground color, <code>bg</code> the background color, <code>underline</code> the underline <code>style</code>/<code>color</code>, and <code>modifiers</code> is a list of style modifiers. <code>bg</code>, <code>underline</code> and <code>modifiers</code> can be omitted to defer to the defaults.</p>
 <p>To specify only the foreground color:</p>
-<pre><code class="language-toml">key = &quot;#ffffff&quot;
+<pre><code class="language-toml">key = "#ffffff"
 </code></pre>
 <p>If the key contains a dot <code>'.'</code>, it must be quoted to prevent it being parsed as a <a href="https://toml.io/en/v1.0.0#keys">dotted key</a>.</p>
-<pre><code class="language-toml">&quot;key.key&quot; = &quot;#ffffff&quot;
+<pre><code class="language-toml">"key.key" = "#ffffff"
 </code></pre>
 <p>For inspiration, you can find the default <code>theme.toml</code>
 <a href="https://github.com/helix-editor/helix/blob/master/theme.toml">here</a> and
@@ -211,12 +211,12 @@ user-submitted themes
 <p>It's recommended to define a palette of named colors, and refer to them in the
 configuration values in your theme. To do this, add a table called
 <code>palette</code> to your theme file:</p>
-<pre><code class="language-toml">&quot;ui.background&quot; = &quot;white&quot;
-&quot;ui.text&quot; = &quot;black&quot;
+<pre><code class="language-toml">"ui.background" = "white"
+"ui.text" = "black"
 
 [palette]
-white = &quot;#ffffff&quot;
-black = &quot;#000000&quot;
+white = "#ffffff"
+black = "#000000"
 </code></pre>
 <p>Keep in mind that the <code>[palette]</code> table includes all keys after its header,
 so it should be defined after the normal theme options.</p>
@@ -260,7 +260,7 @@ your terminal emulator.</p>
 </div>
 <blockquote>
 <p>💡 The <code>underlined</code> modifier is deprecated and only available for backwards compatibility.
-Its behavior is equivalent to setting <code>underline.style=&quot;line&quot;</code>.</p>
+Its behavior is equivalent to setting <code>underline.style="line"</code>.</p>
 </blockquote>
 <h3 id="underline-style"><a class="header" href="#underline-style">Underline style</a></h3>
 <p>One of the following values may be used as a value for <code>underline.style</code>, providing it is
@@ -275,14 +275,14 @@ supported by your terminal emulator.</p>
 </div>
 <h3 id="inheritance"><a class="header" href="#inheritance">Inheritance</a></h3>
 <p>Extend other themes by setting the <code>inherits</code> property to an existing theme.</p>
-<pre><code class="language-toml">inherits = &quot;boo_berry&quot;
+<pre><code class="language-toml">inherits = "boo_berry"
 
-# Override the theming for &quot;keyword&quot;s:
-&quot;keyword&quot; = { fg = &quot;gold&quot; }
+# Override the theming for "keyword"s:
+"keyword" = { fg = "gold" }
 
 # Override colors in the palette:
 [palette]
-berry = &quot;#2A2A4D&quot;
+berry = "#2A2A4D"
 </code></pre>
 <h3 id="scopes"><a class="header" href="#scopes">Scopes</a></h3>
 <p>The following is a list of scopes available to use for styling:</p>
@@ -300,6 +300,7 @@ berry = &quot;#2A2A4D&quot;
 <p><code>type</code> - Types</p>
 <ul>
 <li><code>builtin</code> - Primitive types provided by the language (<code>int</code>, <code>usize</code>)</li>
+<li><code>parameter</code> - Generic type parameters (<code>T</code>)</li>
 <li><code>enum</code>
 <ul>
 <li><code>variant</code></li>
@@ -538,11 +539,14 @@ berry = &quot;#2A2A4D&quot;
 <tr><td><code>ui.statusline.insert</code></td><td>Statusline mode during insert mode (<a href="./configuration.html#editor-section">only if <code>editor.color-modes</code> is enabled</a>)</td></tr>
 <tr><td><code>ui.statusline.select</code></td><td>Statusline mode during select mode (<a href="./configuration.html#editor-section">only if <code>editor.color-modes</code> is enabled</a>)</td></tr>
 <tr><td><code>ui.statusline.separator</code></td><td>Separator character in statusline</td></tr>
+<tr><td><code>ui.bufferline</code></td><td>Style for the buffer line</td></tr>
+<tr><td><code>ui.bufferline.active</code></td><td>Style for the active buffer in buffer line</td></tr>
+<tr><td><code>ui.bufferline.background</code></td><td>Style for bufferline background</td></tr>
 <tr><td><code>ui.popup</code></td><td>Documentation popups (e.g. Space + k)</td></tr>
 <tr><td><code>ui.popup.info</code></td><td>Prompt for multiple key options</td></tr>
 <tr><td><code>ui.window</code></td><td>Borderlines separating splits</td></tr>
 <tr><td><code>ui.help</code></td><td>Description box for commands</td></tr>
-<tr><td><code>ui.text</code></td><td>Command prompts, popup text, etc.</td></tr>
+<tr><td><code>ui.text</code></td><td>Default text style, command prompts, popup text, etc.</td></tr>
 <tr><td><code>ui.text.focus</code></td><td>The currently selected line in the picker</td></tr>
 <tr><td><code>ui.text.inactive</code></td><td>Same as <code>ui.text</code> but when the text is inactive (e.g. suggestions)</td></tr>
 <tr><td><code>ui.text.info</code></td><td>The key: command text in <code>ui.popup.info</code> boxes</td></tr>
@@ -553,6 +557,7 @@ berry = &quot;#2A2A4D&quot;
 <tr><td><code>ui.virtual.inlay-hint.parameter</code></td><td>Style for inlay hints of kind <code>parameter</code> (LSPs are not required to set a kind)</td></tr>
 <tr><td><code>ui.virtual.inlay-hint.type</code></td><td>Style for inlay hints of kind <code>type</code> (LSPs are not required to set a kind)</td></tr>
 <tr><td><code>ui.virtual.wrap</code></td><td>Soft-wrap indicator (see the <a href="./configuration.html#editor-section"><code>editor.soft-wrap</code> config</a>)</td></tr>
+<tr><td><code>ui.virtual.jump-label</code></td><td>Style for virtual jump labels</td></tr>
 <tr><td><code>ui.menu</code></td><td>Code and command completion menus</td></tr>
 <tr><td><code>ui.menu.selected</code></td><td>Selected autocomplete item</td></tr>
 <tr><td><code>ui.menu.scroll</code></td><td><code>fg</code> sets thumb color, <code>bg</code> sets track color of scrollbar</td></tr>
@@ -572,6 +577,8 @@ berry = &quot;#2A2A4D&quot;
 <tr><td><code>diagnostic.info</code></td><td>Diagnostics info (editing area)</td></tr>
 <tr><td><code>diagnostic.warning</code></td><td>Diagnostics warning (editing area)</td></tr>
 <tr><td><code>diagnostic.error</code></td><td>Diagnostics error (editing area)</td></tr>
+<tr><td><code>diagnostic.unnecessary</code></td><td>Diagnostics with unnecessary tag (editing area)</td></tr>
+<tr><td><code>diagnostic.deprecated</code></td><td>Diagnostics with deprecated tag (editing area)</td></tr>
 </tbody></table>
 </div>
                     </main>

@@ -197,10 +197,10 @@ auto-LSP-formatting in Rust:</p>
 <pre><code class="language-toml"># in &lt;config_dir&gt;/helix/languages.toml
 
 [language-server.mylang-lsp]
-command = &quot;mylang-lsp&quot;
+command = "mylang-lsp"
 
 [[language]]
-name = &quot;rust&quot;
+name = "rust"
 auto-format = false
 </code></pre>
 </li>
@@ -215,14 +215,14 @@ in the configuration directory and the built-in configuration.</p>
 <p>Each language is configured by adding a <code>[[language]]</code> section to a
 <code>languages.toml</code> file. For example:</p>
 <pre><code class="language-toml">[[language]]
-name = &quot;mylang&quot;
-scope = &quot;source.mylang&quot;
-injection-regex = &quot;mylang&quot;
-file-types = [&quot;mylang&quot;, &quot;myl&quot;]
-comment-token = &quot;#&quot;
-indent = { tab-width = 2, unit = &quot;  &quot; }
-formatter = { command = &quot;mylang-formatter&quot; , args = [&quot;--stdin&quot;] }
-language-servers = [ &quot;mylang-lsp&quot; ]
+name = "mylang"
+scope = "source.mylang"
+injection-regex = "mylang"
+file-types = ["mylang", "myl"]
+comment-tokens = "#"
+indent = { tab-width = 2, unit = "  " }
+formatter = { command = "mylang-formatter" , args = ["--stdin"] }
+language-servers = [ "mylang-lsp" ]
 </code></pre>
 <p>These configuration keys are available:</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
@@ -230,57 +230,62 @@ language-servers = [ &quot;mylang-lsp&quot; ]
 <tr><td><code>language-id</code></td><td>The language-id for language servers, checkout the table at <a href="https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentItem">TextDocumentItem</a> for the right id</td></tr>
 <tr><td><code>scope</code></td><td>A string like <code>source.js</code> that identifies the language. Currently, we strive to match the scope names used by popular TextMate grammars and by the Linguist library. Usually <code>source.&lt;name&gt;</code> or <code>text.&lt;name&gt;</code> in case of markup languages</td></tr>
 <tr><td><code>injection-regex</code></td><td>regex pattern that will be tested against a language name in order to determine whether this language should be used for a potential <a href="https://tree-sitter.github.io/tree-sitter/syntax-highlighting#language-injection">language injection</a> site.</td></tr>
-<tr><td><code>file-types</code></td><td>The filetypes of the language, for example <code>[&quot;yml&quot;, &quot;yaml&quot;]</code>. See the file-type detection section below.</td></tr>
-<tr><td><code>shebangs</code></td><td>The interpreters from the shebang line, for example <code>[&quot;sh&quot;, &quot;bash&quot;]</code></td></tr>
+<tr><td><code>file-types</code></td><td>The filetypes of the language, for example <code>["yml", "yaml"]</code>. See the file-type detection section below.</td></tr>
+<tr><td><code>shebangs</code></td><td>The interpreters from the shebang line, for example <code>["sh", "bash"]</code></td></tr>
 <tr><td><code>roots</code></td><td>A set of marker files to look for when trying to find the workspace root. For example <code>Cargo.lock</code>, <code>yarn.lock</code></td></tr>
 <tr><td><code>auto-format</code></td><td>Whether to autoformat this language when saving</td></tr>
 <tr><td><code>diagnostic-severity</code></td><td>Minimal severity of diagnostic for it to be displayed. (Allowed values: <code>Error</code>, <code>Warning</code>, <code>Info</code>, <code>Hint</code>)</td></tr>
-<tr><td><code>comment-token</code></td><td>The token to use as a comment-token</td></tr>
-<tr><td><code>indent</code></td><td>The indent to use. Has sub keys <code>unit</code> (the text inserted into the document when indenting; usually set to N spaces or <code>&quot;\t&quot;</code> for tabs) and <code>tab-width</code> (the number of spaces rendered for a tab)</td></tr>
+<tr><td><code>comment-tokens</code></td><td>The tokens to use as a comment token, either a single token <code>"//"</code> or an array <code>["//", "///", "//!"]</code> (the first token will be used for commenting). Also configurable as <code>comment-token</code> for backwards compatibility</td></tr>
+<tr><td><code>block-comment-tokens</code></td><td>The start and end tokens for a multiline comment either an array or single table of <code>{ start = "/*", end = "*/"}</code>. The first set of tokens will be used for commenting, any pairs in the array can be uncommented</td></tr>
+<tr><td><code>indent</code></td><td>The indent to use. Has sub keys <code>unit</code> (the text inserted into the document when indenting; usually set to N spaces or <code>"\t"</code> for tabs) and <code>tab-width</code> (the number of spaces rendered for a tab)</td></tr>
 <tr><td><code>language-servers</code></td><td>The Language Servers used for this language. See below for more information in the section <a href="#configuring-language-servers-for-a-language">Configuring Language Servers for a language</a></td></tr>
 <tr><td><code>grammar</code></td><td>The tree-sitter grammar to use (defaults to the value of <code>name</code>)</td></tr>
 <tr><td><code>formatter</code></td><td>The formatter for the language, it will take precedence over the lsp when defined. The formatter must be able to take the original file as input from stdin and write the formatted file to stdout</td></tr>
+<tr><td><code>soft-wrap</code></td><td><a href="./configuration.html#editorsoft-wrap-section">editor.softwrap</a></td></tr>
 <tr><td><code>text-width</code></td><td>Maximum line length. Used for the <code>:reflow</code> command and soft-wrapping if <code>soft-wrap.wrap-at-text-width</code> is set, defaults to <code>editor.text-width</code></td></tr>
 <tr><td><code>workspace-lsp-roots</code></td><td>Directories relative to the workspace root that are treated as LSP roots. Should only be set in <code>.helix/config.toml</code>. Overwrites the setting of the same name in <code>config.toml</code> if set.</td></tr>
+<tr><td><code>persistent-diagnostic-sources</code></td><td>An array of LSP diagnostic sources assumed unchanged when the language server resends the same set of diagnostics. Helix can track the position for these diagnostics internally instead. Useful for diagnostics that are recomputed on save.</td></tr>
 </tbody></table>
 </div>
 <h3 id="file-type-detection-and-the-file-types-key"><a class="header" href="#file-type-detection-and-the-file-types-key">File-type detection and the <code>file-types</code> key</a></h3>
 <p>Helix determines which language configuration to use based on the <code>file-types</code> key
 from the above section. <code>file-types</code> is a list of strings or tables, for
 example:</p>
-<pre><code class="language-toml">file-types = [&quot;Makefile&quot;, &quot;toml&quot;, { suffix = &quot;.git/config&quot; }]
+<pre><code class="language-toml">file-types = ["toml", { glob = "Makefile" }, { glob = ".git/config" }, { glob = ".github/workflows/*.yaml" } ]
 </code></pre>
 <p>When determining a language configuration to use, Helix searches the file-types
 with the following priorities:</p>
 <ol>
-<li>Exact match: if the filename of a file is an exact match of a string in a
-<code>file-types</code> list, that language wins. In the example above, <code>&quot;Makefile&quot;</code>
-will match against <code>Makefile</code> files.</li>
-<li>Extension: if there are no exact matches, any <code>file-types</code> string that
-matches the file extension of a given file wins. In the example above, the
-<code>&quot;toml&quot;</code> matches files like <code>Cargo.toml</code> or <code>languages.toml</code>.</li>
-<li>Suffix: if there are still no matches, any values in <code>suffix</code> tables
-are checked against the full path of the given file. In the example above,
-the <code>{ suffix = &quot;.git/config&quot; }</code> would match against any <code>config</code> files
-in <code>.git</code> directories. Note: <code>/</code> is used as the directory separator but is
-replaced at runtime with the appropriate path separator for the operating
-system, so this rule would match against <code>.git\config</code> files on Windows.</li>
+<li>Glob: values in <code>glob</code> tables are checked against the full path of the given
+file. Globs are standard Unix-style path globs (e.g. the kind you use in Shell)
+and can be used to match paths for a specific prefix, suffix, directory, etc.
+In the above example, the <code>{ glob = "Makefile" }</code> config would match files
+with the name <code>Makefile</code>, the <code>{ glob = ".git/config" }</code> config would match
+<code>config</code> files in <code>.git</code> directories, and the <code>{ glob = ".github/workflows/*.yaml" }</code>
+config would match any <code>yaml</code> files in <code>.github/workflow</code> directories. Note
+that globs should always use the Unix path separator <code>/</code> even on Windows systems;
+the matcher will automatically take the machine-specific separators into account.
+If the glob isn't an absolute path or doesn't already start with a glob prefix,
+<code>*/</code> will automatically be added to ensure it matches for any subdirectory.</li>
+<li>Extension: if there are no glob matches, any <code>file-types</code> string that matches
+the file extension of a given file wins. In the example above, the <code>"toml"</code>
+config matches files like <code>Cargo.toml</code> or <code>languages.toml</code>.</li>
 </ol>
 <h2 id="language-server-configuration"><a class="header" href="#language-server-configuration">Language Server configuration</a></h2>
 <p>Language servers are configured separately in the table <code>language-server</code> in the same file as the languages <code>languages.toml</code></p>
 <p>For example:</p>
 <pre><code class="language-toml">[language-server.mylang-lsp]
-command = &quot;mylang-lsp&quot;
-args = [&quot;--stdio&quot;]
+command = "mylang-lsp"
+args = ["--stdio"]
 config = { provideFormatter = true }
-environment = { &quot;ENV1&quot; = &quot;value1&quot;, &quot;ENV2&quot; = &quot;value2&quot; }
+environment = { "ENV1" = "value1", "ENV2" = "value2" }
 
 [language-server.efm-lsp-prettier]
-command = &quot;efm-langserver&quot;
+command = "efm-langserver"
 
 [language-server.efm-lsp-prettier.config]
 documentFormatting = true
-languages = { typescript = [ { formatCommand =&quot;prettier --stdin-filepath ${INPUT}&quot;, formatStdin = true } ] }
+languages = { typescript = [ { formatCommand ="prettier --stdin-filepath ${INPUT}", formatStdin = true } ] }
 </code></pre>
 <p>These are the available options for a language server.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
@@ -288,15 +293,16 @@ languages = { typescript = [ { formatCommand =&quot;prettier --stdin-filepath ${
 <tr><td><code>args</code></td><td>A list of arguments to pass to the language server binary</td></tr>
 <tr><td><code>config</code></td><td>LSP initialization options</td></tr>
 <tr><td><code>timeout</code></td><td>The maximum time a request to the language server may take, in seconds. Defaults to <code>20</code></td></tr>
-<tr><td><code>environment</code></td><td>Any environment variables that will be used when starting the language server <code>{ &quot;KEY1&quot; = &quot;Value1&quot;, &quot;KEY2&quot; = &quot;Value2&quot; }</code></td></tr>
+<tr><td><code>environment</code></td><td>Any environment variables that will be used when starting the language server <code>{ "KEY1" = "Value1", "KEY2" = "Value2" }</code></td></tr>
+<tr><td><code>required-root-patterns</code></td><td>A list of <code>glob</code> patterns to look for in the working directory. The language server is started if at least one of them is found.</td></tr>
 </tbody></table>
 </div>
 <p>A <code>format</code> sub-table within <code>config</code> can be used to pass extra formatting options to
 <a href="https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_formatting">Document Formatting Requests</a>.
 For example, with typescript:</p>
 <pre><code class="language-toml">[language-server.typescript-language-server]
-# pass format options according to https://github.com/typescript-language-server/typescript-language-server#workspacedidchangeconfiguration omitting the &quot;[language].format.&quot; prefix.
-config = { format = { &quot;semicolons&quot; = &quot;insert&quot;, &quot;insertSpaceBeforeFunctionParenthesis&quot; = true } }
+# pass format options according to https://github.com/typescript-language-server/typescript-language-server#workspacedidchangeconfiguration omitting the "[language].format." prefix.
+config = { format = { "semicolons" = "insert", "insertSpaceBeforeFunctionParenthesis" = true } }
 </code></pre>
 <h3 id="configuring-language-servers-for-a-language"><a class="header" href="#configuring-language-servers-for-a-language">Configuring Language Servers for a language</a></h3>
 <p>The <code>language-servers</code> attribute in a language tells helix which language servers are used for this language.</p>
@@ -308,13 +314,13 @@ it's often useful to only enable/disable certain language-server features for th
 so everything else should be handled by the <code>typescript-language-server</code> (which is configured by default).
 The language configuration for typescript could look like this:</p>
 <pre><code class="language-toml">[[language]]
-name = &quot;typescript&quot;
-language-servers = [ { name = &quot;efm-lsp-prettier&quot;, only-features = [ &quot;format&quot; ] }, &quot;typescript-language-server&quot; ]
+name = "typescript"
+language-servers = [ { name = "efm-lsp-prettier", only-features = [ "format" ] }, "typescript-language-server" ]
 </code></pre>
 <p>or equivalent:</p>
 <pre><code class="language-toml">[[language]]
-name = &quot;typescript&quot;
-language-servers = [ { name = &quot;typescript-language-server&quot;, except-features = [ &quot;format&quot; ] }, &quot;efm-lsp-prettier&quot; ]
+name = "typescript"
+language-servers = [ { name = "typescript-language-server", except-features = [ "format" ] }, "efm-lsp-prettier" ]
 </code></pre>
 <p>Each requested LSP feature is prioritized in the order of the <code>language-servers</code> array.
 For example, the first <code>goto-definition</code> supported language server (in this case <code>typescript-language-server</code>) will be taken for the relevant LSP request (command <code>goto_definition</code>).
@@ -345,8 +351,8 @@ If a language server itself doesn't support a feature, the next language server 
 <p>The source for a language's tree-sitter grammar is specified in a <code>[[grammar]]</code>
 section in <code>languages.toml</code>. For example:</p>
 <pre><code class="language-toml">[[grammar]]
-name = &quot;mylang&quot;
-source = { git = &quot;https://github.com/example/mylang&quot;, rev = &quot;a250c4582510ff34767ec3b7dcdd3c24e8c8aa68&quot; }
+name = "mylang"
+source = { git = "https://github.com/example/mylang", rev = "a250c4582510ff34767ec3b7dcdd3c24e8c8aa68" }
 </code></pre>
 <p>Grammar configuration takes these keys:</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
@@ -366,9 +372,9 @@ git repository:</p>
 <p>You may use a top-level <code>use-grammars</code> key to control which grammars are
 fetched and built when using <code>hx --grammar fetch</code> and <code>hx --grammar build</code>.</p>
 <pre><code class="language-toml"># Note: this key must come **before** the [[language]] and [[grammar]] sections
-use-grammars = { only = [ &quot;rust&quot;, &quot;c&quot;, &quot;cpp&quot; ] }
+use-grammars = { only = [ "rust", "c", "cpp" ] }
 # or
-use-grammars = { except = [ &quot;yaml&quot;, &quot;json&quot; ] }
+use-grammars = { except = [ "yaml", "json" ] }
 </code></pre>
 <p>When omitted, all grammars are fetched and built.</p>
 
