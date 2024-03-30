@@ -24,6 +24,7 @@ pub struct Popup<T: Component> {
     margin: Margin,
     size: (u16, u16),
     child_size: (u16, u16),
+    area: Rect,
     position_bias: Open,
     scroll: usize,
     auto_close: bool,
@@ -41,6 +42,7 @@ impl<T: Component> Popup<T> {
             size: (0, 0),
             position_bias: Open::Below,
             child_size: (0, 0),
+            area: Rect::new(0, 0, 0, 0),
             scroll: 0,
             auto_close: false,
             ignore_escape_key: false,
@@ -181,8 +183,25 @@ impl<T: Component> Popup<T> {
         viewport.intersection(Rect::new(rel_x, rel_y, self.size.0, self.size.1))
     }
 
-    fn handle_mouse_event(&mut self, event: &MouseEvent) -> EventResult {
-        return match event.kind {
+    fn handle_mouse_event(
+        &mut self,
+        &MouseEvent {
+            kind,
+            column: x,
+            row: y,
+            ..
+        }: &MouseEvent,
+    ) -> EventResult {
+        let mouse_is_within_popup = x >= self.area.left()
+            && x < self.area.right()
+            && y >= self.area.top()
+            && y < self.area.bottom();
+
+        if !mouse_is_within_popup {
+            return EventResult::Ignored(None);
+        }
+
+        return match kind {
             MouseEventKind::ScrollDown if self.has_scrollbar => {
                 self.scroll_half_page_down();
                 EventResult::Consumed(None)
@@ -273,6 +292,7 @@ impl<T: Component> Component for Popup<T> {
 
     fn render(&mut self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
         let area = self.area(viewport, cx.editor);
+        self.area = area;
         cx.scroll = Some(self.scroll);
 
         // clear area
