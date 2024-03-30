@@ -201,7 +201,7 @@ impl<T: Component> Popup<T> {
             return EventResult::Ignored(None);
         }
 
-        return match kind {
+        match kind {
             MouseEventKind::ScrollDown if self.has_scrollbar => {
                 self.scroll_half_page_down();
                 EventResult::Consumed(None)
@@ -211,7 +211,7 @@ impl<T: Component> Popup<T> {
                 EventResult::Consumed(None)
             }
             _ => EventResult::Ignored(None),
-        };
+        }
     }
 }
 
