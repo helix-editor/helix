@@ -198,7 +198,7 @@ impl<T: Component> Popup<T> {
             && y < self.area.bottom();
 
         if !mouse_is_within_popup {
-            return EventResult::Ignored(None);
+            return EventResult::Ignored(Some(self.close_cb()));
         }
 
         match kind {
