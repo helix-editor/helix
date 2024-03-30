@@ -42,6 +42,7 @@
 
 "ui.virtual.whitespace" = { fg = "base01" }
 "ui.virtual.inlay-hint" = { fg = "base01", modifiers = ["italic"] }
+"ui.virtual.jump-label" = { fg = "red", modifiers = ["bold"] }
 
 # 行号栏
 "ui.linenr" = { fg = "base0", bg = "base02" }
