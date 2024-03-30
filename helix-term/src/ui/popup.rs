@@ -11,6 +11,7 @@ use tui::{
 use helix_core::Position;
 use helix_view::{
     graphics::{Margin, Rect},
+    input::{MouseEvent, MouseEventKind},
     Editor,
 };
 
@@ -179,12 +180,27 @@ impl<T: Component> Popup<T> {
         // clip to viewport
         viewport.intersection(Rect::new(rel_x, rel_y, self.size.0, self.size.1))
     }
+
+    fn handle_mouse_event(&mut self, event: &MouseEvent) -> EventResult {
+        return match event.kind {
+            MouseEventKind::ScrollDown if self.has_scrollbar => {
+                self.scroll_half_page_down();
+                EventResult::Consumed(None)
+            }
+            MouseEventKind::ScrollUp if self.has_scrollbar => {
+                self.scroll_half_page_up();
+                EventResult::Consumed(None)
+            }
+            _ => EventResult::Ignored(None),
+        };
+    }
 }
 
 impl<T: Component> Component for Popup<T> {
     fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         let key = match event {
             Event::Key(event) => *event,
+            Event::Mouse(event) => return self.handle_mouse_event(event),
             Event::Resize(_, _) => {
                 // TODO: calculate inner area, call component's handle_event with that area
                 return EventResult::Ignored(None);
