@@ -25,6 +25,8 @@
 "diagnostic.info" = { underline = { color = "orange_text", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "orange_text", style = "curl" } }
 "diagnostic.error" = { underline = { color = "diff_delete", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 "info" = { fg = "orange_text", bg = "orange_bg" }
 "hint" = { modifiers = ["bold"] }

@@ -52,6 +52,8 @@
 "diagnostic.warning" = { underline = { color = "roninYellow", style = "curl" } }
 "diagnostic.info" = { underline = { color = "waveAqua1", style = "curl" } }
 "diagnostic.hint" = { underline = { color = "dragonBlue", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 error = "samuraiRed"
 warning = "roninYellow"

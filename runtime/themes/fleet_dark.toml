@@ -105,6 +105,8 @@
 "diagnostic.info" = { underline = { color = "#A366C4", style = "line" } }
 "diagnostic.warning" = { underline = { color = "#FACB66", style = "line" } }
 "diagnostic.error" = { underline = { color = "#FF5269", style = "line" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 [palette]
 "White" = "#ffffff"

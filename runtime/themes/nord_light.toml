@@ -35,6 +35,8 @@
 "diagnostic.warning" = { underline = { color = "nord13", style = "curl" } }
 "diagnostic.info" = { underline = { color = "nord13", style = "curl" } }
 "diagnostic.hint" = { underline = { color = "nord13", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 "constant.numeric" = {fg="nord15"}
 "constant.builtin" = {fg="nord15"}

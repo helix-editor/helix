@@ -14,6 +14,8 @@
 "diagnostic.error" = { underline = { style = "curl", color = "pink" } }
 "diagnostic.warning" = { underline = { style = "curl", color = "orange" } }
 "diagnostic.info" = { underline = { style = "curl", color = "white" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 ## Diffs
 "diff.plus" = "green"
