@@ -97,6 +97,8 @@
 "diagnostic.error" = { underline = { color = "red", style = "curl" } }
 "diagnostic.info" = { underline = { color = "base8", style = "curl" } }
 "diagnostic.hint" = { underline = { color = "base8", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 # markup highlight, no need for `markup.raw` and `markup.list`, make them to be default
 "markup.heading" = "green"

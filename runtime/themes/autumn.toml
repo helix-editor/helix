@@ -19,6 +19,8 @@
 "diagnostic.info" = { underline = { style = "line" } }
 "diagnostic" = { underline = { style = "line", color = "my_gray5" }, bg = "my_black"}
 "diagnostic.warning" = { underline = { style = "curl", color = "my_yellow2" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 "diff.delta" = "my_gray5"
 "diff.minus" = "my_red"
 "diff.plus" = "my_green"

@@ -17,6 +17,8 @@
 "diagnostic.error" = { underline = { color = "red", style = "curl" } }
 "diagnostic.info" = { underline = { color = "mid-blue", style = "curl" } }
 "diagnostic.hint" = { underline = { color = "light-green", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 # UI ==============================
 # For styling helix itself.

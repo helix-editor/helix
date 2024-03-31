@@ -95,6 +95,9 @@ error = "error"
 info = "blue"
 hint = "purple"
 
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
 [palette]
 bg = "#0f111a"
 text = "#a6accd"

@@ -76,6 +76,8 @@
 "diagnostic.error" = { underline = { color = "red", style = "curl"} }
 "diagnostic.info" = { underline = { color = "grey05", style = "curl"} }
 "diagnostic.hint" = { underline = { color = "grey05", style = "curl"} }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 "info" = "grey05"
 "hint" = "grey05"

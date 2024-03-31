@@ -75,6 +75,8 @@ label = "yellow"
 "diagnostic.info" = { underline = { color = "sglow", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "redish", style = "curl" } }
 "diagnostic.error" = { underline = { color = "bpink", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 warning = "bpink"
 error = "bsienna"

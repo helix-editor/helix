@@ -24,6 +24,8 @@
 "info" = "nord8"
 "diagnostic.warning" = { underline = { color = "nord13", style = "curl" } }
 "warning" = "nord13"
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 # Diffs
 "diff.delta" = "nord13"

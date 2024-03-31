@@ -76,6 +76,8 @@
 "diagnostic.error" = { underline = { color = "red", style = "curl" } } #	Diagnostics error (editing area)
 "diagnostic.info" = { underline = { color = "blue", style = "curl" } } #	Diagnostics info (editing area)
 "diagnostic.hint" = { underline = { color = "green", style = "curl" } } #	Diagnostics hint (editing area)
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 
 # SYNTAX HIGHLIGHTING

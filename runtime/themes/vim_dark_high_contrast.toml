@@ -21,6 +21,8 @@
 "diagnostic.warning" = { bg = "dark-yellow" }
 "diagnostic.hint" = { bg = "dark-cyan" }
 "diagnostic.info" = { bg = "dark-white" }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 "warning" = { fg = "yellow", bg = "dark-yellow" }
 "error" = { fg = "red", bg = "dark-red" }
 "info" = { fg = "default", bg = "dark-white" }
