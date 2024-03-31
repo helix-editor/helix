@@ -49,6 +49,8 @@
 "diagnostic.error".underline = { color = "bright1", style = "curl" }
 "diagnostic.info".underline = { color = "bright4", style = "curl" }
 "diagnostic.hint".underline = { color = "bright6", style = "curl" }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 # Tree-sitter scopes for syntax highlighting
 "attribute" = "bright4"

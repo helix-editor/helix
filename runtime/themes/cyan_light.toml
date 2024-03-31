@@ -98,9 +98,12 @@
 "ui.help" = { fg = "shade06", bg = "shade01" }
 "ui.text" = "shade05"
 "ui.text.focus" = { fg = "shade07", bg = "light_blue" }
+
 "ui.virtual" = "shade03"
 "ui.virtual.ruler" = { bg = "shade01" }
 "ui.virtual.inlay-hint" = { fg = "shade03_darker" }
+"ui.virtual.jump-label" = { fg = "shade07", bg = "shade01", modifiers = ["bold" ] }
+
 "ui.menu" = { fg = "shade05", bg = "shade01" }
 "ui.menu.selected" = { fg = "shade07", bg = "light_blue" }
 
@@ -108,11 +111,14 @@
 "info" = "light_blue"
 "warning" = "orange"
 "error" = "red"
+
 "diagnostic" = { modifiers = [] }
 "diagnostic.hint" = { underline = { color = "shade04", style = "line" } }
 "diagnostic.info" = { underline = { color = "light_blue", style = "line" } }
 "diagnostic.warning" = { underline = { color = "orange", style = "curl" } }
 "diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 [palette]
 shade00 = "#f2f3f7"

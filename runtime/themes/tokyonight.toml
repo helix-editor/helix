@@ -65,6 +65,8 @@ hint = { fg = "hint" }
 "diagnostic.warning" = { underline = { style = "curl", color = "yellow"} }
 "diagnostic.info" = { underline = { style = "curl", color = "info"} }
 "diagnostic.hint" = { underline = { style = "curl", color = "hint" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 "ui.background" = { bg = "bg", fg = "fg" }
 "ui.cursor" = { modifiers = ["reversed"] }
@@ -76,15 +78,15 @@ hint = { fg = "hint" }
 "ui.menu" = { bg = "bg-menu", fg = "fg" }
 "ui.menu.selected" = { bg = "fg-selected" }
 "ui.popup" = { bg = "bg-menu", fg = "border-highlight" }
-"ui.selection" = { bg = "bg-highlight" }
-"ui.selection.primary" = { bg = "bg-highlight" }
+"ui.selection" = { bg = "bg-selection" }
+"ui.selection.primary" = { bg = "bg-selection" }
 "ui.statusline" = { bg = "bg-menu", fg = "fg-dark" }
 "ui.statusline.inactive" = { bg = "bg-menu", fg = "fg-gutter" }
 "ui.statusline.normal" = { bg = "blue", fg = "bg", modifiers = ["bold"] }
 "ui.statusline.insert" = { bg = "light-green", fg = "bg", modifiers = ["bold"] }
 "ui.statusline.select" = { bg = "magenta", fg = "bg", modifiers = ["bold"] }
 "ui.text" = { bg = "bg", fg = "fg" }
-"ui.text.focus" = { bg = "bg-visual" }
+"ui.text.focus" = { bg = "bg-focus" }
 "ui.text.inactive" = { fg = "comment", modifiers = ["italic"] }
 "ui.text.info" = { bg = "bg-menu", fg = "fg" }
 "ui.virtual.ruler" = { bg = "fg-gutter" }
@@ -126,6 +128,6 @@ border = "#15161e"
 border-highlight = "#27a1b9"
 bg = "#1a1b26"
 bg-inlay = "#1a2b32"
-bg-highlight = "#292e42"
+bg-selection = "#283457"
 bg-menu = "#16161e"
-bg-visual = "#283457"
+bg-focus = "#292e42"

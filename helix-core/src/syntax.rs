@@ -1,3 +1,5 @@
+mod tree_cursor;
+
 use crate::{
     auto_pairs::AutoPairs,
     chars::char_is_line_ending,
@@ -21,7 +23,7 @@ use std::{
     collections::{HashMap, HashSet, VecDeque},
     fmt::{self, Display},
     hash::{Hash, Hasher},
-    mem::{replace, transmute},
+    mem::replace,
     path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
@@ -31,6 +33,8 @@ use once_cell::sync::{Lazy, OnceCell};
 use serde::{ser::SerializeSeq, Deserialize, Serialize};
 
 use helix_loader::grammar::{get_language, load_runtime_file};
+
+pub use tree_cursor::TreeCursor;
 
 fn deserialize_regex<'de, D>(deserializer: D) -> Result<Option<Regex>, D::Error>
 where
@@ -805,7 +809,7 @@ impl LanguageConfiguration {
         if query_text.is_empty() {
             return None;
         }
-        let lang = self.highlight_config.get()?.as_ref()?.language;
+        let lang = &self.highlight_config.get()?.as_ref()?.language;
         Query::new(lang, &query_text)
             .map_err(|e| {
                 log::error!(
@@ -1090,6 +1094,7 @@ impl Syntax {
                 start_point: Point::new(0, 0),
                 end_point: Point::new(usize::MAX, usize::MAX),
             }],
+            parent: None,
         };
 
         // track scope_descriptor: a Vec of scopes for item in tree
@@ -1360,6 +1365,7 @@ impl Syntax {
                         depth,
                         ranges,
                         flags: LayerUpdateFlags::empty(),
+                        parent: Some(layer_id),
                     };
 
                     // Find an identical existing layer
@@ -1493,6 +1499,12 @@ impl Syntax {
             .descendant_for_byte_range(start, end)
     }
 
+    pub fn walk(&self) -> TreeCursor<'_> {
+        // data structure to find the smallest range that contains a point
+        // when some of the ranges in the structure can overlap.
+        TreeCursor::new(&self.layers, self.root)
+    }
+
     // Commenting
     // comment_strings_for_pos
     // is_commented
@@ -1525,6 +1537,7 @@ pub struct LanguageLayer {
     pub ranges: Vec<Range>,
     pub depth: u32,
     flags: LayerUpdateFlags,
+    parent: Option<LayerId>,
 }
 
 /// This PartialEq implementation only checks if that
@@ -1544,13 +1557,7 @@ impl PartialEq for LanguageLayer {
 impl Hash for LanguageLayer {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.depth.hash(state);
-        // The transmute is necessary here because tree_sitter::Language does not derive Hash at the moment.
-        // However it does use #[repr] transparent so the transmute here is safe
-        // as `Language` (which `Grammar` is an alias for) is just a newtype wrapper around a (thin) pointer.
-        // This is also compatible with the PartialEq implementation of language
-        // as that is just a pointer comparison.
-        let language: *const () = unsafe { transmute(self.config.language) };
-        language.hash(state);
+        self.config.language.hash(state);
         self.ranges.hash(state);
     }
 }
@@ -1567,7 +1574,7 @@ impl LanguageLayer {
             .map_err(|_| Error::InvalidRanges)?;
 
         parser
-            .set_language(self.config.language)
+            .set_language(&self.config.language)
             .map_err(|_| Error::InvalidLanguage)?;
 
         // unsafe { syntax.parser.set_cancellation_flag(cancellation_flag) };
@@ -1726,7 +1733,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{iter, mem, ops, str, usize};
 use tree_sitter::{
     Language as Grammar, Node, Parser, Point, Query, QueryCaptures, QueryCursor, QueryError,
-    QueryMatch, Range, TextProvider, Tree, TreeCursor,
+    QueryMatch, Range, TextProvider, Tree,
 };
 
 const CANCELLATION_CHECK_INTERVAL: usize = 100;
@@ -1867,7 +1874,7 @@ impl HighlightConfiguration {
 
         // Construct a single query by concatenating the three query strings, but record the
         // range of pattern indices that belong to each individual string.
-        let query = Query::new(language, &query_source)?;
+        let query = Query::new(&language, &query_source)?;
         let mut highlights_pattern_index = 0;
         for i in 0..(query.pattern_count()) {
             let pattern_offset = query.start_byte_for_pattern(i);
@@ -1876,7 +1883,7 @@ impl HighlightConfiguration {
             }
         }
 
-        let injections_query = Query::new(language, injection_query)?;
+        let injections_query = Query::new(&language, injection_query)?;
         let combined_injections_patterns = (0..injections_query.pattern_count())
             .filter(|&i| {
                 injections_query
@@ -2660,7 +2667,7 @@ pub fn pretty_print_tree<W: fmt::Write>(fmt: &mut W, node: Node) -> fmt::Result 
 
 fn pretty_print_tree_impl<W: fmt::Write>(
     fmt: &mut W,
-    cursor: &mut TreeCursor,
+    cursor: &mut tree_sitter::TreeCursor,
     depth: usize,
 ) -> fmt::Result {
     let node = cursor.node();
@@ -2730,7 +2737,7 @@ mod test {
         .unwrap();
         let language = get_language("rust").unwrap();
 
-        let query = Query::new(language, query_str).unwrap();
+        let query = Query::new(&language, query_str).unwrap();
         let textobject = TextObjectQuery { query };
         let mut cursor = QueryCursor::new();
 
@@ -2970,7 +2977,7 @@ mod test {
         // rule but `name` and `body` belong to an unnamed helper `_method_rest`.
         // This can cause a bug with a pretty-printing implementation that
         // uses `Node::field_name_for_child` to determine field names but is
-        // fixed when using `TreeCursor::field_name`.
+        // fixed when using `tree_sitter::TreeCursor::field_name`.
         let source = "def self.method_name
           true
         end";

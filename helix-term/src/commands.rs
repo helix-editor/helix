@@ -10,9 +10,12 @@ use tui::widgets::Row;
 pub use typed::*;
 
 use helix_core::{
-    char_idx_at_visual_offset, comment,
+    char_idx_at_visual_offset,
+    chars::char_is_word,
+    comment,
     doc_formatter::TextFormat,
-    encoding, find_workspace, graphemes,
+    encoding, find_workspace,
+    graphemes::{self, next_grapheme_boundary, RevRopeGraphemes},
     history::UndoKind,
     increment, indent,
     indent::IndentStyle,
@@ -24,9 +27,8 @@ use helix_core::{
     search::{self, CharMatcher},
     selection, shellwords, surround,
     syntax::{BlockCommentToken, LanguageServerFeature},
-    text_annotations::TextAnnotations,
+    text_annotations::{Overlay, TextAnnotations},
     textobject,
-    tree_sitter::Node,
     unicode::width::UnicodeWidthChar,
     visual_offset_from_block, Deletion, LineEnding, Position, Range, Rope, RopeGraphemes,
     RopeReader, RopeSlice, Selection, SmallVec, Tendril, Transaction,
@@ -57,6 +59,7 @@ use crate::{
 
 use crate::job::{self, Jobs};
 use std::{
+    cmp::Ordering,
     collections::{HashMap, HashSet},
     fmt,
     future::Future,
@@ -300,6 +303,8 @@ impl MappableCommand {
         extend_line, "Select current line, if already selected, extend to another line based on the anchor",
         extend_line_below, "Select current line, if already selected, extend to next line",
         extend_line_above, "Select current line, if already selected, extend to previous line",
+        select_line_above, "Select current line, if already selected, extend or shrink line above based on the anchor",
+        select_line_below, "Select current line, if already selected, extend or shrink line below based on the anchor",
         extend_to_line_bounds, "Extend selection to line bounds",
         shrink_to_line_bounds, "Shrink selection to line bounds",
         delete_selection, "Delete selection",
@@ -470,6 +475,8 @@ impl MappableCommand {
         goto_prev_comment, "Goto previous comment",
         goto_next_test, "Goto next test",
         goto_prev_test, "Goto previous test",
+        goto_next_entry, "Goto next pairing",
+        goto_prev_entry, "Goto previous pairing",
         goto_next_paragraph, "Goto next paragraph",
         goto_prev_paragraph, "Goto previous paragraph",
         dap_launch, "Launch debug target",
@@ -500,6 +507,8 @@ impl MappableCommand {
         record_macro, "Record macro",
         replay_macro, "Replay macro",
         command_palette, "Open command palette",
+        goto_word, "Jump to a two-character label",
+        extend_to_word, "Extend to a two-character label",
     );
 }
 
@@ -615,6 +624,7 @@ fn move_impl(cx: &mut Context, move_fn: MoveFn, dir: Direction, behaviour: Movem
             &mut annotations,
         )
     });
+    drop(annotations);
     doc.set_selection(view.id, selection);
 }
 
@@ -1635,7 +1645,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
     let doc_text = doc.text().slice(..);
     let viewport = view.inner_area(doc);
     let text_fmt = doc.text_format(viewport.width, None);
-    let mut annotations = view.text_annotations(doc, None);
+    let mut annotations = view.text_annotations(&*doc, None);
     (view.offset.anchor, view.offset.vertical_offset) = char_idx_at_visual_offset(
         doc_text,
         view.offset.anchor,
@@ -1713,6 +1723,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
     let mut sel = doc.selection(view.id).clone();
     let idx = sel.primary_index();
     sel = sel.replace(idx, prim_sel);
+    drop(annotations);
     doc.set_selection(view.id, sel);
 }
 
@@ -2435,7 +2446,6 @@ fn extend_line_below(cx: &mut Context) {
 fn extend_line_above(cx: &mut Context) {
     extend_line_impl(cx, Extend::Above);
 }
-
 fn extend_line_impl(cx: &mut Context, extend: Extend) {
     let count = cx.count();
     let (view, doc) = current!(cx.editor);
@@ -2469,6 +2479,59 @@ fn extend_line_impl(cx: &mut Context, extend: Extend) {
             }
         };
 
+        Range::new(anchor, head)
+    });
+
+    doc.set_selection(view.id, selection);
+}
+fn select_line_below(cx: &mut Context) {
+    select_line_impl(cx, Extend::Below);
+}
+fn select_line_above(cx: &mut Context) {
+    select_line_impl(cx, Extend::Above);
+}
+fn select_line_impl(cx: &mut Context, extend: Extend) {
+    let mut count = cx.count();
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text();
+    let saturating_add = |a: usize, b: usize| (a + b).min(text.len_lines());
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let (start_line, end_line) = range.line_range(text.slice(..));
+        let start = text.line_to_char(start_line);
+        let end = text.line_to_char(saturating_add(end_line, 1));
+        let direction = range.direction();
+
+        // Extending to line bounds is counted as one step
+        if range.from() != start || range.to() != end {
+            count = count.saturating_sub(1)
+        }
+        let (anchor_line, head_line) = match (&extend, direction) {
+            (Extend::Above, Direction::Forward) => (start_line, end_line.saturating_sub(count)),
+            (Extend::Above, Direction::Backward) => (end_line, start_line.saturating_sub(count)),
+            (Extend::Below, Direction::Forward) => (start_line, saturating_add(end_line, count)),
+            (Extend::Below, Direction::Backward) => (end_line, saturating_add(start_line, count)),
+        };
+        let (anchor, head) = match anchor_line.cmp(&head_line) {
+            Ordering::Less => (
+                text.line_to_char(anchor_line),
+                text.line_to_char(saturating_add(head_line, 1)),
+            ),
+            Ordering::Equal => match extend {
+                Extend::Above => (
+                    text.line_to_char(saturating_add(anchor_line, 1)),
+                    text.line_to_char(head_line),
+                ),
+                Extend::Below => (
+                    text.line_to_char(head_line),
+                    text.line_to_char(saturating_add(anchor_line, 1)),
+                ),
+            },
+
+            Ordering::Greater => (
+                text.line_to_char(saturating_add(anchor_line, 1)),
+                text.line_to_char(head_line),
+            ),
+        };
         Range::new(anchor, head)
     });
 
@@ -3384,48 +3447,55 @@ fn goto_last_diag(cx: &mut Context) {
 }
 
 fn goto_next_diag(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
+    let motion = move |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
 
-    let cursor_pos = doc
-        .selection(view.id)
-        .primary()
-        .cursor(doc.text().slice(..));
+        let cursor_pos = doc
+            .selection(view.id)
+            .primary()
+            .cursor(doc.text().slice(..));
 
-    let diag = doc
-        .diagnostics()
-        .iter()
-        .find(|diag| diag.range.start > cursor_pos)
-        .or_else(|| doc.diagnostics().first());
+        let diag = doc
+            .diagnostics()
+            .iter()
+            .find(|diag| diag.range.start > cursor_pos)
+            .or_else(|| doc.diagnostics().first());
 
-    let selection = match diag {
-        Some(diag) => Selection::single(diag.range.start, diag.range.end),
-        None => return,
+        let selection = match diag {
+            Some(diag) => Selection::single(diag.range.start, diag.range.end),
+            None => return,
+        };
+        doc.set_selection(view.id, selection);
     };
-    doc.set_selection(view.id, selection);
+
+    cx.editor.apply_motion(motion);
 }
 
 fn goto_prev_diag(cx: &mut Context) {
-    let (view, doc) = current!(cx.editor);
+    let motion = move |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
 
-    let cursor_pos = doc
-        .selection(view.id)
-        .primary()
-        .cursor(doc.text().slice(..));
+        let cursor_pos = doc
+            .selection(view.id)
+            .primary()
+            .cursor(doc.text().slice(..));
 
-    let diag = doc
-        .diagnostics()
-        .iter()
-        .rev()
-        .find(|diag| diag.range.start < cursor_pos)
-        .or_else(|| doc.diagnostics().last());
+        let diag = doc
+            .diagnostics()
+            .iter()
+            .rev()
+            .find(|diag| diag.range.start < cursor_pos)
+            .or_else(|| doc.diagnostics().last());
 
-    let selection = match diag {
-        // NOTE: the selection is reversed because we're jumping to the
-        // previous diagnostic.
-        Some(diag) => Selection::single(diag.range.end, diag.range.start),
-        None => return,
+        let selection = match diag {
+            // NOTE: the selection is reversed because we're jumping to the
+            // previous diagnostic.
+            Some(diag) => Selection::single(diag.range.end, diag.range.start),
+            None => return,
+        };
+        doc.set_selection(view.id, selection);
     };
-    doc.set_selection(view.id, selection);
+    cx.editor.apply_motion(motion)
 }
 
 fn goto_first_change(cx: &mut Context) {
@@ -4713,18 +4783,17 @@ fn shrink_selection(cx: &mut Context) {
     cx.editor.apply_motion(motion);
 }
 
-fn select_sibling_impl<F>(cx: &mut Context, sibling_fn: &'static F)
+fn select_sibling_impl<F>(cx: &mut Context, sibling_fn: F)
 where
-    F: Fn(Node) -> Option<Node>,
+    F: Fn(&helix_core::Syntax, RopeSlice, Selection) -> Selection + 'static,
 {
-    let motion = |editor: &mut Editor| {
+    let motion = move |editor: &mut Editor| {
         let (view, doc) = current!(editor);
 
         if let Some(syntax) = doc.syntax() {
             let text = doc.text().slice(..);
             let current_selection = doc.selection(view.id);
-            let selection =
-                object::select_sibling(syntax, text, current_selection.clone(), sibling_fn);
+            let selection = sibling_fn(syntax, text, current_selection.clone());
             doc.set_selection(view.id, selection);
         }
     };
@@ -4732,11 +4801,11 @@ where
 }
 
 fn select_next_sibling(cx: &mut Context) {
-    select_sibling_impl(cx, &|node| Node::next_sibling(&node))
+    select_sibling_impl(cx, object::select_next_sibling)
 }
 
 fn select_prev_sibling(cx: &mut Context) {
-    select_sibling_impl(cx, &|node| Node::prev_sibling(&node))
+    select_sibling_impl(cx, object::select_prev_sibling)
 }
 
 fn move_node_bound_impl(cx: &mut Context, dir: Direction, movement: Movement) {
@@ -5100,6 +5169,14 @@ fn goto_prev_test(cx: &mut Context) {
     goto_ts_object_impl(cx, "test", Direction::Backward)
 }
 
+fn goto_next_entry(cx: &mut Context) {
+    goto_ts_object_impl(cx, "entry", Direction::Forward)
+}
+
+fn goto_prev_entry(cx: &mut Context) {
+    goto_ts_object_impl(cx, "entry", Direction::Backward)
+}
+
 fn select_textobject_around(cx: &mut Context) {
     select_textobject(cx, textobject::TextObject::Around);
 }
@@ -5164,6 +5241,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                         'a' => textobject_treesitter("parameter", range),
                         'c' => textobject_treesitter("comment", range),
                         'T' => textobject_treesitter("test", range),
+                        'e' => textobject_treesitter("entry", range),
                         'p' => textobject::textobject_paragraph(text, range, objtype, count),
                         'm' => textobject::textobject_pair_surround_closest(
                             text, range, objtype, count,
@@ -5196,6 +5274,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
         ("a", "Argument/parameter (tree-sitter)"),
         ("c", "Comment (tree-sitter)"),
         ("T", "Test (tree-sitter)"),
+        ("e", "Data structure entry (tree-sitter)"),
         ("m", "Closest surrounding pair"),
         (" ", "... or any character acting as a pair"),
     ];
@@ -5381,16 +5460,9 @@ fn shell_keep_pipe(cx: &mut Context) {
 
             for (i, range) in selection.ranges().iter().enumerate() {
                 let fragment = range.slice(text);
-                let (_output, success) = match shell_impl(shell, input, Some(fragment.into())) {
-                    Ok(result) => result,
-                    Err(err) => {
-                        cx.editor.set_error(err.to_string());
-                        return;
-                    }
-                };
-
-                // if the process exits successfully, keep the selection
-                if success {
+                if let Err(err) = shell_impl(shell, input, Some(fragment.into())) {
+                    log::debug!("Shell command failed: {}", err);
+                } else {
                     ranges.push(*range);
                     if i >= old_index && index.is_none() {
                         index = Some(ranges.len() - 1);
@@ -5409,7 +5481,7 @@ fn shell_keep_pipe(cx: &mut Context) {
     );
 }
 
-fn shell_impl(shell: &[String], cmd: &str, input: Option<Rope>) -> anyhow::Result<(Tendril, bool)> {
+fn shell_impl(shell: &[String], cmd: &str, input: Option<Rope>) -> anyhow::Result<Tendril> {
     tokio::task::block_in_place(|| helix_lsp::block_on(shell_impl_async(shell, cmd, input)))
 }
 
@@ -5417,7 +5489,7 @@ async fn shell_impl_async(
     shell: &[String],
     cmd: &str,
     input: Option<Rope>,
-) -> anyhow::Result<(Tendril, bool)> {
+) -> anyhow::Result<Tendril> {
     use std::process::Stdio;
     use tokio::process::Command;
     ensure!(!shell.is_empty(), "No shell set");
@@ -5480,7 +5552,7 @@ async fn shell_impl_async(
     let str = std::str::from_utf8(&output.stdout)
         .map_err(|_| anyhow!("Process did not output valid UTF-8"))?;
     let tendril = Tendril::from(str);
-    Ok((tendril, output.status.success()))
+    Ok(tendril)
 }
 
 fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
@@ -5501,14 +5573,14 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
     let mut shell_output: Option<Tendril> = None;
     let mut offset = 0isize;
     for range in selection.ranges() {
-        let (output, success) = if let Some(output) = shell_output.as_ref() {
-            (output.clone(), true)
+        let output = if let Some(output) = shell_output.as_ref() {
+            output.clone()
         } else {
             let fragment = range.slice(text);
             match shell_impl(shell, cmd, pipe.then(|| fragment.into())) {
                 Ok(result) => {
                     if !pipe {
-                        shell_output = Some(result.0.clone());
+                        shell_output = Some(result.clone());
                     }
                     result
                 }
@@ -5518,11 +5590,6 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
                 }
             }
         };
-
-        if !success {
-            cx.editor.set_error("Command failed");
-            return;
-        }
 
         let output_len = output.chars().count();
 
@@ -5763,4 +5830,183 @@ fn replay_macro(cx: &mut Context) {
         // replaying recursively.
         cx.editor.macro_replaying.pop();
     }));
+}
+
+fn goto_word(cx: &mut Context) {
+    jump_to_word(cx, Movement::Move)
+}
+
+fn extend_to_word(cx: &mut Context) {
+    jump_to_word(cx, Movement::Extend)
+}
+
+fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
+    let doc = doc!(cx.editor);
+    let alphabet = &cx.editor.config().jump_label_alphabet;
+    if labels.is_empty() {
+        return;
+    }
+    let alphabet_char = |i| {
+        let mut res = Tendril::new();
+        res.push(alphabet[i]);
+        res
+    };
+
+    // Add label for each jump candidate to the View as virtual text.
+    let text = doc.text().slice(..);
+    let mut overlays: Vec<_> = labels
+        .iter()
+        .enumerate()
+        .flat_map(|(i, range)| {
+            [
+                Overlay::new(range.from(), alphabet_char(i / alphabet.len())),
+                Overlay::new(
+                    graphemes::next_grapheme_boundary(text, range.from()),
+                    alphabet_char(i % alphabet.len()),
+                ),
+            ]
+        })
+        .collect();
+    overlays.sort_unstable_by_key(|overlay| overlay.char_idx);
+    let (view, doc) = current!(cx.editor);
+    doc.set_jump_labels(view.id, overlays);
+
+    // Accept two characters matching a visible label. Jump to the candidate
+    // for that label if it exists.
+    let primary_selection = doc.selection(view.id).primary();
+    let view = view.id;
+    let doc = doc.id();
+    cx.on_next_key(move |cx, event| {
+        let alphabet = &cx.editor.config().jump_label_alphabet;
+        let Some(i ) = event.char().and_then(|ch| alphabet.iter().position(|&it| it == ch)) else {
+            doc_mut!(cx.editor, &doc).remove_jump_labels(view);
+            return;
+        };
+        let outer = i * alphabet.len();
+        // Bail if the given character cannot be a jump label.
+        if outer > labels.len() {
+            doc_mut!(cx.editor, &doc).remove_jump_labels(view);
+            return;
+        }
+        cx.on_next_key(move |cx, event| {
+            doc_mut!(cx.editor, &doc).remove_jump_labels(view);
+            let alphabet = &cx.editor.config().jump_label_alphabet;
+            let Some(inner ) = event.char().and_then(|ch| alphabet.iter().position(|&it| it == ch)) else {
+                return;
+            };
+            if let Some(mut range) = labels.get(outer + inner).copied() {
+                range = if behaviour == Movement::Extend {
+                    let anchor = if range.anchor < range.head {
+                        let from = primary_selection.from();
+                        if range.anchor < from {
+                            range.anchor
+                        } else {
+                            from
+                        }
+                    } else {
+                        let to = primary_selection.to();
+                        if range.anchor > to {
+                            range.anchor
+                        } else {
+                            to
+                        }
+                    };
+                     Range::new(anchor, range.head)
+                }else{
+                    range.with_direction(Direction::Forward)
+                };
+                doc_mut!(cx.editor, &doc).set_selection(view, range.into());
+            }
+        });
+    });
+}
+
+fn jump_to_word(cx: &mut Context, behaviour: Movement) {
+    // Calculate the jump candidates: ranges for any visible words with two or
+    // more characters.
+    let alphabet = &cx.editor.config().jump_label_alphabet;
+    let jump_label_limit = alphabet.len() * alphabet.len();
+    let mut words = Vec::with_capacity(jump_label_limit);
+    let (view, doc) = current_ref!(cx.editor);
+    let text = doc.text().slice(..);
+
+    // This is not necessarily exact if there is virtual text like soft wrap.
+    // It's ok though because the extra jump labels will not be rendered.
+    let start = text.line_to_char(text.char_to_line(view.offset.anchor));
+    let end = text.line_to_char(view.estimate_last_doc_line(doc) + 1);
+
+    let primary_selection = doc.selection(view.id).primary();
+    let cursor = primary_selection.cursor(text);
+    let mut cursor_fwd = Range::point(cursor);
+    let mut cursor_rev = Range::point(cursor);
+    if text.get_char(cursor).is_some_and(|c| !c.is_whitespace()) {
+        let cursor_word_end = movement::move_next_word_end(text, cursor_fwd, 1);
+        //  single grapheme words need a specical case
+        if cursor_word_end.anchor == cursor {
+            cursor_fwd = cursor_word_end;
+        }
+        let cursor_word_start = movement::move_prev_word_start(text, cursor_rev, 1);
+        if cursor_word_start.anchor == next_grapheme_boundary(text, cursor) {
+            cursor_rev = cursor_word_start;
+        }
+    }
+    'outer: loop {
+        let mut changed = false;
+        while cursor_fwd.head < end {
+            cursor_fwd = movement::move_next_word_end(text, cursor_fwd, 1);
+            // The cursor is on a word that is atleast two graphemes long and
+            // madeup of word characters. The latter condition is needed because
+            // move_next_word_end simply treats a sequence of characters from
+            // the same char class as a word so `=<` would also count as a word.
+            let add_label = RevRopeGraphemes::new(text.slice(..cursor_fwd.head))
+                .take(2)
+                .take_while(|g| g.chars().all(char_is_word))
+                .count()
+                == 2;
+            if !add_label {
+                continue;
+            }
+            changed = true;
+            // skip any leading whitespace
+            cursor_fwd.anchor += text
+                .chars_at(cursor_fwd.anchor)
+                .take_while(|&c| !char_is_word(c))
+                .count();
+            words.push(cursor_fwd);
+            if words.len() == jump_label_limit {
+                break 'outer;
+            }
+            break;
+        }
+        while cursor_rev.head > start {
+            cursor_rev = movement::move_prev_word_start(text, cursor_rev, 1);
+            // The cursor is on a word that is atleast two graphemes long and
+            // madeup of word characters. The latter condition is needed because
+            // move_prev_word_start simply treats a sequence of characters from
+            // the same char class as a word so `=<` would also count as a word.
+            let add_label = RopeGraphemes::new(text.slice(cursor_rev.head..))
+                .take(2)
+                .take_while(|g| g.chars().all(char_is_word))
+                .count()
+                == 2;
+            if !add_label {
+                continue;
+            }
+            changed = true;
+            cursor_rev.anchor -= text
+                .chars_at(cursor_rev.anchor)
+                .reversed()
+                .take_while(|&c| !char_is_word(c))
+                .count();
+            words.push(cursor_rev);
+            if words.len() == jump_label_limit {
+                break 'outer;
+            }
+            break;
+        }
+        if !changed {
+            break;
+        }
+    }
+    jump_to_label(cx, words, behaviour)
 }

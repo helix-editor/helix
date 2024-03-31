@@ -49,7 +49,7 @@ Normal mode is the default mode when you launch helix. You can return to it from
 | `T`                   | Find 'till previous char                           | `till_prev_char`            |
 | `F`                   | Find previous char                                 | `find_prev_char`            |
 | `G`                   | Go to line number `<n>`                            | `goto_line`                 |
-| `Alt-.`               | Repeat last motion (`f`, `t` or `m`)               | `repeat_last_motion`        |
+| `Alt-.`               | Repeat last motion (`f`, `t`, `m`, `[` or `]`)     | `repeat_last_motion`        |
 | `Home`                | Move to the start of the line                      | `goto_line_start`           |
 | `End`                 | Move to the end of the line                        | `goto_line_end`             |
 | `Ctrl-b`, `PageUp`    | Move page up                                       | `page_up`                   |
@@ -224,6 +224,7 @@ Jumps to various locations.
 | `.`   | Go to last modification in current file          | `goto_last_modification`   |
 | `j`   | Move down textual (instead of visual) line       | `move_line_down`           |
 | `k`   | Move up textual (instead of visual) line         | `move_line_up`             |
+| `w`   | Show labels at each word and select the word that belongs to the entered labels | `goto_word` |
 
 #### Match mode
 

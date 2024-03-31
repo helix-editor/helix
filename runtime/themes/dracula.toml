@@ -26,6 +26,8 @@
 "diagnostic.warning"              = { underline = { color = "yellow",          style = "curl"             } }
 "diagnostic.error"                = { underline = { color = "red",             style = "curl"             } }
 "diagnostic.info"                 = { underline = { color = "cyan",            style = "curl"             } }
+"diagnostic.unnecessary"          = { modifiers = ["dim"]                                                   }
+"diagnostic.deprecated"           = { modifiers = ["crossed_out"]                                           }
 
 "error"                           = { fg    = "red"                                                         }
 "hint"                            = { fg    = "purple"                                                      }
@@ -120,6 +122,7 @@
 "ui.virtual.inlay-hint"           = { fg    = "cyan"                                                        }
 "ui.virtual.inlay-hint.parameter" = { fg    = "cyan",            modifiers = ["italic", "dim"]              }
 "ui.virtual.inlay-hint.type"      = { fg    = "cyan",            modifiers = ["italic", "dim"]              }
+"ui.virtual.jump-label"           = { fg    = "pink",            modifiers = ["bold"]                       }
 "ui.virtual.ruler"                = { bg    = "black"                                                       }
 "ui.virtual.whitespace"           = { fg    = "whitespace"                                                  }
 "ui.virtual.wrap"                 = { fg    = "current_line"                                                }

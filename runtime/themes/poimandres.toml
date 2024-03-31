@@ -76,6 +76,8 @@ string = { fg = "brightMint" }
 "diagnostic.info" = { underline = { color = "lightBlue", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "brightYellow", style = "curl" } }
 "diagnostic.error" = { underline = { color = "hotRed", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 hint = "lowerMint"
 info = "lightBlue"

@@ -21,7 +21,7 @@ pub fn query_check() -> Result<(), DynError> {
             let query_text = read_query(language_name, query_file);
             if let Ok(lang) = language {
                 if !query_text.is_empty() {
-                    if let Err(reason) = Query::new(lang, &query_text) {
+                    if let Err(reason) = Query::new(&lang, &query_text) {
                         return Err(format!(
                             "Failed to parse {} queries for {}: {}",
                             query_file, language_name, reason

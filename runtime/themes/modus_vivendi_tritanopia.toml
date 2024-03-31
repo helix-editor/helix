@@ -104,12 +104,12 @@ bg-blue-subtle = "#242679"
 bg-magenta-subtle = "#552f5f"
 bg-cyan-subtle = "#004065"
 
-bg-red-nuanced = "#2c0614"
-bg-green-nuanced = "#001904"
-bg-yellow-nuanced = "#221000"
-bg-blue-nuanced = "#0f0e39"
-bg-magenta-nuanced = "#230631"
-bg-cyan-nuanced = "#041529"
+bg-red-nuanced = "#3a0c14"
+bg-green-nuanced = "#092f1f"
+bg-yellow-nuanced = "#381d0f"
+bg-blue-nuanced = "#12154a"
+bg-magenta-nuanced = "#2f0c3f"
+bg-cyan-nuanced = "#042837"
 
 # Uncommon accent backgrounds
 bg-ochre = "#442c2f"

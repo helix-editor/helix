@@ -58,6 +58,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "k" => move_line_up,
             "j" => move_line_down,
             "." => goto_last_modification,
+            "w" => goto_word,
         },
         ":" => command_mode,
 
@@ -113,6 +114,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "t" => goto_prev_class,
             "a" => goto_prev_parameter,
             "c" => goto_prev_comment,
+            "e" => goto_prev_entry,
             "T" => goto_prev_test,
             "p" => goto_prev_paragraph,
             "space" => add_newline_above,
@@ -126,6 +128,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "t" => goto_next_class,
             "a" => goto_next_parameter,
             "c" => goto_next_comment,
+            "e" => goto_next_entry,
             "T" => goto_next_test,
             "p" => goto_next_paragraph,
             "space" => add_newline_below,
@@ -360,6 +363,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "g" => { "Goto"
             "k" => extend_line_up,
             "j" => extend_line_down,
+            "w" => extend_to_word,
         },
     }));
     let insert = keymap!({ "Insert mode"

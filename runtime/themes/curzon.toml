@@ -75,6 +75,8 @@ label = "label"
 "diagnostic.info" = { underline = { color = "info", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "warning", style = "curl" } }
 "diagnostic.error" = { underline = { color = "error", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 warning = "warning"
 error = "#f43f5e"

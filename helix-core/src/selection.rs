@@ -705,6 +705,15 @@ impl IntoIterator for Selection {
     }
 }
 
+impl From<Range> for Selection {
+    fn from(range: Range) -> Self {
+        Self {
+            ranges: smallvec![range],
+            primary_index: 0,
+        }
+    }
+}
+
 // TODO: checkSelection -> check if valid for doc length && sorted
 
 pub fn keep_or_remove_matches(
