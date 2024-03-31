@@ -1,4 +1,4 @@
-use anyhow::{bail, Result};
+use anyhow::{anyhow, bail, Result};
 use arc_swap::ArcSwap;
 use std::{
     path::{Path, PathBuf},
@@ -32,10 +32,11 @@ pub trait DiffProvider {
 
     /// Returns `Err` in case of an _initialization_ failure. Iteration errors must be reported via
     /// `on_err` instead.
-    fn for_each_changed_file<FC, FE>(&self, cwd: &Path, on_change: FC, on_err: FE) -> Result<()>
-    where
-        FC: Fn(FileChange) -> bool,
-        FE: Fn(anyhow::Error);
+    fn for_each_changed_file(
+        &self,
+        cwd: &Path,
+        f: impl Fn(Result<FileChange>) -> bool,
+    ) -> Result<()>;
 }
 
 #[doc(hidden)]
@@ -50,12 +51,12 @@ impl DiffProvider for Dummy {
         bail!("helix was compiled without git support")
     }
 
-    fn for_each_changed_file<FC, FE>(&self, _cwd: &Path, _on_item: FC, _on_err: FE) -> Result<()>
-    where
-        FC: Fn(FileChange) -> bool,
-        FE: Fn(anyhow::Error),
-    {
-        anyhow::bail!("dummy diff provider")
+    fn for_each_changed_file(
+        &self,
+        _cwd: &Path,
+        _f: impl Fn(Result<FileChange>) -> bool,
+    ) -> Result<()> {
+        bail!("helix was compiled without git support")
     }
 }
 
@@ -99,23 +100,19 @@ impl DiffProviderRegistry {
 
     /// Fire-and-forget changed file iteration. Runs everything in a background task. Keeps
     /// iteration until `on_change` returns `false`.
-    pub fn for_each_changed_file<FC, FE>(self, cwd: PathBuf, on_change: FC, on_err: FE)
-    where
-        FC: Fn(FileChange) -> bool + Clone + Send + 'static,
-        FE: Fn(anyhow::Error) + Clone + Send + 'static,
-    {
+    pub fn for_each_changed_file(
+        self,
+        cwd: PathBuf,
+        f: impl Fn(Result<FileChange>) -> bool + Send + 'static,
+    ) {
         tokio::task::spawn_blocking(move || {
             if self
                 .providers
                 .iter()
-                .find_map(|provider| {
-                    provider
-                        .for_each_changed_file(&cwd, on_change.clone(), on_err.clone())
-                        .ok()
-                })
+                .find_map(|provider| provider.for_each_changed_file(&cwd, &f).ok())
                 .is_none()
             {
-                on_err(anyhow::anyhow!("no diff provider returns success"))
+                f(Err(anyhow!("no diff provider returns success")));
             }
         });
     }
@@ -131,7 +128,7 @@ impl Default for DiffProviderRegistry {
 }
 
 /// A union type that includes all types that implement [DiffProvider]. We need this type to allow
-/// cloning [DiffProviderRegistry] as `Clone` cannot be used in trait objects (or use `dyn-clone`?).
+/// cloning [DiffProviderRegistry] as `Clone` cannot be used in trait objects.
 #[derive(Clone)]
 pub enum DiffProviderImpls {
     Dummy(Dummy),
@@ -156,15 +153,15 @@ impl DiffProvider for DiffProviderImpls {
         }
     }
 
-    fn for_each_changed_file<FC, FE>(&self, cwd: &Path, on_change: FC, on_err: FE) -> Result<()>
-    where
-        FC: Fn(FileChange) -> bool,
-        FE: Fn(anyhow::Error),
-    {
+    fn for_each_changed_file(
+        &self,
+        cwd: &Path,
+        f: impl Fn(Result<FileChange>) -> bool,
+    ) -> Result<()> {
         match self {
-            Self::Dummy(inner) => inner.for_each_changed_file(cwd, on_change, on_err),
+            Self::Dummy(inner) => inner.for_each_changed_file(cwd, f),
             #[cfg(feature = "git")]
-            Self::Git(inner) => inner.for_each_changed_file(cwd, on_change, on_err),
+            Self::Git(inner) => inner.for_each_changed_file(cwd, f),
         }
     }
 }

@@ -3,6 +3,7 @@ pub(crate) mod lsp;
 pub(crate) mod typed;
 
 pub use dap::*;
+use helix_event::status;
 use helix_stdx::rope::{self, RopeSliceExt};
 use helix_vcs::{FileChange, Hunk};
 pub use lsp::*;
@@ -3074,13 +3075,16 @@ fn changed_file_picker(cx: &mut Context) {
     .with_preview(|_editor, meta| Some((meta.path().to_path_buf().into(), None)));
     let injector = picker.injector();
 
-    cx.editor.diff_providers.clone().for_each_changed_file(
-        cwd,
-        move |change| injector.push(change).is_ok(),
-        |err| {
-            helix_event::status::report_blocking(err);
-        },
-    );
+    cx.editor
+        .diff_providers
+        .clone()
+        .for_each_changed_file(cwd, move |change| match change {
+            Ok(change) => injector.push(change).is_ok(),
+            Err(err) => {
+                status::report_blocking(err);
+                true
+            }
+        });
     cx.push_layer(Box::new(overlaid(picker)));
 }
 

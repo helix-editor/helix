@@ -72,52 +72,11 @@ impl Git {
     }
 
     /// Emulates the result of running `git status` from the command line.
-    fn status<FC, FE>(repo: &Repository, on_change: FC, on_err: FE) -> Result<()>
-    where
-        FC: Fn(FileChange) -> bool,
-        FE: Fn(anyhow::Error),
-    {
+    fn status(repo: &Repository, f: impl Fn(Result<FileChange>) -> bool) -> Result<()> {
         let work_dir = repo
             .work_dir()
             .ok_or_else(|| anyhow::anyhow!("working tree not found"))?
             .to_path_buf();
-
-        let mapper = |item: std::result::Result<Item, gix::status::index_worktree::Error>| {
-            Result::<Option<FileChange>>::Ok(match item? {
-                Item::Modification {
-                    rela_path, status, ..
-                } => {
-                    let full_path = work_dir.join(rela_path.to_path()?);
-
-                    match status {
-                        EntryStatus::Conflict(_) => Some(FileChange::Conflict { path: full_path }),
-                        EntryStatus::Change(change) => match change {
-                            Change::Removed => Some(FileChange::Deleted { path: full_path }),
-                            Change::Modification { .. } => {
-                                Some(FileChange::Modified { path: full_path })
-                            }
-                            // No submodule support for now
-                            Change::Type | Change::SubmoduleModification(_) => None,
-                        },
-                        EntryStatus::NeedsUpdate(_) | EntryStatus::IntentToAdd => None,
-                    }
-                }
-                Item::DirectoryContents { entry, .. } => match entry.status {
-                    Status::Untracked => Some(FileChange::Untracked {
-                        path: work_dir.join(entry.rela_path.to_path()?),
-                    }),
-                    Status::Pruned | Status::Tracked | Status::Ignored(_) => None,
-                },
-                Item::Rewrite {
-                    source,
-                    dirwalk_entry,
-                    ..
-                } => Some(FileChange::Renamed {
-                    from_path: work_dir.join(source.rela_path().to_path()?),
-                    to_path: work_dir.join(dirwalk_entry.rela_path.to_path()?),
-                }),
-            })
-        };
 
         let status_platform = repo
             .status(gix::progress::Discard)?
@@ -138,18 +97,41 @@ impl Git {
 
         let status_iter = status_platform.into_index_worktree_iter(empty_patterns)?;
 
-        for item in status_iter.map(mapper) {
-            match item {
-                Ok(Some(item)) => {
-                    if !on_change(item) {
-                        break;
+        for item in status_iter {
+            let Ok(item) = item.map_err(|err| f(Err(err.into()))) else {
+                continue;
+            };
+            let change = match item {
+                Item::Modification {
+                    rela_path, status, ..
+                } => {
+                    let path = work_dir.join(rela_path.to_path()?);
+                    match status {
+                        EntryStatus::Conflict(_) => FileChange::Conflict { path },
+                        EntryStatus::Change(Change::Removed) => FileChange::Deleted { path },
+                        EntryStatus::Change(Change::Modification { .. }) => {
+                            FileChange::Modified { path }
+                        }
+                        _ => continue,
                     }
                 }
-                Err(err) => {
-                    on_err(err);
+                Item::DirectoryContents { entry, .. } if entry.status == Status::Untracked => {
+                    FileChange::Untracked {
+                        path: work_dir.join(entry.rela_path.to_path()?),
+                    }
                 }
-                // Our mapper returns `None` for gix items that we're not interested in
-                Ok(None) => {}
+                Item::Rewrite {
+                    source,
+                    dirwalk_entry,
+                    ..
+                } => FileChange::Renamed {
+                    from_path: work_dir.join(source.rela_path().to_path()?),
+                    to_path: work_dir.join(dirwalk_entry.rela_path.to_path()?),
+                },
+                _ => continue,
+            };
+            if !f(Ok(change)) {
+                break;
             }
         }
 
@@ -207,16 +189,12 @@ impl DiffProvider for Git {
         Ok(Arc::new(ArcSwap::from_pointee(name.into_boxed_str())))
     }
 
-    fn for_each_changed_file<FC, FE>(&self, cwd: &Path, on_change: FC, on_err: FE) -> Result<()>
-    where
-        FC: Fn(FileChange) -> bool,
-        FE: Fn(anyhow::Error),
-    {
-        Self::status(
-            &Self::open_repo(cwd, None)?.to_thread_local(),
-            on_change,
-            on_err,
-        )
+    fn for_each_changed_file(
+        &self,
+        cwd: &Path,
+        f: impl Fn(Result<FileChange>) -> bool,
+    ) -> Result<()> {
+        Self::status(&Self::open_repo(cwd, None)?.to_thread_local(), f)
     }
 }
 
