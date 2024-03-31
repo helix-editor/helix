@@ -9,7 +9,11 @@ use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
 use helix_core::syntax::{Highlight, LanguageServerFeature};
 use helix_core::text_annotations::{InlineAnnotation, Overlay};
-use helix_lsp::util::lsp_pos_to_pos;
+use helix_core::Range;
+use helix_lsp::copilot_types::DocCompletion;
+use helix_lsp::lsp;
+use helix_lsp::util::{generate_transaction_from_edits, lsp_pos_to_pos};
+use helix_lsp::OffsetEncoding;
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
 
 use ::parking_lot::Mutex;
@@ -31,7 +35,7 @@ use helix_core::{
     indent::{auto_detect_indent_style, IndentStyle},
     line_ending::auto_detect_line_ending,
     syntax::{self, LanguageConfiguration},
-    ChangeSet, Diagnostic, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax, Transaction,
+    ChangeSet, Diagnostic, LineEnding, Rope, RopeBuilder, Selection, Syntax, Transaction,
 };
 
 use crate::editor::Config;
@@ -96,7 +100,6 @@ impl Serialize for Mode {
         serializer.collect_str(self)
     }
 }
-
 /// A snapshot of the text of a document that we want to write out to disk
 #[derive(Debug, Clone)]
 pub struct DocumentSavedEvent {
@@ -116,7 +119,16 @@ pub struct SavePoint {
     revert: Mutex<Transaction>,
 }
 
+#[derive(Clone, Debug)]
+pub struct Copilot {
+    pub should_render: bool,
+    pub completions: Vec<DocCompletion>,
+    pub idx: usize,
+    pub offset_encoding: OffsetEncoding,
+}
+
 pub struct Document {
+    pub copilot: Option<Copilot>,
     pub(crate) id: DocumentId,
     text: Rope,
     selections: HashMap<ViewId, Selection>,
@@ -623,10 +635,44 @@ where
     *mut_ref = f(mem::take(mut_ref));
 }
 
-use helix_lsp::{lsp, Client, LanguageServerName};
+use helix_lsp::{copilot_types, Client, LanguageServerName};
 use url::Url;
 
 impl Document {
+    pub fn clear_copilot_completions(&mut self) {
+        self.copilot = None;
+    }
+
+    pub fn get_copilot_completion_for_rendering(&self) -> Option<&DocCompletion> {
+        let Some(copilot) = self.copilot.as_ref() else {return None;};
+        if !copilot.should_render {return None;}
+
+        let completion = copilot.completions.get(copilot.idx)?;
+        if self.version as usize != completion.doc_version {
+            return None;
+        }
+        return Some(completion);
+    }
+
+     pub fn apply_copilot_completion(&mut self, view_id: ViewId) {
+        if let None = self.get_copilot_completion_for_rendering() {return;}
+        let Some(copilot) = self.copilot.as_ref() else {return;};
+
+        let Some(completion) = copilot.completions.get(copilot.idx) else {return;};
+        if completion.doc_version != self.version as usize {
+            return;
+        }
+
+        let edit = lsp::TextEdit {
+            range: completion.lsp_range,
+            new_text: completion.text.clone(),
+        };
+        let transaction =
+            generate_transaction_from_edits(self.text(), vec![edit], copilot.offset_encoding);
+
+        self.apply(&transaction, view_id);
+    }
+
     pub fn from(
         text: Rope,
         encoding_with_bom_info: Option<(&'static Encoding, bool)>,
@@ -638,6 +684,7 @@ impl Document {
         let old_state = None;
 
         Self {
+            copilot: None,
             id: DocumentId::default(),
             path: None,
             encoding,
@@ -1259,7 +1306,7 @@ impl Document {
                 true
             });
 
-            self.diagnostics.sort_unstable_by_key(|diagnostic| {
+            self.diagnostics.sort_by_key(|diagnostic| {
                 (
                     diagnostic.range,
                     diagnostic.severity,
@@ -1312,6 +1359,27 @@ impl Document {
             }
         }
         success
+    }
+
+    pub fn copilot_document(
+        &self,
+        view_id: ViewId,
+        offset_encoding: helix_lsp::OffsetEncoding,
+    ) -> Option<copilot_types::Document> {
+        let position = self.position(view_id, offset_encoding);
+
+        Some(copilot_types::Document {
+            tab_size: self.tab_width(),
+            insert_spaces: true,
+            path: self.path()?.to_str()?.to_owned(),
+            indent_size: self.indent_width(),
+            version: self.version() as u32,
+            relative_path: self.relative_path()?.to_str()?.to_owned(),
+            language_id: self.language_id()?.to_owned(),
+            position,
+            source: self.text().to_string(),
+            uri: self.url()?.to_string(),
+        })
     }
 
     fn apply_inner(
@@ -1839,7 +1907,7 @@ impl Document {
             });
         }
         self.diagnostics.extend(diagnostics);
-        self.diagnostics.sort_unstable_by_key(|diagnostic| {
+        self.diagnostics.sort_by_key(|diagnostic| {
             (
                 diagnostic.range,
                 diagnostic.severity,
@@ -1885,7 +1953,7 @@ impl Document {
             .language_config()
             .and_then(|config| config.text_width)
             .unwrap_or(config.text_width);
-        let soft_wrap_at_text_width = self
+        let mut soft_wrap_at_text_width = self
             .language_config()
             .and_then(|config| {
                 config
@@ -1896,12 +1964,13 @@ impl Document {
             .or(config.soft_wrap.wrap_at_text_width)
             .unwrap_or(false);
         if soft_wrap_at_text_width {
-            // We increase max_line_len by 1 because softwrap considers the newline character
-            // as part of the line length while the "typical" expectation is that this is not the case.
-            // In particular other commands like :reflow do not count the line terminator.
-            // This is technically inconsistent for the last line as that line never has a line terminator
-            // but having the last visual line exceed the width by 1 seems like a rare edge case.
-            viewport_width = viewport_width.min(text_width as u16 + 1)
+            // if the viewport is smaller than the specified
+            // width then this setting has no effcet
+            if text_width >= viewport_width as usize {
+                soft_wrap_at_text_width = false;
+            } else {
+                viewport_width = text_width as u16;
+            }
         }
         let config = self.config.load();
         let editor_soft_wrap = &config.soft_wrap;
@@ -1938,6 +2007,7 @@ impl Document {
             wrap_indicator_highlight: theme
                 .and_then(|theme| theme.find_scope_index("ui.virtual.wrap"))
                 .map(Highlight),
+            soft_wrap_at_text_width,
         }
     }
 
