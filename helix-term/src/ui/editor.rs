@@ -1231,22 +1231,19 @@ impl EditorView {
             }
 
             MouseEventKind::Up(MouseButton::Right) => {
-                if let Some((coords, view_id)) = gutter_coords_and_view(cxt.editor, row, column) {
+                if let Some((pos, view_id)) = pos_and_view(cxt.editor, row, column, true) {
                     cxt.editor.focus(view_id);
 
-                    let (view, doc) = current!(cxt.editor);
-                    if let Some(pos) =
-                        view.pos_at_visual_coords(doc, coords.row as u16, coords.col as u16, true)
-                    {
-                        doc.set_selection(view_id, Selection::point(pos));
-                        if modifiers == KeyModifiers::ALT {
-                            commands::MappableCommand::dap_edit_log.execute(cxt);
-                        } else {
-                            commands::MappableCommand::dap_edit_condition.execute(cxt);
-                        }
+                    let doc = current!(cxt.editor).1;
+                    doc.set_selection(view_id, Selection::point(pos));
 
-                        return EventResult::Consumed(None);
+                    if modifiers == KeyModifiers::ALT {
+                        commands::MappableCommand::dap_edit_log.execute(cxt);
+                    } else {
+                        commands::MappableCommand::dap_edit_condition.execute(cxt);
                     }
+
+                    return EventResult::Consumed(None);
                 }
 
                 EventResult::Ignored(None)
