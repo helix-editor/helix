@@ -62,6 +62,8 @@
 "markup.quote" = { fg = "yellow", modifiers = ["italic"] }
 "markup.raw" = { fg = "foreground" }
 
+"code_lens" = { underline = { color = "purple", style = "curl" } }
+
 [palette]
 background = "#0e1419"
 background_dark = "#21222c"

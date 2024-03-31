@@ -169,6 +169,7 @@ pub struct Document {
 
     pub(crate) diagnostics: Vec<Diagnostic>,
     pub(crate) language_servers: HashMap<LanguageServerName, Arc<Client>>,
+    pub(crate) code_lens: Vec<CodeLens>,
 
     diff_handle: Option<DiffHandle>,
     version_control_head: Option<Arc<ArcSwap<Box<str>>>>,
@@ -623,7 +624,7 @@ where
     *mut_ref = f(mem::take(mut_ref));
 }
 
-use helix_lsp::{lsp, Client, LanguageServerName};
+use helix_lsp::{lsp, Client, CodeLens, LanguageServerName};
 use url::Url;
 
 impl Document {
@@ -654,6 +655,7 @@ impl Document {
             changes,
             old_state,
             diagnostics: Vec::new(),
+            code_lens: Vec::new(),
             version: 0,
             history: Cell::new(History::default()),
             savepoints: Vec::new(),
@@ -1810,6 +1812,15 @@ impl Document {
             data: diagnostic.data.clone(),
             language_server_id,
         })
+    }
+
+    #[inline]
+    pub fn code_lens(&self) -> &[CodeLens] {
+        &self.code_lens
+    }
+
+    pub fn set_code_lens(&mut self, code_lens: Vec<CodeLens>) {
+        self.code_lens = code_lens;
     }
 
     #[inline]
