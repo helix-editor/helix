@@ -17,7 +17,7 @@ use gix::status::{
 };
 use gix::{Commit, ObjectId, Repository, ThreadSafeRepository};
 
-use crate::{DiffProvider, DiffProviderImpls, FileChange};
+use crate::{DiffProvider, FileChange};
 
 #[cfg(test)]
 mod test;
@@ -139,8 +139,8 @@ impl Git {
     }
 }
 
-impl DiffProvider for Git {
-    fn get_diff_base(&self, file: &Path) -> Result<Vec<u8>> {
+impl Git {
+    pub fn get_diff_base(&self, file: &Path) -> Result<Vec<u8>> {
         debug_assert!(!file.exists() || file.is_file());
         debug_assert!(file.is_absolute());
 
@@ -171,7 +171,7 @@ impl DiffProvider for Git {
         }
     }
 
-    fn get_current_head_name(&self, file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
+    pub fn get_current_head_name(&self, file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
         debug_assert!(!file.exists() || file.is_file());
         debug_assert!(file.is_absolute());
         let repo_dir = file.parent().context("file has no parent directory")?;
@@ -189,7 +189,7 @@ impl DiffProvider for Git {
         Ok(Arc::new(ArcSwap::from_pointee(name.into_boxed_str())))
     }
 
-    fn for_each_changed_file(
+    pub fn for_each_changed_file(
         &self,
         cwd: &Path,
         f: impl Fn(Result<FileChange>) -> bool,
@@ -198,9 +198,9 @@ impl DiffProvider for Git {
     }
 }
 
-impl From<Git> for DiffProviderImpls {
+impl From<Git> for DiffProvider {
     fn from(value: Git) -> Self {
-        DiffProviderImpls::Git(value)
+        DiffProvider::Git(value)
     }
 }
 

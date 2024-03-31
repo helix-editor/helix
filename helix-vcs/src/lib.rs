@@ -21,28 +21,10 @@ mod status;
 
 pub use status::FileChange;
 
-pub trait DiffProvider {
-    /// Returns the data that a diff should be computed against
-    /// if this provider is used.
-    /// The data is returned as raw byte without any decoding or encoding performed
-    /// to ensure all file encodings are handled correctly.
-    fn get_diff_base(&self, file: &Path) -> Result<Vec<u8>>;
-
-    fn get_current_head_name(&self, file: &Path) -> Result<Arc<ArcSwap<Box<str>>>>;
-
-    /// Returns `Err` in case of an _initialization_ failure. Iteration errors must be reported via
-    /// `on_err` instead.
-    fn for_each_changed_file(
-        &self,
-        cwd: &Path,
-        f: impl Fn(Result<FileChange>) -> bool,
-    ) -> Result<()>;
-}
-
 #[doc(hidden)]
 #[derive(Clone, Copy)]
 pub struct Dummy;
-impl DiffProvider for Dummy {
+impl Dummy {
     fn get_diff_base(&self, _file: &Path) -> Result<Vec<u8>> {
         bail!("helix was compiled without git support")
     }
@@ -60,15 +42,15 @@ impl DiffProvider for Dummy {
     }
 }
 
-impl From<Dummy> for DiffProviderImpls {
+impl From<Dummy> for DiffProvider {
     fn from(value: Dummy) -> Self {
-        DiffProviderImpls::Dummy(value)
+        DiffProvider::Dummy(value)
     }
 }
 
 #[derive(Clone)]
 pub struct DiffProviderRegistry {
-    providers: Vec<DiffProviderImpls>,
+    providers: Vec<DiffProvider>,
 }
 
 impl DiffProviderRegistry {
@@ -130,13 +112,13 @@ impl Default for DiffProviderRegistry {
 /// A union type that includes all types that implement [DiffProvider]. We need this type to allow
 /// cloning [DiffProviderRegistry] as `Clone` cannot be used in trait objects.
 #[derive(Clone)]
-pub enum DiffProviderImpls {
+pub enum DiffProvider {
     Dummy(Dummy),
     #[cfg(feature = "git")]
     Git(Git),
 }
 
-impl DiffProvider for DiffProviderImpls {
+impl DiffProvider {
     fn get_diff_base(&self, file: &Path) -> Result<Vec<u8>> {
         match self {
             Self::Dummy(inner) => inner.get_diff_base(file),
