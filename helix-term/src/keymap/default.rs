@@ -225,9 +225,10 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "S" => workspace_symbol_picker,
             "d" => diagnostics_picker,
             "D" => workspace_diagnostics_picker,
+            "g" => changed_file_picker,
             "a" => code_action,
             "'" => last_picker,
-            "g" => { "Debug (experimental)" sticky=true
+            "G" => { "Debug (experimental)" sticky=true
                 "l" => dap_launch,
                 "r" => dap_restart,
                 "b" => dap_toggle_breakpoint,
