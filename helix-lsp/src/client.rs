@@ -10,8 +10,8 @@ use helix_loader::{self, VERSION_AND_GIT_HASH};
 use helix_stdx::path;
 use lsp::{
     notification::DidChangeWorkspaceFolders, CodeActionCapabilityResolveSupport,
-    DidChangeWorkspaceFoldersParams, OneOf, PositionEncodingKind, SignatureHelp, Url,
-    WorkspaceFolder, WorkspaceFoldersChangeEvent,
+    DidChangeWorkspaceFoldersParams, OneOf, PositionEncodingKind, SignatureHelp,
+    TextDocumentSaveReason, TextEdit, Url, WorkspaceFolder, WorkspaceFoldersChangeEvent,
 };
 use lsp_types as lsp;
 use parking_lot::Mutex;
@@ -32,6 +32,8 @@ use tokio::{
         Notify, OnceCell,
     },
 };
+
+static DOCUMENT_OPS_TIMEOUT: u64 = 5;
 
 fn workspace_for_uri(uri: lsp::Url) -> WorkspaceFolder {
     lsp::WorkspaceFolder {
@@ -264,7 +266,7 @@ impl Client {
             .expect("language server not yet initialized!")
     }
 
-    pub(crate) fn file_operations_intests(&self) -> &FileOperationsInterest {
+    pub(crate) fn file_operations_interest(&self) -> &FileOperationsInterest {
         self.file_operation_interest
             .get_or_init(|| FileOperationsInterest::new(self.capabilities()))
     }
@@ -720,7 +722,7 @@ impl Client {
         new_path: &Path,
         is_dir: bool,
     ) -> Option<impl Future<Output = Result<lsp::WorkspaceEdit>>> {
-        let capabilities = self.file_operations_intests();
+        let capabilities = self.file_operations_interest();
         if !capabilities.will_rename.has_interest(old_path, is_dir) {
             return None;
         }
@@ -738,7 +740,7 @@ impl Client {
         }];
         let request = self.call_with_timeout::<lsp::request::WillRenameFiles>(
             lsp::RenameFilesParams { files },
-            5,
+            DOCUMENT_OPS_TIMEOUT,
         );
 
         Some(async move {
@@ -754,7 +756,7 @@ impl Client {
         new_path: &Path,
         is_dir: bool,
     ) -> Option<impl Future<Output = std::result::Result<(), Error>>> {
-        let capabilities = self.file_operations_intests();
+        let capabilities = self.file_operations_interest();
         if !capabilities.did_rename.has_interest(new_path, is_dir) {
             return None;
         }
@@ -776,6 +778,7 @@ impl Client {
 
     // -------------------------------------------------------------------------------------------
     // Text document
+    // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_synchronization
     // -------------------------------------------------------------------------------------------
 
     pub fn text_document_did_open(
@@ -960,7 +963,36 @@ impl Client {
         })
     }
 
-    // will_save / will_save_wait_until
+    pub fn text_document_will_save(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+    ) -> Option<impl Future<Output = Result<()>>> {
+        Some(self.notify::<lsp::notification::WillSaveTextDocument>(
+            lsp::WillSaveTextDocumentParams {
+                text_document,
+                reason: TextDocumentSaveReason::MANUAL,
+            },
+        ))
+    }
+
+    pub fn text_document_will_save_wait_until(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+    ) -> Option<impl Future<Output = Result<Vec<lsp::TextEdit>>>> {
+        let request = self.call_with_timeout::<lsp::request::WillSaveWaitUntil>(
+            lsp::WillSaveTextDocumentParams {
+                text_document,
+                reason: TextDocumentSaveReason::MANUAL,
+            },
+            DOCUMENT_OPS_TIMEOUT,
+        );
+
+        Some(async move {
+            let json = request.await?;
+            let response: Option<Vec<TextEdit>> = serde_json::from_value(json)?;
+            Ok(response.unwrap_or_default())
+        })
+    }
 
     pub fn text_document_did_save(
         &self,
@@ -991,6 +1023,11 @@ impl Client {
             },
         ))
     }
+
+    // -------------------------------------------------------------------------------------------
+    // Language features
+    // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#languageFeatures
+    // -------------------------------------------------------------------------------------------
 
     pub fn completion(
         &self,
