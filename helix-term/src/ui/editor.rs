@@ -1234,7 +1234,7 @@ impl EditorView {
                 if let Some((pos, view_id)) = pos_and_view(cxt.editor, row, column, true) {
                     cxt.editor.focus(view_id);
 
-                    let doc = current!(cxt.editor).1;
+                    let doc = doc_mut!(cxt.editor);
                     doc.set_selection(view_id, Selection::point(pos));
 
                     if modifiers == KeyModifiers::ALT {
