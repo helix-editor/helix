@@ -95,7 +95,7 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
     .await?;
 
     helpers::assert_file_has_content(
-        file.as_file_mut(),
+        &mut file,
         &LineFeedHandling::Native.apply(&RANGE.end().to_string()),
     )?;
 
@@ -117,9 +117,7 @@ async fn test_write() -> anyhow::Result<()> {
     )
     .await?;
 
-    file.as_file_mut().flush()?;
-    file.as_file_mut().sync_all()?;
-
+    reload_file(&mut file).unwrap();
     let mut file_content = String::new();
     file.as_file_mut().read_to_string(&mut file_content)?;
 
@@ -148,12 +146,9 @@ async fn test_overwrite_protection() -> anyhow::Result<()> {
 
     test_key_sequence(&mut app, Some(":x<ret>"), None, false).await?;
 
-    file.as_file_mut().flush()?;
-    file.as_file_mut().sync_all()?;
-
-    file.rewind()?;
+    reload_file(&mut file).unwrap();
     let mut file_content = String::new();
-    file.as_file_mut().read_to_string(&mut file_content)?;
+    file.read_to_string(&mut file_content)?;
 
     assert_eq!("extremely important content", file_content);
 
@@ -175,11 +170,10 @@ async fn test_write_quit() -> anyhow::Result<()> {
     )
     .await?;
 
-    file.as_file_mut().flush()?;
-    file.as_file_mut().sync_all()?;
+    reload_file(&mut file).unwrap();
 
     let mut file_content = String::new();
-    file.as_file_mut().read_to_string(&mut file_content)?;
+    file.read_to_string(&mut file_content)?;
 
     assert_eq!(
         LineFeedHandling::Native.apply("the gostak distims the doshes"),
@@ -205,11 +199,9 @@ async fn test_write_concurrent() -> anyhow::Result<()> {
 
     test_key_sequence(&mut app, Some(&command), None, false).await?;
 
-    file.as_file_mut().flush()?;
-    file.as_file_mut().sync_all()?;
-
+    reload_file(&mut file).unwrap();
     let mut file_content = String::new();
-    file.as_file_mut().read_to_string(&mut file_content)?;
+    file.read_to_string(&mut file_content)?;
     assert_eq!(
         LineFeedHandling::Native.apply(&RANGE.end().to_string()),
         file_content
@@ -279,7 +271,7 @@ async fn test_write_scratch_to_new_path() -> anyhow::Result<()> {
     )
     .await?;
 
-    helpers::assert_file_has_content(file.as_file_mut(), &LineFeedHandling::Native.apply("hello"))?;
+    helpers::assert_file_has_content(&mut file, &LineFeedHandling::Native.apply("hello"))?;
 
     Ok(())
 }
@@ -324,7 +316,7 @@ async fn test_write_auto_format_fails_still_writes() -> anyhow::Result<()> {
     test_key_sequences(&mut app, vec![(Some(":w<ret>"), None)], false).await?;
 
     // file still saves
-    helpers::assert_file_has_content(file.as_file_mut(), "let foo = 0;\n")?;
+    helpers::assert_file_has_content(&mut file, "let foo = 0;\n")?;
 
     Ok(())
 }
@@ -363,12 +355,12 @@ async fn test_write_new_path() -> anyhow::Result<()> {
     .await?;
 
     helpers::assert_file_has_content(
-        file1.as_file_mut(),
+        &mut file1,
         &LineFeedHandling::Native.apply("i can eat glass, it will not hurt me\n"),
     )?;
 
     helpers::assert_file_has_content(
-        file2.as_file_mut(),
+        &mut file2,
         &LineFeedHandling::Native.apply("i can eat glass, it will not hurt me\n"),
     )?;
 
@@ -439,7 +431,7 @@ async fn test_write_insert_final_newline_added_if_missing() -> anyhow::Result<()
     test_key_sequence(&mut app, Some(":w<ret>"), None, false).await?;
 
     helpers::assert_file_has_content(
-        file.as_file_mut(),
+        &mut file,
         &LineFeedHandling::Native.apply("have you tried chamomile tea?\n"),
     )?;
 
@@ -457,7 +449,7 @@ async fn test_write_insert_final_newline_unchanged_if_not_missing() -> anyhow::R
     test_key_sequence(&mut app, Some(":w<ret>"), None, false).await?;
 
     helpers::assert_file_has_content(
-        file.as_file_mut(),
+        &mut file,
         &LineFeedHandling::Native.apply("ten minutes, please\n"),
     )?;
 
@@ -481,10 +473,8 @@ async fn test_write_insert_final_newline_unchanged_if_missing_and_false() -> any
 
     test_key_sequence(&mut app, Some(":w<ret>"), None, false).await?;
 
-    helpers::assert_file_has_content(
-        file.as_file_mut(),
-        "the quiet rain continued through the night",
-    )?;
+    reload_file(&mut file).unwrap();
+    helpers::assert_file_has_content(&mut file, "the quiet rain continued through the night")?;
 
     Ok(())
 }
@@ -510,12 +500,12 @@ async fn test_write_all_insert_final_newline_add_if_missing_and_modified() -> an
     .await?;
 
     helpers::assert_file_has_content(
-        file1.as_file_mut(),
+        &mut file1,
         &LineFeedHandling::Native.apply("we don't serve time travelers here\n"),
     )?;
 
     helpers::assert_file_has_content(
-        file2.as_file_mut(),
+        &mut file2,
         &LineFeedHandling::Native.apply("a time traveler walks into a bar\n"),
     )?;
 
@@ -534,7 +524,7 @@ async fn test_write_all_insert_final_newline_do_not_add_if_unmodified() -> anyho
 
     test_key_sequence(&mut app, Some(":wa<ret>"), None, false).await?;
 
-    helpers::assert_file_has_content(file.as_file_mut(), "i lost on Jeopardy!")?;
+    helpers::assert_file_has_content(&mut file, "i lost on Jeopardy!")?;
 
     Ok(())
 }
@@ -560,7 +550,7 @@ async fn edit_file_with_content(file_content: &[u8]) -> anyhow::Result<()> {
     )
     .await?;
 
-    file.rewind()?;
+    reload_file(&mut file).unwrap();
     let mut new_file_content: Vec<u8> = Vec::new();
     file.read_to_end(&mut new_file_content)?;
 

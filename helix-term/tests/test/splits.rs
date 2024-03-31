@@ -62,18 +62,9 @@ async fn test_split_write_quit_all() -> anyhow::Result<()> {
     )
     .await?;
 
-    helpers::assert_file_has_content(
-        file1.as_file_mut(),
-        &LineFeedHandling::Native.apply("hello1"),
-    )?;
-    helpers::assert_file_has_content(
-        file2.as_file_mut(),
-        &LineFeedHandling::Native.apply("hello2"),
-    )?;
-    helpers::assert_file_has_content(
-        file3.as_file_mut(),
-        &LineFeedHandling::Native.apply("hello3"),
-    )?;
+    helpers::assert_file_has_content(&mut file1, &LineFeedHandling::Native.apply("hello1"))?;
+    helpers::assert_file_has_content(&mut file2, &LineFeedHandling::Native.apply("hello2"))?;
+    helpers::assert_file_has_content(&mut file3, &LineFeedHandling::Native.apply("hello3"))?;
 
     Ok(())
 }
@@ -131,10 +122,7 @@ async fn test_split_write_quit_same_file() -> anyhow::Result<()> {
     )
     .await?;
 
-    helpers::assert_file_has_content(
-        file.as_file_mut(),
-        &LineFeedHandling::Native.apply("hello\ngoodbye"),
-    )?;
+    helpers::assert_file_has_content(&mut file, &LineFeedHandling::Native.apply("hello\ngoodbye"))?;
 
     Ok(())
 }
