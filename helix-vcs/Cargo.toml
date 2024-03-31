@@ -27,6 +27,7 @@ log = "0.4"
 
 [features]
 git = ["gix"]
+hg = []
 
 [dev-dependencies]
 tempfile = "3.10"
