@@ -1,6 +1,6 @@
 # 24.03 (2024-03-30)
 
-As always, a big thank you to the all of the contributors! This release saw changes from 125 contributors.
+As always, a big thank you to all of the contributors! This release saw changes from 125 contributors.
 
 Breaking changes:
 
