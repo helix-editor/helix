@@ -121,6 +121,16 @@ pub fn render_statusline<'a>(context: &mut RenderContext, width: usize) -> Spans
         statusline.append(&mut right);
     } else if left_area_width <= width {
         statusline.append(&mut left);
+    } else {
+        // `left` is too large to fit, even alone. We need to truncate it.
+        // FIXME: A similar logic should be applied to `right` as well.
+        let mut truncated_width = 0usize;
+        for el in left.into_iter() {
+            if truncated_width + el.width() <= width {
+                truncated_width += el.width();
+                statusline.push(el);
+            }
+        }
     }
 
     statusline.into()
