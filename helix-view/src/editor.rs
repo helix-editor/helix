@@ -937,6 +937,8 @@ pub struct Editor {
     pub next_document_id: DocumentId,
     pub documents: BTreeMap<DocumentId, Document>,
 
+    pub document_ordering: Vec<DocumentId>,
+
     // We Flatten<> to resolve the inner DocumentSavedEventFuture. For that we need a stream of streams, hence the Once<>.
     // https://stackoverflow.com/a/66875668
     pub saves: HashMap<DocumentId, UnboundedSender<Once<DocumentSavedEventFuture>>>,
@@ -1085,6 +1087,7 @@ impl Editor {
             tree: Tree::new(area),
             next_document_id: DocumentId::default(),
             documents: BTreeMap::new(),
+            document_ordering: Vec::new(),
             saves: HashMap::new(),
             save_queue: SelectAll::new(),
             write_count: 0,
@@ -1495,6 +1498,13 @@ impl Editor {
                     // borrow, invalidating direct access to `doc.id`.
                     let id = doc.id;
                     self.documents.remove(&id);
+                    if let Some(d_idx) = self
+                        .document_ordering
+                        .iter()
+                        .position(|doc_id| doc_id == &id)
+                    {
+                        self.document_ordering.remove(d_idx);
+                    }
 
                     // Remove the scratch buffer from any jumplists
                     for (view, _) in self.tree.views_mut() {
@@ -1560,6 +1570,7 @@ impl Editor {
             DocumentId(unsafe { NonZeroUsize::new_unchecked(self.next_document_id.0.get() + 1) });
         doc.id = id;
         self.documents.insert(id, doc);
+        self.document_ordering.push(id);
 
         let (save_sender, save_receiver) = tokio::sync::mpsc::unbounded_channel();
         self.saves.insert(id, save_sender);
@@ -1696,6 +1707,9 @@ impl Editor {
         }
 
         self.documents.remove(&doc_id);
+        if let Some(d_idx) = self.document_ordering.iter().position(|id| id == &doc_id) {
+            self.document_ordering.remove(d_idx);
+        }
 
         // If the document we removed was visible in all views, we will have no more views. We don't
         // want to close the editor just for a simple buffer close, so we need to create a new view

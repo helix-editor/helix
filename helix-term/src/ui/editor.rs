@@ -582,31 +582,33 @@ impl EditorView {
         let mut x = viewport.x;
         let current_doc = view!(editor).doc;
 
-        for doc in editor.documents() {
-            let fname = doc
-                .path()
-                .unwrap_or(&scratch)
-                .file_name()
-                .unwrap_or_default()
-                .to_str()
-                .unwrap_or_default();
+        for doc_id in &editor.document_ordering {
+            if let Some(doc) = editor.documents.get(doc_id) {
+                let fname = doc
+                    .path()
+                    .unwrap_or(&scratch)
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_str()
+                    .unwrap_or_default();
 
-            let style = if current_doc == doc.id() {
-                bufferline_active
-            } else {
-                bufferline_inactive
-            };
+                let style = if current_doc == doc.id() {
+                    bufferline_active
+                } else {
+                    bufferline_inactive
+                };
 
-            let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
-            let used_width = viewport.x.saturating_sub(x);
-            let rem_width = surface.area.width.saturating_sub(used_width);
+                let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
+                let used_width = viewport.x.saturating_sub(x);
+                let rem_width = surface.area.width.saturating_sub(used_width);
 
-            x = surface
-                .set_stringn(x, viewport.y, text, rem_width as usize, style)
-                .0;
+                x = surface
+                    .set_stringn(x, viewport.y, text, rem_width as usize, style)
+                    .0;
 
-            if x >= surface.area.right() {
-                break;
+                if x >= surface.area.right() {
+                    break;
+                }
             }
         }
     }

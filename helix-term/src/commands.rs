@@ -509,6 +509,8 @@ impl MappableCommand {
         command_palette, "Open command palette",
         goto_word, "Jump to a two-character label",
         extend_to_word, "Extend to a two-character label",
+        buffer_order_increment, "Increment current buffer's order",
+        buffer_order_decrement, "Decrement current buffer's order",
     );
 }
 
@@ -800,16 +802,16 @@ fn goto_buffer(editor: &mut Editor, direction: Direction) {
 
     let id = match direction {
         Direction::Forward => {
-            let iter = editor.documents.keys();
+            let iter = editor.document_ordering.iter();
             let mut iter = iter.skip_while(|id| *id != &current);
             iter.next(); // skip current item
-            iter.next().or_else(|| editor.documents.keys().next())
+            iter.next().or_else(|| editor.document_ordering.first())
         }
         Direction::Backward => {
-            let iter = editor.documents.keys();
+            let iter = editor.document_ordering.iter();
             let mut iter = iter.rev().skip_while(|id| *id != &current);
             iter.next(); // skip current item
-            iter.next().or_else(|| editor.documents.keys().next_back())
+            iter.next().or_else(|| editor.document_ordering.last())
         }
     }
     .unwrap();
@@ -5838,6 +5840,34 @@ fn goto_word(cx: &mut Context) {
 
 fn extend_to_word(cx: &mut Context) {
     jump_to_word(cx, Movement::Extend)
+}
+
+fn buffer_order_increment(cx: &mut Context) {
+    let current_doc_id = doc_mut!(cx.editor).id();
+    let doc_idx = cx
+        .editor
+        .document_ordering
+        .iter()
+        .position(|id| id == &current_doc_id)
+        .unwrap();
+
+    if doc_idx < cx.editor.document_ordering.len() - 1 {
+        cx.editor.document_ordering.swap(doc_idx, doc_idx + 1);
+    }
+}
+
+fn buffer_order_decrement(cx: &mut Context) {
+    let current_doc_id = doc_mut!(cx.editor).id();
+    let doc_idx = cx
+        .editor
+        .document_ordering
+        .iter()
+        .position(|id| id == &current_doc_id)
+        .unwrap();
+
+    if doc_idx > 0 {
+        cx.editor.document_ordering.swap(doc_idx, doc_idx - 1);
+    }
 }
 
 fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
