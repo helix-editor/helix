@@ -1243,6 +1243,7 @@ impl EditorView {
                         commands::MappableCommand::dap_edit_condition.execute(cxt);
                     }
 
+                    cxt.editor.ensure_cursor_in_view(current_view);
                     return EventResult::Consumed(None);
                 }
 
