@@ -102,6 +102,8 @@ punctuation = "fg-dim"
 "diagnostic.warning" = { underline = { color = "yellow-intense", style = "curl" } }
 "diagnostic.info" = { underline = { color = "cyan-intense", style = "curl" } }
 "diagnostic.hint" = { underline = { color = "blue-intense", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 error = "red"
 warning = "yellow-warmer"

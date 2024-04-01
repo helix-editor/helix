@@ -85,6 +85,8 @@ error = { fg = 'red', bg = 'bg2', modifiers = ['bold'] }
 "diagnostic.hint" = { underline = { style = "curl", color = "blue" } }
 "diagnostic.warning" = { underline = { style = "curl", color = "yellow" } }
 "diagnostic.error" = { underline = { style = "curl", color = "red" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 
 
