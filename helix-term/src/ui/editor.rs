@@ -1233,17 +1233,20 @@ impl EditorView {
             MouseEventKind::Up(MouseButton::Right) => {
                 if let Some((pos, view_id)) = pos_and_view(cxt.editor, row, column, true) {
                     cxt.editor.focus(view_id);
-
-                    let doc = doc_mut!(cxt.editor);
-                    doc.set_selection(view_id, Selection::point(pos));
-
-                    if modifiers == KeyModifiers::ALT {
-                        commands::MappableCommand::dap_edit_log.execute(cxt);
-                    } else {
-                        commands::MappableCommand::dap_edit_condition.execute(cxt);
-                    }
-
+                    doc_mut!(cxt.editor).set_selection(view_id, Selection::point(pos));
                     cxt.editor.ensure_cursor_in_view(view_id);
+
+                    return EventResult::Consumed(None);
+                }
+
+                if let Some((_, view_id)) = gutter_coords_and_view(cxt.editor, row, column) {
+                    cxt.editor.focus(view_id);
+
+                    match modifiers {
+                        KeyModifiers::ALT => commands::MappableCommand::dap_edit_log.execute(cxt),
+                        _ => commands::MappableCommand::dap_edit_condition.execute(cxt),
+                    };
+
                     return EventResult::Consumed(None);
                 }
 
