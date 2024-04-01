@@ -162,7 +162,7 @@ impl Range {
     pub fn contains(&self, pos: usize) -> bool {
         self.from() <= pos && pos < self.to()
     }
-    
+
     /// Returns equal if anchor and head are the same, and disregards old_visual_position. When
     /// a single character is selected, the orientation (i.e. which is the head and which is the
     /// anchor) is indistinguishable and should be disregarded.

@@ -5373,9 +5373,7 @@ fn select_textobject_for_char(
                 'T' => textobject_treesitter("test", range),
                 'e' => textobject_treesitter("entry", range),
                 'p' => textobject::textobject_paragraph(text, range, objtype, count),
-                'm' => textobject::textobject_pair_surround_closest(
-                    text, range, objtype, count,
-                ),
+                'm' => textobject::textobject_pair_surround_closest(text, range, objtype, count),
                 'g' => textobject_change(range),
                 // TODO: cancel new ranges if inconsistent surround matches across lines
                 ch if !ch.is_ascii_alphanumeric() => {
