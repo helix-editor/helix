@@ -173,60 +173,6 @@ fn display_symbol_kind(kind: lsp::SymbolKind) -> &'static str {
     }
 }
 
-type SymbolPicker = Picker<SymbolInformationItem, ()>;
-
-fn sym_picker(symbols: Vec<SymbolInformationItem>, workspace: bool) -> SymbolPicker {
-    let symbol_kind_column = ui::PickerColumn::new("kind", |item: &SymbolInformationItem, _| {
-        display_symbol_kind(item.symbol.kind).into()
-    });
-
-    let columns = if workspace {
-        vec![
-            symbol_kind_column,
-            ui::PickerColumn::new("name", |item: &SymbolInformationItem, _| {
-                item.symbol.name.as_str().into()
-            })
-            .without_filtering(),
-            ui::PickerColumn::new("path", |item: &SymbolInformationItem, _| {
-                match item.symbol.location.uri.to_file_path() {
-                    Ok(path) => path::get_relative_path(path.as_path())
-                        .to_string_lossy()
-                        .to_string()
-                        .into(),
-                    Err(_) => item.symbol.location.uri.to_string().into(),
-                }
-            }),
-        ]
-    } else {
-        vec![
-            symbol_kind_column,
-            // Some symbols in the document symbol picker may have a URI that isn't
-            // the current file. It should be rare though, so we concatenate that
-            // URI in with the symbol name in this picker.
-            ui::PickerColumn::new("name", |item: &SymbolInformationItem, _| {
-                item.symbol.name.as_str().into()
-            }),
-        ]
-    };
-
-    Picker::new(
-        columns,
-        1, // name column
-        symbols,
-        (),
-        move |cx, item, action| {
-            jump_to_location(
-                cx.editor,
-                &item.symbol.location,
-                item.offset_encoding,
-                action,
-            );
-        },
-    )
-    .with_preview(move |_editor, item| Some(location_to_file_location(&item.symbol.location)))
-    .truncate_start(false)
-}
-
 #[derive(Copy, Clone, PartialEq)]
 enum DiagnosticsFormat {
     ShowSourcePath,
@@ -404,7 +350,37 @@ pub fn symbol_picker(cx: &mut Context) {
             symbols.append(&mut lsp_items);
         }
         let call = move |_editor: &mut Editor, compositor: &mut Compositor| {
-            let picker = sym_picker(symbols, false);
+            let columns = vec![
+                ui::PickerColumn::new("kind", |item: &SymbolInformationItem, _| {
+                    display_symbol_kind(item.symbol.kind).into()
+                }),
+                // Some symbols in the document symbol picker may have a URI that isn't
+                // the current file. It should be rare though, so we concatenate that
+                // URI in with the symbol name in this picker.
+                ui::PickerColumn::new("name", |item: &SymbolInformationItem, _| {
+                    item.symbol.name.as_str().into()
+                }),
+            ];
+
+            let picker = Picker::new(
+                columns,
+                1, // name column
+                symbols,
+                (),
+                move |cx, item, action| {
+                    jump_to_location(
+                        cx.editor,
+                        &item.symbol.location,
+                        item.offset_encoding,
+                        action,
+                    );
+                },
+            )
+            .with_preview(move |_editor, item| {
+                Some(location_to_file_location(&item.symbol.location))
+            })
+            .truncate_start(false);
+
             compositor.push(Box::new(overlaid(picker)))
         };
 
