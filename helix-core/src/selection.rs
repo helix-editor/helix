@@ -169,7 +169,7 @@ impl Range {
     pub fn visual_eq(&self, other: Range) -> bool {
         self.anchor == other.anchor && self.head == other.head
             // TODO: this does not work for graphemes like \r\n
-            || (self.len() == 1 && self.from() == other.from() && self.to() == other.to())
+            || self.len() == 1 && self.from() == other.from() && self.to() == other.to()
     }
 
     /// Map a range through a set of changes. Returns a new range representing
