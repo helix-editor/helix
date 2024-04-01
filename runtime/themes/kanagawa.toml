@@ -8,7 +8,7 @@
 
 ## User interface
 "ui.selection" = { bg = "waveBlue2" }
-"ui.selection.primary" = { bg = "waveBlue1" }
+"ui.selection.primary" = { bg = "sumiInk5" }
 "ui.background" = { fg = "fujiWhite", bg = "sumiInk1" }
 
 "ui.linenr" = { fg = "sumiInk4" }
@@ -123,6 +123,7 @@ sumiInk1 = "#1F1F28"      # default background
 sumiInk2 = "#2A2A37"      # lighter background, e.g. colorcolumns, folds
 sumiInk3 = "#363646"      # lighter background, e.g. cursorline
 sumiInk4 = "#54546D"      # darker foreground, e.g. linenumbers, fold column
+sumiInk5 = "#363646"      # current selection
 waveBlue1 = "#223249"     # popup background, visual selection background
 waveBlue2 = "#2D4F67"     # popup selection background, search background
 winterGreen = "#2B3328"   # diff add background
