@@ -14,20 +14,18 @@
 (doc_comment) @info
 (name) @type
 
-(ERROR) @error
-
 (fname) @property
 
 (type_expr (scoped_name) @type)
 
-(type_expr (scoped_name) @generic (type_param) @type.param)
+(type_expr (scoped_name) @generic (type_param) @type.parameter)
 
 ; json
 (key) @string.special.key
 
 (string) @string
 
-(number) @number
+(number) @constant.numeric
 
 [
   (null)
@@ -35,5 +33,5 @@
   (false)
 ] @constant.builtin
 
-(escape_sequence) @escape
+(escape_sequence) @constant.character.escape
 
