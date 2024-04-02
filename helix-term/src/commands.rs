@@ -2980,6 +2980,7 @@ fn jumplist_picker(cx: &mut Context) {
             .flat_map(|(view, _)| {
                 view.jumps
                     .iter()
+                    .rev()
                     .map(|(doc_id, selection)| new_meta(view, *doc_id, selection.clone()))
             })
             .collect(),
