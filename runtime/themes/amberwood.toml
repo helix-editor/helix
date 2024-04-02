@@ -58,7 +58,7 @@
 
 "ui.background" = { bg = "bg" }
 "ui.background.separator" = { fg = "fg" }
-
+"ui.virtual.jump-label" = { fg = "yellow", modifiers = ["bold"] }
 "ui.linenr" = { fg = "gray04" }
 "ui.linenr.selected" = { fg = "fg" }
 
