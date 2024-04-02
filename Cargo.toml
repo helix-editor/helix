@@ -38,7 +38,7 @@ package.helix-term.opt-level = 2
 
 [workspace.dependencies]
 tree-sitter = { version = "0.22" }
-nucleo = "0.4.1"
+nucleo = "0.5.0"
 slotmap = "1.0.7"
 thiserror = "1.0"
 

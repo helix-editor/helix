@@ -15,7 +15,7 @@ use crate::{
 use futures_util::future::BoxFuture;
 use helix_event::AsyncHook;
 use nucleo::pattern::{CaseMatching, Normalization};
-use nucleo::{Config, Nucleo, Utf32String};
+use nucleo::{Config, Nucleo};
 use thiserror::Error;
 use tokio::sync::mpsc::Sender;
 use tui::{
@@ -135,14 +135,9 @@ fn inject_nucleo_item<T, D>(
     item: T,
     editor_data: &D,
 ) {
-    let column_texts: Vec<Utf32String> = columns
-        .iter()
-        .filter(|column| column.filter)
-        .map(|column| column.format_text(&item, editor_data).into())
-        .collect();
-    injector.push(item, |dst| {
-        for (i, text) in column_texts.into_iter().enumerate() {
-            dst[i] = text;
+    injector.push(item, |item, dst| {
+        for (column, text) in columns.iter().filter(|column| column.filter).zip(dst) {
+            *text = column.format_text(item, editor_data).into()
         }
     });
 }
