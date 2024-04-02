@@ -415,7 +415,7 @@ pub fn char_idx_at_visual_block_offset(
     let mut formatter =
         DocumentFormatter::new_at_prev_checkpoint(text, text_fmt, annotations, anchor);
     let mut last_char_idx = formatter.next_char_pos();
-    let mut last_char_idx_on_line = None;
+    let mut found_non_virtual_on_row = false;
     let mut last_row = 0;
     for grapheme in &mut formatter {
         match grapheme.visual_pos.row.cmp(&row) {
@@ -423,19 +423,23 @@ pub fn char_idx_at_visual_block_offset(
                 if grapheme.visual_pos.col + grapheme.width() > column {
                     if !grapheme.is_virtual() {
                         return (grapheme.char_idx, 0);
-                    } else if let Some(char_idx) = last_char_idx_on_line {
-                        return (char_idx, 0);
+                    } else if found_non_virtual_on_row {
+                        return (last_char_idx, 0);
                     }
                 } else if !grapheme.is_virtual() {
-                    last_char_idx_on_line = Some(grapheme.char_idx)
+                    found_non_virtual_on_row = true;
+                    last_char_idx = grapheme.char_idx;
                 }
             }
+            Ordering::Greater if found_non_virtual_on_row => return (last_char_idx, 0),
             Ordering::Greater => return (last_char_idx, row - last_row),
-            _ => (),
+            Ordering::Less => {
+                if !grapheme.is_virtual() {
+                    last_row = grapheme.visual_pos.row;
+                    last_char_idx = grapheme.char_idx;
+                }
+            }
         }
-
-        last_char_idx = grapheme.char_idx;
-        last_row = grapheme.visual_pos.row;
     }
 
     (formatter.next_char_pos(), 0)
@@ -444,6 +448,7 @@ pub fn char_idx_at_visual_block_offset(
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::text_annotations::InlineAnnotation;
     use crate::Rope;
 
     #[test]
@@ -802,6 +807,30 @@ mod test {
         assert_eq!(pos_at_visual_coords(slice, (10, 0).into(), 4), 0);
         assert_eq!(pos_at_visual_coords(slice, (0, 10).into(), 4), 0);
         assert_eq!(pos_at_visual_coords(slice, (10, 10).into(), 4), 0);
+    }
+
+    #[test]
+    fn test_char_idx_at_visual_row_offset_inline_annotation() {
+        let text = Rope::from("foo\nbar");
+        let slice = text.slice(..);
+        let mut text_fmt = TextFormat::default();
+        let annotations = [InlineAnnotation {
+            text: "x".repeat(100).into(),
+            char_idx: 3,
+        }];
+        text_fmt.soft_wrap = true;
+
+        assert_eq!(
+            char_idx_at_visual_offset(
+                slice,
+                0,
+                1,
+                0,
+                &text_fmt,
+                TextAnnotations::default().add_inline_annotations(&annotations, None)
+            ),
+            (2, 1)
+        );
     }
 
     #[test]
