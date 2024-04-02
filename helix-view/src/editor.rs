@@ -1504,6 +1504,8 @@ impl Editor {
                         .position(|doc_id| doc_id == &id)
                     {
                         self.document_ordering.remove(d_idx);
+                    } else {
+                        log::error!("closed document not found in document ordering, ID: {id}")
                     }
 
                     // Remove the scratch buffer from any jumplists
@@ -1709,6 +1711,8 @@ impl Editor {
         self.documents.remove(&doc_id);
         if let Some(d_idx) = self.document_ordering.iter().position(|id| id == &doc_id) {
             self.document_ordering.remove(d_idx);
+        } else {
+            log::error!("closed document not found in document ordering, ID: {doc_id}")
         }
 
         // If the document we removed was visible in all views, we will have no more views. We don't

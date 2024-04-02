@@ -609,6 +609,10 @@ impl EditorView {
                 if x >= surface.area.right() {
                     break;
                 }
+            } else {
+                log::error!(
+                    "document id in document ordering not found in document list, ID: {doc_id}"
+                )
             }
         }
     }
