@@ -217,9 +217,9 @@ persistent-diagnostic-sources = ["rustc", "clippy"]
 '`' = '`'
 
 [language.debugger]
-name = "lldb-vscode"
+name = "lldb-dap"
 transport = "stdio"
-command = "lldb-vscode"
+command = "lldb-dap"
 
 [[language.debugger.templates]]
 name = "binary"
@@ -436,9 +436,9 @@ language-servers = [ "clangd" ]
 indent = { tab-width = 2, unit = "  " }
 
 [language.debugger]
-name = "lldb-vscode"
+name = "lldb-dap"
 transport = "stdio"
-command = "lldb-vscode"
+command = "lldb-dap"
 
 [[language.debugger.templates]]
 name = "binary"
@@ -473,9 +473,9 @@ language-servers = [ "clangd" ]
 indent = { tab-width = 2, unit = "  " }
 
 [language.debugger]
-name = "lldb-vscode"
+name = "lldb-dap"
 transport = "stdio"
-command = "lldb-vscode"
+command = "lldb-dap"
 
 [[language.debugger.templates]]
 name = "binary"
@@ -1263,9 +1263,9 @@ indent = { tab-width = 4, unit = "    " }
 formatter = { command = "zig" , args = ["fmt", "--stdin"] }
 
 [language.debugger]
-name = "lldb-vscode"
+name = "lldb-dap"
 transport = "stdio"
-command = "lldb-vscode"
+command = "lldb-dap"
 
 [[language.debugger.templates]]
 name = "binary"
