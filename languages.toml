@@ -3135,7 +3135,7 @@ name = "todotxt"
 scope = "text.todotxt"
 file-types = [{ glob = "todo.txt" }, { glob = "*.todo.txt" }, "todotxt"]
 formatter = { command = "sort" }
-auto-format = true
+auto-format = false
 
 [[grammar]]
 name = "todotxt"
