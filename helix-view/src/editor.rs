@@ -540,6 +540,12 @@ pub enum StatusLineElement {
     /// The cursor position
     Position,
 
+    /// The horizontal cursor position
+    HorizontalPosition,
+
+    /// The vertical cursor position
+    VerticalPosition,
+
     /// The separator string
     Separator,
 

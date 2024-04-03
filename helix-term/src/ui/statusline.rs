@@ -149,6 +149,8 @@ fn get_render_function<'a>(
             render_primary_selection_length
         }
         helix_view::editor::StatusLineElement::Position => render_position,
+        helix_view::editor::StatusLineElement::HorizontalPosition => render_horizontal_position,
+        helix_view::editor::StatusLineElement::VerticalPosition => render_vrtical_position,
         helix_view::editor::StatusLineElement::PositionPercentage => render_position_percentage,
         helix_view::editor::StatusLineElement::TotalLineNumbers => render_total_line_numbers,
         helix_view::editor::StatusLineElement::Separator => render_separator,
@@ -317,6 +319,16 @@ fn get_position(context: &RenderContext) -> Position {
 fn render_position<'a>(context: &RenderContext) -> Spans<'a> {
     let position = get_position(context);
     Span::raw(format!(" {}:{} ", position.row + 1, position.col + 1)).into()
+}
+
+fn render_horizontal_position<'a>(context: &RenderContext) -> Spans<'a> {
+    let position = get_position(context);
+    Span::raw(format!(" {} ", position.col + 1)).into()
+}
+
+fn render_vertical_position<'a>(context: &RenderContext) -> Spans<'a> {
+    let position = get_position(context);
+    Span::raw(format!(" {} ", position.row + 1)).into()
 }
 
 fn render_total_line_numbers<'a>(context: &RenderContext) -> Spans<'a> {
