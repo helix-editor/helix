@@ -55,6 +55,7 @@
 "markup.list" = "gray07"
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "cyan", modifiers = ["underlined"] }
 "markup.link.text" = "blue"
 "markup.raw" = "yellow"
@@ -83,7 +84,9 @@
 "ui.text.focus" = { fg = "white" }
 
 "ui.virtual" = { fg = "gray03" }
+"ui.virtual.ruler" = { bg = "gray03" }
 "ui.virtual.indent-guide" = { fg = "gray04" }
+"ui.virtual.inlay-hint" = { fg = "gray05" }
 
 "ui.selection" = { bg = "gray03" }
 "ui.selection.primary" = { bg = "gray03" }
@@ -100,7 +103,12 @@
 "ui.menu.selected" = { fg = "fg", bg = "gray03" }
 "ui.menu.scroll" = { fg = "white", bg = "gray01" }
 
-diagnostic = { modifiers = ["underlined"] }
+"diagnostic.warning".underline = { color = "bright_yellow", style = "curl" } 
+"diagnostic.error".underline = { color = "bright_red", style = "curl" } 
+"diagnostic.info".underline = { color = "bright_blue", style = "curl" } 
+"diagnostic.hint".underline = { color = "bright_cyan", style = "curl" } 
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 warning = "bright_yellow"
 error = "bright_red"

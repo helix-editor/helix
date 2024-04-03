@@ -1,4 +1,7 @@
-(macro_def) @function.around
+[
+  (macro_def)
+  (function_def)
+] @function.around
 
 (argument) @parameter.inside
 

@@ -1,21 +1,30 @@
-[
- "("
- ")"
-] @punctuation.bracket
+; Hint level tags
+((tag (name) @hint)
+ (#match? @hint "^(HINT|MARK|PASSED|STUB|MOCK)$"))
 
-":" @punctuation.delimiter
+("text" @hint
+ (#match? @hint "^(HINT|MARK|PASSED|STUB|MOCK)$"))
 
+; Info level tags
+((tag (name) @info)
+ (#match? @info "^(INFO|NOTE|TODO|PERF|OPTIMIZE|PERFORMANCE|QUESTION|ASK)$"))
+
+("text" @info
+ (#match? @info "^(INFO|NOTE|TODO|PERF|OPTIMIZE|PERFORMANCE|QUESTION|ASK)$"))
+
+; Warning level tags
 ((tag (name) @warning)
- (#match? @warning "^(TODO|HACK|WARNING)$"))
+ (#match? @warning "^(HACK|WARN|WARNING|TEST|TEMP)$"))
 
 ("text" @warning
- (#match? @warning "^(TODO|HACK|WARNING)$"))
+ (#match? @warning "^(HACK|WARN|WARNING|TEST|TEMP)$"))
 
+; Error level tags
 ((tag (name) @error)
- (match? @error "^(FIXME|XXX|BUG)$"))
+ (#match? @error "^(BUG|FIXME|ISSUE|XXX|FIX|SAFETY|FIXIT|FAILED|DEBUG)$"))
 
 ("text" @error
- (match? @error "^(FIXME|XXX|BUG)$"))
+ (#match? @error "^(BUG|FIXME|ISSUE|XXX|FIX|SAFETY|FIXIT|FAILED|DEBUG)$"))
 
 (tag
  (name) @ui.text
@@ -28,3 +37,5 @@
 ; User mention (@user)
 ("text" @tag
  (#match? @tag "^[@][a-zA-Z0-9_-]+$"))
+
+(uri) @markup.link.url

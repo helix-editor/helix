@@ -43,7 +43,12 @@ info = "sky"
 warning = "yellow"
 error = "red"
 
-diagnostic = { modifiers = ["underlined"] }
+"diagnostic.hint".underline = { color = "sky-", style = "curl" } 
+"diagnostic.info".underline = { color = "sky", style = "curl" } 
+"diagnostic.warning".underline = { color = "yellow", style = "curl" } 
+"diagnostic.error".underline = { color = "red", style = "curl" } 
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 "ui.background" = { bg = "shade" }
 "ui.background.separator" = "sky"
@@ -92,6 +97,7 @@ diagnostic = { modifiers = ["underlined"] }
 "markup.list" = "sky"
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { modifiers = ["underlined"] }
 "markup.link.text" = "magenta"
 "markup.quote" = "green"

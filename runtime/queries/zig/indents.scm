@@ -6,7 +6,6 @@
   (ContainerDecl)
   (ErrorUnionExpr)
   (InitList)
-  (Statement)
   (SwitchExpr)
   (TestDecl)
 ] @indent

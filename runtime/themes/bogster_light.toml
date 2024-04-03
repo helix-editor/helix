@@ -31,6 +31,7 @@
 "markup.list" = "bogster-red"
 "markup.bold" = { fg = "bogster-yellow", modifiers = ["bold"] }
 "markup.italic" = { fg = "magenta", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "bogster-yellow", modifiers = ["underlined"] }
 "markup.link.text" = "bogster-red"
 "markup.quote" = "bogster-lblue"
@@ -72,7 +73,12 @@
 "hint" = "bogster-blue"
 
 # make diagnostic underlined, to distinguish with selection text.
-diagnostic = { modifiers = ["underlined"] }
+"diagnostic.warning" = { underline = { color = "bogster-orange", style = "curl"} }
+"diagnostic.error" = { underline = { color = "bogster-lred", style = "curl"} }
+"diagnostic.info" = { underline = { color = "bogster-teal", style = "curl"} }
+"diagnostic.hint" = { underline = { color = "bogster-blue", style = "curl"} }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 [palette]
 bogster-orange = "#dc7759"
