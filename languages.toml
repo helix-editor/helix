@@ -885,6 +885,10 @@ injection-regex = "(shell|bash|zsh|sh)"
 file-types = [
   "sh",
   "bash",
+  "ash",
+  "dash",
+  "ksh",
+  "mksh",
   "zsh",
   "zshenv",
   "zlogin",
@@ -896,7 +900,6 @@ file-types = [
   "bazelrc",
   "Renviron",
   "zsh-theme",
-  "ksh",
   "cshrc",
   "tcshrc",
   "bashrc_Apple_Terminal",
