@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::fmt::Write;
 use std::ops::Deref;
 
@@ -897,6 +898,27 @@ fn theme(
         }
     };
 
+    Ok(())
+}
+
+fn theme_open(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let theme_name = args
+        .first()
+        .map(Borrow::borrow)
+        .unwrap_or_else(|| cx.editor.theme.name());
+    let theme_path = cx
+        .editor
+        .theme_loader
+        .path(theme_name, &mut HashSet::new())?;
+    cx.editor.open(&theme_path, Action::Replace)?;
     Ok(())
 }
 
@@ -2681,6 +2703,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         doc: "Change the editor theme (show current theme if no name specified).",
         fun: theme,
         signature: CommandSignature::positional(&[completers::theme]),
+    },
+    TypableCommand {
+        name: "theme-open",
+        aliases: &[],
+        doc: "Open the theme's TOML file (open current theme's TOML file if no name specified).",
+        fun: theme_open,
+        signature: CommandSignature::positional(&[completers::editable_themes]),
     },
     TypableCommand {
         name: "yank-join",

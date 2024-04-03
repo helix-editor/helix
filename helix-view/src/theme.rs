@@ -160,7 +160,7 @@ impl Loader {
     /// Returns the path to the theme with the given name
     ///
     /// Ignores paths already visited and follows directory priority order.
-    fn path(&self, name: &str, visited_paths: &mut HashSet<PathBuf>) -> Result<PathBuf> {
+    pub fn path(&self, name: &str, visited_paths: &mut HashSet<PathBuf>) -> Result<PathBuf> {
         let filename = format!("{}.toml", name);
 
         let mut cycle_found = false; // track if there was a path, but it was in a cycle

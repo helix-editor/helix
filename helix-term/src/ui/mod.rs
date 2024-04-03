@@ -284,13 +284,24 @@ pub mod completers {
             .collect()
     }
 
+    pub fn editable_themes(_editor: &Editor, input: &str) -> Vec<Completion> {
+        get_theme_completions(input, false)
+    }
+
     pub fn theme(_editor: &Editor, input: &str) -> Vec<Completion> {
+        get_theme_completions(input, true)
+    }
+
+    fn get_theme_completions(input: &str, include_defaults: bool) -> Vec<Completion> {
         let mut names = theme::Loader::read_names(&helix_loader::config_dir().join("themes"));
         for rt_dir in helix_loader::runtime_dirs() {
             names.extend(theme::Loader::read_names(&rt_dir.join("themes")));
         }
-        names.push("default".into());
-        names.push("base16_default".into());
+
+        if include_defaults {
+            names.push("default".into());
+            names.push("base16_default".into());
+        }
         names.sort();
         names.dedup();
 
