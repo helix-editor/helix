@@ -2617,13 +2617,13 @@ fn selection_is_linewise(selection: &Selection, text: &Rope) -> bool {
     })
 }
 
-fn delete_selection_impl(cx: &mut Context, op: Operation) {
+fn delete_selection_impl(cx: &mut Context, op: Operation, yank: bool) {
     let (view, doc) = current!(cx.editor);
 
     let selection = doc.selection(view.id);
     let only_whole_lines = selection_is_linewise(selection, doc.text());
 
-    if cx.register != Some('_') {
+    if cx.register != Some('_') && yank {
         // first yank the selection
         let text = doc.text().slice(..);
         let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
@@ -2700,21 +2700,19 @@ fn delete_by_selection_insert_mode(
 }
 
 fn delete_selection(cx: &mut Context) {
-    delete_selection_impl(cx, Operation::Delete);
+    delete_selection_impl(cx, Operation::Delete, true);
 }
 
 fn delete_selection_noyank(cx: &mut Context) {
-    cx.register = Some('_');
-    delete_selection_impl(cx, Operation::Delete);
+    delete_selection_impl(cx, Operation::Delete, false);
 }
 
 fn change_selection(cx: &mut Context) {
-    delete_selection_impl(cx, Operation::Change);
+    delete_selection_impl(cx, Operation::Change, true);
 }
 
 fn change_selection_noyank(cx: &mut Context) {
-    cx.register = Some('_');
-    delete_selection_impl(cx, Operation::Change);
+    delete_selection_impl(cx, Operation::Change, false);
 }
 
 fn collapse_selection(cx: &mut Context) {
