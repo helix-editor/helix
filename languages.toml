@@ -3477,4 +3477,4 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "adl"
-source = { git = "https://github.com/adl-lang/tree-sitter-adl", rev = "0399ed80b9fb88865a02259e7c11dc98de1d5ee5" }
+source = { git = "https://github.com/adl-lang/tree-sitter-adl", rev = "2787d04beadfbe154d3f2da6e98dc45a1b134bbf" }

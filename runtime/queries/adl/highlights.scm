@@ -9,19 +9,19 @@
 "annotation"
 ] @keyword
 
-(scoped_name) @variable
+(adl (scoped_name)) @namespace
 (comment) @comment
-(doc_comment) @info
+(doc_comment) @comment.block.documentation
 (name) @type
 
-(fname) @property
+(fname) @variable.other.member
 
 (type_expr (scoped_name) @type)
 
-(type_expr (scoped_name) @generic (type_param) @type.parameter)
+(type_expr_params (param (scoped_name) @type.parameter))
 
 ; json
-(key) @string.special.key
+(key) @string.special
 
 (string) @string
 
