@@ -28,6 +28,7 @@ dhall-lsp-server = { command = "dhall-lsp-server" }
 docker-langserver = { command = "docker-langserver", args = ["--stdio"] }
 docker-compose-langserver = { command = "docker-compose-langserver", args = ["--stdio"]}
 dot-language-server = { command = "dot-language-server", args = ["--stdio"] }
+earthlyls = { command = "earthlyls" }
 elixir-ls = { command = "elixir-ls", config = { elixirLS.dialyzerEnabled = false } }
 elm-language-server = { command = "elm-language-server" }
 elvish = { command = "elvish", args = ["-lsp"] }
@@ -3443,3 +3444,19 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "ohm"
 source = { git = "https://github.com/novusnota/tree-sitter-ohm", rev = "80f14f0e477ddacc1e137d5ed8e830329e3fb7a3" }
+
+[[language]]
+name = "earthfile"
+scope = "source.earthfile"
+injection-regex = "earthfile"
+roots = ["Earthfile"]
+file-types = [
+  { glob = "Earthfile" },
+]
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+language-servers = ["earthlyls"]
+
+[[grammar]]
+name = "earthfile"
+source = { git = "https://github.com/glehmann/tree-sitter-earthfile", rev = "2a6ab191f5f962562e495a818aa4e7f45f8a556a" }
