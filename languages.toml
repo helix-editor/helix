@@ -709,9 +709,7 @@ name = "typescript"
 scope = "source.ts"
 injection-regex = "(ts|typescript)"
 language-id = "typescript"
-file-types = ["ts", "mts", "cts"]#, { glob = ".deno_repl_history" }, { glob = ".bun_repl_history" }]
-# Deno doesn't save hist-file by default: https://deno.land/x/manual@v1.36.4/tools/repl.md?source=#deno_repl_history
-# Bun doesn't (yet) have a standard REPL history file (this info wasn't verified)
+file-types = ["ts", "mts", "cts"]
 shebangs = ["deno", "bun", "ts-node"]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
