@@ -43,8 +43,8 @@ use helix_view::{
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
-    tree::{self, Dimension, Resize},
     theme::Style,
+    tree::{self, Dimension, Resize},
     view::View,
     Document, DocumentId, Editor, ViewId,
 };
