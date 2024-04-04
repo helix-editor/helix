@@ -212,6 +212,14 @@ impl Default for FilePickerConfig {
     }
 }
 
+fn serialize_alphabet<S>(alphabet: &[char], serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let alphabet: String = alphabet.iter().collect();
+    serializer.serialize_str(&alphabet)
+}
+
 fn deserialize_alphabet<'de, D>(deserializer: D) -> Result<Vec<char>, D::Error>
 where
     D: Deserializer<'de>,
@@ -323,7 +331,10 @@ pub struct Config {
     #[serde(default)]
     pub indent_heuristic: IndentationHeuristic,
     /// labels characters used in jumpmode
-    #[serde(skip_serializing, deserialize_with = "deserialize_alphabet")]
+    #[serde(
+        serialize_with = "serialize_alphabet",
+        deserialize_with = "deserialize_alphabet"
+    )]
     pub jump_label_alphabet: Vec<char>,
 }
 
