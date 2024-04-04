@@ -1207,14 +1207,26 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
             true,
         );
         // Trims some surrounding chars so that the actual file is opened.
-        let surrounding_chars: &[_] = &['\'', '"', '(', ')'];
+        let surrounding_pairs: &[_] = &[
+            ('\'', '\''),
+            ('"', '"'),
+            ('(', ')'),
+            ('[', ']'),
+            ('{', '}'),
+            ('<', '>'),
+        ];
+        // Check pairs to prevent unnecessary trimming.
+        let current_word = current_word.fragment(text_slice);
+        let mut current_word = current_word.as_ref();
+        for (l, r) in surrounding_pairs {
+            if current_word.starts_with(*l) && current_word.ends_with(*r) {
+                current_word = current_word.trim_start_matches(*l);
+                current_word = current_word.trim_end_matches(*r);
+            }
+        }
+
         paths.clear();
-        paths.push(
-            current_word
-                .fragment(text_slice)
-                .trim_matches(surrounding_chars)
-                .to_string(),
-        );
+        paths.push(current_word.to_string());
     }
 
     for sel in paths {

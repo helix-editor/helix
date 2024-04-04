@@ -153,6 +153,17 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
     )
     .await?;
 
+    // Don't trim unmatched pairs
+    test_key_sequence(
+        &mut AppBuilder::new().with_file(file.path(), None).build()?,
+        Some("i)one.js)<esc>%gf"),
+        Some(&|app| {
+            assert_eq!(1, match_paths(app, vec![")one.js)"]));
+        }),
+        false,
+    )
+    .await?;
+
     Ok(())
 }
 
