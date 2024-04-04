@@ -72,6 +72,8 @@
 "diagnostic.error" = { underline = { color = "red3", style = "dashed" } }
 "diagnostic.info" = { underline = { color = "aqua1", style = "dashed" } }
 "diagnostic.hint" = { underline = { color = "blue0", style = "dashed" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 "markup.heading" = { fg = "aqua1", modifiers = ["bold"] }
 "markup.bold" = { modifiers = ["bold"] }

@@ -425,6 +425,85 @@ impl<'a> Iterator for RopeGraphemes<'a> {
     }
 }
 
+/// An iterator over the graphemes of a `RopeSlice` in reverse.
+#[derive(Clone)]
+pub struct RevRopeGraphemes<'a> {
+    text: RopeSlice<'a>,
+    chunks: Chunks<'a>,
+    cur_chunk: &'a str,
+    cur_chunk_start: usize,
+    cursor: GraphemeCursor,
+}
+
+impl<'a> fmt::Debug for RevRopeGraphemes<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RevRopeGraphemes")
+            .field("text", &self.text)
+            .field("chunks", &self.chunks)
+            .field("cur_chunk", &self.cur_chunk)
+            .field("cur_chunk_start", &self.cur_chunk_start)
+            // .field("cursor", &self.cursor)
+            .finish()
+    }
+}
+
+impl<'a> RevRopeGraphemes<'a> {
+    #[must_use]
+    pub fn new(slice: RopeSlice) -> RevRopeGraphemes {
+        let (mut chunks, mut cur_chunk_start, _, _) = slice.chunks_at_byte(slice.len_bytes());
+        chunks.reverse();
+        let first_chunk = chunks.next().unwrap_or("");
+        cur_chunk_start -= first_chunk.len();
+        RevRopeGraphemes {
+            text: slice,
+            chunks,
+            cur_chunk: first_chunk,
+            cur_chunk_start,
+            cursor: GraphemeCursor::new(slice.len_bytes(), slice.len_bytes(), true),
+        }
+    }
+}
+
+impl<'a> Iterator for RevRopeGraphemes<'a> {
+    type Item = RopeSlice<'a>;
+
+    fn next(&mut self) -> Option<RopeSlice<'a>> {
+        let a = self.cursor.cur_cursor();
+        let b;
+        loop {
+            match self
+                .cursor
+                .prev_boundary(self.cur_chunk, self.cur_chunk_start)
+            {
+                Ok(None) => {
+                    return None;
+                }
+                Ok(Some(n)) => {
+                    b = n;
+                    break;
+                }
+                Err(GraphemeIncomplete::PrevChunk) => {
+                    self.cur_chunk = self.chunks.next().unwrap_or("");
+                    self.cur_chunk_start -= self.cur_chunk.len();
+                }
+                Err(GraphemeIncomplete::PreContext(idx)) => {
+                    let (chunk, byte_idx, _, _) = self.text.chunk_at_byte(idx.saturating_sub(1));
+                    self.cursor.provide_context(chunk, byte_idx);
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        if a >= self.cur_chunk_start + self.cur_chunk.len() {
+            Some(self.text.byte_slice(b..a))
+        } else {
+            let a2 = a - self.cur_chunk_start;
+            let b2 = b - self.cur_chunk_start;
+            Some((&self.cur_chunk[b2..a2]).into())
+        }
+    }
+}
+
 /// A highly compressed Cow<'a, str> that holds
 /// atmost u31::MAX bytes and is readonly
 pub struct GraphemeStr<'a> {

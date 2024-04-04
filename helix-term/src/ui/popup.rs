@@ -3,11 +3,15 @@ use crate::{
     compositor::{Callback, Component, Context, Event, EventResult},
     ctrl, key,
 };
-use tui::buffer::Buffer as Surface;
+use tui::{
+    buffer::Buffer as Surface,
+    widgets::{Block, Borders, Widget},
+};
 
 use helix_core::Position;
 use helix_view::{
     graphics::{Margin, Rect},
+    input::{MouseEvent, MouseEventKind},
     Editor,
 };
 
@@ -20,6 +24,7 @@ pub struct Popup<T: Component> {
     margin: Margin,
     size: (u16, u16),
     child_size: (u16, u16),
+    area: Rect,
     position_bias: Open,
     scroll: usize,
     auto_close: bool,
@@ -37,6 +42,7 @@ impl<T: Component> Popup<T> {
             size: (0, 0),
             position_bias: Open::Below,
             child_size: (0, 0),
+            area: Rect::new(0, 0, 0, 0),
             scroll: 0,
             auto_close: false,
             ignore_escape_key: false,
@@ -143,6 +149,14 @@ impl<T: Component> Popup<T> {
         }
     }
 
+    pub fn scroll_half_page_down(&mut self) {
+        self.scroll(self.size.1 as usize / 2, true)
+    }
+
+    pub fn scroll_half_page_up(&mut self) {
+        self.scroll(self.size.1 as usize / 2, false)
+    }
+
     /// Toggles the Popup's scrollbar.
     /// Consider disabling the scrollbar in case the child
     /// already has its own.
@@ -168,12 +182,44 @@ impl<T: Component> Popup<T> {
         // clip to viewport
         viewport.intersection(Rect::new(rel_x, rel_y, self.size.0, self.size.1))
     }
+
+    fn handle_mouse_event(
+        &mut self,
+        &MouseEvent {
+            kind,
+            column: x,
+            row: y,
+            ..
+        }: &MouseEvent,
+    ) -> EventResult {
+        let mouse_is_within_popup = x >= self.area.left()
+            && x < self.area.right()
+            && y >= self.area.top()
+            && y < self.area.bottom();
+
+        if !mouse_is_within_popup {
+            return EventResult::Ignored(None);
+        }
+
+        match kind {
+            MouseEventKind::ScrollDown if self.has_scrollbar => {
+                self.scroll_half_page_down();
+                EventResult::Consumed(None)
+            }
+            MouseEventKind::ScrollUp if self.has_scrollbar => {
+                self.scroll_half_page_up();
+                EventResult::Consumed(None)
+            }
+            _ => EventResult::Ignored(None),
+        }
+    }
 }
 
 impl<T: Component> Component for Popup<T> {
     fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         let key = match event {
             Event::Key(event) => *event,
+            Event::Mouse(event) => return self.handle_mouse_event(event),
             Event::Resize(_, _) => {
                 // TODO: calculate inner area, call component's handle_event with that area
                 return EventResult::Ignored(None);
@@ -197,11 +243,11 @@ impl<T: Component> Component for Popup<T> {
                 EventResult::Consumed(Some(close_fn))
             }
             ctrl!('d') => {
-                self.scroll(self.size.1 as usize / 2, true);
+                self.scroll_half_page_down();
                 EventResult::Consumed(None)
             }
             ctrl!('u') => {
-                self.scroll(self.size.1 as usize / 2, false);
+                self.scroll_half_page_up();
                 EventResult::Consumed(None)
             }
             _ => {
@@ -246,19 +292,36 @@ impl<T: Component> Component for Popup<T> {
 
     fn render(&mut self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
         let area = self.area(viewport, cx.editor);
+        self.area = area;
         cx.scroll = Some(self.scroll);
 
         // clear area
         let background = cx.editor.theme.get("ui.popup");
         surface.clear_with(area, background);
 
-        let inner = area.inner(&self.margin);
+        let render_borders = cx.editor.popup_border();
+
+        let inner = if self
+            .contents
+            .type_name()
+            .starts_with("helix_term::ui::menu::Menu")
+        {
+            area
+        } else {
+            area.inner(&self.margin)
+        };
+
+        let border = usize::from(render_borders);
+        if render_borders {
+            Widget::render(Block::default().borders(Borders::ALL), area, surface);
+        }
+
         self.contents.render(inner, surface, cx);
 
         // render scrollbar if contents do not fit
         if self.has_scrollbar {
-            let win_height = inner.height as usize;
-            let len = self.child_size.1 as usize;
+            let win_height = (inner.height as usize).saturating_sub(2 * border);
+            let len = (self.child_size.1 as usize).saturating_sub(2 * border);
             let fits = len <= win_height;
             let scroll = self.scroll;
             let scroll_style = cx.editor.theme.get("ui.menu.scroll");
@@ -274,15 +337,17 @@ impl<T: Component> Component for Popup<T> {
 
                 let mut cell;
                 for i in 0..win_height {
-                    cell = &mut surface[(inner.right() - 1, inner.top() + i as u16)];
+                    cell = &mut surface[(inner.right() - 1, inner.top() + (border + i) as u16)];
 
-                    cell.set_symbol("▐"); // right half block
+                    let half_block = if render_borders { "▌" } else { "▐" };
 
                     if scroll_line <= i && i < scroll_line + scroll_height {
                         // Draw scroll thumb
+                        cell.set_symbol(half_block);
                         cell.set_fg(scroll_style.fg.unwrap_or(helix_view::theme::Color::Reset));
-                    } else {
+                    } else if !render_borders {
                         // Draw scroll track
+                        cell.set_symbol(half_block);
                         cell.set_fg(scroll_style.bg.unwrap_or(helix_view::theme::Color::Reset));
                     }
                 }

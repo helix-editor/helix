@@ -52,10 +52,14 @@ impl Default for Capabilities {
 impl Capabilities {
     /// Detect capabilities from the terminfo database located based
     /// on the $TERM environment variable. If detection fails, returns
-    /// a default value where no capability is supported.
+    /// a default value where no capability is supported, or just undercurl
+    /// if config.undercurl is set.
     pub fn from_env_or_default(config: &EditorConfig) -> Self {
         match termini::TermInfo::from_env() {
-            Err(_) => Capabilities::default(),
+            Err(_) => Capabilities {
+                has_extended_underlines: config.undercurl,
+                ..Capabilities::default()
+            },
             Ok(t) => Capabilities {
                 // Smulx, VTE: https://unix.stackexchange.com/a/696253/246284
                 // Su (used by kitty): https://sw.kovidgoyal.net/kitty/underlines
@@ -79,6 +83,7 @@ pub struct CrosstermBackend<W: Write> {
     capabilities: Capabilities,
     supports_keyboard_enhancement_protocol: OnceCell<bool>,
     mouse_capture_enabled: bool,
+    supports_bracketed_paste: bool,
 }
 
 impl<W> CrosstermBackend<W>
@@ -91,6 +96,7 @@ where
             capabilities: Capabilities::from_env_or_default(config),
             supports_keyboard_enhancement_protocol: OnceCell::new(),
             mouse_capture_enabled: false,
+            supports_bracketed_paste: true,
         }
     }
 
@@ -134,9 +140,16 @@ where
         execute!(
             self.buffer,
             terminal::EnterAlternateScreen,
-            EnableBracketedPaste,
             EnableFocusChange
         )?;
+        match execute!(self.buffer, EnableBracketedPaste,) {
+            Err(err) if err.kind() == io::ErrorKind::Unsupported => {
+                log::warn!("Bracketed paste is not supported on this terminal.");
+                self.supports_bracketed_paste = false;
+            }
+            Err(err) => return Err(err),
+            Ok(_) => (),
+        };
         execute!(self.buffer, terminal::Clear(terminal::ClearType::All))?;
         if config.enable_mouse_capture {
             execute!(self.buffer, EnableMouseCapture)?;
@@ -177,9 +190,11 @@ where
         if self.supports_keyboard_enhancement_protocol() {
             execute!(self.buffer, PopKeyboardEnhancementFlags)?;
         }
+        if self.supports_bracketed_paste {
+            execute!(self.buffer, DisableBracketedPaste,)?;
+        }
         execute!(
             self.buffer,
-            DisableBracketedPaste,
             DisableFocusChange,
             terminal::LeaveAlternateScreen
         )?;
@@ -195,12 +210,8 @@ where
         // disable without calling enable previously
         let _ = execute!(stdout, DisableMouseCapture);
         let _ = execute!(stdout, PopKeyboardEnhancementFlags);
-        execute!(
-            stdout,
-            DisableBracketedPaste,
-            DisableFocusChange,
-            terminal::LeaveAlternateScreen
-        )?;
+        let _ = execute!(stdout, DisableBracketedPaste);
+        execute!(stdout, DisableFocusChange, terminal::LeaveAlternateScreen)?;
         terminal::disable_raw_mode()
     }
 

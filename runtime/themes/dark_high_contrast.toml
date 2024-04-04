@@ -54,6 +54,8 @@
 "diagnostic.hint" = { underline = { color = "yellow", style = "dashed" } }
 "diagnostic.warning" = { underline = { color = "orange", style = "curl" } }
 "diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 "info" = "white" 
 "hint" = "yellow"
 "warning" = "orange"

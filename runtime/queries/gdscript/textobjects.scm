@@ -13,5 +13,7 @@
     (typed_default_parameter)  
   ] @parameter.inside @parameter.around)
 
+(arguments (_expression) @parameter.inside @parameter.around)
+
 (comment) @comment.inside
 (comment)+ @comment.around
