@@ -3368,6 +3368,18 @@ name = "hyprlang"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-hyprlang", rev = "27af9b74acf89fa6bed4fb8cb8631994fcb2e6f3"}
 
 [[language]]
+name = "tcl"
+scope = "source.tcl"
+injection-regex = "tcl"
+file-types = [ "tcl" ]
+shebangs = [ "tclish", "jimsh", "wish" ]
+comment-token = '#'
+
+[[grammar]]
+name = "tcl"
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-tcl", rev = "56ad1fa6a34ba800e5495d1025a9b0fda338d5b8" }
+
+[[language]]
 name = "supercollider"
 scope = "source.supercollider"
 injection-regex = "supercollider"
