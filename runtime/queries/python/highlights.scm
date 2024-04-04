@@ -211,6 +211,7 @@
   "global"
   "nonlocal"
   "print"
+  "type"
 ] @keyword
 [
   "and"
