@@ -4,6 +4,7 @@ use arc_swap::ArcSwap;
 use helix_core::syntax;
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;
+use std::num::NonZeroUsize;
 use std::sync::Arc;
 use std::{borrow::Cow, ops::RangeFrom};
 use tui::buffer::Buffer as Surface;
@@ -31,6 +32,7 @@ pub struct Prompt {
     selection: Option<usize>,
     history_register: Option<char>,
     history_pos: Option<usize>,
+    history_prefix: Option<NonZeroUsize>,
     completion_fn: CompletionFn,
     callback_fn: CallbackFn,
     pub doc_fn: DocFn,
@@ -83,6 +85,7 @@ impl Prompt {
             selection: None,
             history_register,
             history_pos: None,
+            history_prefix: None,
             completion_fn: Box::new(completion_fn),
             callback_fn: Box::new(callback_fn),
             doc_fn: Box::new(|_| None),
@@ -96,6 +99,7 @@ impl Prompt {
         self.line = line;
         self.cursor = cursor;
         self.recalculate_completion(editor);
+        self.reset_history();
         self
     }
 
@@ -232,12 +236,14 @@ impl Prompt {
             self.cursor = pos;
         }
         self.recalculate_completion(cx.editor);
+        self.reset_history();
     }
 
     pub fn insert_str(&mut self, s: &str, editor: &Editor) {
         self.line.insert_str(self.cursor, s);
         self.cursor += s.len();
         self.recalculate_completion(editor);
+        self.reset_history();
     }
 
     pub fn move_cursor(&mut self, movement: Movement) {
@@ -259,6 +265,7 @@ impl Prompt {
         self.cursor = pos;
 
         self.recalculate_completion(editor);
+        self.reset_history();
     }
 
     pub fn delete_char_forwards(&mut self, editor: &Editor) {
@@ -266,6 +273,7 @@ impl Prompt {
         self.line.replace_range(self.cursor..pos, "");
 
         self.recalculate_completion(editor);
+        self.reset_history();
     }
 
     pub fn delete_word_backwards(&mut self, editor: &Editor) {
@@ -274,6 +282,7 @@ impl Prompt {
         self.cursor = pos;
 
         self.recalculate_completion(editor);
+        self.reset_history();
     }
 
     pub fn delete_word_forwards(&mut self, editor: &Editor) {
@@ -281,6 +290,7 @@ impl Prompt {
         self.line.replace_range(self.cursor..pos, "");
 
         self.recalculate_completion(editor);
+        self.reset_history();
     }
 
     pub fn kill_to_start_of_line(&mut self, editor: &Editor) {
@@ -289,6 +299,7 @@ impl Prompt {
         self.cursor = pos;
 
         self.recalculate_completion(editor);
+        self.reset_history();
     }
 
     pub fn kill_to_end_of_line(&mut self, editor: &Editor) {
@@ -296,12 +307,19 @@ impl Prompt {
         self.line.replace_range(self.cursor..pos, "");
 
         self.recalculate_completion(editor);
+        self.reset_history();
     }
 
     pub fn clear(&mut self, editor: &Editor) {
         self.line.clear();
         self.cursor = 0;
         self.recalculate_completion(editor);
+        self.reset_history();
+    }
+
+    pub fn reset_history(&mut self) {
+        self.history_pos = None;
+        self.history_prefix = None;
     }
 
     pub fn change_history(
@@ -312,11 +330,13 @@ impl Prompt {
     ) {
         (self.callback_fn)(cx, &self.line, PromptEvent::Abort);
         let mut values = match cx.editor.registers.read(register, cx.editor) {
-            Some(values) if values.len() > 0 => values.rev(),
+            Some(values) if values.len() > 0 => values.rev().enumerate(),
             _ => return,
         };
 
-        let end = values.len().saturating_sub(1);
+        if self.history_pos.is_none() {
+            self.history_prefix = NonZeroUsize::new(self.line.len());
+        }
 
         let index = match direction {
             CompletionDirection::Forward => self.history_pos.map_or(0, |i| i + 1),
@@ -324,18 +344,43 @@ impl Prompt {
                 .history_pos
                 .unwrap_or_else(|| values.len())
                 .saturating_sub(1),
+        };
+
+        let history_line = if let Some(prefix_len) = self.history_prefix {
+            let prefix = &self.line[..prefix_len.get()];
+
+            match direction {
+                CompletionDirection::Forward => {
+                    if index > 0 {
+                        // Same as skip but without taking ownership
+                        let _ = values.nth(index - 1);
+                    }
+                    values.find(|prev| prev.1.starts_with(prefix))
+                }
+                CompletionDirection::Backward => {
+                    let r_index = values.len() - 1 - index;
+                    if r_index > 0 {
+                        // Same as skip but without taking ownership
+                        let _ = values.nth_back(r_index - 1);
+                    }
+                    values.rfind(|prev| prev.1.starts_with(prefix))
+                }
+            }
+        } else {
+            values.nth(index)
+        };
+
+        if let Some((index, line)) = history_line {
+            self.line = line.to_string();
+            // Appease the borrow checker.
+            drop(values);
+
+            self.history_pos = Some(index);
+
+            self.move_end();
+            (self.callback_fn)(cx, &self.line, PromptEvent::Update);
+            self.recalculate_completion(cx.editor);
         }
-        .min(end);
-
-        self.line = values.nth(index).unwrap().to_string();
-        // Appease the borrow checker.
-        drop(values);
-
-        self.history_pos = Some(index);
-
-        self.move_end();
-        (self.callback_fn)(cx, &self.line, PromptEvent::Update);
-        self.recalculate_completion(cx.editor);
     }
 
     pub fn change_completion_selection(&mut self, direction: CompletionDirection) {
@@ -357,6 +402,7 @@ impl Prompt {
         self.line.replace_range(range.clone(), item);
 
         self.move_end();
+        self.reset_history();
     }
 
     pub fn exit_selection(&mut self) {
