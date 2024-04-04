@@ -204,7 +204,6 @@
 (for_in_clause "in" @keyword.control)
 
 [
-  "and"
   "async"
   "class"
   "exec"
