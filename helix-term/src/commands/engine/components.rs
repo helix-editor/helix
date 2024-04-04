@@ -26,7 +26,6 @@ use crate::{
         Context,
     },
     compositor::{self, Component},
-    ctrl, key,
     ui::overlay::overlaid,
 };
 
@@ -40,8 +39,6 @@ struct AsyncReader {
 }
 
 impl AsyncReader {
-    // TODO: Add &mut references to these async functions
-    // to avoid the cloning, and to ditch the arc and mutex
     async fn read_line(self) -> Option<String> {
         let mut buf = String::new();
 
@@ -53,19 +50,34 @@ impl AsyncReader {
 
         let fut = guard.recv();
 
-        match tokio::time::timeout(std::time::Duration::from_millis(2), fut).await {
-            Ok(Some(v)) => {
-                buf.push_str(&v);
-                Some(buf)
-            }
-            Ok(None) => {
-                if buf.is_empty() {
-                    None
-                } else {
+        // If we haven't found any characters, just wait until we have something.
+        // Otherwise, we give this a 2 ms buffer to check if more things are
+        // coming through the pipe.
+        if buf.is_empty() {
+            let next = fut.await;
+
+            match next {
+                Some(v) => {
+                    buf.push_str(&v);
                     Some(buf)
                 }
+                None => None,
             }
-            Err(_) => Some(buf),
+        } else {
+            match tokio::time::timeout(std::time::Duration::from_millis(2), fut).await {
+                Ok(Some(v)) => {
+                    buf.push_str(&v);
+                    Some(buf)
+                }
+                Ok(None) => {
+                    if buf.is_empty() {
+                        None
+                    } else {
+                        Some(buf)
+                    }
+                }
+                Err(_) => Some(buf),
+            }
         }
     }
 }
@@ -255,6 +267,12 @@ pub fn helix_component_module() -> BuiltInModule {
             SteelEventResult::Consumed.into_steelval().unwrap(),
         )
         .register_value(
+            "event-result/consume-without-rerender",
+            SteelEventResult::ConsumedWithoutRerender
+                .into_steelval()
+                .unwrap(),
+        )
+        .register_value(
             "event-result/ignore",
             SteelEventResult::Ignored.into_steelval().unwrap(),
         )
@@ -439,7 +457,7 @@ pub struct SteelDynamicComponent {
     // TODO: currently the component id requires using a &'static str,
     // however in a world with dynamic components that might not be
     // the case anymore
-    _name: String,
+    name: String,
     // This _should_ be a struct, but in theory can be whatever you want. It will be the first argument
     // passed to the functions in the remainder of the struct.
     state: SteelVal,
@@ -463,7 +481,7 @@ impl SteelDynamicComponent {
         h: HashMap<String, SteelVal>,
     ) -> Self {
         Self {
-            _name: name,
+            name,
             state,
             render,
             handle_event: h.get("handle_event").cloned(),
@@ -522,11 +540,16 @@ enum SteelEventResult {
     Consumed,
     Ignored,
     Close,
+    ConsumedWithoutRerender,
 }
 
 impl Custom for SteelEventResult {}
 
 impl Component for SteelDynamicComponent {
+    fn name(&self) -> Option<&str> {
+        Some(&self.name)
+    }
+
     fn render(
         &mut self,
         area: helix_view::graphics::Rect,
@@ -646,6 +669,9 @@ impl Component for SteelDynamicComponent {
                     match value {
                         Ok(SteelEventResult::Close) => close_fn,
                         Ok(SteelEventResult::Consumed) => compositor::EventResult::Consumed(None),
+                        Ok(SteelEventResult::ConsumedWithoutRerender) => {
+                            compositor::EventResult::ConsumedWithoutRerender
+                        }
                         Ok(SteelEventResult::Ignored) => compositor::EventResult::Ignored(None),
                         _ => match event {
                             // ctrl!('c') | key!(Esc) => close_fn,
@@ -715,7 +741,7 @@ impl Component for SteelDynamicComponent {
                 Err(_e) => {
                     log::info!("Error: {:?}", _e);
                     (None, CursorKind::Block)
-                },
+                }
             }
         } else {
             (None, helix_view::graphics::CursorKind::Hidden)

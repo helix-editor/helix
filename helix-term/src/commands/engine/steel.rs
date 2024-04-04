@@ -1527,7 +1527,11 @@ impl Component for BoxDynComponent {
     }
 
     fn id(&self) -> Option<&'static str> {
-        None
+        Some(self.inner.type_name())
+    }
+
+    fn name(&self) -> Option<&str> {
+        self.inner.name()
     }
 
     fn render(
@@ -1768,8 +1772,10 @@ fn load_misc_api(engine: &mut Engine, generate_sources: bool) {
     // Arity 1
     module.register_fn("hx.custom-insert-newline", custom_insert_newline);
     module.register_fn("push-component!", push_component);
+    module.register_fn("pop-last-component!", pop_last_component_by_name);
     module.register_fn("enqueue-thread-local-callback", enqueue_command);
 
+    template_function_arity_1("pop-last-component!");
     template_function_arity_1("hx.custom-insert-newline");
     template_function_arity_1("push-component!");
     template_function_arity_1("enqueue-thread-local-callback");
@@ -2286,10 +2292,12 @@ fn push_component(cx: &mut Context, component: &mut WrappedDynComponent) {
     cx.jobs.local_callback(callback);
 }
 
-fn render(cx: &mut Context) {
+fn pop_last_component_by_name(cx: &mut Context, name: SteelString) {
     let callback = async move {
         let call: Box<dyn FnOnce(&mut Editor, &mut Compositor, &mut job::Jobs)> = Box::new(
-            move |_editor: &mut Editor, _compositor: &mut Compositor, _jobs: &mut job::Jobs| {},
+            move |_editor: &mut Editor, compositor: &mut Compositor, _jobs: &mut job::Jobs| {
+                compositor.remove_by_dynamic_name(&name);
+            },
         );
         Ok(call)
     };

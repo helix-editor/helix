@@ -13,6 +13,7 @@ pub type SyncCallback = Box<dyn FnOnce(&mut Compositor, &mut Context) + Sync>;
 pub enum EventResult {
     Ignored(Option<Callback>),
     Consumed(Option<Callback>),
+    ConsumedWithoutRerender,
 }
 
 use crate::job::Jobs;
@@ -71,6 +72,10 @@ pub trait Component: Any + AnyComponent {
     }
 
     fn id(&self) -> Option<&'static str> {
+        None
+    }
+
+    fn name(&self) -> Option<&str> {
         None
     }
 }
@@ -136,6 +141,14 @@ impl Compositor {
         Some(self.layers.remove(idx))
     }
 
+    pub fn remove_by_dynamic_name(&mut self, id: &str) -> Option<Box<dyn Component>> {
+        let idx = self
+            .layers
+            .iter()
+            .position(|layer| layer.name() == Some(id))?;
+        Some(self.layers.remove(idx))
+    }
+
     pub fn handle_event(&mut self, event: &Event, cx: &mut Context) -> bool {
         // If it is a key event and a macro is being recorded, push the key event to the recording.
         if let (Event::Key(key), Some((_, keys))) = (event, &mut cx.editor.macro_recording) {
@@ -157,6 +170,10 @@ impl Compositor {
                 }
                 EventResult::Consumed(None) => {
                     consumed = true;
+                    break;
+                }
+                // Swallow the event, but don't trigger a re-render
+                EventResult::ConsumedWithoutRerender => {
                     break;
                 }
                 EventResult::Ignored(Some(callback)) => {
