@@ -3,10 +3,8 @@ on:
   pull_request:
   push:
     branches:
-      - master
+      - driver
   merge_group:
-  schedule:
-    - cron: "00 01 * * *"
 
 jobs:
   check:
