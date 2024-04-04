@@ -114,12 +114,6 @@ impl Container {
         self
     }
 
-    fn remove_child(&mut self, index: usize) -> &mut Self {
-        self.children.remove(index);
-        self.remove_child_bounds(index);
-        self
-    }
-
     fn add_child_bounds(&mut self) -> &mut Self {
         self.node_bounds.push(ContainerBounds {
             width: 10,
@@ -138,11 +132,6 @@ impl Container {
                 expand: false,
             },
         );
-        self
-    }
-
-    fn remove_child_bounds(&mut self, index: usize) -> &mut Self {
-        self.node_bounds.remove(index);
         self
     }
 
