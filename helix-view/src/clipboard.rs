@@ -156,7 +156,7 @@ pub mod provider {
 
     #[cfg(feature = "term")]
     mod osc52 {
-        use {super::ClipboardType, crate::base64, crossterm};
+        use {super::ClipboardType, crate::base64};
 
         #[derive(Debug)]
         pub struct SetClipboardCommand {
@@ -255,7 +255,7 @@ pub mod provider {
     #[cfg(not(target_arch = "wasm32"))]
     pub mod command {
         use super::*;
-        use anyhow::{bail, Context as _, Result};
+        use anyhow::{bail, Context as _};
 
         #[cfg(not(any(windows, target_os = "macos")))]
         pub fn is_exit_success(program: &str, args: &[&str]) -> bool {

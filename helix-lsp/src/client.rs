@@ -6,7 +6,7 @@ use crate::{
 };
 
 use helix_core::{find_workspace, syntax::LanguageServerFeature, ChangeSet, Rope};
-use helix_loader::{self, VERSION_AND_GIT_HASH};
+use helix_loader::VERSION_AND_GIT_HASH;
 use helix_stdx::path;
 use lsp::{
     notification::DidChangeWorkspaceFolders, CodeActionCapabilityResolveSupport,
