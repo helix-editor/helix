@@ -2617,34 +2617,29 @@ fn selection_is_linewise(selection: &Selection, text: &Rope) -> bool {
     })
 }
 
-enum YankMode {
+enum YankAction {
     Yank,
     NoYank,
 }
 
-fn delete_selection_impl(cx: &mut Context, op: Operation, yank: YankMode) {
+fn delete_selection_impl(cx: &mut Context, op: Operation, yank: YankAction) {
     let (view, doc) = current!(cx.editor);
 
     let selection = doc.selection(view.id);
     let only_whole_lines = selection_is_linewise(selection, doc.text());
 
-    match yank {
-        YankMode::Yank => {
-            if cx.register != Some('_') {
-                // yank the selection
-                let text = doc.text().slice(..);
-                let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
-                let reg_name = cx.register.unwrap_or('"');
-                if let Err(err) = cx.editor.registers.write(reg_name, values) {
-                    cx.editor.set_error(err.to_string());
-                    return;
-                }
-            }
+    if cx.register != Some('_') && matches!(yank, YankAction::Yank) {
+        // yank the selection
+        let text = doc.text().slice(..);
+        let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
+        let reg_name = cx.register.unwrap_or('"');
+        if let Err(err) = cx.editor.registers.write(reg_name, values) {
+            cx.editor.set_error(err.to_string());
+            return;
         }
-        YankMode::NoYank => {}
     }
 
-    // delete
+    // delete the selection
     let transaction =
         Transaction::delete_by_selection(doc.text(), selection, |range| (range.from(), range.to()));
     doc.apply(&transaction, view.id);
@@ -2710,19 +2705,19 @@ fn delete_by_selection_insert_mode(
 }
 
 fn delete_selection(cx: &mut Context) {
-    delete_selection_impl(cx, Operation::Delete, YankMode::Yank);
+    delete_selection_impl(cx, Operation::Delete, YankAction::Yank);
 }
 
 fn delete_selection_noyank(cx: &mut Context) {
-    delete_selection_impl(cx, Operation::Delete, YankMode::NoYank);
+    delete_selection_impl(cx, Operation::Delete, YankAction::NoYank);
 }
 
 fn change_selection(cx: &mut Context) {
-    delete_selection_impl(cx, Operation::Change, YankMode::Yank);
+    delete_selection_impl(cx, Operation::Change, YankAction::Yank);
 }
 
 fn change_selection_noyank(cx: &mut Context) {
-    delete_selection_impl(cx, Operation::Change, YankMode::NoYank);
+    delete_selection_impl(cx, Operation::Change, YankAction::NoYank);
 }
 
 fn collapse_selection(cx: &mut Context) {
