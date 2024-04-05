@@ -13,7 +13,9 @@ use tui::{text::Span, widgets::Row};
 
 use super::{align_view, push_jump, Align, Context, Editor};
 
-use helix_core::{syntax::LanguageServerFeature, text_annotations::InlineAnnotation, Selection};
+use helix_core::{
+    syntax::LanguageServerFeature, text_annotations::InlineAnnotation, Selection, Uri,
+};
 use helix_stdx::path;
 use helix_view::{
     document::{DocumentInlayHints, DocumentInlayHintsId},
@@ -34,7 +36,7 @@ use std::{
     collections::{BTreeMap, HashSet},
     fmt::Write,
     future::Future,
-    path::{Path, PathBuf},
+    path::Path,
 };
 
 /// Gets the first language server that is attached to a document which supports a specific feature.
@@ -72,7 +74,7 @@ struct DiagnosticStyles {
 }
 
 struct PickerDiagnostic {
-    path: PathBuf,
+    uri: Uri,
     diag: lsp::Diagnostic,
     offset_encoding: OffsetEncoding,
 }
@@ -183,20 +185,20 @@ type DiagnosticsPicker = Picker<PickerDiagnostic, DiagnosticStyles>;
 
 fn diag_picker(
     cx: &Context,
-    diagnostics: BTreeMap<PathBuf, Vec<(lsp::Diagnostic, LanguageServerId)>>,
+    diagnostics: BTreeMap<Uri, Vec<(lsp::Diagnostic, LanguageServerId)>>,
     format: DiagnosticsFormat,
 ) -> DiagnosticsPicker {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
 
     // flatten the map to a vec of (url, diag) pairs
     let mut flat_diag = Vec::new();
-    for (path, diags) in diagnostics {
+    for (uri, diags) in diagnostics {
         flat_diag.reserve(diags.len());
 
         for (diag, ls) in diags {
             if let Some(ls) = cx.editor.language_server_by_id(ls) {
                 flat_diag.push(PickerDiagnostic {
-                    path: path.clone(),
+                    uri: uri.clone(),
                     diag,
                     offset_encoding: ls.offset_encoding(),
                 });
@@ -243,8 +245,14 @@ fn diag_picker(
             // between message code and message
             2,
             ui::PickerColumn::new("path", |item: &PickerDiagnostic, _| {
-                let path = path::get_truncated_path(&item.path);
-                path.to_string_lossy().to_string().into()
+                if let Some(path) = item.uri.as_path() {
+                    path::get_truncated_path(path)
+                        .to_string_lossy()
+                        .to_string()
+                        .into()
+                } else {
+                    Default::default()
+                }
             }),
         );
         primary_column += 1;
@@ -257,17 +265,20 @@ fn diag_picker(
         styles,
         move |cx,
               PickerDiagnostic {
-                  path,
+                  uri,
                   diag,
                   offset_encoding,
               },
               action| {
+            let Some(path) = uri.as_path() else {
+                return;
+            };
             jump_to_position(cx.editor, path, diag.range, *offset_encoding, action)
         },
     )
-    .with_preview(move |_editor, PickerDiagnostic { path, diag, .. }| {
+    .with_preview(move |_editor, PickerDiagnostic { uri, diag, .. }| {
         let line = Some((diag.range.start.line as usize, diag.range.end.line as usize));
-        Some((path.clone().into(), line))
+        Some((uri.clone().as_path_buf()?.into(), line))
     })
     .truncate_start(false)
 }
@@ -456,12 +467,17 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
         })
         .without_filtering(),
         ui::PickerColumn::new("path", |item: &SymbolInformationItem, _| {
-            match item.symbol.location.uri.to_file_path() {
-                Ok(path) => path::get_relative_path(path.as_path())
-                    .to_string_lossy()
-                    .to_string()
-                    .into(),
-                Err(_) => item.symbol.location.uri.to_string().into(),
+            if let Ok(uri) = Uri::try_from(&item.symbol.location.uri) {
+                if let Some(path) = uri.as_path() {
+                    path::get_relative_path(path)
+                        .to_string_lossy()
+                        .to_string()
+                        .into()
+                } else {
+                    item.symbol.location.uri.to_string().into()
+                }
+            } else {
+                item.symbol.location.uri.to_string().into()
             }
         }),
     ];
@@ -489,16 +505,11 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
 
 pub fn diagnostics_picker(cx: &mut Context) {
     let doc = doc!(cx.editor);
-    if let Some(current_path) = doc.path() {
-        let diagnostics = cx
-            .editor
-            .diagnostics
-            .get(current_path)
-            .cloned()
-            .unwrap_or_default();
+    if let Some(uri) = doc.uri() {
+        let diagnostics = cx.editor.diagnostics.get(&uri).cloned().unwrap_or_default();
         let picker = diag_picker(
             cx,
-            [(current_path.clone(), diagnostics)].into(),
+            [(uri, diagnostics)].into(),
             DiagnosticsFormat::HideSourcePath,
         );
         cx.push_layer(Box::new(overlaid(picker)));
@@ -842,6 +853,8 @@ fn goto_impl(
                         // With the preallocation above and UTF-8 paths already, this closure will do one (1)
                         // allocation, for `to_file_path`, else there will be two (2), with `to_string_lossy`.
                         if let Ok(path) = item.uri.to_file_path() {
+                            // We don't convert to a `helix_core::Uri` here because we've already checked the scheme.
+                            // This path won't be normalized but it's only used for display.
                             res.push_str(
                                 &path.strip_prefix(cwdir).unwrap_or(&path).to_string_lossy(),
                             );
