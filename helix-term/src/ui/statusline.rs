@@ -150,7 +150,7 @@ fn get_render_function<'a>(
         }
         helix_view::editor::StatusLineElement::Position => render_position,
         helix_view::editor::StatusLineElement::HorizontalPosition => render_horizontal_position,
-        helix_view::editor::StatusLineElement::VerticalPosition => render_vrtical_position,
+        helix_view::editor::StatusLineElement::VerticalPosition => render_vertical_position,
         helix_view::editor::StatusLineElement::PositionPercentage => render_position_percentage,
         helix_view::editor::StatusLineElement::TotalLineNumbers => render_total_line_numbers,
         helix_view::editor::StatusLineElement::Separator => render_separator,
