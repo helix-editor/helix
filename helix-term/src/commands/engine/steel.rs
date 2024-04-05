@@ -1379,7 +1379,7 @@ fn run_initialization_script(cx: &mut Context, configuration: Arc<ArcSwapAny<Arc
         let res = guard.run_with_reference(
             cx,
             "*helix.cx*",
-            &format!(r#"(require "{}")"#, helix_module_path.to_str().unwrap()),
+            &format!(r#"(require {:?})"#, helix_module_path.to_str().unwrap()),
         );
 
         // Present the error in the helix.scm loading

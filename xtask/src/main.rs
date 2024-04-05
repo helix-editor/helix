@@ -38,6 +38,16 @@ pub mod tasks {
         code_gen()
     }
 
+    pub fn install_steel() {
+        code_gen();
+        std::process::Command::new("cargo")
+            .args(["install", "--path", "helix-term", "--locked", "--force"])
+            .spawn()
+            .unwrap()
+            .wait()
+            .unwrap();
+    }
+
     pub fn print_help() {
         println!(
             "
@@ -61,6 +71,7 @@ fn main() -> Result<(), DynError> {
             "themelint" => tasks::themelint(env::args().nth(2))?,
             "query-check" => tasks::querycheck()?,
             "code-gen" => tasks::codegen(),
+            "steel" => tasks::install_steel(),
             invalid => return Err(format!("Invalid task name: {}", invalid).into()),
         },
     };
