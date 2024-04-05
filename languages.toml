@@ -45,6 +45,7 @@ intelephense = { command = "intelephense", args = ["--stdio"] }
 jdtls = { command = "jdtls" }
 jsonnet-language-server = { command = "jsonnet-language-server", args= ["-t", "--lint"] }
 julia = { command = "julia", timeout = 60, args = [ "--startup-file=no", "--history-file=no", "--quiet", "-e", "using LanguageServer; runserver()", ] }
+koka = { command = "koka", args = ["--language-server", "--lsstdio"] }
 kotlin-language-server = { command = "kotlin-language-server" }
 lean = { command = "lean", args = [ "--server" ] }
 ltex-ls = { command = "ltex-ls" }
@@ -3264,10 +3265,11 @@ injection-regex = "koka"
 file-types = ["kk"]
 comment-token = "//"
 indent = { tab-width = 8, unit = "  " }
+language-servers = ["koka"]
 
 [[grammar]]
 name = "koka"
-source = { git = "https://github.com/mtoohey31/tree-sitter-koka", rev = "2527e152d4b6a79fd50aebd8d0b4b4336c94a034" }
+source = { git = "https://github.com/mtoohey31/tree-sitter-koka", rev = "96d070c3700692858035f3524cc0ad944cef2594" }
 
 [[language]]
 name = "tact"
