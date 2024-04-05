@@ -2435,7 +2435,7 @@ fn global_search(cx: &mut Context) {
         },
     )
     .with_preview(|_editor, FileResult { path, line_num, .. }| {
-        Some((path.clone().into(), Some((*line_num, *line_num))))
+        Some((path.as_path().into(), Some((*line_num, *line_num))))
     })
     .with_history_register(Some(reg))
     .with_dynamic_query(get_files, Some(275));
@@ -3098,7 +3098,7 @@ fn changed_file_picker(cx: &mut Context) {
             }
         },
     )
-    .with_preview(|_editor, meta| Some((meta.path().to_path_buf().into(), None)));
+    .with_preview(|_editor, meta| Some((meta.path().into(), None)));
     let injector = picker.injector();
 
     cx.editor

@@ -61,7 +61,7 @@ fn thread_picker(
             .with_preview(move |editor, thread| {
                 let frames = editor.debugger.as_ref()?.stack_frames.get(&thread.id)?;
                 let frame = frames.first()?;
-                let path = frame.source.as_ref()?.path.clone()?;
+                let path = frame.source.as_ref()?.path.as_ref()?.as_path();
                 let pos = Some((
                     frame.line.saturating_sub(1),
                     frame.end_line.unwrap_or(frame.line).saturating_sub(1),
@@ -747,10 +747,10 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
         frame
             .source
             .as_ref()
-            .and_then(|source| source.path.clone())
+            .and_then(|source| source.path.as_ref())
             .map(|path| {
                 (
-                    path.into(),
+                    path.as_path().into(),
                     Some((
                         frame.line.saturating_sub(1),
                         frame.end_line.unwrap_or(frame.line).saturating_sub(1),

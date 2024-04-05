@@ -60,37 +60,41 @@ pub const MIN_AREA_WIDTH_FOR_PREVIEW: u16 = 72;
 pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
 
 #[derive(PartialEq, Eq, Hash)]
-pub enum PathOrId {
+pub enum PathOrId<'a> {
     Id(DocumentId),
-    Path(Arc<Path>),
+    // See [PathOrId::from_path_buf]: this will eventually become `Path(&Path)`.
+    Path(Cow<'a, Path>),
 }
 
-impl PathOrId {
-    fn get_canonicalized(self) -> Self {
-        use PathOrId::*;
-        match self {
-            Path(path) => Path(helix_stdx::path::canonicalize(&path).into()),
-            Id(id) => Id(id),
-        }
+impl<'a> PathOrId<'a> {
+    /// Creates a [PathOrId] from a PathBuf
+    ///
+    /// # Deprecated
+    /// The owned version of PathOrId will be removed in a future refactor
+    /// and replaced with `&'a Path`. See the caller of this function for
+    /// more details on its removal.
+    #[deprecated]
+    pub fn from_path_buf(path_buf: PathBuf) -> Self {
+        Self::Path(Cow::Owned(path_buf))
     }
 }
 
-impl From<PathBuf> for PathOrId {
-    fn from(v: PathBuf) -> Self {
-        Self::Path(v.as_path().into())
+impl<'a> From<&'a Path> for PathOrId<'a> {
+    fn from(path: &'a Path) -> Self {
+        Self::Path(Cow::Borrowed(path))
     }
 }
 
-impl From<DocumentId> for PathOrId {
+impl<'a> From<DocumentId> for PathOrId<'a> {
     fn from(v: DocumentId) -> Self {
         Self::Id(v)
     }
 }
 
-type FileCallback<T> = Box<dyn Fn(&Editor, &T) -> Option<FileLocation>>;
+type FileCallback<T> = Box<dyn for<'a> Fn(&'a Editor, &'a T) -> Option<FileLocation<'a>>>;
 
 /// File path and range of lines (used to align and highlight lines)
-pub type FileLocation = (PathOrId, Option<(usize, usize)>);
+pub type FileLocation<'a> = (PathOrId<'a>, Option<(usize, usize)>);
 
 pub enum CachedPreview {
     Document(Box<Document>),
@@ -400,7 +404,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
 
     pub fn with_preview(
         mut self,
-        preview_fn: impl Fn(&Editor, &T) -> Option<FileLocation> + 'static,
+        preview_fn: impl for<'a> Fn(&'a Editor, &'a T) -> Option<FileLocation<'a>> + 'static,
     ) -> Self {
         self.file_fn = Some(Box::new(preview_fn));
         // assumption: if we have a preview we are matching paths... If this is ever
@@ -544,40 +548,35 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         }
     }
 
-    fn current_file(&self, editor: &Editor) -> Option<FileLocation> {
-        self.selection()
-            .and_then(|current| (self.file_fn.as_ref()?)(editor, current))
-            .map(|(path_or_id, line)| (path_or_id.get_canonicalized(), line))
-    }
-
-    /// Get (cached) preview for a given path. If a document corresponding
+    /// Get (cached) preview for the currently selected item. If a document corresponding
     /// to the path is already open in the editor, it is used instead.
     fn get_preview<'picker, 'editor>(
         &'picker mut self,
-        path_or_id: PathOrId,
         editor: &'editor Editor,
-    ) -> Preview<'picker, 'editor> {
+    ) -> Option<(Preview<'picker, 'editor>, Option<(usize, usize)>)> {
+        let current = self.selection()?;
+        let (path_or_id, range) = (self.file_fn.as_ref()?)(editor, current)?;
+
         match path_or_id {
             PathOrId::Path(path) => {
-                if let Some(doc) = editor.document_by_path(&path) {
-                    return Preview::EditorDocument(doc);
+                let path = path.as_ref();
+                if let Some(doc) = editor.document_by_path(path) {
+                    return Some((Preview::EditorDocument(doc), range));
                 }
 
-                if self.preview_cache.contains_key(&path) {
-                    let preview = &self.preview_cache[&path];
-                    match preview {
-                        // If the document isn't highlighted yet, attempt to highlight it.
-                        CachedPreview::Document(doc) if doc.language_config().is_none() => {
-                            helix_event::send_blocking(
-                                &self.preview_highlight_handler,
-                                path.clone(),
-                            );
-                        }
-                        _ => (),
+                if self.preview_cache.contains_key(path) {
+                    // NOTE: we use `HashMap::get_key_value` here instead of indexing so we can
+                    // retrieve the `Arc<Path>` key. The `path` in scope here is a `&Path` and
+                    // we can cheaply clone the key for the preview highlight handler.
+                    let (path, preview) = self.preview_cache.get_key_value(path).unwrap();
+                    if matches!(preview, CachedPreview::Document(doc) if doc.language_config().is_none())
+                    {
+                        helix_event::send_blocking(&self.preview_highlight_handler, path.clone());
                     }
-                    return Preview::Cached(preview);
+                    return Some((Preview::Cached(preview), range));
                 }
 
+                let path: Arc<Path> = path.into();
                 let data = std::fs::File::open(&path).and_then(|file| {
                     let metadata = file.metadata()?;
                     // Read up to 1kb to detect the content type
@@ -607,11 +606,11 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                     )
                     .unwrap_or(CachedPreview::NotFound);
                 self.preview_cache.insert(path.clone(), preview);
-                Preview::Cached(&self.preview_cache[&path])
+                Some((Preview::Cached(&self.preview_cache[&path]), range))
             }
             PathOrId::Id(id) => {
                 let doc = editor.documents.get(&id).unwrap();
-                Preview::EditorDocument(doc)
+                Some((Preview::EditorDocument(doc), range))
             }
         }
     }
@@ -816,8 +815,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         let inner = inner.inner(margin);
         BLOCK.render(area, surface);
 
-        if let Some((path, range)) = self.current_file(cx.editor) {
-            let preview = self.get_preview(path, cx.editor);
+        if let Some((preview, range)) = self.get_preview(cx.editor) {
             let doc = match preview.document() {
                 Some(doc)
                     if range.map_or(true, |(start, end)| {

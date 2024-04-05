@@ -64,6 +64,7 @@ macro_rules! language_server_with_feature {
 struct SymbolInformationItem {
     symbol: lsp::SymbolInformation,
     offset_encoding: OffsetEncoding,
+    uri: Uri,
 }
 
 struct DiagnosticStyles {
@@ -79,13 +80,10 @@ struct PickerDiagnostic {
     offset_encoding: OffsetEncoding,
 }
 
-fn location_to_file_location(location: &lsp::Location) -> FileLocation {
-    let path = location.uri.to_file_path().unwrap();
-    let line = Some((
-        location.range.start.line as usize,
-        location.range.end.line as usize,
-    ));
-    (path.into(), line)
+fn uri_to_file_location<'a>(uri: &'a Uri, range: &lsp::Range) -> Option<FileLocation<'a>> {
+    let path = uri.as_path()?;
+    let line = Some((range.start.line as usize, range.end.line as usize));
+    Some((path.into(), line))
 }
 
 fn jump_to_location(
@@ -278,7 +276,7 @@ fn diag_picker(
     )
     .with_preview(move |_editor, PickerDiagnostic { uri, diag, .. }| {
         let line = Some((diag.range.start.line as usize, diag.range.end.line as usize));
-        Some((uri.clone().as_path_buf()?.into(), line))
+        Some((uri.as_path()?.into(), line))
     })
     .truncate_start(false)
 }
@@ -287,6 +285,7 @@ pub fn symbol_picker(cx: &mut Context) {
     fn nested_to_flat(
         list: &mut Vec<SymbolInformationItem>,
         file: &lsp::TextDocumentIdentifier,
+        uri: &Uri,
         symbol: lsp::DocumentSymbol,
         offset_encoding: OffsetEncoding,
     ) {
@@ -301,9 +300,10 @@ pub fn symbol_picker(cx: &mut Context) {
                 container_name: None,
             },
             offset_encoding,
+            uri: uri.clone(),
         });
         for child in symbol.children.into_iter().flatten() {
-            nested_to_flat(list, file, child, offset_encoding);
+            nested_to_flat(list, file, uri, child, offset_encoding);
         }
     }
     let doc = doc!(cx.editor);
@@ -317,6 +317,9 @@ pub fn symbol_picker(cx: &mut Context) {
             let request = language_server.document_symbols(doc.identifier()).unwrap();
             let offset_encoding = language_server.offset_encoding();
             let doc_id = doc.identifier();
+            let doc_uri = doc
+                .uri()
+                .expect("docs with active language servers must be backed by paths");
 
             async move {
                 let json = request.await?;
@@ -331,6 +334,7 @@ pub fn symbol_picker(cx: &mut Context) {
                     lsp::DocumentSymbolResponse::Flat(symbols) => symbols
                         .into_iter()
                         .map(|symbol| SymbolInformationItem {
+                            uri: doc_uri.clone(),
                             symbol,
                             offset_encoding,
                         })
@@ -338,7 +342,13 @@ pub fn symbol_picker(cx: &mut Context) {
                     lsp::DocumentSymbolResponse::Nested(symbols) => {
                         let mut flat_symbols = Vec::new();
                         for symbol in symbols {
-                            nested_to_flat(&mut flat_symbols, &doc_id, symbol, offset_encoding)
+                            nested_to_flat(
+                                &mut flat_symbols,
+                                &doc_id,
+                                &doc_uri,
+                                symbol,
+                                offset_encoding,
+                            )
                         }
                         flat_symbols
                     }
@@ -388,7 +398,7 @@ pub fn symbol_picker(cx: &mut Context) {
                 },
             )
             .with_preview(move |_editor, item| {
-                Some(location_to_file_location(&item.symbol.location))
+                uri_to_file_location(&item.uri, &item.symbol.location.range)
             })
             .truncate_start(false);
 
@@ -431,9 +441,19 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
                         serde_json::from_value::<Option<Vec<lsp::SymbolInformation>>>(json)?
                             .unwrap_or_default()
                             .into_iter()
-                            .map(|symbol| SymbolInformationItem {
-                                symbol,
-                                offset_encoding,
+                            .filter_map(|symbol| {
+                                let uri = match Uri::try_from(&symbol.location.uri) {
+                                    Ok(uri) => uri,
+                                    Err(err) => {
+                                        log::warn!("discarding symbol with invalid URI: {err}");
+                                        return None;
+                                    }
+                                };
+                                Some(SymbolInformationItem {
+                                    symbol,
+                                    uri,
+                                    offset_encoding,
+                                })
                             })
                             .collect();
 
@@ -467,15 +487,11 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
         })
         .without_filtering(),
         ui::PickerColumn::new("path", |item: &SymbolInformationItem, _| {
-            if let Ok(uri) = Uri::try_from(&item.symbol.location.uri) {
-                if let Some(path) = uri.as_path() {
-                    path::get_relative_path(path)
-                        .to_string_lossy()
-                        .to_string()
-                        .into()
-                } else {
-                    item.symbol.location.uri.to_string().into()
-                }
+            if let Some(path) = item.uri.as_path() {
+                path::get_relative_path(path)
+                    .to_string_lossy()
+                    .to_string()
+                    .into()
             } else {
                 item.symbol.location.uri.to_string().into()
             }
@@ -496,7 +512,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
             );
         },
     )
-    .with_preview(|_editor, item| Some(location_to_file_location(&item.symbol.location)))
+    .with_preview(|_editor, item| uri_to_file_location(&item.uri, &item.symbol.location.range))
     .with_dynamic_query(get_symbols, None)
     .truncate_start(false);
 
@@ -875,7 +891,31 @@ fn goto_impl(
             let picker = Picker::new(columns, 0, locations, cwdir, move |cx, location, action| {
                 jump_to_location(cx.editor, location, offset_encoding, action)
             })
-            .with_preview(move |_editor, location| Some(location_to_file_location(location)));
+            .with_preview(move |_editor, location| {
+                use crate::ui::picker::PathOrId;
+
+                let lines = Some((
+                    location.range.start.line as usize,
+                    location.range.end.line as usize,
+                ));
+
+                // TODO: we should avoid allocating by doing the Uri conversion ahead of time.
+                //
+                // To do this, introduce a `Location` type in `helix-core` that reuses the core
+                // `Uri` type instead of the LSP `Url` type and replaces the LSP `Range` type.
+                // Refactor the callers of `goto_impl` to pass iterators that translate the
+                // LSP location type to the custom one in core, or have them collect and pass
+                // `Vec<Location>`s. Replace the `uri_to_file_location` function with
+                // `location_to_file_location` that takes only `&helix_core::Location` as
+                // parameters.
+                //
+                // By doing this we can also eliminate the duplicated URI info in the
+                // `SymbolInformationItem` type and introduce a custom Symbol type in `helix-core`
+                // which will be reused in the future for tree-sitter based symbol pickers.
+                let path = Uri::try_from(&location.uri).ok()?.as_path_buf()?;
+                #[allow(deprecated)]
+                Some((PathOrId::from_path_buf(path), lines))
+            });
             compositor.push(Box::new(overlaid(picker)));
         }
     }
