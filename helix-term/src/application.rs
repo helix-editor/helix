@@ -11,6 +11,7 @@ use helix_view::{
     align_view,
     document::{DocumentOpenError, DocumentSavedEventResult},
     editor::{ConfigEvent, EditorEvent},
+    events::DiagnosticsDidChange,
     graphics::Rect,
     theme,
     tree::Layout,
@@ -834,6 +835,12 @@ impl Application {
                                 &unchanged_diag_sources,
                                 Some(server_id),
                             );
+
+                            let doc = doc.id();
+                            helix_event::dispatch(DiagnosticsDidChange {
+                                editor: &mut self.editor,
+                                doc,
+                            });
                         }
                     }
                     Notification::ShowMessage(params) => {

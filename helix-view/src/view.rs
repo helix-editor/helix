@@ -4,6 +4,7 @@ use crate::{
     document::DocumentInlayHints,
     editor::{GutterConfig, GutterType},
     graphics::Rect,
+    handlers::diagnostics::DiagnosticsHandler,
     Align, Document, DocumentId, Theme, ViewId,
 };
 
@@ -147,6 +148,14 @@ pub struct View {
     /// mapping keeps track of the last applied history revision so that only new changes
     /// are applied.
     doc_revisions: HashMap<DocumentId, usize>,
+    // HACKS: there should really only be a global diagnostics handler (the
+    // non-focused views should just not have different handling for the cursor
+    // line). For that we would need accces to editor everywhere (we want to use
+    // the positioning code) so this can only happen by refactoring View and
+    // Document into entity component like structure. That is a huge refactor
+    // left to future work. For now we treat all views as focused and give them
+    // each their own handler.
+    pub diagnostics_handler: DiagnosticsHandler,
 }
 
 impl fmt::Debug for View {
@@ -176,6 +185,7 @@ impl View {
             object_selections: Vec::new(),
             gutters,
             doc_revisions: HashMap::new(),
+            diagnostics_handler: DiagnosticsHandler::new(),
         }
     }
 
@@ -463,10 +473,13 @@ impl View {
                 .add_inline_annotations(other_inlay_hints, other_style)
                 .add_inline_annotations(padding_after_inlay_hints, None);
         };
-        let width = self.inner_width(doc);
         let config = doc.config.load();
-        if config.lsp.inline_diagnostics.enable(width) {
-            let config = config.lsp.inline_diagnostics.clone();
+        let width = self.inner_width(doc);
+        let enable_cursor_line = self
+            .diagnostics_handler
+            .show_cursorline_diagnostics(doc, self.id);
+        let config = config.inline_diagnostics.prepare(width, enable_cursor_line);
+        if !config.disabled() {
             let cursor = doc
                 .selection(self.id)
                 .primary()

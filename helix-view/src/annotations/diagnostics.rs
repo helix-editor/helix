@@ -60,22 +60,26 @@ pub struct InlineDiagnosticsConfig {
 }
 
 impl InlineDiagnosticsConfig {
-    // last column where to start diagnostics
-    // every diagnostics that start afterwards will be displayed with a "backwards
-    // line" to ensure they are still rendered with `min_diagnostic_widht`. If `width`
-    // it too small to display diagnostics with atleast `min_diagnostic_width` space
-    // (or inline diagnostics are displed) `None` is returned. In that case inline
-    // diagnostics should not be shown
-    pub fn enable(&self, width: u16) -> bool {
-        let disabled = matches!(
+    pub fn disabled(&self) -> bool {
+        matches!(
             self,
             Self {
                 cursor_line: DiagnosticFilter::Disable,
                 other_lines: DiagnosticFilter::Disable,
                 ..
             }
-        );
-        !disabled && width >= self.min_diagnostic_width + self.prefix_len
+        )
+    }
+
+    pub fn prepare(&self, width: u16, enable_cursor_line: bool) -> Self {
+        let mut config = self.clone();
+        if width < self.min_diagnostic_width + self.prefix_len {
+            config.cursor_line = DiagnosticFilter::Disable;
+            config.other_lines = DiagnosticFilter::Disable;
+        } else if !enable_cursor_line {
+            config.cursor_line = self.cursor_line.min(self.other_lines);
+        }
+        config
     }
 
     pub fn max_diagnostic_start(&self, width: u16) -> u16 {
