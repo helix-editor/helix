@@ -359,8 +359,8 @@ impl EditorView {
     pub fn doc_diagnostics_highlights(
         doc: &Document,
         theme: &Theme,
-    ) -> [Vec<(usize, std::ops::Range<usize>)>; 5] {
-        use helix_core::diagnostic::{DiagnosticTag, Severity};
+    ) -> [Vec<(usize, std::ops::Range<usize>)>; 7] {
+        use helix_core::diagnostic::{DiagnosticTag, Range, Severity};
         let get_scope_of = |scope| {
             theme
             .find_scope_index_exact(scope)
@@ -389,6 +389,25 @@ impl EditorView {
         let mut hint_vec = Vec::new();
         let mut warning_vec = Vec::new();
         let mut error_vec = Vec::new();
+        let mut unnecessary_vec = Vec::new();
+        let mut deprecated_vec = Vec::new();
+
+        let push_diagnostic =
+            |vec: &mut Vec<(usize, std::ops::Range<usize>)>, scope, range: Range| {
+                // If any diagnostic overlaps ranges with the prior diagnostic,
+                // merge the two together. Otherwise push a new span.
+                match vec.last_mut() {
+                    Some((_, existing_range)) if range.start <= existing_range.end => {
+                        // This branch merges overlapping diagnostics, assuming that the current
+                        // diagnostic starts on range.start or later. If this assertion fails,
+                        // we will discard some part of `diagnostic`. This implies that
+                        // `doc.diagnostics()` is not sorted by `diagnostic.range`.
+                        debug_assert!(existing_range.start <= range.start);
+                        existing_range.end = range.end.max(existing_range.end)
+                    }
+                    _ => vec.push((scope, range.start..range.end)),
+                }
+            };
 
         for diagnostic in doc.diagnostics() {
             // Separate diagnostics into different Vecs by severity.
@@ -400,31 +419,44 @@ impl EditorView {
                 _ => (&mut default_vec, r#default),
             };
 
-            let scope = diagnostic
-                .tags
-                .first()
-                .and_then(|tag| match tag {
-                    DiagnosticTag::Unnecessary => unnecessary,
-                    DiagnosticTag::Deprecated => deprecated,
-                })
-                .unwrap_or(scope);
+            // If the diagnostic has tags and a non-warning/error severity, skip rendering
+            // the diagnostic as info/hint/default and only render it as unnecessary/deprecated
+            // instead. For warning/error diagnostics, render both the severity highlight and
+            // the tag highlight.
+            if diagnostic.tags.is_empty()
+                || matches!(
+                    diagnostic.severity,
+                    Some(Severity::Warning | Severity::Error)
+                )
+            {
+                push_diagnostic(vec, scope, diagnostic.range);
+            }
 
-            // If any diagnostic overlaps ranges with the prior diagnostic,
-            // merge the two together. Otherwise push a new span.
-            match vec.last_mut() {
-                Some((_, range)) if diagnostic.range.start <= range.end => {
-                    // This branch merges overlapping diagnostics, assuming that the current
-                    // diagnostic starts on range.start or later. If this assertion fails,
-                    // we will discard some part of `diagnostic`. This implies that
-                    // `doc.diagnostics()` is not sorted by `diagnostic.range`.
-                    debug_assert!(range.start <= diagnostic.range.start);
-                    range.end = diagnostic.range.end.max(range.end)
+            for tag in &diagnostic.tags {
+                match tag {
+                    DiagnosticTag::Unnecessary => {
+                        if let Some(scope) = unnecessary {
+                            push_diagnostic(&mut unnecessary_vec, scope, diagnostic.range)
+                        }
+                    }
+                    DiagnosticTag::Deprecated => {
+                        if let Some(scope) = deprecated {
+                            push_diagnostic(&mut deprecated_vec, scope, diagnostic.range)
+                        }
+                    }
                 }
-                _ => vec.push((scope, diagnostic.range.start..diagnostic.range.end)),
             }
         }
 
-        [default_vec, info_vec, hint_vec, warning_vec, error_vec]
+        [
+            default_vec,
+            unnecessary_vec,
+            deprecated_vec,
+            info_vec,
+            hint_vec,
+            warning_vec,
+            error_vec,
+        ]
     }
 
     /// Get highlight spans for selections in a document view.
