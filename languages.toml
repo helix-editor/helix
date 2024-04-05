@@ -670,7 +670,7 @@ name = "javascript"
 scope = "source.js"
 injection-regex = "(js|javascript)"
 language-id = "javascript"
-file-types = ["js", "mjs", "cjs", "rules", "es6", "pac", { glob = "jakefile" }]
+file-types = ["js", "mjs", "cjs", "rules", "es6", "pac", { glob = ".node_repl_history" }, { glob = "jakefile" }]
 shebangs = ["node"]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
@@ -709,9 +709,9 @@ grammar = "javascript"
 name = "typescript"
 scope = "source.ts"
 injection-regex = "(ts|typescript)"
-file-types = ["ts", "mts", "cts"]
 language-id = "typescript"
-shebangs = ["deno", "ts-node"]
+file-types = ["ts", "mts", "cts"]
+shebangs = ["deno", "bun", "ts-node"]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "typescript-language-server" ]
@@ -782,7 +782,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-html", rev = "29f53
 name = "python"
 scope = "source.python"
 injection-regex = "python"
-file-types = ["py", "pyi", "py3", "pyw", "ptl", "rpy", "cpy", "ipy", "pyt", { glob = ".pythonstartup" }, { glob = ".pythonrc" }, { glob = "SConstruct" }, { glob = "SConscript" }]
+file-types = ["py", "pyi", "py3", "pyw", "ptl", "rpy", "cpy", "ipy", "pyt", { glob = ".python_history" }, { glob = ".pythonstartup" }, { glob = ".pythonrc" }, { glob = "SConstruct" }, { glob = "SConscript" }]
 shebangs = ["python"]
 roots = ["pyproject.toml", "setup.py", "poetry.lock", "pyrightconfig.json"]
 comment-token = "#"
@@ -884,6 +884,10 @@ injection-regex = "(shell|bash|zsh|sh)"
 file-types = [
   "sh",
   "bash",
+  "ash",
+  "dash",
+  "ksh",
+  "mksh",
   "zsh",
   "zshenv",
   "zlogin",
@@ -895,7 +899,6 @@ file-types = [
   "bazelrc",
   "Renviron",
   "zsh-theme",
-  "ksh",
   "cshrc",
   "tcshrc",
   "bashrc_Apple_Terminal",
