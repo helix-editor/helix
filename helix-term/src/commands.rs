@@ -1203,12 +1203,12 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
 
         let is_valid_path_char = |c: &char| {
             #[cfg(target_os = "windows")]
-            let valid_chars: &[char] = &[
+            let valid_chars = &[
                 '@', '/', '\\', '.', '-', '_', '+', '#', '$', '%', '{', '}', '[', ']', ':', '!',
                 '~', '=',
             ];
             #[cfg(not(target_os = "windows"))]
-            let valid_chars: &[char] = &['@', '/', '.', '-', '_', '+', '#', '$', '%', '~', '='];
+            let valid_chars = &['@', '/', '.', '-', '_', '+', '#', '$', '%', '~', '=', ':'];
 
             valid_chars.contains(c) || c.is_alphabetic() || c.is_numeric()
         };
