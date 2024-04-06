@@ -4,7 +4,6 @@ use arc_swap::ArcSwap;
 use helix_core::syntax;
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;
-use std::num::NonZeroUsize;
 use std::sync::Arc;
 use std::{borrow::Cow, ops::RangeFrom};
 use tui::buffer::Buffer as Surface;
@@ -32,7 +31,7 @@ pub struct Prompt {
     selection: Option<usize>,
     history_register: Option<char>,
     history_pos: Option<usize>,
-    history_prefix: Option<NonZeroUsize>,
+    history_substring: Option<String>,
     completion_fn: CompletionFn,
     callback_fn: CallbackFn,
     pub doc_fn: DocFn,
@@ -85,7 +84,7 @@ impl Prompt {
             selection: None,
             history_register,
             history_pos: None,
-            history_prefix: None,
+            history_substring: None,
             completion_fn: Box::new(completion_fn),
             callback_fn: Box::new(callback_fn),
             doc_fn: Box::new(|_| None),
@@ -319,7 +318,7 @@ impl Prompt {
 
     pub fn reset_history(&mut self) {
         self.history_pos = None;
-        self.history_prefix = None;
+        self.history_substring = None;
     }
 
     pub fn change_history(
@@ -334,8 +333,10 @@ impl Prompt {
             _ => return,
         };
 
-        if self.history_pos.is_none() {
-            self.history_prefix = NonZeroUsize::new(self.line.len());
+        // Using `history_pos` as the trigger so that we only consider updating
+        // the substring to match on when entering history
+        if self.history_pos.is_none() && !self.line.is_empty() {
+            self.history_substring = Some(self.line.clone())
         }
 
         let index = match direction {
@@ -346,16 +347,14 @@ impl Prompt {
                 .saturating_sub(1),
         };
 
-        let history_line = if let Some(prefix_len) = self.history_prefix {
-            let prefix = &self.line[..prefix_len.get()];
-
+        let history_line = if let Some(substr) = self.history_substring.as_ref() {
             match direction {
                 CompletionDirection::Forward => {
                     if index > 0 {
                         // Same as skip but without taking ownership
                         let _ = values.nth(index - 1);
                     }
-                    values.find(|prev| prev.1.starts_with(prefix))
+                    values.find(|prev| prev.1.find(substr).is_some())
                 }
                 CompletionDirection::Backward => {
                     let r_index = values.len() - 1 - index;
@@ -363,7 +362,7 @@ impl Prompt {
                         // Same as skip but without taking ownership
                         let _ = values.nth_back(r_index - 1);
                     }
-                    values.rfind(|prev| prev.1.starts_with(prefix))
+                    values.rfind(|prev| prev.1.find(substr).is_some())
                 }
             }
         } else {
