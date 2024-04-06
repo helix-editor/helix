@@ -2,7 +2,7 @@ use std::fmt::Write;
 use std::io::BufReader;
 use std::ops::Deref;
 
-use crate::job::Job;
+use crate::job::{Job, RequireRender};
 
 use super::*;
 
@@ -120,6 +120,7 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
                     move |editor: &mut Editor, compositor: &mut Compositor| {
                         let picker = ui::file_picker(path.into_owned(), &editor.config());
                         compositor.push(Box::new(overlaid(picker)));
+                        RequireRender::Render
                     },
                 ));
                 Ok(call)
@@ -1416,7 +1417,8 @@ fn lsp_workspace_command(
                             execute_lsp_command(cx.editor, *ls_id, command.clone());
                         },
                     );
-                    compositor.push(Box::new(overlaid(picker)))
+                    compositor.push(Box::new(overlaid(picker)));
+                    RequireRender::Render
                 },
             ));
             Ok(call)
@@ -1555,6 +1557,7 @@ fn tree_sitter_scopes(
                 let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
                 let popup = Popup::new("hover", contents).auto_close(true);
                 compositor.replace_or_push("hover", popup);
+                RequireRender::Render
             },
         ));
         Ok(call)
@@ -1630,6 +1633,7 @@ fn tree_sitter_highlight_name(
                 let content = ui::Markdown::new(content, editor.syn_loader.clone());
                 let popup = Popup::new("hover", content).auto_close(true);
                 compositor.replace_or_push("hover", popup);
+                RequireRender::Render
             },
         ));
         Ok(call)
@@ -2152,6 +2156,7 @@ fn tree_sitter_subtree(
                         let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
                         let popup = Popup::new("hover", contents).auto_close(true);
                         compositor.replace_or_push("hover", popup);
+                        RequireRender::Render
                     },
                 ));
                 Ok(call)
@@ -2300,6 +2305,7 @@ fn run_shell_command(
                     compositor.replace_or_push("shell", popup);
                 }
                 editor.set_status("Command run");
+                RequireRender::Render
             },
         ));
         Ok(call)
@@ -2403,6 +2409,7 @@ fn redraw(
         let call: job::Callback =
             job::Callback::EditorCompositor(Box::new(|_editor, compositor| {
                 compositor.need_full_redraw();
+                RequireRender::Render
             }));
 
         Ok(call)

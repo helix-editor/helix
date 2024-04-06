@@ -18,6 +18,7 @@ use futures_util::Future;
 mod handlers;
 
 use ignore::DirEntry;
+use job::RequireRender;
 use url::Url;
 
 #[cfg(windows)]
@@ -79,11 +80,12 @@ fn open_external_url_callback(
             let mut command = tokio::process::Command::new(cmd.get_program());
             command.args(cmd.get_args());
             if command.output().await.is_ok() {
-                return Ok(job::Callback::Editor(Box::new(|_| {})));
+                return Ok(job::Callback::Editor(Box::new(|_| RequireRender::Render)));
             }
         }
         Ok(job::Callback::Editor(Box::new(move |editor| {
-            editor.set_error("Opening URL in external program failed")
+            editor.set_error("Opening URL in external program failed");
+            RequireRender::Render
         })))
     }
 }

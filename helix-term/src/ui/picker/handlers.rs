@@ -7,7 +7,10 @@ use std::{
 use helix_event::AsyncHook;
 use tokio::time::Instant;
 
-use crate::{job, ui::overlay::Overlay};
+use crate::{
+    job::{self, RequireRender},
+    ui::overlay::Overlay,
+};
 
 use super::{CachedPreview, DynQueryCallback, Picker};
 
@@ -58,21 +61,21 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> AsyncHook
                 content: picker, ..
             }) = compositor.find::<Overlay<Picker<T, D>>>()
             else {
-                return;
+                return RequireRender::Skip;
             };
 
             let Some(CachedPreview::Document(ref mut doc)) = picker.preview_cache.get_mut(&path)
             else {
-                return;
+                return RequireRender::Skip;
             };
 
             if doc.language_config().is_some() {
-                return;
+                return RequireRender::Skip;
             }
 
             let Some(language_config) = doc.detect_language_config(&editor.syn_loader.load())
             else {
-                return;
+                return RequireRender::Skip;
             };
             doc.language = Some(language_config.clone());
             let text = doc.text().clone();
@@ -95,12 +98,12 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> AsyncHook
                     }) = compositor.find::<Overlay<Picker<T, D>>>()
                     else {
                         log::info!("picker closed before syntax highlighting finished");
-                        return;
+                        return RequireRender::Skip;
                     };
                     let Some(CachedPreview::Document(ref mut doc)) =
                         picker.preview_cache.get_mut(&path)
                     else {
-                        return;
+                        return RequireRender::Skip;
                     };
                     let diagnostics = helix_view::Editor::doc_diagnostics(
                         &editor.language_servers,
@@ -109,8 +112,11 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> AsyncHook
                     );
                     doc.replace_diagnostics(diagnostics, &[], None);
                     doc.syntax = Some(syntax);
+                    RequireRender::Render
                 });
             });
+
+            RequireRender::Skip
         });
     }
 }
@@ -174,7 +180,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> AsyncHook for DynamicQu
                 content: picker, ..
             }) = compositor.find::<Overlay<Picker<T, D>>>()
             else {
-                return;
+                return RequireRender::Skip;
             };
             // Increment the version number to cancel any ongoing requests.
             picker.version.fetch_add(1, atomic::Ordering::Relaxed);
@@ -188,6 +194,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> AsyncHook for DynamicQu
                 // NOTE: the Drop implementation of Injector will request a redraw when the
                 // injector falls out of scope here, clearing the "running" indicator.
             });
+            RequireRender::Skip
         })
     }
 }

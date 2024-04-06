@@ -8,7 +8,7 @@ use helix_event::{send_blocking, AsyncHook, CancelRx};
 use helix_view::Editor;
 
 use crate::handlers::completion::CompletionItem;
-use crate::job;
+use crate::job::{self, RequireRender};
 
 /// A hook for resolving incomplete completion items.
 ///
@@ -168,7 +168,10 @@ impl ResolveRequest {
                     }
                 };
                 completion.replace_item(&self.item, resolved_item);
-            };
+                RequireRender::Render
+            } else {
+                RequireRender::Skip
+            }
         })
         .await
     }

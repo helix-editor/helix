@@ -23,7 +23,7 @@ use crate::commands;
 use crate::compositor::Compositor;
 use crate::config::Config;
 use crate::events::{OnModeSwitch, PostCommand, PostInsertChar};
-use crate::job::{dispatch, dispatch_blocking};
+use crate::job::{dispatch, dispatch_blocking, RequireRender};
 use crate::keymap::MappableCommand;
 use crate::ui::editor::InsertEvent;
 use crate::ui::lsp::SignatureHelp;
@@ -158,7 +158,8 @@ impl helix_event::AsyncHook for CompletionHandler {
         let (tx, rx) = cancelation();
         self.request = Some(tx);
         dispatch_blocking(move |editor, compositor| {
-            request_completion(trigger, rx, editor, compositor)
+            request_completion(trigger, rx, editor, compositor);
+            RequireRender::Skip
         });
     }
 }
@@ -297,7 +298,7 @@ fn show_completion(
     items: Vec<CompletionItem>,
     trigger: Trigger,
     savepoint: Arc<SavePoint>,
-) {
+) -> RequireRender {
     let (view, doc) = current_ref!(editor);
     // check if the completion request is stale.
     //
@@ -305,13 +306,13 @@ fn show_completion(
     //switch document/view or leave insert mode. In all of thoise cases the
     // completion should be discarded
     if editor.mode != Mode::Insert || view.id != trigger.view || doc.id() != trigger.doc {
-        return;
+        return RequireRender::Skip;
     }
 
     let size = compositor.size();
     let ui = compositor.find::<ui::EditorView>().unwrap();
     if ui.completion.is_some() {
-        return;
+        return RequireRender::Skip;
     }
 
     let completion_area = ui.set_completion(editor, savepoint, items, trigger.pos, size);
@@ -322,6 +323,7 @@ fn show_completion(
     if matches!((completion_area, signature_help_area),(Some(a), Some(b)) if a.intersects(b)) {
         compositor.remove(SignatureHelp::ID);
     }
+    RequireRender::Render
 }
 
 pub fn trigger_auto_completion(

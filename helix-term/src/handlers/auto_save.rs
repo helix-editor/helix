@@ -72,9 +72,11 @@ impl helix_event::AsyncHook for AutoSaveHandler {
                 // Avoid saving while in insert mode since this mixes up
                 // the modification indicator and prevents future saves.
                 save_pending.store(true, atomic::Ordering::Relaxed);
+                job::RequireRender::Skip
             } else {
                 request_auto_save(editor);
                 save_pending.store(false, atomic::Ordering::Relaxed);
+                job::RequireRender::Render
             }
         })
     }
