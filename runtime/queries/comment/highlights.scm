@@ -1,10 +1,3 @@
-[
- "("
- ")"
-] @punctuation.bracket
-
-":" @punctuation.delimiter
-
 ; Hint level tags
 ((tag (name) @hint)
  (#match? @hint "^(HINT|MARK|PASSED|STUB|MOCK)$"))

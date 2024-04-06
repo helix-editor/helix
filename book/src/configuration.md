@@ -68,6 +68,7 @@ Its settings will be merged with the configuration directory `config.toml` and t
 | `insert-final-newline` | Whether to automatically insert a trailing line-ending on write if missing | `true` |
 | `popup-border` | Draw border around `popup`, `menu`, `all`, or `none` | `none` |
 | `indent-heuristic` | How the indentation for a newly inserted line is computed: `simple` just copies the indentation level from the previous line, `tree-sitter` computes the indentation based on the syntax tree and `hybrid` combines both approaches. If the chosen heuristic is not available, a different one will be used as a fallback (the fallback order being `hybrid` -> `tree-sitter` -> `simple`). | `hybrid`
+| `jump-label-alphabet` | The characters that are used to generate two character jump labels. Characters at the start of the alphabet are used first. | `"abcdefghijklmnopqrstuvwxyz"`
 
 ### `[editor.statusline]` Section
 
@@ -75,7 +76,7 @@ Allows configuring the statusline at the bottom of the editor.
 
 The configuration distinguishes between three areas of the status line:
 
-`[ ... ... LEFT ... ... | ... ... ... ... CENTER ... ... ... ... | ... ... RIGHT ... ... ]`
+`[ ... ... LEFT ... ... | ... ... ... CENTER ... ... ... | ... ... RIGHT ... ... ]`
 
 Statusline elements can be defined as follows:
 
@@ -108,6 +109,7 @@ The following statusline elements can be configured:
 | `mode` | The current editor mode (`mode.normal`/`mode.insert`/`mode.select`) |
 | `spinner` | A progress spinner indicating LSP activity |
 | `file-name` | The path/name of the opened file |
+| `file-absolute-path` | The absolute path/name of the opened file |
 | `file-base-name` | The basename of the opened file |
 | `file-modification-indicator` | The indicator to show whether the file is modified (a `[+]` appears when there are unsaved changes) |
 | `file-encoding` | The encoding of the opened file if it differs from UTF-8 |
@@ -177,7 +179,7 @@ All git related options are only enabled in a git repository.
 |`git-ignore` | Enables reading `.gitignore` files | `true`
 |`git-global` | Enables reading global `.gitignore`, whose path is specified in git's config: `core.excludesfile` option | `true`
 |`git-exclude` | Enables reading `.git/info/exclude` files | `true`
-|`max-depth` | Set with an integer value for maximum depth to recurse | Defaults to `None`.
+|`max-depth` | Set with an integer value for maximum depth to recurse | Unset by default
 
 Ignore files can be placed locally as `.ignore` or put in your home directory as `~/.ignore`. They support the usual ignore and negative ignore (unignore) rules used in `.gitignore` files.
 
@@ -223,7 +225,7 @@ Additionally, this setting can be used in a language config. Unless
 the editor setting is `false`, this will override the editor config in
 documents with this language.
 
-Example `languages.toml` that adds <> and removes ''
+Example `languages.toml` that adds `<>` and removes `''`
 
 ```toml
 [[language]]
@@ -253,8 +255,8 @@ Options for rendering whitespace with visible characters. Use `:set whitespace.r
 
 | Key | Description | Default |
 |-----|-------------|---------|
-| `render` | Whether to render whitespace. May either be `"all"` or `"none"`, or a table with sub-keys `space`, `nbsp`, `tab`, and `newline` | `"none"` |
-| `characters` | Literal characters to use when rendering whitespace. Sub-keys may be any of `tab`, `space`, `nbsp`, `newline` or `tabpad` | See example below |
+| `render` | Whether to render whitespace. May either be `all` or `none`, or a table with sub-keys `space`, `nbsp`, `nnbsp`, `tab`, and `newline` | `none` |
+| `characters` | Literal characters to use when rendering whitespace. Sub-keys may be any of `tab`, `space`, `nbsp`, `nnbsp`, `newline` or `tabpad` | See example below |
 
 Example
 
@@ -265,11 +267,14 @@ render = "all"
 [editor.whitespace.render]
 space = "all"
 tab = "all"
+nbsp = "none"
+nnbsp = "none"
 newline = "none"
 
 [editor.whitespace.characters]
 space = "·"
 nbsp = "⍽"
+nnbsp = "␣"
 tab = "→"
 newline = "⏎"
 tabpad = "·" # Tabs will look like "→···" (depending on tab width)
@@ -375,8 +380,25 @@ wrap-indicator = ""  # set wrap-indicator to "" to hide it
 
 ### `[editor.smart-tab]` Section
 
+Options for navigating and editing using tab key.
 
 | Key        | Description | Default |
 |------------|-------------|---------|
 | `enable` | If set to true, then when the cursor is in a position with non-whitespace to its left, instead of inserting a tab, it will run `move_parent_node_end`. If there is only whitespace to the left, then it inserts a tab as normal. With the default bindings, to explicitly insert a tab character, press Shift-tab. | `true` |
 | `supersede-menu` | Normally, when a menu is on screen, such as when auto complete is triggered, the tab key is bound to cycling through the items. This means when menus are on screen, one cannot use the tab key to trigger the `smart-tab` command. If this option is set to true, the `smart-tab` command always takes precedence, which means one cannot use the tab key to cycle through menu items. One of the other bindings must be used instead, such as arrow keys or `C-n`/`C-p`. | `false` |
+
+
+Due to lack of support for S-tab in some terminals, the default keybindings don't fully embrace smart-tab editing experience. If you enjoy smart-tab navigation and a terminal that supports the [Enhanced Keyboard protocol](https://github.com/helix-editor/helix/wiki/Terminal-Support#enhanced-keyboard-protocol), consider setting extra keybindings:
+
+```
+[keys.normal]
+tab = "move_parent_node_end"
+S-tab = "move_parent_node_start"
+
+[keys.insert]
+S-tab = "move_parent_node_start"
+
+[keys.select]
+tab = "extend_parent_node_end"
+S-tab = "extend_parent_node_start"
+```

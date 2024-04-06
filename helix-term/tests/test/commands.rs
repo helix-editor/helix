@@ -9,89 +9,89 @@ mod write;
 async fn test_selection_duplication() -> anyhow::Result<()> {
     // Forward
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             #[lo|]#rem
             ipsum
             dolor
-            "}),
+            "},
         "CC",
-        platform_line(indoc! {"\
+        indoc! {"\
             #(lo|)#rem
             #(ip|)#sum
             #[do|]#lor
-            "}),
+            "},
     ))
     .await?;
 
     // Backward
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             #[|lo]#rem
             ipsum
             dolor
-            "}),
+            "},
         "CC",
-        platform_line(indoc! {"\
+        indoc! {"\
             #(|lo)#rem
             #(|ip)#sum
             #[|do]#lor
-            "}),
+            "},
     ))
     .await?;
 
     // Copy the selection to previous line, skipping the first line in the file
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             test
             #[testitem|]#
-            "}),
+            "},
         "<A-C>",
-        platform_line(indoc! {"\
+        indoc! {"\
             test
             #[testitem|]#
-            "}),
+            "},
     ))
     .await?;
 
     // Copy the selection to previous line, including the first line in the file
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             test
             #[test|]#
-            "}),
+            "},
         "<A-C>",
-        platform_line(indoc! {"\
+        indoc! {"\
             #[test|]#
             #(test|)#
-            "}),
+            "},
     ))
     .await?;
 
     // Copy the selection to next line, skipping the last line in the file
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             #[testitem|]#
             test
-            "}),
+            "},
         "C",
-        platform_line(indoc! {"\
+        indoc! {"\
             #[testitem|]#
             test
-            "}),
+            "},
     ))
     .await?;
 
     // Copy the selection to next line, including the last line in the file
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             #[test|]#
             test
-            "}),
+            "},
         "C",
-        platform_line(indoc! {"\
+        indoc! {"\
             #(test|)#
             #[test|]#
-            "}),
+            "},
     ))
     .await?;
     Ok(())
@@ -181,17 +181,17 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_multi_selection_paste() -> anyhow::Result<()> {
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             #[|lorem]#
             #(|ipsum)#
             #(|dolor)#
-            "}),
+            "},
         "yp",
-        platform_line(indoc! {"\
+        indoc! {"\
             lorem#[|lorem]#
             ipsum#(|ipsum)#
             dolor#(|dolor)#
-            "}),
+            "},
     ))
     .await?;
 
@@ -202,58 +202,58 @@ async fn test_multi_selection_paste() -> anyhow::Result<()> {
 async fn test_multi_selection_shell_commands() -> anyhow::Result<()> {
     // pipe
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             #[|lorem]#
             #(|ipsum)#
             #(|dolor)#
-            "}),
+            "},
         "|echo foo<ret>",
-        platform_line(indoc! {"\
+        indoc! {"\
             #[|foo\n]#
             
             #(|foo\n)#
             
             #(|foo\n)#
             
-            "}),
+            "},
     ))
     .await?;
 
     // insert-output
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             #[|lorem]#
             #(|ipsum)#
             #(|dolor)#
-            "}),
+            "},
         "!echo foo<ret>",
-        platform_line(indoc! {"\
+        indoc! {"\
             #[|foo\n]#
             lorem
             #(|foo\n)#
             ipsum
             #(|foo\n)#
             dolor
-            "}),
+            "},
     ))
     .await?;
 
     // append-output
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             #[|lorem]#
             #(|ipsum)#
             #(|dolor)#
-            "}),
+            "},
         "<A-!>echo foo<ret>",
-        platform_line(indoc! {"\
+        indoc! {"\
             lorem#[|foo\n]#
             
             ipsum#(|foo\n)#
             
             dolor#(|foo\n)#
             
-            "}),
+            "},
     ))
     .await?;
 
@@ -269,7 +269,13 @@ async fn test_undo_redo() -> anyhow::Result<()> {
     // * u           Undo the two newlines. We're now on line 1.
     // * <C-o><C-i>  Jump forward an back again in the jumplist. This would panic
     //               if the jumplist were not being updated correctly.
-    test(("#[|]#", "2[<space><C-s>u<C-o><C-i>", "#[|]#")).await?;
+    test((
+        "#[|]#",
+        "2[<space><C-s>u<C-o><C-i>",
+        "#[|]#",
+        LineFeedHandling::AsIs,
+    ))
+    .await?;
 
     // A jumplist selection is passed through an edit and then an undo and then a redo.
     //
@@ -280,10 +286,22 @@ async fn test_undo_redo() -> anyhow::Result<()> {
     // * <C-o>       Jump back in the jumplist. This would panic if the jumplist were not being
     //               updated correctly.
     // * <C-i>       Jump forward to line 1.
-    test(("#[|]#", "[<space><C-s>kduU<C-o><C-i>", "#[|]#")).await?;
+    test((
+        "#[|]#",
+        "[<space><C-s>kduU<C-o><C-i>",
+        "#[|]#",
+        LineFeedHandling::AsIs,
+    ))
+    .await?;
 
     // In this case we 'redo' manually to ensure that the transactions are composing correctly.
-    test(("#[|]#", "[<space>u[<space>u", "#[|]#")).await?;
+    test((
+        "#[|]#",
+        "[<space>u[<space>u",
+        "#[|]#",
+        LineFeedHandling::AsIs,
+    ))
+    .await?;
 
     Ok(())
 }
@@ -292,35 +310,35 @@ async fn test_undo_redo() -> anyhow::Result<()> {
 async fn test_extend_line() -> anyhow::Result<()> {
     // extend with line selected then count
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             #[l|]#orem
             ipsum
             dolor
             
-            "}),
+            "},
         "x2x",
-        platform_line(indoc! {"\
+        indoc! {"\
             #[lorem
             ipsum
             dolor\n|]#
             
-            "}),
+            "},
     ))
     .await?;
 
     // extend with count on partial selection
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             #[l|]#orem
             ipsum
             
-            "}),
+            "},
         "2x",
-        platform_line(indoc! {"\
+        indoc! {"\
             #[lorem
             ipsum\n|]#
             
-            "}),
+            "},
     ))
     .await?;
 
@@ -388,16 +406,11 @@ async fn test_character_info() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_delete_char_backward() -> anyhow::Result<()> {
     // don't panic when deleting overlapping ranges
+    test(("#(x|)# #[x|]#", "c<space><backspace><esc>", "#[\n|]#")).await?;
     test((
-        platform_line("#(x|)# #[x|]#"),
-        "c<space><backspace><esc>",
-        platform_line("#[\n|]#"),
-    ))
-    .await?;
-    test((
-        platform_line("#( |)##( |)#a#( |)#axx#[x|]#a"),
+        "#( |)##( |)#a#( |)#axx#[x|]#a",
         "li<backspace><esc>",
-        platform_line("#(a|)##(|a)#xx#[|a]#"),
+        "#(a|)##(|a)#xx#[|a]#",
     ))
     .await?;
 
@@ -407,43 +420,33 @@ async fn test_delete_char_backward() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_delete_word_backward() -> anyhow::Result<()> {
     // don't panic when deleting overlapping ranges
-    test((
-        platform_line("fo#[o|]#ba#(r|)#"),
-        "a<C-w><esc>",
-        platform_line("#[\n|]#"),
-    ))
-    .await?;
+    test(("fo#[o|]#ba#(r|)#", "a<C-w><esc>", "#[\n|]#")).await?;
     Ok(())
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_delete_word_forward() -> anyhow::Result<()> {
     // don't panic when deleting overlapping ranges
-    test((
-        platform_line("fo#[o|]#b#(|ar)#"),
-        "i<A-d><esc>",
-        platform_line("fo#[\n|]#"),
-    ))
-    .await?;
+    test(("fo#[o|]#b#(|ar)#", "i<A-d><esc>", "fo#[\n|]#")).await?;
     Ok(())
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_delete_char_forward() -> anyhow::Result<()> {
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
                 #[abc|]#def
                 #(abc|)#ef
                 #(abc|)#f
                 #(abc|)#
-            "}),
+            "},
         "a<del><esc>",
-        platform_line(indoc! {"\
+        indoc! {"\
                 #[abc|]#ef
                 #(abc|)#f
                 #(abc|)#
                 #(abc|)#
-            "}),
+            "},
     ))
     .await?;
 
@@ -452,33 +455,37 @@ async fn test_delete_char_forward() -> anyhow::Result<()> {
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_insert_with_indent() -> anyhow::Result<()> {
-    const INPUT: &str = "\
-#[f|]#n foo() {
-    if let Some(_) = None {
+    const INPUT: &str = indoc! { "
+        #[f|]#n foo() {
+            if let Some(_) = None {
 
-    }
-\x20
-}
+            }
+         
+        }
 
-fn bar() {
+        fn bar() {
 
-}";
+        }
+        "
+    };
 
     // insert_at_line_start
     test((
         INPUT,
         ":lang rust<ret>%<A-s>I",
-        "\
-#[f|]#n foo() {
-    #(i|)#f let Some(_) = None {
-        #(\n|)#\
-\x20   #(}|)#
-#(\x20|)#
-#(}|)#
-#(\n|)#\
-#(f|)#n bar() {
-    #(\n|)#\
-#(}|)#",
+        indoc! { "
+            #[f|]#n foo() {
+                #(i|)#f let Some(_) = None {
+                    #(\n|)#
+                #(}|)#
+            #( |)#
+            #(}|)#
+            #(\n|)#
+            #(f|)#n bar() {
+                #(\n|)#
+            #(}|)#
+            "
+        },
     ))
     .await?;
 
@@ -486,17 +493,19 @@ fn bar() {
     test((
         INPUT,
         ":lang rust<ret>%<A-s>A",
-        "\
-fn foo() {#[\n|]#\
-\x20   if let Some(_) = None {#(\n|)#\
-\x20       #(\n|)#\
-\x20   }#(\n|)#\
-\x20#(\n|)#\
-}#(\n|)#\
-#(\n|)#\
-fn bar() {#(\n|)#\
-\x20   #(\n|)#\
-}#(|)#",
+        indoc! { "
+            fn foo() {#[\n|]#
+                if let Some(_) = None {#(\n|)#
+                    #(\n|)#
+                }#(\n|)#
+             #(\n|)#
+            }#(\n|)#
+            #(\n|)#
+            fn bar() {#(\n|)#
+                #(\n|)#
+            }#(\n|)#
+            "
+        },
     ))
     .await?;
 
@@ -507,42 +516,125 @@ fn bar() {#(\n|)#\
 async fn test_join_selections() -> anyhow::Result<()> {
     // normal join
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             #[a|]#bc
             def
-        "}),
+        "},
         "J",
-        platform_line(indoc! {"\
+        indoc! {"\
             #[a|]#bc def
-        "}),
+        "},
     ))
     .await?;
 
     // join with empty line
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             #[a|]#bc
 
             def
-        "}),
+        "},
         "JJ",
-        platform_line(indoc! {"\
+        indoc! {"\
             #[a|]#bc def
-        "}),
+        "},
     ))
     .await?;
 
     // join with additional space in non-empty line
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             #[a|]#bc
 
                 def
-        "}),
+        "},
         "JJ",
-        platform_line(indoc! {"\
+        indoc! {"\
             #[a|]#bc def
-        "}),
+        "},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_join_selections_space() -> anyhow::Result<()> {
+    // join with empty lines panic
+    test((
+        indoc! {"\
+            #[a
+
+            b
+
+            c
+
+            d
+
+            e|]#
+        "},
+        "<A-J>",
+        indoc! {"\
+            a#[ |]#b#( |)#c#( |)#d#( |)#e
+        "},
+    ))
+    .await?;
+
+    // normal join
+    test((
+        indoc! {"\
+            #[a|]#bc
+            def
+        "},
+        "<A-J>",
+        indoc! {"\
+            abc#[ |]#def
+        "},
+    ))
+    .await?;
+
+    // join with empty line
+    test((
+        indoc! {"\
+            #[a|]#bc
+
+            def
+        "},
+        "<A-J>",
+        indoc! {"\
+            #[a|]#bc
+            def
+        "},
+    ))
+    .await?;
+
+    // join with additional space in non-empty line
+    test((
+        indoc! {"\
+            #[a|]#bc
+
+                def
+        "},
+        "<A-J><A-J>",
+        indoc! {"\
+            abc#[ |]#def
+        "},
+    ))
+    .await?;
+
+    // join with retained trailing spaces
+    test((
+        indoc! {"\
+            #[aaa   
+
+            bb  
+
+            c |]#
+        "},
+        "<A-J>",
+        indoc! {"\
+            aaa   #[ |]#bb  #( |)#c 
+        "},
     ))
     .await?;
 

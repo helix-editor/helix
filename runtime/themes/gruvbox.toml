@@ -47,6 +47,9 @@
 "ui.statusline.insert" = { fg = "fg1", bg = "blue0" }
 "ui.statusline.select" = { fg = "fg1", bg = "orange0" }
 "ui.statusline.inactive" = { fg = "fg4", bg = "bg1" }
+"ui.bufferline" = { fg = "fg1", bg = "bg1" }
+"ui.bufferline.active" = { fg = "bg0", bg = "yellow0" }
+"ui.bufferline.background" = { bg = "bg2" }
 "ui.popup" = { bg = "bg1" }
 "ui.window" = { bg = "bg1" }
 "ui.help" = { bg = "bg1", fg = "fg1" }
@@ -62,11 +65,14 @@
 "ui.virtual.ruler" = { bg = "bg1" }
 "ui.virtual.inlay-hint" = { fg = "gray1" }
 "ui.virtual.wrap" = { fg = "bg2" }
+"ui.virtual.jump-label" = { fg = "purple0", modifiers = ["bold"] }
 
 "diagnostic.warning" = { underline = { color = "orange1", style = "curl" } }
 "diagnostic.error" = { underline = { color = "red1", style = "curl" } }
 "diagnostic.info" = { underline = { color = "aqua1", style = "curl" } }
 "diagnostic.hint" = { underline = { color = "blue1", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 "markup.heading" = "aqua1"
 "markup.bold" = { modifiers = ["bold"] }

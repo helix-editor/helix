@@ -42,6 +42,7 @@
 
 "ui.virtual.whitespace" = { fg = "base01" }
 "ui.virtual.inlay-hint" = { fg = "base01", modifiers = ["italic"] }
+"ui.virtual.jump-label" = { fg = "red", modifiers = ["bold"] }
 
 # 行号栏
 "ui.linenr" = { fg = "base0", bg = "base02" }
@@ -108,6 +109,8 @@
 "diagnostic.error" = { underline = { style = "curl", color = "red" } }
 "diagnostic.info" = { underline = { style = "curl", color = "blue" } }
 "diagnostic.hint" = { underline = { style = "curl", color = "base01" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 [palette]
 # 深色 越来越深

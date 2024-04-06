@@ -59,6 +59,8 @@
 "diagnostic.hint" = { underline = { color = "base03", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "base09", style = "curl" } }
 "diagnostic.error" = { underline = { color = "base08", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 "ui.gutter" = { bg = "base01" }
 "info" = "base0D"

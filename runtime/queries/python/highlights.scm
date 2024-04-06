@@ -204,13 +204,13 @@
 (for_in_clause "in" @keyword.control)
 
 [
-  "and"
   "async"
   "class"
   "exec"
   "global"
   "nonlocal"
   "print"
+  "type"
 ] @keyword
 [
   "and"

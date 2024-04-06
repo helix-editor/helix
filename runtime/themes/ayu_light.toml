@@ -66,10 +66,13 @@
 "diagnostic.info"= { underline = { color = "blue", style = "curl" } }
 "diagnostic.warning"= { underline = { color = "yellow", style = "curl" } }
 "diagnostic.error"= { underline = { color = "red", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 "ui.bufferline" = { fg = "gray", bg = "background" }
 "ui.bufferline.active" = { fg = "foreground", bg = "dark_gray" }
 "ui.debug" = { fg = "orange", bg = "background" }
 "ui.highlight.frameline" = { bg = "#cfe0f2" }
+"ui.virtual.jump-label" = { fg = "red", modifiers = ["italic", "bold"] }
 
 "special" = "orange"
 

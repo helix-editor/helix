@@ -359,8 +359,8 @@ impl EditorView {
     pub fn doc_diagnostics_highlights(
         doc: &Document,
         theme: &Theme,
-    ) -> [Vec<(usize, std::ops::Range<usize>)>; 5] {
-        use helix_core::diagnostic::Severity;
+    ) -> [Vec<(usize, std::ops::Range<usize>)>; 7] {
+        use helix_core::diagnostic::{DiagnosticTag, Range, Severity};
         let get_scope_of = |scope| {
             theme
             .find_scope_index_exact(scope)
@@ -380,11 +380,34 @@ impl EditorView {
         let error = get_scope_of("diagnostic.error");
         let r#default = get_scope_of("diagnostic"); // this is a bit redundant but should be fine
 
+        // Diagnostic tags
+        let unnecessary = theme.find_scope_index_exact("diagnostic.unnecessary");
+        let deprecated = theme.find_scope_index_exact("diagnostic.deprecated");
+
         let mut default_vec: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
         let mut info_vec = Vec::new();
         let mut hint_vec = Vec::new();
         let mut warning_vec = Vec::new();
         let mut error_vec = Vec::new();
+        let mut unnecessary_vec = Vec::new();
+        let mut deprecated_vec = Vec::new();
+
+        let push_diagnostic =
+            |vec: &mut Vec<(usize, std::ops::Range<usize>)>, scope, range: Range| {
+                // If any diagnostic overlaps ranges with the prior diagnostic,
+                // merge the two together. Otherwise push a new span.
+                match vec.last_mut() {
+                    Some((_, existing_range)) if range.start <= existing_range.end => {
+                        // This branch merges overlapping diagnostics, assuming that the current
+                        // diagnostic starts on range.start or later. If this assertion fails,
+                        // we will discard some part of `diagnostic`. This implies that
+                        // `doc.diagnostics()` is not sorted by `diagnostic.range`.
+                        debug_assert!(existing_range.start <= range.start);
+                        existing_range.end = range.end.max(existing_range.end)
+                    }
+                    _ => vec.push((scope, range.start..range.end)),
+                }
+            };
 
         for diagnostic in doc.diagnostics() {
             // Separate diagnostics into different Vecs by severity.
@@ -396,22 +419,44 @@ impl EditorView {
                 _ => (&mut default_vec, r#default),
             };
 
-            // If any diagnostic overlaps ranges with the prior diagnostic,
-            // merge the two together. Otherwise push a new span.
-            match vec.last_mut() {
-                Some((_, range)) if diagnostic.range.start <= range.end => {
-                    // This branch merges overlapping diagnostics, assuming that the current
-                    // diagnostic starts on range.start or later. If this assertion fails,
-                    // we will discard some part of `diagnostic`. This implies that
-                    // `doc.diagnostics()` is not sorted by `diagnostic.range`.
-                    debug_assert!(range.start <= diagnostic.range.start);
-                    range.end = diagnostic.range.end.max(range.end)
+            // If the diagnostic has tags and a non-warning/error severity, skip rendering
+            // the diagnostic as info/hint/default and only render it as unnecessary/deprecated
+            // instead. For warning/error diagnostics, render both the severity highlight and
+            // the tag highlight.
+            if diagnostic.tags.is_empty()
+                || matches!(
+                    diagnostic.severity,
+                    Some(Severity::Warning | Severity::Error)
+                )
+            {
+                push_diagnostic(vec, scope, diagnostic.range);
+            }
+
+            for tag in &diagnostic.tags {
+                match tag {
+                    DiagnosticTag::Unnecessary => {
+                        if let Some(scope) = unnecessary {
+                            push_diagnostic(&mut unnecessary_vec, scope, diagnostic.range)
+                        }
+                    }
+                    DiagnosticTag::Deprecated => {
+                        if let Some(scope) = deprecated {
+                            push_diagnostic(&mut deprecated_vec, scope, diagnostic.range)
+                        }
+                    }
                 }
-                _ => vec.push((scope, diagnostic.range.start..diagnostic.range.end)),
             }
         }
 
-        [default_vec, info_vec, hint_vec, warning_vec, error_vec]
+        [
+            default_vec,
+            unnecessary_vec,
+            deprecated_vec,
+            info_vec,
+            hint_vec,
+            warning_vec,
+            error_vec,
+        ]
     }
 
     /// Get highlight spans for selections in a document view.
@@ -716,7 +761,8 @@ impl EditorView {
             }
         }
 
-        let paragraph = Paragraph::new(lines)
+        let text = Text::from(lines);
+        let paragraph = Paragraph::new(&text)
             .alignment(Alignment::Right)
             .wrap(Wrap { trim: true });
         let width = 100.min(viewport.width);
@@ -902,13 +948,15 @@ impl EditorView {
 
     fn command_mode(&mut self, mode: Mode, cxt: &mut commands::Context, event: KeyEvent) {
         match (event, cxt.editor.count) {
-            // count handling
-            (key!(i @ '0'), Some(_)) | (key!(i @ '1'..='9'), _)
-                if !self.keymaps.contains_key(mode, event) =>
-            {
+            // If the count is already started and the input is a number, always continue the count.
+            (key!(i @ '0'..='9'), Some(count)) => {
                 let i = i.to_digit(10).unwrap() as usize;
-                cxt.editor.count =
-                    std::num::NonZeroUsize::new(cxt.editor.count.map_or(i, |c| c.get() * 10 + i));
+                cxt.editor.count = NonZeroUsize::new(count.get() * 10 + i);
+            }
+            // A non-zero digit will start the count if that number isn't used by a keymap.
+            (key!(i @ '1'..='9'), None) if !self.keymaps.contains_key(mode, event) => {
+                let i = i.to_digit(10).unwrap() as usize;
+                cxt.editor.count = NonZeroUsize::new(i);
             }
             // special handling for repeat operator
             (key!('.'), _) if self.keymaps.pending().is_empty() => {
@@ -1032,13 +1080,33 @@ impl EditorView {
 }
 
 impl EditorView {
+    /// must be called whenever the editor processed input that
+    /// is not a `KeyEvent`. In these cases any pending keys/on next
+    /// key callbacks must be canceled.
+    fn handle_non_key_input(&mut self, cxt: &mut commands::Context) {
+        cxt.editor.status_msg = None;
+        cxt.editor.reset_idle_timer();
+        // HACKS: create a fake key event that will never trigger any actual map
+        // and therefore simply acts as "dismiss"
+        let null_key_event = KeyEvent {
+            code: KeyCode::Null,
+            modifiers: KeyModifiers::empty(),
+        };
+        // dismiss any pending keys
+        if let Some(on_next_key) = self.on_next_key.take() {
+            on_next_key(cxt, null_key_event);
+        }
+        self.handle_keymap_event(cxt.editor.mode, cxt, null_key_event);
+        self.pseudo_pending.clear();
+    }
+
     fn handle_mouse_event(
         &mut self,
         event: &MouseEvent,
         cxt: &mut commands::Context,
     ) -> EventResult {
         if event.kind != MouseEventKind::Moved {
-            cxt.editor.reset_idle_timer();
+            self.handle_non_key_input(cxt)
         }
 
         let config = cxt.editor.config();
@@ -1263,6 +1331,7 @@ impl Component for EditorView {
 
         match event {
             Event::Paste(contents) => {
+                self.handle_non_key_input(&mut cx);
                 cx.count = cx.editor.count;
                 commands::paste_bracketed_value(&mut cx, contents.clone());
                 cx.editor.count = None;

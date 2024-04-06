@@ -1209,7 +1209,7 @@ move to ], and press mm to jump to [ .
 
 
 =================================================================
-=                   12.2 USING MATCH MODE SELECT INSIDE         =
+=              12.2 USING MATCH MODE SELECT INSIDE              =
 =================================================================
 
 Match mode also lets you select the "inside" content between a
@@ -1231,7 +1231,7 @@ surrounding matching pair). This also works with "" and similar
 --> try ( with nested [ pairs of ( parenthesis) and "brackets" ])
 
 =================================================================
-=                   12.3 USING MATCH MODE SELECT AROUND         =
+=               12.3 USING MATCH MODE SELECT AROUND             =
 =================================================================
 
 You can also select the "around" content, i.e. both the inside
@@ -1253,7 +1253,7 @@ This naturally works with other delimiters too:
 
 
 =================================================================
-=                   12.4 USING MATCH MODE SURROUND              =
+=                12.4 USING MATCH MODE SURROUND                 =
 =================================================================
 
 The match mode can also be used to add surrounding around the
@@ -1275,7 +1275,7 @@ with adding a surrounding pair of "", or {}, or [].
 
 
 =================================================================
-=                   12.5 USING MATCH MODE DELETE SURROUND       =
+=              12.5 USING MATCH MODE DELETE SURROUND            =
 =================================================================
 
 You can delete surrounding pair of delimiters with the md
@@ -1297,7 +1297,7 @@ Trying to delete unexisting surrounding delimiters print an error
 at the bottom bar and does nothing.
 
 =================================================================
-=                   12.6 USING MATCH MODE REPLACE SURROUND      =
+=             12.6 USING MATCH MODE REPLACE SURROUND            =
 =================================================================
 
 You can replace surrounding pairs of delimiters with the mr
@@ -1319,7 +1319,7 @@ an error warning at the bottom bar and do nothing.
 
 
 =================================================================
-=                     CHAPTER 12 RECAP                       =
+=                       CHAPTER 12 RECAP                        =
 =================================================================
 
 You can enter the match mode with the m key; this will show the
@@ -1336,6 +1336,182 @@ actions available in a popup. This will allow you to:
  * add surrounding delimiters around the selection with ms(
  * replace a pair of delimiters surrounding your selection with
  mr([ to replace for example surrounding () with []
+
+
+
+
+=================================================================
+=                CHAPTER 13.1 CREATE NEW SPLIT                  =
+=================================================================
+
+In Normal mode, press Ctrl-w to open the Window menu, which displays
+a list of available commands.
+
+To open a new empty buffer in a vertical split on the right half
+of your current window, use Ctrl-w nv (i.e., press Ctrl
+and w simultaneously, then press n, followed by v). Your current
+window will now split in 2 vertically. A new empty buffer split
+will appear on the right half and your cursor will jump to the
+new vertical split.
+
+To create a new empty buffer in a horizontal split, press
+Ctrl-w ns. This action divides your current window into two
+horizontally, creates a new buffer, and moves your cursor to the
+new horizontal split.
+
+
+
+
+=================================================================
+=                CHAPTER 13.2 MOVE BETWEEN SPLITS               =
+=================================================================
+
+Use Ctrl-w k to move to the split above your current split. Use
+Ctrl-w j to move to the split below. Use Ctrl-w h to move to
+the split on the left and Ctrl-w l to move to the split on the
+right. To navigate to the next split (in the order they were
+opened), press Ctrl-w w.
+
+You can now do whatever you want in your new buffers and splits.
+Once you are done with using your new buffer split,
+you can close it with Ctrl-w q . Move to the bottom right split
+with Ctrl-w l then Ctrl-w j, then press Ctrl-w q to close this
+specific split.
+
+You can also close all splits except the current one with Ctrl-w o .
+Open a third vertical split with Ctrl-w nv , then move to the
+leftmost split with Ctrl-w h twice, then from inside the split on
+the left press Ctrl-w o to close all except this split.
+
+
+=================================================================
+=               CHAPTER 13.3 SPLIT CURRENT BUFFER               =
+=================================================================
+
+Use Ctrl-w s to split the view of the current buffer horizontally
+and Ctrl-w v to split it vertically with the buffer opened in both
+splits.
+
+Close extra splits with Ctrl-w o to return to a single window view.
+
+
+
+
+
+
+
+
+
+
+
+
+
+=================================================================
+=               CHAPTER 13.4 USE COMMANDS TO SPLIT              =
+=================================================================
+
+The :vsplit (or :vs for short) and :hsplit (or :hs) commands can
+also be used to split a specific buffer vertically or horizontally.
+For example, enter the command:
+
+:vs something
+
+to open a new vertical split named "something" to the right. Here,
+"something" is not an existing file, so a new buffer with this name
+will open; however, you can replace "something" with any file name
+to open it in a new buffer. Similarly, you can enter the command:
+
+:hs some_more
+
+to open a new buffer named "some_more" in the lower half.
+"some_more" could be any file or path to open this specific file
+or path instead of a new empty buffer.
+
+
+=================================================================
+=                  CHAPTER 13.5 SWAPPING SPLITS                 =
+=================================================================
+
+Open a split on the left with :vs hello1 and then a split below
+with :hs hello2.
+
+From hello2, press Ctrl-w K to swap it with the split above. Now
+hello2 is at the top while hello1 is at the bottom.
+
+Still from hello2, press Ctrl-w H to swap with the split on the
+left: now hello2 is on the left and the tutor is on the top
+right. After Ctrl-w you can use HJKL to split with the buffer
+on the left / below / above / on the right.
+
+Move back to the tutor split, and press Ctrl-w o to only keep
+this split.
+
+
+
+
+
+=================================================================
+=                CHAPTER 13.6 TRANSPOSE SPLITS                  =
+=================================================================
+
+Open a split on the left with :vs hello1 and then a split below
+with :vs hello2.
+
+Move to the tutor split, then press Ctrl-w t to transpose the
+vertical split opened from this window: now, hello1 and
+hello2 are below, rather than to the right of, the tutor. Press
+Ctrl-w t again to transpose back.
+
+Move to the hello1 split, then press Ctrl-w t to transpose the
+horizontal split that was opened from this window: now hello2
+is on the right, rather than below, hello1. Press Ctrl-w t to
+transpose back.
+
+Move back to the tutor split and press Ctrl-w o to close all but
+the tutor window.
+
+
+
+=================================================================
+=             CHAPTER 13.7 OPEN SPLIT FROM FILEPICKER           =
+=================================================================
+
+Splits can also be opened directly from the file picker. Press
+space f to open the file picker. From there, you can type in text
+to perform file lookup with fuzzy matching, and use the arrows
+up and down to move the selected file (indicated by the > symbol).
+If you want to exit the file picker, press Escape.
+
+Select any file you like in the file picker. You could open it in
+the current view by pressing enter (do not do this at present).
+But you can also open it in a new split. Press Ctrl-v to open
+the selected file in a new vertical split. Press space f again,
+select any file you want, and press Ctrl-s to open it in a
+horizontal split.
+
+Move back to the tutor split, and press Ctrl-w o to close all
+splits except this one.
+
+
+
+=================================================================
+=                        CHAPTER 13 RECAP                       =
+=================================================================
+
+Splits can be used to display either the same buffer several times
+or several buffers. To access the main windows and splits commands,
+press Ctrl-w . You can move between splits with Ctrl-w hjkl ,
+you can close a split with Ctrl-w q , and you can close all but
+the present split with Ctrl-w o .
+
+Splits can also be opened by using the :vs FILENAME and
+:hs FILENAME commands.
+
+Splits can also be used directly from the file pickers, by using
+Ctrl-v to open the file selected in a new vertical split, and
+Ctrl-s in a horizontal split.
+
+
 
 
 

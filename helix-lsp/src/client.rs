@@ -6,7 +6,7 @@ use crate::{
 };
 
 use helix_core::{find_workspace, syntax::LanguageServerFeature, ChangeSet, Rope};
-use helix_loader::{self, VERSION_AND_GIT_HASH};
+use helix_loader::VERSION_AND_GIT_HASH;
 use helix_stdx::path;
 use lsp::{
     notification::DidChangeWorkspaceFolders, CodeActionCapabilityResolveSupport,
@@ -631,6 +631,12 @@ impl Client {
                     }),
                     publish_diagnostics: Some(lsp::PublishDiagnosticsClientCapabilities {
                         version_support: Some(true),
+                        tag_support: Some(lsp::TagSupport {
+                            value_set: vec![
+                                lsp::DiagnosticTag::UNNECESSARY,
+                                lsp::DiagnosticTag::DEPRECATED,
+                            ],
+                        }),
                         ..Default::default()
                     }),
                     inlay_hint: Some(lsp::InlayHintClientCapabilities {

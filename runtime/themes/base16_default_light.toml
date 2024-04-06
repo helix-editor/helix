@@ -13,6 +13,7 @@
 "ui.cursor" = { fg = "base04", modifiers = ["reversed"] }
 "ui.cursor.primary" = { fg = "base05", modifiers = ["reversed"] }
 "ui.virtual.whitespace" = "base03"
+"ui.virtual.jump-label" = { fg = "blue", modifiers = ["bold", "underlined"] }
 "ui.text" = "base05"
 "operator" = "base05"
 "ui.text.focus" = "base05"

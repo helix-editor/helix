@@ -110,6 +110,8 @@
 "diagnostic.info" = { underline = { color = "blue", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "yellow", style = "curl" } }
 "diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 [palette]
 

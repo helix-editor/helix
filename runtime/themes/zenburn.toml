@@ -45,6 +45,8 @@
 
 "diagnostic" = {bg = "statusbg"}
 "diagnostic.error" = { fg = "errorfg", bg = "errorbg"}
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 "ui.gutter" = { bg = "statusbg" }
 "hint" = {fg = "numeric", bg = "statusbg"}
 "warning" = "numeric"
