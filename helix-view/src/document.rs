@@ -961,13 +961,14 @@ impl Document {
 
             for (_, language_server) in language_servers {
                 if !language_server.is_initialized() {
-                    return Ok(event);
+                    continue;
                 }
-                if let Some(identifier) = &identifier {
-                    if let Some(notification) =
-                        language_server.text_document_did_save(identifier.clone(), &text)
-                    {
-                        notification.await?;
+                if let Some(notification) = identifier
+                    .clone()
+                    .and_then(|id| language_server.text_document_did_save(id, &text))
+                {
+                    if let Err(err) = notification.await {
+                        log::error!("Failed to send textDocument/didSave: {err}");
                     }
                 }
             }
