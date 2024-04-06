@@ -4,7 +4,10 @@ pub(crate) mod typed;
 
 pub use dap::*;
 use helix_event::status;
-use helix_stdx::rope::{self, RopeSliceExt};
+use helix_stdx::{
+    path::expand_tilde,
+    rope::{self, RopeSliceExt},
+};
 use helix_vcs::{FileChange, Hunk};
 pub use lsp::*;
 use tui::{
@@ -1196,25 +1199,51 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
     let primary = selections.primary();
     // Checks whether there is only one selection with a width of 1
     if selections.len() == 1 && primary.len() == 1 {
-        let count = cx.count();
-        let text_slice = text.slice(..);
-        // In this case it selects the WORD under the cursor
-        let current_word = textobject::textobject_word(
-            text_slice,
-            primary,
-            textobject::TextObject::Inside,
-            count,
-            true,
-        );
-        // Trims some surrounding chars so that the actual file is opened.
-        let surrounding_chars: &[_] = &['\'', '"', '(', ')'];
         paths.clear();
-        paths.push(
-            current_word
-                .fragment(text_slice)
-                .trim_matches(surrounding_chars)
-                .to_string(),
-        );
+
+        let is_valid_path_char = |c: &char| {
+            #[cfg(target_os = "windows")]
+            let valid_chars = &[
+                '@', '/', '\\', '.', '-', '_', '+', '#', '$', '%', '{', '}', '[', ']', ':', '!',
+                '~', '=',
+            ];
+            #[cfg(not(target_os = "windows"))]
+            let valid_chars = &['@', '/', '.', '-', '_', '+', '#', '$', '%', '~', '=', ':'];
+
+            valid_chars.contains(c) || c.is_alphabetic() || c.is_numeric()
+        };
+
+        let cursor_pos = primary.cursor(text.slice(..));
+        let pre_cursor_pos = cursor_pos.saturating_sub(1);
+        let post_cursor_pos = cursor_pos + 1;
+        let start_pos = if is_valid_path_char(&text.char(cursor_pos)) {
+            cursor_pos
+        } else if is_valid_path_char(&text.char(pre_cursor_pos)) {
+            pre_cursor_pos
+        } else {
+            post_cursor_pos
+        };
+
+        let prefix_len = text
+            .chars_at(start_pos)
+            .reversed()
+            .take_while(is_valid_path_char)
+            .count();
+
+        let postfix_len = text
+            .chars_at(start_pos)
+            .take_while(is_valid_path_char)
+            .count();
+
+        let path: Cow<str> = text
+            .slice((start_pos - prefix_len)..(start_pos + postfix_len))
+            .into();
+        log::debug!("Goto file path: {}", path);
+
+        match expand_tilde(PathBuf::from(path.as_ref())).to_str() {
+            Some(path) => paths.push(path.to_string()),
+            None => cx.editor.set_error("Couldn't get string out of path."),
+        };
     }
 
     for sel in paths {
