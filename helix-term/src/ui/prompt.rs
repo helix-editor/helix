@@ -537,6 +537,28 @@ impl Prompt {
             )
             .into();
             text.render(line_area, surface, cx);
+        } else if let Some((pre, substr, post)) =
+            self.history_substring.as_ref().and_then(|substr| {
+                self.line
+                    .split_once(substr)
+                    .map(|(pre, post)| (pre, substr, post))
+            })
+        {
+            surface.set_string(line_area.x, line_area.y, pre, prompt_color);
+
+            surface.set_string(
+                line_area.x + pre.len() as u16,
+                line_area.y,
+                substr,
+                selected_color,
+            );
+
+            surface.set_string(
+                line_area.x + (pre.len() + substr.len()) as u16,
+                line_area.y,
+                post,
+                prompt_color,
+            );
         } else {
             surface.set_string(line_area.x, line_area.y, self.line.clone(), prompt_color);
         }
