@@ -684,6 +684,7 @@ async fn delete_basic() -> anyhow::Result<()> {
             format!("{}#[|{}]#{}", pair.0, pair.1, LINE_END),
             "i<backspace>",
             format!("#[|{}]#", LINE_END),
+            LineFeedHandling::AsIs,
         ))
         .await?;
     }
@@ -857,6 +858,7 @@ async fn delete_configured_multi_byte_chars() -> anyhow::Result<()> {
                 format!("{}#[|{}]#{}", open, close, LINE_END),
                 "i<backspace>",
                 format!("#[|{}]#", LINE_END),
+                LineFeedHandling::AsIs,
             ),
         )
         .await?;
@@ -1053,6 +1055,7 @@ async fn delete_before_eol() -> anyhow::Result<()> {
             ),
             "i<backspace>",
             format!("{0}#[|{0}]#", LINE_END),
+            LineFeedHandling::AsIs,
         ))
         .await?;
     }
@@ -1221,6 +1224,7 @@ async fn delete_append_basic() -> anyhow::Result<()> {
             ),
             "a<backspace>",
             format!("#[{eol}{eol}|]#", eol = LINE_END),
+            LineFeedHandling::AsIs,
         ))
         .await?;
     }
@@ -1240,6 +1244,7 @@ async fn delete_append_multi_range() -> anyhow::Result<()> {
             ),
             "a<backspace>",
             format!("#[ {eol}|]##( {eol}|)##( {eol}|)#", eol = LINE_END),
+            LineFeedHandling::AsIs,
         ))
         .await?;
     }
@@ -1259,6 +1264,7 @@ async fn delete_append_end_of_word() -> anyhow::Result<()> {
             ),
             "a<backspace>",
             format!("fo#[o{}|]#", LINE_END),
+            LineFeedHandling::AsIs,
         ))
         .await?;
     }
@@ -1340,6 +1346,7 @@ async fn delete_append_end_of_word_multi() -> anyhow::Result<()> {
             ),
             "a<backspace>",
             format!("fo#[o{eol}|]#fo#(o{eol}|)#fo#(o{eol}|)#", eol = LINE_END),
+            LineFeedHandling::AsIs,
         ))
         .await?;
     }
