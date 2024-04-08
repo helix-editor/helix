@@ -6,7 +6,7 @@ use helix_lsp::{
         NumberOrString,
     },
     util::{diagnostic_to_lsp_diagnostic, lsp_range_to_range, range_to_lsp_range},
-    Client, OffsetEncoding,
+    Client, LanguageServerId, OffsetEncoding,
 };
 use tokio_stream::StreamExt;
 use tui::{
@@ -266,7 +266,7 @@ enum DiagnosticsFormat {
 
 fn diag_picker(
     cx: &Context,
-    diagnostics: BTreeMap<PathBuf, Vec<(lsp::Diagnostic, usize)>>,
+    diagnostics: BTreeMap<PathBuf, Vec<(lsp::Diagnostic, LanguageServerId)>>,
     format: DiagnosticsFormat,
 ) -> Picker<PickerDiagnostic> {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
@@ -497,7 +497,7 @@ pub fn workspace_diagnostics_picker(cx: &mut Context) {
 
 struct CodeActionOrCommandItem {
     lsp_item: lsp::CodeActionOrCommand,
-    language_server_id: usize,
+    language_server_id: LanguageServerId,
 }
 
 impl ui::menu::Item for CodeActionOrCommandItem {
@@ -757,7 +757,11 @@ impl ui::menu::Item for lsp::Command {
     }
 }
 
-pub fn execute_lsp_command(editor: &mut Editor, language_server_id: usize, cmd: lsp::Command) {
+pub fn execute_lsp_command(
+    editor: &mut Editor,
+    language_server_id: LanguageServerId,
+    cmd: lsp::Command,
+) {
     // the command is executed on the server and communicated back
     // to the client asynchronously using workspace edits
     let future = match editor
@@ -1034,7 +1038,7 @@ pub fn rename_symbol(cx: &mut Context) {
     fn create_rename_prompt(
         editor: &Editor,
         prefill: String,
-        language_server_id: Option<usize>,
+        language_server_id: Option<LanguageServerId>,
     ) -> Box<ui::Prompt> {
         let prompt = ui::Prompt::new(
             "rename-to:".into(),

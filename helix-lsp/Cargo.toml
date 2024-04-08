@@ -31,3 +31,4 @@ tokio = { version = "1.37", features = ["rt", "rt-multi-thread", "io-util", "io-
 tokio-stream = "0.1.15"
 parking_lot = "0.12.1"
 arc-swap = "1"
+slotmap.workspace = true

@@ -94,7 +94,7 @@ impl menu::Item for CompletionItem {
 #[derive(Debug, PartialEq, Default, Clone)]
 pub struct CompletionItem {
     pub item: lsp::CompletionItem,
-    pub language_server_id: usize,
+    pub provider: LanguageServerId,
     pub resolved: bool,
 }
 
@@ -224,7 +224,7 @@ impl Completion {
                 ($item:expr) => {
                     match editor
                         .language_servers
-                        .get_by_id($item.language_server_id)
+                        .get_by_id($item.provider)
                     {
                         Some(ls) => ls,
                         None => {
@@ -285,7 +285,6 @@ impl Completion {
                     let language_server = language_server!(item);
                     let offset_encoding = language_server.offset_encoding();
 
-                    // resolve item if not yet resolved
                     if !item.resolved {
                         if let Some(resolved) =
                             Self::resolve_completion_item(language_server, item.item.clone())

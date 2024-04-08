@@ -251,7 +251,7 @@ fn request_completion(
                 .into_iter()
                 .map(|item| CompletionItem {
                     item,
-                    language_server_id,
+                    provider: language_server_id,
                     resolved: false,
                 })
                 .collect();
