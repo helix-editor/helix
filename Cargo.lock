@@ -1393,6 +1393,7 @@ dependencies = [
  "parking_lot",
  "serde",
  "serde_json",
+ "slotmap",
  "thiserror",
  "tokio",
  "tokio-stream",

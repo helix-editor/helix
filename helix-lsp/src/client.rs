@@ -2,7 +2,7 @@ use crate::{
     file_operations::FileOperationsInterest,
     find_lsp_workspace, jsonrpc,
     transport::{Payload, Transport},
-    Call, Error, OffsetEncoding, Result,
+    Call, Error, LanguageServerId, OffsetEncoding, Result,
 };
 
 use helix_core::{find_workspace, syntax::LanguageServerFeature, ChangeSet, Rope};
@@ -46,7 +46,7 @@ fn workspace_for_uri(uri: lsp::Url) -> WorkspaceFolder {
 
 #[derive(Debug)]
 pub struct Client {
-    id: usize,
+    id: LanguageServerId,
     name: String,
     _process: Child,
     server_tx: UnboundedSender<Payload>,
@@ -179,10 +179,14 @@ impl Client {
         server_environment: HashMap<String, String>,
         root_path: PathBuf,
         root_uri: Option<lsp::Url>,
-        id: usize,
+        id: LanguageServerId,
         name: String,
         req_timeout: u64,
-    ) -> Result<(Self, UnboundedReceiver<(usize, Call)>, Arc<Notify>)> {
+    ) -> Result<(
+        Self,
+        UnboundedReceiver<(LanguageServerId, Call)>,
+        Arc<Notify>,
+    )> {
         // Resolve path to the binary
         let cmd = helix_stdx::env::which(cmd)?;
 
@@ -234,7 +238,7 @@ impl Client {
         &self.name
     }
 
-    pub fn id(&self) -> usize {
+    pub fn id(&self) -> LanguageServerId {
         self.id
     }
 
