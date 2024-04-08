@@ -1034,7 +1034,6 @@ impl EditorView {
         self.last_insert.1.push(InsertEvent::TriggerCompletion);
 
         // TODO : propagate required size on resize to completion too
-        completion.required_size((size.width, size.height));
         self.completion = Some(completion);
         Some(area)
     }

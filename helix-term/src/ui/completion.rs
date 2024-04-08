@@ -493,12 +493,7 @@ impl Component for Completion {
             None => return,
         };
 
-        let popup_area = {
-            let (popup_x, popup_y) = self.popup.get_rel_position(area, cx.editor);
-            let (popup_width, popup_height) = self.popup.get_size();
-            Rect::new(popup_x, popup_y, popup_width, popup_height)
-        };
-
+        let popup_area = self.popup.area(area, cx.editor);
         let doc_width_available = area.width.saturating_sub(popup_area.right());
         let doc_area = if doc_width_available > 30 {
             let mut doc_width = doc_width_available;
