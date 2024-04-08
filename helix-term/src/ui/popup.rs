@@ -283,16 +283,20 @@ impl<T: Component> Component for Popup<T> {
             (height + self.margin.height()).min(max_height),
         );
 
-        // re-clamp scroll offset
-        let max_offset = self.child_size.1.saturating_sub(self.size.1);
-        self.scroll = self.scroll.min(max_offset as usize);
-
         Some(self.size)
     }
 
     fn render(&mut self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
         let area = self.area(viewport, cx.editor);
         self.area = area;
+
+        // required_size() calculates the popup size without taking account of self.position
+        // so we need to correct the popup height to correctly calculate the scroll
+        self.size.1 = area.height;
+
+        // re-clamp scroll offset
+        let max_offset = self.child_size.1.saturating_sub(self.size.1);
+        self.scroll = self.scroll.min(max_offset as usize);
         cx.scroll = Some(self.scroll);
 
         // clear area
