@@ -78,6 +78,7 @@
 "diagnostic.error" = { underline = { style = "curl", color = "red" } }
 "diagnostic.unnecessary" = { modifiers = ["dim"] }
 "diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+"ui.virtual.jump-label" = { fg = "red", modifiers = ["bold"] }
 
 [palette]
 bg0 = "#282828"
