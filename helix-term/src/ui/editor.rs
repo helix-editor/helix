@@ -1263,24 +1263,28 @@ impl EditorView {
             }
 
             MouseEventKind::Up(MouseButton::Right) => {
-                if let Some((coords, view_id)) = gutter_coords_and_view(cxt.editor, row, column) {
+                if let Some((pos, view_id)) = gutter_coords_and_view(cxt.editor, row, column) {
                     cxt.editor.focus(view_id);
 
-                    let (view, doc) = current!(cxt.editor);
-                    if let Some(pos) =
-                        view.pos_at_visual_coords(doc, coords.row as u16, coords.col as u16, true)
-                    {
-                        doc.set_selection(view_id, Selection::point(pos));
-                        if modifiers == KeyModifiers::ALT {
-                            commands::MappableCommand::dap_edit_log.execute(cxt);
-                        } else {
-                            commands::MappableCommand::dap_edit_condition.execute(cxt);
+                    if let Some((pos, _)) = pos_and_view(cxt.editor, row, column, true) {
+                        doc_mut!(cxt.editor).set_selection(view_id, Selection::point(pos));
+                    } else {
+                        let (view, doc) = current!(cxt.editor);
+
+                        if let Some(pos) = view.pos_at_visual_coords(doc, pos.row as u16, 0, true) {
+                            doc.set_selection(view_id, Selection::point(pos));
+                            match modifiers {
+                                KeyModifiers::ALT => {
+                                    commands::MappableCommand::dap_edit_log.execute(cxt)
+                                }
+                                _ => commands::MappableCommand::dap_edit_condition.execute(cxt),
+                            };
                         }
-
-                        return EventResult::Consumed(None);
                     }
-                }
 
+                    cxt.editor.ensure_cursor_in_view(view_id);
+                    return EventResult::Consumed(None);
+                }
                 EventResult::Ignored(None)
             }
 
