@@ -51,6 +51,7 @@ Its settings will be merged with the configuration directory `config.toml` and t
 | `auto-completion` | Enable automatic pop up of auto-completion | `true` |
 | `auto-format` | Enable automatic formatting on save | `true` |
 | `auto-save` | Enable automatic saving on the focus moving away from Helix. Requires [focus event support](https://github.com/helix-editor/helix/wiki/Terminal-Support) from your terminal | `false` |
+| `always-force-write` | Overwrite the current file on disk, regardless of last-modified time | `false` |
 | `idle-timeout` | Time in milliseconds since last keypress before idle timers trigger. | `250` |
 | `completion-timeout` | Time in milliseconds after typing a word character before completions are shown, set to 5 for instant.  | `250` |
 | `preview-completion-insert` | Whether to apply completion item instantly when selected | `true` |

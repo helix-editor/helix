@@ -383,7 +383,9 @@ fn write(
         return Ok(());
     }
 
-    write_impl(cx, args.first(), false)
+    let force = (cx.editor.config()).always_force_write;
+
+    write_impl(cx, args.first(), force)
 }
 
 fn force_write(
