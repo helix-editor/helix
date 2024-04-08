@@ -63,9 +63,9 @@
 
 "ui.statusline" = { bg = "bg", fg = "text" }
 "ui.statusline.inactive" = { bg = "bg", fg = "disabled" }
-"ui.statusline.normal" = { bg = "accent", fg = "text" }
-"ui.statusline.insert" = { bg = "green", fg = "text" }
-"ui.statusline.select" = { bg = "purple", fg = "text" }
+"ui.statusline.normal" = { bg = "blue", fg = "bg" }
+"ui.statusline.insert" = { bg = "green", fg = "bg" }
+"ui.statusline.select" = { bg = "purple", fg = "bg" }
 
 
 "ui.selection" = { bg = "selection" }
