@@ -3479,3 +3479,21 @@ language-servers = ["earthlyls"]
 [[grammar]]
 name = "earthfile"
 source = { git = "https://github.com/glehmann/tree-sitter-earthfile", rev = "2a6ab191f5f962562e495a818aa4e7f45f8a556a" }
+
+[[language]]
+name = "adl"
+scope = "source.adl"
+injection-regex = "adl"
+file-types = ["adl"]
+roots = []
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+
+[language.auto-pairs]
+'"' = '"'
+'{' = '}'
+'<' = '>'
+
+[[grammar]]
+name = "adl"
+source = { git = "https://github.com/adl-lang/tree-sitter-adl", rev = "2787d04beadfbe154d3f2da6e98dc45a1b134bbf" }
