@@ -36,13 +36,6 @@ For inspiration, you can find the default `theme.toml`
 user-submitted themes
 [here](https://github.com/helix-editor/helix/blob/master/runtime/themes).
 
-### Using the linter
-
-Use the supplied linting tool to check for errors and missing scopes:
-
-```sh
-cargo xtask themelint onedark # replace onedark with <name>
-```
 
 ## The details of theme creation
 
