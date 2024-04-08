@@ -85,18 +85,27 @@
 "ui.highlight" = { bg = "highlight" }
 
 "ui.menu" = { bg = "highlight", fg = "text" }
+"ui.menu.selected" = { bg = "blue", fg = "bg" }
 
 "ui.help" = { bg = "highlight", fg = "text" }
 
 "ui.popup" = { bg = "highlight", fg = "text" }
+
+"ui.virtual.jump-label" = { fg = "purple", modifiers = ["bold"] }
 
 warning = "yellow"
 error = "error"
 info = "blue"
 hint = "purple"
 
-"diagnostic.unnecessary" = { modifiers = ["dim"] }
-"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+"diagnostic" = { underline = { color = "error", style = "curl" } }
+"diagnostic.info" = { underline = { color = "blue", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "purple", style = "curl" } }
+"diagnostic.error" = { underline = { color = "error", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "yellow", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"]}
+"diagnostic.deprecated" = { modifiers = ["crossed_out"]}
+
 
 [palette]
 bg = "#0f111a"
