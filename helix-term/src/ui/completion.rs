@@ -285,11 +285,6 @@ impl Completion {
                     let language_server = language_server!(item);
                     let offset_encoding = language_server.offset_encoding();
 
-                    let language_server = editor
-                        .language_servers
-                        .get_by_id(item.language_server_id)
-                        .unwrap();
-
                     // resolve item if not yet resolved
                     if !item.resolved {
                         if let Some(resolved) =

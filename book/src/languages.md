@@ -150,6 +150,8 @@ They have to be defined in the `[language-server]` table as described in the pre
 
 Different languages can use the same language server instance, e.g. `typescript-language-server` is used for javascript, jsx, tsx and typescript by default.
 
+The definition order of language servers affects the order in the results list of code action menu.
+
 In case multiple language servers are specified in the `language-servers` attribute of a `language`,
 it's often useful to only enable/disable certain language-server features for these language servers.
 
