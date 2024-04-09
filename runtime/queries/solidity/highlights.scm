@@ -31,6 +31,7 @@
 (type_name) @type
 (primitive_type) @type
 (user_defined_type (identifier) @type)
+(type_alias (identifier) @type)
 
 ; Color payable in payable address conversion as type and not as keyword
 (payable_conversion_expression "payable" @type)
