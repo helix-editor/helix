@@ -196,7 +196,7 @@
 | tsx | ✓ | ✓ | ✓ | `typescript-language-server` |
 | twig | ✓ |  |  |  |
 | typescript | ✓ | ✓ | ✓ | `typescript-language-server` |
-| typst | ✓ |  |  | `typst-lsp` |
+| typst | ✓ |  |  | `tinymist` |
 | ungrammar | ✓ |  |  |  |
 | unison | ✓ |  | ✓ |  |
 | uxntal | ✓ |  |  |  |
