@@ -24,9 +24,13 @@ imara-diff = "0.1.7"
 anyhow = "1"
 
 log = "0.4"
+# For `jujutsu`
+tempfile = { version = "3.10", optional = true }
 
 [features]
 git = ["gix"]
+jujutsu = ["tempfile"]
+
 
 [dev-dependencies]
 tempfile = "3.13"
