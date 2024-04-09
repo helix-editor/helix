@@ -7,9 +7,9 @@ use helix_core::syntax::Highlight;
 use helix_core::syntax::HighlightEvent;
 use helix_core::text_annotations::TextAnnotations;
 use helix_core::{visual_offset_from_block, Position, RopeSlice};
-use helix_view::editor::{WhitespaceConfig, WhitespaceRenderValue};
+use helix_view::editor::{RainbowIndentOptions, WhitespaceConfig, WhitespaceRenderValue};
 use helix_view::graphics::Rect;
-use helix_view::theme::Style;
+use helix_view::theme::{Modifier, Style};
 use helix_view::view::ViewPosition;
 use helix_view::Document;
 use helix_view::Theme;
@@ -339,6 +339,8 @@ pub struct TextRenderer<'a> {
     pub whitespace_style: Style,
     pub indent_guide_char: String,
     pub indent_guide_style: Style,
+    pub indent_guide_rainbow: RainbowIndentOptions,
+    pub theme: &'a Theme,
     pub newline: String,
     pub nbsp: String,
     pub nnbsp: String,
@@ -361,7 +363,7 @@ impl<'a> TextRenderer<'a> {
     pub fn new(
         surface: &'a mut Surface,
         doc: &Document,
-        theme: &Theme,
+        theme: &'a Theme,
         col_offset: usize,
         viewport: Rect,
     ) -> TextRenderer<'a> {
@@ -403,12 +405,19 @@ impl<'a> TextRenderer<'a> {
         };
 
         let text_style = theme.get("ui.text");
+        let basic_style = text_style.patch(
+            theme
+                .try_get("ui.virtual.indent-guide")
+                .unwrap_or_else(|| theme.get("ui.virtual.whitespace")),
+        );
 
         let indent_width = doc.indent_style.indent_width(tab_width) as u16;
 
         TextRenderer {
             surface,
             indent_guide_char: editor_config.indent_guides.character.into(),
+            indent_guide_rainbow: editor_config.indent_guides.rainbow_option.clone(),
+            theme,
             newline,
             nbsp,
             nnbsp,
@@ -420,11 +429,7 @@ impl<'a> TextRenderer<'a> {
             starting_indent: col_offset / indent_width as usize
                 + (col_offset % indent_width as usize != 0) as usize
                 + editor_config.indent_guides.skip_levels as usize,
-            indent_guide_style: text_style.patch(
-                theme
-                    .try_get("ui.virtual.indent-guide")
-                    .unwrap_or_else(|| theme.get("ui.virtual.whitespace")),
-            ),
+            indent_guide_style: basic_style,
             text_style,
             draw_indent_guides: editor_config.indent_guides.render,
             viewport,
@@ -522,8 +527,25 @@ impl<'a> TextRenderer<'a> {
                 as u16;
             let y = self.viewport.y + row;
             debug_assert!(self.surface.in_bounds(x, y));
-            self.surface
-                .set_string(x, y, &self.indent_guide_char, self.indent_guide_style);
+            match self.indent_guide_rainbow {
+                RainbowIndentOptions::None => {
+                    self.surface
+                        .set_string(x, y, &self.indent_guide_char, self.indent_guide_style)
+                }
+                RainbowIndentOptions::Dim => {
+                    let new_style = self
+                        .indent_guide_style
+                        .patch(self.theme.get_rainbow(i))
+                        .add_modifier(Modifier::DIM);
+                    self.surface
+                        .set_string(x, y, &self.indent_guide_char, new_style);
+                }
+                RainbowIndentOptions::Normal => {
+                    let new_style = self.indent_guide_style.patch(self.theme.get_rainbow(i));
+                    self.surface
+                        .set_string(x, y, &self.indent_guide_char, new_style);
+                }
+            };
         }
     }
 }
