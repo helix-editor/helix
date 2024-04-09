@@ -308,6 +308,7 @@ config = { format = { "semicolons" = "insert", "insertSpaceBeforeFunctionParenth
 <p>The <code>language-servers</code> attribute in a language tells helix which language servers are used for this language.</p>
 <p>They have to be defined in the <code>[language-server]</code> table as described in the previous section.</p>
 <p>Different languages can use the same language server instance, e.g. <code>typescript-language-server</code> is used for javascript, jsx, tsx and typescript by default.</p>
+<p>The definition order of language servers affects the order in the results list of code action menu.</p>
 <p>In case multiple language servers are specified in the <code>language-servers</code> attribute of a <code>language</code>,
 it's often useful to only enable/disable certain language-server features for these language servers.</p>
 <p>As an example, <code>efm-lsp-prettier</code> of the previous example is used only with a formatting command <code>prettier</code>,
