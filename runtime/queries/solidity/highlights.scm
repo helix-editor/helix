@@ -94,6 +94,7 @@
 ; Keywords
 (meta_type_expression "type" @keyword)
 [
+ "abstract"
  "pragma"
  "contract"
  "interface"
