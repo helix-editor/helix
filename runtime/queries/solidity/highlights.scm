@@ -217,5 +217,7 @@
 
 ; identifiers
 ; -----------
+((identifier) @variable.builtin
+ (#match? @variable.builtin "^(this|msg|block|tx)$"))
 (identifier) @variable
 (yul_identifier) @variable
