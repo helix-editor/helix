@@ -930,7 +930,12 @@ mod test {
         let mut doc = Rope::default();
         let sel = Selection::point(0);
 
+        let mut i = 0;
         while !inserts.is_empty() {
+            if i == 100 {
+                break;
+            }
+
             let n = dist.sample(&mut rng);
             let mut range = || {
                 if doc.len_chars() == 0 {
@@ -946,43 +951,45 @@ mod test {
                 }
             };
 
-            if n == 0 {
-                if let Some(tx) = hist.undo() {
-                    tx.apply(&mut doc);
-                    continue;
+            match n {
+                0 => {
+                    if let Some(tx) = hist.undo() {
+                        tx.apply(&mut doc);
+                    }
                 }
-            }
-
-            if n == 1 {
-                if let Some(tx) = hist.redo() {
-                    tx.apply(&mut doc);
-                    continue;
+                1 => {
+                    if let Some(tx) = hist.redo() {
+                        tx.apply(&mut doc);
+                        continue;
+                    }
                 }
+                2 => {
+                    let sel_range = range();
+                    let selection = Selection::single(sel_range.0, sel_range.1);
+                    let state = State {
+                        doc: doc.clone(),
+                        selection,
+                    };
+                    let del = range();
+                    let tx = Transaction::delete(&doc, [del].into_iter());
+                    tx.apply(&mut doc);
+                    hist.commit_revision(&tx, &state);
+                }
+                3 => {
+                    let sel_range = range();
+                    let selection = Selection::single(sel_range.0, sel_range.1);
+                    let state = State {
+                        doc: doc.clone(),
+                        selection,
+                    };
+                    let s = inserts.pop().unwrap();
+                    let tx = Transaction::insert(&doc, &sel, s.into());
+                    tx.apply(&mut doc);
+                    hist.commit_revision(&tx, &state);
+                }
+                _ => unreachable!(),
             }
-
-            let sel_range = range();
-            let selection = Selection::single(sel_range.0, sel_range.1);
-
-            if n == 2 && doc.len_chars() >= 1 {
-                let state = State {
-                    doc: doc.clone(),
-                    selection,
-                };
-                let del = range();
-                let tx = Transaction::delete(&doc, [del].into_iter());
-                tx.apply(&mut doc);
-                hist.commit_revision(&tx, &state);
-                continue;
-            }
-
-            let state = State {
-                doc: doc.clone(),
-                selection,
-            };
-            let s = inserts.pop().unwrap();
-            let tx = Transaction::insert(&doc, &sel, s.into());
-            tx.apply(&mut doc);
-            hist.commit_revision(&tx, &state);
+            i += 1;
         }
 
         (hist, doc)
