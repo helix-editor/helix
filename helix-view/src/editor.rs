@@ -237,6 +237,97 @@ where
     Ok(chars)
 }
 
+pub fn completion_item_kind_name(kind: lsp::CompletionItemKind) -> &'static str {
+    match kind {
+        lsp::CompletionItemKind::TEXT => "text",
+        lsp::CompletionItemKind::METHOD => "method",
+        lsp::CompletionItemKind::FUNCTION => "function",
+        lsp::CompletionItemKind::CONSTRUCTOR => "constructor",
+        lsp::CompletionItemKind::FIELD => "field",
+        lsp::CompletionItemKind::VARIABLE => "variable",
+        lsp::CompletionItemKind::CLASS => "class",
+        lsp::CompletionItemKind::INTERFACE => "interface",
+        lsp::CompletionItemKind::MODULE => "module",
+        lsp::CompletionItemKind::PROPERTY => "property",
+        lsp::CompletionItemKind::UNIT => "unit",
+        lsp::CompletionItemKind::VALUE => "value",
+        lsp::CompletionItemKind::ENUM => "enum",
+        lsp::CompletionItemKind::KEYWORD => "keyword",
+        lsp::CompletionItemKind::SNIPPET => "snippet",
+        lsp::CompletionItemKind::COLOR => "color",
+        lsp::CompletionItemKind::FILE => "file",
+        lsp::CompletionItemKind::REFERENCE => "reference",
+        lsp::CompletionItemKind::FOLDER => "folder",
+        lsp::CompletionItemKind::ENUM_MEMBER => "enum_member",
+        lsp::CompletionItemKind::CONSTANT => "constant",
+        lsp::CompletionItemKind::STRUCT => "struct",
+        lsp::CompletionItemKind::EVENT => "event",
+        lsp::CompletionItemKind::OPERATOR => "operator",
+        lsp::CompletionItemKind::TYPE_PARAMETER => "type_parameter",
+        _ => "invalid", // invalid, but should never get one.
+    }
+}
+
+fn name_to_completion_item_kind(name: &str) -> Option<lsp::CompletionItemKind> {
+    match name {
+        "text" => Some(lsp::CompletionItemKind::TEXT),
+        "method" => Some(lsp::CompletionItemKind::METHOD),
+        "function" => Some(lsp::CompletionItemKind::FUNCTION),
+        "constructor" => Some(lsp::CompletionItemKind::CONSTRUCTOR),
+        "field" => Some(lsp::CompletionItemKind::FIELD),
+        "variable" => Some(lsp::CompletionItemKind::VARIABLE),
+        "class" => Some(lsp::CompletionItemKind::CLASS),
+        "interface" => Some(lsp::CompletionItemKind::INTERFACE),
+        "module" => Some(lsp::CompletionItemKind::MODULE),
+        "property" => Some(lsp::CompletionItemKind::PROPERTY),
+        "unit" => Some(lsp::CompletionItemKind::UNIT),
+        "value" => Some(lsp::CompletionItemKind::VALUE),
+        "enum" => Some(lsp::CompletionItemKind::ENUM),
+        "keyword" => Some(lsp::CompletionItemKind::KEYWORD),
+        "snippet" => Some(lsp::CompletionItemKind::SNIPPET),
+        "color" => Some(lsp::CompletionItemKind::COLOR),
+        "file" => Some(lsp::CompletionItemKind::FILE),
+        "reference" => Some(lsp::CompletionItemKind::REFERENCE),
+        "folder" => Some(lsp::CompletionItemKind::FOLDER),
+        "enum_member" => Some(lsp::CompletionItemKind::ENUM_MEMBER),
+        "constant" => Some(lsp::CompletionItemKind::CONSTANT),
+        "struct" => Some(lsp::CompletionItemKind::STRUCT),
+        "event" => Some(lsp::CompletionItemKind::EVENT),
+        "operator" => Some(lsp::CompletionItemKind::OPERATOR),
+        "type_parameter" => Some(lsp::CompletionItemKind::TYPE_PARAMETER),
+        _ => None, // should never get one.
+    }
+}
+
+fn deserialize_completion_item_kinds<'de, D>(
+    deserializer: D,
+) -> Result<Vec<(lsp::CompletionItemKind, String)>, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let kind_names = HashMap::<String, String>::deserialize(deserializer)?;
+    let mut res = vec![];
+
+    for (name, text) in kind_names.into_iter() {
+        let Some(kind) = name_to_completion_item_kind(&name) else {
+            return Err(<D::Error as serde::de::Error>::invalid_value(serde::de::Unexpected
+            ::Str(&name), &"No such item kind!"));
+        };
+
+        res.push((kind, text));
+    }
+
+    Ok(res)
+}
+
+#[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+pub enum CompletionItemColumn {
+    #[default]
+    Name,
+    Kind,
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct Config {
@@ -287,6 +378,10 @@ pub struct Config {
     /// Whether to insert the completion suggestion on hover. Defaults to true.
     pub preview_completion_insert: bool,
     pub completion_trigger_len: u8,
+    /// Custom text for completion item kinds.
+    #[serde(deserialize_with = "deserialize_completion_item_kinds")]
+    pub completion_item_kinds: Vec<(lsp::CompletionItemKind, String)>,
+    pub completion_item_columns: Vec<CompletionItemColumn>,
     /// Whether to instruct the LSP to replace the entire word when applying a completion
     /// or to only insert new text
     pub completion_replace: bool,
@@ -886,6 +981,8 @@ impl Default for Config {
             completion_timeout: Duration::from_millis(250),
             preview_completion_insert: true,
             completion_trigger_len: 2,
+            completion_item_kinds: vec![],
+            completion_item_columns: vec![CompletionItemColumn::Name, CompletionItemColumn::Kind],
             auto_info: true,
             file_picker: FilePickerConfig::default(),
             statusline: StatusLineConfig::default(),
