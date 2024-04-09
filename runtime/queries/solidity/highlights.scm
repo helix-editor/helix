@@ -1,8 +1,3 @@
-; identifiers
-; -----------
-(identifier) @variable
-(yul_identifier) @variable
-
 ; Pragma
 (pragma_directive) @tag
 (solidity_version_comparison_operator _ @tag)
@@ -217,3 +212,8 @@
   "delete"
   "new"
 ] @keyword.operator
+
+; identifiers
+; -----------
+(identifier) @variable
+(yul_identifier) @variable
