@@ -14,6 +14,7 @@ use crate::{
 use helix_stdx::rope::{self, RopeSliceExt};
 use smallvec::{smallvec, SmallVec};
 use std::borrow::Cow;
+use tree_sitter::Node;
 
 /// A single selection range.
 ///
@@ -71,6 +72,12 @@ impl Range {
 
     pub fn point(head: usize) -> Self {
         Self::new(head, head)
+    }
+
+    pub fn from_node(node: Node, text: RopeSlice, direction: Direction) -> Self {
+        let from = text.byte_to_char(node.start_byte());
+        let to = text.byte_to_char(node.end_byte());
+        Range::new(from, to).with_direction(direction)
     }
 
     /// Start of the range.
@@ -375,6 +382,12 @@ impl Range {
         let first = graphemes.next();
         let second = graphemes.next();
         first.is_some() && second.is_none()
+    }
+
+    /// Converts this char range into an in order byte range, discarding
+    /// direction.
+    pub fn into_byte_range(&self, text: RopeSlice) -> (usize, usize) {
+        (text.char_to_byte(self.from()), text.char_to_byte(self.to()))
     }
 }
 
@@ -783,7 +796,9 @@ pub fn split_on_newline(text: RopeSlice, selection: &Selection) -> Selection {
         let mut start = sel_start;
 
         for line in sel.slice(text).lines() {
-            let Some(line_ending) = get_line_ending(&line) else { break };
+            let Some(line_ending) = get_line_ending(&line) else {
+                break;
+            };
             let line_end = start + line.len_chars();
             // TODO: retain range direction
             result.push(Range::new(start, line_end - line_ending.len_chars()));

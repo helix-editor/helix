@@ -1,8 +1,3 @@
-; identifiers
-; -----------
-(identifier) @variable
-(yul_identifier) @variable
-
 ; Pragma
 (pragma_directive) @tag
 (solidity_version_comparison_operator _ @tag)
@@ -36,6 +31,7 @@
 (type_name) @type
 (primitive_type) @type
 (user_defined_type (identifier) @type)
+(type_alias (identifier) @type)
 
 ; Color payable in payable address conversion as type and not as keyword
 (payable_conversion_expression "payable" @type)
@@ -80,7 +76,7 @@
 
 ; Function parameters
 (call_struct_argument name: (identifier) @field)
-(event_paramater name: (identifier) @variable.parameter)
+(event_parameter name: (identifier) @variable.parameter)
 (parameter name: (identifier) @variable.parameter)
 
 ; Yul functions
@@ -99,6 +95,7 @@
 ; Keywords
 (meta_type_expression "type" @keyword)
 [
+ "abstract"
  "pragma"
  "contract"
  "interface"
@@ -159,7 +156,7 @@
 "import" @keyword.control.import
 (import_directive "as" @keyword.control.import)
 (import_directive "from" @keyword.control.import)
-(event_paramater "indexed" @keyword) ; TODO fix spelling once fixed upstream
+(event_parameter "indexed" @keyword)
 
 ; Punctuation
 
@@ -217,3 +214,10 @@
   "delete"
   "new"
 ] @keyword.operator
+
+; identifiers
+; -----------
+((identifier) @variable.builtin
+ (#match? @variable.builtin "^(this|msg|block|tx)$"))
+(identifier) @variable
+(yul_identifier) @variable

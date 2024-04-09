@@ -173,7 +173,7 @@
 | smali | ✓ |  | ✓ |  |
 | smithy | ✓ |  |  | `cs` |
 | sml | ✓ |  |  |  |
-| solidity | ✓ |  |  | `solc` |
+| solidity | ✓ | ✓ |  | `solc` |
 | spicedb | ✓ |  |  |  |
 | sql | ✓ |  |  |  |
 | sshclientconfig | ✓ |  |  |  |

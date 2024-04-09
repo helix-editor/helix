@@ -40,6 +40,46 @@ pub fn select_next_sibling(syntax: &Syntax, text: RopeSlice, selection: Selectio
     })
 }
 
+pub fn select_all_siblings(syntax: &Syntax, text: RopeSlice, selection: Selection) -> Selection {
+    selection.transform_iter(|range| {
+        let mut cursor = syntax.walk();
+        let (from, to) = range.into_byte_range(text);
+        cursor.reset_to_byte_range(from, to);
+
+        if !cursor.goto_parent_with(|parent| parent.child_count() > 1) {
+            return vec![range].into_iter();
+        }
+
+        select_children(&mut cursor, text, range).into_iter()
+    })
+}
+
+pub fn select_all_children(syntax: &Syntax, text: RopeSlice, selection: Selection) -> Selection {
+    selection.transform_iter(|range| {
+        let mut cursor = syntax.walk();
+        let (from, to) = range.into_byte_range(text);
+        cursor.reset_to_byte_range(from, to);
+        select_children(&mut cursor, text, range).into_iter()
+    })
+}
+
+fn select_children<'n>(
+    cursor: &'n mut TreeCursor<'n>,
+    text: RopeSlice,
+    range: Range,
+) -> Vec<Range> {
+    let children = cursor
+        .named_children()
+        .map(|child| Range::from_node(child, text, range.direction()))
+        .collect::<Vec<_>>();
+
+    if !children.is_empty() {
+        children
+    } else {
+        vec![range]
+    }
+}
+
 pub fn select_prev_sibling(syntax: &Syntax, text: RopeSlice, selection: Selection) -> Selection {
     select_node_impl(syntax, text, selection, |cursor| {
         while !cursor.goto_prev_sibling() {
