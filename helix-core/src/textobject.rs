@@ -576,7 +576,8 @@ mod test {
             let slice = doc.slice(..);
             for &case in scenario {
                 let (pos, objtype, expected_range, ch, count) = case;
-                let result = textobject_pair_surround(slice, Range::point(pos), objtype, ch, count);
+                let result =
+                    textobject_pair_surround(None, slice, Range::point(pos), objtype, ch, count);
                 assert_eq!(
                     result,
                     expected_range.into(),

@@ -331,7 +331,7 @@ mod test {
             );
 
         assert_eq!(
-            get_surround_pos(doc.slice(..), &selection, Some('('), 1).unwrap(),
+            get_surround_pos(None, doc.slice(..), &selection, Some('('), 1).unwrap(),
             expectations
         );
     }
@@ -346,7 +346,7 @@ mod test {
             );
 
         assert_eq!(
-            get_surround_pos(doc.slice(..), &selection, Some('('), 1),
+            get_surround_pos(None, doc.slice(..), &selection, Some('('), 1),
             Err(Error::PairNotFound)
         );
     }
@@ -361,7 +361,7 @@ mod test {
             );
 
         assert_eq!(
-            get_surround_pos(doc.slice(..), &selection, Some('('), 1),
+            get_surround_pos(None, doc.slice(..), &selection, Some('('), 1),
             Err(Error::PairNotFound) // overlapping surround chars
         );
     }
@@ -376,7 +376,7 @@ mod test {
             );
 
         assert_eq!(
-            get_surround_pos(doc.slice(..), &selection, Some('['), 1),
+            get_surround_pos(None, doc.slice(..), &selection, Some('['), 1),
             Err(Error::CursorOverlap)
         );
     }
@@ -440,7 +440,7 @@ mod test {
             );
 
         assert_eq!(
-            find_nth_closest_pairs_pos(doc.slice(..), selection.primary(), 1),
+            find_nth_closest_pairs_pos(None, doc.slice(..), selection.primary(), 1),
             Err(Error::PairNotFound)
         )
     }
