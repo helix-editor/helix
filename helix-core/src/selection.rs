@@ -122,7 +122,7 @@ impl Range {
     }
 
     /// `Direction::Backward` when head < anchor.
-    /// `Direction::Backward` otherwise.
+    /// `Direction::Forward` otherwise.
     #[inline]
     #[must_use]
     pub fn direction(&self) -> Direction {
