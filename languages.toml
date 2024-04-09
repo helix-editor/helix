@@ -2060,7 +2060,7 @@ source = { git = "https://github.com/ap29600/tree-sitter-odin", rev = "b219207e4
 name = "meson"
 scope = "source.meson"
 injection-regex = "meson"
-file-types = [{ glob = "meson.build" }, { glob = "meson_options.txt" }]
+file-types = [{ glob = "meson.build" }, { glob = "meson.options" }, { glob = "meson_options.txt" }]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 
