@@ -8,6 +8,9 @@ use std::{
 #[cfg(feature = "git")]
 mod git;
 
+#[cfg(feature = "jujutsu")]
+mod jujutsu;
+
 mod diff;
 
 pub use diff::{DiffHandle, Hunk};
@@ -75,6 +78,8 @@ impl Default for DiffProviderRegistry {
         let providers = vec![
             #[cfg(feature = "git")]
             DiffProvider::Git,
+            #[cfg(feature = "jujutsu")]
+            DiffProvider::Jujutsu,
         ];
         DiffProviderRegistry { providers }
     }
@@ -88,6 +93,8 @@ impl Default for DiffProviderRegistry {
 pub enum DiffProvider {
     #[cfg(feature = "git")]
     Git,
+    #[cfg(feature = "jujutsu")]
+    Jujutsu,
     None,
 }
 
@@ -96,6 +103,8 @@ impl DiffProvider {
         match self {
             #[cfg(feature = "git")]
             Self::Git => git::get_diff_base(file),
+            #[cfg(feature = "jujutsu")]
+            Self::Jujutsu => jujutsu::get_diff_base(file),
             Self::None => bail!("No diff support compiled in"),
         }
     }
@@ -104,6 +113,8 @@ impl DiffProvider {
         match self {
             #[cfg(feature = "git")]
             Self::Git => git::get_current_head_name(file),
+            #[cfg(feature = "jujutsu")]
+            Self::Jujutsu => jujutsu::get_current_head_name(file),
             Self::None => bail!("No diff support compiled in"),
         }
     }
@@ -116,6 +127,8 @@ impl DiffProvider {
         match self {
             #[cfg(feature = "git")]
             Self::Git => git::for_each_changed_file(cwd, f),
+            #[cfg(feature = "jujutsu")]
+            Self::Jujutsu => jujutsu::for_each_changed_file(cwd, f),
             Self::None => bail!("No diff support compiled in"),
         }
     }
