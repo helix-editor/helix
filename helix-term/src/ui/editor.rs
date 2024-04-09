@@ -350,7 +350,8 @@ impl EditorView {
         let text = doc.text().slice(..);
         let row = text.char_to_line(anchor.min(text.len_chars()));
 
-        let range = Self::viewport_byte_range(text, row, height);
+        let mut range = Self::viewport_byte_range(text, row, height);
+        range = text.byte_to_char(range.start)..text.byte_to_char(range.end);
 
         text_annotations.collect_overlay_highlights(range)
     }
