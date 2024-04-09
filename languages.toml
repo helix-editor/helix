@@ -1754,7 +1754,7 @@ language-servers = [ "solc" ]
 
 [[grammar]]
 name = "solidity"
-source = { git = "https://github.com/JoranHonig/tree-sitter-solidity", rev = "5cb506ae419c4ad620c77210fd47500d3d169dbc" }
+source = { git = "https://github.com/JoranHonig/tree-sitter-solidity", rev = "08338dcee32603383fcef08f36321900bb7a354b" }
 
 [[language]]
 name = "gleam"
