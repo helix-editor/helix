@@ -992,6 +992,8 @@ pub struct Editor {
     last_motion: Option<Motion>,
     pub last_completion: Option<CompleteAction>,
 
+    pub last_working_dir: Option<PathBuf>,
+
     pub exit_code: i32,
 
     pub config_events: (UnboundedSender<ConfigEvent>, UnboundedReceiver<ConfigEvent>),
@@ -1129,6 +1131,7 @@ impl Editor {
             cursor_cache: Cell::new(None),
             handlers,
             mouse_down_range: None,
+            last_working_dir: None,
         }
     }
 

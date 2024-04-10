@@ -1082,9 +1082,17 @@ fn change_current_directory(
         .first()
         .context("target directory not provided")?
         .as_ref();
-    let dir = helix_stdx::path::expand_tilde(Path::new(dir));
 
-    helix_stdx::env::set_current_working_dir(dir)?;
+    let cwd = helix_stdx::env::current_working_dir();
+    if dir == "-" {
+        let dir = cx.editor.last_working_dir.as_ref().unwrap_or(&cwd);
+        helix_stdx::env::set_current_working_dir(dir)?;
+    } else {
+        let dir = helix_stdx::path::expand_tilde(Path::new(dir));
+        helix_stdx::env::set_current_working_dir(dir)?;
+    }
+
+    cx.editor.last_working_dir = Some(cwd);
 
     cx.editor.set_status(format!(
         "Current working directory is now {}",
