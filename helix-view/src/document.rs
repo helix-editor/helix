@@ -900,8 +900,9 @@ impl Document {
                     "Path is read only"
                 ));
             }
+            let write_path = std::fs::read_link(&path).unwrap_or_else(|_| path.clone());
             let backup = if path.exists() {
-                let path_ = path.clone();
+                let path_ = write_path.clone();
                 // hacks: we use tempfile to handle the complex task of creating
                 // non clobbered temporary path for us we don't want
                 // the whole automatically delete path on drop thing
@@ -925,7 +926,7 @@ impl Document {
             };
 
             let write_result: anyhow::Result<_> = async {
-                let mut dst = tokio::fs::File::create(&path).await?;
+                let mut dst = tokio::fs::File::create(&write_path).await?;
                 to_writer(&mut dst, encoding_with_bom_info, &text).await?;
                 Ok(())
             }
@@ -934,14 +935,13 @@ impl Document {
             if let Some(backup) = backup {
                 if write_result.is_err() {
                     // restore backup
-                    let _ = tokio::fs::rename(&backup, &path)
+                    let _ = tokio::fs::rename(&backup, &write_path)
                         .await
                         .map_err(|e| log::error!("Failed to restore backup on write failure: {e}"));
                 } else {
                     // copy metadata and delete backup
-                    let path_ = path.clone();
                     let _ = tokio::task::spawn_blocking(move || {
-                        let _ = copy_metadata(&backup, &path_)
+                        let _ = copy_metadata(&backup, &write_path)
                             .map_err(|e| log::error!("Failed to copy metadata on write: {e}"));
                         let _ = std::fs::remove_file(backup)
                             .map_err(|e| log::error!("Failed to remove backup file on write: {e}"));
