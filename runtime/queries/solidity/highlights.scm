@@ -1,6 +1,6 @@
 ; Pragma
-(pragma_directive) @tag
-(solidity_version_comparison_operator _ @tag)
+(pragma_directive) @keyword.directive
+(solidity_version_comparison_operator _ @keyword.directive)
 
 
 ; Literals
@@ -20,7 +20,7 @@
 [
  (true)
  (false)
-] @constant.builtin
+] @constant.builtin.boolean
 
 (comment) @comment
 
@@ -29,7 +29,12 @@
 ; -----------
 
 (type_name) @type
-(primitive_type) @type
+
+[
+  (primitive_type)
+  (number_unit)
+] @type.builtin
+
 (user_defined_type (identifier) @type)
 (type_alias (identifier) @type)
 
@@ -61,6 +66,7 @@
 
 ; Use constructor coloring for special functions
 (constructor_definition "constructor" @constructor)
+(error_declaration "error" @constructor)
 (fallback_receive_definition "receive" @constructor)
 (fallback_receive_definition "fallback" @constructor)
 
@@ -96,7 +102,6 @@
 (meta_type_expression "type" @keyword)
 [
  "abstract"
- "pragma"
  "contract"
  "interface"
  "library"
@@ -104,9 +109,9 @@
  "struct"
  "enum"
  "event"
- "using"
  "assembly"
  "emit"
+
  "public"
  "internal"
  "private"
@@ -114,16 +119,21 @@
  "pure"
  "view"
  "payable"
+
  "modifier"
- "memory"
- "storage"
- "calldata"
  "var"
- "constant"
+ "let"
  (virtual)
  (override_specifier)
  (yul_leave)
 ] @keyword
+
+[
+ "memory"
+ "storage"
+ "calldata"
+ "constant"
+] @keyword.storage.modifier
 
 [
  "for"
@@ -144,6 +154,7 @@
 [
  "try"
  "catch"
+ "revert"
 ] @keyword.control.exception
 
 [
@@ -154,6 +165,7 @@
 "function" @keyword.function
 
 "import" @keyword.control.import
+"using" @keyword.control.import
 (import_directive "as" @keyword.control.import)
 (import_directive "from" @keyword.control.import)
 (event_parameter "indexed" @keyword)
@@ -173,6 +185,9 @@
 [
   "."
   ","
+  ":"
+  "->"
+  "=>"
 ] @punctuation.delimiter
 
 
@@ -215,6 +230,7 @@
   "new"
 ] @keyword.operator
 
+; TODO: move to top when order swapped
 ; identifiers
 ; -----------
 ((identifier) @variable.builtin
