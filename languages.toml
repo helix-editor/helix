@@ -3502,9 +3502,7 @@ source = { git = "https://github.com/adl-lang/tree-sitter-adl", rev = "2787d04be
 name = "ldif"
 scope = "source.ldif"
 injection-regex = "ldif"
-file-types = [
-  { glob = "*.ldif" },
-]
+file-types = ["ldif"]
 comment-token = "#"
 
 [[grammar]]
