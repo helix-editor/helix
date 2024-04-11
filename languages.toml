@@ -3497,3 +3497,14 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "adl"
 source = { git = "https://github.com/adl-lang/tree-sitter-adl", rev = "2787d04beadfbe154d3f2da6e98dc45a1b134bbf" }
+
+[[language]]
+name = "ldif"
+scope = "source.ldif"
+injection-regex = "ldif"
+file-types = ["ldif"]
+comment-token = "#"
+
+[[grammar]]
+name = "ldif"
+source = { git = "https://github.com/kepet19/tree-sitter-ldif", rev = "0a917207f65ba3e3acfa9cda16142ee39c4c1aaa" }
