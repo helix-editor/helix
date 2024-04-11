@@ -567,6 +567,43 @@ async fn test_symlink_write() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn test_symlink_write_fail() -> anyhow::Result<()> {
+    #[cfg(unix)]
+    use std::os::unix::fs::symlink;
+    #[cfg(not(unix))]
+    use std::os::windows::fs::symlink_file as symlink;
+
+    let dir = tempfile::tempdir()?;
+
+    let file = helpers::new_readonly_tempfile_in_dir(&dir)?;
+    let symlink_path = dir.path().join("linked");
+    symlink(file.path(), &symlink_path)?;
+
+    let mut app = helpers::AppBuilder::new()
+        .with_file(&symlink_path, None)
+        .build()?;
+
+    test_key_sequence(
+        &mut app,
+        Some("ihello<esc>:wq<ret>"),
+        Some(&|app| {
+            let mut docs: Vec<_> = app.editor.documents().collect();
+            assert_eq!(1, docs.len());
+
+            let doc = docs.pop().unwrap();
+            assert_eq!(Some(&path::normalize(&symlink_path)), doc.path());
+            assert_eq!(&Severity::Error, app.editor.get_status().unwrap().1);
+        }),
+        false,
+    )
+    .await?;
+
+    assert!(symlink_path.is_symlink());
+
+    Ok(())
+}
+
 async fn edit_file_with_content(file_content: &[u8]) -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
 

@@ -893,16 +893,16 @@ impl Document {
                     }
                 }
             }
+            let write_path = tokio::fs::read_link(&path)
+                .await
+                .unwrap_or_else(|_| path.clone());
 
-            if readonly(&path) {
+            if readonly(&write_path) {
                 bail!(std::io::Error::new(
                     std::io::ErrorKind::PermissionDenied,
                     "Path is read only"
                 ));
             }
-            let write_path = tokio::fs::read_link(&path)
-                .await
-                .unwrap_or_else(|_| path.clone());
             let backup = if path.exists() {
                 let path_ = write_path.clone();
                 // hacks: we use tempfile to handle the complex task of creating
