@@ -17,5 +17,3 @@
 (change_modify) @string
 
 (value_spec) @keyword
-
-(ERROR) @error
