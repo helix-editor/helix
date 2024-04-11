@@ -529,6 +529,44 @@ async fn test_write_all_insert_final_newline_do_not_add_if_unmodified() -> anyho
     Ok(())
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn test_symlink_write() -> anyhow::Result<()> {
+    #[cfg(unix)]
+    use std::os::unix::fs::symlink;
+    #[cfg(not(unix))]
+    use std::os::windows::fs::symlink_file as symlink;
+
+    let dir = tempfile::tempdir()?;
+
+    let mut file = tempfile::NamedTempFile::new_in(&dir)?;
+    let symlink_path = dir.path().join("linked");
+    symlink(file.path(), &symlink_path)?;
+
+    let mut app = helpers::AppBuilder::new()
+        .with_file(&symlink_path, None)
+        .build()?;
+
+    test_key_sequence(
+        &mut app,
+        Some("ithe gostak distims the doshes<ret><esc>:w<ret>"),
+        None,
+        false,
+    )
+    .await?;
+
+    reload_file(&mut file).unwrap();
+    let mut file_content = String::new();
+    file.as_file_mut().read_to_string(&mut file_content)?;
+
+    assert_eq!(
+        LineFeedHandling::Native.apply("the gostak distims the doshes"),
+        file_content
+    );
+    assert!(symlink_path.is_symlink());
+
+    Ok(())
+}
+
 async fn edit_file_with_content(file_content: &[u8]) -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
 
