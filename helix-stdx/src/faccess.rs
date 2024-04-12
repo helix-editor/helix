@@ -124,7 +124,7 @@ mod imp {
 
     impl SecurityDescriptor {
         fn for_path(p: &Path) -> io::Result<SecurityDescriptor> {
-            let path = std::fs::canonicalize(p)?;
+            let path = dunce::canonicalize(p)?;
             let pathos = path.into_os_string();
             let mut pathw: Vec<u16> = Vec::with_capacity(pathos.len() + 1);
             pathw.extend(pathos.encode_wide());
@@ -352,7 +352,7 @@ mod imp {
     }
 
     fn chown(p: &Path, sd: SecurityDescriptor) -> io::Result<()> {
-        let path = std::fs::canonicalize(p)?;
+        let path = dunce::canonicalize(p)?;
         let pathos = path.as_os_str();
         let mut pathw = Vec::with_capacity(pathos.len() + 1);
         pathw.extend(pathos.encode_wide());
