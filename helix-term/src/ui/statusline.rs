@@ -163,6 +163,7 @@ where
         helix_view::editor::StatusLineElement::Spacer => render_spacer,
         helix_view::editor::StatusLineElement::VersionControl => render_version_control,
         helix_view::editor::StatusLineElement::Register => render_register,
+        helix_view::editor::StatusLineElement::Zoom => render_zoom,
     }
 }
 
@@ -529,5 +530,13 @@ where
 {
     if let Some(reg) = context.editor.selected_register {
         write(context, format!(" reg={} ", reg), None)
+    }
+}
+
+fn render_zoom<'a>(context: &RenderContext) -> Spans<'a> {
+    if context.editor.tree.zoom {
+        "[zoom]".into()
+    } else {
+        Spans::default()
     }
 }
