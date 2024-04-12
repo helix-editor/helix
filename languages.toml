@@ -3360,7 +3360,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "ld"
-source = { git = "https://github.com/mtoohey31/tree-sitter-ld", rev = "81978cde3844bfc199851e39c80a20ec6444d35e" }
+source = { git = "https://github.com/mtoohey31/tree-sitter-ld", rev = "0e9695ae0ede47b8744a8e2ad44d4d40c5d4e4c9" }
 
 [[language]]
 name = "hyprlang"
