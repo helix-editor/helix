@@ -527,6 +527,7 @@ impl MappableCommand {
         vsplit_new, "Vertical right split scratch buffer",
         wclose, "Close window",
         wonly, "Close windows except current",
+        toggle_zoom, "Toggle zoom for current window",
         select_register, "Select register",
         insert_register, "Insert register",
         align_view_middle, "Align view middle",
@@ -5473,6 +5474,11 @@ fn wonly(cx: &mut Context) {
             cx.editor.close(view_id);
         }
     }
+}
+
+fn toggle_zoom(cx: &mut Context) {
+    cx.editor.tree.zoom = !cx.editor.tree.zoom;
+    cx.editor.tree.recalculate();
 }
 
 fn select_register(cx: &mut Context) {
