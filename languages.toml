@@ -101,6 +101,7 @@ wgsl_analyzer = { command = "wgsl_analyzer" }
 yaml-language-server = { command = "yaml-language-server", args = ["--stdio"] }
 zls = { command = "zls" }
 blueprint-compiler = { command = "blueprint-compiler", args = ["lsp"] }
+typst-lsp = { command = "typst-lsp" }
 tinymist = { command = "tinymist" }
 pkgbuild-language-server = { command = "pkgbuild-language-server" }
 helm_ls = { command = "helm_ls", args = ["serve"] }
@@ -3071,7 +3072,7 @@ scope = "source.typst"
 injection-regex = "typst"
 file-types = ["typst", "typ"]
 comment-token = "//"
-language-servers = ["tinymist"]
+language-servers = ["tinymist", "typst-lsp"]
 indent = { tab-width = 2, unit = "  " }
 
 [language.auto-pairs]
