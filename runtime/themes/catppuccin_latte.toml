@@ -34,3 +34,5 @@ crust = "#dce0e8"
 # derived colors by blending existing palette colors
 cursorline = "#e9ebf1"
 secondary_cursor = "#e2a99e"
+secondary_cursor_normal = "#98a7fb"
+secondary_cursor_insert = "#75b868"

@@ -83,17 +83,27 @@
 
 "ui.text" = "text"
 "ui.text.focus" = { fg = "text", bg = "surface0", modifiers = ["bold"] }
+"ui.text.inactive" = { fg = "overlay1" }
 
 "ui.virtual" = "overlay0"
 "ui.virtual.ruler" = { bg = "surface0" }
 "ui.virtual.indent-guide" = "surface0"
-"ui.virtual.inlay-hint" = { fg = "surface1", bg = "mantle" }
+"ui.virtual.inlay-hint" = { fg = "overlay0", bg = "base" }
+"ui.virtual.jump-label" = { fg = "rosewater", modifiers = ["bold"] }
 
 "ui.selection" = { bg = "surface1" }
 
 "ui.cursor" = { fg = "base", bg = "secondary_cursor" }
 "ui.cursor.primary" = { fg = "base", bg = "rosewater" }
 "ui.cursor.match" = { fg = "peach", modifiers = ["bold"] }
+
+"ui.cursor.primary.normal" = { fg = "base", bg = "lavender" }
+"ui.cursor.primary.insert" = { fg = "base", bg = "green" }
+"ui.cursor.primary.select" = { fg = "base", bg = "flamingo" }
+
+"ui.cursor.normal" = { fg = "base", bg = "secondary_cursor_normal" }
+"ui.cursor.insert" = { fg = "base", bg = "secondary_cursor_insert" }
+"ui.cursor.select" = { fg = "base", bg = "secondary_cursor" }
 
 "ui.cursorline.primary" = { bg = "cursorline" }
 
@@ -106,6 +116,8 @@
 "diagnostic.warning" = { underline = { color = "yellow", style = "curl" } }
 "diagnostic.info" = { underline = { color = "sky", style = "curl" } }
 "diagnostic.hint" = { underline = { color = "teal", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 error = "red"
 warning = "yellow"
@@ -146,3 +158,5 @@ crust = "#11111b"
 # derived colors by blending existing palette colors
 cursorline = "#2a2b3c"
 secondary_cursor = "#b5a6a8"
+secondary_cursor_normal = "#878ec0"
+secondary_cursor_insert = "#7da87e"

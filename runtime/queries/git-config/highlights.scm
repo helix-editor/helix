@@ -19,9 +19,10 @@
 [
   "["
   "]"
-  "\""
 ] @punctuation.bracket
 
-"=" @punctuation.delimiter
+["=" "\\"] @punctuation.delimiter
+
+(escape_sequence) @constant.character.escape
 
 (comment) @comment

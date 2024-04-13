@@ -1,14 +1,17 @@
 [workspace]
+resolver = "2"
 members = [
   "helix-core",
   "helix-view",
   "helix-term",
   "helix-tui",
   "helix-lsp",
+  "helix-event",
   "helix-dap",
   "helix-loader",
   "helix-vcs",
   "helix-parsec",
+  "helix-stdx",
   "xtask",
 ]
 
@@ -32,3 +35,17 @@ inherits = "test"
 package.helix-core.opt-level = 2
 package.helix-tui.opt-level = 2
 package.helix-term.opt-level = 2
+
+[workspace.dependencies]
+tree-sitter = { version = "0.22" }
+nucleo = "0.2.0"
+
+[workspace.package]
+version = "24.3.0"
+edition = "2021"
+authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
+categories = ["editor"]
+repository = "https://github.com/helix-editor/helix"
+homepage = "https://helix-editor.com"
+license = "MPL-2.0"
+rust-version = "1.70"

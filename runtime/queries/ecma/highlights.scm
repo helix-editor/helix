@@ -46,8 +46,15 @@
 (assignment_expression
   left: (identifier) @function
   right: [(function) (arrow_function)])
-  
 
+; Function and method parameters
+;-------------------------------
+
+; Arrow function parameters in the form `p => ...` are supported by both
+; javascript and typescript grammars without conflicts.
+(arrow_function
+  parameter: (identifier) @variable.parameter)
+  
 ; Function and method calls
 ;--------------------------
 
@@ -102,7 +109,7 @@
 
 [
   ";"
-  "?."
+  (optional_chain) ; ?.
   "."
   ","
 ] @punctuation.delimiter

@@ -40,6 +40,7 @@
 "constructor" = "green"
 "module" = "yellow"
 "special" = "blue"
+"ui.virtual.jump-label" = { fg = "#00dfff", modifiers = ["bold"] }
 
 "markup.heading.marker" = "grey1"
 "markup.heading.1" = { fg = "red", modifiers = ["bold"] }
@@ -110,6 +111,8 @@
 "diagnostic.info" = { underline = { color = "blue", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "yellow", style = "curl" } }
 "diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 [palette]
 
@@ -138,3 +141,7 @@ purple = "#d699b6"
 grey0 = "#7a8478"
 grey1 = "#859289"
 grey2 = "#9da9a0"
+
+statusline1 = "#a7c080"
+statusline2 = "#d3c6aa"
+statusline3 = "#e67e80"

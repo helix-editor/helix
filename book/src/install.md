@@ -6,12 +6,14 @@
 - [Linux](#linux)
   - [Ubuntu](#ubuntu)
   - [Fedora/RHEL](#fedorarhel)
-  - [Arch Linux community](#arch-linux-community)
+  - [Arch Linux extra](#arch-linux-extra)
   - [NixOS](#nixos)
   - [Flatpak](#flatpak)
+  - [Snap](#snap)
   - [AppImage](#appimage)
 - [macOS](#macos)
   - [Homebrew Core](#homebrew-core)
+  - [MacPorts](#macports)
 - [Windows](#windows)
   - [Winget](#winget)
   - [Scoop](#scoop)
@@ -63,20 +65,26 @@ sudo apt install helix
 
 ### Fedora/RHEL
 
-Enable the `COPR` repository for Helix:
-
 ```sh
-sudo dnf copr enable varlad/helix
 sudo dnf install helix
 ```
 
-### Arch Linux community
+### Arch Linux extra
 
-Releases are available in the `community` repository:
+Releases are available in the `extra` repository:
 
 ```sh
 sudo pacman -S helix
 ```
+
+> 💡 When installed from the `extra` repository, run Helix with `helix` instead of `hx`.
+>
+> For example:
+> ```sh
+> helix --health
+> ```
+> to check health
+
 Additionally, a [helix-git](https://aur.archlinux.org/packages/helix-git/) package is available
 in the AUR, which builds the master branch.
 
@@ -104,6 +112,16 @@ flatpak install flathub com.helix_editor.Helix
 flatpak run com.helix_editor.Helix
 ```
 
+### Snap
+
+Helix is available on [Snapcraft](https://snapcraft.io/helix) and can be installed with:
+
+```sh
+snap install --classic helix
+```
+
+This will install Helix as both `/snap/bin/helix` and `/snap/bin/hx`, so make sure `/snap/bin` is in your `PATH`.
+
 ### AppImage
 
 Install Helix using the Linux [AppImage](https://appimage.org/) format.
@@ -120,6 +138,12 @@ chmod +x helix-*.AppImage # change permission for executable mode
 
 ```sh
 brew install helix
+```
+
+### MacPorts
+
+```sh
+port install helix
 ```
 
 ## Windows
@@ -159,9 +183,13 @@ pacman -S mingw-w64-ucrt-x86_64-helix
 
 Requirements:
 
+Clone the Helix GitHub repository into a directory of your choice. The
+examples in this documentation assume installation into either `~/src/` on
+Linux and macOS, or `%userprofile%\src\` on Windows.
+
 - The [Rust toolchain](https://www.rust-lang.org/tools/install)
 - The [Git version control system](https://git-scm.com/)
-- A c++14 compatible compiler to build the tree-sitter grammars, for example GCC or Clang
+- A C++14 compatible compiler to build the tree-sitter grammars, for example GCC or Clang
 
 If you are using the `musl-libc` standard library instead of `glibc` the following environment variable must be set during the build to ensure tree-sitter grammars can be loaded correctly:
 
@@ -171,19 +199,21 @@ RUSTFLAGS="-C target-feature=-crt-static"
 
 1. Clone the repository:
 
-```sh
-git clone https://github.com/helix-editor/helix
-cd helix
-```
+   ```sh
+   git clone https://github.com/helix-editor/helix
+   cd helix
+   ```
 
 2. Compile from source:
 
-```sh
-cargo install --path helix-term --locked
-```
+   ```sh
+   cargo install --path helix-term --locked
+   ```
 
-This command will create the `hx` executable and construct the tree-sitter
-grammars in the local `runtime` folder.
+   This command will create the `hx` executable and construct the tree-sitter
+   grammars in the local `runtime` folder.
+
+> 💡 If you do not want to fetch or build grammars, set an environment variable `HELIX_DISABLE_AUTO_GRAMMAR_BUILD`
 
 > 💡 Tree-sitter grammars can be fetched and compiled if not pre-packaged. Fetch
 > grammars with `hx --grammar fetch` and compile them with
@@ -195,17 +225,21 @@ grammars in the local `runtime` folder.
 
 #### Linux and macOS
 
-Either set the `HELIX_RUNTIME` environment variable to point to the runtime files and add it to your `~/.bashrc` or equivalent:
+The **runtime** directory is one below the Helix source, so either export a
+`HELIX_RUNTIME` environment variable to point to that directory and add it to
+your `~/.bashrc` or equivalent:
 
 ```sh
-HELIX_RUNTIME=/home/user-name/src/helix/runtime
+export HELIX_RUNTIME=~/src/helix/runtime
 ```
 
-Or, create a symlink in `~/.config/helix` that links to the source code directory:
+Or, create a symbolic link:
 
 ```sh
-ln -s $PWD/runtime ~/.config/helix/runtime
+ln -Ts $PWD/runtime ~/.config/helix/runtime
 ```
+
+If the above command fails to create a symbolic link because the file exists either move `~/.config/helix/runtime` to a new location or delete it, then run the symlink command above again.
 
 #### Windows
 
@@ -238,11 +272,31 @@ following order:
 1. `runtime/` sibling directory to `$CARGO_MANIFEST_DIR` directory (this is intended for
   developing and testing helix only).
 2. `runtime/` subdirectory of OS-dependent helix user config directory.
-3. `$HELIX_RUNTIME`.
-4. `runtime/` subdirectory of path to Helix executable.
+3. `$HELIX_RUNTIME`
+4. Distribution-specific fallback directory (set at compile time—not run time—
+   with the `HELIX_DEFAULT_RUNTIME` environment variable)
+5. `runtime/` subdirectory of path to Helix executable.
 
 This order also sets the priority for selecting which file will be used if multiple runtime
 directories have files with the same name.
+
+#### Note to packagers
+
+If you are making a package of Helix for end users, to provide a good out of
+the box experience, you should set the `HELIX_DEFAULT_RUNTIME` environment
+variable at build time (before invoking `cargo build`) to a directory which
+will store the final runtime files after installation. For example, say you want
+to package the runtime into `/usr/lib/helix/runtime`. The rough steps a build
+script could follow are:
+
+1. `export HELIX_DEFAULT_RUNTIME=/usr/lib/helix/runtime`
+1. `cargo build --profile opt --locked --path helix-term`
+1. `cp -r runtime $BUILD_DIR/usr/lib/helix/`
+1. `cp target/opt/hx $BUILD_DIR/usr/bin/hx`
+
+This way the resulting `hx` binary will always look for its runtime directory in
+`/usr/lib/helix/runtime` if the user has no custom runtime in `~/.config/helix`
+or `HELIX_RUNTIME`.
 
 ### Validating the installation
 

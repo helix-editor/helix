@@ -73,3 +73,5 @@
 "diagnostic.error" = { underline = { color = "#D74E50", style = "curl" } }
 "diagnostic.info" = { underline = { color = "#839A53", style = "curl" } }
 "diagnostic.hint" = { underline = { color = "#A6B6CE", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }

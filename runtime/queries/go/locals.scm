@@ -1,8 +1,16 @@
 ; Scopes
 
-(block) @local.scope
+[
+  (function_declaration)
+  (type_declaration)
+  (block)
+] @local.scope
 
 ; Definitions
+
+(type_parameter_list
+  (parameter_declaration
+    name: (identifier) @local.definition))
 
 (parameter_declaration (identifier) @local.definition)
 (variadic_parameter_declaration (identifier) @local.definition)
@@ -27,4 +35,4 @@
 
 (identifier) @local.reference
 (field_identifier) @local.reference
-
+(type_identifier) @local.reference

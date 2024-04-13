@@ -4,11 +4,13 @@ use arc_swap::ArcSwap;
 use futures_util::future::BoxFuture;
 use futures_util::FutureExt;
 use helix_core::auto_pairs::AutoPairs;
+use helix_core::chars::char_is_word;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
 use helix_core::syntax::{Highlight, LanguageServerFeature};
-use helix_core::text_annotations::{InlineAnnotation, TextAnnotations};
-use helix_core::Range;
+use helix_core::text_annotations::{InlineAnnotation, Overlay};
+use helix_lsp::util::lsp_pos_to_pos;
+use helix_stdx::faccess::{copy_metadata, readonly};
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
 
 use ::parking_lot::Mutex;
@@ -20,7 +22,6 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::future::Future;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::{Arc, Weak};
 use std::time::SystemTime;
@@ -31,11 +32,11 @@ use helix_core::{
     indent::{auto_detect_indent_style, IndentStyle},
     line_ending::auto_detect_line_ending,
     syntax::{self, LanguageConfiguration},
-    ChangeSet, Diagnostic, LineEnding, Rope, RopeBuilder, Selection, Syntax, Transaction,
-    DEFAULT_LINE_ENDING,
+    ChangeSet, Diagnostic, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax, Transaction,
 };
 
-use crate::editor::{Config, RedrawHandle};
+use crate::editor::Config;
+use crate::events::{DocumentDidChange, SelectionDidChange};
 use crate::{DocumentId, Editor, Theme, View, ViewId};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
@@ -114,19 +115,6 @@ pub struct SavePoint {
     /// The view this savepoint is associated with
     pub view: ViewId,
     revert: Mutex<Transaction>,
-    pub text: Rope,
-}
-
-impl SavePoint {
-    pub fn cursor(&self) -> usize {
-        // we always create transactions with selections
-        self.revert
-            .lock()
-            .selection()
-            .unwrap()
-            .primary()
-            .cursor(self.text.slice(..))
-    }
 }
 
 pub struct Document {
@@ -138,6 +126,7 @@ pub struct Document {
     ///
     /// To know if they're up-to-date, check the `id` field in `DocumentInlayHints`.
     pub(crate) inlay_hints: HashMap<ViewId, DocumentInlayHints>,
+    pub(crate) jump_labels: HashMap<ViewId, Vec<Overlay>>,
     /// Set to `true` when the document is updated, reset to `false` on the next inlay hints
     /// update from the LSP
     pub inlay_hints_oudated: bool,
@@ -187,6 +176,8 @@ pub struct Document {
 
     // when document was used for most-recent-used buffer picker
     pub focused_at: std::time::Instant,
+
+    pub readonly: bool,
 }
 
 /// Inlay hints for a single `(Document, View)` combo.
@@ -210,22 +201,22 @@ pub struct DocumentInlayHints {
     pub id: DocumentInlayHintsId,
 
     /// Inlay hints of `TYPE` kind, if any.
-    pub type_inlay_hints: Rc<[InlineAnnotation]>,
+    pub type_inlay_hints: Vec<InlineAnnotation>,
 
     /// Inlay hints of `PARAMETER` kind, if any.
-    pub parameter_inlay_hints: Rc<[InlineAnnotation]>,
+    pub parameter_inlay_hints: Vec<InlineAnnotation>,
 
     /// Inlay hints that are neither `TYPE` nor `PARAMETER`.
     ///
     /// LSPs are not required to associate a kind to their inlay hints, for example Rust-Analyzer
     /// currently never does (February 2023) and the LSP spec may add new kinds in the future that
     /// we want to display even if we don't have some special highlighting for them.
-    pub other_inlay_hints: Rc<[InlineAnnotation]>,
+    pub other_inlay_hints: Vec<InlineAnnotation>,
 
     /// Inlay hint padding. When creating the final `TextAnnotations`, the `before` padding must be
     /// added first, then the regular inlay hints, then the `after` padding.
-    pub padding_before_inlay_hints: Rc<[InlineAnnotation]>,
-    pub padding_after_inlay_hints: Rc<[InlineAnnotation]>,
+    pub padding_before_inlay_hints: Vec<InlineAnnotation>,
+    pub padding_after_inlay_hints: Vec<InlineAnnotation>,
 }
 
 impl DocumentInlayHints {
@@ -233,11 +224,11 @@ impl DocumentInlayHints {
     pub fn empty_with_id(id: DocumentInlayHintsId) -> Self {
         Self {
             id,
-            type_inlay_hints: Rc::new([]),
-            parameter_inlay_hints: Rc::new([]),
-            other_inlay_hints: Rc::new([]),
-            padding_before_inlay_hints: Rc::new([]),
-            padding_after_inlay_hints: Rc::new([]),
+            type_inlay_hints: Vec::new(),
+            parameter_inlay_hints: Vec::new(),
+            other_inlay_hints: Vec::new(),
+            padding_before_inlay_hints: Vec::new(),
+            padding_after_inlay_hints: Vec::new(),
         }
     }
 }
@@ -399,33 +390,11 @@ pub fn from_reader<R: std::io::Read + ?Sized>(
     let mut buf_out = [0u8; BUF_SIZE];
     let mut builder = RopeBuilder::new();
 
-    // By default, the encoding of the text is auto-detected by
-    // `encoding_rs` for_bom, and if it fails, from `chardetng`
-    // crate which requires sample data from the reader.
-    // As a manual override to this auto-detection is possible, the
-    // same data is read into `buf` to ensure symmetry in the upcoming
-    // loop.
-    let (encoding, has_bom, mut decoder, mut slice, mut is_empty) = {
-        let read = reader.read(&mut buf)?;
-        let is_empty = read == 0;
-        let (encoding, has_bom) = encoding
-            .map(|encoding| (encoding, false))
-            .or_else(|| {
-                encoding::Encoding::for_bom(&buf).map(|(encoding, _bom_size)| (encoding, true))
-            })
-            .unwrap_or_else(|| {
-                let mut encoding_detector = chardetng::EncodingDetector::new();
-                encoding_detector.feed(&buf, is_empty);
-                (encoding_detector.guess(None, true), false)
-            });
+    let (encoding, has_bom, mut decoder, read) =
+        read_and_detect_encoding(reader, encoding, &mut buf)?;
 
-        let decoder = encoding.new_decoder();
-
-        // If the amount of bytes read from the reader is less than
-        // `buf.len()`, it is undesirable to read the bytes afterwards.
-        let slice = &buf[..read];
-        (encoding, has_bom, decoder, slice, is_empty)
-    };
+    let mut slice = &buf[..read];
+    let mut is_empty = read == 0;
 
     // `RopeBuilder::append()` expects a `&str`, so this is the "real"
     // output buffer. When decoding, the number of bytes in the output
@@ -493,6 +462,81 @@ pub fn from_reader<R: std::io::Read + ?Sized>(
     }
     let rope = builder.finish();
     Ok((rope, encoding, has_bom))
+}
+
+pub fn read_to_string<R: std::io::Read + ?Sized>(
+    reader: &mut R,
+    encoding: Option<&'static Encoding>,
+) -> Result<(String, &'static Encoding, bool), Error> {
+    let mut buf = [0u8; BUF_SIZE];
+
+    let (encoding, has_bom, mut decoder, read) =
+        read_and_detect_encoding(reader, encoding, &mut buf)?;
+
+    let mut slice = &buf[..read];
+    let mut is_empty = read == 0;
+    let mut buf_string = String::with_capacity(buf.len());
+
+    loop {
+        let mut total_read = 0usize;
+
+        loop {
+            let (result, read, ..) =
+                decoder.decode_to_string(&slice[total_read..], &mut buf_string, is_empty);
+
+            total_read += read;
+
+            match result {
+                encoding::CoderResult::InputEmpty => {
+                    debug_assert_eq!(slice.len(), total_read);
+                    break;
+                }
+                encoding::CoderResult::OutputFull => {
+                    debug_assert!(slice.len() > total_read);
+                    buf_string.reserve(buf.len())
+                }
+            }
+        }
+
+        if is_empty {
+            debug_assert_eq!(reader.read(&mut buf)?, 0);
+            break;
+        }
+
+        let read = reader.read(&mut buf)?;
+        slice = &buf[..read];
+        is_empty = read == 0;
+    }
+    Ok((buf_string, encoding, has_bom))
+}
+
+/// Reads the first chunk from a Reader into the given buffer
+/// and detects the encoding.
+///
+/// By default, the encoding of the text is auto-detected by
+/// `encoding_rs` for_bom, and if it fails, from `chardetng`
+/// crate which requires sample data from the reader.
+/// As a manual override to this auto-detection is possible, the
+/// same data is read into `buf` to ensure symmetry in the upcoming
+/// loop.
+fn read_and_detect_encoding<R: std::io::Read + ?Sized>(
+    reader: &mut R,
+    encoding: Option<&'static Encoding>,
+    buf: &mut [u8],
+) -> Result<(&'static Encoding, bool, encoding::Decoder, usize), Error> {
+    let read = reader.read(buf)?;
+    let is_empty = read == 0;
+    let (encoding, has_bom) = encoding
+        .map(|encoding| (encoding, false))
+        .or_else(|| encoding::Encoding::for_bom(buf).map(|(encoding, _bom_size)| (encoding, true)))
+        .unwrap_or_else(|| {
+            let mut encoding_detector = chardetng::EncodingDetector::new();
+            encoding_detector.feed(buf, is_empty);
+            (encoding_detector.guess(None, true), false)
+        });
+    let decoder = encoding.new_decoder();
+
+    Ok((encoding, has_bom, decoder, read))
 }
 
 // The documentation and implementation of this function should be up-to-date with
@@ -590,7 +634,8 @@ impl Document {
         config: Arc<dyn DynAccess<Config>>,
     ) -> Self {
         let (encoding, has_bom) = encoding_with_bom_info.unwrap_or((encoding::UTF_8, false));
-        let changes = ChangeSet::new(&text);
+        let line_ending = config.load().default_line_ending.into();
+        let changes = ChangeSet::new(text.slice(..));
         let old_state = None;
 
         Self {
@@ -603,7 +648,7 @@ impl Document {
             inlay_hints: HashMap::default(),
             inlay_hints_oudated: false,
             indent_style: DEFAULT_INDENT,
-            line_ending: DEFAULT_LINE_ENDING,
+            line_ending,
             restore_cursor: false,
             syntax: None,
             language: None,
@@ -621,19 +666,24 @@ impl Document {
             config,
             version_control_head: None,
             focused_at: std::time::Instant::now(),
+            readonly: false,
+            jump_labels: HashMap::new(),
         }
     }
+
     pub fn default(config: Arc<dyn DynAccess<Config>>) -> Self {
-        let text = Rope::from(DEFAULT_LINE_ENDING.as_str());
+        let line_ending: LineEnding = config.load().default_line_ending.into();
+        let text = Rope::from(line_ending.as_str());
         Self::from(text, None, config)
     }
+
     // TODO: async fn?
     /// Create a new document from `path`. Encoding is auto-detected, but it can be manually
     /// overwritten with the `encoding` parameter.
     pub fn open(
         path: &Path,
         encoding: Option<&'static Encoding>,
-        config_loader: Option<Arc<syntax::Loader>>,
+        config_loader: Option<Arc<ArcSwap<syntax::Loader>>>,
         config: Arc<dyn DynAccess<Config>>,
     ) -> Result<Self, Error> {
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
@@ -642,14 +692,15 @@ impl Document {
                 std::fs::File::open(path).context(format!("unable to open {:?}", path))?;
             from_reader(&mut file, encoding)?
         } else {
+            let line_ending: LineEnding = config.load().default_line_ending.into();
             let encoding = encoding.unwrap_or(encoding::UTF_8);
-            (Rope::from(DEFAULT_LINE_ENDING.as_str()), encoding, false)
+            (Rope::from(line_ending.as_str()), encoding, false)
         };
 
         let mut doc = Self::from(rope, Some((encoding, has_bom)), config);
 
         // set the path and try detecting the language
-        doc.set_path(Some(path))?;
+        doc.set_path(Some(path));
         if let Some(loader) = config_loader {
             doc.detect_language(loader);
         }
@@ -674,16 +725,21 @@ impl Document {
     // We can't use anyhow::Result here since the output of the future has to be
     // clonable to be used as shared future. So use a custom error type.
     pub fn format(&self) -> Option<BoxFuture<'static, Result<Transaction, FormatterError>>> {
-        if let Some(formatter) = self
+        if let Some((fmt_cmd, fmt_args)) = self
             .language_config()
-            .and_then(|c| c.formatter.clone())
-            .filter(|formatter| which::which(&formatter.command).is_ok())
+            .and_then(|c| c.formatter.as_ref())
+            .and_then(|formatter| {
+                Some((
+                    helix_stdx::env::which(&formatter.command).ok()?,
+                    &formatter.args,
+                ))
+            })
         {
             use std::process::Stdio;
             let text = self.text().clone();
-            let mut process = tokio::process::Command::new(&formatter.command);
+            let mut process = tokio::process::Command::new(&fmt_cmd);
             process
-                .args(&formatter.args)
+                .args(fmt_args)
                 .stdin(Stdio::piped())
                 .stdout(Stdio::piped())
                 .stderr(Stdio::piped());
@@ -692,7 +748,7 @@ impl Document {
                 let mut process = process
                     .spawn()
                     .map_err(|e| FormatterError::SpawningFailed {
-                        command: formatter.command.clone(),
+                        command: fmt_cmd.to_string_lossy().into(),
                         error: e.kind(),
                     })?;
                 {
@@ -794,7 +850,7 @@ impl Document {
         let text = self.text().clone();
 
         let path = match path {
-            Some(path) => helix_core::path::get_canonicalized_path(&path)?,
+            Some(path) => helix_stdx::path::canonicalize(path),
             None => {
                 if self.path.is_none() {
                     bail!("Can't save with no path set!");
@@ -815,7 +871,7 @@ impl Document {
 
         // We encode the file according to the `Document`'s encoding.
         let future = async move {
-            use tokio::{fs, fs::File};
+            use tokio::fs;
             if let Some(parent) = path.parent() {
                 // TODO: display a prompt asking the user if the directories should be created
                 if !parent.exists() {
@@ -837,9 +893,66 @@ impl Document {
                     }
                 }
             }
+            let write_path = tokio::fs::read_link(&path)
+                .await
+                .unwrap_or_else(|_| path.clone());
 
-            let mut file = File::create(&path).await?;
-            to_writer(&mut file, encoding_with_bom_info, &text).await?;
+            if readonly(&write_path) {
+                bail!(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "Path is read only"
+                ));
+            }
+            let backup = if path.exists() {
+                let path_ = write_path.clone();
+                // hacks: we use tempfile to handle the complex task of creating
+                // non clobbered temporary path for us we don't want
+                // the whole automatically delete path on drop thing
+                // since the path doesn't exist yet, we just want
+                // the path
+                tokio::task::spawn_blocking(move || -> Option<PathBuf> {
+                    tempfile::Builder::new()
+                        .prefix(path_.file_name()?)
+                        .suffix(".bck")
+                        .make_in(path_.parent()?, |backup| std::fs::rename(&path_, backup))
+                        .ok()?
+                        .into_temp_path()
+                        .keep()
+                        .ok()
+                })
+                .await
+                .ok()
+                .flatten()
+            } else {
+                None
+            };
+
+            let write_result: anyhow::Result<_> = async {
+                let mut dst = tokio::fs::File::create(&write_path).await?;
+                to_writer(&mut dst, encoding_with_bom_info, &text).await?;
+                Ok(())
+            }
+            .await;
+
+            if let Some(backup) = backup {
+                if write_result.is_err() {
+                    // restore backup
+                    let _ = tokio::fs::rename(&backup, &write_path)
+                        .await
+                        .map_err(|e| log::error!("Failed to restore backup on write failure: {e}"));
+                } else {
+                    // copy metadata and delete backup
+                    let _ = tokio::task::spawn_blocking(move || {
+                        let _ = copy_metadata(&backup, &write_path)
+                            .map_err(|e| log::error!("Failed to copy metadata on write: {e}"));
+                        let _ = std::fs::remove_file(backup)
+                            .map_err(|e| log::error!("Failed to remove backup file on write: {e}"));
+                    })
+                    .await;
+                }
+            }
+
+            write_result?;
 
             let event = DocumentSavedEvent {
                 revision: current_rev,
@@ -850,13 +963,14 @@ impl Document {
 
             for (_, language_server) in language_servers {
                 if !language_server.is_initialized() {
-                    return Ok(event);
+                    continue;
                 }
-                if let Some(identifier) = &identifier {
-                    if let Some(notification) =
-                        language_server.text_document_did_save(identifier.clone(), &text)
-                    {
-                        notification.await?;
+                if let Some(notification) = identifier
+                    .clone()
+                    .and_then(|id| language_server.text_document_did_save(id, &text))
+                {
+                    if let Err(err) = notification.await {
+                        log::error!("Failed to send textDocument/didSave: {err}");
                     }
                 }
             }
@@ -868,10 +982,11 @@ impl Document {
     }
 
     /// Detect the programming language based on the file type.
-    pub fn detect_language(&mut self, config_loader: Arc<syntax::Loader>) {
+    pub fn detect_language(&mut self, config_loader: Arc<ArcSwap<syntax::Loader>>) {
+        let loader = config_loader.load();
         self.set_language(
-            self.detect_language_config(&config_loader),
-            Some(config_loader),
+            self.detect_language_config(&loader),
+            Some(Arc::clone(&config_loader)),
         );
     }
 
@@ -882,19 +997,30 @@ impl Document {
     ) -> Option<Arc<helix_core::syntax::LanguageConfiguration>> {
         config_loader
             .language_config_for_file_name(self.path.as_ref()?)
-            .or_else(|| config_loader.language_config_for_shebang(self.text()))
+            .or_else(|| config_loader.language_config_for_shebang(self.text().slice(..)))
     }
 
     /// Detect the indentation used in the file, or otherwise defaults to the language indentation
     /// configured in `languages.toml`, with a fallback to tabs if it isn't specified. Line ending
-    /// is likewise auto-detected, and will fallback to the default OS line ending.
+    /// is likewise auto-detected, and will remain unchanged if no line endings were detected.
     pub fn detect_indent_and_line_ending(&mut self) {
         self.indent_style = auto_detect_indent_style(&self.text).unwrap_or_else(|| {
             self.language_config()
                 .and_then(|config| config.indent.as_ref())
                 .map_or(DEFAULT_INDENT, |config| IndentStyle::from_str(&config.unit))
         });
-        self.line_ending = auto_detect_line_ending(&self.text).unwrap_or(DEFAULT_LINE_ENDING);
+        if let Some(line_ending) = auto_detect_line_ending(&self.text) {
+            self.line_ending = line_ending;
+        }
+    }
+
+    // Detect if the file is readonly and change the readonly field if necessary (unix only)
+    pub fn detect_readonly(&mut self) {
+        // Allows setting the flag for files the user cannot modify, like root files
+        self.readonly = match &self.path {
+            None => false,
+            Some(p) => readonly(p),
+        };
     }
 
     /// Reload the document from its path.
@@ -902,14 +1028,18 @@ impl Document {
         &mut self,
         view: &mut View,
         provider_registry: &DiffProviderRegistry,
-        redraw_handle: RedrawHandle,
     ) -> Result<(), Error> {
         let encoding = self.encoding;
-        let path = self
-            .path()
-            .filter(|path| path.exists())
-            .ok_or_else(|| anyhow!("can't find file to reload from {:?}", self.display_name()))?
-            .to_owned();
+        let path = match self.path() {
+            None => return Ok(()),
+            Some(path) => match path.exists() {
+                true => path.to_owned(),
+                false => bail!("can't find file to reload from {:?}", self.display_name()),
+            },
+        };
+
+        // Once we have a valid path we check if its readonly status has changed
+        self.detect_readonly();
 
         let mut file = std::fs::File::open(&path)?;
         let (rope, ..) = from_reader(&mut file, Some(encoding))?;
@@ -927,7 +1057,7 @@ impl Document {
         self.detect_indent_and_line_ending();
 
         match provider_registry.get_diff_base(&path) {
-            Some(diff_base) => self.set_diff_base(diff_base, redraw_handle),
+            Some(diff_base) => self.set_diff_base(diff_base),
             None => self.diff_handle = None,
         }
 
@@ -951,16 +1081,17 @@ impl Document {
         self.encoding
     }
 
-    pub fn set_path(&mut self, path: Option<&Path>) -> Result<(), std::io::Error> {
-        let path = path
-            .map(helix_core::path::get_canonicalized_path)
-            .transpose()?;
+    /// sets the document path without sending events to various
+    /// observers (like LSP), in most cases `Editor::set_doc_path`
+    /// should be used instead
+    pub fn set_path(&mut self, path: Option<&Path>) {
+        let path = path.map(helix_stdx::path::canonicalize);
 
         // if parent doesn't exist we still want to open the document
         // and error out when document is saved
         self.path = path;
 
-        Ok(())
+        self.detect_readonly();
     }
 
     /// Set the programming language for the file and load associated data (e.g. highlighting)
@@ -968,11 +1099,13 @@ impl Document {
     pub fn set_language(
         &mut self,
         language_config: Option<Arc<helix_core::syntax::LanguageConfiguration>>,
-        loader: Option<Arc<helix_core::syntax::Loader>>,
+        loader: Option<Arc<ArcSwap<helix_core::syntax::Loader>>>,
     ) {
         if let (Some(language_config), Some(loader)) = (language_config, loader) {
-            if let Some(highlight_config) = language_config.highlight_config(&loader.scopes()) {
-                self.syntax = Syntax::new(&self.text, highlight_config, loader);
+            if let Some(highlight_config) =
+                language_config.highlight_config(&(*loader).load().scopes())
+            {
+                self.syntax = Syntax::new(self.text.slice(..), highlight_config, loader);
             }
 
             self.language = Some(language_config);
@@ -982,22 +1115,15 @@ impl Document {
         };
     }
 
-    /// Set the programming language for the file if you know the name (scope) but don't have the
-    /// [`syntax::LanguageConfiguration`] for it.
-    pub fn set_language2(&mut self, scope: &str, config_loader: Arc<syntax::Loader>) {
-        let language_config = config_loader.language_config_for_scope(scope);
-
-        self.set_language(language_config, Some(config_loader));
-    }
-
     /// Set the programming language for the file if you know the language but don't have the
     /// [`syntax::LanguageConfiguration`] for it.
     pub fn set_language_by_language_id(
         &mut self,
         language_id: &str,
-        config_loader: Arc<syntax::Loader>,
+        config_loader: Arc<ArcSwap<syntax::Loader>>,
     ) -> anyhow::Result<()> {
-        let language_config = config_loader
+        let language_config = (*config_loader)
+            .load()
             .language_config_for_language_id(language_id)
             .ok_or_else(|| anyhow!("invalid language id: {}", language_id))?;
         self.set_language(Some(language_config), Some(config_loader));
@@ -1009,6 +1135,10 @@ impl Document {
         // TODO: use a transaction?
         self.selections
             .insert(view_id, selection.ensure_invariants(self.text().slice(..)));
+        helix_event::dispatch(SelectionDidChange {
+            doc: self,
+            view: view_id,
+        })
     }
 
     /// Find the origin selection of the text in a document, i.e. where
@@ -1046,6 +1176,7 @@ impl Document {
     pub fn remove_view(&mut self, view_id: ViewId) {
         self.selections.remove(&view_id);
         self.inlay_hints.remove(&view_id);
+        self.jump_labels.remove(&view_id);
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
@@ -1062,6 +1193,14 @@ impl Document {
         let success = transaction.changes().apply(&mut self.text);
 
         if success {
+            if emit_lsp_notification {
+                helix_event::dispatch(DocumentDidChange {
+                    doc: self,
+                    view: view_id,
+                    old_text: &old_doc,
+                });
+            }
+
             for selection in self.selections.values_mut() {
                 *selection = selection
                     .clone()
@@ -1077,6 +1216,10 @@ impl Document {
                     view_id,
                     selection.clone().ensure_invariants(self.text.slice(..)),
                 );
+                helix_event::dispatch(SelectionDidChange {
+                    doc: self,
+                    view: view_id,
+                });
             }
 
             self.modified_since_accessed = true;
@@ -1107,31 +1250,66 @@ impl Document {
             // update tree-sitter syntax tree
             if let Some(syntax) = &mut self.syntax {
                 // TODO: no unwrap
-                let res = syntax.update(&old_doc, &self.text, transaction.changes());
+                let res = syntax.update(
+                    old_doc.slice(..),
+                    self.text.slice(..),
+                    transaction.changes(),
+                );
                 if res.is_err() {
-                    log::error!("TS parser failed, disabeling TS for the current buffer: {res:?}");
+                    log::error!("TS parser failed, disabling TS for the current buffer: {res:?}");
                     self.syntax = None;
                 }
             }
 
             let changes = transaction.changes();
 
-            // map state.diagnostics over changes::map_pos too
-            for diagnostic in &mut self.diagnostics {
-                diagnostic.range.start = changes.map_pos(diagnostic.range.start, Assoc::After);
-                diagnostic.range.end = changes.map_pos(diagnostic.range.end, Assoc::After);
+            // map diagnostics over changes too
+            changes.update_positions(self.diagnostics.iter_mut().map(|diagnostic| {
+                let assoc = if diagnostic.starts_at_word {
+                    Assoc::BeforeWord
+                } else {
+                    Assoc::After
+                };
+                (&mut diagnostic.range.start, assoc)
+            }));
+            changes.update_positions(self.diagnostics.iter_mut().filter_map(|diagnostic| {
+                if diagnostic.zero_width {
+                    // for zero width diagnostics treat the diagnostic as a point
+                    // rather than a range
+                    return None;
+                }
+                let assoc = if diagnostic.ends_at_word {
+                    Assoc::AfterWord
+                } else {
+                    Assoc::Before
+                };
+                Some((&mut diagnostic.range.end, assoc))
+            }));
+            self.diagnostics.retain_mut(|diagnostic| {
+                if diagnostic.zero_width {
+                    diagnostic.range.end = diagnostic.range.start
+                } else if diagnostic.range.start >= diagnostic.range.end {
+                    return false;
+                }
                 diagnostic.line = self.text.char_to_line(diagnostic.range.start);
-            }
-            self.diagnostics
-                .sort_unstable_by_key(|diagnostic| diagnostic.range);
+                true
+            });
+
+            self.diagnostics.sort_unstable_by_key(|diagnostic| {
+                (
+                    diagnostic.range,
+                    diagnostic.severity,
+                    diagnostic.language_server_id,
+                )
+            });
 
             // Update the inlay hint annotations' positions, helping ensure they are displayed in the proper place
-            let apply_inlay_hint_changes = |annotations: &mut Rc<[InlineAnnotation]>| {
-                if let Some(data) = Rc::get_mut(annotations) {
-                    for inline in data.iter_mut() {
-                        inline.char_idx = changes.map_pos(inline.char_idx, Assoc::After);
-                    }
-                }
+            let apply_inlay_hint_changes = |annotations: &mut Vec<InlineAnnotation>| {
+                changes.update_positions(
+                    annotations
+                        .iter_mut()
+                        .map(|annotation| (&mut annotation.char_idx, Assoc::After)),
+                );
             };
 
             self.inlay_hints_oudated = true;
@@ -1153,6 +1331,7 @@ impl Document {
             }
 
             if emit_lsp_notification {
+                // TODO: move to hook
                 // emit lsp notification
                 for language_server in self.language_servers() {
                     let notify = language_server.text_document_did_change(
@@ -1220,7 +1399,7 @@ impl Document {
 
         if success {
             // reset changeset to fix len
-            self.changes = ChangeSet::new(self.text());
+            self.changes = ChangeSet::new(self.text().slice(..));
             // Sync with changes with the jumplist selections.
             view.sync_changes(self);
         }
@@ -1263,7 +1442,6 @@ impl Document {
         let savepoint = Arc::new(SavePoint {
             view: view.id,
             revert: Mutex::new(revert),
-            text: self.text.clone(),
         });
         self.savepoints.push(Arc::downgrade(&savepoint));
         savepoint
@@ -1303,7 +1481,7 @@ impl Document {
         }
         if success {
             // reset changeset to fix len
-            self.changes = ChangeSet::new(self.text());
+            self.changes = ChangeSet::new(self.text().slice(..));
             // Sync with changes with the jumplist selections.
             view.sync_changes(self);
         }
@@ -1326,7 +1504,7 @@ impl Document {
             return;
         }
 
-        let new_changeset = ChangeSet::new(self.text());
+        let new_changeset = ChangeSet::new(self.text().slice(..));
         let changes = std::mem::replace(&mut self.changes, new_changeset);
         // Instead of doing this messy merge we could always commit, and based on transaction
         // annotations either add a new layer or compose into the previous one.
@@ -1475,13 +1653,13 @@ impl Document {
     }
 
     /// Intialize/updates the differ for this document with a new base.
-    pub fn set_diff_base(&mut self, diff_base: Vec<u8>, redraw_handle: RedrawHandle) {
+    pub fn set_diff_base(&mut self, diff_base: Vec<u8>) {
         if let Ok((diff_base, ..)) = from_reader(&mut diff_base.as_slice(), Some(self.encoding)) {
             if let Some(differ) = &self.diff_handle {
                 differ.update_diff_base(diff_base);
                 return;
             }
-            self.diff_handle = Some(DiffHandle::new(diff_base, self.text.clone(), redraw_handle))
+            self.diff_handle = Some(DiffHandle::new(diff_base, self.text.clone()))
         } else {
             self.diff_handle = None;
         }
@@ -1546,10 +1724,10 @@ impl Document {
         &self.selections
     }
 
-    pub fn relative_path(&self) -> Option<PathBuf> {
+    pub fn relative_path(&self) -> Option<Cow<Path>> {
         self.path
             .as_deref()
-            .map(helix_core::path::get_relative_path)
+            .map(helix_stdx::path::get_relative_path)
     }
 
     pub fn display_name(&self) -> Cow<'static, str> {
@@ -1585,32 +1763,134 @@ impl Document {
         )
     }
 
+    pub fn lsp_diagnostic_to_diagnostic(
+        text: &Rope,
+        language_config: Option<&LanguageConfiguration>,
+        diagnostic: &helix_lsp::lsp::Diagnostic,
+        language_server_id: usize,
+        offset_encoding: helix_lsp::OffsetEncoding,
+    ) -> Option<Diagnostic> {
+        use helix_core::diagnostic::{Range, Severity::*};
+
+        // TODO: convert inside server
+        let start =
+            if let Some(start) = lsp_pos_to_pos(text, diagnostic.range.start, offset_encoding) {
+                start
+            } else {
+                log::warn!("lsp position out of bounds - {:?}", diagnostic);
+                return None;
+            };
+
+        let end = if let Some(end) = lsp_pos_to_pos(text, diagnostic.range.end, offset_encoding) {
+            end
+        } else {
+            log::warn!("lsp position out of bounds - {:?}", diagnostic);
+            return None;
+        };
+
+        let severity = diagnostic.severity.map(|severity| match severity {
+            lsp::DiagnosticSeverity::ERROR => Error,
+            lsp::DiagnosticSeverity::WARNING => Warning,
+            lsp::DiagnosticSeverity::INFORMATION => Info,
+            lsp::DiagnosticSeverity::HINT => Hint,
+            severity => unreachable!("unrecognized diagnostic severity: {:?}", severity),
+        });
+
+        if let Some(lang_conf) = language_config {
+            if let Some(severity) = severity {
+                if severity < lang_conf.diagnostic_severity {
+                    return None;
+                }
+            }
+        };
+        use helix_core::diagnostic::{DiagnosticTag, NumberOrString};
+
+        let code = match diagnostic.code.clone() {
+            Some(x) => match x {
+                lsp::NumberOrString::Number(x) => Some(NumberOrString::Number(x)),
+                lsp::NumberOrString::String(x) => Some(NumberOrString::String(x)),
+            },
+            None => None,
+        };
+
+        let tags = if let Some(tags) = &diagnostic.tags {
+            let new_tags = tags
+                .iter()
+                .filter_map(|tag| match *tag {
+                    lsp::DiagnosticTag::DEPRECATED => Some(DiagnosticTag::Deprecated),
+                    lsp::DiagnosticTag::UNNECESSARY => Some(DiagnosticTag::Unnecessary),
+                    _ => None,
+                })
+                .collect();
+
+            new_tags
+        } else {
+            Vec::new()
+        };
+
+        let ends_at_word =
+            start != end && end != 0 && text.get_char(end - 1).map_or(false, char_is_word);
+        let starts_at_word = start != end && text.get_char(start).map_or(false, char_is_word);
+
+        Some(Diagnostic {
+            range: Range { start, end },
+            ends_at_word,
+            starts_at_word,
+            zero_width: start == end,
+            line: diagnostic.range.start.line as usize,
+            message: diagnostic.message.clone(),
+            severity,
+            code,
+            tags,
+            source: diagnostic.source.clone(),
+            data: diagnostic.data.clone(),
+            language_server_id,
+        })
+    }
+
     #[inline]
     pub fn diagnostics(&self) -> &[Diagnostic] {
         &self.diagnostics
     }
 
-    pub fn shown_diagnostics(&self) -> impl Iterator<Item = &Diagnostic> + DoubleEndedIterator {
-        self.diagnostics.iter().filter(|d| {
-            self.language_servers_with_feature(LanguageServerFeature::Diagnostics)
-                .any(|ls| ls.id() == d.language_server_id)
-        })
-    }
-
     pub fn replace_diagnostics(
         &mut self,
-        mut diagnostics: Vec<Diagnostic>,
-        language_server_id: usize,
+        diagnostics: impl IntoIterator<Item = Diagnostic>,
+        unchanged_sources: &[String],
+        language_server_id: Option<usize>,
     ) {
-        self.clear_diagnostics(language_server_id);
-        self.diagnostics.append(&mut diagnostics);
-        self.diagnostics
-            .sort_unstable_by_key(|diagnostic| diagnostic.range);
+        if unchanged_sources.is_empty() {
+            self.clear_diagnostics(language_server_id);
+        } else {
+            self.diagnostics.retain(|d| {
+                if language_server_id.map_or(false, |id| id != d.language_server_id) {
+                    return true;
+                }
+
+                if let Some(source) = &d.source {
+                    unchanged_sources.contains(source)
+                } else {
+                    false
+                }
+            });
+        }
+        self.diagnostics.extend(diagnostics);
+        self.diagnostics.sort_unstable_by_key(|diagnostic| {
+            (
+                diagnostic.range,
+                diagnostic.severity,
+                diagnostic.language_server_id,
+            )
+        });
     }
 
-    pub fn clear_diagnostics(&mut self, language_server_id: usize) {
-        self.diagnostics
-            .retain(|d| d.language_server_id != language_server_id);
+    /// clears diagnostics for a given language server id if set, otherwise all diagnostics are cleared
+    pub fn clear_diagnostics(&mut self, language_server_id: Option<usize>) {
+        if let Some(id) = language_server_id {
+            self.diagnostics.retain(|d| d.language_server_id != id);
+        } else {
+            self.diagnostics.clear();
+        }
     }
 
     /// Get the document's auto pairs. If the document has a recognized
@@ -1697,15 +1977,17 @@ impl Document {
         }
     }
 
-    /// Get the text annotations that apply to the whole document, those that do not apply to any
-    /// specific view.
-    pub fn text_annotations(&self, _theme: Option<&Theme>) -> TextAnnotations {
-        TextAnnotations::default()
-    }
-
     /// Set the inlay hints for this document and `view_id`.
     pub fn set_inlay_hints(&mut self, view_id: ViewId, inlay_hints: DocumentInlayHints) {
         self.inlay_hints.insert(view_id, inlay_hints);
+    }
+
+    pub fn set_jump_labels(&mut self, view_id: ViewId, labels: Vec<Overlay>) {
+        self.jump_labels.insert(view_id, labels);
+    }
+
+    pub fn remove_jump_labels(&mut self, view_id: ViewId) {
+        self.jump_labels.remove(&view_id);
     }
 
     /// Get the inlay hints for this document and `view_id`.
@@ -1921,7 +2203,7 @@ mod test {
             Document::default(Arc::new(ArcSwap::new(Arc::new(Config::default()))))
                 .text()
                 .to_string(),
-            DEFAULT_LINE_ENDING.as_str()
+            helix_core::NATIVE_LINE_ENDING.as_str()
         );
     }
 

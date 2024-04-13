@@ -7,6 +7,7 @@ use helix_core::syntax::Highlight;
 use helix_core::syntax::HighlightEvent;
 use helix_core::text_annotations::TextAnnotations;
 use helix_core::{visual_offset_from_block, Position, RopeSlice};
+use helix_stdx::rope::RopeSliceExt;
 use helix_view::editor::WhitespaceFeature;
 use helix_view::graphics::Rect;
 use helix_view::theme::Style;
@@ -34,14 +35,27 @@ impl<F: FnMut(&mut TextRenderer, LinePos)> LineDecoration for F {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum StyleIterKind {
+    /// base highlights (usually emitted by TS), byte indices (potentially not codepoint aligned)
+    BaseHighlights,
+    /// overlay highlights (emitted by custom code from selections), char indices
+    Overlay,
+}
+
 /// A wrapper around a HighlightIterator
 /// that merges the layered highlights to create the final text style
 /// and yields the active text style and the char_idx where the active
 /// style will have to be recomputed.
+///
+/// TODO(ropey2): hopefully one day helix and ropey will operate entirely
+/// on byte ranges and we can remove this
 struct StyleIter<'a, H: Iterator<Item = HighlightEvent>> {
     text_style: Style,
     active_highlights: Vec<Highlight>,
     highlight_iter: H,
+    kind: StyleIterKind,
+    text: RopeSlice<'a>,
     theme: &'a Theme,
 }
 
@@ -56,7 +70,7 @@ impl<H: Iterator<Item = HighlightEvent>> Iterator for StyleIter<'_, H> {
                 HighlightEvent::HighlightEnd => {
                     self.active_highlights.pop();
                 }
-                HighlightEvent::Source { start, end } => {
+                HighlightEvent::Source { start, mut end } => {
                     if start == end {
                         continue;
                     }
@@ -66,6 +80,9 @@ impl<H: Iterator<Item = HighlightEvent>> Iterator for StyleIter<'_, H> {
                         .fold(self.text_style, |acc, span| {
                             acc.patch(self.theme.highlight(span.0))
                         });
+                    if self.kind == StyleIterKind::BaseHighlights {
+                        end = self.text.byte_to_next_char(end);
+                    }
                     return Some((style, end));
                 }
             }
@@ -99,7 +116,8 @@ pub fn render_document(
     doc: &Document,
     offset: ViewPosition,
     doc_annotations: &TextAnnotations,
-    highlight_iter: impl Iterator<Item = HighlightEvent>,
+    syntax_highlight_iter: impl Iterator<Item = HighlightEvent>,
+    overlay_highlight_iter: impl Iterator<Item = HighlightEvent>,
     theme: &Theme,
     line_decoration: &mut [Box<dyn LineDecoration + '_>],
     translated_positions: &mut [TranslatedPosition],
@@ -111,7 +129,8 @@ pub fn render_document(
         offset,
         &doc.text_format(viewport.width, Some(theme)),
         doc_annotations,
-        highlight_iter,
+        syntax_highlight_iter,
+        overlay_highlight_iter,
         theme,
         line_decoration,
         translated_positions,
@@ -159,7 +178,8 @@ pub fn render_text<'t>(
     offset: ViewPosition,
     text_fmt: &TextFormat,
     text_annotations: &TextAnnotations,
-    highlight_iter: impl Iterator<Item = HighlightEvent>,
+    syntax_highlight_iter: impl Iterator<Item = HighlightEvent>,
+    overlay_highlight_iter: impl Iterator<Item = HighlightEvent>,
     theme: &Theme,
     line_decorations: &mut [Box<dyn LineDecoration + '_>],
     translated_positions: &mut [TranslatedPosition],
@@ -180,11 +200,21 @@ pub fn render_text<'t>(
 
     let (mut formatter, mut first_visible_char_idx) =
         DocumentFormatter::new_at_prev_checkpoint(text, text_fmt, text_annotations, offset.anchor);
-    let mut styles = StyleIter {
+    let mut syntax_styles = StyleIter {
         text_style: renderer.text_style,
         active_highlights: Vec::with_capacity(64),
-        highlight_iter,
+        highlight_iter: syntax_highlight_iter,
+        kind: StyleIterKind::BaseHighlights,
         theme,
+        text,
+    };
+    let mut overlay_styles = StyleIter {
+        text_style: Style::default(),
+        active_highlights: Vec::with_capacity(64),
+        highlight_iter: overlay_highlight_iter,
+        kind: StyleIterKind::Overlay,
+        theme,
+        text,
     };
 
     let mut last_line_pos = LinePos {
@@ -195,7 +225,10 @@ pub fn render_text<'t>(
     };
     let mut is_in_indent_area = true;
     let mut last_line_indent_level = 0;
-    let mut style_span = styles
+    let mut syntax_style_span = syntax_styles
+        .next()
+        .unwrap_or_else(|| (Style::default(), usize::MAX));
+    let mut overlay_style_span = overlay_styles
         .next()
         .unwrap_or_else(|| (Style::default(), usize::MAX));
 
@@ -223,9 +256,16 @@ pub fn render_text<'t>(
 
         // skip any graphemes on visual lines before the block start
         if pos.row < row_off {
-            if char_pos >= style_span.1 {
-                style_span = if let Some(style_span) = styles.next() {
-                    style_span
+            if char_pos >= syntax_style_span.1 {
+                syntax_style_span = if let Some(syntax_style_span) = syntax_styles.next() {
+                    syntax_style_span
+                } else {
+                    break;
+                }
+            }
+            if char_pos >= overlay_style_span.1 {
+                overlay_style_span = if let Some(overlay_style_span) = overlay_styles.next() {
+                    overlay_style_span
                 } else {
                     break;
                 }
@@ -262,8 +302,15 @@ pub fn render_text<'t>(
         }
 
         // acquire the correct grapheme style
-        if char_pos >= style_span.1 {
-            style_span = styles.next().unwrap_or((Style::default(), usize::MAX));
+        if char_pos >= syntax_style_span.1 {
+            syntax_style_span = syntax_styles
+                .next()
+                .unwrap_or((Style::default(), usize::MAX));
+        }
+        if char_pos >= overlay_style_span.1 {
+            overlay_style_span = overlay_styles
+                .next()
+                .unwrap_or((Style::default(), usize::MAX));
         }
         char_pos += grapheme.doc_chars();
 
@@ -277,22 +324,25 @@ pub fn render_text<'t>(
             pos,
         );
 
-        let grapheme_style = if let GraphemeSource::VirtualText { highlight } = grapheme.source {
-            let style = renderer.text_style;
-            if let Some(highlight) = highlight {
-                style.patch(theme.highlight(highlight.0))
+        let (syntax_style, overlay_style) =
+            if let GraphemeSource::VirtualText { highlight } = grapheme.source {
+                let mut style = renderer.text_style;
+                if let Some(highlight) = highlight {
+                    style = style.patch(theme.highlight(highlight.0))
+                }
+                (style, Style::default())
             } else {
-                style
-            }
-        } else {
-            style_span.0
-        };
+                (syntax_style_span.0, overlay_style_span.0)
+            };
 
-        let virt = grapheme.is_virtual();
+        let is_virtual = grapheme.is_virtual();
         renderer.draw_grapheme(
             grapheme.grapheme,
-            grapheme_style,
-            virt,
+            GraphemeStyle {
+                syntax_style,
+                overlay_style,
+            },
+            is_virtual,
             &mut last_line_indent_level,
             &mut is_in_indent_area,
             pos,
@@ -314,6 +364,7 @@ pub struct TextRenderer<'a> {
     pub indent_guide_style: Style,
     pub newline: String,
     pub nbsp: String,
+    pub nnbsp: String,
     pub space: String,
     pub tab: String,
     pub virtual_tab: String,
@@ -323,6 +374,11 @@ pub struct TextRenderer<'a> {
     pub col_offset: usize,
     pub viewport: Rect,
     pub trailing_whitespace_tracker: TrailingWhitespaceTracker,
+}
+
+pub struct GraphemeStyle {
+    syntax_style: Style,
+    overlay_style: Style,
 }
 
 impl<'a> TextRenderer<'a> {
@@ -349,6 +405,7 @@ impl<'a> TextRenderer<'a> {
             indent_guide_char: editor_config.indent_guides.character.into(),
             newline: regular_ws.newline,
             nbsp: regular_ws.nbsp,
+            nnbsp: regular_ws.nnbsp,
             space: regular_ws.space,
             tab: regular_ws.tab,
             virtual_tab: regular_ws.virtual_tab,
@@ -374,7 +431,7 @@ impl<'a> TextRenderer<'a> {
     pub fn draw_grapheme(
         &mut self,
         grapheme: Grapheme,
-        mut style: Style,
+        grapheme_style: GraphemeStyle,
         is_virtual: bool,
         last_indent_level: &mut usize,
         is_in_indent_area: &mut bool,
@@ -384,13 +441,16 @@ impl<'a> TextRenderer<'a> {
         let is_whitespace = grapheme.is_whitespace();
 
         // TODO is it correct to apply the whitespace style to all unicode white spaces?
+        let mut style = grapheme_style.syntax_style;
         if is_whitespace {
             style = style.patch(self.whitespace_style);
         }
+        style = style.patch(grapheme_style.overlay_style);
 
         let width = grapheme.width();
         let space = if is_virtual { " " } else { &self.space };
         let nbsp = if is_virtual { " " } else { &self.nbsp };
+        let nnbsp = if is_virtual { " " } else { &self.nnbsp };
         let tab = if is_virtual {
             &self.virtual_tab
         } else {
@@ -411,6 +471,10 @@ impl<'a> TextRenderer<'a> {
             Grapheme::Other { ref g } if g == "\u{00A0}" => {
                 whitespace_kind = WhitespaceKind::NonBreakingSpace;
                 nbsp
+            }
+            Grapheme::Other { ref g } if g == "\u{202F}" => {
+                whitespace_kind = WhitespaceKind::NarrowNonBreakingSpace;
+                nnbsp
             }
             Grapheme::Other { ref g } => g,
             Grapheme::Newline => {

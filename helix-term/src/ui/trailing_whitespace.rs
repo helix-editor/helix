@@ -7,6 +7,7 @@ pub enum WhitespaceKind {
     None,
     Space,
     NonBreakingSpace,
+    NarrowNonBreakingSpace,
     Tab,
     Newline,
 }
@@ -16,6 +17,7 @@ impl WhitespaceKind {
         match self {
             WhitespaceKind::Space => &palette.space,
             WhitespaceKind::NonBreakingSpace => &palette.nbsp,
+            WhitespaceKind::NarrowNonBreakingSpace => &palette.nnbsp,
             WhitespaceKind::Tab => {
                 let grapheme_tab_width = char_to_byte_idx(&palette.tab, 1);
                 &palette.tab[..grapheme_tab_width]
@@ -95,6 +97,7 @@ mod tests {
         WhitespacePalette {
             space: "S".into(),
             nbsp: "N".into(),
+            nnbsp: "M".into(),
             tab: "T".into(),
             virtual_tab: "V".into(),
             newline: "L".into(),
@@ -125,13 +128,14 @@ mod tests {
 
         sut.track(5, WhitespaceKind::Space);
         sut.track(6, WhitespaceKind::NonBreakingSpace);
-        sut.track(7, WhitespaceKind::Tab);
+        sut.track(7, WhitespaceKind::NarrowNonBreakingSpace);
+        sut.track(8, WhitespaceKind::Tab);
 
         let (content, from, to) = capture(&mut sut);
 
         assert_eq!(5, from);
-        assert_eq!(7, to);
-        assert_eq!("SNT", content);
+        assert_eq!(8, to);
+        assert_eq!("SNMT", content);
 
         // Now we break the sequence
         sut.track(6, WhitespaceKind::None);
@@ -143,25 +147,28 @@ mod tests {
 
         sut.track(10, WhitespaceKind::Tab);
         sut.track(11, WhitespaceKind::NonBreakingSpace);
-        sut.track(12, WhitespaceKind::Space);
+        sut.track(12, WhitespaceKind::NarrowNonBreakingSpace);
+        sut.track(13, WhitespaceKind::Space);
 
         let (content, from, to) = capture(&mut sut);
         assert_eq!(10, from);
-        assert_eq!(12, to);
-        assert_eq!("TNS", content);
+        assert_eq!(13, to);
+        assert_eq!("TNMS", content);
 
         // Verify compression works
         sut.track(20, WhitespaceKind::Space);
         sut.track(21, WhitespaceKind::Space);
         sut.track(22, WhitespaceKind::NonBreakingSpace);
         sut.track(23, WhitespaceKind::NonBreakingSpace);
-        sut.track(24, WhitespaceKind::Tab);
-        sut.track(25, WhitespaceKind::Tab);
+        sut.track(24, WhitespaceKind::NarrowNonBreakingSpace);
+        sut.track(25, WhitespaceKind::NarrowNonBreakingSpace);
         sut.track(26, WhitespaceKind::Tab);
+        sut.track(27, WhitespaceKind::Tab);
+        sut.track(28, WhitespaceKind::Tab);
 
         let (content, from, to) = capture(&mut sut);
         assert_eq!(20, from);
-        assert_eq!(24, to); // Compression means last tracked token is on 24 instead of 26
-        assert_eq!("SSNNTTT", content);
+        assert_eq!(26, to); // Compression means last tracked token is on 26 instead of 28
+        assert_eq!("SSNNMMTTT", content);
     }
 }
