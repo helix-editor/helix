@@ -1,0 +1,122 @@
+# Author: YardQuit
+
+# Syntax highlighting
+"attribute" = { fg = "yellow" }
+"comment" = { fg = "gray" }
+"constant" = { fg = "blue" }
+"constructor" = { fg = "orange" }
+"condtant.builtin.boolean" = { fg = "blue" }
+"constant.character.escape" = { fg = "yellow" }
+"constant.character.numeric.integer" = { fg = "blue" }
+"constant.character.numeric.float" = { fg = "blue" }
+"function" = { fg = "purple" }
+"function.builtin" = { fg = "purple" }
+"function.method" = { fg = "green" }
+"function.macro" = { fg = "green" }
+"keyword" = { fg = "red" }
+"keyword.control.conditional" = { fg = "red" }
+"keyword.control.repeat" = { fg = "red" }
+"keyword.control.import" = { fg = "red" }
+"keyword.operator" = { fg = "blue" }
+"keyword.function" = { fg = "red" }
+"keyword.exception" = { fg = "red" }
+"keyword.return" = { fg = "red" }
+"operator" = { fg = "white" }
+"punctuation" = { fg = "white" }
+"punctuation.delimiter" = { fg = "white" }
+"punctuation.bracket" = { fg = "orange" }
+"punctuation.special" = { fg = "yellow" }
+"string" = { fg = "blue" }
+"string.special" = { fg = "blue" }
+"string.regexp" = { fg = "yellow" }
+"storage" = { fg = "red" }
+"storage.type" = { fg = "red" }
+"storage.modifier" = { fg = "yellow" }
+"tag" = { fg = "green" }
+"label" = { fg = "blue" }
+"type" = { fg = "white" }
+"type.builtin" = { fg = "blue" }
+"namespace" = { fg = "white" }
+"variable" = { fg = "orange" }
+"variable.builtin" = { fg = "orange" }
+"variable.parameter" = { fg = "yellow" }
+"variable.other.member" = { fg = "green" }
+"diff.plus" = { fg = "green" }
+"diff.delta" = { fg = "brown" }
+"diff.minus" = { fg = "red" }
+
+# Markup
+"markup.heading" = { fg = "normal", modifiers = ["bold"] }
+"markup.list" = { fg = "normal" }
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.link.url" = { fg = "blue" }
+"markup.link.text" = { fg = "gray" }
+"markup.quote" = { fg = "green", modifiers = ["italic"] }
+"markup.raw" = { fg = "blue" }
+
+# Interface
+"ui.background" = { fg = "normal", bg = "default" }
+"ui.help" = { fg = "normal", bg = "dark" }
+"ui.linenr" = { fg = "gray" }
+"ui.linenr.selected" = { fg = "orange" }
+"ui.menu" = { fg = "gray", bg = "dark" }
+"ui.menu.selected" = { fg = "dark", bg = "blue" }
+"ui.popup" = { fg = "gray", bg = "dark" }
+"ui.selection" = { bg = "smark" }
+"ui.selection.primary" = { bg = "pmark" }
+"ui.statusline" = { fg = "normal", bg = "dark" }
+"ui.statusline.normal" = { fg = "green", bg = "list", modifiers = ["reversed"] }
+"ui.statusline.insert" = { fg = "orange", bg = "list", modifiers = ["reversed"] }
+"ui.statusline.select" = { fg = "blue", bg = "list", modifiers = ["reversed"] }
+"ui.statusline.inactive" = { fg = "gray", bg = "list" }
+"ui.text" = { fg = "normal" }
+"ui.text.focus" = { fg = "green" }
+"ui.window" = { fg = "dark" }
+"ui.cursor" = { modifiers = ["reversed"] }
+"ui.cursor.match" = { fg = "orange", modifiers = ["bold"] }
+"ui.cursor.primary" = { modifiers = ["reversed"] }
+# "ui.cursor.primary.normal" = { fg = "white" }
+# "ui.cursor.primary.insert" = { fg = "green" }
+# "ui.cursor.primary.select" = { fg = "blue" }
+"ui.cursorline.primary" = { bg = "list" }
+"ui.cursorline.secondary" = { bg = "dark" }
+"ui.cursorcolumn.primary" = { bg = "list" }
+"ui.cursorcolumn.secondary" = { bg = "dark" }
+"ui.virtual.ruler" = { bg = "rustic_red" }
+"ui.virtual.whitespace" = { fg = "brown" }
+"ui.virtual.indent-guide" = { fg = "brown" }
+"ui.virtual.inlay-hint" = { fg = "gray"}
+"ui.virtual.wrap" = { fg = "yellow"}
+"ui.gutter" = { bg = "default" }
+"ui.gutter.selected" = { bg = "dark" }
+
+# Diagnostics
+"error" = { fg = "red" }
+"warning" = { fg = "brown" }
+"info" = { fg = "blue" }
+"hint" = { fg = "white" }
+# "diagnostic" = { modifiers = ["underlined"] }
+# "diagnostic" = { fg = "", bg = "#080808", modifiers = ["default"] }
+"diagnostic" = { fg = "", bg = "#3d0c02", modifiers = ["default"] }
+"special" = { fg = "blue" }
+
+[palette]
+default = "#0d1117"
+normal = "#c9d1d9"
+dark = "#010409"
+pmark = "#5b3256"
+smark = "#32174d"
+list = "#161b22"
+
+white = "#f2f0eb"
+gray = "#91a3b0"
+brown = "#987654"
+yellow = "#faa356"
+orange = "#ff9000"
+red = "#fa7970"
+blue = "#45b1e8"
+green = "#81be83"
+purple = "#dda0dd"
+unknown = "#5500ff"
+rustic_red = "#540b0c"
