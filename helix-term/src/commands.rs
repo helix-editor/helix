@@ -57,7 +57,6 @@ use insert::*;
 use movement::Movement;
 
 use crate::{
-    args,
     compositor::{self, Component, Compositor},
     filter_picker_entry,
     job::Callback,

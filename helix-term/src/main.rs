@@ -1,8 +1,8 @@
 use anyhow::{Context, Error, Result};
+use clap::Parser;
 use crossterm::event::EventStream;
-use helix_loader::VERSION_AND_GIT_HASH;
 use helix_term::application::Application;
-use helix_term::args::Args;
+use helix_term::args::{Args, FileWithPosition, GrammarsAction};
 use helix_term::config::{Config, ConfigLoadError};
 
 fn setup_logging(verbosity: u64) -> Result<()> {
@@ -40,60 +40,13 @@ fn main() -> Result<()> {
 
 #[tokio::main]
 async fn main_impl() -> Result<i32> {
-    let help = format!(
-        "\
-{} {}
-{}
-{}
-
-USAGE:
-    hx [FLAGS] [files]...
-
-ARGS:
-    <files>...    Sets the input file to use, position can also be specified via file[:row[:col]]
-
-FLAGS:
-    -h, --help                     Prints help information
-    --tutor                        Loads the tutorial
-    --health [CATEGORY]            Checks for potential errors in editor setup
-                                   CATEGORY can be a language or one of 'clipboard', 'languages'
-                                   or 'all'. 'all' is the default if not specified.
-    -g, --grammar {{fetch|build}}    Fetches or builds tree-sitter grammars listed in languages.toml
-    -c, --config <file>            Specifies a file to use for configuration
-    -v                             Increases logging verbosity each use for up to 3 times
-    --log <file>                   Specifies a file to use for logging
-                                   (default file: {})
-    -V, --version                  Prints version information
-    --vsplit                       Splits all given files vertically into different windows
-    --hsplit                       Splits all given files horizontally into different windows
-    -w, --working-dir <path>       Specify an initial working directory
-    +N                             Open the first given file at line number N
-",
-        env!("CARGO_PKG_NAME"),
-        VERSION_AND_GIT_HASH,
-        env!("CARGO_PKG_AUTHORS"),
-        env!("CARGO_PKG_DESCRIPTION"),
-        helix_loader::default_log_file().display(),
-    );
-
-    let mut args = Args::parse_args().context("could not parse arguments")?;
+    let mut args = Args::parse();
 
     helix_loader::initialize_config_file(args.config_file.clone());
     helix_loader::initialize_log_file(args.log_file.clone());
 
-    // Help has a higher priority and should be handled separately.
-    if args.display_help {
-        print!("{}", help);
-        std::process::exit(0);
-    }
-
-    if args.display_version {
-        println!("helix {}", VERSION_AND_GIT_HASH);
-        std::process::exit(0);
-    }
-
-    if args.health {
-        if let Err(err) = helix_term::health::print_health(args.health_arg) {
+    if let Some(health) = args.health {
+        if let Err(err) = helix_term::health::print_health(health) {
             // Piping to for example `head -10` requires special handling:
             // https://stackoverflow.com/a/65760807/7115678
             if err.kind() != std::io::ErrorKind::BrokenPipe {
@@ -104,20 +57,18 @@ FLAGS:
         std::process::exit(0);
     }
 
-    if args.fetch_grammars {
-        helix_loader::grammar::fetch_grammars()?;
+    if let Some(grammar_action) = args.grammar_action {
+        match grammar_action {
+            GrammarsAction::Fetch => helix_loader::grammar::fetch_grammars()?,
+            GrammarsAction::Build => helix_loader::grammar::build_grammars(None)?,
+        }
+
         return Ok(0);
     }
-
-    if args.build_grammars {
-        helix_loader::grammar::build_grammars(None)?;
-        return Ok(0);
-    }
-
     setup_logging(args.verbosity).context("failed to initialize logging")?;
 
     // Before setting the working directory, resolve all the paths in args.files
-    for (path, _) in args.files.iter_mut() {
+    for FileWithPosition { path, .. } in args.files.iter_mut() {
         *path = helix_stdx::path::canonicalize(&path);
     }
 
@@ -125,7 +76,9 @@ FLAGS:
     // Application::new() depends on this logic so it must be updated if this changes.
     if let Some(path) = &args.working_directory {
         helix_stdx::env::set_current_working_dir(path)?;
-    } else if let Some((path, _)) = args.files.first().filter(|p| p.0.is_dir()) {
+    } else if let Some(FileWithPosition { path, .. }) =
+        args.files.first().filter(|f| f.path.is_dir())
+    {
         // If the first file is a directory, it will be the working directory unless -w was specified
         helix_stdx::env::set_current_working_dir(path)?;
     }

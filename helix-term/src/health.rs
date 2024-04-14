@@ -7,6 +7,8 @@ use helix_loader::grammar::load_runtime_file;
 use helix_view::clipboard::get_clipboard_provider;
 use std::io::Write;
 
+use crate::args::HealthCheckCategory;
+
 #[derive(Copy, Clone)]
 pub enum TsFeature {
     Highlight,
@@ -369,17 +371,18 @@ fn probe_treesitter_feature(lang: &str, feature: TsFeature) -> std::io::Result<(
     Ok(())
 }
 
-pub fn print_health(health_arg: Option<String>) -> std::io::Result<()> {
-    match health_arg.as_deref() {
-        Some("languages") => languages_all()?,
-        Some("clipboard") => clipboard()?,
-        None | Some("all") => {
-            general()?;
-            clipboard()?;
-            writeln!(std::io::stdout().lock())?;
-            languages_all()?;
+pub fn print_health(health: HealthCheckCategory) -> std::io::Result<()> {
+    if let HealthCheckCategory::Specified(category) = health {
+        match category.as_str() {
+            "languages" => languages_all()?,
+            "clipboard" => clipboard()?,
+            _ => language(category)?,
         }
-        Some(lang) => language(lang.to_string())?,
+        return Ok(());
     }
-    Ok(())
+
+    general()?;
+    clipboard()?;
+    writeln!(std::io::stdout().lock())?;
+    languages_all()
 }

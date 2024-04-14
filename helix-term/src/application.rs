@@ -20,7 +20,7 @@ use serde_json::json;
 use tui::backend::Backend;
 
 use crate::{
-    args::Args,
+    args::{Args, FileWithPosition},
     compositor::{Compositor, Event},
     config::Config,
     handlers,
@@ -151,7 +151,7 @@ impl Application {
         let editor_view = Box::new(ui::EditorView::new(Keymaps::new(keys)));
         compositor.push(editor_view);
 
-        if args.load_tutor {
+        if args.tutor {
             let path = helix_loader::runtime_file(Path::new("tutor"));
             editor.open(&path, Action::VerticalSplit)?;
             // Unset path to prevent accidentally saving to the original tutor file.
@@ -160,15 +160,21 @@ impl Application {
             let mut files_it = args.files.into_iter().peekable();
 
             // If the first file is a directory, skip it and open a picker
-            if let Some((first, _)) = files_it.next_if(|(p, _)| p.is_dir()) {
-                let picker = ui::file_picker(first, &config.load().editor);
+            if let Some(FileWithPosition { path, .. }) =
+                files_it.next_if(|FileWithPosition { path, .. }| path.is_dir())
+            {
+                let picker = ui::file_picker(path, &config.load().editor);
                 compositor.push(Box::new(overlaid(picker)));
             }
 
             // If there are any more files specified, open them
             if files_it.peek().is_some() {
                 let mut nr_of_files = 0;
-                for (file, pos) in files_it {
+                for FileWithPosition {
+                    path: file,
+                    position: pos,
+                } in files_it
+                {
                     nr_of_files += 1;
                     if file.is_dir() {
                         return Err(anyhow::anyhow!(
@@ -180,7 +186,7 @@ impl Application {
                         // files will be opened according to the selected
                         // option. If neither of those two arguments are passed
                         // in, just load the files normally.
-                        let action = match args.split {
+                        let action = match args.split.map(|s| s.0) {
                             _ if nr_of_files == 1 => Action::VerticalSplit,
                             Some(Layout::Vertical) => Action::VerticalSplit,
                             Some(Layout::Horizontal) => Action::HorizontalSplit,
