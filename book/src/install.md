@@ -2,6 +2,7 @@
 
 <!--toc:start-->
 - [Pre-built binaries](#pre-built-binaries)
+  - [Using asdf (Linux & macOS)](#using-asdf-linux--macos)
 - [Linux, macOS, Windows and OpenBSD packaging status](#linux-macos-windows-and-openbsd-packaging-status)
 - [Linux](#linux)
   - [Ubuntu](#ubuntu)
@@ -44,6 +45,17 @@ Note that:
 Download pre-built binaries from the
 [GitHub Releases page](https://github.com/helix-editor/helix/releases). Add the binary to your system's `$PATH` to use it from the command
 line.
+
+### Using asdf (Linux & macOS)
+
+There is a [community maintained plugin](https://github.com/CSergienko/asdf-helix.git) for the [asdf version manager](https://asdf-vm.com/)
+which you can use to download the pre-built binaries and shim them into your path.
+
+```sh
+asdf plugin add helix https://github.com/CSergienko/asdf-helix.git
+asdf install helix latest
+asdf global helix latest
+```
 
 ## Linux, macOS, Windows and OpenBSD packaging status
 
