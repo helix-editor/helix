@@ -1,8 +1,7 @@
+use helix_core::str_utils::char_to_byte_idx;
 use helix_view::editor::{WhitespacePalette, WhitespaceRender, WhitespaceRenderValue};
 
-use helix_core::str_utils::char_to_byte_idx;
-
-#[derive(Debug, Eq, PartialEq)]
+#[derive(Debug, Copy, Clone, Eq, PartialEq)]
 pub enum WhitespaceKind {
     None,
     Space,
@@ -13,7 +12,7 @@ pub enum WhitespaceKind {
 }
 
 impl WhitespaceKind {
-    pub fn to_str<'a>(&'a self, palette: &'a WhitespacePalette) -> &'a str {
+    pub fn to_str(self, palette: &WhitespacePalette) -> &str {
         match self {
             WhitespaceKind::Space => &palette.space,
             WhitespaceKind::NonBreakingSpace => &palette.nbsp,
@@ -36,7 +35,7 @@ pub struct TrailingWhitespaceTracker {
 }
 
 impl TrailingWhitespaceTracker {
-    pub fn new(render: &WhitespaceRender, palette: WhitespacePalette) -> Self {
+    pub fn new(render: WhitespaceRender, palette: WhitespacePalette) -> Self {
         Self {
             palette,
             enabled: render.any(WhitespaceRenderValue::Trailing),
@@ -124,7 +123,7 @@ mod tests {
     fn test_trailing_whitespace_tracker_correctly_tracks_sequences() {
         let ws_render = WhitespaceRender::Basic(WhitespaceRenderValue::Trailing);
 
-        let mut sut = TrailingWhitespaceTracker::new(&ws_render, palette());
+        let mut sut = TrailingWhitespaceTracker::new(ws_render, palette());
 
         sut.track(5, WhitespaceKind::Space);
         sut.track(6, WhitespaceKind::NonBreakingSpace);

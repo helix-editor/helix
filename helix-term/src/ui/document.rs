@@ -398,7 +398,7 @@ impl<'a> TextRenderer<'a> {
         let ws = &editor_config.whitespace;
         let regular_ws = WhitespaceFeature::Regular.palette(ws, tab_width);
         let trailing_ws = WhitespaceFeature::Trailing.palette(ws, tab_width);
-        let trailing_whitespace_tracker = TrailingWhitespaceTracker::new(&ws.render, trailing_ws);
+        let trailing_whitespace_tracker = TrailingWhitespaceTracker::new(ws.render, trailing_ws);
 
         TextRenderer {
             surface,
