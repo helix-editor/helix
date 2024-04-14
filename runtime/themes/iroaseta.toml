@@ -90,6 +90,7 @@
 "ui.virtual.wrap" = { fg = "yellow"}
 "ui.gutter" = { bg = "default" }
 "ui.gutter.selected" = { bg = "dark" }
+"ui.virtual.jump-label" = { modifiers = ["reversed"] }
 
 # Diagnostics
 "error" = { fg = "red" }
