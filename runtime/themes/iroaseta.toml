@@ -5,7 +5,7 @@
 "comment" = { fg = "gray" }
 "constant" = { fg = "blue" }
 "constructor" = { fg = "orange" }
-"condtant.builtin.boolean" = { fg = "blue" }
+"constant.builtin.boolean" = { fg = "blue" }
 "constant.character.escape" = { fg = "yellow" }
 "constant.character.numeric.integer" = { fg = "blue" }
 "constant.character.numeric.float" = { fg = "blue" }
