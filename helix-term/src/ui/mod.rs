@@ -334,6 +334,16 @@ pub mod completers {
         filename_with_git_ignore(editor, input, true)
     }
 
+    pub fn filename_relative(editor: &Editor, input: &str) -> Vec<Completion> {
+        let path = doc!(editor).path().and_then(|path| path.parent());
+        let path = match path {
+            Some(path) => path.join(input),
+            None => input.into(),
+        };
+
+        filename_with_git_ignore(editor, &path.to_string_lossy(), true)
+    }
+
     pub fn filename_with_git_ignore(
         editor: &Editor,
         input: &str,

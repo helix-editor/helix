@@ -338,7 +338,7 @@ impl Prompt {
         self.recalculate_completion(cx.editor);
     }
 
-    pub fn change_completion_selection(&mut self, direction: CompletionDirection) {
+    pub fn change_completion_selection(&mut self, editor: &Editor, direction: CompletionDirection) {
         if self.completion.is_empty() {
             return;
         }
@@ -353,8 +353,18 @@ impl Prompt {
         self.selection = Some(index);
 
         let (range, item) = &self.completion[index];
+        let mut range = range.clone();
 
-        self.line.replace_range(range.clone(), item);
+        // Exclude the length of the current view's path from the replacement range when applying the
+        // completion to the :open-relative command (alias :or), as self.line does not contain it.
+        if self.line.starts_with("or ") || self.line.starts_with("open-relative ") {
+            let doc_dir = doc!(editor).path().and_then(|path| path.parent());
+            if let Some(path) = doc_dir.map(|a| a.as_os_str()) {
+                range.start -= path.len() + 1;
+            }
+        }
+
+        self.line.replace_range(range, item);
 
         self.move_end();
     }
@@ -613,7 +623,7 @@ impl Component for Prompt {
                 }
             }
             key!(Tab) => {
-                self.change_completion_selection(CompletionDirection::Forward);
+                self.change_completion_selection(cx.editor, CompletionDirection::Forward);
                 // if single completion candidate is a directory list content in completion
                 if self.completion.len() == 1 && self.line.ends_with(std::path::MAIN_SEPARATOR) {
                     self.recalculate_completion(cx.editor);
@@ -621,7 +631,7 @@ impl Component for Prompt {
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update)
             }
             shift!(Tab) => {
-                self.change_completion_selection(CompletionDirection::Backward);
+                self.change_completion_selection(cx.editor, CompletionDirection::Backward);
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update)
             }
             ctrl!('q') => self.exit_selection(),

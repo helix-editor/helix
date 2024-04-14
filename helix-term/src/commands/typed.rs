@@ -103,6 +103,15 @@ fn force_quit(
 }
 
 fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
+    open_impl(cx, args, event, None)
+}
+
+fn open_impl(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+    base_path: Option<PathBuf>,
+) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
@@ -110,7 +119,13 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     ensure!(!args.is_empty(), "wrong argument count");
     for arg in args {
         let (path, pos) = args::parse_file(arg);
+        let path = if let Some(ref base_path) = base_path {
+            base_path.join(path)
+        } else {
+            path
+        };
         let path = helix_stdx::path::expand_tilde(path);
+
         // If the path is a directory, open a file picker on that directory and update the status
         // message
         if let Ok(true) = std::fs::canonicalize(&path).map(|p| p.is_dir()) {
@@ -135,6 +150,18 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
         }
     }
     Ok(())
+}
+
+fn open_relative(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    let doc_dir = doc!(cx.editor)
+        .path()
+        .and_then(|path| path.parent().map(|path| path.to_path_buf()));
+
+    open_impl(cx, args, event, doc_dir)
 }
 
 fn buffer_close_by_ids_impl(
@@ -2475,6 +2502,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         doc: "Open a file from disk into the current view.",
         fun: open,
         signature: CommandSignature::all(completers::filename),
+    },
+    TypableCommand {
+        name: "open-relative",
+        aliases: &["or"],
+        doc: "Open a file from disk relative to the current view's path.",
+        fun: open_relative,
+        signature: CommandSignature::all(completers::filename_relative),
     },
     TypableCommand {
         name: "buffer-close",
