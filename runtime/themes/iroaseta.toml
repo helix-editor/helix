@@ -21,6 +21,9 @@
 "keyword.function" = { fg = "red" }
 "keyword.exception" = { fg = "red" }
 "keyword.return" = { fg = "red" }
+"keyword.storage" = { fg = "red" }
+"keyword.storage.type" = { fg = "red" }
+"keyword.storage.modifier" = { fg = "green" }
 "operator" = { fg = "white" }
 "punctuation" = { fg = "white" }
 "punctuation.delimiter" = { fg = "white" }
@@ -29,9 +32,6 @@
 "string" = { fg = "blue" }
 "string.special" = { fg = "blue" }
 "string.regexp" = { fg = "yellow" }
-"storage" = { fg = "red" }
-"storage.type" = { fg = "red" }
-"storage.modifier" = { fg = "yellow" }
 "tag" = { fg = "green" }
 "label" = { fg = "blue" }
 "type" = { fg = "white" }
@@ -76,9 +76,6 @@
 "ui.cursor" = { modifiers = ["reversed"] }
 "ui.cursor.match" = { fg = "orange", modifiers = ["bold"] }
 "ui.cursor.primary" = { modifiers = ["reversed"] }
-# "ui.cursor.primary.normal" = { fg = "white" }
-# "ui.cursor.primary.insert" = { fg = "green" }
-# "ui.cursor.primary.select" = { fg = "blue" }
 "ui.cursorline.primary" = { bg = "list" }
 "ui.cursorline.secondary" = { bg = "dark" }
 "ui.cursorcolumn.primary" = { bg = "list" }
@@ -97,8 +94,6 @@
 "warning" = { fg = "brown" }
 "info" = { fg = "blue" }
 "hint" = { fg = "white" }
-# "diagnostic" = { modifiers = ["underlined"] }
-# "diagnostic" = { fg = "", bg = "#080808", modifiers = ["default"] }
 "diagnostic" = { fg = "", bg = "#3d0c02", modifiers = ["default"] }
 "special" = { fg = "blue" }
 
@@ -109,7 +104,6 @@ dark = "#010409"
 pmark = "#5b3256"
 smark = "#32174d"
 list = "#161b22"
-
 white = "#f2f0eb"
 gray = "#91a3b0"
 brown = "#987654"
