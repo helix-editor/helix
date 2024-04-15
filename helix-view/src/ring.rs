@@ -12,9 +12,12 @@ impl<T> Ring<T> {
         }
     }
 
-    pub fn iter(&self) -> vec_deque::Iter<T> /*VecDeque<T>::Iter*/ {
+    pub fn iter(&self) -> vec_deque::Iter<T> {
         self.data.iter()
     }
+
+    // These two rotation commands exist to ensure that shifting past the
+    // length of the ring does not happen.
 
     pub fn rotate_forward(&mut self, mut shifts: usize) {
         if shifts > self.data.len() {
