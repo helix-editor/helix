@@ -1117,7 +1117,7 @@ impl Editor {
             last_theme: None,
             last_selection: None,
             registers: Registers::default(),
-            yank_ring: YankRing::new(30),
+            yank_ring: YankRing::new(10),
             status_msg: None,
             autoinfo: None,
             idle_timer: Box::pin(sleep(conf.idle_timeout)),
