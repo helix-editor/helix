@@ -215,6 +215,7 @@
 | wren | ✓ | ✓ | ✓ |  |
 | xit | ✓ |  |  |  |
 | xml | ✓ |  | ✓ |  |
+| xtc | ✓ |  |  |  |
 | yaml | ✓ |  | ✓ | `yaml-language-server`, `ansible-language-server` |
 | yuck | ✓ |  |  |  |
 | zig | ✓ | ✓ | ✓ | `zls` |
