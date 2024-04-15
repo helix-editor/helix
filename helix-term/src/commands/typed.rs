@@ -309,7 +309,7 @@ fn buffer_next(
         return Ok(());
     }
 
-    goto_buffer(cx.editor, Direction::Forward);
+    goto_buffer(cx.editor, Direction::Forward, 1);
     Ok(())
 }
 
@@ -322,7 +322,7 @@ fn buffer_previous(
         return Ok(());
     }
 
-    goto_buffer(cx.editor, Direction::Backward);
+    goto_buffer(cx.editor, Direction::Backward, 1);
     Ok(())
 }
 
