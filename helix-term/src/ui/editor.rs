@@ -159,7 +159,12 @@ impl EditorView {
                     self.terminal_focused,
                 ),
             );
-            let focused_view_elements = Self::highlight_focused_view_elements(view, doc, theme);
+            let focused_view_elements = Self::highlight_focused_view_elements(
+                view,
+                doc,
+                theme,
+                config.highlight_surround_pair,
+            );
             if focused_view_elements.is_empty() {
                 overlay_highlights = Box::new(highlights)
             } else {
@@ -558,7 +563,10 @@ impl EditorView {
         view: &View,
         doc: &Document,
         theme: &Theme,
+        highlight_surround_pair: bool,
     ) -> Vec<(usize, std::ops::Range<usize>)> {
+        let mut elements: Vec<(usize, std::ops::Range<usize>)> = Vec::new();
+
         // Highlight matching braces
         if let Some(syntax) = doc.syntax() {
             let text = doc.text().slice(..);
@@ -570,11 +578,33 @@ impl EditorView {
             {
                 // ensure col is on screen
                 if let Some(highlight) = theme.find_scope_index_exact("ui.cursor.match") {
-                    return vec![(highlight, pos..pos + 1)];
+                    elements.push((highlight, pos..pos + 1));
+                }
+            }
+
+            // Highlight surrounding brace
+            // if let Some(highlight) = theme.find_scope_index_exact("ui.cursor.surround") {
+            if highlight_surround_pair {
+                if let Some(highlight) = theme
+                    .find_scope_index_exact("ui.cursor.surround")
+                    .or_else(|| theme.find_scope_index_exact("ui.cursor.match"))
+                {
+                    if let Some(pos) = match_brackets::find_matching_bracket_fuzzy(
+                        syntax,
+                        doc.text().slice(..),
+                        pos,
+                    ) {
+                        if let Some(pos2) =
+                            match_brackets::find_matching_bracket(syntax, doc.text().slice(..), pos)
+                        {
+                            elements.push((highlight, pos2..pos2 + 1));
+                            elements.push((highlight, pos..pos + 1));
+                        }
+                    }
                 }
             }
         }
-        Vec::new()
+        elements
     }
 
     /// Render bufferline at the top
