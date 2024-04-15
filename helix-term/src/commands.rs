@@ -98,6 +98,7 @@ pub struct Context<'a> {
     pub callback: Vec<crate::compositor::Callback>,
     pub on_next_key_callback: Option<OnKeyCallback>,
     pub jobs: &'a mut Jobs,
+    pub last_command_was_paste: bool,
 }
 
 impl<'a> Context<'a> {
@@ -416,6 +417,15 @@ impl MappableCommand {
         paste_clipboard_before, "Paste clipboard before selections",
         paste_primary_clipboard_after, "Paste primary clipboard after selections",
         paste_primary_clipboard_before, "Paste primary clipboard before selections",
+        ring_yank, "Yank selection from ring",
+        ring_replace_with_yanked, "Replace with yanked text from ring",
+        ring_paste_after, "Paste after selection from ring",
+        ring_paste_before, "Paste before selection from ring",
+        ring_next_paste, "Replace previous paste with next in ring",
+        ring_previous_paste, "Replace previous paste with previous in ring",
+        ring_delete_selection, "Delete selection, yank to yank ring",
+        ring_change_selection, "Change selection, yank to yank-ring",
+        select_yank_ring, "Show current yank ring",
         indent, "Indent selection",
         unindent, "Unindent selection",
         format_selections, "Format selection",
@@ -2650,6 +2660,7 @@ fn selection_is_linewise(selection: &Selection, text: &Rope) -> bool {
 
 enum YankAction {
     Yank,
+    YankRing,
     NoYank,
 }
 
@@ -2659,15 +2670,25 @@ fn delete_selection_impl(cx: &mut Context, op: Operation, yank: YankAction) {
     let selection = doc.selection(view.id);
     let only_whole_lines = selection_is_linewise(selection, doc.text());
 
-    if cx.register != Some('_') && matches!(yank, YankAction::Yank) {
-        // yank the selection
-        let text = doc.text().slice(..);
-        let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
-        let reg_name = cx.register.unwrap_or('"');
-        if let Err(err) = cx.editor.registers.write(reg_name, values) {
-            cx.editor.set_error(err.to_string());
-            return;
+    match yank {
+        YankAction::Yank => {
+            if cx.register != Some('_') {
+                // yank the selection
+                let text = doc.text().slice(..);
+                let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
+                let reg_name = cx.register.unwrap_or('"');
+                if let Err(err) = cx.editor.registers.write(reg_name, values) {
+                    cx.editor.set_error(err.to_string());
+                    return;
+                }
+            }
         }
+        YankAction::YankRing => {
+            let text = doc.text().slice(..);
+            let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
+            cx.editor.yank_ring.push(values);
+        }
+        YankAction::NoYank => {}
     }
 
     // delete the selection
@@ -3181,6 +3202,7 @@ pub fn command_palette(cx: &mut Context) {
                     callback: Vec::new(),
                     on_next_key_callback: None,
                     jobs: cx.jobs,
+                    last_command_was_paste: false,
                 };
                 let focus = view!(ctx.editor).id;
 
@@ -4310,11 +4332,11 @@ fn paste_primary_clipboard_before(cx: &mut Context) {
 }
 
 fn replace_with_yanked(cx: &mut Context) {
-    replace_with_yanked_impl(cx.editor, cx.register.unwrap_or('"'), cx.count());
+    prep_replace_with_yanked(cx.editor, cx.register.unwrap_or('"'), cx.count());
     exit_select_mode(cx);
 }
 
-fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
+fn prep_replace_with_yanked(editor: &mut Editor, register: char, count: usize) {
     let Some(values) = editor
         .registers
         .read(register, editor)
@@ -4323,6 +4345,10 @@ fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
         return;
     };
     let values: Vec<_> = values.map(|value| value.to_string()).collect();
+    replace_with_yanked_impl(editor, &values, count);
+}
+
+fn replace_with_yanked_impl(editor: &mut Editor, values: &[String], count: usize) {
     let scrolloff = editor.config().scrolloff;
 
     let (view, doc) = current!(editor);
@@ -4351,12 +4377,12 @@ fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
 }
 
 fn replace_selections_with_clipboard(cx: &mut Context) {
-    replace_with_yanked_impl(cx.editor, '+', cx.count());
+    prep_replace_with_yanked(cx.editor, '+', cx.count());
     exit_select_mode(cx);
 }
 
 fn replace_selections_with_primary_clipboard(cx: &mut Context) {
-    replace_with_yanked_impl(cx.editor, '*', cx.count());
+    prep_replace_with_yanked(cx.editor, '*', cx.count());
     exit_select_mode(cx);
 }
 
@@ -4388,6 +4414,117 @@ fn paste_before(cx: &mut Context) {
         cx.count(),
     );
     exit_select_mode(cx);
+}
+
+fn ring_yank_impl(editor: &mut Editor) {
+    let (view, doc) = current!(editor);
+    let text = doc.text().slice(..);
+
+    let values: Vec<String> = doc
+        .selection(view.id)
+        .fragments(text)
+        .map(Cow::into_owned)
+        .collect();
+    let selections = values.len();
+
+    editor.yank_ring.push(values);
+    editor.set_status(format!(
+        "yanked {selections} selection{} to yank ring",
+        if selections == 1 { "" } else { "s" }
+    ));
+}
+
+fn ring_yank(cx: &mut Context) {
+    ring_yank_impl(cx.editor);
+    exit_select_mode(cx);
+}
+
+fn ring_replace_with_yanked(cx: &mut Context) {
+    let Some(values) = cx
+        .editor
+        .yank_ring
+        .current()
+        .filter(|values| !values.is_empty())
+    else {
+        return;
+    };
+    let values: Vec<_> = values.iter().map(|value| value.to_string()).collect();
+    replace_with_yanked_impl(cx.editor, &values, cx.count());
+    exit_select_mode(cx);
+}
+
+fn ring_paste_after(cx: &mut Context) {
+    log::debug!("ring paste after");
+    ring_paste(cx.editor, Paste::After);
+    exit_select_mode(cx);
+}
+
+fn ring_paste_before(cx: &mut Context) {
+    ring_paste(cx.editor, Paste::Before);
+    exit_select_mode(cx);
+}
+
+fn ring_next_paste(cx: &mut Context) {
+    if cx.last_command_was_paste {
+        log::debug!("yank ring next");
+        let (view, doc) = current!(cx.editor);
+        if !doc.undo(view) {
+            log::debug!("Failed to undo during yank ring next paste");
+            return;
+        }
+    }
+    cx.editor.yank_ring.rotate_forward(cx.count());
+    ring_paste(cx.editor, Paste::After);
+    exit_select_mode(cx);
+}
+
+fn ring_previous_paste(cx: &mut Context) {
+    if cx.last_command_was_paste {
+        log::debug!("yank ring next");
+        let (view, doc) = current!(cx.editor);
+        if !doc.undo(view) {
+            log::debug!("Failed to undo during yank ring next paste");
+            return;
+        }
+    }
+    cx.editor.yank_ring.rotate_backward(cx.count());
+    ring_paste(cx.editor, Paste::After);
+    exit_select_mode(cx);
+}
+
+fn ring_paste(editor: &mut Editor, pos: Paste) {
+    let Some(values) = editor.yank_ring.current() else {
+        log::debug!("Nothing in yank ring");
+        return;
+    };
+    let values: Vec<_> = values.iter().map(|value| value.to_string()).collect();
+
+    let (view, doc) = current!(editor);
+    paste_impl(&values, doc, view, pos, 1, editor.mode);
+}
+
+fn ring_delete_selection(cx: &mut Context) {
+    delete_selection_impl(cx, Operation::Delete, YankAction::YankRing);
+}
+
+fn ring_change_selection(cx: &mut Context) {
+    delete_selection_impl(cx, Operation::Change, YankAction::YankRing);
+}
+
+fn select_yank_ring(cx: &mut Context) {
+    cx.editor.autoinfo = Some(Info::from_yank_ring(&cx.editor.yank_ring));
+    cx.on_next_key(move |cx, event| {
+        if let Some(ch) = event.char() {
+            cx.editor.autoinfo = None;
+            if let Some(index) = ch.to_digit(10) {
+                log::debug!("select yank ring: {}", index);
+                cx.editor.yank_ring.rotate_forward(index as usize);
+            } else {
+                cx.editor
+                    .set_error(format!("{} is not a valid ring index", ch));
+            }
+        }
+    })
 }
 
 fn get_lines(doc: &Document, view_id: ViewId) -> Vec<usize> {

@@ -1,5 +1,5 @@
 use crate::{
-    commands::{self, OnKeyCallback},
+    commands::{self, MappableCommand, OnKeyCallback},
     compositor::{Component, Context, Event, EventResult},
     events::{OnModeSwitch, PostCommand},
     key,
@@ -40,6 +40,7 @@ pub struct EditorView {
     pseudo_pending: Vec<KeyEvent>,
     pub(crate) last_insert: (commands::MappableCommand, Vec<InsertEvent>),
     pub(crate) completion: Option<Completion>,
+    pub(crate) last_command: Option<MappableCommand>,
     spinners: ProgressSpinners,
     /// Tracks if the terminal window is focused by reaction to terminal focus events
     terminal_focused: bool,
@@ -70,6 +71,7 @@ impl EditorView {
             pseudo_pending: Vec::new(),
             last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
             completion: None,
+            last_command: None,
             spinners: ProgressSpinners::default(),
             terminal_focused: true,
         }
@@ -886,9 +888,12 @@ impl EditorView {
                     self.last_insert.0 = command.clone();
                     self.last_insert.1.clear();
                 }
+
+                self.last_command = None;
             }
 
             last_mode = current_mode;
+            self.last_command = Some(command.clone());
         };
 
         match &key_result {
@@ -1318,6 +1323,10 @@ impl Component for EditorView {
             callback: Vec::new(),
             on_next_key_callback: None,
             jobs: context.jobs,
+            last_command_was_paste: self
+                .last_command
+                .as_ref()
+                .map_or(false, |command| command.name().starts_with("ring_")),
         };
 
         match event {

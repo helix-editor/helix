@@ -322,6 +322,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "N" => search_prev,
         },
 
+        "C-'" => select_yank_ring,
         "\"" => select_register,
         "|" => shell_pipe,
         "A-|" => shell_pipe_to,

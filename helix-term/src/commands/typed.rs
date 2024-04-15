@@ -1038,7 +1038,7 @@ fn replace_selections_with_clipboard(
         return Ok(());
     }
 
-    replace_with_yanked_impl(cx.editor, '+', 1);
+    prep_replace_with_yanked(cx.editor, '+', 1);
     Ok(())
 }
 
@@ -1051,7 +1051,7 @@ fn replace_selections_with_primary_clipboard(
         return Ok(());
     }
 
-    replace_with_yanked_impl(cx.editor, '*', 1);
+    prep_replace_with_yanked(cx.editor, '*', 1);
     Ok(())
 }
 

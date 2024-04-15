@@ -1,4 +1,5 @@
 use crate::register::Registers;
+use crate::ring::YankRing;
 use helix_core::unicode::width::UnicodeWidthStr;
 use std::fmt::Write;
 
@@ -62,6 +63,25 @@ impl Info {
             .collect();
 
         let mut infobox = Self::new("Registers", &body);
+        infobox.width = 30; // copied content could be very long
+        infobox
+    }
+
+    pub fn from_yank_ring(ring: &YankRing) -> Self {
+        let body: Vec<_> = ring
+            .iter()
+            .enumerate()
+            .map(|(index, values)| {
+                let preview = values
+                    .last()
+                    .and_then(|s| s.lines().next())
+                    .unwrap_or("<empty>");
+
+                (index.to_string(), preview)
+            })
+            .collect();
+
+        let mut infobox = Self::new("Yank Ring", &body);
         infobox.width = 30; // copied content could be very long
         infobox
     }
