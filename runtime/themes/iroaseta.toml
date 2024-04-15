@@ -7,8 +7,8 @@
 "constructor" = { fg = "orange" }
 "constant.builtin.boolean" = { fg = "blue" }
 "constant.character.escape" = { fg = "yellow" }
-"constant.character.numeric.integer" = { fg = "blue" }
-"constant.character.numeric.float" = { fg = "blue" }
+"constant.numeric.integer" = { fg = "blue" }
+"constant.numeric.float" = { fg = "blue" }
 "function" = { fg = "purple" }
 "function.builtin" = { fg = "purple" }
 "function.method" = { fg = "green" }
