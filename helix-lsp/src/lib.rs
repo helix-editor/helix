@@ -961,7 +961,11 @@ fn start_client(
             .await;
 
         if let Err(e) = value {
-            log::error!("{}: failed to initialize language server: {}", _client.name(), e);
+            log::error!(
+                "{}: failed to initialize language server: {}", 
+                _client.name(), 
+                e
+            );
             return;
         }
 

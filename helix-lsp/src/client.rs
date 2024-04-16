@@ -689,7 +689,10 @@ impl Client {
     /// Forcefully shuts down the language server ignoring any errors.
     pub async fn force_shutdown(&self) -> Result<()> {
         if let Err(e) = self.shutdown().await {
-            log::warn!("{}: language server failed to terminate gracefully - {}", self.name(), e);
+            log::warn!("{}: language server failed to terminate gracefully - {}", 
+                self.name(), 
+                e
+            );
         }
         self.exit().await
     }

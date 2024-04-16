@@ -11,7 +11,10 @@ pub(crate) struct FileOperationFilter {
 }
 
 impl FileOperationFilter {
-    fn new(lsp_name: &str, capability: Option<&lsp::FileOperationRegistrationOptions>) -> FileOperationFilter {
+    fn new(
+        lsp_name: &str, 
+        capability: Option<&lsp::FileOperationRegistrationOptions>,
+    ) -> FileOperationFilter {
         let Some(cap) = capability else {
             return FileOperationFilter::default();
         };
