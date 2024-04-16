@@ -3390,7 +3390,7 @@ source = { git = "https://github.com/mtoohey31/tree-sitter-ld", rev = "0e9695ae0
 name = "hyprlang"
 scope = "source.hyprlang"
 roots = ["hyprland.conf"]
-file-types = [ { glob = "hyprland.conf"} ]
+file-types = [ { glob = "hyprland.conf" }, { glob = "hyprpaper.conf" }, { glob = "hypridle.conf" }, { glob = "hyprlock.conf" } ]
 comment-token = "#"
 grammar = "hyprlang"
 
