@@ -646,13 +646,12 @@ async fn test_read_file() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
     let contents_to_read = String::from("some contents");
     let output_file = helpers::temp_file_with_contents(&contents_to_read)?;
-    let command = format!(":r {:?}<ret><esc>:w<ret>", output_file.path());
 
     test_key_sequence(
         &mut helpers::AppBuilder::new()
             .with_file(file.path(), None)
             .build()?,
-        Some(&command),
+        Some(&format!(":r {:?}<ret><esc>:w<ret>", output_file.path())),
         Some(&|app| {
             assert!(!app.editor.is_err(), "error: {:?}", app.editor.get_status());
         }),

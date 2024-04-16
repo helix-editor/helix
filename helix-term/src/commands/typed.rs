@@ -2455,7 +2455,7 @@ fn yank_diagnostic(
     Ok(())
 }
 
-fn read_file_info_buffer(
+fn read(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
     event: PromptEvent,
@@ -2467,14 +2467,17 @@ fn read_file_info_buffer(
     let (view, doc) = current!(cx.editor);
 
     ensure!(!args.is_empty(), "file name is expected");
+ensure!(args.len() == 1, "only the file name is expected");
 
     let filename = args.get(0).unwrap();
     let path = PathBuf::from(filename.to_string());
-    if !path.exists() {
-        bail!("file doesn't exist: {}", filename);
-    }
+    ensure!(
+        path.exists() && path.is_file(),
+        "path is not a file: {:?}",
+        path
+    );
 
-    let file = std::fs::File::open(path).map_err(|err| anyhow!("error reading file {}", err))?;
+    let file = std::fs::File::open(path).map_err(|err| anyhow!("error opening file: {}", err))?;
     let mut reader = BufReader::new(file);
     let (contents, _, _) = read_to_string(&mut reader, Some(doc.encoding()))
         .map_err(|err| anyhow!("error reading file: {}", err))?;
@@ -2482,6 +2485,8 @@ fn read_file_info_buffer(
     let selection = doc.selection(view.id);
     let transaction = Transaction::insert(doc.text(), selection, contents);
     doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view);
+    view.ensure_cursor_in_view(doc, scrolloff);
 
     Ok(())
 }
