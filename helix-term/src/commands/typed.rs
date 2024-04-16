@@ -2455,19 +2455,16 @@ fn yank_diagnostic(
     Ok(())
 }
 
-fn read(
-    cx: &mut compositor::Context,
-    args: &[Cow<str>],
-    event: PromptEvent,
-) -> anyhow::Result<()> {
+fn read(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
+    let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
 
     ensure!(!args.is_empty(), "file name is expected");
-ensure!(args.len() == 1, "only the file name is expected");
+    ensure!(args.len() == 1, "only the file name is expected");
 
     let filename = args.get(0).unwrap();
     let path = PathBuf::from(filename.to_string());
