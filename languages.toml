@@ -202,6 +202,7 @@ scope = "source.rust"
 injection-regex = "rust"
 file-types = ["rs"]
 roots = ["Cargo.toml", "Cargo.lock"]
+shebangs = ["rust-script", "cargo"]
 auto-format = true
 comment-tokens = ["//", "///", "//!"]
 block-comment-tokens = [
