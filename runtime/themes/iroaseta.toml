@@ -88,6 +88,7 @@
 "ui.gutter" = { bg = "default" }
 "ui.gutter.selected" = { bg = "dark" }
 "ui.virtual.jump-label" = { modifiers = ["reversed"] }
+"ui.bufferline.active" = { fg = "yellow", bg = "rustic_red", modifiers = ["bold"] }
 
 # Diagnostics
 "error" = { fg = "red" }
