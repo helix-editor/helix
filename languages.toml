@@ -251,7 +251,7 @@ args = { attachCommands = [ "platform select remote-gdb-server", "platform conne
 
 [[grammar]]
 name = "rust"
-source = { git = "https://github.com/tree-sitter/tree-sitter-rust", rev = "0431a2c60828731f27491ee9fdefe25e250ce9c9" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-rust", rev = "473634230435c18033384bebaa6d6a17c2523281" }
 
 [[language]]
 name = "sway"
@@ -2053,6 +2053,29 @@ block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 4, unit = "\t" }
 formatter = { command = "odinfmt", args = [ "-stdin", "true" ] }
 
+[language.debugger]
+name = "lldb-dap"
+transport = "stdio"
+command = "lldb-dap"
+
+[[language.debugger.templates]]
+name = "binary"
+request = "launch"
+completion = [ { name = "binary", completion = "filename" } ]
+args = { console = "internalConsole", program = "{0}" }
+
+[[language.debugger.templates]]
+name = "attach"
+request = "attach"
+completion = [ "pid" ]
+args = { console = "internalConsole", pid = "{0}" }
+
+[[language.debugger.templates]]
+name = "gdbserver attach"
+request = "attach"
+completion = [ { name = "lldb connect url", default = "connect://localhost:3333" }, { name = "file", completion = "filename" }, "pid" ]
+args = { console = "internalConsole", attachCommands = [ "platform select remote-gdb-server", "platform connect {0}", "file {1}", "attach {2}" ] }
+
 [[grammar]]
 name = "odin"
 source = { git = "https://github.com/ap29600/tree-sitter-odin", rev = "b219207e49ffca2952529d33e94ed63b1b75c4f1" }
@@ -3361,7 +3384,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "ld"
-source = { git = "https://github.com/mtoohey31/tree-sitter-ld", rev = "81978cde3844bfc199851e39c80a20ec6444d35e" }
+source = { git = "https://github.com/mtoohey31/tree-sitter-ld", rev = "0e9695ae0ede47b8744a8e2ad44d4d40c5d4e4c9" }
 
 [[language]]
 name = "hyprlang"
