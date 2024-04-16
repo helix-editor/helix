@@ -3531,3 +3531,14 @@ comment-token = "#"
 [[grammar]]
 name = "ldif"
 source = { git = "https://github.com/kepet19/tree-sitter-ldif", rev = "0a917207f65ba3e3acfa9cda16142ee39c4c1aaa" }
+
+[[language]]
+name = "xtc"
+scope = "source.xtc"
+# Accept Xena Traffic Configuration, Xena Port Configuration and Xena OpenAutomation
+file-types = [ "xtc", "xpc", "xoa" ]
+comment-token = ";"
+
+[[grammar]]
+name = "xtc"
+source = { git = "https://github.com/Alexis-Lapierre/tree-sitter-xtc", rev = "7bc11b736250c45e25cfb0215db2f8393779957e" }
