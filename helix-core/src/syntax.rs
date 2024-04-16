@@ -1807,32 +1807,20 @@ struct HighlightIter<'a> {
 }
 
 // Adapter to convert rope chunks to bytes
-pub struct ChunksBytes<'a> {
-    chunks: ropey::iter::Chunks<'a>,
-}
-impl<'a> Iterator for ChunksBytes<'a> {
-    type Item = &'a [u8];
-    fn next(&mut self) -> Option<Self::Item> {
-        self.chunks.next().map(str::as_bytes)
-    }
-}
-
 pub struct RopeProvider<'a>(pub RopeSlice<'a>);
-impl<'a> TextProvider<&'a [u8]> for RopeProvider<'a> {
-    type I = ChunksBytes<'a>;
-
+impl<'a> TextProvider<&'a str> for RopeProvider<'a> {
+    type I = ropey::iter::Chunks<'a>;
     fn text(&mut self, node: Node) -> Self::I {
-        let fragment = self.0.byte_slice(node.start_byte()..node.end_byte());
-        ChunksBytes {
-            chunks: fragment.chunks(),
-        }
+        self.0
+            .byte_slice(node.start_byte()..node.end_byte())
+            .chunks()
     }
 }
 
 struct HighlightIterLayer<'a> {
     _tree: Option<Tree>,
     cursor: QueryCursor,
-    captures: RefCell<iter::Peekable<QueryCaptures<'a, 'a, RopeProvider<'a>, &'a [u8]>>>,
+    captures: RefCell<iter::Peekable<QueryCaptures<'a, 'a, RopeProvider<'a>, &'a str>>>,
     config: &'a HighlightConfiguration,
     highlight_end_stack: Vec<usize>,
     scope_stack: Vec<LocalScope<'a>>,
