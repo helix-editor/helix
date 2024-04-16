@@ -95,7 +95,7 @@
 "warning" = { fg = "brown" }
 "info" = { fg = "blue" }
 "hint" = { fg = "white" }
-"diagnostic" = { fg = "", bg = "#3d0c02", modifiers = ["default"] }
+"diagnostic" = { fg = "yellow", bg = "#3d0c02", modifiers = ["default"] }
 "special" = { fg = "blue" }
 
 [palette]
