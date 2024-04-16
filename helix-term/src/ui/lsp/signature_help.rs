@@ -14,7 +14,7 @@ use crate::compositor::{Component, Compositor, Context, EventResult};
 use crate::alt;
 use crate::ui::Markdown;
 
-use super::Popup;
+use crate::ui::Popup;
 
 pub struct Signature {
     pub signature: String,
