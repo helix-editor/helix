@@ -3109,7 +3109,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "read",
         aliases: &["r"],
         doc: "Load a file into buffer",
-        fun: read_file_info_buffer,
+        fun: read,
         signature: CommandSignature::positional(&[completers::filename]),
     },
 ];
