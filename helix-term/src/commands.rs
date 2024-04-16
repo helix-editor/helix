@@ -813,18 +813,15 @@ fn goto_buffer(editor: &mut Editor, direction: Direction, count: usize) {
         Direction::Forward => {
             let iter = editor.documents.keys();
             // skip 'count' times past current buffer
-            let mut iter = iter.cycle().skip_while(|id| *id != &current).skip(count);
-            iter.next()
+            iter.cycle().skip_while(|id| *id != &current).nth(count)
         }
         Direction::Backward => {
             let iter = editor.documents.keys();
             // skip 'count' times past current buffer
-            let mut iter = iter
-                .rev()
+            iter.rev()
                 .cycle()
                 .skip_while(|id| *id != &current)
-                .skip(count);
-            iter.next()
+                .nth(count)
         }
     }
     .unwrap();
