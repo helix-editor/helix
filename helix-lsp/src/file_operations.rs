@@ -11,7 +11,7 @@ pub(crate) struct FileOperationFilter {
 }
 
 impl FileOperationFilter {
-    fn new(capability: Option<&lsp::FileOperationRegistrationOptions>) -> FileOperationFilter {
+    fn new(lsp_name: &str, capability: Option<&lsp::FileOperationRegistrationOptions>) -> FileOperationFilter {
         let Some(cap) = capability else {
             return FileOperationFilter::default();
         };
@@ -37,7 +37,7 @@ impl FileOperationFilter {
             let glob = match glob_builder.build() {
                 Ok(glob) => glob,
                 Err(err) => {
-                    log::error!("invalid glob send by LS: {err}");
+                    log::error!("{lsp_name}: invalid glob send by LS: {err}");
                     continue;
                 }
             };
@@ -55,11 +55,11 @@ impl FileOperationFilter {
             };
         }
         let file_globs = file_globs.build().unwrap_or_else(|err| {
-            log::error!("invalid globs send by LS: {err}");
+            log::error!("{lsp_name}: invalid globs send by LS: {err}");
             GlobSet::empty()
         });
         let dir_globs = dir_globs.build().unwrap_or_else(|err| {
-            log::error!("invalid globs send by LS: {err}");
+            log::error!("{lsp_name}: invalid globs send by LS: {err}");
             GlobSet::empty()
         });
         FileOperationFilter {
@@ -89,7 +89,7 @@ pub(crate) struct FileOperationsInterest {
 }
 
 impl FileOperationsInterest {
-    pub fn new(capabilities: &lsp::ServerCapabilities) -> FileOperationsInterest {
+    pub fn new(lsp_name: &str, capabilities: &lsp::ServerCapabilities) -> FileOperationsInterest {
         let capabilities = capabilities
             .workspace
             .as_ref()
@@ -98,8 +98,8 @@ impl FileOperationsInterest {
             return FileOperationsInterest::default();
         };
         FileOperationsInterest {
-            did_rename: FileOperationFilter::new(capabilities.did_rename.as_ref()),
-            will_rename: FileOperationFilter::new(capabilities.will_rename.as_ref()),
+            did_rename: FileOperationFilter::new(lsp_name, capabilities.did_rename.as_ref()),
+            will_rename: FileOperationFilter::new(lsp_name, capabilities.will_rename.as_ref()),
         }
     }
 }
