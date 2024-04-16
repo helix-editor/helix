@@ -26,7 +26,7 @@ use crate::events::{OnModeSwitch, PostCommand, PostInsertChar};
 use crate::job::{dispatch, dispatch_blocking};
 use crate::keymap::MappableCommand;
 use crate::ui::editor::InsertEvent;
-use crate::ui::lsp::SignatureHelp;
+use crate::ui::lsp::signature_help::SignatureHelp;
 use crate::ui::{self, Popup};
 
 use super::Handlers;

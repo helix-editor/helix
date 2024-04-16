@@ -16,7 +16,7 @@ use crate::commands::Open;
 use crate::compositor::Compositor;
 use crate::events::{OnModeSwitch, PostInsertChar};
 use crate::handlers::Handlers;
-use crate::ui::lsp::{Signature, SignatureHelp};
+use crate::ui::lsp::signature_help::{Signature, SignatureHelp};
 use crate::ui::Popup;
 use crate::{job, ui};
 
