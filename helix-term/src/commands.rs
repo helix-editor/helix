@@ -799,28 +799,29 @@ fn goto_line_start(cx: &mut Context) {
 }
 
 fn goto_next_buffer(cx: &mut Context) {
-    goto_buffer(cx.editor, Direction::Forward);
+    goto_buffer(cx.editor, Direction::Forward, cx.count());
 }
 
 fn goto_previous_buffer(cx: &mut Context) {
-    goto_buffer(cx.editor, Direction::Backward);
+    goto_buffer(cx.editor, Direction::Backward, cx.count());
 }
 
-fn goto_buffer(editor: &mut Editor, direction: Direction) {
+fn goto_buffer(editor: &mut Editor, direction: Direction, count: usize) {
     let current = view!(editor).doc;
 
     let id = match direction {
         Direction::Forward => {
             let iter = editor.documents.keys();
-            let mut iter = iter.skip_while(|id| *id != &current);
-            iter.next(); // skip current item
-            iter.next().or_else(|| editor.documents.keys().next())
+            // skip 'count' times past current buffer
+            iter.cycle().skip_while(|id| *id != &current).nth(count)
         }
         Direction::Backward => {
             let iter = editor.documents.keys();
-            let mut iter = iter.rev().skip_while(|id| *id != &current);
-            iter.next(); // skip current item
-            iter.next().or_else(|| editor.documents.keys().next_back())
+            // skip 'count' times past current buffer
+            iter.rev()
+                .cycle()
+                .skip_while(|id| *id != &current)
+                .nth(count)
         }
     }
     .unwrap();
