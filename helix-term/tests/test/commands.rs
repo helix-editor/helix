@@ -644,8 +644,8 @@ async fn test_join_selections_space() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 async fn test_read_file() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
-    let contents_to_read = String::from("some contents");
-    let output_file = helpers::temp_file_with_contents(&contents_to_read)?;
+    let contents_to_read = "some contents";
+    let output_file = helpers::temp_file_with_contents(contents_to_read)?;
 
     test_key_sequence(
         &mut helpers::AppBuilder::new()
@@ -659,7 +659,7 @@ async fn test_read_file() -> anyhow::Result<()> {
     )
     .await?;
 
-    let expected_contents = LineFeedHandling::Native.apply(&contents_to_read);
+    let expected_contents = LineFeedHandling::Native.apply(contents_to_read);
     helpers::assert_file_has_content(&mut file, &expected_contents)?;
 
     Ok(())
