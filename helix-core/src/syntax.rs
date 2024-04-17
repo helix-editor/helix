@@ -73,7 +73,7 @@ pub fn deserialize_auto_pairs<'de, D>(deserializer: D) -> Result<Option<AutoPair
 where
     D: serde::Deserializer<'de>,
 {
-    Ok(Option::<AutoPairConfig>::deserialize(deserializer)?.and_then(AutoPairConfig::into))
+    Ok(Option::<AutoPairConfigType>::deserialize(deserializer)?.and_then(AutoPairConfigType::into))
 }
 
 fn default_timeout() -> u64 {
@@ -560,10 +560,38 @@ pub enum IndentationHeuristic {
     Hybrid,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct AutoPairConfig {
+    pub config_type: AutoPairConfigType,
+
+    /// Whether to insert a closing bracket instead of automatically skipping over existing closing brackets.
+    pub overtype: bool,
+}
+
+impl AutoPairConfig {
+    pub fn get_pairs(&self) -> Option<AutoPairs> {
+        match &self.config_type {
+            AutoPairConfigType::Enable(false) => None,
+            AutoPairConfigType::Enable(true) => Some(AutoPairs::default()),
+            AutoPairConfigType::Pairs(pairs) => Some(AutoPairs::new(pairs.iter())),
+        }
+    }
+}
+
+impl Default for AutoPairConfig {
+    fn default() -> Self {
+        Self {
+            config_type: AutoPairConfigType::default(),
+            overtype: true,
+        }
+    }
+}
+
 /// Configuration for auto pairs
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields, untagged)]
-pub enum AutoPairConfig {
+pub enum AutoPairConfigType {
     /// Enables or disables auto pairing. False means disabled. True means to use the default pairs.
     Enable(bool),
 
@@ -571,35 +599,35 @@ pub enum AutoPairConfig {
     Pairs(HashMap<char, char>),
 }
 
-impl Default for AutoPairConfig {
+impl Default for AutoPairConfigType {
     fn default() -> Self {
-        AutoPairConfig::Enable(true)
+        AutoPairConfigType::Enable(true)
     }
 }
 
-impl From<&AutoPairConfig> for Option<AutoPairs> {
-    fn from(auto_pair_config: &AutoPairConfig) -> Self {
+impl From<&AutoPairConfigType> for Option<AutoPairs> {
+    fn from(auto_pair_config: &AutoPairConfigType) -> Self {
         match auto_pair_config {
-            AutoPairConfig::Enable(false) => None,
-            AutoPairConfig::Enable(true) => Some(AutoPairs::default()),
-            AutoPairConfig::Pairs(pairs) => Some(AutoPairs::new(pairs.iter())),
+            AutoPairConfigType::Enable(false) => None,
+            AutoPairConfigType::Enable(true) => Some(AutoPairs::default()),
+            AutoPairConfigType::Pairs(pairs) => Some(AutoPairs::new(pairs.iter())),
         }
     }
 }
 
-impl From<AutoPairConfig> for Option<AutoPairs> {
-    fn from(auto_pairs_config: AutoPairConfig) -> Self {
+impl From<AutoPairConfigType> for Option<AutoPairs> {
+    fn from(auto_pairs_config: AutoPairConfigType) -> Self {
         (&auto_pairs_config).into()
     }
 }
 
-impl FromStr for AutoPairConfig {
+impl FromStr for AutoPairConfigType {
     type Err = std::str::ParseBoolError;
 
     // only do bool parsing for runtime setting
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let enable: bool = s.parse()?;
-        Ok(AutoPairConfig::Enable(enable))
+        Ok(AutoPairConfigType::Enable(enable))
     }
 }
 

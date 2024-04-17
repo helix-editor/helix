@@ -120,7 +120,13 @@ impl Default for AutoPairs {
 //   middle of triple quotes, and more exotic pairs like Jinja's {% %}
 
 #[must_use]
-pub fn hook(doc: &Rope, selection: &Selection, ch: char, pairs: &AutoPairs) -> Option<Transaction> {
+pub fn hook(
+    doc: &Rope,
+    selection: &Selection,
+    ch: char,
+    pairs: &AutoPairs,
+    overtype: bool,
+) -> Option<Transaction> {
     log::trace!("autopairs hook selection: {:#?}", selection);
 
     if let Some(pair) = pairs.get(ch) {
@@ -128,7 +134,7 @@ pub fn hook(doc: &Rope, selection: &Selection, ch: char, pairs: &AutoPairs) -> O
             return Some(handle_same(doc, selection, pair));
         } else if pair.open == ch {
             return Some(handle_open(doc, selection, pair));
-        } else if pair.close == ch {
+        } else if pair.close == ch && overtype {
             // && char_at pos == close
             return Some(handle_close(doc, selection, pair));
         }

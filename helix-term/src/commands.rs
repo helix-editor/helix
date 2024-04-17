@@ -3761,10 +3761,11 @@ pub mod insert {
         let text = doc.text();
         let selection = doc.selection(view.id);
         let auto_pairs = doc.auto_pairs(cx.editor);
+        let overtype = cx.editor.config().auto_pairs.overtype;
 
         let transaction = auto_pairs
             .as_ref()
-            .and_then(|ap| auto_pairs::hook(text, selection, c, ap))
+            .and_then(|ap| auto_pairs::hook(text, selection, c, ap, overtype))
             .or_else(|| insert(text, selection, c));
 
         let (view, doc) = current!(cx.editor);

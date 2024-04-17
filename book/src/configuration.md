@@ -201,18 +201,25 @@ Example:
 Enables automatic insertion of pairs to parentheses, brackets, etc. Can be a
 simple boolean value, or a specific mapping of pairs of single characters.
 
-To disable auto-pairs altogether, set `auto-pairs` to `false`:
+To disable auto-pairs altogether, set `config-type` to `false`:
 
 ```toml
-[editor]
-auto-pairs = false # defaults to `true`
+[editor.auto-pairs]
+config-type = false # defaults to `true`
+```
+
+To disable skipping over closing pairs, set `overtype` to `false`:
+
+```toml
+[editor.auto-pairs]
+overtype = false #defaults to `true`
 ```
 
 The default pairs are <code>(){}[]''""``</code>, but these can be customized by
 setting `auto-pairs` to a TOML table:
 
 ```toml
-[editor.auto-pairs]
+[editor.auto-pairs.config-type]
 '(' = ')'
 '{' = '}'
 '[' = ']'
@@ -231,7 +238,7 @@ Example `languages.toml` that adds `<>` and removes `''`
 [[language]]
 name = "rust"
 
-[language.auto-pairs]
+[language.auto-pairs.config-type]
 '(' = ')'
 '{' = '}'
 '[' = ']'
