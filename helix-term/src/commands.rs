@@ -416,6 +416,8 @@ impl MappableCommand {
         paste_clipboard_before, "Paste clipboard before selections",
         paste_primary_clipboard_after, "Paste primary clipboard after selections",
         paste_primary_clipboard_before, "Paste primary clipboard before selections",
+        paste_picker_after, "Paste after using picker",
+        paste_picker_before, "Paste before using picker",
         indent, "Indent selection",
         unindent, "Unindent selection",
         format_selections, "Format selection",
@@ -517,6 +519,7 @@ impl MappableCommand {
         decrement, "Decrement item under cursor",
         record_macro, "Record macro",
         replay_macro, "Replay macro",
+        replay_macro_picker, "Replay macro picker",
         command_palette, "Open command palette",
         goto_word, "Jump to a two-character label",
         extend_to_word, "Extend to a two-character label",
@@ -2190,7 +2193,7 @@ fn search_selection(cx: &mut Context) {
         .join("|");
 
     let msg = format!("register '{}' set to '{}'", register, &regex);
-    match cx.editor.registers.push(register, regex) {
+    match cx.editor.registers.push(register, &regex) {
         Ok(_) => {
             cx.editor.registers.last_search_register = register;
             cx.editor.set_status(msg)
@@ -2230,7 +2233,7 @@ fn make_search_word_bounded(cx: &mut Context) {
     }
 
     let msg = format!("register '{}' set to '{}'", register, &new_regex);
-    match cx.editor.registers.push(register, new_regex) {
+    match cx.editor.registers.push(register, &new_regex) {
         Ok(_) => {
             cx.editor.registers.last_search_register = register;
             cx.editor.set_status(msg)
@@ -2670,7 +2673,7 @@ fn delete_selection_impl(cx: &mut Context, op: Operation, yank: YankAction) {
         let text = doc.text().slice(..);
         let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
         let reg_name = cx.register.unwrap_or('"');
-        if let Err(err) = cx.editor.registers.write(reg_name, values) {
+        if let Err(err) = cx.editor.registers.push_many(reg_name, &values) {
             cx.editor.set_error(err.to_string());
             return;
         }
@@ -4124,7 +4127,7 @@ fn yank_impl(editor: &mut Editor, register: char) {
         .collect();
     let selections = values.len();
 
-    match editor.registers.write(register, values) {
+    match editor.registers.push_many(register, &values) {
         Ok(_) => editor.set_status(format!(
             "yanked {selections} selection{} to register {register}",
             if selections == 1 { "" } else { "s" }
@@ -4149,7 +4152,7 @@ fn yank_joined_impl(editor: &mut Editor, separator: &str, register: char) {
             acc
         });
 
-    match editor.registers.write(register, vec![joined]) {
+    match editor.registers.push(register, &joined) {
         Ok(_) => editor.set_status(format!(
             "joined and yanked {selections} selection{} to register {register}",
             if selections == 1 { "" } else { "s" }
@@ -4182,7 +4185,7 @@ fn yank_primary_selection_impl(editor: &mut Editor, register: char) {
 
     let selection = doc.selection(view.id).primary().fragment(text).to_string();
 
-    match editor.registers.write(register, vec![selection]) {
+    match editor.registers.push(register, &selection) {
         Ok(_) => editor.set_status(format!("yanked primary selection to register {register}",)),
         Err(err) => editor.set_error(err.to_string()),
     }
@@ -4324,7 +4327,6 @@ fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
     let Some(values) = editor
         .registers
         .read(register, editor)
-        .filter(|values| values.len() > 0)
     else {
         return;
     };
@@ -4393,6 +4395,45 @@ fn paste_before(cx: &mut Context) {
         Paste::Before,
         cx.count(),
     );
+    exit_select_mode(cx);
+}
+
+fn paste_picker(cx: &mut Context, pos: Paste) {
+    let register = cx.register.unwrap_or('"');
+    cx.editor.autoinfo = Some(Info::from_selected_register(&cx.editor.registers, register));
+    cx.on_next_key(move |cx, event| {
+        if let Some(mut ch) = event.char() {
+            cx.editor.autoinfo = None;
+            if ch == 'p' {
+                // Allow a user to press p and get the no picker behavior.
+                ch = '0';
+            }
+            let Ok(index) = usize::from_str_radix(&ch.to_string(), 16) else {
+                log::debug!("During paste, {ch:?} was not parsed as a number");
+                return;
+            };
+            paste_from_index(cx.editor, register, index, pos, cx.count());
+        }
+    })
+}
+
+fn paste_from_index(editor: &mut Editor, register: char, index: usize, pos: Paste, count: usize) {
+    let Ok(Some(values)) = editor.registers.read_nth(register, index) else {
+        return;
+    };
+    let values: Vec<_> = values.map(|value| value.to_string()).collect();
+
+    let (view, doc) = current!(editor);
+    paste_impl(&values, doc, view, pos, count, editor.mode);
+}
+
+fn paste_picker_after(cx: &mut Context) {
+    paste_picker(cx, Paste::After);
+    exit_select_mode(cx);
+}
+
+fn paste_picker_before(cx: &mut Context) {
+    paste_picker(cx, Paste::Before);
     exit_select_mode(cx);
 }
 
@@ -5202,12 +5243,7 @@ fn insert_register(cx: &mut Context) {
         if let Some(ch) = event.char() {
             cx.editor.autoinfo = None;
             cx.register = Some(ch);
-            paste(
-                cx.editor,
-                cx.register.unwrap_or('"'),
-                Paste::Cursor,
-                cx.count(),
-            );
+            paste(cx.editor, ch, Paste::Cursor, cx.count());
         }
     })
 }
@@ -5932,6 +5968,10 @@ fn increment_impl(cx: &mut Context, increment_direction: IncrementDirection) {
     }
 }
 
+// TODO: now that registers store everything as a sequence of events the individual keys
+// can be sent using registers.write() instead of flattening into a string. This would
+// allow parse_macro to simply be a loop over the returned vector.
+
 fn record_macro(cx: &mut Context) {
     if let Some((reg, mut keys)) = cx.editor.macro_recording.take() {
         // Remove the keypress which ends the recording
@@ -5947,7 +5987,7 @@ fn record_macro(cx: &mut Context) {
                 }
             })
             .collect::<String>();
-        match cx.editor.registers.write(reg, vec![s]) {
+        match cx.editor.registers.push(reg, &s) {
             Ok(_) => cx
                 .editor
                 .set_status(format!("Recorded to register [{}]", reg)),
@@ -5976,7 +6016,6 @@ fn replay_macro(cx: &mut Context) {
         .editor
         .registers
         .read(reg, cx.editor)
-        .filter(|values| values.len() == 1)
         .map(|mut values| values.next().unwrap())
     {
         match helix_view::input::parse_macro(&keys) {
@@ -5991,9 +6030,13 @@ fn replay_macro(cx: &mut Context) {
         return;
     };
 
+    replay_macro_impl(cx, reg, keys);
+}
+
+fn replay_macro_impl(cx: &mut Context, register: char, keys: Vec<KeyEvent>) {
     // Once the macro has been fully validated, it's marked as being under replay
     // to ensure we don't fall into infinite recursion.
-    cx.editor.macro_replaying.push(reg);
+    cx.editor.macro_replaying.push(register);
 
     let count = cx.count();
     cx.callback.push(Box::new(move |compositor, cx| {
@@ -6007,6 +6050,54 @@ fn replay_macro(cx: &mut Context) {
         // replaying recursively.
         cx.editor.macro_replaying.pop();
     }));
+}
+
+fn replay_macro_picker(cx: &mut Context) {
+    let register = cx.register.unwrap_or('@');
+
+    if cx.editor.macro_replaying.contains(&register) {
+        cx.editor.set_error(format!(
+            "Cannot replay from register [{}] because already replaying from same register",
+            register
+        ));
+        return;
+    }
+    cx.editor.autoinfo = Some(Info::from_selected_register(&cx.editor.registers, register));
+    cx.on_next_key(move |cx, event| {
+        cx.editor.autoinfo = None;
+
+        let Some(ch) = event.char() else {
+            return;
+        };
+        let Ok(index) = usize::from_str_radix(&ch.to_string(), 16) else {
+            log::debug!("During replay macro picker, {ch:?} was not parsed as a number");
+            return;
+        };
+        match parse_keys_from_register_index(cx, register, index) {
+            Ok(keys) => {
+                replay_macro_impl(cx, register, keys);
+            }
+            Err(err) => {
+                cx.editor.set_error(format!(
+                    "Register [{register}] @ index {index}: invalid macro: {err}"
+                ));
+            }
+        }
+    })
+}
+
+fn parse_keys_from_register_index(
+    cx: &mut Context,
+    register: char,
+    index: usize,
+) -> Result<Vec<KeyEvent>, anyhow::Error> {
+    let Some(mut it) = cx.editor.registers.read_nth(register, index)? else {
+        return Err(anyhow!("Register [{register}] @ index {index} failed to read"));
+    };
+    let Some(keys) = it.next() else {
+        return Err(anyhow!("Register [{register}] @ index {index} was empty"));
+    };
+    helix_view::input::parse_macro(&keys)
 }
 
 fn goto_word(cx: &mut Context) {
