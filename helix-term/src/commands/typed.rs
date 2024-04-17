@@ -1,4 +1,5 @@
 use std::fmt::Write;
+use std::io::BufReader;
 use std::ops::Deref;
 
 use crate::job::Job;
@@ -8,7 +9,7 @@ use super::*;
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::{line_ending, shellwords::Shellwords};
-use helix_view::document::DEFAULT_LANGUAGE_NAME;
+use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
 use serde_json::Value;
 use ui::completers::{self, Completer};
@@ -2454,6 +2455,39 @@ fn yank_diagnostic(
     Ok(())
 }
 
+fn read(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let scrolloff = cx.editor.config().scrolloff;
+    let (view, doc) = current!(cx.editor);
+
+    ensure!(!args.is_empty(), "file name is expected");
+    ensure!(args.len() == 1, "only the file name is expected");
+
+    let filename = args.get(0).unwrap();
+    let path = PathBuf::from(filename.to_string());
+    ensure!(
+        path.exists() && path.is_file(),
+        "path is not a file: {:?}",
+        path
+    );
+
+    let file = std::fs::File::open(path).map_err(|err| anyhow!("error opening file: {}", err))?;
+    let mut reader = BufReader::new(file);
+    let (contents, _, _) = read_to_string(&mut reader, Some(doc.encoding()))
+        .map_err(|err| anyhow!("error reading file: {}", err))?;
+    let contents = Tendril::from(contents);
+    let selection = doc.selection(view.id);
+    let transaction = Transaction::insert(doc.text(), selection, contents);
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view);
+    view.ensure_cursor_in_view(doc, scrolloff);
+
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "quit",
@@ -3067,6 +3101,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         doc: "Yank diagnostic(s) under primary cursor to register, or clipboard by default",
         fun: yank_diagnostic,
         signature: CommandSignature::all(completers::register),
+    },
+    TypableCommand {
+        name: "read",
+        aliases: &["r"],
+        doc: "Load a file into buffer",
+        fun: read,
+        signature: CommandSignature::positional(&[completers::filename]),
     },
 ];
 
