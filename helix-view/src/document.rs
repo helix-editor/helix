@@ -105,6 +105,8 @@ pub struct DocumentSavedEvent {
     pub doc_id: DocumentId,
     pub path: PathBuf,
     pub text: Rope,
+    // HAXX: errors can't be cloend
+    pub undofile_error: Option<String>,
 }
 
 pub type DocumentSavedEventResult = Result<DocumentSavedEvent, anyhow::Error>;
@@ -697,7 +699,7 @@ impl Document {
             (Rope::from(line_ending.as_str()), encoding, false)
         };
 
-        let mut doc = Self::from(rope, Some((encoding, has_bom)), config);
+        let mut doc = Self::from(rope, Some((encoding, has_bom)), config.clone());
 
         // set the path and try detecting the language
         doc.set_path(Some(path));
@@ -706,6 +708,16 @@ impl Document {
         }
 
         doc.detect_indent_and_line_ending();
+
+        if config.load().undofile {
+            // TODO: Propogate error to display in the statusline without causing the function to error.
+            if let Err(e) = doc.load_undofile() {
+                log::error!(
+                    "Failed to load undofile for {}: {e}",
+                    path.to_string_lossy()
+                );
+            }
+        }
 
         Ok(doc)
     }
@@ -840,6 +852,8 @@ impl Document {
         impl Future<Output = Result<DocumentSavedEvent, anyhow::Error>> + 'static + Send,
         anyhow::Error,
     > {
+        use tokio::task::spawn_blocking;
+
         log::debug!(
             "submitting save of doc '{:?}'",
             self.path().map(|path| path.to_string_lossy())
@@ -858,6 +872,17 @@ impl Document {
                 self.path.as_ref().unwrap().clone()
             }
         };
+
+        // TODO: Super messy tuple...
+        let undofile_enabled = self.config.load().undofile;
+        let (history, uf_path) = if undofile_enabled {
+            let history = self.history.get_mut().clone();
+            let undofile_path = self.undo_file()?.unwrap();
+            (Some(history), Some(undofile_path))
+        } else {
+            (None, None)
+        };
+        let last_saved_revision = self.get_last_saved_revision();
 
         let identifier = self.path().map(|_| self.identifier());
         let language_servers = self.language_servers.clone();
@@ -903,6 +928,23 @@ impl Document {
                     "Path is read only"
                 ));
             }
+
+            // TODO: Decide on how to do error handling. IO errors are ok. Invalid undofile is not
+            let has_valid_undofile = if undofile_enabled {
+                let path_ = path.clone();
+                let uf_path_ = uf_path.clone();
+                spawn_blocking(move || -> anyhow::Result<bool> {
+                    Ok(helix_core::history::History::is_valid(
+                        &mut std::fs::File::open(uf_path_.unwrap())?,
+                        &path_,
+                    ))
+                })
+                .await?
+                .unwrap_or(false)
+            } else {
+                false
+            };
+
             let backup = if path.exists() {
                 let path_ = write_path.clone();
                 // hacks: we use tempfile to handle the complex task of creating
@@ -954,11 +996,40 @@ impl Document {
 
             write_result?;
 
+            let uf_result = if undofile_enabled {
+                let path_ = path.clone();
+                let uf_path_ = uf_path.clone().unwrap();
+
+                spawn_blocking(move || -> anyhow::Result<()> {
+                    let mut uf = std::fs::OpenOptions::new()
+                        .write(true)
+                        .read(true)
+                        .create(true)
+                        .open(&uf_path_)?;
+
+                    let offset = if has_valid_undofile {
+                        last_saved_revision
+                    } else {
+                        uf.set_len(0)?;
+                        0
+                    };
+                    history
+                        .unwrap()
+                        .serialize(&mut uf, &path_, current_rev, offset)?;
+                    copy_metadata(&path_, &uf_path_)?;
+                    Ok(())
+                })
+                .await?
+            } else {
+                Ok(())
+            };
+
             let event = DocumentSavedEvent {
                 revision: current_rev,
                 doc_id,
                 path,
                 text: text.clone(),
+                undofile_error: uf_result.map_err(|e| e.to_string()).err(),
             };
 
             for (_, language_server) in language_servers {
@@ -1063,6 +1134,38 @@ impl Document {
 
         self.version_control_head = provider_registry.get_current_head_name(&path);
 
+        Ok(())
+    }
+
+    pub fn undo_file(&self) -> anyhow::Result<Option<PathBuf>> {
+        let undo_dir = helix_loader::cache_dir().join("undo");
+        std::fs::create_dir_all(&undo_dir)?;
+        let res = self.path().map(|path| {
+            let escaped_path = helix_stdx::path::escape_path(path);
+            undo_dir.join(escaped_path)
+        });
+        Ok(res)
+    }
+
+    pub fn load_undofile(&mut self) -> anyhow::Result<()> {
+        if let Some(mut undo_file) = self
+            .undo_file()?
+            .and_then(|path| std::fs::File::open(path).ok())
+        {
+            if undo_file.metadata()?.len() != 0 {
+                let (last_saved_revision, history) = helix_core::history::History::deserialize(
+                    &mut undo_file,
+                    self.path().unwrap(),
+                )?;
+
+                if self.history.get_mut().is_empty() {
+                    self.history.set(history);
+                } else {
+                    self.history.get_mut().merge(history).unwrap();
+                    self.set_last_saved_revision(last_saved_revision);
+                }
+            }
+        }
         Ok(())
     }
 

@@ -570,12 +570,16 @@ impl Application {
         self.editor
             .set_doc_path(doc_save_event.doc_id, &doc_save_event.path);
         // TODO: fix being overwritten by lsp
-        self.editor.set_status(format!(
+        let mut msg = format!(
             "'{}' written, {}L {}B",
             get_relative_path(&doc_save_event.path).to_string_lossy(),
             lines,
             bytes
-        ));
+        );
+        if let Some(e) = doc_save_event.undofile_error {
+            msg = format!("{msg} | Could not write undofile: {e}");
+        }
+        self.editor.set_status(msg);
     }
 
     #[inline(always)]

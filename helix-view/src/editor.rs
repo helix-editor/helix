@@ -336,6 +336,7 @@ pub struct Config {
         deserialize_with = "deserialize_alphabet"
     )]
     pub jump_label_alphabet: Vec<char>,
+    pub undofile: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -913,6 +914,7 @@ impl Default for Config {
             popup_border: PopupBorderConfig::None,
             indent_heuristic: IndentationHeuristic::default(),
             jump_label_alphabet: ('a'..='z').collect(),
+            undofile: false,
         }
     }
 }
