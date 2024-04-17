@@ -659,7 +659,7 @@ async fn test_read_file() -> anyhow::Result<()> {
     )
     .await?;
 
-    let expected_contents = format!("{}\n", contents_to_read);
+    let expected_contents = LineFeedHandling::Native.apply(&contents_to_read);
     helpers::assert_file_has_content(&mut file, &expected_contents)?;
 
     Ok(())
