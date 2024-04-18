@@ -2080,6 +2080,11 @@ fn searcher(cx: &mut Context, direction: Direction) {
     let config = cx.editor.config();
     let scrolloff = config.scrolloff;
     let wrap_around = config.search.wrap_around;
+    let movement = if cx.editor.mode() == Mode::Select {
+        Movement::Extend
+    } else {
+        Movement::Move
+    };
 
     // TODO: could probably share with select_on_matches?
     let completions = search_completions(cx, Some(reg));
@@ -2104,7 +2109,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
             search_impl(
                 cx.editor,
                 &regex,
-                Movement::Move,
+                movement,
                 direction,
                 scrolloff,
                 wrap_around,
