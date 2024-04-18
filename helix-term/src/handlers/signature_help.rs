@@ -5,7 +5,7 @@ use helix_core::syntax::LanguageServerFeature;
 use helix_event::{
     cancelable_future, cancelation, register_hook, send_blocking, CancelRx, CancelTx,
 };
-use helix_lsp::lsp;
+use helix_lsp::lsp::{self, SignatureInformation};
 use helix_stdx::rope::RopeSliceExt;
 use helix_view::document::Mode;
 use helix_view::events::{DocumentDidChange, SelectionDidChange};
@@ -18,7 +18,7 @@ use crate::commands::Open;
 use crate::compositor::Compositor;
 use crate::events::{OnModeSwitch, PostInsertChar};
 use crate::handlers::Handlers;
-use crate::ui::lsp::SignatureHelp;
+use crate::ui::lsp::{Signature, SignatureHelp};
 use crate::ui::Popup;
 use crate::{job, ui};
 
@@ -82,6 +82,7 @@ impl helix_event::AsyncHook for SignatureHelpHandler {
                     }
                 }
                 self.state = if open { State::Open } else { State::Closed };
+
                 return timeout;
             }
         }
@@ -138,6 +139,31 @@ pub fn request_signature_help(
     });
 }
 
+fn active_param_range(
+    signature: &SignatureInformation,
+    response_active_parameter: Option<u32>,
+) -> Option<(usize, usize)> {
+    let param_idx = signature
+        .active_parameter
+        .or(response_active_parameter)
+        .unwrap_or(0) as usize;
+    let param = signature.parameters.as_ref()?.get(param_idx)?;
+    match &param.label {
+        lsp::ParameterLabel::Simple(string) => {
+            let start = signature.label.find(string.as_str())?;
+            Some((start, start + string.len()))
+        }
+        lsp::ParameterLabel::LabelOffsets([start, end]) => {
+            // LS sends offsets based on utf-16 based string representation
+            // but highlighting in helix is done using byte offset.
+            use helix_core::str_utils::char_to_byte_idx;
+            let from = char_to_byte_idx(&signature.label, *start as usize);
+            let to = char_to_byte_idx(&signature.label, *end as usize);
+            Some((from, to))
+        }
+    }
+}
+
 pub fn show_signature_help(
     editor: &mut Editor,
     compositor: &mut Compositor,
@@ -184,54 +210,50 @@ pub fn show_signature_help(
     let doc = doc!(editor);
     let language = doc.language_name().unwrap_or("");
 
-    let signature = match response
+    if response.signatures.is_empty() {
+        return;
+    }
+
+    let signatures: Vec<Signature> = response
         .signatures
-        .get(response.active_signature.unwrap_or(0) as usize)
-    {
-        Some(s) => s,
-        None => return,
-    };
-    let mut contents = SignatureHelp::new(
-        signature.label.clone(),
-        language.to_string(),
-        Arc::clone(&editor.syn_loader),
-    );
+        .into_iter()
+        .map(|s| {
+            let active_param_range = active_param_range(&s, response.active_parameter);
 
-    let signature_doc = if config.lsp.display_signature_help_docs {
-        signature.documentation.as_ref().map(|doc| match doc {
-            lsp::Documentation::String(s) => s.clone(),
-            lsp::Documentation::MarkupContent(markup) => markup.value.clone(),
+            let signature_doc = if config.lsp.display_signature_help_docs {
+                s.documentation.map(|doc| match doc {
+                    lsp::Documentation::String(s) => s,
+                    lsp::Documentation::MarkupContent(markup) => markup.value,
+                })
+            } else {
+                None
+            };
+
+            Signature {
+                signature: s.label,
+                signature_doc,
+                active_param_range,
+            }
         })
-    } else {
-        None
-    };
-
-    contents.set_signature_doc(signature_doc);
-
-    let active_param_range = || -> Option<(usize, usize)> {
-        let param_idx = signature
-            .active_parameter
-            .or(response.active_parameter)
-            .unwrap_or(0) as usize;
-        let param = signature.parameters.as_ref()?.get(param_idx)?;
-        match &param.label {
-            lsp::ParameterLabel::Simple(string) => {
-                let start = signature.label.find(string.as_str())?;
-                Some((start, start + string.len()))
-            }
-            lsp::ParameterLabel::LabelOffsets([start, end]) => {
-                // LS sends offsets based on utf-16 based string representation
-                // but highlighting in helix is done using byte offset.
-                use helix_core::str_utils::char_to_byte_idx;
-                let from = char_to_byte_idx(&signature.label, *start as usize);
-                let to = char_to_byte_idx(&signature.label, *end as usize);
-                Some((from, to))
-            }
-        }
-    };
-    contents.set_active_param_range(active_param_range());
+        .collect();
 
     let old_popup = compositor.find_id::<Popup<SignatureHelp>>(SignatureHelp::ID);
+    let mut active_signature = old_popup
+        .as_ref()
+        .map(|popup| popup.contents().active_signature())
+        .unwrap_or_else(|| response.active_signature.unwrap_or_default() as usize);
+
+    if active_signature >= signatures.len() {
+        active_signature = signatures.len() - 1;
+    }
+
+    let contents = SignatureHelp::new(
+        language.to_string(),
+        Arc::clone(&editor.syn_loader),
+        active_signature,
+        signatures,
+    );
+
     let mut popup = Popup::new(SignatureHelp::ID, contents)
         .position(old_popup.and_then(|p| p.get_position()))
         .position_bias(Open::Above)
