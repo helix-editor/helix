@@ -1114,7 +1114,7 @@ fn show_current_directory(
     Ok(())
 }
 
-fn yank_current_buffer_working_directory_to_clipboard(
+fn yank_current_buffer_directory_to_clipboard(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
     event: PromptEvent,
@@ -1123,11 +1123,11 @@ fn yank_current_buffer_working_directory_to_clipboard(
         return Ok(());
     }
 
-    yank_current_buffer_working_directory_impl(cx.editor, '+');
+    yank_current_buffer_directory_impl(cx.editor, '+');
     Ok(())
 }
 
-fn yank_current_buffer_working_directory_to_primary_clipboard(
+fn yank_current_buffer_directory_to_primary_clipboard(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
     event: PromptEvent,
@@ -1136,7 +1136,7 @@ fn yank_current_buffer_working_directory_to_primary_clipboard(
         return Ok(());
     }
 
-    yank_current_buffer_working_directory_impl(cx.editor, '*');
+    yank_current_buffer_directory_impl(cx.editor, '*');
     Ok(())
 }
 
@@ -2780,15 +2780,15 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "clipboard-yank-current-buffer-directory",
         aliases: &[],
-        doc: "Yank the current buffer working directory into system clipboard.",
-        fun: yank_current_buffer_working_directory_to_clipboard,
+        doc: "Yank the current buffer directory into system clipboard.",
+        fun: yank_current_buffer_directory_to_clipboard,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "primary-clipboard-yank-current-buffer-directory",
         aliases: &[],
-        doc: "Yank the current buffer working directory into system primary clipboard.",
-        fun: yank_current_buffer_working_directory_to_primary_clipboard,
+        doc: "Yank the current buffer directory into system primary clipboard.",
+        fun: yank_current_buffer_directory_to_primary_clipboard,
         signature: CommandSignature::none(),
     },
     TypableCommand {

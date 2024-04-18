@@ -4183,7 +4183,7 @@ fn yank_primary_selection_impl(editor: &mut Editor, register: char) {
     }
 }
 
-fn yank_current_buffer_working_directory_impl(editor: &mut Editor, register: char) {
+fn yank_current_buffer_directory_impl(editor: &mut Editor, register: char) {
     let doc_dir = doc!(editor)
         .path()
         .and_then(|path| path.parent().map(|path| path.to_path_buf()));
@@ -4195,7 +4195,7 @@ fn yank_current_buffer_working_directory_impl(editor: &mut Editor, register: cha
                 .write(register, vec![cwd.to_str().unwrap_or_default().to_string()])
             {
                 Ok(_) => editor.set_status(format!(
-                    "yanked current buffer working directory to register {register}",
+                    "yanked current buffer directory to register {register}",
                 )),
                 Err(err) => editor.set_error(err.to_string()),
             }
