@@ -24,6 +24,8 @@
 
 > 💡 Mappings marked (**TS**) require a tree-sitter grammar for the file type.
 
+> ⚠️ Some terminals' default key mappings conflict with Helix's. If any of the mappings described on this page do not work as expected, check your terminal's mappings to ensure they do not conflict. See the (wiki)[https://github.com/helix-editor/helix/wiki/Terminal-Support] for known conflicts.
+
 ## Normal mode
 
 Normal mode is the default mode when you launch helix. You can return to it from other modes by pressing the `Escape` key.
