@@ -3544,3 +3544,17 @@ comment-token = ";"
 [[grammar]]
 name = "xtc"
 source = { git = "https://github.com/Alexis-Lapierre/tree-sitter-xtc", rev = "7bc11b736250c45e25cfb0215db2f8393779957e" }
+
+[[language]]
+name = "move"
+scope = "source.move"
+injection-regex = "move"
+roots = ["Move.toml"]
+file-types = ["move"]
+comment-token = "//"
+indent = { tab-width = 4, unit = "    " }
+language-servers = []
+
+[[grammar]]
+name = "move"
+source = { git = "https://github.com/tzakian/tree-sitter-move", rev = "8bc0d1692caa8763fef54d48068238d9bf3c0264" }
