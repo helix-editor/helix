@@ -37,6 +37,8 @@
 | `:clipboard-yank-join` | Yank joined selections into system clipboard. A separator can be provided as first argument. Default value is newline. |
 | `:primary-clipboard-yank` | Yank main selection into system primary clipboard. |
 | `:primary-clipboard-yank-join` | Yank joined selections into system primary clipboard. A separator can be provided as first argument. Default value is newline. |
+| `:clipboard-yank-current-buffer-directory` | Yank the current buffer working directory into system clipboard. |
+| `:primary-clipboard-yank-current-buffer-directory` | Yank the current buffer working directory into system primary clipboard. |
 | `:clipboard-paste-after` | Paste system clipboard after selections. |
 | `:clipboard-paste-before` | Paste system clipboard before selections. |
 | `:clipboard-paste-replace` | Replace selections with content of system clipboard. |
@@ -87,3 +89,4 @@
 | `:redraw` | Clear and re-render the whole UI |
 | `:move` | Move the current buffer and its corresponding file to a different path |
 | `:yank-diagnostic` | Yank diagnostic(s) under primary cursor to register, or clipboard by default |
+| `:read`, `:r` | Load a file into buffer |
