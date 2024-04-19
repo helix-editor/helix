@@ -1640,7 +1640,7 @@ fn get_ids_of_duplicate_paths(
 }
 
 fn adjust_paths_levels(levels: &mut HashMap<DocumentId, LevelledPathBuf>) {
-    while let Some(duplicates) = get_ids_of_duplicate_paths(&levels) {
+    while let Some(duplicates) = get_ids_of_duplicate_paths(levels) {
         for id in duplicates {
             if let Some(level) = levels.get_mut(&id) {
                 level.increment()
@@ -1655,10 +1655,9 @@ fn build_bufferline_paths(editor: &Editor) -> HashMap<DocumentId, LevelledPathBu
         .filter_map(|d| {
             if let Some(path) = d.relative_path() {
                 Some((d.id(), LevelledPathBuf::new(path.to_path_buf())))
-            } else if let Some(path) = d.path() {
-                Some((d.id(), LevelledPathBuf::new(path.to_owned())))
             } else {
-                None
+                d.path()
+                    .map(|p| (d.id(), LevelledPathBuf::new(p.to_owned())))
             }
         })
         .collect();
