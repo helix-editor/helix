@@ -118,13 +118,22 @@ impl<T: Component> Popup<T> {
     }
 
     pub fn area(&mut self, viewport: Rect, editor: &Editor) -> Rect {
-        // trigger required_size so we recalculate if the child changed
-        let (width, height) = self
+        let child_size = self
+            .contents
             .required_size((viewport.width, viewport.height))
             .expect("Component needs required_size implemented in order to be embedded in a popup");
 
-        let width = width.min(viewport.width);
-        let height = height.min(viewport.height.saturating_sub(2)); // add some spacing in the viewport
+        self.area_internal(viewport, editor, child_size)
+    }
+
+    pub fn area_internal(
+        &mut self,
+        viewport: Rect,
+        editor: &Editor,
+        child_size: (u16, u16),
+    ) -> Rect {
+        let width = child_size.0.min(viewport.width);
+        let height = child_size.1.min(viewport.height.saturating_sub(2)); // add some spacing in the viewport
 
         let position = self
             .position
@@ -270,13 +279,13 @@ impl<T: Component> Component for Popup<T> {
     }
 
     fn render(&mut self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
-        let area = self.area(viewport, cx.editor);
-        self.area = area;
-
         let child_size = self
             .contents
-            .required_size((area.width, area.height))
+            .required_size((viewport.width, viewport.height))
             .expect("Component needs required_size implemented in order to be embedded in a popup");
+
+        let area = self.area_internal(viewport, cx.editor, child_size);
+        self.area = area;
 
         let max_offset = child_size.1.saturating_sub(area.height) as usize;
         let half_page_size = (area.height / 2) as usize;
