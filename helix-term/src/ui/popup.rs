@@ -135,9 +135,20 @@ impl<T: Component> Popup<T> {
         let width = child_size.0.min(viewport.width);
         let height = child_size.1.min(viewport.height.saturating_sub(2)); // add some spacing in the viewport
 
-        let position = self
-            .position
-            .get_or_insert_with(|| editor.cursor().0.unwrap_or_default());
+        let position = if let Some(position) = self.position {
+            // check if the position is still inside the viewport
+            if position.row as u16 >= viewport.y
+                && (position.row as u16) < (viewport.y + viewport.height)
+                && position.col as u16 >= viewport.x
+                && (position.col as u16) < (viewport.x + viewport.width)
+            {
+                position
+            } else {
+                editor.cursor().0.unwrap_or_default()
+            }
+        } else {
+            editor.cursor().0.unwrap_or_default()
+        };
 
         // if there's a orientation preference, use that
         // if we're on the top part of the screen, do below
