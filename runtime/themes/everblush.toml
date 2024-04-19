@@ -61,7 +61,7 @@
 "ui.statusline.inactive" = { fg = "foreground", bg = "background" }
 "ui.statusline.normal" = { fg = "white", bg = "background" }
 "ui.statusline.insert" = { fg = "blue", bg = "background" }
-"ui.statusline.select" = { fg = "cyan", bg = "magenta" }
+"ui.statusline.select" = { fg = "magenta", bg = "background" }
 "ui.text" = { fg = "foreground" }
 "ui.text.focus" = { fg = "blue" }
 "ui.virtual.ruler" = { bg = "cursorline" }
