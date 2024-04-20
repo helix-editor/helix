@@ -360,6 +360,7 @@ pub struct TextRenderer<'a> {
     pub surface: &'a mut Surface,
     pub text_style: Style,
     pub whitespace_style: Style,
+    pub trailing_whitespace_style: Style,
     pub indent_guide_char: String,
     pub indent_guide_style: Style,
     pub newline: String,
@@ -410,6 +411,7 @@ impl<'a> TextRenderer<'a> {
             tab: regular_ws.tab,
             virtual_tab: regular_ws.virtual_tab,
             whitespace_style: theme.get("ui.virtual.whitespace"),
+            trailing_whitespace_style: theme.get("ui.virtual.trailing_whitespace"),
             indent_width,
             starting_indent: col_offset / indent_width as usize
                 + (col_offset % indent_width as usize != 0) as usize
@@ -506,7 +508,7 @@ impl<'a> TextRenderer<'a> {
                             self.viewport.x + from as u16,
                             self.viewport.y + position.row as u16,
                             trailing_whitespace,
-                            self.whitespace_style,
+                            style.patch(self.trailing_whitespace_style),
                         );
                     },
                 );
