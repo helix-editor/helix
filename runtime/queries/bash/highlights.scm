@@ -7,45 +7,33 @@
 
 (command_name) @function
 
-(variable_name) @variable.other.member
+(variable_name) @property
 
 [
-  "if"
-  "then"
-  "else"
-  "elif"
-  "fi"
   "case"
-  "in"
-  "esac"
-] @keyword.control.conditional
-
-[
-  "for"
   "do"
   "done"
+  "elif"
+  "else"
+  "esac"
+  "export"
+  "fi"
+  "for"
+  "function"
+  "if"
+  "in"
   "select"
+  "then"
+  "unset"
   "until"
   "while"
-] @keyword.control.repeat
-
-[
-  "declare"
-  "typeset"
-  "export"
-  "readonly"
-  "local"
-  "unset"
-  "unsetenv"
 ] @keyword
-
-"function" @keyword.function
 
 (comment) @comment
 
 (function_definition name: (word) @function)
 
-(file_descriptor) @constant.numeric.integer
+(file_descriptor) @number
 
 [
   (command_substitution)
@@ -60,7 +48,6 @@
   ">>"
   "<"
   "|"
-  (expansion_flags)
 ] @operator
 
 (
