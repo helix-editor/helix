@@ -13,6 +13,7 @@ use helix_lsp::lsp;
 use helix_lsp::util::pos_to_lsp_pos;
 use helix_stdx::rope::RopeSliceExt;
 use helix_view::document::{Mode, SavePoint};
+use helix_view::editor::{SmartTabConfig, SmartTabMode};
 use helix_view::handlers::lsp::CompletionEvent;
 use helix_view::{DocumentId, Editor, ViewId};
 use tokio::sync::mpsc::Sender;
@@ -415,6 +416,20 @@ fn completion_post_command_hook(
                     name: "delete_char_backward",
                     ..
                 } => update_completions(cx, None),
+                MappableCommand::Static {
+                    name: "smart_tab", ..
+                } => {
+                    if !matches!(
+                        cx.editor.config().smart_tab,
+                        Some(SmartTabConfig {
+                            enable: true,
+                            mode: SmartTabMode::Completion,
+                            ..
+                        })
+                    ) {
+                        clear_completions(cx)
+                    }
+                }
                 _ => clear_completions(cx),
             }
         } else {
@@ -438,6 +453,22 @@ fn completion_post_command_hook(
                     name: "completion" | "insert_mode" | "append_mode",
                     ..
                 } => return Ok(()),
+                MappableCommand::Static {
+                    name: "smart_tab", ..
+                } => {
+                    if matches!(
+                        cx.editor.config().smart_tab,
+                        Some(SmartTabConfig {
+                            enable: true,
+                            mode: SmartTabMode::Completion,
+                            ..
+                        })
+                    ) {
+                        return Ok(());
+                    } else {
+                        CompletionEvent::Cancel
+                    }
+                }
                 _ => CompletionEvent::Cancel,
             };
             send_blocking(tx, event);

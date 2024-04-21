@@ -3759,7 +3759,7 @@ pub mod insert {
     }
 
     use helix_core::auto_pairs;
-    use helix_view::editor::SmartTabConfig;
+    use helix_view::editor::{SmartTabConfig, SmartTabMode};
 
     pub fn insert_char(cx: &mut Context, c: char) {
         let (view, doc) = current_ref!(cx.editor);
@@ -3784,10 +3784,10 @@ pub mod insert {
         let (view, doc) = current_ref!(cx.editor);
         let view_id = view.id;
 
-        if matches!(
-            cx.editor.config().smart_tab,
-            Some(SmartTabConfig { enable: true, .. })
-        ) {
+        if let Some(SmartTabConfig {
+            enable: true, mode, ..
+        }) = &cx.editor.config().smart_tab
+        {
             let cursors_after_whitespace = doc.selection(view_id).ranges().iter().all(|range| {
                 let cursor = range.cursor(doc.text().slice(..));
                 let current_line_num = doc.text().char_to_line(cursor);
@@ -3797,7 +3797,10 @@ pub mod insert {
             });
 
             if !cursors_after_whitespace {
-                move_parent_node_end(cx);
+                match mode {
+                    SmartTabMode::MoveParentNodeEnd => move_parent_node_end(cx),
+                    SmartTabMode::Completion => completion(cx),
+                }
                 return;
             }
         }
