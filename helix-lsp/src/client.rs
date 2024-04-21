@@ -400,12 +400,22 @@ impl Client {
     where
         R::Params: serde::Serialize,
     {
+        self.call_with_ref::<R>(&params)
+    }
+
+    fn call_with_ref<R: lsp::request::Request>(
+        &self,
+        params: &R::Params,
+    ) -> impl Future<Output = Result<Value>>
+    where
+        R::Params: serde::Serialize,
+    {
         self.call_with_timeout::<R>(params, self.req_timeout)
     }
 
     fn call_with_timeout<R: lsp::request::Request>(
         &self,
-        params: R::Params,
+        params: &R::Params,
         timeout_secs: u64,
     ) -> impl Future<Output = Result<Value>>
     where
@@ -414,17 +424,16 @@ impl Client {
         let server_tx = self.server_tx.clone();
         let id = self.next_request_id();
 
+        let params = serde_json::to_value(params);
         async move {
             use std::time::Duration;
             use tokio::time::timeout;
-
-            let params = serde_json::to_value(params)?;
 
             let request = jsonrpc::MethodCall {
                 jsonrpc: Some(jsonrpc::Version::V2),
                 id: id.clone(),
                 method: R::METHOD.to_string(),
-                params: Self::value_into_params(params),
+                params: Self::value_into_params(params?),
             };
 
             let (tx, mut rx) = channel::<Result<Value>>(1);
@@ -741,7 +750,7 @@ impl Client {
             new_uri: url_from_path(new_path)?,
         }];
         let request = self.call_with_timeout::<lsp::request::WillRenameFiles>(
-            lsp::RenameFilesParams { files },
+            &lsp::RenameFilesParams { files },
             5,
         );
 
@@ -1026,21 +1035,10 @@ impl Client {
 
     pub fn resolve_completion_item(
         &self,
-        completion_item: lsp::CompletionItem,
-    ) -> Option<impl Future<Output = Result<lsp::CompletionItem>>> {
-        let capabilities = self.capabilities.get().unwrap();
-
-        // Return early if the server does not support resolving completion items.
-        match capabilities.completion_provider {
-            Some(lsp::CompletionOptions {
-                resolve_provider: Some(true),
-                ..
-            }) => (),
-            _ => return None,
-        }
-
-        let res = self.call::<lsp::request::ResolveCompletionItem>(completion_item);
-        Some(async move { Ok(serde_json::from_value(res.await?)?) })
+        completion_item: &lsp::CompletionItem,
+    ) -> impl Future<Output = Result<lsp::CompletionItem>> {
+        let res = self.call_with_ref::<lsp::request::ResolveCompletionItem>(completion_item);
+        async move { Ok(serde_json::from_value(res.await?)?) }
     }
 
     pub fn resolve_code_action(
