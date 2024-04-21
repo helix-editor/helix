@@ -666,7 +666,7 @@ async fn tree_sitter_motions_work_across_injections() -> anyhow::Result<()> {
         (
             "<script>let #[|x]# = 1;</script>",
             "<A-n>",
-            "<script>let x #[|=]# 1;</script>",
+            "<script>let x #[=|]# 1;</script>",
         ),
     )
     .await?;
