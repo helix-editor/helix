@@ -1,3 +1,17 @@
+# we use tokio_unstable to enable runtime::Handle::id so we can separate
+# globals from multiple parallel tests. If that function ever does get removed
+# its possible to replace (with some additional overhead and effort)
+# Annoyingly build.rustflags doesn't work here because it gets overwritten
+# if people have their own global target.<..> config (for example to enable mold)
+# specifying flags this way is more robust as they get merged
+# This still gets overwritten by RUST_FLAGS though, luckily it shouldn't be necessary
+# to set those most of the time. If downstream does overwrite this its not a huge
+# deal since it will only break tests anyway
+[target."cfg(all())"]
+rustflags = ["--cfg", "tokio_unstable", "-C", "target-feature=-crt-static"]
+
+
 [alias]
 xtask = "run --package xtask --"
 integration-test = "test --features integration --profile integration --workspace --test integration"
+

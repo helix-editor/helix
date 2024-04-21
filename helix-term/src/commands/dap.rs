@@ -8,7 +8,7 @@ use dap::{StackFrame, Thread, ThreadStates};
 use helix_core::syntax::{DebugArgumentValue, DebugConfigCompletion, DebugTemplate};
 use helix_dap::{self as dap, Client};
 use helix_lsp::block_on;
-use helix_view::editor::Breakpoint;
+use helix_view::{editor::Breakpoint, graphics::Margin};
 
 use serde_json::{to_value, Value};
 use tokio_stream::wrappers::UnboundedReceiverStream;
@@ -78,7 +78,7 @@ fn thread_picker(
             })
             .with_preview(move |editor, thread| {
                 let frames = editor.debugger.as_ref()?.stack_frames.get(&thread.id)?;
-                let frame = frames.get(0)?;
+                let frame = frames.first()?;
                 let path = frame.source.as_ref()?.path.clone()?;
                 let pos = Some((
                     frame.line.saturating_sub(1),
@@ -166,7 +166,7 @@ pub fn dap_start_impl(
     // TODO: avoid refetching all of this... pass a config in
     let template = match name {
         Some(name) => config.templates.iter().find(|t| t.name == name),
-        None => config.templates.get(0),
+        None => config.templates.first(),
     }
     .ok_or_else(|| anyhow!("No debug config with given name"))?;
 
@@ -217,7 +217,7 @@ pub fn dap_start_impl(
         }
     }
 
-    args.insert("cwd", to_value(helix_loader::current_working_dir())?);
+    args.insert("cwd", to_value(helix_stdx::env::current_working_dir())?);
 
     let args = to_value(args).unwrap();
 
@@ -581,7 +581,12 @@ pub fn dap_variables(cx: &mut Context) {
     }
 
     let contents = Text::from(tui::text::Text::from(variables));
-    let popup = Popup::new("dap-variables", contents);
+    let margin = if cx.editor.popup_border() {
+        Margin::all(1)
+    } else {
+        Margin::none()
+    };
+    let popup = Popup::new("dap-variables", contents).margin(margin);
     cx.replace_or_push_layer("dap-variables", popup);
 }
 

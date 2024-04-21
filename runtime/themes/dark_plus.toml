@@ -90,6 +90,7 @@
 "ui.virtual.ruler" = { bg = "borders" }
 "ui.virtual.indent-guide" = { fg = "dark_gray4" }
 "ui.virtual.inlay-hint" = { fg = "dark_gray5"}
+"ui.virtual.jump-label" = { fg = "dark_gray", modifiers = ["bold"] }
 
 "warning" = { fg = "gold2" }
 "error" = { fg = "red" }
@@ -98,6 +99,8 @@
 
 "diagnostic.error".underline = { color = "red", style = "curl" }
 "diagnostic".underline = { color = "gold", style = "curl" }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 [palette]
 white = "#ffffff"

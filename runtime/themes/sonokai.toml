@@ -6,24 +6,23 @@
 # License: MIT License
 
 "type" = "blue"
-"constant" = "purple"
+"constant" = "fg"
 "constant.numeric" = "purple"
 "constant.character.escape" = "orange"
 "string" = "yellow"
 "comment" = "grey"
 "variable" = "fg"
-"variable.builtin" = "orange"
+"variable.builtin" = "purple"
 "variable.parameter" = "fg"
-"variable.other.member" = "fg"
-"label" = "orange"
+"variable.other.member" = "orange"
+"label" = "red"
 "punctuation" = "grey"
-"punctuation.delimiter" = "grey"
-"punctuation.bracket" = "fg"
+"punctuation.special" = "yellow"
 "keyword" = "red"
-"operator" = "orange"
+"operator" = "red"
 "function" = "green"
-"function.builtin" = "blue"
-"function.macro" = "purple"
+"function.builtin" = "green"
+"function.macro" = "green"
 "tag" = "yellow"
 "namespace" = "blue"
 "attribute" = "purple"
@@ -48,12 +47,12 @@
 "markup.raw" = "green"
 
 "diff.plus" = "green"
-"diff.delta" = "orange"
+"diff.delta" = "blue"
 "diff.minus" = "red"
 
 "ui.background" = { bg = "bg0" }
 "ui.cursor" = { modifiers = ['reversed'] }
-"ui.cursor.match" = { fg = "orange", bg = "diff_yellow" }
+"ui.cursor.match" = { bg = "bg4" }
 "ui.cursor.insert" = { fg = "black", bg = "grey" }
 "ui.cursor.select" = { fg = "bg0", bg = "blue" }
 "ui.selection" = { bg = "bg5" }
@@ -63,6 +62,9 @@
 "ui.cursorline.primary" = { bg = "bg1" }
 "ui.statusline" = { fg = "fg", bg = "bg3" }
 "ui.statusline.inactive" = { fg = "grey", bg = "bg1" }
+"ui.statusline.normal" = { fg = "bg0", bg = "blue", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "bg0", bg = "green", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "bg0", bg = "purple", modifiers = ["bold"] }
 "ui.popup" = { fg = "grey", bg = "bg2" }
 "ui.window" = { fg = "grey", bg = "bg0" }
 "ui.help" = { fg = "fg", bg = "bg1" }
@@ -70,8 +72,9 @@
 "ui.text.focus" = "green"
 "ui.menu" = { fg = "fg", bg = "bg2" }
 "ui.menu.selected" = { fg = "bg0", bg = "green" }
-"ui.virtual.whitespace" = { fg = "grey_dim" }
-"ui.virtual.ruler" = { bg = "grey_dim" }
+"ui.virtual.whitespace" = "bg4" 
+"ui.virtual.ruler" = { bg = "bg3" }
+"ui.virtual.inlay-hint" = { fg = "grey_dim" }
 
 info = { fg = 'green', bg = 'bg2' }
 hint = { fg = 'blue', bg = 'bg2', modifiers = ['bold'] }
@@ -82,17 +85,20 @@ error = { fg = 'red', bg = 'bg2', modifiers = ['bold'] }
 "diagnostic.hint" = { underline = { style = "curl", color = "blue" } }
 "diagnostic.warning" = { underline = { style = "curl", color = "yellow" } }
 "diagnostic.error" = { underline = { style = "curl", color = "red" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 
 
 [palette]
 
 black = "#181819"
+bg_dim = "#222327"
 bg0 = "#2c2e34"
 bg1 = "#33353f"
 bg2 = "#363944"
 bg3 = "#3b3e48"
-bg4 = "#5C606A"
+bg4 = "#414550"
 bg5 = "#444852"
 bg_red = "#ff6077"
 diff_red = "#55393d"

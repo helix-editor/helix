@@ -13,11 +13,12 @@ mod spinner;
 mod statusline;
 mod text;
 
-use crate::compositor::{Component, Compositor};
+use crate::compositor::Compositor;
 use crate::filter_picker_entry;
 use crate::job::{self, Callback};
 pub use completion::{Completion, CompletionItem};
 pub use editor::EditorView;
+use helix_stdx::rope;
 pub use markdown::Markdown;
 pub use menu::Menu;
 pub use picker::{DynamicPicker, FileLocation, Picker};
@@ -26,8 +27,6 @@ pub use prompt::{Prompt, PromptEvent};
 pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
 
-use helix_core::regex::Regex;
-use helix_core::regex::RegexBuilder;
 use helix_view::Editor;
 
 use std::path::PathBuf;
@@ -63,7 +62,22 @@ pub fn regex_prompt(
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
     completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
-    fun: impl Fn(&mut crate::compositor::Context, Regex, PromptEvent) + 'static,
+    fun: impl Fn(&mut crate::compositor::Context, rope::Regex, PromptEvent) + 'static,
+) {
+    raw_regex_prompt(
+        cx,
+        prompt,
+        history_register,
+        completion_fn,
+        move |cx, regex, _, event| fun(cx, regex, event),
+    );
+}
+pub fn raw_regex_prompt(
+    cx: &mut crate::commands::Context,
+    prompt: std::borrow::Cow<'static, str>,
+    history_register: Option<char>,
+    completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
+    fun: impl Fn(&mut crate::compositor::Context, rope::Regex, &str, PromptEvent) + 'static,
 ) {
     let (view, doc) = current!(cx.editor);
     let doc_id = view.doc;
@@ -94,10 +108,13 @@ pub fn regex_prompt(
                         false
                     };
 
-                    match RegexBuilder::new(input)
-                        .case_insensitive(case_insensitive)
-                        .multi_line(true)
-                        .build()
+                    match rope::RegexBuilder::new()
+                        .syntax(
+                            rope::Config::new()
+                                .case_insensitive(case_insensitive)
+                                .multi_line(true),
+                        )
+                        .build(input)
                     {
                         Ok(regex) => {
                             let (view, doc) = current!(cx.editor);
@@ -110,7 +127,7 @@ pub fn regex_prompt(
                                 view.jumps.push((doc_id, snapshot.clone()));
                             }
 
-                            fun(cx, regex, event);
+                            fun(cx, regex, input, event);
 
                             let (view, doc) = current!(cx.editor);
                             view.ensure_cursor_in_view(doc, config.scrolloff);
@@ -126,14 +143,12 @@ pub fn regex_prompt(
                                         move |_editor: &mut Editor, compositor: &mut Compositor| {
                                             let contents = Text::new(format!("{}", err));
                                             let size = compositor.size();
-                                            let mut popup = Popup::new("invalid-regex", contents)
+                                            let popup = Popup::new("invalid-regex", contents)
                                                 .position(Some(helix_core::Position::new(
                                                     size.height as usize - 2, // 2 = statusline + commandline
                                                     0,
                                                 )))
                                                 .auto_close(true);
-                                            popup.required_size((size.width, size.height));
-
                                             compositor.replace_or_push("invalid-regex", popup);
                                         },
                                     ));
@@ -336,8 +351,8 @@ pub mod completers {
     pub fn language(editor: &Editor, input: &str) -> Vec<Completion> {
         let text: String = "text".into();
 
-        let language_ids = editor
-            .syn_loader
+        let loader = editor.syn_loader.load();
+        let language_ids = loader
             .language_configs()
             .map(|config| &config.language_id)
             .chain(std::iter::once(&text));
@@ -445,7 +460,7 @@ pub mod completers {
         use std::path::Path;
 
         let is_tilde = input == "~";
-        let path = helix_core::path::expand_tilde(Path::new(input));
+        let path = helix_stdx::path::expand_tilde(Path::new(input));
 
         let (dir, file_name) = if input.ends_with(std::path::MAIN_SEPARATOR) {
             (path, None)
@@ -464,9 +479,9 @@ pub mod completers {
                 path
             } else {
                 match path.parent() {
-                    Some(path) if !path.as_os_str().is_empty() => path.to_path_buf(),
+                    Some(path) if !path.as_os_str().is_empty() => Cow::Borrowed(path),
                     // Path::new("h")'s parent is Some("")...
-                    _ => helix_loader::current_working_dir(),
+                    _ => Cow::Owned(helix_stdx::env::current_working_dir()),
                 }
             };
 
@@ -527,5 +542,19 @@ pub mod completers {
             files.sort_unstable_by(|(_, path1), (_, path2)| path1.cmp(path2));
             files
         }
+    }
+
+    pub fn register(editor: &Editor, input: &str) -> Vec<Completion> {
+        let iter = editor
+            .registers
+            .iter_preview()
+            // Exclude special registers that shouldn't be written to
+            .filter(|(ch, _)| !matches!(ch, '%' | '#' | '.'))
+            .map(|(ch, _)| ch.to_string());
+
+        fuzzy_match(input, iter, false)
+            .into_iter()
+            .map(|(name, _)| ((0..), name.into()))
+            .collect()
     }
 }

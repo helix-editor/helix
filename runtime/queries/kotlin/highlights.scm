@@ -244,7 +244,10 @@
 	. (identifier)) @namespace
 
 ((type_identifier) @type.builtin
-	(#match? @function.builtin "^(Byte|Short|Int|Long|UByte|UShort|UInt|ULong|Float|Double|Boolean|Char|String|Array|ByteArray|ShortArray|IntArray|LongArray|UByteArray|UShortArray|UIntArray|ULongArray|FloatArray|DoubleArray|BooleanArray|CharArray|Map|Set|List|EmptyMap|EmptySet|EmptyList|MutableMap|MutableSet|MutableList)$"))
+	(#match? @type.builtin "^(Byte|Short|Int|Long|UByte|UShort|UInt|ULong|Float|Double|Boolean|Char|String|Array|ByteArray|ShortArray|IntArray|LongArray|UByteArray|UShortArray|UIntArray|ULongArray|FloatArray|DoubleArray|BooleanArray|CharArray|Map|Set|List|EmptyMap|EmptySet|EmptyList|MutableMap|MutableSet|MutableList)$"))
+
+(type_parameter
+  (type_identifier) @type.parameter)
 
 (type_identifier) @type
 

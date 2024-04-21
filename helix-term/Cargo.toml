@@ -1,21 +1,21 @@
 [package]
 name = "helix-term"
-version = "0.6.0"
 description = "A post-modern text editor."
-authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
-edition = "2021"
-license = "MPL-2.0"
-categories = ["editor", "command-line-utilities"]
-repository = "https://github.com/helix-editor/helix"
-homepage = "https://helix-editor.com"
 include = ["src/**/*", "README.md"]
 default-run = "hx"
-rust-version = "1.65"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+categories.workspace = true
+repository.workspace = true
+homepage.workspace = true
 
 [features]
 default = ["git"]
 unicode-lines = ["helix-core/unicode-lines"]
-integration = []
+integration = ["helix-event/integration_test"]
 git = ["helix-vcs/git"]
 
 [[bin]]
@@ -23,18 +23,17 @@ name = "hx"
 path = "src/main.rs"
 
 [dependencies]
-helix-core = { version = "0.6", path = "../helix-core" }
-helix-event = { version = "0.6", path = "../helix-event" }
-helix-view = { version = "0.6", path = "../helix-view" }
-helix-lsp = { version = "0.6", path = "../helix-lsp" }
-helix-dap = { version = "0.6", path = "../helix-dap" }
-helix-vcs = { version = "0.6", path = "../helix-vcs" }
-helix-loader = { version = "0.6", path = "../helix-loader" }
+helix-stdx = { path = "../helix-stdx" }
+helix-core = { path = "../helix-core" }
+helix-event = { path = "../helix-event" }
+helix-view = { path = "../helix-view" }
+helix-lsp = { path = "../helix-lsp" }
+helix-dap = { path = "../helix-dap" }
+helix-vcs = { path = "../helix-vcs" }
+helix-loader = { path = "../helix-loader" }
 
 anyhow = "1"
-once_cell = "1.18"
-
-which = "4.4"
+once_cell = "1.19"
 
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot"] }
 tui = { path = "../helix-tui", package = "helix-tui", default-features = false, features = ["crossterm"] }
@@ -42,7 +41,8 @@ crossterm = { version = "0.27", features = ["event-stream"] }
 signal-hook = "0.3"
 tokio-stream = "0.1"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
-arc-swap = { version = "1.6.0" }
+arc-swap = { version = "1.7.1" }
+termini = "1"
 
 # Logging
 fern = "0.6"
@@ -53,31 +53,35 @@ log = "0.4"
 nucleo.workspace = true
 ignore = "0.4"
 # markdown doc rendering
-pulldown-cmark = { version = "0.9", default-features = false }
+pulldown-cmark = { version = "0.10", default-features = false }
 # file type detection
 content_inspector = "0.2.4"
 
+# opening URLs
+open = "5.1.2"
+url = "2.5.0"
+
 # config
-toml = "0.7"
+toml = "0.8"
 
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 
 # ripgrep for global search
-grep-regex = "0.1.11"
-grep-searcher = "0.1.11"
+grep-regex = "0.1.12"
+grep-searcher = "0.1.13"
 
 [target.'cfg(not(windows))'.dependencies]  # https://github.com/vorner/signal-hook/issues/100
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
-libc = "0.2.149"
+libc = "0.2.153"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 crossterm = { version = "0.27", features = ["event-stream", "use-dev-tty"] }
 
 [build-dependencies]
-helix-loader = { version = "0.6", path = "../helix-loader" }
+helix-loader = { path = "../helix-loader" }
 
 [dev-dependencies]
-smallvec = "1.11"
-indoc = "2.0.4"
-tempfile = "3.8.0"
+smallvec = "1.13"
+indoc = "2.0.5"
+tempfile = "3.10.1"

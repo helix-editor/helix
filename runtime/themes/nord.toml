@@ -24,6 +24,8 @@
 "info" = "nord8"
 "diagnostic.warning" = { underline = { color = "nord13", style = "curl" } }
 "warning" = "nord13"
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 # Diffs
 "diff.delta" = "nord13"
@@ -112,7 +114,7 @@
 "ui.cursorcolumn.primary" = { bg = "nord1" }
 "ui.cursorline.primary" = { bg = "nord1" }
 
-"ui.selection" = { bg = "nord2" }
+"ui.selection" = { bg = "nord3" }
 "ui.highlight" = { fg = "nord8", bg = "nord2" }
 
 # Statusline
@@ -123,9 +125,10 @@
 "ui.statusline.select" = { fg = "nord1", bg = "nord7" }
 "ui.statusline.separator" = "nord3"
 
-# Virtual/invisable text
+# Virtual/invisible text
 "ui.virtual.indent-guide" = "nord3"
 "ui.virtual.inlay-hint" = { fg = "nord3", modifiers = ["italic"] }
+"ui.virtual.jump-label" = { fg = "nord11", modifiers = ["bold"] }
 "ui.virtual.ruler" = { bg = "nord1" }
 "ui.virtual.whitespace" = "nord3"
 "ui.virtual.wrap" = "nord3"
@@ -133,6 +136,15 @@
 # Bufferline
 "ui.bufferline" = { fg = "nord5", bg = "nord1" }
 "ui.bufferline.active" = { fg = "nord6", bg = "nord2", underline = { color = "nord8", style = "line" }, modifiers = [ "italic" ] }
+
+# Markup
+"markup.heading" = "nord8"
+"markup.list" = "nord9"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.text" = "nord8"
+"markup.raw" = "nord7"
 
 [palette]
 # Polar Night is made up of four darker colors that are commonly used for base elements like backgrounds or text color in bright ambiance designs.
