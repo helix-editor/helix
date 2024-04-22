@@ -1084,7 +1084,7 @@ lines.
 
  1. Move the cursor to the line under ---.
  2. Type xx / 2x to select the lines.
- 3. Type S then \. |! Enter (note the spaces after . and !).
+ 3. Type S then \. |! Enter (note the spaces after . and |).
     This effectively splits the selection into sentences at each
     dot or exclamation mark.
  4. Press Alt-; to reverse the selections.
