@@ -42,6 +42,7 @@
 | edoc | ✓ |  |  |  |
 | eex | ✓ |  |  |  |
 | ejs | ✓ |  |  |  |
+| elisp | ✓ |  |  |  |
 | elixir | ✓ | ✓ | ✓ | `elixir-ls` |
 | elm | ✓ | ✓ |  | `elm-language-server` |
 | elvish | ✓ |  |  | `elvish` |
