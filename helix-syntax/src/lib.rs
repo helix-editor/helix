@@ -1,5 +1,5 @@
 use ::ropey::RopeSlice;
-use slotmap::{DefaultKey as LayerId, HopSlotMap};
+use slotmap::{new_key_type, HopSlotMap};
 use tree_sitter::{Node, Parser, Point, Query, QueryCursor, Range, Tree};
 
 use std::borrow::Cow;
@@ -9,6 +9,7 @@ use std::path::Path;
 use std::str;
 use std::sync::Arc;
 
+use crate::injections_tree::LayerId;
 use crate::parse::LayerUpdateFlags;
 
 pub use crate::config::{read_query, HighlightConfiguration};
@@ -19,6 +20,7 @@ pub use tree_cursor::TreeCursor;
 
 mod config;
 pub mod highlighter;
+mod injections_tree;
 mod merge;
 mod parse;
 mod pretty_print;
