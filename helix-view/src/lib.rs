@@ -47,7 +47,7 @@ pub enum Align {
     Bottom,
 }
 
-pub fn align_view(doc: &Document, view: &mut View, align: Align) {
+pub fn align_view(doc: &mut Document, view: &View, align: Align) {
     let doc_text = doc.text().slice(..);
     let cursor = doc.selection(view.id).primary().cursor(doc_text);
     let viewport = view.inner_area(doc);
@@ -61,7 +61,7 @@ pub fn align_view(doc: &Document, view: &mut View, align: Align) {
 
     let text_fmt = doc.text_format(viewport.width, None);
     let annotations = view.text_annotations(doc, None);
-    (view.offset.anchor, view.offset.vertical_offset) = char_idx_at_visual_offset(
+    let (new_anchor, new_vertical_offset) = char_idx_at_visual_offset(
         doc_text,
         cursor,
         -(relative as isize),
@@ -69,6 +69,9 @@ pub fn align_view(doc: &Document, view: &mut View, align: Align) {
         &text_fmt,
         &annotations,
     );
+    let view_data = doc.view_data_mut(view.id);
+    view_data.view_position.anchor = new_anchor;
+    view_data.view_position.vertical_offset = new_vertical_offset;
 }
 
 pub use document::Document;

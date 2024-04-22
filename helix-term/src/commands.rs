@@ -1032,6 +1032,7 @@ fn goto_window(cx: &mut Context, align: Align) {
     let count = cx.count() - 1;
     let config = cx.editor.config();
     let (view, doc) = current!(cx.editor);
+    let view_offset = doc.view_data_mut(view.id).view_position;
 
     let height = view.inner_height();
 
@@ -1044,15 +1045,15 @@ fn goto_window(cx: &mut Context, align: Align) {
     let last_visual_line = view.last_visual_line(doc);
 
     let visual_line = match align {
-        Align::Top => view.offset.vertical_offset + scrolloff + count,
-        Align::Center => view.offset.vertical_offset + (last_visual_line / 2),
+        Align::Top => view_offset.vertical_offset + scrolloff + count,
+        Align::Center => view_offset.vertical_offset + (last_visual_line / 2),
         Align::Bottom => {
-            view.offset.vertical_offset + last_visual_line.saturating_sub(scrolloff + count)
+            view_offset.vertical_offset + last_visual_line.saturating_sub(scrolloff + count)
         }
     };
     let visual_line = visual_line
-        .max(view.offset.vertical_offset + scrolloff)
-        .min(view.offset.vertical_offset + last_visual_line.saturating_sub(scrolloff));
+        .max(view_offset.vertical_offset + scrolloff)
+        .min(view_offset.vertical_offset + last_visual_line.saturating_sub(scrolloff));
 
     let pos = view
         .pos_at_visual_coords(doc, visual_line as u16, 0, false)
@@ -1665,6 +1666,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
     use Direction::*;
     let config = cx.editor.config();
     let (view, doc) = current!(cx.editor);
+    let view_offset = doc.view_data_mut(view.id).view_position;
 
     let range = doc.selection(view.id).primary();
     let text = doc.text().slice(..);
@@ -1681,15 +1683,21 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
     let doc_text = doc.text().slice(..);
     let viewport = view.inner_area(doc);
     let text_fmt = doc.text_format(viewport.width, None);
-    let mut annotations = view.text_annotations(&*doc, None);
-    (view.offset.anchor, view.offset.vertical_offset) = char_idx_at_visual_offset(
+    let annotations = view.text_annotations(&*doc, None);
+    let (new_anchor, new_vertical_offset) = char_idx_at_visual_offset(
         doc_text,
-        view.offset.anchor,
-        view.offset.vertical_offset as isize + offset,
+        view_offset.anchor,
+        view_offset.vertical_offset as isize + offset,
         0,
         &text_fmt,
         &annotations,
     );
+    let view_data = doc.view_data_mut(view.id);
+    view_data.view_position.anchor = new_anchor;
+    view_data.view_position.vertical_offset = new_vertical_offset;
+
+    let doc_text = doc.text().slice(..);
+    let mut annotations = view.text_annotations(&*doc, None);
 
     if sync_cursor {
         let movement = match cx.editor.mode {
@@ -1716,14 +1724,16 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
         return;
     }
 
+    let view_offset = doc.view_data(view.id).unwrap().view_position;
+
     let mut head;
     match direction {
         Forward => {
             let off;
             (head, off) = char_idx_at_visual_offset(
                 doc_text,
-                view.offset.anchor,
-                (view.offset.vertical_offset + scrolloff) as isize,
+                view_offset.anchor,
+                (view_offset.vertical_offset + scrolloff) as isize,
                 0,
                 &text_fmt,
                 &annotations,
@@ -1736,8 +1746,8 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
         Backward => {
             head = char_idx_at_visual_offset(
                 doc_text,
-                view.offset.anchor,
-                (view.offset.vertical_offset + height - scrolloff - 1) as isize,
+                view_offset.anchor,
+                (view_offset.vertical_offset + height - scrolloff - 1) as isize,
                 0,
                 &text_fmt,
                 &annotations,
@@ -5124,7 +5134,7 @@ fn split(editor: &mut Editor, action: Action) {
     let (view, doc) = current!(editor);
     let id = doc.id();
     let selection = doc.selection(view.id).clone();
-    let offset = view.offset;
+    let offset = doc.view_data(view.id).unwrap().view_position;
 
     editor.switch(id, action);
 
@@ -5133,7 +5143,7 @@ fn split(editor: &mut Editor, action: Action) {
     doc.set_selection(view.id, selection);
     // match the view scroll offset (switch doesn't handle this fully
     // since the selection is only matched after the split)
-    view.offset = offset;
+    doc.view_data_mut(view.id).view_position = offset;
 }
 
 fn hsplit(cx: &mut Context) {
@@ -5230,10 +5240,16 @@ fn align_view_middle(cx: &mut Context) {
     let doc_text = doc.text().slice(..);
     let annotations = view.text_annotations(doc, None);
     let pos = doc.selection(view.id).primary().cursor(doc_text);
-    let pos =
-        visual_offset_from_block(doc_text, view.offset.anchor, pos, &text_fmt, &annotations).0;
+    let pos = visual_offset_from_block(
+        doc_text,
+        doc.view_data(view.id).unwrap().view_position.anchor,
+        pos,
+        &text_fmt,
+        &annotations,
+    )
+    .0;
 
-    view.offset.horizontal_offset = pos
+    doc.view_data_mut(view.id).view_position.horizontal_offset = pos
         .col
         .saturating_sub((view.inner_area(doc).width as usize) / 2);
 }
@@ -6117,7 +6133,8 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
 
     // This is not necessarily exact if there is virtual text like soft wrap.
     // It's ok though because the extra jump labels will not be rendered.
-    let start = text.line_to_char(text.char_to_line(view.offset.anchor));
+    let start =
+        text.line_to_char(text.char_to_line(doc.view_data(view.id).unwrap().view_position.anchor));
     let end = text.line_to_char(view.estimate_last_doc_line(doc) + 1);
 
     let primary_selection = doc.selection(view.id).primary();

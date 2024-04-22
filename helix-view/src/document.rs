@@ -1190,11 +1190,15 @@ impl Document {
         self.set_selection(view_id, Selection::single(origin.anchor, origin.head));
     }
 
-    /// Initializes a new selection for the given view if it does not
-    /// already have one.
+    /// Initializes a new selection and view_data for the given view
+    /// if it does not already have them.
     pub fn ensure_view_init(&mut self, view_id: ViewId) {
         if self.selections.get(&view_id).is_none() {
             self.reset_selection(view_id);
+        }
+
+        if self.view_data(view_id).is_none() {
+            self.view_data.insert(view_id, ViewData::default());
         }
     }
 
@@ -1239,6 +1243,12 @@ impl Document {
                     .map(transaction.changes())
                     // Ensure all selections across all views still adhere to invariants.
                     .ensure_invariants(self.text.slice(..));
+            }
+
+            for view_data in self.view_data.values_mut() {
+                view_data.view_position.anchor = transaction
+                    .changes()
+                    .map_pos(view_data.view_position.anchor, Assoc::Before);
             }
 
             // if specified, the current selection should instead be replaced by transaction.selection

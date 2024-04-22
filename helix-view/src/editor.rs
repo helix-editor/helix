@@ -10,7 +10,6 @@ use crate::{
     register::Registers,
     theme::{self, Theme},
     tree::{self, Tree},
-    view::ViewPosition,
     Document, DocumentId, View, ViewId,
 };
 use dap::StackFrame;
@@ -1532,18 +1531,8 @@ impl Editor {
         let scrolloff = self.config().scrolloff;
         let view = self.tree.get_mut(current_view);
 
-        if let Some(old_doc) = self.documents.get_mut(&view.doc) {
-            old_doc.view_data_mut(current_view).view_position = view.offset;
-        }
-
         view.doc = doc_id;
         let doc = doc_mut!(self, &doc_id);
-
-        view.offset = if let Some(view_data) = doc.view_data(current_view) {
-            view_data.view_position
-        } else {
-            ViewPosition::default()
-        };
 
         doc.ensure_view_init(view.id);
         view.sync_changes(doc);
@@ -1909,8 +1898,8 @@ impl Editor {
 
     pub fn ensure_cursor_in_view(&mut self, id: ViewId) {
         let config = self.config();
-        let view = self.tree.get_mut(id);
-        let doc = &self.documents[&view.doc];
+        let view = self.tree.get(id).clone();
+        let doc = self.document_mut(view.doc).unwrap();
         view.ensure_cursor_in_view(doc, config.scrolloff)
     }
 
