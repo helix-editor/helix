@@ -3014,18 +3014,14 @@ fn jumplist_picker(cx: &mut Context) {
     };
 
     let picker = Picker::new(
-        cx.editor
-            .tree
-            .views()
-            .flat_map(|(view, _)| {
-                view.jumps
-                    .iter()
-                    .rev()
-                    .map(|(doc_id, selection)| new_meta(view, *doc_id, selection.clone()))
-            })
-            .collect(),
+        cx.editor.tree.views().flat_map(|(view, _)| {
+            view.jumps
+                .iter()
+                .rev()
+                .map(|(doc_id, selection)| new_meta(view, *doc_id, selection.clone()))
+        }),
         (),
-        |cx, meta, action| {
+        |cx, meta: &JumpMeta, action| {
             cx.editor.switch(meta.id, action);
             let config = cx.editor.config();
             let (view, doc) = (view_mut!(cx.editor), doc_mut!(cx.editor, &meta.id));

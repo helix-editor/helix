@@ -219,11 +219,14 @@ impl<T: Item + 'static> Picker<T> {
         (matcher, streamer)
     }
 
-    pub fn new(
-        options: Vec<T>,
+    pub fn new<I>(
+        options: I,
         editor_data: T::Data,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
-    ) -> Self {
+    ) -> Self
+    where
+        I: IntoIterator<Item = T>,
+    {
         let matcher = Nucleo::new(
             Config::DEFAULT,
             Arc::new(helix_event::request_redraw),
