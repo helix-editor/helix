@@ -198,7 +198,7 @@ mod tests {
     #[should_panic]
     fn duplicate_mouse_keys_should_panic() {
         mousemap!({
-            "1-left" => code_action_mouse,
+            "1-left" => code_action,
             "1-left" => add_selection_mouse,
         });
     }

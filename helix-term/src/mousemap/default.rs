@@ -14,7 +14,7 @@ pub fn default() -> HashMap<Mode, HashMap<MouseEvent, MouseTrie>> {
         "3-left" => select_long_word_mouse,
         "A-1-left" => add_selection_mouse,
         "1-right" => yank_main_selection_to_primary_clipboard_mouse,
-        "A-1-middle" => replace_selections_with_primary_clipboard_mouse,
+        "A-1-middle" => replace_selections_with_primary_clipboard,
         "1-middle" => paste_primary_clipboard_before_mouse,
         "scroll_up" => scroll_up_mouse,
         "scroll_down" => scroll_down_mouse,

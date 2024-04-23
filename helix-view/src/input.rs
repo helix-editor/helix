@@ -115,9 +115,17 @@ impl FromStr for MouseEvent {
             mouse_keys::RIGHT => MouseEventKind::Down(MouseButton::Right),
             mouse_keys::SCROLL_DOWN => MouseEventKind::ScrollDown,
             mouse_keys::SCROLL_UP => MouseEventKind::ScrollUp,
+            mouse_keys::SCROLL_RIGHT => MouseEventKind::ScrollRight,
+            mouse_keys::SCROLL_LEFT => MouseEventKind::ScrollLeft,
             invalid => return Err(anyhow!("Invalid mouse code '{}'", invalid)),
         };
-        let nb_click = if kind != MouseEventKind::ScrollDown && kind != MouseEventKind::ScrollUp {
+        let scroll = vec![
+            MouseEventKind::ScrollDown,
+            MouseEventKind::ScrollUp,
+            MouseEventKind::ScrollLeft,
+            MouseEventKind::ScrollRight,
+        ];
+        let nb_click = if !scroll.contains(&kind) {
             tokens
                 .pop()
                 .ok_or_else(|| anyhow!("No number of clicks provided"))?

@@ -196,11 +196,11 @@ mod tests {
             &mut mouse,
             &hashmap! {
                 Mode::Normal => mousemap!({
-                    "1-left" => code_action_mouse,
+                    "1-left" => code_action,
                     "A-1-left" => add_selection_mouse,
                 }),
                 Mode::Insert => mousemap!({
-                    "C-1-right" => go_to_definition_mouse,
+                    "C-1-right" => goto_definition,
                 }),
             },
         );

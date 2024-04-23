@@ -8,43 +8,25 @@ use helix_view::{input::MouseEvent, Document, ViewId};
 
 use super::{
     move_next_long_word_end, move_next_word_end, move_prev_long_word_start, move_prev_word_start,
-    paste_primary_clipboard_before, replace_selections_with_primary_clipboard,
-    yank_primary_selection_impl, Context,
+    paste_primary_clipboard_before, yank_primary_selection_impl, Context,
 };
 
 #[derive(Eq, PartialEq, PartialOrd, Ord, Clone, Debug, Copy)]
 pub struct StaticMouseCommand {
-    name: &'static str,
+    pub name: &'static str,
     pub(crate) fun: fn(&mut Context, &MouseEvent, &mut EditorView),
-    doc: &'static str,
+    pub doc: &'static str,
 }
 
 impl std::str::FromStr for StaticMouseCommand {
     type Err = anyhow::Error;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        StaticMouseCommand::STATIC_MOUSE_COMMAND_LIST
+        StaticMouseCommand::STATIC_COMMAND_LIST
             .iter()
             .find(|cmd| cmd.name() == s)
             .cloned()
             .ok_or_else(|| anyhow!("No command named '{}'", s))
-    }
-}
-
-macro_rules! static_mouse_commands {
-    ( $($name:ident, $doc:literal,)* ) => {
-        $(
-            #[allow(non_upper_case_globals)]
-            pub const $name: Self = Self {
-                name: stringify!($name),
-                fun: $name,
-                doc: $doc
-            };
-        )*
-
-        pub const STATIC_MOUSE_COMMAND_LIST: &'static [Self] = &[
-            $( Self::$name, )*
-        ];
     }
 }
 
@@ -60,26 +42,6 @@ impl StaticMouseCommand {
     pub fn doc(&self) -> &str {
         self.doc
     }
-
-    #[rustfmt::skip]
-    static_mouse_commands!(
-        handle_main_button_mouse, "Handle the main button mouse iteraction (commonly left click)",
-        set_mouse_selection, "Set primary selection at mouse pointer",
-        select_word_mouse, "Select a word",
-        select_long_word_mouse, "Select a long word",
-        select_all_mouse, "Select whole document with mouse",
-        scroll_up_mouse, "Scroll view up with mouse line",
-        scroll_down_mouse, "Scroll view down with mouse line",
-        paste_primary_clipboard_before_mouse, "Paste primary clipboard before mouse",
-        yank_main_selection_to_primary_clipboard_mouse, "Yank Main selection to primary clipboard through mouse",
-        replace_selections_with_primary_clipboard_mouse, "Replace selection with primary clipboard through mouse",
-        add_breakpoint_mouse, "Add breakpoint with the mouse when clicking on the numbers on the left",
-        add_selection_mouse, "Add a selection at you mouse pointer",
-        go_to_definition_mouse, "Goto Definition with mouse",
-        code_action_mouse, "Perform code action with mouse",
-        dap_edit_condition_mouse, "Edit breakpoint condition on current line with mouse",
-        dap_edit_log_mouse, "Edit breakpoint log message on current line with mouse",
-    );
 }
 
 fn handle_selection_in_buffer(
@@ -105,11 +67,10 @@ fn handle_selection_in_buffer(
 
         return true;
     }
-    log::info!("false in return");
     false
 }
 
-fn handle_main_button_mouse(cx: &mut Context, evt: &MouseEvent, ev: &mut EditorView) {
+pub fn handle_main_button_mouse(cx: &mut Context, evt: &MouseEvent, ev: &mut EditorView) {
     if !handle_selection_in_buffer(
         cx,
         evt,
@@ -122,7 +83,7 @@ fn handle_main_button_mouse(cx: &mut Context, evt: &MouseEvent, ev: &mut EditorV
     }
 }
 
-fn set_mouse_selection(cx: &mut Context, evt: &MouseEvent, ev: &mut EditorView) {
+pub fn set_mouse_selection(cx: &mut Context, evt: &MouseEvent, ev: &mut EditorView) {
     handle_selection_in_buffer(
         cx,
         evt,
@@ -133,21 +94,17 @@ fn set_mouse_selection(cx: &mut Context, evt: &MouseEvent, ev: &mut EditorView) 
     );
 }
 
-fn select_word_mouse(cx: &mut Context, _: &MouseEvent, _: &mut EditorView) {
+pub fn select_word_mouse(cx: &mut Context, _: &MouseEvent, _: &mut EditorView) {
     move_prev_word_start(cx);
     move_next_word_end(cx);
 }
 
-fn select_long_word_mouse(cx: &mut Context, _: &MouseEvent, _: &mut EditorView) {
+pub fn select_long_word_mouse(cx: &mut Context, _: &MouseEvent, _: &mut EditorView) {
     move_prev_long_word_start(cx);
     move_next_long_word_end(cx);
 }
 
-fn select_all_mouse(cx: &mut Context, _: &MouseEvent, _: &mut EditorView) {
-    super::select_all(cx)
-}
-
-fn scroll_mouse_impl(cx: &mut Context, evt: &MouseEvent, dir: Direction, _: &mut EditorView) {
+pub fn scroll_mouse_impl(cx: &mut Context, evt: &MouseEvent, dir: Direction, _: &mut EditorView) {
     let current_view = cx.editor.tree.focus;
     match pos_and_view(cx.editor, evt.row, evt.column, false) {
         Some((_, view_id)) => cx.editor.tree.focus = view_id,
@@ -158,15 +115,19 @@ fn scroll_mouse_impl(cx: &mut Context, evt: &MouseEvent, dir: Direction, _: &mut
     cx.editor.ensure_cursor_in_view(current_view);
 }
 
-fn scroll_up_mouse(cx: &mut Context, evt: &MouseEvent, ev: &mut EditorView) {
+pub fn scroll_up_mouse(cx: &mut Context, evt: &MouseEvent, ev: &mut EditorView) {
     scroll_mouse_impl(cx, evt, Direction::Backward, ev)
 }
 
-fn scroll_down_mouse(cx: &mut Context, evt: &MouseEvent, ev: &mut EditorView) {
+pub fn scroll_down_mouse(cx: &mut Context, evt: &MouseEvent, ev: &mut EditorView) {
     scroll_mouse_impl(cx, evt, Direction::Forward, ev)
 }
 
-fn paste_primary_clipboard_before_mouse(cx: &mut Context, evt: &MouseEvent, _: &mut EditorView) {
+pub fn paste_primary_clipboard_before_mouse(
+    cx: &mut Context,
+    evt: &MouseEvent,
+    _: &mut EditorView,
+) {
     // if !config.middle_click_paste {
     //     return;
     // }
@@ -199,18 +160,7 @@ pub fn yank_main_selection_to_primary_clipboard_mouse(
     yank_primary_selection_impl(cx.editor, '*');
 }
 
-fn replace_selections_with_primary_clipboard_mouse(
-    cx: &mut Context,
-    _: &MouseEvent,
-    _: &mut EditorView,
-) {
-    // if !config.middle_click_paste {
-    //     return;
-    // }
-    replace_selections_with_primary_clipboard(cx)
-}
-
-fn add_breakpoint_mouse(cx: &mut Context, evt: &MouseEvent, _: &mut EditorView) {
+pub fn add_breakpoint_mouse(cx: &mut Context, evt: &MouseEvent, _: &mut EditorView) {
     log::info!("called breakpoint adder");
     let editor = &mut cx.editor;
     if let Some((coords, view_id)) = gutter_coords_and_view(editor, evt.row, evt.column) {
@@ -245,16 +195,6 @@ pub fn add_selection_mouse(cx: &mut Context, evt: &MouseEvent, ev: &mut EditorVi
     );
 }
 
-pub fn go_to_definition_mouse(cx: &mut Context, evt: &MouseEvent, ev: &mut EditorView) {
-    set_mouse_selection(cx, evt, ev);
-    super::goto_definition(cx)
-}
-
-pub fn code_action_mouse(cx: &mut Context, evt: &MouseEvent, ev: &mut EditorView) {
-    set_mouse_selection(cx, evt, ev);
-    super::code_action(cx)
-}
-
 fn dap_impl_mouse(cx: &mut Context, evt: &MouseEvent, callback: impl Fn(&mut Context)) {
     let editor = &mut cx.editor;
     if let Some((coords, view_id)) = gutter_coords_and_view(editor, evt.row, evt.column) {
@@ -270,13 +210,13 @@ fn dap_impl_mouse(cx: &mut Context, evt: &MouseEvent, callback: impl Fn(&mut Con
     }
 }
 
-fn dap_edit_condition_mouse(cx: &mut Context, evt: &MouseEvent, _: &mut EditorView) {
+pub fn dap_edit_condition_mouse(cx: &mut Context, evt: &MouseEvent, _: &mut EditorView) {
     dap_impl_mouse(cx, evt, |cx| {
         super::dap_edit_condition(cx);
     })
 }
 
-fn dap_edit_log_mouse(cx: &mut Context, evt: &MouseEvent, _: &mut EditorView) {
+pub fn dap_edit_log_mouse(cx: &mut Context, evt: &MouseEvent, _: &mut EditorView) {
     dap_impl_mouse(cx, evt, |cx: &mut Context| {
         super::dap_edit_log(cx);
     })
