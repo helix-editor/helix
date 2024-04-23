@@ -268,6 +268,8 @@ pub struct Config {
     pub auto_format: bool,
     /// Automatic save on focus lost. Defaults to false.
     pub auto_save: bool,
+    /// Automatic detection of indent style. Defaults to true.
+    pub auto_detect_indent: bool,
     /// Set a global text_width
     pub text_width: usize,
     /// Time in milliseconds since last keypress before idle timers trigger.
@@ -882,6 +884,7 @@ impl Default for Config {
             auto_completion: true,
             auto_format: true,
             auto_save: false,
+            auto_detect_indent: true,
             idle_timeout: Duration::from_millis(250),
             completion_timeout: Duration::from_millis(250),
             preview_completion_insert: true,

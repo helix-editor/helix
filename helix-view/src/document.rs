@@ -1004,7 +1004,12 @@ impl Document {
     /// configured in `languages.toml`, with a fallback to tabs if it isn't specified. Line ending
     /// is likewise auto-detected, and will remain unchanged if no line endings were detected.
     pub fn detect_indent_and_line_ending(&mut self) {
-        self.indent_style = auto_detect_indent_style(&self.text).unwrap_or_else(|| {
+        let detected_style = if self.config.load().auto_detect_indent {
+            auto_detect_indent_style(&self.text)
+        } else {
+            None
+        };
+        self.indent_style = detected_style.unwrap_or_else(|| {
             self.language_config()
                 .and_then(|config| config.indent.as_ref())
                 .map_or(DEFAULT_INDENT, |config| IndentStyle::from_str(&config.unit))
