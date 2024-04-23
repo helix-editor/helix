@@ -8,7 +8,7 @@ use dap::{StackFrame, Thread, ThreadStates};
 use helix_core::syntax::{DebugArgumentValue, DebugConfigCompletion, DebugTemplate};
 use helix_dap::{self as dap, Client};
 use helix_lsp::block_on;
-use helix_view::{editor::Breakpoint, graphics::Margin};
+use helix_view::editor::Breakpoint;
 
 use serde_json::{to_value, Value};
 use tokio_stream::wrappers::UnboundedReceiverStream;
@@ -581,12 +581,7 @@ pub fn dap_variables(cx: &mut Context) {
     }
 
     let contents = Text::from(tui::text::Text::from(variables));
-    let margin = if cx.editor.popup_border() {
-        Margin::all(1)
-    } else {
-        Margin::none()
-    };
-    let popup = Popup::new("dap-variables", contents).margin(margin);
+    let popup = Popup::new("dap-variables", contents);
     cx.replace_or_push_layer("dap-variables", popup);
 }
 

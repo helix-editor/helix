@@ -5,7 +5,6 @@ use crate::{
 use helix_view::{
     document::SavePoint,
     editor::CompleteAction,
-    graphics::Margin,
     handlers::lsp::SignatureHelpInvoked,
     theme::{Modifier, Style},
     ViewId,
@@ -334,16 +333,9 @@ impl Completion {
             }
         });
 
-        let margin = if editor.menu_border() {
-            Margin::vertical(1)
-        } else {
-            Margin::none()
-        };
-
         let popup = Popup::new(Self::ID, menu)
             .with_scrollbar(false)
-            .ignore_escape_key(true)
-            .margin(margin);
+            .ignore_escape_key(true);
 
         let (view, doc) = current_ref!(editor);
         let text = doc.text().slice(..);
