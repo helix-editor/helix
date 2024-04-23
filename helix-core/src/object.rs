@@ -1,4 +1,4 @@
-use crate::{syntax::TreeCursor, Range, RopeSlice, Selection, Syntax};
+use crate::{movement::Direction, syntax::TreeCursor, Range, RopeSlice, Selection, Syntax};
 
 pub fn expand_selection(syntax: &Syntax, text: RopeSlice, selection: Selection) -> Selection {
     let cursor = &mut syntax.walk();
@@ -25,19 +25,31 @@ pub fn expand_selection(syntax: &Syntax, text: RopeSlice, selection: Selection) 
 }
 
 pub fn shrink_selection(syntax: &Syntax, text: RopeSlice, selection: Selection) -> Selection {
-    select_node_impl(syntax, text, selection, |cursor| {
-        cursor.goto_first_child();
-    })
+    select_node_impl(
+        syntax,
+        text,
+        selection,
+        |cursor| {
+            cursor.goto_first_child();
+        },
+        None,
+    )
 }
 
 pub fn select_next_sibling(syntax: &Syntax, text: RopeSlice, selection: Selection) -> Selection {
-    select_node_impl(syntax, text, selection, |cursor| {
-        while !cursor.goto_next_sibling() {
-            if !cursor.goto_parent() {
-                break;
+    select_node_impl(
+        syntax,
+        text,
+        selection,
+        |cursor| {
+            while !cursor.goto_next_sibling() {
+                if !cursor.goto_parent() {
+                    break;
+                }
             }
-        }
-    })
+        },
+        Some(Direction::Forward),
+    )
 }
 
 pub fn select_all_siblings(syntax: &Syntax, text: RopeSlice, selection: Selection) -> Selection {
@@ -81,13 +93,19 @@ fn select_children<'n>(
 }
 
 pub fn select_prev_sibling(syntax: &Syntax, text: RopeSlice, selection: Selection) -> Selection {
-    select_node_impl(syntax, text, selection, |cursor| {
-        while !cursor.goto_prev_sibling() {
-            if !cursor.goto_parent() {
-                break;
+    select_node_impl(
+        syntax,
+        text,
+        selection,
+        |cursor| {
+            while !cursor.goto_prev_sibling() {
+                if !cursor.goto_parent() {
+                    break;
+                }
             }
-        }
-    })
+        },
+        Some(Direction::Backward),
+    )
 }
 
 fn select_node_impl<F>(
@@ -95,6 +113,7 @@ fn select_node_impl<F>(
     text: RopeSlice,
     selection: Selection,
     motion: F,
+    direction: Option<Direction>,
 ) -> Selection
 where
     F: Fn(&mut TreeCursor),
@@ -113,6 +132,6 @@ where
         let from = text.byte_to_char(node.start_byte());
         let to = text.byte_to_char(node.end_byte());
 
-        Range::new(from, to).with_direction(range.direction())
+        Range::new(from, to).with_direction(direction.unwrap_or_else(|| range.direction()))
     })
 }

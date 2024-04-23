@@ -726,3 +726,83 @@ async fn select_all_children() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_select_next_sibling() -> anyhow::Result<()> {
+    let tests = vec![
+        // basic test
+        (
+            indoc! {r##"
+                fn inc(x: usize) -> usize { x + 1 #[}|]#
+                fn dec(x: usize) -> usize { x - 1 }
+                fn ident(x: usize) -> usize { x }
+            "##},
+            "<A-n>",
+            indoc! {r##"
+                fn inc(x: usize) -> usize { x + 1 }
+                #[fn dec(x: usize) -> usize { x - 1 }|]#
+                fn ident(x: usize) -> usize { x }
+            "##},
+        ),
+        // direction is not preserved and is always forward.
+        (
+            indoc! {r##"
+                fn inc(x: usize) -> usize { x + 1 #[}|]#
+                fn dec(x: usize) -> usize { x - 1 }
+                fn ident(x: usize) -> usize { x }
+            "##},
+            "<A-n><A-;><A-n>",
+            indoc! {r##"
+                fn inc(x: usize) -> usize { x + 1 }
+                fn dec(x: usize) -> usize { x - 1 }
+                #[fn ident(x: usize) -> usize { x }|]#
+            "##},
+        ),
+    ];
+
+    for test in tests {
+        test_with_config(AppBuilder::new().with_file("foo.rs", None), test).await?;
+    }
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_select_prev_sibling() -> anyhow::Result<()> {
+    let tests = vec![
+        // basic test
+        (
+            indoc! {r##"
+                fn inc(x: usize) -> usize { x + 1 }
+                fn dec(x: usize) -> usize { x - 1 }
+                #[|f]#n ident(x: usize) -> usize { x }
+            "##},
+            "<A-p>",
+            indoc! {r##"
+                fn inc(x: usize) -> usize { x + 1 }
+                #[|fn dec(x: usize) -> usize { x - 1 }]#
+                fn ident(x: usize) -> usize { x }
+            "##},
+        ),
+        // direction is not preserved and is always backward.
+        (
+            indoc! {r##"
+                fn inc(x: usize) -> usize { x + 1 }
+                fn dec(x: usize) -> usize { x - 1 }
+                #[|f]#n ident(x: usize) -> usize { x }
+            "##},
+            "<A-p><A-;><A-p>",
+            indoc! {r##"
+                #[|fn inc(x: usize) -> usize { x + 1 }]#
+                fn dec(x: usize) -> usize { x - 1 }
+                fn ident(x: usize) -> usize { x }
+            "##},
+        ),
+    ];
+
+    for test in tests {
+        test_with_config(AppBuilder::new().with_file("foo.rs", None), test).await?;
+    }
+
+    Ok(())
+}
