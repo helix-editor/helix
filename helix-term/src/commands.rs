@@ -308,16 +308,24 @@ impl MappableCommand {
         move_same_line_char_right, "Move right within in the same line only",
         move_line_up, "Move up",
         move_line_down, "Move down",
+        move_anchored_line_up, "Move up with newline anchoring behaviour",
+        move_anchored_line_down, "Move down with newline anchoring behaviour",
         move_visual_line_up, "Move up",
         move_visual_line_down, "Move down",
+        move_anchored_visual_line_up, "Move up with newline anchoring behaviour",
+        move_anchored_visual_line_down, "Move down with newline anchoring behaviour",
         extend_char_left, "Extend left",
         extend_char_right, "Extend right",
         extend_same_line_char_left, "Extend left within the same line only",
         extend_same_line_char_right, "Extend right within the same line only",
         extend_line_up, "Extend up",
         extend_line_down, "Extend down",
+        extend_anchored_line_up, "Extend up with newline anchoring behaviour",
+        extend_anchored_line_down, "Extend down with newline anchoring behaviour",
         extend_visual_line_up, "Extend up",
         extend_visual_line_down, "Extend down",
+        extend_anchored_visual_line_up, "Extend up with newline anchoring behaviour",
+        extend_anchored_visual_line_down, "Extend down with newline anchoring behaviour",
         copy_selection_on_next_line, "Copy selection on next line",
         copy_selection_on_prev_line, "Copy selection on previous line",
         move_next_word_start, "Move to start of next word",
@@ -751,7 +759,8 @@ fn move_impl(cx: &mut Context, move_fn: MoveFn, dir: Direction, behaviour: Movem
 }
 
 use helix_core::movement::{
-    move_horizontally, move_horizontally_same_line, move_vertically, move_vertically_visual,
+    move_horizontally, move_horizontally_same_line, move_vertically, move_vertically_anchored,
+    move_vertically_anchored_visual, move_vertically_visual,
 };
 
 fn move_char_left(cx: &mut Context) {
@@ -788,6 +797,24 @@ fn move_line_down(cx: &mut Context) {
     move_impl(cx, move_vertically, Direction::Forward, Movement::Move)
 }
 
+fn move_anchored_line_up(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_vertically_anchored,
+        Direction::Backward,
+        Movement::Move,
+    )
+}
+
+fn move_anchored_line_down(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_vertically_anchored,
+        Direction::Forward,
+        Movement::Move,
+    )
+}
+
 fn move_visual_line_up(cx: &mut Context) {
     move_impl(
         cx,
@@ -801,6 +828,24 @@ fn move_visual_line_down(cx: &mut Context) {
     move_impl(
         cx,
         move_vertically_visual,
+        Direction::Forward,
+        Movement::Move,
+    )
+}
+
+fn move_anchored_visual_line_up(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_vertically_anchored_visual,
+        Direction::Backward,
+        Movement::Move,
+    )
+}
+
+fn move_anchored_visual_line_down(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_vertically_anchored_visual,
         Direction::Forward,
         Movement::Move,
     )
@@ -840,6 +885,24 @@ fn extend_line_down(cx: &mut Context) {
     move_impl(cx, move_vertically, Direction::Forward, Movement::Extend)
 }
 
+fn extend_anchored_line_up(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_vertically_anchored,
+        Direction::Backward,
+        Movement::Extend,
+    )
+}
+
+fn extend_anchored_line_down(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_vertically_anchored,
+        Direction::Forward,
+        Movement::Extend,
+    )
+}
+
 fn extend_visual_line_up(cx: &mut Context) {
     move_impl(
         cx,
@@ -853,6 +916,24 @@ fn extend_visual_line_down(cx: &mut Context) {
     move_impl(
         cx,
         move_vertically_visual,
+        Direction::Forward,
+        Movement::Extend,
+    )
+}
+
+fn extend_anchored_visual_line_up(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_vertically_anchored_visual,
+        Direction::Backward,
+        Movement::Extend,
+    )
+}
+
+fn extend_anchored_visual_line_down(cx: &mut Context) {
+    move_impl(
+        cx,
+        move_vertically_anchored_visual,
         Direction::Forward,
         Movement::Extend,
     )
