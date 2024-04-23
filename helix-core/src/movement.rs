@@ -52,6 +52,40 @@ pub fn move_horizontally(
     range.put_cursor(slice, new_pos, behaviour == Movement::Extend)
 }
 
+pub fn move_horizontally_same_line(
+    slice: RopeSlice,
+    range: Range,
+    dir: Direction,
+    count: usize,
+    behaviour: Movement,
+    text_fmt: &TextFormat,
+    annotations: &mut TextAnnotations,
+) -> Range {
+    let pos = range.cursor(slice);
+    let line = slice.char_to_line(pos);
+
+    let new_range = move_horizontally(slice, range, dir, count, behaviour, text_fmt, annotations);
+    let new_pos = new_range.cursor(slice);
+    let new_line = slice.char_to_line(new_pos);
+
+    match new_line.cmp(&line) {
+        std::cmp::Ordering::Equal => {
+            // we'll end up in same line - move there
+            new_range
+        }
+        std::cmp::Ordering::Less => {
+            // we'll end up in a line before - move to the beginning of the line
+            let line_beginning = slice.line_to_char(line);
+            range.put_cursor(slice, line_beginning, behaviour == Movement::Extend)
+        }
+        std::cmp::Ordering::Greater => {
+            // we'll end up in a line after - move to the end of the line
+            let line_end = line_end_char_index(&slice, line);
+            range.put_cursor(slice, line_end, behaviour == Movement::Extend)
+        }
+    }
+}
+
 pub fn move_vertically_visual(
     slice: RopeSlice,
     range: Range,
@@ -738,6 +772,37 @@ mod test {
             ),
             (1, 3).into()
         );
+    }
+
+    #[test]
+    fn horizontal_movement_in_same_line() {
+        let text = Rope::from("a\na\naaaa");
+        let slice = text.slice(..);
+        let pos = pos_at_coords(slice, (1, 0).into(), true);
+        let mut range = Range::new(pos, pos);
+
+        let hmove = |range, direction, count| -> Range {
+            move_horizontally_same_line(
+                slice,
+                range,
+                direction,
+                count,
+                Movement::Move,
+                &TextFormat::default(),
+                &mut TextAnnotations::default(),
+            )
+        };
+
+        range = hmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (1, 0).into());
+        range = hmove(range, Direction::Forward, 2);
+        assert_eq!(coords_at_pos(slice, range.head), (1, 1).into());
+        range = hmove(range, Direction::Forward, 2);
+        assert_eq!(coords_at_pos(slice, range.head), (1, 1).into());
+        range = hmove(range, Direction::Backward, 1);
+        assert_eq!(coords_at_pos(slice, range.head), (1, 0).into());
+        range = hmove(range, Direction::Backward, 2);
+        assert_eq!(coords_at_pos(slice, range.head), (1, 0).into());
     }
 
     #[test]
