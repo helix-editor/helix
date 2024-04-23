@@ -14,3 +14,7 @@ grey01 = "#1f1f1f"
 grey02 = "#323232"
 grey03 = "#555555"
 grey04 = "#a8a8a8"
+
+dimred = "#642e18"
+dimorange = "#ae662a"
+dimgrey = "#777777"

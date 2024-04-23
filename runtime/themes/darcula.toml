@@ -73,10 +73,10 @@
 "diff.delta" = "grey"
 "diff.minus" = "red"
 
-"diagnostic.warning" = { underline = { color = "orange", style = "curl"} }
-"diagnostic.error" = { underline = { color = "red", style = "curl"} }
-"diagnostic.info" = { underline = { color = "grey05", style = "curl"} }
-"diagnostic.hint" = { underline = { color = "grey05", style = "curl"} }
+"diagnostic.warning" = { underline = { color = "dimorange", style = "curl"} }
+"diagnostic.error" = { underline = { color = "dimred", style = "curl"} }
+"diagnostic.info" = { underline = { color = "dimgrey", style = "curl"} }
+"diagnostic.hint" = { underline = { color = "dimgrey", style = "dashed"} }
 "diagnostic.unnecessary" = { modifiers = ["dim"] }
 "diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
@@ -100,9 +100,12 @@ white = "#d0d0d0"
 yellow = "#eedd82"
 orange = "#cc7832"
 darkred = "#a34a27"
+dimred = "#7a371d"
+dimorange = "#ae662a"
 purple = "#9876aa"
 green = "#32cd32"
 grey = "#808080"
+dimgrey = "#777777"
 darkgreen = "#629755"
 lightblue = "#6897bb"
 blue = "#104158"
