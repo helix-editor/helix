@@ -2404,7 +2404,7 @@ fn global_search(cx: &mut Context) {
     let picker = Picker::new(
         columns,
         1, // contents
-        vec![],
+        [],
         config,
         move |cx, FileResult { path, line_num, .. }, action| {
             let doc = match cx.editor.open(path, action) {
@@ -2991,16 +2991,12 @@ fn jumplist_picker(cx: &mut Context) {
     let picker = Picker::new(
         columns,
         1, // path
-        cx.editor
-            .tree
-            .views()
-            .flat_map(|(view, _)| {
-                view.jumps
-                    .iter()
-                    .rev()
-                    .map(|(doc_id, selection)| new_meta(view, *doc_id, selection.clone()))
-            })
-            .collect(),
+        cx.editor.tree.views().flat_map(|(view, _)| {
+            view.jumps
+                .iter()
+                .rev()
+                .map(|(doc_id, selection)| new_meta(view, *doc_id, selection.clone()))
+        }),
         (),
         |cx, meta, action| {
             cx.editor.switch(meta.id, action);
@@ -3077,7 +3073,7 @@ fn changed_file_picker(cx: &mut Context) {
     let picker = Picker::new(
         columns,
         1, // path
-        Vec::new(),
+        [],
         FileChangeData {
             cwd: cwd.clone(),
             style_untracked: added,
@@ -3124,14 +3120,15 @@ pub fn command_palette(cx: &mut Context) {
                 [&cx.editor.mode]
                 .reverse_map();
 
-            let mut commands: Vec<MappableCommand> = MappableCommand::STATIC_COMMAND_LIST.into();
-            commands.extend(typed::TYPABLE_COMMAND_LIST.iter().map(|cmd| {
-                MappableCommand::Typable {
-                    name: cmd.name.to_owned(),
-                    doc: cmd.doc.to_owned(),
-                    args: Vec::new(),
-                }
-            }));
+            let commands = MappableCommand::STATIC_COMMAND_LIST.iter().cloned().chain(
+                typed::TYPABLE_COMMAND_LIST
+                    .iter()
+                    .map(|cmd| MappableCommand::Typable {
+                        name: cmd.name.to_owned(),
+                        args: Vec::new(),
+                        doc: cmd.doc.to_owned(),
+                    }),
+            );
 
             let columns = vec![
                 ui::PickerColumn::new("name", |item, _| match item {

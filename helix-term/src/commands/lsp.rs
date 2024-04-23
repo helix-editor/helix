@@ -501,7 +501,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
     let picker = Picker::new(
         columns,
         1, // name column
-        vec![],
+        [],
         (),
         move |cx, item, action| {
             jump_to_location(

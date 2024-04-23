@@ -298,7 +298,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
     pub fn new(
         columns: Vec<Column<T, D>>,
         primary_column: usize,
-        options: Vec<T>,
+        options: impl IntoIterator<Item = T>,
         editor_data: D,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
     ) -> Self {
