@@ -21,7 +21,6 @@ use helix_stdx::path;
 use helix_view::{
     document::{DocumentInlayHints, DocumentInlayHintsId},
     editor::Action,
-    graphics::Margin,
     handlers::lsp::SignatureHelpInvoked,
     theme::Style,
     Document, View,
@@ -733,15 +732,7 @@ pub fn code_action(cx: &mut Context) {
             });
             picker.move_down(); // pre-select the first item
 
-            let margin = if editor.menu_border() {
-                Margin::vertical(1)
-            } else {
-                Margin::none()
-            };
-
-            let popup = Popup::new("code-action", picker)
-                .with_scrollbar(false)
-                .margin(margin);
+            let popup = Popup::new("code-action", picker).with_scrollbar(false);
 
             compositor.replace_or_push("code-action", popup);
         };
