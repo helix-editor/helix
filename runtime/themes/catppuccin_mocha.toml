@@ -88,7 +88,8 @@
 "ui.virtual" = "overlay0"
 "ui.virtual.ruler" = { bg = "surface0" }
 "ui.virtual.indent-guide" = "surface0"
-"ui.virtual.inlay-hint" = { fg = "surface1", bg = "mantle" }
+"ui.virtual.inlay-hint" = { fg = "overlay0", bg = "base" }
+"ui.virtual.jump-label" = { fg = "rosewater", modifiers = ["bold"] }
 
 "ui.selection" = { bg = "surface1" }
 
@@ -115,6 +116,8 @@
 "diagnostic.warning" = { underline = { color = "yellow", style = "curl" } }
 "diagnostic.info" = { underline = { color = "sky", style = "curl" } }
 "diagnostic.hint" = { underline = { color = "teal", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 error = "red"
 warning = "yellow"

@@ -101,7 +101,7 @@
 (list
   (symbol) @tag)
 
-; Other stuff that has not been catched by the previous queries yet
+; Other stuff that has not been caught by the previous queries yet
 
 (ident) @variable
 (index) @variable

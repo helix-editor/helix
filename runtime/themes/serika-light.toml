@@ -63,6 +63,8 @@
 "diagnostic.info" = { underline = { style = "curl", color = "aqua" } }
 "diagnostic.warning" = { underline = { style = "curl", color = "yellow" } }
 "diagnostic.error" = { underline = { style = "curl", color = "nasty-red" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 "diff.plus" = { fg = "bg_green" }
 "diff.delta" = { fg = "bg_blue" }

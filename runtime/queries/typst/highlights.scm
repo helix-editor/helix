@@ -21,6 +21,7 @@
 
 ; OPERATOR
 (in ["in" "not"] @keyword.operator)
+(context "context" @keyword.control)
 (and "and" @keyword.operator)
 (or "or" @keyword.operator)
 (not "not" @keyword.operator)
@@ -45,17 +46,19 @@
 (string) @string
 (content ["[" "]"] @operator)
 (bool) @constant.builtin.boolean
-(builtin) @constant.builtin
 (none) @constant.builtin
 (auto) @constant.builtin
 (ident) @variable
-(call
-  item: (builtin) @function.builtin)
 
 ; MARKUP
 (item "-" @markup.list)
 (term ["/" ":"] @markup.list)
-(heading ["=" "==" "===" "====" "====="] @markup.heading.marker) @markup.heading
+(heading "=" @markup.heading.marker) @markup.heading.1
+(heading "==" @markup.heading.marker) @markup.heading.2
+(heading "===" @markup.heading.marker) @markup.heading.3
+(heading "====" @markup.heading.marker) @markup.heading.4
+(heading "=====" @markup.heading.marker) @markup.heading.5
+(heading "======" @markup.heading.marker) @markup.heading.6
 (url) @tag
 (emph) @markup.italic
 (strong) @markup.bold

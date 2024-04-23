@@ -1,7 +1,12 @@
-use crate::compositor::{Component, Context, Event, EventResult};
+use crate::{
+    compositor::{Component, Context, Event, EventResult},
+    handlers::{completion::ResolveHandler, trigger_auto_completion},
+};
 use helix_view::{
     document::SavePoint,
     editor::CompleteAction,
+    graphics::Margin,
+    handlers::lsp::SignatureHelpInvoked,
     theme::{Modifier, Style},
     ViewId,
 };
@@ -9,13 +14,12 @@ use tui::{buffer::Buffer as Surface, text::Span};
 
 use std::{borrow::Cow, sync::Arc};
 
-use helix_core::{Change, Transaction};
+use helix_core::{chars, Change, Transaction};
 use helix_view::{graphics::Rect, Document, Editor};
 
-use crate::commands;
 use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
 
-use helix_lsp::{lsp, util, OffsetEncoding};
+use helix_lsp::{lsp, util, LanguageServerId, OffsetEncoding};
 
 impl menu::Item for CompletionItem {
     type Data = ();
@@ -87,17 +91,17 @@ impl menu::Item for CompletionItem {
 #[derive(Debug, PartialEq, Default, Clone)]
 pub struct CompletionItem {
     pub item: lsp::CompletionItem,
-    pub language_server_id: usize,
+    pub provider: LanguageServerId,
     pub resolved: bool,
 }
 
 /// Wraps a Menu.
 pub struct Completion {
     popup: Popup<Menu<CompletionItem>>,
-    start_offset: usize,
     #[allow(dead_code)]
     trigger_offset: usize,
-    // TODO: maintain a completioncontext with trigger kind & trigger char
+    filter: String,
+    resolve_handler: ResolveHandler,
 }
 
 impl Completion {
@@ -107,7 +111,6 @@ impl Completion {
         editor: &Editor,
         savepoint: Arc<SavePoint>,
         mut items: Vec<CompletionItem>,
-        start_offset: usize,
         trigger_offset: usize,
     ) -> Self {
         let preview_completion_insert = editor.config().preview_completion_insert;
@@ -218,7 +221,7 @@ impl Completion {
                 ($item:expr) => {
                     match editor
                         .language_servers
-                        .get_by_id($item.language_server_id)
+                        .get_by_id($item.provider)
                     {
                         Some(ls) => ls,
                         None => {
@@ -245,7 +248,7 @@ impl Completion {
                     // (also without sending the transaction to the LS) *before any further transaction is applied*.
                     // Otherwise incremental sync breaks (since the state of the LS doesn't match the state the transaction
                     // is applied to).
-                    if editor.last_completion.is_none() {
+                    if matches!(editor.last_completion, Some(CompleteAction::Triggered)) {
                         editor.last_completion = Some(CompleteAction::Selected {
                             savepoint: doc.savepoint(view),
                         })
@@ -279,12 +282,6 @@ impl Completion {
                     let language_server = language_server!(item);
                     let offset_encoding = language_server.offset_encoding();
 
-                    let language_server = editor
-                        .language_servers
-                        .get_by_id(item.language_server_id)
-                        .unwrap();
-
-                    // resolve item if not yet resolved
                     if !item.resolved {
                         if let Some(resolved) =
                             Self::resolve_completion_item(language_server, item.item.clone())
@@ -323,32 +320,79 @@ impl Completion {
                             doc.apply(&transaction, view.id);
                         }
                     }
+                    // we could have just inserted a trigger char (like a `crate::` completion for rust
+                    // so we want to retrigger immediately when accepting a completion.
+                    trigger_auto_completion(&editor.handlers.completions, editor, true);
                 }
             };
+
+            // In case the popup was deleted because of an intersection w/ the auto-complete menu.
+            if event != PromptEvent::Update {
+                editor
+                    .handlers
+                    .trigger_signature_help(SignatureHelpInvoked::Automatic, editor);
+            }
         });
+
+        let margin = if editor.menu_border() {
+            Margin::vertical(1)
+        } else {
+            Margin::none()
+        };
+
         let popup = Popup::new(Self::ID, menu)
             .with_scrollbar(false)
-            .ignore_escape_key(true);
+            .ignore_escape_key(true)
+            .margin(margin);
+
+        let (view, doc) = current_ref!(editor);
+        let text = doc.text().slice(..);
+        let cursor = doc.selection(view.id).primary().cursor(text);
+        let offset = text
+            .chars_at(cursor)
+            .reversed()
+            .take_while(|ch| chars::char_is_word(*ch))
+            .count();
+        let start_offset = cursor.saturating_sub(offset);
+
+        let fragment = doc.text().slice(start_offset..cursor);
         let mut completion = Self {
             popup,
-            start_offset,
             trigger_offset,
+            // TODO: expand nucleo api to allow moving straight to a Utf32String here
+            // and avoid allocation during matching
+            filter: String::from(fragment),
+            resolve_handler: ResolveHandler::new(),
         };
 
         // need to recompute immediately in case start_offset != trigger_offset
-        completion.recompute_filter(editor);
+        completion
+            .popup
+            .contents_mut()
+            .score(&completion.filter, false);
 
         completion
     }
 
+    /// Synchronously resolve the given completion item. This is used when
+    /// accepting a completion.
     fn resolve_completion_item(
         language_server: &helix_lsp::Client,
         completion_item: lsp::CompletionItem,
     ) -> Option<lsp::CompletionItem> {
-        let future = language_server.resolve_completion_item(completion_item)?;
+        if !matches!(
+            language_server.capabilities().completion_provider,
+            Some(lsp::CompletionOptions {
+                resolve_provider: Some(true),
+                ..
+            })
+        ) {
+            return None;
+        }
+        let future = language_server.resolve_completion_item(&completion_item);
         let response = helix_lsp::block_on(future);
         match response {
-            Ok(value) => serde_json::from_value(value).ok(),
+            Ok(item) => Some(item),
             Err(err) => {
                 log::error!("Failed to resolve completion item: {}", err);
                 None
@@ -356,103 +400,30 @@ impl Completion {
         }
     }
 
-    pub fn recompute_filter(&mut self, editor: &Editor) {
+    /// Appends (`c: Some(c)`) or removes (`c: None`) a character to/from the filter
+    /// this should be called whenever the user types or deletes a character in insert mode.
+    pub fn update_filter(&mut self, c: Option<char>) {
         // recompute menu based on matches
         let menu = self.popup.contents_mut();
-        let (view, doc) = current_ref!(editor);
-
-        // cx.hooks()
-        // cx.add_hook(enum type,  ||)
-        // cx.trigger_hook(enum type, &str, ...) <-- there has to be enough to identify doc/view
-        // callback with editor & compositor
-        //
-        // trigger_hook sends event into channel, that's consumed in the global loop and
-        // triggers all registered callbacks
-        // TODO: hooks should get processed immediately so maybe do it after select!(), before
-        // looping?
-
-        let cursor = doc
-            .selection(view.id)
-            .primary()
-            .cursor(doc.text().slice(..));
-        if self.trigger_offset <= cursor {
-            let fragment = doc.text().slice(self.start_offset..cursor);
-            let text = Cow::from(fragment);
-            // TODO: logic is same as ui/picker
-            menu.score(&text);
-        } else {
-            // we backspaced before the start offset, clear the menu
-            // this will cause the editor to remove the completion popup
-            menu.clear();
+        match c {
+            Some(c) => self.filter.push(c),
+            None => {
+                self.filter.pop();
+                if self.filter.is_empty() {
+                    menu.clear();
+                    return;
+                }
+            }
         }
-    }
-
-    pub fn update(&mut self, cx: &mut commands::Context) {
-        self.recompute_filter(cx.editor)
+        menu.score(&self.filter, c.is_some());
     }
 
     pub fn is_empty(&self) -> bool {
         self.popup.contents().is_empty()
     }
 
-    fn replace_item(&mut self, old_item: CompletionItem, new_item: CompletionItem) {
+    pub fn replace_item(&mut self, old_item: &CompletionItem, new_item: CompletionItem) {
         self.popup.contents_mut().replace_option(old_item, new_item);
-    }
-
-    /// Asynchronously requests that the currently selection completion item is
-    /// resolved through LSP `completionItem/resolve`.
-    pub fn ensure_item_resolved(&mut self, cx: &mut commands::Context) -> bool {
-        // > If computing full completion items is expensive, servers can additionally provide a
-        // > handler for the completion item resolve request. ...
-        // > A typical use case is for example: the `textDocument/completion` request doesn't fill
-        // > in the `documentation` property for returned completion items since it is expensive
-        // > to compute. When the item is selected in the user interface then a
-        // > 'completionItem/resolve' request is sent with the selected completion item as a parameter.
-        // > The returned completion item should have the documentation property filled in.
-        // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_completion
-        let current_item = match self.popup.contents().selection() {
-            Some(item) if !item.resolved => item.clone(),
-            _ => return false,
-        };
-
-        let Some(language_server) = cx
-            .editor
-            .language_server_by_id(current_item.language_server_id)
-        else {
-            return false;
-        };
-
-        // This method should not block the compositor so we handle the response asynchronously.
-        let Some(future) = language_server.resolve_completion_item(current_item.item.clone())
-        else {
-            return false;
-        };
-
-        cx.callback(
-            future,
-            move |_editor, compositor, response: Option<lsp::CompletionItem>| {
-                let resolved_item = match response {
-                    Some(item) => item,
-                    None => return,
-                };
-
-                if let Some(completion) = &mut compositor
-                    .find::<crate::ui::EditorView>()
-                    .unwrap()
-                    .completion
-                {
-                    let resolved_item = CompletionItem {
-                        item: resolved_item,
-                        language_server_id: current_item.language_server_id,
-                        resolved: true,
-                    };
-
-                    completion.replace_item(current_item, resolved_item);
-                }
-            },
-        );
-
-        true
     }
 
     pub fn area(&mut self, viewport: Rect, editor: &Editor) -> Rect {
@@ -473,10 +444,13 @@ impl Component for Completion {
         self.popup.render(area, surface, cx);
 
         // if we have a selection, render a markdown popup on top/below with info
-        let option = match self.popup.contents().selection() {
+        let option = match self.popup.contents_mut().selection_mut() {
             Some(option) => option,
             None => return,
         };
+        if !option.resolved {
+            self.resolve_handler.ensure_item_resolved(cx.editor, option);
+        }
         // need to render:
         // option.detail
         // ---
@@ -524,12 +498,7 @@ impl Component for Completion {
             None => return,
         };
 
-        let popup_area = {
-            let (popup_x, popup_y) = self.popup.get_rel_position(area, cx.editor);
-            let (popup_width, popup_height) = self.popup.get_size();
-            Rect::new(popup_x, popup_y, popup_width, popup_height)
-        };
-
+        let popup_area = self.popup.area(area, cx.editor);
         let doc_width_available = area.width.saturating_sub(popup_area.right());
         let doc_area = if doc_width_available > 30 {
             let mut doc_width = doc_width_available;
@@ -569,6 +538,12 @@ impl Component for Completion {
         // clear area
         let background = cx.editor.theme.get("ui.popup");
         surface.clear_with(doc_area, background);
+
+        if cx.editor.popup_border() {
+            use tui::widgets::{Block, Borders, Widget};
+            Widget::render(Block::default().borders(Borders::ALL), doc_area, surface);
+        }
+
         markdown_doc.render(doc_area, surface, cx);
     }
 }

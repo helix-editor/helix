@@ -84,6 +84,7 @@
 "ui.text.focus" = { fg = "white" }
 
 "ui.virtual" = { fg = "gray03" }
+"ui.virtual.ruler" = { bg = "gray03" }
 "ui.virtual.indent-guide" = { fg = "gray04" }
 "ui.virtual.inlay-hint" = { fg = "gray05" }
 
@@ -106,6 +107,8 @@
 "diagnostic.error".underline = { color = "bright_red", style = "curl" } 
 "diagnostic.info".underline = { color = "bright_blue", style = "curl" } 
 "diagnostic.hint".underline = { color = "bright_cyan", style = "curl" } 
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 warning = "bright_yellow"
 error = "bright_red"

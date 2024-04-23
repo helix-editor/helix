@@ -1,6 +1,6 @@
 # Author: Alexis Mousset <contact@amousset.me>
 # Adapted from https://protesilaos.com/emacs/modus-themes, by Protesilaos Stavrou
-# Version 4.3.0
+# Version 4.4.0
 #
 
 # Syntax highlighting
@@ -80,13 +80,14 @@ punctuation = "fg-dim"
 "ui.virtual" = "bg-active"
 "ui.virtual.ruler" = { bg = "bg-dim" }
 "ui.virtual.inlay-hint" = { fg = "fg-dim", modifiers = ["italic"] }
+"ui.virtual.jump-label" = { fg = "yellow-cooler", modifiers = ["bold"] }
 
 "ui.selection" = { fg = "fg-main", bg = "bg-inactive" }
 "ui.selection.primary" = { fg = "fg-main", bg = "bg-active" }
 
 "ui.cursor" = { fg = "bg-main", bg = "fg-main" }
 "ui.cursor.primary" = { fg = "bg-main", bg = "fg-dim" }
-"ui.cursor.match" = { bg = "bg-paren-match" }
+"ui.cursor.match" = { fg = "fg-main", bg = "bg-paren-match" }
 "ui.cursorline.primary" = { bg = "bg-hl-line" }
 
 "ui.highlight" = { bg = "bg-hl-line" }
@@ -99,6 +100,8 @@ punctuation = "fg-dim"
 "diagnostic.warning" = { underline = { color = "yellow-intense", style = "curl" } }
 "diagnostic.info" = { underline = { color = "cyan-intense", style = "curl" } }
 "diagnostic.hint" = { underline = { color = "blue-intense", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 error = "red"
 warning = "yellow-warmer"
@@ -162,12 +165,12 @@ bg-blue-subtle = "#ccdfff"
 bg-magenta-subtle = "#ffddff"
 bg-cyan-subtle = "#bfefff"
 
-bg-red-nuanced = "#fff1f0"
-bg-green-nuanced = "#ecf7ed"
-bg-yellow-nuanced = "#fff3da"
-bg-blue-nuanced = "#f3f3ff"
-bg-magenta-nuanced = "#fdf0ff"
-bg-cyan-nuanced = "#ebf6fa"
+bg-red-nuanced = "#ffe8e8"
+bg-green-nuanced = "#e0f6e0"
+bg-yellow-nuanced = "#f8f0d0"
+bg-blue-nuanced = "#ecedff"
+bg-magenta-nuanced = "#f8e6f5"
+bg-cyan-nuanced = "#e0f2fa"
 
 # Special purpose
 bg-completion = "#c0deff"

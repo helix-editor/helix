@@ -12,6 +12,8 @@ inherits = "monokai"
 "ui.statusline.insert" = { fg = "light-black", bg = "green" }
 "ui.statusline.select" = { fg = "light-black", bg = "purple" }
 
+"ui.virtual.jump-label" = { fg = "cyan", modifiers = ["bold"] }
+
 [palette]
 cyan = "#66D9EF"
 type = "#66D9EF"
