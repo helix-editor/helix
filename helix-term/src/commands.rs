@@ -504,6 +504,8 @@ static_commandss!(
     @key align_view_bottom, "Align view bottom",
     scroll_up scroll_up_mouse, "Scroll view up",
     scroll_down scroll_down_mouse, "Scroll view down",
+    @both scroll_right, "Scroll cursor to the right",
+    @both scroll_left, "Scroll cursor to the left",
     @focus match_brackets, "Goto matching bracket",
     @key surround_add, "Surround add",
     @key surround_replace, "Surround replace",
@@ -4956,6 +4958,14 @@ fn scroll_up(cx: &mut Context) {
 
 fn scroll_down(cx: &mut Context) {
     scroll(cx, cx.count(), Direction::Forward);
+}
+
+fn scroll_right(cx: &mut Context) {
+    move_char_right(cx)
+}
+
+fn scroll_left(cx: &mut Context) {
+    move_char_left(cx)
 }
 
 fn goto_ts_object_impl(cx: &mut Context, object: &'static str, direction: Direction) {

@@ -18,6 +18,8 @@ pub fn default() -> HashMap<Mode, HashMap<MouseEvent, MouseTrie>> {
         "1-middle" => paste_primary_clipboard_before_mouse,
         "scroll_up" => scroll_up_mouse,
         "scroll_down" => scroll_down_mouse,
+        "scroll_left" => scroll_left,
+        "scroll_right" => scroll_right,
 
     });
     let insert = normal.clone();
