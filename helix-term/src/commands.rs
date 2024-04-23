@@ -330,6 +330,7 @@ impl MappableCommand {
         file_picker_in_current_directory, "Open file picker at current working directory",
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
+        buffer_search_picker, "Fuzzy search the text in the current buffer",
         jumplist_picker, "Open jumplist picker",
         symbol_picker, "Open symbol picker",
         changed_file_picker, "Open changed file picker",
@@ -2237,6 +2238,44 @@ fn make_search_word_bounded(cx: &mut Context) {
         }
         Err(err) => cx.editor.set_error(err.to_string()),
     }
+}
+
+fn buffer_search_picker(cx: &mut Context) {
+    struct SearchMeta {
+        line: String,
+        line_number: usize,
+    }
+
+    impl ui::menu::Item for SearchMeta {
+        type Data = ();
+
+        fn format(&self, _data: &Self::Data) -> Row {
+            format!("{} {}", self.line_number, self.line).into()
+        }
+    }
+
+    let (_view, doc) = current!(cx.editor);
+    let picker = Picker::new(
+        doc.text().lines().enumerate().map(|(ln, l)| SearchMeta {
+            line: l.to_string(),
+            line_number: ln + 1,
+        }),
+        (),
+        |cx, meta: &SearchMeta, _action| {
+            goto_line_without_jumplist(cx.editor, NonZeroUsize::new(meta.line_number));
+
+            let scrolloff = cx.editor.config().scrolloff;
+            let (view, doc) = current!(cx.editor);
+            view.ensure_cursor_in_view(doc, scrolloff);
+        },
+    )
+    .with_preview(|editor, meta| {
+        let view = view!(editor);
+        let line = meta.line_number - 1;
+        Some((view.doc.into(), Some((line, line))))
+    });
+
+    cx.push_layer(Box::new(overlaid(picker)));
 }
 
 fn global_search(cx: &mut Context) {
