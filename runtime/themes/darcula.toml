@@ -75,7 +75,7 @@
 
 "diagnostic.warning" = { underline = { color = "dimorange", style = "curl"} }
 "diagnostic.error" = { underline = { color = "dimred", style = "curl"} }
-"diagnostic.info" = { underline = { color = "dimgrey", style = "curl"} }
+"diagnostic.info" = { underline = { color = "dimgrey", style = "dashed"} }
 "diagnostic.hint" = { underline = { color = "dimgrey", style = "dashed"} }
 "diagnostic.unnecessary" = { modifiers = ["dim"] }
 "diagnostic.deprecated" = { modifiers = ["crossed_out"] }
