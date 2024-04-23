@@ -124,9 +124,15 @@ impl<T: Component> Popup<T> {
     }
 
     fn render_info(&mut self, viewport: Rect, editor: &Editor) -> RenderInfo {
-        let position = self
+        let mut position = editor.cursor().0.unwrap_or_default();
+        if let Some(old_position) = self
             .position
-            .get_or_insert_with(|| editor.cursor().0.unwrap_or_default());
+            .filter(|old_position| old_position.row == position.row)
+        {
+            position = old_position;
+        } else {
+            self.position = Some(position);
+        }
 
         let is_menu = self
             .contents
@@ -303,14 +309,6 @@ impl<T: Component> Component for Popup<T> {
         } = self.render_info(viewport, cx.editor);
         self.area = area;
 
-        let max_offset = child_height.saturating_sub(area.height) as usize;
-        let half_page_size = (area.height / 2) as usize;
-        let scroll = max_offset.min(self.scroll_half_pages * half_page_size);
-        if half_page_size > 0 {
-            self.scroll_half_pages = scroll / half_page_size;
-        }
-        cx.scroll = Some(scroll);
-
         // clear area
         let background = if is_menu {
             // TODO: consistently style menu
@@ -330,12 +328,19 @@ impl<T: Component> Component for Popup<T> {
         }
         let border = usize::from(render_borders);
 
+        let max_offset = child_height.saturating_sub(inner.height) as usize;
+        let half_page_size = (inner.height / 2) as usize;
+        let scroll = max_offset.min(self.scroll_half_pages * half_page_size);
+        if half_page_size > 0 {
+            self.scroll_half_pages = scroll / half_page_size;
+        }
+        cx.scroll = Some(scroll);
         self.contents.render(inner, surface, cx);
 
         // render scrollbar if contents do not fit
         if self.has_scrollbar {
-            let win_height = (inner.height as usize).saturating_sub(2 * border);
-            let len = (child_height as usize).saturating_sub(2 * border);
+            let win_height = inner.height as usize;
+            let len = child_height as usize;
             let fits = len <= win_height;
             let scroll_style = cx.editor.theme.get("ui.menu.scroll");
 
@@ -350,7 +355,8 @@ impl<T: Component> Component for Popup<T> {
 
                 let mut cell;
                 for i in 0..win_height {
-                    cell = &mut surface[(inner.right() - 1, inner.top() + (border + i) as u16)];
+                    cell =
+                        &mut surface[(inner.right() - 1 + border as u16, inner.top() + i as u16)];
 
                     let half_block = if render_borders { "▌" } else { "▐" };
 
