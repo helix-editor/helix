@@ -123,7 +123,12 @@ impl<T: Component> Popup<T> {
             .required_size((viewport.width, viewport.height))
             .expect("Component needs required_size implemented in order to be embedded in a popup");
 
-        self.area_internal(viewport, editor, child_size)
+        self.area_internal(
+            viewport,
+            editor,
+            child_size,
+            self.type_name().starts_with("helix_term::ui::menu::Menu"),
+        )
     }
 
     pub fn area_internal(
@@ -131,6 +136,7 @@ impl<T: Component> Popup<T> {
         viewport: Rect,
         editor: &Editor,
         child_size: (u16, u16),
+        is_menu: bool,
     ) -> Rect {
         let width = child_size.0.min(viewport.width);
         let height = child_size.1.min(viewport.height.saturating_sub(2)); // add some spacing in the viewport
@@ -150,7 +156,17 @@ impl<T: Component> Popup<T> {
             rel_x = rel_x.saturating_sub((rel_x + width).saturating_sub(viewport.width));
         }
 
-        let can_put_below = viewport.height > rel_y + MIN_HEIGHT;
+        let can_put_below = if is_menu && editor.menu_border() {
+            // in case of menu borders, we dont want to put it below if it would show two lines less
+            (child_size.1 <= MIN_HEIGHT && viewport.height > rel_y + MIN_HEIGHT)
+                || (child_size.1 > MIN_HEIGHT && viewport.height > rel_y + MIN_HEIGHT + 2)
+        } else if is_menu {
+            viewport.height > rel_y + MIN_HEIGHT
+        } else {
+            // non-menu popups need 6 height below
+            viewport.height > rel_y + MIN_HEIGHT + 2
+        };
+
         let can_put_above = rel_y.checked_sub(MIN_HEIGHT).is_some();
         let final_pos = match self.position_bias {
             Open::Below => match can_put_below {
@@ -279,12 +295,22 @@ impl<T: Component> Component for Popup<T> {
     }
 
     fn render(&mut self, viewport: Rect, surface: &mut Surface, cx: &mut Context) {
-        let child_size = self
+        let mut child_size = self
             .contents
             .required_size((viewport.width, viewport.height))
             .expect("Component needs required_size implemented in order to be embedded in a popup");
 
-        let area = self.area_internal(viewport, cx.editor, child_size);
+        let is_menu = self
+            .contents
+            .type_name()
+            .starts_with("helix_term::ui::menu::Menu");
+
+        // if we have a menu with borders enabled, we dont want to see two lines less
+        if is_menu {
+            child_size.1 += 2 * u16::from(cx.editor.menu_border());
+        }
+
+        let area = self.area_internal(viewport, cx.editor, child_size, is_menu);
         self.area = area;
 
         let max_offset = child_size.1.saturating_sub(area.height) as usize;
@@ -301,11 +327,7 @@ impl<T: Component> Component for Popup<T> {
 
         let render_borders = cx.editor.popup_border();
 
-        let inner = if self
-            .contents
-            .type_name()
-            .starts_with("helix_term::ui::menu::Menu")
-        {
+        let inner = if is_menu {
             area
         } else {
             area.inner(&self.margin)
