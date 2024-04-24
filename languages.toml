@@ -1643,7 +1643,7 @@ source = { git = "https://github.com/mtoohey31/tree-sitter-gitattributes", rev =
 [[language]]
 name = "git-ignore"
 scope = "source.gitignore"
-file-types = [{ glob = ".gitignore" }, { glob = ".gitignore_global" }, { glob = ".ignore" }, { glob = ".prettierignore" }, { glob = ".eslintignore" }, { glob = ".npmignore"}, { glob = "CODEOWNERS" }, { glob = ".config/helix/ignore" }, { glob = ".helix/ignore" }]
+file-types = [{ glob = ".gitignore_global" }, { glob = ".ignore" }, { glob = "CODEOWNERS" }, { glob = ".config/helix/ignore" }, { glob = ".helix/ignore" }, { glob = ".*ignore" }]
 injection-regex = "git-ignore"
 comment-token = "#"
 grammar = "gitignore"
