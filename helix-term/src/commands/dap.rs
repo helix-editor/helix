@@ -41,7 +41,7 @@ fn thread_picker(
             let debugger = debugger!(editor);
 
             let thread_states = debugger.thread_states.clone();
-            let columns = vec![
+            let columns = [
                 ui::PickerColumn::new("name", |item: &Thread, _| item.name.as_str().into()),
                 ui::PickerColumn::new("state", |item: &Thread, thread_states: &ThreadStates| {
                     thread_states
@@ -250,7 +250,7 @@ pub fn dap_launch(cx: &mut Context) {
 
     let templates = config.templates.clone();
 
-    let columns = vec![ui::PickerColumn::new(
+    let columns = [ui::PickerColumn::new(
         "template",
         |item: &DebugTemplate, _| item.name.as_str().into(),
     )];
@@ -725,7 +725,7 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
 
     let frames = debugger.stack_frames[&thread_id].clone();
 
-    let columns = vec![ui::PickerColumn::new("frame", |item: &StackFrame, _| {
+    let columns = [ui::PickerColumn::new("frame", |item: &StackFrame, _| {
         item.name.as_str().into() // TODO: include thread_states in the label
     })];
     let picker = Picker::new(columns, 0, frames, (), move |cx, frame, _action| {

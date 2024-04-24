@@ -371,7 +371,7 @@ pub fn symbol_picker(cx: &mut Context) {
             symbols.append(&mut lsp_items);
         }
         let call = move |_editor: &mut Editor, compositor: &mut Compositor| {
-            let columns = vec![
+            let columns = [
                 ui::PickerColumn::new("kind", |item: &SymbolInformationItem, _| {
                     display_symbol_kind(item.symbol.kind).into()
                 }),
@@ -478,7 +478,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
         }
         .boxed()
     };
-    let columns = vec![
+    let columns = [
         ui::PickerColumn::new("kind", |item: &SymbolInformationItem, _| {
             display_symbol_kind(item.symbol.kind).into()
         }),
@@ -855,7 +855,7 @@ fn goto_impl(
         }
         [] => unreachable!("`locations` should be non-empty for `goto_impl`"),
         _locations => {
-            let columns = vec![ui::PickerColumn::new(
+            let columns = [ui::PickerColumn::new(
                 "location",
                 |item: &lsp::Location, cwdir: &std::path::PathBuf| {
                     // The preallocation here will overallocate a few characters since it will account for the

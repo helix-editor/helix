@@ -2265,7 +2265,7 @@ fn global_search(cx: &mut Context) {
         file_picker_config: config.file_picker.clone(),
     };
 
-    let columns = vec![
+    let columns = [
         PickerColumn::new("path", |item: &FileResult, _| {
             let path = helix_stdx::path::get_relative_path(&item.path);
             format!("{}:{}", path.to_string_lossy(), item.line_num + 1).into()
@@ -2886,7 +2886,7 @@ fn buffer_picker(cx: &mut Context) {
     // mru
     items.sort_unstable_by_key(|item| std::cmp::Reverse(item.focused_at));
 
-    let columns = vec![
+    let columns = [
         PickerColumn::new("id", |meta: &BufferMeta, _| meta.id.to_string().into()),
         PickerColumn::new("flags", |meta: &BufferMeta, _| {
             let mut flags = String::new();
@@ -2960,7 +2960,7 @@ fn jumplist_picker(cx: &mut Context) {
         }
     };
 
-    let columns = vec![
+    let columns = [
         ui::PickerColumn::new("id", |item: &JumpMeta, _| item.id.to_string().into()),
         ui::PickerColumn::new("path", |item: &JumpMeta, _| {
             let path = item
@@ -3039,7 +3039,7 @@ fn changed_file_picker(cx: &mut Context) {
     let deleted = cx.editor.theme.get("diff.minus");
     let renamed = cx.editor.theme.get("diff.delta.moved");
 
-    let columns = vec![
+    let columns = [
         PickerColumn::new("change", |change: &FileChange, data: &FileChangeData| {
             match change {
                 FileChange::Untracked { .. } => Span::styled("+ untracked", data.style_untracked),
@@ -3130,7 +3130,7 @@ pub fn command_palette(cx: &mut Context) {
                     }),
             );
 
-            let columns = vec![
+            let columns = [
                 ui::PickerColumn::new("name", |item, _| match item {
                     MappableCommand::Typable { name, .. } => format!(":{name}").into(),
                     MappableCommand::Static { name, .. } => (*name).into(),

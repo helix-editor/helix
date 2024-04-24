@@ -275,7 +275,11 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
 }
 
 impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
-    pub fn stream(columns: Vec<Column<T, D>>, editor_data: D) -> (Nucleo<T>, Injector<T, D>) {
+    pub fn stream(
+        columns: impl IntoIterator<Item = Column<T, D>>,
+        editor_data: D,
+    ) -> (Nucleo<T>, Injector<T, D>) {
+        let columns: Arc<[_]> = columns.into_iter().collect();
         let matcher_columns = columns.iter().filter(|col| col.filter).count() as u32;
         assert!(matcher_columns > 0);
         let matcher = Nucleo::new(
@@ -286,7 +290,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         );
         let streamer = Injector {
             dst: matcher.injector(),
-            columns: columns.into(),
+            columns,
             editor_data: Arc::new(editor_data),
             version: 0,
             picker_version: Arc::new(AtomicUsize::new(0)),
@@ -295,13 +299,19 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         (matcher, streamer)
     }
 
-    pub fn new(
-        columns: Vec<Column<T, D>>,
+    pub fn new<C, O, F>(
+        columns: C,
         primary_column: usize,
-        options: impl IntoIterator<Item = T>,
+        options: O,
         editor_data: D,
-        callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
-    ) -> Self {
+        callback_fn: F,
+    ) -> Self
+    where
+        C: IntoIterator<Item = Column<T, D>>,
+        O: IntoIterator<Item = T>,
+        F: Fn(&mut Context, &T, Action) + 'static,
+    {
+        let columns: Arc<[_]> = columns.into_iter().collect();
         let matcher_columns = columns.iter().filter(|col| col.filter).count() as u32;
         assert!(matcher_columns > 0);
         let matcher = Nucleo::new(
@@ -316,7 +326,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         }
         Self::with(
             matcher,
-            columns.into(),
+            columns,
             primary_column,
             Arc::new(editor_data),
             Arc::new(AtomicUsize::new(0)),
