@@ -512,6 +512,8 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         if self.query == old_query {
             return;
         }
+        // If the query has meaningfully changed, reset the cursor to the top of the results.
+        self.cursor = 0;
         // Have nucleo reparse each changed column.
         for (i, column) in self
             .columns
