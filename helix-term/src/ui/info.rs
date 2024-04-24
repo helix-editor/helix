@@ -10,6 +10,12 @@ impl Component for Info {
         let text_style = cx.editor.theme.get("ui.text.info");
         let popup_style = cx.editor.theme.get("ui.popup.info");
 
+        let mut statusline_height = 0;
+        let use_statusline = cx.editor.config().statusline.enable;
+        if use_statusline {
+            statusline_height = 2;
+        }
+
         // Calculate the area of the terminal to modify. Because we want to
         // render at the bottom right, we use the viewport's width and height
         // which evaluate to the most bottom right coordinate.
@@ -17,7 +23,7 @@ impl Component for Info {
         let height = self.height + 2; // +2 for border
         let area = viewport.intersection(Rect::new(
             viewport.width.saturating_sub(width),
-            viewport.height.saturating_sub(height + 2), // +2 for statusline
+            viewport.height.saturating_sub(height + statusline_height), // +2 for statusline
             width,
             height,
         ));

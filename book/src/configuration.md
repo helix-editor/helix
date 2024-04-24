@@ -82,6 +82,7 @@ Statusline elements can be defined as follows:
 
 ```toml
 [editor.statusline]
+enable = true
 left = ["mode", "spinner"]
 center = ["file-name"]
 right = ["diagnostics", "selections", "position", "file-encoding", "file-line-ending", "file-type"]
@@ -94,6 +95,7 @@ The `[editor.statusline]` key takes the following sub-keys:
 
 | Key           | Description | Default |
 | ---           | ---         | ---     |
+| `enable`      | Enables the statusline. Setting this to false will hide it completely | `true` |
 | `left`        | A list of elements aligned to the left of the statusline | `["mode", "spinner", "file-name", "read-only-indicator", "file-modification-indicator"]` |
 | `center`      | A list of elements aligned to the middle of the statusline | `[]` |
 | `right`       | A list of elements aligned to the right of the statusline | `["diagnostics", "selections", "register", "position", "file-encoding"]` |

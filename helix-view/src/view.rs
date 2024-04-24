@@ -1,7 +1,7 @@
 use crate::{
     align_view,
     document::DocumentInlayHints,
-    editor::{GutterConfig, GutterType},
+    editor::{GutterConfig, GutterType, StatusLineConfig},
     graphics::Rect,
     Align, Document, DocumentId, Theme, ViewId,
 };
@@ -125,6 +125,7 @@ pub struct View {
     pub object_selections: Vec<Selection>,
     /// all gutter-related configuration settings, used primarily for gutter rendering
     pub gutters: GutterConfig,
+    pub statusline: StatusLineConfig,
     /// A mapping between documents and the last history revision the view was updated at.
     /// Changes between documents and views are synced lazily when switching windows. This
     /// mapping keeps track of the last applied history revision so that only new changes
@@ -143,7 +144,7 @@ impl fmt::Debug for View {
 }
 
 impl View {
-    pub fn new(doc: DocumentId, gutters: GutterConfig) -> Self {
+    pub fn new(doc: DocumentId, gutters: GutterConfig, statusline: StatusLineConfig) -> Self {
         Self {
             id: ViewId::default(),
             doc,
@@ -158,6 +159,7 @@ impl View {
             last_modified_docs: [None, None],
             object_selections: Vec::new(),
             gutters,
+            statusline,
             doc_revisions: HashMap::new(),
         }
     }
@@ -170,11 +172,19 @@ impl View {
     }
 
     pub fn inner_area(&self, doc: &Document) -> Rect {
-        self.area.clip_left(self.gutter_offset(doc)).clip_bottom(1) // -1 for statusline
+        let mut statusline_height = 0;
+        if self.statusline.enable {
+            statusline_height = 1;
+        }
+        self.area.clip_left(self.gutter_offset(doc)).clip_bottom(statusline_height) // -1 for statusline
     }
 
     pub fn inner_height(&self) -> usize {
-        self.area.clip_bottom(1).height.into() // -1 for statusline
+        let mut statusline_height = 0;
+        if self.statusline.enable {
+            statusline_height = 1;
+        }
+        self.area.clip_bottom(statusline_height).height.into() // -1 for statusline
     }
 
     pub fn inner_width(&self, doc: &Document) -> u16 {
@@ -647,7 +657,7 @@ mod tests {
 
     #[test]
     fn test_text_pos_at_screen_coords() {
-        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        let mut view = View::new(DocumentId::default(), GutterConfig::default(), StatusLineConfig::default());
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
         let doc = Document::from(
@@ -821,6 +831,7 @@ mod tests {
                 layout: vec![GutterType::Diagnostics],
                 line_numbers: GutterLineNumbersConfig::default(),
             },
+            StatusLineConfig::default(),
         );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
@@ -850,6 +861,7 @@ mod tests {
                 layout: vec![],
                 line_numbers: GutterLineNumbersConfig::default(),
             },
+            StatusLineConfig::default(),
         );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
@@ -873,7 +885,7 @@ mod tests {
 
     #[test]
     fn test_text_pos_at_screen_coords_cjk() {
-        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        let mut view = View::new(DocumentId::default(), GutterConfig::default(), StatusLineConfig::default());
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hi! こんにちは皆さん");
         let doc = Document::from(
@@ -956,7 +968,7 @@ mod tests {
 
     #[test]
     fn test_text_pos_at_screen_coords_graphemes() {
-        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        let mut view = View::new(DocumentId::default(), GutterConfig::default(), StatusLineConfig::default());
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hèl̀l̀ò world!");
         let doc = Document::from(

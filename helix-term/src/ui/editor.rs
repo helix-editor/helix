@@ -220,15 +220,18 @@ impl EditorView {
 
         Self::render_diagnostics(doc, view, inner, surface, theme);
 
-        let statusline_area = view
-            .area
-            .clip_top(view.area.height.saturating_sub(1))
-            .clip_bottom(1); // -1 from bottom to remove commandline
+        let use_statusline = config.statusline.enable;
+        if use_statusline {
+            let statusline_area = view
+                .area
+                .clip_top(view.area.height.saturating_sub(1))
+                .clip_bottom(1); // -1 from bottom to remove commandline
 
-        let mut context =
-            statusline::RenderContext::new(editor, doc, view, is_focused, &self.spinners);
+            let mut context =
+                statusline::RenderContext::new(editor, doc, view, is_focused, &self.spinners);
 
-        statusline::render(&mut context, statusline_area, surface);
+            statusline::render(&mut context, statusline_area, surface);
+        }
     }
 
     pub fn render_rulers(
@@ -1476,7 +1479,11 @@ impl Component for EditorView {
         };
 
         // -1 for commandline and -1 for bufferline
-        let mut editor_area = area.clip_bottom(1);
+        let mut editor_area = area;
+        let use_statusline = config.statusline.enable;
+        if use_statusline {
+            editor_area = editor_area.clip_bottom(1);
+        }
         if use_bufferline {
             editor_area = editor_area.clip_top(1);
         }

@@ -452,6 +452,7 @@ pub struct SearchConfig {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct StatusLineConfig {
+    pub enable: bool,
     pub left: Vec<StatusLineElement>,
     pub center: Vec<StatusLineElement>,
     pub right: Vec<StatusLineElement>,
@@ -464,6 +465,7 @@ impl Default for StatusLineConfig {
         use StatusLineElement as E;
 
         Self {
+            enable: true,
             left: vec![
                 E::Mode,
                 E::Spinner,
@@ -1549,7 +1551,7 @@ impl Editor {
                     .try_get(self.tree.focus)
                     .filter(|v| id == v.doc) // Different Document
                     .cloned()
-                    .unwrap_or_else(|| View::new(id, self.config().gutters.clone()));
+                    .unwrap_or_else(|| View::new(id, self.config().gutters.clone(), self.config().statusline.clone()));
                 let view_id = self.tree.split(
                     view,
                     match action {
@@ -1723,7 +1725,7 @@ impl Editor {
                 .map(|(&doc_id, _)| doc_id)
                 .next()
                 .unwrap_or_else(|| self.new_document(Document::default(self.config.clone())));
-            let view = View::new(doc_id, self.config().gutters.clone());
+            let view = View::new(doc_id, self.config().gutters.clone(), self.config().statusline.clone());
             let view_id = self.tree.insert(view);
             let doc = doc_mut!(self, &doc_id);
             doc.ensure_view_init(view_id);
