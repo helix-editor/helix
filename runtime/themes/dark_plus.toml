@@ -77,6 +77,9 @@
 "ui.virtual.indent-guide"    = { fg = "dark_gray4" }
 "ui.virtual.inlay-hint"      = { fg = "dark_gray5"}
 "ui.virtual.jump-label"      = { fg = "dark_gray", modifiers = ["bold"] }
+"ui.highlight.frameline"     = { bg = "#4b4b18" }
+"ui.debug.active"            = { fg = "#ffcc00" }
+"ui.debug.breakpoint"        = { fg = "#e51400" }
 "warning"                    = { fg = "gold2" }
 "error"                      = { fg = "red" }
 "info"                       = { fg = "light_blue" }
