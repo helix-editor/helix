@@ -1725,7 +1725,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
         return;
     }
 
-    let view_offset = doc.view_data(view.id).unwrap().view_position;
+    let view_offset = doc.view_data(view.id).view_position;
 
     let mut head;
     match direction {
@@ -5142,7 +5142,7 @@ fn split(editor: &mut Editor, action: Action) {
     let (view, doc) = current!(editor);
     let id = doc.id();
     let selection = doc.selection(view.id).clone();
-    let offset = doc.view_data(view.id).unwrap().view_position;
+    let offset = doc.view_data(view.id).view_position;
 
     editor.switch(id, action);
 
@@ -5250,7 +5250,7 @@ fn align_view_middle(cx: &mut Context) {
     let pos = doc.selection(view.id).primary().cursor(doc_text);
     let pos = visual_offset_from_block(
         doc_text,
-        doc.view_data(view.id).unwrap().view_position.anchor,
+        doc.view_data(view.id).view_position.anchor,
         pos,
         &text_fmt,
         &annotations,
@@ -6120,8 +6120,7 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
 
     // This is not necessarily exact if there is virtual text like soft wrap.
     // It's ok though because the extra jump labels will not be rendered.
-    let start =
-        text.line_to_char(text.char_to_line(doc.view_data(view.id).unwrap().view_position.anchor));
+    let start = text.line_to_char(text.char_to_line(doc.view_data(view.id).view_position.anchor));
     let end = text.line_to_char(view.estimate_last_doc_line(doc) + 1);
 
     let primary_selection = doc.selection(view.id).primary();

@@ -1210,7 +1210,6 @@ fn compute_inlay_hints_for_view(
     let view_height = view.inner_height();
     let first_visible_line = doc_text.char_to_line(
         doc.view_data(view_id)
-            .unwrap()
             .view_position
             .anchor
             .min(doc_text.len_chars()),
