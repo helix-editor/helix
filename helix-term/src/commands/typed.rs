@@ -1589,7 +1589,6 @@ fn tree_sitter_highlight_name(
             // Calculate viewport byte ranges:
             let row = text.char_to_line(
                 doc.view_data(view.id)
-                    .unwrap()
                     .view_position
                     .anchor
                     .min(text.len_chars()),

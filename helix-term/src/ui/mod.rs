@@ -83,7 +83,7 @@ pub fn raw_regex_prompt(
     let (view, doc) = current!(cx.editor);
     let doc_id = view.doc;
     let snapshot = doc.selection(view.id).clone();
-    let offset_snapshot = doc.view_data(view.id).unwrap().view_position;
+    let offset_snapshot = doc.view_data(view.id).view_position;
     let config = cx.editor.config();
 
     let mut prompt = Prompt::new(

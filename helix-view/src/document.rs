@@ -133,7 +133,7 @@ pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
     selections: HashMap<ViewId, Selection>,
-    pub view_data: HashMap<ViewId, ViewData>,
+    view_data: HashMap<ViewId, ViewData>,
 
     /// Inlay hints annotations for the document, by view.
     ///
@@ -661,7 +661,7 @@ impl Document {
             selections: HashMap::default(),
             inlay_hints: HashMap::default(),
             inlay_hints_oudated: false,
-            view_data: Default::default(), // TODO: verify this is what we want
+            view_data: Default::default(),
             indent_style: DEFAULT_INDENT,
             line_ending,
             restore_cursor: false,
@@ -1197,9 +1197,7 @@ impl Document {
             self.reset_selection(view_id);
         }
 
-        if self.view_data(view_id).is_none() {
-            self.view_data.insert(view_id, ViewData::default());
-        }
+        self.view_data_mut(view_id);
     }
 
     /// Mark document as recent used for MRU sorting
@@ -1775,8 +1773,13 @@ impl Document {
         &self.selections
     }
 
-    pub fn view_data(&self, view_id: ViewId) -> Option<&ViewData> {
+    pub(crate) fn get_view_data(&self, view_id: ViewId) -> Option<&ViewData> {
         self.view_data.get(&view_id)
+    }
+    pub fn view_data(&self, view_id: ViewId) -> &ViewData {
+        self.view_data
+            .get(&view_id)
+            .expect("This should only be called after ensure_view_init")
     }
 
     pub fn view_data_mut(&mut self, view_id: ViewId) -> &mut ViewData {

@@ -234,7 +234,7 @@ impl View {
         doc: &Document,
         scrolloff: usize,
     ) -> Option<ViewPosition> {
-        let view_offset = doc.view_data(self.id)?.view_position;
+        let view_offset = doc.get_view_data(self.id)?.view_position;
         let doc_text = doc.text().slice(..);
         let viewport = self.inner_area(doc);
         let vertical_viewport_end = view_offset.vertical_offset + viewport.height as usize;
@@ -351,7 +351,6 @@ impl View {
         let doc_text = doc.text().slice(..);
         let line = doc_text.char_to_line(
             doc.view_data(self.id)
-                .unwrap()
                 .view_position
                 .anchor
                 .min(doc_text.len_chars()),
@@ -369,15 +368,11 @@ impl View {
         let viewport = self.inner_area(doc);
         let text_fmt = doc.text_format(viewport.width, None);
         let annotations = self.text_annotations(doc, None);
-        let view_offset = doc.view_data(self.id).unwrap().view_position;
+        let view_offset = doc.view_data(self.id).view_position;
 
         // last visual line in view is trivial to compute
-        let visual_height = doc
-            .view_data(self.id)
-            .unwrap()
-            .view_position
-            .vertical_offset
-            + viewport.height as usize;
+        let visual_height =
+            doc.view_data(self.id).view_position.vertical_offset + viewport.height as usize;
 
         // fast path when the EOF is not visible on the screen,
         if self.estimate_last_doc_line(doc) < doc_text.len_lines() - 1 {
@@ -410,7 +405,7 @@ impl View {
         text: RopeSlice,
         pos: usize,
     ) -> Option<Position> {
-        let view_offset = doc.view_data(self.id).unwrap().view_position;
+        let view_offset = doc.view_data(self.id).view_position;
 
         let viewport = self.inner_area(doc);
         let text_fmt = doc.text_format(viewport.width, None);
@@ -544,7 +539,7 @@ impl View {
         ignore_virtual_text: bool,
     ) -> Option<usize> {
         let text = doc.text().slice(..);
-        let view_offset = doc.view_data(self.id).unwrap().view_position;
+        let view_offset = doc.view_data(self.id).view_position;
 
         let text_row = row as usize + view_offset.vertical_offset;
         let text_col = column as usize + view_offset.horizontal_offset;
