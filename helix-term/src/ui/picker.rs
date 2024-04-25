@@ -787,13 +787,21 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
 
         // -- Header
         if self.columns.len() > 1 {
+            let active_column = self.query.active_column(self.prompt.position());
             let header_style = cx.editor.theme.get("ui.picker.header");
 
             table = table.header(Row::new(self.columns.iter().map(|column| {
                 if column.hidden {
                     Cell::default()
                 } else {
-                    Cell::from(Span::styled(Cow::from(&*column.name), header_style))
+                    let style = if active_column.is_some_and(|name| Arc::ptr_eq(name, &column.name))
+                    {
+                        cx.editor.theme.get("ui.picker.header.active")
+                    } else {
+                        header_style
+                    };
+
+                    Cell::from(Span::styled(Cow::from(&*column.name), style))
                 }
             })));
         }

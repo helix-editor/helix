@@ -1,4 +1,4 @@
-use std::{collections::HashMap, mem, sync::Arc};
+use std::{collections::HashMap, mem, ops::Range, sync::Arc};
 
 #[derive(Debug)]
 pub(super) struct PickerQuery {
@@ -11,6 +11,10 @@ pub(super) struct PickerQuery {
     /// The mapping between column names and input in the query
     /// for those columns.
     inner: HashMap<Arc<str>, Arc<str>>,
+    /// The byte ranges of the input text which are used as input for each column.
+    /// This is calculated at parsing time for use in [Self::active_column].
+    /// This Vec is naturally sorted in ascending order and ranges do not overlap.
+    column_ranges: Vec<(Range<usize>, Option<Arc<str>>)>,
 }
 
 impl PartialEq<HashMap<Arc<str>, Arc<str>>> for PickerQuery {
@@ -26,10 +30,12 @@ impl PickerQuery {
     ) -> Self {
         let column_names: Box<[_]> = column_names.collect();
         let inner = HashMap::with_capacity(column_names.len());
+        let column_ranges = vec![(0..usize::MAX, Some(column_names[primary_column].clone()))];
         Self {
             column_names,
             primary_column,
             inner,
+            column_ranges,
         }
     }
 
@@ -44,6 +50,9 @@ impl PickerQuery {
         let mut in_field = false;
         let mut field = None;
         let mut text = String::new();
+        self.column_ranges.clear();
+        self.column_ranges
+            .push((0..usize::MAX, Some(primary_field.clone())));
 
         macro_rules! finish_field {
             () => {
@@ -59,7 +68,7 @@ impl PickerQuery {
             };
         }
 
-        for ch in input.chars() {
+        for (idx, ch) in input.char_indices() {
             match ch {
                 // Backslash escaping
                 _ if escaped => {
@@ -77,9 +86,19 @@ impl PickerQuery {
                     if !text.is_empty() {
                         finish_field!();
                     }
+                    let (range, _field) = self
+                        .column_ranges
+                        .last_mut()
+                        .expect("column_ranges is non-empty");
+                    range.end = idx;
                     in_field = true;
                 }
                 ' ' if in_field => {
+                    text.clear();
+                    in_field = false;
+                }
+                _ if in_field => {
+                    text.push(ch);
                     // Go over all columns and their indices, find all that starts with field key,
                     // select a column that fits key the most.
                     field = self
@@ -88,8 +107,17 @@ impl PickerQuery {
                         .filter(|col| col.starts_with(&text))
                         // select "fittest" column
                         .min_by_key(|col| col.len());
-                    text.clear();
-                    in_field = false;
+
+                    // Update the column range for this column.
+                    if let Some((_range, current_field)) = self
+                        .column_ranges
+                        .last_mut()
+                        .filter(|(range, _)| range.end == usize::MAX)
+                    {
+                        *current_field = field.cloned();
+                    } else {
+                        self.column_ranges.push((idx..usize::MAX, field.cloned()));
+                    }
                 }
                 _ => text.push(ch),
             }
@@ -105,6 +133,23 @@ impl PickerQuery {
             .collect();
 
         mem::replace(&mut self.inner, new_inner)
+    }
+
+    /// Finds the column which the cursor is 'within' in the last parse.
+    ///
+    /// The cursor is considered to be within a column when it is placed within any
+    /// of a column's text. See the `active_column_test` unit test below for examples.
+    ///
+    /// `cursor` is a byte index that represents the location of the prompt's cursor.
+    pub fn active_column(&self, cursor: usize) -> Option<&Arc<str>> {
+        let point = self
+            .column_ranges
+            .partition_point(|(range, _field)| cursor > range.end);
+
+        self.column_ranges
+            .get(point)
+            .filter(|(range, _field)| cursor >= range.start && cursor <= range.end)
+            .and_then(|(_range, field)| field.as_ref())
     }
 }
 
@@ -277,6 +322,47 @@ mod test {
                 "primary".into() => "hello world".into(),
                 "field1".into() => "abc".into()
             )
+        );
+    }
+
+    #[test]
+    fn active_column_test() {
+        fn active_column<'a>(query: &'a mut PickerQuery, input: &str) -> Option<&'a str> {
+            let cursor = input.find('|').expect("cursor must be indicated with '|'");
+            let input = input.replace('|', "");
+            query.parse(&input);
+            query.active_column(cursor).map(AsRef::as_ref)
+        }
+
+        let mut query = PickerQuery::new(
+            ["primary".into(), "foo".into(), "bar".into()].into_iter(),
+            0,
+        );
+
+        assert_eq!(active_column(&mut query, "|"), Some("primary"));
+        assert_eq!(active_column(&mut query, "hello| world"), Some("primary"));
+        assert_eq!(active_column(&mut query, "|%foo hello"), Some("primary"));
+        assert_eq!(active_column(&mut query, "%foo|"), Some("foo"));
+        assert_eq!(active_column(&mut query, "%|"), None);
+        assert_eq!(active_column(&mut query, "%baz|"), None);
+        assert_eq!(active_column(&mut query, "%quiz%|"), None);
+        assert_eq!(active_column(&mut query, "%foo hello| world"), Some("foo"));
+        assert_eq!(active_column(&mut query, "%foo hello world|"), Some("foo"));
+        assert_eq!(active_column(&mut query, "%foo| hello world"), Some("foo"));
+        assert_eq!(active_column(&mut query, "%|foo hello world"), Some("foo"));
+        assert_eq!(active_column(&mut query, "%f|oo hello world"), Some("foo"));
+        assert_eq!(active_column(&mut query, "hello %f|oo world"), Some("foo"));
+        assert_eq!(
+            active_column(&mut query, "hello %f|oo world %bar !"),
+            Some("foo")
+        );
+        assert_eq!(
+            active_column(&mut query, "hello %foo wo|rld %bar !"),
+            Some("foo")
+        );
+        assert_eq!(
+            active_column(&mut query, "hello %foo world %bar !|"),
+            Some("bar")
         );
     }
 }

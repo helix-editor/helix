@@ -92,6 +92,12 @@ impl Prompt {
         }
     }
 
+    /// Gets the byte index in the input representing the current cursor location.
+    #[inline]
+    pub(crate) fn position(&self) -> usize {
+        self.cursor
+    }
+
     pub fn with_line(mut self, line: String, editor: &Editor) -> Self {
         self.set_line(line, editor);
         self
