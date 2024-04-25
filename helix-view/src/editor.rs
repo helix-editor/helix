@@ -1898,8 +1898,8 @@ impl Editor {
 
     pub fn ensure_cursor_in_view(&mut self, id: ViewId) {
         let config = self.config();
-        let view = self.tree.get(id).clone();
-        let doc = self.document_mut(view.doc).unwrap();
+        let view = self.tree.get(id);
+        let doc = doc_mut!(self, &view.doc);
         view.ensure_cursor_in_view(doc, config.scrolloff)
     }
 

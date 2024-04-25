@@ -394,21 +394,12 @@ impl Application {
         self.editor.refresh_config();
 
         // reset view position in case softwrap was enabled/disabled
-        let mut view_position_resets = Vec::new();
         let scrolloff = self.editor.config().scrolloff;
         for (view, _) in self.editor.tree.views() {
-            let doc = &self.editor.documents[&view.doc];
-
+            let doc = doc_mut!(self.editor, &view.doc);
             if let Some(offset) = view.offset_coords_to_in_view_center::<false>(doc, scrolloff) {
-                view_position_resets.push((offset, view.id, view.doc));
+                doc.view_data_mut(view.id).view_position = offset
             }
-        }
-        for (offset, view_id, doc_id) in view_position_resets {
-            self.editor
-                .document_mut(doc_id)
-                .unwrap()
-                .view_data_mut(view_id)
-                .view_position = offset;
         }
     }
 
