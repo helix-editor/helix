@@ -207,8 +207,8 @@ async fn test_multi_selection_paste_using_named_register() -> anyhow::Result<()>
             #(|dolor)#
             "},
         concat!(
-            r#""ay"#, // Select register 'a' as the yank destination.
-            r#"ap0"#  // Select register 'a' for pasting. Zero indicates most recent yank.
+            r#""ay"#,  // Select register 'a' as the yank destination.
+            r#""ap0"#, // Select register 'a' for pasting. Zero indicates most recent yank.
         ),
         indoc! {"\
             lorem#[|lorem]#
