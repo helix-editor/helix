@@ -64,7 +64,9 @@ label = "honey"
 "ui.selection" = { bg = "#540099" }
 "ui.selection.primary" = { bg = "#540099" }
 # TODO: namespace ui.cursor as ui.selection.cursor?
-"ui.cursor.primary.selection" = { bg = "delta" }
+"ui.cursor.select" = { bg = "delta" }
+"ui.cursor.insert" = { bg = "white" }
+"ui.cursor.primary.select" = { bg = "delta" }
 "ui.cursor.primary.insert" = { bg = "white" }
 "ui.cursor.match" = { fg = "#212121", bg = "#6C6999" }
 "ui.cursor" = { modifiers = ["reversed"] }
