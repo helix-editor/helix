@@ -329,6 +329,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         },
 
         "\"" => select_register,
+        "C-r" => select_register_history,
         "|" => shell_pipe,
         "A-|" => shell_pipe_to,
         "!" => shell_insert_output,
