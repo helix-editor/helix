@@ -93,7 +93,7 @@ impl EditorView {
         let theme = &editor.theme;
         let config = editor.config();
 
-        let view_offset = doc.view_data(view.id).view_position;
+        let view_offset = doc.view_offset(view.id);
 
         let text_annotations = view.text_annotations(doc, Some(theme));
         let mut decorations = DecorationManager::default();
@@ -261,7 +261,7 @@ impl EditorView {
             .and_then(|config| config.rulers.as_ref())
             .unwrap_or(editor_rulers);
 
-        let view_offset = doc.view_data(view.id).view_position;
+        let view_offset = doc.view_offset(view.id);
 
         rulers
             .iter()
@@ -829,7 +829,7 @@ impl EditorView {
         let inner_area = view.inner_area(doc);
 
         let selection = doc.selection(view.id);
-        let view_offset = doc.view_data(view.id).view_position;
+        let view_offset = doc.view_offset(view.id);
         let primary = selection.primary();
         let text_format = doc.text_format(viewport.width, None);
         for range in selection.iter() {

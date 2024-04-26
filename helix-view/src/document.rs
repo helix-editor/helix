@@ -1773,17 +1773,26 @@ impl Document {
         &self.selections
     }
 
-    pub(crate) fn get_view_data(&self, view_id: ViewId) -> Option<&ViewData> {
-        self.view_data.get(&view_id)
-    }
-    pub fn view_data(&self, view_id: ViewId) -> &ViewData {
+    fn view_data(&self, view_id: ViewId) -> &ViewData {
         self.view_data
             .get(&view_id)
             .expect("This should only be called after ensure_view_init")
     }
 
-    pub fn view_data_mut(&mut self, view_id: ViewId) -> &mut ViewData {
+    fn view_data_mut(&mut self, view_id: ViewId) -> &mut ViewData {
         self.view_data.entry(view_id).or_default()
+    }
+
+    pub(crate) fn get_view_offset(&self, view_id: ViewId) -> Option<ViewPosition> {
+        Some(self.view_data.get(&view_id)?.view_position)
+    }
+
+    pub fn view_offset(&self, view_id: ViewId) -> ViewPosition {
+        self.view_data(view_id).view_position
+    }
+
+    pub fn set_view_offset(&mut self, view_id: ViewId, new_offset: ViewPosition) {
+        self.view_data_mut(view_id).view_position = new_offset;
     }
 
     pub fn relative_path(&self) -> Option<Cow<Path>> {
@@ -2063,7 +2072,7 @@ impl Document {
 
 #[derive(Debug, Default)]
 pub struct ViewData {
-    pub view_position: ViewPosition,
+    view_position: ViewPosition,
 }
 
 #[derive(Clone, Debug)]
