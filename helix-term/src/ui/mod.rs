@@ -82,7 +82,7 @@ pub fn raw_regex_prompt(
     let (view, doc) = current!(cx.editor);
     let doc_id = view.doc;
     let snapshot = doc.selection(view.id).clone();
-    let offset_snapshot = doc.view_data(view.id).view_position;
+    let offset_snapshot = doc.view_offset(view.id);
     let config = cx.editor.config();
 
     let mut prompt = Prompt::new(
@@ -94,7 +94,7 @@ pub fn raw_regex_prompt(
                 PromptEvent::Abort => {
                     let (view, doc) = current!(cx.editor);
                     doc.set_selection(view.id, snapshot.clone());
-                    doc.view_data_mut(view.id).view_position = offset_snapshot;
+                    doc.set_view_offset(view.id, offset_snapshot);
                 }
                 PromptEvent::Update | PromptEvent::Validate => {
                     // skip empty input
@@ -135,7 +135,7 @@ pub fn raw_regex_prompt(
                         Err(err) => {
                             let (view, doc) = current!(cx.editor);
                             doc.set_selection(view.id, snapshot.clone());
-                            doc.view_data_mut(view.id).view_position = offset_snapshot;
+                            doc.set_view_offset(view.id, offset_snapshot);
 
                             if event == PromptEvent::Validate {
                                 let callback = async move {
