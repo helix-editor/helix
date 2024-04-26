@@ -2,4 +2,4 @@
 
 (comment)+ @comment.around
 
-(entry (_) @entry.inner) @function.around
+(entry (_) @entry.outer) @function.around
