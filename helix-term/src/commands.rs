@@ -5968,10 +5968,6 @@ fn increment_impl(cx: &mut Context, increment_direction: IncrementDirection) {
     }
 }
 
-// TODO: now that registers store everything as a sequence of events the individual keys
-// can be sent using registers.write() instead of flattening into a string. This would
-// allow parse_macro to simply be a loop over the returned vector.
-
 fn record_macro(cx: &mut Context) {
     if let Some((reg, mut keys)) = cx.editor.macro_recording.take() {
         // Remove the keypress which ends the recording
