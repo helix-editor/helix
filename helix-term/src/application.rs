@@ -397,9 +397,7 @@ impl Application {
         let scrolloff = self.editor.config().scrolloff;
         for (view, _) in self.editor.tree.views() {
             let doc = doc_mut!(self.editor, &view.doc);
-            if let Some(offset) = view.offset_coords_to_in_view_center::<false>(doc, scrolloff) {
-                doc.view_data_mut(view.id).view_position = offset
-            }
+            view.ensure_cursor_in_view(doc, scrolloff);
         }
     }
 
