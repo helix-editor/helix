@@ -529,6 +529,7 @@ impl MappableCommand {
         command_palette, "Open command palette",
         goto_word, "Jump to a two-character label",
         extend_to_word, "Extend to a two-character label",
+        select_register_history, "Select an item from a register's history",
     );
 }
 
@@ -6185,4 +6186,57 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
         }
     }
     jump_to_label(cx, words, behaviour)
+}
+
+fn select_register_history(cx: &mut Context) {
+    struct HistoryEntry {
+        index: usize,
+        last_value: String,
+    }
+
+    // TODO: only show the registers that support selecting from history.
+    cx.editor.autoinfo = Some(Info::from_registers(&cx.editor.registers));
+    cx.on_next_key(move |cx, event| {
+        cx.editor.autoinfo = None;
+        let Some(register) = event.char() else { return };
+        let Some(history) = cx.editor.registers.history(register) else {
+            cx.editor
+                .set_error(format!("No history for register '{register}'"));
+            return;
+        };
+
+        let items = history.map(|(index, entry)| HistoryEntry {
+            index,
+            last_value: entry
+                .last()
+                .and_then(|s| s.lines().next())
+                .unwrap_or("<empty>")
+                .to_string(),
+        });
+        let columns = vec![
+            PickerColumn::new("entry", |entry: &HistoryEntry, _| {
+                entry.index.to_string().into()
+            }),
+            PickerColumn::new("contents", |entry: &HistoryEntry, _| {
+                entry.last_value.as_str().into()
+            }),
+        ];
+
+        let picker = Picker::new(
+            columns,
+            1, // "contents"
+            items,
+            (),
+            move |cx, entry, _action| {
+                if let Err(err) = cx
+                    .editor
+                    .registers
+                    .select_history_entry(register, entry.index)
+                {
+                    cx.editor.set_error(err.to_string());
+                }
+            },
+        );
+        cx.push_layer(Box::new(overlaid(picker)));
+    })
 }
