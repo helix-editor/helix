@@ -1,6 +1,6 @@
 use std::{
     borrow::Cow,
-    collections::{HashMap, VecDeque},
+    collections::{vec_deque, HashMap, VecDeque},
     iter,
     num::NonZeroUsize,
 };
@@ -19,6 +19,7 @@ use crate::{
 /// make space for new yanks.
 const MAX_REGISTER_HISTORY_LEN: usize = 100;
 
+#[cfg_attr(test, derive(Clone))]
 #[derive(Debug, Default)]
 struct Register {
     /// The values held by the register.
@@ -54,6 +55,15 @@ impl Register {
         )
     }
 
+    /// An iterator over the history of the register yanks from newest to oldest.
+    fn history(&self) -> RegisterHistoryIter<'_> {
+        RegisterHistoryIter {
+            lengths: self.lengths.iter().enumerate().rev(),
+            values: &self.values,
+            cursor: self.values.len(),
+        }
+    }
+
     fn write<I: IntoIterator<Item = String>>(&mut self, values: I) {
         // If the register is full, discard the oldest yank in history.
         if self.lengths.len() > MAX_REGISTER_HISTORY_LEN {
@@ -76,6 +86,19 @@ impl Register {
         } else {
             self.lengths.push_back(NonZeroUsize::new(1).unwrap());
         }
+    }
+
+    fn select_history_entry(&mut self, index: usize) {
+        let Some(length) = self.lengths.remove(index) else {
+            return;
+        };
+        self.lengths.push_back(length);
+
+        let start: usize = self.lengths.range(..index).map(|len| len.get()).sum();
+        // NOTE: due to borrow checker limitations we need to collect the drained values.
+        // Ideally this would be `self.values.extend(self.values.drain(...))`.
+        let mut entry: VecDeque<_> = self.values.drain(start..(start + length.get())).collect();
+        self.values.append(&mut entry);
     }
 }
 
@@ -152,32 +175,20 @@ impl Registers {
         }
     }
 
+    pub fn history(&self, name: char) -> Option<RegisterHistoryIter<'_>> {
+        match name {
+            '_' | '#' | '.' | '%' => None,
+            _ => self.inner.get(&name).map(Register::history),
+        }
+    }
+
     pub fn write<I: IntoIterator<Item = String>>(&mut self, name: char, values: I) -> Result<()> {
         match name {
             '_' => Ok(()),
             '#' | '.' | '%' => Err(anyhow::anyhow!("Register {name} does not support writing")),
-            '*' | '+' => {
-                self.inner.entry(name).or_default().write(values);
-                let mut contents = String::new();
-                for val in self.inner[&name].values() {
-                    if !contents.is_empty() {
-                        contents.push_str(NATIVE_LINE_ENDING.as_str());
-                    }
-                    contents.push_str(&val);
-                }
-                self.clipboard_provider.set_contents(
-                    contents,
-                    match name {
-                        '+' => ClipboardType::Clipboard,
-                        '*' => ClipboardType::Selection,
-                        _ => unreachable!(),
-                    },
-                )?;
-                Ok(())
-            }
             _ => {
                 self.inner.entry(name).or_default().write(values);
-                Ok(())
+                self.sync_clipboard_register(name)
             }
         }
     }
@@ -438,6 +449,25 @@ impl<'a> ExactSizeIterator for RegisterValues<'a> {
     }
 }
 
+pub struct RegisterHistoryIter<'a> {
+    lengths: iter::Rev<iter::Enumerate<vec_deque::Iter<'a, NonZeroUsize>>>,
+    values: &'a VecDeque<String>,
+    cursor: usize,
+}
+
+impl<'a> Iterator for RegisterHistoryIter<'a> {
+    // A concretion of `impl DoubleEndedExactSizeIterator<Item = &String>`.
+    type Item = (usize, vec_deque::Iter<'a, String>);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (index, length) = self.lengths.next()?;
+        let length = length.get();
+        let values = self.values.range((self.cursor - length)..self.cursor);
+        self.cursor -= length;
+        Some((index, values))
+    }
+}
+
 // Each RegisterValues iterator is both double ended and exact size. We can't
 // type RegisterValues as `Box<dyn DoubleEndedIterator + ExactSizeIterator>`
 // because only one non-auto trait is allowed in trait objects. So we need to
@@ -447,3 +477,60 @@ impl<'a> ExactSizeIterator for RegisterValues<'a> {
 trait DoubleEndedExactSizeIterator: DoubleEndedIterator + ExactSizeIterator {}
 
 impl<I: DoubleEndedIterator + ExactSizeIterator> DoubleEndedExactSizeIterator for I {}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn select_from_register_history_test() {
+        let mut register = Register::default();
+        // Three yanks with 'abc' as the oldest, 'xyz' as the newest.
+        register.write(["a".into()]);
+        register.write(["b".into(), "c".into()]);
+        register.write(["d".into(), "e".into(), "f".into()]);
+        let history: Vec<_> = register
+            .history()
+            .map(|(index, values)| (index, values.cloned().collect::<String>()))
+            .collect();
+        assert_eq!(
+            history,
+            [(2usize, "def".into()), (1, "bc".into()), (0, "a".into())]
+        );
+
+        let mut reg = register.clone();
+        reg.select_history_entry(0);
+        let history: Vec<_> = reg
+            .history()
+            .map(|(_index, values)| values.cloned().collect::<String>())
+            .collect();
+        assert_eq!(history, ["a", "def", "bc"]);
+
+        let mut reg = register.clone();
+        reg.select_history_entry(1);
+        let history: Vec<_> = reg
+            .history()
+            .map(|(_index, values)| values.cloned().collect::<String>())
+            .collect();
+        assert_eq!(history, ["bc", "def", "a"]);
+
+        // Choosing the current value is a no-op for regular registers. It will write the
+        // value to the clipboard for clipboard registers though.
+        let mut reg = register.clone();
+        reg.select_history_entry(2);
+        let history: Vec<_> = reg
+            .history()
+            .map(|(_index, values)| values.cloned().collect::<String>())
+            .collect();
+        assert_eq!(history, ["def", "bc", "a"]);
+
+        // Providing an index outside of the bounds of the history is a no-op.
+        let mut reg = register.clone();
+        reg.select_history_entry(3);
+        let history: Vec<_> = reg
+            .history()
+            .map(|(_index, values)| values.cloned().collect::<String>())
+            .collect();
+        assert_eq!(history, ["def", "bc", "a"]);
+    }
+}
