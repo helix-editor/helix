@@ -103,7 +103,12 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     // TODO: support for user-defined provider, probably when we have plugin support by setting a
     // variable?
 
-    if env_var_is_set("WAYLAND_DISPLAY") && binary_exists("wl-copy") && binary_exists("wl-paste") {
+    if env_var_is_set("WEZTERM_UNIX_SOCKET") && binary_exists("wezterm") {
+        Box::new(provider::FallbackProvider::new())
+    } else if env_var_is_set("WAYLAND_DISPLAY")
+        && binary_exists("wl-copy")
+        && binary_exists("wl-paste")
+    {
         command_provider! {
             paste => "wl-paste", "--no-newline";
             copy => "wl-copy", "--type", "text/plain";
