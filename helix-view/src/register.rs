@@ -368,7 +368,6 @@ impl Register {
     }
 
     /// Return the first string of each element of contents.
-    /// Will show <empty> if there are not.
     fn preview(&self) -> Vec<(String, String)> {
         if self.lengths.is_empty() {
             return vec![];
