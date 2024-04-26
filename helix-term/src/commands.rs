@@ -2644,7 +2644,7 @@ fn delete_selection_impl(cx: &mut Context, op: Operation, yank: YankAction) {
     if cx.register != Some('_') && matches!(yank, YankAction::Yank) {
         // yank the selection
         let text = doc.text().slice(..);
-        let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
+        let values = selection.fragments(text).map(Cow::into_owned);
         let reg_name = cx.register.unwrap_or('"');
         if let Err(err) = cx.editor.registers.write(reg_name, values) {
             cx.editor.set_error(err.to_string());
@@ -4137,7 +4137,7 @@ fn yank_joined_impl(editor: &mut Editor, separator: &str, register: char) {
             acc
         });
 
-    match editor.registers.write(register, vec![joined]) {
+    match editor.registers.write(register, [joined]) {
         Ok(_) => editor.set_status(format!(
             "joined and yanked {selections} selection{} to register {register}",
             if selections == 1 { "" } else { "s" }
@@ -4170,7 +4170,7 @@ fn yank_primary_selection_impl(editor: &mut Editor, register: char) {
 
     let selection = doc.selection(view.id).primary().fragment(text).to_string();
 
-    match editor.registers.write(register, vec![selection]) {
+    match editor.registers.write(register, [selection]) {
         Ok(_) => editor.set_status(format!("yanked primary selection to register {register}",)),
         Err(err) => editor.set_error(err.to_string()),
     }
@@ -5932,18 +5932,15 @@ fn record_macro(cx: &mut Context) {
     if let Some((reg, mut keys)) = cx.editor.macro_recording.take() {
         // Remove the keypress which ends the recording
         keys.pop();
-        let s = keys
-            .into_iter()
-            .map(|key| {
-                let s = key.to_string();
-                if s.chars().count() == 1 {
-                    s
-                } else {
-                    format!("<{}>", s)
-                }
-            })
-            .collect::<String>();
-        match cx.editor.registers.write(reg, vec![s]) {
+        let s = keys.into_iter().map(|key| {
+            let s = key.to_string();
+            if s.chars().count() == 1 {
+                s
+            } else {
+                format!("<{}>", s)
+            }
+        });
+        match cx.editor.registers.write(reg, s) {
             Ok(_) => cx
                 .editor
                 .set_status(format!("Recorded to register [{}]", reg)),
