@@ -1965,6 +1965,30 @@ fn toggle_option(
     Ok(())
 }
 
+fn set_next_register(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    ensure!(
+        args.len() == 1,
+        "Bad arguments. Usage: `:set-next-register register`"
+    );
+    ensure!(
+        args[0].len() != 1,
+        "Bad arguments. Register is a single character."
+    );
+
+    let register = args[0].chars().next();
+    cx.editor.selected_register = register;
+
+    Ok(())
+}
+
 /// Change the language of the current buffer at runtime.
 fn language(
     cx: &mut compositor::Context,
@@ -2953,6 +2977,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         doc: "Set the language of current buffer (show current language if no value specified).",
         fun: language,
         signature: CommandSignature::positional(&[completers::language]),
+    },
+    TypableCommand {
+        name: "set-next-register",
+        aliases: &[],
+        doc: "Set next Register to char",
+        fun: set_next_register,
+        signature: CommandSignature::positional(&[completers::register]),
     },
     TypableCommand {
         name: "set-option",
