@@ -1,4 +1,9 @@
-use std::{borrow::Cow, collections::HashMap, iter};
+use std::{
+    borrow::Cow,
+    collections::{HashMap, VecDeque},
+    iter,
+    num::NonZeroUsize,
+};
 
 use anyhow::Result;
 use helix_core::NATIVE_LINE_ENDING;
@@ -8,6 +13,71 @@ use crate::{
     document::SCRATCH_BUFFER_NAME,
     Editor,
 };
+
+/// Standard registers store up to this many yanks worth of history.
+/// Once a register hits this many yanks, it discards the oldest values to
+/// make space for new yanks.
+const MAX_REGISTER_HISTORY_LEN: usize = 100;
+
+#[derive(Debug, Default)]
+struct Register {
+    /// The values held by the register.
+    ///
+    /// When yanking to a register, all values are pushed into this `VecDeque`. The length
+    /// of those values is stored in `length`. So each yank is stored in this flat sequence,
+    /// but this `VecDeque` holds the sequence of all yanks.
+    ///
+    /// This `VecDeque` should only be empty when constructing `Register` via `Default`, which
+    /// we do in `Registers` for simplicity. (Note that it should be impossible to `write`
+    /// with an empty set of values.)
+    ///
+    /// Yanks are stored least to most recent. Within each yank, values are stored in order.
+    values: VecDeque<String>,
+    /// The length of each yank into the register.
+    lengths: VecDeque<NonZeroUsize>,
+}
+
+impl Register {
+    fn latest_value(&self) -> Option<&String> {
+        self.values.back()
+    }
+
+    fn values(&self) -> RegisterValues<'_> {
+        let length = self.lengths.back().map(|len| len.get()).unwrap_or_default();
+        RegisterValues::new(
+            self.values
+                .iter()
+                .rev()
+                .take(length)
+                .rev()
+                .map(|s| Cow::Borrowed(s.as_str())),
+        )
+    }
+
+    fn write<I: IntoIterator<Item = String>>(&mut self, values: I) {
+        // If the register is full, discard the oldest yank in history.
+        if self.lengths.len() > MAX_REGISTER_HISTORY_LEN {
+            // Greater than max length implies non-empty.
+            let oldest_len = self.lengths.pop_front().unwrap();
+            self.values.drain(..oldest_len.get());
+        }
+
+        let pre_yank_len = self.values.len();
+        self.values.extend(values.into_iter());
+        let yank_len = NonZeroUsize::new(self.values.len() - pre_yank_len)
+            .expect("writes to registers must not be empty");
+        self.lengths.push_back(yank_len);
+    }
+
+    fn push(&mut self, value: String) {
+        self.values.push_back(value);
+        if let Some(last_length) = self.lengths.back_mut() {
+            *last_length = NonZeroUsize::new(last_length.get() + 1).unwrap();
+        } else {
+            self.lengths.push_back(NonZeroUsize::new(1).unwrap());
+        }
+    }
+}
 
 /// A key-value store for saving sets of values.
 ///
@@ -24,10 +94,8 @@ use crate::{
 #[derive(Debug)]
 pub struct Registers {
     /// The mapping of register to values.
-    /// Values are stored in reverse order when inserted with `Registers::write`.
-    /// The order is reversed again in `Registers::read`. This allows us to
-    /// efficiently prepend new values in `Registers::push`.
-    inner: HashMap<char, Vec<String>>,
+    /// This contains non-special registers plus '+' and '*'.
+    inner: HashMap<char, Register>,
     clipboard_provider: Box<dyn ClipboardProvider>,
     pub last_search_register: char,
 }
@@ -80,33 +148,35 @@ impl Registers {
                     _ => unreachable!(),
                 },
             )),
-            _ => self
-                .inner
-                .get(&name)
-                .map(|values| RegisterValues::new(values.iter().map(Cow::from).rev())),
+            _ => self.inner.get(&name).map(Register::values),
         }
     }
 
-    pub fn write(&mut self, name: char, mut values: Vec<String>) -> Result<()> {
+    pub fn write<I: IntoIterator<Item = String>>(&mut self, name: char, values: I) -> Result<()> {
         match name {
             '_' => Ok(()),
             '#' | '.' | '%' => Err(anyhow::anyhow!("Register {name} does not support writing")),
             '*' | '+' => {
+                self.inner.entry(name).or_default().write(values);
+                let mut contents = String::new();
+                for val in self.inner[&name].values() {
+                    if !contents.is_empty() {
+                        contents.push_str(NATIVE_LINE_ENDING.as_str());
+                    }
+                    contents.push_str(&val);
+                }
                 self.clipboard_provider.set_contents(
-                    values.join(NATIVE_LINE_ENDING.as_str()),
+                    contents,
                     match name {
                         '+' => ClipboardType::Clipboard,
                         '*' => ClipboardType::Selection,
                         _ => unreachable!(),
                     },
                 )?;
-                values.reverse();
-                self.inner.insert(name, values);
                 Ok(())
             }
             _ => {
-                values.reverse();
-                self.inner.insert(name, values);
+                self.inner.entry(name).or_default().write(values);
                 Ok(())
             }
         }
@@ -123,13 +193,13 @@ impl Registers {
                     _ => unreachable!(),
                 };
                 let contents = self.clipboard_provider.get_contents(clipboard_type)?;
-                let saved_values = self.inner.entry(name).or_default();
+                let register = self.inner.entry(name).or_default();
 
-                if !contents_are_saved(saved_values, &contents) {
+                if !contents_are_saved(register.values(), &contents) {
                     anyhow::bail!("Failed to push to register {name}: clipboard does not match register contents");
                 }
 
-                saved_values.push(value.clone());
+                register.push(value.clone());
                 if !contents.is_empty() {
                     value.push_str(NATIVE_LINE_ENDING.as_str());
                 }
@@ -158,9 +228,9 @@ impl Registers {
         self.inner
             .iter()
             .filter(|(name, _)| !matches!(name, '*' | '+'))
-            .map(|(name, values)| {
-                let preview = values
-                    .last()
+            .map(|(name, register)| {
+                let preview = register
+                    .latest_value()
                     .and_then(|s| s.lines().next())
                     .unwrap_or("<empty>");
 
@@ -225,7 +295,7 @@ impl Registers {
 
 fn read_from_clipboard<'a>(
     provider: &dyn ClipboardProvider,
-    saved_values: Option<&'a Vec<String>>,
+    register: Option<&'a Register>,
     clipboard_type: ClipboardType,
 ) -> RegisterValues<'a> {
     match provider.get_contents(clipboard_type) {
@@ -233,12 +303,12 @@ fn read_from_clipboard<'a>(
             // If we're pasting the same values that we just yanked, re-use
             // the saved values. This allows pasting multiple selections
             // even when yanked to a clipboard.
-            let Some(values) = saved_values else {
+            let Some(register) = register else {
                 return RegisterValues::new(iter::once(contents.into()));
             };
 
-            if contents_are_saved(values, &contents) {
-                RegisterValues::new(values.iter().map(Cow::from).rev())
+            if contents_are_saved(register.values(), &contents) {
+                register.values()
             } else {
                 RegisterValues::new(iter::once(contents.into()))
             }
@@ -257,12 +327,11 @@ fn read_from_clipboard<'a>(
     }
 }
 
-fn contents_are_saved(saved_values: &[String], mut contents: &str) -> bool {
+fn contents_are_saved(mut values: RegisterValues<'_>, mut contents: &str) -> bool {
     let line_ending = NATIVE_LINE_ENDING.as_str();
-    let mut values = saved_values.iter().rev();
 
     match values.next() {
-        Some(first) if contents.starts_with(first) => {
+        Some(first) if contents.starts_with(&*first) => {
             contents = &contents[first.len()..];
         }
         None if contents.is_empty() => return true,
@@ -270,7 +339,7 @@ fn contents_are_saved(saved_values: &[String], mut contents: &str) -> bool {
     }
 
     for value in values {
-        if contents.starts_with(line_ending) && contents[line_ending.len()..].starts_with(value) {
+        if contents.starts_with(line_ending) && contents[line_ending.len()..].starts_with(&*value) {
             contents = &contents[line_ending.len() + value.len()..];
         } else {
             return false;
