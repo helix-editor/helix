@@ -359,7 +359,11 @@ berry = "#2A2A4D"
 <li><code>parameter</code> - Function parameters</li>
 <li><code>other</code>
 <ul>
-<li><code>member</code> - Fields of composite data types (e.g. structs, unions)</li>
+<li><code>member</code> - Fields of composite data types (e.g. structs, unions)
+<ul>
+<li><code>private</code> - Private fields that use a unique syntax (currently just ECMAScript-based languages)</li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -405,7 +409,11 @@ berry = "#2A2A4D"
 <p><code>function</code></p>
 <ul>
 <li><code>builtin</code></li>
-<li><code>method</code></li>
+<li><code>method</code>
+<ul>
+<li><code>private</code> - Private methods that use a unique syntax (currently just ECMAScript-based languages)</li>
+</ul>
+</li>
 <li><code>macro</code></li>
 <li><code>special</code> (preprocessor in C)</li>
 </ul>
