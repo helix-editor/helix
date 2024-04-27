@@ -1276,7 +1276,7 @@ impl Document {
     pub fn reload(
         &mut self,
         view: &mut View,
-        provider_registry: &DiffProviderRegistry,
+        provider_registry: &mut DiffProviderRegistry,
         trust_full: bool,
     ) -> Result<(), Error> {
         let encoding = self.encoding;
@@ -1287,6 +1287,8 @@ impl Document {
                 false => bail!("can't find file to reload from {:?}", self.display_name()),
             },
         };
+
+        provider_registry.reload(&path, trust_full);
 
         // Once we have a valid path we check if its readonly status has changed
         self.detect_readonly();
@@ -1304,12 +1306,12 @@ impl Document {
         self.pickup_last_saved_time();
         self.detect_indent_and_line_ending();
 
-        match provider_registry.get_diff_base(&path, trust_full) {
+        match provider_registry.get_diff_base(&path) {
             Some(diff_base) => self.set_diff_base(diff_base),
             None => self.diff_handle = None,
         }
 
-        self.version_control_head = provider_registry.get_current_head_name(&path, trust_full);
+        self.version_control_head = provider_registry.get_current_head_name(&path);
 
         Ok(())
     }
