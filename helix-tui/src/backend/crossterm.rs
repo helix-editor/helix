@@ -91,6 +91,10 @@ where
     W: Write,
 {
     pub fn new(buffer: W, config: &EditorConfig) -> CrosstermBackend<W> {
+        // helix is not usable without colors, but crossterm will disable
+        // them by default if NO_COLOR is set in the environment. Override
+        // this behaviour.
+        crossterm::style::force_color_output(true);
         CrosstermBackend {
             buffer,
             capabilities: Capabilities::from_env_or_default(config),

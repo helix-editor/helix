@@ -640,3 +640,87 @@ async fn test_join_selections_space() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_read_file() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+    let contents_to_read = "some contents";
+    let output_file = helpers::temp_file_with_contents(contents_to_read)?;
+
+    test_key_sequence(
+        &mut helpers::AppBuilder::new()
+            .with_file(file.path(), None)
+            .build()?,
+        Some(&format!(":r {:?}<ret><esc>:w<ret>", output_file.path())),
+        Some(&|app| {
+            assert!(!app.editor.is_err(), "error: {:?}", app.editor.get_status());
+        }),
+        false,
+    )
+    .await?;
+
+    let expected_contents = LineFeedHandling::Native.apply(contents_to_read);
+    helpers::assert_file_has_content(&mut file, &expected_contents)?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn surround_delete() -> anyhow::Result<()> {
+    // Test `surround_delete` when head < anchor
+    test(("(#[|  ]#)", "mdm", "#[|  ]#")).await?;
+    test(("(#[|  ]#)", "md(", "#[|  ]#")).await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn surround_replace_ts() -> anyhow::Result<()> {
+    const INPUT: &str = r#"\
+fn foo() {
+    if let Some(_) = None {
+        todo!("f#[|o]#o)");
+    }
+}
+"#;
+    test((
+        INPUT,
+        ":lang rust<ret>mrm'",
+        r#"\
+fn foo() {
+    if let Some(_) = None {
+        todo!('f#[|o]#o)');
+    }
+}
+"#,
+    ))
+    .await?;
+
+    test((
+        INPUT,
+        ":lang rust<ret>3mrm[",
+        r#"\
+fn foo() {
+    if let Some(_) = None [
+        todo!("f#[|o]#o)");
+    ]
+}
+"#,
+    ))
+    .await?;
+
+    test((
+        INPUT,
+        ":lang rust<ret>2mrm{",
+        r#"\
+fn foo() {
+    if let Some(_) = None {
+        todo!{"f#[|o]#o)"};
+    }
+}
+"#,
+    ))
+    .await?;
+
+    Ok(())
+}

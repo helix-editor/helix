@@ -799,28 +799,29 @@ fn goto_line_start(cx: &mut Context) {
 }
 
 fn goto_next_buffer(cx: &mut Context) {
-    goto_buffer(cx.editor, Direction::Forward);
+    goto_buffer(cx.editor, Direction::Forward, cx.count());
 }
 
 fn goto_previous_buffer(cx: &mut Context) {
-    goto_buffer(cx.editor, Direction::Backward);
+    goto_buffer(cx.editor, Direction::Backward, cx.count());
 }
 
-fn goto_buffer(editor: &mut Editor, direction: Direction) {
+fn goto_buffer(editor: &mut Editor, direction: Direction, count: usize) {
     let current = view!(editor).doc;
 
     let id = match direction {
         Direction::Forward => {
             let iter = editor.documents.keys();
-            let mut iter = iter.skip_while(|id| *id != &current);
-            iter.next(); // skip current item
-            iter.next().or_else(|| editor.documents.keys().next())
+            // skip 'count' times past current buffer
+            iter.cycle().skip_while(|id| *id != &current).nth(count)
         }
         Direction::Backward => {
             let iter = editor.documents.keys();
-            let mut iter = iter.rev().skip_while(|id| *id != &current);
-            iter.next(); // skip current item
-            iter.next().or_else(|| editor.documents.keys().next_back())
+            // skip 'count' times past current buffer
+            iter.rev()
+                .cycle()
+                .skip_while(|id| *id != &current)
+                .nth(count)
         }
     }
     .unwrap();
@@ -2079,6 +2080,11 @@ fn searcher(cx: &mut Context, direction: Direction) {
     let config = cx.editor.config();
     let scrolloff = config.scrolloff;
     let wrap_around = config.search.wrap_around;
+    let movement = if cx.editor.mode() == Mode::Select {
+        Movement::Extend
+    } else {
+        Movement::Move
+    };
 
     // TODO: could probably share with select_on_matches?
     let completions = search_completions(cx, Some(reg));
@@ -2103,7 +2109,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
             search_impl(
                 cx.editor,
                 &regex,
-                Movement::Move,
+                movement,
                 direction,
                 scrolloff,
                 wrap_around,
@@ -5403,13 +5409,22 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                         'e' => textobject_treesitter("entry", range),
                         'p' => textobject::textobject_paragraph(text, range, objtype, count),
                         'm' => textobject::textobject_pair_surround_closest(
-                            text, range, objtype, count,
+                            doc.syntax(),
+                            text,
+                            range,
+                            objtype,
+                            count,
                         ),
                         'g' => textobject_change(range),
                         // TODO: cancel new ranges if inconsistent surround matches across lines
-                        ch if !ch.is_ascii_alphanumeric() => {
-                            textobject::textobject_pair_surround(text, range, objtype, ch, count)
-                        }
+                        ch if !ch.is_ascii_alphanumeric() => textobject::textobject_pair_surround(
+                            doc.syntax(),
+                            text,
+                            range,
+                            objtype,
+                            ch,
+                            count,
+                        ),
                         _ => range,
                     }
                 });
@@ -5434,7 +5449,8 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
         ("c", "Comment (tree-sitter)"),
         ("T", "Test (tree-sitter)"),
         ("e", "Data structure entry (tree-sitter)"),
-        ("m", "Closest surrounding pair"),
+        ("m", "Closest surrounding pair (tree-sitter)"),
+        ("g", "Change"),
         (" ", "... or any character acting as a pair"),
     ];
 
@@ -5447,7 +5463,7 @@ fn surround_add(cx: &mut Context) {
         // surround_len is the number of new characters being added.
         let (open, close, surround_len) = match event.char() {
             Some(ch) => {
-                let (o, c) = surround::get_pair(ch);
+                let (o, c) = match_brackets::get_pair(ch);
                 let mut open = Tendril::new();
                 open.push(o);
                 let mut close = Tendril::new();
@@ -5498,13 +5514,14 @@ fn surround_replace(cx: &mut Context) {
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id);
 
-        let change_pos = match surround::get_surround_pos(text, selection, surround_ch, count) {
-            Ok(c) => c,
-            Err(err) => {
-                cx.editor.set_error(err.to_string());
-                return;
-            }
-        };
+        let change_pos =
+            match surround::get_surround_pos(doc.syntax(), text, selection, surround_ch, count) {
+                Ok(c) => c,
+                Err(err) => {
+                    cx.editor.set_error(err.to_string());
+                    return;
+                }
+            };
 
         let selection = selection.clone();
         let ranges: SmallVec<[Range; 1]> = change_pos.iter().map(|&p| Range::point(p)).collect();
@@ -5519,7 +5536,7 @@ fn surround_replace(cx: &mut Context) {
                 Some(to) => to,
                 None => return doc.set_selection(view.id, selection),
             };
-            let (open, close) = surround::get_pair(to);
+            let (open, close) = match_brackets::get_pair(to);
 
             // the changeset has to be sorted to allow nested surrounds
             let mut sorted_pos: Vec<(usize, char)> = Vec::new();
@@ -5556,13 +5573,14 @@ fn surround_delete(cx: &mut Context) {
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id);
 
-        let mut change_pos = match surround::get_surround_pos(text, selection, surround_ch, count) {
-            Ok(c) => c,
-            Err(err) => {
-                cx.editor.set_error(err.to_string());
-                return;
-            }
-        };
+        let mut change_pos =
+            match surround::get_surround_pos(doc.syntax(), text, selection, surround_ch, count) {
+                Ok(c) => c,
+                Err(err) => {
+                    cx.editor.set_error(err.to_string());
+                    return;
+                }
+            };
         change_pos.sort_unstable(); // the changeset has to be sorted to allow nested surrounds
         let transaction =
             Transaction::change(doc.text(), change_pos.into_iter().map(|p| (p, p + 1, None)));

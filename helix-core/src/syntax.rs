@@ -2765,10 +2765,10 @@ mod test {
             )
         };
 
-        test("quantified_nodes", 1..36);
+        test("quantified_nodes", 1..37);
         // NOTE: Enable after implementing proper node group capturing
-        // test("quantified_nodes_grouped", 1..36);
-        // test("multiple_nodes_grouped", 1..36);
+        // test("quantified_nodes_grouped", 1..37);
+        // test("multiple_nodes_grouped", 1..37);
     }
 
     #[test]
@@ -2939,7 +2939,7 @@ mod test {
 
     #[test]
     fn test_pretty_print() {
-        let source = r#"/// Hello"#;
+        let source = r#"// Hello"#;
         assert_pretty_print("rust", source, "(line_comment)", 0, source.len());
 
         // A large tree should be indented with fields:
@@ -2958,7 +2958,8 @@ mod test {
                 "      (macro_invocation\n",
                 "        macro: (identifier)\n",
                 "        (token_tree\n",
-                "          (string_literal))))))",
+                "          (string_literal\n",
+                "            (string_content)))))))",
             ),
             0,
             source.len(),

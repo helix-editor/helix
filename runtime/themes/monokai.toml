@@ -83,6 +83,7 @@
 "ui.bufferline.active" = { fg = "active_text", bg = "selection", modifiers = [
   "bold",
 ] }
+"ui.virtual.inlay-hint" = { fg = "#88846F" }
 
 "ui.text" = { fg = "text" }
 "ui.text.focus" = { fg = "active_text" }
