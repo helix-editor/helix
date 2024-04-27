@@ -1111,7 +1111,7 @@ impl Document {
     pub fn reload(
         &mut self,
         view: &mut View,
-        provider_registry: &DiffProviderRegistry,
+        provider_registry: &mut DiffProviderRegistry,
     ) -> Result<(), Error> {
         let encoding = self.encoding;
         let path = match self.path() {
@@ -1121,6 +1121,8 @@ impl Document {
                 false => bail!("can't find file to reload from {:?}", self.display_name()),
             },
         };
+
+        provider_registry.reload(&path);
 
         // Once we have a valid path we check if its readonly status has changed
         self.detect_readonly();
