@@ -161,14 +161,14 @@
 # "ui.highlight.frameline" = {}                                                                      # line at which debugging execution is paused at
 
 # USER INTERFACE - DIAGNOSTICS
-"warning" = { fg = "blaze_orange" }                                                                  # diagnostics warning (gutter)
+"warning" = { fg = "lemon_zest" }                                                                    # diagnostics warning (gutter)
 "error" = { fg = "ruby_glow" }                                                                       # diagnostics error (gutter)
 "info" = { fg = "sky_blue" }                                                                         # diagnostics info (gutter)
 "hint" = { fg = "walnut_brown" }                                                                     # diagnostics hint (gutter)
 "diagnostick" = { modfiers = ["reversed"] }                                                          # diagnostics fallback style (editing area)
 "diagnostic.hint" = { fg = "deep_abyss", bg = "walnut_brown" }                                       # diagnostics hint (editing area)
 "diagnostic.info" = { fg = "winter_sky", bg = "twilight_blue" }                                      # diagnostics info (editing area)
-"diagnostic.warning" = { fg = "deep_abyss", bg = "rustic_amber" }                                    # diagnostics warning (editing area)
+"diagnostic.warning" = { fg = "winter_sky", bg = "rustic_amber" }                                    # diagnostics warning (editing area)
 "diagnostic.error" = { fg = "winter_sky", bg = "rustic_red" }                                        # diagnostics error (editing area)
 # "diagnostic.unnecessary" = {}                                                                      # diagnostics with unnecessary tag (editing area)
 # "diagnostic.deprecated" = {}                                                                       # diagnostics with deprecated tag (editing area)
@@ -186,6 +186,7 @@ pitch_black = "#000000"
 winter_sky = "#f3f4f6"
 slate_gray = "#838a97"
 blaze_orange = "#ff9000"
+lemon_zest = "#ffba00"
 leafy_green = "#81be83"
 dreamy_blue = "#6eb0ff"
 crystal_blue = "#99c7ff"
