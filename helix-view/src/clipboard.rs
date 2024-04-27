@@ -104,7 +104,14 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     // variable?
 
     if env_var_is_set("WEZTERM_UNIX_SOCKET") && binary_exists("wezterm") {
-        Box::new(provider::FallbackProvider::new())
+        if env_var_is_set("TMUX") && binary_exists("tmux") {
+            command_provider! {
+                paste => "tmux", "save-buffer", "-";
+                copy => "tmux", "load-buffer", "-w", "-";
+            }
+        } else {
+            Box::new(provider::FallbackProvider::new())
+        }
     } else if env_var_is_set("WAYLAND_DISPLAY")
         && binary_exists("wl-copy")
         && binary_exists("wl-paste")
