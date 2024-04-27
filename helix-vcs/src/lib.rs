@@ -1,4 +1,4 @@
-use anyhow::{anyhow, Result};
+use anyhow::{anyhow, bail, Result};
 use arc_swap::ArcSwap;
 use std::{
     path::{Path, PathBuf},
@@ -74,7 +74,7 @@ impl Default for DiffProviderRegistry {
         // TODO make this configurable when more providers are added
         let providers = vec![
             #[cfg(feature = "git")]
-            git::Git.into(),
+            DiffProvider::Git,
         ];
         DiffProviderRegistry { providers }
     }
@@ -82,24 +82,29 @@ impl Default for DiffProviderRegistry {
 
 /// A union type that includes all types that implement [DiffProvider]. We need this type to allow
 /// cloning [DiffProviderRegistry] as `Clone` cannot be used in trait objects.
-#[derive(Clone)]
+///
+/// `Copy` is simply to ensure the `clone()` call is the simplest it can be.
+#[derive(Copy, Clone)]
 pub enum DiffProvider {
     #[cfg(feature = "git")]
-    Git(git::Git),
+    Git,
+    None,
 }
 
 impl DiffProvider {
     fn get_diff_base(&self, file: &Path) -> Result<Vec<u8>> {
         match self {
             #[cfg(feature = "git")]
-            Self::Git(inner) => inner.get_diff_base(file),
+            Self::Git => git::get_diff_base(file),
+            Self::None => bail!("No diff support compiled in"),
         }
     }
 
     fn get_current_head_name(&self, file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
         match self {
             #[cfg(feature = "git")]
-            Self::Git(inner) => inner.get_current_head_name(file),
+            Self::Git => git::get_current_head_name(file),
+            Self::None => bail!("No diff support compiled in"),
         }
     }
 
@@ -110,7 +115,8 @@ impl DiffProvider {
     ) -> Result<()> {
         match self {
             #[cfg(feature = "git")]
-            Self::Git(inner) => inner.for_each_changed_file(cwd, f),
+            Self::Git => git::for_each_changed_file(cwd, f),
+            Self::None => bail!("No diff support compiled in"),
         }
     }
 }
