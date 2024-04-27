@@ -92,7 +92,7 @@
 "markup.strikethrough" = { fg = "dreamy_blue", modifiers = ["crossed_out"] }                         # crossed over text
 "markup.link" = { fg = "crystal_blue", underline = { color = "light_purple", style = "line" } }      # links
 "markup.link.url" = { fg = "slate_purple", underline = { color = "slate_purple", style = "line" } }  # url part of the link '![link_text](https://example.com)'
-"markup.link.label" = { fg = "default" }
+"markup.link.label" = { fg = "crystal_blue" }
 "markup.link.text" = { fg = "crystal_blue", modifiers = ["bold"] }                                   # link_text part of the link '![link_text](https://example.com)'
 "markup.quote" = { fg = "crystal_blue", modifiers = ["italic"] }                                     # quoted text
 "markup.raw" = { fg = "misty_white" }                                                                # 
@@ -181,23 +181,24 @@ default_bg ="#461d9a"
 
 # PALETTE USER INTERFACE
 amber_shadow = "#0d1117" #
-midnight_black = "#010409" #
-dark_steel = "#161b22" #
-pitch_black = "#000000" #
-misty_white = "#f2f0eb" #
-slate_gray = "#838a97" #
-ethereal_gray = "#91a3b0" #
-blaze_orange = "#ff9000" #
-leafy_green = "#81be83" #
-dreamy_blue = "#6eb0ff" #
-crystal_blue = "#99c7ff" #
-sky_blue = "#45b1e8" #
-rustic_red = "#540b0c" #
-walnut_brown = "#987654" #
-rustic_amber = "#9d5800" #
-slate_purple = "#d2a8ff" #
-light_purple = "#7533bd" #
-deep_purple = "#4c1785" #
+midnight_black = "#010409"
+dark_steel = "#161b22"
+pitch_black = "#000000"
+misty_white = "#f2f0eb"
+slate_gray = "#838a97"
+ethereal_gray = "#91a3b0"
+blaze_orange = "#ff9000"
+leafy_green = "#81be83"
+dreamy_blue = "#6eb0ff"
+crystal_blue = "#99c7ff"
+sky_blue = "#45b1e8"
+rustic_red = "#540b0c"
+ruby_glow = "#fa7970"
+walnut_brown = "#987654"
+rustic_amber = "#9d5800"
+slate_purple = "#d2a8ff"
+light_purple = "#7533bd"
+deep_purple = "#4c1785"
 
 # PALETTE SYNTAX HIGHLIGHTING
 black = "#0d1117"
