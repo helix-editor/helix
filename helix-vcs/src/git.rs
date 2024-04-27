@@ -22,22 +22,12 @@ use crate::FileChange;
 #[cfg(test)]
 mod test;
 
-#[inline]
-fn get_repo_dir(file: &Path) -> Result<&Path> {
-    file.parent().context("file has no parent directory")
-}
-
-pub fn get_diff_base(file: &Path, trust_full: bool) -> Result<Vec<u8>> {
+pub(super) fn get_diff_base(repo: &ThreadSafeRepository, file: &Path) -> Result<Vec<u8>> {
     debug_assert!(!file.exists() || file.is_file());
     debug_assert!(file.is_absolute());
     let file = gix::path::realpath(file).context("resolve symlinks")?;
 
-    // TODO cache repository lookup
-
-    let repo_dir = get_repo_dir(&file)?;
-    let repo = open_repo(repo_dir, trust_full)
-        .context("failed to open git repo")?
-        .to_thread_local();
+    let repo = repo.to_thread_local();
     let head = repo.head_commit()?;
     let file_oid = find_file_in_commit(&repo, &head, &file)?;
 
@@ -65,15 +55,8 @@ pub fn get_diff_base(file: &Path, trust_full: bool) -> Result<Vec<u8>> {
     }
 }
 
-pub fn get_current_head_name(file: &Path, trust_full: bool) -> Result<Arc<ArcSwap<Box<str>>>> {
-    debug_assert!(!file.exists() || file.is_file());
-    debug_assert!(file.is_absolute());
-    let file = gix::path::realpath(file).context("resolve symlinks")?;
-
-    let repo_dir = get_repo_dir(&file)?;
-    let repo = open_repo(repo_dir, trust_full)
-        .context("failed to open git repo")?
-        .to_thread_local();
+pub(super) fn get_current_head_name(repo: &ThreadSafeRepository) -> Result<Arc<ArcSwap<Box<str>>>> {
+    let repo = repo.to_thread_local();
     let head_ref = repo.head_ref()?;
     let head_commit = repo.head_commit()?;
 
@@ -85,15 +68,14 @@ pub fn get_current_head_name(file: &Path, trust_full: bool) -> Result<Arc<ArcSwa
     Ok(Arc::new(ArcSwap::from_pointee(name.into_boxed_str())))
 }
 
-pub fn for_each_changed_file(
-    cwd: &Path,
-    trust_full: bool,
+pub(super) fn for_each_changed_file(
+    repo: &ThreadSafeRepository,
     f: impl Fn(Result<FileChange>) -> bool,
 ) -> Result<()> {
-    status(&open_repo(cwd, trust_full)?.to_thread_local(), f)
+    status(&repo.to_thread_local(), f)
 }
 
-fn open_repo(path: &Path, trust_full: bool) -> Result<ThreadSafeRepository> {
+pub(super) fn open_repo(path: &Path, trust_full: bool) -> Result<ThreadSafeRepository> {
     // `trust_full` is the workspace-trust decision made by the caller, and it must be the
     // authority on the gix trust level. gix's own discovery (`discover_*`) ignores a
     // caller-supplied trust level: it always re-derives trust from `.git` ownership, so a malicious
@@ -109,6 +91,10 @@ fn open_repo(path: &Path, trust_full: bool) -> Result<ThreadSafeRepository> {
     } else {
         gix::sec::Trust::Reduced
     };
+
+    // Ensure the repo itself is an absolute real path, else we'll not match prefixes with
+    // symlink-resolved files in `get_diff_base()` above.
+    let path = gix::path::realpath(path)?;
 
     // On Windows various configuration options are bundled as part of the git installation. The
     // lookup is expensive; only do it there.
@@ -130,7 +116,7 @@ fn open_repo(path: &Path, trust_full: bool) -> Result<ThreadSafeRepository> {
         dot_git_only: true,
         ..Default::default()
     };
-    let (repo_path, _trust_from_ownership) = gix::discover::upwards_opts(path, discover_options)
+    let (repo_path, _trust_from_ownership) = gix::discover::upwards_opts(&path, discover_options)
         .context("failed to discover git repo")?;
     let (git_dir, _work_dir) = repo_path.into_repository_and_work_tree_directories();
 

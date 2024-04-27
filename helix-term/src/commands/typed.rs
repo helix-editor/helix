@@ -1593,7 +1593,7 @@ fn reload(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyh
     let scrolloff = cx.editor.config().scrolloff;
     let trust_full = doc_trust_full(cx.editor);
     let (view, doc) = current!(cx.editor);
-    doc.reload(view, &cx.editor.diff_providers, trust_full)
+    doc.reload(view, &mut cx.editor.diff_providers, trust_full)
         .map(|_| {
             view.ensure_cursor_in_view(doc, scrolloff);
         })?;
@@ -1629,6 +1629,8 @@ fn reload_all(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> 
         })
         .collect();
 
+    cx.editor.diff_providers.reset();
+
     for (doc_id, view_ids) in docs_view_ids {
         let doc = doc_mut!(cx.editor, &doc_id);
 
@@ -1647,7 +1649,7 @@ fn reload_all(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> 
                 helix_loader::workspace_trust::TrustQuery::Git,
             )
             .is_trusted();
-        if let Err(error) = doc.reload(view, &cx.editor.diff_providers, trust_full) {
+        if let Err(error) = doc.reload(view, &mut cx.editor.diff_providers, trust_full) {
             cx.editor.set_error(format!("{}", error));
             continue;
         }
