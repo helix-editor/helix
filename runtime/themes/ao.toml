@@ -135,7 +135,7 @@
 "ui.cursor.primary" = { modifiers = ["reversed"] }                                                   # cursor with primary selection (has no effect due to "ui.cursor.primary.normal" is set)
 "ui.cursor.primary.normal" = { fg = "deep_abyss", bg = "sky_blue" }                                  # cursor block in normal mode
 "ui.cursor.primary.insert" = { fg = "deep_abyss", bg = "blaze_orange" }                              # cursor block in insert mode
-"ui.cursor.primary.select" = { fg = "deep_abyss", bg = "sky_blue" }                                  # cursor block in select mode (not the selected color)
+"ui.cursor.primary.select" = { fg = "winter_sky", bg = "deep_purple" }                               # cursor block in select mode (not the selected color)
 "ui.cursorline.primary" = { bg = "nightfall_blue" }                                                  # line of the primary cursor
 "ui.cursorline.secondary" = { bg = "midnight_thunder"}                                               # lines of secondary cursors
 "ui.cursorcolumn.primary" = { bg = "nightfall_blue" }                                                # column of the primary cursor
