@@ -57,9 +57,7 @@ fn find_nth_closest_pairs_ts(
     mut skip: usize,
 ) -> Result<(usize, usize)> {
     let mut opening = range.from();
-    // We want to expand the selection if we are already on the found pair,
-    // otherwise we would need to subtract "-1" from "range.to()".
-    let mut closing = range.to();
+    let mut closing = range.to() - 1;
 
     while skip > 0 {
         closing = find_matching_bracket_fuzzy(syntax, text, closing).ok_or(Error::PairNotFound)?;
