@@ -134,7 +134,7 @@
 "ui.cursor.match" = { fg = "deep_abyss", bg = "blaze_orange", modifier = ["bold"] }                  # matching bracket etc
 "ui.cursor.primary" = { modifiers = ["reversed"] }                                                   # cursor with primary selection (has no effect due to "ui.cursor.primary.normal" is set)
 "ui.cursor.primary.normal" = { fg = "deep_abyss", bg = "sky_blue" }                                  # cursor block in normal mode
-"ui.cursor.primary.insert" = { fg = "deep_abyss", bg = "blaze_orange" }                              # cursor block in insert mode
+"ui.cursor.primary.insert" = { fg = "deep_abyss", bg = "ruby_glow" }                                 # cursor block in insert mode
 "ui.cursor.primary.select" = { fg = "winter_sky", bg = "deep_purple" }                               # cursor block in select mode (not the selected color)
 "ui.cursorline.primary" = { bg = "nightfall_blue" }                                                  # line of the primary cursor
 "ui.cursorline.secondary" = { bg = "midnight_thunder"}                                               # lines of secondary cursors
@@ -172,7 +172,6 @@
 "diagnostic.error" = { fg = "winter_sky", bg = "rustic_red" }                                        # diagnostics error (editing area)
 # "diagnostic.unnecessary" = {}                                                                      # diagnostics with unnecessary tag (editing area)
 # "diagnostic.deprecated" = {}                                                                       # diagnostics with deprecated tag (editing area)
-
 
 # COLOR NAMES
 [palette] 
