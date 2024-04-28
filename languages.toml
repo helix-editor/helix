@@ -67,6 +67,7 @@ openscad-lsp = { command = "openscad-lsp", args = ["--stdio"] }
 pasls = { command = "pasls", args = [] }
 pbkit = { command = "pb", args = [ "lsp" ] }
 perlnavigator = { command = "perlnavigator", args= ["--stdio"] }
+pest-language-server = { command = "pest-language-server" }
 prisma-language-server = { command = "prisma-language-server", args = ["--stdio"] }
 purescript-language-server = { command = "purescript-language-server", args = ["--stdio"] }
 pylsp = { command = "pylsp" }
@@ -3558,3 +3559,23 @@ language-servers = []
 [[grammar]]
 name = "move"
 source = { git = "https://github.com/tzakian/tree-sitter-move", rev = "8bc0d1692caa8763fef54d48068238d9bf3c0264" }
+
+[[language]]
+name = "pest"
+scope = "source.pest"
+injection-regex = "pest"
+file-types = ["pest"]
+comment-tokens = ["//", "///", "//!"]
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 4, unit = "    " }
+language-servers = ["pest-language-server"]
+
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+
+[[grammar]]
+name = "pest"
+source = { git = "https://github.com/pest-parser/tree-sitter-pest", rev = "a8a98a824452b1ec4da7f508386a187a2f234b85" }
