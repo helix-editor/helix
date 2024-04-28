@@ -736,35 +736,30 @@ impl Registry {
             .language_servers
             .iter()
             .filter_map(|LanguageServerFeatures { name, .. }| {
-                if self.inner_by_name.contains_key(name) {
-                    let client = match self.start_client(
-                        name.clone(),
-                        language_config,
-                        doc_path,
-                        root_dirs,
-                        enable_snippets,
-                    ) {
-                        Ok(client) => client,
-                        Err(StartupError::NoRequiredRootFound) => return None,
-                        Err(StartupError::Error(err)) => return Some(Err(err)),
-                    };
-                    let old_clients = self
-                        .inner_by_name
-                        .insert(name.clone(), vec![client.clone()])
-                        .unwrap();
-
+                if let Some(old_clients) = self.inner_by_name.remove(name) {
                     for old_client in old_clients {
                         self.file_event_handler.remove_client(old_client.id());
-                        self.inner.remove(client.id());
+                        self.inner.remove(old_client.id());
                         tokio::spawn(async move {
                             let _ = old_client.force_shutdown().await;
                         });
                     }
-
-                    Some(Ok(client))
-                } else {
-                    None
                 }
+                let client = match self.start_client(
+                    name.clone(),
+                    language_config,
+                    doc_path,
+                    root_dirs,
+                    enable_snippets,
+                ) {
+                    Ok(client) => client,
+                    Err(StartupError::NoRequiredRootFound) => return None,
+                    Err(StartupError::Error(err)) => return Some(Err(err)),
+                };
+                self.inner_by_name
+                    .insert(name.to_owned(), vec![client.clone()]);
+
+                Some(Ok(client))
             })
             .collect()
     }
