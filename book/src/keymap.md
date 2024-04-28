@@ -1,4 +1,4 @@
-# Keymap
+## Keymap
 
 - [Normal mode](#normal-mode)
   - [Movement](#movement)
@@ -12,7 +12,6 @@
     - [Match mode](#match-mode)
     - [Window mode](#window-mode)
     - [Space mode](#space-mode)
-      - [Comment mode](#comment-mode)
       - [Popup](#popup)
     - [Unimpaired](#unimpaired)
 - [Insert mode](#insert-mode)
