@@ -69,10 +69,10 @@
 "diff.delta.gutter" = { fg = "brown" }                                                               # gutter indicator
 
 # MARKUP, SYNAX HIGHLIGHTING AND INTERFACE HYBRID
-# "markup" = { fg = "default" }                                                                      #
-# "markup.normal.completion" = { fg = "default" }                                                    # for completion doc popup ui
-# "markup.normal.hover" = { fg = "default" }                                                         # for hover popup ui
-# "markup.heading" = { fg = "default" }                                                              #
+# "markup" = {}                                                                                      #
+# "markup.normal.completion" = {}                                                                    # for completion doc popup ui
+# "markup.normal.hover" = {}                                                                         # for hover popup ui
+"markup.heading" = { fg = "blaze_orange" }                                                           #
 "markup.heading.marker" = { fg = "blaze_orange" }                                                    # heading marker "#"
 "markup.heading.1" = { fg = "crystal_blue", modifiers = ["bold"] }                                   # heading h1
 "markup.heading.2" = { fg = "sky_blue", modifiers = ["bold"] }                                       # heading h2
@@ -80,26 +80,26 @@
 "markup.heading.4" = { fg = "crystal_blue" }                                                         # heading h4
 "markup.heading.5" = { fg = "sky_blue" }                                                             # heading h5
 "markup.heading.6" = { fg = "dreamy_blue" }                                                          # heading h6
-# "markup.heading.completion" = { fg = "default" } # for completion doc popup ui                     #
-# "markup.heading.hover" = { fg = "default" } # for hover popup ui                                   #
+# "markup.heading.completion" = {} # for completion doc popup ui                                     #
+# "markup.heading.hover" = {} # for hover popup ui                                                   #
 "markup.list" = { fg = "blaze_orange" }                                                              #
 "markup.list.unnumbered" = { fg = "blaze_orange" }                                                   # unnumbered lists symbol '-'
 "markup.list.numbered" = { fg = "blaze_orange" }                                                     # numbered lists symbol '1, 2, 3, etc'
 "markup.list.cheched" = { fg = "blaze_orange" }                                                      # checked list symbol '[x]'
 "markup.list.unchecked" = { fg = "blaze_orange" }                                                    # unchecked list symbol '[ ]'
-"markup.bold" = { fg = "dreamy_blue", modifiers = ["bold"] }                                         # bold text
-"markup.italic" = { fg = "dreamy_blue", modifiers = ["italic"] }                                     # italic text
-"markup.strikethrough" = { fg = "dreamy_blue", modifiers = ["crossed_out"] }                         # crossed over text
+"markup.bold" = { fg = "crystal_blue", modifiers = ["bold"] }                                        # bold text
+"markup.italic" = { fg = "crystal_blue", modifiers = ["italic"] }                                    # italic text
+"markup.strikethrough" = { fg = "crystal_blue", modifiers = ["crossed_out"] }                        # crossed over text
 "markup.link" = { fg = "crystal_blue", underline = { color = "light_purple", style = "line" } }      # links
 "markup.link.url" = { fg = "slate_purple", underline = { color = "slate_purple", style = "line" } }  # url part of the link '![link_text](https://example.com)'
-"markup.link.label" = { fg = "crystal_blue" }
+"markup.link.label" = { fg = "crystal_blue" }                                                        # 
 "markup.link.text" = { fg = "crystal_blue", modifiers = ["bold"] }                                   # link_text part of the link '![link_text](https://example.com)'
-"markup.quote" = { fg = "crystal_blue", modifiers = ["italic"] }                                     # quoted text
+"markup.quote" = { fg = "misty_white", modifiers = ["italic"] }                                      # quoted text
 "markup.raw" = { fg = "misty_white" }                                                                # 
 "markup.raw.inline" = { fg = "misty_white" }                                                         # raw inline 'dd if=/dev/null of=/dev/sdb' 
-# "markup.raw.inline.completion" = { fg = "default" }                                                # for completion doc popup ui
-# "markup.raw.inline.hover" = { fg = "default" }                                                     # for hover popup ui
-"markup.raw.block" = { fg = "misty_white" }                                                          # raw block, e.g. code blocks
+# "markup.raw.inline.completion" = {}                                                                # for completion doc popup ui
+# "markup.raw.inline.hover" = {}                                                                     # for hover popup ui
+"markup.raw.block" = { fg = "white" }                                                                # raw block, e.g. code blocks
 
 # USER INTERFACE 
 "ui.background" = { bg = "amber_shadow"}                                                             # workspace background
@@ -134,8 +134,8 @@
 "ui.cursor.match" = { fg = "amber_shadow", bg = "blaze_orange", modifier = ["bold"] }                # matching bracket etc
 "ui.cursor.primary" = { modifiers = ["reversed"] }                                                   # cursor with primary selection (has no effect due to "ui.cursor.primary.normal" is set)
 "ui.cursor.primary.normal" = { modifiers = ["reversed"] }                                            # cursor block in normal mode
-"ui.cursor.primary.insert" = { fg = "amber_shadow", bg = "blaze_orange" }                            # cursor block in insert mode
-"ui.cursor.primary.select" = { fg = "amber_shadow", bg = "sky_blue" }                                # cursor block in select mode (not the selected color)
+"ui.cursor.primary.insert" = { fg = "amber_shadow", bg = "ruby_glow" }                               # cursor block in insert mode    
+"ui.cursor.primary.select" = { fg = "misty_white", bg = "deep_purple" }                              # cursor block in select mode (not the selected color)
 "ui.cursorline.primary" = { bg = "dark_steel" }                                                      # line of the primary cursor
 "ui.cursorline.secondary" = { bg = "midnight_black"}                                                 # lines of secondary cursors
 "ui.cursorcolumn.primary" = { bg = "dark_steel" }                                                    # column of the primary cursor
@@ -146,7 +146,7 @@
 "ui.popup.info" = { fg = "misty_white", bg = "midnight_black" }                                      # prompt for multiple key options, menu border (space, g, z, m, etc)
 "ui.window" = { fg = "pitch_black" }                                                                 # borderlines separating splits
 "ui.help" = { fg = "misty_white", bg = "midnight_black" }                                            # description box for commands
-"ui.text" = { fg = "misty_white" }                                                                   # default text style, command prompts, popup text, etc
+"ui.text" = { fg = "white" }                                                                         # default text style, command prompts, popup text, etc
 "ui.text.focus" = { fg = "leafy_green" }                                                             # the currently selected line in the picker (space j, space f, space s, etc)
 "ui.text.inactive" = { fg = "slate_gray" }                                                           # same as ui.text but when the text is inactive e.g. suggestions
 "ui.text.info" = { fg = "misty_white", bg = "midnight_black" }                                       # the key: command in ui.popup.info boxes (space, g, z, m, etc)
@@ -161,26 +161,22 @@
 # "ui.highlight.frameline" = {}                                                                      # line at which debugging execution is paused at
 
 # User Interface - Diagnostics
-"warning" = { fg = "blaze_orange" }                                                                  # diagnostics warning (gutter)
+"warning" = { fg = "lemon_zest" }                                                                    # diagnostics warning (gutter)
 "error" = { fg = "ruby_glow" }                                                                       # diagnostics error (gutter)
 "info" = { fg = "sky_blue" }                                                                         # diagnostics info (gutter)
 "hint" = { fg = "walnut_brown" }                                                                     # diagnostics hint (gutter)
 "diagnostick" = { modfiers = ["reversed"] }                                                          # diagnostics fallback style (editing area)
 "diagnostic.hint" = { fg = "amber_shadow", bg = "walnut_brown" }                                     # diagnostics hint (editing area)
-"diagnostic.info" = { fg = "misty_white", bg = "dark_steel" }                                        # diagnostics info (editing area)
-"diagnostic.warning" = { fg = "amber_shadow", bg = "rustic_amber" }                                  # diagnostics warning (editing area)
+"diagnostic.info" = { fg = "misty_white", bg = "twilight_slate" }                                    # diagnostics info (editing area)
+"diagnostic.warning" = { fg = "misty_white", bg = "rustic_amber" }                                   # diagnostics warning (editing area)
 "diagnostic.error" = { fg = "misty_white", bg = "rustic_red" }                                       # diagnostics error (editing area)
 # "diagnostic.unnecessary" = {}                                                                      # diagnostics with unnecessary tag (editing area)
 # "diagnostic.deprecated" = {}                                                                       # diagnostics with deprecated tag (editing area)
 
-
 # COLOR NAMES
 [palette] 
-default = "#979800"
-default_bg ="#461d9a"
-
 # PALETTE USER INTERFACE
-amber_shadow = "#0d1117" #
+amber_shadow = "#0d1117"
 midnight_black = "#010409"
 dark_steel = "#161b22"
 pitch_black = "#000000"
@@ -188,9 +184,11 @@ misty_white = "#f2f0eb"
 slate_gray = "#838a97"
 ethereal_gray = "#91a3b0"
 blaze_orange = "#ff9000"
+lemon_zest = "#ffba00"
 leafy_green = "#81be83"
 dreamy_blue = "#6eb0ff"
 crystal_blue = "#99c7ff"
+twilight_slate = "#263c57"
 sky_blue = "#45b1e8"
 rustic_red = "#540b0c"
 ruby_glow = "#fa7970"
@@ -210,4 +208,4 @@ blue = "#45b1e8"
 purple = "#d2a8ff"
 brown = "#987654"
 gray = "#838a97"
-white = "#f2f0eb"
+white = "#dadada"
