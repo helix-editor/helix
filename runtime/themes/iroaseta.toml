@@ -165,7 +165,7 @@
 "error" = { fg = "ruby_glow" }                                                                       # diagnostics error (gutter)
 "info" = { fg = "sky_blue" }                                                                         # diagnostics info (gutter)
 "hint" = { fg = "walnut_brown" }                                                                     # diagnostics hint (gutter)
-"diagnostick" = { modfiers = ["reversed"] }                                                          # diagnostics fallback style (editing area)
+"diagnostic" = { modifiers = ["reversed"] }                                                          # diagnostics fallback style (editing area)
 "diagnostic.hint" = { fg = "amber_shadow", bg = "walnut_brown" }                                     # diagnostics hint (editing area)
 "diagnostic.info" = { fg = "misty_white", bg = "twilight_slate" }                                    # diagnostics info (editing area)
 "diagnostic.warning" = { fg = "misty_white", bg = "rustic_amber" }                                   # diagnostics warning (editing area)
