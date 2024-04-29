@@ -2,7 +2,7 @@
 # Author: YardQuit
 
 # SYNTAX HIGHLIGHTING
-"attribute" = { fg = "yellow" }                                                                      #
+"attribute" = { fg = "yellow" }                                                                      # e.g. <a>, <img>, <button>
 "type" = { fg = "white" }                                                                            # types e.g. return type: Result, String, etc
 "type.builtin" = { fg = "white" }                                                                    # primitive types provided by the language (int, usize)
 "type.parameter" = { fg = "white" }                                                                  # generic type parameter (T)
@@ -10,70 +10,70 @@
 "type.enum.variant" = { fg = "white" }                                                               #
 "constructor" = { fg = "orange" }                                                                    # e.g. Ok, Err, etc
 "constant" = { fg = "blue" }                                                                         # const name 
-"constant.builtin" = { fg = "blue" }                                                                 #
-"constant.builtin.boolean" = { fg = "blue" }                                                         #
-"constant.character" = { fg = "blue" }                                                               #
+# "constant.builtin" = { fg = "blue" }                                                                 #
+# "constant.builtin.boolean" = { fg = "blue" }                                                         #
+# "constant.character" = { fg = "blue" }                                                               #
 "constant.character.escape" = { fg = "yellow" }                                                      # 
-"constant.numeric" = { fg = "blue" }                                                                 # numbers
-"constant.numeric.integer" = { fg = "blue" }                                                         # numeric, integer value
-"constant.numeric.float" = { fg = "blue" }                                                           # numeric, fractional value
+# "constant.numeric" = { fg = "blue" }                                                                 # numbers
+# "constant.numeric.integer" = { fg = "blue" }                                                         # numeric, integer value
+# "constant.numeric.float" = { fg = "blue" }                                                           # numeric, fractional value
 "string" = { fg = "blue" }                                                                           # string
 "string.regexp" = { fg = "yellow" }                                                                  # regular expressions
-"string.special" = { fg = "blue" }                                                                   #
-"string.special.path" = { fg = "blue" }                                                              #
-"string.special.url" = { fg = "blue" }                                                               #
-"string.special.symbol" = { fg = "blue" }                                                            # erlang/elixir atoms, ruby symbols, clojure keywords
+# "string.special" = { fg = "blue" }                                                                   #
+# "string.special.path" = { fg = "blue" }                                                              #
+# "string.special.url" = { fg = "blue" }                                                               #
+# "string.special.symbol" = { fg = "blue" }                                                            # erlang/elixir atoms, ruby symbols, clojure keywords
 "comment" = { fg = "gray" }                                                                          # code comment
-"comment.line" = { fg = "gray" }                                                                     # single line comment
-"comment.block" = { fg = "gray" }                                                                    # multi-line comment
-"comment.block.documentation" = { fg = "gray" }                                                      # documentation comments
+# "comment.line" = { fg = "gray" }                                                                     # single line comment
+# "comment.block" = { fg = "gray" }                                                                    # multi-line comment
+# "comment.block.documentation" = { fg = "gray" }                                                      # documentation comments
 "variable" = { fg = "orange" }                                                                       # variable
-"variable.builtin" = { fg = "orange" }                                                               # reserved language variables (self, this, super, etc)
+# "variable.builtin" = { fg = "orange" }                                                               # reserved language variables (self, this, super, etc)
 "variable.parameter" = { fg = "yellow" }                                                             # function parameter
 "variable.other" = { fg = "green" }                                                                  #
 "variable.other.member" = { fg = "green" }                                                           # fields of composite data types (structs, unions)
 "label" = { fg = "blue" }                                                                            # e.g. 'static 'a (tic status)
 "punctuation" = { fg = "white" }                                                                     # 
-"punctuation.delimiter" = { fg = "white" }                                                           # commas, colons
+# "punctuation.delimiter" = { fg = "white" }                                                           # commas, colons
 "punctuation.bracket" = { fg = "orange" }                                                            # parantheses, angle brackets, etc
 "punctuation.special" = { fg = "yellow" }                                                            # string interpolation brackets
 "keyword" = { fg = "red" }                                                                           # e.g. impl, struct, enum, trait, let, etc
-"keyword.control" = { fg = "red" }                                                                   # e.g. use
-"keyword.control.conditional" = { fg = "red" }                                                       # e.g. if, else, etc
-"keyword.control.repeat" = { fg = "red" }                                                            # e.g. for, while, loop, etc
-"keyword.control.return" = { fg = "red" }                                                            # return keyword
-"keyword.control.exception" = { fg = "red" }                                                         # 
+# "keyword.control" = { fg = "red" }                                                                   # e.g. use
+# "keyword.control.conditional" = { fg = "red" }                                                       # e.g. if, else, etc
+# "keyword.control.repeat" = { fg = "red" }                                                            # e.g. for, while, loop, etc
+# "keyword.control.return" = { fg = "red" }                                                            # return keyword
+# "keyword.control.exception" = { fg = "red" }                                                         # 
 "keyword.operator" = { fg = "blue" }                                                                 # or, in, etc
 "keyword.directive" = { fg = "white" }                                                               # prepocessor directives (#if in C)
 "keyword.function" = { fg = "red" }                                                                  # fn, func
 "keyword.storage" = { fg = "red" }                                                                   # keywords describing how things are stored
-"keyword.storage.type" = { fg = "red" }                                                              # type of something (class, function, var, let, etc)
+# "keyword.storage.type" = { fg = "red" }                                                              # type of something (class, function, var, let, etc)
 "keyword.storage.modifier" = { fg = "green" }                                                        # static, mut, const, ref, etc
 "operator" = { fg = "white" }                                                                        # AND, OR, ||, +=, >, etc
 "function" = { fg = "purple" }                                                                       # 
-"function.builtin" = { fg = "purple" }                                                               # function name
+# "function.builtin" = { fg = "purple" }                                                               # function name
 "function.method" = { fg = "green" }                                                                 # 
 "function.macro" = { fg = "green" }                                                                  #
 "function.special" = { fg = "yellow" }                                                               # preprocessor in C
 "tag" = { fg = "green" }                                                                             # tags like <body> in html
-"tag.builtin" = { fg = "green" }                                                                     #
+# "tag.builtin" = { fg = "green" }                                                                     #
 "namespace" = { fg = "white" }                                                                       #
 #"special" = { fg = "default" }                                                                      #
 "diff" = { fg = "white" }                                                                            #
-"diff.plus" = { fg = "green" }                                                                       # additions
-"diff.plus.gutter" = { fg = "green" }                                                                # gutter indicator
+# "diff.plus" = { fg = "green" }                                                                       # additions
+# "diff.plus.gutter" = { fg = "green" }                                                                # gutter indicator
 "diff.minus" = { fg = "red" }                                                                        # deletions
-"diff.minus.gutter" = { fg = "red" }                                                                 # gutter indicator
+# "diff.minus.gutter" = { fg = "red" }                                                                 # gutter indicator
 "diff.delta" = { fg = "brown" }                                                                      # modifications
-"diff.delta.moved" = { fg = "brown" }                                                                # renamed or moved files/changes
-"diff.delta.gutter" = { fg = "brown" }                                                               # gutter indicator
+# "diff.delta.moved" = { fg = "brown" }                                                                # renamed or moved files/changes
+# "diff.delta.gutter" = { fg = "brown" }                                                               # gutter indicator
 
 # MARKUP, SYNAX HIGHLIGHTING AND INTERFACE HYBRID
 # "markup" = {}                                                                                      #
 # "markup.normal.completion" = {}                                                                    # for completion doc popup ui
 # "markup.normal.hover" = {}                                                                         # for hover popup ui
 "markup.heading" = { fg = "blaze_orange" }                                                           #                                                                                        
-"markup.heading.marker" = { fg = "blaze_orange" }                                                    # heading marker "#"
+# "markup.heading.marker" = { fg = "blaze_orange" }                                                    # heading marker "#"
 "markup.heading.1" = { fg = "crystal_blue", modifiers = ["bold"] }                                   # heading h1
 "markup.heading.2" = { fg = "sky_blue", modifiers = ["bold"] }                                       # heading h2
 "markup.heading.3" = { fg = "dreamy_blue", modifiers = ["bold"] }                                    # heading h3
@@ -83,10 +83,10 @@
 # "markup.heading.completion" = {}                                                                   # for completion doc popup ui
 # "markup.heading.hover" = {}                                                                        # for hover popup ui
 "markup.list" = { fg = "blaze_orange" }                                                              #
-"markup.list.unnumbered" = { fg = "blaze_orange" }                                                   # unnumbered lists symbol '-'
-"markup.list.numbered" = { fg = "blaze_orange" }                                                     # numbered lists symbol '1, 2, 3, etc'
-"markup.list.cheched" = { fg = "blaze_orange" }                                                      # checked list symbol '[x]'
-"markup.list.unchecked" = { fg = "blaze_orange" }                                                    # unchecked list symbol '[ ]'
+# "markup.list.unnumbered" = { fg = "blaze_orange" }                                                   # unnumbered lists symbol '-'
+# "markup.list.numbered" = { fg = "blaze_orange" }                                                     # numbered lists symbol '1, 2, 3, etc'
+# "markup.list.cheched" = { fg = "blaze_orange" }                                                      # checked list symbol '[x]'
+# "markup.list.unchecked" = { fg = "blaze_orange" }                                                    # unchecked list symbol '[ ]'
 "markup.bold" = { fg = "crystal_blue", modifiers = ["bold"] }                                        # bold text
 "markup.italic" = { fg = "crystal_blue", modifiers = ["italic"] }                                    # italic text
 "markup.strikethrough" = { fg = "crystal_blue", modifiers = ["crossed_out"] }                        # crossed over text
@@ -96,7 +96,7 @@
 "markup.link.text" = { fg = "crystal_blue", modifiers = ["bold"] }                                   # link_text part of the link '![link_text](https://example.com)'
 "markup.quote" = { fg = "winter_sky", modifiers = ["italic"] }                                       # quoted text
 "markup.raw" = { fg = "winter_sky" }                                                                 # 
-"markup.raw.inline" = { fg = "winter_sky" }                                                          # raw inline 'dd if=/dev/null of=/dev/sdb' 
+# "markup.raw.inline" = { fg = "winter_sky" }                                                          # raw inline 'dd if=/dev/null of=/dev/sdb' 
 # "markup.raw.inline.completion" = {}                                                                # for completion doc popup ui
 # "markup.raw.inline.hover" = {}                                                                     # for hover popup ui
 "markup.raw.block" = { fg = "white" }                                                                # raw block, e.g. code blocks
@@ -131,7 +131,7 @@
 "ui.cursor.normal" = { fg = "winter_sky", bg = "twilight_blue" }                                     # slave cursor block in normal mode
 "ui.cursor.insert" = { bg = "rustic_red" }                                                           # slave cursor block in insert mode
 "ui.cursor.select" = { bg = "deep_purple" }                                                          # slave cursor block in select mode
-"ui.cursor.match" = { fg = "deep_abyss", bg = "blaze_orange", modifiers = ["bold"] }                 # matching bracket etc
+"ui.cursor.match" = { fg = "deep_abyss", bg = "blaze_orange", modifiers = ["bold"] }                  # matching bracket etc
 "ui.cursor.primary" = { modifiers = ["reversed"] }                                                   # cursor with primary selection (has no effect due to "ui.cursor.primary.normal" is set)
 "ui.cursor.primary.normal" = { fg = "deep_abyss", bg = "sky_blue" }                                  # cursor block in normal mode
 "ui.cursor.primary.insert" = { fg = "deep_abyss", bg = "ruby_glow" }                                 # cursor block in insert mode
@@ -165,7 +165,7 @@
 "error" = { fg = "ruby_glow" }                                                                       # diagnostics error (gutter)
 "info" = { fg = "sky_blue" }                                                                         # diagnostics info (gutter)
 "hint" = { fg = "walnut_brown" }                                                                     # diagnostics hint (gutter)
-"diagnostic" = { modfiers = ["reversed"] }                                                           # diagnostics fallback style (editing area)
+"diagnostick" = { modfiers = ["reversed"] }                                                          # diagnostics fallback style (editing area)
 "diagnostic.hint" = { fg = "deep_abyss", bg = "walnut_brown" }                                       # diagnostics hint (editing area)
 "diagnostic.info" = { fg = "winter_sky", bg = "twilight_blue" }                                      # diagnostics info (editing area)
 "diagnostic.warning" = { fg = "winter_sky", bg = "rustic_amber" }                                    # diagnostics warning (editing area)
