@@ -131,7 +131,7 @@
 "ui.cursor.normal" = { modifiers = ["reversed"] }                                                    # slave cursor block in normal mode
 "ui.cursor.insert" = { bg = "rustic_red" }                                                           # slave cursor block in insert mode
 "ui.cursor.select" = { bg = "deep_purple" }                                                          # slave cursor block in select mode
-"ui.cursor.match" = { fg = "amber_shadow", bg = "blaze_orange", modifier = ["bold"] }                # matching bracket etc
+"ui.cursor.match" = { fg = "amber_shadow", bg = "blaze_orange", modifiers = ["bold"] }               # matching bracket etc
 "ui.cursor.primary" = { modifiers = ["reversed"] }                                                   # cursor with primary selection (has no effect due to "ui.cursor.primary.normal" is set)
 "ui.cursor.primary.normal" = { modifiers = ["reversed"] }                                            # cursor block in normal mode
 "ui.cursor.primary.insert" = { fg = "amber_shadow", bg = "ruby_glow" }                               # cursor block in insert mode    
