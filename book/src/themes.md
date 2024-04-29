@@ -179,6 +179,7 @@ We use a similar set of scopes as
   - `parameter` - Function parameters
   - `other`
     - `member` - Fields of composite data types (e.g. structs, unions)
+      - `private` - Private fields that use a unique syntax (currently just ECMAScript-based languages)
 
 - `label`
 
@@ -206,6 +207,7 @@ We use a similar set of scopes as
 - `function`
   - `builtin`
   - `method`
+    - `private` - Private methods that use a unique syntax (currently just ECMAScript-based languages)
   - `macro`
   - `special` (preprocessor in C)
 

@@ -155,10 +155,7 @@ impl Component for SignatureHelp {
 
         let sig = &self.signatures[self.active_signature];
 
-        if PADDING >= viewport.1 || PADDING >= viewport.0 {
-            return None;
-        }
-        let max_text_width = (viewport.0 - PADDING).min(120);
+        let max_text_width = viewport.0.saturating_sub(PADDING).clamp(10, 120);
 
         let signature_text = crate::ui::markdown::highlighted_code_block(
             sig.signature.as_str(),

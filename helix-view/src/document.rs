@@ -624,7 +624,7 @@ where
     *mut_ref = f(mem::take(mut_ref));
 }
 
-use helix_lsp::{lsp, Client, LanguageServerName};
+use helix_lsp::{lsp, Client, LanguageServerId, LanguageServerName};
 use url::Url;
 
 impl Document {
@@ -1296,11 +1296,7 @@ impl Document {
             });
 
             self.diagnostics.sort_unstable_by_key(|diagnostic| {
-                (
-                    diagnostic.range,
-                    diagnostic.severity,
-                    diagnostic.language_server_id,
-                )
+                (diagnostic.range, diagnostic.severity, diagnostic.provider)
             });
 
             // Update the inlay hint annotations' positions, helping ensure they are displayed in the proper place
@@ -1644,7 +1640,7 @@ impl Document {
         })
     }
 
-    pub fn supports_language_server(&self, id: usize) -> bool {
+    pub fn supports_language_server(&self, id: LanguageServerId) -> bool {
         self.language_servers().any(|l| l.id() == id)
     }
 
@@ -1767,7 +1763,7 @@ impl Document {
         text: &Rope,
         language_config: Option<&LanguageConfiguration>,
         diagnostic: &helix_lsp::lsp::Diagnostic,
-        language_server_id: usize,
+        language_server_id: LanguageServerId,
         offset_encoding: helix_lsp::OffsetEncoding,
     ) -> Option<Diagnostic> {
         use helix_core::diagnostic::{Range, Severity::*};
@@ -1844,7 +1840,7 @@ impl Document {
             tags,
             source: diagnostic.source.clone(),
             data: diagnostic.data.clone(),
-            language_server_id,
+            provider: language_server_id,
         })
     }
 
@@ -1857,13 +1853,13 @@ impl Document {
         &mut self,
         diagnostics: impl IntoIterator<Item = Diagnostic>,
         unchanged_sources: &[String],
-        language_server_id: Option<usize>,
+        language_server_id: Option<LanguageServerId>,
     ) {
         if unchanged_sources.is_empty() {
             self.clear_diagnostics(language_server_id);
         } else {
             self.diagnostics.retain(|d| {
-                if language_server_id.map_or(false, |id| id != d.language_server_id) {
+                if language_server_id.map_or(false, |id| id != d.provider) {
                     return true;
                 }
 
@@ -1876,18 +1872,14 @@ impl Document {
         }
         self.diagnostics.extend(diagnostics);
         self.diagnostics.sort_unstable_by_key(|diagnostic| {
-            (
-                diagnostic.range,
-                diagnostic.severity,
-                diagnostic.language_server_id,
-            )
+            (diagnostic.range, diagnostic.severity, diagnostic.provider)
         });
     }
 
     /// clears diagnostics for a given language server id if set, otherwise all diagnostics are cleared
-    pub fn clear_diagnostics(&mut self, language_server_id: Option<usize>) {
+    pub fn clear_diagnostics(&mut self, language_server_id: Option<LanguageServerId>) {
         if let Some(id) = language_server_id {
-            self.diagnostics.retain(|d| d.language_server_id != id);
+            self.diagnostics.retain(|d| d.provider != id);
         } else {
             self.diagnostics.clear();
         }
