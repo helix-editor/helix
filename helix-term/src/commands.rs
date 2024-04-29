@@ -2125,7 +2125,7 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
         .unwrap_or(cx.editor.registers.last_search_register);
     let config = cx.editor.config();
     let scrolloff = config.scrolloff;
-    if let Some(query) = cx.editor.registers.first(register, cx.editor) {
+    if let Some(query) = cx.editor.registers.latest(register, cx.editor) {
         let search_config = &config.search;
         let case_insensitive = if search_config.smart_case {
             !query.chars().any(char::is_uppercase)
@@ -2205,7 +2205,7 @@ fn make_search_word_bounded(cx: &mut Context) {
     let register = cx
         .register
         .unwrap_or(cx.editor.registers.last_search_register);
-    let regex = match cx.editor.registers.first(register, cx.editor) {
+    let regex = match cx.editor.registers.latest(register, cx.editor) {
         Some(regex) => regex,
         None => return,
     };

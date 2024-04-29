@@ -216,12 +216,57 @@ impl Registers {
         }
     }
 
-    pub fn first<'a>(&'a self, name: char, editor: &'a Editor) -> Option<Cow<'a, str>> {
-        self.read(name, editor).and_then(|mut values| values.next())
+    /// "Selects" the index at the given index for the given register.
+    ///
+    /// Selecting an item pulls it to the front of the register's history.
+    ///
+    /// If the register is a special register other than a clipboard register ('+' or '*')
+    /// or if the index is out of bounds for the given register, this command is a no-op.
+    pub fn select_history_entry(&mut self, name: char, index: usize) -> Result<()> {
+        match name {
+            '_' | '#' | '.' | '%' => {
+                Err(anyhow::anyhow!("Register {name} does not support writing"))
+            }
+            _ => {
+                let Some(register) = self.inner.get_mut(&name) else {
+                    return Ok(());
+                };
+                register.select_history_entry(index);
+                self.sync_clipboard_register(name)
+            }
+        }
     }
 
-    pub fn last<'a>(&'a self, name: char, editor: &'a Editor) -> Option<Cow<'a, str>> {
+    fn sync_clipboard_register(&mut self, name: char) -> Result<()> {
+        let clipboard_type = match name {
+            '+' => ClipboardType::Clipboard,
+            '*' => ClipboardType::Selection,
+            _ => return Ok(()),
+        };
+
+        let mut contents = String::new();
+        for val in self.inner[&name].values() {
+            if !contents.is_empty() {
+                contents.push_str(NATIVE_LINE_ENDING.as_str());
+            }
+            contents.push_str(&val);
+        }
+        self.clipboard_provider
+            .set_contents(contents, clipboard_type)
+    }
+
+    /// Returns the latest value in the given register.
+    ///
+    /// The latest value is the value most recently pushed to the register when
+    /// using `push`, or the last value returned by the iterator passed to [write].
+    pub fn latest<'a>(&'a self, name: char, editor: &'a Editor) -> Option<Cow<'a, str>> {
         self.read(name, editor).and_then(|values| values.last())
+    }
+
+    /// Returns the oldest value in the given register.
+    /// This is the opposite of `latest`.
+    pub fn oldest<'a>(&'a self, name: char, editor: &'a Editor) -> Option<Cow<'a, str>> {
+        self.read(name, editor).and_then(|mut values| values.next())
     }
 
     pub fn iter_preview(&self) -> impl Iterator<Item = (char, &str)> {

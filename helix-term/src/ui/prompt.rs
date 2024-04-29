@@ -133,7 +133,7 @@ impl Prompt {
         editor: &'a Editor,
     ) -> Option<Cow<'a, str>> {
         self.history_register
-            .and_then(|reg| editor.registers.first(reg, editor))
+            .and_then(|reg| editor.registers.latest(reg, editor))
     }
 
     pub fn recalculate_completion(&mut self, editor: &Editor) {
@@ -656,7 +656,7 @@ impl Component for Prompt {
                         &context
                             .editor
                             .registers
-                            .first(c, context.editor)
+                            .latest(c, context.editor)
                             .unwrap_or_default(),
                         context.editor,
                     );
