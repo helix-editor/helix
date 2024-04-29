@@ -131,7 +131,7 @@
 "ui.cursor.normal" = { fg = "winter_sky", bg = "twilight_blue" }                                     # slave cursor block in normal mode
 "ui.cursor.insert" = { bg = "rustic_red" }                                                           # slave cursor block in insert mode
 "ui.cursor.select" = { bg = "deep_purple" }                                                          # slave cursor block in select mode
-"ui.cursor.match" = { fg = "deep_abyss", bg = "blaze_orange", modifier = ["bold"] }                  # matching bracket etc
+"ui.cursor.match" = { fg = "deep_abyss", bg = "blaze_orange", modifiers = ["bold"] }                 # matching bracket etc
 "ui.cursor.primary" = { modifiers = ["reversed"] }                                                   # cursor with primary selection (has no effect due to "ui.cursor.primary.normal" is set)
 "ui.cursor.primary.normal" = { fg = "deep_abyss", bg = "sky_blue" }                                  # cursor block in normal mode
 "ui.cursor.primary.insert" = { fg = "deep_abyss", bg = "ruby_glow" }                                 # cursor block in insert mode
@@ -165,7 +165,7 @@
 "error" = { fg = "ruby_glow" }                                                                       # diagnostics error (gutter)
 "info" = { fg = "sky_blue" }                                                                         # diagnostics info (gutter)
 "hint" = { fg = "walnut_brown" }                                                                     # diagnostics hint (gutter)
-"diagnostick" = { modfiers = ["reversed"] }                                                          # diagnostics fallback style (editing area)
+"diagnostic" = { modfiers = ["reversed"] }                                                           # diagnostics fallback style (editing area)
 "diagnostic.hint" = { fg = "deep_abyss", bg = "walnut_brown" }                                       # diagnostics hint (editing area)
 "diagnostic.info" = { fg = "winter_sky", bg = "twilight_blue" }                                      # diagnostics info (editing area)
 "diagnostic.warning" = { fg = "winter_sky", bg = "rustic_amber" }                                    # diagnostics warning (editing area)
