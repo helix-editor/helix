@@ -2153,74 +2153,73 @@ fn search_impl(
 ) {
     let (view, doc) = current!(editor);
     let text = doc.text().slice(..);
-    let selection = doc.selection(view.id);
 
-    // Get the right side of the primary block cursor for forward search, or the
-    // grapheme before the start of the selection for reverse search.
-    let start = match direction {
-        Direction::Forward => text.char_to_byte(graphemes::ensure_grapheme_boundary_next(
-            text,
-            selection.primary().to(),
-        )),
-        Direction::Backward => text.char_to_byte(graphemes::ensure_grapheme_boundary_prev(
-            text,
-            selection.primary().from(),
-        )),
-    };
+    let mut wrapped_around = false;
+    let mut no_more_matches = false;
 
-    // A regex::Match returns byte-positions in the str. In the case where we
-    // do a reverse search and wraparound to the end, we don't need to search
-    // the text before the current cursor position for matches, but by slicing
-    // it out, we need to add it back to the position of the selection.
-    let doc = doc!(editor).text().slice(..);
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let cursor = match direction {
+            Direction::Forward => {
+                text.char_to_byte(graphemes::ensure_grapheme_boundary_next(text, range.to()))
+            }
+            Direction::Backward => {
+                text.char_to_byte(graphemes::ensure_grapheme_boundary_prev(text, range.from()))
+            }
+        };
 
-    // use find_at to find the next match after the cursor, loop around the end
-    // Careful, `Regex` uses `bytes` as offsets, not character indices!
-    let mut mat = match direction {
-        Direction::Forward => regex.find(doc.regex_input_at_bytes(start..)),
-        Direction::Backward => regex.find_iter(doc.regex_input_at_bytes(..start)).last(),
-    };
+        // TODO: do this in reverse instead and bound each range to the space between
+        // it and the next range? (It would be after the range that follows it moves).
+        // I guess it would be the following range when searching forwards and the
+        // prior range when searching backwards.
+        let mut match_ = match direction {
+            Direction::Forward => regex.find(text.regex_input_at_bytes(cursor..)),
+            Direction::Backward => regex.find_iter(text.regex_input_at_bytes(..cursor)).last(),
+        };
 
-    if mat.is_none() {
-        if wrap_around {
-            mat = match direction {
-                Direction::Forward => regex.find(doc.regex_input()),
-                Direction::Backward => regex.find_iter(doc.regex_input_at_bytes(start..)).last(),
-            };
-        }
-        if show_warnings {
-            if wrap_around && mat.is_some() {
-                editor.set_status("Wrapped around document");
+        if match_.is_none() {
+            if wrap_around {
+                match_ = match direction {
+                    Direction::Forward => regex.find(text.regex_input()),
+                    // TODO: is this incorrect / inconsistent with the above?
+                    Direction::Backward => {
+                        regex.find_iter(text.regex_input_at_bytes(cursor..)).last()
+                    }
+                };
+            }
+            if wrap_around && match_.is_some() {
+                wrapped_around = true;
             } else {
-                editor.set_error("No more matches");
+                no_more_matches = true;
             }
         }
-    }
 
-    let (view, doc) = current!(editor);
-    let text = doc.text().slice(..);
-    let selection = doc.selection(view.id);
-
-    if let Some(mat) = mat {
-        let start = text.byte_to_char(mat.start());
-        let end = text.byte_to_char(mat.end());
+        let Some(match_) = match_ else {
+            return range;
+        };
+        let start = text.byte_to_char(match_.start());
+        let end = text.byte_to_char(match_.end());
 
         if end == 0 {
             // skip empty matches that don't make sense
-            return;
+            return range;
         }
 
-        // Determine range direction based on the primary range
-        let primary = selection.primary();
-        let range = Range::new(start, end).with_direction(primary.direction());
+        let new_range = Range::new(start, end);
+        if movement == Movement::Extend {
+            range.merge(new_range)
+        } else {
+            new_range
+        }
+    });
+    doc.set_selection(view.id, selection);
 
-        let selection = match movement {
-            Movement::Extend => selection.clone().push(range),
-            Movement::Move => selection.clone().replace(selection.primary_index(), range),
-        };
-
-        doc.set_selection(view.id, selection);
-    };
+    if show_warnings {
+        if no_more_matches {
+            editor.set_error("No more matches");
+        } else if wrapped_around {
+            editor.set_status("Wrapped around document");
+        }
+    }
 }
 
 fn search_completions(cx: &mut Context, reg: Option<char>) -> Vec<String> {
