@@ -134,9 +134,9 @@ pub fn hook(
             return Some(handle_same(doc, selection, pair));
         } else if pair.open == ch {
             return Some(handle_open(doc, selection, pair));
-        } else if pair.close == ch && overtype {
+        } else if pair.close == ch {
             // && char_at pos == close
-            return Some(handle_close(doc, selection, pair));
+            return Some(handle_close(doc, selection, pair, overtype));
         }
     }
 
@@ -307,7 +307,7 @@ fn handle_open(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
     t
 }
 
-fn handle_close(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
+fn handle_close(doc: &Rope, selection: &Selection, pair: &Pair, overtype: bool) -> Transaction {
     let mut end_ranges = SmallVec::with_capacity(selection.len());
     let mut offs = 0;
 
@@ -316,7 +316,7 @@ fn handle_close(doc: &Rope, selection: &Selection, pair: &Pair) -> Transaction {
         let next_char = doc.get_char(cursor);
         let mut len_inserted = 0;
 
-        let change = if next_char == Some(pair.close) {
+        let change = if next_char == Some(pair.close) && overtype {
             // return transaction that moves past close
             (cursor, cursor, None) // no-op
         } else {
