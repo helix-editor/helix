@@ -55,8 +55,8 @@
 "markup.link.url" = { fg = "slate_purple", underline = { color = "slate_purple", style = "line" } }
 "markup.link.label" = { fg = "crystal_blue" }
 "markup.link.text" = { fg = "crystal_blue", modifiers = ["bold"] }
-"markup.quote" = { fg = "winter_sky", modifiers = ["italic"] }
-"markup.raw" = { fg = "winter_sky" }
+"markup.quote" = { fg = "misty_white", modifiers = ["italic"] }
+"markup.raw" = { fg = "misty_white" }
 "markup.raw.block" = { fg = "white" }
 
 # USER INTERFACE 
