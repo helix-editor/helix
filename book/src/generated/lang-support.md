@@ -83,7 +83,7 @@
 | hoon | ✓ |  |  |  |
 | hosts | ✓ |  |  |  |
 | html | ✓ |  |  | `vscode-html-language-server` |
-| hurl | ✓ |  | ✓ |  |
+| hurl | ✓ | ✓ | ✓ |  |
 | hyprlang | ✓ |  | ✓ |  |
 | idris |  |  |  | `idris2-lsp` |
 | iex | ✓ |  |  |  |
@@ -141,6 +141,7 @@
 | passwd | ✓ |  |  |  |
 | pem | ✓ |  |  |  |
 | perl | ✓ | ✓ | ✓ | `perlnavigator` |
+| pest | ✓ | ✓ | ✓ | `pest-language-server` |
 | php | ✓ | ✓ | ✓ | `intelephense` |
 | php-only | ✓ |  |  |  |
 | pkgbuild | ✓ | ✓ | ✓ | `pkgbuild-language-server`, `bash-language-server` |
