@@ -39,9 +39,10 @@ package.helix-term.opt-level = 2
 [workspace.dependencies]
 tree-sitter = { version = "0.22" }
 nucleo = "0.2.0"
+slotmap = "1.0.7"
 
 [workspace.package]
-version = "23.10.0"
+version = "24.3.0"
 edition = "2021"
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
 categories = ["editor"]

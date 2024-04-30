@@ -1,4 +1,4 @@
-use futures_util::{stream::FuturesUnordered, FutureExt};
+use futures_util::{stream::FuturesOrdered, FutureExt};
 use helix_lsp::{
     block_on,
     lsp::{
@@ -6,7 +6,7 @@ use helix_lsp::{
         NumberOrString,
     },
     util::{diagnostic_to_lsp_diagnostic, lsp_range_to_range, range_to_lsp_range},
-    Client, OffsetEncoding,
+    Client, LanguageServerId, OffsetEncoding,
 };
 use tokio_stream::StreamExt;
 use tui::{
@@ -21,7 +21,6 @@ use helix_stdx::path;
 use helix_view::{
     document::{DocumentInlayHints, DocumentInlayHintsId},
     editor::Action,
-    graphics::Margin,
     handlers::lsp::SignatureHelpInvoked,
     theme::Style,
     Document, View,
@@ -266,7 +265,7 @@ enum DiagnosticsFormat {
 
 fn diag_picker(
     cx: &Context,
-    diagnostics: BTreeMap<PathBuf, Vec<(lsp::Diagnostic, usize)>>,
+    diagnostics: BTreeMap<PathBuf, Vec<(lsp::Diagnostic, LanguageServerId)>>,
     format: DiagnosticsFormat,
 ) -> Picker<PickerDiagnostic> {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
@@ -341,7 +340,7 @@ pub fn symbol_picker(cx: &mut Context) {
 
     let mut seen_language_servers = HashSet::new();
 
-    let mut futures: FuturesUnordered<_> = doc
+    let mut futures: FuturesOrdered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::DocumentSymbols)
         .filter(|ls| seen_language_servers.insert(ls.id()))
         .map(|language_server| {
@@ -416,7 +415,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
     let get_symbols = move |pattern: String, editor: &mut Editor| {
         let doc = doc!(editor);
         let mut seen_language_servers = HashSet::new();
-        let mut futures: FuturesUnordered<_> = doc
+        let mut futures: FuturesOrdered<_> = doc
             .language_servers_with_feature(LanguageServerFeature::WorkspaceSymbols)
             .filter(|ls| seen_language_servers.insert(ls.id()))
             .map(|language_server| {
@@ -497,7 +496,7 @@ pub fn workspace_diagnostics_picker(cx: &mut Context) {
 
 struct CodeActionOrCommandItem {
     lsp_item: lsp::CodeActionOrCommand,
-    language_server_id: usize,
+    language_server_id: LanguageServerId,
 }
 
 impl ui::menu::Item for CodeActionOrCommandItem {
@@ -574,7 +573,7 @@ pub fn code_action(cx: &mut Context) {
 
     let mut seen_language_servers = HashSet::new();
 
-    let mut futures: FuturesUnordered<_> = doc
+    let mut futures: FuturesOrdered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::CodeAction)
         .filter(|ls| seen_language_servers.insert(ls.id()))
         // TODO this should probably already been filtered in something like "language_servers_with_feature"
@@ -733,15 +732,7 @@ pub fn code_action(cx: &mut Context) {
             });
             picker.move_down(); // pre-select the first item
 
-            let margin = if editor.menu_border() {
-                Margin::vertical(1)
-            } else {
-                Margin::none()
-            };
-
-            let popup = Popup::new("code-action", picker)
-                .with_scrollbar(false)
-                .margin(margin);
+            let popup = Popup::new("code-action", picker).with_scrollbar(false);
 
             compositor.replace_or_push("code-action", popup);
         };
@@ -757,7 +748,11 @@ impl ui::menu::Item for lsp::Command {
     }
 }
 
-pub fn execute_lsp_command(editor: &mut Editor, language_server_id: usize, cmd: lsp::Command) {
+pub fn execute_lsp_command(
+    editor: &mut Editor,
+    language_server_id: LanguageServerId,
+    cmd: lsp::Command,
+) {
     // the command is executed on the server and communicated back
     // to the client asynchronously using workspace edits
     let future = match editor
@@ -1034,7 +1029,7 @@ pub fn rename_symbol(cx: &mut Context) {
     fn create_rename_prompt(
         editor: &Editor,
         prefill: String,
-        language_server_id: Option<usize>,
+        language_server_id: Option<LanguageServerId>,
     ) -> Box<ui::Prompt> {
         let prompt = ui::Prompt::new(
             "rename-to:".into(),
@@ -1315,11 +1310,11 @@ fn compute_inlay_hints_for_view(
                 view_id,
                 DocumentInlayHints {
                     id: new_doc_inlay_hints_id,
-                    type_inlay_hints: type_inlay_hints.into(),
-                    parameter_inlay_hints: parameter_inlay_hints.into(),
-                    other_inlay_hints: other_inlay_hints.into(),
-                    padding_before_inlay_hints: padding_before_inlay_hints.into(),
-                    padding_after_inlay_hints: padding_after_inlay_hints.into(),
+                    type_inlay_hints,
+                    parameter_inlay_hints,
+                    other_inlay_hints,
+                    padding_before_inlay_hints,
+                    padding_after_inlay_hints,
                 },
             );
             doc.inlay_hints_oudated = false;

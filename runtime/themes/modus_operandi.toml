@@ -80,6 +80,7 @@ punctuation = "fg-dim"
 "ui.virtual" = "bg-active"
 "ui.virtual.ruler" = { bg = "bg-dim" }
 "ui.virtual.inlay-hint" = { fg = "fg-dim", modifiers = ["italic"] }
+"ui.virtual.jump-label" = { fg = "yellow-cooler", modifiers = ["bold"] }
 
 "ui.selection" = { fg = "fg-main", bg = "bg-inactive" }
 "ui.selection.primary" = { fg = "fg-main", bg = "bg-active" }
@@ -99,6 +100,8 @@ punctuation = "fg-dim"
 "diagnostic.warning" = { underline = { color = "yellow-intense", style = "curl" } }
 "diagnostic.info" = { underline = { color = "cyan-intense", style = "curl" } }
 "diagnostic.hint" = { underline = { color = "blue-intense", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 error = "red"
 warning = "yellow-warmer"

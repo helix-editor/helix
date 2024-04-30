@@ -4,7 +4,7 @@
   .
   (NAME) @namespace)
 
-(NAME) @variable
+[(NAME) (SYMBOLNAME)] @variable
 
 ; Operators
 

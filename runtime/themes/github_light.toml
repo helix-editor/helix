@@ -78,6 +78,8 @@ label = "scale.red.5"
 "diagnostic.info" = { underline = { color = "accent.fg", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "attention.fg", style = "curl" } }
 "diagnostic.error" = { underline = { color = "danger.fg", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 hint = "success.fg"
 info = "accent.fg"

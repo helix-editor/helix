@@ -173,7 +173,7 @@ fn render_mode<'a>(context: &RenderContext) -> Spans<'a> {
         " ".into()
     };
     let modename = format!(" {} ", modename);
-    if config.color_modes {
+    if visible && config.color_modes {
         Span::styled(
             modename,
             match context.editor.mode() {

@@ -36,13 +36,6 @@ For inspiration, you can find the default `theme.toml`
 user-submitted themes
 [here](https://github.com/helix-editor/helix/blob/master/runtime/themes).
 
-### Using the linter
-
-Use the supplied linting tool to check for errors and missing scopes:
-
-```sh
-cargo xtask themelint onedark # replace onedark with <name>
-```
 
 ## The details of theme creation
 
@@ -186,6 +179,7 @@ We use a similar set of scopes as
   - `parameter` - Function parameters
   - `other`
     - `member` - Fields of composite data types (e.g. structs, unions)
+      - `private` - Private fields that use a unique syntax (currently just ECMAScript-based languages)
 
 - `label`
 
@@ -213,6 +207,7 @@ We use a similar set of scopes as
 - `function`
   - `builtin`
   - `method`
+    - `private` - Private methods that use a unique syntax (currently just ECMAScript-based languages)
   - `macro`
   - `special` (preprocessor in C)
 
@@ -251,6 +246,7 @@ We use a similar set of scopes as
     - `gutter` - gutter indicator
   - `delta` - modifications
     - `moved` - renamed or moved files/changes
+    - `conflict` - merge conflicts
     - `gutter` - gutter indicator
 
 #### Interface
@@ -314,6 +310,7 @@ These scopes are used for theming the editor interface:
 | `ui.virtual.inlay-hint.parameter` | Style for inlay hints of kind `parameter` (LSPs are not required to set a kind)                |
 | `ui.virtual.inlay-hint.type`      | Style for inlay hints of kind `type` (LSPs are not required to set a kind)                     |
 | `ui.virtual.wrap`                 | Soft-wrap indicator (see the [`editor.soft-wrap` config][editor-section])                      |
+| `ui.virtual.jump-label`           | Style for virtual jump labels                                                                  |
 | `ui.menu`                         | Code and command completion menus                                                              |
 | `ui.menu.selected`                | Selected autocomplete item                                                                     |
 | `ui.menu.scroll`                  | `fg` sets thumb color, `bg` sets track color of scrollbar                                      |

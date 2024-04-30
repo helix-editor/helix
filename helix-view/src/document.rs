@@ -8,8 +8,9 @@ use helix_core::chars::char_is_word;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
 use helix_core::syntax::{Highlight, LanguageServerFeature};
-use helix_core::text_annotations::{InlineAnnotation, TextAnnotations};
+use helix_core::text_annotations::{InlineAnnotation, Overlay};
 use helix_lsp::util::lsp_pos_to_pos;
+use helix_stdx::faccess::{copy_metadata, readonly};
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
 
 use ::parking_lot::Mutex;
@@ -21,7 +22,6 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::future::Future;
 use std::path::{Path, PathBuf};
-use std::rc::Rc;
 use std::str::FromStr;
 use std::sync::{Arc, Weak};
 use std::time::SystemTime;
@@ -126,6 +126,7 @@ pub struct Document {
     ///
     /// To know if they're up-to-date, check the `id` field in `DocumentInlayHints`.
     pub(crate) inlay_hints: HashMap<ViewId, DocumentInlayHints>,
+    pub(crate) jump_labels: HashMap<ViewId, Vec<Overlay>>,
     /// Set to `true` when the document is updated, reset to `false` on the next inlay hints
     /// update from the LSP
     pub inlay_hints_oudated: bool,
@@ -200,22 +201,22 @@ pub struct DocumentInlayHints {
     pub id: DocumentInlayHintsId,
 
     /// Inlay hints of `TYPE` kind, if any.
-    pub type_inlay_hints: Rc<[InlineAnnotation]>,
+    pub type_inlay_hints: Vec<InlineAnnotation>,
 
     /// Inlay hints of `PARAMETER` kind, if any.
-    pub parameter_inlay_hints: Rc<[InlineAnnotation]>,
+    pub parameter_inlay_hints: Vec<InlineAnnotation>,
 
     /// Inlay hints that are neither `TYPE` nor `PARAMETER`.
     ///
     /// LSPs are not required to associate a kind to their inlay hints, for example Rust-Analyzer
     /// currently never does (February 2023) and the LSP spec may add new kinds in the future that
     /// we want to display even if we don't have some special highlighting for them.
-    pub other_inlay_hints: Rc<[InlineAnnotation]>,
+    pub other_inlay_hints: Vec<InlineAnnotation>,
 
     /// Inlay hint padding. When creating the final `TextAnnotations`, the `before` padding must be
     /// added first, then the regular inlay hints, then the `after` padding.
-    pub padding_before_inlay_hints: Rc<[InlineAnnotation]>,
-    pub padding_after_inlay_hints: Rc<[InlineAnnotation]>,
+    pub padding_before_inlay_hints: Vec<InlineAnnotation>,
+    pub padding_after_inlay_hints: Vec<InlineAnnotation>,
 }
 
 impl DocumentInlayHints {
@@ -223,11 +224,11 @@ impl DocumentInlayHints {
     pub fn empty_with_id(id: DocumentInlayHintsId) -> Self {
         Self {
             id,
-            type_inlay_hints: Rc::new([]),
-            parameter_inlay_hints: Rc::new([]),
-            other_inlay_hints: Rc::new([]),
-            padding_before_inlay_hints: Rc::new([]),
-            padding_after_inlay_hints: Rc::new([]),
+            type_inlay_hints: Vec::new(),
+            parameter_inlay_hints: Vec::new(),
+            other_inlay_hints: Vec::new(),
+            padding_before_inlay_hints: Vec::new(),
+            padding_after_inlay_hints: Vec::new(),
         }
     }
 }
@@ -623,7 +624,7 @@ where
     *mut_ref = f(mem::take(mut_ref));
 }
 
-use helix_lsp::{lsp, Client, LanguageServerName};
+use helix_lsp::{lsp, Client, LanguageServerId, LanguageServerName};
 use url::Url;
 
 impl Document {
@@ -666,6 +667,7 @@ impl Document {
             version_control_head: None,
             focused_at: std::time::Instant::now(),
             readonly: false,
+            jump_labels: HashMap::new(),
         }
     }
 
@@ -869,7 +871,7 @@ impl Document {
 
         // We encode the file according to the `Document`'s encoding.
         let future = async move {
-            use tokio::{fs, fs::File};
+            use tokio::fs;
             if let Some(parent) = path.parent() {
                 // TODO: display a prompt asking the user if the directories should be created
                 if !parent.exists() {
@@ -891,9 +893,66 @@ impl Document {
                     }
                 }
             }
+            let write_path = tokio::fs::read_link(&path)
+                .await
+                .unwrap_or_else(|_| path.clone());
 
-            let mut file = File::create(&path).await?;
-            to_writer(&mut file, encoding_with_bom_info, &text).await?;
+            if readonly(&write_path) {
+                bail!(std::io::Error::new(
+                    std::io::ErrorKind::PermissionDenied,
+                    "Path is read only"
+                ));
+            }
+            let backup = if path.exists() {
+                let path_ = write_path.clone();
+                // hacks: we use tempfile to handle the complex task of creating
+                // non clobbered temporary path for us we don't want
+                // the whole automatically delete path on drop thing
+                // since the path doesn't exist yet, we just want
+                // the path
+                tokio::task::spawn_blocking(move || -> Option<PathBuf> {
+                    tempfile::Builder::new()
+                        .prefix(path_.file_name()?)
+                        .suffix(".bck")
+                        .make_in(path_.parent()?, |backup| std::fs::rename(&path_, backup))
+                        .ok()?
+                        .into_temp_path()
+                        .keep()
+                        .ok()
+                })
+                .await
+                .ok()
+                .flatten()
+            } else {
+                None
+            };
+
+            let write_result: anyhow::Result<_> = async {
+                let mut dst = tokio::fs::File::create(&write_path).await?;
+                to_writer(&mut dst, encoding_with_bom_info, &text).await?;
+                Ok(())
+            }
+            .await;
+
+            if let Some(backup) = backup {
+                if write_result.is_err() {
+                    // restore backup
+                    let _ = tokio::fs::rename(&backup, &write_path)
+                        .await
+                        .map_err(|e| log::error!("Failed to restore backup on write failure: {e}"));
+                } else {
+                    // copy metadata and delete backup
+                    let _ = tokio::task::spawn_blocking(move || {
+                        let _ = copy_metadata(&backup, &write_path)
+                            .map_err(|e| log::error!("Failed to copy metadata on write: {e}"));
+                        let _ = std::fs::remove_file(backup)
+                            .map_err(|e| log::error!("Failed to remove backup file on write: {e}"));
+                    })
+                    .await;
+                }
+            }
+
+            write_result?;
 
             let event = DocumentSavedEvent {
                 revision: current_rev,
@@ -904,13 +963,14 @@ impl Document {
 
             for (_, language_server) in language_servers {
                 if !language_server.is_initialized() {
-                    return Ok(event);
+                    continue;
                 }
-                if let Some(identifier) = &identifier {
-                    if let Some(notification) =
-                        language_server.text_document_did_save(identifier.clone(), &text)
-                    {
-                        notification.await?;
+                if let Some(notification) = identifier
+                    .clone()
+                    .and_then(|id| language_server.text_document_did_save(id, &text))
+                {
+                    if let Err(err) = notification.await {
+                        log::error!("Failed to send textDocument/didSave: {err}");
                     }
                 }
             }
@@ -954,35 +1014,12 @@ impl Document {
         }
     }
 
-    #[cfg(unix)]
     // Detect if the file is readonly and change the readonly field if necessary (unix only)
     pub fn detect_readonly(&mut self) {
-        use rustix::fs::{access, Access};
         // Allows setting the flag for files the user cannot modify, like root files
         self.readonly = match &self.path {
             None => false,
-            Some(p) => match access(p, Access::WRITE_OK) {
-                Ok(_) => false,
-                Err(err) if err.kind() == std::io::ErrorKind::NotFound => false,
-                Err(_) => true,
-            },
-        };
-    }
-
-    #[cfg(not(unix))]
-    // Detect if the file is readonly and change the readonly field if necessary (non-unix os)
-    pub fn detect_readonly(&mut self) {
-        // TODO Use the Windows' function `CreateFileW` to check if a file is readonly
-        // Discussion: https://github.com/helix-editor/helix/pull/7740#issuecomment-1656806459
-        // Vim implementation: https://github.com/vim/vim/blob/4c0089d696b8d1d5dc40568f25ea5738fa5bbffb/src/os_win32.c#L7665
-        // Windows binding: https://microsoft.github.io/windows-docs-rs/doc/windows/Win32/Storage/FileSystem/fn.CreateFileW.html
-        self.readonly = match &self.path {
-            None => false,
-            Some(p) => match std::fs::metadata(p) {
-                Err(err) if err.kind() == std::io::ErrorKind::NotFound => false,
-                Err(_) => false,
-                Ok(metadata) => metadata.permissions().readonly(),
-            },
+            Some(p) => readonly(p),
         };
     }
 
@@ -1139,6 +1176,7 @@ impl Document {
     pub fn remove_view(&mut self, view_id: ViewId) {
         self.selections.remove(&view_id);
         self.inlay_hints.remove(&view_id);
+        self.jump_labels.remove(&view_id);
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
@@ -1258,21 +1296,16 @@ impl Document {
             });
 
             self.diagnostics.sort_unstable_by_key(|diagnostic| {
-                (
-                    diagnostic.range,
-                    diagnostic.severity,
-                    diagnostic.language_server_id,
-                )
+                (diagnostic.range, diagnostic.severity, diagnostic.provider)
             });
 
             // Update the inlay hint annotations' positions, helping ensure they are displayed in the proper place
-            let apply_inlay_hint_changes = |annotations: &mut Rc<[InlineAnnotation]>| {
-                if let Some(data) = Rc::get_mut(annotations) {
-                    changes.update_positions(
-                        data.iter_mut()
-                            .map(|annotation| (&mut annotation.char_idx, Assoc::After)),
-                    );
-                }
+            let apply_inlay_hint_changes = |annotations: &mut Vec<InlineAnnotation>| {
+                changes.update_positions(
+                    annotations
+                        .iter_mut()
+                        .map(|annotation| (&mut annotation.char_idx, Assoc::After)),
+                );
             };
 
             self.inlay_hints_oudated = true;
@@ -1607,7 +1640,7 @@ impl Document {
         })
     }
 
-    pub fn supports_language_server(&self, id: usize) -> bool {
+    pub fn supports_language_server(&self, id: LanguageServerId) -> bool {
         self.language_servers().any(|l| l.id() == id)
     }
 
@@ -1730,7 +1763,7 @@ impl Document {
         text: &Rope,
         language_config: Option<&LanguageConfiguration>,
         diagnostic: &helix_lsp::lsp::Diagnostic,
-        language_server_id: usize,
+        language_server_id: LanguageServerId,
         offset_encoding: helix_lsp::OffsetEncoding,
     ) -> Option<Diagnostic> {
         use helix_core::diagnostic::{Range, Severity::*};
@@ -1807,7 +1840,7 @@ impl Document {
             tags,
             source: diagnostic.source.clone(),
             data: diagnostic.data.clone(),
-            language_server_id,
+            provider: language_server_id,
         })
     }
 
@@ -1820,13 +1853,13 @@ impl Document {
         &mut self,
         diagnostics: impl IntoIterator<Item = Diagnostic>,
         unchanged_sources: &[String],
-        language_server_id: Option<usize>,
+        language_server_id: Option<LanguageServerId>,
     ) {
         if unchanged_sources.is_empty() {
             self.clear_diagnostics(language_server_id);
         } else {
             self.diagnostics.retain(|d| {
-                if language_server_id.map_or(false, |id| id != d.language_server_id) {
+                if language_server_id.map_or(false, |id| id != d.provider) {
                     return true;
                 }
 
@@ -1839,18 +1872,14 @@ impl Document {
         }
         self.diagnostics.extend(diagnostics);
         self.diagnostics.sort_unstable_by_key(|diagnostic| {
-            (
-                diagnostic.range,
-                diagnostic.severity,
-                diagnostic.language_server_id,
-            )
+            (diagnostic.range, diagnostic.severity, diagnostic.provider)
         });
     }
 
     /// clears diagnostics for a given language server id if set, otherwise all diagnostics are cleared
-    pub fn clear_diagnostics(&mut self, language_server_id: Option<usize>) {
+    pub fn clear_diagnostics(&mut self, language_server_id: Option<LanguageServerId>) {
         if let Some(id) = language_server_id {
-            self.diagnostics.retain(|d| d.language_server_id != id);
+            self.diagnostics.retain(|d| d.provider != id);
         } else {
             self.diagnostics.clear();
         }
@@ -1940,15 +1969,17 @@ impl Document {
         }
     }
 
-    /// Get the text annotations that apply to the whole document, those that do not apply to any
-    /// specific view.
-    pub fn text_annotations(&self, _theme: Option<&Theme>) -> TextAnnotations {
-        TextAnnotations::default()
-    }
-
     /// Set the inlay hints for this document and `view_id`.
     pub fn set_inlay_hints(&mut self, view_id: ViewId, inlay_hints: DocumentInlayHints) {
         self.inlay_hints.insert(view_id, inlay_hints);
+    }
+
+    pub fn set_jump_labels(&mut self, view_id: ViewId, labels: Vec<Overlay>) {
+        self.jump_labels.insert(view_id, labels);
+    }
+
+    pub fn remove_jump_labels(&mut self, view_id: ViewId) {
+        self.jump_labels.remove(&view_id);
     }
 
     /// Get the inlay hints for this document and `view_id`.

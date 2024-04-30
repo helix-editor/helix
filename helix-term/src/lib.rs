@@ -20,8 +20,6 @@ mod handlers;
 use ignore::DirEntry;
 use url::Url;
 
-pub use keymap::macros::*;
-
 #[cfg(windows)]
 fn true_color() -> bool {
     true
@@ -53,7 +51,7 @@ fn filter_picker_entry(entry: &DirEntry, root: &Path, dedup_symlinks: bool) -> b
     // in our picker.
     if matches!(
         entry.file_name().to_str(),
-        Some(".git" | ".pijul" | ".jj" | ".hg")
+        Some(".git" | ".pijul" | ".jj" | ".hg" | ".svn")
     ) {
         return false;
     }

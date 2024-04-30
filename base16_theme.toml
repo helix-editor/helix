@@ -28,6 +28,8 @@
 "label" = "magenta"
 "namespace" = "magenta"
 "ui.help" = { fg = "white", bg = "black" }
+"ui.virtual.jump-label" = { fg = "blue", modifiers = ["bold", "underlined"] }
+"ui.virtual.ruler" = { bg = "black" }
 
 "markup.heading" = "blue"
 "markup.list" = "red"
