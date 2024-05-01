@@ -27,6 +27,7 @@ pub struct SignatureHelp {
     language: String,
     config_loader: Arc<ArcSwap<syntax::Loader>>,
     active_signature: usize,
+    lsp_signature: Option<usize>,
     signatures: Vec<Signature>,
 }
 
@@ -37,18 +38,24 @@ impl SignatureHelp {
         language: String,
         config_loader: Arc<ArcSwap<syntax::Loader>>,
         active_signature: usize,
+        lsp_signature: Option<usize>,
         signatures: Vec<Signature>,
     ) -> Self {
         Self {
             language,
             config_loader,
             active_signature,
+            lsp_signature,
             signatures,
         }
     }
 
     pub fn active_signature(&self) -> usize {
         self.active_signature
+    }
+
+    pub fn lsp_signature(&self) -> Option<usize> {
+        self.lsp_signature
     }
 
     pub fn visible_popup(compositor: &mut Compositor) -> Option<&mut Popup<Self>> {
