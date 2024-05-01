@@ -1526,9 +1526,11 @@ dependencies = [
  "log",
  "once_cell",
  "parking_lot",
+ "regex",
  "rustix",
  "serde",
  "serde_json",
+ "serde_regex",
  "slotmap",
  "tempfile",
  "tokio",
@@ -2130,6 +2132,16 @@ checksum = "3e17db7126d17feb94eb3fad46bf1a96b034e8aacbc2e775fe81505f8b0b2813"
 dependencies = [
  "itoa",
  "ryu",
+ "serde",
+]
+
+[[package]]
+name = "serde_regex"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8136f1a4ea815d7eac4101cfd0b16dc0cb5e1fe1b8609dfd728058656b7badf"
+dependencies = [
+ "regex",
  "serde",
 ]
 
