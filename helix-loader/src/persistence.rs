@@ -51,3 +51,16 @@ pub fn read_history<T: for<'a> Deserialize<'a>>(filepath: PathBuf) -> Vec<T> {
         },
     }
 }
+
+pub fn trim_history<T: Clone + Serialize + for<'a> Deserialize<'a>>(
+    filepath: PathBuf,
+    limit: usize,
+) {
+    // TODO: can we remove this clone?
+    let history: Vec<T> = read_history(filepath.clone());
+    if history.len() > limit {
+        let trim_start = history.len() - limit;
+        let trimmed_history = history[trim_start..].to_vec();
+        write_history(filepath, &trimmed_history);
+    }
+}

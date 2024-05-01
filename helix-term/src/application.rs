@@ -25,7 +25,7 @@ use crate::{
     compositor::{Compositor, Event},
     config::Config,
     handlers,
-    job::Jobs,
+    job::{Job, Jobs},
     keymap::Keymaps,
     ui::{self, overlay::overlaid},
 };
@@ -309,6 +309,27 @@ impl Application {
             jobs: Jobs::new(),
             lsp_progress: LspProgressMap::new(),
         };
+        app.jobs.add(
+            Job::new(async {
+                persistence::trim_file_history(5);
+                Ok(())
+            })
+            .wait_before_exiting(),
+        );
+        app.jobs.add(
+            Job::new(async {
+                persistence::trim_command_history(5);
+                Ok(())
+            })
+            .wait_before_exiting(),
+        );
+        app.jobs.add(
+            Job::new(async {
+                persistence::trim_search_history(5);
+                Ok(())
+            })
+            .wait_before_exiting(),
+        );
 
         Ok(app)
     }
