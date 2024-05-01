@@ -10,6 +10,7 @@ use crate::{
     info::Info,
     input::KeyEvent,
     persistence::{self, FileHistoryEntry},
+    regex::EqRegex,
     register::Registers,
     theme::{self, Theme},
     tree::{self, Tree},
@@ -60,6 +61,8 @@ use arc_swap::{
     access::{DynAccess, DynGuard},
     ArcSwap,
 };
+
+use regex::Regex;
 
 pub const DEFAULT_AUTO_SAVE_DELAY: u64 = 3000;
 
@@ -366,6 +369,7 @@ pub struct Config {
     pub persist_commands: bool,
     pub persist_search: bool,
     pub persist_clipboard: bool,
+    pub persistence_file_exclusions: Vec<EqRegex>,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -1011,6 +1015,11 @@ impl Default for Config {
             persist_commands: false,
             persist_search: false,
             persist_clipboard: false,
+            // TODO: any more defaults we should add here?
+            persistence_file_exclusions: [r".*/\.git/.*"]
+                .iter()
+                .map(|s| Regex::new(s).unwrap().into())
+                .collect(),
         }
     }
 }
@@ -1794,7 +1803,13 @@ impl Editor {
 
         self.switch(id, action);
 
-        if new_doc {
+        if new_doc
+            && !self
+                .config()
+                .persistence_file_exclusions
+                .iter()
+                .any(|r| r.is_match(&path.to_string_lossy()))
+        {
             if let Some((view_position, selection)) =
                 self.old_file_locs.get(&path).map(|x| x.to_owned())
             {
@@ -1838,9 +1853,16 @@ impl Editor {
 
         if self.config().persist_old_files {
             for loc in file_locs {
-                persistence::push_file_history(&loc);
-                self.old_file_locs
-                    .insert(loc.path, (loc.view_position, loc.selection));
+                if !self
+                    .config()
+                    .persistence_file_exclusions
+                    .iter()
+                    .any(|r| r.is_match(&loc.path.to_string_lossy()))
+                {
+                    persistence::push_file_history(&loc);
+                    self.old_file_locs
+                        .insert(loc.path, (loc.view_position, loc.selection));
+                }
             }
         }
 
@@ -1903,9 +1925,16 @@ impl Editor {
 
         if self.config().persist_old_files {
             for loc in file_locs {
-                persistence::push_file_history(&loc);
-                self.old_file_locs
-                    .insert(loc.path, (loc.view_position, loc.selection));
+                if !self
+                    .config()
+                    .persistence_file_exclusions
+                    .iter()
+                    .any(|r| r.is_match(&loc.path.to_string_lossy()))
+                {
+                    persistence::push_file_history(&loc);
+                    self.old_file_locs
+                        .insert(loc.path, (loc.view_position, loc.selection));
+                }
             }
         }
 
