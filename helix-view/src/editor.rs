@@ -336,6 +336,10 @@ pub struct Config {
         deserialize_with = "deserialize_alphabet"
     )]
     pub jump_label_alphabet: Vec<char>,
+    pub persist_old_files: bool,
+    pub persist_commands: bool,
+    pub persist_search: bool,
+    pub persist_clipboard: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -913,6 +917,10 @@ impl Default for Config {
             popup_border: PopupBorderConfig::None,
             indent_heuristic: IndentationHeuristic::default(),
             jump_label_alphabet: ('a'..='z').collect(),
+            persist_old_files: false,
+            persist_commands: false,
+            persist_search: false,
+            persist_clipboard: false,
         }
     }
 }
@@ -1699,10 +1707,12 @@ impl Editor {
             doc.remove_view(id);
         }
 
-        for loc in file_locs {
-            persistence::push_file_history(&loc);
-            self.old_file_locs
-                .insert(loc.path, (loc.view_position, loc.selection));
+        if self.config().persist_old_files {
+            for loc in file_locs {
+                persistence::push_file_history(&loc);
+                self.old_file_locs
+                    .insert(loc.path, (loc.view_position, loc.selection));
+            }
         }
 
         self.tree.remove(id);
@@ -1762,10 +1772,12 @@ impl Editor {
             })
             .collect();
 
-        for loc in file_locs {
-            persistence::push_file_history(&loc);
-            self.old_file_locs
-                .insert(loc.path, (loc.view_position, loc.selection));
+        if self.config().persist_old_files {
+            for loc in file_locs {
+                persistence::push_file_history(&loc);
+                self.old_file_locs
+                    .insert(loc.path, (loc.view_position, loc.selection));
+            }
         }
 
         for action in actions {
