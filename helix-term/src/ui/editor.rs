@@ -1179,19 +1179,6 @@ impl EditorView {
                 EventResult::Ignored(None)
             }
 
-            MouseEventKind::Moved if cxt.editor.mode == Mode::Select => {
-                if let Some((view_id, pos, false, false)) =
-                    coords_info(cxt.editor, row, column, true)
-                {
-                    cxt.editor.focus(view_id);
-                    doc_mut!(cxt.editor).set_selection(view_id, Selection::point(pos));
-                    commands::MappableCommand::extend_to_word.execute(cxt);
-                    cxt.editor.ensure_cursor_in_view(view_id);
-                    return EventResult::Consumed(None);
-                }
-                EventResult::Ignored(None)
-            }
-
             MouseEventKind::Down(MouseButton::Right) => {
                 if let Some((view_id, pos, false, false)) =
                     coords_info(cxt.editor, row, column, true)
