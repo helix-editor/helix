@@ -10,6 +10,7 @@ pub fn write_history<T: Serialize>(filepath: PathBuf, entries: &Vec<T>) {
     let file = OpenOptions::new()
         .write(true)
         .create(true)
+        .truncate(true)
         .open(filepath)
         // TODO: do something about this unwrap
         .unwrap();
