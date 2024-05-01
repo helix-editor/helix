@@ -1105,20 +1105,22 @@ impl EditorView {
         } = *event;
 
         let coords_info = |editor: &Editor, row, col, ignore_vtext| {
-            editor.tree.views().find_map(|(view, _)| {
-                view.gutter_coords_at_screen_coords(row, col)
-                    .map(|coords| {
+            editor
+                .tree
+                .views()
+                .find_map(|(view, _)| {
+                    view.gutter_coords_at_screen_coords(row, col).map(|coords| {
                         let (row, col) = (coords.row as u16, coords.col as u16);
                         let doc = &editor.documents[&view.doc];
                         let gutter_offset = view.gutter_offset(doc);
                         let is_status = row == view.inner_area(doc).height;
                         let is_gutter = col < gutter_offset;
                         let col = if is_gutter { 0 } else { col - gutter_offset };
-                        view.pos_at_visual_coords(&doc, row, col, ignore_vtext)
+                        view.pos_at_visual_coords(doc, row, col, ignore_vtext)
                             .map(|pos| (view.id, pos, is_gutter, is_status))
                     })
-                    .flatten()
-            })
+                })
+                .flatten()
         };
 
         match kind {
