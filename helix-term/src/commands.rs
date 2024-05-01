@@ -4316,7 +4316,9 @@ fn yank_impl(editor: &mut Editor, register: char) {
         .collect();
     let selections = values.len();
 
-    persistence::write_clipboard_file(&values);
+    if editor.config().persist_clipboard {
+        persistence::write_clipboard_file(&values);
+    }
 
     match editor.registers.write(register, values) {
         Ok(_) => editor.set_status(format!(

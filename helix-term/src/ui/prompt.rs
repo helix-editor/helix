@@ -613,7 +613,11 @@ impl Component for Prompt {
                                 {
                                     cx.editor.set_error(err.to_string());
                                 }
-                                persistence::push_reg_history(register, &self.line);
+                                if (cx.editor.config().persist_commands && register == ':')
+                                    || (cx.editor.config().persist_search && register == '/')
+                                {
+                                    persistence::push_reg_history(register, &self.line);
+                                }
                             };
                         }
 

@@ -143,6 +143,15 @@ impl Application {
         let mut compositor = Compositor::new(area);
         let config = Arc::new(ArcSwap::from_pointee(config));
         let handlers = handlers::setup(config.clone());
+        let old_file_locs = if config.load().editor.persist_old_files {
+            HashMap::from_iter(
+                persistence::read_file_history()
+                    .into_iter()
+                    .map(|entry| (entry.path.clone(), (entry.view_position, entry.selection))),
+            )
+        } else {
+            HashMap::new()
+        };
         let mut editor = Editor::new(
             area,
             theme_loader.clone(),
@@ -151,29 +160,31 @@ impl Application {
                 &config.editor
             })),
             handlers,
-            HashMap::from_iter(
-                persistence::read_file_history()
-                    .into_iter()
-                    .map(|entry| (entry.path.clone(), (entry.view_position, entry.selection))),
-            ),
+            old_file_locs,
         );
 
         // TODO: do most of this in the background?
-        editor
-            .registers
-            .write(':', persistence::read_command_history())
-            // TODO: do something about this unwrap
-            .unwrap();
-        editor
-            .registers
-            .write('/', persistence::read_search_history())
-            // TODO: do something about this unwrap
-            .unwrap();
-        editor
-            .registers
-            .write('"', persistence::read_clipboard_file())
-            // TODO: do something about this unwrap
-            .unwrap();
+        if config.load().editor.persist_commands {
+            editor
+                .registers
+                .write(':', persistence::read_command_history())
+                // TODO: do something about this unwrap
+                .unwrap();
+        }
+        if config.load().editor.persist_search {
+            editor
+                .registers
+                .write('/', persistence::read_search_history())
+                // TODO: do something about this unwrap
+                .unwrap();
+        }
+        if config.load().editor.persist_clipboard {
+            editor
+                .registers
+                .write('"', persistence::read_clipboard_file())
+                // TODO: do something about this unwrap
+                .unwrap();
+        }
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
