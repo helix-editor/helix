@@ -295,6 +295,32 @@ impl Application {
         ])
         .context("build signal handler")?;
 
+        let jobs = Jobs::new();
+        let file_trim = config.load().editor.persistence_old_files_trim;
+        jobs.add(
+            Job::new(async move {
+                persistence::trim_file_history(file_trim);
+                Ok(())
+            })
+            .wait_before_exiting(),
+        );
+        let commands_trim = config.load().editor.persistence_commands_trim;
+        jobs.add(
+            Job::new(async move {
+                persistence::trim_command_history(commands_trim);
+                Ok(())
+            })
+            .wait_before_exiting(),
+        );
+        let search_trim = config.load().editor.persistence_search_trim;
+        jobs.add(
+            Job::new(async move {
+                persistence::trim_search_history(search_trim);
+                Ok(())
+            })
+            .wait_before_exiting(),
+        );
+
         let app = Self {
             compositor,
             terminal,
@@ -306,30 +332,9 @@ impl Application {
             syn_loader,
 
             signals,
-            jobs: Jobs::new(),
+            jobs,
             lsp_progress: LspProgressMap::new(),
         };
-        app.jobs.add(
-            Job::new(async {
-                persistence::trim_file_history(5);
-                Ok(())
-            })
-            .wait_before_exiting(),
-        );
-        app.jobs.add(
-            Job::new(async {
-                persistence::trim_command_history(5);
-                Ok(())
-            })
-            .wait_before_exiting(),
-        );
-        app.jobs.add(
-            Job::new(async {
-                persistence::trim_search_history(5);
-                Ok(())
-            })
-            .wait_before_exiting(),
-        );
 
         Ok(app)
     }

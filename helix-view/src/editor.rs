@@ -370,6 +370,9 @@ pub struct Config {
     pub persist_search: bool,
     pub persist_clipboard: bool,
     pub persistence_file_exclusions: Vec<EqRegex>,
+    pub persistence_old_files_trim: usize,
+    pub persistence_commands_trim: usize,
+    pub persistence_search_trim: usize,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -1020,6 +1023,9 @@ impl Default for Config {
                 .iter()
                 .map(|s| Regex::new(s).unwrap().into())
                 .collect(),
+            persistence_old_files_trim: 100,
+            persistence_commands_trim: 100,
+            persistence_search_trim: 100,
         }
     }
 }
