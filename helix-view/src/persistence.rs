@@ -1,7 +1,7 @@
 use helix_core::Selection;
 use helix_loader::{
     clipboard_file, command_histfile, file_histfile,
-    persistence::{push_history, read_history, write_history},
+    persistence::{push_history, read_history, trim_history, write_history},
     search_histfile,
 };
 use serde::{Deserialize, Serialize};
@@ -9,7 +9,7 @@ use std::path::PathBuf;
 
 use crate::view::ViewPosition;
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FileHistoryEntry {
     pub path: PathBuf,
     pub view_position: ViewPosition,
@@ -34,6 +34,10 @@ pub fn read_file_history() -> Vec<FileHistoryEntry> {
     read_history(file_histfile())
 }
 
+pub fn trim_file_history(limit: usize) {
+    trim_history::<FileHistoryEntry>(file_histfile(), limit)
+}
+
 pub fn push_reg_history(register: char, line: &String) {
     let filepath = match register {
         ':' => command_histfile(),
@@ -54,10 +58,18 @@ pub fn read_command_history() -> Vec<String> {
     hist
 }
 
+pub fn trim_command_history(limit: usize) {
+    trim_history::<String>(command_histfile(), limit)
+}
+
 pub fn read_search_history() -> Vec<String> {
     let mut hist = read_reg_history(search_histfile());
     hist.reverse();
     hist
+}
+
+pub fn trim_search_history(limit: usize) {
+    trim_history::<String>(search_histfile(), limit)
 }
 
 pub fn write_clipboard_file(values: &Vec<String>) {
