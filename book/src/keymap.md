@@ -13,8 +13,8 @@
     - [Window mode](#window-mode)
     - [Space mode](#space-mode)
       - [Popup](#popup)
-      - [Completion Popup](#completion-popup)
-      - [Signature Popup](#signature-popup)
+      - [Completion Menu](#completion-menu)
+      - [Signature-help Popup](#signature-help-popup)
     - [Unimpaired](#unimpaired)
 - [Insert mode](#insert-mode)
 - [Select / extend mode](#select--extend-mode)
@@ -317,7 +317,7 @@ Displays documentation for item under cursor. Remapping currently not supported.
 | `Ctrl-u` | Scroll up   |
 | `Ctrl-d` | Scroll down |
 
-##### Completion Popup
+##### Completion Menu
 
 Displays documentation for the selected completion item. Remapping currently not supported.
 
@@ -326,7 +326,7 @@ Displays documentation for the selected completion item. Remapping currently not
 | `Shift-Tab`, `Ctrl-p`, `Up` | Previous entry |
 | `Tab`, `Ctrl-n`, `Down`     | Next entry     |
 
-##### Signature Popup
+##### Signature-help Popup
 
 Displays the signature of the selected completion item. Remapping currently not supported.
 
