@@ -122,6 +122,8 @@ The following statusline elements can be configured:
 | `selections` | The number of active selections |
 | `primary-selection-length` | The number of characters currently in primary selection |
 | `position` | The cursor position |
+| `horizontal-position` | The cursor horizontal position |
+| `vertical-position` | The cursor vertical position |
 | `position-percentage` | The cursor position as a percentage of the total number of lines |
 | `separator` | The string defined in `editor.statusline.separator` (defaults to `"│"`) |
 | `spacer` | Inserts a space between elements (multiple/contiguous spacers may be specified) |
