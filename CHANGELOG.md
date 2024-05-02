@@ -1,3 +1,139 @@
+# 25.02 (2024-05-05)
+
+Thanks to all of the contributors! This release has changes from 102 contributors.
+
+Breaking changes:
+
+Features:
+
+- Add a textobject for entries/elements of list-like things (#8150)
+- Add a picker showing files changed in VCS (#5645)
+- Use a temporary file for writes (#9236, #10339)
+- Allow cycling through LSP signature-help signatures with `A-n`/`A-p` (#9974, #10654)
+
+Commands:
+
+- `select_all_siblings` (`A-a`) - select all siblings of each selection (87c4161)
+- `select_all_children` (`A-i`) - select all children of each selection (fa67c5c)
+- `:read` - insert the contents of the given file at each selection (#10447)
+
+Usability improvements:
+
+- Support scrolling popup contents using the mouse (#10053)
+- Sort the jumplist picker so that most recent items come first (#10095)
+- Improve `goto_file`'s (`gf`) automatic path detection strategy (#9065)
+- Respect language server definition order in code action menu (#9590)
+- Allow using a count with `goto_next_buffer` (`gn`) and `goto_previous_buffer` (`gp`) (#10463)
+- Improve the positioning of popups (#10257, #10573)
+- Use tree-sitter when finding matching brackets and closest pairs (#8294)
+
+Fixes:
+
+- Use `lldb-dap` instead of `lldb-vscode` in default DAP configuration (#10091)
+- Fix creation of uneven splits when closing windows (#10004)
+- Avoid setting a register in `delete_selection_noyank`, fixing the command's use in command sequences (#10050, #10148)
+- Fix jump alphabet config resetting when using `:config-reload` (#10156)
+- Overlay LSP unnecessary/deprecated diagnostic tag highlights onto regular diagnostic highlights (#10084)
+- Fix crash on LSP text edits with invalid ranges (#9649)
+- Handle partial failure when sending multiple LSP `textDocument/didSave` notifications (#10168)
+- Fix off-by-one error for completion-replace option (#10279)
+- Fix mouse right-click selection behavior (#10067)
+- Fix scrolling to the end within a popup (#10181)
+- Fix jump label highlight locations when jumping in non-ascii text (#10317)
+- Fix crashes from tree-sitter query captures that return non-grapheme aligned ranges (#10310)
+- Include VCS change in `mi`/`ma` textobject infobox (#10496)
+- Override crossterm's support for `NO_COLOR` (#10514)
+- Respect mode when starting a search (#10505)
+- Simplify first-in-line computation for indent queries (#10527)
+- Ignore .svn version controlled files in file pickers (#10536)
+- Fix overloading language servers with `completionItem/resolve` requests (38ee845)
+- Specify direction for `select_next_sibling` / `select_prev_sibling` (#10542)
+- Fix restarting language servers (#10614)
+- Don't stop at the first URL in `goto_file` (#10622)
+- Fix overflows in window size calculations for small terminals (#10620)
+
+Themes:
+
+- Add jump label styles to `nightfox` (#10052)
+- Add jump label styles to Solarized themes (#10056)
+- Add jump label styles to `cyan_light` (#10058)
+- Add jump label styles to `onelight` (#10061)
+- Add `flexoki-dark` and `flexoki-light` (#10002)
+- Add default theme keys for LSP diagnostics tags to existing themes (#10064)
+- Add jump label styles to base16 themes (#10076)
+- Dim primary selection in `kanagawa` (#10094, #10500)
+- Add jump label styles to tokyonight themes (#10106)
+- Add jump label styles to papercolor themes (#10104)
+- Add jump label styles to Darcula themes (#10116)
+- Add jump label styles to `autumn` (#10134)
+- Add jump label styles to Ayu themes (#10133)
+- Add jump label styles to `dark_high_contrast` (#10133)
+- Update material themes (#10290)
+- Add jump label styles to `varua` (#10299)
+- Add ruler style to `adwaita-dark` (#10260)
+- Remove `ui.highlight` effects from `solarized_dark` (#10261)
+- Fix statusline color in material themes (#10308)
+- Brighten `nord` selection highlight (#10307)
+- Add inlay-hint styles to monokai themes (#10334)
+- Add bufferline and cursorline colors to `vim_dark_high_contrast` (#10444)
+- Switch themes with foreground rulers to background (#10309)
+- Fix statusline colors for `everblush` (#10394)
+- Use `yellow1` for `gruvbox` warning diagnostics (#10506)
+- Add jump label styles to Modus themes (#10538)
+- Refactor `dark_plus` and switch maintainers (#10543, #10574)
+- Add debug highlights to `dark_plus` (#10593)
+- Fix per-mode cursor colors in the default theme (#10608)
+
+New languages:
+
+- BitBake (#10010)
+- Earthfile (#10111, #10489)
+- TCL (#9837)
+- ADL (#10029)
+- LDIF (#10330)
+- XTC (#10448)
+- Move (f06a166)
+- Pest (#10616)
+
+Updated languages and queries:
+
+- Recognize `mkdn` files as markdown (#10065)
+- Add comment injections for Gleam (#10062)
+- Recognize BuildKite commands in YAML injections (#10090)
+- Add F# block comment token configuration (#10108)
+- Update tree-sitter-templ and queries (#10114)
+- Recognize `Tiltfile` as Starlark (#10072)
+- Remove `todo.txt` from files recognized as todotxt (5fece00)
+- Highlight `type` keyword in Python from PEP695 (#10165)
+- Update tree-sitter-koka, add language server config (#10119)
+- Recognize node and Python history files (#10120)
+- Recognize more shell files as bash (#10120)
+- Recognize the bun shebang as typescript (#10120)
+- Add a configuration for the angular language server (#10166)
+- Add textobject queries for Solidity (#10318)
+- Recognize `meson.options` as Meson (#10323)
+- Improve Solidity highlighting (4fc0a4d)
+- Recognize `_.tpl` files as Helm (#10344)
+- Update tree-sitter-ld and highlights (#10379)
+- Add `lldb-dap` configuration for Odin (#10175)
+- Update tree-sitter-rust (#10365)
+- Update tree-sitter-typst (#10321)
+- Recognize `hyprpaper.conf`, `hypridle.conf` and `hyprlock.conf` as Hyprlang (#10383)
+- Improve HTML highlighting (#10503)
+- Add `rust-script` and `cargo` as shebangs for Rust (#10484)
+- Fix precedence of tag highlights in Svelte (#10487)
+- Update tree-sitter-bash (#10526)
+- Recognize `*.ignore` files as ignore (#10579)
+- Add configuration to enable inlay hints in metals (#10597)
+- Enable highlighting private members in ECMA languages (#10554)
+- Add comment injection to typst queries (#10628)
+- Add textobject queries for Hurl (#10594)
+- Add `try` keyword to Rust (#10641)
+
+Packaging:
+
+- Make `Helix.appdata.xml` spec-compliant (#10051)
+
 # 24.03 (2024-03-30)
 
 As always, a big thank you to all of the contributors! This release saw changes from 125 contributors.
