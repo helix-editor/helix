@@ -379,9 +379,10 @@ impl<T: Item + 'static> Component for Menu<T> {
 
         let render_borders = cx.editor.menu_border();
 
+        // this highlights the selected edges if there are no borders
         if !render_borders {
             if let Some(cursor) = self.cursor {
-                let offset_from_top = cursor - scroll;
+                let offset_from_top = (cursor - scroll).min(area.height as usize - 1).max(0);
                 let left = &mut surface[(area.left(), area.y + offset_from_top as u16)];
                 left.set_style(selected);
                 let right = &mut surface[(
