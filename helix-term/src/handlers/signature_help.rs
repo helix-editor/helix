@@ -238,19 +238,33 @@ pub fn show_signature_help(
         .collect();
 
     let old_popup = compositor.find_id::<Popup<SignatureHelp>>(SignatureHelp::ID);
-    let mut active_signature = old_popup
-        .as_ref()
-        .map(|popup| popup.contents().active_signature())
-        .unwrap_or_else(|| response.active_signature.unwrap_or_default() as usize);
+    let lsp_signature = response.active_signature.map(|s| s as usize);
 
-    if active_signature >= signatures.len() {
-        active_signature = signatures.len() - 1;
-    }
+    // take the new suggested lsp signature if changed
+    // otherwise take the old signature if possible
+    // otherwise the last one (in case there is less signatures than before)
+    let active_signature = old_popup
+        .as_ref()
+        .map(|popup| {
+            let old_lsp_sig = popup.contents().lsp_signature();
+            let old_sig = popup
+                .contents()
+                .active_signature()
+                .min(signatures.len() - 1);
+
+            if old_lsp_sig != lsp_signature {
+                lsp_signature.unwrap_or(old_sig)
+            } else {
+                old_sig
+            }
+        })
+        .unwrap_or(lsp_signature.unwrap_or_default());
 
     let contents = SignatureHelp::new(
         language.to_string(),
         Arc::clone(&editor.syn_loader),
         active_signature,
+        lsp_signature,
         signatures,
     );
 

@@ -125,6 +125,7 @@
   "match"
   "if"
   "else"
+  "try"
 ] @keyword.control.conditional
 
 [

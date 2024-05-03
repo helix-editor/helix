@@ -12,8 +12,9 @@
     - [Match mode](#match-mode)
     - [Window mode](#window-mode)
     - [Space mode](#space-mode)
-      - [Comment mode](#comment-mode)
       - [Popup](#popup)
+      - [Completion Menu](#completion-menu)
+      - [Signature-help Popup](#signature-help-popup)
     - [Unimpaired](#unimpaired)
 - [Insert mode](#insert-mode)
 - [Select / extend mode](#select--extend-mode)
@@ -309,12 +310,30 @@ This layer is a kludge of mappings, mostly pickers.
 
 ##### Popup
 
-Displays documentation for item under cursor.
+Displays documentation for item under cursor. Remapping currently not supported.
 
 | Key      | Description |
 | ----     | ----------- |
 | `Ctrl-u` | Scroll up   |
 | `Ctrl-d` | Scroll down |
+
+##### Completion Menu
+
+Displays documentation for the selected completion item. Remapping currently not supported.
+
+| Key                         | Description    |
+| ----                        | -----------    |
+| `Shift-Tab`, `Ctrl-p`, `Up` | Previous entry |
+| `Tab`, `Ctrl-n`, `Down`     | Next entry     |
+
+##### Signature-help Popup
+
+Displays the signature of the selected completion item. Remapping currently not supported.
+
+| Key     | Description        |
+| ----    | -----------        |
+| `Alt-p` | Previous signature |
+| `Alt-n` | Next signature     |
 
 #### Unimpaired
 
