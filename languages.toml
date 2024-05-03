@@ -3579,3 +3579,14 @@ language-servers = ["pest-language-server"]
 [[grammar]]
 name = "pest"
 source = { git = "https://github.com/pest-parser/tree-sitter-pest", rev = "a8a98a824452b1ec4da7f508386a187a2f234b85" }
+
+[[language]]
+name = "mail"
+scope = "source.eml"
+injection-regex = "mail"
+file-types = ["eml"]
+indent = { tab-width = 4, unit = "\t" }
+
+[[grammar]]
+name = "mail"
+source = { git = "https://github.com/dagle/tree-sitter-mail", rev = "a668550628e9a76bcac4864864dd9d60c91be27f" }
