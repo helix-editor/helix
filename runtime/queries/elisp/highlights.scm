@@ -43,9 +43,9 @@
 
 (comment) @comment
 
-(integer) @number
-(float) @number
-(char) @number
+(integer) @constant.numeric.integer
+(float) @constant.numeric.float
+(char) @constant.character
 
 (string) @string
 
