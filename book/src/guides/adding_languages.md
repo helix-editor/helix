@@ -16,7 +16,7 @@ below.
 
 > 💡 If you are adding a new Language Server configuration, make sure to update
 > the
-> [Language Server Wiki](https://github.com/helix-editor/helix/wiki/How-to-install-the-default-language-servers)
+> [Language Server Wiki](https://github.com/helix-editor/helix/wiki/Language-Server-Configurations)
 > with the installation instructions.
 
 ## Grammar configuration
