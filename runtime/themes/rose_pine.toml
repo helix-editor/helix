@@ -37,6 +37,7 @@
 "ui.text.focus" = { bg = "overlay" }
 "ui.text.info" = { fg = "subtle" }
 
+"ui.virtual.jump-label" = { fg = "love", modifiers = ["bold"] }
 "ui.virtual.ruler" = { bg = "overlay" }
 "ui.virtual.whitespace" = { fg = "highlight_high" }
 "ui.virtual.indent-guide" = { fg = "muted" }
@@ -63,6 +64,8 @@
 "diagnostic.info" = { underline = { color = "foam", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "gold", style = "curl" } }
 "diagnostic.error" = { underline = { color = "love", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 "special" = "rose"
 
 "attribute" = "iris"

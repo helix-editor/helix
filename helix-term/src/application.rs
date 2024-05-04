@@ -4,7 +4,7 @@ use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Selection};
 use helix_lsp::{
     lsp::{self, notification::Notification},
     util::lsp_range_to_range,
-    LspProgressMap,
+    LanguageServerId, LspProgressMap,
 };
 use helix_stdx::path::get_relative_path;
 use helix_view::{
@@ -66,7 +66,7 @@ pub struct Application {
     #[allow(dead_code)]
     theme_loader: Arc<theme::Loader>,
     #[allow(dead_code)]
-    syn_loader: Arc<syntax::Loader>,
+    syn_loader: Arc<ArcSwap<syntax::Loader>>,
 
     signals: Signals,
     jobs: Jobs,
@@ -96,11 +96,7 @@ fn setup_integration_logging() {
 }
 
 impl Application {
-    pub fn new(
-        args: Args,
-        config: Config,
-        syn_loader_conf: syntax::Configuration,
-    ) -> Result<Self, Error> {
+    pub fn new(args: Args, config: Config, lang_loader: syntax::Loader) -> Result<Self, Error> {
         #[cfg(feature = "integration")]
         setup_integration_logging();
 
@@ -126,7 +122,7 @@ impl Application {
             })
             .unwrap_or_else(|| theme_loader.default_theme(true_color));
 
-        let syn_loader = std::sync::Arc::new(syntax::Loader::new(syn_loader_conf));
+        let syn_loader = Arc::new(ArcSwap::from_pointee(lang_loader));
 
         #[cfg(not(feature = "integration"))]
         let backend = CrosstermBackend::new(stdout(), &config.editor);
@@ -415,10 +411,9 @@ impl Application {
 
     /// refresh language config after config change
     fn refresh_language_config(&mut self) -> Result<(), Error> {
-        let syntax_config = helix_core::config::user_syntax_loader()
-            .map_err(|err| anyhow::anyhow!("Failed to load language config: {}", err))?;
+        let lang_loader = helix_core::config::user_lang_loader()?;
 
-        self.syn_loader = std::sync::Arc::new(syntax::Loader::new(syntax_config));
+        self.syn_loader.store(Arc::new(lang_loader));
         self.editor.syn_loader = self.syn_loader.clone();
         for document in self.editor.documents.values_mut() {
             document.detect_language(self.syn_loader.clone());
@@ -681,7 +676,7 @@ impl Application {
     pub async fn handle_language_server_message(
         &mut self,
         call: helix_lsp::Call,
-        server_id: usize,
+        server_id: LanguageServerId,
     ) {
         use helix_lsp::{Call, MethodCall, Notification};
 
@@ -750,7 +745,7 @@ impl Application {
                     }
                     Notification::PublishDiagnostics(mut params) => {
                         let path = match params.uri.to_file_path() {
-                            Ok(path) => path,
+                            Ok(path) => helix_stdx::path::normalize(&path),
                             Err(_) => {
                                 log::error!("Unsupported file URI: {}", params.uri);
                                 return;
@@ -779,9 +774,7 @@ impl Application {
                             let lang_conf = doc.language.clone();
 
                             if let Some(lang_conf) = &lang_conf {
-                                if let Some(old_diagnostics) =
-                                    self.editor.diagnostics.get(&params.uri)
-                                {
+                                if let Some(old_diagnostics) = self.editor.diagnostics.get(&path) {
                                     if !lang_conf.persistent_diagnostic_sources.is_empty() {
                                         // Sort diagnostics first by severity and then by line numbers.
                                         // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
@@ -814,7 +807,7 @@ impl Application {
                         // Insert the original lsp::Diagnostics here because we may have no open document
                         // for diagnosic message and so we can't calculate the exact position.
                         // When using them later in the diagnostics picker, we calculate them on-demand.
-                        let diagnostics = match self.editor.diagnostics.entry(params.uri) {
+                        let diagnostics = match self.editor.diagnostics.entry(path) {
                             Entry::Occupied(o) => {
                                 let current_diagnostics = o.into_mut();
                                 // there may entries of other language servers, which is why we can't overwrite the whole entry
@@ -1058,12 +1051,7 @@ impl Application {
                         Ok(json!(result))
                     }
                     Ok(MethodCall::RegisterCapability(params)) => {
-                        if let Some(client) = self
-                            .editor
-                            .language_servers
-                            .iter_clients()
-                            .find(|client| client.id() == server_id)
-                        {
+                        if let Some(client) = self.editor.language_servers.get_by_id(server_id) {
                             for reg in params.registrations {
                                 match reg.method.as_str() {
                                     lsp::notification::DidChangeWatchedFiles::METHOD => {

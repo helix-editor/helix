@@ -461,14 +461,17 @@ impl<T: Item + 'static> Picker<T> {
 
         // Then attempt to highlight it if it has no language set
         if doc.language_config().is_none() {
-            if let Some(language_config) = doc.detect_language_config(&cx.editor.syn_loader) {
+            if let Some(language_config) = doc.detect_language_config(&cx.editor.syn_loader.load())
+            {
                 doc.language = Some(language_config.clone());
                 let text = doc.text().clone();
                 let loader = cx.editor.syn_loader.clone();
                 let job = tokio::task::spawn_blocking(move || {
-                    let syntax = language_config.highlight_config(&loader.scopes()).and_then(
-                        |highlight_config| Syntax::new(text.slice(..), highlight_config, loader),
-                    );
+                    let syntax = language_config
+                        .highlight_config(&loader.load().scopes())
+                        .and_then(|highlight_config| {
+                            Syntax::new(text.slice(..), highlight_config, loader)
+                        });
                     let callback = move |editor: &mut Editor, compositor: &mut Compositor| {
                         let Some(syntax) = syntax else {
                             log::info!("highlighting picker item failed");

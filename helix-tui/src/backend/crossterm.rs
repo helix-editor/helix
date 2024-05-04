@@ -52,10 +52,14 @@ impl Default for Capabilities {
 impl Capabilities {
     /// Detect capabilities from the terminfo database located based
     /// on the $TERM environment variable. If detection fails, returns
-    /// a default value where no capability is supported.
+    /// a default value where no capability is supported, or just undercurl
+    /// if config.undercurl is set.
     pub fn from_env_or_default(config: &EditorConfig) -> Self {
         match termini::TermInfo::from_env() {
-            Err(_) => Capabilities::default(),
+            Err(_) => Capabilities {
+                has_extended_underlines: config.undercurl,
+                ..Capabilities::default()
+            },
             Ok(t) => Capabilities {
                 // Smulx, VTE: https://unix.stackexchange.com/a/696253/246284
                 // Su (used by kitty): https://sw.kovidgoyal.net/kitty/underlines
@@ -87,6 +91,10 @@ where
     W: Write,
 {
     pub fn new(buffer: W, config: &EditorConfig) -> CrosstermBackend<W> {
+        // helix is not usable without colors, but crossterm will disable
+        // them by default if NO_COLOR is set in the environment. Override
+        // this behaviour.
+        crossterm::style::force_color_output(true);
         CrosstermBackend {
             buffer,
             capabilities: Capabilities::from_env_or_default(config),

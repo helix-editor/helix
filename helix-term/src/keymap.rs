@@ -303,6 +303,15 @@ impl Keymaps {
         self.sticky.as_ref()
     }
 
+    pub fn contains_key(&self, mode: Mode, key: KeyEvent) -> bool {
+        let keymaps = &*self.map();
+        let keymap = &keymaps[&mode];
+        keymap
+            .search(self.pending())
+            .and_then(KeyTrie::node)
+            .is_some_and(|node| node.contains_key(&key))
+    }
+
     pub(crate) fn get_with_map(
         &mut self,
         keymaps: &HashMap<Mode, KeyTrie>,

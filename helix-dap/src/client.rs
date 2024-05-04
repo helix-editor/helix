@@ -2,7 +2,7 @@ use crate::{
     requests::DisconnectArguments,
     transport::{Payload, Request, Response, Transport},
     types::*,
-    Error, Result, ThreadId,
+    Error, Result,
 };
 use helix_core::syntax::DebuggerQuirks;
 

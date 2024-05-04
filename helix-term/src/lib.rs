@@ -20,25 +20,39 @@ mod handlers;
 use ignore::DirEntry;
 use url::Url;
 
-pub use keymap::macros::*;
-
-#[cfg(not(windows))]
-fn true_color() -> bool {
-    std::env::var("COLORTERM")
-        .map(|v| matches!(v.as_str(), "truecolor" | "24bit"))
-        .unwrap_or(false)
-}
 #[cfg(windows)]
 fn true_color() -> bool {
     true
 }
 
+#[cfg(not(windows))]
+fn true_color() -> bool {
+    if matches!(
+        std::env::var("COLORTERM").map(|v| matches!(v.as_str(), "truecolor" | "24bit")),
+        Ok(true)
+    ) {
+        return true;
+    }
+
+    match termini::TermInfo::from_env() {
+        Ok(t) => {
+            t.extended_cap("RGB").is_some()
+                || t.extended_cap("Tc").is_some()
+                || (t.extended_cap("setrgbf").is_some() && t.extended_cap("setrgbb").is_some())
+        }
+        Err(_) => false,
+    }
+}
+
 /// Function used for filtering dir entries in the various file pickers.
 fn filter_picker_entry(entry: &DirEntry, root: &Path, dedup_symlinks: bool) -> bool {
-    // We always want to ignore the .git directory, otherwise if
+    // We always want to ignore popular VCS directories, otherwise if
     // `ignore` is turned off, we end up with a lot of noise
     // in our picker.
-    if entry.file_name() == ".git" {
+    if matches!(
+        entry.file_name().to_str(),
+        Some(".git" | ".pijul" | ".jj" | ".hg" | ".svn")
+    ) {
         return false;
     }
 

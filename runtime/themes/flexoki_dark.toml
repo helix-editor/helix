@@ -1,0 +1,20 @@
+inherits = "flexoki_light"
+
+[palette]
+tx = "#CECDC3"
+tx-2 = "#878580"
+tx-3 = "#575653"
+ui-3 = "#403E3C"
+ui-2 = "#343331"
+ui = "#282726"
+bg-2 = "#1C1B1A"
+bg = "#100F0F"
+
+re = "#D14D41"
+or = "#DA702C"
+ye = "#D0A215"
+gr = "#879A39"
+cy = "#3AA99F"
+bl = "#4385BE"
+pu = "#8B7EC8"
+ma = "#CE5D97"

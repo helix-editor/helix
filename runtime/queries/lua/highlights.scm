@@ -1,9 +1,5 @@
 ;;; Highlighting for lua
 
-;;; Builtins
-((identifier) @variable.builtin
- (#eq? @variable.builtin "self"))
-
 ;; Keywords
 
 (if_statement
@@ -130,16 +126,65 @@
 ((identifier) @constant
  (#match? @constant "^[A-Z][A-Z_0-9]*$"))
 
-;; Parameters
-(parameters
-  (identifier) @variable.parameter)
+;; Tables
 
-; ;; Functions
-(function_declaration name: (identifier) @function)
-(function_call name: (identifier) @function.call)
+(field name: (identifier) @variable.other.member)
 
-(function_declaration name: (dot_index_expression field: (identifier) @function))
-(function_call name: (dot_index_expression field: (identifier) @function.call))
+(dot_index_expression field: (identifier) @variable.other.member)
+
+(table_constructor
+[
+  "{"
+  "}"
+] @constructor)
+
+;; Functions
+
+(parameters (identifier) @variable.parameter)
+
+(function_call
+  (identifier) @function.builtin
+  (#any-of? @function.builtin
+    ;; built-in functions in Lua 5.1
+    "assert" "collectgarbage" "dofile" "error" "getfenv" "getmetatable" "ipairs"
+    "load" "loadfile" "loadstring" "module" "next" "pairs" "pcall" "print"
+    "rawequal" "rawget" "rawset" "require" "select" "setfenv" "setmetatable"
+    "tonumber" "tostring" "type" "unpack" "xpcall"))
+
+(function_declaration
+  name: [
+    (identifier) @function
+    (dot_index_expression
+      field: (identifier) @function)
+  ])
+
+(function_declaration
+  name: (method_index_expression
+    method: (identifier) @function.method))
+
+(assignment_statement
+  (variable_list .
+    name: [
+      (identifier) @function
+      (dot_index_expression
+        field: (identifier) @function)
+    ])
+  (expression_list .
+    value: (function_definition)))
+
+(table_constructor
+  (field
+    name: (identifier) @function
+    value: (function_definition)))
+
+(function_call
+  name: [
+    (identifier) @function.call
+    (dot_index_expression
+      field: (identifier) @function.call)
+    (method_index_expression
+      method: (identifier) @function.method.call)
+  ])
 
 ; TODO: incorrectly highlights variable N in `N, nop = 42, function() end`
 (assignment_statement
@@ -153,6 +198,7 @@
 ;; Nodes
 (comment) @comment
 (string) @string
+(escape_sequence) @constant.character.escape
 (number) @constant.numeric.integer
 (label_statement) @label
 ; A bit of a tricky one, this will only match field names
@@ -162,7 +208,16 @@
 ;; Property
 (dot_index_expression field: (identifier) @variable.other.member)
 
-;; Variable
+;; Variables
+((identifier) @variable.builtin
+ (#eq? @variable.builtin "self"))
+
+(variable_list
+  (attribute
+    "<" @punctuation.bracket
+    (identifier) @attribute
+    ">" @punctuation.bracket))
+
 (identifier) @variable
 
 ;; Error

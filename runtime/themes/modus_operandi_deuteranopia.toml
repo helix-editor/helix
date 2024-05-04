@@ -2,6 +2,7 @@
 # modus_operandi.toml variant
 #
 # This variant is optimized for users with red-green color deficiency (deuteranopia)
+# Version 4.4.0
 
 inherits = "modus_operandi"
 

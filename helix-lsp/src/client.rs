@@ -2,11 +2,11 @@ use crate::{
     file_operations::FileOperationsInterest,
     find_lsp_workspace, jsonrpc,
     transport::{Payload, Transport},
-    Call, Error, OffsetEncoding, Result,
+    Call, Error, LanguageServerId, OffsetEncoding, Result,
 };
 
 use helix_core::{find_workspace, syntax::LanguageServerFeature, ChangeSet, Rope};
-use helix_loader::{self, VERSION_AND_GIT_HASH};
+use helix_loader::VERSION_AND_GIT_HASH;
 use helix_stdx::path;
 use lsp::{
     notification::DidChangeWorkspaceFolders, CodeActionCapabilityResolveSupport,
@@ -46,7 +46,7 @@ fn workspace_for_uri(uri: lsp::Url) -> WorkspaceFolder {
 
 #[derive(Debug)]
 pub struct Client {
-    id: usize,
+    id: LanguageServerId,
     name: String,
     _process: Child,
     server_tx: UnboundedSender<Payload>,
@@ -177,13 +177,16 @@ impl Client {
         args: &[String],
         config: Option<Value>,
         server_environment: HashMap<String, String>,
-        root_markers: &[String],
-        manual_roots: &[PathBuf],
-        id: usize,
+        root_path: PathBuf,
+        root_uri: Option<lsp::Url>,
+        id: LanguageServerId,
         name: String,
         req_timeout: u64,
-        doc_path: Option<&std::path::PathBuf>,
-    ) -> Result<(Self, UnboundedReceiver<(usize, Call)>, Arc<Notify>)> {
+    ) -> Result<(
+        Self,
+        UnboundedReceiver<(LanguageServerId, Call)>,
+        Arc<Notify>,
+    )> {
         // Resolve path to the binary
         let cmd = helix_stdx::env::which(cmd)?;
 
@@ -206,22 +209,6 @@ impl Client {
 
         let (server_rx, server_tx, initialize_notify) =
             Transport::start(reader, writer, stderr, id, name.clone());
-        let (workspace, workspace_is_cwd) = find_workspace();
-        let workspace = path::normalize(workspace);
-        let root = find_lsp_workspace(
-            doc_path
-                .and_then(|x| x.parent().and_then(|x| x.to_str()))
-                .unwrap_or("."),
-            root_markers,
-            manual_roots,
-            &workspace,
-            workspace_is_cwd,
-        );
-
-        // `root_uri` and `workspace_folder` can be empty in case there is no workspace
-        // `root_url` can not, use `workspace` as a fallback
-        let root_path = root.clone().unwrap_or_else(|| workspace.clone());
-        let root_uri = root.and_then(|root| lsp::Url::from_file_path(root).ok());
 
         let workspace_folders = root_uri
             .clone()
@@ -251,7 +238,7 @@ impl Client {
         &self.name
     }
 
-    pub fn id(&self) -> usize {
+    pub fn id(&self) -> LanguageServerId {
         self.id
     }
 
@@ -413,12 +400,22 @@ impl Client {
     where
         R::Params: serde::Serialize,
     {
+        self.call_with_ref::<R>(&params)
+    }
+
+    fn call_with_ref<R: lsp::request::Request>(
+        &self,
+        params: &R::Params,
+    ) -> impl Future<Output = Result<Value>>
+    where
+        R::Params: serde::Serialize,
+    {
         self.call_with_timeout::<R>(params, self.req_timeout)
     }
 
     fn call_with_timeout<R: lsp::request::Request>(
         &self,
-        params: R::Params,
+        params: &R::Params,
         timeout_secs: u64,
     ) -> impl Future<Output = Result<Value>>
     where
@@ -427,17 +424,16 @@ impl Client {
         let server_tx = self.server_tx.clone();
         let id = self.next_request_id();
 
+        let params = serde_json::to_value(params);
         async move {
             use std::time::Duration;
             use tokio::time::timeout;
-
-            let params = serde_json::to_value(params)?;
 
             let request = jsonrpc::MethodCall {
                 jsonrpc: Some(jsonrpc::Version::V2),
                 id: id.clone(),
                 method: R::METHOD.to_string(),
-                params: Self::value_into_params(params),
+                params: Self::value_into_params(params?),
             };
 
             let (tx, mut rx) = channel::<Result<Value>>(1);
@@ -648,6 +644,12 @@ impl Client {
                     }),
                     publish_diagnostics: Some(lsp::PublishDiagnosticsClientCapabilities {
                         version_support: Some(true),
+                        tag_support: Some(lsp::TagSupport {
+                            value_set: vec![
+                                lsp::DiagnosticTag::UNNECESSARY,
+                                lsp::DiagnosticTag::DEPRECATED,
+                            ],
+                        }),
                         ..Default::default()
                     }),
                     inlay_hint: Some(lsp::InlayHintClientCapabilities {
@@ -748,7 +750,7 @@ impl Client {
             new_uri: url_from_path(new_path)?,
         }];
         let request = self.call_with_timeout::<lsp::request::WillRenameFiles>(
-            lsp::RenameFilesParams { files },
+            &lsp::RenameFilesParams { files },
             5,
         );
 
@@ -1033,20 +1035,10 @@ impl Client {
 
     pub fn resolve_completion_item(
         &self,
-        completion_item: lsp::CompletionItem,
-    ) -> Option<impl Future<Output = Result<Value>>> {
-        let capabilities = self.capabilities.get().unwrap();
-
-        // Return early if the server does not support resolving completion items.
-        match capabilities.completion_provider {
-            Some(lsp::CompletionOptions {
-                resolve_provider: Some(true),
-                ..
-            }) => (),
-            _ => return None,
-        }
-
-        Some(self.call::<lsp::request::ResolveCompletionItem>(completion_item))
+        completion_item: &lsp::CompletionItem,
+    ) -> impl Future<Output = Result<lsp::CompletionItem>> {
+        let res = self.call_with_ref::<lsp::request::ResolveCompletionItem>(completion_item);
+        async move { Ok(serde_json::from_value(res.await?)?) }
     }
 
     pub fn resolve_code_action(

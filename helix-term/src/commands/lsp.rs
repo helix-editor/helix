@@ -1,4 +1,4 @@
-use futures_util::{stream::FuturesUnordered, FutureExt};
+use futures_util::{stream::FuturesOrdered, FutureExt};
 use helix_lsp::{
     block_on,
     lsp::{
@@ -6,7 +6,7 @@ use helix_lsp::{
         NumberOrString,
     },
     util::{diagnostic_to_lsp_diagnostic, lsp_range_to_range, range_to_lsp_range},
-    Client, OffsetEncoding,
+    Client, LanguageServerId, OffsetEncoding,
 };
 use tokio_stream::StreamExt;
 use tui::{
@@ -21,7 +21,6 @@ use helix_stdx::path;
 use helix_view::{
     document::{DocumentInlayHints, DocumentInlayHintsId},
     editor::Action,
-    graphics::Margin,
     handlers::lsp::SignatureHelpInvoked,
     theme::Style,
     Document, View,
@@ -38,7 +37,7 @@ use std::{
     collections::{BTreeMap, HashSet},
     fmt::Write,
     future::Future,
-    path::PathBuf,
+    path::{Path, PathBuf},
 };
 
 /// Gets the first language server that is attached to a document which supports a specific feature.
@@ -134,7 +133,7 @@ struct DiagnosticStyles {
 }
 
 struct PickerDiagnostic {
-    url: lsp::Url,
+    path: PathBuf,
     diag: lsp::Diagnostic,
     offset_encoding: OffsetEncoding,
 }
@@ -167,8 +166,7 @@ impl ui::menu::Item for PickerDiagnostic {
         let path = match format {
             DiagnosticsFormat::HideSourcePath => String::new(),
             DiagnosticsFormat::ShowSourcePath => {
-                let file_path = self.url.to_file_path().unwrap();
-                let path = path::get_truncated_path(file_path);
+                let path = path::get_truncated_path(&self.path);
                 format!("{}: ", path.to_string_lossy())
             }
         };
@@ -208,24 +206,33 @@ fn jump_to_location(
             return;
         }
     };
+    jump_to_position(editor, &path, location.range, offset_encoding, action);
+}
 
-    let doc = match editor.open(&path, action) {
+fn jump_to_position(
+    editor: &mut Editor,
+    path: &Path,
+    range: lsp::Range,
+    offset_encoding: OffsetEncoding,
+    action: Action,
+) {
+    let doc = match editor.open(path, action) {
         Ok(id) => doc_mut!(editor, &id),
         Err(err) => {
-            let err = format!("failed to open path: {:?}: {:?}", location.uri, err);
+            let err = format!("failed to open path: {:?}: {:?}", path, err);
             editor.set_error(err);
             return;
         }
     };
     let view = view_mut!(editor);
     // TODO: convert inside server
-    let new_range =
-        if let Some(new_range) = lsp_range_to_range(doc.text(), location.range, offset_encoding) {
-            new_range
-        } else {
-            log::warn!("lsp position out of bounds - {:?}", location.range);
-            return;
-        };
+    let new_range = if let Some(new_range) = lsp_range_to_range(doc.text(), range, offset_encoding)
+    {
+        new_range
+    } else {
+        log::warn!("lsp position out of bounds - {:?}", range);
+        return;
+    };
     // we flip the range so that the cursor sits on the start of the symbol
     // (for example start of the function).
     doc.set_selection(view.id, Selection::single(new_range.head, new_range.anchor));
@@ -258,21 +265,20 @@ enum DiagnosticsFormat {
 
 fn diag_picker(
     cx: &Context,
-    diagnostics: BTreeMap<lsp::Url, Vec<(lsp::Diagnostic, usize)>>,
-    _current_path: Option<lsp::Url>,
+    diagnostics: BTreeMap<PathBuf, Vec<(lsp::Diagnostic, LanguageServerId)>>,
     format: DiagnosticsFormat,
 ) -> Picker<PickerDiagnostic> {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
 
     // flatten the map to a vec of (url, diag) pairs
     let mut flat_diag = Vec::new();
-    for (url, diags) in diagnostics {
+    for (path, diags) in diagnostics {
         flat_diag.reserve(diags.len());
 
         for (diag, ls) in diags {
             if let Some(ls) = cx.editor.language_server_by_id(ls) {
                 flat_diag.push(PickerDiagnostic {
-                    url: url.clone(),
+                    path: path.clone(),
                     diag,
                     offset_encoding: ls.offset_encoding(),
                 });
@@ -292,22 +298,17 @@ fn diag_picker(
         (styles, format),
         move |cx,
               PickerDiagnostic {
-                  url,
+                  path,
                   diag,
                   offset_encoding,
               },
               action| {
-            jump_to_location(
-                cx.editor,
-                &lsp::Location::new(url.clone(), diag.range),
-                *offset_encoding,
-                action,
-            )
+            jump_to_position(cx.editor, path, diag.range, *offset_encoding, action)
         },
     )
-    .with_preview(move |_editor, PickerDiagnostic { url, diag, .. }| {
-        let location = lsp::Location::new(url.clone(), diag.range);
-        Some(location_to_file_location(&location))
+    .with_preview(move |_editor, PickerDiagnostic { path, diag, .. }| {
+        let line = Some((diag.range.start.line as usize, diag.range.end.line as usize));
+        Some((path.clone().into(), line))
     })
     .truncate_start(false)
 }
@@ -339,7 +340,7 @@ pub fn symbol_picker(cx: &mut Context) {
 
     let mut seen_language_servers = HashSet::new();
 
-    let mut futures: FuturesUnordered<_> = doc
+    let mut futures: FuturesOrdered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::DocumentSymbols)
         .filter(|ls| seen_language_servers.insert(ls.id()))
         .map(|language_server| {
@@ -414,7 +415,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
     let get_symbols = move |pattern: String, editor: &mut Editor| {
         let doc = doc!(editor);
         let mut seen_language_servers = HashSet::new();
-        let mut futures: FuturesUnordered<_> = doc
+        let mut futures: FuturesOrdered<_> = doc
             .language_servers_with_feature(LanguageServerFeature::WorkspaceSymbols)
             .filter(|ls| seen_language_servers.insert(ls.id()))
             .map(|language_server| {
@@ -470,17 +471,16 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
 
 pub fn diagnostics_picker(cx: &mut Context) {
     let doc = doc!(cx.editor);
-    if let Some(current_url) = doc.url() {
+    if let Some(current_path) = doc.path() {
         let diagnostics = cx
             .editor
             .diagnostics
-            .get(&current_url)
+            .get(current_path)
             .cloned()
             .unwrap_or_default();
         let picker = diag_picker(
             cx,
-            [(current_url.clone(), diagnostics)].into(),
-            Some(current_url),
+            [(current_path.clone(), diagnostics)].into(),
             DiagnosticsFormat::HideSourcePath,
         );
         cx.push_layer(Box::new(overlaid(picker)));
@@ -488,22 +488,15 @@ pub fn diagnostics_picker(cx: &mut Context) {
 }
 
 pub fn workspace_diagnostics_picker(cx: &mut Context) {
-    let doc = doc!(cx.editor);
-    let current_url = doc.url();
     // TODO not yet filtered by LanguageServerFeature, need to do something similar as Document::shown_diagnostics here for all open documents
     let diagnostics = cx.editor.diagnostics.clone();
-    let picker = diag_picker(
-        cx,
-        diagnostics,
-        current_url,
-        DiagnosticsFormat::ShowSourcePath,
-    );
+    let picker = diag_picker(cx, diagnostics, DiagnosticsFormat::ShowSourcePath);
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
 struct CodeActionOrCommandItem {
     lsp_item: lsp::CodeActionOrCommand,
-    language_server_id: usize,
+    language_server_id: LanguageServerId,
 }
 
 impl ui::menu::Item for CodeActionOrCommandItem {
@@ -580,7 +573,7 @@ pub fn code_action(cx: &mut Context) {
 
     let mut seen_language_servers = HashSet::new();
 
-    let mut futures: FuturesUnordered<_> = doc
+    let mut futures: FuturesOrdered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::CodeAction)
         .filter(|ls| seen_language_servers.insert(ls.id()))
         // TODO this should probably already been filtered in something like "language_servers_with_feature"
@@ -739,15 +732,7 @@ pub fn code_action(cx: &mut Context) {
             });
             picker.move_down(); // pre-select the first item
 
-            let margin = if editor.menu_border() {
-                Margin::vertical(1)
-            } else {
-                Margin::none()
-            };
-
-            let popup = Popup::new("code-action", picker)
-                .with_scrollbar(false)
-                .margin(margin);
+            let popup = Popup::new("code-action", picker).with_scrollbar(false);
 
             compositor.replace_or_push("code-action", popup);
         };
@@ -763,7 +748,11 @@ impl ui::menu::Item for lsp::Command {
     }
 }
 
-pub fn execute_lsp_command(editor: &mut Editor, language_server_id: usize, cmd: lsp::Command) {
+pub fn execute_lsp_command(
+    editor: &mut Editor,
+    language_server_id: LanguageServerId,
+    cmd: lsp::Command,
+) {
     // the command is executed on the server and communicated back
     // to the client asynchronously using workspace edits
     let future = match editor
@@ -1040,7 +1029,7 @@ pub fn rename_symbol(cx: &mut Context) {
     fn create_rename_prompt(
         editor: &Editor,
         prefill: String,
-        language_server_id: Option<usize>,
+        language_server_id: Option<LanguageServerId>,
     ) -> Box<ui::Prompt> {
         let prompt = ui::Prompt::new(
             "rename-to:".into(),
@@ -1321,11 +1310,11 @@ fn compute_inlay_hints_for_view(
                 view_id,
                 DocumentInlayHints {
                     id: new_doc_inlay_hints_id,
-                    type_inlay_hints: type_inlay_hints.into(),
-                    parameter_inlay_hints: parameter_inlay_hints.into(),
-                    other_inlay_hints: other_inlay_hints.into(),
-                    padding_before_inlay_hints: padding_before_inlay_hints.into(),
-                    padding_after_inlay_hints: padding_after_inlay_hints.into(),
+                    type_inlay_hints,
+                    parameter_inlay_hints,
+                    other_inlay_hints,
+                    padding_before_inlay_hints,
+                    padding_after_inlay_hints,
                 },
             );
             doc.inlay_hints_oudated = false;

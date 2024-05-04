@@ -42,7 +42,8 @@ crossterm = { version = "0.27", features = ["event-stream"] }
 signal-hook = "0.3"
 tokio-stream = "0.1"
 futures-util = { version = "0.3", features = ["std", "async-await"], default-features = false }
-arc-swap = { version = "1.6.0" }
+arc-swap = { version = "1.7.1" }
+termini = "1"
 
 # Logging
 fern = "0.6"
@@ -53,16 +54,16 @@ log = "0.4"
 nucleo.workspace = true
 ignore = "0.4"
 # markdown doc rendering
-pulldown-cmark = { version = "0.9", default-features = false }
+pulldown-cmark = { version = "0.10", default-features = false }
 # file type detection
 content_inspector = "0.2.4"
 
 # opening URLs
-open = "5.0.1"
+open = "5.1.2"
 url = "2.5.0"
 
 # config
-toml = "0.7"
+toml = "0.8"
 
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
@@ -76,7 +77,7 @@ steel-core = { workspace = true, optional = true }
 
 [target.'cfg(not(windows))'.dependencies]  # https://github.com/vorner/signal-hook/issues/100
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
-libc = "0.2.152"
+libc = "0.2.153"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 crossterm = { version = "0.27", features = ["event-stream", "use-dev-tty"] }
@@ -86,5 +87,5 @@ helix-loader = { path = "../helix-loader" }
 
 [dev-dependencies]
 smallvec = "1.13"
-indoc = "2.0.4"
-tempfile = "3.9.0"
+indoc = "2.0.5"
+tempfile = "3.10.1"

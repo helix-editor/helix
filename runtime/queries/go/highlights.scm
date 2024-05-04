@@ -2,7 +2,7 @@
 
 (call_expression
   function: (identifier) @function.builtin
-  (match? @function.builtin "^(append|cap|close|complex|copy|delete|imag|len|make|new|panic|print|println|real|recover)$"))
+  (#match? @function.builtin "^(append|cap|close|complex|copy|delete|imag|len|make|new|panic|print|println|real|recover)$"))
 
 (call_expression
   function: (identifier) @function)
@@ -19,7 +19,7 @@
     name: (identifier) @type.parameter))
 
 ((type_identifier) @type.builtin
-  (match? @type.builtin "^(any|bool|byte|comparable|complex128|complex64|error|float32|float64|int|int16|int32|int64|int8|rune|string|uint|uint16|uint32|uint64|uint8|uintptr)$"))
+  (#match? @type.builtin "^(any|bool|byte|comparable|complex128|complex64|error|float32|float64|int|int16|int32|int64|int8|rune|string|uint|uint16|uint32|uint64|uint8|uintptr)$"))
 
 (type_identifier) @type
 
@@ -183,9 +183,12 @@
 
 [
   (int_literal)
+] @constant.numeric.integer
+
+[
   (float_literal)
   (imaginary_literal)
-] @constant.numeric.integer
+] @constant.numeric.float
 
 [
   (true)
@@ -197,4 +200,31 @@
   (iota)
 ] @constant.builtin
 
+; Comments
+
 (comment) @comment
+
+; Doc Comments
+(source_file
+  .
+  (comment)+ @comment.block.documentation)
+
+(source_file
+  (comment)+ @comment.block.documentation
+  .
+  (const_declaration))
+
+(source_file
+  (comment)+ @comment.block.documentation
+  .
+  (function_declaration))
+
+(source_file
+  (comment)+ @comment.block.documentation
+  .
+  (type_declaration))
+
+(source_file
+  (comment)+ @comment.block.documentation
+  .
+  (var_declaration))

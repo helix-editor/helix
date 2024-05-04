@@ -2,7 +2,6 @@ use arc_swap::ArcSwapAny;
 use helix_core::{
     extensions::steel_implementations::{rope_module, SteelRopeSlice},
     graphemes,
-    regex::Regex,
     shellwords::Shellwords,
     syntax::{AutoPairConfig, SoftWrap},
     Range, Selection, Tendril,
@@ -24,7 +23,7 @@ use once_cell::sync::Lazy;
 use steel::{
     gc::unsafe_erased_pointers::CustomReference,
     rerrs::ErrorKind,
-    rvals::{as_underlying_type, FromSteelVal, IntoSteelVal, SteelString},
+    rvals::{as_underlying_type, IntoSteelVal, SteelString},
     steel_vm::{engine::Engine, register_fn::RegisterFn},
     steelerr, SteelErr, SteelVal,
 };
@@ -2572,14 +2571,16 @@ pub fn custom_insert_newline(cx: &mut Context, indent: String) {
 }
 
 fn search_in_directory(cx: &mut Context, directory: String) {
-    let search_path = expand_tilde(&PathBuf::from(directory));
-    crate::commands::search_in_directory(cx, search_path);
+    let buf = PathBuf::from(directory);
+    let search_path = expand_tilde(&buf);
+    let path = search_path.to_path_buf();
+    crate::commands::search_in_directory(cx, path);
 }
 
 // TODO: Result should create unrecoverable result, and should have a special
 // recoverable result - that way we can handle both, not one in particular
 fn regex_selection(cx: &mut Context, regex: String) {
-    if let Ok(regex) = Regex::new(&regex) {
+    if let Ok(regex) = helix_stdx::rope::Regex::new(&regex) {
         let (view, doc) = current!(cx.editor);
         let text = doc.text().slice(..);
         if let Some(selection) =

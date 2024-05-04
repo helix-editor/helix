@@ -1,10 +1,10 @@
 use std::{borrow::Cow, collections::HashMap};
 
+use helix_stdx::rope::RopeSliceExt;
 use tree_sitter::{Query, QueryCursor, QueryPredicateArg};
 
 use crate::{
     chars::{char_is_line_ending, char_is_whitespace},
-    find_first_non_whitespace_char,
     graphemes::{grapheme_width, tab_width_at},
     syntax::{IndentationHeuristic, LanguageConfiguration, RopeProvider, Syntax},
     tree_sitter::Node,
@@ -247,41 +247,18 @@ fn add_indent_level(
     }
 }
 
-/// Computes for node and all ancestors whether they are the first node on their line.
-/// The first entry in the return value represents the root node, the last one the node itself
-fn get_first_in_line(mut node: Node, new_line_byte_pos: Option<usize>) -> Vec<bool> {
-    let mut first_in_line = Vec::new();
-    loop {
-        if let Some(prev) = node.prev_sibling() {
-            // If we insert a new line, the first node at/after the cursor is considered to be the first in its line
-            let first = prev.end_position().row != node.start_position().row
-                || new_line_byte_pos.map_or(false, |byte_pos| {
-                    node.start_byte() >= byte_pos && prev.start_byte() < byte_pos
-                });
-            first_in_line.push(Some(first));
-        } else {
-            // Nodes that have no previous siblings are first in their line if and only if their parent is
-            // (which we don't know yet)
-            first_in_line.push(None);
-        }
-        if let Some(parent) = node.parent() {
-            node = parent;
-        } else {
-            break;
+/// Return true if only whitespace comes before the node on its line.
+/// If given, new_line_byte_pos is treated the same way as any existing newline.
+fn is_first_in_line(node: Node, text: RopeSlice, new_line_byte_pos: Option<usize>) -> bool {
+    let mut line_start_byte_pos = text.line_to_byte(node.start_position().row);
+    if let Some(pos) = new_line_byte_pos {
+        if line_start_byte_pos < pos && pos <= node.start_byte() {
+            line_start_byte_pos = pos;
         }
     }
-
-    let mut result = Vec::with_capacity(first_in_line.len());
-    let mut parent_is_first = true; // The root node is by definition the first node in its line
-    for first in first_in_line.into_iter().rev() {
-        if let Some(first) = first {
-            result.push(first);
-            parent_is_first = first;
-        } else {
-            result.push(parent_is_first);
-        }
-    }
-    result
+    text.byte_slice(line_start_byte_pos..node.start_byte())
+        .chars()
+        .all(|c| c.is_whitespace())
 }
 
 /// The total indent for some line of code.
@@ -852,7 +829,6 @@ pub fn treesitter_indent_for_pos<'a>(
         byte_pos,
         new_line_byte_pos,
     )?;
-    let mut first_in_line = get_first_in_line(node, new_line.then_some(byte_pos));
 
     let mut result = Indentation::default();
     // We always keep track of all the indent changes on one line, in order to only indent once
@@ -861,9 +837,7 @@ pub fn treesitter_indent_for_pos<'a>(
     let mut indent_for_line_below = Indentation::default();
 
     loop {
-        // This can safely be unwrapped because `first_in_line` contains
-        // one entry for each ancestor of the node (which is what we iterate over)
-        let is_first = *first_in_line.last().unwrap();
+        let is_first = is_first_in_line(node, text, new_line_byte_pos);
 
         // Apply all indent definitions for this node.
         // Since we only iterate over each node once, we can remove the
@@ -906,7 +880,6 @@ pub fn treesitter_indent_for_pos<'a>(
             }
 
             node = parent;
-            first_in_line.pop();
         } else {
             // Only add the indentation for the line below if that line
             // is not after the line that the indentation is calculated for.
@@ -970,7 +943,7 @@ pub fn indent_for_newline(
                 let mut num_attempts = 0;
                 for line_idx in (0..=line_before).rev() {
                     let line = text.line(line_idx);
-                    let first_non_whitespace_char = match find_first_non_whitespace_char(line) {
+                    let first_non_whitespace_char = match line.first_non_whitespace_char() {
                         Some(i) => i,
                         None => {
                             continue;
