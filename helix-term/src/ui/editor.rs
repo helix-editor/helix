@@ -1220,7 +1220,7 @@ impl EditorView {
                 }
 
                 let (view, doc) = current!(cxt.editor);
-                if modifiers == KeyModifiers::CONTROL || row == view.inner_area(doc).height {
+                if modifiers == KeyModifiers::CONTROL {
                     return EventResult::Ignored(None);
                 }
 
