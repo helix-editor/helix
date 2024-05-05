@@ -1086,7 +1086,7 @@ impl Editor {
     ) -> Self {
         let language_servers = helix_lsp::Registry::new(syn_loader.clone());
         let conf = config.load();
-        let auto_pairs = (&conf.auto_pairs).into();
+        let auto_pairs = (&conf.auto_pairs).get_pairs();
 
         // HAXX: offset the render area height by 1 to account for prompt/commandline
         area.height -= 1;
@@ -1168,7 +1168,7 @@ impl Editor {
     /// relevant members.
     pub fn refresh_config(&mut self) {
         let config = self.config();
-        self.auto_pairs = (&config.auto_pairs).into();
+        self.auto_pairs = (&config.auto_pairs).get_pairs();
         self.reset_idle_timer();
         self._refresh();
     }
