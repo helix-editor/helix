@@ -2532,6 +2532,65 @@ fn read(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     Ok(())
 }
 
+fn reload_history(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    if cx.editor.config().persist_old_files {
+        cx.editor.old_file_locs = HashMap::from_iter(
+            persistence::read_file_history()
+                .into_iter()
+                .map(|entry| (entry.path.clone(), (entry.view_position, entry.selection))),
+        );
+        let file_trim = cx.editor.config().persistence_old_files_trim;
+        cx.jobs.add(
+            Job::new(async move {
+                persistence::trim_file_history(file_trim);
+                Ok(())
+            })
+            .wait_before_exiting(),
+        );
+    }
+    if cx.editor.config().persist_commands {
+        cx.editor
+            .registers
+            .write(':', persistence::read_command_history())?;
+        let commands_trim = cx.editor.config().persistence_commands_trim;
+        cx.jobs.add(
+            Job::new(async move {
+                persistence::trim_command_history(commands_trim);
+                Ok(())
+            })
+            .wait_before_exiting(),
+        );
+    }
+    if cx.editor.config().persist_search {
+        cx.editor
+            .registers
+            .write('/', persistence::read_search_history())?;
+        let search_trim = cx.editor.config().persistence_search_trim;
+        cx.jobs.add(
+            Job::new(async move {
+                persistence::trim_search_history(search_trim);
+                Ok(())
+            })
+            .wait_before_exiting(),
+        );
+    }
+    if cx.editor.config().persist_clipboard {
+        cx.editor
+            .registers
+            .write('"', persistence::read_clipboard_file())?;
+    }
+
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "quit",
@@ -3152,6 +3211,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         doc: "Load a file into buffer",
         fun: read,
         signature: CommandSignature::positional(&[completers::filename]),
+    },
+    TypableCommand {
+        name: "reload-history",
+        aliases: &[],
+        doc: "Reload history files for persistent state",
+        fun: reload_history,
+        signature: CommandSignature::none(),
     },
 ];
 
