@@ -1,6 +1,6 @@
 use ::ropey::RopeSlice;
-use slotmap::{new_key_type, HopSlotMap};
-use tree_sitter::{Node, Parser, Point, Query, QueryCursor, Range, Tree};
+use ::tree_sitter::{Node, Parser, Point, Query, QueryCursor, Range, Tree};
+use slotmap::HopSlotMap;
 
 use std::borrow::Cow;
 use std::cell::RefCell;
@@ -26,6 +26,7 @@ mod parse;
 mod pretty_print;
 mod ropey;
 mod tree_cursor;
+pub mod tree_sitter;
 
 #[derive(Debug)]
 pub struct Syntax {
@@ -321,7 +322,7 @@ fn byte_range_to_str(range: std::ops::Range<usize>, source: RopeSlice) -> Cow<st
 }
 
 struct TsParser {
-    parser: tree_sitter::Parser,
+    parser: ::tree_sitter::Parser,
     pub cursors: Vec<QueryCursor>,
 }
 

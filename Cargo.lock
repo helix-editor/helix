@@ -1435,11 +1435,14 @@ dependencies = [
  "bitflags 2.6.0",
  "hashbrown 0.14.5",
  "helix-stdx",
+ "libloading",
  "log",
  "once_cell",
  "regex",
+ "regex-cursor",
  "ropey",
  "slotmap",
+ "thiserror",
  "tree-sitter",
 ]
 

@@ -3,7 +3,7 @@ use std::iter::Peekable;
 use std::sync::Arc;
 
 use hashbrown::HashMap;
-use slotmap::{new_key_type, HopSlotMap, SlotMap};
+use slotmap::{new_key_type, SlotMap};
 use tree_sitter::Tree;
 
 use crate::parse::LayerUpdateFlags;

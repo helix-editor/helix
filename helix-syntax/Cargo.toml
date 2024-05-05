@@ -26,3 +26,9 @@ bitflags = "2.4"
 ahash = "0.8.9"
 hashbrown = { version = "0.14.3", features = ["raw"] }
 log = "0.4"
+regex-cursor = "0.1.4"
+libloading = "0.8.3"
+thiserror = "1.0.59"
+
+[build-dependencies]
+cc = "1.0.95"
