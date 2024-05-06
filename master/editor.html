@@ -1,0 +1,548 @@
+<!DOCTYPE HTML>
+<html lang="en" class="colibri" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Editor</title>
+
+
+        <!-- Custom HTML head -->
+        
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" href="highlight.css">
+        <link rel="stylesheet" href="tomorrow-night.css">
+        <link rel="stylesheet" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+        <link rel="stylesheet" href="custom.css">
+
+    </head>
+    <body class="sidebar-visible no-js">
+    <div id="body-container">
+        <!-- Provide site root to javascript -->
+        <script>
+            var path_to_root = "";
+            var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "colibri" : "colibri";
+        </script>
+
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                var theme = localStorage.getItem('mdbook-theme');
+                var sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            var theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            var html = document.querySelector('html');
+            html.classList.remove('colibri')
+            html.classList.add(theme);
+            var body = document.querySelector('body');
+            body.classList.remove('no-js')
+            body.classList.add('js');
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            var body = document.querySelector('body');
+            var sidebar = null;
+            var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            body.classList.remove('sidebar-visible');
+            body.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <div class="sidebar-scrollbox">
+                <ol class="chapter"><li class="chapter-item expanded affix "><a href="title-page.html">Helix</a></li><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="package-managers.html"><strong aria-hidden="true">1.1.</strong> Package Managers</a></li><li class="chapter-item expanded "><a href="building-from-source.html"><strong aria-hidden="true">1.2.</strong> Building from source</a></li></ol></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="registers.html"><strong aria-hidden="true">2.1.</strong> Registers</a></li><li class="chapter-item expanded "><a href="surround.html"><strong aria-hidden="true">2.2.</strong> Surround</a></li><li class="chapter-item expanded "><a href="textobjects.html"><strong aria-hidden="true">2.3.</strong> Textobjects</a></li><li class="chapter-item expanded "><a href="syntax-aware-motions.html"><strong aria-hidden="true">2.4.</strong> Syntax aware motions</a></li><li class="chapter-item expanded "><a href="keymap.html"><strong aria-hidden="true">2.5.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">2.6.</strong> Commands</a></li><li class="chapter-item expanded "><a href="lang-support.html"><strong aria-hidden="true">2.7.</strong> Language support</a></li></ol></li><li class="chapter-item expanded "><a href="from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="editor.html" class="active"><strong aria-hidden="true">4.1.</strong> Editor</a></li><li class="chapter-item expanded "><a href="themes.html"><strong aria-hidden="true">4.2.</strong> Themes</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">4.3.</strong> Key remapping</a></li><li class="chapter-item expanded "><a href="languages.html"><strong aria-hidden="true">4.4.</strong> Languages</a></li></ol></li><li class="chapter-item expanded "><a href="guides/index.html"><strong aria-hidden="true">5.</strong> Guides</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="guides/adding_languages.html"><strong aria-hidden="true">5.1.</strong> Adding languages</a></li><li class="chapter-item expanded "><a href="guides/textobject.html"><strong aria-hidden="true">5.2.</strong> Adding textobject queries</a></li><li class="chapter-item expanded "><a href="guides/indent.html"><strong aria-hidden="true">5.3.</strong> Adding indent queries</a></li><li class="chapter-item expanded "><a href="guides/injection.html"><strong aria-hidden="true">5.4.</strong> Adding injection queries</a></li></ol></li></ol>
+            </div>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
+        </nav>
+
+        <!-- Track and set sidebar scroll position -->
+        <script>
+            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
+            sidebarScrollbox.addEventListener('click', function(e) {
+                if (e.target.tagName === 'A') {
+                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
+                }
+            }, { passive: true });
+            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+            sessionStorage.removeItem('sidebar-scroll');
+            if (sidebarScrollTop) {
+                // preserve sidebar scroll position when navigating via links within sidebar
+                sidebarScrollbox.scrollTop = sidebarScrollTop;
+            } else {
+                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+                var activeSection = document.querySelector('#sidebar .active');
+                if (activeSection) {
+                    activeSection.scrollIntoView({ block: 'center' });
+                }
+            }
+        </script>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="colibri">Colibri</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title"></h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+                        <a href="https://github.com/helix-editor/helix" title="Git repository" aria-label="Git repository">
+                            <i id="git-repository-button" class="fa fa-github"></i>
+                        </a>
+                        <a href="https://github.com/helix-editor/helix/edit/master/book/src/editor.md" title="Suggest an edit" aria-label="Suggest an edit">
+                            <i id="git-edit-button" class="fa fa-edit"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h2 id="editor"><a class="header" href="#editor">Editor</a></h2>
+<ul>
+<li><a href="#editor-section"><code>[editor]</code> Section</a></li>
+<li><a href="#editorstatusline-section"><code>[editor.statusline]</code> Section</a></li>
+<li><a href="#editorlsp-section"><code>[editor.lsp]</code> Section</a></li>
+<li><a href="#editorcursor-shape-section"><code>[editor.cursor-shape]</code> Section</a></li>
+<li><a href="#editorfile-picker-section"><code>[editor.file-picker]</code> Section</a></li>
+<li><a href="#editorauto-pairs-section"><code>[editor.auto-pairs]</code> Section</a></li>
+<li><a href="#editorsearch-section"><code>[editor.search]</code> Section</a></li>
+<li><a href="#editorwhitespace-section"><code>[editor.whitespace]</code> Section</a></li>
+<li><a href="#editorindent-guides-section"><code>[editor.indent-guides]</code> Section</a></li>
+<li><a href="#editorgutters-section"><code>[editor.gutters]</code> Section</a>
+<ul>
+<li><a href="#editorguttersline-numbers-section"><code>[editor.gutters.line-numbers]</code> Section</a></li>
+<li><a href="#editorguttersdiagnostics-section"><code>[editor.gutters.diagnostics]</code> Section</a></li>
+<li><a href="#editorguttersdiff-section"><code>[editor.gutters.diff]</code> Section</a></li>
+<li><a href="#editorguttersspacer-section"><code>[editor.gutters.spacer]</code> Section</a></li>
+</ul>
+</li>
+<li><a href="#editorsoft-wrap-section"><code>[editor.soft-wrap]</code> Section</a></li>
+<li><a href="#editorsmart-tab-section"><code>[editor.smart-tab]</code> Section</a></li>
+</ul>
+<h3 id="editor-section"><a class="header" href="#editor-section"><code>[editor]</code> Section</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>scrolloff</code></td><td>Number of lines of padding around the edge of the screen when scrolling</td><td><code>5</code></td></tr>
+<tr><td><code>mouse</code></td><td>Enable mouse mode</td><td><code>true</code></td></tr>
+<tr><td><code>middle-click-paste</code></td><td>Middle click paste support</td><td><code>true</code></td></tr>
+<tr><td><code>scroll-lines</code></td><td>Number of lines to scroll per scroll wheel step</td><td><code>3</code></td></tr>
+<tr><td><code>shell</code></td><td>Shell to use when running external commands</td><td>Unix: <code>["sh", "-c"]</code><br/>Windows: <code>["cmd", "/C"]</code></td></tr>
+<tr><td><code>line-number</code></td><td>Line number display: <code>absolute</code> simply shows each line's number, while <code>relative</code> shows the distance from the current line. When unfocused or in insert mode, <code>relative</code> will still show absolute line numbers</td><td><code>absolute</code></td></tr>
+<tr><td><code>cursorline</code></td><td>Highlight all lines with a cursor</td><td><code>false</code></td></tr>
+<tr><td><code>cursorcolumn</code></td><td>Highlight all columns with a cursor</td><td><code>false</code></td></tr>
+<tr><td><code>gutters</code></td><td>Gutters to display: Available are <code>diagnostics</code> and <code>diff</code> and <code>line-numbers</code> and <code>spacer</code>, note that <code>diagnostics</code> also includes other features like breakpoints, 1-width padding will be inserted if gutters is non-empty</td><td><code>["diagnostics", "spacer", "line-numbers", "spacer", "diff"]</code></td></tr>
+<tr><td><code>auto-completion</code></td><td>Enable automatic pop up of auto-completion</td><td><code>true</code></td></tr>
+<tr><td><code>auto-format</code></td><td>Enable automatic formatting on save</td><td><code>true</code></td></tr>
+<tr><td><code>auto-save</code></td><td>Enable automatic saving on the focus moving away from Helix. Requires <a href="https://github.com/helix-editor/helix/wiki/Terminal-Support">focus event support</a> from your terminal</td><td><code>false</code></td></tr>
+<tr><td><code>idle-timeout</code></td><td>Time in milliseconds since last keypress before idle timers trigger.</td><td><code>250</code></td></tr>
+<tr><td><code>completion-timeout</code></td><td>Time in milliseconds after typing a word character before completions are shown, set to 5 for instant.</td><td><code>250</code></td></tr>
+<tr><td><code>preview-completion-insert</code></td><td>Whether to apply completion item instantly when selected</td><td><code>true</code></td></tr>
+<tr><td><code>completion-trigger-len</code></td><td>The min-length of word under cursor to trigger autocompletion</td><td><code>2</code></td></tr>
+<tr><td><code>completion-replace</code></td><td>Set to <code>true</code> to make completions always replace the entire word and not just the part before the cursor</td><td><code>false</code></td></tr>
+<tr><td><code>auto-info</code></td><td>Whether to display info boxes</td><td><code>true</code></td></tr>
+<tr><td><code>true-color</code></td><td>Set to <code>true</code> to override automatic detection of terminal truecolor support in the event of a false negative</td><td><code>false</code></td></tr>
+<tr><td><code>undercurl</code></td><td>Set to <code>true</code> to override automatic detection of terminal undercurl support in the event of a false negative</td><td><code>false</code></td></tr>
+<tr><td><code>rulers</code></td><td>List of column positions at which to display the rulers. Can be overridden by language specific <code>rulers</code> in <code>languages.toml</code> file</td><td><code>[]</code></td></tr>
+<tr><td><code>bufferline</code></td><td>Renders a line at the top of the editor displaying open buffers. Can be <code>always</code>, <code>never</code> or <code>multiple</code> (only shown if more than one buffer is in use)</td><td><code>never</code></td></tr>
+<tr><td><code>color-modes</code></td><td>Whether to color the mode indicator with different colors depending on the mode itself</td><td><code>false</code></td></tr>
+<tr><td><code>text-width</code></td><td>Maximum line length. Used for the <code>:reflow</code> command and soft-wrapping if <code>soft-wrap.wrap-at-text-width</code> is set</td><td><code>80</code></td></tr>
+<tr><td><code>workspace-lsp-roots</code></td><td>Directories relative to the workspace root that are treated as LSP roots. Should only be set in <code>.helix/config.toml</code></td><td><code>[]</code></td></tr>
+<tr><td><code>default-line-ending</code></td><td>The line ending to use for new documents. Can be <code>native</code>, <code>lf</code>, <code>crlf</code>, <code>ff</code>, <code>cr</code> or <code>nel</code>. <code>native</code> uses the platform's native line ending (<code>crlf</code> on Windows, otherwise <code>lf</code>).</td><td><code>native</code></td></tr>
+<tr><td><code>insert-final-newline</code></td><td>Whether to automatically insert a trailing line-ending on write if missing</td><td><code>true</code></td></tr>
+<tr><td><code>popup-border</code></td><td>Draw border around <code>popup</code>, <code>menu</code>, <code>all</code>, or <code>none</code></td><td><code>none</code></td></tr>
+<tr><td><code>indent-heuristic</code></td><td>How the indentation for a newly inserted line is computed: <code>simple</code> just copies the indentation level from the previous line, <code>tree-sitter</code> computes the indentation based on the syntax tree and <code>hybrid</code> combines both approaches. If the chosen heuristic is not available, a different one will be used as a fallback (the fallback order being <code>hybrid</code> -&gt; <code>tree-sitter</code> -&gt; <code>simple</code>).</td><td><code>hybrid</code></td></tr>
+<tr><td><code>jump-label-alphabet</code></td><td>The characters that are used to generate two character jump labels. Characters at the start of the alphabet are used first.</td><td><code>"abcdefghijklmnopqrstuvwxyz"</code></td></tr>
+</tbody></table>
+</div>
+<h3 id="editorstatusline-section"><a class="header" href="#editorstatusline-section"><code>[editor.statusline]</code> Section</a></h3>
+<p>Allows configuring the statusline at the bottom of the editor.</p>
+<p>The configuration distinguishes between three areas of the status line:</p>
+<p><code>[ ... ... LEFT ... ... | ... ... ... CENTER ... ... ... | ... ... RIGHT ... ... ]</code></p>
+<p>Statusline elements can be defined as follows:</p>
+<pre><code class="language-toml">[editor.statusline]
+left = ["mode", "spinner"]
+center = ["file-name"]
+right = ["diagnostics", "selections", "position", "file-encoding", "file-line-ending", "file-type"]
+separator = "│"
+mode.normal = "NORMAL"
+mode.insert = "INSERT"
+mode.select = "SELECT"
+</code></pre>
+<p>The <code>[editor.statusline]</code> key takes the following sub-keys:</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>left</code></td><td>A list of elements aligned to the left of the statusline</td><td><code>["mode", "spinner", "file-name", "read-only-indicator", "file-modification-indicator"]</code></td></tr>
+<tr><td><code>center</code></td><td>A list of elements aligned to the middle of the statusline</td><td><code>[]</code></td></tr>
+<tr><td><code>right</code></td><td>A list of elements aligned to the right of the statusline</td><td><code>["diagnostics", "selections", "register", "position", "file-encoding"]</code></td></tr>
+<tr><td><code>separator</code></td><td>The character used to separate elements in the statusline</td><td><code>"│"</code></td></tr>
+<tr><td><code>mode.normal</code></td><td>The text shown in the <code>mode</code> element for normal mode</td><td><code>"NOR"</code></td></tr>
+<tr><td><code>mode.insert</code></td><td>The text shown in the <code>mode</code> element for insert mode</td><td><code>"INS"</code></td></tr>
+<tr><td><code>mode.select</code></td><td>The text shown in the <code>mode</code> element for select mode</td><td><code>"SEL"</code></td></tr>
+</tbody></table>
+</div>
+<p>The following statusline elements can be configured:</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
+<tr><td><code>mode</code></td><td>The current editor mode (<code>mode.normal</code>/<code>mode.insert</code>/<code>mode.select</code>)</td></tr>
+<tr><td><code>spinner</code></td><td>A progress spinner indicating LSP activity</td></tr>
+<tr><td><code>file-name</code></td><td>The path/name of the opened file</td></tr>
+<tr><td><code>file-absolute-path</code></td><td>The absolute path/name of the opened file</td></tr>
+<tr><td><code>file-base-name</code></td><td>The basename of the opened file</td></tr>
+<tr><td><code>file-modification-indicator</code></td><td>The indicator to show whether the file is modified (a <code>[+]</code> appears when there are unsaved changes)</td></tr>
+<tr><td><code>file-encoding</code></td><td>The encoding of the opened file if it differs from UTF-8</td></tr>
+<tr><td><code>file-line-ending</code></td><td>The file line endings (CRLF or LF)</td></tr>
+<tr><td><code>read-only-indicator</code></td><td>An indicator that shows <code>[readonly]</code> when a file cannot be written</td></tr>
+<tr><td><code>total-line-numbers</code></td><td>The total line numbers of the opened file</td></tr>
+<tr><td><code>file-type</code></td><td>The type of the opened file</td></tr>
+<tr><td><code>diagnostics</code></td><td>The number of warnings and/or errors</td></tr>
+<tr><td><code>workspace-diagnostics</code></td><td>The number of warnings and/or errors on workspace</td></tr>
+<tr><td><code>selections</code></td><td>The number of active selections</td></tr>
+<tr><td><code>primary-selection-length</code></td><td>The number of characters currently in primary selection</td></tr>
+<tr><td><code>position</code></td><td>The cursor position</td></tr>
+<tr><td><code>position-percentage</code></td><td>The cursor position as a percentage of the total number of lines</td></tr>
+<tr><td><code>separator</code></td><td>The string defined in <code>editor.statusline.separator</code> (defaults to <code>"│"</code>)</td></tr>
+<tr><td><code>spacer</code></td><td>Inserts a space between elements (multiple/contiguous spacers may be specified)</td></tr>
+<tr><td><code>version-control</code></td><td>The current branch name or detached commit hash of the opened workspace</td></tr>
+<tr><td><code>register</code></td><td>The current selected register</td></tr>
+</tbody></table>
+</div>
+<h3 id="editorlsp-section"><a class="header" href="#editorlsp-section"><code>[editor.lsp]</code> Section</a></h3>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>enable</code></td><td>Enables LSP integration. Setting to false will completely disable language servers regardless of language settings.</td><td><code>true</code></td></tr>
+<tr><td><code>display-messages</code></td><td>Display LSP progress messages below statusline<sup class="footnote-reference"><a href="#1">1</a></sup></td><td><code>false</code></td></tr>
+<tr><td><code>auto-signature-help</code></td><td>Enable automatic popup of signature help (parameter hints)</td><td><code>true</code></td></tr>
+<tr><td><code>display-inlay-hints</code></td><td>Display inlay hints<sup class="footnote-reference"><a href="#2">2</a></sup></td><td><code>false</code></td></tr>
+<tr><td><code>display-signature-help-docs</code></td><td>Display docs under signature help popup</td><td><code>true</code></td></tr>
+<tr><td><code>snippets</code></td><td>Enables snippet completions. Requires a server restart (<code>:lsp-restart</code>) to take effect after <code>:config-reload</code>/<code>:set</code>.</td><td><code>true</code></td></tr>
+<tr><td><code>goto-reference-include-declaration</code></td><td>Include declaration in the goto references popup.</td><td><code>true</code></td></tr>
+</tbody></table>
+</div>
+<div class="footnote-definition" id="1"><sup class="footnote-definition-label">1</sup>
+<p>By default, a progress spinner is shown in the statusline beside the file path.</p>
+</div>
+<div class="footnote-definition" id="2"><sup class="footnote-definition-label">2</sup>
+<p>You may also have to activate them in the LSP config for them to appear, not just in Helix. Inlay hints in Helix are still being improved on and may be a little bit laggy/janky under some circumstances. Please report any bugs you see so we can fix them!</p>
+</div>
+<h3 id="editorcursor-shape-section"><a class="header" href="#editorcursor-shape-section"><code>[editor.cursor-shape]</code> Section</a></h3>
+<p>Defines the shape of cursor in each mode.
+Valid values for these options are <code>block</code>, <code>bar</code>, <code>underline</code>, or <code>hidden</code>.</p>
+<blockquote>
+<p>💡 Due to limitations of the terminal environment, only the primary cursor can
+change shape.</p>
+</blockquote>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>normal</code></td><td>Cursor shape in <a href="./keymap.html#normal-mode">normal mode</a></td><td><code>block</code></td></tr>
+<tr><td><code>insert</code></td><td>Cursor shape in <a href="./keymap.html#insert-mode">insert mode</a></td><td><code>block</code></td></tr>
+<tr><td><code>select</code></td><td>Cursor shape in <a href="./keymap.html#select--extend-mode">select mode</a></td><td><code>block</code></td></tr>
+</tbody></table>
+</div>
+<h3 id="editorfile-picker-section"><a class="header" href="#editorfile-picker-section"><code>[editor.file-picker]</code> Section</a></h3>
+<p>Set options for file picker and global search. Ignoring a file means it is
+not visible in the Helix file picker and global search.</p>
+<p>All git related options are only enabled in a git repository.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>hidden</code></td><td>Enables ignoring hidden files</td><td><code>true</code></td></tr>
+<tr><td><code>follow-symlinks</code></td><td>Follow symlinks instead of ignoring them</td><td><code>true</code></td></tr>
+<tr><td><code>deduplicate-links</code></td><td>Ignore symlinks that point at files already shown in the picker</td><td><code>true</code></td></tr>
+<tr><td><code>parents</code></td><td>Enables reading ignore files from parent directories</td><td><code>true</code></td></tr>
+<tr><td><code>ignore</code></td><td>Enables reading <code>.ignore</code> files</td><td><code>true</code></td></tr>
+<tr><td><code>git-ignore</code></td><td>Enables reading <code>.gitignore</code> files</td><td><code>true</code></td></tr>
+<tr><td><code>git-global</code></td><td>Enables reading global <code>.gitignore</code>, whose path is specified in git's config: <code>core.excludesfile</code> option</td><td><code>true</code></td></tr>
+<tr><td><code>git-exclude</code></td><td>Enables reading <code>.git/info/exclude</code> files</td><td><code>true</code></td></tr>
+<tr><td><code>max-depth</code></td><td>Set with an integer value for maximum depth to recurse</td><td>Unset by default</td></tr>
+</tbody></table>
+</div>
+<p>Ignore files can be placed locally as <code>.ignore</code> or put in your home directory as <code>~/.ignore</code>. They support the usual ignore and negative ignore (unignore) rules used in <code>.gitignore</code> files.</p>
+<p>Additionally, you can use Helix-specific ignore files by creating a local <code>.helix/ignore</code> file in the current workspace or a global <code>ignore</code> file located in your Helix config directory:</p>
+<ul>
+<li>Linux and Mac: <code>~/.config/helix/ignore</code></li>
+<li>Windows: <code>%AppData%\helix\ignore</code></li>
+</ul>
+<p>Example:</p>
+<pre><code class="language-ini"># unignore in file picker and global search
+!.github/
+!.gitignore
+!.gitattributes
+</code></pre>
+<h3 id="editorauto-pairs-section"><a class="header" href="#editorauto-pairs-section"><code>[editor.auto-pairs]</code> Section</a></h3>
+<p>Enables automatic insertion of pairs to parentheses, brackets, etc. Can be a
+simple boolean value, or a specific mapping of pairs of single characters.</p>
+<p>To disable auto-pairs altogether, set <code>auto-pairs</code> to <code>false</code>:</p>
+<pre><code class="language-toml">[editor]
+auto-pairs = false # defaults to `true`
+</code></pre>
+<p>The default pairs are <code>(){}[]''""``</code>, but these can be customized by
+setting <code>auto-pairs</code> to a TOML table:</p>
+<pre><code class="language-toml">[editor.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+'`' = '`'
+'&lt;' = '&gt;'
+</code></pre>
+<p>Additionally, this setting can be used in a language config. Unless
+the editor setting is <code>false</code>, this will override the editor config in
+documents with this language.</p>
+<p>Example <code>languages.toml</code> that adds <code>&lt;&gt;</code> and removes <code>''</code></p>
+<pre><code class="language-toml">[[language]]
+name = "rust"
+
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+'`' = '`'
+'&lt;' = '&gt;'
+</code></pre>
+<h3 id="editorsearch-section"><a class="header" href="#editorsearch-section"><code>[editor.search]</code> Section</a></h3>
+<p>Search specific options.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>smart-case</code></td><td>Enable smart case regex searching (case-insensitive unless pattern contains upper case characters)</td><td><code>true</code></td></tr>
+<tr><td><code>wrap-around</code></td><td>Whether the search should wrap after depleting the matches</td><td><code>true</code></td></tr>
+</tbody></table>
+</div>
+<h3 id="editorwhitespace-section"><a class="header" href="#editorwhitespace-section"><code>[editor.whitespace]</code> Section</a></h3>
+<p>Options for rendering whitespace with visible characters. Use <code>:set whitespace.render all</code> to temporarily enable visible whitespace.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>render</code></td><td>Whether to render whitespace. May either be <code>all</code> or <code>none</code>, or a table with sub-keys <code>space</code>, <code>nbsp</code>, <code>nnbsp</code>, <code>tab</code>, and <code>newline</code></td><td><code>none</code></td></tr>
+<tr><td><code>characters</code></td><td>Literal characters to use when rendering whitespace. Sub-keys may be any of <code>tab</code>, <code>space</code>, <code>nbsp</code>, <code>nnbsp</code>, <code>newline</code> or <code>tabpad</code></td><td>See example below</td></tr>
+</tbody></table>
+</div>
+<p>Example</p>
+<pre><code class="language-toml">[editor.whitespace]
+render = "all"
+# or control each character
+[editor.whitespace.render]
+space = "all"
+tab = "all"
+nbsp = "none"
+nnbsp = "none"
+newline = "none"
+
+[editor.whitespace.characters]
+space = "·"
+nbsp = "⍽"
+nnbsp = "␣"
+tab = "→"
+newline = "⏎"
+tabpad = "·" # Tabs will look like "→···" (depending on tab width)
+</code></pre>
+<h3 id="editorindent-guides-section"><a class="header" href="#editorindent-guides-section"><code>[editor.indent-guides]</code> Section</a></h3>
+<p>Options for rendering vertical indent guides.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>render</code></td><td>Whether to render indent guides</td><td><code>false</code></td></tr>
+<tr><td><code>character</code></td><td>Literal character to use for rendering the indent guide</td><td><code>│</code></td></tr>
+<tr><td><code>skip-levels</code></td><td>Number of indent levels to skip</td><td><code>0</code></td></tr>
+</tbody></table>
+</div>
+<p>Example:</p>
+<pre><code class="language-toml">[editor.indent-guides]
+render = true
+character = "╎" # Some characters that work well: "▏", "┆", "┊", "⸽"
+skip-levels = 1
+</code></pre>
+<h3 id="editorgutters-section"><a class="header" href="#editorgutters-section"><code>[editor.gutters]</code> Section</a></h3>
+<p>For simplicity, <code>editor.gutters</code> accepts an array of gutter types, which will
+use default settings for all gutter components.</p>
+<pre><code class="language-toml">[editor]
+gutters = ["diff", "diagnostics", "line-numbers", "spacer"]
+</code></pre>
+<p>To customize the behavior of gutters, the <code>[editor.gutters]</code> section must
+be used. This section contains top level settings, as well as settings for
+specific gutter components as subsections.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>layout</code></td><td>A vector of gutters to display</td><td><code>["diagnostics", "spacer", "line-numbers", "spacer", "diff"]</code></td></tr>
+</tbody></table>
+</div>
+<p>Example:</p>
+<pre><code class="language-toml">[editor.gutters]
+layout = ["diff", "diagnostics", "line-numbers", "spacer"]
+</code></pre>
+<h4 id="editorguttersline-numbers-section"><a class="header" href="#editorguttersline-numbers-section"><code>[editor.gutters.line-numbers]</code> Section</a></h4>
+<p>Options for the line number gutter</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>min-width</code></td><td>The minimum number of characters to use</td><td><code>3</code></td></tr>
+</tbody></table>
+</div>
+<p>Example:</p>
+<pre><code class="language-toml">[editor.gutters.line-numbers]
+min-width = 1
+</code></pre>
+<h4 id="editorguttersdiagnostics-section"><a class="header" href="#editorguttersdiagnostics-section"><code>[editor.gutters.diagnostics]</code> Section</a></h4>
+<p>Currently unused</p>
+<h4 id="editorguttersdiff-section"><a class="header" href="#editorguttersdiff-section"><code>[editor.gutters.diff]</code> Section</a></h4>
+<p>The <code>diff</code> gutter option displays colored bars indicating whether a <code>git</code> diff represents that a line was added, removed or changed.
+These colors are controlled by the theme attributes <code>diff.plus</code>, <code>diff.minus</code> and <code>diff.delta</code>.</p>
+<p>Other diff providers will eventually be supported by a future plugin system.</p>
+<p>There are currently no options for this section.</p>
+<h4 id="editorguttersspacer-section"><a class="header" href="#editorguttersspacer-section"><code>[editor.gutters.spacer]</code> Section</a></h4>
+<p>Currently unused</p>
+<h3 id="editorsoft-wrap-section"><a class="header" href="#editorsoft-wrap-section"><code>[editor.soft-wrap]</code> Section</a></h3>
+<p>Options for soft wrapping lines that exceed the view width:</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>enable</code></td><td>Whether soft wrapping is enabled.</td><td><code>false</code></td></tr>
+<tr><td><code>max-wrap</code></td><td>Maximum free space left at the end of the line.</td><td><code>20</code></td></tr>
+<tr><td><code>max-indent-retain</code></td><td>Maximum indentation to carry over when soft wrapping a line.</td><td><code>40</code></td></tr>
+<tr><td><code>wrap-indicator</code></td><td>Text inserted before soft wrapped lines, highlighted with <code>ui.virtual.wrap</code></td><td><code>↪ </code></td></tr>
+<tr><td><code>wrap-at-text-width</code></td><td>Soft wrap at <code>text-width</code> instead of using the full viewport size.</td><td><code>false</code></td></tr>
+</tbody></table>
+</div>
+<p>Example:</p>
+<pre><code class="language-toml">[editor.soft-wrap]
+enable = true
+max-wrap = 25 # increase value to reduce forced mid-word wrapping
+max-indent-retain = 0
+wrap-indicator = ""  # set wrap-indicator to "" to hide it
+</code></pre>
+<h3 id="editorsmart-tab-section"><a class="header" href="#editorsmart-tab-section"><code>[editor.smart-tab]</code> Section</a></h3>
+<p>Options for navigating and editing using tab key.</p>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>enable</code></td><td>If set to true, then when the cursor is in a position with non-whitespace to its left, instead of inserting a tab, it will run <code>move_parent_node_end</code>. If there is only whitespace to the left, then it inserts a tab as normal. With the default bindings, to explicitly insert a tab character, press Shift-tab.</td><td><code>true</code></td></tr>
+<tr><td><code>supersede-menu</code></td><td>Normally, when a menu is on screen, such as when auto complete is triggered, the tab key is bound to cycling through the items. This means when menus are on screen, one cannot use the tab key to trigger the <code>smart-tab</code> command. If this option is set to true, the <code>smart-tab</code> command always takes precedence, which means one cannot use the tab key to cycle through menu items. One of the other bindings must be used instead, such as arrow keys or <code>C-n</code>/<code>C-p</code>.</td><td><code>false</code></td></tr>
+</tbody></table>
+</div>
+<p>Due to lack of support for S-tab in some terminals, the default keybindings don't fully embrace smart-tab editing experience. If you enjoy smart-tab navigation and a terminal that supports the <a href="https://github.com/helix-editor/helix/wiki/Terminal-Support#enhanced-keyboard-protocol">Enhanced Keyboard protocol</a>, consider setting extra keybindings:</p>
+<pre><code>[keys.normal]
+tab = "move_parent_node_end"
+S-tab = "move_parent_node_start"
+
+[keys.insert]
+S-tab = "move_parent_node_start"
+
+[keys.select]
+tab = "extend_parent_node_end"
+S-tab = "extend_parent_node_start"
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="configuration.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="themes.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="configuration.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="themes.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+
+
+    </div>
+    </body>
+</html>
