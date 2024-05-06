@@ -899,7 +899,7 @@ async fn match_bracket() -> anyhow::Result<()> {
 
     let python_tests = vec![
         // python quotes have a slightly more complex syntax tree
-        // that tirggerd a bug in an old implementation so we test
+        // that triggerd a bug in an old implementation so we test
         // them here
         (
             indoc! {r##"
