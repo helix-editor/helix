@@ -34,6 +34,10 @@
   (line_comment)
   (block_comment)
 ] @comment
+[
+  (documentation_comment)
+  (block_documentation_comment)
+] @comment.block.documentation
 
 ; ---
 ; Extraneous
