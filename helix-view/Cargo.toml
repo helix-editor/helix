@@ -13,6 +13,7 @@ homepage.workspace = true
 [features]
 default = []
 term = ["crossterm"]
+unicode-lines = []
 
 [dependencies]
 helix-stdx = { path = "../helix-stdx" }
