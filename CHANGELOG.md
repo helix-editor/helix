@@ -1,4 +1,4 @@
-# 25.02 (2024-05-05)
+# 25.02 (2024-05-11)
 
 Thanks to all of the contributors! This release has changes from 102 contributors.
 
@@ -9,7 +9,7 @@ Features:
 - Add a textobject for entries/elements of list-like things (#8150)
 - Add a picker showing files changed in VCS (#5645)
 - Use a temporary file for writes (#9236, #10339)
-- Allow cycling through LSP signature-help signatures with `A-n`/`A-p` (#9974, #10654)
+- Allow cycling through LSP signature-help signatures with `A-n`/`A-p` (#9974, #10654, #10655)
 
 Commands:
 
@@ -129,6 +129,8 @@ Updated languages and queries:
 - Add comment injection to typst queries (#10628)
 - Add textobject queries for Hurl (#10594)
 - Add `try` keyword to Rust (#10641)
+- Add `is not` and `not in` to Python highlights (#10647)
+- Remove ' and ⟨⟩ from Lean autopair configuration (#10688)
 
 Packaging:
 
