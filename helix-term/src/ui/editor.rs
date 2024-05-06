@@ -1181,20 +1181,6 @@ impl EditorView {
                 EventResult::Ignored(None)
             }
 
-            MouseEventKind::Down(MouseButton::Right) => {
-                if let Some((view_id, pos, false, false)) =
-                    coords_info(cxt.editor, row, column, true)
-                {
-                    cxt.editor.focus(view_id);
-                    doc_mut!(cxt.editor).set_selection(view_id, Selection::point(pos));
-                    commands::MappableCommand::select_references_to_symbol_under_cursor
-                        .execute(cxt);
-                    cxt.editor.ensure_cursor_in_view(view_id);
-                    return EventResult::Consumed(None);
-                }
-                EventResult::Ignored(None)
-            }
-
             MouseEventKind::ScrollUp | MouseEventKind::ScrollDown => {
                 let current_view = cxt.editor.tree.focus;
                 let direction = match event.kind {
@@ -1246,15 +1232,21 @@ impl EditorView {
             }
 
             MouseEventKind::Up(MouseButton::Right) => {
-                if let Some((view_id, _, true, false)) = coords_info(cxt.editor, row, column, true)
+                if let Some((view_id, pos, is_gutter, false)) =
+                    coords_info(cxt.editor, row, column, true)
                 {
                     cxt.editor.focus(view_id);
+                    doc_mut!(cxt.editor).set_selection(view_id, Selection::point(pos));
                     cxt.editor.ensure_cursor_in_view(view_id);
-                    if modifiers == KeyModifiers::ALT {
-                        commands::MappableCommand::dap_edit_log.execute(cxt)
-                    } else {
-                        commands::MappableCommand::dap_edit_condition.execute(cxt)
+
+                    if is_gutter {
+                        if modifiers == KeyModifiers::ALT {
+                            commands::MappableCommand::dap_edit_log.execute(cxt)
+                        } else {
+                            commands::MappableCommand::dap_edit_condition.execute(cxt)
+                        }
                     }
+
                     return EventResult::Consumed(None);
                 }
                 EventResult::Ignored(None)
