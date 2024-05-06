@@ -510,6 +510,7 @@ pub enum DebugArgumentValue {
 pub struct DebugTemplate {
     pub name: String,
     pub request: String,
+    #[serde(default)]
     pub completion: Vec<DebugConfigCompletion>,
     pub args: HashMap<String, DebugArgumentValue>,
 }
