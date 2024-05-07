@@ -99,8 +99,9 @@ fn find_pair(
 
         // check if we are *on* the pair (special cased so we don't look
         // at the current node twice and to jump to the start on that case)
-        if let Some(open) = as_close_pair(doc, &node) {
-            if let Some(pair_start) = find_pair_end(doc, node.prev_sibling(), open, Backward) {
+        if let Some((close, open)) = as_matching_pair(doc, &node, Backward) {
+            if let Some(pair_start) = find_pair_end(doc, node.prev_sibling(), close, open, Backward)
+            {
                 return Some(pair_start);
             }
         }
@@ -109,8 +110,10 @@ fn find_pair(
             // check if we are *on* the opening pair (special cased here as
             // an opptimization since we only care about bracket on the cursor
             // here)
-            if let Some(close) = as_open_pair(doc, &node) {
-                if let Some(pair_end) = find_pair_end(doc, node.next_sibling(), close, Forward) {
+            if let Some((open, close)) = as_matching_pair(doc, &node, Forward) {
+                if let Some(pair_end) =
+                    find_pair_end(doc, node.next_sibling(), open, close, Forward)
+                {
                     return Some(pair_end);
                 }
             }
@@ -122,10 +125,10 @@ fn find_pair(
         for close in
             iter::successors(node.next_sibling(), |node| node.next_sibling()).take(MATCH_LIMIT)
         {
-            let Some(open) = as_close_pair(doc, &close) else {
+            let Some((close_, open)) = as_matching_pair(doc, &close, Backward) else {
                 continue;
             };
-            if find_pair_end(doc, Some(node), open, Backward).is_some() {
+            if find_pair_end(doc, Some(node), close_, open, Backward).is_some() {
                 return doc.try_byte_to_char(close.start_byte()).ok();
             }
         }
@@ -157,6 +160,11 @@ fn find_pair(
 #[must_use]
 pub fn find_matching_bracket_plaintext(doc: RopeSlice, cursor_pos: usize) -> Option<usize> {
     let bracket = doc.get_char(cursor_pos)?;
+    // Don't do anything when the cursor is not on top of a bracket.
+    if !is_valid_bracket(bracket) {
+        return None;
+    }
+
     let matching_bracket = {
         let pair = get_pair(bracket);
         if pair.0 == bracket {
@@ -165,11 +173,6 @@ pub fn find_matching_bracket_plaintext(doc: RopeSlice, cursor_pos: usize) -> Opt
             pair.0
         }
     };
-    // Don't do anything when the cursor is not on top of a bracket.
-    if !is_valid_bracket(bracket) {
-        return None;
-    }
-
     // Determine the direction of the matching.
     let is_fwd = is_open_bracket(bracket);
     let chars_iter = if is_fwd {
@@ -258,12 +261,23 @@ fn surrounding_bytes(doc: RopeSlice, node: &Node) -> Option<(usize, usize)> {
     Some((start_byte, end_byte))
 }
 
-/// Tests if this node is a pair close char and returns the expected open char
-fn as_close_pair(doc: RopeSlice, node: &Node) -> Option<char> {
-    let close = as_char(doc, node)?.1;
-    PAIRS
-        .iter()
-        .find_map(|&(open, close_)| (close_ == close).then_some(open))
+/// Tests if this node is one side of matching pair
+///
+/// # Returns
+///
+/// The first element is the current char, the second element is the expected matching char.
+/// If no matching bracket is found, `None` is returned.
+fn as_matching_pair(doc: RopeSlice, node: &Node, direction: Direction) -> Option<(char, char)> {
+    let current_char = as_char(doc, node)?.1;
+    PAIRS.iter().find_map(|&(open, close)| {
+        if direction == Forward && open == current_char {
+            Some((open, close))
+        } else if direction == Backward && current_char == close {
+            Some((close, open))
+        } else {
+            None
+        }
+    })
 }
 
 /// Checks if `node` or its siblings (at most MATCH_LIMIT nodes) is the specified closing char
@@ -274,6 +288,7 @@ fn as_close_pair(doc: RopeSlice, node: &Node) -> Option<char> {
 fn find_pair_end(
     doc: RopeSlice,
     node: Option<Node>,
+    start_char: char,
     end_char: char,
     direction: Direction,
 ) -> Option<usize> {
@@ -281,20 +296,18 @@ fn find_pair_end(
         Forward => Node::next_sibling,
         Backward => Node::prev_sibling,
     };
+    let mut open_cnt = 1;
     iter::successors(node, advance)
         .take(MATCH_LIMIT)
         .find_map(|node| {
             let (pos, c) = as_char(doc, &node)?;
-            (end_char == c).then_some(pos)
+            if c == start_char {
+                open_cnt += 1;
+            } else if c == end_char {
+                open_cnt -= 1;
+            }
+            (open_cnt == 0).then_some(pos)
         })
-}
-
-/// Tests if this node is a pair close char and returns the expected open char
-fn as_open_pair(doc: RopeSlice, node: &Node) -> Option<char> {
-    let open = as_char(doc, node)?.1;
-    PAIRS
-        .iter()
-        .find_map(|&(open_, close)| (open_ == open).then_some(close))
 }
 
 /// If node is a single char return it (and its char position)
