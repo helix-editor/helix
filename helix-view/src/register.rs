@@ -123,7 +123,7 @@ impl Registers {
                     _ => unreachable!(),
                 };
                 let contents = self.clipboard_provider.get_contents(clipboard_type)?;
-                let saved_values = self.inner.entry(name).or_insert_with(Vec::new);
+                let saved_values = self.inner.entry(name).or_default();
 
                 if !contents_are_saved(saved_values, &contents) {
                     anyhow::bail!("Failed to push to register {name}: clipboard does not match register contents");
@@ -140,7 +140,7 @@ impl Registers {
                 Ok(())
             }
             _ => {
-                self.inner.entry(name).or_insert_with(Vec::new).push(value);
+                self.inner.entry(name).or_default().push(value);
                 Ok(())
             }
         }
