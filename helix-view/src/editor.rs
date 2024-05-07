@@ -1030,6 +1030,7 @@ pub enum EditorEvent {
 pub enum ConfigEvent {
     Refresh,
     Update(Box<Config>),
+    Change,
 }
 
 enum ThemeAction {
@@ -1476,6 +1477,8 @@ impl Editor {
     pub fn switch(&mut self, id: DocumentId, action: Action) {
         use crate::tree::Layout;
 
+        log::info!("Switching view: {:?}", id);
+
         if !self.documents.contains_key(&id) {
             log::error!("cannot switch to document that does not exist (anymore)");
             return;
@@ -1784,6 +1787,10 @@ impl Editor {
         // if leaving the view: mode should reset and the cursor should be
         // within view
         if prev_id != view_id {
+            log::info!("Changing focus: {:?}", view_id);
+
+            // TODO: Consult map for modes to change given file type?
+
             self.enter_normal_mode();
             self.ensure_cursor_in_view(view_id);
 

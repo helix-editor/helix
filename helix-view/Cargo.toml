@@ -11,8 +11,8 @@ repository.workspace = true
 homepage.workspace = true
 
 [features]
-default = []
 term = ["crossterm"]
+steel = ["dep:steel-core", "helix-core/steel"]
 
 [dependencies]
 helix-stdx = { path = "../helix-stdx" }
@@ -49,6 +49,9 @@ toml = "0.8"
 log = "~0.4"
 
 parking_lot = "0.12.1"
+
+# plugin support
+steel-core = { workspace = true, optional = true }
 
 
 [target.'cfg(windows)'.dependencies]

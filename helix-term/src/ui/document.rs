@@ -89,6 +89,7 @@ impl<H: Iterator<Item = HighlightEvent>> Iterator for StyleIter<'_, H> {
     }
 }
 
+
 #[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub struct LinePos {
     /// Indicates whether the given visual line
@@ -121,6 +122,7 @@ pub fn render_document(
     translated_positions: &mut [TranslatedPosition],
 ) {
     let mut renderer = TextRenderer::new(surface, doc, theme, offset.horizontal_offset, viewport);
+
     render_text(
         &mut renderer,
         doc.text().slice(..),
@@ -248,7 +250,7 @@ pub fn render_text<'t>(
                     renderer,
                     last_pos,
                 );
-            }
+            }          
             break;
         };
 

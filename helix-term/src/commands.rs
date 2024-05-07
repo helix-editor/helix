@@ -1,4 +1,5 @@
 pub(crate) mod dap;
+pub(crate) mod engine;
 pub(crate) mod lsp;
 pub(crate) mod typed;
 
@@ -10,6 +11,8 @@ use helix_stdx::{
 };
 use helix_vcs::{FileChange, Hunk};
 pub use lsp::*;
+
+pub use engine::ScriptingEngine;
 use tui::{
     text::Span,
     widgets::{Cell, Row},
@@ -206,6 +209,7 @@ impl MappableCommand {
         match &self {
             Self::Typable { name, args, doc: _ } => {
                 let args: Vec<Cow<str>> = args.iter().map(Cow::from).collect();
+                // TODO: Swap the order to allow overriding the existing commands?
                 if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
                     let mut cx = compositor::Context {
                         editor: cx.editor,
@@ -215,6 +219,8 @@ impl MappableCommand {
                     if let Err(e) = (command.fun)(&mut cx, &args[..], PromptEvent::Validate) {
                         cx.editor.set_error(format!("{}", e));
                     }
+                } else {
+                    ScriptingEngine::call_function_by_name(cx, name, args);
                 }
             }
             Self::Static { fun, .. } => (fun)(cx),
@@ -561,7 +567,18 @@ impl std::str::FromStr for MappableCommand {
                 .map(|cmd| MappableCommand::Typable {
                     name: cmd.name.to_owned(),
                     doc: format!(":{} {:?}", cmd.name, args),
-                    args,
+                    args: args.clone(),
+                })
+                .or_else(|| {
+                    if let Some(doc) = self::engine::ScriptingEngine::get_doc_for_identifier(name) {
+                        Some(MappableCommand::Typable {
+                            name: name.to_owned(),
+                            args,
+                            doc,
+                        })
+                    } else {
+                        None
+                    }
                 })
                 .ok_or_else(|| anyhow!("No TypableCommand named '{}'", s))
         } else {
@@ -2469,6 +2486,231 @@ fn global_search(cx: &mut Context) {
     );
 }
 
+// TODO: Fix this! It is just a copy paste of the above global_search - they should just
+// share the same implementation.
+fn search_in_directory(cx: &mut Context, search_root: PathBuf) {
+    #[derive(Debug)]
+    struct FileResult {
+        path: PathBuf,
+        /// 0 indexed lines
+        line_num: usize,
+    }
+
+    impl FileResult {
+        fn new(path: &Path, line_num: usize) -> Self {
+            Self {
+                path: path.to_path_buf(),
+                line_num,
+            }
+        }
+    }
+
+    impl ui::menu::Item for FileResult {
+        type Data = Option<PathBuf>;
+
+        fn format(&self, current_path: &Self::Data) -> Row {
+            let relative_path = helix_stdx::path::get_relative_path(&self.path)
+                .to_string_lossy()
+                .into_owned();
+            if current_path
+                .as_ref()
+                .map(|p| p == &self.path)
+                .unwrap_or(false)
+            {
+                format!("{} (*)", relative_path).into()
+            } else {
+                relative_path.into()
+            }
+        }
+    }
+
+    let config = cx.editor.config();
+    let smart_case = config.search.smart_case;
+    let file_picker_config = config.file_picker.clone();
+
+    let reg = cx.register.unwrap_or('/');
+    let completions = search_completions(cx, Some(reg));
+    ui::raw_regex_prompt(
+        cx,
+        "global-search:".into(),
+        Some(reg),
+        move |_editor: &Editor, input: &str| {
+            completions
+                .iter()
+                .filter(|comp| comp.starts_with(input))
+                .map(|comp| (0.., std::borrow::Cow::Owned(comp.clone())))
+                .collect()
+        },
+        move |cx, _, input, event| {
+            if event != PromptEvent::Validate {
+                return;
+            }
+            cx.editor.registers.last_search_register = reg;
+
+            let current_path = doc_mut!(cx.editor).path().cloned();
+            let documents: Vec<_> = cx
+                .editor
+                .documents()
+                .map(|doc| (doc.path().cloned(), doc.text().to_owned()))
+                .collect();
+
+            if let Ok(matcher) = RegexMatcherBuilder::new()
+                .case_smart(smart_case)
+                .build(input)
+            {
+                let search_root = search_root.clone();
+
+                if !search_root.exists() {
+                    cx.editor
+                        .set_error("Current working directory does not exist");
+                    return;
+                }
+
+                let (picker, injector) = Picker::stream(current_path);
+
+                let dedup_symlinks = file_picker_config.deduplicate_links;
+                let absolute_root = search_root
+                    .canonicalize()
+                    .unwrap_or_else(|_| search_root.to_owned().to_path_buf());
+                let injector_ = injector.clone();
+
+                std::thread::spawn(move || {
+                    let searcher = SearcherBuilder::new()
+                        .binary_detection(BinaryDetection::quit(b'\x00'))
+                        .build();
+                    WalkBuilder::new(search_root)
+                        .hidden(file_picker_config.hidden)
+                        .parents(file_picker_config.parents)
+                        .ignore(file_picker_config.ignore)
+                        .follow_links(file_picker_config.follow_symlinks)
+                        .git_ignore(file_picker_config.git_ignore)
+                        .git_global(file_picker_config.git_global)
+                        .git_exclude(file_picker_config.git_exclude)
+                        .max_depth(file_picker_config.max_depth)
+                        .filter_entry(move |entry| {
+                            filter_picker_entry(entry, &absolute_root, dedup_symlinks)
+                        })
+                        .build_parallel()
+                        .run(|| {
+                            let mut searcher = searcher.clone();
+                            let matcher = matcher.clone();
+                            let injector = injector_.clone();
+                            let documents = &documents;
+                            Box::new(move |entry: Result<DirEntry, ignore::Error>| -> WalkState {
+                                let entry = match entry {
+                                    Ok(entry) => entry,
+                                    Err(_) => return WalkState::Continue,
+                                };
+
+                                match entry.file_type() {
+                                    Some(entry) if entry.is_file() => {}
+                                    // skip everything else
+                                    _ => return WalkState::Continue,
+                                };
+
+                                let mut stop = false;
+                                let sink = sinks::UTF8(|line_num, _| {
+                                    stop = injector
+                                        .push(FileResult::new(entry.path(), line_num as usize - 1))
+                                        .is_err();
+
+                                    Ok(!stop)
+                                });
+                                let doc = documents.iter().find(|&(doc_path, _)| {
+                                    doc_path
+                                        .as_ref()
+                                        .map_or(false, |doc_path| doc_path == entry.path())
+                                });
+
+                                let result = if let Some((_, doc)) = doc {
+                                    // there is already a buffer for this file
+                                    // search the buffer instead of the file because it's faster
+                                    // and captures new edits without requiring a save
+                                    if searcher.multi_line_with_matcher(&matcher) {
+                                        // in this case a continous buffer is required
+                                        // convert the rope to a string
+                                        let text = doc.to_string();
+                                        searcher.search_slice(&matcher, text.as_bytes(), sink)
+                                    } else {
+                                        searcher.search_reader(
+                                            &matcher,
+                                            RopeReader::new(doc.slice(..)),
+                                            sink,
+                                        )
+                                    }
+                                } else {
+                                    searcher.search_path(&matcher, entry.path(), sink)
+                                };
+
+                                if let Err(err) = result {
+                                    log::error!(
+                                        "Global search error: {}, {}",
+                                        entry.path().display(),
+                                        err
+                                    );
+                                }
+                                if stop {
+                                    WalkState::Quit
+                                } else {
+                                    WalkState::Continue
+                                }
+                            })
+                        });
+                });
+
+                cx.jobs.callback(async move {
+                    let call = move |_: &mut Editor, compositor: &mut Compositor| {
+                        let picker = Picker::with_stream(
+                            picker,
+                            injector,
+                            move |cx, FileResult { path, line_num }, action| {
+                                let doc = match cx.editor.open(path, action) {
+                                    Ok(id) => doc_mut!(cx.editor, &id),
+                                    Err(e) => {
+                                        cx.editor.set_error(format!(
+                                            "Failed to open file '{}': {}",
+                                            path.display(),
+                                            e
+                                        ));
+                                        return;
+                                    }
+                                };
+
+                                let line_num = *line_num;
+                                let view = view_mut!(cx.editor);
+                                let text = doc.text();
+                                if line_num >= text.len_lines() {
+                                    cx.editor.set_error(
+                    "The line you jumped to does not exist anymore because the file has changed.",
+                );
+                                    return;
+                                }
+                                let start = text.line_to_char(line_num);
+                                let end = text.line_to_char((line_num + 1).min(text.len_lines()));
+
+                                doc.set_selection(view.id, Selection::single(start, end));
+                                if action.align_view(view, doc.id()) {
+                                    align_view(doc, view, Align::Center);
+                                }
+                            },
+                        )
+                        .with_preview(
+                            |_editor, FileResult { path, line_num }| {
+                                Some((path.clone().into(), Some((*line_num, *line_num))))
+                            },
+                        );
+                        compositor.push(Box::new(overlaid(picker)))
+                    };
+                    Ok(Callback::EditorCompositor(Box::new(call)))
+                })
+            } else {
+                // Otherwise do nothing
+                // log::warn!("Global Search Invalid Pattern")
+            }
+        },
+    );
+}
+
 enum Extend {
     Above,
     Below,
@@ -2889,6 +3131,7 @@ fn buffer_picker(cx: &mut Context) {
     struct BufferMeta {
         id: DocumentId,
         path: Option<PathBuf>,
+        name: Option<String>,
         is_modified: bool,
         is_current: bool,
         focused_at: std::time::Instant,
@@ -2922,6 +3165,7 @@ fn buffer_picker(cx: &mut Context) {
     let new_meta = |doc: &Document| BufferMeta {
         id: doc.id(),
         path: doc.path().cloned(),
+        name: doc.name.clone(),
         is_modified: doc.is_modified(),
         is_current: doc.id() == current,
         focused_at: doc.focused_at,
@@ -3779,6 +4023,18 @@ pub mod insert {
         }
 
         helix_event::dispatch(PostInsertChar { c, cx });
+    }
+
+    pub fn insert_string(cx: &mut Context, string: String) {
+        let (view, doc) = current!(cx.editor);
+
+        let indent = Tendril::from(string);
+        let transaction = Transaction::insert(
+            doc.text(),
+            &doc.selection(view.id).clone().cursors(doc.text().slice(..)),
+            indent,
+        );
+        doc.apply(&transaction, view.id);
     }
 
     pub fn smart_tab(cx: &mut Context) {

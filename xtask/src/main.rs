@@ -1,3 +1,4 @@
+mod codegen;
 mod docgen;
 mod helpers;
 mod path;
@@ -8,6 +9,7 @@ use std::{env, error::Error};
 type DynError = Box<dyn Error>;
 
 pub mod tasks {
+    use crate::codegen::code_gen;
     use crate::docgen::{lang_features, typable_commands, write};
     use crate::docgen::{LANG_SUPPORT_MD_OUTPUT, TYPABLE_COMMANDS_MD_OUTPUT};
     use crate::querycheck::query_check;
@@ -21,6 +23,20 @@ pub mod tasks {
 
     pub fn querycheck() -> Result<(), DynError> {
         query_check()
+    }
+
+    pub fn codegen() {
+        code_gen()
+    }
+
+    pub fn install_steel() {
+        code_gen();
+        std::process::Command::new("cargo")
+            .args(["install", "--path", "helix-term", "--locked", "--force"])
+            .spawn()
+            .unwrap()
+            .wait()
+            .unwrap();
     }
 
     pub fn print_help() {
@@ -43,6 +59,8 @@ fn main() -> Result<(), DynError> {
         Some(t) => match t.as_str() {
             "docgen" => tasks::docgen()?,
             "query-check" => tasks::querycheck()?,
+            "code-gen" => tasks::codegen(),
+            "steel" => tasks::install_steel(),
             invalid => return Err(format!("Invalid task name: {}", invalid).into()),
         },
     };
