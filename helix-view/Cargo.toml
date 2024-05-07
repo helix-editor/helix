@@ -61,3 +61,4 @@ rustix = { version = "0.38", features = ["fs"] }
 
 [dev-dependencies]
 helix-tui = { path = "../helix-tui" }
+rand = "*"

@@ -149,12 +149,13 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
         "y" => yank,
         // yank_all
-        "p" => paste_after,
+        "p" => paste_picker_after,
         // paste_all
-        "P" => paste_before,
+        "P" => paste_picker_before,
 
         "Q" => record_macro,
         "q" => replay_macro,
+        "A-q" => replay_macro_picker,
 
         ">" => indent,
         "<" => unindent,

@@ -186,11 +186,107 @@ async fn test_multi_selection_paste() -> anyhow::Result<()> {
             #(|ipsum)#
             #(|dolor)#
             "},
-        "yp",
+        "ypp",
         indoc! {"\
             lorem#[|lorem]#
             ipsum#(|ipsum)#
             dolor#(|dolor)#
+            "},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_multi_selection_paste_using_named_register() -> anyhow::Result<()> {
+    test((
+        indoc! {"\
+            #[|lorem]#
+            #(|ipsum)#
+            #(|dolor)#
+            "},
+        concat!(
+            r#""ay"#,  // Select register 'a' as the yank destination.
+            r#""ap0"#, // Select register 'a' for pasting. Zero indicates most recent yank.
+        ),
+        indoc! {"\
+            lorem#[|lorem]#
+            ipsum#(|ipsum)#
+            dolor#(|dolor)#
+            "},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_multi_register_paste() -> anyhow::Result<()> {
+    test((
+        indoc! {"\
+            #[|lorem]#ipsumdolor
+            "},
+        // This shows both pick first (0) and double p working.
+        concat!(
+            r#""ay"#,  // Select register 'a' as the yank destination.
+            ",;",      // Clear selections and cursors.
+            "xy",      // Select and yank the line.
+            "gl",      // Go to end of line.
+            r#""ap0"#, // Select register 'a' for pasting. Zero indicates most recent yank.
+            "pp",      // paste from the default register. 'p' also indicates most recent yank.
+        ),
+        indoc! {"\
+            loremipsumdolorlorem
+            #[loremipsumdolor
+            |]#
+            "},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_macro_replay() -> anyhow::Result<()> {
+    test((
+        indoc! {"\
+            #[|l]#orem
+            ipsum
+            dolor
+            "},
+        concat!(
+            "QxdQ", // Record macro. Select and delete line.
+            "q",    // Replay macro.
+        ),
+        indoc! {"\
+            #[d|]#olor
+            "},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_macro_replay_picker() -> anyhow::Result<()> {
+    test((
+        indoc! {"\
+            #[|l]#orem
+            ipsum
+            dolor
+            sit amet
+            "},
+        concat!(
+            "QxdQ",   // Record selecting and deleting a line.
+            "Qw~Q",   // Record selecting a word and swapping its case.
+            "j",      // Move down a line.
+            "<A-q>1", // replay-macro-picker, select 1 (the 2 entry, aka the first macro recorded)
+            "q"       // replay-macro, replay most recently recorded macro.
+        ),
+        indoc! {"\
+            IPSUM
+            #[SIT |]#amet
             "},
     ))
     .await?;

@@ -2447,7 +2447,7 @@ fn yank_diagnostic(
         bail!("No diagnostics under primary selection");
     }
 
-    cx.editor.registers.write(reg, diag)?;
+    cx.editor.registers.push_many(reg, &diag)?;
     cx.editor.set_status(format!(
         "Yanked {n} diagnostic{} to register {reg}",
         if n == 1 { "" } else { "s" }

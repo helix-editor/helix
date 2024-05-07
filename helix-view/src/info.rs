@@ -65,4 +65,12 @@ impl Info {
         infobox.width = 30; // copied content could be very long
         infobox
     }
+
+    pub fn from_selected_register(registers: &Registers, register: char) -> Self {
+        let title = "Collected bits";
+        let body = registers.preview_for(register);
+        let mut infobox = Self::new(title, &body);
+        infobox.width = 30; // copied content could be very long
+        infobox
+    }
 }
