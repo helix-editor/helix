@@ -83,6 +83,8 @@
 "keyword.control" = "purple"
 "function" = "yellow"
 "label" = "blue"
+"tag" = "aqua"
+"attribute" = "blue"
 
 # Markup 
 "markup.heading" = { fg = "yellow", modifiers = ["bold"], underline = { color = "yellow", style = "double_line"} }
