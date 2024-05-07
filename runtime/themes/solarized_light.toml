@@ -91,9 +91,6 @@
 # 影响 picker列表选中, 快捷键帮助窗口文本
 # Affects picker list selection, shortcut key help window text
 "ui.text.focus" = { fg = "blue", modifiers = ["bold"]}
-# file picker中， 预览的当前选中项
-# In file picker, the currently selected item of the preview
-"ui.highlight" = { fg = "red", modifiers = ["bold", "italic", "underlined"] }
 
 # 主光标/selection
 # main cursor/selection
@@ -107,7 +104,7 @@
 "ui.selection.primary" = { bg = "base015" }
 
 "ui.virtual.indent-guide" = { fg = "base02" }
-"ui.virtual.ruler" = { fg = "red" }
+"ui.virtual.ruler" = { bg = "base02" }
 
 # normal模式的光标
 # normal mode cursor

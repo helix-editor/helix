@@ -491,12 +491,17 @@ impl Tree {
                         }
                         Layout::Vertical => {
                             let len = container.children.len();
-                            let slots = container.calculate_slots_width();
-                            let slot_width: f32 = area.width as f32 / slots as f32;
-                            let mut child_x = area.x;
+                            let len_u16 = len as u16;
 
                             let inner_gap = 1u16;
-                            // let total_gap = inner_gap * (len as u16 - 1);
+                            let total_gap = inner_gap * len_u16.saturating_sub(2);
+
+                            let used_area = area.width.saturating_sub(total_gap);
+
+                            let slots = container.calculate_slots_width();
+                            let slot_width: f32 = used_area as f32 / slots as f32;
+
+                            let mut child_x = area.x;
 
                             for (i, child) in container.children.iter().enumerate() {
                                 let bounds = container.node_bounds[i];
@@ -1091,10 +1096,40 @@ mod test {
         assert_eq!(3, tree.views().count());
         assert_eq!(
             vec![
-                tree_area_width / 3,
-                tree_area_width / 3,
-                tree_area_width / 3 - 2 // Rounding in `recalculate`.
+                tree_area_width / 3 - 1, // gap here
+                tree_area_width / 3 - 1, // gap here
+                tree_area_width / 3
             ],
+            tree.views()
+                .map(|(view, _)| view.area.width)
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn vsplit_gap_rounding() {
+        let (tree_area_width, tree_area_height) = (80, 24);
+        let mut tree = Tree::new(Rect {
+            x: 0,
+            y: 0,
+            width: tree_area_width,
+            height: tree_area_height,
+        });
+        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        view.area = Rect::new(0, 0, tree_area_width, tree_area_height);
+        tree.insert(view);
+
+        for _ in 0..9 {
+            let view = View::new(DocumentId::default(), GutterConfig::default());
+            tree.split(view, Layout::Vertical);
+        }
+
+        assert_eq!(10, tree.views().count());
+        assert_eq!(
+            std::iter::repeat(7)
+                .take(9)
+                .chain(Some(8)) // Rounding in `recalculate`.
+                .collect::<Vec<_>>(),
             tree.views()
                 .map(|(view, _)| view.area.width)
                 .collect::<Vec<_>>()

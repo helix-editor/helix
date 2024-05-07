@@ -1,6 +1,7 @@
 | Language | Syntax Highlighting | Treesitter Textobjects | Auto Indent | Default LSP |
 | --- | --- | --- | --- | --- |
 | ada | ✓ | ✓ |  | `ada_language_server`, `ada_language_server` |
+| adl | ✓ | ✓ | ✓ |  |
 | agda | ✓ |  |  |  |
 | astro | ✓ |  |  |  |
 | awk | ✓ | ✓ |  | `awk-language-server` |
@@ -61,6 +62,7 @@
 | git-config | ✓ |  |  |  |
 | git-ignore | ✓ |  |  |  |
 | git-rebase | ✓ |  |  |  |
+| gjs | ✓ | ✓ | ✓ | `typescript-language-server`, `vscode-eslint-language-server`, `ember-language-server` |
 | gleam | ✓ | ✓ |  | `gleam` |
 | glimmer | ✓ |  |  | `ember-language-server` |
 | glsl | ✓ | ✓ | ✓ |  |
@@ -72,6 +74,7 @@
 | gowork | ✓ |  |  | `gopls` |
 | graphql | ✓ | ✓ |  | `graphql-lsp` |
 | groovy | ✓ |  |  |  |
+| gts | ✓ | ✓ | ✓ | `typescript-language-server`, `vscode-eslint-language-server`, `ember-language-server` |
 | hare | ✓ |  |  |  |
 | haskell | ✓ | ✓ |  | `haskell-language-server-wrapper` |
 | haskell-persistent | ✓ |  |  |  |
@@ -82,11 +85,12 @@
 | hoon | ✓ |  |  |  |
 | hosts | ✓ |  |  |  |
 | html | ✓ |  |  | `vscode-html-language-server` |
-| hurl | ✓ |  | ✓ |  |
+| hurl | ✓ | ✓ | ✓ |  |
 | hyprlang | ✓ |  | ✓ |  |
 | idris |  |  |  | `idris2-lsp` |
 | iex | ✓ |  |  |  |
 | ini | ✓ |  |  |  |
+| inko | ✓ | ✓ | ✓ |  |
 | janet | ✓ |  |  |  |
 | java | ✓ | ✓ | ✓ | `jdtls` |
 | javascript | ✓ | ✓ | ✓ | `typescript-language-server` |
@@ -100,10 +104,11 @@
 | julia | ✓ | ✓ | ✓ | `julia` |
 | just | ✓ | ✓ | ✓ |  |
 | kdl | ✓ | ✓ | ✓ |  |
-| koka | ✓ |  | ✓ |  |
+| koka | ✓ |  | ✓ | `koka` |
 | kotlin | ✓ |  |  | `kotlin-language-server` |
 | latex | ✓ | ✓ |  | `texlab` |
 | ld | ✓ |  | ✓ |  |
+| ldif | ✓ |  |  |  |
 | lean | ✓ |  |  | `lean` |
 | ledger | ✓ |  |  |  |
 | llvm | ✓ | ✓ | ✓ |  |
@@ -120,6 +125,7 @@
 | mermaid | ✓ |  |  |  |
 | meson | ✓ |  | ✓ |  |
 | mint |  |  |  | `mint` |
+| move | ✓ |  |  |  |
 | msbuild | ✓ |  | ✓ |  |
 | nasm | ✓ | ✓ |  |  |
 | nickel | ✓ |  | ✓ | `nls` |
@@ -138,6 +144,7 @@
 | passwd | ✓ |  |  |  |
 | pem | ✓ |  |  |  |
 | perl | ✓ | ✓ | ✓ | `perlnavigator` |
+| pest | ✓ | ✓ | ✓ | `pest-language-server` |
 | php | ✓ | ✓ | ✓ | `intelephense` |
 | php-only | ✓ |  |  |  |
 | pkgbuild | ✓ | ✓ | ✓ | `pkgbuild-language-server`, `bash-language-server` |
@@ -172,7 +179,7 @@
 | smali | ✓ |  | ✓ |  |
 | smithy | ✓ |  |  | `cs` |
 | sml | ✓ |  |  |  |
-| solidity | ✓ |  |  | `solc` |
+| solidity | ✓ | ✓ |  | `solc` |
 | spicedb | ✓ |  |  |  |
 | sql | ✓ |  |  |  |
 | sshclientconfig | ✓ |  |  |  |
@@ -195,7 +202,7 @@
 | tsx | ✓ | ✓ | ✓ | `typescript-language-server` |
 | twig | ✓ |  |  |  |
 | typescript | ✓ | ✓ | ✓ | `typescript-language-server` |
-| typst | ✓ |  |  | `typst-lsp` |
+| typst | ✓ |  |  | `tinymist`, `typst-lsp` |
 | ungrammar | ✓ |  |  |  |
 | unison | ✓ |  | ✓ |  |
 | uxntal | ✓ |  |  |  |
@@ -213,6 +220,7 @@
 | wren | ✓ | ✓ | ✓ |  |
 | xit | ✓ |  |  |  |
 | xml | ✓ |  | ✓ |  |
+| xtc | ✓ |  |  |  |
 | yaml | ✓ |  | ✓ | `yaml-language-server`, `ansible-language-server` |
 | yuck | ✓ |  |  |  |
 | zig | ✓ | ✓ | ✓ | `zls` |
