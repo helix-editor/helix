@@ -75,60 +75,64 @@ fn find_pair(
 ) -> Option<usize> {
     let pos = doc.char_to_byte(pos_);
 
-    let root = syntax.tree_for_byte_range(pos, pos + 1).root_node();
-    let mut node = root.descendant_for_byte_range(pos, pos + 1)?;
+    let root = syntax.tree_for_byte_range(pos, pos).root_node();
+    let mut node = root.descendant_for_byte_range(pos, pos)?;
 
     loop {
-        if node.is_named() {
-            let (start_byte, end_byte) = surrounding_bytes(doc, &node)?;
-            let (start_char, end_char) = (doc.byte_to_char(start_byte), doc.byte_to_char(end_byte));
+        if node.is_named() && node.child_count() >= 2 {
+            let open = node.child(0).unwrap();
+            let close = node.child(node.child_count() - 1).unwrap();
 
-            if is_valid_pair_on_pos(doc, start_char, end_char) {
-                if end_byte == pos {
-                    return Some(start_char);
-                }
+            if let (Some((start_pos, open)), Some((end_pos, close))) =
+                (as_char(doc, &open), as_char(doc, &close))
+            {
+                if PAIRS.contains(&(open, close)) {
+                    if start_pos == pos_ {
+                        return Some(start_pos);
+                    }
 
-                // We return the end char if the cursor is either on the start char
-                // or at some arbitrary position between start and end char.
-                if traverse_parents || start_byte == pos {
-                    return Some(end_char);
+                    // We return the end char if the cursor is either on the start char
+                    // or at some arbitrary position between start and end char.
+                    if traverse_parents || end_pos == pos_ {
+                        return Some(end_pos);
+                    }
                 }
             }
         }
         // this node itselt wasn't a pair but maybe its siblings are
 
-        // check if we are *on* the pair (special cased so we don't look
-        // at the current node twice and to jump to the start on that case)
-        if let Some(open) = as_close_pair(doc, &node) {
-            if let Some(pair_start) = find_pair_end(doc, node.prev_sibling(), open, Backward) {
+        if let Some((start_char, end_char)) = as_close_pair(doc, &node) {
+            if let Some(pair_start) =
+                find_pair_end(doc, node.prev_sibling(), start_char, end_char, Backward)
+            {
                 return Some(pair_start);
             }
         }
+        if let Some((start_char, end_char)) = as_open_pair(doc, &node) {
+            if let Some(pair_end) =
+                find_pair_end(doc, node.next_sibling(), start_char, end_char, Forward)
+            {
+                return Some(pair_end);
+            }
+        }
 
-        if !traverse_parents {
-            // check if we are *on* the opening pair (special cased here as
-            // an opptimization since we only care about bracket on the cursor
-            // here)
-            if let Some(close) = as_open_pair(doc, &node) {
-                if let Some(pair_end) = find_pair_end(doc, node.next_sibling(), close, Forward) {
-                    return Some(pair_end);
+        if traverse_parents {
+            for sibling in
+                iter::successors(node.next_sibling(), |node| node.next_sibling()).take(MATCH_LIMIT)
+            {
+                let Some((start_char, end_char)) = as_close_pair(doc, &sibling) else {
+                    continue;
+                };
+                if find_pair_end(doc, sibling.prev_sibling(), start_char, end_char, Backward)
+                    .is_some()
+                {
+                    return doc.try_byte_to_char(sibling.start_byte()).ok();
                 }
             }
-            if node.is_named() {
-                break;
-            }
+        } else if node.is_named() {
+            break;
         }
 
-        for close in
-            iter::successors(node.next_sibling(), |node| node.next_sibling()).take(MATCH_LIMIT)
-        {
-            let Some(open) = as_close_pair(doc, &close) else {
-                continue;
-            };
-            if find_pair_end(doc, Some(node), open, Backward).is_some() {
-                return doc.try_byte_to_char(close.start_byte()).ok();
-            }
-        }
         let Some(parent) = node.parent() else {
             break;
         };
@@ -241,29 +245,13 @@ pub fn is_valid_pair(ch: char) -> bool {
     PAIRS.iter().any(|(l, r)| *l == ch || *r == ch)
 }
 
-fn is_valid_pair_on_pos(doc: RopeSlice, start_char: usize, end_char: usize) -> bool {
-    PAIRS.contains(&(doc.char(start_char), doc.char(end_char)))
-}
-
-fn surrounding_bytes(doc: RopeSlice, node: &Node) -> Option<(usize, usize)> {
-    let len = doc.len_bytes();
-
-    let start_byte = node.start_byte();
-    let end_byte = node.end_byte().saturating_sub(1);
-
-    if start_byte >= len || end_byte >= len {
-        return None;
-    }
-
-    Some((start_byte, end_byte))
-}
-
 /// Tests if this node is a pair close char and returns the expected open char
-fn as_close_pair(doc: RopeSlice, node: &Node) -> Option<char> {
+/// and close char contained in this node
+fn as_close_pair(doc: RopeSlice, node: &Node) -> Option<(char, char)> {
     let close = as_char(doc, node)?.1;
     PAIRS
         .iter()
-        .find_map(|&(open, close_)| (close_ == close).then_some(open))
+        .find_map(|&(open, close_)| (close_ == close).then_some((close, open)))
 }
 
 /// Checks if `node` or its siblings (at most MATCH_LIMIT nodes) is the specified closing char
@@ -274,6 +262,7 @@ fn as_close_pair(doc: RopeSlice, node: &Node) -> Option<char> {
 fn find_pair_end(
     doc: RopeSlice,
     node: Option<Node>,
+    start_char: char,
     end_char: char,
     direction: Direction,
 ) -> Option<usize> {
@@ -281,20 +270,30 @@ fn find_pair_end(
         Forward => Node::next_sibling,
         Backward => Node::prev_sibling,
     };
+    let mut depth = 0;
     iter::successors(node, advance)
         .take(MATCH_LIMIT)
         .find_map(|node| {
             let (pos, c) = as_char(doc, &node)?;
-            (end_char == c).then_some(pos)
+            if c == end_char {
+                if depth == 0 {
+                    return Some(pos);
+                }
+                depth -= 1;
+            } else if c == start_char {
+                depth += 1;
+            }
+            None
         })
 }
 
-/// Tests if this node is a pair close char and returns the expected open char
-fn as_open_pair(doc: RopeSlice, node: &Node) -> Option<char> {
+/// Tests if this node is a pair open char and returns the expected close char
+/// and open char contained in this node
+fn as_open_pair(doc: RopeSlice, node: &Node) -> Option<(char, char)> {
     let open = as_char(doc, node)?.1;
     PAIRS
         .iter()
-        .find_map(|&(open_, close)| (open_ == open).then_some(close))
+        .find_map(|&(open_, close)| (open_ == open).then_some((open, close)))
 }
 
 /// If node is a single char return it (and its char position)
