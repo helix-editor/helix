@@ -119,8 +119,7 @@ pub fn request_signature_help(
         // Do not show the message if signature help was invoked
         // automatically on backspace, trigger characters, etc.
         if invoked == SignatureHelpInvoked::Manual {
-            editor
-                .set_error("No configured language server supports signature-help");
+            editor.set_error("No configured language server supports signature-help");
         }
         return;
     };
@@ -300,11 +299,11 @@ fn signature_help_post_insert_char_hook(
     let (view, doc) = current!(cx.editor);
     // TODO support multiple language servers (not just the first that is found), likely by merging UI somehow
     let Some(language_server) = doc
-            .language_servers_with_feature(LanguageServerFeature::SignatureHelp)
-            .next()
-        else {
-            return Ok(());
-        };
+        .language_servers_with_feature(LanguageServerFeature::SignatureHelp)
+        .next()
+    else {
+        return Ok(());
+    };
 
     let capabilities = language_server.capabilities();
 

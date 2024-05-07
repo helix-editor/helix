@@ -145,8 +145,8 @@ fn status(repo: &Repository, f: impl Fn(Result<FileChange>) -> bool) -> Result<(
 
     for item in status_iter {
         let Ok(item) = item.map_err(|err| f(Err(err.into()))) else {
-                continue;
-            };
+            continue;
+        };
         let change = match item {
             Item::Modification {
                 rela_path, status, ..
