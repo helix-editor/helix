@@ -12,7 +12,7 @@ use helix_view::{
     document::DocumentSavedEventResult,
     editor::{ConfigEvent, EditorEvent},
     graphics::Rect,
-    theme,
+    persistence, theme,
     tree::Layout,
     Align, Editor,
 };
@@ -24,7 +24,7 @@ use crate::{
     compositor::{Compositor, Event},
     config::Config,
     handlers,
-    job::Jobs,
+    job::{Job, Jobs},
     keymap::Keymaps,
     ui::{self, overlay::overlaid},
 };
@@ -32,7 +32,12 @@ use crate::{
 use log::{debug, error, info, warn};
 #[cfg(not(feature = "integration"))]
 use std::io::stdout;
-use std::{collections::btree_map::Entry, io::stdin, path::Path, sync::Arc};
+use std::{
+    collections::{btree_map::Entry, HashMap},
+    io::stdin,
+    path::Path,
+    sync::Arc,
+};
 
 use anyhow::{Context, Error};
 
@@ -135,6 +140,15 @@ impl Application {
         let mut compositor = Compositor::new(area);
         let config = Arc::new(ArcSwap::from_pointee(config));
         let handlers = handlers::setup(config.clone());
+        let old_file_locs = if config.load().editor.persist_old_files {
+            HashMap::from_iter(
+                persistence::read_file_history()
+                    .into_iter()
+                    .map(|entry| (entry.path.clone(), (entry.view_position, entry.selection))),
+            )
+        } else {
+            HashMap::new()
+        };
         let mut editor = Editor::new(
             area,
             theme_loader.clone(),
@@ -143,7 +157,31 @@ impl Application {
                 &config.editor
             })),
             handlers,
+            old_file_locs,
         );
+
+        // TODO: do most of this in the background?
+        if config.load().editor.persist_commands {
+            editor
+                .registers
+                .write(':', persistence::read_command_history())
+                // TODO: do something about this unwrap
+                .unwrap();
+        }
+        if config.load().editor.persist_search {
+            editor
+                .registers
+                .write('/', persistence::read_search_history())
+                // TODO: do something about this unwrap
+                .unwrap();
+        }
+        if config.load().editor.persist_clipboard {
+            editor
+                .registers
+                .write('"', persistence::read_clipboard_file())
+                // TODO: do something about this unwrap
+                .unwrap();
+        }
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
@@ -193,10 +231,13 @@ impl Application {
                         // NOTE: this isn't necessarily true anymore. If
                         // `--vsplit` or `--hsplit` are used, the file which is
                         // opened last is focused on.
-                        let view_id = editor.tree.focus;
-                        let doc = doc_mut!(editor, &doc_id);
-                        let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
-                        doc.set_selection(view_id, pos);
+                        if let Some(pos) = pos {
+                            let view_id = editor.tree.focus;
+                            let doc = doc_mut!(editor, &doc_id);
+                            let pos =
+                                Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+                            doc.set_selection(view_id, pos);
+                        }
                     }
                 }
                 editor.set_status(format!(
@@ -206,8 +247,9 @@ impl Application {
                 ));
                 // align the view to center after all files are loaded,
                 // does not affect views without pos since it is at the top
-                let (view, doc) = current!(editor);
-                align_view(doc, view, Align::Center);
+                // TODO: ensure removing this doesn't break anything
+                // let (view, doc) = current!(editor);
+                // align_view(doc, view, Align::Center);
             } else {
                 editor.new_file(Action::VerticalSplit);
             }
@@ -233,6 +275,32 @@ impl Application {
         ])
         .context("build signal handler")?;
 
+        let jobs = Jobs::new();
+        let file_trim = config.load().editor.persistence_old_files_trim;
+        jobs.add(
+            Job::new(async move {
+                persistence::trim_file_history(file_trim);
+                Ok(())
+            })
+            .wait_before_exiting(),
+        );
+        let commands_trim = config.load().editor.persistence_commands_trim;
+        jobs.add(
+            Job::new(async move {
+                persistence::trim_command_history(commands_trim);
+                Ok(())
+            })
+            .wait_before_exiting(),
+        );
+        let search_trim = config.load().editor.persistence_search_trim;
+        jobs.add(
+            Job::new(async move {
+                persistence::trim_search_history(search_trim);
+                Ok(())
+            })
+            .wait_before_exiting(),
+        );
+
         let app = Self {
             compositor,
             terminal,
@@ -244,7 +312,7 @@ impl Application {
             syn_loader,
 
             signals,
-            jobs: Jobs::new(),
+            jobs,
             lsp_progress: LspProgressMap::new(),
         };
 

@@ -14,7 +14,7 @@ use helix_core::{
 };
 use helix_view::{
     graphics::{CursorKind, Margin, Rect},
-    Editor,
+    persistence, Editor,
 };
 
 type PromptCharHandler = Box<dyn Fn(&mut Prompt, char, &Context)>;
@@ -590,6 +590,11 @@ impl Component for Prompt {
                                     cx.editor.registers.push(register, self.line.clone())
                                 {
                                     cx.editor.set_error(err.to_string());
+                                }
+                                if (cx.editor.config().persist_commands && register == ':')
+                                    || (cx.editor.config().persist_search && register == '/')
+                                {
+                                    persistence::push_reg_history(register, &self.line);
                                 }
                             };
                         }
