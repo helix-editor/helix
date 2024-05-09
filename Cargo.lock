@@ -1557,6 +1557,7 @@ dependencies = [
  "once_cell",
  "parking_lot",
  "rustix 1.0.3",
+ "quick-xml",
  "serde",
  "serde_json",
  "slotmap",
@@ -2119,6 +2120,16 @@ dependencies = [
  "bitflags",
  "memchr",
  "unicase",
+]
+
+[[package]]
+name = "quick-xml"
+version = "0.31.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1004a344b30a54e2ee58d66a71b32d2db2feb0a31f9a2d302bf0536f15de2a33"
+dependencies = [
+ "memchr",
+ "serde",
 ]
 
 [[package]]
