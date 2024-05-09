@@ -50,6 +50,7 @@ toml = "0.8"
 log = "~0.4"
 
 parking_lot = "0.12.2"
+quick-xml = { version = "0.31.0", features = ["serialize"] }
 
 
 [target.'cfg(windows)'.dependencies]

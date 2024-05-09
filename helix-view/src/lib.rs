@@ -3,6 +3,7 @@ pub mod macros;
 
 pub mod base64;
 pub mod clipboard;
+pub mod coverage;
 pub mod document;
 pub mod editor;
 pub mod events;
