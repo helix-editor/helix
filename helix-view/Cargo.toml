@@ -51,6 +51,7 @@ log = "~0.4"
 
 parking_lot.workspace = true
 thiserror.workspace = true
+quick-xml = { version = "0.31.0", features = ["serialize"] }
 
 kstring = "2.0"
 
