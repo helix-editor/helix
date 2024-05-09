@@ -8,9 +8,9 @@ use crate::job::Job;
 use super::*;
 
 use globset::{Glob, GlobBuilder, GlobSetBuilder};
-use helix_core::{encoding, line_ending, shellwords::Shellwords};
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
+use helix_core::{encoding, line_ending, shellwords::Shellwords};
 use helix_stdx::env::current_working_dir;
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{Action, CloseError, ConfigEvent};

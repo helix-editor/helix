@@ -14,8 +14,8 @@ use crate::{
 use dap::StackFrame;
 use helix_vcs::DiffProviderRegistry;
 
-use futures_util::{future, StreamExt};
 use futures_util::stream::select_all::SelectAll;
+use futures_util::{future, StreamExt};
 use helix_lsp::{Call, LanguageServerId};
 use ignore::WalkBuilder;
 use tokio_stream::wrappers::UnboundedReceiverStream;
