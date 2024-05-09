@@ -107,31 +107,31 @@ fn force_quit(
     Ok(())
 }
 
+fn open_file(cx: &mut compositor::Context, path: &Path, pos: Position) -> anyhow::Result<()> {
+    let _ = cx.editor.open(path, Action::Replace)?;
+    let (view, doc) = current!(cx.editor);
+    let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+    doc.set_selection(view.id, pos);
+    // does not affect opening a buffer without pos
+    align_view(doc, view, Align::Center);
+    Ok(())
+}
+
+fn glob(path: &Path) -> anyhow::Result<Glob> {
+    let path_str = path.to_str().context("invalid unicode")?;
+    GlobBuilder::new(path_str)
+        .literal_separator(true)
+        .empty_alternates(true)
+        .build()
+        .context("invalid glob")
+}
+
 fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
     ensure!(!args.is_empty(), "wrong argument count");
-
-    fn open_file(cx: &mut compositor::Context, path: &Path, pos: Position) -> anyhow::Result<()> {
-        let _ = cx.editor.open(path, Action::Replace)?;
-        let (view, doc) = current!(cx.editor);
-        let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
-        doc.set_selection(view.id, pos);
-        // does not affect opening a buffer without pos
-        align_view(doc, view, Align::Center);
-        Ok(())
-    }
-
-    fn glob(path: &Path) -> anyhow::Result<Glob> {
-        let path_str = path.to_str().context("invalid unicode")?;
-        GlobBuilder::new(path_str)
-            .literal_separator(true)
-            .empty_alternates(true)
-            .build()
-            .context("invalid glob")
-    }
 
     for arg in args {
         let (path, pos) = args::parse_file(arg);
@@ -224,6 +224,7 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
             open_file(cx, &path, pos)?;
         }
     }
+
     Ok(())
 }
 
