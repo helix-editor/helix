@@ -3408,3 +3408,25 @@ formatter = { command = "prettier", args = ['--parser', 'glimmer'] }
 [[grammar]]
 name = "glimmer"
 source = { git = "https://github.com/ember-tooling/tree-sitter-glimmer", rev = "5dc6d1040e8ff8978ff3680e818d85447bbc10aa" }
+
+[[language]]
+name = "ohm"
+scope = "source.ohm"
+injection-regex = "ohm"
+file-types = ["ohm"]
+comment-token = "//"
+block-comment-tokens = [
+  { start = "/*", end = "*/" },
+  { start = "/**", end = "*/" },
+]
+indent = { tab-width = 2, unit = "  " }
+
+[language.auto-pairs]
+'"' = '"'
+'{' = '}'
+'(' = ')'
+'<' = '>'
+
+[[grammar]]
+name = "ohm"
+source = { git = "https://github.com/novusnota/tree-sitter-ohm", rev = "80f14f0e477ddacc1e137d5ed8e830329e3fb7a3" }
