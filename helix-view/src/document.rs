@@ -159,7 +159,7 @@ pub struct Document {
     /// update from the LSP
     pub inlay_hints_oudated: bool,
 
-    path: Option<PathBuf>,
+    pub path: Option<PathBuf>,
     relative_path: OnceLock<Option<PathBuf>>,
     /// Lazily-computed workspace root for this document (the ancestor that contains a `.git` /
     /// `.svn` / `.jj` / `.helix`). Avoids per-call `find_workspace_in` ancestor walks for hot
