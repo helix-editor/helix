@@ -16,8 +16,7 @@ use serde_json::Value;
 use ui::completers::{self, Completer};
 
 // The maximum number of files to open with globbing to avoid freezing while trying to open too many files.
-// It is kind of arbitrary and can be raised or offered as a configuration option.
-const GLOBBING_MAX_N_FILES: usize = 32;
+const GLOBBING_MAX_N_FILES: usize = 64;
 
 #[derive(Clone)]
 pub struct TypableCommand {
