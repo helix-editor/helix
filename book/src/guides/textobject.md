@@ -25,6 +25,8 @@ The following [captures][tree-sitter-captures] are recognized:
 | `parameter.inside` |
 | `comment.inside`   |
 | `comment.around`   |
+| `entry.inside`     |
+| `entry.around`     |
 
 [Example query files][textobject-examples] can be found in the helix GitHub repository.
 

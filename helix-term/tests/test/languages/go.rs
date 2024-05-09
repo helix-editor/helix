@@ -6,30 +6,30 @@ async fn auto_indent() -> anyhow::Result<()> {
 
     let enter_tests = [
         (
-            helpers::platform_line(indoc! {r##"
+            indoc! {r##"
                 type Test struct {#[}|]#
-            "##}),
+            "##},
             "i<ret>",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 type Test struct {
                 \t#[|\n]#
                 }
-            "}),
+            "},
         ),
         (
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 func main() {
                 \tswitch nil {#[}|]#
                 }
-             "}),
+             "},
             "i<ret>",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 func main() {
                 \tswitch nil {
                 \t\t#[|\n]#
                 \t}
                 }
-            "}),
+            "},
         ),
     ];
 

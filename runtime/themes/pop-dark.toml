@@ -12,6 +12,8 @@ error = { fg = 'redE', modifiers = ['bold'] }
 'diagnostic.hint'.underline = { color = 'yellowH', style = 'curl' } 
 'diagnostic.warning'.underline = { color = 'orangeW', style = 'curl' } 
 'diagnostic.error'.underline = { color = 'redE', style = 'curl' } 
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 'ui.background' = { bg = 'brownN' }
 'ui.window' = { bg = 'brownH', fg = 'brownD' } 
 'ui.gutter' = { bg = 'brownU' }

@@ -33,7 +33,7 @@
 "diff.delta" = "orange1"
 "diff.minus" = "red1"
 
-"warning" = "orange1"
+"warning" = "yellow1"
 "error" = "red1"
 "info" = "aqua1"
 "hint" = "blue1"
@@ -65,11 +65,14 @@
 "ui.virtual.ruler" = { bg = "bg1" }
 "ui.virtual.inlay-hint" = { fg = "gray1" }
 "ui.virtual.wrap" = { fg = "bg2" }
+"ui.virtual.jump-label" = { fg = "purple0", modifiers = ["bold"] }
 
-"diagnostic.warning" = { underline = { color = "orange1", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "yellow1", style = "curl" } }
 "diagnostic.error" = { underline = { color = "red1", style = "curl" } }
 "diagnostic.info" = { underline = { color = "aqua1", style = "curl" } }
 "diagnostic.hint" = { underline = { color = "blue1", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 "markup.heading" = "aqua1"
 "markup.bold" = { modifiers = ["bold"] }

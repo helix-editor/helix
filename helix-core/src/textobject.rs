@@ -7,9 +7,9 @@ use crate::chars::{categorize_char, char_is_whitespace, CharCategory};
 use crate::graphemes::{next_grapheme_boundary, prev_grapheme_boundary};
 use crate::line_ending::rope_is_line_ending;
 use crate::movement::Direction;
-use crate::surround;
 use crate::syntax::LanguageConfiguration;
 use crate::Range;
+use crate::{surround, Syntax};
 
 fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction, long: bool) -> usize {
     use CharCategory::{Eol, Whitespace};
@@ -199,25 +199,28 @@ pub fn textobject_paragraph(
 }
 
 pub fn textobject_pair_surround(
+    syntax: Option<&Syntax>,
     slice: RopeSlice,
     range: Range,
     textobject: TextObject,
     ch: char,
     count: usize,
 ) -> Range {
-    textobject_pair_surround_impl(slice, range, textobject, Some(ch), count)
+    textobject_pair_surround_impl(syntax, slice, range, textobject, Some(ch), count)
 }
 
 pub fn textobject_pair_surround_closest(
+    syntax: Option<&Syntax>,
     slice: RopeSlice,
     range: Range,
     textobject: TextObject,
     count: usize,
 ) -> Range {
-    textobject_pair_surround_impl(slice, range, textobject, None, count)
+    textobject_pair_surround_impl(syntax, slice, range, textobject, None, count)
 }
 
 fn textobject_pair_surround_impl(
+    syntax: Option<&Syntax>,
     slice: RopeSlice,
     range: Range,
     textobject: TextObject,
@@ -226,8 +229,7 @@ fn textobject_pair_surround_impl(
 ) -> Range {
     let pair_pos = match ch {
         Some(ch) => surround::find_nth_pairs_pos(slice, ch, range, count),
-        // Automatically find the closest surround pairs
-        None => surround::find_nth_closest_pairs_pos(slice, range, count),
+        None => surround::find_nth_closest_pairs_pos(syntax, slice, range, count),
     };
     pair_pos
         .map(|(anchor, head)| match textobject {
@@ -574,7 +576,8 @@ mod test {
             let slice = doc.slice(..);
             for &case in scenario {
                 let (pos, objtype, expected_range, ch, count) = case;
-                let result = textobject_pair_surround(slice, Range::point(pos), objtype, ch, count);
+                let result =
+                    textobject_pair_surround(None, slice, Range::point(pos), objtype, ch, count);
                 assert_eq!(
                     result,
                     expected_range.into(),

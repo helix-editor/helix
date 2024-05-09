@@ -25,6 +25,7 @@
 "ui.virtual.indent-guide" = "grey02"
 "ui.virtual.whitespace" = "grey03"
 "ui.virtual.inlay-hint" = { fg = "grey03", modifiers = ["italic"] }
+"ui.virtual.jump-label" = { fg = "lightblue", modifiers = ["italic", "bold"] }
 "ui.bufferline" = { fg = "grey04", bg = "grey00" }
 "ui.bufferline.active" = { fg = "grey07", bg = "grey02" }
 
@@ -76,6 +77,8 @@
 "diagnostic.error" = { underline = { color = "red", style = "curl"} }
 "diagnostic.info" = { underline = { color = "grey05", style = "curl"} }
 "diagnostic.hint" = { underline = { color = "grey05", style = "curl"} }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 "info" = "grey05"
 "hint" = "grey05"

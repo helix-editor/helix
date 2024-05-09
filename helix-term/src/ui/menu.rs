@@ -7,18 +7,11 @@ use crate::{
 use helix_core::fuzzy::MATCHER;
 use nucleo::pattern::{Atom, AtomKind, CaseMatching};
 use nucleo::{Config, Utf32Str};
-use tui::{
-    buffer::Buffer as Surface,
-    widgets::{Block, Borders, Table, Widget},
-};
+use tui::{buffer::Buffer as Surface, widgets::Table};
 
 pub use tui::widgets::{Cell, Row};
 
-use helix_view::{
-    editor::SmartTabConfig,
-    graphics::{Margin, Rect},
-    Editor,
-};
+use helix_view::{editor::SmartTabConfig, graphics::Rect, Editor};
 use tui::layout::Constraint;
 
 pub trait Item: Sync + Send + 'static {
@@ -241,9 +234,9 @@ impl<T: Item> Menu<T> {
 }
 
 impl<T: Item + PartialEq> Menu<T> {
-    pub fn replace_option(&mut self, old_option: T, new_option: T) {
+    pub fn replace_option(&mut self, old_option: &T, new_option: T) {
         for option in &mut self.options {
-            if old_option == *option {
+            if old_option == option {
                 *option = new_option;
                 break;
             }
@@ -341,16 +334,8 @@ impl<T: Item + 'static> Component for Menu<T> {
             .try_get("ui.menu")
             .unwrap_or_else(|| theme.get("ui.text"));
         let selected = theme.get("ui.menu.selected");
+
         surface.clear_with(area, style);
-
-        let render_borders = cx.editor.menu_border();
-
-        let area = if render_borders {
-            Widget::render(Block::default().borders(Borders::ALL), area, surface);
-            area.inner(&Margin::vertical(1))
-        } else {
-            area
-        };
 
         let scroll = self.scroll;
 

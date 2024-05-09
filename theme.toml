@@ -40,7 +40,7 @@ label = "honey"
 "diff.minus" = "#f22c86"
 "diff.delta" = "#6f44f0"
 
-# TODO: diferentiate doc comment
+# TODO: differentiate doc comment
 # concat (ERROR) @error.syntax and "MISSING ;" selectors for errors
 
 "ui.background" = { bg = "midnight" }
@@ -56,6 +56,7 @@ label = "honey"
 "ui.text.focus" = { fg = "white" }
 "ui.text.inactive" = "sirocco"
 "ui.virtual" = { fg = "comet" }
+"ui.virtual.ruler" = { bg = "revolver" }
 "ui.virtual.jump-label" = { fg = "apricot", modifiers = ["bold"] }
 
 "ui.virtual.indent-guide" = { fg = "comet" }
@@ -65,6 +66,8 @@ label = "honey"
 # TODO: namespace ui.cursor as ui.selection.cursor?
 "ui.cursor.select" = { bg = "delta" }
 "ui.cursor.insert" = { bg = "white" }
+"ui.cursor.primary.select" = { bg = "delta" }
+"ui.cursor.primary.insert" = { bg = "white" }
 "ui.cursor.match" = { fg = "#212121", bg = "#6C6999" }
 "ui.cursor" = { modifiers = ["reversed"] }
 "ui.cursorline.primary" = { bg = "bossanova" }

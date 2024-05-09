@@ -67,6 +67,8 @@
 "diagnostic.error" = { underline = { color = "gold", style = "curl"} }
 "diagnostic.info" = { underline = { color = "lilac", style = "curl"} }
 "diagnostic.hint" = { underline = { color = "lilac", style = "curl"} }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 [palette]
 berry = "#3A2A4D"

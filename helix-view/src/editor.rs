@@ -14,9 +14,9 @@ use crate::{
 use dap::StackFrame;
 use helix_vcs::DiffProviderRegistry;
 
-use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
-use helix_lsp::Call;
+use futures_util::stream::select_all::SelectAll;
+use helix_lsp::{Call, LanguageServerId};
 use ignore::WalkBuilder;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
@@ -232,6 +232,14 @@ impl FilePickerConfig {
     }
 }
 
+fn serialize_alphabet<S>(alphabet: &[char], serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let alphabet: String = alphabet.iter().collect();
+    serializer.serialize_str(&alphabet)
+}
+
 fn deserialize_alphabet<'de, D>(deserializer: D) -> Result<Vec<char>, D::Error>
 where
     D: Deserializer<'de>,
@@ -343,7 +351,10 @@ pub struct Config {
     #[serde(default)]
     pub indent_heuristic: IndentationHeuristic,
     /// labels characters used in jumpmode
-    #[serde(skip_serializing, deserialize_with = "deserialize_alphabet")]
+    #[serde(
+        serialize_with = "serialize_alphabet",
+        deserialize_with = "deserialize_alphabet"
+    )]
     pub jump_label_alphabet: Vec<char>,
 }
 
@@ -395,7 +406,7 @@ pub fn get_terminal_provider() -> Option<TerminalConfig> {
     })
 }
 
-#[cfg(not(any(windows, target_os = "wasm32")))]
+#[cfg(not(any(windows, target_arch = "wasm32")))]
 pub fn get_terminal_provider() -> Option<TerminalConfig> {
     use helix_stdx::env::{binary_exists, env_var_is_set};
 
@@ -969,7 +980,7 @@ pub struct Editor {
     pub macro_recording: Option<(char, Vec<KeyEvent>)>,
     pub macro_replaying: Vec<char>,
     pub language_servers: helix_lsp::Registry,
-    pub diagnostics: BTreeMap<PathBuf, Vec<(lsp::Diagnostic, usize)>>,
+    pub diagnostics: BTreeMap<PathBuf, Vec<(lsp::Diagnostic, LanguageServerId)>>,
     pub diff_providers: DiffProviderRegistry,
 
     pub debugger: Option<dap::Client>,
@@ -1029,7 +1040,7 @@ pub type Motion = Box<dyn Fn(&mut Editor)>;
 pub enum EditorEvent {
     DocumentSaved(DocumentSavedEventResult),
     ConfigEvent(ConfigEvent),
-    LanguageServerMessage((usize, Call)),
+    LanguageServerMessage((LanguageServerId, Call)),
     DebuggerEvent(dap::Payload),
     IdleTimer,
     Redraw,
@@ -1269,8 +1280,13 @@ impl Editor {
     }
 
     #[inline]
-    pub fn language_server_by_id(&self, language_server_id: usize) -> Option<&helix_lsp::Client> {
-        self.language_servers.get_by_id(language_server_id)
+    pub fn language_server_by_id(
+        &self,
+        language_server_id: LanguageServerId,
+    ) -> Option<&helix_lsp::Client> {
+        self.language_servers
+            .get_by_id(language_server_id)
+            .map(|client| &**client)
     }
 
     /// Refreshes the language server for a given document
@@ -1870,7 +1886,7 @@ impl Editor {
     /// Returns all supported diagnostics for the document
     pub fn doc_diagnostics<'a>(
         language_servers: &'a helix_lsp::Registry,
-        diagnostics: &'a BTreeMap<PathBuf, Vec<(lsp::Diagnostic, usize)>>,
+        diagnostics: &'a BTreeMap<PathBuf, Vec<(lsp::Diagnostic, LanguageServerId)>>,
         document: &Document,
     ) -> impl Iterator<Item = helix_core::Diagnostic> + 'a {
         Editor::doc_diagnostics_with_filter(language_servers, diagnostics, document, |_, _| true)
@@ -1880,10 +1896,9 @@ impl Editor {
     /// filtered by `filter` which is invocated with the raw `lsp::Diagnostic` and the language server id it came from
     pub fn doc_diagnostics_with_filter<'a>(
         language_servers: &'a helix_lsp::Registry,
-        diagnostics: &'a BTreeMap<PathBuf, Vec<(lsp::Diagnostic, usize)>>,
-
+        diagnostics: &'a BTreeMap<PathBuf, Vec<(lsp::Diagnostic, LanguageServerId)>>,
         document: &Document,
-        filter: impl Fn(&lsp::Diagnostic, usize) -> bool + 'a,
+        filter: impl Fn(&lsp::Diagnostic, LanguageServerId) -> bool + 'a,
     ) -> impl Iterator<Item = helix_core::Diagnostic> + 'a {
         let text = document.text().clone();
         let language_config = document.language.clone();

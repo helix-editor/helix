@@ -7,3 +7,6 @@
 (comment) @comment.inside
 
 (comment)+ @comment.around
+
+(array
+  (_) @entry.around)

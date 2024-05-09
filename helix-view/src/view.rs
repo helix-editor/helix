@@ -79,7 +79,7 @@ impl JumpList {
         self.jumps.retain(|(other_id, _)| other_id != doc_id);
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &Jump> {
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = &Jump> {
         self.jumps.iter()
     }
 

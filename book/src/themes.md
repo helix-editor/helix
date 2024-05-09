@@ -36,13 +36,6 @@ For inspiration, you can find the default `theme.toml`
 user-submitted themes
 [here](https://github.com/helix-editor/helix/blob/master/runtime/themes).
 
-### Using the linter
-
-Use the supplied linting tool to check for errors and missing scopes:
-
-```sh
-cargo xtask themelint onedark # replace onedark with <name>
-```
 
 ## The details of theme creation
 
@@ -186,6 +179,7 @@ We use a similar set of scopes as
   - `parameter` - Function parameters
   - `other`
     - `member` - Fields of composite data types (e.g. structs, unions)
+      - `private` - Private fields that use a unique syntax (currently just ECMAScript-based languages)
 
 - `label`
 
@@ -213,6 +207,7 @@ We use a similar set of scopes as
 - `function`
   - `builtin`
   - `method`
+    - `private` - Private methods that use a unique syntax (currently just ECMAScript-based languages)
   - `macro`
   - `special` (preprocessor in C)
 
@@ -251,6 +246,7 @@ We use a similar set of scopes as
     - `gutter` - gutter indicator
   - `delta` - modifications
     - `moved` - renamed or moved files/changes
+    - `conflict` - merge conflicts
     - `gutter` - gutter indicator
 
 #### Interface

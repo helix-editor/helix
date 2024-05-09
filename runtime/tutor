@@ -539,7 +539,7 @@
     will now affect both cursors.
  3. Use Insert mode to correct the lines. The two cursors will
     fix both lines simultaneously.
- 4. Type , to remove the second cursor.
+ 4. Type , to remove the first cursor.
 
  --> Fix th two nes at same ime.
  -->

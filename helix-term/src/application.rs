@@ -4,7 +4,7 @@ use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Selection};
 use helix_lsp::{
     lsp::{self, notification::Notification},
     util::lsp_range_to_range,
-    LspProgressMap,
+    LanguageServerId, LspProgressMap,
 };
 use helix_stdx::path::get_relative_path;
 use helix_view::{
@@ -655,7 +655,7 @@ impl Application {
     pub async fn handle_language_server_message(
         &mut self,
         call: helix_lsp::Call,
-        server_id: usize,
+        server_id: LanguageServerId,
     ) {
         use helix_lsp::{Call, MethodCall, Notification};
 
@@ -724,7 +724,7 @@ impl Application {
                     }
                     Notification::PublishDiagnostics(mut params) => {
                         let path = match params.uri.to_file_path() {
-                            Ok(path) => helix_stdx::path::normalize(&path),
+                            Ok(path) => helix_stdx::path::normalize(path),
                             Err(_) => {
                                 log::error!("Unsupported file URI: {}", params.uri);
                                 return;
@@ -1030,12 +1030,7 @@ impl Application {
                         Ok(json!(result))
                     }
                     Ok(MethodCall::RegisterCapability(params)) => {
-                        if let Some(client) = self
-                            .editor
-                            .language_servers
-                            .iter_clients()
-                            .find(|client| client.id() == server_id)
-                        {
+                        if let Some(client) = self.editor.language_servers.get_by_id(server_id) {
                             for reg in params.registrations {
                                 match reg.method.as_str() {
                                     lsp::notification::DidChangeWatchedFiles::METHOD => {

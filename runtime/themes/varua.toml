@@ -67,6 +67,7 @@
 "ui.statusline.select" = { bg = "blue", fg = "bg2" }
 "ui.virtual.wrap" = { fg = "grey0" }
 "ui.virtual.inlay-hint" = { fg = "grey1" }
+"ui.virtual.ruler" = { bg = "bg2"}
 
 "hint" = "blue"
 "info" = "aqua"
@@ -76,6 +77,9 @@
 "diagnostic.info" = { underline = { style = "curl", color = "aqua" } }
 "diagnostic.warning" = { underline = { style = "curl", color = "yellow" } }
 "diagnostic.error" = { underline = { style = "curl", color = "red" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+"ui.virtual.jump-label" = { fg = "red", modifiers = ["bold"] }
 
 [palette]
 bg0 = "#282828"

@@ -544,10 +544,6 @@ impl Component for Prompt {
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update);
             }
             ctrl!('h') | key!(Backspace) | shift!(Backspace) => {
-                if self.line.is_empty() {
-                    (self.callback_fn)(cx, &self.line, PromptEvent::Abort);
-                    return close_fn;
-                }
                 self.delete_char_backwards(cx.editor);
                 (self.callback_fn)(cx, &self.line, PromptEvent::Update);
             }

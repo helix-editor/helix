@@ -3,7 +3,7 @@ pub use etcetera::home_dir;
 use std::{
     borrow::Cow,
     ffi::OsString,
-    path::{Component, Path, PathBuf},
+    path::{Component, Path, PathBuf, MAIN_SEPARATOR_STR},
 };
 
 use crate::env::current_working_dir;
@@ -18,7 +18,8 @@ where
     if let Ok(home) = home_dir() {
         if let Ok(stripped) = path.strip_prefix(&home) {
             let mut path = OsString::with_capacity(2 + stripped.as_os_str().len());
-            path.push("~/");
+            path.push("~");
+            path.push(MAIN_SEPARATOR_STR);
             path.push(stripped);
             return Cow::Owned(PathBuf::from(path));
         }

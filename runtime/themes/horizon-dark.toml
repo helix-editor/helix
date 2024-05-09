@@ -4,15 +4,19 @@ constant = "purple"
 "constant.numeric" = "orange"
 "constant.builtin" = "orange"
 variable = "red"
+attribute = "brown"
 comment = "light-gray"
 special = "purple"
+"punctuation" = "red"
 "punctuation.bracket" = "purple"
+"punctuation.delimiter" = "white"
 keyword = "purple"
 function = "blue"
 label = "orange"
 type = "orange"
 constructor = "orange"
 namespace = "orange"
+tag = "red"
 
 # User Interface
 "ui.background" = { bg = "bg", fg = "gray" }
@@ -29,6 +33,7 @@ namespace = "orange"
 "ui.selection" = { bg = "selection" }
 "ui.virtual.indent-guide" = { fg = "gray" }
 "ui.virtual.whitespace" = { fg = "light-gray" }
+"ui.virtual.ruler" = { bg ="dark-bg" }
 "ui.statusline" = { bg = "dark-bg", fg = "light-gray" }
 "ui.popup" = { bg = "dark-bg", fg = "orange" }
 "ui.help" = { bg = "dark-bg", fg = "orange" }
@@ -45,6 +50,8 @@ namespace = "orange"
 "diagnostic.info" = { underline = { color = "blue", style = "curl" } }
 "diagnostics.error" = { underline = { color = "red", style = "curl" } }
 "diagnostics.warning" = { underline = { color = "orange", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 warning = { fg = "orange", modifiers = ["bold"] }
 error = { fg = "red", modifiers = ["bold"] }
@@ -77,6 +84,7 @@ pink = "#EE64AE"
 selection = "#353747"
 green = "#27D796"
 orange = "#FAB795"
+brown = "#F09383"
 purple = "#B877DB"
 red = "#E95678"
 blue = "#25B2BC"

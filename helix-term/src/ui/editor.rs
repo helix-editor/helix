@@ -12,9 +12,7 @@ use crate::{
 
 use helix_core::{
     diagnostic::NumberOrString,
-    graphemes::{
-        ensure_grapheme_boundary_next_byte, next_grapheme_boundary, prev_grapheme_boundary,
-    },
+    graphemes::{next_grapheme_boundary, prev_grapheme_boundary},
     movement::Direction,
     syntax::{self, HighlightEvent},
     text_annotations::TextAnnotations,
@@ -315,26 +313,14 @@ impl EditorView {
                 let iter = syntax
                     // TODO: range doesn't actually restrict source, just highlight range
                     .highlight_iter(text.slice(..), Some(range), None)
-                    .map(|event| event.unwrap())
-                    .map(move |event| match event {
-                        // TODO: use byte slices directly
-                        // convert byte offsets to char offset
-                        HighlightEvent::Source { start, end } => {
-                            let start =
-                                text.byte_to_char(ensure_grapheme_boundary_next_byte(text, start));
-                            let end =
-                                text.byte_to_char(ensure_grapheme_boundary_next_byte(text, end));
-                            HighlightEvent::Source { start, end }
-                        }
-                        event => event,
-                    });
+                    .map(|event| event.unwrap());
 
                 Box::new(iter)
             }
             None => Box::new(
                 [HighlightEvent::Source {
-                    start: text.byte_to_char(range.start),
-                    end: text.byte_to_char(range.end),
+                    start: range.start,
+                    end: range.end,
                 }]
                 .into_iter(),
             ),
@@ -350,7 +336,8 @@ impl EditorView {
         let text = doc.text().slice(..);
         let row = text.char_to_line(anchor.min(text.len_chars()));
 
-        let range = Self::viewport_byte_range(text, row, height);
+        let mut range = Self::viewport_byte_range(text, row, height);
+        range = text.byte_to_char(range.start)..text.byte_to_char(range.end);
 
         text_annotations.collect_overlay_highlights(range)
     }
@@ -359,8 +346,8 @@ impl EditorView {
     pub fn doc_diagnostics_highlights(
         doc: &Document,
         theme: &Theme,
-    ) -> [Vec<(usize, std::ops::Range<usize>)>; 5] {
-        use helix_core::diagnostic::{DiagnosticTag, Severity};
+    ) -> [Vec<(usize, std::ops::Range<usize>)>; 7] {
+        use helix_core::diagnostic::{DiagnosticTag, Range, Severity};
         let get_scope_of = |scope| {
             theme
             .find_scope_index_exact(scope)
@@ -389,6 +376,25 @@ impl EditorView {
         let mut hint_vec = Vec::new();
         let mut warning_vec = Vec::new();
         let mut error_vec = Vec::new();
+        let mut unnecessary_vec = Vec::new();
+        let mut deprecated_vec = Vec::new();
+
+        let push_diagnostic =
+            |vec: &mut Vec<(usize, std::ops::Range<usize>)>, scope, range: Range| {
+                // If any diagnostic overlaps ranges with the prior diagnostic,
+                // merge the two together. Otherwise push a new span.
+                match vec.last_mut() {
+                    Some((_, existing_range)) if range.start <= existing_range.end => {
+                        // This branch merges overlapping diagnostics, assuming that the current
+                        // diagnostic starts on range.start or later. If this assertion fails,
+                        // we will discard some part of `diagnostic`. This implies that
+                        // `doc.diagnostics()` is not sorted by `diagnostic.range`.
+                        debug_assert!(existing_range.start <= range.start);
+                        existing_range.end = range.end.max(existing_range.end)
+                    }
+                    _ => vec.push((scope, range.start..range.end)),
+                }
+            };
 
         for diagnostic in doc.diagnostics() {
             // Separate diagnostics into different Vecs by severity.
@@ -400,31 +406,44 @@ impl EditorView {
                 _ => (&mut default_vec, r#default),
             };
 
-            let scope = diagnostic
-                .tags
-                .first()
-                .and_then(|tag| match tag {
-                    DiagnosticTag::Unnecessary => unnecessary,
-                    DiagnosticTag::Deprecated => deprecated,
-                })
-                .unwrap_or(scope);
+            // If the diagnostic has tags and a non-warning/error severity, skip rendering
+            // the diagnostic as info/hint/default and only render it as unnecessary/deprecated
+            // instead. For warning/error diagnostics, render both the severity highlight and
+            // the tag highlight.
+            if diagnostic.tags.is_empty()
+                || matches!(
+                    diagnostic.severity,
+                    Some(Severity::Warning | Severity::Error)
+                )
+            {
+                push_diagnostic(vec, scope, diagnostic.range);
+            }
 
-            // If any diagnostic overlaps ranges with the prior diagnostic,
-            // merge the two together. Otherwise push a new span.
-            match vec.last_mut() {
-                Some((_, range)) if diagnostic.range.start <= range.end => {
-                    // This branch merges overlapping diagnostics, assuming that the current
-                    // diagnostic starts on range.start or later. If this assertion fails,
-                    // we will discard some part of `diagnostic`. This implies that
-                    // `doc.diagnostics()` is not sorted by `diagnostic.range`.
-                    debug_assert!(range.start <= diagnostic.range.start);
-                    range.end = diagnostic.range.end.max(range.end)
+            for tag in &diagnostic.tags {
+                match tag {
+                    DiagnosticTag::Unnecessary => {
+                        if let Some(scope) = unnecessary {
+                            push_diagnostic(&mut unnecessary_vec, scope, diagnostic.range)
+                        }
+                    }
+                    DiagnosticTag::Deprecated => {
+                        if let Some(scope) = deprecated {
+                            push_diagnostic(&mut deprecated_vec, scope, diagnostic.range)
+                        }
+                    }
                 }
-                _ => vec.push((scope, diagnostic.range.start..diagnostic.range.end)),
             }
         }
 
-        [default_vec, info_vec, hint_vec, warning_vec, error_vec]
+        [
+            default_vec,
+            unnecessary_vec,
+            deprecated_vec,
+            info_vec,
+            hint_vec,
+            warning_vec,
+            error_vec,
+        ]
     }
 
     /// Get highlight spans for selections in a document view.
@@ -1015,7 +1034,6 @@ impl EditorView {
         self.last_insert.1.push(InsertEvent::TriggerCompletion);
 
         // TODO : propagate required size on resize to completion too
-        completion.required_size((size.width, size.height));
         self.completion = Some(completion);
         Some(area)
     }
@@ -1231,24 +1249,28 @@ impl EditorView {
             }
 
             MouseEventKind::Up(MouseButton::Right) => {
-                if let Some((coords, view_id)) = gutter_coords_and_view(cxt.editor, row, column) {
+                if let Some((pos, view_id)) = gutter_coords_and_view(cxt.editor, row, column) {
                     cxt.editor.focus(view_id);
 
-                    let (view, doc) = current!(cxt.editor);
-                    if let Some(pos) =
-                        view.pos_at_visual_coords(doc, coords.row as u16, coords.col as u16, true)
-                    {
-                        doc.set_selection(view_id, Selection::point(pos));
-                        if modifiers == KeyModifiers::ALT {
-                            commands::MappableCommand::dap_edit_log.execute(cxt);
-                        } else {
-                            commands::MappableCommand::dap_edit_condition.execute(cxt);
+                    if let Some((pos, _)) = pos_and_view(cxt.editor, row, column, true) {
+                        doc_mut!(cxt.editor).set_selection(view_id, Selection::point(pos));
+                    } else {
+                        let (view, doc) = current!(cxt.editor);
+
+                        if let Some(pos) = view.pos_at_visual_coords(doc, pos.row as u16, 0, true) {
+                            doc.set_selection(view_id, Selection::point(pos));
+                            match modifiers {
+                                KeyModifiers::ALT => {
+                                    commands::MappableCommand::dap_edit_log.execute(cxt)
+                                }
+                                _ => commands::MappableCommand::dap_edit_condition.execute(cxt),
+                            };
                         }
-
-                        return EventResult::Consumed(None);
                     }
-                }
 
+                    cxt.editor.ensure_cursor_in_view(view_id);
+                    return EventResult::Consumed(None);
+                }
                 EventResult::Ignored(None)
             }
 
