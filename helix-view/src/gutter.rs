@@ -159,28 +159,35 @@ pub fn coverage<'doc>(
                         path = tmp.into();
                     }
                 }
-                if let Some(file) = cov.files.get(&path) {
-                    let this_file = coverage::FileCoverage {
-                        lines: file.lines.clone(),
-                    };
-                    return Box::new(
-                        move |line: usize,
-                              _selected: bool,
-                              _first_visual_line: bool,
-                              out: &mut String| {
-                            if let Some(line_coverage) = this_file.lines.get(&(line as u32)) {
-                                let (icon, style) = if *line_coverage {
-                                    ("┃", covered)
+                if let Some(file_coverage) = cov.files.get(&path) {
+                    if file_coverage
+                        .modified_time
+                        .is_some_and(|x| x > doc.last_saved_time)
+                    {
+                        // clone file coverage so it can be moved into the closure
+                        let this_file = coverage::FileCoverage {
+                            lines: file_coverage.lines.clone(),
+                            modified_time: file_coverage.modified_time,
+                        };
+                        return Box::new(
+                            move |line: usize,
+                                  _selected: bool,
+                                  _first_visual_line: bool,
+                                  out: &mut String| {
+                                if let Some(line_coverage) = this_file.lines.get(&(line as u32)) {
+                                    let (icon, style) = if *line_coverage {
+                                        ("┃", covered)
+                                    } else {
+                                        ("┃", not_covered)
+                                    };
+                                    write!(out, "{}", icon).unwrap();
+                                    Some(style)
                                 } else {
-                                    ("┃", not_covered)
-                                };
-                                write!(out, "{}", icon).unwrap();
-                                Some(style)
-                            } else {
-                                None
-                            }
-                        },
-                    );
+                                    None
+                                }
+                            },
+                        );
+                    }
                 }
             }
         }
