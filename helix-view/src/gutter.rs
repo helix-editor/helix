@@ -151,35 +151,37 @@ pub fn coverage<'doc>(
 ) -> GutterFn<'doc> {
     let covered = theme.get("diff.plus.gutter");
     let not_covered = theme.get("diff.minus.gutter");
-    if let Some(cov) = coverage::parse(PathBuf::from("report/coverage.xml")) {
-        if let Some(mut path) = doc.path.clone() {
-            if let Ok(cwd) = std::env::current_dir() {
-                if let Ok(tmp) = path.strip_prefix(cwd) {
-                    path = tmp.into();
+    if let Ok(coverage_path) = std::env::var("HELIX_COVERAGE_FILE") {
+        if let Some(cov) = coverage::parse(PathBuf::from(coverage_path)) {
+            if let Some(mut path) = doc.path.clone() {
+                if let Ok(cwd) = std::env::current_dir() {
+                    if let Ok(tmp) = path.strip_prefix(cwd) {
+                        path = tmp.into();
+                    }
                 }
-            }
-            if let Some(file) = cov.files.get(&path) {
-                let this_file = coverage::FileCoverage {
-                    lines: file.lines.clone(),
-                };
-                return Box::new(
-                    move |line: usize,
-                          _selected: bool,
-                          _first_visual_line: bool,
-                          out: &mut String| {
-                        if let Some(line_coverage) = this_file.lines.get(&(line as u32)) {
-                            let (icon, style) = if *line_coverage {
-                                ("┃", covered)
+                if let Some(file) = cov.files.get(&path) {
+                    let this_file = coverage::FileCoverage {
+                        lines: file.lines.clone(),
+                    };
+                    return Box::new(
+                        move |line: usize,
+                              _selected: bool,
+                              _first_visual_line: bool,
+                              out: &mut String| {
+                            if let Some(line_coverage) = this_file.lines.get(&(line as u32)) {
+                                let (icon, style) = if *line_coverage {
+                                    ("┃", covered)
+                                } else {
+                                    ("┃", not_covered)
+                                };
+                                write!(out, "{}", icon).unwrap();
+                                Some(style)
                             } else {
-                                ("┃", not_covered)
-                            };
-                            write!(out, "{}", icon).unwrap();
-                            Some(style)
-                        } else {
-                            None
-                        }
-                    },
-                );
+                                None
+                            }
+                        },
+                    );
+                }
             }
         }
     }
