@@ -1,11 +1,12 @@
 use std::fmt::Write;
+use std::fs;
 use std::ops::Deref;
 
 use crate::job::Job;
 
 use super::*;
 
-use globset::{Glob, GlobBuilder, GlobSet};
+use globset::{Glob, GlobBuilder, GlobSetBuilder};
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::{encoding, line_ending, shellwords::Shellwords};
@@ -136,10 +137,12 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     for arg in args {
         let (path, pos) = args::parse_file(arg);
         let path = helix_stdx::path::canonicalize(path);
-        if let Ok(metadata) = path.metadata() {
+
+        // Shortcut for opening an existing path without globbing
+        if let Ok(metadata) = fs::metadata(&path) {
             // Path exists
-            // Shortcut for opening a path without globbing
-            if metadata.is_dir() {
+            let file_type = metadata.file_type();
+            if file_type.is_dir() {
                 // If the path is a directory, open a file picker on that directory
                 let callback = async move {
                     let call: job::Callback = job::Callback::EditorCompositor(Box::new(
@@ -151,71 +154,86 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
                     Ok(call)
                 };
                 cx.jobs.callback(callback);
-            } else {
+            } else if file_type.is_file() {
                 open_file(cx, &path, pos)?;
+            } else {
+                bail!("{} is not a regular file", path.display());
             }
             continue;
         }
 
-        let mut glob_set_builder = GlobSet::builder();
-        glob_set_builder.add(glob(&path)?);
+        let file_glob_set = GlobSetBuilder::new()
+            .add(glob(&path)?)
+            .build()
+            .context("invalid glob")?;
 
+        let mut parent_dirs_glob_set_builder = GlobSetBuilder::new();
         let mut root = None;
         let mut comps = path.components();
 
         // Iterate over all parents
         while comps.next_back().is_some() {
             let parent = comps.as_path();
-            if parent.as_os_str().is_empty() {
-                // No parents left
-                break;
-            }
-
             // Add each parent as a glob for filtering in the recursive walker
-            glob_set_builder.add(glob(parent)?);
+            parent_dirs_glob_set_builder.add(glob(parent)?);
 
             if root.is_none() && parent.exists() {
                 // Found the first parent that exists
                 root = Some(parent.to_path_buf());
+                break;
             }
         }
 
-        let glob_set = glob_set_builder.build().context("invalid glob")?;
+        let parent_dirs_glob_set = parent_dirs_glob_set_builder
+            .build()
+            .context("invalid glob")?;
+
         let root = root.unwrap_or_else(current_working_dir);
-
-        let mut walk = cx
-            .editor
-            .config()
-            .file_picker
-            .walk_builder(root)
-            .filter_entry(move |entry| glob_set.is_match(entry.path()))
-            .build();
-
-        // Call `next` to ignore the root directory which is yielded first
-        if walk.next().is_none() {
+        let Ok(dir_reader) = fs::read_dir(root) else {
             continue;
-        }
+        };
+        let mut dir_reader_stack = Vec::with_capacity(32);
+        dir_reader_stack.push(dir_reader);
 
         let mut to_open = Vec::with_capacity(GLOBBING_MAX_N_FILES);
-        for entry in walk {
-            let entry = entry.context("recursive walking failed")?;
-            let Some(file_type) = entry.file_type() else {
-                // Entry is stdin
-                continue;
-            };
-            // Don't open directories when globbing
-            if file_type.is_dir() {
-                continue;
+
+        // Recursion with a "stack" (on the heap) instead of a recursive function
+        'outer: while let Some(dir_reader) = dir_reader_stack.last_mut() {
+            for entry in dir_reader {
+                let Ok(entry) = entry else {
+                    continue;
+                };
+
+                let path = entry.path();
+                let Ok(metadata) = fs::metadata(&path) else {
+                    continue;
+                };
+                let file_type = metadata.file_type();
+
+                if file_type.is_dir() {
+                    if !parent_dirs_glob_set.is_match(&path) {
+                        continue;
+                    }
+                    let Ok(dir_reader) = fs::read_dir(path) else {
+                        continue;
+                    };
+                    dir_reader_stack.push(dir_reader);
+                    continue 'outer;
+                }
+
+                if file_type.is_file() && file_glob_set.is_match(&path) {
+                    if to_open.len() == GLOBBING_MAX_N_FILES {
+                        bail!("tried to open more than {GLOBBING_MAX_N_FILES} files at once");
+                    }
+                    to_open.push(path);
+                }
+                // Can't be a symlink because `fs::metadata` traverses symlinks
             }
-            if to_open.len() == GLOBBING_MAX_N_FILES {
-                bail!("tried to open more than {GLOBBING_MAX_N_FILES} files at once");
-            }
-            to_open.push(entry.into_path());
+            dir_reader_stack.pop();
         }
 
         if to_open.is_empty() {
-            // Nothing found to open after globbing.
-            // Open a new file.
+            // Nothing found to open after globbing. Open a new file
             open_file(cx, &path, pos)?;
             continue;
         }
