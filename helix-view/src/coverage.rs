@@ -3,6 +3,7 @@ use serde::Deserialize;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
+use std::time::SystemTime;
 
 pub struct Coverage {
     pub files: HashMap<std::path::PathBuf, FileCoverage>,
@@ -10,6 +11,7 @@ pub struct Coverage {
 
 pub struct FileCoverage {
     pub lines: HashMap<u32, bool>,
+    pub modified_time: Option<SystemTime>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -18,6 +20,7 @@ struct RawCoverage {
     version: String,
     sources: Sources,
     packages: Packages,
+    modified_time: Option<SystemTime>,
 }
 
 #[derive(Deserialize, Debug)]
@@ -72,8 +75,10 @@ struct Line {
 
 pub fn parse(path: std::path::PathBuf) -> Option<Coverage> {
     let file = File::open(path).ok()?;
+    let metadata = file.metadata().ok()?;
     let reader = BufReader::new(file);
-    let tmp: RawCoverage = from_reader(reader).ok()?;
+    let mut tmp: RawCoverage = from_reader(reader).ok()?;
+    tmp.modified_time = metadata.modified().ok();
     Some(tmp.into())
 }
 
@@ -89,7 +94,13 @@ impl From<RawCoverage> for Coverage {
                 for source in &coverage.sources.source {
                     let path: std::path::PathBuf = [&source.name, &class.filename].iter().collect();
                     if path.exists() {
-                        files.insert(path, FileCoverage { lines });
+                        files.insert(
+                            path,
+                            FileCoverage {
+                                lines,
+                                modified_time: coverage.modified_time,
+                            },
+                        );
                         break;
                     }
                 }
