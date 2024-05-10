@@ -156,7 +156,14 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
             continue;
         }
 
-        let glob = GlobBuilder::new(path.to_str().context("invalid unicode")?)
+        let path_str = path.to_str().context("invalid unicode")?;
+        if !path_str.as_bytes().iter().any(|c| b"*?{}[]".contains(c)) {
+            // Not a glob, open the file to avoid unneeded walking of huge directories
+            open_file(cx, &path, pos)?;
+            continue;
+        }
+
+        let glob = GlobBuilder::new(path_str)
             .literal_separator(true)
             .empty_alternates(true)
             .build()
