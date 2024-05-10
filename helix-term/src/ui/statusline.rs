@@ -533,10 +533,10 @@ where
     }
 }
 
-fn render_zoom<'a>(context: &RenderContext) -> Spans<'a> {
+fn render_zoom<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy, {
     if context.editor.tree.zoom {
-        "[zoom]".into()
-    } else {
-        Spans::default()
+        write(context, "[zoom]".to_string(), None)
     }
 }
