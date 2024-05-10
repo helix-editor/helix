@@ -535,7 +535,8 @@ where
 
 fn render_zoom<F>(context: &mut RenderContext, write: F)
 where
-    F: Fn(&mut RenderContext, String, Option<Style>) + Copy, {
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
     if context.editor.tree.zoom {
         write(context, "[zoom]".to_string(), None)
     }

@@ -2497,7 +2497,9 @@ fn set_max_width(
         return Ok(());
     }
 
-    let Some(width) = args.first() else { bail!(":set-max-width takes one argument") };
+    let Some(width) = args.first() else {
+        bail!(":set-max-width takes one argument")
+    };
     let width = width.parse()?;
     cx.editor.tree.max_width = width;
     cx.editor.tree.recalculate();
