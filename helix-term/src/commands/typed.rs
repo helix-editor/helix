@@ -2,17 +2,20 @@ use std::fmt::Write;
 use std::fs;
 use std::io::BufReader;
 use std::ops::Deref;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 
 use crate::job::Job;
 
 use super::*;
 
-use globset::{Glob, GlobBuilder, GlobSetBuilder};
+use globset::{GlobBuilder, GlobSetBuilder};
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::{encoding, line_ending, shellwords::Shellwords};
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{Action, CloseError, ConfigEvent};
+use ignore::WalkBuilder;
 use serde_json::Value;
 use ui::completers::{self, Completer};
 
@@ -118,15 +121,6 @@ fn open_file(cx: &mut compositor::Context, path: &Path, pos: Position) -> anyhow
     Ok(())
 }
 
-fn glob(path: &Path) -> anyhow::Result<Glob> {
-    let path_str = path.to_str().context("invalid unicode")?;
-    GlobBuilder::new(path_str)
-        .literal_separator(true)
-        .empty_alternates(true)
-        .build()
-        .context("invalid glob")
-}
-
 fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
@@ -162,20 +156,25 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
             continue;
         }
 
-        let file_glob_set = GlobSetBuilder::new()
-            .add(glob(&path)?)
+        let glob = GlobBuilder::new(path.to_str().context("invalid unicode")?)
+            .literal_separator(true)
+            .empty_alternates(true)
+            .build()
+            .context("invalid glob")?;
+        // Using a glob set instead of `compile_matcher` because the single matcher is always
+        // a regex matcher. A glob set tries other strategies first which can be more efficient.
+        // Example: `**/FILENAME` only compares the base name instead of matching with regex.
+        let glob_set = GlobSetBuilder::new()
+            .add(glob)
             .build()
             .context("invalid glob")?;
 
-        let mut parent_dirs_glob_set_builder = GlobSetBuilder::new();
         let mut root = None;
         let mut comps = path.components();
 
         // Iterate over all parents
         while comps.next_back().is_some() {
             let parent = comps.as_path();
-            // Add each parent as a glob for filtering in the recursive walker
-            parent_dirs_glob_set_builder.add(glob(parent)?);
 
             if parent.exists() {
                 // Found the first parent that exists
@@ -185,53 +184,51 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
         }
 
         let root = root.context("invalid glob")?;
-        let parent_dirs_glob_set = parent_dirs_glob_set_builder
-            .build()
-            .context("invalid glob")?;
+        let to_open = Mutex::new(Vec::with_capacity(GLOBBING_MAX_N_FILES));
+        let exceeded_max_n_files = AtomicBool::new(false);
 
-        let Ok(dir_reader) = fs::read_dir(root) else {
-            continue;
-        };
-        let mut dir_reader_stack = Vec::with_capacity(32);
-        dir_reader_stack.push(dir_reader);
-
-        let mut to_open = Vec::with_capacity(GLOBBING_MAX_N_FILES);
-
-        // Recursion with a "stack" (on the heap) instead of a recursive function
-        'outer: while let Some(dir_reader) = dir_reader_stack.last_mut() {
-            for entry in dir_reader {
-                let Ok(entry) = entry else {
-                    continue;
-                };
-
-                let path = entry.path();
-                let Ok(metadata) = fs::metadata(&path) else {
-                    continue;
-                };
-                let file_type = metadata.file_type();
-
-                if file_type.is_dir() {
-                    if !parent_dirs_glob_set.is_match(&path) {
-                        continue;
+        WalkBuilder::new(root)
+            // Traversing symlinks makes the time explode.
+            // Not even sure if non-trivial cycles are detected.
+            // Because we don't have a timeout, we should better ignore symlinks.
+            .follow_links(false)
+            .standard_filters(false)
+            .build_parallel()
+            .run(|| {
+                Box::new(|entry| {
+                    if exceeded_max_n_files.load(Ordering::Relaxed) {
+                        return WalkState::Quit;
                     }
-                    let Ok(dir_reader) = fs::read_dir(path) else {
-                        continue;
+
+                    let Ok(entry) = entry else {
+                        return WalkState::Continue;
                     };
-                    dir_reader_stack.push(dir_reader);
-                    continue 'outer;
-                }
-
-                if file_type.is_file() && file_glob_set.is_match(&path) {
-                    if to_open.len() == GLOBBING_MAX_N_FILES {
-                        bail!("tried to open more than {GLOBBING_MAX_N_FILES} files at once");
+                    if !glob_set.is_match(entry.path()) {
+                        return WalkState::Continue;
                     }
-                    to_open.push(path);
-                }
-                // Can't be a symlink because `fs::metadata` traverses symlinks
-            }
-            dir_reader_stack.pop();
-        }
+                    let Ok(metadata) = entry.metadata() else {
+                        return WalkState::Continue;
+                    };
 
+                    if metadata.is_file() {
+                        let Ok(mut to_open) = to_open.lock() else {
+                            return WalkState::Quit;
+                        };
+                        if to_open.len() == GLOBBING_MAX_N_FILES {
+                            exceeded_max_n_files.store(true, Ordering::Relaxed);
+                            return WalkState::Quit;
+                        }
+                        to_open.push(entry.into_path());
+                    }
+
+                    WalkState::Continue
+                })
+            });
+
+        if exceeded_max_n_files.load(Ordering::Relaxed) {
+            bail!("tried to open more than {GLOBBING_MAX_N_FILES} files at once");
+        }
+        let to_open = to_open.into_inner().context("walker thread panicked")?;
         if to_open.is_empty() {
             // Nothing found to open after globbing. Open a new file
             open_file(cx, &path, pos)?;
