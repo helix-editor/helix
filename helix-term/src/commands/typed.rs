@@ -178,18 +178,18 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
             // Add each parent as a glob for filtering in the recursive walker
             parent_dirs_glob_set_builder.add(glob(parent)?);
 
-            if root.is_none() && parent.exists() {
+            if parent.exists() {
                 // Found the first parent that exists
-                root = Some(parent.to_path_buf());
+                root = Some(parent);
                 break;
             }
         }
 
+        let root = root.context("invalid glob")?;
         let parent_dirs_glob_set = parent_dirs_glob_set_builder
             .build()
             .context("invalid glob")?;
 
-        let root = root.unwrap_or_else(current_working_dir);
         let Ok(dir_reader) = fs::read_dir(root) else {
             continue;
         };
