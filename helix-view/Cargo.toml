@@ -50,6 +50,7 @@ toml = "0.8"
 log = "~0.4"
 
 parking_lot = "0.12.2"
+blake3 = { version = "1.5.1", features = ["mmap"] }
 
 
 [target.'cfg(windows)'.dependencies]

@@ -1456,7 +1456,6 @@ version = "24.3.0"
 dependencies = [
  "anyhow",
  "arc-swap",
- "blake3",
  "chrono",
  "content_inspector",
  "crossterm",
@@ -1533,6 +1532,7 @@ dependencies = [
  "anyhow",
  "arc-swap",
  "bitflags 2.5.0",
+ "blake3",
  "chardetng",
  "clipboard-win",
  "crossterm",

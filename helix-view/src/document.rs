@@ -177,6 +177,10 @@ pub struct Document {
     // when document was used for most-recent-used buffer picker
     pub focused_at: std::time::Instant,
 
+    // Some(hash): the hash value of the document after the first read
+    // None: If the document doesn't exist in the filesystem
+    hash: Option<blake3::Hash>,
+
     pub readonly: bool,
 }
 
@@ -630,6 +634,7 @@ use url::Url;
 impl Document {
     pub fn from(
         text: Rope,
+        doc_hash: Option<blake3::Hash>,
         encoding_with_bom_info: Option<(&'static Encoding, bool)>,
         config: Arc<dyn DynAccess<Config>>,
     ) -> Self {
@@ -640,6 +645,7 @@ impl Document {
 
         Self {
             id: DocumentId::default(),
+            hash: doc_hash,
             path: None,
             encoding,
             has_bom,
@@ -674,7 +680,7 @@ impl Document {
     pub fn default(config: Arc<dyn DynAccess<Config>>) -> Self {
         let line_ending: LineEnding = config.load().default_line_ending.into();
         let text = Rope::from(line_ending.as_str());
-        Self::from(text, None, config)
+        Self::from(text, None, None, config)
     }
 
     // TODO: async fn?
@@ -687,17 +693,23 @@ impl Document {
         config: Arc<dyn DynAccess<Config>>,
     ) -> Result<Self, Error> {
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
-        let (rope, encoding, has_bom) = if path.exists() {
+        let (rope, encoding, has_bom, doc_hash) = if path.exists() {
             let mut file =
                 std::fs::File::open(path).context(format!("unable to open {:?}", path))?;
-            from_reader(&mut file, encoding)?
+
+            let mut hasher = blake3::Hasher::new();
+            hasher.update_mmap(path)?;
+
+            let (rope, encoding, has_bom) = from_reader(&mut file, encoding)?;
+
+            (rope, encoding, has_bom, Some(hasher.finalize()))
         } else {
             let line_ending: LineEnding = config.load().default_line_ending.into();
             let encoding = encoding.unwrap_or(encoding::UTF_8);
-            (Rope::from(line_ending.as_str()), encoding, false)
+            (Rope::from(line_ending.as_str()), encoding, false, None)
         };
 
-        let mut doc = Self::from(rope, Some((encoding, has_bom)), config);
+        let mut doc = Self::from(rope, doc_hash, Some((encoding, has_bom)), config);
 
         // set the path and try detecting the language
         doc.set_path(Some(path));
@@ -868,6 +880,7 @@ impl Document {
 
         let encoding_with_bom_info = (self.encoding, self.has_bom);
         let last_saved_time = self.last_saved_time;
+        let doc_hash = self.hash;
 
         // We encode the file according to the `Document`'s encoding.
         let future = async move {
@@ -888,7 +901,15 @@ impl Document {
                 if let Ok(metadata) = fs::metadata(&path).await {
                     if let Ok(mtime) = metadata.modified() {
                         if last_saved_time < mtime {
-                            bail!("file modified by an external process, use :w! to overwrite");
+                            if let Some(doc_hash) = doc_hash {
+                                let mut hasher = blake3::Hasher::new();
+                                hasher.update_mmap(&path)?;
+                                let new_doc_hash = hasher.finalize();
+
+                                if new_doc_hash != doc_hash {
+                                    bail!("file modified by an external process, use :w! to overwrite");
+                                }
+                            }
                         }
                     }
                 }
@@ -2037,8 +2058,10 @@ mod test {
     fn changeset_to_changes_ignore_line_endings() {
         use helix_lsp::{lsp, Client, OffsetEncoding};
         let text = Rope::from("hello\r\nworld");
+        let hash = blake3::hash(text);
         let mut doc = Document::from(
             text,
+            Some(hash),
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
         );

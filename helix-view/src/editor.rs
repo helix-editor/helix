@@ -1600,6 +1600,7 @@ impl Editor {
         let (stdin, encoding, has_bom) = crate::document::read_to_string(&mut stdin(), None)?;
         let doc = Document::from(
             helix_core::Rope::default(),
+            None,
             Some((encoding, has_bom)),
             self.config.clone(),
         );
