@@ -98,7 +98,7 @@ impl Args {
                 arg => {
                     let file = parse_file(arg);
 
-                    if is_proper_file(&file) {
+                    if is_proper_path(&file) {
                         args.files.push(file)
                     }
                 }
@@ -109,7 +109,7 @@ impl Args {
         for arg in argv {
             let file = parse_file(&arg);
 
-            if is_proper_file(&file) {
+            if is_proper_path(&file) {
                 args.files.push(file);
             }
         }
@@ -135,9 +135,9 @@ pub(crate) fn parse_file(s: &str) -> (PathBuf, Position) {
         .unwrap_or_else(def)
 }
 
-/// Ensure file is not a pipe or random
-fn is_proper_file(f: &(PathBuf, Position)) -> bool {
-    f.0.is_file() || f.0.is_symlink()
+/// Ensure path is not something like a pipe or /dev/random.
+fn is_proper_path(f: &(PathBuf, Position)) -> bool {
+    f.0.is_file() || f.0.is_symlink() || f.0.is_dir()
 }
 
 /// Split file.rs:10:2 into [`PathBuf`], row and col.
