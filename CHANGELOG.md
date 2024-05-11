@@ -1,4 +1,4 @@
-# 25.02 (2024-05-11)
+# 25.02 (2024-05-12)
 
 Thanks to all of the contributors! This release has changes from 102 contributors.
 
@@ -10,6 +10,7 @@ Features:
 - Add a picker showing files changed in VCS (#5645)
 - Use a temporary file for writes (#9236, #10339)
 - Allow cycling through LSP signature-help signatures with `A-n`/`A-p` (#9974, #10654, #10655)
+- Use tree-sitter when finding matching brackets and closest pairs (#8294, #10613)
 
 Commands:
 
@@ -25,7 +26,6 @@ Usability improvements:
 - Respect language server definition order in code action menu (#9590)
 - Allow using a count with `goto_next_buffer` (`gn`) and `goto_previous_buffer` (`gp`) (#10463)
 - Improve the positioning of popups (#10257, #10573)
-- Use tree-sitter when finding matching brackets and closest pairs (#8294)
 
 Fixes:
 
@@ -51,6 +51,8 @@ Fixes:
 - Fix restarting language servers (#10614)
 - Don't stop at the first URL in `goto_file` (#10622)
 - Fix overflows in window size calculations for small terminals (#10620)
+- Allow missing or empty completion lists in DAP (#10332)
+- Revert statusline refactor that could cause the statusline to blank out on files with long paths (#10642)
 
 Themes:
 
@@ -83,6 +85,7 @@ Themes:
 - Refactor `dark_plus` and switch maintainers (#10543, #10574)
 - Add debug highlights to `dark_plus` (#10593)
 - Fix per-mode cursor colors in the default theme (#10608)
+- Add `tag` and `attribute` highlights to `dark_high_contrast` (#10705)
 
 New languages:
 
@@ -94,6 +97,8 @@ New languages:
 - XTC (#10448)
 - Move (f06a166)
 - Pest (#10616)
+- GJS/GTS (#9940)
+- Inko (#10656)
 
 Updated languages and queries:
 
@@ -131,10 +136,15 @@ Updated languages and queries:
 - Add `try` keyword to Rust (#10641)
 - Add `is not` and `not in` to Python highlights (#10647)
 - Remove ' and ⟨⟩ from Lean autopair configuration (#10688)
+- Match TOML/YAML highlights for JSON keys (#10676)
+- Recognize WORKSPACE files as Starlark (#10713)
+- Switch Odin tree-sitter grammar and highlights (#10698)
 
 Packaging:
 
 - Make `Helix.appdata.xml` spec-compliant (#10051)
+- Expose all flake outputs through flake-compat (#10673)
+- Bump the MSRV to 1.74.0 (#10714)
 
 # 24.03 (2024-03-30)
 
