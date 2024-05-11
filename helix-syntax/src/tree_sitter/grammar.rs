@@ -27,9 +27,15 @@ impl std::fmt::Debug for Grammar {
 }
 
 impl Grammar {
+    /// Loads a shared library containg a tree sitter grammar with name `name`
+    // from `library_path`.
+    ///
+    /// # Safety
+    ///
+    /// `library_path` must be a valid tree sitter grammar
     pub unsafe fn new(name: &str, library_path: &Path) -> Result<Grammar, Error> {
         let library = unsafe {
-            Library::new(&library_path).map_err(|err| Error::DlOpen {
+            Library::new(library_path).map_err(|err| Error::DlOpen {
                 err,
                 path: library_path.to_owned(),
             })?
@@ -45,7 +51,7 @@ impl Grammar {
             Grammar { ptr: language_fn() }
         };
         let version = grammar.version();
-        if MIN_COMPATIBLE_ABI_VERSION <= version && version <= ABI_VERSION {
+        if (MIN_COMPATIBLE_ABI_VERSION..=ABI_VERSION).contains(&version) {
             std::mem::forget(library);
             Ok(grammar)
         } else {
