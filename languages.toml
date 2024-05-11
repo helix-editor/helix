@@ -2816,7 +2816,7 @@ grammar = "xml"
 [[language]]
 name = "pem"
 scope = "source.pem"
-file-types = ["pem", "cert", "crt"]
+file-types = ["pem", "cert", "crt", "csr"]
 injection-regex = "pem"
 grammar = "pem"
 
