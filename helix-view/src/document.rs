@@ -930,6 +930,7 @@ impl Document {
             let write_result: anyhow::Result<_> = async {
                 let mut dst = tokio::fs::File::create(&write_path).await?;
                 to_writer(&mut dst, encoding_with_bom_info, &text).await?;
+                dst.sync_all().await?;
                 Ok(())
             }
             .await;
