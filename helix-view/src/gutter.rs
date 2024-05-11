@@ -344,17 +344,22 @@ mod tests {
     use arc_swap::ArcSwap;
     use helix_core::Rope;
 
+    fn create_test_doc(content: &str) -> Document {
+        let rope = Rope::from_str(content);
+        let hash = blake3::hash(content.as_bytes());
+        Document::from(
+            rope,
+            Some(hash),
+            None,
+            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+        )
+    }
+
     #[test]
     fn test_default_gutter_widths() {
         let mut view = View::new(DocumentId::default(), GutterConfig::default());
         view.area = Rect::new(40, 40, 40, 40);
-
-        let rope = Rope::from_str("abc\n\tdef");
-        let doc = Document::from(
-            rope,
-            None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
-        );
+        let doc = create_test_doc("abc\n\tdef");
 
         assert_eq!(view.gutters.layout.len(), 5);
         assert_eq!(view.gutters.layout[0].width(&view, &doc), 1);
@@ -374,12 +379,7 @@ mod tests {
         let mut view = View::new(DocumentId::default(), gutters);
         view.area = Rect::new(40, 40, 40, 40);
 
-        let rope = Rope::from_str("abc\n\tdef");
-        let doc = Document::from(
-            rope,
-            None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
-        );
+        let doc = create_test_doc("abc\n\tdef");
 
         assert_eq!(view.gutters.layout.len(), 1);
         assert_eq!(view.gutters.layout[0].width(&view, &doc), 1);
@@ -392,12 +392,7 @@ mod tests {
         let mut view = View::new(DocumentId::default(), gutters);
         view.area = Rect::new(40, 40, 40, 40);
 
-        let rope = Rope::from_str("abc\n\tdef");
-        let doc = Document::from(
-            rope,
-            None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
-        );
+        let doc = create_test_doc("abc\n\tdef");
 
         assert_eq!(view.gutters.layout.len(), 2);
         assert_eq!(view.gutters.layout[0].width(&view, &doc), 1);
@@ -414,19 +409,8 @@ mod tests {
         let mut view = View::new(DocumentId::default(), gutters);
         view.area = Rect::new(40, 40, 40, 40);
 
-        let rope = Rope::from_str("a\nb");
-        let doc_short = Document::from(
-            rope,
-            None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
-        );
-
-        let rope = Rope::from_str("a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\nl\nm\nn\no\np");
-        let doc_long = Document::from(
-            rope,
-            None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
-        );
+        let doc_short = create_test_doc("a\nb");
+        let doc_long = create_test_doc("a\nb\nc\nd\ne\nf\ng\nh\ni\nj\nk\nl\nm\nn\no\np");
 
         assert_eq!(view.gutters.layout.len(), 2);
         assert_eq!(view.gutters.layout[1].width(&view, &doc_short), 1);

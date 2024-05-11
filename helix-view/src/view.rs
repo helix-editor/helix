@@ -645,17 +645,22 @@ mod tests {
     use crate::document::Document;
     use crate::editor::{Config, GutterConfig, GutterLineNumbersConfig, GutterType};
 
+    fn create_test_doc(content: &str) -> Document {
+        let rope = Rope::from_str(content);
+        let hash = blake3::hash(content.as_bytes());
+        Document::from(
+            rope,
+            Some(hash),
+            None,
+            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
+        )
+    }
+
     #[test]
     fn test_text_pos_at_screen_coords() {
         let mut view = View::new(DocumentId::default(), GutterConfig::default());
         view.area = Rect::new(40, 40, 40, 40);
-        let rope = Rope::from_str("abc\n\tdef");
-        let doc = Document::from(
-            rope,
-            None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
-        );
-
+        let doc = create_test_doc("abc\n\tdef");
         assert_eq!(
             view.text_pos_at_screen_coords(
                 &doc,
@@ -823,12 +828,7 @@ mod tests {
             },
         );
         view.area = Rect::new(40, 40, 40, 40);
-        let rope = Rope::from_str("abc\n\tdef");
-        let doc = Document::from(
-            rope,
-            None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
-        );
+        let doc = create_test_doc("abc\n\tdef");
         assert_eq!(
             view.text_pos_at_screen_coords(
                 &doc,
@@ -852,12 +852,7 @@ mod tests {
             },
         );
         view.area = Rect::new(40, 40, 40, 40);
-        let rope = Rope::from_str("abc\n\tdef");
-        let doc = Document::from(
-            rope,
-            None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
-        );
+        let doc = create_test_doc("abc\n\tdef");
         assert_eq!(
             view.text_pos_at_screen_coords(
                 &doc,
@@ -875,12 +870,7 @@ mod tests {
     fn test_text_pos_at_screen_coords_cjk() {
         let mut view = View::new(DocumentId::default(), GutterConfig::default());
         view.area = Rect::new(40, 40, 40, 40);
-        let rope = Rope::from_str("Hi! こんにちは皆さん");
-        let doc = Document::from(
-            rope,
-            None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
-        );
+        let doc = create_test_doc("Hi! こんにちは皆さん");
 
         assert_eq!(
             view.text_pos_at_screen_coords(
@@ -958,12 +948,7 @@ mod tests {
     fn test_text_pos_at_screen_coords_graphemes() {
         let mut view = View::new(DocumentId::default(), GutterConfig::default());
         view.area = Rect::new(40, 40, 40, 40);
-        let rope = Rope::from_str("Hèl̀l̀ò world!");
-        let doc = Document::from(
-            rope,
-            None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
-        );
+        let doc = create_test_doc("Hèl̀l̀ò world!");
 
         assert_eq!(
             view.text_pos_at_screen_coords(

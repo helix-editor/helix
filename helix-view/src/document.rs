@@ -2054,17 +2054,22 @@ mod test {
 
     use super::*;
 
-    #[test]
-    fn changeset_to_changes_ignore_line_endings() {
-        use helix_lsp::{lsp, Client, OffsetEncoding};
-        let text = Rope::from("hello\r\nworld");
-        let hash = blake3::hash(text);
-        let mut doc = Document::from(
+    fn create_test_doc(content: &str) -> Document {
+        let text = Rope::from(content);
+        let hash = blake3::hash(content.as_bytes());
+
+        Document::from(
             text,
             Some(hash),
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
-        );
+        )
+    }
+
+    #[test]
+    fn changeset_to_changes_ignore_line_endings() {
+        use helix_lsp::{lsp, Client, OffsetEncoding};
+        let mut doc = create_test_doc("hello\r\nworld");
         let view = ViewId::default();
         doc.set_selection(view, Selection::single(0, 0));
 
@@ -2097,12 +2102,7 @@ mod test {
     #[test]
     fn changeset_to_changes() {
         use helix_lsp::{lsp, Client, OffsetEncoding};
-        let text = Rope::from("hello");
-        let mut doc = Document::from(
-            text,
-            None,
-            Arc::new(ArcSwap::new(Arc::new(Config::default()))),
-        );
+        let mut doc = create_test_doc("hello");
         let view = ViewId::default();
         doc.set_selection(view, Selection::single(5, 5));
 
