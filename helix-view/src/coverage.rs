@@ -73,13 +73,43 @@ struct Line {
     hits: u32,
 }
 
-pub fn parse(path: std::path::PathBuf) -> Option<Coverage> {
+pub fn parse(path: &std::path::PathBuf) -> Option<Coverage> {
     let file = File::open(path).ok()?;
     let metadata = file.metadata().ok()?;
     let reader = BufReader::new(file);
     let mut tmp: RawCoverage = from_reader(reader).ok()?;
     tmp.modified_time = metadata.modified().ok();
     Some(tmp.into())
+}
+
+pub fn get_coverage(document_path: &std::path::PathBuf) -> Option<FileCoverage> {
+    let coverage_path = std::env::var("HELIX_COVERAGE_FILE").ok()?;
+    log::debug!("coverage file is {}", coverage_path);
+    let cov = parse(&std::path::PathBuf::from(coverage_path))?;
+    log::debug!("coverage is valid");
+    log::debug!("full document path: {:?}", document_path);
+    let cwd = std::env::current_dir().ok()?;
+    let tmp = document_path.strip_prefix(cwd).ok()?;
+    let relative_path: std::path::PathBuf = tmp.into();
+    log::debug!("relative document path: {:?}", relative_path);
+    let file_coverage = cov.files.get(&relative_path)?;
+    log::debug!(
+        "coverage time: {:?} document time: {:?}",
+        file_coverage.modified_time,
+        relative_path.metadata().map(|meta| meta.modified())
+    );
+    let coverage_time = file_coverage.modified_time?;
+    if relative_path
+        .metadata()
+        .is_ok_and(|meta| meta.modified().is_ok_and(|time| time < coverage_time))
+    {
+        log::debug!("file coverage is {:?}", file_coverage.lines);
+        return Some(FileCoverage {
+            lines: file_coverage.lines.clone(),
+            modified_time: file_coverage.modified_time,
+        });
+    }
+    None
 }
 
 impl From<RawCoverage> for Coverage {
