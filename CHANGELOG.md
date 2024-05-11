@@ -1,4 +1,4 @@
-# 25.02 (2024-05-12)
+# 24.05 (2024-05-12)
 
 Thanks to all of the contributors! This release has changes from 102 contributors.
 
