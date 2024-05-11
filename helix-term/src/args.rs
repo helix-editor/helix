@@ -95,13 +95,23 @@ impl Args {
                         _ => args.files.push(parse_file(arg)),
                     };
                 }
-                arg => args.files.push(parse_file(arg)),
+                arg => {
+                    let file = parse_file(arg);
+
+                    if is_proper_file(&file) {
+                        args.files.push(file)
+                    }
+                }
             }
         }
 
         // push the remaining args, if any to the files
         for arg in argv {
-            args.files.push(parse_file(&arg));
+            let file = parse_file(&arg);
+
+            if is_proper_file(&file) {
+                args.files.push(file);
+            }
         }
 
         if let Some(file) = args.files.first_mut() {
@@ -123,6 +133,11 @@ pub(crate) fn parse_file(s: &str) -> (PathBuf, Position) {
     split_path_row_col(s)
         .or_else(|| split_path_row(s))
         .unwrap_or_else(def)
+}
+
+/// Ensure file is not a pipe or random
+fn is_proper_file(f: &(PathBuf, Position)) -> bool {
+    f.0.is_file() || f.0.is_symlink()
 }
 
 /// Split file.rs:10:2 into [`PathBuf`], row and col.
