@@ -151,57 +151,25 @@ pub fn coverage<'doc>(
 ) -> GutterFn<'doc> {
     let covered = theme.get("diff.plus.gutter");
     let not_covered = theme.get("diff.minus.gutter");
-    if let Ok(coverage_path) = std::env::var("HELIX_COVERAGE_FILE") {
-        log::debug!("coverage file is {}", coverage_path);
-        if let Some(cov) = coverage::parse(PathBuf::from(coverage_path)) {
-            log::debug!("coverage is valid");
-            if let Some(mut path) = doc.path.clone() {
-                log::debug!("full document path: {:?}", path);
-                if let Ok(cwd) = std::env::current_dir() {
-                    if let Ok(tmp) = path.strip_prefix(cwd) {
-                        path = tmp.into();
+
+    if let Some(document_path) = &doc.path {
+        if let Some(file_coverage) = coverage::get_coverage(document_path) {
+            log::debug!("return valid coverage gutter");
+            return Box::new(
+                move |line: usize, _selected: bool, _first_visual_line: bool, out: &mut String| {
+                    if let Some(line_coverage) = file_coverage.lines.get(&(line as u32)) {
+                        let (icon, style) = if *line_coverage {
+                            ("┃", covered)
+                        } else {
+                            ("┃", not_covered)
+                        };
+                        write!(out, "{}", icon).unwrap();
+                        Some(style)
+                    } else {
+                        None
                     }
-                }
-                log::debug!("relative document path: {:?}", path);
-                if let Some(file_coverage) = cov.files.get(&path) {
-                    log::debug!(
-                        "coverage time: {:?} document time: {:?}",
-                        file_coverage.modified_time,
-                        path.metadata().map(|meta| meta.modified())
-                    );
-                    if let Some(coverage_time) = file_coverage.modified_time {
-                        if path.metadata().is_ok_and(|meta| {
-                            meta.modified().is_ok_and(|time| time < coverage_time)
-                        }) {
-                            // clone file coverage so it can be moved into the closure
-                            let this_file = coverage::FileCoverage {
-                                lines: file_coverage.lines.clone(),
-                                modified_time: file_coverage.modified_time,
-                            };
-                            log::debug!("return valid coverage gutter");
-                            return Box::new(
-                                move |line: usize,
-                                      _selected: bool,
-                                      _first_visual_line: bool,
-                                      out: &mut String| {
-                                    if let Some(line_coverage) = this_file.lines.get(&(line as u32))
-                                    {
-                                        let (icon, style) = if *line_coverage {
-                                            ("┃", covered)
-                                        } else {
-                                            ("┃", not_covered)
-                                        };
-                                        write!(out, "{}", icon).unwrap();
-                                        Some(style)
-                                    } else {
-                                        None
-                                    }
-                                },
-                            );
-                        }
-                    }
-                }
-            }
+                },
+            );
         }
     }
     log::debug!("return empty coverage gutter");
