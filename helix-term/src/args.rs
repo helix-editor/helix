@@ -96,6 +96,7 @@ impl Args {
                     };
                 }
                 arg => args.files.push(parse_file(arg)),
+            }
         }
 
         // push the remaining args, if any to the files

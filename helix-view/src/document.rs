@@ -117,6 +117,17 @@ pub struct SavePoint {
     revert: Mutex<Transaction>,
 }
 
+#[derive(Debug)]
+pub struct IrregularFileError {
+    msg: String,
+}
+
+impl Display for IrregularFileError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.msg)
+    }
+}
+
 pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
@@ -686,6 +697,13 @@ impl Document {
         config_loader: Option<Arc<ArcSwap<syntax::Loader>>>,
         config: Arc<dyn DynAccess<Config>>,
     ) -> Result<Self, Error> {
+        // if the path is not a regular file (e.g.: /dev/random) it should not be opened
+        if !path.is_file() && !path.is_symlink() {
+            return Err(anyhow::anyhow!(IrregularFileError {
+                msg: format!("Path argument must be a regular file, a directory, or a symlink.")
+            }));
+        }
+
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
         let (rope, encoding, has_bom) = if path.exists() {
             let mut file =
