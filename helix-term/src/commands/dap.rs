@@ -254,16 +254,13 @@ pub fn dap_launch(cx: &mut Context) {
 
     let doc = doc!(cx.editor);
 
-    let config = match doc
+    let Some(config) = doc
         .language_config()
         .and_then(|config| config.debugger.as_ref())
-    {
-        Some(c) => c,
-        None => {
-            cx.editor
-                .set_error("No debug adapter available for language");
-            return;
-        }
+    else {
+        cx.editor
+            .set_error("No debug adapter available for language");
+        return;
     };
 
     let templates = config.templates.clone();
@@ -294,12 +291,9 @@ pub fn dap_launch(cx: &mut Context) {
 }
 
 pub fn dap_restart(cx: &mut Context) {
-    let debugger = match &cx.editor.debugger {
-        Some(debugger) => debugger,
-        None => {
-            cx.editor.set_error("Debugger is not running");
-            return;
-        }
+    let Some(debugger) = &cx.editor.debugger else {
+        cx.editor.set_error("Debugger is not running");
+        return;
     };
     if !debugger
         .capabilities()
@@ -396,13 +390,10 @@ fn debug_parameter_prompt(
 
 pub fn dap_toggle_breakpoint(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let path = match doc.path() {
-        Some(path) => path.clone(),
-        None => {
-            cx.editor
-                .set_error("Can't set breakpoint: document has no path");
-            return;
-        }
+    let Some(path) = doc.path().cloned() else {
+        cx.editor
+            .set_error("Can't set breakpoint: document has no path");
+        return;
     };
     let text = doc.text().slice(..);
     let line = doc.selection(view.id).primary().cursor_line(text);
@@ -516,30 +507,21 @@ pub fn dap_variables(cx: &mut Context) {
             .set_status("Cannot access variables while target is running.");
         return;
     }
-    let (frame, thread_id) = match (debugger.active_frame, debugger.thread_id) {
-        (Some(frame), Some(thread_id)) => (frame, thread_id),
-        _ => {
-            cx.editor
-                .set_status("Cannot find current stack frame to access variables.");
-            return;
-        }
+    let (Some(frame), Some(thread_id)) = (debugger.active_frame, debugger.thread_id) else {
+        cx.editor
+            .set_status("Cannot find current stack frame to access variables.");
+        return;
     };
 
-    let thread_frame = match debugger.stack_frames.get(&thread_id) {
-        Some(thread_frame) => thread_frame,
-        None => {
-            cx.editor
-                .set_error("Failed to get stack frame for thread: {thread_id}");
-            return;
-        }
+    let Some(thread_frame) = debugger.stack_frames.get(&thread_id) else {
+        cx.editor
+            .set_error("Failed to get stack frame for thread: {thread_id}");
+        return;
     };
-    let stack_frame = match thread_frame.get(frame) {
-        Some(stack_frame) => stack_frame,
-        None => {
-            cx.editor
-                .set_error("Failed to get stack frame for thread {thread_id} and frame {frame}.");
-            return;
-        }
+    let Some(stack_frame) = thread_frame.get(frame) else {
+        cx.editor
+            .set_error("Failed to get stack frame for thread {thread_id} and frame {frame}.");
+        return;
     };
 
     let frame_id = stack_frame.id;
@@ -637,9 +619,8 @@ pub fn dap_disable_exceptions(cx: &mut Context) {
 // TODO: both edit condition and edit log need to be stable: we might get new breakpoints from the debugger which can change offsets
 pub fn dap_edit_condition(cx: &mut Context) {
     if let Some((pos, breakpoint)) = get_breakpoint_at_current_line(cx.editor) {
-        let path = match doc!(cx.editor).path() {
-            Some(path) => path.clone(),
-            None => return,
+        let Some(path) = doc!(cx.editor).path().cloned() else {
+            return;
         };
         let callback = Box::pin(async move {
             let call: Callback = Callback::EditorCompositor(Box::new(move |editor, compositor| {
@@ -679,9 +660,8 @@ pub fn dap_edit_condition(cx: &mut Context) {
 
 pub fn dap_edit_log(cx: &mut Context) {
     if let Some((pos, breakpoint)) = get_breakpoint_at_current_line(cx.editor) {
-        let path = match doc!(cx.editor).path() {
-            Some(path) => path.clone(),
-            None => return,
+        let Some(path) = doc!(cx.editor).path().cloned() else {
+            return;
         };
         let callback = Box::pin(async move {
             let call: Callback = Callback::EditorCompositor(Box::new(move |editor, compositor| {
@@ -726,12 +706,9 @@ pub fn dap_switch_thread(cx: &mut Context) {
 pub fn dap_switch_stack_frame(cx: &mut Context) {
     let debugger = debugger!(cx.editor);
 
-    let thread_id = match debugger.thread_id {
-        Some(thread_id) => thread_id,
-        None => {
-            cx.editor.set_error("No thread is currently active");
-            return;
-        }
+    let Some(thread_id) = debugger.thread_id else {
+        cx.editor.set_error("No thread is currently active");
+        return;
     };
 
     let frames = debugger.stack_frames[&thread_id].clone();

@@ -577,16 +577,13 @@ pub fn move_parent_node_end(
         let start_from = text.char_to_byte(range.from());
         let start_to = text.char_to_byte(range.to());
 
-        let mut node = match syntax.named_descendant_for_byte_range(start_from, start_to) {
-            Some(node) => node,
-            None => {
-                log::debug!(
-                    "no descendant found for byte range: {} - {}",
-                    start_from,
-                    start_to
-                );
-                return range;
-            }
+        let Some(mut node) = syntax.named_descendant_for_byte_range(start_from, start_to) else {
+            log::debug!(
+                "no descendant found for byte range: {} - {}",
+                start_from,
+                start_to
+            );
+            return range;
         };
 
         let mut end_head = match dir {

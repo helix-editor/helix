@@ -361,13 +361,10 @@ pub mod provider {
             fn set_contents(&mut self, value: String, clipboard_type: ClipboardType) -> Result<()> {
                 let cmd = match clipboard_type {
                     ClipboardType::Clipboard => &self.set_cmd,
-                    ClipboardType::Selection => {
-                        if let Some(cmd) = &self.set_primary_cmd {
-                            cmd
-                        } else {
-                            return Ok(());
-                        }
-                    }
+                    ClipboardType::Selection => match &self.set_primary_cmd {
+                        Some(cmd) => cmd,
+                        None => return Ok(()),
+                    },
                 };
                 cmd.execute(Some(&value), false).map(|_| ())
             }

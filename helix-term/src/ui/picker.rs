@@ -992,11 +992,10 @@ impl<T: Item + Send + Sync + 'static> Component for DynamicPicker<T> {
             let callback = Callback::EditorCompositor(Box::new(move |editor, compositor| {
                 // Wrapping of pickers in overlay is done outside the picker code,
                 // so this is fragile and will break if wrapped in some other widget.
-                let picker = match compositor.find_id::<Overlay<DynamicPicker<T>>>(ID) {
-                    Some(overlay) => &mut overlay.content.file_picker,
-                    None => return,
+                let Some(overlay) = compositor.find_id::<Overlay<DynamicPicker<T>>>(ID) else {
+                    return;
                 };
-                picker.set_options(new_options);
+                overlay.content.file_picker.set_options(new_options);
                 editor.reset_idle_timer();
             }));
             anyhow::Ok(callback)

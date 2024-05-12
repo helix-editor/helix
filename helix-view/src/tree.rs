@@ -111,12 +111,8 @@ impl Tree {
         let node = self.nodes.insert(node);
         self.get_mut(node).id = node;
 
-        let container = match &mut self.nodes[parent] {
-            Node {
-                content: Content::Container(container),
-                ..
-            } => container,
-            _ => unreachable!(),
+        let Content::Container(container) = &mut self.nodes[parent].content else {
+            unreachable!();
         };
 
         // insert node after the current item if there is children already
@@ -149,12 +145,8 @@ impl Tree {
         let node = self.nodes.insert(node);
         self.get_mut(node).id = node;
 
-        let container = match &mut self.nodes[parent] {
-            Node {
-                content: Content::Container(container),
-                ..
-            } => container,
-            _ => unreachable!(),
+        let Content::Container(container) = &mut self.nodes[parent].content else {
+            unreachable!();
         };
         if container.layout == layout {
             // insert node after the current item if there is children already
@@ -175,24 +167,16 @@ impl Tree {
             split.parent = parent;
             let split = self.nodes.insert(split);
 
-            let container = match &mut self.nodes[split] {
-                Node {
-                    content: Content::Container(container),
-                    ..
-                } => container,
-                _ => unreachable!(),
+            let Content::Container(container) = &mut self.nodes[split].content else {
+                unreachable!();
             };
             container.children.push(focus);
             container.children.push(node);
             self.nodes[focus].parent = split;
             self.nodes[node].parent = split;
 
-            let container = match &mut self.nodes[parent] {
-                Node {
-                    content: Content::Container(container),
-                    ..
-                } => container,
-                _ => unreachable!(),
+            let Content::Container(container) = &mut self.nodes[parent].content else {
+                unreachable!();
             };
 
             let pos = container
@@ -453,9 +437,8 @@ impl Tree {
             return None;
         }
         // Parent must always be a container
-        let parent_container = match &self.nodes[parent].content {
-            Content::Container(container) => container,
-            Content::View(_) => unreachable!(),
+        let Content::Container(parent_container) = &self.nodes[parent].content else {
+            unreachable!()
         };
 
         match (direction, parent_container.layout) {

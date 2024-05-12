@@ -248,9 +248,8 @@ pub fn breakpoints<'doc>(
 
     let breakpoints = doc.path().and_then(|path| editor.breakpoints.get(path));
 
-    let breakpoints = match breakpoints {
-        Some(breakpoints) => breakpoints,
-        None => return Box::new(move |_, _, _, _| None),
+    let Some(breakpoints) = breakpoints else {
+        return Box::new(move |_, _, _, _| None);
     };
 
     Box::new(

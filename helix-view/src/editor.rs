@@ -1722,9 +1722,8 @@ impl Editor {
     }
 
     pub fn close_document(&mut self, doc_id: DocumentId, force: bool) -> Result<(), CloseError> {
-        let doc = match self.documents.get_mut(&doc_id) {
-            Some(doc) => doc,
-            None => return Err(CloseError::DoesNotExist),
+        let Some(doc) = self.documents.get_mut(&doc_id) else {
+            return Err(CloseError::DoesNotExist);
         };
         if !force && doc.is_modified() {
             return Err(CloseError::BufferModified(doc.display_name().into_owned()));

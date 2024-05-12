@@ -44,9 +44,8 @@ pub async fn select_thread_id(editor: &mut Editor, thread_id: ThreadId, force: b
 }
 
 pub async fn fetch_stack_trace(debugger: &mut Client, thread_id: ThreadId) {
-    let (frames, _) = match debugger.stack_trace(thread_id).await {
-        Ok(frames) => frames,
-        Err(_) => return,
+    let Ok((frames, _)) = debugger.stack_trace(thread_id).await else {
+        return;
     };
     debugger.stack_frames.insert(thread_id, frames);
     debugger.active_frame = Some(0);
@@ -144,9 +143,8 @@ impl Editor {
         use dap::requests::RunInTerminal;
         use helix_dap::{events, Event};
 
-        let debugger = match self.debugger.as_mut() {
-            Some(debugger) => debugger,
-            None => return false,
+        let Some(debugger) = self.debugger.as_mut() else {
+            return false;
         };
         match payload {
             Payload::Event(ev) => match *ev {
@@ -304,12 +302,9 @@ impl Editor {
                     match restart_args {
                         Some(restart_args) => {
                             log::info!("Attempting to restart debug session.");
-                            let connection_type = match debugger.connection_type() {
-                                Some(connection_type) => connection_type,
-                                None => {
-                                    self.set_error("No starting request found, to be used in restarting the debugging session.");
-                                    return false;
-                                }
+                            let Some(connection_type) = debugger.connection_type() else {
+                                self.set_error("No starting request found, to be used in restarting the debugging session.");
+                                return false;
                             };
 
                             let relaunch_resp = if let ConnectionType::Launch = connection_type {
@@ -353,18 +348,14 @@ impl Editor {
                         serde_json::from_value(request.arguments.unwrap_or_default()).unwrap();
                     // TODO: no unwrap
 
-                    let config = match self.config().terminal.clone() {
-                        Some(config) => config,
-                        None => {
-                            self.set_error("No external terminal defined");
-                            return true;
-                        }
+                    let Some(config) = self.config().terminal.clone() else {
+                        self.set_error("No external terminal defined");
+                        return true;
                     };
 
                     // Re-borrowing debugger to avoid issues when loading config
-                    let debugger = match self.debugger.as_mut() {
-                        Some(debugger) => debugger,
-                        None => return false,
+                    let Some(debugger) = self.debugger.as_mut() else {
+                        return false;
                     };
 
                     let process = match std::process::Command::new(config.command)

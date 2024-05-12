@@ -1720,11 +1720,8 @@ fn debug_eval(
     }
 
     if let Some(debugger) = cx.editor.debugger.as_mut() {
-        let (frame, thread_id) = match (debugger.active_frame, debugger.thread_id) {
-            (Some(frame), Some(thread_id)) => (frame, thread_id),
-            _ => {
-                bail!("Cannot find current stack frame to access variables")
-            }
+        let (Some(frame), Some(thread_id)) = (debugger.active_frame, debugger.thread_id) else {
+            bail!("Cannot find current stack frame to access variables")
         };
 
         // TODO: support no frame_id
