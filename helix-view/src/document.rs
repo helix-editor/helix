@@ -698,7 +698,7 @@ impl Document {
         config: Arc<dyn DynAccess<Config>>,
     ) -> Result<Self, Error> {
         // if the path is not a regular file (e.g.: /dev/random) it should not be opened
-        if !path.is_file() && !path.is_symlink() {
+        if path.exists() && !path.is_file() && !path.is_symlink() {
             return Err(anyhow::anyhow!(IrregularFileError {
                 msg: format!("Path argument must be a regular file, a directory, or a symlink.")
             }));
