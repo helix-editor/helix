@@ -598,14 +598,9 @@ fn query_indents<'a>(
         for (node_id, mut capture) in added_indent_captures {
             // Set the anchor for all align queries.
             if let IndentCaptureType::Align(_) = capture.capture_type {
-                let anchor = match anchor {
-                    None => {
-                        log::error!(
-                            "Invalid indent query: @align requires an accompanying @anchor."
-                        );
-                        continue;
-                    }
-                    Some(anchor) => anchor,
+                let Some(anchor) = anchor else {
+                    log::error!("Invalid indent query: @align requires an accompanying @anchor.");
+                    continue;
                 };
                 capture.capture_type = IndentCaptureType::Align(
                     text.line(anchor.start_position().row)
@@ -943,11 +938,8 @@ pub fn indent_for_newline(
                 let mut num_attempts = 0;
                 for line_idx in (0..=line_before).rev() {
                     let line = text.line(line_idx);
-                    let first_non_whitespace_char = match line.first_non_whitespace_char() {
-                        Some(i) => i,
-                        None => {
-                            continue;
-                        }
+                    let Some(first_non_whitespace_char) = line.first_non_whitespace_char() else {
+                        continue;
                     };
                     if let Some(indent) = (|| {
                         let computed_indent = treesitter_indent_for_pos(
@@ -988,13 +980,12 @@ pub fn get_scopes(syntax: Option<&Syntax>, text: RopeSlice, pos: usize) -> Vec<&
     let mut scopes = Vec::new();
     if let Some(syntax) = syntax {
         let pos = text.char_to_byte(pos);
-        let mut node = match syntax
+        let Some(mut node) = syntax
             .tree()
             .root_node()
             .descendant_for_byte_range(pos, pos)
-        {
-            Some(node) => node,
-            None => return scopes,
+        else {
+            return scopes;
         };
 
         scopes.push(node.kind());

@@ -251,31 +251,28 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
         }
     };
 
-    let lang = match syn_loader_conf
+    let Some(lang) = syn_loader_conf
         .language
         .iter()
         .find(|l| l.language_id == lang_str)
-    {
-        Some(l) => l,
-        None => {
-            let msg = format!("Language '{}' not found", lang_str);
-            writeln!(stdout, "{}", msg.red())?;
-            let suggestions: Vec<&str> = syn_loader_conf
-                .language
-                .iter()
-                .filter(|l| l.language_id.starts_with(lang_str.chars().next().unwrap()))
-                .map(|l| l.language_id.as_str())
-                .collect();
-            if !suggestions.is_empty() {
-                let suggestions = suggestions.join(", ");
-                writeln!(
-                    stdout,
-                    "Did you mean one of these: {} ?",
-                    suggestions.yellow()
-                )?;
-            }
-            return Ok(());
+    else {
+        let msg = format!("Language '{}' not found", lang_str);
+        writeln!(stdout, "{}", msg.red())?;
+        let suggestions: Vec<&str> = syn_loader_conf
+            .language
+            .iter()
+            .filter(|l| l.language_id.starts_with(lang_str.chars().next().unwrap()))
+            .map(|l| l.language_id.as_str())
+            .collect();
+        if !suggestions.is_empty() {
+            let suggestions = suggestions.join(", ");
+            writeln!(
+                stdout,
+                "Did you mean one of these: {} ?",
+                suggestions.yellow()
+            )?;
         }
+        return Ok(());
     };
 
     probe_protocols(

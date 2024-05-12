@@ -436,9 +436,8 @@ impl Component for Completion {
         self.popup.render(area, surface, cx);
 
         // if we have a selection, render a markdown popup on top/below with info
-        let option = match self.popup.contents_mut().selection_mut() {
-            Some(option) => option,
-            None => return,
+        let Some(option) = self.popup.contents_mut().selection_mut() else {
+            return;
         };
         if !option.resolved {
             self.resolve_handler.ensure_item_resolved(cx.editor, option);
