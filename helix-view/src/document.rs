@@ -700,7 +700,7 @@ impl Document {
         // if the path is not a regular file (e.g.: /dev/random) it should not be opened
         if path.exists() && !path.is_file() && !path.is_symlink() {
             return Err(anyhow::anyhow!(IrregularFileError {
-                msg: format!("Path argument must be a regular file, a directory, or a symlink.")
+                msg: "Path argument must be a regular file, a directory, or a symlink.".to_string()
             }));
         }
 
