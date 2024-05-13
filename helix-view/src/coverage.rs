@@ -5,10 +5,12 @@ use std::fs::File;
 use std::io::BufReader;
 use std::time::SystemTime;
 
+#[derive(Debug)]
 pub struct Coverage {
     pub files: HashMap<std::path::PathBuf, FileCoverage>,
 }
 
+#[derive(Debug)]
 pub struct FileCoverage {
     pub lines: HashMap<u32, bool>,
     pub modified_time: Option<SystemTime>,
@@ -73,43 +75,39 @@ struct Line {
     hits: u32,
 }
 
-pub fn parse(path: &std::path::PathBuf) -> Option<Coverage> {
+pub fn get_coverage(document_path: &std::path::PathBuf) -> Option<FileCoverage> {
+    let coverage_path = std::env::var("HELIX_COVERAGE_FILE").ok()?;
+    log::debug!("coverage file is {}", coverage_path);
+    let coverage = read_cobertura_coverage(&std::path::PathBuf::from(coverage_path))?;
+    log::debug!("coverage is valid");
+
+    log::debug!("document path: {:?}", document_path);
+
+    let file_coverage = coverage.files.get(document_path)?;
+
+    let coverage_time = file_coverage.modified_time?;
+    let document_metadata = document_path.metadata().ok()?;
+    let document_time = document_metadata.modified().ok()?;
+
+    if document_time < coverage_time {
+        log::debug!("file coverage contains {} lines", file_coverage.lines.len());
+        return Some(FileCoverage {
+            lines: file_coverage.lines.clone(),
+            modified_time: file_coverage.modified_time,
+        });
+    } else {
+        log::debug!("document is newer than coverage file, will not return coverage");
+        return None;
+    }
+}
+
+fn read_cobertura_coverage(path: &std::path::PathBuf) -> Option<Coverage> {
     let file = File::open(path).ok()?;
     let metadata = file.metadata().ok()?;
     let reader = BufReader::new(file);
     let mut tmp: RawCoverage = from_reader(reader).ok()?;
     tmp.modified_time = metadata.modified().ok();
     Some(tmp.into())
-}
-
-pub fn get_coverage(document_path: &std::path::PathBuf) -> Option<FileCoverage> {
-    let coverage_path = std::env::var("HELIX_COVERAGE_FILE").ok()?;
-    log::debug!("coverage file is {}", coverage_path);
-    let cov = parse(&std::path::PathBuf::from(coverage_path))?;
-    log::debug!("coverage is valid");
-    log::debug!("full document path: {:?}", document_path);
-    let cwd = std::env::current_dir().ok()?;
-    let tmp = document_path.strip_prefix(cwd).ok()?;
-    let relative_path: std::path::PathBuf = tmp.into();
-    log::debug!("relative document path: {:?}", relative_path);
-    let file_coverage = cov.files.get(&relative_path)?;
-    log::debug!(
-        "coverage time: {:?} document time: {:?}",
-        file_coverage.modified_time,
-        relative_path.metadata().map(|meta| meta.modified())
-    );
-    let coverage_time = file_coverage.modified_time?;
-    if relative_path
-        .metadata()
-        .is_ok_and(|meta| meta.modified().is_ok_and(|time| time < coverage_time))
-    {
-        log::debug!("file coverage is {:?}", file_coverage.lines);
-        return Some(FileCoverage {
-            lines: file_coverage.lines.clone(),
-            modified_time: file_coverage.modified_time,
-        });
-    }
-    None
 }
 
 impl From<RawCoverage> for Coverage {
@@ -122,8 +120,11 @@ impl From<RawCoverage> for Coverage {
                     lines.insert(line.number - 1, line.hits > 0);
                 }
                 for source in &coverage.sources.source {
-                    let path: std::path::PathBuf = [&source.name, &class.filename].iter().collect();
-                    if path.exists() {
+                    // it is ambiguous to which source a coverage class might belong
+                    // so check each in the path
+                    let raw_path: std::path::PathBuf =
+                        [&source.name, &class.filename].iter().collect();
+                    if let Ok(path) = std::fs::canonicalize(raw_path) {
                         files.insert(
                             path,
                             FileCoverage {
@@ -145,15 +146,23 @@ mod tests {
     use super::*;
     use quick_xml::de::from_str;
     use std::path::PathBuf;
-    static TEST_STRING: &str = r#"<?xml version="1.0" ?>
+
+    fn test_string(use_relative_paths: bool) -> String {
+        let source_path = if use_relative_paths {
+            PathBuf::from("src")
+        } else {
+            PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("src")
+        };
+        return format!(
+            r#"<?xml version="1.0" ?>
 <coverage version="7.3.0" timestamp="4333222111000">
 	<sources>
-		<source>a_src</source>
+		<source>{}</source>
 	</sources>
 	<packages>
         <package name="a package">
             <classes>
-                <class name="a class" filename="file.ext">
+                <class name="a class" filename="coverage.rs">
                     <lines>
                         <line number="3" hits="1"/>
                         <line number="5" hits="0"/>
@@ -168,36 +177,61 @@ mod tests {
             </classes>
         </package>
     </packages>
-</coverage>"#;
-
-    #[test]
-    fn test_deserialize_raw_coverage_from_string() {
-        let result: RawCoverage = from_str(TEST_STRING).unwrap();
-        println!("result is {:?}", result);
-        assert_eq!(result.version, "7.3.0");
-        assert_eq!(result.sources.source[0].name, "a_src");
-        assert_eq!(result.packages.package[0].name, "a package");
-        let class = &result.packages.package[0].classes.class[0];
-        assert_eq!(class.name, "a class");
-        assert_eq!(class.filename, "file.ext");
-        assert_eq!(class.lines.line[0].number, 3);
-        assert_eq!(class.lines.line[0].hits, 1);
-        assert_eq!(class.lines.line[1].number, 5);
-        assert_eq!(class.lines.line[1].hits, 0);
+</coverage>"#,
+            source_path.to_string_lossy()
+        );
     }
 
     #[test]
-    fn test_convert_raw_coverage_to_coverage() {
-        let tmp: RawCoverage = from_str(TEST_STRING).unwrap();
-        let result: Coverage = tmp.into();
-        assert_eq!(result.files.len(), 2);
-        let first = result.files.get(&PathBuf::from("a_src/file.ext")).unwrap();
-        assert!(first.lines.get(&0).is_none());
-        assert_eq!(first.lines.get(&3), Some(&true));
-        assert_eq!(first.lines.get(&5), Some(&false));
-        let second = result.files.get(&PathBuf::from("a_src/other.ext")).unwrap();
-        assert!(second.lines.get(&3).is_none());
-        assert_eq!(second.lines.get(&1), Some(&false));
-        assert_eq!(second.lines.get(&7), Some(&true));
+    fn test_deserialize_raw_coverage_from_string() {
+        let result: RawCoverage = from_str(&test_string(true)).unwrap();
+        println!("result is {:?}", result);
+        assert_eq!(result.version, "7.3.0");
+        assert_eq!(result.sources.source[0].name, "src");
+        assert_eq!(result.packages.package[0].name, "a package");
+        let first = &result.packages.package[0].classes.class[0];
+        assert_eq!(first.name, "a class");
+        assert_eq!(first.filename, "coverage.rs");
+        assert_eq!(first.lines.line[0].number, 3);
+        assert_eq!(first.lines.line[0].hits, 1);
+        assert_eq!(first.lines.line[1].number, 5);
+        assert_eq!(first.lines.line[1].hits, 0);
+        let second = &result.packages.package[0].classes.class[1];
+        assert_eq!(second.name, "another class");
+        assert_eq!(second.filename, "other.ext");
+        assert_eq!(second.lines.line[0].number, 1);
+        assert_eq!(second.lines.line[0].hits, 0);
+        assert_eq!(second.lines.line[1].number, 7);
+        assert_eq!(second.lines.line[1].hits, 1);
+    }
+
+    #[test]
+    fn test_convert_raw_coverage_to_coverage_with_relative_path() {
+        let tmp: RawCoverage = from_str(&test_string(true)).unwrap();
+        check_coverage(tmp.into());
+    }
+    #[test]
+    fn test_convert_raw_coverage_to_coverage_with_absolute_path() {
+        let tmp: RawCoverage = from_str(&test_string(false)).unwrap();
+        check_coverage(tmp.into());
+    }
+
+    fn check_coverage(result: Coverage) {
+        println!("result is {:?}", result);
+        // only one file should be included, since src/other.ext does not exist
+        assert_eq!(result.files.len(), 1);
+        // coverage will always canonicalize path
+        let first = result
+            .files
+            .get(
+                &PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+                    .join("src")
+                    .join("coverage.rs"),
+            )
+            .unwrap();
+        println!("cov {:?}", first);
+        assert_eq!(first.lines.len(), 2);
+        assert_eq!(first.lines.get(&2), Some(&true));
+        assert_eq!(first.lines.get(&4), Some(&false));
     }
 }
