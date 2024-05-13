@@ -956,6 +956,7 @@ shebangs = ["sh", "bash", "dash", "zsh"]
 comment-token = "#"
 language-servers = [ "bash-language-server" ]
 indent = { tab-width = 2, unit = "  " }
+auto-format = true
 
 [[grammar]]
 name = "bash"
