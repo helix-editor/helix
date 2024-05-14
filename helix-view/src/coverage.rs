@@ -75,6 +75,11 @@ struct Line {
     hits: u32,
 }
 
+/// Get coverage information for a document from the configured coverage file.
+///
+/// The coverage file is set by environment variable HELIX_COVERAGE_FILE. This
+/// function will return None if the coverage file is not found, invalid, does
+/// not contain the document, or if it is out of date compared to the document.
 pub fn get_coverage(document_path: &std::path::PathBuf) -> Option<FileCoverage> {
     let coverage_path = std::env::var("HELIX_COVERAGE_FILE").ok()?;
     log::debug!("coverage file is {}", coverage_path);
