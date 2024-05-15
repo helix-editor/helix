@@ -532,6 +532,7 @@ impl MappableCommand {
         command_palette, "Open command palette",
         goto_word, "Jump to a two-character label",
         extend_to_word, "Extend to a two-character label",
+        add_selection_on_word, "Add a selction on a two-character label",
     );
 }
 
@@ -6022,6 +6023,19 @@ fn goto_word(cx: &mut Context) {
     prompt_for_label(cx, ranges, |cx, range| {
         let (view, doc) = current!(cx.editor);
         doc.set_selection(view.id, range.with_direction(Direction::Forward).into());
+    })
+}
+
+fn add_selection_on_word(cx: &mut Context) {
+    let ranges = generate_viewport_token_ranges(cx);
+    prompt_for_label(cx, ranges, |cx, range| {
+        let (view, doc) = current!(cx.editor);
+        let selection: Selection = {
+            let selection = doc.selection(view.id).clone();
+            let direction = selection.primary().direction();
+            selection.push(range.with_direction(direction))
+        };
+        doc.set_selection(view.id, selection);
     })
 }
 
