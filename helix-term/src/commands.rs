@@ -6018,17 +6018,89 @@ fn replay_macro(cx: &mut Context) {
 }
 
 fn goto_word(cx: &mut Context) {
-    jump_to_word(cx, Movement::Move)
+    let ranges = generate_viewport_token_ranges(cx);
+    prompt_for_label(cx, ranges, |cx, range| {
+        let (view, doc) = current!(cx.editor);
+        doc.set_selection(view.id, range.with_direction(Direction::Forward).into());
+    })
 }
 
 fn extend_to_word(cx: &mut Context) {
-    jump_to_word(cx, Movement::Extend)
+    let ranges = generate_viewport_token_ranges(cx);
+    prompt_for_label(cx, ranges, |cx, range| {
+        let (view, doc) = current!(cx.editor);
+        let primary_selection = doc.selection(view.id).primary();
+        let anchor = if range.anchor < range.head {
+            let from = primary_selection.from();
+            if range.anchor < from {
+                range.anchor
+            } else {
+                from
+            }
+        } else {
+            let to = primary_selection.to();
+            if range.anchor > to {
+                range.anchor
+            } else {
+                to
+            }
+        };
+        let range = Range::new(anchor, range.head);
+        doc.set_selection(view.id, range.into());
+    })
 }
 
-fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
+/// Displays 2-character labels on the ranges provided, and runs the given
+/// callback when the user types one of labels.
+fn prompt_for_label(
+    cx: &mut Context,
+    label_ranges: Vec<Range>,
+    on_label_typed_callback: impl FnOnce(&mut Context, Range) + 'static,
+) {
+    display_labels(cx, &label_ranges);
+
+    let (view, doc) = current!(cx.editor);
+
+    // Accept two characters matching a visible label. Jump to the candidate
+    // for that label if it exists.
+    let view = view.id;
+    let doc = doc.id();
+    cx.on_next_key(move |cx, event| {
+        let alphabet = &cx.editor.config().jump_label_alphabet;
+        let Some(i) = event
+            .char()
+            .and_then(|ch| alphabet.iter().position(|&it| it == ch))
+        else {
+            doc_mut!(cx.editor, &doc).remove_jump_labels(view);
+            return;
+        };
+        let outer = i * alphabet.len();
+        // Bail if the given character cannot be a jump label.
+        if outer > label_ranges.len() {
+            doc_mut!(cx.editor, &doc).remove_jump_labels(view);
+            return;
+        }
+        cx.on_next_key(move |cx, event| {
+            doc_mut!(cx.editor, &doc).remove_jump_labels(view);
+            let alphabet = &cx.editor.config().jump_label_alphabet;
+            let Some(inner) = event
+                .char()
+                .and_then(|ch| alphabet.iter().position(|&it| it == ch))
+            else {
+                return;
+            };
+            if let Some(range) = label_ranges.get(outer + inner).copied() {
+                on_label_typed_callback(cx, range);
+            }
+        });
+    });
+}
+
+/// Displays 2-letter labels on the ranges provided.
+fn display_labels(cx: &mut Context, label_ranges: &[Range]) {
     let doc = doc!(cx.editor);
     let alphabet = &cx.editor.config().jump_label_alphabet;
-    if labels.is_empty() {
+    if label_ranges.is_empty() {
         return;
     }
     let alphabet_char = |i| {
@@ -6039,7 +6111,7 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
 
     // Add label for each jump candidate to the View as virtual text.
     let text = doc.text().slice(..);
-    let mut overlays: Vec<_> = labels
+    let mut overlays: Vec<_> = label_ranges
         .iter()
         .enumerate()
         .flat_map(|(i, range)| {
@@ -6055,64 +6127,9 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
     overlays.sort_unstable_by_key(|overlay| overlay.char_idx);
     let (view, doc) = current!(cx.editor);
     doc.set_jump_labels(view.id, overlays);
-
-    // Accept two characters matching a visible label. Jump to the candidate
-    // for that label if it exists.
-    let primary_selection = doc.selection(view.id).primary();
-    let view = view.id;
-    let doc = doc.id();
-    cx.on_next_key(move |cx, event| {
-        let alphabet = &cx.editor.config().jump_label_alphabet;
-        let Some(i) = event
-            .char()
-            .and_then(|ch| alphabet.iter().position(|&it| it == ch))
-        else {
-            doc_mut!(cx.editor, &doc).remove_jump_labels(view);
-            return;
-        };
-        let outer = i * alphabet.len();
-        // Bail if the given character cannot be a jump label.
-        if outer > labels.len() {
-            doc_mut!(cx.editor, &doc).remove_jump_labels(view);
-            return;
-        }
-        cx.on_next_key(move |cx, event| {
-            doc_mut!(cx.editor, &doc).remove_jump_labels(view);
-            let alphabet = &cx.editor.config().jump_label_alphabet;
-            let Some(inner) = event
-                .char()
-                .and_then(|ch| alphabet.iter().position(|&it| it == ch))
-            else {
-                return;
-            };
-            if let Some(mut range) = labels.get(outer + inner).copied() {
-                range = if behaviour == Movement::Extend {
-                    let anchor = if range.anchor < range.head {
-                        let from = primary_selection.from();
-                        if range.anchor < from {
-                            range.anchor
-                        } else {
-                            from
-                        }
-                    } else {
-                        let to = primary_selection.to();
-                        if range.anchor > to {
-                            range.anchor
-                        } else {
-                            to
-                        }
-                    };
-                    Range::new(anchor, range.head)
-                } else {
-                    range.with_direction(Direction::Forward)
-                };
-                doc_mut!(cx.editor, &doc).set_selection(view, range.into());
-            }
-        });
-    });
 }
 
-fn jump_to_word(cx: &mut Context, behaviour: Movement) {
+fn generate_viewport_token_ranges(cx: &mut Context) -> Vec<Range> {
     // Calculate the jump candidates: ranges for any visible words with two or
     // more characters.
     let alphabet = &cx.editor.config().jump_label_alphabet;
@@ -6199,5 +6216,5 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
             break;
         }
     }
-    jump_to_label(cx, words, behaviour)
+    words
 }
