@@ -55,6 +55,7 @@ markdown-oxide = { command = "markdown-oxide" }
 marksman = { command = "marksman", args = ["server"] }
 metals = { command = "metals", config = { "isHttpEnabled" = true, metals = { inlayHints = { typeParameters = {enable = true} , hintsInPatternMatch = {enable = true} }  } } }
 mint = { command = "mint", args = ["ls"] }
+mojo-lsp = { command = "mojo-lsp-server" }
 nil = { command = "nil" }
 nimlangserver = { command = "nimlangserver" }
 nimlsp = { command = "nimlsp" }
@@ -371,6 +372,22 @@ comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "mint" ]
 indent = { tab-width = 2, unit = "  " }
+
+[[language]]
+name = "mojo"
+scope = "source.mojo"
+roots = ["__init__.mojo"]
+injection-regex = "mojo"
+file-types = ["mojo", "🔥"]
+language-servers = [ "mojo-lsp" ]
+comment-token = "#"
+indent = { tab-width = 4, unit = "    " }
+auto-format = true
+formatter = { command = "mojo", args = ["format", "-q", "-"]}
+
+[[grammar]]
+name = "mojo"
+source = { git = "https://github.com/lsh/tree-sitter-mojo", rev = "3d7c53b8038f9ebbb57cd2e61296180aa5c1cf64" }
 
 [[language]]
 name = "janet"
