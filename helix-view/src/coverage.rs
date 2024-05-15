@@ -4,6 +4,7 @@ use std::collections::HashMap;
 use std::fs::File;
 use std::io::BufReader;
 use std::time::SystemTime;
+use walkdir;
 
 #[derive(Debug)]
 pub struct Coverage {
@@ -81,9 +82,9 @@ struct Line {
 /// function will return None if the coverage file is not found, invalid, does
 /// not contain the document, or if it is out of date compared to the document.
 pub fn get_coverage(document_path: &std::path::PathBuf) -> Option<FileCoverage> {
-    let coverage_path = std::env::var("HELIX_COVERAGE_FILE").ok()?;
-    log::debug!("coverage file is {}", coverage_path);
-    let coverage = read_cobertura_coverage(&std::path::PathBuf::from(coverage_path))?;
+    let coverage_path = find_coverage_file()?;
+    log::debug!("coverage file is {:?}", coverage_path);
+    let coverage = read_cobertura_coverage(&coverage_path)?;
     log::debug!("coverage is valid");
 
     log::debug!("document path: {:?}", document_path);
@@ -104,6 +105,21 @@ pub fn get_coverage(document_path: &std::path::PathBuf) -> Option<FileCoverage> 
         log::debug!("document is newer than coverage file, will not return coverage");
         return None;
     }
+}
+
+fn find_coverage_file() -> Option<std::path::PathBuf> {
+    if let Some(coverage_path) = std::env::var("HELIX_COVERAGE_FILE").ok() {
+        return Some(std::path::PathBuf::from(coverage_path));
+    }
+    for entry in walkdir::WalkDir::new(".")
+        .into_iter()
+        .filter_map(|e| e.ok())
+    {
+        if entry.file_name() == "coverage.xml" || entry.file_name() == "cobertura.xml" {
+            return Some(entry.path().to_path_buf());
+        }
+    }
+    return None;
 }
 
 fn read_cobertura_coverage(path: &std::path::PathBuf) -> Option<Coverage> {
