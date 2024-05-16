@@ -215,9 +215,11 @@
 [
   "and"
   "or"
+  "not in"
   "in"
   "not"
   "del"
+  "is not"
   "is"
 ] @keyword.operator
 

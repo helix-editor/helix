@@ -139,7 +139,7 @@ impl Handler {
                         registration_id
                     );
 
-                    let entry = state.entry(client_id).or_insert_with(ClientState::default);
+                    let entry = state.entry(client_id).or_default();
                     entry.client = client;
 
                     let mut builder = GlobSetBuilder::new();

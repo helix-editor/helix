@@ -111,7 +111,9 @@ impl AsyncHook for ResolveTimeout {
     }
 
     fn finish_debounce(&mut self) {
-        let Some(request) = self.next_request.take() else { return };
+        let Some(request) = self.next_request.take() else {
+            return;
+        };
         let (tx, rx) = helix_event::cancelation();
         self.in_flight = Some((tx, request.item.clone()));
         tokio::spawn(request.execute(rx));

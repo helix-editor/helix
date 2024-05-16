@@ -724,7 +724,7 @@ impl Application {
                     }
                     Notification::PublishDiagnostics(mut params) => {
                         let path = match params.uri.to_file_path() {
-                            Ok(path) => helix_stdx::path::normalize(&path),
+                            Ok(path) => helix_stdx::path::normalize(path),
                             Err(_) => {
                                 log::error!("Unsupported file URI: {}", params.uri);
                                 return;

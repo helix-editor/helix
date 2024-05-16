@@ -740,7 +740,7 @@ fn init_indent_query<'a, 'b>(
 
         crate::syntax::PARSER.with(|ts_parser| {
             let mut ts_parser = ts_parser.borrow_mut();
-            let mut cursor = ts_parser.cursors.pop().unwrap_or_else(QueryCursor::new);
+            let mut cursor = ts_parser.cursors.pop().unwrap_or_default();
             let query_result = query_indents(
                 query,
                 syntax,
