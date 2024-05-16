@@ -126,7 +126,7 @@
 ; Keywords
 (attribute name: (atom) @keyword)
 
-["case" "fun" "if" "of" "when" "end" "receive" "try" "catch" "after" "begin" "maybe"] @keyword
+["case" "fun" "if" "of" "when" "end" "receive" "try" "catch" "after" "begin" "maybe" "else"] @keyword
 
 ; Operators
 (binary_operator
