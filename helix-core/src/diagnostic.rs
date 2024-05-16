@@ -1,6 +1,7 @@
 //! LSP diagnostic utility types.
 use std::fmt;
 
+pub use helix_stdx::range::Range;
 use serde::{Deserialize, Serialize};
 
 /// Describes the severity level of a [`Diagnostic`].
@@ -16,13 +17,6 @@ impl Default for Severity {
     fn default() -> Self {
         Self::Hint
     }
-}
-
-/// A range of `char`s within the text.
-#[derive(Debug, Clone, Copy, PartialOrd, Ord, PartialEq, Eq)]
-pub struct Range {
-    pub start: usize,
-    pub end: usize,
 }
 
 #[derive(Debug, Eq, Hash, PartialEq, Clone, Deserialize, Serialize)]

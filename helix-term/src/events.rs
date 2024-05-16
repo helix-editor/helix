@@ -1,6 +1,6 @@
 use helix_event::{events, register_event};
 use helix_view::document::Mode;
-use helix_view::events::{DocumentDidChange, SelectionDidChange};
+use helix_view::events::{DocumentDidChange, DocumentFocusLost, SelectionDidChange};
 
 use crate::commands;
 use crate::keymap::MappableCommand;
@@ -16,5 +16,6 @@ pub fn register() {
     register_event::<PostInsertChar>();
     register_event::<PostCommand>();
     register_event::<DocumentDidChange>();
+    register_event::<DocumentFocusLost>();
     register_event::<SelectionDidChange>();
 }
