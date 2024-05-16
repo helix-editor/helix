@@ -87,13 +87,13 @@ fn find_pair(
                 (as_char(doc, &open), as_char(doc, &close))
             {
                 if PAIRS.contains(&(open, close)) {
-                    if start_pos == pos_ {
+                    if end_pos == pos_ {
                         return Some(start_pos);
                     }
 
                     // We return the end char if the cursor is either on the start char
                     // or at some arbitrary position between start and end char.
-                    if traverse_parents || end_pos == pos_ {
+                    if traverse_parents || start_pos == pos_ {
                         return Some(end_pos);
                     }
                 }
