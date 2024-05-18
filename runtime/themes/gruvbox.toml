@@ -74,9 +74,6 @@
 "operator" = { fg = "orange1" }
 
 "punctuation" = { fg = "orange1" }
-"punctuation.bracket" = { fg = "orange1" }
-"punctuation.delimiter" = { fg = "orange1" }
-"punctuation.special" = { fg = "orange1" }
 
 "special" = { fg = "purple0" }
 
