@@ -24,15 +24,15 @@
 "diagnostic" = { underline = { color = "orange1", style = "curl" } }
 "diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 "diagnostic.error" = { underline = { color = "red1", style = "curl" } }
-"diagnostic.hint" = { underline = { color = "aqua1", style = "curl" } }
-"diagnostic.info" = { underline = { color = "yellow1", style = "curl" } }
-"diagnostic.unnecessary" = { modifiers = ["dim"] }
-"diagnostic.warning" = { underline = { color = "orange1", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "blue1", style = "curl" } }
+"diagnostic.info" = { underline = { color = "aqua1", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "yellow1", style = "curl" } }
+# "diagnostic.unnecessary" = { modifiers = ["dim"] }  # do not remove this for future resolving
 
 "error" = { fg = "red1" }
-"hint" = { fg = "aqua1" }
-"info" = { fg = "yellow1" }
-"warning" = { fg = "orange1" }
+"hint" = { fg = "blue1" }
+"info" = { fg = "aqua1" }
+"warning" = { fg = "yellow1" }
 
 "diff.delta" = { fg = "orange1" }
 "diff.minus" = { fg = "red1" }
