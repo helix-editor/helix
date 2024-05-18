@@ -71,7 +71,7 @@
 
 "namespace" = { fg = "fg1" }
 
-"operator" = { fg = "orange1" }
+"operator" = { fg = "purple1" }
 
 "punctuation" = { fg = "orange1" }
 
