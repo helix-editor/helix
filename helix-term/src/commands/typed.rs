@@ -362,6 +362,8 @@ fn write_impl(
         cx.editor.save(id, path, force)?;
     }
 
+    cx.block_try_flush_writes()?;
+
     Ok(())
 }
 
@@ -623,7 +625,6 @@ fn write_quit(
     }
 
     write_impl(cx, args.first(), false)?;
-    cx.block_try_flush_writes()?;
     quit(cx, &[], event)
 }
 
@@ -637,7 +638,6 @@ fn force_write_quit(
     }
 
     write_impl(cx, args.first(), true)?;
-    cx.block_try_flush_writes()?;
     force_quit(cx, &[], event)
 }
 
@@ -729,6 +729,8 @@ pub fn write_all_impl(
     if !errors.is_empty() && !force {
         bail!("{:?}", errors);
     }
+
+    cx.block_try_flush_writes()?;
 
     Ok(())
 }
