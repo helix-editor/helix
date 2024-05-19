@@ -7,12 +7,12 @@
 ; Remaining identifiers that start with capital letters should be types (PascalCase)
 (
   (identifier) @type
-  (match? @type "^[A-Z]"))
+  (#match? @type "^[A-Z]"))
 
 ; SCREAMING_SNAKE_CASE
 (
   (identifier) @constant
-  (match? @constant "^[A-Z][A-Z0-9_]*$"))
+  (#match? @constant "^[A-Z][A-Z0-9_]*$"))
 
 (const_statement
   (assignment
