@@ -219,13 +219,18 @@ impl View {
         let text_fmt = doc.text_format(viewport.width, None);
         let annotations = self.text_annotations(doc, None);
 
-        // - 1 so we have at least one gap in the middle.
-        // a height of 6 with padding of 3 on each side will keep shifting the view back and forth
-        // as we type
-        let scrolloff = if CENTERING {
-            0
-        } else {
-            scrolloff.min(viewport.height.saturating_sub(1) as usize / 2)
+        let (scrolloff_top, scrolloff_bot) = {
+            let max_scrolloff = (viewport.height / 2).into();
+
+            if CENTERING {
+                (0, 0)
+            } else if scrolloff < max_scrolloff {
+                (scrolloff, scrolloff)
+            } else if (viewport.height % 2) == 1 {
+                (max_scrolloff, max_scrolloff)
+            } else {
+                (max_scrolloff.saturating_sub(1), max_scrolloff)
+            }
         };
 
         let cursor = doc.selection(self.id).primary().cursor(doc_text);
@@ -240,14 +245,14 @@ impl View {
         );
 
         let (new_anchor, at_top) = match off {
-            Ok((visual_pos, _)) if visual_pos.row < scrolloff + offset.vertical_offset => {
+            Ok((visual_pos, _)) if visual_pos.row < scrolloff_top + offset.vertical_offset => {
                 if CENTERING {
                     // cursor out of view
                     return None;
                 }
                 (true, true)
             }
-            Ok((visual_pos, _)) if visual_pos.row + scrolloff >= vertical_viewport_end => {
+            Ok((visual_pos, _)) if visual_pos.row + scrolloff_bot >= vertical_viewport_end => {
                 (true, false)
             }
             Ok((_, _)) => (false, false),
@@ -258,9 +263,9 @@ impl View {
 
         if new_anchor {
             let v_off = if at_top {
-                scrolloff as isize
+                scrolloff_top as isize
             } else {
-                viewport.height as isize - scrolloff as isize - 1
+                viewport.height as isize - scrolloff_bot as isize - 1
             };
             (offset.anchor, offset.vertical_offset) =
                 char_idx_at_visual_offset(doc_text, cursor, -v_off, 0, &text_fmt, &annotations);
@@ -283,6 +288,7 @@ impl View {
                 .0
                 .col;
 
+            let scrolloff = scrolloff_top;
             let last_col = offset.horizontal_offset + viewport.width.saturating_sub(1) as usize;
             if col > last_col.saturating_sub(scrolloff) {
                 // scroll right
