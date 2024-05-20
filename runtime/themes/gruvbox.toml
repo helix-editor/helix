@@ -6,17 +6,11 @@
 "attribute" = { fg = "aqua1", modifiers = ["italic"] }
 
 "comment" = { fg = "gray", modifiers = ["italic"] }
-"comment.block" = { fg = "gray", modifiers = ["italic"] }
-"comment.block.documentation" = { fg = "gray", modifiers = ["italic"] }
-"comment.line" = { fg = "gray", modifiers = ["italic"] }
 
 "constant" = { fg = "purple1" }
-"constant.builtin" = { fg = "purple1" }
-"constant.builtin.boolean" = { fg = "purple1" }
 "constant.character" = { fg = "aqua1" }
 "constant.character.escape" = { fg = "orange1" }
 "constant.macro" = { fg = "aqua1" }
-"constant.numeric" = { fg = "purple1" }
 "constructor" = { fg = "purple1" }
 
 "definition" = { underline = { color = "aqua1" } }
@@ -40,22 +34,10 @@
 
 "function" = { fg = "green1" }
 "function.builtin" = { fg = "yellow1" }
-"function.call" = { fg = "green1" }
 "function.macro" = { fg = "blue1" }
-"function.method" = { fg = "green1" }
 
 "keyword" = { fg = "red1" }
-"keyword.control.conditional" = { fg = "red1" }
-"keyword.control.exception" = { fg = "red1" }
 "keyword.control.import" = { fg = "aqua1" }
-"keyword.control.repeat" = { fg = "red1" }
-"keyword.control.return" = { fg = "red1" }
-"keyword.directive" = { fg = "red1" }
-"keyword.function" = { fg = "red1" }
-"keyword.operator" = { fg = "red1" }
-"keyword.storage" = { fg = "red1" }
-"keyword.storage.modifier" = { fg = "red1" }
-"keyword.storage.type" = { fg = "red1" }
 
 "label" = { fg = "red1" }
 
@@ -87,8 +69,7 @@
 "tag.delimiter" = { fg = "foreground" }
 
 "type" = { fg = "yellow1" }
-"type.builtin" = { fg = "yellow1" }
-"type.enum.variant" = { fg = "yellow1", modifiers = ["italic"] }
+"type.enum.variant" = { modifiers = ["italic"] }
 
 "ui.background" = { bg = "bg0" }
 "ui.bufferline" = { fg = "fg1", bg = "bg1" }
@@ -125,7 +106,6 @@
 "ui.statusline.select" = { fg = "bg1", bg = "orange1", modifiers = ["bold"] }
 
 "ui.text" = { fg = "fg1" }
-"ui.text.focus" = { fg = "fg1" }
 "ui.virtual.inlay-hint" = { fg = "gray" }
 "ui.virtual.jump-label" = { fg = "purple0", modifiers = ["bold"] }
 "ui.virtual.ruler" = { bg = "bg1" }
@@ -135,7 +115,6 @@
 
 "variable" = { fg = "fg1" }
 "variable.builtin" = { fg = "orange1", modifiers = ["italic"] }
-"variable.other" = { fg = "fg1" }
 "variable.other.member" = { fg = "blue1" }
 "variable.parameter" = { fg = "blue1", modifiers = ["italic"] }
 
