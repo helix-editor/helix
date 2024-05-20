@@ -28,7 +28,7 @@
 "info" = { fg = "aqua1" }
 "warning" = { fg = "yellow1" }
 
-"diff.delta" = { fg = "orange1" }
+"diff.delta" = { fg = "yellow1" }
 "diff.minus" = { fg = "red1" }
 "diff.plus" = { fg = "green1" }
 
