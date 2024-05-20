@@ -142,6 +142,18 @@ impl<'a> Context<'a> {
     pub fn count(&self) -> usize {
         self.count.map_or(1, |v| v.get())
     }
+
+    /// Waits on all pending jobs, and then tries to flush all pending write
+    /// operations for all documents.
+    pub fn block_try_flush_writes(&mut self) {
+        compositor::Context {
+            editor: self.editor,
+            jobs: self.jobs,
+            scroll: None,
+        }
+        .block_try_flush_writes()
+        .ok();
+    }
 }
 
 #[inline]
@@ -5826,8 +5838,9 @@ fn shell_prompt(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBeha
     );
 }
 
-fn suspend(_cx: &mut Context) {
+fn suspend(cx: &mut Context) {
     #[cfg(not(windows))]
+    cx.block_try_flush_writes();
     signal_hook::low_level::raise(signal_hook::consts::signal::SIGTSTP).unwrap();
 }
 
