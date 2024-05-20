@@ -1,6 +1,6 @@
 (package_clause "package" @keyword.control.import)
 
-(package_identifier) @variable
+(package_identifier) @namespace
 
 (import_declaration "import" @keyword.control.import)
 
@@ -25,7 +25,7 @@
   "/"
 ] @operator
 
-(unary_expression "*" @operator.default)
+(unary_expression "*" @operator)
 
 (unary_expression "=~" @operator.regexp)
 
@@ -95,16 +95,24 @@
 
 (interpolation "\\(" @punctuation.bracket (_) ")" @punctuation.bracket) @variable.other.member
 
-(field (label (identifier) @variable.other.member))
+(identifier) @variable
+
+; Types
+(primitive_type) @type.builtin
 
 (
   (identifier) @keyword.storage.type
   (#match? @keyword.storage.type "^#")
 )
 
+[
+  (slice_type)
+  (pointer_type)
+] @type ; In attributes
+
+
+(field (label (identifier) @variable.other.member))
+
 (field (label alias: (identifier) @label))
 
-(let_clause left: (identifier) @label)
-
-
-(attribute (identifier) @tag)
+(attribute (identifier) @attribute)
