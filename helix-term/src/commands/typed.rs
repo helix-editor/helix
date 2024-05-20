@@ -2305,37 +2305,36 @@ fn reset_diff_change(
 
     let diff = handle.load();
     let doc_text = doc.text().slice(..);
-    let line = doc.selection(view.id).primary().cursor_line(doc_text);
-
-    let Some(hunk_idx) = diff.hunk_at(line as u32, true) else {
-        bail!("There is no change at the cursor")
-    };
-    let hunk = diff.nth_hunk(hunk_idx);
     let diff_base = diff.diff_base();
-    let before_start = diff_base.line_to_char(hunk.before.start as usize);
-    let before_end = diff_base.line_to_char(hunk.before.end as usize);
-    let text: Tendril = diff
-        .diff_base()
-        .slice(before_start..before_end)
-        .chunks()
-        .collect();
-    let anchor = doc_text.line_to_char(hunk.after.start as usize);
+    let mut changes = 0;
+
     let transaction = Transaction::change(
         doc.text(),
-        [(
-            anchor,
-            doc_text.line_to_char(hunk.after.end as usize),
-            (!text.is_empty()).then_some(text),
-        )]
-        .into_iter(),
+        diff.hunks_intersecting_line_ranges(doc.selection(view.id).line_ranges(doc_text))
+            .map(|hunk| {
+                changes += 1;
+                let start = diff_base.line_to_char(hunk.before.start as usize);
+                let end = diff_base.line_to_char(hunk.before.end as usize);
+                let text: Tendril = diff_base.slice(start..end).chunks().collect();
+                (
+                    doc_text.line_to_char(hunk.after.start as usize),
+                    doc_text.line_to_char(hunk.after.end as usize),
+                    (!text.is_empty()).then_some(text),
+                )
+            }),
     );
+    if changes == 0 {
+        bail!("There are no changes under any selection");
+    }
+
     drop(diff); // make borrow check happy
     doc.apply(&transaction, view.id);
-    // select inserted text
-    let text_len = before_end - before_start;
-    doc.set_selection(view.id, Selection::single(anchor, anchor + text_len));
     doc.append_changes_to_history(view);
     view.ensure_cursor_in_view(doc, scrolloff);
+    cx.editor.set_status(format!(
+        "Reset {changes} change{}",
+        if changes == 1 { "" } else { "s" }
+    ));
     Ok(())
 }
 
