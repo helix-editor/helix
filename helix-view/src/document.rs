@@ -895,7 +895,15 @@ impl Document {
             }
             let write_path = tokio::fs::read_link(&path)
                 .await
-                .unwrap_or_else(|_| path.clone());
+                .ok()
+                .and_then(|p| {
+                    if p.is_relative() {
+                        path.parent().map(|parent| parent.join(p))
+                    } else {
+                        Some(p)
+                    }
+                })
+                .unwrap_or_else(|| path.clone());
 
             if readonly(&write_path) {
                 bail!(std::io::Error::new(
