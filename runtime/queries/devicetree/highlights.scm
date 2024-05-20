@@ -51,13 +51,13 @@
 
 (integer_literal) @constant.numeric.integer
 
+(identifier) @variable
+
 (call_expression
   function: (identifier) @function)
 
 (labeled_item
   label: (identifier) @label)
-
-(identifier) @variable
 
 (unit_address) @tag
 
