@@ -15,7 +15,7 @@ pub fn current_working_dir() -> PathBuf {
     }
 
     // implementation of crossplatform pwd -L
-    // we want pwd -L so that symlinked directories are handeled correctly
+    // we want pwd -L so that symlinked directories are handled correctly
     let mut cwd = std::env::current_dir().expect("Couldn't determine current working directory");
 
     let pwd = std::env::var_os("PWD");
