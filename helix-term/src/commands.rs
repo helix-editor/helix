@@ -5840,8 +5840,10 @@ fn shell_prompt(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBeha
 
 fn suspend(cx: &mut Context) {
     #[cfg(not(windows))]
-    cx.block_try_flush_writes();
-    signal_hook::low_level::raise(signal_hook::consts::signal::SIGTSTP).unwrap();
+    {
+        cx.block_try_flush_writes();
+        signal_hook::low_level::raise(signal_hook::consts::signal::SIGTSTP).unwrap();
+    }
 }
 
 fn add_newline_above(cx: &mut Context) {
