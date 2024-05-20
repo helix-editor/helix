@@ -532,8 +532,8 @@ impl Component for Completion {
         surface.clear_with(doc_area, background);
 
         if cx.editor.popup_border() {
-            use tui::widgets::{Block, Borders, Widget};
-            Widget::render(Block::default().borders(Borders::ALL), doc_area, surface);
+            use tui::widgets::{Block, Widget};
+            Widget::render(Block::bordered(), doc_area, surface);
         }
 
         markdown_doc.render(doc_area, surface, cx);
