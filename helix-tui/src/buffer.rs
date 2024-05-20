@@ -130,22 +130,21 @@ pub struct Buffer {
 
 impl Buffer {
     /// Returns a Buffer with all cells set to the default one
+    #[must_use]
     pub fn empty(area: Rect) -> Buffer {
-        let cell: Cell = Default::default();
-        Buffer::filled(area, &cell)
+        Buffer::filled(area, &Cell::default())
     }
 
     /// Returns a Buffer with all cells initialized with the attributes of the given Cell
+    #[must_use]
     pub fn filled(area: Rect, cell: &Cell) -> Buffer {
         let size = area.area();
-        let mut content = Vec::with_capacity(size);
-        for _ in 0..size {
-            content.push(cell.clone());
-        }
+        let content = vec![cell.clone(); size];
         Buffer { area, content }
     }
 
     /// Returns a Buffer containing the given lines
+    #[must_use]
     pub fn with_lines<S>(lines: Vec<S>) -> Buffer
     where
         S: AsRef<str>,
