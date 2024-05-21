@@ -1,3 +1,9 @@
+
+(identifier) @variable
+
+((identifier) @constant
+  (#match? @constant "^[A-Z][A-Z\\d_]*$"))
+
 "sizeof" @keyword
 
 [
@@ -109,6 +115,12 @@
 (char_literal) @constant.character
 (escape_sequence) @constant.character.escape
 
+(field_identifier) @variable.other.member
+(statement_identifier) @label
+(type_identifier) @type
+(primitive_type) @type.builtin
+(sized_type_specifier) @type.builtin
+
 (call_expression
   function: (identifier) @function)
 (call_expression
@@ -127,16 +139,5 @@
 
 (attribute
   name: (identifier) @attribute)
-
-(field_identifier) @variable.other.member
-(statement_identifier) @label
-(type_identifier) @type
-(primitive_type) @type.builtin
-(sized_type_specifier) @type.builtin
-
-((identifier) @constant
-  (#match? @constant "^[A-Z][A-Z\\d_]*$"))
-
-(identifier) @variable
 
 (comment) @comment
