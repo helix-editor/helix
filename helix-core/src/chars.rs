@@ -6,6 +6,8 @@ use crate::LineEnding;
 pub enum CharCategory {
     Whitespace,
     Eol,
+    Hiragana,
+    Katakana,
     Word,
     Punctuation,
     Unknown,
@@ -17,6 +19,10 @@ pub fn categorize_char(ch: char) -> CharCategory {
         CharCategory::Eol
     } else if ch.is_whitespace() {
         CharCategory::Whitespace
+    } else if char_is_hiragana(ch) {
+        CharCategory::Hiragana
+    } else if char_is_katakana(ch) {
+        CharCategory::Katakana
     } else if char_is_word(ch) {
         CharCategory::Word
     } else if char_is_punctuation(ch) {
@@ -83,6 +89,16 @@ pub fn char_is_punctuation(ch: char) -> bool {
 #[inline]
 pub fn char_is_word(ch: char) -> bool {
     ch.is_alphanumeric() || ch == '_'
+}
+
+#[inline]
+pub fn char_is_hiragana(ch: char) -> bool {
+    ('\u{3040}'..='\u{309f}').contains(&ch)
+}
+
+#[inline]
+pub fn char_is_katakana(ch: char) -> bool {
+    ('\u{30a0}'..='\u{30ff}').contains(&ch)
 }
 
 #[cfg(test)]
