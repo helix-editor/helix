@@ -11,7 +11,7 @@ use helix_view::{
 };
 use tui::{buffer::Buffer as Surface, text::Span};
 
-use std::{borrow::Cow, collections::HashMap, sync::Arc};
+use std::{borrow::Cow, collections::{HashMap, HashSet}, sync::Arc};
 
 use helix_core::{chars, Change, Transaction};
 use helix_view::{graphics::Rect, Document, Editor};
@@ -439,9 +439,9 @@ impl Completion {
         self.popup.area(viewport, editor)
     }
 
-    pub fn is_incomplete_ids(&self) -> Vec<&LanguageServerId> {
+    pub fn incomplete_ids(&self) -> HashSet<LanguageServerId> {
         self.lsp_cmp_details.iter()
-            .flat_map(|(id, details)| match details {
+            .flat_map(|(&id, details)| match details {
                 CompletionDetails {is_incomplete: true} => Some(id),
                 _ => None
             })

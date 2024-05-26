@@ -175,21 +175,20 @@ fn request_completion(
 
 
 
-    // if compositor
-        // .find::<ui::EditorView>()
-        // .unwrap()
-        // .completion
-        // .is_some()
-        // || editor.mode != Mode::Insert
-        // || editor.mode != Mode::Insert
-    if editor.mode != Mode::Insert
+    let completion = &compositor
+        .find::<ui::EditorView>()
+        .unwrap()
+        .completion;
+    
+    if completion.as_ref().is_some_and(|completion| completion.incomplete_ids().is_empty())
+        || editor.mode != Mode::Insert 
     {
         return;
     }
 
     let text = doc.text();
     let cursor = doc.selection(view.id).primary().cursor(text.slice(..));
-    if trigger.view != view.id || trigger.doc != doc.id() {//|| cursor < trigger.pos {
+    if trigger.view != view.id || trigger.doc != doc.id() || cursor < trigger.pos {
         return;
     }
     // this looks odd... Why are we not using the trigger position from
@@ -203,10 +202,22 @@ fn request_completion(
     trigger.pos = cursor;
     let trigger_text = text.slice(..cursor);
 
+    let ls_filter: Box<dyn Fn(_) -> bool> = match completion {
+        None => Box::from(|_: LanguageServerId| true),
+        Some(completion) => {
+            let is_incomplete_ids = completion.incomplete_ids();
+
+            Box::from(move |ls: LanguageServerId| {
+                is_incomplete_ids.contains(&ls)
+            })
+        }
+    };
+
     let mut seen_language_servers = HashSet::new();
     let mut futures: FuturesUnordered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::Completion)
         .filter(|ls| seen_language_servers.insert(ls.id()))
+        .filter(|ls| ls_filter(ls.id()))
         .map(|ls| {
             let language_server_id = ls.id();
             let offset_encoding = ls.offset_encoding();
@@ -317,9 +328,6 @@ fn show_completion(
 
     let size = compositor.size();
     let ui = compositor.find::<ui::EditorView>().unwrap();
-    // if ui.completion.is_some() {
-    //     return;
-    // }
 
     let completion_area = ui.set_completion(editor, savepoint, items, lsp_cmp_details, trigger.pos, size);
     let signature_help_area = compositor
@@ -403,7 +411,7 @@ fn update_completions(cx: &mut commands::Context, c: Option<char>) {
 
 
             // Handle completions with is_incomplete
-            let ids = completion.is_incomplete_ids();
+            let ids = completion.incomplete_ids();
             if !ids.is_empty() {
 
                 trigger_auto_completion(&cx.editor.handlers.completions, cx.editor, false);
