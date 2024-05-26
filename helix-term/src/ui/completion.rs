@@ -11,7 +11,7 @@ use helix_view::{
 };
 use tui::{buffer::Buffer as Surface, text::Span};
 
-use std::{borrow::Cow, sync::Arc};
+use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
 use helix_core::{chars, Change, Transaction};
 use helix_view::{graphics::Rect, Document, Editor};
@@ -94,6 +94,19 @@ pub struct CompletionItem {
     pub resolved: bool,
 }
 
+#[derive(Debug, PartialEq, Clone)]
+pub struct CompletionDetails {
+    pub is_incomplete: bool
+}
+
+impl Default for CompletionDetails {
+    fn default() -> Self {
+        Self {
+            is_incomplete: false
+        }
+    }
+}
+
 /// Wraps a Menu.
 pub struct Completion {
     popup: Popup<Menu<CompletionItem>>,
@@ -101,6 +114,7 @@ pub struct Completion {
     trigger_offset: usize,
     filter: String,
     resolve_handler: ResolveHandler,
+    lsp_cmp_details: HashMap<LanguageServerId, CompletionDetails>
 }
 
 impl Completion {
@@ -110,6 +124,7 @@ impl Completion {
         editor: &Editor,
         savepoint: Arc<SavePoint>,
         mut items: Vec<CompletionItem>,
+        lsp_cmp_details: HashMap<LanguageServerId, CompletionDetails>,
         trigger_offset: usize,
     ) -> Self {
         let preview_completion_insert = editor.config().preview_completion_insert;
@@ -351,6 +366,8 @@ impl Completion {
         let mut completion = Self {
             popup,
             trigger_offset,
+            lsp_cmp_details,
+
             // TODO: expand nucleo api to allow moving straight to a Utf32String here
             // and avoid allocation during matching
             filter: String::from(fragment),
@@ -420,6 +437,15 @@ impl Completion {
 
     pub fn area(&mut self, viewport: Rect, editor: &Editor) -> Rect {
         self.popup.area(viewport, editor)
+    }
+
+    pub fn is_incomplete_ids(&self) -> Vec<&LanguageServerId> {
+        self.lsp_cmp_details.iter()
+            .flat_map(|(id, details)| match details {
+                CompletionDetails {is_incomplete: true} => Some(id),
+                _ => None
+            })
+            .collect()
     }
 }
 

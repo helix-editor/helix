@@ -1,4 +1,4 @@
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -9,8 +9,9 @@ use helix_core::syntax::LanguageServerFeature;
 use helix_event::{
     cancelable_future, cancelation, register_hook, send_blocking, CancelRx, CancelTx,
 };
-use helix_lsp::lsp;
+use helix_lsp::lsp::{self, CompletionList};
 use helix_lsp::util::pos_to_lsp_pos;
+use helix_lsp::LanguageServerId;
 use helix_stdx::rope::RopeSliceExt;
 use helix_view::document::{Mode, SavePoint};
 use helix_view::handlers::lsp::CompletionEvent;
@@ -27,7 +28,7 @@ use crate::job::{dispatch, dispatch_blocking};
 use crate::keymap::MappableCommand;
 use crate::ui::editor::InsertEvent;
 use crate::ui::lsp::SignatureHelp;
-use crate::ui::{self, CompletionItem, Popup};
+use crate::ui::{self, CompletionDetails, CompletionItem, Popup};
 
 use super::Handlers;
 pub use resolve::ResolveHandler;
@@ -171,19 +172,24 @@ fn request_completion(
 ) {
     let (view, doc) = current!(editor);
 
-    if compositor
-        .find::<ui::EditorView>()
-        .unwrap()
-        .completion
-        .is_some()
-        || editor.mode != Mode::Insert
+
+
+
+    // if compositor
+        // .find::<ui::EditorView>()
+        // .unwrap()
+        // .completion
+        // .is_some()
+        // || editor.mode != Mode::Insert
+        // || editor.mode != Mode::Insert
+    if editor.mode != Mode::Insert
     {
         return;
     }
 
     let text = doc.text();
     let cursor = doc.selection(view.id).primary().cursor(text.slice(..));
-    if trigger.view != view.id || trigger.doc != doc.id() || cursor < trigger.pos {
+    if trigger.view != view.id || trigger.doc != doc.id() {//|| cursor < trigger.pos {
         return;
     }
     // this looks odd... Why are we not using the trigger position from
@@ -241,38 +247,38 @@ fn request_completion(
             async move {
                 let json = completion_response.await?;
                 let response: Option<lsp::CompletionResponse> = serde_json::from_value(json)?;
-                let items = match response {
-                    Some(lsp::CompletionResponse::Array(items)) => items,
-                    // TODO: do something with is_incomplete
-                    Some(lsp::CompletionResponse::List(lsp::CompletionList {
-                        is_incomplete: _is_incomplete,
-                        items,
-                    })) => items,
-                    None => Vec::new(),
-                }
-                .into_iter()
-                .map(|item| CompletionItem {
-                    item,
-                    provider: language_server_id,
-                    resolved: false,
-                })
-                .collect();
-                anyhow::Ok(items)
+                let response = response
+                    .map(|response| match response { // (completion items, (id, is_incomplete)) to be later collected into HashMap
+                        lsp::CompletionResponse::Array(items) => (items, (language_server_id, CompletionDetails::default())),
+                        lsp::CompletionResponse::List(CompletionList { is_incomplete, items }) => (items, (language_server_id, CompletionDetails {is_incomplete}))
+                    })
+                    .map(|(items, comp_type)| (
+                        items.into_iter().map(|item| CompletionItem {item, provider: language_server_id, resolved: false}).collect::<Vec<CompletionItem>>(),
+                        comp_type
+                    ));
+
+                anyhow::Ok(response)
             }
         })
         .collect();
 
     let future = async move {
         let mut items = Vec::new();
-        while let Some(lsp_items) = futures.next().await {
-            match lsp_items {
-                Ok(mut lsp_items) => items.append(&mut lsp_items),
+        let mut cmp_is_incomplete: HashMap<LanguageServerId, CompletionDetails> = HashMap::new();
+
+        while let Some(response) = futures.next().await {
+            match response {
+                Ok(Some((mut lsp_items, lsp_type_pair))) => {
+                    items.append(&mut lsp_items); 
+                    cmp_is_incomplete.insert(lsp_type_pair.0, lsp_type_pair.1);
+                },
                 Err(err) => {
                     log::debug!("completion request failed: {err:?}");
-                }
+                },
+                Ok(None) => (),
             };
         }
-        items
+        (items, cmp_is_incomplete)
     };
 
     let savepoint = doc.savepoint(view);
@@ -280,12 +286,12 @@ fn request_completion(
     let ui = compositor.find::<ui::EditorView>().unwrap();
     ui.last_insert.1.push(InsertEvent::RequestCompletion);
     tokio::spawn(async move {
-        let items = cancelable_future(future, cancel).await.unwrap_or_default();
+        let (items, lsp_cmp_details) = cancelable_future(future, cancel).await.unwrap_or_default();
         if items.is_empty() {
             return;
         }
         dispatch(move |editor, compositor| {
-            show_completion(editor, compositor, items, trigger, savepoint)
+            show_completion(editor, compositor, items, lsp_cmp_details, trigger, savepoint)
         })
         .await
     });
@@ -295,6 +301,7 @@ fn show_completion(
     editor: &mut Editor,
     compositor: &mut Compositor,
     items: Vec<CompletionItem>,
+    lsp_cmp_details: HashMap<LanguageServerId, CompletionDetails>,
     trigger: Trigger,
     savepoint: Arc<SavePoint>,
 ) {
@@ -310,11 +317,11 @@ fn show_completion(
 
     let size = compositor.size();
     let ui = compositor.find::<ui::EditorView>().unwrap();
-    if ui.completion.is_some() {
-        return;
-    }
+    // if ui.completion.is_some() {
+    //     return;
+    // }
 
-    let completion_area = ui.set_completion(editor, savepoint, items, trigger.pos, size);
+    let completion_area = ui.set_completion(editor, savepoint, items, lsp_cmp_details, trigger.pos, size);
     let signature_help_area = compositor
         .find_id::<Popup<SignatureHelp>>(SignatureHelp::ID)
         .map(|signature_help| signature_help.area(size, editor));
@@ -322,6 +329,16 @@ fn show_completion(
     if matches!((completion_area, signature_help_area),(Some(a), Some(b)) if a.intersects(b)) {
         compositor.remove(SignatureHelp::ID);
     }
+}
+
+// TODO: Refactor
+fn trigger_auto_completion_for_id(
+    id: LanguageServerId,
+    tx: &Sender<CompletionEvent>,
+    editor: &Editor,
+    trigger_char_only: bool,
+) {
+
 }
 
 pub fn trigger_auto_completion(
@@ -383,6 +400,17 @@ fn update_completions(cx: &mut commands::Context, c: Option<char>) {
         let editor_view = compositor.find::<ui::EditorView>().unwrap();
         if let Some(completion) = &mut editor_view.completion {
             completion.update_filter(c);
+
+
+            // Handle completions with is_incomplete
+            let ids = completion.is_incomplete_ids();
+            if !ids.is_empty() {
+
+                trigger_auto_completion(&cx.editor.handlers.completions, cx.editor, false);
+
+            }
+            
+
             if completion.is_empty() {
                 editor_view.clear_completion(cx.editor);
                 // clearing completions might mean we want to immediately rerequest them (usually

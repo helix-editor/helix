@@ -19,6 +19,7 @@ use helix_core::{
     unicode::width::UnicodeWidthStr,
     visual_offset_from_block, Change, Position, Range, Selection, Transaction,
 };
+use helix_lsp::LanguageServerId;
 use helix_view::{
     document::{Mode, SavePoint, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
@@ -27,11 +28,11 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc, sync::Arc};
+use std::{collections::HashMap, mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc, sync::Arc};
 
 use tui::{buffer::Buffer as Surface, text::Span};
 
-use super::document::LineDecoration;
+use super::{completion::CompletionDetails, document::LineDecoration};
 use super::{completion::CompletionItem, statusline};
 
 pub struct EditorView {
@@ -1019,10 +1020,11 @@ impl EditorView {
         editor: &mut Editor,
         savepoint: Arc<SavePoint>,
         items: Vec<CompletionItem>,
+        lsp_cmp_details: HashMap<LanguageServerId, CompletionDetails>,
         trigger_offset: usize,
         size: Rect,
     ) -> Option<Rect> {
-        let mut completion = Completion::new(editor, savepoint, items, trigger_offset);
+        let mut completion = Completion::new(editor, savepoint, items, lsp_cmp_details, trigger_offset);
 
         if completion.is_empty() {
             // skip if we got no completion results
