@@ -231,6 +231,10 @@ impl<T: Item> Menu<T> {
     pub fn len(&self) -> usize {
         self.matches.len()
     }
+
+    pub fn items(&self) -> &Vec<T> {
+        &self.options
+    }
 }
 
 impl<T: Item + PartialEq> Menu<T> {

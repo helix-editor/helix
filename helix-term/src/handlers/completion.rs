@@ -298,6 +298,7 @@ fn request_completion(
     ui.last_insert.1.push(InsertEvent::RequestCompletion);
     tokio::spawn(async move {
         let (items, lsp_cmp_details) = cancelable_future(future, cancel).await.unwrap_or_default();
+
         if items.is_empty() {
             return;
         }
@@ -328,8 +329,39 @@ fn show_completion(
 
     let size = compositor.size();
     let ui = compositor.find::<ui::EditorView>().unwrap();
+    
+    // Persist old completions and completion window offset on is_incomplete
+    let completion_area = match &ui.completion {
+        Some(completion) => {
+            let offset = completion.trigger_offset();
 
-    let completion_area = ui.set_completion(editor, savepoint, items, lsp_cmp_details, trigger.pos, size);
+            println!("offset: {offset}");
+
+            let complete_items = completion.complete_items();
+
+            let all_items = complete_items
+                .map(|item| item.clone()) // TODO: Workaround
+                .chain(items.into_iter())
+                .collect::<Vec<_>>();
+
+            // TODO: how to align the new completion menu with the old one? I am trying to set the offset but
+            // it is not working
+            let area = ui.set_completion(editor, savepoint, all_items, lsp_cmp_details, offset, size);
+
+
+            // TODO: do we need to rerank? and Would the completion menu change?
+            // if let Some(completion) = &compositor.find::<ui::EditorView>().unwrap().completion {
+            //     completion.rerank
+            // }
+
+            area
+
+
+
+        },
+        None => ui.set_completion(editor, savepoint, items, lsp_cmp_details, trigger.pos, size)
+    };
+
     let signature_help_area = compositor
         .find_id::<Popup<SignatureHelp>>(SignatureHelp::ID)
         .map(|signature_help| signature_help.area(size, editor));
@@ -337,16 +369,6 @@ fn show_completion(
     if matches!((completion_area, signature_help_area),(Some(a), Some(b)) if a.intersects(b)) {
         compositor.remove(SignatureHelp::ID);
     }
-}
-
-// TODO: Refactor
-fn trigger_auto_completion_for_id(
-    id: LanguageServerId,
-    tx: &Sender<CompletionEvent>,
-    editor: &Editor,
-    trigger_char_only: bool,
-) {
-
 }
 
 pub fn trigger_auto_completion(

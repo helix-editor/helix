@@ -447,6 +447,19 @@ impl Completion {
             })
             .collect()
     }
+
+    pub fn trigger_offset(&self) -> usize {
+        self.trigger_offset
+    }
+
+    pub fn complete_items(&self) -> impl Iterator<Item = &CompletionItem> {
+        let incomplete_ids = self.incomplete_ids();
+
+        self.popup.contents().items()
+            .iter()
+            .filter(move |item| !incomplete_ids.contains(&item.provider))
+
+    }
 }
 
 impl Component for Completion {
