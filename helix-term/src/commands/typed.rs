@@ -1920,7 +1920,7 @@ fn toggle_option(
         }
         Value::String(ref value) => {
             ensure!(
-                args.len() > 2,
+                args.len() > 1,
                 "Bad arguments. For string configurations use: `:toggle key val1 val2 ...`",
             );
 
