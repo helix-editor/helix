@@ -1528,6 +1528,7 @@ dependencies = [
  "helix-vcs",
  "libc",
  "log",
+ "nonempty",
  "once_cell",
  "parking_lot",
  "rustix",
@@ -1907,6 +1908,15 @@ dependencies = [
  "log",
  "wasi",
  "windows-sys 0.48.0",
+]
+
+[[package]]
+name = "nonempty"
+version = "0.10.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "303e8749c804ccd6ca3b428de7fe0d86cb86bc7606bc15291f100fd487960bb8"
+dependencies = [
+ "serde",
 ]
 
 [[package]]
