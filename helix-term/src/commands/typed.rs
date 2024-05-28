@@ -1074,7 +1074,7 @@ fn show_clipboard_provider(
     }
 
     cx.editor
-        .set_status(cx.editor.registers.clipboard_provider_name().to_string());
+        .set_status(cx.editor.registers.clipboard_provider_name());
     Ok(())
 }
 
