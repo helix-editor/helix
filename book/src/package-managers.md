@@ -101,14 +101,14 @@ Download the official Helix AppImage from the [latest releases](https://github.c
 chmod +x helix-*.AppImage # change permission for executable mode
 ./helix-*.AppImage # run helix
 ```
+
 You can optionally [add the `.desktop` file](./building-from-source.md#configure-the-desktop-shortcut), but there's some pre-requisites:
 ```sh
-# please ensure "$d" is in your "$PATH"
-d="$HOME/.local/bin"
-mkdir -p "$d" && \
-mv helix-*.AppImage "$d/hx"
-unset d
+mkdir -p "$HOME/.local/bin" && \
+mv helix-*.AppImage "$HOME/.local/bin/hx"
 ```
+
+`hx` can be anywhere in your `$PATH`, but (by [convention](https://askubuntu.com/a/1408444)) `~/.local/bin` is preferred.
 
 ## macOS
 
