@@ -31,8 +31,8 @@ warning = "#ffbf00"
 display = "#57ff89"
 info = "#dad7d5"
 
-hints = "#3d4332"
-ruler  = "#262722"
+hints = "#313d3c"
+ruler  = "#21221e"
 
 diff_minus = "#ff4000"
 diff_delta = "#0078bd"
