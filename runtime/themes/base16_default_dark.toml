@@ -2,6 +2,8 @@
 
 "ui.background" = { bg = "base00" }
 "ui.virtual.whitespace" = "base03"
+"ui.virtual.jump-label" = { fg = "blue", modifiers = ["bold", "underlined"] }
+"ui.virtual.ruler" = { bg = "base01" }
 "ui.menu" = { fg = "base05", bg = "base01" }
 "ui.menu.selected" = { fg = "base01", bg = "base04" }
 "ui.linenr" = { fg = "base03", bg = "base01" }
@@ -37,6 +39,7 @@
 "markup.list" = "base08"
 "markup.bold" = { fg = "base0A", modifiers = ["bold"] }
 "markup.italic" = { fg = "base0E", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "base09", modifiers = ["underlined"] }
 "markup.link.text" = "base08"
 "markup.quote" = "base0C"

@@ -13,6 +13,8 @@
 "ui.cursor" = { fg = "base04", modifiers = ["reversed"] }
 "ui.cursor.primary" = { fg = "base05", modifiers = ["reversed"] }
 "ui.virtual.whitespace" = "base03"
+"ui.virtual.jump-label" = { fg = "blue", modifiers = ["bold", "underlined"] }
+"ui.virtual.ruler" = { bg = "base01" }
 "ui.text" = "base05"
 "operator" = "base05"
 "ui.text.focus" = "base05"
@@ -37,6 +39,7 @@
 "markup.list" = "base08"
 "markup.bold" = { fg = "base0A", modifiers = ["bold"] }
 "markup.italic" = { fg = "base0E", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "base09", modifiers = ["underlined"] }
 "markup.link.text" = "base08"
 "markup.quote" = "base0C"

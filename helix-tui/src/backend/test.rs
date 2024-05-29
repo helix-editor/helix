@@ -1,6 +1,7 @@
 use crate::{
     backend::Backend,
     buffer::{Buffer, Cell},
+    terminal::Config,
 };
 use helix_core::unicode::width::UnicodeWidthStr;
 use helix_view::graphics::{CursorKind, Rect};
@@ -106,6 +107,22 @@ impl TestBackend {
 }
 
 impl Backend for TestBackend {
+    fn claim(&mut self, _config: Config) -> Result<(), io::Error> {
+        Ok(())
+    }
+
+    fn reconfigure(&mut self, _config: Config) -> Result<(), io::Error> {
+        Ok(())
+    }
+
+    fn restore(&mut self, _config: Config) -> Result<(), io::Error> {
+        Ok(())
+    }
+
+    fn force_restore() -> Result<(), io::Error> {
+        Ok(())
+    }
+
     fn draw<'a, I>(&mut self, content: I) -> Result<(), io::Error>
     where
         I: Iterator<Item = (u16, u16, &'a Cell)>,

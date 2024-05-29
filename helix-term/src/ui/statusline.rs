@@ -1,5 +1,6 @@
 use helix_core::{coords_at_pos, encoding, Position};
 use helix_lsp::lsp::DiagnosticSeverity;
+use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::Rect,
@@ -139,7 +140,13 @@ where
     match element_id {
         helix_view::editor::StatusLineElement::Mode => render_mode,
         helix_view::editor::StatusLineElement::Spinner => render_lsp_spinner,
+        helix_view::editor::StatusLineElement::FileBaseName => render_file_base_name,
         helix_view::editor::StatusLineElement::FileName => render_file_name,
+        helix_view::editor::StatusLineElement::FileAbsolutePath => render_file_absolute_path,
+        helix_view::editor::StatusLineElement::FileModificationIndicator => {
+            render_file_modification_indicator
+        }
+        helix_view::editor::StatusLineElement::ReadOnlyIndicator => render_read_only_indicator,
         helix_view::editor::StatusLineElement::FileEncoding => render_file_encoding,
         helix_view::editor::StatusLineElement::FileLineEnding => render_file_line_ending,
         helix_view::editor::StatusLineElement::FileType => render_file_type,
@@ -154,6 +161,8 @@ where
         helix_view::editor::StatusLineElement::TotalLineNumbers => render_total_line_numbers,
         helix_view::editor::StatusLineElement::Separator => render_separator,
         helix_view::editor::StatusLineElement::Spacer => render_spacer,
+        helix_view::editor::StatusLineElement::VersionControl => render_version_control,
+        helix_view::editor::StatusLineElement::Register => render_register,
     }
 }
 
@@ -191,15 +200,15 @@ where
     );
 }
 
+// TODO think about handling multiple language servers
 fn render_lsp_spinner<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
+    let language_server = context.doc.language_servers().next();
     write(
         context,
-        context
-            .doc
-            .language_server()
+        language_server
             .and_then(|srv| {
                 context
                     .spinners
@@ -260,7 +269,7 @@ where
             .diagnostics
             .values()
             .flatten()
-            .fold((0, 0), |mut counts, diag| {
+            .fold((0, 0), |mut counts, (diag, _)| {
                 match diag.severity {
                     Some(DiagnosticSeverity::WARNING) => counts.0 += 1,
                     Some(DiagnosticSeverity::ERROR) | None => counts.1 += 1,
@@ -270,7 +279,7 @@ where
             });
 
     if warnings > 0 || errors > 0 {
-        write(context, format!(" {} ", "W"), None);
+        write(context, " W ".into(), None);
     }
 
     if warnings > 0 {
@@ -401,7 +410,7 @@ fn render_file_type<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let file_type = context.doc.language_name().unwrap_or("text");
+    let file_type = context.doc.language_name().unwrap_or(DEFAULT_LANGUAGE_NAME);
 
     write(context, format!(" {} ", file_type), None);
 }
@@ -416,11 +425,66 @@ where
             .as_ref()
             .map(|p| p.to_string_lossy())
             .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
-        format!(
-            " {}{} ",
-            path,
-            if context.doc.is_modified() { "[+]" } else { "" }
-        )
+        format!(" {} ", path)
+    };
+
+    write(context, title, None);
+}
+
+fn render_file_absolute_path<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let title = {
+        let path = context.doc.path();
+        let path = path
+            .as_ref()
+            .map(|p| p.to_string_lossy())
+            .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
+        format!(" {} ", path)
+    };
+
+    write(context, title, None);
+}
+
+fn render_file_modification_indicator<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let title = (if context.doc.is_modified() {
+        "[+]"
+    } else {
+        "   "
+    })
+    .to_string();
+
+    write(context, title, None);
+}
+
+fn render_read_only_indicator<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let title = if context.doc.readonly {
+        " [readonly] "
+    } else {
+        ""
+    }
+    .to_string();
+    write(context, title, None);
+}
+
+fn render_file_base_name<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let title = {
+        let rel_path = context.doc.relative_path();
+        let path = rel_path
+            .as_ref()
+            .and_then(|p| p.file_name().map(|s| s.to_string_lossy()))
+            .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
+        format!(" {} ", path)
     };
 
     write(context, title, None);
@@ -444,4 +508,26 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     write(context, String::from(" "), None);
+}
+
+fn render_version_control<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let head = context
+        .doc
+        .version_control_head()
+        .unwrap_or_default()
+        .to_string();
+
+    write(context, head, None);
+}
+
+fn render_register<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    if let Some(reg) = context.editor.selected_register {
+        write(context, format!(" reg={} ", reg), None)
+    }
 }

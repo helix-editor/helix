@@ -1,0 +1,166 @@
+# Cyan Light
+# Adapted from JetBrains' Cyan Light Theme https://plugins.jetbrains.com/plugin/12102-cyan-light-theme 
+# Author: Abderrahmane Tahri Jouti <tj.abderrahmane@gmail.com>
+
+# Original Author : Olga Berdnikova
+# LICENSE : MIT
+# Source: https://github.com/OlyaB/CyanTheme
+
+"attribute" = "blue"
+"type" = "shade07"
+"type.enum.variant" = "purple"
+"constructor" = "shade07"
+
+"constant" = "darker_blue"
+"constant.builtin.boolean" = "blue"
+"constant.character" = "blue"
+"constant.character.escape" = "dark_red"
+"constant.numeric" = "blue"
+
+"string" = "green"
+"string.regexp" = "blue"
+"string.special" = { fg = "dark_red", modifiers = ["underlined"] }
+
+"comment" = "comment_gray"
+
+"variable" = "green_blue"
+"variable.builtin" = { fg = "darker_blue" }
+"variable.parameter" = "purple"
+"variable.other.member" = "purple"
+
+"label" = { fg = "darker_blue", modifiers = ["underlined"] }
+"punctuation" = "shade06"
+
+"keyword" = "darker_blue"
+"keyword.control.exception" = "darker_blue"
+
+"operator" = "shade06"
+
+"function" = "shade07"
+"function.macro" = "yellow"
+"function.builtin" = { fg = "shade07", modifiers = ["italic"] }
+"function.special" = "dark_red"
+"function.method" = "dark_yellow"
+
+"tag" = "darker_blue"
+"special" = "shade06"
+"namespace" = "darker_blue"
+
+"markup.bold" = { fg = "shade06", modifiers = ["bold"] }
+"markup.italic" = { fg = "shade06", modifiers = ["italic"] }
+"markup.strikethrough" = { fg = "shade06", modifiers = ["crossed_out"] }
+"markup.heading" = { fg = "purple" }
+"markup.list" = "darker_blue"
+"markup.list.numbered" = "darker_blue"
+"markup.list.unnumbered" = "darker_blue"
+"markup.link.url" = "shade06"
+"markup.link.text" = { fg = "dark_blue", modifiers = ['underlined'] }
+"markup.link.label" = "dark_blue"
+"markup.quote" = "green"
+"markup.raw" = "green"
+"markup.raw.inline" = "green"
+"markup.raw.block" = "green"
+
+"diff.plus" = "green"
+"diff.plus.gutter" = "gutter_green"
+"diff.minus" = "red"
+"diff.minus.gutter" = "gutter_red"
+"diff.delta" = "blue"
+"diff.delta.gutter" = "gutter_blue"
+
+# ui specific
+"ui.background" = { bg = "shade00" }
+"ui.cursor" = { bg = "shade02" }
+"ui.cursor.primary" = { bg = "cursor_blue" }
+"ui.cursor.match" = { fg = "shade00", bg = "shade04" }
+"ui.cursor.primary.select" = { bg = "light_purple" }
+"ui.cursor.primary.insert" = { bg = "light_green" }
+
+"ui.selection" = { bg = "lighter_blue" }
+"ui.selection.primary" = { bg = "lighter_blue" }
+
+"ui.highlight" = { bg = "faint_blue" }
+"ui.cursorline.primary" = { bg = "faint_blue" }
+
+"ui.linenr" = { fg = "shade03" }
+"ui.linenr.selected" = { fg = "shade04", bg = "faint_blue", modifiers = [
+    "bold",
+] }
+
+"ui.statusline" = { fg = "shade06", bg = "shade02" }
+"ui.statusline.inactive" = { fg = "shade04", bg = "shade01" }
+"ui.statusline.normal" = { fg = "shade00", bg = "blue" }
+"ui.statusline.insert" = { fg = "shade00", bg = "green" }
+"ui.statusline.select" = { fg = "shade00", bg = "purple" }
+
+"ui.popup" = { bg = "shade01", fg = "shade04" }
+"ui.window" = { bg = "shade00", fg = "shade04" }
+"ui.help" = { fg = "shade06", bg = "shade01" }
+"ui.text" = "shade05"
+"ui.text.focus" = { fg = "shade07", bg = "light_blue" }
+
+"ui.virtual" = "shade03"
+"ui.virtual.ruler" = { bg = "shade01" }
+"ui.virtual.inlay-hint" = { fg = "shade03_darker" }
+"ui.virtual.jump-label" = { fg = "shade07", bg = "shade01", modifiers = ["bold" ] }
+
+"ui.menu" = { fg = "shade05", bg = "shade01" }
+"ui.menu.selected" = { fg = "shade07", bg = "light_blue" }
+
+"hint" = "shade04"
+"info" = "light_blue"
+"warning" = "orange"
+"error" = "red"
+
+"diagnostic" = { modifiers = [] }
+"diagnostic.hint" = { underline = { color = "shade04", style = "line" } }
+"diagnostic.info" = { underline = { color = "light_blue", style = "line" } }
+"diagnostic.warning" = { underline = { color = "orange", style = "curl" } }
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+[palette]
+shade00 = "#f2f3f7"
+shade01 = "#dadde8"
+shade02 = "#c1c6d9"
+shade03 = "#a9b0ca"
+shade04 = "#525c85"
+shade05 = "#434b6c"
+shade06 = "#343a54"
+shade07 = "#25293c"
+
+shade03_darker = "#9199bb"
+shade04_lighter = "#616d9d"
+
+background = "#f2f3f7"
+foreground = "#25293c"
+
+comment_gray = "#808080"
+
+gutter_blue = "#C3D6E8"
+faint_blue = "#E8Eef1"
+lighter_blue = "#d0eaff"
+light_blue = "#99ccff"
+cursor_blue = "#80bfff"
+blue = "#0073E6"
+dark_blue = "#185b93"
+darker_blue = "#000080"
+
+purple = "#660E7A"
+light_purple = "#ED9CFF"
+
+gutter_green = "#C9DEC1"
+green = "#00733B"
+light_green = "#5DCE87"
+green_blue = "#458383"
+
+yellow = "#808000"
+dark_yellow = "#7A7A43"
+
+light_orange = "#f9c881"
+orange = "#F49810"
+
+gutter_red = "#EBBCBC"
+red = "#d90016"
+dark_red = "#7F0000"

@@ -7,6 +7,14 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    groups:
+      tree-sitter:
+        patterns:
+          - "tree-sitter*"
+      rust-dependencies:
+        update-types:
+          - "minor"
+          - "patch"
 
   - package-ecosystem: "github-actions"
     directory: "/"

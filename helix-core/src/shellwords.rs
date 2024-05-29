@@ -129,8 +129,9 @@ impl<'a> From<&'a str> for Shellwords<'a> {
                 DquoteEscaped => Dquoted,
             };
 
-            if i >= input.len() - 1 && end == 0 {
-                end = i + 1;
+            let c_len = c.len_utf8();
+            if i == input.len() - c_len && end == 0 {
+                end = i + c_len;
             }
 
             if end > 0 {
@@ -293,14 +294,14 @@ mod test {
     #[test]
     fn test_lists() {
         let input =
-            r#":set statusline.center ["file-type","file-encoding"] '["list", "in", "qoutes"]'"#;
+            r#":set statusline.center ["file-type","file-encoding"] '["list", "in", "quotes"]'"#;
         let shellwords = Shellwords::from(input);
         let result = shellwords.words().to_vec();
         let expected = vec![
             Cow::from(":set"),
             Cow::from("statusline.center"),
             Cow::from(r#"["file-type","file-encoding"]"#),
-            Cow::from(r#"["list", "in", "qoutes"]"#),
+            Cow::from(r#"["list", "in", "quotes"]"#),
         ];
         assert_eq!(expected, result);
     }
@@ -332,5 +333,18 @@ mod test {
     fn test_parts() {
         assert_eq!(Shellwords::from(":o a").parts(), &[":o", "a"]);
         assert_eq!(Shellwords::from(":o a\\ ").parts(), &[":o", "a\\"]);
+    }
+
+    #[test]
+    fn test_multibyte_at_end() {
+        assert_eq!(Shellwords::from("𒀀").parts(), &["𒀀"]);
+        assert_eq!(
+            Shellwords::from(":sh echo 𒀀").parts(),
+            &[":sh", "echo", "𒀀"]
+        );
+        assert_eq!(
+            Shellwords::from(":sh echo 𒀀 hello world𒀀").parts(),
+            &[":sh", "echo", "𒀀", "hello", "world𒀀"]
+        );
     }
 }

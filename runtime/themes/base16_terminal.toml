@@ -14,6 +14,8 @@
 "ui.cursor" = { fg = "light-gray", modifiers = ["reversed"] }
 "ui.cursor.primary" = { fg = "light-gray", modifiers = ["reversed"] }
 "ui.virtual.whitespace" = "light-gray"
+"ui.virtual.jump-label" = { fg = "blue", modifiers = ["bold", "underlined"] }
+"ui.virtual.ruler" = { bg = "black" }
 "variable" = "light-red"
 "constant.numeric" = "yellow"
 "constant" = "yellow"
@@ -34,6 +36,7 @@
 "markup.list" = "light-red"
 "markup.bold" = { fg = "light-yellow", modifiers = ["bold"] }
 "markup.italic" = { fg = "light-magenta", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "yellow", modifiers = ["underlined"] }
 "markup.link.text" = "light-red"
 "markup.quote" = "light-cyan"

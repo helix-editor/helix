@@ -41,7 +41,7 @@ macro_rules! command_provider {
      primary_paste => $pr_get_prg:literal $( , $pr_get_arg:literal )* ;
      primary_copy => $pr_set_prg:literal $( , $pr_set_arg:literal )* ;
     ) => {{
-        log::info!(
+        log::debug!(
             "Using {} to interact with the system and selection (primary) clipboard",
             if $set_prg != $get_prg { format!("{}+{}", $set_prg, $get_prg)} else { $set_prg.to_string() }
         );
@@ -68,14 +68,19 @@ macro_rules! command_provider {
 
 #[cfg(windows)]
 pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
-    Box::new(provider::WindowsProvider::default())
+    Box::<provider::WindowsProvider>::default()
 }
 
 #[cfg(target_os = "macos")]
 pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
-    use crate::env::binary_exists;
+    use helix_stdx::env::{binary_exists, env_var_is_set};
 
-    if binary_exists("pbcopy") && binary_exists("pbpaste") {
+    if env_var_is_set("TMUX") && binary_exists("tmux") {
+        command_provider! {
+            paste => "tmux", "save-buffer", "-";
+            copy => "tmux", "load-buffer", "-w", "-";
+        }
+    } else if binary_exists("pbcopy") && binary_exists("pbpaste") {
         command_provider! {
             paste => "pbpaste";
             copy => "pbcopy";
@@ -85,15 +90,15 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     }
 }
 
-#[cfg(target_os = "wasm32")]
+#[cfg(target_arch = "wasm32")]
 pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     // TODO:
     Box::new(provider::FallbackProvider::new())
 }
 
-#[cfg(not(any(windows, target_os = "wasm32", target_os = "macos")))]
+#[cfg(not(any(windows, target_arch = "wasm32", target_os = "macos")))]
 pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
-    use crate::env::{binary_exists, env_var_is_set};
+    use helix_stdx::env::{binary_exists, env_var_is_set};
     use provider::command::is_exit_success;
     // TODO: support for user-defined provider, probably when we have plugin support by setting a
     // variable?
@@ -136,7 +141,7 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
     } else if env_var_is_set("TMUX") && binary_exists("tmux") {
         command_provider! {
             paste => "tmux", "save-buffer", "-";
-            copy => "tmux", "load-buffer", "-";
+            copy => "tmux", "load-buffer", "-w", "-";
         }
     } else {
         Box::new(provider::FallbackProvider::new())
@@ -151,7 +156,7 @@ pub mod provider {
 
     #[cfg(feature = "term")]
     mod osc52 {
-        use {super::ClipboardType, crate::base64, crossterm};
+        use {super::ClipboardType, crate::base64};
 
         #[derive(Debug)]
         pub struct SetClipboardCommand {
@@ -250,7 +255,7 @@ pub mod provider {
     #[cfg(not(target_arch = "wasm32"))]
     pub mod command {
         use super::*;
-        use anyhow::{bail, Context as _, Result};
+        use anyhow::{bail, Context as _};
 
         #[cfg(not(any(windows, target_os = "macos")))]
         pub fn is_exit_success(program: &str, args: &[&str]) -> bool {
@@ -258,7 +263,7 @@ pub mod provider {
                 .args(args)
                 .output()
                 .ok()
-                .and_then(|out| out.status.success().then(|| ())) // TODO: use then_some when stabilized
+                .and_then(|out| out.status.success().then_some(()))
                 .is_some()
         }
 
@@ -276,12 +281,27 @@ pub mod provider {
                 let stdin = input.map(|_| Stdio::piped()).unwrap_or_else(Stdio::null);
                 let stdout = pipe_output.then(Stdio::piped).unwrap_or_else(Stdio::null);
 
-                let mut child = Command::new(self.prg)
+                let mut command: Command = Command::new(self.prg);
+
+                let mut command_mut: &mut Command = command
                     .args(self.args)
                     .stdin(stdin)
                     .stdout(stdout)
-                    .stderr(Stdio::null())
-                    .spawn()?;
+                    .stderr(Stdio::null());
+
+                // Fix for https://github.com/helix-editor/helix/issues/5424
+                if cfg!(unix) {
+                    use std::os::unix::process::CommandExt;
+
+                    unsafe {
+                        command_mut = command_mut.pre_exec(|| match libc::setsid() {
+                            -1 => Err(std::io::Error::last_os_error()),
+                            _ => Ok(()),
+                        });
+                    }
+                }
+
+                let mut child = command_mut.spawn()?;
 
                 if let Some(input) = input {
                     let mut stdin = child.stdin.take().context("stdin is missing")?;
@@ -366,7 +386,7 @@ mod provider {
 
     impl ClipboardProvider for WindowsProvider {
         fn name(&self) -> Cow<str> {
-            log::info!("Using clipboard-win to interact with the system clipboard");
+            log::debug!("Using clipboard-win to interact with the system clipboard");
             Cow::Borrowed("clipboard-win")
         }
 

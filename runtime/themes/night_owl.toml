@@ -5,7 +5,13 @@
 'error' = { fg = 'red', modifiers = ['dim'] }
 'info' = { fg = 'blue', modifiers = ['dim'] }
 'hint' = { fg = 'paleblue', modifiers = ['dim'] }
-'diagnostic' = { modifiers = ['underlined'] }
+
+"diagnostic.warning" = { underline = { color = "peach", style = "curl" } }
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.info" = { underline = { color = "blue", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "paleblue", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 # UI
 'ui.background' = { fg = 'foreground', bg = 'background' }
@@ -76,6 +82,7 @@
 'markup.list' = { fg = 'pink' }
 'markup.bold' = { fg = 'foreground', modifiers = ['bold'] }
 'markup.italic' = { fg = 'foreground', modifiers = ['italic'] }
+'markup.strikethrough' = { fg = 'foreground', modifiers = ['crossed_out'] }
 'markup.link' = { fg = 'pink', modifiers = ['underlined'] }
 'markup.link.url' = { fg = 'slate', modifiers = ['underlined'] }
 'markup.quote' = { fg = 'green', modifiers = ['italic'] }

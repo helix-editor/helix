@@ -1,7 +1,8 @@
 use crate::editor::{Action, Breakpoint};
 use crate::{align_view, Align, Editor};
+use dap::requests::DisconnectArguments;
 use helix_core::Selection;
-use helix_dap::{self as dap, Client, Payload, Request, ThreadId};
+use helix_dap::{self as dap, Client, ConnectionType, Payload, Request, ThreadId};
 use helix_lsp::block_on;
 use log::warn;
 use std::fmt::Write;
@@ -225,10 +226,15 @@ impl Editor {
                                     breakpoints.iter().position(|b| b.id == breakpoint.id)
                                 {
                                     breakpoints[i].verified = breakpoint.verified;
-                                    breakpoints[i].message = breakpoint.message.clone();
-                                    breakpoints[i].line =
-                                        breakpoint.line.unwrap().saturating_sub(1); // TODO: no unwrap
-                                    breakpoints[i].column = breakpoint.column;
+                                    breakpoints[i].message = breakpoint
+                                        .message
+                                        .clone()
+                                        .or_else(|| breakpoints[i].message.take());
+                                    breakpoints[i].line = breakpoint
+                                        .line
+                                        .map_or(breakpoints[i].line, |line| line.saturating_sub(1));
+                                    breakpoints[i].column =
+                                        breakpoint.column.or(breakpoints[i].column);
                                 }
                             }
                         }
@@ -274,6 +280,67 @@ impl Editor {
                         self.set_status("Debugged application started");
                     }; // TODO: do we need to handle error?
                 }
+                Event::Terminated(terminated) => {
+                    let restart_args = if let Some(terminated) = terminated {
+                        terminated.restart
+                    } else {
+                        None
+                    };
+
+                    let disconnect_args = Some(DisconnectArguments {
+                        restart: Some(restart_args.is_some()),
+                        terminate_debuggee: None,
+                        suspend_debuggee: None,
+                    });
+
+                    if let Err(err) = debugger.disconnect(disconnect_args).await {
+                        self.set_error(format!(
+                            "Cannot disconnect debugger upon terminated event receival {:?}",
+                            err
+                        ));
+                        return false;
+                    }
+
+                    match restart_args {
+                        Some(restart_args) => {
+                            log::info!("Attempting to restart debug session.");
+                            let connection_type = match debugger.connection_type() {
+                                Some(connection_type) => connection_type,
+                                None => {
+                                    self.set_error("No starting request found, to be used in restarting the debugging session.");
+                                    return false;
+                                }
+                            };
+
+                            let relaunch_resp = if let ConnectionType::Launch = connection_type {
+                                debugger.launch(restart_args).await
+                            } else {
+                                debugger.attach(restart_args).await
+                            };
+
+                            if let Err(err) = relaunch_resp {
+                                self.set_error(format!(
+                                    "Failed to restart debugging session: {:?}",
+                                    err
+                                ));
+                            }
+                        }
+                        None => {
+                            self.debugger = None;
+                            self.set_status(
+                                "Terminated debugging session and disconnected debugger.",
+                            );
+                        }
+                    }
+                }
+                Event::Exited(resp) => {
+                    let exit_code = resp.exit_code;
+                    if exit_code != 0 {
+                        self.set_error(format!(
+                            "Debuggee failed to exit successfully (exit code: {exit_code})."
+                        ));
+                    }
+                }
                 ev => {
                     log::warn!("Unhandled event {:?}", ev);
                     return false; // return early to skip render
@@ -307,9 +374,7 @@ impl Editor {
                     {
                         Ok(process) => process,
                         Err(err) => {
-                            // TODO replace the pretty print {:?} with a regular format {}
-                            // when the MSRV is raised to 1.60.0
-                            self.set_error(format!("Error starting external terminal: {:?}", err));
+                            self.set_error(format!("Error starting external terminal: {}", err));
                             return true;
                         }
                     };

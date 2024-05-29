@@ -17,7 +17,7 @@ pub const DEFAULT_PAIRS: &[(char, char)] = &[
 ];
 
 /// The type that represents the collection of auto pairs,
-/// keyed by the opener.
+/// keyed by both opener and closer.
 #[derive(Debug, Clone)]
 pub struct AutoPairs(HashMap<char, Pair>);
 
