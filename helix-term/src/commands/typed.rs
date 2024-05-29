@@ -143,6 +143,24 @@ fn buffer_close_by_ids_impl(
     doc_ids: &[DocumentId],
     force: bool,
 ) -> anyhow::Result<()> {
+    // TODO-ts: don't add modified
+    let docs: Vec<PathBuf> = cx
+        .editor
+        .documents()
+        .filter_map(|doc| {
+            if doc_ids.contains(&doc.id()) {
+                doc.path()
+            } else {
+                None
+            }
+        })
+        .cloned() // TODO (ts): do we need to clone?
+        .collect();
+    let (view, _) = current!(cx.editor);
+    log::error!("VIEW before = {:?}", view.last_opened_docs); // TODO (ts): remove
+    view.last_opened_docs.extend(docs);
+    log::error!("VIEW after = {:?}", view.last_opened_docs); // TODO (ts): remove
+
     cx.block_try_flush_writes()?;
 
     let (modified_ids, modified_names): (Vec<_>, Vec<_>) = doc_ids
@@ -221,6 +239,27 @@ fn buffer_close(
 
     let document_ids = buffer_gather_paths_impl(cx.editor, args);
     buffer_close_by_ids_impl(cx, &document_ids, false)
+}
+
+fn buffer_open_recent(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (view, _) = current!(cx.editor);
+    log::error!("VIEW from command = {:?}", view.last_opened_docs); // TODO (ts): remove
+    if let Some(last_opened) = view.last_opened_docs.pop() {
+        log::error!("Opening ..."); // TODO (ts): remove
+        cx.editor.open(&last_opened, Action::Replace);
+    } else {
+        log::error!("Found nothing"); // TODO (ts): handle error
+    };
+
+    Ok(()) // TODO (ts): is this the right return?
 }
 
 fn force_buffer_close(
@@ -2515,6 +2554,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         doc: "Close the current buffer.",
         fun: buffer_close,
         signature: CommandSignature::all(completers::buffer),
+    },
+    TypableCommand {
+        name: "buffer-open-recent",
+        aliases: &["bor"],
+        doc: "Open the most recently closed buffer",
+        fun: buffer_open_recent,
+        signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "buffer-close!",
