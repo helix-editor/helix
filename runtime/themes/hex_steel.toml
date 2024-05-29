@@ -44,8 +44,7 @@
 "ui.popup" = { fg = "t4", bg = "t1" }
 "ui.window" = { fg = "t4" }
 
-"ui.selection.primary" = { bg = "selection" }
-"ui.selection" = { bg = "selection" }
+"ui.selection" = { fg = "selection_fg", bg = "selection" }
 
 "ui.cursorline.primary" = { bg = "t1" }
 
@@ -106,6 +105,7 @@ highlight_two = "#f69c3c"
 highlight_three = "#d4d987"
 
 selection = "#264e60"
+selection_fg = "#080a0b"
 
 black = "#000000"
 comment = "#654642"

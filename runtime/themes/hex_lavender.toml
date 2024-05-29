@@ -22,7 +22,8 @@ highlight_three = "#29bbff"
 black = "#000000"
 
 selection = "#290019"
-# 9aacfe
+selection_fg = "#958e9a"
+
 comment = "#404768"
 comment_doc = "#0affa9"
 
