@@ -83,7 +83,7 @@ impl Capabilities {
             Ok(t) => Capabilities {
                 // Smulx, VTE: https://unix.stackexchange.com/a/696253/246284
                 // Su (used by kitty): https://sw.kovidgoyal.net/kitty/underlines
-                // WezTerm supports underlines but a lot of distros don't properly install it's terminfo
+                // WezTerm supports underlines but a lot of distros don't properly install its terminfo
                 has_extended_underlines: config.undercurl
                     || t.extended_cap("Smulx").is_some()
                     || t.extended_cap("Su").is_some()
