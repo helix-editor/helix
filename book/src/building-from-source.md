@@ -7,6 +7,7 @@
   - [Note to packagers](#note-to-packagers)
 - [Validating the installation](#validating-the-installation)
 - [Configure the desktop shortcut](#configure-the-desktop-shortcut)
+- [Configure shell completion](#configure-shell-completion)
 
 Requirements:
 
@@ -156,3 +157,45 @@ file. For example, to use `kitty`:
 sed -i "s|Exec=hx %F|Exec=kitty hx %F|g" ~/.local/share/applications/Helix.desktop
 sed -i "s|Terminal=true|Terminal=false|g" ~/.local/share/applications/Helix.desktop
 ```
+
+### Configure shell completion
+
+You can configure shell completion for Helix by copying the completion file into your shell's completion directory.
+
+#### Bash
+
+```sh
+cp contrib/completion/hx.bash ~/.local/share/bash-completion/completions/hx
+```
+
+#### Zsh
+
+```sh
+cp contrib/completion/hx.zsh ~/.config/zsh/completions/_hx
+```
+
+Add the following in your `.zshrc` before initializing completions with `compinit`:
+
+```sh
+fpath+=~/.config/zsh/completions
+```
+
+#### Fish
+
+```sh
+cp contrib/completion/hx.fish ~/.config/fish/completions/hx.fish
+```
+
+#### Elvish
+
+```sh
+cp contrib/completion/hx.elv ~/.config/elvish/lib/hx.elv
+```
+
+Add the following in your `rc.elv`:
+
+```sh
+use hx
+```
+
+> 💡 You may need to restart your shell in order for the changes to take effect.
