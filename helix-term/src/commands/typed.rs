@@ -143,24 +143,6 @@ fn buffer_close_by_ids_impl(
     doc_ids: &[DocumentId],
     force: bool,
 ) -> anyhow::Result<()> {
-    // TODO-ts: don't add modified
-    let docs: Vec<PathBuf> = cx
-        .editor
-        .documents()
-        .filter_map(|doc| {
-            if doc_ids.contains(&doc.id()) {
-                doc.path()
-            } else {
-                None
-            }
-        })
-        .cloned() // TODO (ts): do we need to clone?
-        .collect();
-    let (view, _) = current!(cx.editor);
-    log::error!("VIEW before = {:?}", view.last_opened_docs); // TODO (ts): remove
-    view.last_opened_docs.extend(docs);
-    log::error!("VIEW after = {:?}", view.last_opened_docs); // TODO (ts): remove
-
     cx.block_try_flush_writes()?;
 
     let (modified_ids, modified_names): (Vec<_>, Vec<_>) = doc_ids
@@ -173,6 +155,29 @@ fn buffer_close_by_ids_impl(
             }
         })
         .unzip();
+
+    let docs: Vec<PathBuf> = cx
+        .editor
+        .documents()
+        .filter_map(|doc| {
+            // TODO (ts): test the above (modified ids)
+            if doc_ids.contains(&doc.id()) && !modified_ids.contains(&doc.id()) {
+                doc.path()
+            } else {
+                None
+            }
+        })
+        .cloned() // TODO (ts): do we need to clone?
+        .collect();
+    log::error!("VIEW before = {:?}", cx.editor.last_opened_docs); // TODO (ts): remove
+    cx.editor.last_opened_docs.extend(docs);
+    let num_to_remove = (cx.editor.last_opened_docs.len() as i64) - 100; // TODO (ts): create new datatype for this
+    if num_to_remove > 0 {
+        for _ in 0..num_to_remove {
+            cx.editor.last_opened_docs.pop_front();
+        }
+    }
+    log::error!("VIEW after = {:?}", cx.editor.last_opened_docs); // TODO (ts): remove
 
     if let Some(first) = modified_ids.first() {
         let current = doc!(cx.editor);
@@ -243,18 +248,17 @@ fn buffer_close(
 
 fn buffer_open_recent(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    _args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    let (view, _) = current!(cx.editor);
-    log::error!("VIEW from command = {:?}", view.last_opened_docs); // TODO (ts): remove
-    if let Some(last_opened) = view.last_opened_docs.pop() {
+    log::error!("VIEW from command = {:?}", cx.editor.last_opened_docs); // TODO (ts): remove
+    if let Some(last_opened) = cx.editor.last_opened_docs.pop_back() {
         log::error!("Opening ..."); // TODO (ts): remove
-        cx.editor.open(&last_opened, Action::Replace);
+        cx.editor.open(&last_opened, Action::Replace)?;
     } else {
         log::error!("Found nothing"); // TODO (ts): handle error
     };

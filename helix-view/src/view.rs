@@ -19,7 +19,6 @@ use helix_core::{
 use std::{
     collections::{HashMap, VecDeque},
     fmt,
-    path::{Path, PathBuf},
 };
 
 const JUMP_LIST_CAPACITY: usize = 30;
@@ -122,8 +121,6 @@ pub struct View {
     // uses two docs because we want to be able to swap between the
     // two last modified docs which we need to manually keep track of
     pub last_modified_docs: [Option<DocumentId>; 2],
-    /// the most recently opened docs that have since been closed, with newly closed docs added to the end
-    pub last_opened_docs: Vec<PathBuf>,
     /// used to store previous selections of tree-sitter objects
     pub object_selections: Vec<Selection>,
     /// all gutter-related configuration settings, used primarily for gutter rendering
@@ -159,7 +156,6 @@ impl View {
             jumps: JumpList::new((doc, Selection::point(0))), // TODO: use actual sel
             docs_access_history: Vec::new(),
             last_modified_docs: [None, None],
-            last_opened_docs: Vec::new(),
             object_selections: Vec::new(),
             gutters,
             doc_revisions: HashMap::new(),
