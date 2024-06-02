@@ -1356,6 +1356,7 @@ impl Editor {
         let doc = doc_mut!(self, &doc_id);
         let diagnostics = Editor::doc_diagnostics(&self.language_servers, &self.diagnostics, doc);
         doc.replace_diagnostics(diagnostics, &[], None);
+        doc.reset_all_inlay_hints();
     }
 
     /// Launch a language server for a given document
