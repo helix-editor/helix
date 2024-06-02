@@ -1,3 +1,4 @@
+use std::collections::VecDeque;
 use std::fmt::Write;
 use std::io::BufReader;
 use std::ops::Deref;
@@ -10,7 +11,7 @@ use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::{line_ending, shellwords::Shellwords};
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
-use helix_view::editor::{CloseError, ConfigEvent};
+use helix_view::editor::{CloseError, ConfigEvent, LAST_OPENED_DOCS_MAX_LEN};
 use serde_json::Value;
 use ui::completers::{self, Completer};
 
@@ -138,12 +139,59 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     Ok(())
 }
 
+fn update_last_opened_docs(
+    cx: &mut compositor::Context,
+    docs_to_close: &Vec<(PathBuf, DocumentId)>,
+    modified_ids: &Vec<DocumentId>,
+) {
+    let closed_docs: Vec<_> = docs_to_close
+        .into_iter()
+        .filter_map(|(doc_path, doc_id)| {
+            if !modified_ids.contains(&doc_id) {
+                Some(doc_path.clone())
+            } else {
+                None
+            }
+        })
+        .collect();
+
+    let mut new_last_opened_docs = cx
+        .editor
+        .last_opened_docs
+        .clone()
+        .into_iter()
+        .filter(|doc_path| !closed_docs.contains(&doc_path))
+        .collect::<VecDeque<_>>();
+
+    new_last_opened_docs.extend(closed_docs);
+
+    let num_to_remove = (new_last_opened_docs.len() as i64) - (LAST_OPENED_DOCS_MAX_LEN as i64);
+    if num_to_remove > 0 {
+        for _ in 0..num_to_remove {
+            new_last_opened_docs.pop_front();
+        }
+    }
+
+    cx.editor.last_opened_docs = new_last_opened_docs;
+}
+
 fn buffer_close_by_ids_impl(
     cx: &mut compositor::Context,
     doc_ids: &[DocumentId],
     force: bool,
 ) -> anyhow::Result<()> {
     cx.block_try_flush_writes()?;
+    let docs_to_close = cx
+        .editor
+        .documents()
+        .filter_map(|doc| {
+            if let (Some(path), true) = (doc.path(), doc_ids.contains(&doc.id())) {
+                Some((path.clone(), doc.id()))
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
 
     let (modified_ids, modified_names): (Vec<_>, Vec<_>) = doc_ids
         .iter()
@@ -156,27 +204,7 @@ fn buffer_close_by_ids_impl(
         })
         .unzip();
 
-    let docs: Vec<PathBuf> = cx
-        .editor
-        .documents()
-        .filter_map(|doc| {
-            // TODO (ts): test the above (modified ids)
-            if doc_ids.contains(&doc.id()) && !modified_ids.contains(&doc.id()) {
-                doc.path()
-            } else {
-                None
-            }
-        })
-        .cloned() // TODO (ts): do we need to clone?
-        .collect();
-    log::error!("VIEW before = {:?}", cx.editor.last_opened_docs); // TODO (ts): remove
-    cx.editor.last_opened_docs.extend(docs);
-    let num_to_remove = (cx.editor.last_opened_docs.len() as i64) - 100; // TODO (ts): create new datatype for this
-    if num_to_remove > 0 {
-        for _ in 0..num_to_remove {
-            cx.editor.last_opened_docs.pop_front();
-        }
-    }
+    update_last_opened_docs(cx, &docs_to_close, &modified_ids);
     log::error!("VIEW after = {:?}", cx.editor.last_opened_docs); // TODO (ts): remove
 
     if let Some(first) = modified_ids.first() {

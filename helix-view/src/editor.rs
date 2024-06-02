@@ -1017,6 +1017,8 @@ pub struct Editor {
     pub last_opened_docs: VecDeque<PathBuf>,
 }
 
+pub const LAST_OPENED_DOCS_MAX_LEN: i8 = 100;
+
 pub type Motion = Box<dyn Fn(&mut Editor)>;
 
 #[derive(Debug)]
