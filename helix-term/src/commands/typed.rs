@@ -155,12 +155,20 @@ fn update_last_opened_docs(
         })
         .collect();
 
+    let currently_opened_docs = cx
+        .editor
+        .documents()
+        .filter_map(|doc| doc.path())
+        .collect::<Vec<_>>();
+
     let mut new_last_opened_docs = cx
         .editor
         .last_opened_docs
         .clone()
         .into_iter()
-        .filter(|doc_path| !closed_docs.contains(&doc_path))
+        .filter(|doc_path| {
+            !closed_docs.contains(&doc_path) && !currently_opened_docs.contains(&doc_path)
+        })
         .collect::<VecDeque<_>>();
 
     new_last_opened_docs.extend(closed_docs);
@@ -205,7 +213,6 @@ fn buffer_close_by_ids_impl(
         .unzip();
 
     update_last_opened_docs(cx, &docs_to_close, &modified_ids);
-    log::error!("VIEW after = {:?}", cx.editor.last_opened_docs); // TODO (ts): remove
 
     if let Some(first) = modified_ids.first() {
         let current = doc!(cx.editor);
@@ -282,16 +289,20 @@ fn buffer_open_recent(
     if event != PromptEvent::Validate {
         return Ok(());
     }
+    let open_doc_paths = cx
+        .editor
+        .documents()
+        .filter_map(|doc| doc.path())
+        .cloned()
+        .collect::<Vec<_>>();
+    while let Some(last_opened) = cx.editor.last_opened_docs.pop_back() {
+        if !open_doc_paths.contains(&last_opened) {
+            cx.editor.open(&last_opened, Action::Replace)?;
+            return Ok(());
+        }
+    }
 
-    log::error!("VIEW from command = {:?}", cx.editor.last_opened_docs); // TODO (ts): remove
-    if let Some(last_opened) = cx.editor.last_opened_docs.pop_back() {
-        log::error!("Opening ..."); // TODO (ts): remove
-        cx.editor.open(&last_opened, Action::Replace)?;
-    } else {
-        log::error!("Found nothing"); // TODO (ts): handle error
-    };
-
-    Ok(()) // TODO (ts): is this the right return?
+    bail!("No recent files found");
 }
 
 fn force_buffer_close(
@@ -2590,7 +2601,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "buffer-open-recent",
         aliases: &["bor"],
-        doc: "Open the most recently closed buffer",
+        doc: "Open the most recently closed file",
         fun: buffer_open_recent,
         signature: CommandSignature::none(),
     },

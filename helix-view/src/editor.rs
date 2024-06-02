@@ -1013,7 +1013,7 @@ pub struct Editor {
 
     pub mouse_down_range: Option<Range>,
 
-    /// the most recently opened docs that have since been closed, with newly closed docs added to the end
+    /// The most recently opened docs that have since been closed, with newly closed docs added to the end.
     pub last_opened_docs: VecDeque<PathBuf>,
 }
 
