@@ -939,6 +939,55 @@ pub struct Breakpoint {
     pub log_message: Option<String>,
 }
 
+const LAST_OPENED_DOCS_MAX_LEN: usize = 100;
+
+#[derive(Debug, Clone)]
+pub struct LastOpenedDocs {
+    paths: VecDeque<PathBuf>,
+}
+
+impl LastOpenedDocs {
+    pub fn new() -> Self {
+        let paths = VecDeque::with_capacity(LAST_OPENED_DOCS_MAX_LEN);
+        Self { paths }
+    }
+
+    pub fn len(&self) -> usize {
+        self.paths.len()
+    }
+
+    pub fn pop_back(&mut self) -> Option<PathBuf> {
+        self.paths.pop_back()
+    }
+
+    // Favour using Editor::extend_last_opened_docs rather than this method directly
+    fn extend(&mut self, paths_to_add: Vec<PathBuf>) {
+        self.paths.extend(paths_to_add);
+
+        let num_to_remove = (self.paths.len() as i64) - (LAST_OPENED_DOCS_MAX_LEN as i64);
+        if num_to_remove > 0 {
+            for _ in 0..num_to_remove {
+                self.paths.pop_front();
+            }
+        }
+    }
+
+    fn retain<F>(&mut self, f: F)
+    where
+        F: FnMut(&PathBuf) -> bool,
+    {
+        self.paths.retain(f);
+    }
+}
+
+impl IntoIterator for LastOpenedDocs {
+    type Item = PathBuf;
+    type IntoIter = std::collections::vec_deque::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.paths.into_iter()
+    }
+}
 use futures_util::stream::{Flatten, Once};
 
 pub struct Editor {
@@ -1014,10 +1063,8 @@ pub struct Editor {
     pub mouse_down_range: Option<Range>,
 
     /// The most recently opened docs that have since been closed, with newly closed docs added to the end.
-    pub last_opened_docs: VecDeque<PathBuf>,
+    pub last_opened_docs: LastOpenedDocs,
 }
-
-pub const LAST_OPENED_DOCS_MAX_LEN: i8 = 100;
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
 
@@ -1134,7 +1181,7 @@ impl Editor {
             cursor_cache: Cell::new(None),
             handlers,
             mouse_down_range: None,
-            last_opened_docs: VecDeque::new(),
+            last_opened_docs: LastOpenedDocs::new(),
         }
     }
 
@@ -2092,6 +2139,19 @@ impl Editor {
             doc.ensure_view_init(current_view.id);
             current_view.id
         }
+    }
+
+    pub fn extend_last_opened_docs(&mut self, closed_docs: Vec<PathBuf>) {
+        let currently_opened_paths = self
+            .documents()
+            .filter_map(|doc| doc.path())
+            .cloned()
+            .collect::<Vec<_>>();
+
+        self.last_opened_docs.retain(|doc_path| {
+            !closed_docs.contains(doc_path) && !currently_opened_paths.contains(&doc_path)
+        });
+        self.last_opened_docs.extend(closed_docs);
     }
 }
 
