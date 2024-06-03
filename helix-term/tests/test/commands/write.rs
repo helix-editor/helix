@@ -103,6 +103,95 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn test_buffer_open_recent() -> anyhow::Result<()> {
+    let file1 = tempfile::NamedTempFile::new()?;
+    let file2 = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file1.path(), None)
+        .with_file(file2.path(), None)
+        .build()?;
+
+    test_key_sequences(
+        &mut app,
+        vec![
+            (
+                None,
+                Some(&|app| {
+                    assert_eq!(0, app.editor.last_opened_docs.len());
+                }),
+            ),
+            (
+                Some(
+                    format!(
+                        ":o {}<ret>:o {}<ret>",
+                        file1.path().display(),
+                        file2.path().display()
+                    )
+                    .as_str(),
+                ),
+                Some(&|app| {
+                    assert!(!app.editor.is_err());
+                    assert_eq!(0, app.editor.last_opened_docs.len());
+                }),
+            ),
+            (
+                Some(":bc<ret>"),
+                Some(&|app| {
+                    assert!(!app.editor.is_err());
+                    assert_eq!(1, app.editor.last_opened_docs.len());
+                }),
+            ),
+            (
+                Some(":bc<ret>"),
+                Some(&|app| {
+                    assert!(!app.editor.is_err());
+                    assert_eq!(2, app.editor.last_opened_docs.len());
+                }),
+            ),
+            (
+                Some(":bor<ret>"),
+                Some(&|app| {
+                    assert!(!app.editor.is_err());
+                    assert_eq!(1, app.editor.last_opened_docs.len());
+                    assert_eq!(
+                        vec![file1.path()],
+                        app.editor
+                            .documents()
+                            .filter_map(|doc| doc.path())
+                            .collect::<Vec<_>>()
+                    )
+                }),
+            ),
+            (
+                Some(":bor<ret>"),
+                Some(&|app| {
+                    assert!(!app.editor.is_err());
+                    assert_eq!(0, app.editor.last_opened_docs.len());
+                    assert_eq!(
+                        vec![file1.path(), file2.path()],
+                        app.editor
+                            .documents()
+                            .filter_map(|doc| doc.path())
+                            .collect::<Vec<_>>()
+                    );
+                }),
+            ),
+            (
+                Some(":bor<ret>"),
+                Some(&|app| {
+                    assert!(app.editor.is_err());
+                    assert_eq!(0, app.editor.last_opened_docs.len());
+                }),
+            ),
+        ],
+        false,
+    )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_write() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
     let mut app = helpers::AppBuilder::new()
