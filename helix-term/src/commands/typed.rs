@@ -2563,7 +2563,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "buffer-open-recent",
         aliases: &["bor"],
-        doc: "Open the most recently closed file",
+        doc: "Open the most recently closed file.",
         fun: buffer_open_recent,
         signature: CommandSignature::none(),
     },
