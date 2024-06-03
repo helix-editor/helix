@@ -946,6 +946,12 @@ pub struct LastOpenedDocs {
     paths: VecDeque<PathBuf>,
 }
 
+impl Default for LastOpenedDocs {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl LastOpenedDocs {
     pub fn new() -> Self {
         let paths = VecDeque::with_capacity(LAST_OPENED_DOCS_MAX_LEN);
@@ -954,6 +960,10 @@ impl LastOpenedDocs {
 
     pub fn len(&self) -> usize {
         self.paths.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.paths.is_empty()
     }
 
     pub fn pop_back(&mut self) -> Option<PathBuf> {
@@ -2149,7 +2159,7 @@ impl Editor {
             .collect::<Vec<_>>();
 
         self.last_opened_docs.retain(|doc_path| {
-            !closed_docs.contains(doc_path) && !currently_opened_paths.contains(&doc_path)
+            !closed_docs.contains(doc_path) && !currently_opened_paths.contains(doc_path)
         });
         self.last_opened_docs.extend(closed_docs);
     }
