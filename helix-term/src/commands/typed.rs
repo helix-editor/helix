@@ -167,7 +167,7 @@ fn buffer_close_by_ids_impl(
     let closed_docs = docs_to_close
         .iter()
         .filter_map(|(doc_path, doc_id)| {
-            if !modified_ids.contains(&doc_id) {
+            if !modified_ids.contains(doc_id) {
                 Some(doc_path.clone())
             } else {
                 None
@@ -243,7 +243,7 @@ fn buffer_close(
     buffer_close_by_ids_impl(cx, &document_ids, false)
 }
 
-fn buffer_open_recent(
+fn open_recent(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
     event: PromptEvent,
@@ -2554,18 +2554,18 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         signature: CommandSignature::all(completers::filename),
     },
     TypableCommand {
+        name: "open-recent",
+        aliases: &["or"],
+        doc: "Open the most recently closed file.",
+        fun: open_recent,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
         name: "buffer-close",
         aliases: &["bc", "bclose"],
         doc: "Close the current buffer.",
         fun: buffer_close,
         signature: CommandSignature::all(completers::buffer),
-    },
-    TypableCommand {
-        name: "buffer-open-recent",
-        aliases: &["bor"],
-        doc: "Open the most recently closed file.",
-        fun: buffer_open_recent,
-        signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "buffer-close!",

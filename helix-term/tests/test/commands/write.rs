@@ -103,7 +103,7 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn test_buffer_open_recent() -> anyhow::Result<()> {
+async fn test_open_recent() -> anyhow::Result<()> {
     let file1 = tempfile::NamedTempFile::new()?;
     let file2 = tempfile::NamedTempFile::new()?;
     let mut app = helpers::AppBuilder::new()
@@ -149,7 +149,7 @@ async fn test_buffer_open_recent() -> anyhow::Result<()> {
                 }),
             ),
             (
-                Some(":bor<ret>"),
+                Some(":or<ret>"),
                 Some(&|app| {
                     assert!(!app.editor.is_err());
                     assert_eq!(1, app.editor.last_opened_docs.len());
@@ -163,7 +163,7 @@ async fn test_buffer_open_recent() -> anyhow::Result<()> {
                 }),
             ),
             (
-                Some(":bor<ret>"),
+                Some(":or<ret>"),
                 Some(&|app| {
                     assert!(!app.editor.is_err());
                     assert_eq!(0, app.editor.last_opened_docs.len());
@@ -177,7 +177,7 @@ async fn test_buffer_open_recent() -> anyhow::Result<()> {
                 }),
             ),
             (
-                Some(":bor<ret>"),
+                Some(":or<ret>"),
                 Some(&|app| {
                     assert!(app.editor.is_err());
                     assert_eq!(0, app.editor.last_opened_docs.len());
