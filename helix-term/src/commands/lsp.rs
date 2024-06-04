@@ -209,7 +209,7 @@ fn jump_to_location(
     jump_to_position(editor, &path, location.range, offset_encoding, action);
 }
 
-fn jump_to_position(
+pub fn jump_to_position(
     editor: &mut Editor,
     path: &Path,
     range: lsp::Range,
