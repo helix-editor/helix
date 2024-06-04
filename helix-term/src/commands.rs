@@ -145,14 +145,13 @@ impl<'a> Context<'a> {
 
     /// Waits on all pending jobs, and then tries to flush all pending write
     /// operations for all documents.
-    pub fn block_try_flush_writes(&mut self) {
+    pub fn block_try_flush_writes(&mut self) -> anyhow::Result<()> {
         compositor::Context {
             editor: self.editor,
             jobs: self.jobs,
             scroll: None,
         }
         .block_try_flush_writes()
-        .ok();
     }
 }
 
@@ -5838,10 +5837,10 @@ fn shell_prompt(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBeha
     );
 }
 
-fn suspend(cx: &mut Context) {
+fn suspend(_cx: &mut Context) {
     #[cfg(not(windows))]
     {
-        cx.block_try_flush_writes();
+        _cx.block_try_flush_writes().ok();
         signal_hook::low_level::raise(signal_hook::consts::signal::SIGTSTP).unwrap();
     }
 }
