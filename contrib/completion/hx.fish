@@ -14,5 +14,5 @@ complete -c hx -l log -r -d "Specifies a file to use for logging"
 complete -c hx -s w -l working-dir -d "Specify initial working directory" -xa "(__fish_complete_directories)"
 
 function __hx_langs_ops
-    hx --health | tail -n '+11' | string replace -fr '^(\S+) .*' '$1'
+    hx --health languages | tail -n '+2' | string replace -fr '^(\S+) .*' '$1'
 end
