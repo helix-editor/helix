@@ -224,6 +224,8 @@ mod tests {
             [keys.normal]
             o = { label = "Edit Config", command = ":open ~/.config" }
             c = ":buffer-close" 
+            h = ["vsplit", "normal_mode", "swap_view_left"]
+            j = {command = ["hsplit", "normal_mode", {}], label = "split down"}
         "#;
 
         let config = Config::load_test(sample_keymaps);
@@ -248,6 +250,32 @@ mod tests {
                 assert_eq!(doc, ":buffer-close []");
             } else {
                 panic!(":buffer-close command did not parse to typable command");
+            }
+
+            let split_left = node.get(&KeyEvent::from_str("h").unwrap()).unwrap();
+            if let keymap::KeyTrie::Sequence(label, cmds) = split_left {
+                assert_eq!(label, KeyTrie::DEFAULT_SEQUENCE_LABEL);
+                assert_eq!(
+                    *cmds,
+                    vec![
+                        MappableCommand::vsplit,
+                        MappableCommand::normal_mode,
+                        MappableCommand::swap_view_left
+                    ]
+                );
+            }
+
+            let split_down = node.get(&KeyEvent::from_str("j").unwrap()).unwrap();
+            if let keymap::KeyTrie::Sequence(label, cmds) = split_down {
+                assert_eq!(label, "split down");
+                assert_eq!(
+                    *cmds,
+                    vec![
+                        MappableCommand::hsplit,
+                        MappableCommand::normal_mode,
+                        MappableCommand::swap_view_down
+                    ]
+                );
             }
         } else {
             panic!("Config did not parse to trie");

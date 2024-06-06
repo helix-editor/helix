@@ -12,6 +12,7 @@ use std::{
     borrow::Cow,
     collections::{BTreeSet, HashMap},
     ops::{Deref, DerefMut},
+    str::FromStr,
     sync::Arc,
 };
 
@@ -83,7 +84,7 @@ impl KeyTrieNode {
                     cmd.doc()
                 }
                 KeyTrie::Node(n) => &n.name,
-                KeyTrie::Sequence(_) => "[Multiple commands]",
+                KeyTrie::Sequence(..) => KeyTrie::DEFAULT_SEQUENCE_LABEL,
             };
             match body.iter().position(|(_, d)| d == &desc) {
                 Some(pos) => {
@@ -133,8 +134,16 @@ impl DerefMut for KeyTrieNode {
 #[derive(Debug, Clone, PartialEq)]
 pub enum KeyTrie {
     MappableCommand(MappableCommand),
-    Sequence(Vec<MappableCommand>),
+    Sequence(String, Vec<MappableCommand>),
     Node(KeyTrieNode),
+}
+
+impl KeyTrie {
+    pub const DEFAULT_SEQUENCE_LABEL: &'static str = "[Multiple commands]";
+
+    pub fn sequence(commands: Vec<MappableCommand>) -> Self {
+        Self::Sequence(Self::DEFAULT_SEQUENCE_LABEL.to_string(), commands)
+    }
 }
 
 impl<'de> Deserialize<'de> for KeyTrie {
@@ -177,7 +186,10 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
                     .map_err(serde::de::Error::custom)?,
             )
         }
-        Ok(KeyTrie::Sequence(commands))
+        Ok(KeyTrie::Sequence(
+            KeyTrie::DEFAULT_SEQUENCE_LABEL.to_string(),
+            commands,
+        ))
     }
 
     fn visit_map<M>(self, mut map: M) -> Result<Self::Value, M::Error>
@@ -192,7 +204,35 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
         while let Some(key) = map.next_key::<String>()? {
             match &key as &str {
                 "label" => label = map.next_value::<String>()?,
-                "command" => command = Some(map.next_value::<MappableCommand>()?),
+                "command" => {
+                    command = Some(match map.next_value::<toml::Value>()? {
+                        toml::Value::String(s) => {
+                            vec![MappableCommand::from_str(&s).map_err(serde::de::Error::custom)?]
+                        }
+                        toml::Value::Array(arr) => {
+                            let mut vec = Vec::with_capacity(arr.len());
+                            for value in arr {
+                                let toml::Value::String(s) = value else {
+                                    return Err(serde::de::Error::invalid_type(
+                                        serde::de::Unexpected::Other(value.type_str()),
+                                        &"string",
+                                    ));
+                                };
+                                vec.push(
+                                    MappableCommand::from_str(&s)
+                                        .map_err(serde::de::Error::custom)?,
+                                );
+                            }
+                            vec
+                        }
+                        value => {
+                            return Err(serde::de::Error::invalid_type(
+                                serde::de::Unexpected::Other(value.type_str()),
+                                &"string or array",
+                            ))
+                        }
+                    });
+                }
                 _ => {
                     let key_event = key.parse::<KeyEvent>().map_err(serde::de::Error::custom)?;
                     let key_trie = map.next_value::<KeyTrie>()?;
@@ -207,17 +247,28 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
             Some(_command) if !order.is_empty() => {
                 Err(serde::de::Error::custom("ambiguous mapping: 'command' is only valid with 'label', but I found other keys"))
             }
-            Some(MappableCommand::Static { .. }) if !label.is_empty() => {
-                Err(serde::de::Error::custom("custom labels are only available for typable commands (the ones starting with ':')"))
+            Some(mut commands) if commands.len() == 1 => match commands.pop() {
+                None => Err(serde::de::Error::custom("UNREACHABLE!, vec is empty after checking len == 1")),
+                Some(MappableCommand::Static { .. }) if !label.is_empty() => {
+                    Err(serde::de::Error::custom("custom labels are only available for typable commands (the ones starting with ':')"))
+                }
+                Some(MappableCommand::Typable { name, args, .. }) if !label.is_empty() => {
+                    Ok(KeyTrie::MappableCommand(MappableCommand::Typable {
+                        name,
+                        args,
+                        doc: label,
+                    }))
+                }
+                Some(command) => Ok(KeyTrie::MappableCommand(command)),
             }
-            Some(MappableCommand::Typable { name, args, .. }) if !label.is_empty() => {
-                Ok(KeyTrie::MappableCommand(MappableCommand::Typable {
-                    name,
-                    args,
-                    doc: label.to_string(),
-                }))
-            }
-            Some(command) => Ok(KeyTrie::MappableCommand(command)),
+            Some(commands) => {
+                let label = if label.is_empty() {
+                    KeyTrie::DEFAULT_SEQUENCE_LABEL.to_string()
+                } else {
+                    label
+                };
+                Ok(KeyTrie::Sequence(label, commands))
+            },
         }
     }
 }
@@ -240,7 +291,7 @@ impl KeyTrie {
                         keys.pop();
                     }
                 }
-                KeyTrie::Sequence(_) => {}
+                KeyTrie::Sequence(..) => {}
             };
         }
 
@@ -252,14 +303,14 @@ impl KeyTrie {
     pub fn node(&self) -> Option<&KeyTrieNode> {
         match *self {
             KeyTrie::Node(ref node) => Some(node),
-            KeyTrie::MappableCommand(_) | KeyTrie::Sequence(_) => None,
+            KeyTrie::MappableCommand(_) | KeyTrie::Sequence(..) => None,
         }
     }
 
     pub fn node_mut(&mut self) -> Option<&mut KeyTrieNode> {
         match *self {
             KeyTrie::Node(ref mut node) => Some(node),
-            KeyTrie::MappableCommand(_) | KeyTrie::Sequence(_) => None,
+            KeyTrie::MappableCommand(_) | KeyTrie::Sequence(..) => None,
         }
     }
 
@@ -276,7 +327,7 @@ impl KeyTrie {
             trie = match trie {
                 KeyTrie::Node(map) => map.get(key),
                 // leaf encountered while keys left to process
-                KeyTrie::MappableCommand(_) | KeyTrie::Sequence(_) => None,
+                KeyTrie::MappableCommand(_) | KeyTrie::Sequence(..) => None,
             }?
         }
         Some(trie)
@@ -366,7 +417,7 @@ impl Keymaps {
             Some(KeyTrie::MappableCommand(ref cmd)) => {
                 return KeymapResult::Matched(cmd.clone());
             }
-            Some(KeyTrie::Sequence(ref cmds)) => {
+            Some(KeyTrie::Sequence(_, ref cmds)) => {
                 return KeymapResult::MatchedSequence(cmds.clone());
             }
             None => return KeymapResult::NotFound,
@@ -386,7 +437,7 @@ impl Keymaps {
                 self.state.clear();
                 KeymapResult::Matched(cmd.clone())
             }
-            Some(KeyTrie::Sequence(cmds)) => {
+            Some(KeyTrie::Sequence(_, cmds)) => {
                 self.state.clear();
                 KeymapResult::MatchedSequence(cmds.clone())
             }
@@ -611,7 +662,7 @@ mod tests {
         let expectation = KeyTrie::Node(KeyTrieNode::new(
             "",
             hashmap! {
-                key => KeyTrie::Sequence(vec!{
+                key => KeyTrie::sequence(vec!{
                     MappableCommand::select_all,
                     MappableCommand::Typable {
                         name: "pipe".to_string(),
