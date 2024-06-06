@@ -1178,7 +1178,7 @@ impl Editor {
             theme_loader,
             last_theme: None,
             last_selection: None,
-            registers: Registers::new(config.clone()),
+            registers: Registers::new(conf.clipboard_provider.get_provider()),
             status_msg: None,
             autoinfo: None,
             idle_timer: Box::pin(sleep(conf.idle_timeout)),

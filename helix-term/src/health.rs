@@ -106,7 +106,7 @@ pub fn clipboard() -> std::io::Result<()> {
         }
         Err(err) => {
             writeln!(stdout, "{}", "Configuration file malformed".red())?;
-            writeln!(stdout, "{}", err.to_string())?;
+            writeln!(stdout, "{}", err)?;
             return Ok(());
         }
     };

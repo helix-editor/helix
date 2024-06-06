@@ -1,7 +1,7 @@
 // Implementation reference: https://github.com/neovim/neovim/blob/f2906a4669a2eef6d7bf86a29648793d63c98949/runtime/autoload/provider/clipboard.vim#L68-L152
 
 use anyhow::Result;
-use nonempty::NonEmpty;
+use helix_stdx::nonempty::NonEmptyVec;
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
 
@@ -20,7 +20,7 @@ pub trait ClipboardProvider: std::fmt::Debug {
 impl dyn ClipboardProvider {
     pub fn from_string(string: &str) -> Result<Box<dyn ClipboardProvider>> {
         let config: ClipboardConfig = serde_json::from_str(string)?;
-        return Ok(config.get_provider());
+        Ok(config.get_provider())
     }
 }
 
@@ -222,23 +222,23 @@ impl ClipboardConfig {
             ClipboardConfig::Custom(cust) => Box::new(command_provider::command::Provider {
                 name: "Custom configuration".to_string(),
                 get_cmd: command_provider::command::CommandConfig {
-                    prg: cust.paste.head.clone(),
-                    args: cust.paste.tail.clone(),
+                    prg: cust.paste.head().clone(),
+                    args: cust.paste.tail().clone(),
                 },
                 set_cmd: command_provider::command::CommandConfig {
-                    prg: cust.copy.head.clone(),
-                    args: cust.copy.tail.clone(),
+                    prg: cust.copy.head().clone(),
+                    args: cust.copy.tail().clone(),
                 },
                 get_primary_cmd: Some(command_provider::command::CommandConfig {
-                    prg: cust.copy.head.clone(),
-                    args: cust.copy.tail.clone(),
+                    prg: cust.copy.head().clone(),
+                    args: cust.copy.tail().clone(),
                 }),
                 set_primary_cmd: Some(command_provider::command::CommandConfig {
-                    prg: cust.copy.head.clone(),
-                    args: cust.copy.tail.clone(),
+                    prg: cust.copy.head().clone(),
+                    args: cust.copy.tail().clone(),
                 }),
             }),
-            ClipboardConfig::None => Box::new(NoneProvider::new()),
+            ClipboardConfig::None => Box::<NoneProvider>::default(),
         }
     }
 }
@@ -246,25 +246,16 @@ impl ClipboardConfig {
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct CustomClipboardConfig {
-    copy: NonEmpty<String>,
-    paste: NonEmpty<String>,
-    primary_copy: Option<NonEmpty<String>>,
-    primary_paste: Option<NonEmpty<String>>,
+    copy: NonEmptyVec<String>,
+    paste: NonEmptyVec<String>,
+    primary_copy: Option<NonEmptyVec<String>>,
+    primary_paste: Option<NonEmptyVec<String>>,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct NoneProvider {
     buf: String,
     primary_buf: String,
-}
-
-impl NoneProvider {
-    pub fn new() -> Self {
-        Self {
-            buf: String::new(),
-            primary_buf: String::new(),
-        }
-    }
 }
 
 impl ClipboardProvider for NoneProvider {

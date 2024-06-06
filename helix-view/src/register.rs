@@ -1,13 +1,11 @@
-use std::{borrow::Cow, collections::HashMap, iter, sync::Arc};
+use std::{borrow::Cow, collections::HashMap, iter};
 
 use anyhow::Result;
-use arc_swap::access::DynAccess;
 use helix_core::NATIVE_LINE_ENDING;
 
 use crate::{
     clipboard::{ClipboardProvider, ClipboardType},
     document::SCRATCH_BUFFER_NAME,
-    editor::Config,
     Editor,
 };
 
@@ -35,10 +33,10 @@ pub struct Registers {
 }
 
 impl Registers {
-    pub fn new(config: Arc<dyn DynAccess<Config>>) -> Self {
+    pub fn new(clipboard_provider: Box<dyn ClipboardProvider>) -> Self {
         Self {
             inner: Default::default(),
-            clipboard_provider: config.load().clipboard_provider.get_provider(),
+            clipboard_provider,
             last_search_register: '/',
         }
     }
