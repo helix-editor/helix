@@ -7,10 +7,7 @@ use helix_event::{register_hook, send_blocking};
 use helix_view::{
     editor::SaveStyle,
     events::DocumentDidChange,
-    handlers::{
-        lsp::{AutoSaveEvent, AutoSaveInvoked},
-        Handlers,
-    },
+    handlers::{lsp::AutoSaveEvent, Handlers},
     Editor,
 };
 use tokio::time::Instant;
@@ -20,6 +17,8 @@ use crate::{
     job::{self, Jobs},
 };
 
+const DEFAULT_DELAY: u64 = 3000;
+
 #[derive(Debug)]
 enum State {
     Closed,
@@ -27,14 +26,12 @@ enum State {
 
 #[derive(Debug)]
 pub(super) struct AutoSaveHandler {
-    trigger: Option<AutoSaveInvoked>,
     state: State,
 }
 
 impl AutoSaveHandler {
     pub fn new() -> AutoSaveHandler {
         AutoSaveHandler {
-            trigger: None,
             state: State::Closed,
         }
     }
@@ -51,8 +48,7 @@ impl helix_event::AsyncHook for AutoSaveHandler {
         match event {
             AutoSaveEvent::Trigger => {
                 if matches!(self.state, State::Closed) {
-                    self.trigger = Some(AutoSaveInvoked::Automatic);
-                    return Some(Instant::now() + Duration::from_millis(1000));
+                    return Some(Instant::now() + Duration::from_millis(DEFAULT_DELAY));
                 }
             }
             AutoSaveEvent::Cancel => {
@@ -61,11 +57,7 @@ impl helix_event::AsyncHook for AutoSaveHandler {
             }
         }
 
-        if self.trigger.is_none() {
-            self.trigger = Some(AutoSaveInvoked::Automatic)
-        }
-
-        Some(Instant::now() + Duration::from_millis(1000))
+        Some(Instant::now() + Duration::from_millis(DEFAULT_DELAY))
     }
 
     fn finish_debounce(&mut self) {
@@ -81,10 +73,6 @@ fn request_auto_save(editor: &mut Editor) {
     };
 
     if let Err(e) = commands::typed::write_all_impl(context, false, false) {
-        context.editor.set_error(format!("{}", e));
-    }
-
-    if let Err(e) = context.block_try_flush_writes() {
         context.editor.set_error(format!("{}", e));
     }
 }
