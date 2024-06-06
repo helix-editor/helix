@@ -177,7 +177,6 @@ mod tests {
     #[test]
     fn parsing_menus() {
         use crate::keymap;
-        use crate::keymap::Keymap;
         use helix_core::hashmap;
         use helix_view::document::Mode;
 
@@ -191,7 +190,7 @@ mod tests {
         merge_keys(
             &mut keys,
             hashmap! {
-                Mode::Normal => Keymap::new(keymap!({ "Normal mode"
+                Mode::Normal => keymap!({ "Normal mode"
                     "f" => { ""
                         "f" => file_picker,
                         "c" => wclose,
@@ -200,7 +199,7 @@ mod tests {
                         "b" => buffer_picker,
                         "n" => goto_next_buffer,
                     },
-                })),
+                }),
             },
         );
 
@@ -229,19 +228,23 @@ mod tests {
 
         let config = Config::load_test(sample_keymaps);
 
-        let tree = config.keys.get(&Mode::Normal).unwrap().root();
+        let tree = config.keys.get(&Mode::Normal).unwrap();
 
         if let keymap::KeyTrie::Node(node) = tree {
             let open_node = node.get(&KeyEvent::from_str("o").unwrap()).unwrap();
 
-            if let keymap::KeyTrie::Leaf(MappableCommand::Typable { doc, .. }) = open_node {
+            if let keymap::KeyTrie::MappableCommand(MappableCommand::Typable { doc, .. }) =
+                open_node
+            {
                 assert_eq!(doc, "Edit Config");
             } else {
                 panic!("Edit Config did not parse to typable command");
             }
 
             let close_node = node.get(&KeyEvent::from_str("c").unwrap()).unwrap();
-            if let keymap::KeyTrie::Leaf(MappableCommand::Typable { doc, .. }) = close_node {
+            if let keymap::KeyTrie::MappableCommand(MappableCommand::Typable { doc, .. }) =
+                close_node
+            {
                 assert_eq!(doc, ":buffer-close []");
             } else {
                 panic!(":buffer-close command did not parse to typable command");
