@@ -84,7 +84,7 @@ impl KeyTrieNode {
                     cmd.doc()
                 }
                 KeyTrie::Node(n) => &n.name,
-                KeyTrie::Sequence(..) => KeyTrie::DEFAULT_SEQUENCE_LABEL,
+                KeyTrie::Sequence(l, ..) => l,
             };
             match body.iter().position(|(_, d)| d == &desc) {
                 Some(pos) => {
