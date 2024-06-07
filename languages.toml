@@ -3642,6 +3642,20 @@ name = "pest"
 source = { git = "https://github.com/pest-parser/tree-sitter-pest", rev = "a8a98a824452b1ec4da7f508386a187a2f234b85" }
 
 [[language]]
+name = "elisp"
+scope = "source.elisp"
+file-types = ["el"]
+comment-tokens = [";"]
+
+[language.auto-pairs]
+'(' = ')'
+'"' = '"'
+
+[[grammar]]
+name = "elisp"
+source = { git = "https://github.com/Wilfred/tree-sitter-elisp", rev = "e5524fdccf8c22fc726474a910e4ade976dfc7bb" }
+
+[[language]]
 name = "gjs"
 scope = "source.gjs"
 file-types = ["gjs"]
