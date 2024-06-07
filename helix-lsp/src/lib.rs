@@ -133,6 +133,7 @@ pub mod util {
         doc: &Rope,
         pos: lsp::Position,
         offset_encoding: OffsetEncoding,
+        force_eol: bool,
     ) -> Option<usize> {
         let pos_line = pos.line as usize;
         if pos_line > doc.len_lines() - 1 {
@@ -190,11 +191,14 @@ pub mod util {
         };
 
         // The LSP spec demands that the offset is capped to the end of the line
-        let pos = line
-            .start
-            .checked_add(pos.character as usize)
-            .unwrap_or(line.end)
-            .min(line.end);
+        let pos = if force_eol {
+            line.end
+        } else {
+            line.start
+                .checked_add(pos.character as usize)
+                .unwrap_or(line.end)
+                .min(line.end)
+        };
 
         match offset_encoding {
             OffsetEncoding::Utf8 => doc.try_byte_to_char(pos).ok(),
@@ -264,8 +268,8 @@ pub mod util {
             );
             range.start = range.end;
         }
-        let start = lsp_pos_to_pos(doc, range.start, offset_encoding)?;
-        let end = lsp_pos_to_pos(doc, range.end, offset_encoding)?;
+        let start = lsp_pos_to_pos(doc, range.start, offset_encoding, false)?;
+        let end = lsp_pos_to_pos(doc, range.end, offset_encoding, false)?;
 
         Some(Range::new(start, end))
     }
@@ -511,8 +515,8 @@ pub mod util {
         #[allow(clippy::collapsible_if)]
         if edits.len() == 1 {
             let is_document_replacement = edits.first().and_then(|edit| {
-                let start = lsp_pos_to_pos(doc, edit.range.start, offset_encoding)?;
-                let end = lsp_pos_to_pos(doc, edit.range.end, offset_encoding)?;
+                let start = lsp_pos_to_pos(doc, edit.range.start, offset_encoding, false)?;
+                let end = lsp_pos_to_pos(doc, edit.range.end, offset_encoding, false)?;
                 Some(start..end)
             }) == Some(0..doc.len_chars());
             if is_document_replacement {
@@ -531,13 +535,16 @@ pub mod util {
                     None
                 };
 
-                let start =
-                    if let Some(start) = lsp_pos_to_pos(doc, edit.range.start, offset_encoding) {
-                        start
-                    } else {
-                        return (0, 0, None);
-                    };
-                let end = if let Some(end) = lsp_pos_to_pos(doc, edit.range.end, offset_encoding) {
+                let start = if let Some(start) =
+                    lsp_pos_to_pos(doc, edit.range.start, offset_encoding, false)
+                {
+                    start
+                } else {
+                    return (0, 0, None);
+                };
+                let end = if let Some(end) =
+                    lsp_pos_to_pos(doc, edit.range.end, offset_encoding, false)
+                {
                     end
                 } else {
                     return (0, 0, None);
@@ -1076,8 +1083,14 @@ mod tests {
             ($doc:expr, ($x:expr, $y:expr) => $want:expr) => {
                 let doc = Rope::from($doc);
                 let pos = lsp::Position::new($x, $y);
-                assert_eq!($want, lsp_pos_to_pos(&doc, pos, OffsetEncoding::Utf16));
-                assert_eq!($want, lsp_pos_to_pos(&doc, pos, OffsetEncoding::Utf8))
+                assert_eq!(
+                    $want,
+                    lsp_pos_to_pos(&doc, pos, OffsetEncoding::Utf16, false)
+                );
+                assert_eq!(
+                    $want,
+                    lsp_pos_to_pos(&doc, pos, OffsetEncoding::Utf8, false)
+                )
             };
         }
 

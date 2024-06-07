@@ -1778,20 +1778,22 @@ impl Document {
         use helix_core::diagnostic::{Range, Severity::*};
 
         // TODO: convert inside server
-        let start =
-            if let Some(start) = lsp_pos_to_pos(text, diagnostic.range.start, offset_encoding) {
-                start
-            } else {
-                log::warn!("lsp position out of bounds - {:?}", diagnostic);
-                return None;
-            };
-
-        let end = if let Some(end) = lsp_pos_to_pos(text, diagnostic.range.end, offset_encoding) {
-            end
+        let start = if let Some(start) =
+            lsp_pos_to_pos(text, diagnostic.range.start, offset_encoding, false)
+        {
+            start
         } else {
             log::warn!("lsp position out of bounds - {:?}", diagnostic);
             return None;
         };
+
+        let end =
+            if let Some(end) = lsp_pos_to_pos(text, diagnostic.range.end, offset_encoding, false) {
+                end
+            } else {
+                log::warn!("lsp position out of bounds - {:?}", diagnostic);
+                return None;
+            };
 
         let severity = diagnostic.severity.map(|severity| match severity {
             lsp::DiagnosticSeverity::ERROR => Error,

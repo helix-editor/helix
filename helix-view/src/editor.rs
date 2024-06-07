@@ -420,6 +420,12 @@ pub struct LspConfig {
     pub display_signature_help_docs: bool,
     /// Display inlay hints
     pub display_inlay_hints: bool,
+    /// force inlay type hints to end of line
+    pub force_type_hints_eol: bool,
+    /// force parameter hints to end of line
+    pub force_parameter_hints_eol: bool,
+    /// force other hints to end of line
+    pub force_other_hints_eol: bool,
     /// Whether to enable snippet support
     pub snippets: bool,
     /// Whether to include declaration in the goto reference query
@@ -436,6 +442,9 @@ impl Default for LspConfig {
             display_inlay_hints: false,
             snippets: true,
             goto_reference_include_declaration: true,
+            force_type_hints_eol: false,
+            force_parameter_hints_eol: false,
+            force_other_hints_eol: false,
         }
     }
 }

@@ -1165,16 +1165,23 @@ pub fn select_references_to_symbol_under_cursor(cx: &mut Context) {
 }
 
 pub fn compute_inlay_hints_for_all_views(editor: &mut Editor, jobs: &mut crate::job::Jobs) {
-    if !editor.config().lsp.display_inlay_hints {
+    let config = editor.config(); // idk how expensive this is so doing it once
+    if !config.lsp.display_inlay_hints {
         return;
     }
+
+    let eol_type = config.lsp.force_type_hints_eol;
+    let eol_par = config.lsp.force_parameter_hints_eol;
+    let eol_other = config.lsp.force_other_hints_eol;
 
     for (view, _) in editor.tree.views() {
         let doc = match editor.documents.get(&view.doc) {
             Some(doc) => doc,
             None => continue,
         };
-        if let Some(callback) = compute_inlay_hints_for_view(view, doc) {
+        if let Some(callback) =
+            compute_inlay_hints_for_view(view, doc, eol_type, eol_par, eol_other)
+        {
             jobs.callback(callback);
         }
     }
@@ -1183,6 +1190,9 @@ pub fn compute_inlay_hints_for_all_views(editor: &mut Editor, jobs: &mut crate::
 fn compute_inlay_hints_for_view(
     view: &View,
     doc: &Document,
+    eol_type: bool,
+    eol_par: bool,
+    eol_other: bool,
 ) -> Option<std::pin::Pin<Box<impl Future<Output = Result<crate::job::Callback, anyhow::Error>>>>> {
     let view_id = view.id;
     let doc_id = view.doc;
@@ -1270,13 +1280,22 @@ fn compute_inlay_hints_for_view(
             let doc_text = doc.text();
 
             for hint in hints {
-                let char_idx =
-                    match helix_lsp::util::lsp_pos_to_pos(doc_text, hint.position, offset_encoding)
-                    {
-                        Some(pos) => pos,
-                        // Skip inlay hints that have no "real" position
-                        None => continue,
-                    };
+                let force_eol = match hint.kind {
+                    Some(lsp::InlayHintKind::TYPE) => eol_type,
+                    Some(lsp::InlayHintKind::PARAMETER) => eol_par,
+                    _ => eol_other,
+                };
+
+                let char_idx = match helix_lsp::util::lsp_pos_to_pos(
+                    doc_text,
+                    hint.position,
+                    offset_encoding,
+                    force_eol,
+                ) {
+                    Some(pos) => pos,
+                    // Skip inlay hints that have no "real" position
+                    None => continue,
+                };
 
                 let label = match hint.label {
                     lsp::InlayHintLabel::String(s) => s,
