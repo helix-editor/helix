@@ -190,7 +190,7 @@
 | supercollider | ✓ |  |  |  |
 | svelte | ✓ |  | ✓ | `svelteserver` |
 | sway | ✓ | ✓ | ✓ | `forc` |
-| swift | ✓ |  |  | `sourcekit-lsp` |
+| swift | ✓ | ✓ |  | `sourcekit-lsp` |
 | t32 | ✓ |  |  |  |
 | tablegen | ✓ | ✓ | ✓ |  |
 | tact | ✓ | ✓ | ✓ |  |

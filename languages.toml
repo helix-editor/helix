@@ -1908,16 +1908,17 @@ language-servers = [ "r" ]
 name = "swift"
 scope = "source.swift"
 injection-regex = "swift"
-file-types = ["swift"]
+file-types = ["swift", "swiftinterface"]
 roots = [ "Package.swift" ]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
+formatter = { command = "swift-format", args = [ "--configuration", ".swift-format"] }
 auto-format = true
 language-servers = [ "sourcekit-lsp" ]
 
 [[grammar]]
 name = "swift"
-source = { git = "https://github.com/alex-pinkus/tree-sitter-swift", rev = "b1b66955d420d5cf5ff268ae552f0d6e43ff66e1" }
+source = { git = "https://github.com/alex-pinkus/tree-sitter-swift", rev = "57c1c6d6ffa1c44b330182d41717e6fe37430704" }
 
 [[language]]
 name = "erb"
