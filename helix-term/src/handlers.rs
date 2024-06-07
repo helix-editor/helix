@@ -5,16 +5,16 @@ use helix_event::AsyncHook;
 
 use crate::config::Config;
 use crate::events;
+use crate::handlers::auto_save::AutoSaveHandler;
 use crate::handlers::completion::CompletionHandler;
 use crate::handlers::signature_help::SignatureHelpHandler;
-use crate::handlers::auto_save::AutoSaveHandler;
 
 pub use completion::trigger_auto_completion;
 pub use helix_view::handlers::Handlers;
 
+mod auto_save;
 pub mod completion;
 mod signature_help;
-mod auto_save;
 
 pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
     events::register();

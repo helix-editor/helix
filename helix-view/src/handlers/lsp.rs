@@ -50,7 +50,8 @@ pub enum AutoSaveInvoked {
 }
 
 pub enum AutoSaveEvent {
-    Trigger,
+    // contains delay in milli seconds
+    Trigger(u64),
     Cancel,
 }
 

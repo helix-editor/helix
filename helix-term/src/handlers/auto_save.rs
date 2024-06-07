@@ -5,7 +5,7 @@ use arc_swap::access::Access;
 
 use helix_event::{register_hook, send_blocking};
 use helix_view::{
-    editor::SaveStyle,
+    editor::DEFAULT_AUTO_SAVE_DELAY,
     events::DocumentDidChange,
     handlers::{lsp::AutoSaveEvent, Handlers},
     Editor,
@@ -16,8 +16,6 @@ use crate::{
     commands, compositor,
     job::{self, Jobs},
 };
-
-const DEFAULT_DELAY: u64 = 3000;
 
 #[derive(Debug)]
 enum State {
@@ -46,9 +44,9 @@ impl helix_event::AsyncHook for AutoSaveHandler {
         _: Option<tokio::time::Instant>,
     ) -> Option<Instant> {
         match event {
-            AutoSaveEvent::Trigger => {
+            AutoSaveEvent::Trigger(delay) => {
                 if matches!(self.state, State::Closed) {
-                    return Some(Instant::now() + Duration::from_millis(DEFAULT_DELAY));
+                    return Some(Instant::now() + Duration::from_millis(delay));
                 }
             }
             AutoSaveEvent::Cancel => {
@@ -57,7 +55,7 @@ impl helix_event::AsyncHook for AutoSaveHandler {
             }
         }
 
-        Some(Instant::now() + Duration::from_millis(DEFAULT_DELAY))
+        Some(Instant::now() + Duration::from_millis(DEFAULT_AUTO_SAVE_DELAY))
     }
 
     fn finish_debounce(&mut self) {
@@ -81,8 +79,8 @@ pub(super) fn register_hooks(handlers: &Handlers) {
     let tx = handlers.auto_save.clone();
     register_hook!(move |event: &mut DocumentDidChange<'_>| {
         let config = event.doc.config.load();
-        if config.auto_save && config.save_style == SaveStyle::AfterDelay {
-            send_blocking(&tx, AutoSaveEvent::Trigger);
+        if let Some(delay) = config.auto_save.after_delay {
+            send_blocking(&tx, AutoSaveEvent::Trigger(delay));
         }
         Ok(())
     });

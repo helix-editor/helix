@@ -55,6 +55,8 @@ use arc_swap::{
     ArcSwap,
 };
 
+pub const DEFAULT_AUTO_SAVE_DELAY: u64 = 3000;
+
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -266,10 +268,10 @@ pub struct Config {
     pub auto_completion: bool,
     /// Automatic formatting on save. Defaults to true.
     pub auto_format: bool,
-    /// Automatic save on focus lost. Defaults to false.
-    pub auto_save: bool,
-    /// When saves are performed. Defaults to on focus lost.
-    pub save_style: SaveStyle,
+    /// Automatic save on focus lost and/or after delay.
+    /// Time delay in milliseconds since last keypress after which auto save timer triggers.
+    /// Time delay defaults to false with 3000ms delay. Focus lost defaults to false.
+    pub auto_save: AutoSave,
     /// Set a global text_width
     pub text_width: usize,
     /// Time in milliseconds since last keypress before idle timers trigger.
@@ -279,13 +281,6 @@ pub struct Config {
         deserialize_with = "deserialize_duration_millis"
     )]
     pub idle_timeout: Duration,
-    /// Time in milliseconds since last keypress before auto save timers trigger.
-    /// Used for various UI timeouts. Defaults to 1000ms.
-    #[serde(
-        serialize_with = "serialize_duration_millis",
-        deserialize_with = "deserialize_duration_millis"
-    )]
-    pub save_delay_timeout: Duration,
     /// Time in milliseconds after typing a word character before auto completions
     /// are shown, set to 5 for instant. Defaults to 250ms.
     #[serde(
@@ -780,11 +775,110 @@ impl WhitespaceRender {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(rename_all = "kebab-case")]
-pub enum SaveStyle {
-    FocusLost,
-    AfterDelay,
+#[derive(Debug, Default, Clone, PartialEq, Eq)]
+pub struct AutoSave {
+    /// Auto save after `n` milli seconds. Defaults to None.
+    pub after_delay: Option<u64>,
+    /// Auto save on focus lost. Defaults to false.
+    pub focus_lost: bool,
+}
+
+// Intermediate type to have a flattened config
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(untagged, deny_unknown_fields, rename_all = "kebab-case")]
+enum AutoSaveToml {
+    EnableFocusLost(bool),
+    #[serde(rename_all = "kebab-case")]
+    AutoSave {
+        #[serde(default)]
+        after_delay: AutoSaveAfterDelay,
+        #[serde(default)]
+        focus_lost: bool,
+    },
+}
+
+// Intermediate type to have a flattened config
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+struct AutoSaveAfterDelay {
+    #[serde(default)]
+    pub enable: bool,
+    #[serde(default = "default_auto_save_delay")]
+    pub timeout: u64,
+}
+
+fn default_auto_save_delay() -> u64 {
+    DEFAULT_AUTO_SAVE_DELAY
+}
+
+impl From<AutoSave> for AutoSaveToml {
+    fn from(value: AutoSave) -> Self {
+        let after_delay = match value.after_delay {
+            Some(timeout) => AutoSaveAfterDelay {
+                enable: true,
+                timeout,
+            },
+            None => Default::default(),
+        };
+        Self::AutoSave {
+            after_delay,
+            focus_lost: value.focus_lost,
+        }
+    }
+}
+
+impl From<AutoSaveToml> for AutoSave {
+    fn from(value: AutoSaveToml) -> Self {
+        match value {
+            AutoSaveToml::EnableFocusLost(focus_lost) => Self {
+                focus_lost,
+                ..Default::default()
+            },
+            AutoSaveToml::AutoSave {
+                after_delay,
+                focus_lost,
+            } => {
+                let after_delay: Option<u64> = after_delay.enable.then_some(after_delay.timeout);
+                Self {
+                    after_delay,
+                    focus_lost,
+                }
+            }
+        }
+    }
+}
+
+impl Default for AutoSaveToml {
+    fn default() -> Self {
+        Self::EnableFocusLost(false)
+    }
+}
+
+impl Default for AutoSaveAfterDelay {
+    fn default() -> Self {
+        Self {
+            enable: false,
+            timeout: DEFAULT_AUTO_SAVE_DELAY,
+        }
+    }
+}
+
+impl<'de> Deserialize<'de> for AutoSave {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        Ok(AutoSaveToml::deserialize(deserializer)?.into())
+    }
+}
+impl Serialize for AutoSave {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        let a: AutoSaveToml = self.clone().into();
+        a.serialize(serializer)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -897,10 +991,8 @@ impl Default for Config {
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
             auto_format: true,
-            auto_save: false,
-            save_style: SaveStyle::FocusLost,
+            auto_save: AutoSave::default(),
             idle_timeout: Duration::from_millis(250),
-            save_delay_timeout: Duration::from_millis(1000),
             completion_timeout: Duration::from_millis(250),
             preview_completion_insert: true,
             completion_trigger_len: 2,
