@@ -17,19 +17,19 @@
 
 [
   "return"
-] @keyword.return
+] @keyword.control.return
 
 [
   "for" "loop" "while"
-] @keyword.repeat
+] @keyword.control.repeat
 
 [ 
   "if" "elsif" "else" "case" "then" "when"
-] @keyword.conditional
+] @keyword.control.conditional
 
 [ 
   "library" "use"
-] @keyword.include
+] @keyword.control.import
 
 (comment) @comment @spell
 
@@ -41,7 +41,7 @@
 
 [
   "." ";" "," ":"
-] @punctuation.delimeter
+] @punctuation.delimiter
 
 [
   "=>" "<=" "+" ":=" "=" "/=" "<" ">" "-" "*"
@@ -60,9 +60,9 @@
 [
   (real_decimal)
   (integer_decimal)
-] @number
+] @constant.numeric
 
-(character_literal) @character
+(character_literal) @constant.character
 
 [
   (string_literal)
