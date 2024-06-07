@@ -223,7 +223,7 @@ mode = "location"
 [[language]]
 name = "rust"
 scope = "source.rust"
-injection-regex = "rust"
+injection-regex = "rs|rust"
 file-types = ["rs"]
 roots = ["Cargo.toml", "Cargo.lock"]
 shebangs = ["rust-script", "cargo"]
@@ -824,7 +824,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-html", rev = "29f53
 [[language]]
 name = "python"
 scope = "source.python"
-injection-regex = "python"
+injection-regex = "py(thon)?"
 file-types = ["py", "pyi", "py3", "pyw", "ptl", "rpy", "cpy", "ipy", "pyt", { glob = ".python_history" }, { glob = ".pythonstartup" }, { glob = ".pythonrc" }, { glob = "SConstruct" }, { glob = "SConscript" }]
 shebangs = ["python"]
 roots = ["pyproject.toml", "setup.py", "poetry.lock", "pyrightconfig.json"]
@@ -1265,7 +1265,7 @@ source = { git = "https://github.com/ikatyang/tree-sitter-yaml", rev = "0e36bed1
 [[language]]
 name = "haskell"
 scope = "source.haskell"
-injection-regex = "haskell"
+injection-regex = "hs|haskell"
 file-types = ["hs", "hs-boot"]
 roots = ["Setup.hs", "stack.yaml", "cabal.project"]
 comment-token = "--"
@@ -3155,7 +3155,7 @@ grammar = "html"
 [[language]]
 name = "typst"
 scope = "source.typst"
-injection-regex = "typst"
+injection-regex = "typ(st)?"
 file-types = ["typst", "typ"]
 comment-token = "//"
 language-servers = ["tinymist", "typst-lsp"]
