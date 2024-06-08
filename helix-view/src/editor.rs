@@ -55,7 +55,7 @@ use arc_swap::{
     ArcSwap,
 };
 
-pub const DEFAULT_AUTO_SAVE_DELAY: u64 = 3000;
+const DEFAULT_AUTO_SAVE_DELAY: u64 = 3000;
 
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
