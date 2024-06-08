@@ -531,6 +531,14 @@ impl MappableCommand {
         command_palette, "Open command palette",
         goto_word, "Jump to a two-character label",
         extend_to_word, "Extend to a two-character label",
+        add_mark_file, "Bookmark a file",
+        add_mark_line, "Bookmark a perticular line in a file",
+        remove_mark_file, "Remove current file Bookmark if it exists",
+        remove_mark_line, "Remove current line Bookmark if it exists",
+        goto_nth_mark, "Move cursor to the Nth bookmark",
+        goto_next_mark, "Move cursor to the next bookmark",
+        goto_prev_mark, "Move cursor to the prev bookmark",
+        mark_picker, "Open mark picker",
     );
 }
 
@@ -6022,6 +6030,31 @@ fn goto_word(cx: &mut Context) {
 
 fn extend_to_word(cx: &mut Context) {
     jump_to_word(cx, Movement::Extend)
+}
+fn add_mark_file(cx: &mut Context) {
+    todo!();
+}
+fn add_mark_line(cx: &mut Context) {
+    todo!();
+}
+fn remove_mark_file(cx: &mut Context) {
+    todo!();
+}
+fn remove_mark_line(cx: &mut Context) {
+    todo!();
+}
+fn goto_nth_mark(cx: &mut Context) {
+    todo!();
+}
+fn goto_next_mark(cx: &mut Context) {
+    todo!();
+}
+fn goto_prev_mark(cx: &mut Context) {
+    todo!();
+}
+
+fn mark_picker(cx: &mut Context) {
+    todo!();
 }
 
 fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {

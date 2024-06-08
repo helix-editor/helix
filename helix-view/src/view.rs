@@ -22,8 +22,54 @@ use std::{
 };
 
 const JUMP_LIST_CAPACITY: usize = 30;
+const MARK_LIST_CAPACITY: usize = 30;
 
 type Jump = (DocumentId, Selection);
+type Mark = (DocumentId, Selection);
+
+#[derive(Debug, Clone)]
+pub struct MarkList {
+    marks: VecDeque<Mark>,
+    current: usize,
+}
+
+impl MarkList {
+    pub fn new(initial: Jump) -> Self {
+        todo!();
+    }
+
+    pub fn push(&mut self, jump: Jump) {
+        todo!()
+    }
+
+    pub fn forward(&mut self, count: usize) -> Option<&Jump> {
+        todo!();
+    }
+
+    // Taking view and doc to prevent unnecessary cloning when jump is not required.
+    pub fn backward(&mut self, view_id: ViewId, doc: &mut Document, count: usize) -> Option<&Jump> {
+        todo!();
+    }
+
+    pub fn nth(&mut self, view_id: ViewId, doc: &mut Document, count: usize) -> Option<&Jump> {
+        todo!();
+    }
+
+    pub fn remove(&mut self, doc_id: &DocumentId) {
+        todo!();
+    }
+
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = &Jump> {
+        self.marks.iter()
+    }
+
+    /// Applies a [`Transaction`] of changes to the jumplist.
+    /// This is necessary to ensure that changes to documents do not leave jump-list
+    /// selections pointing to parts of the text which no longer exist.
+    fn apply(&mut self, transaction: &Transaction, doc: &Document) {
+        todo!();
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct JumpList {
@@ -114,6 +160,7 @@ pub struct View {
     pub area: Rect,
     pub doc: DocumentId,
     pub jumps: JumpList,
+    pub marks: MarkList,
     // documents accessed from this view from the oldest one to last viewed one
     pub docs_access_history: Vec<DocumentId>,
     /// the last modified files before the current one
@@ -154,6 +201,7 @@ impl View {
             },
             area: Rect::default(), // will get calculated upon inserting into tree
             jumps: JumpList::new((doc, Selection::point(0))), // TODO: use actual sel
+            marks: MarkList::new((doc, Selection::point(0))), // TODO: use actual sel
             docs_access_history: Vec::new(),
             last_modified_docs: [None, None],
             object_selections: Vec::new(),
