@@ -6050,6 +6050,19 @@ pub fn goto_mark(cx: &mut Context) {
             register_name
         )),
     };
+    // let picker = Picker::new(items, (), |cx, meta, action| {
+    //     cx.editor.switch(meta.id, action);
+    // })
+    // .with_preview(|editor, meta| {
+    //     let doc = &editor.documents.get(&meta.id)?;
+    //     let &view_id = doc.selections().keys().next()?;
+    //     let line = doc
+    //         .selection(view_id)
+    //         .primary()
+    //         .cursor_line(doc.text().slice(..));
+    //     Some((meta.id.into(), Some((line, line))))
+    // });
+    // cx.push_layer(Box::new(overlaid(picker)));
 }
 
 fn register_mark(cx: &mut Context) {
