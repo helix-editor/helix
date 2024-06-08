@@ -66,6 +66,31 @@ async fn insert_to_normal_mode_cursor_position() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn register_mark() -> anyhow::Result<()> {
+    // add a mark and then immediately paste it out
+    test((
+        indoc! {"\
+            Lorem 
+            ipsum 
+            dolor#[| 
+            sit]# 
+            amet."
+        },
+        "1\"^p",
+        indoc! {"\
+            Lorem 
+            ipsum 
+            dolor 
+            sit#[|1:(24,19)]# 
+            amet."
+        },
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn surround_by_character() -> anyhow::Result<()> {
     // Only pairs matching the passed character count
     test((
