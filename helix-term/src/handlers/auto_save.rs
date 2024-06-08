@@ -79,8 +79,9 @@ pub(super) fn register_hooks(handlers: &Handlers) {
     let tx = handlers.auto_save.clone();
     register_hook!(move |event: &mut DocumentDidChange<'_>| {
         let config = event.doc.config.load();
-        if let Some(delay) = config.auto_save.after_delay {
-            send_blocking(&tx, AutoSaveEvent::Trigger(delay));
+        if config.auto_save.after_delay.enable {
+            let timeout = config.auto_save.after_delay.timeout;
+            send_blocking(&tx, AutoSaveEvent::Trigger(timeout));
         }
         Ok(())
     });

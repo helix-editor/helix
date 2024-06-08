@@ -271,6 +271,7 @@ pub struct Config {
     /// Automatic save on focus lost and/or after delay.
     /// Time delay in milliseconds since last keypress after which auto save timer triggers.
     /// Time delay defaults to false with 3000ms delay. Focus lost defaults to false.
+    #[serde(deserialize_with = "deserialize_auto_save")]
     pub auto_save: AutoSave,
     /// Set a global text_width
     pub text_width: usize,
@@ -775,83 +776,24 @@ impl WhitespaceRender {
     }
 }
 
-#[derive(Debug, Default, Clone, PartialEq, Eq)]
+#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct AutoSave {
     /// Auto save after `n` milli seconds. Defaults to None.
-    pub after_delay: Option<u64>,
+    #[serde(default)]
+    pub after_delay: AutoSaveAfterDelay,
     /// Auto save on focus lost. Defaults to false.
+    #[serde(default)]
     pub focus_lost: bool,
 }
 
-// Intermediate type to have a flattened config
-#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
-#[serde(untagged, deny_unknown_fields, rename_all = "kebab-case")]
-enum AutoSaveToml {
-    EnableFocusLost(bool),
-    #[serde(rename_all = "kebab-case")]
-    AutoSave {
-        #[serde(default)]
-        after_delay: AutoSaveAfterDelay,
-        #[serde(default)]
-        focus_lost: bool,
-    },
-}
-
-// Intermediate type to have a flattened config
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(deny_unknown_fields)]
-struct AutoSaveAfterDelay {
+pub struct AutoSaveAfterDelay {
     #[serde(default)]
     pub enable: bool,
     #[serde(default = "default_auto_save_delay")]
     pub timeout: u64,
-}
-
-fn default_auto_save_delay() -> u64 {
-    DEFAULT_AUTO_SAVE_DELAY
-}
-
-impl From<AutoSave> for AutoSaveToml {
-    fn from(value: AutoSave) -> Self {
-        let after_delay = match value.after_delay {
-            Some(timeout) => AutoSaveAfterDelay {
-                enable: true,
-                timeout,
-            },
-            None => Default::default(),
-        };
-        Self::AutoSave {
-            after_delay,
-            focus_lost: value.focus_lost,
-        }
-    }
-}
-
-impl From<AutoSaveToml> for AutoSave {
-    fn from(value: AutoSaveToml) -> Self {
-        match value {
-            AutoSaveToml::EnableFocusLost(focus_lost) => Self {
-                focus_lost,
-                ..Default::default()
-            },
-            AutoSaveToml::AutoSave {
-                after_delay,
-                focus_lost,
-            } => {
-                let after_delay: Option<u64> = after_delay.enable.then_some(after_delay.timeout);
-                Self {
-                    after_delay,
-                    focus_lost,
-                }
-            }
-        }
-    }
-}
-
-impl Default for AutoSaveToml {
-    fn default() -> Self {
-        Self::EnableFocusLost(false)
-    }
 }
 
 impl Default for AutoSaveAfterDelay {
@@ -863,21 +805,27 @@ impl Default for AutoSaveAfterDelay {
     }
 }
 
-impl<'de> Deserialize<'de> for AutoSave {
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: Deserializer<'de>,
-    {
-        Ok(AutoSaveToml::deserialize(deserializer)?.into())
-    }
+fn default_auto_save_delay() -> u64 {
+    DEFAULT_AUTO_SAVE_DELAY
 }
-impl Serialize for AutoSave {
-    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
-    where
-        S: serde::Serializer,
-    {
-        let a: AutoSaveToml = self.clone().into();
-        a.serialize(serializer)
+
+fn deserialize_auto_save<'de, D>(deserializer: D) -> Result<AutoSave, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize, Serialize)]
+    #[serde(untagged, deny_unknown_fields, rename_all = "kebab-case")]
+    enum AutoSaveToml {
+        EnableFocusLost(bool),
+        AutoSave(AutoSave),
+    }
+
+    match AutoSaveToml::deserialize(deserializer)? {
+        AutoSaveToml::EnableFocusLost(focus_lost) => Ok(AutoSave {
+            focus_lost,
+            ..Default::default()
+        }),
+        AutoSaveToml::AutoSave(auto_save) => Ok(auto_save),
     }
 }
 
