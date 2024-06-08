@@ -532,6 +532,7 @@ impl MappableCommand {
         goto_word, "Jump to a two-character label",
         extend_to_word, "Extend to a two-character label",
         register_mark, "Register a bookmark",
+        goto_mark, "Goto a bookmark",
     );
 }
 
@@ -6023,6 +6024,32 @@ fn goto_word(cx: &mut Context) {
 
 fn extend_to_word(cx: &mut Context) {
     jump_to_word(cx, Movement::Extend)
+}
+
+pub fn goto_mark(cx: &mut Context) {
+    let register_name = cx.register.unwrap_or('^').clone();
+    let register_content = cx.editor.registers.read(register_name, cx.editor);
+    let res = match register_content {
+        Some(values) => values
+            .into_iter()
+            .next()
+            .map(|c| c.into_owned())
+            .map(|s| {
+                let mut split_iter = s.split(":").into_iter();
+                let doc_id = split_iter.next().unwrap();
+                let range_tupel = split_iter.next().unwrap();
+                log::debug!("doc id: {:?}", &doc_id);
+                log::debug!("range_tuple: {:?}", &range_tupel);
+            })
+            .ok_or(format!(
+                "Register {} did not contain anything",
+                register_name
+            )),
+        None => Err(format!(
+            "Register {} did not contain anything",
+            register_name
+        )),
+    };
 }
 
 fn register_mark(cx: &mut Context) {
