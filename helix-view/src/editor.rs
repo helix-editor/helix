@@ -55,7 +55,7 @@ use arc_swap::{
     ArcSwap,
 };
 
-const DEFAULT_AUTO_SAVE_DELAY: u64 = 3000;
+pub const DEFAULT_AUTO_SAVE_DELAY: u64 = 3000;
 
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
@@ -269,7 +269,7 @@ pub struct Config {
     /// Automatic formatting on save. Defaults to true.
     pub auto_format: bool,
     /// Automatic save on focus lost and/or after delay.
-    /// Time delay in milliseconds since last keypress after which auto save timer triggers.
+    /// Time delay in milliseconds since last edit after which auto save timer triggers.
     /// Time delay defaults to false with 3000ms delay. Focus lost defaults to false.
     #[serde(deserialize_with = "deserialize_auto_save")]
     pub auto_save: AutoSave,
@@ -779,7 +779,7 @@ impl WhitespaceRender {
 #[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct AutoSave {
-    /// Auto save after `n` milli seconds. Defaults to None.
+    /// Auto save after a delay in milliseconds. Defaults to disabled.
     #[serde(default)]
     pub after_delay: AutoSaveAfterDelay,
     /// Auto save on focus lost. Defaults to false.
@@ -791,8 +791,10 @@ pub struct AutoSave {
 #[serde(deny_unknown_fields)]
 pub struct AutoSaveAfterDelay {
     #[serde(default)]
+    /// Enable auto save after delay. Defaults to false.
     pub enable: bool,
     #[serde(default = "default_auto_save_delay")]
+    /// Time delay in milliseconds. Defaults to [DEFAULT_AUTO_SAVE_DELAY].
     pub timeout: u64,
 }
 
