@@ -26,6 +26,9 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "home" => goto_line_start,
         "end" => goto_line_end,
 
+        "{" => goto_prev_paragraph,
+        "}" => goto_next_paragraph,
+
         "w" => move_next_word_start,
         "b" => move_prev_word_start,
         "e" => move_next_word_end,
