@@ -19,7 +19,7 @@ pub use typed::*;
 use helix_core::{
     char_idx_at_visual_offset,
     chars::char_is_word,
-    comment,
+    comment, coords_at_pos,
     doc_formatter::TextFormat,
     encoding, find_workspace,
     graphemes::{self, next_grapheme_boundary, RevRopeGraphemes},
@@ -531,14 +531,7 @@ impl MappableCommand {
         command_palette, "Open command palette",
         goto_word, "Jump to a two-character label",
         extend_to_word, "Extend to a two-character label",
-        add_mark_file, "Bookmark a file",
-        add_mark_line, "Bookmark a perticular line in a file",
-        remove_mark_file, "Remove current file Bookmark if it exists",
-        remove_mark_line, "Remove current line Bookmark if it exists",
-        goto_nth_mark, "Move cursor to the Nth bookmark",
-        goto_next_mark, "Move cursor to the next bookmark",
-        goto_prev_mark, "Move cursor to the prev bookmark",
-        mark_picker, "Open mark picker",
+        register_mark, "Register a bookmark",
     );
 }
 
@@ -6031,30 +6024,29 @@ fn goto_word(cx: &mut Context) {
 fn extend_to_word(cx: &mut Context) {
     jump_to_word(cx, Movement::Extend)
 }
-fn add_mark_file(cx: &mut Context) {
-    todo!();
-}
-fn add_mark_line(cx: &mut Context) {
-    todo!();
-}
-fn remove_mark_file(cx: &mut Context) {
-    todo!();
-}
-fn remove_mark_line(cx: &mut Context) {
-    todo!();
-}
-fn goto_nth_mark(cx: &mut Context) {
-    todo!();
-}
-fn goto_next_mark(cx: &mut Context) {
-    todo!();
-}
-fn goto_prev_mark(cx: &mut Context) {
-    todo!();
-}
 
-fn mark_picker(cx: &mut Context) {
-    todo!();
+fn register_mark(cx: &mut Context) {
+    let register_name = cx.register.unwrap_or('^').clone();
+    let (view, doc) = current!(cx.editor);
+    let primary_selection = doc.selection(view.id).primary().clone();
+    let range_start_pos = match primary_selection.direction() {
+        Direction::Forward => coords_at_pos(doc.text().slice(0..), primary_selection.anchor),
+        Direction::Backward => coords_at_pos(doc.text().slice(0..), primary_selection.head),
+    };
+    cx.editor
+        .registers
+        .write(
+            register_name,
+            vec![format!("{}:{}", doc.id(), primary_selection.to_string())],
+        )
+        .unwrap();
+
+    cx.editor.set_status(format!(
+        "Saved location line {}, row {} to [{}]",
+        range_start_pos.row + 1,
+        range_start_pos.col + 1,
+        register_name
+    ));
 }
 
 fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
