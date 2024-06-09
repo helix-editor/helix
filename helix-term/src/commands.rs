@@ -6027,8 +6027,8 @@ fn extend_to_word(cx: &mut Context) {
     jump_to_word(cx, Movement::Extend)
 }
 
-fn read_from_register(editor: &Editor, reg: char) -> Option<RegisterValues> {
-    editor.registers.read(reg, &editor)
+fn read_from_register(editor: &mut Editor, reg: char) -> Option<RegisterValues> {
+    editor.registers.read(reg, &*editor)
 }
 
 fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {

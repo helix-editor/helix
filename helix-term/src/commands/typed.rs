@@ -464,14 +464,21 @@ fn register_mark(
     let ranges_str = ranges
         .iter()
         .map(|r| r.to_string())
-        .collect::<Vec<String>>()
-        .join(",");
+        .collect::<Vec<String>>();
+
+    // we have to take because of cell
+    let history = doc.history.take();
+    let current_history_point = history.current_revision();
+    doc.history.replace(history);
+    let mut register_val = vec![
+        format!("{}", doc.id()),
+        format!("{}", current_history_point),
+    ];
+    register_val.extend(ranges_str);
+
     cx.editor
         .registers
-        .write(
-            register_name,
-            vec![format!("{}:{}", doc.id(), ranges_str.to_string())],
-        )
+        .write(register_name, register_val)
         .unwrap();
 
     cx.editor
@@ -479,6 +486,54 @@ fn register_mark(
     Ok(())
 }
 
+fn parse_mark_register_contents(
+    registers_vals: Option<RegisterValues>,
+) -> Result<(DocumentId, usize, Selection), String> {
+    match registers_vals {
+        Some(rv) => {
+            let mut rv_iter = rv.into_iter();
+            let doc_id_str = rv_iter.next().unwrap().into_owned();
+            let doc_id: DocumentId = doc_id_str.try_into().unwrap();
+            let history_rev_str = rv_iter.next().unwrap().into_owned();
+            let history_rev: usize = history_rev_str.parse().unwrap();
+            let mut ranges = rv_iter
+                .map(|tup| {
+                    let s = tup.into_owned();
+                    let range_parser = seq!(
+                        "(",
+                        take_until(|c| c == ','),
+                        ",",
+                        take_until(|c| c == ')'),
+                        ")"
+                    );
+                    let (_, (_, anchor_str, _, head_str, _)) = range_parser.parse(&s).unwrap();
+                    let anchor: usize = <usize as FromStr>::from_str(anchor_str).unwrap().clone();
+                    let head: usize = <usize as FromStr>::from_str(head_str).unwrap();
+                    Range {
+                        anchor,
+                        head,
+                        old_visual_position: None,
+                    }
+                })
+                // reverse the iterators so the first range will end up as the primary when we push them
+                .rev();
+            let last_range = ranges.next().unwrap(); // there is always at least one range
+            let mut selection = Selection::from(last_range);
+            for r in ranges {
+                selection = selection.push(r);
+            }
+            Ok((doc_id, history_rev, selection))
+        }
+        None => Err("Could not parse registry content".to_string()), // I can't figure out how to set status line here because of borrow issues :(
+    }
+}
+
+fn get_revisions_to_apply(doc: &mut Document, history_rev: usize) -> Option<Transaction> {
+    let history = doc.history.take();
+    let revisions_to_apply = history.changes_since(history_rev);
+    doc.history.replace(history);
+    revisions_to_apply
+}
 fn goto_mark(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -495,51 +550,19 @@ fn goto_mark(
         )
         .unwrap_or('^');
     let registers_vals = read_from_register(cx.editor, register_name);
-    let blurb = registers_vals
-        .unwrap()
-        .into_iter()
-        .next()
-        .map(|c| c.into_owned());
-    match blurb {
-        Some(s) => {
-            let doc_id_parser = seq!(take_until(|c| c == ':'), ":");
-            let range_parser = seq!(
-                "(",
-                take_until(|c| c == ','),
-                ",",
-                take_until(|c| c == ')'),
-                ")"
-            );
-            let multiple_ranges_parser = sep(range_parser, ",");
-            let (tail, (doc_id_str, _)) = doc_id_parser.parse(&s).unwrap();
-            let (_tail, v) = multiple_ranges_parser.parse(tail).unwrap();
-            let mut ranges = v
-                .iter()
-                .map(|tup| {
-                    let (_, anchor_str, _, head_str, _) = tup;
-                    let anchor: usize = <usize as FromStr>::from_str(anchor_str).unwrap();
-                    let head: usize = <usize as FromStr>::from_str(head_str).unwrap();
-                    Range {
-                        anchor,
-                        head,
-                        old_visual_position: None,
-                    }
-                })
-                .rev();
-            // reverse the iterators so the first range will end up as the primary when we push them
+    let (doc_id, history_rev, mut selection) =
+        parse_mark_register_contents(registers_vals).unwrap();
+    cx.editor.switch(doc_id, Action::Replace);
 
-            let doc_id: DocumentId = doc_id_str.try_into().unwrap();
-            cx.editor.switch(doc_id, Action::Replace);
-            let (view, doc) = current!(cx.editor);
-            let last_range = ranges.next().unwrap(); // there is always at least one range
-            let mut selection = Selection::from(last_range);
-            for r in ranges {
-                selection = selection.push(r);
-            }
-            doc.set_selection(view.id, selection);
-        }
-        None => (),
+    let (view, doc) = current!(cx.editor);
+    let revisions_to_apply = get_revisions_to_apply(doc, history_rev);
+
+    selection = match revisions_to_apply {
+        Some(t) => selection.map(t.changes()),
+        None => selection,
     };
+
+    doc.set_selection(view.id, selection);
     Ok(())
 }
 
