@@ -1,6 +1,5 @@
 use std::fmt::Write;
 use std::io::BufReader;
-use std::num::ParseIntError;
 use std::ops::Deref;
 
 use crate::job::Job;
@@ -484,10 +483,7 @@ fn register_mark(
     ];
     register_val.extend(ranges_str);
 
-    cx.editor
-        .registers
-        .write(register_name, register_val)
-        .unwrap();
+    cx.editor.registers.write(register_name, register_val)?;
 
     cx.editor
         .set_status(format!("Saved selection bookmark to [{}]", register_name));
@@ -496,7 +492,7 @@ fn register_mark(
 
 fn parse_mark_register_contents(
     registers_vals: Option<RegisterValues>,
-) -> Result<(DocumentId, usize, Selection), String> {
+) -> anyhow::Result<(DocumentId, usize, Selection)> {
     match registers_vals {
         Some(rv) => {
             let mut rv_iter = rv.into_iter();
@@ -506,14 +502,14 @@ fn parse_mark_register_contents(
                 .and_then(|c| Some(c.into_owned()))
                 .and_then(|s| s.try_into().ok())
             else {
-                return Err("Register did not contain valid document id".to_string());
+                return Err(anyhow!("Register did not contain valid document id"));
             };
             let Some(history_rev) = rv_iter
                 .next()
                 .and_then(|c| Some(c.into_owned()))
                 .and_then(|s| s.parse().ok())
             else {
-                return Err("Register did not contain valid revision number".to_string());
+                return Err(anyhow!("Register did not contain valid revision number"));
             };
 
             let Ok(ranges) = rv_iter
@@ -549,7 +545,7 @@ fn parse_mark_register_contents(
                 .rev()
                 .collect::<Result<Vec<Range>, String>>()
             else {
-                return Err("Some ranges in the register failed to parse!".to_string());
+                return Err(anyhow!("Some ranges in the register failed to parse!"));
             };
 
             let mut ranges_iter = ranges.into_iter();
@@ -562,7 +558,7 @@ fn parse_mark_register_contents(
 
             Ok((doc_id, history_rev, selection))
         }
-        None => Err("Register was empty".to_string()),
+        None => Err(anyhow!("Register was empty")),
     }
 }
 
@@ -581,9 +577,11 @@ fn goto_mark(
             |s| s.as_ref().chars().next(),
         )
         .unwrap_or('^');
+
+    // use some helper functions to avoid making the borrow checker angry
     let registers_vals = read_from_register(cx.editor, register_name);
-    let (doc_id, history_rev, mut selection) =
-        parse_mark_register_contents(registers_vals).unwrap();
+    let (doc_id, history_rev, mut selection) = parse_mark_register_contents(registers_vals)?;
+
     cx.editor.switch(doc_id, Action::Replace);
 
     let (view, doc) = current!(cx.editor);
