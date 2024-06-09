@@ -534,8 +534,6 @@ impl MappableCommand {
         command_palette, "Open command palette",
         goto_word, "Jump to a two-character label",
         extend_to_word, "Extend to a two-character label",
-        register_mark, "Register a bookmark",
-        goto_mark, "Goto a bookmark",
     );
 }
 
@@ -6031,77 +6029,6 @@ fn extend_to_word(cx: &mut Context) {
 
 fn read_from_register(editor: &Editor, reg: char) -> Option<RegisterValues> {
     editor.registers.read(reg, &editor)
-}
-
-pub fn goto_mark(cx: &mut Context) {
-    let register_name = cx.register.unwrap_or('^').clone();
-    let registers_vals = read_from_register(cx.editor, register_name);
-    let blurb = registers_vals
-        .unwrap()
-        .into_iter()
-        .next()
-        .map(|c| c.into_owned());
-    match blurb {
-        Some(s) => {
-            let doc_id_parser = seq!(take_until(|c| c == ':'), ":");
-            let range_parser = seq!(
-                "(",
-                take_until(|c| c == ','),
-                ",",
-                take_until(|c| c == ')'),
-                ")"
-            );
-            let multiple_ranges_parser = sep(range_parser, ",");
-            let (tail, (doc_id_str, _)) = doc_id_parser.parse(&s).unwrap();
-            let (tail, v) = multiple_ranges_parser.parse(tail).unwrap();
-            let mut ranges = v
-                .iter()
-                .map(|tup| {
-                    let (_, anchor_str, _, head_str, _) = tup;
-                    let anchor: usize = <usize as FromStr>::from_str(anchor_str).unwrap();
-                    let head: usize = <usize as FromStr>::from_str(head_str).unwrap();
-                    Range {
-                        anchor,
-                        head,
-                        old_visual_position: None,
-                    }
-                })
-                .rev();
-            // reverse the iterators so the first range will end up as the primary when we push them
-
-            let doc_id: DocumentId = doc_id_str.try_into().unwrap();
-            cx.editor.switch(doc_id, Action::Replace);
-            let (view, doc) = current!(cx.editor);
-            let last_range = ranges.next().unwrap(); // there is always at least one range
-            let mut selection = Selection::from(last_range);
-            for r in ranges {
-                selection = selection.push(r);
-            }
-            doc.set_selection(view.id, selection);
-        }
-        None => (),
-    }
-}
-
-fn register_mark(cx: &mut Context) {
-    let register_name = cx.register.unwrap_or('^').clone();
-    let (view, doc) = current!(cx.editor);
-    let ranges = doc.selection(view.id).ranges();
-    let ranges_str = ranges
-        .iter()
-        .map(|r| r.to_string())
-        .collect::<Vec<String>>()
-        .join(",");
-    cx.editor
-        .registers
-        .write(
-            register_name,
-            vec![format!("{}:{}", doc.id(), ranges_str.to_string())],
-        )
-        .unwrap();
-
-    cx.editor
-        .set_status(format!("Saved selection bookmark to [{}]", register_name));
 }
 
 fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {

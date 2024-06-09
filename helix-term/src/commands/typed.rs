@@ -1,3 +1,4 @@
+use std::borrow::Borrow;
 use std::fmt::Write;
 use std::io::BufReader;
 use std::ops::Deref;
@@ -440,6 +441,105 @@ fn new_file(
 
     cx.editor.new_file(Action::Replace);
 
+    Ok(())
+}
+
+fn register_mark(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    };
+    let register_name: char = args
+        .first()
+        .map_or_else(
+            || cx.editor.selected_register,
+            |s| s.as_ref().chars().next(),
+        )
+        .unwrap_or('^');
+    let (view, doc) = current!(cx.editor);
+    let ranges = doc.selection(view.id).ranges();
+    let ranges_str = ranges
+        .iter()
+        .map(|r| r.to_string())
+        .collect::<Vec<String>>()
+        .join(",");
+    cx.editor
+        .registers
+        .write(
+            register_name,
+            vec![format!("{}:{}", doc.id(), ranges_str.to_string())],
+        )
+        .unwrap();
+
+    cx.editor
+        .set_status(format!("Saved selection bookmark to [{}]", register_name));
+    Ok(())
+}
+
+fn goto_mark(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    };
+    let register_name: char = args
+        .first()
+        .map_or_else(
+            || cx.editor.selected_register,
+            |s| s.as_ref().chars().next(),
+        )
+        .unwrap_or('^');
+    let registers_vals = read_from_register(cx.editor, register_name);
+    let blurb = registers_vals
+        .unwrap()
+        .into_iter()
+        .next()
+        .map(|c| c.into_owned());
+    match blurb {
+        Some(s) => {
+            let doc_id_parser = seq!(take_until(|c| c == ':'), ":");
+            let range_parser = seq!(
+                "(",
+                take_until(|c| c == ','),
+                ",",
+                take_until(|c| c == ')'),
+                ")"
+            );
+            let multiple_ranges_parser = sep(range_parser, ",");
+            let (tail, (doc_id_str, _)) = doc_id_parser.parse(&s).unwrap();
+            let (_tail, v) = multiple_ranges_parser.parse(tail).unwrap();
+            let mut ranges = v
+                .iter()
+                .map(|tup| {
+                    let (_, anchor_str, _, head_str, _) = tup;
+                    let anchor: usize = <usize as FromStr>::from_str(anchor_str).unwrap();
+                    let head: usize = <usize as FromStr>::from_str(head_str).unwrap();
+                    Range {
+                        anchor,
+                        head,
+                        old_visual_position: None,
+                    }
+                })
+                .rev();
+            // reverse the iterators so the first range will end up as the primary when we push them
+
+            let doc_id: DocumentId = doc_id_str.try_into().unwrap();
+            cx.editor.switch(doc_id, Action::Replace);
+            let (view, doc) = current!(cx.editor);
+            let last_range = ranges.next().unwrap(); // there is always at least one range
+            let mut selection = Selection::from(last_range);
+            for r in ranges {
+                selection = selection.push(r);
+            }
+            doc.set_selection(view.id, selection);
+        }
+        None => (),
+    };
     Ok(())
 }
 
@@ -2601,6 +2701,20 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         doc: "Create a new scratch buffer.",
         fun: new_file,
         signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "goto_mark",
+        aliases: &[],
+        doc: "Go to the selection saved in a register. Register can be provided as argument or selected register else ^ will be used",
+        fun: goto_mark,
+        signature: CommandSignature::positional(&[completers::register]),
+    },
+    TypableCommand {
+        name: "register_mark",
+        aliases: &[],
+        doc: "Save current selection into a register. Register can be provided as argument or selected register else ^ will be used",
+        fun: register_mark,
+        signature: CommandSignature::positional(&[completers::register]),
     },
     TypableCommand {
         name: "format",
