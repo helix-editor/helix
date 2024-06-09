@@ -4,7 +4,7 @@ pub(crate) mod typed;
 
 pub use dap::*;
 use helix_event::status;
-use helix_parsec::{seq, take_until, Parser};
+use helix_parsec::{sep, seq, take_until, Parser};
 use helix_stdx::{
     path::expand_tilde,
     rope::{self, RopeSliceExt},
@@ -50,7 +50,7 @@ use helix_view::{
     register::RegisterValues,
     theme::Style,
     tree,
-    view::{self, View},
+    view::View,
     Document, DocumentId, Editor, ViewId,
 };
 
@@ -75,6 +75,7 @@ use std::{
     future::Future,
     io::Read,
     num::NonZeroUsize,
+    str::FromStr,
 };
 
 use std::{
@@ -6028,100 +6029,79 @@ fn extend_to_word(cx: &mut Context) {
     jump_to_word(cx, Movement::Extend)
 }
 
-fn read_from_register(editor: &mut Editor, reg: char) -> Option<RegisterValues> {
-    editor.registers.read(reg, editor)
+fn read_from_register(editor: &Editor, reg: char) -> Option<RegisterValues> {
+    editor.registers.read(reg, &editor)
 }
 
 pub fn goto_mark(cx: &mut Context) {
     let register_name = cx.register.unwrap_or('^').clone();
-    let registers_vals = read_from_register(&mut cx.editor, register_name);
+    let registers_vals = read_from_register(cx.editor, register_name);
     let blurb = registers_vals
         .unwrap()
         .into_iter()
         .next()
         .map(|c| c.into_owned());
-    // let register_content = editor.registers.read(register_name, editor);
-    // let reg_str = match values {
-    //     Some(values) =>
-    //         .ok_or(format!(
-    //             "Register {} did not contain anything",
-    //             register_name
-    //         )),
-    //     None => Err(format!(
-    //         "Register {} did not contain anything",
-    //         register_name
-    //     )),
-    // };
     match blurb {
         Some(s) => {
-            let parser = seq!(
-                take_until(|c| c == ':'),
-                ":(",
+            let doc_id_parser = seq!(take_until(|c| c == ':'), ":");
+            let range_parser = seq!(
+                "(",
                 take_until(|c| c == ','),
                 ",",
                 take_until(|c| c == ')'),
                 ")"
             );
-            let (_tail, (doc_id_str, _, anchor_str, _, head_str, _)) = parser.parse(&s).unwrap();
-            let anchor = anchor_str.parse().unwrap();
-            let head = head_str.parse().unwrap();
+            let multiple_ranges_parser = sep(range_parser, ",");
+            let (tail, (doc_id_str, _)) = doc_id_parser.parse(&s).unwrap();
+            let (tail, v) = multiple_ranges_parser.parse(tail).unwrap();
+            let mut ranges = v
+                .iter()
+                .map(|tup| {
+                    let (_, anchor_str, _, head_str, _) = tup;
+                    let anchor: usize = <usize as FromStr>::from_str(anchor_str).unwrap();
+                    let head: usize = <usize as FromStr>::from_str(head_str).unwrap();
+                    Range {
+                        anchor,
+                        head,
+                        old_visual_position: None,
+                    }
+                })
+                .rev();
+            // reverse the iterators so the first range will end up as the primary when we push them
+
             let doc_id: DocumentId = doc_id_str.try_into().unwrap();
-            let range = Range {
-                anchor,
-                head,
-                old_visual_position: None,
-            };
             cx.editor.switch(doc_id, Action::Replace);
             let (view, doc) = current!(cx.editor);
-            let (min_idx, max_idx) = if anchor < head {
-                (anchor, head)
-            } else {
-                (head, anchor)
-            };
-            let new_range = range.put_cursor(doc.text().slice(..), min_idx, false);
-            let new_range = new_range.put_cursor(doc.text().slice(..), max_idx, true);
-            doc.set_selection(view.id, new_range.into());
+            let last_range = ranges.next().unwrap(); // there is always at least one range
+            let mut selection = Selection::from(last_range);
+            for r in ranges {
+                selection = selection.push(r);
+            }
+            doc.set_selection(view.id, selection);
         }
         None => (),
-        // Err(e) => log::error!("{}", e),
     }
-    // let picker = Picker::new(items, (), |cx, meta, action| {
-    //     cx.editor.switch(meta.id, action);
-    // })
-    // .with_preview(|editor, meta| {
-    //     let doc = &editor.documents.get(&meta.id)?;
-    //     let &view_id = doc.selections().keys().next()?;
-    //     let line = doc
-    //         .selection(view_id)
-    //         .primary()
-    //         .cursor_line(doc.text().slice(..));
-    //     Some((meta.id.into(), Some((line, line))))
-    // });
-    // cx.push_layer(Box::new(overlaid(picker)));
 }
 
 fn register_mark(cx: &mut Context) {
     let register_name = cx.register.unwrap_or('^').clone();
     let (view, doc) = current!(cx.editor);
-    let primary_selection = doc.selection(view.id).primary().clone();
-    let range_start_pos = match primary_selection.direction() {
-        Direction::Forward => coords_at_pos(doc.text().slice(0..), primary_selection.anchor),
-        Direction::Backward => coords_at_pos(doc.text().slice(0..), primary_selection.head),
-    };
+    let ranges = doc.selection(view.id).ranges();
+    let ranges_str = ranges
+        .iter()
+        .map(|r| r.to_string())
+        .collect::<Vec<String>>()
+        .join(",");
     cx.editor
         .registers
         .write(
             register_name,
-            vec![format!("{}:{}", doc.id(), primary_selection.to_string())],
+            vec![format!("{}:{}", doc.id(), ranges_str.to_string())],
         )
         .unwrap();
 
-    cx.editor.set_status(format!(
-        "Saved location line {}, row {} to [{}]",
-        range_start_pos.row + 1,
-        range_start_pos.col + 1,
-        register_name
-    ));
+    cx.editor
+        .set_status(format!("Saved selection bookmark to [{}]", register_name));
 }
 
 fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
