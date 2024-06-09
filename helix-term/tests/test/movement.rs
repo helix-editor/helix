@@ -81,7 +81,9 @@ async fn bookmark() -> anyhow::Result<()> {
             #(|Lorem)# 
             ipsum"
         },
-        ":register_mark<space>1<ret>casdf<esc>:goto_mark<space>1<ret>",
+        // make a mark, make changes to the doc, colapse selection by going to end of doc
+        // then resore mark and see the selection is still good
+        ":register_mark<space>1<ret>casdf<esc>ge:goto_mark<space>1<ret>",
         indoc! {"\
             #[|asdf]# 
             ipsum 
