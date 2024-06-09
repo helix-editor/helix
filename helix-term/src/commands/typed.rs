@@ -1,5 +1,6 @@
 use std::fmt::Write;
 use std::io::BufReader;
+use std::num::ParseIntError;
 use std::ops::Deref;
 
 use crate::job::Job;
@@ -499,11 +500,23 @@ fn parse_mark_register_contents(
     match registers_vals {
         Some(rv) => {
             let mut rv_iter = rv.into_iter();
-            let doc_id_str = rv_iter.next().unwrap().into_owned();
-            let doc_id: DocumentId = doc_id_str.try_into().unwrap();
-            let history_rev_str = rv_iter.next().unwrap().into_owned();
-            let history_rev: usize = history_rev_str.parse().unwrap();
-            let mut ranges = rv_iter
+
+            let Some(doc_id) = rv_iter
+                .next()
+                .and_then(|c| Some(c.into_owned()))
+                .and_then(|s| s.try_into().ok())
+            else {
+                return Err("Register did not contain valid document id".to_string());
+            };
+            let Some(history_rev) = rv_iter
+                .next()
+                .and_then(|c| Some(c.into_owned()))
+                .and_then(|s| s.parse().ok())
+            else {
+                return Err("Register did not contain valid revision number".to_string());
+            };
+
+            let Ok(ranges) = rv_iter
                 .map(|tup| {
                     let s = tup.into_owned();
                     let range_parser = seq!(
@@ -513,25 +526,43 @@ fn parse_mark_register_contents(
                         take_until(|c| c == ')'),
                         ")"
                     );
-                    let (_, (_, anchor_str, _, head_str, _)) = range_parser.parse(&s).unwrap();
-                    let anchor: usize = <usize as FromStr>::from_str(anchor_str).unwrap();
-                    let head: usize = <usize as FromStr>::from_str(head_str).unwrap();
-                    Range {
+                    let Ok((_tail, (_lparen, anchor_str, _comma, head_str, _rparen))) =
+                        range_parser.parse(&s)
+                    else {
+                        return Err(format!("Could not parse range from string: {}", s));
+                    };
+
+                    let Ok(anchor) = <usize as FromStr>::from_str(anchor_str) else {
+                        return Err(format!("Could not parse range from string: {}", s));
+                    };
+                    let Ok(head) = <usize as FromStr>::from_str(head_str) else {
+                        return Err(format!("Could not parse range from string: {}", s));
+                    };
+
+                    Ok(Range {
                         anchor,
                         head,
                         old_visual_position: None,
-                    }
+                    })
                 })
                 // reverse the iterators so the first range will end up as the primary when we push them
-                .rev();
-            let last_range = ranges.next().unwrap(); // there is always at least one range
+                .rev()
+                .collect::<Result<Vec<Range>, String>>()
+            else {
+                return Err("Some ranges in the register failed to parse!".to_string());
+            };
+
+            let mut ranges_iter = ranges.into_iter();
+
+            let last_range = ranges_iter.next().unwrap(); // safe since there is always at least one range
             let mut selection = Selection::from(last_range);
-            for r in ranges {
+            for r in ranges_iter {
                 selection = selection.push(r);
             }
+
             Ok((doc_id, history_rev, selection))
         }
-        None => Err("Could not parse registry content".to_string()), // I can't figure out how to set status line here because of borrow issues :(
+        None => Err("Register was empty".to_string()),
     }
 }
 
