@@ -332,7 +332,6 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
         "C-a" => increment,
         "C-x" => decrement,
-        // just for debugging I'll find something better later
 
     });
     let mut select = normal.clone();
