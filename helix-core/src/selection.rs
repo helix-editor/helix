@@ -14,7 +14,7 @@ use crate::{
 use helix_parsec::{seq, take_until, Parser};
 use helix_stdx::rope::{self, RopeSliceExt};
 use smallvec::{smallvec, SmallVec};
-use std::{borrow::Cow, iter, slice};
+use std::{borrow::Cow, fmt::Display, iter, slice};
 use tree_sitter::Node;
 
 /// A single selection range.
@@ -390,9 +390,11 @@ impl Range {
     pub fn into_byte_range(&self, text: RopeSlice) -> (usize, usize) {
         (text.char_to_byte(self.from()), text.char_to_byte(self.to()))
     }
+}
 
-    pub fn to_string(self) -> String {
-        format!("({},{})", self.anchor, self.head)
+impl Display for Range {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "({},{})", self.anchor, self.head)
     }
 }
 

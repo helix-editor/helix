@@ -32,7 +32,6 @@ impl GutterType {
             GutterType::LineNumbers => line_numbers(editor, doc, view, theme, is_focused),
             GutterType::Spacer => padding(editor, doc, view, theme, is_focused),
             GutterType::Diff => diff(editor, doc, view, theme, is_focused),
-            GutterType::Mark => mark(editor, doc, view, theme, is_focused),
         }
     }
 
@@ -42,7 +41,6 @@ impl GutterType {
             GutterType::LineNumbers => line_numbers_width(view, doc),
             GutterType::Spacer => 1,
             GutterType::Diff => 1,
-            GutterType::Mark => 1,
         }
     }
 }
@@ -86,16 +84,6 @@ pub fn diagnostic<'doc>(
             })
         },
     )
-}
-
-pub fn mark<'doc>(
-    _editor: &'doc Editor,
-    doc: &'doc Document,
-    _view: &View,
-    theme: &Theme,
-    _is_focused: bool,
-) -> GutterFn<'doc> {
-    todo!()
 }
 
 pub fn diff<'doc>(

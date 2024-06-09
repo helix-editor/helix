@@ -671,8 +671,6 @@ pub enum GutterType {
     Spacer,
     /// Highlight local changes
     Diff,
-    /// Bookmarks
-    Mark,
 }
 
 impl std::str::FromStr for GutterType {

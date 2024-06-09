@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 use std::fmt::Write;
 use std::io::BufReader;
 use std::ops::Deref;
@@ -507,7 +506,7 @@ fn parse_mark_register_contents(
                         ")"
                     );
                     let (_, (_, anchor_str, _, head_str, _)) = range_parser.parse(&s).unwrap();
-                    let anchor: usize = <usize as FromStr>::from_str(anchor_str).unwrap().clone();
+                    let anchor: usize = <usize as FromStr>::from_str(anchor_str).unwrap();
                     let head: usize = <usize as FromStr>::from_str(head_str).unwrap();
                     Range {
                         anchor,
