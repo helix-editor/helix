@@ -1594,12 +1594,11 @@ fn replace(cx: &mut Context) {
         if let Some(ch) = ch {
             let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
                 if !range.is_empty() {
-                    let text: String =
+                    let text: Tendril =
                         RopeGraphemes::new(doc.text().slice(range.from()..range.to()))
-                            .map(|_| -> Cow<str> { ch.into() })
+                            .map(|_g| ch)
                             .collect();
-
-                    (range.from(), range.to(), Some(text.into()))
+                    (range.from(), range.to(), Some(text))
                 } else {
                     // No change.
                     (range.from(), range.to(), None)

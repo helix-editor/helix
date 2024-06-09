@@ -724,14 +724,14 @@ fn foo() {
 
     test((
         indoc! {"\
-            #[a|]#
+            #[a
             b
             c
             d
-            e
+            e|]#
             f
             "},
-        "4xs\\n<ret>r,",
+        "s\\n<ret>r,",
         "a#[,|]#b#(,|)#c#(,|)#d#(,|)#e\nf\n",
     ))
     .await?;
