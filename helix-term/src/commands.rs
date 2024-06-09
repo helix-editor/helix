@@ -4,6 +4,7 @@ pub(crate) mod typed;
 
 pub use dap::*;
 use helix_event::status;
+use helix_parsec::{seq, take_until, Parser};
 use helix_stdx::{
     path::expand_tilde,
     rope::{self, RopeSliceExt},
@@ -46,9 +47,10 @@ use helix_view::{
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
+    register::RegisterValues,
     theme::Style,
     tree,
-    view::View,
+    view::{self, View},
     Document, DocumentId, Editor, ViewId,
 };
 
@@ -6026,30 +6028,63 @@ fn extend_to_word(cx: &mut Context) {
     jump_to_word(cx, Movement::Extend)
 }
 
+fn read_from_register(editor: &mut Editor, reg: char) -> Option<RegisterValues> {
+    editor.registers.read(reg, editor)
+}
+
 pub fn goto_mark(cx: &mut Context) {
     let register_name = cx.register.unwrap_or('^').clone();
-    let register_content = cx.editor.registers.read(register_name, cx.editor);
-    let res = match register_content {
-        Some(values) => values
-            .into_iter()
-            .next()
-            .map(|c| c.into_owned())
-            .map(|s| {
-                let mut split_iter = s.split(":").into_iter();
-                let doc_id = split_iter.next().unwrap();
-                let range_tupel = split_iter.next().unwrap();
-                log::debug!("doc id: {:?}", &doc_id);
-                log::debug!("range_tuple: {:?}", &range_tupel);
-            })
-            .ok_or(format!(
-                "Register {} did not contain anything",
-                register_name
-            )),
-        None => Err(format!(
-            "Register {} did not contain anything",
-            register_name
-        )),
-    };
+    let registers_vals = read_from_register(&mut cx.editor, register_name);
+    let blurb = registers_vals
+        .unwrap()
+        .into_iter()
+        .next()
+        .map(|c| c.into_owned());
+    // let register_content = editor.registers.read(register_name, editor);
+    // let reg_str = match values {
+    //     Some(values) =>
+    //         .ok_or(format!(
+    //             "Register {} did not contain anything",
+    //             register_name
+    //         )),
+    //     None => Err(format!(
+    //         "Register {} did not contain anything",
+    //         register_name
+    //     )),
+    // };
+    match blurb {
+        Some(s) => {
+            let parser = seq!(
+                take_until(|c| c == ':'),
+                ":(",
+                take_until(|c| c == ','),
+                ",",
+                take_until(|c| c == ')'),
+                ")"
+            );
+            let (_tail, (doc_id_str, _, anchor_str, _, head_str, _)) = parser.parse(&s).unwrap();
+            let anchor = anchor_str.parse().unwrap();
+            let head = head_str.parse().unwrap();
+            let doc_id: DocumentId = doc_id_str.try_into().unwrap();
+            let range = Range {
+                anchor,
+                head,
+                old_visual_position: None,
+            };
+            cx.editor.switch(doc_id, Action::Replace);
+            let (view, doc) = current!(cx.editor);
+            let (min_idx, max_idx) = if anchor < head {
+                (anchor, head)
+            } else {
+                (head, anchor)
+            };
+            let new_range = range.put_cursor(doc.text().slice(..), min_idx, false);
+            let new_range = new_range.put_cursor(doc.text().slice(..), max_idx, true);
+            doc.set_selection(view.id, new_range.into());
+        }
+        None => (),
+        // Err(e) => log::error!("{}", e),
+    }
     // let picker = Picker::new(items, (), |cx, meta, action| {
     //     cx.editor.switch(meta.id, action);
     // })
