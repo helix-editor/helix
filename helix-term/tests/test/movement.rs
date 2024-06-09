@@ -66,23 +66,33 @@ async fn insert_to_normal_mode_cursor_position() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
-async fn register_mark() -> anyhow::Result<()> {
+async fn bookmark() -> anyhow::Result<()> {
     // add a mark and then immediately paste it out
     test((
         indoc! {"\
-            Lorem 
+            #[|Lorem]# 
             ipsum 
-            dolor#[| 
-            sit]# 
-            amet."
+            #(|Lorem)# 
+            ipsum 
+            #(|Lorem)# 
+            ipsum 
+            #(|Lorem)# 
+            ipsum 
+            #(|Lorem)# 
+            ipsum"
         },
-        "1\"^p",
+        ":register_mark<space>1<ret>casdf<esc>:goto_mark<space>1<ret>",
         indoc! {"\
-            Lorem 
+            #[|asdf]# 
             ipsum 
-            dolor 
-            sit#[|1:(24,19)]# 
-            amet."
+            #(|asdf)# 
+            ipsum 
+            #(|asdf)# 
+            ipsum 
+            #(|asdf)# 
+            ipsum 
+            #(|asdf)# 
+            ipsum"
         },
     ))
     .await?;

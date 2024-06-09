@@ -498,13 +498,15 @@ fn parse_mark_register_contents(
             let mut rv_iter = rv.into_iter();
 
             let Some(doc_id) = rv_iter
-                .next().map(|c| c.into_owned())
+                .next()
+                .map(|c| c.into_owned())
                 .and_then(|s| s.try_into().ok())
             else {
                 return Err(anyhow!("Register did not contain valid document id"));
             };
             let Some(history_rev) = rv_iter
-                .next().map(|c| c.into_owned())
+                .next()
+                .map(|c| c.into_owned())
                 .and_then(|s| s.parse().ok())
             else {
                 return Err(anyhow!("Register did not contain valid revision number"));
