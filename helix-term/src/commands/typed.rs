@@ -458,9 +458,12 @@ fn register_mark(
             |s| s.as_ref().chars().next(),
         )
         .unwrap_or('^');
+
     let (view, doc) = current!(cx.editor);
-    let ranges = doc.selection(view.id).ranges();
-    let ranges_str = ranges
+
+    let ranges_str = doc
+        .selection(view.id)
+        .ranges()
         .iter()
         .map(|r| r.to_string())
         .collect::<Vec<String>>();
@@ -469,6 +472,11 @@ fn register_mark(
     let history = doc.history.take();
     let current_history_point = history.current_revision();
     doc.history.replace(history);
+
+    // doc_id so we know which doc to switch to
+    // current_history_point so we can apply changes
+    // to our selection when we restore it.
+    // the rest of the elements are just the stringified ranges
     let mut register_val = vec![
         format!("{}", doc.id()),
         format!("{}", current_history_point),
@@ -527,12 +535,6 @@ fn parse_mark_register_contents(
     }
 }
 
-fn get_revisions_to_apply(doc: &mut Document, history_rev: usize) -> Option<Transaction> {
-    let history = doc.history.take();
-    let revisions_to_apply = history.changes_since(history_rev);
-    doc.history.replace(history);
-    revisions_to_apply
-}
 fn goto_mark(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -554,7 +556,9 @@ fn goto_mark(
     cx.editor.switch(doc_id, Action::Replace);
 
     let (view, doc) = current!(cx.editor);
-    let revisions_to_apply = get_revisions_to_apply(doc, history_rev);
+    let history = doc.history.take();
+    let revisions_to_apply = history.changes_since(history_rev);
+    doc.history.replace(history);
 
     selection = match revisions_to_apply {
         Some(t) => selection.map(t.changes()),
