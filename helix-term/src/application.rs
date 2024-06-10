@@ -11,6 +11,7 @@ use helix_view::{
     align_view,
     document::DocumentSavedEventResult,
     editor::{ConfigEvent, EditorEvent},
+    events::DiagnosticsDidChange,
     graphics::Rect,
     theme,
     tree::Layout,
@@ -278,7 +279,7 @@ impl Application {
         self.compositor.render(area, surface, &mut cx);
         let (pos, kind) = self.compositor.cursor(area, &self.editor);
         // reset cursor cache
-        self.editor.cursor_cache.set(None);
+        self.editor.cursor_cache.reset();
 
         let pos = pos.map(|pos| (pos.col as u16, pos.row as u16));
         self.terminal.draw(pos, kind).unwrap();
@@ -759,7 +760,7 @@ impl Application {
                                         // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
                                         params
                                             .diagnostics
-                                            .sort_unstable_by_key(|d| (d.severity, d.range.start));
+                                            .sort_by_key(|d| (d.severity, d.range.start));
                                     }
                                     for source in &lang_conf.persistent_diagnostic_sources {
                                         let new_diagnostics = params
@@ -800,9 +801,8 @@ impl Application {
 
                         // Sort diagnostics first by severity and then by line numbers.
                         // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
-                        diagnostics.sort_unstable_by_key(|(d, server_id)| {
-                            (d.severity, d.range.start, *server_id)
-                        });
+                        diagnostics
+                            .sort_by_key(|(d, server_id)| (d.severity, d.range.start, *server_id));
 
                         if let Some(doc) = doc {
                             let diagnostic_of_language_server_and_not_in_unchanged_sources =
@@ -823,6 +823,12 @@ impl Application {
                                 &unchanged_diag_sources,
                                 Some(server_id),
                             );
+
+                            let doc = doc.id();
+                            helix_event::dispatch(DiagnosticsDidChange {
+                                editor: &mut self.editor,
+                                doc,
+                            });
                         }
                     }
                     Notification::ShowMessage(params) => {

@@ -303,7 +303,10 @@ fn diag_picker(
                   offset_encoding,
               },
               action| {
-            jump_to_position(cx.editor, path, diag.range, *offset_encoding, action)
+            jump_to_position(cx.editor, path, diag.range, *offset_encoding, action);
+            let (view, doc) = current!(cx.editor);
+            view.diagnostics_handler
+                .immediately_show_diagnostic(doc, view.id);
         },
     )
     .with_preview(move |_editor, PickerDiagnostic { path, diag, .. }| {
