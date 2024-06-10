@@ -26,7 +26,7 @@ use helix_core::{
     history::UndoKind,
     increment, indent,
     indent::IndentStyle,
-    line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},
+    line_ending::{get_line_ending_of_str, line_end_char_index},
     match_brackets,
     movement::{self, move_vertically_visual, Direction},
     object, pos_at_coords,
@@ -1605,19 +1605,11 @@ fn replace(cx: &mut Context) {
         if let Some(ch) = ch {
             let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
                 if !range.is_empty() {
-                    let text: String =
+                    let text: Tendril =
                         RopeGraphemes::new(doc.text().slice(range.from()..range.to()))
-                            .map(|g| {
-                                let cow: Cow<str> = g.into();
-                                if str_is_line_ending(&cow) {
-                                    cow
-                                } else {
-                                    ch.into()
-                                }
-                            })
+                            .map(|_g| ch)
                             .collect();
-
-                    (range.from(), range.to(), Some(text.into()))
+                    (range.from(), range.to(), Some(text))
                 } else {
                     // No change.
                     (range.from(), range.to(), None)
