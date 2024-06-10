@@ -2074,8 +2074,11 @@ file-types = ["cairo"]
 comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
 # auto-format = true
-grammar = "rust"
 language-servers = [ "cairo-language-server" ]
+
+[[grammar]]
+name = "cairo"
+source = { git = "https://github.com/starkware-libs/tree-sitter-cairo", rev = "a7bf9d9a71e8f3765ebfbcbdfb6301db0277b3f3" }
 
 [[language]]
 name = "cpon"
