@@ -114,10 +114,7 @@
         if pkgs.stdenv.isLinux
         then pkgs.stdenv
         else pkgs.clangStdenv;
-      rustFlagsEnv =
-        if stdenv.isLinux
-        then ''$RUSTFLAGS -C link-arg=-fuse-ld=lld -C target-cpu=native -Clink-arg=-Wl,--no-rosegment''
-        else "$RUSTFLAGS";
+      rustFlagsEnv = pkgs.lib.optionalString stdenv.isLinux "-C link-arg=-fuse-ld=lld -C target-cpu=native -Clink-arg=-Wl,--no-rosegment";
       rustToolchain = pkgs.pkgsBuildHost.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
       craneLibMSRV = (crane.mkLib pkgs).overrideToolchain rustToolchain;
       craneLibStable = (crane.mkLib pkgs).overrideToolchain pkgs.pkgsBuildHost.rust-bin.stable.latest.default;
@@ -183,7 +180,7 @@
         shellHook = ''
           export HELIX_RUNTIME="$PWD/runtime"
           export RUST_BACKTRACE="1"
-          export RUSTFLAGS="${rustFlagsEnv}"
+          export RUSTFLAGS="''${RUSTFLAGS:-""} ${rustFlagsEnv}"
         '';
       };
     })
