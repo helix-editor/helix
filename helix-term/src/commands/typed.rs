@@ -2758,14 +2758,14 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         signature: CommandSignature::none(),
     },
     TypableCommand {
-        name: "goto_mark",
+        name: "goto-mark",
         aliases: &[],
         doc: "Go to the selection saved in a register. Register can be provided as argument or selected register else ^ will be used",
         fun: goto_mark,
         signature: CommandSignature::positional(&[completers::register]),
     },
     TypableCommand {
-        name: "register_mark",
+        name: "register-mark",
         aliases: &[],
         doc: "Save current selection into a register. Register can be provided as argument or selected register else ^ will be used",
         fun: register_mark,
