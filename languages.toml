@@ -2078,7 +2078,7 @@ language-servers = [ "cairo-language-server" ]
 
 [[grammar]]
 name = "cairo"
-source = { git = "https://github.com/starkware-libs/tree-sitter-cairo", rev = "a7bf9d9a71e8f3765ebfbcbdfb6301db0277b3f3" }
+source = { git = "https://github.com/starkware-libs/tree-sitter-cairo", rev = "0596baab741ffacdc65c761d5d5ffbbeae97f033" }
 
 [[language]]
 name = "cpon"
