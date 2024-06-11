@@ -1,7 +1,7 @@
 # Author : Chromo-residuum-opec <development.0extl@simplelogin.com>
 
 inherits = "iceberg-dark"
-ui.menu.selected = { fg = "background_fg", bg = "menusel_bg" }
+"ui.menu.selected" = { fg = "background_fg", bg = "menusel_bg" }
 
 [palette]
 
