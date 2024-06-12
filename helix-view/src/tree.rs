@@ -338,8 +338,6 @@ impl Tree {
             container.add_sync_views(vec![node_id, view_id], doc_id);
         }
 
-        for (i, n) in self.nodes.iter().enumerate() {}
-
         // recalculate all the sizes
         self.recalculate();
 
@@ -1152,6 +1150,7 @@ mod test {
         let l0 = tree.focus;
 
         let view = View::new(doc_main, GutterConfig::default());
+        let view_id = view.id;
         tree.split_extend(view);
         let r0 = tree.focus;
 
@@ -1164,23 +1163,23 @@ mod test {
         // | doc_main | doc_main
 
         // created a synced split
-        assert_eq!(tree.get_synced_views(view.id).len(), 1);
+        assert_eq!(tree.get_synced_views(view_id).len(), 1);
 
         // Synced on the document we created
         assert!(tree
-            .get_synced_views(view.id)
+            .get_synced_views(view_id)
             .iter()
             .find(|x| x.document_id == doc_main)
             .is_some());
 
         // the view is on the sync list
         assert!(tree
-            .get_synced_views(view.id)
+            .get_synced_views(view_id)
             .iter()
-            .find(|x| x.views.iter().find(|v| **v == view.id).is_some())
+            .find(|x| x.views.iter().find(|v| **v == view_id).is_some())
             .is_some());
 
-        tree.remove_sync_view(view.id);
+        tree.remove_sync_view(view_id);
 
         assert!(tree.get_synced_views(view.id).is_empty());
     }
