@@ -31,7 +31,7 @@
   "library" "use"
 ] @keyword.control.import
 
-(comment) @comment @spell
+(comment) @comment
 
 (type_mark) @type
 
