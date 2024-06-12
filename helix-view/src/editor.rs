@@ -1117,6 +1117,7 @@ pub enum Action {
     Replace,
     HorizontalSplit,
     VerticalSplit,
+    VerticalSplitSync,
 }
 
 impl Action {
@@ -1591,6 +1592,7 @@ impl Editor {
                         }
                     }
                 }
+                self.tree.remove_sync_view(view_id);
 
                 self.replace_document_in_view(view_id, id);
 
@@ -1623,6 +1625,20 @@ impl Editor {
                 let doc = doc_mut!(self, &id);
                 doc.ensure_view_init(view_id);
                 doc.mark_as_focused();
+            }
+            Action::VerticalSplitSync => {
+                // copy the current view, unless there is no view yet
+                let view = self
+                    .tree
+                    .try_get(self.tree.focus)
+                    .filter(|v| id == v.doc) // Different Document
+                    .cloned()
+                    .unwrap_or_else(|| View::new(id, self.config().gutters.clone()));
+                let view_id = self.tree.split_extend(view);
+                // initialize selection for view
+                let doc = doc_mut!(self, &id);
+                doc.ensure_view_init(view_id);
+                //doc.mark_as_focused();
             }
         }
 

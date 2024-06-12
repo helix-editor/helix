@@ -1,4 +1,4 @@
-use crate::{graphics::Rect, View, ViewId};
+use crate::{graphics::Rect, DocumentId, View, ViewId};
 use slotmap::HopSlotMap;
 
 // the dimensions are recomputed on window resize/tree change.
@@ -60,11 +60,18 @@ pub enum Direction {
     Right,
 }
 
+#[derive(Clone, Debug)]
+pub struct SyncedViews {
+    pub views: Vec<ViewId>,
+    pub document_id: crate::DocumentId, // Could change to side by side two similar files as a diff maybe
+}
+
 #[derive(Debug)]
 pub struct Container {
     layout: Layout,
     children: Vec<ViewId>,
     area: Rect,
+    synced_views: Vec<SyncedViews>,
 }
 
 impl Container {
@@ -73,7 +80,39 @@ impl Container {
             layout,
             children: Vec::new(),
             area: Rect::default(),
+            synced_views: Vec::new(),
         }
+    }
+
+    //Add views to sync should be at least two views to sync per document
+    fn add_sync_views(&mut self, views: Vec<ViewId>, document_id: DocumentId) {
+        match self
+            .synced_views
+            .iter_mut()
+            .find(|synced| synced.document_id == document_id)
+        {
+            Some(sync_view) => sync_view.views.extend(views),
+            None => {
+                if views.len() > 1 {
+                    self.synced_views.push(SyncedViews { views, document_id })
+                } else {
+                    panic!(
+                        "Trying to sync a less then 1 view this should not happen {}",
+                        views.len()
+                    )
+                }
+            }
+        }
+    }
+
+    fn remove_sync_view(&mut self, view: ViewId) {
+        // remove all view ids from sync list and
+        // remove remove any synchronisation if
+        // there is only one view
+        self.synced_views.retain_mut(|syncs| {
+            syncs.views.retain_mut(|v_id| *v_id != view);
+            syncs.views.len() > 2
+        });
     }
 }
 
@@ -175,6 +214,90 @@ impl Tree {
             split.parent = parent;
             let split = self.nodes.insert(split);
 
+            let split_container = match &mut self.nodes[split] {
+                Node {
+                    content: Content::Container(container),
+                    ..
+                } => container,
+                _ => unreachable!(),
+            };
+            split_container.children.push(focus);
+            split_container.children.push(node);
+
+            self.nodes[focus].parent = split;
+            self.nodes[node].parent = split;
+
+            let container = match &mut self.nodes[parent] {
+                Node {
+                    content: Content::Container(container),
+                    ..
+                } => container,
+                _ => unreachable!(),
+            };
+
+            let pos = container
+                .children
+                .iter()
+                .position(|&child| child == focus)
+                .unwrap();
+
+            // replace focus on parent with split
+            container.children[pos] = split;
+            self.swap_sync_views(split, parent);
+        }
+
+        // focus the new node
+        self.focus = node;
+
+        // recalculate all the sizes
+        self.recalculate();
+
+        node
+    }
+
+    pub fn split_extend(&mut self, view: View) -> ViewId {
+        let doc_id = view.doc;
+        let view_id = view.id;
+        let focus = self.focus;
+        let parent = self.nodes[focus].parent;
+
+        let node = Node::view(view);
+
+        let node = self.nodes.insert(node);
+        self.get_mut(node).id = node;
+
+        let node_id = node;
+
+        let container = match &mut self.nodes[parent] {
+            Node {
+                content: Content::Container(container),
+                ..
+            } => container,
+            _ => unreachable!(),
+        };
+        if container.layout == Layout::Vertical {
+            // insert node after the current item if there is children already
+            let pos = if container.children.is_empty() {
+                0
+            } else {
+                let pos = container
+                    .children
+                    .iter()
+                    .position(|&child| child == focus)
+                    .unwrap();
+                pos + 1
+            };
+
+            container.children.insert(pos, node);
+
+            container.add_sync_views(vec![node_id, view_id], doc_id);
+
+            self.nodes[node].parent = parent;
+        } else {
+            let mut split = Node::container(Layout::Vertical);
+            split.parent = parent;
+            let split = self.nodes.insert(split);
+
             let container = match &mut self.nodes[split] {
                 Node {
                     content: Content::Container(container),
@@ -203,10 +326,19 @@ impl Tree {
 
             // replace focus on parent with split
             container.children[pos] = split;
+
+            let container = match &mut self.nodes[split] {
+                Node {
+                    content: Content::Container(c),
+                    ..
+                } => c,
+                _ => unreachable!(),
+            };
+
+            container.add_sync_views(vec![node_id, view_id], doc_id);
         }
 
-        // focus the new node
-        self.focus = node;
+        for (i, n) in self.nodes.iter().enumerate() {}
 
         // recalculate all the sizes
         self.recalculate();
@@ -253,6 +385,8 @@ impl Tree {
             self.focus = self.prev();
         }
 
+        self.remove_sync_view(index);
+
         let parent = self.nodes[index].parent;
         let parent_is_root = parent == self.root;
 
@@ -267,6 +401,41 @@ impl Tree {
         }
 
         self.recalculate()
+    }
+
+    pub fn remove_sync_view(&mut self, index: ViewId) {
+        let parent = self.nodes[index].parent;
+        let container = &mut self.nodes[parent].content;
+        let container = match container {
+            Content::Container(c) => c,
+            Content::View(_) => return,
+        };
+
+        container.remove_sync_view(index);
+    }
+
+    pub fn get_synced_views(&self, view_id: ViewId) -> &[SyncedViews] {
+        let parent = self.nodes[view_id].parent;
+        let container = match &self.nodes[parent] {
+            Node {
+                content: Content::Container(container),
+                ..
+            } => container,
+            _ => unreachable!(),
+        };
+        container.synced_views.as_slice()
+    }
+
+    fn swap_sync_views(&mut self, x: ViewId, y: ViewId) {
+        // These clones are needed to satisfy the borrow checker ideally it would
+        // simply be a straight call to memswap
+        let mut sync_views_x = self.container_mut(x).synced_views.clone();
+        let mut sync_views_y = self.container_mut(y).synced_views.clone();
+
+        std::mem::swap(&mut sync_views_x, &mut sync_views_y);
+
+        self.container_mut(x).synced_views = sync_views_x;
+        self.container_mut(y).synced_views = sync_views_y;
     }
 
     pub fn views(&self) -> impl Iterator<Item = (&View, bool)> {
@@ -965,5 +1134,54 @@ mod test {
                 .map(|(view, _)| view.area.width)
                 .collect::<Vec<_>>()
         );
+    }
+    #[test]
+    fn split_sync_views() {
+        let mut tree = Tree::new(Rect {
+            x: 0,
+            y: 0,
+            width: 180,
+            height: 80,
+        });
+
+        let doc_main = DocumentId::default();
+        let mut view = View::new(doc_main, GutterConfig::default());
+        view.area = Rect::new(0, 0, 180, 80);
+        tree.insert(view);
+
+        let l0 = tree.focus;
+
+        let view = View::new(doc_main, GutterConfig::default());
+        tree.split_extend(view);
+        let r0 = tree.focus;
+
+        tree.focus = l0;
+
+        // Views in test
+        // | LO | R1 |
+
+        // Docs in test
+        // | doc_main | doc_main
+
+        // created a synced split
+        assert_eq!(tree.get_synced_views(view.id).len(), 1);
+
+        // Synced on the document we created
+        assert!(tree
+            .get_synced_views(view.id)
+            .iter()
+            .find(|x| x.document_id == doc_main)
+            .is_some());
+
+        // the view is on the sync list
+        assert!(tree
+            .get_synced_views(view.id)
+            .iter()
+            .find(|x| x.views.iter().find(|v| **v == view.id).is_some())
+            .is_some());
+
+        tree.remove_sync_view(view.id);
+
+        assert!(tree.get_synced_views(view.id).is_empty());
     }
 }

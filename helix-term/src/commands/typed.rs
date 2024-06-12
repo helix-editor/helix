@@ -1668,6 +1668,41 @@ fn vsplit_new(
     Ok(())
 }
 
+fn vsplit_extend(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (view, doc) = current!(cx.editor);
+    let view_id = view.id;
+    let id = doc.id();
+
+    if cx
+        .editor
+        .tree
+        .get_synced_views(view_id)
+        .iter()
+        .find(|v| v.document_id == doc.id())
+        .is_some()
+    {
+        // Only support one split, possible to support more in future
+        // estimate only changes needed is the scrolling sync logic
+        cx.editor
+            .set_error(format!("Only one split per document supported"));
+        bail!("Only one split per document supported")
+    }
+
+    cx.editor.switch(id, Action::VerticalSplitSync);
+
+    cx.editor.focus_direction(tree::Direction::Left);
+
+    Ok(())
+}
+
 fn hsplit_new(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -2912,6 +2947,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         doc: "Open the file in a vertical split.",
         fun: vsplit,
         signature: CommandSignature::all(completers::filename)
+    },
+    TypableCommand {
+        name: "vsplit-extend",
+        aliases: &["vext"],
+        doc: "Open the file in a vertical split with scroll syncing",
+        fun: vsplit_extend,
+        signature: CommandSignature::all(completers::filename),
     },
     TypableCommand {
         name: "vsplit-new",

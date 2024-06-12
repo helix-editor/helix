@@ -470,6 +470,7 @@ impl MappableCommand {
         hsplit, "Horizontal bottom split",
         hsplit_new, "Horizontal bottom split scratch buffer",
         vsplit, "Vertical right split",
+        vsplit_extend, "Vertical right extend split scratch buffer",
         vsplit_new, "Vertical right split scratch buffer",
         wclose, "Close window",
         wonly, "Close windows except current",
@@ -648,6 +649,79 @@ fn move_impl(cx: &mut Context, move_fn: MoveFn, dir: Direction, behaviour: Movem
     });
     drop(annotations);
     doc.set_selection(view.id, selection);
+    moved_synced(cx);
+}
+
+pub fn moved_synced(cx: &mut Context) {
+    let view = view!(cx.editor);
+    let focused_id = view.id;
+
+    let view_id = view.id;
+
+    let doc = doc!(cx.editor);
+    let focus_last_line = view.estimate_last_doc_line(doc);
+    //let focus_last_line = view.last_visual_line(doc);
+    let focus_inner_height = view.inner_height();
+
+    let doc = doc_mut!(cx.editor);
+
+    let syncs = cx.editor.tree.get_synced_views(view_id);
+
+    let synced_views: Vec<ViewId> = syncs
+        .iter()
+        .find(|x| x.document_id == doc.id())
+        .map(|x| x.views.clone())
+        .unwrap_or(Vec::new());
+
+    if synced_views.is_empty() {
+        return;
+    }
+
+    let synced_views: Vec<(usize, ViewId)> = synced_views.into_iter().enumerate().collect();
+
+    let focus_ord_num = synced_views.iter().find(|(_, x)| *x == focused_id);
+
+    let focus_ord_num = match focus_ord_num {
+        Some(n) => n.0,
+        None => return,
+    };
+
+    for (view, focus) in cx.editor.tree.views_mut() {
+        let sync_find = synced_views.iter().find(|(_, x)| *x == view.id);
+        let is_synced = sync_find.is_some();
+
+        if focus {}
+        if focus || !is_synced {
+            continue;
+        }
+
+        // Just checked if is some above
+        let (current_order_id, _) = sync_find.unwrap();
+
+        // if focus is prior view then it is synced above
+        let offset = if *current_order_id < focus_ord_num {
+            focus_last_line as isize
+        } else {
+            let focus_first_line: usize =
+                0.max(focus_last_line as isize - focus_inner_height as isize) as usize;
+
+            0.max(focus_first_line as isize - view.inner_height() as isize) as isize
+        };
+
+        let text_fmt = doc.text_format(view.inner_area(doc).width, None);
+        let annotations = view.text_annotations(doc, None);
+
+        let doc_text = doc.text().slice(..);
+
+        (view.offset.anchor, view.offset.vertical_offset) = char_idx_at_visual_offset(
+            doc_text,
+            0,
+            view.offset.vertical_offset as isize + offset as isize,
+            0,
+            &text_fmt,
+            &annotations,
+        );
+    }
 }
 
 use helix_core::movement::{move_horizontally, move_vertically};
@@ -1718,6 +1792,8 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
             )
         });
         doc.set_selection(view.id, selection);
+
+        moved_synced(cx);
         return;
     }
 
@@ -1767,6 +1843,8 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
     sel = sel.replace(idx, prim_sel);
     drop(annotations);
     doc.set_selection(view.id, sel);
+
+    moved_synced(cx);
 }
 
 fn page_up(cx: &mut Context) {
@@ -1809,6 +1887,7 @@ fn page_cursor_half_up(cx: &mut Context) {
     let view = view!(cx.editor);
     let offset = view.inner_height() / 2;
     scroll(cx, offset, Direction::Backward, true);
+    moved_synced(cx);
 }
 
 fn page_cursor_half_down(cx: &mut Context) {
@@ -5160,6 +5239,17 @@ fn vsplit(cx: &mut Context) {
     split(cx.editor, Action::VerticalSplit);
 }
 
+fn vsplit_extend(cx: &mut Context) {
+    let doc = doc!(cx.editor);
+    let id = doc.id();
+
+    cx.editor.switch(id, Action::VerticalSplit);
+
+    if let Some(doc) = cx.editor.document_mut(id) {
+        doc.mark_as_focused();
+    }
+}
+
 fn vsplit_new(cx: &mut Context) {
     cx.editor.new_file(Action::VerticalSplit);
 }
@@ -5219,16 +5309,19 @@ fn insert_register(cx: &mut Context) {
 fn align_view_top(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     align_view(doc, view, Align::Top);
+    moved_synced(cx);
 }
 
 fn align_view_center(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     align_view(doc, view, Align::Center);
+    moved_synced(cx);
 }
 
 fn align_view_bottom(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     align_view(doc, view, Align::Bottom);
+    moved_synced(cx);
 }
 
 fn align_view_middle(cx: &mut Context) {
@@ -5252,10 +5345,12 @@ fn align_view_middle(cx: &mut Context) {
 
 fn scroll_up(cx: &mut Context) {
     scroll(cx, cx.count(), Direction::Backward, false);
+    moved_synced(cx);
 }
 
 fn scroll_down(cx: &mut Context) {
     scroll(cx, cx.count(), Direction::Forward, false);
+    moved_synced(cx);
 }
 
 fn goto_ts_object_impl(cx: &mut Context, object: &'static str, direction: Direction) {
