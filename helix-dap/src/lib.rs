@@ -1,5 +1,4 @@
 mod client;
-mod test;
 mod transport;
 mod types;
 
