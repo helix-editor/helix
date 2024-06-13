@@ -938,7 +938,11 @@ impl EditorView {
             // If the count is already started and the input is a number, always continue the count.
             (key!(i @ '0'..='9'), Some(count)) => {
                 let i = i.to_digit(10).unwrap() as usize;
-                cxt.editor.count = NonZeroUsize::new(count.get() * 10 + i);
+                let count = count.get() * 10 + i;
+                if count > 100_000_000 {
+                    return;
+                }
+                cxt.editor.count = NonZeroUsize::new(count);
             }
             // A non-zero digit will start the count if that number isn't used by a keymap.
             (key!(i @ '1'..='9'), None) if !self.keymaps.contains_key(mode, event) => {
