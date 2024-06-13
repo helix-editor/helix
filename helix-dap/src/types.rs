@@ -1,7 +1,6 @@
 use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
-use std::i64;
 use std::path::PathBuf;
 
 #[derive(
@@ -338,6 +337,7 @@ where
     D: Deserializer<'de>,
 {
     #[derive(Deserialize)]
+    #[serde(untagged)]
     enum NumberOrString {
         Number(i64),
         String(String),
