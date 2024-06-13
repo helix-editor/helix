@@ -1,7 +1,7 @@
-use serde::{Deserialize, Serialize};
-use serde_aux::prelude::deserialize_string_from_number;
+use serde::{Deserialize, Deserializer, Serialize};
 use serde_json::Value;
 use std::collections::HashMap;
+use std::i64;
 use std::path::PathBuf;
 
 #[derive(
@@ -312,7 +312,7 @@ pub struct Variable {
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Module {
-    #[serde(deserialize_with = "deserialize_string_from_number")]
+    #[serde(deserialize_with = "from_number")]
     pub id: String,
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -331,6 +331,22 @@ pub struct Module {
     pub date_time_stamp: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub address_range: Option<String>,
+}
+
+fn from_number<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    #[derive(Deserialize)]
+    enum NumberOrString {
+        Number(i64),
+        String(String),
+    }
+
+    match NumberOrString::deserialize(deserializer)? {
+        NumberOrString::Number(n) => Ok(n.to_string()),
+        NumberOrString::String(s) => Ok(s),
+    }
 }
 
 pub mod requests {
