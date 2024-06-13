@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use serde_aux::prelude::deserialize_string_from_number;
 use serde_json::Value;
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -311,7 +312,8 @@ pub struct Variable {
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Module {
-    pub id: String, // TODO: || number
+    #[serde(deserialize_with = "deserialize_string_from_number")]
+    pub id: String,
     pub name: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub path: Option<PathBuf>,

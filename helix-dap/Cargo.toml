@@ -19,6 +19,7 @@ helix-core = { path = "../helix-core" }
 anyhow = "1.0"
 log = "0.4"
 serde = { version = "1.0", features = ["derive"] }
+serde-aux = "4.5"
 serde_json = "1.0"
 thiserror = "1.0"
 tokio = { version = "1", features = ["rt", "rt-multi-thread", "io-util", "io-std", "time", "process", "macros", "fs", "parking_lot", "net", "sync"] }
