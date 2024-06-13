@@ -1698,6 +1698,8 @@ fn vsplit_extend(
 
     cx.editor.switch(id, Action::VerticalSplitSync);
 
+    crate::commands::moved_synced(cx.editor);
+
     cx.editor.focus_direction(tree::Direction::Left);
 
     Ok(())

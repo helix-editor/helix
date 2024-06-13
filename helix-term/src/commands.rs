@@ -649,23 +649,23 @@ fn move_impl(cx: &mut Context, move_fn: MoveFn, dir: Direction, behaviour: Movem
     });
     drop(annotations);
     doc.set_selection(view.id, selection);
-    moved_synced(cx);
+    moved_synced(cx.editor);
 }
 
-pub fn moved_synced(cx: &mut Context) {
-    let view = view!(cx.editor);
+pub fn moved_synced(editor: &mut Editor) {
+    let view = view!(editor);
     let focused_id = view.id;
 
     let view_id = view.id;
 
-    let doc = doc!(cx.editor);
+    let doc = doc!(editor);
     let focus_last_line = view.estimate_last_doc_line(doc);
     //let focus_last_line = view.last_visual_line(doc);
     let focus_inner_height = view.inner_height();
 
-    let doc = doc_mut!(cx.editor);
+    let doc = doc_mut!(editor);
 
-    let syncs = cx.editor.tree.get_synced_views(view_id);
+    let syncs = editor.tree.get_synced_views(view_id);
 
     let synced_views: Vec<ViewId> = syncs
         .iter()
@@ -686,7 +686,7 @@ pub fn moved_synced(cx: &mut Context) {
         None => return,
     };
 
-    for (view, focus) in cx.editor.tree.views_mut() {
+    for (view, focus) in editor.tree.views_mut() {
         let sync_find = synced_views.iter().find(|(_, x)| *x == view.id);
         let is_synced = sync_find.is_some();
 
@@ -1793,7 +1793,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
         });
         doc.set_selection(view.id, selection);
 
-        moved_synced(cx);
+        moved_synced(cx.editor);
         return;
     }
 
@@ -1844,7 +1844,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
     drop(annotations);
     doc.set_selection(view.id, sel);
 
-    moved_synced(cx);
+    moved_synced(cx.editor);
 }
 
 fn page_up(cx: &mut Context) {
@@ -1887,7 +1887,7 @@ fn page_cursor_half_up(cx: &mut Context) {
     let view = view!(cx.editor);
     let offset = view.inner_height() / 2;
     scroll(cx, offset, Direction::Backward, true);
-    moved_synced(cx);
+    moved_synced(cx.editor);
 }
 
 fn page_cursor_half_down(cx: &mut Context) {
@@ -5309,19 +5309,19 @@ fn insert_register(cx: &mut Context) {
 fn align_view_top(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     align_view(doc, view, Align::Top);
-    moved_synced(cx);
+    moved_synced(cx.editor);
 }
 
 fn align_view_center(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     align_view(doc, view, Align::Center);
-    moved_synced(cx);
+    moved_synced(cx.editor);
 }
 
 fn align_view_bottom(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     align_view(doc, view, Align::Bottom);
-    moved_synced(cx);
+    moved_synced(cx.editor);
 }
 
 fn align_view_middle(cx: &mut Context) {
@@ -5345,12 +5345,12 @@ fn align_view_middle(cx: &mut Context) {
 
 fn scroll_up(cx: &mut Context) {
     scroll(cx, cx.count(), Direction::Backward, false);
-    moved_synced(cx);
+    moved_synced(cx.editor);
 }
 
 fn scroll_down(cx: &mut Context) {
     scroll(cx, cx.count(), Direction::Forward, false);
-    moved_synced(cx);
+    moved_synced(cx.editor);
 }
 
 fn goto_ts_object_impl(cx: &mut Context, object: &'static str, direction: Direction) {
