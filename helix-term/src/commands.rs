@@ -5760,6 +5760,7 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
             let fragment = range.slice(text);
             match shell_impl(shell, cmd, pipe.then(|| fragment.into())) {
                 Ok(result) => {
+                    let result = Tendril::from(result.trim_end());
                     if !pipe {
                         shell_output = Some(result.clone());
                     }
