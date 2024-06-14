@@ -233,7 +233,7 @@ Jumps to various locations.
 
 Accessed by typing `m` in [normal mode](#normal-mode).
 
-Please refer to the relevant sections for detailed explanations about [surround](./surround.md) and [textobject](./textobjects.md).
+Please refer to the relevant sections for detailed explanations about [surround](./surround.md) and [textobjects](./textobjects.md).
 
 | Key              | Description                                     | Command                    |
 | -----            | -----------                                     | -------                    |
