@@ -3162,6 +3162,7 @@ scope = "source.typst"
 injection-regex = "typ(st)?"
 file-types = ["typst", "typ"]
 comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = ["tinymist", "typst-lsp"]
 indent = { tab-width = 2, unit = "  " }
 
