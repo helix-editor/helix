@@ -1,5 +1,5 @@
 use crate::text::{Span, Spans};
-use helix_core::unicode::width::UnicodeWidthStr;
+use helix_core::{line_ending::str_is_line_ending, unicode::width::UnicodeWidthStr};
 use std::cmp::min;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -410,7 +410,7 @@ impl Buffer {
 
         for s in string.graphemes(true) {
             let width = s.width();
-            if width == 0 {
+            if width == 0 || str_is_line_ending(s) {
                 continue;
             }
             // `x_offset + width > max_offset` could be integer overflow on 32-bit machines if we
