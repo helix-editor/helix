@@ -2264,24 +2264,37 @@ fn run_shell_command(
     let args = args.join(" ");
 
     let callback = async move {
-        let output = shell_impl_async(&shell, &args, None).await?;
-        let call: job::Callback = Callback::EditorCompositor(Box::new(
-            move |editor: &mut Editor, compositor: &mut Compositor| {
-                if !output.is_empty() {
-                    let contents = ui::Markdown::new(
-                        format!("```sh\n{}\n```", output),
-                        editor.syn_loader.clone(),
-                    );
+        let call: job::Callback = match shell_impl_async(&shell, &args, None).await {
+            Ok(output) => Callback::EditorCompositor(Box::new(
+                move |editor: &mut Editor, compositor: &mut Compositor| {
+                    if !output.is_empty() {
+                        let contents = ui::Markdown::new(
+                            format!("```sh\n{}\n```", output),
+                            editor.syn_loader.clone(),
+                        );
+                        let popup = Popup::new("shell", contents).position(Some(
+                            helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
+                        ));
+                        compositor.replace_or_push("shell", popup);
+                    }
+                    editor.set_status("Command succeeded");
+                },
+            )),
+            Err(e) => Callback::ErrorCompositor(Box::new(
+                move |editor: &mut Editor, compositor: &mut Compositor| {
+                    let contents =
+                        ui::Markdown::new(format!("```sh\n{}\n```", e), editor.syn_loader.clone());
                     let popup = Popup::new("shell", contents).position(Some(
                         helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
                     ));
                     compositor.replace_or_push("shell", popup);
-                }
-                editor.set_status("Command succeeded");
-            },
-        ));
+                    bail!(e)
+                },
+            )),
+        };
         Ok(call)
     };
+
     cx.jobs.callback(callback);
 
     Ok(())
