@@ -8,9 +8,10 @@ Features:
 
 - Add a textobject for entries/elements of list-like things (#8150)
 - Add a picker showing files changed in VCS (#5645)
-- Use a temporary file for writes (#9236, #10339)
+- Use a temporary file for writes (#9236, #10339, #10790)
 - Allow cycling through LSP signature-help signatures with `A-n`/`A-p` (#9974, #10654, #10655)
-- Use tree-sitter when finding matching brackets and closest pairs (#8294, #10613)
+- Use tree-sitter when finding matching brackets and closest pairs (#8294, #10613, #10777)
+- Auto-save all buffers after a delay (#10899)
 
 Commands:
 
@@ -26,6 +27,10 @@ Usability improvements:
 - Respect language server definition order in code action menu (#9590)
 - Allow using a count with `goto_next_buffer` (`gn`) and `goto_previous_buffer` (`gp`) (#10463)
 - Improve the positioning of popups (#10257, #10573)
+- Reset all changes overlapped by selections in `:reset-diff-change` (#10728)
+- Await pending writes in the `suspend` command (`C-z`) (#10797)
+- Remove special handling of line ending characters in `replace` (`r`) (#10786)
+- Use the selected register as a history register for `rename_symbol` (`<space>r`) (#10932)
 
 Fixes:
 
@@ -46,13 +51,19 @@ Fixes:
 - Respect mode when starting a search (#10505)
 - Simplify first-in-line computation for indent queries (#10527)
 - Ignore .svn version controlled files in file pickers (#10536)
-- Fix overloading language servers with `completionItem/resolve` requests (38ee845)
+- Fix overloading language servers with `completionItem/resolve` requests (38ee845, #10873)
 - Specify direction for `select_next_sibling` / `select_prev_sibling` (#10542)
 - Fix restarting language servers (#10614)
 - Don't stop at the first URL in `goto_file` (#10622)
 - Fix overflows in window size calculations for small terminals (#10620)
 - Allow missing or empty completion lists in DAP (#10332)
 - Revert statusline refactor that could cause the statusline to blank out on files with long paths (#10642)
+- Synchronize files after writing (#10735)
+- Avoid `cnorm` for cursor-type detection in certain terminals (#10769)
+- Reset inlay hints when stopping or restarting a language server (#10741)
+- Fix logic for updating `--version` when development VCS HEAD changes (#10896)
+- Set a max value for the count (#10930)
+- Deserialize number IDs in DAP module types (#10943)
 
 Themes:
 
@@ -86,6 +97,8 @@ Themes:
 - Add debug highlights to `dark_plus` (#10593)
 - Fix per-mode cursor colors in the default theme (#10608)
 - Add `tag` and `attribute` highlights to `dark_high_contrast` (#10705)
+- Improve readability of virtual text with `noctis` theme (#10910)
+- Sync `catppuccin` themes with upstream (#10954)
 
 New languages:
 
@@ -99,6 +112,8 @@ New languages:
 - Pest (#10616)
 - GJS/GTS (#9940)
 - Inko (#10656)
+- Mojo (#10743)
+- Elisp (#10644)
 
 Updated languages and queries:
 
@@ -139,6 +154,13 @@ Updated languages and queries:
 - Match TOML/YAML highlights for JSON keys (#10676)
 - Recognize WORKSPACE files as Starlark (#10713)
 - Switch Odin tree-sitter grammar and highlights (#10698)
+- Update `tree-sitter-slint` (#10749)
+- Add missing operators for Solidity highlights (#10735)
+- Update `tree-sitter-inko` (#10805)
+- Update `tree-sitter-earthfile` (#10779)
+- Add `py`, `hs`, `rs` and `typ` injection regexes (#10785)
+- Update Swift grammar and queries (#10802)
+- Update Cairo grammar and queries (#10919)
 
 Packaging:
 
