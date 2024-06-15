@@ -1,6 +1,6 @@
-# 24.05 (2024-05-12)
+# 24.06 (2024-06-16)
 
-Thanks to all of the contributors! This release has changes from 102 contributors.
+Thanks to all of the contributors! This release has changes from 137 contributors.
 
 Breaking changes:
 
