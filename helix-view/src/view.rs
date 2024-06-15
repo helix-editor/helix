@@ -44,14 +44,12 @@ impl JumpList {
         if self.jumps.back() != Some(&jump) {
             // If the jumplist is full, drop the oldest item.
             while self.jumps.len() >= JUMP_LIST_CAPACITY {
-                if self.jumps.pop_front().is_some() {
-                    self.current = self.current.saturating_sub(1);
-                }
+                self.jumps.pop_front();
             }
 
             self.jumps.push_back(jump);
+            self.current = self.jumps.len();
         }
-        self.current = self.jumps.len();
     }
 
     pub fn forward(&mut self, count: usize) -> Option<&Jump> {
