@@ -74,7 +74,7 @@ impl JumpList {
             self.current = self.current.saturating_sub(count);
             self.jumps.get(self.current).and_then(|next_jump| {
                 if next_jump == &cur_jump {
-                    self.current -= 1;
+                    self.current = self.current.saturating_sub(1);
                     self.jumps.get(self.current)
                 } else {
                     Some(next_jump)
