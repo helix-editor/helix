@@ -9,7 +9,7 @@ use helix_lsp::{
 use helix_stdx::path::get_relative_path;
 use helix_view::{
     align_view,
-    document::{DocumentSavedEventResult, IrregularFileError},
+    document::{DocumentOpenError, DocumentSavedEventResult},
     editor::{ConfigEvent, EditorEvent},
     graphics::Rect,
     theme,
@@ -188,14 +188,13 @@ impl Application {
                         };
                         let doc_id = match editor
                             .open(&file, action)
-                            .context(format!("open '{}'", file.to_string_lossy()))
                         {
                             // Ignore irregular files during application init.
-                            Err(e) if e.is::<IrregularFileError>() => {
+                            Err(DocumentOpenError::IrregularFile) => {
                                 nr_of_files -= 1;
                                 continue;
                             }
-                            a => a,
+                            a => a.context(format!("open '{}'", file.to_string_lossy())),
                         }?;
                         // with Action::Load all documents have the same view
                         // NOTE: this isn't necessarily true anymore. If

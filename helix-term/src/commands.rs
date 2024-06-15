@@ -69,6 +69,7 @@ use crate::job::{self, Jobs};
 use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
+    error::Error,
     fmt,
     future::Future,
     io::Read,

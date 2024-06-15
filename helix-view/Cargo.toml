@@ -50,6 +50,7 @@ toml = "0.8"
 log = "~0.4"
 
 parking_lot = "0.12.2"
+thiserror = "1.0"
 
 
 [target.'cfg(windows)'.dependencies]
