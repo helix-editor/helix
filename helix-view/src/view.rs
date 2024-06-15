@@ -39,10 +39,11 @@ impl JumpList {
     }
 
     pub fn push(&mut self, jump: Jump) {
+        self.jumps.truncate(self.current);
         // don't push duplicates
         if self.jumps.back() != Some(&jump) {
             // If the jumplist is full, drop the oldest items until we have space for another addition.
-            for _ in 0..((self.jumps.len() + 1).saturating_sub(JUMP_LIST_CAPACITY)) {
+            while self.jumps.len() >= JUMP_LIST_CAPACITY {
                 if self.jumps.pop_front().is_some() {
                     self.current = self.current.saturating_sub(1);
                 }
