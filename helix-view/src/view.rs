@@ -38,18 +38,22 @@ impl JumpList {
         Self { jumps, current: 0 }
     }
 
-    pub fn push(&mut self, jump: Jump) {
-        self.jumps.truncate(self.current);
+    // Returns the number of elements removed from the start
+    pub fn push(&mut self, jump: Jump) -> usize {
+        let mut num_removed = 0;
         // don't push duplicates
         if self.jumps.back() != Some(&jump) {
-            // If the jumplist is full, drop the oldest item.
-            while self.jumps.len() >= JUMP_LIST_CAPACITY {
-                self.jumps.pop_front();
+            // If the jumplist is full, drop the oldest items until we have space for another addition.
+            for _ in 0..((self.jumps.len() + 1).saturating_sub(JUMP_LIST_CAPACITY)) {
+                if self.jumps.pop_front().is_some() {
+                    num_removed += 1;
+                }
             }
 
             self.jumps.push_back(jump);
-            self.current = self.jumps.len();
         }
+        self.current = self.jumps.len();
+        num_removed
     }
 
     pub fn forward(&mut self, count: usize) -> Option<&Jump> {
@@ -63,13 +67,21 @@ impl JumpList {
 
     // Taking view and doc to prevent unnecessary cloning when jump is not required.
     pub fn backward(&mut self, view_id: ViewId, doc: &mut Document, count: usize) -> Option<&Jump> {
-        if let Some(current) = self.current.checked_sub(count) {
+        if let Some(mut current) = self.current.checked_sub(count) {
+            let cur_jump = (doc.id(), doc.selection(view_id).clone());
             if self.current == self.jumps.len() {
-                let jump = (doc.id(), doc.selection(view_id).clone());
-                self.push(jump);
+                let num_removed = self.push(cur_jump.clone());
+                current = current.saturating_sub(num_removed);
             }
             self.current = current;
-            self.jumps.get(self.current)
+            self.jumps.get(self.current).and_then(|next_jump| {
+                if next_jump == &cur_jump {
+                    self.current -= 1;
+                    self.jumps.get(self.current)
+                } else {
+                    Some(next_jump)
+                }
+            })
         } else {
             None
         }
