@@ -1,6 +1,8 @@
 use crate::{
     align_view,
-    document::{DocumentSavedEventFuture, DocumentSavedEventResult, DocumentOpenError, Mode, SavePoint},
+    document::{
+        DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
+    },
     graphics::{CursorKind, Rect},
     handlers::Handlers,
     info::Info,

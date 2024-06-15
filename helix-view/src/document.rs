@@ -706,8 +706,7 @@ impl Document {
 
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
         let (rope, encoding, has_bom) = if path.exists() {
-            let mut file =
-                std::fs::File::open(path)?;
+            let mut file = std::fs::File::open(path)?;
             from_reader(&mut file, encoding)?
         } else {
             let line_ending: LineEnding = config.load().default_line_ending.into();

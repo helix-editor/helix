@@ -186,9 +186,7 @@ impl Application {
                             Some(Layout::Horizontal) => Action::HorizontalSplit,
                             None => Action::Load,
                         };
-                        let doc_id = match editor
-                            .open(&file, action)
-                        {
+                        let doc_id = match editor.open(&file, action) {
                             // Ignore irregular files during application init.
                             Err(DocumentOpenError::IrregularFile) => {
                                 nr_of_files -= 1;
