@@ -1,4 +1,5 @@
 use std::fmt::Write;
+use std::io::BufReader;
 use std::ops::Deref;
 
 use crate::job::Job;
@@ -8,7 +9,7 @@ use super::*;
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::{line_ending, shellwords::Shellwords};
-use helix_view::document::DEFAULT_LANGUAGE_NAME;
+use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
 use serde_json::Value;
 use ui::completers::{self, Completer};
@@ -309,7 +310,7 @@ fn buffer_next(
         return Ok(());
     }
 
-    goto_buffer(cx.editor, Direction::Forward);
+    goto_buffer(cx.editor, Direction::Forward, 1);
     Ok(())
 }
 
@@ -322,7 +323,7 @@ fn buffer_previous(
         return Ok(());
     }
 
-    goto_buffer(cx.editor, Direction::Backward);
+    goto_buffer(cx.editor, Direction::Backward, 1);
     Ok(())
 }
 
@@ -1494,6 +1495,8 @@ fn lsp_stop(
         for doc in cx.editor.documents_mut() {
             if let Some(client) = doc.remove_language_server_by_name(ls_name) {
                 doc.clear_diagnostics(Some(client.id()));
+                doc.reset_all_inlay_hints();
+                doc.inlay_hints_oudated = true;
             }
         }
     }
@@ -2304,37 +2307,36 @@ fn reset_diff_change(
 
     let diff = handle.load();
     let doc_text = doc.text().slice(..);
-    let line = doc.selection(view.id).primary().cursor_line(doc_text);
-
-    let Some(hunk_idx) = diff.hunk_at(line as u32, true) else {
-        bail!("There is no change at the cursor")
-    };
-    let hunk = diff.nth_hunk(hunk_idx);
     let diff_base = diff.diff_base();
-    let before_start = diff_base.line_to_char(hunk.before.start as usize);
-    let before_end = diff_base.line_to_char(hunk.before.end as usize);
-    let text: Tendril = diff
-        .diff_base()
-        .slice(before_start..before_end)
-        .chunks()
-        .collect();
-    let anchor = doc_text.line_to_char(hunk.after.start as usize);
+    let mut changes = 0;
+
     let transaction = Transaction::change(
         doc.text(),
-        [(
-            anchor,
-            doc_text.line_to_char(hunk.after.end as usize),
-            (!text.is_empty()).then_some(text),
-        )]
-        .into_iter(),
+        diff.hunks_intersecting_line_ranges(doc.selection(view.id).line_ranges(doc_text))
+            .map(|hunk| {
+                changes += 1;
+                let start = diff_base.line_to_char(hunk.before.start as usize);
+                let end = diff_base.line_to_char(hunk.before.end as usize);
+                let text: Tendril = diff_base.slice(start..end).chunks().collect();
+                (
+                    doc_text.line_to_char(hunk.after.start as usize),
+                    doc_text.line_to_char(hunk.after.end as usize),
+                    (!text.is_empty()).then_some(text),
+                )
+            }),
     );
+    if changes == 0 {
+        bail!("There are no changes under any selection");
+    }
+
     drop(diff); // make borrow check happy
     doc.apply(&transaction, view.id);
-    // select inserted text
-    let text_len = before_end - before_start;
-    doc.set_selection(view.id, Selection::single(anchor, anchor + text_len));
     doc.append_changes_to_history(view);
     view.ensure_cursor_in_view(doc, scrolloff);
+    cx.editor.set_status(format!(
+        "Reset {changes} change{}",
+        if changes == 1 { "" } else { "s" }
+    ));
     Ok(())
 }
 
@@ -2451,6 +2453,39 @@ fn yank_diagnostic(
         "Yanked {n} diagnostic{} to register {reg}",
         if n == 1 { "" } else { "s" }
     ));
+    Ok(())
+}
+
+fn read(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let scrolloff = cx.editor.config().scrolloff;
+    let (view, doc) = current!(cx.editor);
+
+    ensure!(!args.is_empty(), "file name is expected");
+    ensure!(args.len() == 1, "only the file name is expected");
+
+    let filename = args.get(0).unwrap();
+    let path = PathBuf::from(filename.to_string());
+    ensure!(
+        path.exists() && path.is_file(),
+        "path is not a file: {:?}",
+        path
+    );
+
+    let file = std::fs::File::open(path).map_err(|err| anyhow!("error opening file: {}", err))?;
+    let mut reader = BufReader::new(file);
+    let (contents, _, _) = read_to_string(&mut reader, Some(doc.encoding()))
+        .map_err(|err| anyhow!("error reading file: {}", err))?;
+    let contents = Tendril::from(contents);
+    let selection = doc.selection(view.id);
+    let transaction = Transaction::insert(doc.text(), selection, contents);
+    doc.apply(&transaction, view.id);
+    doc.append_changes_to_history(view);
+    view.ensure_cursor_in_view(doc, scrolloff);
+
     Ok(())
 }
 
@@ -3067,6 +3102,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         doc: "Yank diagnostic(s) under primary cursor to register, or clipboard by default",
         fun: yank_diagnostic,
         signature: CommandSignature::all(completers::register),
+    },
+    TypableCommand {
+        name: "read",
+        aliases: &["r"],
+        doc: "Load a file into buffer",
+        fun: read,
+        signature: CommandSignature::positional(&[completers::filename]),
     },
 ];
 

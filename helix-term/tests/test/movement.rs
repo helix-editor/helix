@@ -107,6 +107,14 @@ async fn surround_by_character() -> anyhow::Result<()> {
     ))
     .await?;
 
+    // Selection direction is preserved
+    test((
+        "(so [many {go#[|od]#} text] here)",
+        "mi{",
+        "(so [many {#[|good]#} text] here)",
+    ))
+    .await?;
+
     Ok(())
 }
 
@@ -361,6 +369,41 @@ async fn surround_around_pair() -> anyhow::Result<()> {
         "mam",
         "#[(so (many (good) text) here\nso (many (good) text) here)|]#",
     ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn match_around_closest_ts() -> anyhow::Result<()> {
+    test_with_config(
+        AppBuilder::new().with_file("foo.rs", None),
+        (
+            r#"fn main() {todo!{"f#[|oo]#)"};}"#,
+            "mam",
+            r#"fn main() {todo!{#[|"foo)"]#};}"#,
+        ),
+    )
+    .await?;
+
+    test_with_config(
+        AppBuilder::new().with_file("foo.rs", None),
+        (
+            r##"fn main() { let _ = ("#[|1]#23", "#(|1)#23"); } "##,
+            "3mam",
+            r##"fn main() #[|{ let _ = ("123", "123"); }]# "##,
+        ),
+    )
+    .await?;
+
+    test_with_config(
+        AppBuilder::new().with_file("foo.rs", None),
+        (
+            r##" fn main() { let _ = ("12#[|3", "12]#3"); } "##,
+            "1mam",
+            r##" fn main() { let _ = #[|("123", "123")]#; } "##,
+        ),
+    )
     .await?;
 
     Ok(())
@@ -666,7 +709,7 @@ async fn tree_sitter_motions_work_across_injections() -> anyhow::Result<()> {
         (
             "<script>let #[|x]# = 1;</script>",
             "<A-n>",
-            "<script>let x #[|=]# 1;</script>",
+            "<script>let x #[=|]# 1;</script>",
         ),
     )
     .await?;

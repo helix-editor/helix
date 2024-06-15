@@ -6,7 +6,7 @@ use helix_lsp::{
         NumberOrString,
     },
     util::{diagnostic_to_lsp_diagnostic, lsp_range_to_range, range_to_lsp_range},
-    Client, OffsetEncoding,
+    Client, LanguageServerId, OffsetEncoding,
 };
 use tokio_stream::StreamExt;
 use tui::{
@@ -21,7 +21,6 @@ use helix_stdx::path;
 use helix_view::{
     document::{DocumentInlayHints, DocumentInlayHintsId},
     editor::Action,
-    graphics::Margin,
     handlers::lsp::SignatureHelpInvoked,
     theme::Style,
     Document, View,
@@ -266,7 +265,7 @@ enum DiagnosticsFormat {
 
 fn diag_picker(
     cx: &Context,
-    diagnostics: BTreeMap<PathBuf, Vec<(lsp::Diagnostic, usize)>>,
+    diagnostics: BTreeMap<PathBuf, Vec<(lsp::Diagnostic, LanguageServerId)>>,
     format: DiagnosticsFormat,
 ) -> Picker<PickerDiagnostic> {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
@@ -497,7 +496,7 @@ pub fn workspace_diagnostics_picker(cx: &mut Context) {
 
 struct CodeActionOrCommandItem {
     lsp_item: lsp::CodeActionOrCommand,
-    language_server_id: usize,
+    language_server_id: LanguageServerId,
 }
 
 impl ui::menu::Item for CodeActionOrCommandItem {
@@ -733,15 +732,7 @@ pub fn code_action(cx: &mut Context) {
             });
             picker.move_down(); // pre-select the first item
 
-            let margin = if editor.menu_border() {
-                Margin::vertical(1)
-            } else {
-                Margin::none()
-            };
-
-            let popup = Popup::new("code-action", picker)
-                .with_scrollbar(false)
-                .margin(margin);
+            let popup = Popup::new("code-action", picker).with_scrollbar(false);
 
             compositor.replace_or_push("code-action", popup);
         };
@@ -757,7 +748,11 @@ impl ui::menu::Item for lsp::Command {
     }
 }
 
-pub fn execute_lsp_command(editor: &mut Editor, language_server_id: usize, cmd: lsp::Command) {
+pub fn execute_lsp_command(
+    editor: &mut Editor,
+    language_server_id: LanguageServerId,
+    cmd: lsp::Command,
+) {
     // the command is executed on the server and communicated back
     // to the client asynchronously using workspace edits
     let future = match editor
@@ -1034,11 +1029,12 @@ pub fn rename_symbol(cx: &mut Context) {
     fn create_rename_prompt(
         editor: &Editor,
         prefill: String,
-        language_server_id: Option<usize>,
+        history_register: Option<char>,
+        language_server_id: Option<LanguageServerId>,
     ) -> Box<ui::Prompt> {
         let prompt = ui::Prompt::new(
             "rename-to:".into(),
-            None,
+            history_register,
             ui::completers::none,
             move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
                 if event != PromptEvent::Validate {
@@ -1075,6 +1071,7 @@ pub fn rename_symbol(cx: &mut Context) {
     }
 
     let (view, doc) = current_ref!(cx.editor);
+    let history_register = cx.register;
 
     if doc
         .language_servers_with_feature(LanguageServerFeature::RenameSymbol)
@@ -1117,14 +1114,14 @@ pub fn rename_symbol(cx: &mut Context) {
                     }
                 };
 
-                let prompt = create_rename_prompt(editor, prefill, Some(ls_id));
+                let prompt = create_rename_prompt(editor, prefill, history_register, Some(ls_id));
 
                 compositor.push(prompt);
             },
         );
     } else {
         let prefill = get_prefill_from_word_boundary(cx.editor);
-        let prompt = create_rename_prompt(cx.editor, prefill, None);
+        let prompt = create_rename_prompt(cx.editor, prefill, history_register, None);
         cx.push_layer(prompt);
     }
 }
