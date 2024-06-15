@@ -42,7 +42,7 @@ impl JumpList {
         self.jumps.truncate(self.current);
         // don't push duplicates
         if self.jumps.back() != Some(&jump) {
-            // If the jumplist is full, drop the oldest items until we have space for another addition.
+            // If the jumplist is full, drop the oldest item.
             while self.jumps.len() >= JUMP_LIST_CAPACITY {
                 if self.jumps.pop_front().is_some() {
                     self.current = self.current.saturating_sub(1);
@@ -72,12 +72,12 @@ impl JumpList {
             }
             // We need to do this separately from checked_sub above as pushing to the jumplist might change the position of self.current
             self.current = self.current.saturating_sub(count);
-            self.jumps.get(self.current).and_then(|next_jump| {
-                if next_jump == &cur_jump {
+            self.jumps.get(self.current).and_then(|prev_jump| {
+                if prev_jump == &cur_jump {
                     self.current = self.current.saturating_sub(1);
                     self.jumps.get(self.current)
                 } else {
-                    Some(next_jump)
+                    Some(prev_jump)
                 }
             })
         } else {
