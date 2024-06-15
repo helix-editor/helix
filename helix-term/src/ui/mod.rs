@@ -171,7 +171,7 @@ pub fn raw_regex_prompt(
 }
 
 pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> Picker<PathBuf> {
-    use ignore::{types::TypesBuilder, WalkBuilder};
+    use ignore::types::TypesBuilder;
     use std::time::Instant;
 
     let now = Instant::now();
@@ -179,17 +179,9 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> Picker
     let dedup_symlinks = config.file_picker.deduplicate_links;
     let absolute_root = root.canonicalize().unwrap_or_else(|_| root.clone());
 
-    let mut walk_builder = WalkBuilder::new(&root);
+    let mut walk_builder = config.file_picker.walk_builder(&root);
     walk_builder
-        .hidden(config.file_picker.hidden)
-        .parents(config.file_picker.parents)
-        .ignore(config.file_picker.ignore)
-        .follow_links(config.file_picker.follow_symlinks)
-        .git_ignore(config.file_picker.git_ignore)
-        .git_global(config.file_picker.git_global)
-        .git_exclude(config.file_picker.git_exclude)
         .sort_by_file_name(|name1, name2| name1.cmp(name2))
-        .max_depth(config.file_picker.max_depth)
         .filter_entry(move |entry| filter_picker_entry(entry, &absolute_root, dedup_symlinks));
 
     walk_builder.add_custom_ignore_filename(helix_loader::config_dir().join("ignore"));

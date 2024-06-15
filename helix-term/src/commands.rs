@@ -86,7 +86,7 @@ use url::Url;
 
 use grep_regex::RegexMatcherBuilder;
 use grep_searcher::{sinks, BinaryDetection, SearcherBuilder};
-use ignore::{DirEntry, WalkBuilder, WalkState};
+use ignore::{DirEntry, WalkState};
 
 pub type OnKeyCallback = Box<dyn FnOnce(&mut Context, KeyEvent)>;
 
@@ -2327,26 +2327,16 @@ fn global_search(cx: &mut Context) {
                     .canonicalize()
                     .unwrap_or_else(|_| search_root.clone());
                 let injector_ = injector.clone();
+                let mut walk_builder = file_picker_config.walk_builder(search_root);
 
                 std::thread::spawn(move || {
                     let searcher = SearcherBuilder::new()
                         .binary_detection(BinaryDetection::quit(b'\x00'))
                         .build();
 
-                    let mut walk_builder = WalkBuilder::new(search_root);
-
-                    walk_builder
-                        .hidden(file_picker_config.hidden)
-                        .parents(file_picker_config.parents)
-                        .ignore(file_picker_config.ignore)
-                        .follow_links(file_picker_config.follow_symlinks)
-                        .git_ignore(file_picker_config.git_ignore)
-                        .git_global(file_picker_config.git_global)
-                        .git_exclude(file_picker_config.git_exclude)
-                        .max_depth(file_picker_config.max_depth)
-                        .filter_entry(move |entry| {
-                            filter_picker_entry(entry, &absolute_root, dedup_symlinks)
-                        });
+                    walk_builder.filter_entry(move |entry| {
+                        filter_picker_entry(entry, &absolute_root, dedup_symlinks)
+                    });
 
                     walk_builder
                         .add_custom_ignore_filename(helix_loader::config_dir().join("ignore"));

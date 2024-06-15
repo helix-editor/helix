@@ -16,7 +16,7 @@ members = [
 ]
 
 default-members = [
-  "helix-term"
+  "helix-term",
 ]
 
 [profile.release]
@@ -37,9 +37,11 @@ package.helix-tui.opt-level = 2
 package.helix-term.opt-level = 2
 
 [workspace.dependencies]
-tree-sitter = { version = "0.22" }
+globset = "0.4.14"
+ignore = "0.4"
 nucleo = "0.2.0"
 slotmap = "1.0.7"
+tree-sitter = "0.22"
 
 [workspace.package]
 version = "24.3.0"

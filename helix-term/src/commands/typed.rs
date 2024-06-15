@@ -1,18 +1,26 @@
 use std::fmt::Write;
+use std::fs;
 use std::io::BufReader;
 use std::ops::Deref;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Mutex;
 
 use crate::job::Job;
 
 use super::*;
 
+use globset::{GlobBuilder, GlobSetBuilder};
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
-use helix_core::{line_ending, shellwords::Shellwords};
+use helix_core::{encoding, line_ending, shellwords::Shellwords};
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
-use helix_view::editor::{CloseError, ConfigEvent};
+use helix_view::editor::{Action, CloseError, ConfigEvent};
+use ignore::WalkBuilder;
 use serde_json::Value;
 use ui::completers::{self, Completer};
+
+// The maximum number of files to open with globbing to avoid freezing while trying to open too many files.
+const GLOBBING_MAX_N_FILES: usize = 64;
 
 #[derive(Clone)]
 pub struct TypableCommand {
@@ -103,38 +111,142 @@ fn force_quit(
     Ok(())
 }
 
+fn open_file(cx: &mut compositor::Context, path: &Path, pos: Position) -> anyhow::Result<()> {
+    let _ = cx.editor.open(path, Action::Replace)?;
+    let (view, doc) = current!(cx.editor);
+    let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+    doc.set_selection(view.id, pos);
+    // does not affect opening a buffer without pos
+    align_view(doc, view, Align::Center);
+    Ok(())
+}
+
 fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
     ensure!(!args.is_empty(), "wrong argument count");
+
     for arg in args {
         let (path, pos) = args::parse_file(arg);
-        let path = helix_stdx::path::expand_tilde(path);
-        // If the path is a directory, open a file picker on that directory and update the status
-        // message
-        if let Ok(true) = std::fs::canonicalize(&path).map(|p| p.is_dir()) {
-            let callback = async move {
-                let call: job::Callback = job::Callback::EditorCompositor(Box::new(
-                    move |editor: &mut Editor, compositor: &mut Compositor| {
-                        let picker = ui::file_picker(path.into_owned(), &editor.config());
-                        compositor.push(Box::new(overlaid(picker)));
-                    },
-                ));
-                Ok(call)
-            };
-            cx.jobs.callback(callback);
-        } else {
-            // Otherwise, just open the file
-            let _ = cx.editor.open(&path, Action::Replace)?;
-            let (view, doc) = current!(cx.editor);
-            let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
-            doc.set_selection(view.id, pos);
-            // does not affect opening a buffer without pos
-            align_view(doc, view, Align::Center);
+        let path = helix_stdx::path::canonicalize(path);
+
+        // Shortcut for opening an existing path without globbing
+        if let Ok(metadata) = fs::metadata(&path) {
+            // Path exists
+            let file_type = metadata.file_type();
+            if file_type.is_dir() {
+                // If the path is a directory, open a file picker on that directory
+                let callback = async move {
+                    let call: job::Callback = job::Callback::EditorCompositor(Box::new(
+                        move |editor: &mut Editor, compositor: &mut Compositor| {
+                            let picker = ui::file_picker(path, &editor.config());
+                            compositor.push(Box::new(overlaid(picker)));
+                        },
+                    ));
+                    Ok(call)
+                };
+                cx.jobs.callback(callback);
+            } else if file_type.is_file() {
+                open_file(cx, &path, pos)?;
+            } else {
+                bail!("{} is not a regular file", path.display());
+            }
+            continue;
+        }
+
+        let path_str = path.to_str().context("invalid unicode")?;
+        if !path_str.as_bytes().iter().any(|c| b"*?{}[]".contains(c)) {
+            // Not a glob, open the file to avoid unneeded walking of huge directories
+            open_file(cx, &path, pos)?;
+            continue;
+        }
+
+        let glob = GlobBuilder::new(path_str)
+            .literal_separator(true)
+            .empty_alternates(true)
+            .build()
+            .context("invalid glob")?;
+        // Using a glob set instead of `compile_matcher` because the single matcher is always
+        // a regex matcher. A glob set tries other strategies first which can be more efficient.
+        // Example: `**/FILENAME` only compares the base name instead of matching with regex.
+        let glob_set = GlobSetBuilder::new()
+            .add(glob)
+            .build()
+            .context("invalid glob")?;
+
+        let mut root = None;
+        let mut comps = path.components();
+
+        // Iterate over all parents
+        while comps.next_back().is_some() {
+            let parent = comps.as_path();
+
+            if parent.exists() {
+                // Found the first parent that exists
+                root = Some(parent);
+                break;
+            }
+        }
+
+        let root = root.context("invalid glob")?;
+        let to_open = Mutex::new(Vec::with_capacity(GLOBBING_MAX_N_FILES));
+        let exceeded_max_n_files = AtomicBool::new(false);
+
+        WalkBuilder::new(root)
+            // Traversing symlinks makes the time explode.
+            // Not even sure if non-trivial cycles are detected.
+            // Because we don't have a timeout, we should better ignore symlinks.
+            .follow_links(false)
+            .standard_filters(false)
+            .build_parallel()
+            .run(|| {
+                Box::new(|entry| {
+                    if exceeded_max_n_files.load(Ordering::Relaxed) {
+                        return WalkState::Quit;
+                    }
+
+                    let Ok(entry) = entry else {
+                        return WalkState::Continue;
+                    };
+                    if !glob_set.is_match(entry.path()) {
+                        return WalkState::Continue;
+                    }
+                    let Ok(metadata) = entry.metadata() else {
+                        return WalkState::Continue;
+                    };
+
+                    if metadata.is_file() {
+                        let Ok(mut to_open) = to_open.lock() else {
+                            return WalkState::Quit;
+                        };
+                        if to_open.len() == GLOBBING_MAX_N_FILES {
+                            exceeded_max_n_files.store(true, Ordering::Relaxed);
+                            return WalkState::Quit;
+                        }
+                        to_open.push(entry.into_path());
+                    }
+
+                    WalkState::Continue
+                })
+            });
+
+        if exceeded_max_n_files.load(Ordering::Relaxed) {
+            bail!("tried to open more than {GLOBBING_MAX_N_FILES} files at once");
+        }
+        let to_open = to_open.into_inner().context("walker thread panicked")?;
+        if to_open.is_empty() {
+            // Nothing found to open after globbing. Open a new file
+            open_file(cx, &path, pos)?;
+            continue;
+        }
+
+        for path in to_open {
+            open_file(cx, &path, pos)?;
         }
     }
+
     Ok(())
 }
 
