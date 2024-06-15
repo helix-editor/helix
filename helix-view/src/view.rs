@@ -64,12 +64,13 @@ impl JumpList {
 
     // Taking view and doc to prevent unnecessary cloning when jump is not required.
     pub fn backward(&mut self, view_id: ViewId, doc: &mut Document, count: usize) -> Option<&Jump> {
-        if let Some(current) = self.current.checked_sub(count) {
-            self.current = current;
+        if self.current.checked_sub(count).is_some() {
             let cur_jump = (doc.id(), doc.selection(view_id).clone());
             if self.current == self.jumps.len() {
                 self.push(cur_jump.clone());
             }
+            // We need to do this separately from checked_sub above as pushing to the jumplist might change the position of self.current
+            self.current = self.current.saturating_sub(count);
             self.jumps.get(self.current).and_then(|next_jump| {
                 if next_jump == &cur_jump {
                     self.current -= 1;
