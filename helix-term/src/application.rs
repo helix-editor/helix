@@ -192,8 +192,9 @@ impl Application {
                                 nr_of_files -= 1;
                                 continue;
                             }
-                            a => a.context(format!("open '{}'", file.to_string_lossy())),
-                        }?;
+                            Err(err) => return Err(anyhow::anyhow!(err)),
+                            Ok(doc_id) => doc_id,
+                        };
                         // with Action::Load all documents have the same view
                         // NOTE: this isn't necessarily true anymore. If
                         // `--vsplit` or `--hsplit` are used, the file which is
