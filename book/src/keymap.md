@@ -25,7 +25,7 @@
 
 > 💡 Mappings marked (**TS**) require a tree-sitter grammar for the file type.
 
-> ⚠️ Some terminals' default key mappings conflict with Helix's. If any of the mappings described on this page do not work as expected, check your terminal's mappings to ensure they do not conflict. See the (wiki)[https://github.com/helix-editor/helix/wiki/Terminal-Support] for known conflicts.
+> ⚠️ Some terminals' default key mappings conflict with Helix's. If any of the mappings described on this page do not work as expected, check your terminal's mappings to ensure they do not conflict. See the [wiki](https://github.com/helix-editor/helix/wiki/Terminal-Support) for known conflicts.
 
 ## Normal mode
 
@@ -233,8 +233,7 @@ Jumps to various locations.
 
 Accessed by typing `m` in [normal mode](#normal-mode).
 
-See the relevant section in [Usage](./usage.md) for an explanation about
-[surround](./usage.md#surround) and [textobject](./usage.md#navigating-using-tree-sitter-textobjects) usage.
+Please refer to the relevant sections for detailed explanations about [surround](./surround.md) and [textobjects](./textobjects.md).
 
 | Key              | Description                                     | Command                    |
 | -----            | -----------                                     | -------                    |
