@@ -1,3 +1,4 @@
+use std::iter::Peekable;
 use std::ops::Range;
 use std::sync::Arc;
 
@@ -259,6 +260,22 @@ impl Diff<'_> {
         }
     }
 
+    /// Iterates over all hunks that intersect with the given line ranges.
+    ///
+    /// Hunks are returned at most once even when intersecting with multiple of the line
+    /// ranges.
+    pub fn hunks_intersecting_line_ranges<I>(&self, line_ranges: I) -> impl Iterator<Item = &Hunk>
+    where
+        I: Iterator<Item = (usize, usize)>,
+    {
+        HunksInLineRangesIter {
+            hunks: &self.diff.hunks,
+            line_ranges: line_ranges.peekable(),
+            inverted: self.inverted,
+            cursor: 0,
+        }
+    }
+
     pub fn hunk_at(&self, line: u32, include_removal: bool) -> Option<u32> {
         let hunk_range = if self.inverted {
             |hunk: &Hunk| hunk.before.clone()
@@ -286,6 +303,45 @@ impl Diff<'_> {
                 } else {
                     None
                 }
+            }
+        }
+    }
+}
+
+pub struct HunksInLineRangesIter<'a, I: Iterator<Item = (usize, usize)>> {
+    hunks: &'a [Hunk],
+    line_ranges: Peekable<I>,
+    inverted: bool,
+    cursor: usize,
+}
+
+impl<'a, I: Iterator<Item = (usize, usize)>> Iterator for HunksInLineRangesIter<'a, I> {
+    type Item = &'a Hunk;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let hunk_range = if self.inverted {
+            |hunk: &Hunk| hunk.before.clone()
+        } else {
+            |hunk: &Hunk| hunk.after.clone()
+        };
+
+        loop {
+            let (start_line, end_line) = self.line_ranges.peek()?;
+            let hunk = self.hunks.get(self.cursor)?;
+
+            if (hunk_range(hunk).end as usize) < *start_line {
+                // If the hunk under the cursor comes before this range, jump the cursor
+                // ahead to the next hunk that overlaps with the line range.
+                self.cursor += self.hunks[self.cursor..]
+                    .partition_point(|hunk| (hunk_range(hunk).end as usize) < *start_line);
+            } else if (hunk_range(hunk).start as usize) <= *end_line {
+                // If the hunk under the cursor overlaps with this line range, emit it
+                // and move the cursor up so that the hunk cannot be emitted twice.
+                self.cursor += 1;
+                return Some(hunk);
+            } else {
+                // Otherwise, go to the next line range.
+                self.line_ranges.next();
             }
         }
     }

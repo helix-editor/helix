@@ -895,6 +895,22 @@ async fn match_bracket() -> anyhow::Result<()> {
                 }
             "##},
         ),
+        // named node with 2 or more children
+        (
+            indoc! {r##"
+                use a::#[{|]#
+                    b::{c, d, e, f, g},
+                    h, i, j, k, l, m, n,
+                };
+            "##},
+            "mm",
+            indoc! {r##"
+                use a::{
+                    b::{c, d, e, f, g},
+                    h, i, j, k, l, m, n,
+                #[}|]#;
+            "##},
+        ),
     ];
 
     let python_tests = vec![

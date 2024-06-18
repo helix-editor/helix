@@ -26,7 +26,7 @@ use helix_core::{
     history::UndoKind,
     increment, indent,
     indent::IndentStyle,
-    line_ending::{get_line_ending_of_str, line_end_char_index, str_is_line_ending},
+    line_ending::{get_line_ending_of_str, line_end_char_index},
     match_brackets,
     movement::{self, move_vertically_visual, Direction},
     object, pos_at_coords,
@@ -142,6 +142,17 @@ impl<'a> Context<'a> {
     #[inline]
     pub fn count(&self) -> usize {
         self.count.map_or(1, |v| v.get())
+    }
+
+    /// Waits on all pending jobs, and then tries to flush all pending write
+    /// operations for all documents.
+    pub fn block_try_flush_writes(&mut self) -> anyhow::Result<()> {
+        compositor::Context {
+            editor: self.editor,
+            jobs: self.jobs,
+            scroll: None,
+        }
+        .block_try_flush_writes()
     }
 }
 
@@ -327,7 +338,7 @@ impl MappableCommand {
         append_mode, "Append after selection",
         command_mode, "Enter command mode",
         file_picker, "Open file picker",
-        file_picker_in_current_buffer_directory, "Open file picker at current buffers's directory",
+        file_picker_in_current_buffer_directory, "Open file picker at current buffer's directory",
         file_picker_in_current_directory, "Open file picker at current working directory",
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
@@ -1595,19 +1606,11 @@ fn replace(cx: &mut Context) {
         if let Some(ch) = ch {
             let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
                 if !range.is_empty() {
-                    let text: String =
+                    let text: Tendril =
                         RopeGraphemes::new(doc.text().slice(range.from()..range.to()))
-                            .map(|g| {
-                                let cow: Cow<str> = g.into();
-                                if str_is_line_ending(&cow) {
-                                    cow
-                                } else {
-                                    ch.into()
-                                }
-                            })
+                            .map(|_g| ch)
                             .collect();
-
-                    (range.from(), range.to(), Some(text.into()))
+                    (range.from(), range.to(), Some(text))
                 } else {
                     // No change.
                     (range.from(), range.to(), None)
@@ -5829,7 +5832,10 @@ fn shell_prompt(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBeha
 
 fn suspend(_cx: &mut Context) {
     #[cfg(not(windows))]
-    signal_hook::low_level::raise(signal_hook::consts::signal::SIGTSTP).unwrap();
+    {
+        _cx.block_try_flush_writes().ok();
+        signal_hook::low_level::raise(signal_hook::consts::signal::SIGTSTP).unwrap();
+    }
 }
 
 fn add_newline_above(cx: &mut Context) {

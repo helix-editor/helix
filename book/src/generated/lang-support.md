@@ -42,6 +42,7 @@
 | edoc | ✓ |  |  |  |
 | eex | ✓ |  |  |  |
 | ejs | ✓ |  |  |  |
+| elisp | ✓ |  |  |  |
 | elixir | ✓ | ✓ | ✓ | `elixir-ls` |
 | elm | ✓ | ✓ |  | `elm-language-server` |
 | elvish | ✓ |  |  | `elvish` |
@@ -125,6 +126,7 @@
 | mermaid | ✓ |  |  |  |
 | meson | ✓ |  | ✓ |  |
 | mint |  |  |  | `mint` |
+| mojo | ✓ | ✓ | ✓ | `mojo-lsp-server` |
 | move | ✓ |  |  |  |
 | msbuild | ✓ |  | ✓ |  |
 | nasm | ✓ | ✓ |  |  |
@@ -188,7 +190,7 @@
 | supercollider | ✓ |  |  |  |
 | svelte | ✓ |  | ✓ | `svelteserver` |
 | sway | ✓ | ✓ | ✓ | `forc` |
-| swift | ✓ |  |  | `sourcekit-lsp` |
+| swift | ✓ | ✓ |  | `sourcekit-lsp` |
 | t32 | ✓ |  |  |  |
 | tablegen | ✓ | ✓ | ✓ |  |
 | tact | ✓ | ✓ | ✓ |  |

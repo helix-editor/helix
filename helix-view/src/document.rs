@@ -912,7 +912,15 @@ impl Document {
             }
             let write_path = tokio::fs::read_link(&path)
                 .await
-                .unwrap_or_else(|_| path.clone());
+                .ok()
+                .and_then(|p| {
+                    if p.is_relative() {
+                        path.parent().map(|parent| parent.join(p))
+                    } else {
+                        Some(p)
+                    }
+                })
+                .unwrap_or_else(|| path.clone());
 
             if readonly(&write_path) {
                 bail!(std::io::Error::new(
@@ -947,6 +955,7 @@ impl Document {
             let write_result: anyhow::Result<_> = async {
                 let mut dst = tokio::fs::File::create(&write_path).await?;
                 to_writer(&mut dst, encoding_with_bom_info, &text).await?;
+                dst.sync_all().await?;
                 Ok(())
             }
             .await;
