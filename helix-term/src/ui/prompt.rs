@@ -2,6 +2,7 @@ use crate::compositor::{Component, Compositor, Context, Event, EventResult};
 use crate::{alt, ctrl, key, shift, ui};
 use arc_swap::ArcSwap;
 use helix_core::syntax;
+use helix_view::document::Mode;
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;
 use std::sync::Arc;
@@ -662,7 +663,7 @@ impl Component for Prompt {
         self.render_prompt(area, surface, cx)
     }
 
-    fn cursor(&self, area: Rect, _editor: &Editor) -> (Option<Position>, CursorKind) {
+    fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
         let line = area.height as usize - 1;
         (
             Some(Position::new(
@@ -671,7 +672,7 @@ impl Component for Prompt {
                     + self.prompt.len()
                     + UnicodeWidthStr::width(&self.line[..self.cursor]),
             )),
-            CursorKind::Block,
+            editor.config().cursor_shape.from_mode(Mode::Insert),
         )
     }
 }
