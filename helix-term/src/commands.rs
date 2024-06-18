@@ -5754,8 +5754,8 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
     let mut shell_output: Option<Tendril> = None;
     let mut offset = 0isize;
     for range in selection.ranges() {
-        let output = if let Some(output) = shell_output.as_ref() {
-            output.clone()
+        let output = if let Some(output) = shell_output.take() {
+            output
         } else {
             let fragment = range.slice(text);
             match shell_impl(shell, cmd, pipe.then(|| fragment.into())) {
