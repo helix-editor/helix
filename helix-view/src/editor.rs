@@ -1,5 +1,6 @@
 use crate::{
     align_view,
+    clipboard::ClipboardConfig,
     document::{DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint},
     graphics::{CursorKind, Rect},
     handlers::Handlers,
@@ -341,6 +342,8 @@ pub struct Config {
         deserialize_with = "deserialize_alphabet"
     )]
     pub jump_label_alphabet: Vec<char>,
+    // Set to override the default clipboard provider
+    pub clipboard_provider: ClipboardConfig,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -973,6 +976,7 @@ impl Default for Config {
             popup_border: PopupBorderConfig::None,
             indent_heuristic: IndentationHeuristic::default(),
             jump_label_alphabet: ('a'..='z').collect(),
+            clipboard_provider: ClipboardConfig::default(),
         }
     }
 }
@@ -1174,7 +1178,7 @@ impl Editor {
             theme_loader,
             last_theme: None,
             last_selection: None,
-            registers: Registers::default(),
+            registers: Registers::new(conf.clipboard_provider.get_provider()),
             status_msg: None,
             autoinfo: None,
             idle_timer: Box::pin(sleep(conf.idle_timeout)),
@@ -1229,6 +1233,7 @@ impl Editor {
     pub fn refresh_config(&mut self) {
         let config = self.config();
         self.auto_pairs = (&config.auto_pairs).into();
+        self.registers.clipboard_provider = config.clipboard_provider.get_provider();
         self.reset_idle_timer();
         self._refresh();
     }

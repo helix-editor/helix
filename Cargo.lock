@@ -1427,6 +1427,7 @@ dependencies = [
  "regex-cursor",
  "ropey",
  "rustix",
+ "serde",
  "tempfile",
  "which",
  "windows-sys 0.52.0",

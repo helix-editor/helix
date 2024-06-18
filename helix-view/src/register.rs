@@ -4,7 +4,7 @@ use anyhow::Result;
 use helix_core::NATIVE_LINE_ENDING;
 
 use crate::{
-    clipboard::{get_clipboard_provider, ClipboardProvider, ClipboardType},
+    clipboard::{ClipboardProvider, ClipboardType},
     document::SCRATCH_BUFFER_NAME,
     Editor,
 };
@@ -28,21 +28,19 @@ pub struct Registers {
     /// The order is reversed again in `Registers::read`. This allows us to
     /// efficiently prepend new values in `Registers::push`.
     inner: HashMap<char, Vec<String>>,
-    clipboard_provider: Box<dyn ClipboardProvider>,
+    pub clipboard_provider: Box<dyn ClipboardProvider>,
     pub last_search_register: char,
 }
 
-impl Default for Registers {
-    fn default() -> Self {
+impl Registers {
+    pub fn new(clipboard_provider: Box<dyn ClipboardProvider>) -> Self {
         Self {
             inner: Default::default(),
-            clipboard_provider: get_clipboard_provider(),
+            clipboard_provider,
             last_search_register: '/',
         }
     }
-}
 
-impl Registers {
     pub fn read<'a>(&'a self, name: char, editor: &'a Editor) -> Option<RegisterValues<'a>> {
         match name {
             '_' => Some(RegisterValues::new(iter::empty())),
