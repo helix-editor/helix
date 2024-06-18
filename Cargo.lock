@@ -1535,6 +1535,7 @@ dependencies = [
  "serde_json",
  "slotmap",
  "tempfile",
+ "thiserror",
  "tokio",
  "tokio-stream",
  "toml",

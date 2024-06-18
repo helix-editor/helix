@@ -1,6 +1,8 @@
 use crate::{
     align_view,
-    document::{DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint},
+    document::{
+        DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
+    },
     graphics::{CursorKind, Rect},
     handlers::Handlers,
     info::Info,
@@ -1677,7 +1679,7 @@ impl Editor {
     }
 
     // ??? possible use for integration tests
-    pub fn open(&mut self, path: &Path, action: Action) -> Result<DocumentId, Error> {
+    pub fn open(&mut self, path: &Path, action: Action) -> Result<DocumentId, DocumentOpenError> {
         let path = helix_stdx::path::canonicalize(path);
         let id = self.document_by_path(&path).map(|doc| doc.id);
 

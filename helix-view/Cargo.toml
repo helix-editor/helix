@@ -50,7 +50,7 @@ toml = "0.8"
 log = "~0.4"
 
 parking_lot = "0.12.3"
-
+thiserror.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 clipboard-win = { version = "5.3", features = ["std"] }

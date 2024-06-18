@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail, Context, Error};
+use anyhow::{anyhow, bail, Error};
 use arc_swap::access::DynAccess;
 use arc_swap::ArcSwap;
 use futures_util::future::BoxFuture;
@@ -12,6 +12,7 @@ use helix_core::text_annotations::{InlineAnnotation, Overlay};
 use helix_lsp::util::lsp_pos_to_pos;
 use helix_stdx::faccess::{copy_metadata, readonly};
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
+use thiserror;
 
 use ::parking_lot::Mutex;
 use serde::de::{self, Deserialize, Deserializer};
@@ -21,6 +22,7 @@ use std::cell::Cell;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::future::Future;
+use std::io;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::{Arc, Weak};
@@ -115,6 +117,14 @@ pub struct SavePoint {
     /// The view this savepoint is associated with
     pub view: ViewId,
     revert: Mutex<Transaction>,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum DocumentOpenError {
+    #[error("path must be a regular file, simlink, or directory")]
+    IrregularFile,
+    #[error(transparent)]
+    IoError(#[from] io::Error),
 }
 
 pub struct Document {
@@ -380,7 +390,7 @@ fn apply_bom(encoding: &'static encoding::Encoding, buf: &mut [u8; BUF_SIZE]) ->
 pub fn from_reader<R: std::io::Read + ?Sized>(
     reader: &mut R,
     encoding: Option<&'static Encoding>,
-) -> Result<(Rope, &'static Encoding, bool), Error> {
+) -> Result<(Rope, &'static Encoding, bool), io::Error> {
     // These two buffers are 8192 bytes in size each and are used as
     // intermediaries during the decoding process. Text read into `buf`
     // from `reader` is decoded into `buf_out` as UTF-8. Once either
@@ -523,7 +533,7 @@ fn read_and_detect_encoding<R: std::io::Read + ?Sized>(
     reader: &mut R,
     encoding: Option<&'static Encoding>,
     buf: &mut [u8],
-) -> Result<(&'static Encoding, bool, encoding::Decoder, usize), Error> {
+) -> Result<(&'static Encoding, bool, encoding::Decoder, usize), io::Error> {
     let read = reader.read(buf)?;
     let is_empty = read == 0;
     let (encoding, has_bom) = encoding
@@ -685,11 +695,18 @@ impl Document {
         encoding: Option<&'static Encoding>,
         config_loader: Option<Arc<ArcSwap<syntax::Loader>>>,
         config: Arc<dyn DynAccess<Config>>,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, DocumentOpenError> {
+        // If the path is not a regular file (e.g.: /dev/random) it should not be opened.
+        if path
+            .metadata()
+            .map_or(false, |metadata| !metadata.is_file())
+        {
+            return Err(DocumentOpenError::IrregularFile);
+        }
+
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
         let (rope, encoding, has_bom) = if path.exists() {
-            let mut file =
-                std::fs::File::open(path).context(format!("unable to open {:?}", path))?;
+            let mut file = std::fs::File::open(path)?;
             from_reader(&mut file, encoding)?
         } else {
             let line_ending: LineEnding = config.load().default_line_ending.into();
