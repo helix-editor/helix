@@ -3366,6 +3366,7 @@ fn open(cx: &mut Context, open: Open) {
     enter_insert_mode(cx);
     let (view, doc) = current!(cx.editor);
 
+    let config = doc.config.load();
     let text = doc.text().slice(..);
     let contents = doc.text();
     let selection = doc.selection(view.id);
@@ -3415,6 +3416,11 @@ fn open(cx: &mut Context, open: Open) {
         let mut text = String::with_capacity(1 + indent_len);
         text.push_str(doc.line_ending.as_str());
         text.push_str(&indent);
+
+        if config.continue_comments {
+            handle_comment_continue(doc, &mut text, cursor_line);
+        }
+
         let text = text.repeat(count);
 
         // calculate new selection ranges
@@ -3434,6 +3440,21 @@ fn open(cx: &mut Context, open: Open) {
     transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
 
     doc.apply(&transaction, view.id);
+
+    // Since we might have added a comment token, move to the end of the line.
+    goto_line_end_newline(cx);
+}
+
+// Currently only continues single-line comments
+// TODO: Handle block comments as well
+fn handle_comment_continue(doc: &Document, text: &mut String, cursor_line: usize) {
+    let line = doc.text().line(cursor_line);
+
+    if let Some(lang_config) = doc.language_config() {
+        let comment_tokens = &lang_config.comment_tokens;
+
+        comment::handle_comment_continue(&line, text, comment_tokens);
+    }
 }
 
 // o inserts a new line after each line with a selection
@@ -3826,6 +3847,7 @@ pub mod insert {
 
     pub fn insert_newline(cx: &mut Context) {
         let (view, doc) = current_ref!(cx.editor);
+        let config = doc.config.load();
         let text = doc.text().slice(..);
 
         let contents = doc.text();
@@ -3895,6 +3917,11 @@ pub mod insert {
                     new_text.reserve_exact(1 + indent.len());
                     new_text.push_str(doc.line_ending.as_str());
                     new_text.push_str(&indent);
+
+                    if config.continue_comments {
+                        handle_comment_continue(doc, &mut new_text, current_line);
+                    }
+
                     new_text.chars().count()
                 };
 

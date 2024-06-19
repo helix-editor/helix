@@ -1,5 +1,7 @@
-//! This module contains the functionality toggle comments on lines over the selection
-//! using the comment character defined in the user's `languages.toml`
+//! This module contains the functionality for the following comment-related features
+//! using the comment character defined in the user's `languages.toml`:
+//! * toggle comments on lines over the selection
+//! * continue comment when opening a new line
 
 use smallvec::SmallVec;
 
@@ -318,7 +320,7 @@ mod test {
     use super::*;
 
     #[test]
-    fn test_find_line_comment() {
+    fn test_toggle_line_comments() {
         // four lines, two space indented, except for line 1 which is blank.
         let mut doc = Rope::from("  1\n\n  2\n  3");
         // select whole document
