@@ -321,7 +321,7 @@ Displays documentation for item under cursor. Remapping currently not supported.
 Displays documentation for the selected completion item. Remapping currently not supported.
 
 | Key                         | Description                      |
-| ----                        | ---------------------------------|
+| ----                        | -----------                      |
 | `Shift-Tab`, `Ctrl-p`, `Up` | Previous entry                   |
 | `Tab`, `Ctrl-n`, `Down`     | Next entry                       |
 | `Escape`                    | Close menu and accept completion |
