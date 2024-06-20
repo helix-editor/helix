@@ -1,7 +1,5 @@
 //! Utility functions to categorize a `char`.
 
-use ropey::RopeSlice;
-
 use crate::LineEnding;
 
 #[derive(Debug, Eq, PartialEq)]
@@ -85,10 +83,6 @@ pub fn char_is_punctuation(ch: char) -> bool {
 #[inline]
 pub fn char_is_word(ch: char) -> bool {
     ch.is_alphanumeric() || ch == '_'
-}
-
-pub fn find_first_non_whitespace_char(line: &RopeSlice) -> Option<usize> {
-    line.chars().position(|ch| !ch.is_whitespace())
 }
 
 #[cfg(test)]

@@ -42,7 +42,7 @@ use helix_core::{
 };
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
-    editor::Action,
+    editor::{Action, Config},
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
@@ -1666,6 +1666,34 @@ fn switch_to_lowercase(cx: &mut Context) {
     switch_case_impl(cx, |string| {
         string.chunks().map(|chunk| chunk.to_lowercase()).collect()
     });
+}
+
+/// Checks, if the line from line `line_num` is commented with one of the comment tokens in the language config and
+/// returns the token which comments out the line.
+fn has_line_comment(config: &Config, doc: &Document, line_num: usize) -> Option<String> {
+    if config.continue_comments {
+        let line_tokens = {
+            let mut line_tokens: Vec<String> = doc
+                .language_config()
+                .and_then(|lc| lc.comment_tokens.as_ref())?
+                .clone();
+            line_tokens.sort_by(|a, b| a.len().partial_cmp(&b.len()).unwrap().reverse());
+            line_tokens
+        };
+
+        let text = doc.text();
+        let line = text.line(line_num);
+
+        if let Some(pos) = line.first_non_whitespace_char() {
+            let text_line = line.slice(pos..);
+            return line_tokens
+                .iter()
+                .find(|&token| text_line.starts_with(token.as_str()))
+                .map(|token| token.clone());
+        }
+    }
+
+    None
 }
 
 pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor: bool) {
@@ -3417,8 +3445,9 @@ fn open(cx: &mut Context, open: Open) {
         text.push_str(doc.line_ending.as_str());
         text.push_str(&indent);
 
-        if config.continue_comments {
-            handle_comment_continue(doc, &mut text, cursor_line);
+        if let Some(comment_token) = has_line_comment(&config, &doc, line_num) {
+            text.push_str(&comment_token);
+            text.push(' ');
         }
 
         let text = text.repeat(count);
@@ -3443,18 +3472,6 @@ fn open(cx: &mut Context, open: Open) {
 
     // Since we might have added a comment token, move to the end of the line.
     goto_line_end_newline(cx);
-}
-
-// Currently only continues single-line comments
-// TODO: Handle block comments as well
-fn handle_comment_continue(doc: &Document, text: &mut String, cursor_line: usize) {
-    let line = doc.text().line(cursor_line);
-
-    if let Some(lang_config) = doc.language_config() {
-        let comment_tokens = &lang_config.comment_tokens;
-
-        comment::handle_comment_continue(&line, text, comment_tokens);
-    }
 }
 
 // o inserts a new line after each line with a selection
@@ -3918,8 +3935,9 @@ pub mod insert {
                     new_text.push_str(doc.line_ending.as_str());
                     new_text.push_str(&indent);
 
-                    if config.continue_comments {
-                        handle_comment_continue(doc, &mut new_text, current_line);
+                    if let Some(comment_token) = has_line_comment(&config, &doc, current_line) {
+                        new_text.push_str(&comment_token);
+                        new_text.push(' ');
                     }
 
                     new_text.chars().count()
