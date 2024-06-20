@@ -347,6 +347,11 @@ pub fn render_text<'t>(
         );
     }
 
+    renderer.surface.set_style(
+        renderer.viewport.clip_top(last_line_pos.visual_line),
+        theme.get("ui.background.eof"),
+    );
+
     renderer.draw_indent_guides(last_line_indent_level, last_line_pos.visual_line);
     for line_decoration in &mut *line_decorations {
         line_decoration.render_foreground(renderer, last_line_pos, char_pos);
