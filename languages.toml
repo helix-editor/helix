@@ -866,6 +866,8 @@ shebangs = []
 comment-token = "#"
 language-servers = [ "nil" ]
 indent = { tab-width = 2, unit = "  " }
+formatter = { command = "nixfmt" }
+auto-format = true
 
 [[grammar]]
 name = "nix"
