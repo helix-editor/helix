@@ -1689,7 +1689,7 @@ fn has_line_comment(config: &Config, doc: &Document, line_num: usize) -> Option<
             return line_tokens
                 .iter()
                 .find(|&token| text_line.starts_with(token.as_str()))
-                .map(|token| token.clone());
+                .cloned();
         }
     }
 
@@ -3445,7 +3445,7 @@ fn open(cx: &mut Context, open: Open) {
         text.push_str(doc.line_ending.as_str());
         text.push_str(&indent);
 
-        if let Some(comment_token) = has_line_comment(&config, &doc, line_num) {
+        if let Some(comment_token) = has_line_comment(&config, doc, line_num) {
             text.push_str(&comment_token);
             text.push(' ');
         }
@@ -3935,7 +3935,7 @@ pub mod insert {
                     new_text.push_str(doc.line_ending.as_str());
                     new_text.push_str(&indent);
 
-                    if let Some(comment_token) = has_line_comment(&config, &doc, current_line) {
+                    if let Some(comment_token) = has_line_comment(&config, doc, current_line) {
                         new_text.push_str(&comment_token);
                         new_text.push(' ');
                     }
