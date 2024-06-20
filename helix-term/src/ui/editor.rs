@@ -907,28 +907,37 @@ impl EditorView {
     }
 
     fn insert_mode(&mut self, cx: &mut commands::Context, event: KeyEvent) {
-        if let Some(keyresult) = self.handle_keymap_event(Mode::Insert, cx, event) {
-            match keyresult {
-                KeymapResult::NotFound => {
-                    if let Some(ch) = event.char() {
-                        commands::insert::insert_char(cx, ch)
-                    }
-                }
-                KeymapResult::Cancelled(pending) => {
-                    for ev in pending {
-                        match ev.char() {
-                            Some(ch) => commands::insert::insert_char(cx, ch),
-                            None => {
-                                if let KeymapResult::Matched(command) =
-                                    self.keymaps.get(Mode::Insert, ev)
-                                {
-                                    command.execute(cx);
-                                }
-                            }
+        let mut stack = vec![event];
+
+        while let Some(event) = stack.pop() {
+            if let Some(keyresult) = self.handle_keymap_event(Mode::Insert, cx, event) {
+                match keyresult {
+                    KeymapResult::NotFound => {
+                        if let Some(ch) = event.char() {
+                            commands::insert::insert_char(cx, ch)
                         }
                     }
+                    KeymapResult::Cancelled(pending) => {
+                        let mut pending = pending.into_iter();
+                        if let Some(first) = pending.next() {
+                            // Note that since this is the first pending key, we know
+                            // it can't map to a command by itself.
+                            match first.char() {
+                                // The first key is both the start of a menu and a regular
+                                // insert key. The user may have intended to type it as an
+                                // insert, and then execute the remaining suffix of keys.
+                                Some(ch) => commands::insert::insert_char(cx, ch),
+                                // If the first key is not a character to insert, then we
+                                // assume the user intended to enter a command menu, so we
+                                // should just discard pending keys if they don't match.
+                                None => continue,
+                            }
+                        }
+
+                        stack.extend(pending.rev());
+                    }
+                    _ => unreachable!(),
                 }
-                _ => unreachable!(),
             }
         }
     }
