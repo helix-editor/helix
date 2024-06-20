@@ -324,8 +324,10 @@ Displays documentation for the selected completion item. Remapping currently not
 | ----                        | -----------                      |
 | `Shift-Tab`, `Ctrl-p`, `Up` | Previous entry                   |
 | `Tab`, `Ctrl-n`, `Down`     | Next entry                       |
-| `Escape`                    | Close menu and accept completion |
+| `Enter`                     | Close menu and accept completion |
 | `Ctrl-c`                    | Close menu and reject completion |
+
+Any other keypresses result in the completion being accepted.
 
 ##### Signature-help Popup
 
