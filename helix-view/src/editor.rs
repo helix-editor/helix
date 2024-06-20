@@ -576,6 +576,7 @@ pub enum StatusLineElement {
     /// Indicator for selected register
     Register,
 
+    /// The base of current working directory
     CurrentWorkingDirectory,
 }
 
