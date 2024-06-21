@@ -681,6 +681,8 @@ impl EditorView {
         );
 
         // Scroll the tabs correctly
+        // The idea is to align the center of the buffer tab
+        // as close to the center of the viewport as possible
         let viewport_center = (viewport.width as f64 / 2.).floor() as i32 + viewport.x as i32;
 
         let active_buffertab = buffertabs.iter().find(|tab| tab.active).unwrap();
@@ -690,17 +692,30 @@ impl EditorView {
 
         let right_of_center = active_buffertab_center as i32 - viewport_center as i32;
 
-        if right_of_center > 0 {
-            let rightmost = buffertabs.last().unwrap();
-            let full_width = rightmost.x + rightmost.width as i32;
+        // If the active tab falls on the right, we have to move it left by some amount.
+        // For easthetics, I've chosen to have the rightmost tab not to scroll further left
+        // than needed, clamping it to the right of the viewport.
 
-            let max_displacement = (full_width - viewport.width as i32).max(0);
-            let displacement = right_of_center.min(max_displacement);
+        // Get the full width of the bufferline
+        let rightmost = buffertabs.last().unwrap();
+        let full_width = rightmost.x + rightmost.width as i32;
 
-            for tab in buffertabs.iter_mut() {
-                tab.x = tab.x.saturating_sub(displacement.abs());
-            }
-        } // If on center, or left of center, nothing to do
+        // The maximum possible displacement is amount of overflow on the right
+        // of the viewport. If no overflow, maximum displacement is 0.
+        let max_displacement = (full_width - viewport.width as i32).max(0);
+
+        // This part clamps the scrolling of the bufferline to the right of the viewport.
+        let displacement = right_of_center.min(max_displacement).max(0);
+
+        // If there's any displacement, there's underflow of the bufferline.
+        let mark_underflow = displacement > 0;
+
+        // If the displacement is not at max, there's overflow of the bufferline.
+        let mark_overflow = displacement < max_displacement;
+
+        for tab in buffertabs.iter_mut() {
+            tab.x = tab.x.saturating_sub(displacement.abs());
+        }
 
         // Itterate over buffertabs, skip or slice them if left off screen, stop if right of screen.
         for tab in buffertabs.iter_mut() {
@@ -738,6 +753,20 @@ impl EditorView {
                     tab.style,
                 )
                 .0;
+        }
+
+        // Add under and overflow markers.
+        let markers = editor
+            .theme
+            .try_get("ui.bufferline")
+            .unwrap_or_else(|| editor.theme.get("ui.bufferline.active"));
+
+        if mark_underflow {
+            let _ = surface.set_string(viewport.left(), viewport.top(), " < ", markers);
+        }
+
+        if mark_overflow {
+            let _ = surface.set_string(viewport.right() - 3, viewport.top(), " > ", markers);
         }
     }
 
