@@ -705,7 +705,7 @@ impl EditorView {
         let max_displacement = (full_width - viewport.width as i32).max(0);
 
         // This part clamps the scrolling of the bufferline to the right of the viewport.
-        let displacement = right_of_center.min(max_displacement).max(0);
+        let displacement = right_of_center.clamp(0, max_displacement);
 
         // If there's any displacement, there's underflow of the bufferline.
         let mark_underflow = displacement > 0;
@@ -714,7 +714,7 @@ impl EditorView {
         let mark_overflow = displacement < max_displacement;
 
         for tab in buffertabs.iter_mut() {
-            tab.x = tab.x.saturating_sub(displacement.abs());
+            tab.x = tab.x.saturating_sub(displacement);
         }
 
         // Itterate over buffertabs, skip or slice them if left off screen, stop if right of screen.
