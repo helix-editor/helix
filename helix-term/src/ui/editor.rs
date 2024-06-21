@@ -758,8 +758,8 @@ impl EditorView {
         // Add under and overflow markers.
         let markers = editor
             .theme
-            .try_get("ui.bufferline")
-            .unwrap_or_else(|| editor.theme.get("ui.bufferline.active"));
+            .try_get("ui.bufferline.marker")
+            .unwrap_or_else(|| editor.theme.get("ui.bufferline"));
 
         if mark_underflow {
             let _ = surface.set_string(viewport.left(), viewport.top(), " < ", markers);
