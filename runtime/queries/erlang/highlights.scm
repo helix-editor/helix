@@ -3,7 +3,7 @@
 (attribute
   name: (atom) @keyword
   (arguments (atom) @namespace)
- (#match? @keyword "(module|behaviou?r)"))
+ (#any-of? @keyword "module" "behaviour" "behavior"))
 
 (attribute
   name: (atom) @keyword
@@ -50,12 +50,20 @@
   name: (atom) @keyword
   (arguments
     (_) @keyword.directive)
- (#match? @keyword "ifn?def"))
+ (#any-of? @keyword "ifndef" "ifdef"))
 
 (attribute
   name: (atom) @keyword
   module: (atom) @namespace
- (#match? @keyword "(spec|callback)"))
+ (#any-of? @keyword "spec" "callback"))
+
+(attribute
+  name: (atom) @keyword
+  (arguments [
+    (string)
+    (sigil)
+  ] @comment.block.documentation)
+ (#any-of? @keyword "doc" "moduledoc"))
 
 ; Functions
 (function_clause name: (atom) @function)
@@ -84,7 +92,7 @@
 ((attribute
    name: (atom) @keyword
    (stab_clause
-     pattern: (arguments (variable) @variable.parameter)
+     pattern: (arguments (variable)? @variable.parameter)
      body: (variable)? @variable.parameter))
  (#match? @keyword "(spec|callback)"))
 ; functions
@@ -145,8 +153,9 @@
 ((atom) @constant.builtin.boolean
  (#match? @constant.builtin.boolean "^(true|false)$"))
 (atom) @string.special.symbol
-(string) @string
+[(string) (sigil)] @string
 (character) @constant.character
+(escape_sequence) @constant.character.escape
 
 (integer) @constant.numeric.integer
 (float) @constant.numeric.float

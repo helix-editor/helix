@@ -1,10 +1,12 @@
+use arc_swap::ArcSwap;
 use helix_core::{
     indent::{indent_level_for_line, treesitter_indent_for_pos, IndentStyle},
     syntax::{Configuration, Loader},
     Syntax,
 };
+use helix_stdx::rope::RopeSliceExt;
 use ropey::Rope;
-use std::{ops::Range, path::PathBuf, process::Command};
+use std::{ops::Range, path::PathBuf, process::Command, sync::Arc};
 
 #[test]
 fn test_treesitter_indent_rust() {
@@ -34,7 +36,7 @@ fn test_treesitter_indent_rust_helix() {
         .unwrap();
     let files = String::from_utf8(files.stdout).unwrap();
 
-    let ignored_files = vec![
+    let ignored_files = [
         // Contains many macros that tree-sitter does not parse in a meaningful way and is otherwise not very interesting
         "helix-term/src/health.rs",
     ];
@@ -43,6 +45,7 @@ fn test_treesitter_indent_rust_helix() {
         if ignored_files.contains(&file) {
             continue;
         }
+        #[allow(clippy::single_range_in_vec_init)]
         let ignored_lines: Vec<Range<usize>> = match file {
             "helix-term/src/application.rs" => vec![
                 // We can't handle complicated indent rules inside macros (`json!` in this case) since
@@ -186,7 +189,7 @@ fn test_treesitter_indent(
     lang_scope: &str,
     ignored_lines: Vec<std::ops::Range<usize>>,
 ) {
-    let loader = Loader::new(indent_tests_config());
+    let loader = Loader::new(indent_tests_config()).unwrap();
 
     // set runtime path so we can find the queries
     let mut runtime = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"));
@@ -197,7 +200,12 @@ fn test_treesitter_indent(
     let indent_style = IndentStyle::from_str(&language_config.indent.as_ref().unwrap().unit);
     let highlight_config = language_config.highlight_config(&[]).unwrap();
     let text = doc.slice(..);
-    let syntax = Syntax::new(text, highlight_config, std::sync::Arc::new(loader)).unwrap();
+    let syntax = Syntax::new(
+        text,
+        highlight_config,
+        Arc::new(ArcSwap::from_pointee(loader)),
+    )
+    .unwrap();
     let indent_query = language_config.indent_query().unwrap();
 
     for i in 0..doc.len_lines() {
@@ -205,12 +213,11 @@ fn test_treesitter_indent(
         if ignored_lines.iter().any(|range| range.contains(&(i + 1))) {
             continue;
         }
-        if let Some(pos) = helix_core::find_first_non_whitespace_char(line) {
+        if let Some(pos) = line.first_non_whitespace_char() {
             let tab_width: usize = 4;
             let suggested_indent = treesitter_indent_for_pos(
                 indent_query,
                 &syntax,
-                &indent_style,
                 tab_width,
                 indent_style.indent_width(tab_width),
                 text,
@@ -218,7 +225,8 @@ fn test_treesitter_indent(
                 text.line_to_char(i) + pos,
                 false,
             )
-            .unwrap();
+            .unwrap()
+            .to_string(&indent_style, tab_width);
             assert!(
                 line.get_slice(..pos).map_or(false, |s| s == suggested_indent),
                 "Wrong indentation for file {:?} on line {}:\n\"{}\" (original line)\n\"{}\" (suggested indentation)\n",

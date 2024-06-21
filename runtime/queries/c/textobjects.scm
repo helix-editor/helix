@@ -19,3 +19,9 @@
 (comment) @comment.inside
 
 (comment)+ @comment.around
+
+(enumerator
+  (_) @entry.inside) @entry.around
+
+(initializer_list
+  (_) @entry.around)

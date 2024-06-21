@@ -214,33 +214,56 @@ impl Tree {
         node
     }
 
-    pub fn remove(&mut self, index: ViewId) {
-        let mut stack = Vec::new();
+    /// Get a mutable reference to a [Container] by index.
+    /// # Panics
+    /// Panics if `index` is not in self.nodes, or if the node's content is not a [Content::Container].
+    fn container_mut(&mut self, index: ViewId) -> &mut Container {
+        match &mut self.nodes[index] {
+            Node {
+                content: Content::Container(container),
+                ..
+            } => container,
+            _ => unreachable!(),
+        }
+    }
 
+    fn remove_or_replace(&mut self, child: ViewId, replacement: Option<ViewId>) {
+        let parent = self.nodes[child].parent;
+
+        self.nodes.remove(child);
+
+        let container = self.container_mut(parent);
+        let pos = container
+            .children
+            .iter()
+            .position(|&item| item == child)
+            .unwrap();
+
+        if let Some(new) = replacement {
+            container.children[pos] = new;
+            self.nodes[new].parent = parent;
+        } else {
+            container.children.remove(pos);
+        }
+    }
+
+    pub fn remove(&mut self, index: ViewId) {
         if self.focus == index {
             // focus on something else
             self.focus = self.prev();
         }
 
-        stack.push(index);
+        let parent = self.nodes[index].parent;
+        let parent_is_root = parent == self.root;
 
-        while let Some(index) = stack.pop() {
-            let parent_id = self.nodes[index].parent;
-            if let Node {
-                content: Content::Container(container),
-                ..
-            } = &mut self.nodes[parent_id]
-            {
-                if let Some(pos) = container.children.iter().position(|&child| child == index) {
-                    container.children.remove(pos);
-                    // TODO: if container now only has one child, remove it and place child in parent
-                    if container.children.is_empty() && parent_id != self.root {
-                        // if container now empty, remove it
-                        stack.push(parent_id);
-                    }
-                }
-            }
-            self.nodes.remove(index);
+        self.remove_or_replace(index, None);
+
+        let parent_container = self.container_mut(parent);
+        if parent_container.children.len() == 1 && !parent_is_root {
+            // Lets merge the only child back to its grandparent so that Views
+            // are equally spaced.
+            let sibling = parent_container.children.pop().unwrap();
+            self.remove_or_replace(parent, Some(sibling));
         }
 
         self.recalculate()
@@ -384,11 +407,13 @@ impl Tree {
                         }
                         Layout::Vertical => {
                             let len = container.children.len();
-
-                            let width = area.width / len as u16;
+                            let len_u16 = len as u16;
 
                             let inner_gap = 1u16;
-                            // let total_gap = inner_gap * (len as u16 - 1);
+                            let total_gap = inner_gap * len_u16.saturating_sub(2);
+
+                            let used_area = area.width.saturating_sub(total_gap);
+                            let width = used_area / len_u16;
 
                             let mut child_x = area.x;
 
@@ -535,7 +560,7 @@ impl Tree {
             id
         } else {
             // extremely crude, take the last item
-            let (key, _) = self.traverse().rev().next().unwrap();
+            let (key, _) = self.traverse().next_back().unwrap();
             key
         }
     }
@@ -872,5 +897,73 @@ mod test {
         assert_eq!(doc_id(&tree, l1), Some(doc_l1));
         assert_eq!(doc_id(&tree, l2), Some(doc_r0));
         assert_eq!(doc_id(&tree, r0), Some(doc_l0));
+    }
+
+    #[test]
+    fn all_vertical_views_have_same_width() {
+        let tree_area_width = 180;
+        let mut tree = Tree::new(Rect {
+            x: 0,
+            y: 0,
+            width: tree_area_width,
+            height: 80,
+        });
+        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        view.area = Rect::new(0, 0, 180, 80);
+        tree.insert(view);
+
+        let view = View::new(DocumentId::default(), GutterConfig::default());
+        tree.split(view, Layout::Vertical);
+
+        let view = View::new(DocumentId::default(), GutterConfig::default());
+        tree.split(view, Layout::Horizontal);
+
+        tree.remove(tree.focus);
+
+        let view = View::new(DocumentId::default(), GutterConfig::default());
+        tree.split(view, Layout::Vertical);
+
+        // Make sure that we only have one level in the tree.
+        assert_eq!(3, tree.views().count());
+        assert_eq!(
+            vec![
+                tree_area_width / 3 - 1, // gap here
+                tree_area_width / 3 - 1, // gap here
+                tree_area_width / 3
+            ],
+            tree.views()
+                .map(|(view, _)| view.area.width)
+                .collect::<Vec<_>>()
+        );
+    }
+
+    #[test]
+    fn vsplit_gap_rounding() {
+        let (tree_area_width, tree_area_height) = (80, 24);
+        let mut tree = Tree::new(Rect {
+            x: 0,
+            y: 0,
+            width: tree_area_width,
+            height: tree_area_height,
+        });
+        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        view.area = Rect::new(0, 0, tree_area_width, tree_area_height);
+        tree.insert(view);
+
+        for _ in 0..9 {
+            let view = View::new(DocumentId::default(), GutterConfig::default());
+            tree.split(view, Layout::Vertical);
+        }
+
+        assert_eq!(10, tree.views().count());
+        assert_eq!(
+            std::iter::repeat(7)
+                .take(9)
+                .chain(Some(8)) // Rounding in `recalculate`.
+                .collect::<Vec<_>>(),
+            tree.views()
+                .map(|(view, _)| view.area.width)
+                .collect::<Vec<_>>()
+        );
     }
 }

@@ -1,0 +1,19 @@
+# Author: Ambuj Kumar <ambujs89@gmail.com>
+# Ported from: https://github.com/drcmda/poimandres-theme
+
+inherits = "poimandres"
+
+"ui.cursorline" = { bg = "#303747" }
+"ui.popup" = { bg = "#2a303c" }
+"ui.virtual.indent-guide" = "#3a4151"
+
+[palette]
+"gray.c0" = "#98a2c4"
+darkerGray = "#868cad"
+"darkerGray.50" = "#4f576d"
+"darkerGray.b0" = "#818cae"
+bluishGray = "#607487"
+focus = "#404350"
+bg = "#252b37"
+selection = "#3d455c"
+black = "#101010"

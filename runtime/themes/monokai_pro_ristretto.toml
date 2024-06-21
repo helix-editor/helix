@@ -8,6 +8,7 @@
 "ui.menu.selected" = { fg = "base2", bg = "yellow" }
 "ui.virtual.whitespace" = "base5"
 "ui.virtual.ruler" = { bg = "base1" }
+"ui.virtual.jump-label" = { fg = "red", modifiers = ["bold"] }
 
 "info" = "base8"
 "hint" = "base8"
@@ -26,6 +27,11 @@
 "ui.selection" = { bg = "base4" }
 "ui.cursor.match" = { bg = "base4" }
 "ui.cursorline" = { bg = "base1" }
+
+# bufferline, inlay hints
+"ui.bufferline" = { fg = "base6", bg = "base8x0c" }
+"ui.bufferline.active" = { fg = "base8", bg = "base4" }
+"ui.virtual.inlay-hint" = { fg = "base6" }
 
 # comments, nord3 based lighter color
 "comment" = { fg = "base5", modifiers = ["italic"] }
@@ -91,6 +97,8 @@
 "diagnostic.error" = { underline = { color = "red", style = "curl" } }
 "diagnostic.info" = { underline = { color = "base8", style = "curl" } }
 "diagnostic.hint" = { underline = { color = "base8", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 # markup highlight, no need for `markup.raw` and `markup.list`, make them to be default
 "markup.heading" = "green"

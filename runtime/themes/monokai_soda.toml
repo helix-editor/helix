@@ -1,0 +1,123 @@
+# Monokai Soda port for Helix (https://helix-editor.com)
+# Author : Jimmy Zelinskie <jimmy@zelinskie.com>
+
+# Syntax
+
+## Constants
+"constant" = "white"
+"constant.builtin" = "pink"
+"constant.character.escape" = "blue"
+"constant.numeric" = "purple"
+
+## Diagnostics
+"diagnostic" = { modifiers = ["underlined"] }
+"diagnostic.error" = { underline = { style = "curl", color = "pink" } }
+"diagnostic.warning" = { underline = { style = "curl", color = "orange" } }
+"diagnostic.info" = { underline = { style = "curl", color = "white" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+## Diffs
+"diff.plus" = "green"
+"diff.delta" = "orange"
+"diff.minus" = "pink"
+"diff.delta.moved" = "orange"
+
+## Functions
+"function" = "green"
+"function.macro" = "blue"
+"function.builtin" = "pink"
+"constructor" = "blue"
+
+## Keywords
+"keyword" = "pink"
+"keyword.directive" = "blue"
+
+## Punctuation
+"punctuation" = "gray"
+
+## Strings
+"string" = "yellow"
+
+## Types
+"type" = "blue"
+"type.builtin" = "pink"
+
+## Variables
+"variable"  = "white"
+"variable.builtin" = "pink"
+"variable.other.member" = "white"
+"variable.parameter" = "softorange"
+
+## Markup
+"markup.heading" = "green"
+"markup.bold" = { fg = "orange", modifiers = ["bold"] }
+"markup.italic" = { fg = "orange", modifiers = ["italic"] }
+"markup.link.url" = { fg = "orange", modifiers = ["underlined"] }
+"markup.link.text" = "yellow"
+"markup.quote" = "green"
+
+## Misc
+"attribute" = "blue"
+"comment" = { fg = "gray", modifiers = ["italic"] }
+"error" = "pink"
+"hint" = "white"
+"info" = "white"
+"label" = "yellow"
+"module" = "softorange"
+"namespace" = "pink"
+"operator" = "pink"
+"special" = "softorange"
+"warning" = "orange"
+
+# Editor UI
+
+## Main
+"ui.background" = { bg = "background" }
+"ui.text" = "white"
+"ui.window" = { bg = "darkgray" }
+
+## Debug (TODO)
+
+## Menus
+"ui.menu" = { fg = "white", bg = "darkgray" }
+"ui.menu.selected" = { modifiers = ["reversed"] }
+"ui.popup" = { bg = "darkgray" }
+"ui.help" = { fg = "white", bg = "darkgray" }
+
+## Gutter
+"ui.linenr" = "darkgray"
+"ui.linenr.selected" = "orange"
+
+## Cursor
+"ui.cursor.primary" = { fg = "white", modifiers = ["reversed"] }
+"ui.cursor.match" = { fg = "white", modifiers = ["reversed"] }
+"ui.selection" = { bg = "darkgray" }
+
+## Statusline
+"ui.statusline" = { bg = "darkgray" }
+"ui.statusline.inactive" = { fg = "white", bg = "darkgray" }
+"ui.statusline.normal" = { fg = "white", bg = "blue" }
+"ui.statusline.insert" = { fg = "white", bg = "green" }
+"ui.statusline.select" = { fg = "white", bg = "purple" }
+
+"ui.text.focus" = { fg = "yellow", modifiers = ["bold"] }
+"ui.virtual" = "darkgray"
+"ui.virtual.ruler" = { bg = "darkgray" }
+"ui.virtual.jump-label" = { fg = "softorange", modifiers = ["bold"] }
+
+# Palette
+
+[palette]
+"purple" = "#AE81FF"
+"yellow" = "#E6DB74"
+"pink" = "#f92a72"
+"white" = "#cfcfc2"
+"gray" = "#75715e"
+"darkgray" = "#444444"
+"black" = "#222222"
+"blue" = "#66d9ef"
+"green" = "#a6e22e"
+"softorange" = "#f59762"
+"orange" = "#fd971f"
+"background" = "#191919"

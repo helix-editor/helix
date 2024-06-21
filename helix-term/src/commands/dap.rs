@@ -78,7 +78,7 @@ fn thread_picker(
             })
             .with_preview(move |editor, thread| {
                 let frames = editor.debugger.as_ref()?.stack_frames.get(&thread.id)?;
-                let frame = frames.get(0)?;
+                let frame = frames.first()?;
                 let path = frame.source.as_ref()?.path.clone()?;
                 let pos = Some((
                     frame.line.saturating_sub(1),
@@ -166,15 +166,15 @@ pub fn dap_start_impl(
     // TODO: avoid refetching all of this... pass a config in
     let template = match name {
         Some(name) => config.templates.iter().find(|t| t.name == name),
-        None => config.templates.get(0),
+        None => config.templates.first(),
     }
     .ok_or_else(|| anyhow!("No debug config with given name"))?;
 
     let mut args: HashMap<&str, Value> = HashMap::new();
 
-    if let Some(params) = params {
-        for (k, t) in &template.args {
-            let mut value = t.clone();
+    for (k, t) in &template.args {
+        let mut value = t.clone();
+        if let Some(ref params) = params {
             for (i, x) in params.iter().enumerate() {
                 let mut param = x.to_string();
                 if let Some(DebugConfigCompletion::Advanced(cfg)) = template.completion.get(i) {
@@ -198,26 +198,26 @@ pub fn dap_start_impl(
                     DebugArgumentValue::Boolean(_) => value,
                 };
             }
+        }
 
-            match value {
-                DebugArgumentValue::String(string) => {
-                    if let Ok(integer) = string.parse::<usize>() {
-                        args.insert(k, to_value(integer).unwrap());
-                    } else {
-                        args.insert(k, to_value(string).unwrap());
-                    }
+        match value {
+            DebugArgumentValue::String(string) => {
+                if let Ok(integer) = string.parse::<usize>() {
+                    args.insert(k, to_value(integer).unwrap());
+                } else {
+                    args.insert(k, to_value(string).unwrap());
                 }
-                DebugArgumentValue::Array(arr) => {
-                    args.insert(k, to_value(arr).unwrap());
-                }
-                DebugArgumentValue::Boolean(bool) => {
-                    args.insert(k, to_value(bool).unwrap());
-                }
+            }
+            DebugArgumentValue::Array(arr) => {
+                args.insert(k, to_value(arr).unwrap());
+            }
+            DebugArgumentValue::Boolean(bool) => {
+                args.insert(k, to_value(bool).unwrap());
             }
         }
     }
 
-    args.insert("cwd", to_value(helix_loader::current_working_dir())?);
+    args.insert("cwd", to_value(helix_stdx::env::current_working_dir())?);
 
     let args = to_value(args).unwrap();
 
@@ -272,17 +272,23 @@ pub fn dap_launch(cx: &mut Context) {
         templates,
         (),
         |cx, template, _action| {
-            let completions = template.completion.clone();
-            let name = template.name.clone();
-            let callback = Box::pin(async move {
-                let call: Callback =
-                    Callback::EditorCompositor(Box::new(move |_editor, compositor| {
-                        let prompt = debug_parameter_prompt(completions, name, Vec::new());
-                        compositor.push(Box::new(prompt));
-                    }));
-                Ok(call)
-            });
-            cx.jobs.callback(callback);
+            if template.completion.is_empty() {
+                if let Err(err) = dap_start_impl(cx, Some(&template.name), None, None) {
+                    cx.editor.set_error(err.to_string());
+                }
+            } else {
+                let completions = template.completion.clone();
+                let name = template.name.clone();
+                let callback = Box::pin(async move {
+                    let call: Callback =
+                        Callback::EditorCompositor(Box::new(move |_editor, compositor| {
+                            let prompt = debug_parameter_prompt(completions, name, Vec::new());
+                            compositor.push(Box::new(prompt));
+                        }));
+                    Ok(call)
+                });
+                cx.jobs.callback(callback);
+            }
         },
     ))));
 }

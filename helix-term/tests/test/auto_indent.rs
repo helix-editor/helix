@@ -6,13 +6,13 @@ async fn auto_indent_c() -> anyhow::Result<()> {
         AppBuilder::new().with_file("foo.c", None),
         // switches to append mode?
         (
-            helpers::platform_line("void foo() {#[|}]#"),
+            "void foo() {#[|}]#",
             "i<ret><esc>",
-            helpers::platform_line(indoc! {"\
+            indoc! {"\
                 void foo() {
                   #[|\n]#\
                 }
-            "}),
+            "},
         ),
     )
     .await?;

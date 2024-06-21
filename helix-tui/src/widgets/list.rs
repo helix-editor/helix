@@ -72,7 +72,7 @@ impl<'a> ListItem<'a> {
 /// # use helix_tui::style::{Style, Color, Modifier};
 /// let items = [ListItem::new("Item 1"), ListItem::new("Item 2"), ListItem::new("Item 3")];
 /// List::new(items)
-///     .block(Block::default().title("List").borders(Borders::ALL))
+///     .block(Block::bordered().title("List"))
 ///     .style(Style::default().fg(Color::White))
 ///     .highlight_style(Style::default().add_modifier(Modifier::ITALIC))
 ///     .highlight_symbol(">>");

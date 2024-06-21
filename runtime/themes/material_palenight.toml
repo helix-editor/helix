@@ -10,6 +10,7 @@ disabled = "#515772"
 
 accent = "#ab47bc"
 
+active = "#414863"
 highlight = "#444267"
 
 comment = "#676e95"

@@ -9,8 +9,6 @@
 ;; Keywords
 [
   (kw_forall)
-  (unique_kw)
-  (structural_kw)
   (type_kw)
   (kw_equals)
   (do)
@@ -51,7 +49,7 @@
 (blank_pattern) @variable.builtin
 
 ;; Types
-(record_field name: (wordy_id) @variable.other.member type: (wordy_id) @type)
+(record_field name: (wordy_id) @variable.other.member type: (_) @type)
 (type_constructor (type_name (wordy_id) @constructor))
 (ability_declaration type_name: (wordy_id) @type type_arg: (wordy_id) @variable.parameter)
 (effect (wordy_id) @special) ;; NOTE: an effect is just like a type, but in signature we special case it
@@ -63,7 +61,7 @@
 ;; Terms
 (type_signature term_name: (path)? @variable term_name: (wordy_id) @variable)
 (type_signature (wordy_id) @type)
-(type_signature (delayed (wordy_id)) @type)
+(type_signature (term_type(delayed(wordy_id))) @type)
 
 (term_definition param: (wordy_id) @variable.parameter)
 

@@ -17,12 +17,14 @@ pub struct Args {
     pub log_file: Option<PathBuf>,
     pub config_file: Option<PathBuf>,
     pub files: Vec<(PathBuf, Position)>,
+    pub working_directory: Option<PathBuf>,
 }
 
 impl Args {
     pub fn parse_args() -> Result<Args> {
         let mut args = Args::default();
         let mut argv = std::env::args().peekable();
+        let mut line_number = 0;
 
         argv.next(); // skip the program, we don't care about that
 
@@ -59,6 +61,20 @@ impl Args {
                     Some(path) => args.log_file = Some(path.into()),
                     None => anyhow::bail!("--log must specify a path to write"),
                 },
+                "-w" | "--working-dir" => match argv.next().as_deref() {
+                    Some(path) => {
+                        args.working_directory = if Path::new(path).is_dir() {
+                            Some(PathBuf::from(path))
+                        } else {
+                            anyhow::bail!(
+                                "--working-dir specified does not exist or is not a directory"
+                            )
+                        }
+                    }
+                    None => {
+                        anyhow::bail!("--working-dir must specify an initial working directory")
+                    }
+                },
                 arg if arg.starts_with("--") => {
                     anyhow::bail!("unexpected double dash argument: {}", arg)
                 }
@@ -73,6 +89,12 @@ impl Args {
                         }
                     }
                 }
+                arg if arg.starts_with('+') => {
+                    match arg[1..].parse::<usize>() {
+                        Ok(n) => line_number = n.saturating_sub(1),
+                        _ => args.files.push(parse_file(arg)),
+                    };
+                }
                 arg => args.files.push(parse_file(arg)),
             }
         }
@@ -80,6 +102,12 @@ impl Args {
         // push the remaining args, if any to the files
         for arg in argv {
             args.files.push(parse_file(&arg));
+        }
+
+        if let Some(file) = args.files.first_mut() {
+            if line_number != 0 {
+                file.1.row = line_number;
+            }
         }
 
         Ok(args)

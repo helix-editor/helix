@@ -26,6 +26,10 @@
 "ui.virtual.whitespace" = { fg = "regular5" }
 "ui.virtual.indent-guide" = { fg = "bright0" }
 "ui.virtual.ruler" = { bg = "cursorline_secondary_bg", fg = "regular4" }
+"ui.virtual.inlay-hint" = { fg = "regular5", modifiers = ["italic"] }
+"ui.virtual.inlay-hint.parameter" = { fg = "regular5", modifiers = ["italic"] }
+"ui.virtual.inlay-hint.type" = { fg = "regular5", modifiers = ["bold", "italic"] }
+"ui.virtual.jump-label" = { fg = "bright1", modifiers = ["bold"] }  
 "ui.cursor.match" = { bg = "matchparen_bg", fg = "matchparen_fg" }
 "ui.cursor" = { bg = "regular5", fg = "background" }
 "ui.cursor.primary" = { bg = "foreground", fg = "background" }
@@ -46,12 +50,15 @@
 "diagnostic.error".underline = { color = "bright1", style = "curl" }
 "diagnostic.info".underline = { color = "bright4", style = "curl" }
 "diagnostic.hint".underline = { color = "bright6", style = "curl" }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 # Tree-sitter scopes for syntax highlighting
 "attribute" = "bright4"
 
 "type" = { fg = "bright2", modifiers = ["bold"] }
 "type.builtin" = { fg = "bright2", modifiers = ["bold"] }
+"type.parameter" = { fg = "foreground" }
 "type.enum" = { fg = "foreground" }
 "type.enum.variant" = { fg = "foreground" }
 

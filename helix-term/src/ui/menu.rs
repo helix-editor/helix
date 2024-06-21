@@ -89,20 +89,34 @@ impl<T: Item> Menu<T> {
         }
     }
 
-    pub fn score(&mut self, pattern: &str) {
-        // reuse the matches allocation
-        self.matches.clear();
+    pub fn score(&mut self, pattern: &str, incremental: bool) {
         let mut matcher = MATCHER.lock();
         matcher.config = Config::DEFAULT;
         let pattern = Atom::new(pattern, CaseMatching::Ignore, AtomKind::Fuzzy, false);
         let mut buf = Vec::new();
-        let matches = self.options.iter().enumerate().filter_map(|(i, option)| {
-            let text = option.filter_text(&self.editor_data);
-            pattern
-                .score(Utf32Str::new(&text, &mut buf), &mut matcher)
-                .map(|score| (i as u32, score as u32))
-        });
-        self.matches.extend(matches);
+        if incremental {
+            self.matches.retain_mut(|(index, score)| {
+                let option = &self.options[*index as usize];
+                let text = option.filter_text(&self.editor_data);
+                let new_score = pattern.score(Utf32Str::new(&text, &mut buf), &mut matcher);
+                match new_score {
+                    Some(new_score) => {
+                        *score = new_score as u32;
+                        true
+                    }
+                    None => false,
+                }
+            })
+        } else {
+            self.matches.clear();
+            let matches = self.options.iter().enumerate().filter_map(|(i, option)| {
+                let text = option.filter_text(&self.editor_data);
+                pattern
+                    .score(Utf32Str::new(&text, &mut buf), &mut matcher)
+                    .map(|score| (i as u32, score as u32))
+            });
+            self.matches.extend(matches);
+        }
         self.matches
             .sort_unstable_by_key(|&(i, score)| (Reverse(score), i));
 
@@ -220,9 +234,9 @@ impl<T: Item> Menu<T> {
 }
 
 impl<T: Item + PartialEq> Menu<T> {
-    pub fn replace_option(&mut self, old_option: T, new_option: T) {
+    pub fn replace_option(&mut self, old_option: &T, new_option: T) {
         for option in &mut self.options {
-            if old_option == *option {
+            if old_option == option {
                 *option = new_option;
                 break;
             }
@@ -320,6 +334,7 @@ impl<T: Item + 'static> Component for Menu<T> {
             .try_get("ui.menu")
             .unwrap_or_else(|| theme.get("ui.text"));
         let selected = theme.get("ui.menu.selected");
+
         surface.clear_with(area, style);
 
         let scroll = self.scroll;
@@ -362,15 +377,19 @@ impl<T: Item + 'static> Component for Menu<T> {
             false,
         );
 
-        if let Some(cursor) = self.cursor {
-            let offset_from_top = cursor - scroll;
-            let left = &mut surface[(area.left(), area.y + offset_from_top as u16)];
-            left.set_style(selected);
-            let right = &mut surface[(
-                area.right().saturating_sub(1),
-                area.y + offset_from_top as u16,
-            )];
-            right.set_style(selected);
+        let render_borders = cx.editor.menu_border();
+
+        if !render_borders {
+            if let Some(cursor) = self.cursor {
+                let offset_from_top = cursor - scroll;
+                let left = &mut surface[(area.left(), area.y + offset_from_top as u16)];
+                left.set_style(selected);
+                let right = &mut surface[(
+                    area.right().saturating_sub(1),
+                    area.y + offset_from_top as u16,
+                )];
+                right.set_style(selected);
+            }
         }
 
         let fits = len <= win_height;
@@ -385,13 +404,15 @@ impl<T: Item + 'static> Component for Menu<T> {
             for i in 0..win_height {
                 cell = &mut surface[(area.right() - 1, area.top() + i as u16)];
 
-                cell.set_symbol("▐"); // right half block
+                let half_block = if render_borders { "▌" } else { "▐" };
 
                 if scroll_line <= i && i < scroll_line + scroll_height {
                     // Draw scroll thumb
+                    cell.set_symbol(half_block);
                     cell.set_fg(scroll_style.fg.unwrap_or(helix_view::theme::Color::Reset));
-                } else {
+                } else if !render_borders {
                     // Draw scroll track
+                    cell.set_symbol(half_block);
                     cell.set_fg(scroll_style.bg.unwrap_or(helix_view::theme::Color::Reset));
                 }
             }

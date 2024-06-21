@@ -1,7 +1,7 @@
 ; Specs and Callbacks
 (attribute
   (stab_clause
-    pattern: (arguments (variable) @local.definition)
+    pattern: (arguments (variable)? @local.definition)
     ; If a spec uses a variable as the return type (and later a `when` clause to type it):
     body: (variable)? @local.definition)) @local.scope
 

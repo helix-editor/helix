@@ -24,6 +24,8 @@
 "diagnostic.error" = {bg="red", fg="white", modifiers=["bold"]}
 "diagnostic.warning" = {bg="orange", fg="black", modifiers=["bold"]}
 "diagnostic.hint" = {fg="gray", modifiers=["bold"]}
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 "ui.bufferline" = { fg = "black", bg = "acme_bar_bg" }
 "ui.bufferline.active" = { fg = "black", bg = "acme_bg" }
 "diff.plus" = {fg = "green"}

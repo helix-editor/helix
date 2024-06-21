@@ -1,48 +1,59 @@
 [
-  (typeDef)
-  (ifStmt)
-  (whenStmt)
-  (elifStmt)
-  (elseStmt)
-  (ofBranch) ; note: not caseStmt
-  (whileStmt)
-  (tryStmt)
-  (tryExceptStmt)
-  (tryFinallyStmt)
-  (forStmt)
-  (blockStmt)
-  (staticStmt)
-  (deferStmt)
-  (asmStmt)
-  ; exprStmt?
+  (if)
+  (when)
+  (elif_branch)
+  (else_branch)
+  (of_branch) ; note: not case_statement
+  (block)
+  (while)
+  (for)
+  (try)
+  (except_branch)
+  (finally_branch)
+  (defer)
+  (static_statement)
+  (proc_declaration)
+  (func_declaration)
+  (iterator_declaration)
+  (converter_declaration)
+  (method_declaration)
+  (template_declaration)
+  (macro_declaration)
+  (symbol_declaration)
 ] @indent
 ;; increase the indentation level
 
 [
-  (ifStmt)
-  (whenStmt)
-  (elifStmt)
-  (elseStmt)
-  (ofBranch) ; note: not caseStmt
-  (whileStmt)
-  (tryStmt)
-  (tryExceptStmt)
-  (tryFinallyStmt)
-  (forStmt)
-  (blockStmt)
-  (staticStmt)
-  (deferStmt)
-  (asmStmt)
-  ; exprStmt?
+  (if)
+  (when)
+  (elif_branch)
+  (else_branch)
+  (of_branch) ; note: not case_statement
+  (block)
+  (while)
+  (for)
+  (try)
+  (except_branch)
+  (finally_branch)
+  (defer)
+  (static_statement)
+  (proc_declaration)
+  (func_declaration)
+  (iterator_declaration)
+  (converter_declaration)
+  (method_declaration)
+  (template_declaration)
+  (macro_declaration)
+  (symbol_declaration)
 ] @extend
 ;; ???
 
 [
-  (returnStmt)
-  (raiseStmt)
-  (yieldStmt)
-  (breakStmt)
-  (continueStmt)
+  (return_statement)
+  (raise_statement)
+  (yield_statement)
+  (break_statement)
+  (continue_statement)
 ] @extend.prevent-once
 ;; end a level of indentation while staying indented
 

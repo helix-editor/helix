@@ -111,6 +111,8 @@
 "diagnostic.error"                = { underline = { color = "error", style = "curl" } }
 "diagnostic.info"                 = { underline = { color = "info", style = "curl" } }
 "diagnostic.hint"                 = { underline = { color = "hint", style = "curl" } }
+"diagnostic.unnecessary"          = { modifiers = ["dim"] }
+"diagnostic.deprecated"           = { modifiers = ["crossed_out"] }
 
 [palette]
 # interface

@@ -27,7 +27,7 @@ pub fn increment(selected_text: &str, amount: i64) -> Option<String> {
                 let date_time = NaiveDateTime::parse_from_str(date_time, format.fmt).ok()?;
                 Some(
                     date_time
-                        .checked_add_signed(Duration::minutes(amount))?
+                        .checked_add_signed(Duration::try_minutes(amount)?)?
                         .format(format.fmt)
                         .to_string(),
                 )
@@ -35,14 +35,15 @@ pub fn increment(selected_text: &str, amount: i64) -> Option<String> {
             (true, false) => {
                 let date = NaiveDate::parse_from_str(date_time, format.fmt).ok()?;
                 Some(
-                    date.checked_add_signed(Duration::days(amount))?
+                    date.checked_add_signed(Duration::try_days(amount)?)?
                         .format(format.fmt)
                         .to_string(),
                 )
             }
             (false, true) => {
                 let time = NaiveTime::parse_from_str(date_time, format.fmt).ok()?;
-                let (adjusted_time, _) = time.overflowing_add_signed(Duration::minutes(amount));
+                let (adjusted_time, _) =
+                    time.overflowing_add_signed(Duration::try_minutes(amount)?);
                 Some(adjusted_time.format(format.fmt).to_string())
             }
             (false, false) => None,

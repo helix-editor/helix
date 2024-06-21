@@ -2,7 +2,7 @@ use crossterm::{
     style::{Color, Print, Stylize},
     tty::IsTty,
 };
-use helix_core::config::{default_syntax_loader, user_syntax_loader};
+use helix_core::config::{default_lang_config, user_lang_config};
 use helix_loader::grammar::load_runtime_file;
 use helix_view::clipboard::get_clipboard_provider;
 use std::io::Write;
@@ -128,7 +128,7 @@ pub fn languages_all() -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
 
-    let mut syn_loader_conf = match user_syntax_loader() {
+    let mut syn_loader_conf = match user_lang_config() {
         Ok(conf) => conf,
         Err(err) => {
             let stderr = std::io::stderr();
@@ -141,11 +141,11 @@ pub fn languages_all() -> std::io::Result<()> {
                 err
             )?;
             writeln!(stderr, "{}", "Using default language config".yellow())?;
-            default_syntax_loader()
+            default_lang_config()
         }
     };
 
-    let mut headings = vec!["Language", "LSP", "DAP"];
+    let mut headings = vec!["Language", "LSP", "DAP", "Formatter"];
 
     for feat in TsFeature::all() {
         headings.push(feat.short_title())
@@ -181,8 +181,8 @@ pub fn languages_all() -> std::io::Result<()> {
         .language
         .sort_unstable_by_key(|l| l.language_id.clone());
 
-    let check_binary = |cmd: Option<String>| match cmd {
-        Some(cmd) => match which::which(&cmd) {
+    let check_binary = |cmd: Option<&str>| match cmd {
+        Some(cmd) => match helix_stdx::env::which(cmd) {
             Ok(_) => column(&format!("✓ {}", cmd), Color::Green),
             Err(_) => column(&format!("✘ {}", cmd), Color::Red),
         },
@@ -192,18 +192,22 @@ pub fn languages_all() -> std::io::Result<()> {
     for lang in &syn_loader_conf.language {
         column(&lang.language_id, Color::Reset);
 
-        // TODO multiple language servers (check binary for each supported language server, not just the first)
-
-        let lsp = lang.language_servers.first().and_then(|ls| {
+        let mut cmds = lang.language_servers.iter().filter_map(|ls| {
             syn_loader_conf
                 .language_server
                 .get(&ls.name)
-                .map(|config| config.command.clone())
+                .map(|config| config.command.as_str())
         });
-        check_binary(lsp);
+        check_binary(cmds.next());
 
-        let dap = lang.debugger.as_ref().map(|dap| dap.command.to_string());
+        let dap = lang.debugger.as_ref().map(|dap| dap.command.as_str());
         check_binary(dap);
+
+        let formatter = lang
+            .formatter
+            .as_ref()
+            .map(|formatter| formatter.command.as_str());
+        check_binary(formatter);
 
         for ts_feat in TsFeature::all() {
             match load_runtime_file(&lang.language_id, ts_feat.runtime_filename()).is_ok() {
@@ -213,6 +217,12 @@ pub fn languages_all() -> std::io::Result<()> {
         }
 
         writeln!(stdout)?;
+
+        for cmd in cmds {
+            column("", Color::Reset);
+            check_binary(Some(cmd));
+            writeln!(stdout)?;
+        }
     }
 
     Ok(())
@@ -224,7 +234,7 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
 
-    let syn_loader_conf = match user_syntax_loader() {
+    let syn_loader_conf = match user_lang_config() {
         Ok(conf) => conf,
         Err(err) => {
             let stderr = std::io::stderr();
@@ -237,7 +247,7 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
                 err
             )?;
             writeln!(stderr, "{}", "Using default language config".yellow())?;
-            default_syntax_loader()
+            default_lang_config()
         }
     };
 
@@ -268,15 +278,12 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
         }
     };
 
-    // TODO multiple language servers
-    probe_protocol(
+    probe_protocols(
         "language server",
-        lang.language_servers.first().and_then(|ls| {
-            syn_loader_conf
-                .language_server
-                .get(&ls.name)
-                .map(|config| config.command.clone())
-        }),
+        lang.language_servers
+            .iter()
+            .filter_map(|ls| syn_loader_conf.language_server.get(&ls.name))
+            .map(|config| config.command.as_str()),
     )?;
 
     probe_protocol(
@@ -284,8 +291,42 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
         lang.debugger.as_ref().map(|dap| dap.command.to_string()),
     )?;
 
+    probe_protocol(
+        "formatter",
+        lang.formatter
+            .as_ref()
+            .map(|formatter| formatter.command.to_string()),
+    )?;
+
     for ts_feat in TsFeature::all() {
         probe_treesitter_feature(&lang_str, *ts_feat)?
+    }
+
+    Ok(())
+}
+
+/// Display diagnostics about multiple LSPs and DAPs.
+fn probe_protocols<'a, I: Iterator<Item = &'a str> + 'a>(
+    protocol_name: &str,
+    server_cmds: I,
+) -> std::io::Result<()> {
+    let stdout = std::io::stdout();
+    let mut stdout = stdout.lock();
+    let mut server_cmds = server_cmds.peekable();
+
+    write!(stdout, "Configured {}s:", protocol_name)?;
+    if server_cmds.peek().is_none() {
+        writeln!(stdout, "{}", " None".yellow())?;
+        return Ok(());
+    }
+    writeln!(stdout)?;
+
+    for cmd in server_cmds {
+        let (path, icon) = match helix_stdx::env::which(cmd) {
+            Ok(path) => (path.display().to_string().green(), "✓".green()),
+            Err(_) => (format!("'{}' not found in $PATH", cmd).red(), "✘".red()),
+        };
+        writeln!(stdout, "  {} {}: {}", icon, cmd, path)?;
     }
 
     Ok(())
@@ -303,7 +344,7 @@ fn probe_protocol(protocol_name: &str, server_cmd: Option<String>) -> std::io::R
     writeln!(stdout, "Configured {}: {}", protocol_name, cmd_name)?;
 
     if let Some(cmd) = server_cmd {
-        let path = match which::which(&cmd) {
+        let path = match helix_stdx::env::which(&cmd) {
             Ok(path) => path.display().to_string().green(),
             Err(_) => format!("'{}' not found in $PATH", cmd).red(),
         };

@@ -1,19 +1,22 @@
 # Syntax highlighting
 # -------------------
+"attribute" = "yellow"
+
 "type" = "yellow"
+"type.enum.variant" = "teal"
 
 "constructor" = "sapphire"
 
 "constant" = "peach"
-"constant.builtin" = "peach"
 "constant.character" = "teal"
 "constant.character.escape" = "pink"
 
 "string" = "green"
-"string.regexp" = "peach"
+"string.regexp" = "pink"
 "string.special" = "blue"
+"string.special.symbol" = "red"
 
-"comment" = { fg = "overlay1", modifiers = ["italic"] }
+"comment" = { fg = "overlay2", modifiers = ["italic"] }
 
 "variable" = "text"
 "variable.parameter" = { fg = "maroon", modifiers = ["italic"] }
@@ -26,7 +29,6 @@
 "punctuation.special" = "sky"
 
 "keyword" = "mauve"
-"keyword.storage.modifier.ref" = "teal"
 "keyword.control.conditional" = { fg = "mauve", modifiers = ["italic"] }
 
 "operator" = "sky"
@@ -34,10 +36,9 @@
 "function" = "blue"
 "function.macro" = "mauve"
 
-"tag" = "mauve"
-"attribute" = "blue"
+"tag" = "blue"
 
-"namespace" = { fg = "blue", modifiers = ["italic"] }
+"namespace" = { fg = "yellow", modifiers = ["italic"] }
 
 "special" = "blue" # fuzzy highlight
 
@@ -51,8 +52,7 @@
 "markup.list" = "mauve"
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
-"markup.strikethrough" = { modifiers = ["crossed_out"] }
-"markup.link.url" = { fg = "rosewater", modifiers = ["underlined"] }
+"markup.link.url" = { fg = "blue", modifiers = ["italic", "underlined"] }
 "markup.link.text" = "blue"
 "markup.raw" = "flamingo"
 
@@ -70,8 +70,8 @@
 "ui.statusline" = { fg = "subtext1", bg = "mantle" }
 "ui.statusline.inactive" = { fg = "surface2", bg = "mantle" }
 "ui.statusline.normal" = { fg = "base", bg = "lavender", modifiers = ["bold"] }
-"ui.statusline.insert" = { fg = "base", bg = "green", modifiers = ["bold"] }
-"ui.statusline.select" = { fg = "base", bg = "flamingo", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "base", bg = "green", modifiers = ["bold"]  }
+"ui.statusline.select" = { fg = "base", bg = "flamingo", modifiers = ["bold"]  }
 
 "ui.popup" = { fg = "text", bg = "surface0" }
 "ui.window" = { fg = "crust" }
@@ -89,6 +89,7 @@
 "ui.virtual.ruler" = { bg = "surface0" }
 "ui.virtual.indent-guide" = "surface0"
 "ui.virtual.inlay-hint" = { fg = "surface1", bg = "mantle" }
+"ui.virtual.jump-label" = { fg = "rosewater", modifiers = ["bold"] }
 
 "ui.selection" = { bg = "surface1" }
 
@@ -122,7 +123,6 @@ info = "sky"
 hint = "teal"
 
 [palette]
-# catppuccin palette colors
 rosewater = "#f5e0dc"
 flamingo = "#f2cdcd"
 pink = "#f5c2e7"
@@ -137,7 +137,6 @@ sky = "#89dceb"
 sapphire = "#74c7ec"
 blue = "#89b4fa"
 lavender = "#b4befe"
-
 text = "#cdd6f4"
 subtext1 = "#bac2de"
 subtext0 = "#a6adc8"
@@ -147,13 +146,11 @@ overlay0 = "#6c7086"
 surface2 = "#585b70"
 surface1 = "#45475a"
 surface0 = "#313244"
-
 base = "#1e1e2e"
 mantle = "#181825"
 crust = "#11111b"
 
-# derived colors by blending existing palette colors
 cursorline = "#2a2b3c"
 secondary_cursor = "#b5a6a8"
 secondary_cursor_normal = "#878ec0"
-secondary_cursor_insert = "#7da87e"
+secondary_cursor_insert = "#7ea87f"

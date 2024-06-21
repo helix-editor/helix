@@ -13,8 +13,6 @@
     };
     crane = {
       url = "github:ipetkov/crane";
-      inputs.rust-overlay.follows = "rust-overlay";
-      inputs.flake-utils.follows = "flake-utils";
       inputs.nixpkgs.follows = "nixpkgs";
     };
   };
@@ -116,25 +114,22 @@
         if pkgs.stdenv.isLinux
         then pkgs.stdenv
         else pkgs.clangStdenv;
-      rustFlagsEnv =
-        if stdenv.isLinux
-        then ''$RUSTFLAGS -C link-arg=-fuse-ld=lld -C target-cpu=native -Clink-arg=-Wl,--no-rosegment''
-        else "$RUSTFLAGS";
+      rustFlagsEnv = pkgs.lib.optionalString stdenv.isLinux "-C link-arg=-fuse-ld=lld -C target-cpu=native -Clink-arg=-Wl,--no-rosegment";
       rustToolchain = pkgs.pkgsBuildHost.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
       craneLibMSRV = (crane.mkLib pkgs).overrideToolchain rustToolchain;
       craneLibStable = (crane.mkLib pkgs).overrideToolchain pkgs.pkgsBuildHost.rust-bin.stable.latest.default;
-      commonArgs =
-        {
-          inherit stdenv;
-          src = filteredSource;
-          # disable fetching and building of tree-sitter grammars in the helix-term build.rs
-          HELIX_DISABLE_AUTO_GRAMMAR_BUILD = "1";
-          buildInputs = [stdenv.cc.cc.lib];
-          # disable tests
-          doCheck = false;
-          meta.mainProgram = "hx";
-        }
-        // craneLibMSRV.crateNameFromCargoToml {cargoToml = ./helix-term/Cargo.toml;};
+      commonArgs = {
+        inherit stdenv;
+        inherit (craneLibMSRV.crateNameFromCargoToml {cargoToml = ./helix-term/Cargo.toml;}) pname;
+        inherit (craneLibMSRV.crateNameFromCargoToml {cargoToml = ./Cargo.toml;}) version;
+        src = filteredSource;
+        # disable fetching and building of tree-sitter grammars in the helix-term build.rs
+        HELIX_DISABLE_AUTO_GRAMMAR_BUILD = "1";
+        buildInputs = [stdenv.cc.cc.lib];
+        # disable tests
+        doCheck = false;
+        meta.mainProgram = "hx";
+      };
       cargoArtifacts = craneLibMSRV.buildDepsOnly commonArgs;
     in {
       packages = {
@@ -185,7 +180,7 @@
         shellHook = ''
           export HELIX_RUNTIME="$PWD/runtime"
           export RUST_BACKTRACE="1"
-          export RUSTFLAGS="${rustFlagsEnv}"
+          export RUSTFLAGS="''${RUSTFLAGS:-""} ${rustFlagsEnv}"
         '';
       };
     })

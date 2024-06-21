@@ -31,6 +31,7 @@
 "ui.virtual.inlay-hint.parameter" = { fg = "white", bg = "gray"}
 "ui.virtual.inlay-hint.type" = { fg = "white", bg = "gray"}
 "ui.virtual.wrap" = "gray"
+"ui.virtual.jump-label" = { fg = "blue", modifiers = ["bold", "underlined"] }
 
 "variable" = "light-red"
 "constant.numeric" = "yellow"

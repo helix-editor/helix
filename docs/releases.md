@@ -1,16 +1,23 @@
 ## Checklist
 
 Helix releases are versioned in the Calendar Versioning scheme:
-`YY.0M(.MICRO)`, for example, `22.05` for May of 2022. In these instructions
-we'll use `<tag>` as a placeholder for the tag being published.
+`YY.0M(.MICRO)`, for example, `22.05` for May of 2022, or in a patch release,
+`22.05.1`. In these instructions we'll use `<tag>` as a placeholder for the tag
+being published.
 
 * Merge the changelog PR
 * Add new `<release>` entry in `contrib/Helix.appdata.xml` with release information according to the [AppStream spec](https://www.freedesktop.org/software/appstream/docs/sect-Metadata-Releases.html)
 * Tag and push
     * `git tag -s -m "<tag>" -a <tag> && git push`
     * Make sure to switch to master and pull first
-* Edit the `VERSION` file and change the date to the next planned release
-    * Releases are planned to happen every two months, so `22.05` would change to `22.07`
+* Edit the `Cargo.toml` file and change the date in the `version` field to the next planned release
+    * Due to Cargo having a strict requirement on SemVer with 3 or more version
+      numbers, a `0` is required in the micro version; however, unless we are
+      publishing a patch release after a major release, the `.0` is dropped in
+      the user facing version.
+    * Releases are planned to happen every two months, so `22.05.0` would change to `22.07.0`
+    * If we are pushing a patch/bugfix release in the same month as the previous
+      release, bump the micro version, e.g. `22.07.0` to `22.07.1`
 * Wait for the Release CI to finish
     * It will automatically turn the git tag into a GitHub release when it uploads artifacts
 * Edit the new release

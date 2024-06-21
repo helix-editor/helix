@@ -1,7 +1,10 @@
 "ui.background" = { bg = "black" }
+"ui.bufferline" = { bg = "black" }
+"ui.bufferline.active" = { fg = "light-magenta", bg = "dark-magenta" }
 "ui.cursor" = { fg = "green", modifiers = ["reversed"] }
 "ui.cursor.match" = { fg = "light-cyan", bg = "dark-cyan" }
 "ui.cursor.primary" = { fg = "light-green", modifiers = ["reversed"] }
+"ui.cursorline.primary" = { bg = "gray" }
 "ui.menu" = { bg = "dark-white" }
 "ui.menu.selected" = { fg = "yellow" }
 "ui.popup" = { bg = "dark-white" }
@@ -15,12 +18,15 @@
 "ui.text.focus" = { fg = "yellow" }
 "ui.virtual.wrap" = { fg = "dark-blue" }
 "ui.virtual.indent-guide" = { fg = "dark-blue" }
+"ui.virtual.ruler" = { bg = "dark-white" }
 "ui.window" = { bg = "dark-white" }
 
 "diagnostic.error" = { bg = "dark-red" }
 "diagnostic.warning" = { bg = "dark-yellow" }
 "diagnostic.hint" = { bg = "dark-cyan" }
 "diagnostic.info" = { bg = "dark-white" }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 "warning" = { fg = "yellow", bg = "dark-yellow" }
 "error" = { fg = "red", bg = "dark-red" }
 "info" = { fg = "default", bg = "dark-white" }
@@ -48,6 +54,7 @@
 black = "#000000"
 red = "#ed5f74"
 green = "#1ea672"
+gray = "#111111"
 yellow = "#d97917"
 blue = "#688ef1"
 magenta = "#c96ed0"

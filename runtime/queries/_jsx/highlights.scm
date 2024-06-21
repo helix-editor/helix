@@ -40,4 +40,4 @@
 (jsx_closing_element ["</" ">"] @punctuation.bracket)
 
 ; <Component />
-(jsx_self_closing_element ["<" "/>"] @punctuation.braket)
+(jsx_self_closing_element ["<" "/>"] @punctuation.bracket)

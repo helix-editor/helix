@@ -95,6 +95,8 @@
 "ui.menu.scroll" = { fg = "gray04", bg = "gray01" }
 
 diagnostic = { modifiers = ["underlined"] }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 warning = "yellow"
 error = "error"

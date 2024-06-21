@@ -82,6 +82,7 @@
 "ui.help" = { bg = "libadwaita_dark_alt" }
 "ui.text" = "light_4"
 "ui.virtual" = "dark_1"
+"ui.virtual.ruler" = { bg = "libadwaita_popup"}
 "ui.menu" = { fg = "light_4", bg = "libadwaita_popup" }
 "ui.menu.selected" = { fg = "light_4", bg = "blue_5" }
 "ui.menu.scroll" = { fg = "light_7", bg = "dark_3" }
@@ -98,6 +99,8 @@
 "diagnostic.info" = { fg = "purple_2", modifiers = ["dim"] }
 "diagnostic.error" = { fg = "red_4", modifiers = ["underlined"] }
 "diagnostic.warning" = { fg = "yellow_2", modifiers = ["underlined"] }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 "ui.bufferline" = { fg = "dark_2", bg = "libadwaita_dark" }
 "ui.bufferline.active" = { fg = "light_4", bg = "libadwaita_dark_alt" }

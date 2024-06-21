@@ -49,6 +49,13 @@
 (this) @variable.builtin
 (nullptr) @constant.builtin
 
+; Parameters
+
+(parameter_declaration
+  declarator: (reference_declarator (identifier) @variable.parameter))
+(optional_parameter_declaration
+  declarator: (identifier) @variable.parameter)
+
 ; Keywords
 
 (template_argument_list (["<" ">"] @punctuation.bracket))

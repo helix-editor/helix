@@ -51,6 +51,20 @@
   "sha256"
   "md5"
   "bytes"
+  "daysAfterNow"
+  "daysBeforeNow"
+  "htmlEscape"
+  "htmlUnescape"
+  "decode"
+  "format"
+  "nth"
+  "replace"
+  "split"
+  "toDate"
+  "toInt"
+  "urlEncode"
+  "urlDecode"
+  "count"
 ] @function.builtin
 
 (filter) @attribute
@@ -59,8 +73,11 @@
 [
   "null"
   "cacert"
+  "compressed"
   "location"
   "insecure"
+  "path-as-is"
+  "proxy"
   "max-redirs"
   "retry"
   "retry-interval"

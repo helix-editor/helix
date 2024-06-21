@@ -1,12 +1,12 @@
-(comment) @comment
 (single_line_comment) @comment
+(multi_line_comment) @comment
 
 (node
-    name: (identifier) @function)
-(prop (identifier) @attribute)
-(type) @type
+    (identifier) @variable)
 
-(bare_identifier) @variable.other.member
+(prop (identifier) @attribute)
+
+(type (_) @type) @punctuation.bracket
 
 (keyword) @keyword
 

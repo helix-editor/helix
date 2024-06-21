@@ -5,6 +5,7 @@
   runCommand,
   yj,
   includeGrammarIf ? _: true,
+  grammarOverlays ? [],
   ...
 }: let
   # HACK: nix < 2.6 has a bug in the toml parser, so we convert to JSON
@@ -27,7 +28,17 @@
     owner = builtins.elemAt match 0;
     repo = builtins.elemAt match 1;
   };
-  gitGrammars = builtins.filter isGitGrammar languagesConfig.grammar;
+  # If `use-grammars.only` is set, use only those grammars.
+  # If `use-grammars.except` is set, use all other grammars.
+  # Otherwise use all grammars.
+  useGrammar = grammar:
+    if languagesConfig?use-grammars.only then
+      builtins.elem grammar.name languagesConfig.use-grammars.only
+    else if languagesConfig?use-grammars.except then
+      !(builtins.elem grammar.name languagesConfig.use-grammars.except)
+    else true;
+  grammarsToUse = builtins.filter useGrammar languagesConfig.grammar;
+  gitGrammars = builtins.filter isGitGrammar grammarsToUse;
   buildGrammar = grammar: let
     gh = toGitHubFetcher grammar.source.git;
     sourceGit = builtins.fetchTree {
@@ -48,22 +59,22 @@
       then sourceGitHub
       else sourceGit;
   in
-    stdenv.mkDerivation rec {
+    stdenv.mkDerivation {
       # see https://github.com/NixOS/nixpkgs/blob/fbdd1a7c0bc29af5325e0d7dd70e804a972eb465/pkgs/development/tools/parsing/tree-sitter/grammar.nix
 
       pname = "helix-tree-sitter-${grammar.name}";
       version = grammar.source.rev;
 
-      src =
-        if builtins.hasAttr "subpath" grammar.source
-        then "${source}/${grammar.source.subpath}"
-        else source;
+      src = source;
+      sourceRoot = if builtins.hasAttr "subpath" grammar.source then
+        "source/${grammar.source.subpath}"
+      else
+        "source";
 
-      dontUnpack = true;
       dontConfigure = true;
 
       FLAGS = [
-        "-I${src}/src"
+        "-Isrc"
         "-g"
         "-O3"
         "-fPIC"
@@ -76,13 +87,13 @@
       buildPhase = ''
         runHook preBuild
 
-        if [[ -e "$src/src/scanner.cc" ]]; then
-          $CXX -c "$src/src/scanner.cc" -o scanner.o $FLAGS
-        elif [[ -e "$src/src/scanner.c" ]]; then
-          $CC -c "$src/src/scanner.c" -o scanner.o $FLAGS
+        if [[ -e src/scanner.cc ]]; then
+          $CXX -c src/scanner.cc -o scanner.o $FLAGS
+        elif [[ -e src/scanner.c ]]; then
+          $CC -c src/scanner.c -o scanner.o $FLAGS
         fi
 
-        $CC -c "$src/src/parser.c" -o parser.o $FLAGS
+        $CC -c src/parser.c -o parser.o $FLAGS
         $CXX -shared -o $NAME.so *.o
 
         ls -al
@@ -105,15 +116,17 @@
       '';
     };
   grammarsToBuild = builtins.filter includeGrammarIf gitGrammars;
-  builtGrammars =
-    builtins.map (grammar: {
-      inherit (grammar) name;
-      artifact = buildGrammar grammar;
-    })
-    grammarsToBuild;
-  grammarLinks =
-    builtins.map (grammar: "ln -s ${grammar.artifact}/${grammar.name}.so $out/${grammar.name}.so")
-    builtGrammars;
+  builtGrammars = builtins.map (grammar: {
+    inherit (grammar) name;
+    value = buildGrammar grammar;
+  }) grammarsToBuild;
+  extensibleGrammars =
+    lib.makeExtensible (self: builtins.listToAttrs builtGrammars);
+  overlayedGrammars = lib.pipe extensibleGrammars
+    (builtins.map (overlay: grammar: grammar.extend overlay) grammarOverlays);
+  grammarLinks = lib.mapAttrsToList
+    (name: artifact: "ln -s ${artifact}/${name}.so $out/${name}.so")
+    (lib.filterAttrs (n: v: lib.isDerivation v) overlayedGrammars);
 in
   runCommand "consolidated-helix-grammars" {} ''
     mkdir -p $out

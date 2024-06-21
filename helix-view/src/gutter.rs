@@ -9,8 +9,7 @@ use crate::{
 };
 
 fn count_digits(n: usize) -> usize {
-    // TODO: use checked_log10 when MSRV reaches 1.67
-    std::iter::successors(Some(n), |&n| (n >= 10).then_some(n / 10)).count()
+    (usize::checked_ilog10(n).unwrap_or(0) + 1) as usize
 }
 
 pub type GutterFn<'doc> = Box<dyn FnMut(usize, bool, bool, &mut String) -> Option<Style> + 'doc>;
@@ -72,7 +71,7 @@ pub fn diagnostic<'doc>(
                     d.line == line
                         && doc
                             .language_servers_with_feature(LanguageServerFeature::Diagnostics)
-                            .any(|ls| ls.id() == d.language_server_id)
+                            .any(|ls| ls.id() == d.provider)
                 });
             diagnostics_on_line.max_by_key(|d| d.severity).map(|d| {
                 write!(out, "●").ok();

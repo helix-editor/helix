@@ -19,6 +19,8 @@ pub enum Error {
     #[error("server closed the stream")]
     StreamClosed,
     #[error(transparent)]
+    ExecutableNotFound(#[from] helix_stdx::env::ExecutableNotFoundError),
+    #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
 pub type Result<T> = core::result::Result<T, Error>;

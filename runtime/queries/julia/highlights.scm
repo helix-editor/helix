@@ -231,7 +231,7 @@
 ] @keyword
 
 ; TODO: fix this
-((identifier) @keyword (match? @keyword "global|local"))
+((identifier) @keyword (#match? @keyword "global|local"))
 
 ; ---------
 ; Operators
@@ -277,12 +277,12 @@
 ; SCREAMING_SNAKE_CASE
 (
   (identifier) @constant
-  (match? @constant "^[A-Z][A-Z0-9_]*$"))
+  (#match? @constant "^[A-Z][A-Z0-9_]*$"))
 
 ; remaining identifiers that start with capital letters should be types (PascalCase)
 (
   (identifier) @type
-  (match? @type "^[A-Z]"))
+  (#match? @type "^[A-Z]"))
 
 ; Field expressions are either module content or struct fields.
 ; Module types and constants should already be captured, so this

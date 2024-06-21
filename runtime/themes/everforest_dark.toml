@@ -40,6 +40,7 @@
 "constructor" = "green"
 "module" = "yellow"
 "special" = "blue"
+"ui.virtual.jump-label" = { fg = "#00dfff", modifiers = ["bold"] }
 
 "markup.heading.marker" = "grey1"
 "markup.heading.1" = { fg = "red", modifiers = ["bold"] }
@@ -110,6 +111,8 @@
 "diagnostic.info" = { underline = { color = "blue", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "yellow", style = "curl" } }
 "diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 [palette]
 

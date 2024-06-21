@@ -34,6 +34,7 @@
 "comment" = { fg = "#88846F" }
 "ui.virtual.whitespace" = "#88846F"
 "ui.virtual.ruler" = { bg = "#24241e" }
+"ui.virtual.jump-label" = { fg = "special", modifiers = ["bold"] }
 
 "string" = { fg = "#e6db74" }
 "constant.character" = { fg = "#e6db74" }
@@ -82,6 +83,7 @@
 "ui.bufferline.active" = { fg = "active_text", bg = "selection", modifiers = [
   "bold",
 ] }
+"ui.virtual.inlay-hint" = { fg = "#88846F" }
 
 "ui.text" = { fg = "text" }
 "ui.text.focus" = { fg = "active_text" }
@@ -95,6 +97,8 @@
 "diagnostic.error" = { underline = { color = "#f48771", style = "curl" } }
 "diagnostic.info" = { underline = { color = "#75beff", style = "curl" } }
 "diagnostic.hint" = { underline = { color = "#eeeeb3", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 [palette]
 type = "#A6E22E"

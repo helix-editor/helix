@@ -13,3 +13,6 @@
 (comment) @comment.inside
 
 (comment)+ @comment.around
+
+(table_constructor
+  (field (_) @entry.inside) @entry.around)

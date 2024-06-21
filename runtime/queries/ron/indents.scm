@@ -1,1 +1,12 @@
-; inherits: rust
+[
+  (array)
+  (map)
+  (tuple)
+  (struct)
+] @indent
+
+[
+  "}"
+  "]"
+  ")"
+] @outdent

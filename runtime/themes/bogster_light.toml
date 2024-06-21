@@ -77,6 +77,8 @@
 "diagnostic.error" = { underline = { color = "bogster-lred", style = "curl"} }
 "diagnostic.info" = { underline = { color = "bogster-teal", style = "curl"} }
 "diagnostic.hint" = { underline = { color = "bogster-blue", style = "curl"} }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 [palette]
 bogster-orange = "#dc7759"

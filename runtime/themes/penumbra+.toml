@@ -47,6 +47,8 @@ error = "red"
 "diagnostic.info".underline = { color = "sky", style = "curl" } 
 "diagnostic.warning".underline = { color = "yellow", style = "curl" } 
 "diagnostic.error".underline = { color = "red", style = "curl" } 
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 "ui.background" = { bg = "shade" }
 "ui.background.separator" = "sky"

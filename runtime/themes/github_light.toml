@@ -60,6 +60,7 @@ label = "scale.red.5"
 "ui.text.focus" = { fg = "fg.default" }
 "ui.text.inactive" = "fg.subtle"
 "ui.virtual" = { fg = "scale.gray.2" }
+"ui.virtual.ruler" = { bg = "canvas.subtle" }
 
 "ui.selection" = { bg = "scale.blue.0" }
 "ui.selection.primary" = { bg = "scale.blue.1" }
@@ -77,6 +78,8 @@ label = "scale.red.5"
 "diagnostic.info" = { underline = { color = "accent.fg", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "attention.fg", style = "curl" } }
 "diagnostic.error" = { underline = { color = "danger.fg", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 hint = "success.fg"
 info = "accent.fg"

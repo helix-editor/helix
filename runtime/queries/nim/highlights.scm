@@ -1,33 +1,32 @@
 ;; Constants, Comments, and Literals
 
 (comment) @comment.line
-(multilineComment) @comment.block
-(docComment) @comment.block.documentation
-(multilineDocComment) @comment.block.documentation
-; comments
+(block_comment) @comment.block
+[
+  (documentation_comment)
+  (block_documentation_comment)
+] @comment.block.documentation
 
-[(literal) (generalizedLit)] @constant
-[(nil_lit)] @constant.builtin
-[(bool_lit)] @constant.builtin.boolean
-[(char_lit)] @constant.character
-[(char_esc_seq) (str_esc_seq)] @constant.character.escape
-[(custom_numeric_lit)] @constant.numeric
-[(int_lit) (int_suffix)] @constant.numeric.integer
-[(float_lit) (float_suffix)] @constant.numeric.float
+(nil_literal) @constant.builtin
+((identifier) @constant.builtin.boolean
+  (#any-of? @constant.builtin.boolean "true" "false" "on" "off"))
+
+(char_literal) @constant.character
+(escape_sequence) @constant.character.escape
+(custom_numeric_literal) @constant.numeric
+(integer_literal) @constant.numeric.integer
+(float_literal) @constant.numeric.float
 ; literals
-; note: somewhat irritatingly for testing, lits have the same syntax highlighting as types
+; todo: literal?
 
 [
-  (str_lit)
-  (triplestr_lit)
-  (rstr_lit)
-  (generalized_str_lit)
-  (generalized_triplestr_lit)
-  (interpolated_str_lit)
-  (interpolated_triplestr_lit)
+  (long_string_literal)
+  (raw_string_literal)
+  (generalized_string)
+  (interpreted_string_literal)
 ] @string
+; (generalized_string (string_content) @none) ; todo: attempt to un-match string_content
 ; [] @string.regexp
-; string literals
 
 [
   "."
@@ -44,272 +43,291 @@
   "}"
   "{."
   ".}"
-  "#["
-  "]#"
 ] @punctuation.bracket
-(interpolated_str_lit "&" @punctuation.special)
-(interpolated_str_lit "{" @punctuation.special)
-(interpolated_str_lit "}" @punctuation.special)
-; punctuation
+; todo: interpolated_str_lit?? & { }?
 
 [
   "and"
   "or"
   "xor"
   "not"
-  "in"
-  "notin"
-  "is"
-  "isnot"
   "div"
   "mod"
   "shl"
   "shr"
+  "from"
+  "as"
+  "of"
+  "in"
+  "notin"
+  "is"
+  "isnot"
 ] @keyword.operator
-; operators: we list them explicitly to deliminate them from symbolic operators
 
-[(operator) (opr) "="] @operator
-; all operators (must come after @keyword.operator)
+[(operator) "="] @operator
+(infix_expression operator: _ @operator)
+(prefix_expression operator: _ @operator)
 
-(pragma) @attribute
-; pragmas
-
+(pragma_list
+  (identifier)? @attribute
+  (colon_expression
+    (identifier) @attribute)?)
 
 ;; Imports and Exports
 
-(importStmt
-  (keyw) @keyword.control.import
-  (expr (primary (symbol) @namespace))?
-  (expr (primary (arrayConstr (exprColonExprList (exprColonExpr (expr (primary (symbol) @namespace)))))))?)
-(exportStmt
-  (keyw) @keyword.control.import
-  (expr (primary (symbol) @namespace))?
-  (expr (primary (arrayConstr (exprColonExprList (exprColonExpr (expr (primary (symbol) @namespace)))))))?)
-(fromStmt
-  (keyw) @keyword.control.import
-  (expr (primary (symbol) @namespace))?
-  (expr (primary (arrayConstr (exprColonExprList (exprColonExpr (expr (primary (symbol) @namespace)))))))?)
-(includeStmt
-  (keyw) @keyword.control.import
-  (expr (primary (symbol) @namespace))?
-  (expr (primary (arrayConstr (exprColonExprList (exprColonExpr (expr (primary (symbol) @namespace)))))))?)
-(importExceptStmt
-  (keyw) @keyword.control.import
-  (expr (primary (symbol) @namespace))?
-  (expr (primary (arrayConstr (exprColonExprList (exprColonExpr (expr (primary (symbol) @namespace)))))))?)
-; import statements
-; yeah, this is a bit gross.
+[
+  "import"
+  "export"
+  "include"
+  "from"
+] @keyword.control.import
 
+(import_statement
+  [
+    (identifier) @namespace
+    (expression_list (identifier) @namespace)
+    (except_clause
+      "except" @keyword.control.import
+      (expression_list (identifier) @namespace))])
+(import_from_statement
+  (identifier) @namespace
+  (expression_list (identifier) @namespace))
+(include_statement (expression_list (identifier) @namespace))
+(export_statement (expression_list (identifier) @namespace))
 
 ;; Control Flow
 
-(ifStmt (keyw) @keyword.control.conditional)
-(whenStmt (keyw) @keyword.control.conditional)
-(elifStmt (keyw) @keyword.control.conditional)
-(elseStmt (keyw) @keyword.control.conditional)
-(caseStmt (keyw) @keyword.control.conditional)
-(ofBranch (keyw) @keyword.control.conditional)
-(inlineIfStmt (keyw) @keyword.control.conditional)
-(inlineWhenStmt (keyw) @keyword.control.conditional)
+[
+  "if"
+  "when"
+  "case"
+  "elif"
+  "else"
+] @keyword.control.conditional
+(of_branch "of" @keyword.control.conditional)
 ; conditional statements
 ; todo: do block
 
-(forStmt
-  . (keyw) @keyword.control.repeat
-  . (symbol) @variable
-  . (keyw) @keyword.control.repeat)
-(whileStmt (keyw) @keyword.control.repeat)
-; loop statements
+"block" @keyword.control
+(block label: (_) @label)
 
-(returnStmt (keyw) @keyword.control.repeat)
-(yieldStmt (keyw) @keyword.control.repeat)
-(discardStmt (keyw) @keyword.control.repeat)
-(breakStmt (keyw) @keyword.control.repeat)
-(continueStmt (keyw) @keyword.control.repeat)
-; control flow statements
+[
+  "for"
+  "while"
+  "continue"
+  "break"
+] @keyword.control.repeat
+(for "in" @keyword.control.repeat)
 
-(raiseStmt (keyw) @keyword.control.exception)
-(tryStmt (keyw) @keyword.control.exception)
-(tryExceptStmt (keyw) @keyword.control.exception)
-(tryFinallyStmt (keyw) @keyword.control.exception)
-(inlineTryStmt (keyw) @keyword.control.exception)
-; (inlineTryExceptStmt (keyw) @keyword.control.exception)
-; (inlineTryFinallyStmt (keyw) @keyword.control.exception)
+[
+  "return"
+  "yield"
+] @keyword.control.return
+; return statements
+
+[
+  "try"
+  "except"
+  "finally"
+  "raise"
+] @keyword.control.exception
 ; exception handling statements
 
-(staticStmt (keyw) @keyword)
-(deferStmt (keyw) @keyword)
-(asmStmt (keyw) @keyword)
-(bindStmt (keyw) @keyword)
-(mixinStmt (keyw) @keyword)
-; miscellaneous blocks
-
-(blockStmt
-  (keyw) @keyword.control
-  (symbol) @label)
-; block statements
-
+[
+  "asm"
+  "bind"
+  "mixin"
+  "defer"
+  "static"
+] @keyword
+; miscellaneous keywords
 
 ;; Types and Type Declarations
 
-(typeDef
-  (keyw) @keyword.storage.type
-  (symbol) @type)
-; names of new types type declarations
+[
+  "let"
+  "var"
+  "const"
+  "type"
+  "object"
+  "tuple"
+  "enum"
+  "concept"
+] @keyword.storage.type
 
-(exprColonEqExpr
-  . (expr (primary (symbol) @variable))
-  . (expr (primary (symbol) @type)))
-; variables in inline tuple declarations
+(var_type "var" @keyword.storage.modifier)
+(out_type "out" @keyword.storage.modifier)
+(distinct_type "distinct" @keyword.storage.modifier)
+(ref_type "ref" @keyword.storage.modifier)
+(pointer_type "ptr" @keyword.storage.modifier)
 
-(primarySuffix
-  (indexSuffix
-    (exprColonEqExprList
-      (exprColonEqExpr
-        (expr
-          (primary
-            (symbol) @type))))))
-; nested types in brackets, i.e. seq[string]
+(var_parameter "var" @keyword.storage.modifier)
+(type_parameter "type" @keyword.storage.modifier)
+(static_parameter "static" @keyword.storage.modifier)
+(ref_parameter "ref" @keyword.storage.modifier)
+(pointer_parameter "ptr" @keyword.storage.modifier)
+; (var_parameter (identifier) @variable.parameter)
+; (type_parameter (identifier) @variable.parameter)
+; (static_parameter (identifier) @variable.parameter)
+; (ref_parameter (identifier) @variable.parameter)
+; (pointer_parameter (identifier) @variable.parameter)
+; todo: when are these used??
 
-(primaryTypeDef (symbol) @type)
-; primary types of type declarations (NOT nested types)
+(type_section
+  (type_declaration
+    (type_symbol_declaration
+      name: (_) @type)))
+; types in type declarations
 
-(primaryTypeDef (primaryPrefix (keyw) @type))
-; for consistency
+(enum_field_declaration
+  (symbol_declaration
+    name: (_) @type.enum.variant))
+; types as enum variants
 
-(primaryTypeDesc (symbol) @type)
-; type annotations, on declarations or in objects
+(variant_declaration
+  alternative: (of_branch
+    values: (expression_list (_) @type.enum.variant)))
+; types as object variants
 
-(primaryTypeDesc (primaryPrefix (keyw) @type))
-; var types etc
+(case
+  (of_branch
+    values: (expression_list (_) @constant)))
+; case values are guaranteed to be constant
 
-(genericParamList (genericParam (symbol) @type))
-; types in generic blocks
+(type_expression
+  [
+    (identifier) @type
+    (bracket_expression
+      [
+        (identifier) @type
+        (argument_list (identifier) @type)])
+    (tuple_construction
+      [
+        (identifier) @type
+        (bracket_expression
+          [
+            (identifier) @type
+            (argument_list (identifier) @type)])])])
+; types in type expressions
 
-(enumDecl (keyw) @keyword.storage.type)
-(enumElement (symbol) @type.enum.variant)
-; enum declarations and elements
+(call
+  function: (bracket_expression
+    right: (argument_list (identifier) @type)))
+; types as generic parameters
 
-(tupleDecl (keyw) @keyword.storage.type)
-; tuple declarations
+; (dot_generic_call
+;   generic_arguments: (_) @type)
+; ???
 
-(objectDecl (keyw) @keyword.storage.type)
-(objectPart (symbol) @variable.other.member)
-; object declarations and fields
+(infix_expression
+  operator:
+    [
+      "is"
+      "isnot"
+    ]
+  right: (_) @type)
+; types in "is" comparisions
 
-(objectCase
-  (keyw) @keyword.control.conditional
-  (symbol) @variable.other.member)
-(objectBranch (keyw) @keyword.control.conditional)
-(objectElif (keyw) @keyword.control.conditional)
-(objectElse (keyw) @keyword.control.conditional)
-(objectWhen (keyw) @keyword.control.conditional)
-; variant objects
-
-(conceptDecl (keyw) @keyword.storage.type)
-(conceptParam (keyw) @type)
-(conceptParam (symbol) @variable)
-; concept declarations, parameters, and qualifiers on those parameters
-
-((expr
-  (primary (symbol))
-  (operator) @operator
-  (primary (symbol) @type))
- (#match? @operator "is"))
-((exprStmt
-  (primary (symbol))
-  (operator) @operator
-  (primary (symbol) @type))
- (#match? @operator "is"))
-; symbols likely to be types: "x is t" means t is either a type or a type variable
-
-; distinct?
-
+(except_branch
+  values: (expression_list
+    [
+      (identifier) @type
+      (infix_expression
+        left: (identifier) @type
+        operator: "as"
+        right: (_) @variable)]))
+; types in exception branches
 
 ;; Functions
 
-(routine
-  . (keyw) @keyword.function
-  . (symbol) @function)
-; function declarations
+[
+  "proc"
+  "func"
+  "method"
+  "converter"
+  "iterator"
+  "template"
+  "macro"
+] @keyword.function
 
-(routineExpr (keyw) @keyword.function)
-; discarded function
+(exported_symbol "*" @attribute)
+(_ "=" @punctuation.delimiter [body: (_) value: (_)])
 
-(routineExprTypeDesc (keyw) @keyword.function)
-; function declarations as types
+(proc_declaration name: (_) @function)
+(func_declaration name: (_) @function)
+(iterator_declaration name: (_) @function)
+(converter_declaration name: (_) @function)
+(method_declaration name: (_) @function.method)
+(template_declaration name: (_) @function.macro)
+(macro_declaration name: (_) @function.macro)
+(symbol_declaration name: (_) @variable)
 
-(primary
-  . (symbol) @function.call
-  . (primarySuffix (functionCall)))
-; regular function calls
-
-(primary
-  . (symbol) @function.call
-  . (primarySuffix (cmdCall)))
-; function calls without parenthesis
-
-(primary
-  (primarySuffix (qualifiedSuffix (symbol) @function.call))
-  . (primarySuffix (functionCall)))
-; uniform function call syntax calls
-
-(primary
-  (primarySuffix (qualifiedSuffix (symbol) @function.call))
-  . (primarySuffix (cmdCall)))
-; just in case
-
-(primary
-  (symbol) @constructor
-  (primarySuffix (objectConstr)))
-; object constructor
-
-; does not appear to be a way to distinguish these without verbatium matching
-; [] @function.builtin
-; [] @function.method
-; [] @function.macro
-; [] @function.special
-
+(call
+  function: [
+    (identifier) @function.call
+    (dot_expression
+      right: (identifier) @function.call)
+    (bracket_expression
+      left: [
+        (identifier) @function.call
+        (dot_expression
+          right: (identifier) @function.call)])])
+(generalized_string
+  function: [
+    (identifier) @function.call
+    (dot_expression
+      right: (identifier) @function.call)
+    (bracket_expression
+      left: [
+        (identifier) @function.call
+        (dot_expression
+          right: (identifier) @function.call)])])
+(dot_generic_call function: (_) @function.call)
 
 ;; Variables
 
-(paramList (paramColonEquals (symbol) @variable.parameter))
-; parameter identifiers
+(parameter_declaration
+  (symbol_declaration_list
+    (symbol_declaration
+      name: (_) @variable.parameter)))
+(argument_list
+  (equal_expression
+    left: (_) @variable.parameter))
+(concept_declaration
+  parameters: (parameter_list (identifier) @variable.parameter))
 
-(identColon (ident) @variable.other.member)
-; named parts of tuples
+(field_declaration
+  (symbol_declaration_list
+    (symbol_declaration
+      name: (_) @variable.other.member)))
+(call
+  (argument_list
+    (colon_expression
+      left: (_) @variable.other.member)))
+(tuple_construction
+  (colon_expression
+    left: (_) @variable.other.member))
+(variant_declaration
+  (variant_discriminator_declaration
+    (symbol_declaration_list
+      (symbol_declaration
+        name: (_) @variable.other.member))))
 
-(symbolColonExpr (symbol) @variable)
-; object constructor parameters
+;; Miscellaneous Matches
 
-(symbolEqExpr (symbol) @variable)
-; named parameters
+[
+  "cast"
+  "discard"
+  "do"
+] @keyword
+; also: addr end interface using
 
-(variable
-  (keyw) @keyword.storage.type
-  (declColonEquals (symbol) @variable))
-; let, var, const expressions
+(blank_identifier) @variable.builtin
+((identifier) @variable.builtin
+  (#eq? @variable.builtin "result"))
 
-((primary (symbol) @variable.builtin)
- (#match? @variable.builtin "result"))
-; `result` is an implicit builtin variable inside function scopes
+(dot_expression
+  left: (identifier) @variable
+  right: (identifier) @variable.other.member)
 
-((primary (symbol) @type)
- (#match? @type "^[A-Z]"))
-; assume PascalCase identifiers to be types
-
-((primary
-  (primarySuffix
-    (qualifiedSuffix
-      (symbol) @type)))
- (#match? @type "^[A-Z]"))
-; assume PascalCase member variables to be enum entries
-
-(primary (symbol) @variable)
-; overzealous, matches variables
-
-(primary (primarySuffix (qualifiedSuffix (symbol) @variable.other.member)))
-; overzealous, matches member variables: i.e. x in foo.x
-
-(keyw) @keyword
-; more specific matches are done above whenever possible
+(identifier) @variable

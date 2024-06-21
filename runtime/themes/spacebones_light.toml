@@ -78,6 +78,8 @@
 "diagnostic.error" = { underline = { style = "curl", color = "#e0211d" } }
 "diagnostic.info" = { underline = { style = "curl", color = "theme_yellow" } }
 "diagnostic.hint" = { underline = { style = "curl", color = "bg2" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 [palette]
 base = "#655370"

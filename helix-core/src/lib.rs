@@ -17,7 +17,6 @@ pub mod macros;
 pub mod match_brackets;
 pub mod movement;
 pub mod object;
-pub mod path;
 mod position;
 pub mod search;
 pub mod selection;
@@ -31,16 +30,13 @@ mod transaction;
 pub mod wrap;
 
 pub mod unicode {
-    pub use unicode_general_category as category;
+    pub use icu_properties as properties;
     pub use unicode_segmentation as segmentation;
     pub use unicode_width as width;
 }
 
 pub use helix_loader::find_workspace;
 
-pub fn find_first_non_whitespace_char(line: RopeSlice) -> Option<usize> {
-    line.chars().position(|ch| !ch.is_whitespace())
-}
 mod rope_reader;
 
 pub use rope_reader::RopeReader;

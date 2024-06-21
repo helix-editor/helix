@@ -1,12 +1,11 @@
 [
-  (comp_body) 
-  (state_statement)
-  (transition_statement)
-  (handler_body)
-  (consequence_body)
-  (global_single)
+  (anon_struct_block)
+  (assignment_block)
+  (block)
+  (enum_block)
+  (global_block)
+  (imperative_block)
+  (struct_block)
 ] @indent
 
-[
-  "}"
-] @outdent
+"}" @outdent

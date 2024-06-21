@@ -25,6 +25,8 @@ The following [captures][tree-sitter-captures] are recognized:
 | `parameter.inside` |
 | `comment.inside`   |
 | `comment.around`   |
+| `entry.inside`     |
+| `entry.around`     |
 
 [Example query files][textobject-examples] can be found in the helix GitHub repository.
 
@@ -44,4 +46,4 @@ doesn't make sense in a navigation context.
 
 [tree-sitter-queries]: https://tree-sitter.github.io/tree-sitter/using-parsers#query-syntax
 [tree-sitter-captures]: https://tree-sitter.github.io/tree-sitter/using-parsers#capturing-nodes
-[textobject-examples]: https://github.com/search?q=repo%3Ahelix-editor%2Fhelix+filename%3Atextobjects.scm&type=Code&ref=advsearch&l=&l=
+[textobject-examples]: https://github.com/search?q=repo%3Ahelix-editor%2Fhelix+path%3A%2A%2A/textobjects.scm&type=Code&ref=advsearch&l=&l=

@@ -17,12 +17,12 @@
 
 "constant" = { fg = "cyan", modifiers = ["bold"] }
 "constant.builtin" = { fg = "deep-purple" }
-"constant.builtin.boolean" = { fg = "purple" }
+"constant.builtin.boolean" = { fg = "purple" , modifiers = ["bold"]}
 "constant.character" = { fg = "green" }
-"constant.character.escape" = { fg = "brown" }
-"constant.numeric" = { fg = "brown" }
-"constant.numeric.integer" = { fg = "brown" }
-"constant.numeric.float" = { fg = "brown" }
+"constant.character.escape" = { fg = "brown" , modifiers = ["bold"]}
+"constant.numeric" = { fg = "brown" , modifiers = ["bold"]}
+"constant.numeric.integer" = { fg = "brown" , modifiers = ["bold"]}
+"constant.numeric.float" = { fg = "brown" , modifiers = ["bold"]}
 
 "string" = { fg = "green" }
 "string.regexp" = { fg = "purple" }
@@ -137,11 +137,12 @@
 "ui.virtual" = { fg = "grey-500" }
 "ui.virtual.ruler" = { bg = "grey-200" }
 "ui.virtual.wrap" = { fg = "grey-500" }
-"ui.virtual.whitespace" = { fg = "grey-300" }
+"ui.virtual.whitespace" = { fg = "grey-400" }
 "ui.virtual.indent-guide" = { fg = "grey-500" }
 "ui.virtual.inlay-hint" = { fg = "grey-500" }
 "ui.virtual.inlay-hint.parameter" = { fg = "grey-500", modifiers = ["italic"] }
 "ui.virtual.inlay-hint.type" = { fg = "grey-500" }
+"ui.virtual.jump-label" = { fg = "black", bg = "grey-200", modifiers = ["bold" ] }
 
 "ui.menu" = { fg = "black", bg = "grey-300" }
 "ui.menu.selected" = { fg = "white", bg = "light-blue" }
@@ -162,6 +163,8 @@
 "diagnostic.hint" = { underline = { color = "green", style = "dashed" } }
 "diagnostic.warning" = { underline = { color = "yellow", style = "curl" } }
 "diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 "info" = { fg = "blue", modifiers = ["bold"] }
 "hint" = { fg = "green", modifiers = ["bold"] }

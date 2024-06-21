@@ -75,8 +75,8 @@ impl Registers {
                 self.clipboard_provider.as_ref(),
                 self.inner.get(&name),
                 match name {
-                    '*' => ClipboardType::Clipboard,
-                    '+' => ClipboardType::Selection,
+                    '+' => ClipboardType::Clipboard,
+                    '*' => ClipboardType::Selection,
                     _ => unreachable!(),
                 },
             )),
@@ -95,8 +95,8 @@ impl Registers {
                 self.clipboard_provider.set_contents(
                     values.join(NATIVE_LINE_ENDING.as_str()),
                     match name {
-                        '*' => ClipboardType::Clipboard,
-                        '+' => ClipboardType::Selection,
+                        '+' => ClipboardType::Clipboard,
+                        '*' => ClipboardType::Selection,
                         _ => unreachable!(),
                     },
                 )?;
@@ -118,12 +118,12 @@ impl Registers {
             '#' | '.' | '%' => Err(anyhow::anyhow!("Register {name} does not support pushing")),
             '*' | '+' => {
                 let clipboard_type = match name {
-                    '*' => ClipboardType::Clipboard,
-                    '+' => ClipboardType::Selection,
+                    '+' => ClipboardType::Clipboard,
+                    '*' => ClipboardType::Selection,
                     _ => unreachable!(),
                 };
                 let contents = self.clipboard_provider.get_contents(clipboard_type)?;
-                let saved_values = self.inner.entry(name).or_insert_with(Vec::new);
+                let saved_values = self.inner.entry(name).or_default();
 
                 if !contents_are_saved(saved_values, &contents) {
                     anyhow::bail!("Failed to push to register {name}: clipboard does not match register contents");
@@ -140,7 +140,7 @@ impl Registers {
                 Ok(())
             }
             _ => {
-                self.inner.entry(name).or_insert_with(Vec::new).push(value);
+                self.inner.entry(name).or_default().push(value);
                 Ok(())
             }
         }
@@ -172,8 +172,8 @@ impl Registers {
                     ('#', "<selection indices>"),
                     ('.', "<selection contents>"),
                     ('%', "<document path>"),
-                    ('*', "<system clipboard>"),
-                    ('+', "<primary clipboard>"),
+                    ('+', "<system clipboard>"),
+                    ('*', "<primary clipboard>"),
                 ]
                 .iter()
                 .copied(),
@@ -190,8 +190,8 @@ impl Registers {
         match name {
             '*' | '+' => {
                 self.clear_clipboard(match name {
-                    '*' => ClipboardType::Clipboard,
-                    '+' => ClipboardType::Selection,
+                    '+' => ClipboardType::Clipboard,
+                    '*' => ClipboardType::Selection,
                     _ => unreachable!(),
                 });
                 self.inner.remove(&name);
@@ -233,7 +233,9 @@ fn read_from_clipboard<'a>(
             // If we're pasting the same values that we just yanked, re-use
             // the saved values. This allows pasting multiple selections
             // even when yanked to a clipboard.
-            let Some(values) = saved_values else { return RegisterValues::new(iter::once(contents.into())) };
+            let Some(values) = saved_values else {
+                return RegisterValues::new(iter::once(contents.into()));
+            };
 
             if contents_are_saved(values, &contents) {
                 RegisterValues::new(values.iter().map(Cow::from).rev())

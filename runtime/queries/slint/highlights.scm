@@ -1,122 +1,109 @@
-
-(identifier) @variable
-[
-  (type_identifier) 
-  (units)
-]@type
-
-(array_literal 
-  (identifier) @type)
-
-(function_identifier) @function
-[
-  (image_macro)
-  (children_macro)
-  (radial_grad_macro)
-  (linear_grad_macro)
-] @function.macro
-
-(call_expression
-  function: (identifier) @function)
-(call_expression
-  function: (field_expression
-    field: (identifier) @function))
-
-(vis) @keyword.control.import
-
-(transition_statement state: (identifier) @variable.other.member)
-(state_expression state: (identifier) @variable.other.member)
-(struct_block_definition field: (identifier) @variable.other.member)
-(assign_property (identifier) @attribute)
-
 (comment) @comment
 
-(string_literal) @string
-(int_literal) @constant.numeric.integer
-(float_literal) @constant.numeric.float
+; Different types:
+(string_value) @string
+(bool_value) @constant.builtin.boolean
+
+; Constants
+
+(escape_sequence) @constant.character.escape
+
+(color_value) @constant
 
 [
-  "in"
-  "in-out"
-  "for"
-] @keyword.control.repeat
+  (children_identifier)
+  (easing_kind_identifier)
+] @constant.builtin
 
 [
-  "import"
-  "export"
-  "from"
-] @keyword.control.import
+  (int_value)
+  (physical_length_value)
+] @constant.numeric.integer
 
 [
-  "if"
-  "else"
-  "when"
-] @keyword.control.conditional
+  (float_value)
+  (percent_value)
+  (length_value)
+  (duration_value)
+  (angle_value)
+  (relative_font_size_value)
+] @constant.numeric.float
+
+(purity) @keyword.storage.modifier
+
+(function_visibility) @keyword.storage.modifier
+
+(property_visibility) @keyword.storage.modifier
+
+(builtin_type_identifier) @type.builtin
+
+(reference_identifier) @variable.builtin
+
+(type
+  [
+    (type_list)
+    (user_type_identifier)
+    (anon_struct_block)
+  ]) @type
+
+(user_type_identifier) @type
+
+; Functions and callbacks
+(argument) @variable.parameter
+
+(function_call
+  name: (_) @function.call)
+
+; definitions
+(callback
+  name: (_) @function)
+
+(callback_alias
+  name: (_) @function)
+
+(callback_event
+  name: (simple_identifier) @function.call)
+
+(enum_definition
+  name: (_) @type.enum)
+
+(function_definition
+  name: (_) @function)
+
+(struct_definition
+  name: (_) @type)
+
+(typed_identifier
+  type: (_) @type)
+
+; Operators
+(binary_expression
+  op: (_) @operator)
+
+(unary_expression
+  op: (_) @operator)
 
 [
-  "struct"
-  "property"
-] @keyword.storage.type
+  (comparison_operator)
+  (mult_prec_operator)
+  (add_prec_operator)
+  (unary_prec_operator)
+  (assignment_prec_operator)
+] @operator
 
 [
-  "global"
-] @keyword.storage.modifier
-
-
-[
-  "root"
-  "parent"
-  "duration"
-  "easing"
-] @variable.builtin
-
+  ":="
+  "=>"
+  "->"
+  "<=>"
+] @operator
 
 [
-  "callback"
-  "animate"
-  "states"
-  "out"
-  "transitions"
-  "component"
-  "inherits"
-] @keyword
-
-[
-  "black"
-  "transparent"
-  "blue"
-  "ease"
-  "ease_in"
-  "ease-in"
-  "ease_in_out"
-  "ease-in-out"
-  "ease_out"
-  "ease-out"
-  "end"
-  "green"
-  "red"
-  "start"
-  "yellow"
-  "white"
-  "gray"
- ] @constant.builtin
-
-[
-  "true"
-  "false"
-] @constant.builtin.boolean
-
-"@" @keyword
-
-; ; Punctuation
-[
-  ","
-  "."
   ";"
-  ":"
+  "."
+  ","
 ] @punctuation.delimiter
 
-; ; Brackets
 [
   "("
   ")"
@@ -126,46 +113,136 @@
   "}"
 ] @punctuation.bracket
 
-(define_property ["<" ">"] @punctuation.bracket)
+(property
+  [
+    "<"
+    ">"
+  ] @punctuation.bracket)
 
+; Properties, constants and variables
+(component
+  id: (simple_identifier) @constant)
+
+(property
+  name: (simple_identifier) @variable)
+
+(binding_alias
+  name: (simple_identifier) @variable)
+
+(binding
+  name: (simple_identifier) @variable)
+
+(struct_block
+  (simple_identifier) @variable.other.member)
+
+(anon_struct_block
+  (simple_identifier) @variable.other.member)
+
+(property_assignment
+  property: (simple_identifier) @variable)
+
+(states_definition
+  name: (simple_identifier) @variable)
+
+(callback
+  name: (simple_identifier) @variable)
+
+(typed_identifier
+  name: (_) @variable)
+
+(simple_indexed_identifier
+  (simple_identifier) @variable)
+
+(expression
+  (simple_identifier) @variable)
+
+; Attributes
 [
-  "angle"
-  "bool"
-  "brush"
-  "color" 
-  "duration"
-  "easing"
-  "float"
-  "image"
-  "int"
-  "length"
-  "percent"
-  "physical-length"
-  "physical_length"
-  "string"
-] @type.builtin
+  (linear_gradient_identifier)
+  (radial_gradient_identifier)
+  (radial_gradient_kind)
+] @attribute
 
-[
- ":="
- "<=>"
- "!"
- "-"
- "+"
- "*"
- "/"
- "&&"
- "||"
- ">"
- "<"
- ">="
- "<="
- "="
- ":"
- "+="
- "-="
- "*="
- "/="
- "?"
- "=>" ] @operator
+(image_call
+  "@image-url" @attribute)
 
-(ternary_expression [":" "?"] @keyword.control.conditional)
+(tr
+  "@tr" @attribute)
+
+; Keywords
+(animate_option_identifier) @keyword
+
+(export) @keyword.control.import
+
+(if_statement
+  "if" @keyword.control.conditional)
+
+(if_expr
+  [
+    "if"
+    "else"
+  ] @keyword.control.conditional)
+
+(ternary_expression
+  [
+    "?"
+    ":"
+  ] @keyword.control.conditional)
+
+(animate_statement
+  "animate" @keyword)
+
+(callback
+  "callback" @keyword.function)
+
+(component_definition
+  [
+    "component"
+    "inherits"
+  ] @keyword.storage.type)
+
+(enum_definition
+  "enum" @keyword.storage.type)
+
+(for_loop
+  [
+    "for"
+    "in"
+  ] @keyword.control.repeat)
+
+(function_definition
+  "function" @keyword.function)
+
+(global_definition
+  "global" @keyword.storage.type)
+
+(imperative_block
+  "return" @keyword.control.return)
+
+(import_statement
+  [
+    "import"
+    "from"
+  ] @keyword.control.import)
+
+(import_type
+  "as" @keyword.control.import)
+
+(property
+  "property" @keyword.storage.type)
+
+(states_definition
+  [
+    "states"
+    "when"
+  ] @keyword)
+
+(struct_definition
+  "struct" @keyword.storage.type)
+
+(transitions_definition
+  [
+    "transitions"
+    "in"
+    "out"
+  ] @keyword)
