@@ -65,8 +65,6 @@
 "string.symbol" = { fg = "yellow1" }
 
 "tag" = { fg = "aqua1" }
-"tag.attribute" = { fg = "purple" }
-"tag.delimiter" = { fg = "foreground" }
 
 "type" = { fg = "yellow1" }
 "type.enum.variant" = { modifiers = ["italic"] }
