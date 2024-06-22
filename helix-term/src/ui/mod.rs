@@ -29,7 +29,7 @@ pub use text::Text;
 
 use helix_view::Editor;
 
-use std::path::PathBuf;
+use std::{error::Error, path::PathBuf};
 
 pub fn prompt(
     cx: &mut crate::commands::Context,

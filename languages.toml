@@ -223,7 +223,7 @@ mode = "location"
 [[language]]
 name = "rust"
 scope = "source.rust"
-injection-regex = "rust"
+injection-regex = "rs|rust"
 file-types = ["rs"]
 roots = ["Cargo.toml", "Cargo.lock"]
 shebangs = ["rust-script", "cargo"]
@@ -276,7 +276,7 @@ args = { attachCommands = [ "platform select remote-gdb-server", "platform conne
 
 [[grammar]]
 name = "rust"
-source = { git = "https://github.com/tree-sitter/tree-sitter-rust", rev = "473634230435c18033384bebaa6d6a17c2523281" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-rust", rev = "9c84af007b0f144954adb26b3f336495cbb320a7" }
 
 [[language]]
 name = "sway"
@@ -824,7 +824,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-html", rev = "29f53
 [[language]]
 name = "python"
 scope = "source.python"
-injection-regex = "python"
+injection-regex = "py(thon)?"
 file-types = ["py", "pyi", "py3", "pyw", "ptl", "rpy", "cpy", "ipy", "pyt", { glob = ".python_history" }, { glob = ".pythonstartup" }, { glob = ".pythonrc" }, { glob = "SConstruct" }, { glob = "SConscript" }]
 shebangs = ["python"]
 roots = ["pyproject.toml", "setup.py", "poetry.lock", "pyrightconfig.json"]
@@ -1265,7 +1265,7 @@ source = { git = "https://github.com/ikatyang/tree-sitter-yaml", rev = "0e36bed1
 [[language]]
 name = "haskell"
 scope = "source.haskell"
-injection-regex = "haskell"
+injection-regex = "hs|haskell"
 file-types = ["hs", "hs-boot"]
 roots = ["Setup.hs", "stack.yaml", "cabal.project"]
 comment-token = "--"
@@ -1908,16 +1908,17 @@ language-servers = [ "r" ]
 name = "swift"
 scope = "source.swift"
 injection-regex = "swift"
-file-types = ["swift"]
+file-types = ["swift", "swiftinterface"]
 roots = [ "Package.swift" ]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
+formatter = { command = "swift-format", args = [ "--configuration", ".swift-format"] }
 auto-format = true
 language-servers = [ "sourcekit-lsp" ]
 
 [[grammar]]
 name = "swift"
-source = { git = "https://github.com/alex-pinkus/tree-sitter-swift", rev = "b1b66955d420d5cf5ff268ae552f0d6e43ff66e1" }
+source = { git = "https://github.com/alex-pinkus/tree-sitter-swift", rev = "57c1c6d6ffa1c44b330182d41717e6fe37430704" }
 
 [[language]]
 name = "erb"
@@ -2073,8 +2074,11 @@ file-types = ["cairo"]
 comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
 # auto-format = true
-grammar = "rust"
 language-servers = [ "cairo-language-server" ]
+
+[[grammar]]
+name = "cairo"
+source = { git = "https://github.com/starkware-libs/tree-sitter-cairo", rev = "0596baab741ffacdc65c761d5d5ffbbeae97f033" }
 
 [[language]]
 name = "cpon"
@@ -3155,7 +3159,7 @@ grammar = "html"
 [[language]]
 name = "typst"
 scope = "source.typst"
-injection-regex = "typst"
+injection-regex = "typ(st)?"
 file-types = ["typst", "typ"]
 comment-token = "//"
 language-servers = ["tinymist", "typst-lsp"]
@@ -3565,7 +3569,7 @@ language-servers = ["earthlyls"]
 
 [[grammar]]
 name = "earthfile"
-source = { git = "https://github.com/glehmann/tree-sitter-earthfile", rev = "a079e6c472eeedd6b9a1e03ca0b6c82cd6a112a4" }
+source = { git = "https://github.com/glehmann/tree-sitter-earthfile", rev = "dbfb970a59cd87b628d087eb8e3fbe19c8e20601" }
 
 [[language]]
 name = "adl"
@@ -3640,6 +3644,20 @@ language-servers = ["pest-language-server"]
 [[grammar]]
 name = "pest"
 source = { git = "https://github.com/pest-parser/tree-sitter-pest", rev = "a8a98a824452b1ec4da7f508386a187a2f234b85" }
+
+[[language]]
+name = "elisp"
+scope = "source.elisp"
+file-types = ["el"]
+comment-tokens = [";"]
+
+[language.auto-pairs]
+'(' = ')'
+'"' = '"'
+
+[[grammar]]
+name = "elisp"
+source = { git = "https://github.com/Wilfred/tree-sitter-elisp", rev = "e5524fdccf8c22fc726474a910e4ade976dfc7bb" }
 
 [[language]]
 name = "gjs"

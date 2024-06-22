@@ -11,6 +11,7 @@ pub struct Handlers {
     // only public because most of the actual implementation is in helix-term right now :/
     pub completions: Sender<lsp::CompletionEvent>,
     pub signature_hints: Sender<lsp::SignatureHelpEvent>,
+    pub auto_save: Sender<u64>,
 }
 
 impl Handlers {
