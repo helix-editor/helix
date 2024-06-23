@@ -63,10 +63,10 @@ pub fn char_is_whitespace(ch: char) -> bool {
 
 #[inline]
 pub fn char_is_punctuation(ch: char) -> bool {
-    use icu_properties::{maps::general_category, GeneralCategory};
+    use unicode_general_category::{get_general_category, GeneralCategory};
 
     matches!(
-        general_category().get(ch),
+        get_general_category(ch),
         GeneralCategory::OtherPunctuation
             | GeneralCategory::OpenPunctuation
             | GeneralCategory::ClosePunctuation

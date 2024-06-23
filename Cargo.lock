@@ -1319,7 +1319,6 @@ dependencies = [
  "hashbrown 0.14.5",
  "helix-loader",
  "helix-stdx",
- "icu_properties",
  "imara-diff",
  "indoc",
  "log",
@@ -1337,6 +1336,7 @@ dependencies = [
  "textwrap",
  "toml",
  "tree-sitter",
+ "unicode-general-category",
  "unicode-segmentation",
  "unicode-width",
 ]
@@ -2663,6 +2663,12 @@ name = "unicode-bom"
 version = "2.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "98e90c70c9f0d4d1ee6d0a7d04aa06cb9bbd53d8cfbdd62a0269a7c2eb640552"
+
+[[package]]
+name = "unicode-general-category"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2281c8c1d221438e373249e065ca4989c4c36952c211ff21a0ee91c44a3869e7"
 
 [[package]]
 name = "unicode-ident"
