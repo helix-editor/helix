@@ -2169,7 +2169,7 @@ impl Editor {
     pub fn scancode_apply(&mut self, event: KeyEvent) -> KeyEvent {
         self.config()
             .scancode
-            .apply(event, &self.keyboard_state.get_keys())
+            .apply(event, &mut self.keyboard_state)
     }
 }
 
