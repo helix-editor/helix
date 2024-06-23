@@ -2,7 +2,7 @@
 
 You will need a handful of things:
 
-* A clone of this fork, on the branch `mwp-steel-integration`
+* A clone of this fork, on the branch `steel-event-system`
 * A clone of the steel git repo -> https://github.com/mattwparas/steel, on the branch `master` (default)
 
 I also cannot promise that this will work on windows. I develop off of ubuntu and mac, so for now you can probably safely assume it will work on unix.
@@ -12,7 +12,7 @@ The `Cargo.toml` for helix points to a local development version of steel. Set t
 ```
 [workspace.dependencies]
 # CHANGE 'path = ...' to point to the path to steel-core
-steel-core = { path = "../../steel/crates/steel-core", version = "0.5.0", features = ["modules", "anyhow", "dylibs", "colors"] }
+steel-core = { path = "/home/matt/code/scratch/steel/crates/steel-core", version = "0.6.0", features = ["anyhow", "dylibs"] }
 ```
 
 Since I'm actively developing steel alongside the helix integration in order to make things as smooth as possible, its not referencing a published version yet.

@@ -21,7 +21,7 @@ default-members = [
 
 [workspace.dependencies]
 # If working locally, use the local path dependency
-# steel-core = { path = "../../steel/crates/steel-core", version = "0.6.0", features = ["anyhow", "dylibs"] }
+# steel-core = { path = "/home/matt/code/scratch/steel/crates/steel-core", version = "0.6.0", features = ["anyhow", "dylibs"] }
 steel-core = { git = "https://github.com/mattwparas/steel.git", version = "0.6.0", features = ["anyhow", "dylibs"] }
 tree-sitter = { version = "0.22" }
 nucleo = "0.2.0"
