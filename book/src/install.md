@@ -14,6 +14,10 @@ Note that:
 ## Pre-built binaries
 
 Download pre-built binaries from the [GitHub Releases page](https://github.com/helix-editor/helix/releases).
-Add the `hx` binary to your system's `$PATH` to use it from the command line, and copy the `runtime` directory into the config directory (for example `~/.config/helix/runtime` on Linux/macOS).
-The runtime location can be overriden via the HELIX_RUNTIME environment variable.
+The tarball contents include an `hx` binary and a `runtime` directory.
+
+- Add the `hx` binary to your system's `$PATH` to use it from the command line.
+- Copy the `runtime` directory into a location searched by `hx` (for example `~/.config/helix/runtime` on Linux/macOS).
+
+The runtime directories searched by `hx` are shown in `hx --health`. The runtime location can be overriden via the `HELIX_RUNTIME` environment variable.
 
