@@ -431,6 +431,7 @@ file-types = [
   "ts.map",
   "css.map",
   { glob = ".jslintrc" },
+  "jsonl",
   "jsonld",
   { glob = ".vuerc" },
   { glob = "composer.lock" },
