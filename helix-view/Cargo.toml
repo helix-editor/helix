@@ -24,7 +24,7 @@ helix-lsp = { path = "../helix-lsp" }
 helix-dap = { path = "../helix-dap" }
 helix-vcs = { path = "../helix-vcs" }
 
-bitflags = "2.5"
+bitflags = "2.6"
 anyhow = "1"
 crossterm = { version = "0.27", optional = true }
 
@@ -32,7 +32,7 @@ tempfile = "3.9"
 
 # Conversion traits
 once_cell = "1.19"
-url = "2.5.1"
+url = "2.5.2"
 
 arc-swap = { version = "1.7.1" }
 
