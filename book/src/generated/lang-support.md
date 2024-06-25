@@ -191,6 +191,7 @@
 | svelte | ✓ |  | ✓ | `svelteserver` |
 | sway | ✓ | ✓ | ✓ | `forc` |
 | swift | ✓ | ✓ |  | `sourcekit-lsp` |
+| syphon | ✓ | ✓ | ✓ |  |
 | t32 | ✓ |  |  |  |
 | tablegen | ✓ | ✓ | ✓ |  |
 | tact | ✓ | ✓ | ✓ |  |
