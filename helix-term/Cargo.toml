@@ -59,7 +59,7 @@ content_inspector = "0.2.4"
 
 # opening URLs
 open = "5.1.4"
-url = "2.5.1"
+url = "2.5.2"
 
 # config
 toml = "0.8"
