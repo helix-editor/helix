@@ -1320,6 +1320,20 @@ language-servers = [ "zls" ]
 indent = { tab-width = 4, unit = "    " }
 formatter = { command = "zig" , args = ["fmt", "--stdin"] }
 
+[[language]]
+name = "syphon"
+scope = "scope.syphon"
+injection-regex = "syphon"
+file-types = ["sy"]
+comment-tokens = ["#"]
+indent = { tab-width = 4, unit = " " }
+shebangs = ["syphon"]
+
+[[grammar]]
+name = "syphon"
+source = { git = "https://github.com/yhyadev/tree-sitter-syphon", rev = "a33981b3970ee32cb39a008f120446090d195c5e" }
+
+
 [language.debugger]
 name = "lldb-dap"
 transport = "stdio"
