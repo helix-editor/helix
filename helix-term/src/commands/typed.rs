@@ -166,7 +166,7 @@ fn buffer_close_by_ids_impl(
         bail!(
             "{} unsaved buffer{} remaining: {:?}",
             modified_names.len(),
-            if modified_names.len() != 1 { "s" } else { "" },
+            if modified_names.len() == 1 { "" } else { "s" },
             modified_names,
         );
     }
@@ -661,7 +661,7 @@ pub(super) fn buffers_remaining_impl(editor: &mut Editor) -> anyhow::Result<()> 
         bail!(
             "{} unsaved buffer{} remaining: {:?}",
             modified_names.len(),
-            if modified_names.len() != 1 { "s" } else { "" },
+            if modified_names.len() == 1 { "" } else { "s" },
             modified_names,
         );
     }
