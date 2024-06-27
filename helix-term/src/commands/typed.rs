@@ -1370,37 +1370,51 @@ fn lsp_workspace_command(
     if event != PromptEvent::Validate {
         return Ok(());
     }
+
+    struct LsIdCommand(usize, helix_lsp::lsp::Command);
+
+    impl ui::menu::Item for LsIdCommand {
+        type Data = ();
+
+        fn format(&self, _data: &Self::Data) -> Row {
+            self.1.title.as_str().into()
+        }
+    }
+
     let doc = doc!(cx.editor);
-    let Some((language_server_id, options)) = doc
+    let ls_id_commands = doc
         .language_servers_with_feature(LanguageServerFeature::WorkspaceCommand)
-        .find_map(|ls| {
+        .flat_map(|ls| {
             ls.capabilities()
                 .execute_command_provider
-                .as_ref()
-                .map(|options| (ls.id(), options))
-        })
-    else {
-        cx.editor
-            .set_status("No active language servers for this document support workspace commands");
-        return Ok(());
-    };
+                .iter()
+                .flat_map(|options| options.commands.iter())
+                .map(|command| (ls.id(), command))
+        });
 
     if args.is_empty() {
-        let commands = options
-            .commands
-            .iter()
-            .map(|command| helix_lsp::lsp::Command {
-                title: command.clone(),
-                command: command.clone(),
-                arguments: None,
+        let commands = ls_id_commands
+            .map(|(ls_id, command)| {
+                LsIdCommand(
+                    ls_id,
+                    helix_lsp::lsp::Command {
+                        title: command.clone(),
+                        command: command.clone(),
+                        arguments: None,
+                    },
+                )
             })
             .collect::<Vec<_>>();
         let callback = async move {
             let call: job::Callback = Callback::EditorCompositor(Box::new(
                 move |_editor: &mut Editor, compositor: &mut Compositor| {
-                    let picker = ui::Picker::new(commands, (), move |cx, command, _action| {
-                        execute_lsp_command(cx.editor, language_server_id, command.clone());
-                    });
+                    let picker = ui::Picker::new(
+                        commands,
+                        (),
+                        move |cx, LsIdCommand(ls_id, command), _action| {
+                            execute_lsp_command(cx.editor, *ls_id, command.clone());
+                        },
+                    );
                     compositor.push(Box::new(overlaid(picker)))
                 },
             ));
@@ -1409,21 +1423,32 @@ fn lsp_workspace_command(
         cx.jobs.callback(callback);
     } else {
         let command = args.join(" ");
-        if options.commands.iter().any(|c| c == &command) {
-            execute_lsp_command(
-                cx.editor,
-                language_server_id,
-                helix_lsp::lsp::Command {
-                    title: command.clone(),
-                    arguments: None,
-                    command,
-                },
-            );
-        } else {
-            cx.editor.set_status(format!(
-                "`{command}` is not supported for this language server"
-            ));
-            return Ok(());
+        let matches: Vec<_> = ls_id_commands
+            .filter(|(_ls_id, c)| *c == &command)
+            .collect();
+
+        match matches.as_slice() {
+            [(ls_id, _command)] => {
+                execute_lsp_command(
+                    cx.editor,
+                    *ls_id,
+                    helix_lsp::lsp::Command {
+                        title: command.clone(),
+                        arguments: None,
+                        command,
+                    },
+                );
+            }
+            [] => {
+                cx.editor.set_status(format!(
+                    "`{command}` is not supported for any language server"
+                ));
+            }
+            _ => {
+                cx.editor.set_status(format!(
+                    "`{command}` supported by multiple language servers"
+                ));
+            }
         }
     }
     Ok(())
