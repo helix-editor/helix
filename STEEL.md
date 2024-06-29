@@ -53,9 +53,8 @@ to be used as typed commands. For example:
 ```scheme
 # helix.scm
 
-(require-builtin helix/core/typable as helix.)
-(require-builtin helix/core/static as helix.static.)
-(require-builtin helix/core/keybindings as helix.keybindings.)
+(require (prefix-in helix. "helix/commands.scm"))
+(require (prefix-in helix.static. "helix/static.scm"))
 
 (provide shell git-add open-helix-scm open-init-scm reload-helix-scm)
 
@@ -125,12 +124,10 @@ For example, if we wanted to select a random theme at startup:
 # init.scm
 
 (require-builtin steel/random as rand::)
-(require-builtin helix/core/static as helix.static.)
-(require-builtin helix/core/typable as helix.)
-
+(require (prefix-in helix. "helix/commands.scm"))
+(require (prefix-in helix.static. "helix/static.scm"))
 
 (define rng (rand::thread-rng!))
-
 
 ;; Picking one from the possible themes
 (define possible-themes '("ayu_mirage" "tokyonight_storm" "catppuccin_macchiato"))
@@ -150,7 +147,7 @@ For example, if we wanted to select a random theme at startup:
 
 There are a handful of extra libraries in development for extending helix, and can be found here https://github.com/mattwparas/helix-config.
 
-If you'd like to use them, create a directory called `cogs` in your `.config/helix` directory, and copy the files in there. In particular, `keymaps.scm` and `options.scm` are working well.
+If you'd like to use them, create a directory called `cogs` in your `.config/helix` directory, and copy the files in there.
 
 ### options.scm
 
@@ -160,10 +157,11 @@ If you'd like to override configurations from your toml config:
 ```scheme
 # init.scm
 
-(require (only-in "cogs/options.scm" apply-options))
+(require "helix/configuration.scm")
 
-(define *config-map* '((file-picker.hidden false) (cursorline true) (soft-wrap.enable true)))
-(apply-options *helix.cx* *config-map*)
+(file-picker (fp-hidden #f))
+(cursorline #t)
+(soft-wrap (sw-enable #t))
 
 ```
 
@@ -177,22 +175,23 @@ Applying custom keybindings for certain file extensions:
 # init.scm
 
 (require "cogs/keymaps.scm")
+(require (only-in "cogs/file-tree.scm" FILE-TREE-KEYBINDINGS FILE-TREE))
+(require (only-in "cogs/recentf.scm" recentf-open-files get-recent-files recentf-snapshot))
 
+;; Set the global keybinding for now
+(add-global-keybinding (hash "normal" (hash "C-r" (hash "f" ":recentf-open-files"))))
 
-(define scm-keybindings
-  (hash 
-        "insert"
-        (hash "ret" ':scheme-indent)))
+(define scm-keybindings (hash "insert" (hash "ret" ':scheme-indent "C-l" ':insert-lambda)))
 
-				
 ;; Grab whatever the existing keybinding map is
-(define standard-keybindings (helix-current-keymap))
+(define standard-keybindings (deep-copy-global-keybindings))
 
-;; Overlay the scm keybindings on top of the standard keybindings. This does a little mutation here, so its a bit funky looking.
+(define file-tree-base (deep-copy-global-keybindings))
+
 (merge-keybindings standard-keybindings scm-keybindings)
+(merge-keybindings file-tree-base FILE-TREE-KEYBINDINGS)
 
-;; For .scm files, use this keybinding set insteead
-(set-global-buffer-or-extension-keymap (hash "scm" standard-keybindings))
+(set-global-buffer-or-extension-keymap (hash "scm" standard-keybindings FILE-TREE file-tree-base))
 	
 ```
 
