@@ -7,9 +7,9 @@ use helix_lsp::copilot_types::DocCompletion;
 use helix_lsp::util::{lsp_pos_to_pos, lsp_range_to_range};
 use helix_view::document::{Copilot, Mode};
 use helix_view::Editor;
+use helix_view::events::DocumentDidChange;
 use tokio::time::Instant;
-use crate::commands::MappableCommand;
-use crate::events::{OnModeSwitch, PostCommand, PostInsertChar};
+use crate::events::OnModeSwitch;
 use crate::handlers::Handlers;
 use helix_view::{handlers::lsp::CopilotEvent, DocumentId};
 use crate::job::{dispatch, dispatch_blocking};
@@ -61,9 +61,7 @@ impl helix_event::AsyncHook for CopilotHandler {
 
 fn copilot_completion(editor: &mut Editor, doc_id: DocumentId, cancel: CancelRx) {
     let (view, doc) = current_ref!(editor);
-    if doc.id() != doc_id {
-        return;
-    }
+    if doc.id() != doc_id || editor.mode() != Mode::Insert { return; }
 
     let Some(copilot_ls) = doc
         .language_servers()
@@ -88,6 +86,7 @@ fn copilot_completion(editor: &mut Editor, doc_id: DocumentId, cancel: CancelRx)
                         return;
                     };
 
+                    if editor.mode() != Mode::Insert { return; }
                     let (view, doc) = current!(editor);
                     let doc_completion = completions
                         .into_iter()
@@ -156,13 +155,10 @@ fn copilot_completion(editor: &mut Editor, doc_id: DocumentId, cancel: CancelRx)
 pub(super) fn try_register_hooks(handlers: &Handlers) {
     let Some(copilot_handler) = handlers.copilot.clone() else {return;};
 
-    register_hook!(move |event: &mut PostCommand<'_, '_>| {
-        if let MappableCommand::Static { name: "copilot_show_completion", .. } = event.command {
-            return Ok(());
-        };
-
-        let (_, doc) = current!(event.cx.editor);
-        doc.clear_copilot_completions();
+    let tx = copilot_handler.clone();
+    register_hook!(move |event: &mut DocumentDidChange<'_>| {
+        event.doc.clear_copilot_completions();
+        send_blocking(&tx, CopilotEvent::RequestCompletion { doc_id: event.doc.id() });
         Ok(())
     });
 
@@ -175,14 +171,6 @@ pub(super) fn try_register_hooks(handlers: &Handlers) {
         } else if event.new_mode == Mode::Insert {
             send_blocking(&tx, CopilotEvent::RequestCompletion { doc_id: doc.id() });
         }
-        Ok(())
-    });
-
-    let tx = copilot_handler.clone();
-    register_hook!(move |event: &mut PostInsertChar<'_, '_>| {
-        let (_, doc) = current!(event.cx.editor);
-        doc.clear_copilot_completions();
-        send_blocking(&tx, CopilotEvent::RequestCompletion { doc_id: doc.id() });
         Ok(())
     });
 }
