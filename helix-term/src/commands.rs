@@ -1203,19 +1203,15 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
     let (view, doc) = current_ref!(cx.editor);
     let text = doc.text();
     let selections = doc.selection(view.id);
+    let primary = selections.primary();
     let rel_path = doc
         .relative_path()
         .map(|path| path.parent().unwrap().to_path_buf())
         .unwrap_or_default();
-    let mut paths: Vec<_> = selections
-        .iter()
-        .map(|r| text.slice(r.from()..r.to()).to_string())
-        .collect();
-    let primary = selections.primary();
-    // Checks whether there is only one selection with a width of 1
-    if selections.len() == 1 && primary.len() == 1 {
-        paths.clear();
 
+    let paths: Vec<_> = if selections.len() == 1 && primary.len() == 1 {
+        // Secial case: if there is only one one-width selection, try to detect the
+        // path under the cursor.
         let is_valid_path_char = |c: &char| {
             #[cfg(target_os = "windows")]
             let valid_chars = &[
@@ -1250,29 +1246,29 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
             .take_while(is_valid_path_char)
             .count();
 
-        let path: Cow<str> = text
+        let path: String = text
             .slice((start_pos - prefix_len)..(start_pos + postfix_len))
             .into();
-        log::debug!("Goto file path: {}", path);
+        log::debug!("goto_file auto-detected path: {}", path);
 
-        match expand_tilde(PathBuf::from(path.as_ref())).to_str() {
-            Some(path) => paths.push(path.to_string()),
-            None => cx.editor.set_error("Couldn't get string out of path."),
-        };
-    }
+        vec![path]
+    } else {
+        // Otherwise use each selection, trimmed.
+        selections
+            .fragments(text.slice(..))
+            .map(|sel| sel.trim().to_string())
+            .filter(|sel| !sel.is_empty())
+            .collect()
+    };
 
     for sel in paths {
-        let p = sel.trim();
-        if p.is_empty() {
-            continue;
-        }
-
-        if let Ok(url) = Url::parse(p) {
+        if let Ok(url) = Url::parse(&sel) {
             open_url(cx, url, action);
             continue;
         }
 
-        let path = &rel_path.join(p);
+        let path = expand_tilde(Cow::from(PathBuf::from(sel)));
+        let path = &rel_path.join(path);
         if path.is_dir() {
             let picker = ui::file_picker(path.into(), &cx.editor.config());
             cx.push_layer(Box::new(overlaid(picker)));
