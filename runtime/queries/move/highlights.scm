@@ -23,11 +23,15 @@
 (borrow_expression "&" @keyword.storage.modifier.ref)
 (borrow_expression "&mut" @keyword.storage.modifier.mut)
 
+(identifier) @variable
+
 (constant_identifier) @constant
 ((identifier) @constant
  (#match? @constant "^[A-Z][A-Z\\d_]*$"))
 
 (function_identifier) @function
+
+(primitive_type) @type.builtin
 
 (struct_identifier) @type
 (pack_expression
@@ -152,6 +156,3 @@
   "with"
 ] @keyword
 
-(primitive_type) @type.buildin
-
-(identifier) @variable
