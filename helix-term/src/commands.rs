@@ -381,6 +381,9 @@ impl MappableCommand {
         goto_last_diag, "Goto last diagnostic",
         goto_next_diag, "Goto next diagnostic",
         goto_prev_diag, "Goto previous diagnostic",
+        goto_next_diag_workspace, "Goto next diagnostic in workspace",
+        goto_next_error_workspace, "Goto next Error diagnostic in workspace",
+        goto_next_warning_workspace, "Goto next Warning diagnostic in workspace",
         goto_next_change, "Goto next change",
         goto_prev_change, "Goto previous change",
         goto_first_change, "Goto first change",
@@ -2785,13 +2788,7 @@ fn flip_selections(cx: &mut Context) {
 
 fn ensure_selections_forward(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-
-    let selection = doc
-        .selection(view.id)
-        .clone()
-        .transform(|r| r.with_direction(Direction::Forward));
-
-    doc.set_selection(view.id, selection);
+    helix_view::ensure_selections_forward(view, doc);
 }
 
 fn enter_insert_mode(cx: &mut Context) {
@@ -3570,72 +3567,124 @@ fn exit_select_mode(cx: &mut Context) {
 
 fn goto_first_diag(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let selection = match doc.diagnostics().first() {
-        Some(diag) => Selection::single(diag.range.start, diag.range.end),
-        None => return,
-    };
-    doc.set_selection(view.id, selection);
+    if let Some(selection) = doc
+        .diagnostics()
+        .first()
+        .map(helix_core::Diagnostic::single_selection)
+    {
+        doc.set_selection(view.id, selection);
+    }
 }
 
 fn goto_last_diag(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let selection = match doc.diagnostics().last() {
-        Some(diag) => Selection::single(diag.range.start, diag.range.end),
-        None => return,
-    };
-    doc.set_selection(view.id, selection);
+    if let Some(selection) = doc
+        .diagnostics()
+        .last()
+        .map(helix_core::Diagnostic::single_selection)
+    {
+        doc.set_selection(view.id, selection);
+    }
 }
 
 fn goto_next_diag(cx: &mut Context) {
     let motion = move |editor: &mut Editor| {
         let (view, doc) = current!(editor);
-
-        let cursor_pos = doc
-            .selection(view.id)
-            .primary()
-            .cursor(doc.text().slice(..));
-
-        let diag = doc
-            .diagnostics()
-            .iter()
-            .find(|diag| diag.range.start > cursor_pos)
-            .or_else(|| doc.diagnostics().first());
-
-        let selection = match diag {
-            Some(diag) => Selection::single(diag.range.start, diag.range.end),
-            None => return,
-        };
-        doc.set_selection(view.id, selection);
+        if let Some(selection) = helix_view::next_diagnostic_in_doc(view, doc, None)
+            .or_else(|| doc.diagnostics().first())
+            .map(helix_core::Diagnostic::single_selection)
+        {
+            doc.set_selection(view.id, selection);
+        }
     };
-
     cx.editor.apply_motion(motion);
 }
 
 fn goto_prev_diag(cx: &mut Context) {
     let motion = move |editor: &mut Editor| {
         let (view, doc) = current!(editor);
-
-        let cursor_pos = doc
-            .selection(view.id)
-            .primary()
-            .cursor(doc.text().slice(..));
-
-        let diag = doc
-            .diagnostics()
-            .iter()
-            .rev()
-            .find(|diag| diag.range.start < cursor_pos)
-            .or_else(|| doc.diagnostics().last());
-
-        let selection = match diag {
-            // NOTE: the selection is reversed because we're jumping to the
-            // previous diagnostic.
-            Some(diag) => Selection::single(diag.range.end, diag.range.start),
-            None => return,
-        };
-        doc.set_selection(view.id, selection);
+        if let Some(selection) = helix_view::prev_diagnostic_in_doc(view, doc, None)
+            .or_else(|| doc.diagnostics().last())
+            .map(helix_core::Diagnostic::single_selection_rev)
+        {
+            doc.set_selection(view.id, selection)
+        }
     };
     cx.editor.apply_motion(motion)
+}
+
+fn goto_next_diag_workspace(cx: &mut Context) {
+    goto_next_diag_workspace_impl(cx, None)
+}
+
+fn goto_next_error_workspace(cx: &mut Context) {
+    goto_next_diag_workspace_impl(cx, Some(helix_core::diagnostic::Severity::Error))
+}
+
+fn goto_next_warning_workspace(cx: &mut Context) {
+    goto_next_diag_workspace_impl(cx, Some(helix_core::diagnostic::Severity::Warning))
+}
+
+fn goto_next_diag_workspace_impl(
+    cx: &mut Context,
+    severity_filter: Option<helix_core::diagnostic::Severity>,
+) {
+    let motion = move |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
+
+        // Look in current document
+        if let Some(selection) = helix_view::next_diagnostic_in_doc(view, doc, severity_filter)
+            .map(helix_core::Diagnostic::single_selection)
+        {
+            doc.set_selection(view.id, selection);
+            return;
+        }
+
+        // Look for first diagnostic in following documents
+        let current_path = doc.path().cloned();
+        if let Some((path, (diag, language_server_id))) = editor
+            .diagnostics
+            .iter()
+            // There's a performance improvement opportunity here to replace the skip_while once this method stabilizes:
+            // https://doc.rust-lang.org/std/collections/struct.BTreeMap.html#method.lower_bound
+            .skip_while(|(path, _)| Some(*path) <= current_path.as_ref())
+            .flat_map(|(path, diagnostics)| diagnostics.iter().map(move |item| (path, item)))
+            .filter(|(_, (diagnostic, _))| {
+                let severity = diagnostic.severity.map(Document::lsp_severity_to_severity);
+                severity >= severity_filter
+            })
+            .next()
+            .or_else(|| {
+                // Wrap-around to first diagnostic of the workspace
+                editor
+                    .diagnostics
+                    .iter()
+                    .flat_map(|(path, diagnostics)| {
+                        diagnostics.iter().map(move |item| (path, item))
+                    })
+                    .filter(|(_, (diagnostic, _))| {
+                        let severity = diagnostic.severity.map(Document::lsp_severity_to_severity);
+                        severity >= severity_filter
+                    })
+                    .next()
+            })
+        {
+            let offset_encoding = editor
+                .language_server_by_id(*language_server_id)
+                .map(helix_lsp::Client::offset_encoding)
+                .unwrap_or_default();
+            jump_to_position(
+                editor,
+                &path.clone(),
+                diag.range,
+                offset_encoding,
+                Action::Replace,
+            );
+            let (view, doc) = current!(editor);
+            helix_view::ensure_selections_forward(view, doc);
+        }
+    };
+    cx.editor.apply_motion(motion);
 }
 
 fn goto_first_change(cx: &mut Context) {
