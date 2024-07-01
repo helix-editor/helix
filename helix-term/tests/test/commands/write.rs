@@ -94,7 +94,10 @@ async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
     )
     .await?;
 
-    helpers::assert_file_has_content(file.as_file_mut(), &platform_line(&RANGE.end().to_string()))?;
+    helpers::assert_file_has_content(
+        &mut file,
+        &LineFeedHandling::Native.apply(&RANGE.end().to_string()),
+    )?;
 
     Ok(())
 }
@@ -114,14 +117,12 @@ async fn test_write() -> anyhow::Result<()> {
     )
     .await?;
 
-    file.as_file_mut().flush()?;
-    file.as_file_mut().sync_all()?;
-
+    reload_file(&mut file).unwrap();
     let mut file_content = String::new();
     file.as_file_mut().read_to_string(&mut file_content)?;
 
     assert_eq!(
-        helpers::platform_line("the gostak distims the doshes"),
+        LineFeedHandling::Native.apply("the gostak distims the doshes"),
         file_content
     );
 
@@ -138,24 +139,18 @@ async fn test_overwrite_protection() -> anyhow::Result<()> {
     helpers::run_event_loop_until_idle(&mut app).await;
 
     file.as_file_mut()
-        .write_all(helpers::platform_line("extremely important content").as_bytes())?;
+        .write_all("extremely important content".as_bytes())?;
 
     file.as_file_mut().flush()?;
     file.as_file_mut().sync_all()?;
 
     test_key_sequence(&mut app, Some(":x<ret>"), None, false).await?;
 
-    file.as_file_mut().flush()?;
-    file.as_file_mut().sync_all()?;
-
-    file.rewind()?;
+    reload_file(&mut file).unwrap();
     let mut file_content = String::new();
-    file.as_file_mut().read_to_string(&mut file_content)?;
+    file.read_to_string(&mut file_content)?;
 
-    assert_eq!(
-        helpers::platform_line("extremely important content"),
-        file_content
-    );
+    assert_eq!("extremely important content", file_content);
 
     Ok(())
 }
@@ -175,14 +170,13 @@ async fn test_write_quit() -> anyhow::Result<()> {
     )
     .await?;
 
-    file.as_file_mut().flush()?;
-    file.as_file_mut().sync_all()?;
+    reload_file(&mut file).unwrap();
 
     let mut file_content = String::new();
-    file.as_file_mut().read_to_string(&mut file_content)?;
+    file.read_to_string(&mut file_content)?;
 
     assert_eq!(
-        helpers::platform_line("the gostak distims the doshes"),
+        LineFeedHandling::Native.apply("the gostak distims the doshes"),
         file_content
     );
 
@@ -205,12 +199,13 @@ async fn test_write_concurrent() -> anyhow::Result<()> {
 
     test_key_sequence(&mut app, Some(&command), None, false).await?;
 
-    file.as_file_mut().flush()?;
-    file.as_file_mut().sync_all()?;
-
+    reload_file(&mut file).unwrap();
     let mut file_content = String::new();
-    file.as_file_mut().read_to_string(&mut file_content)?;
-    assert_eq!(platform_line(&RANGE.end().to_string()), file_content);
+    file.read_to_string(&mut file_content)?;
+    assert_eq!(
+        LineFeedHandling::Native.apply(&RANGE.end().to_string()),
+        file_content
+    );
 
     Ok(())
 }
@@ -276,7 +271,7 @@ async fn test_write_scratch_to_new_path() -> anyhow::Result<()> {
     )
     .await?;
 
-    helpers::assert_file_has_content(file.as_file_mut(), &helpers::platform_line("hello"))?;
+    helpers::assert_file_has_content(&mut file, &LineFeedHandling::Native.apply("hello"))?;
 
     Ok(())
 }
@@ -321,7 +316,7 @@ async fn test_write_auto_format_fails_still_writes() -> anyhow::Result<()> {
     test_key_sequences(&mut app, vec![(Some(":w<ret>"), None)], false).await?;
 
     // file still saves
-    helpers::assert_file_has_content(file.as_file_mut(), "let foo = 0;\n")?;
+    helpers::assert_file_has_content(&mut file, "let foo = 0;\n")?;
 
     Ok(())
 }
@@ -360,13 +355,13 @@ async fn test_write_new_path() -> anyhow::Result<()> {
     .await?;
 
     helpers::assert_file_has_content(
-        file1.as_file_mut(),
-        &helpers::platform_line("i can eat glass, it will not hurt me\n"),
+        &mut file1,
+        &LineFeedHandling::Native.apply("i can eat glass, it will not hurt me\n"),
     )?;
 
     helpers::assert_file_has_content(
-        file2.as_file_mut(),
-        &helpers::platform_line("i can eat glass, it will not hurt me\n"),
+        &mut file2,
+        &LineFeedHandling::Native.apply("i can eat glass, it will not hurt me\n"),
     )?;
 
     Ok(())
@@ -436,8 +431,8 @@ async fn test_write_insert_final_newline_added_if_missing() -> anyhow::Result<()
     test_key_sequence(&mut app, Some(":w<ret>"), None, false).await?;
 
     helpers::assert_file_has_content(
-        file.as_file_mut(),
-        &helpers::platform_line("have you tried chamomile tea?\n"),
+        &mut file,
+        &LineFeedHandling::Native.apply("have you tried chamomile tea?\n"),
     )?;
 
     Ok(())
@@ -448,14 +443,14 @@ async fn test_write_insert_final_newline_unchanged_if_not_missing() -> anyhow::R
     let mut file = tempfile::NamedTempFile::new()?;
     let mut app = helpers::AppBuilder::new()
         .with_file(file.path(), None)
-        .with_input_text(&helpers::platform_line("#[t|]#en minutes, please\n"))
+        .with_input_text(LineFeedHandling::Native.apply("#[t|]#en minutes, please\n"))
         .build()?;
 
     test_key_sequence(&mut app, Some(":w<ret>"), None, false).await?;
 
     helpers::assert_file_has_content(
-        file.as_file_mut(),
-        &helpers::platform_line("ten minutes, please\n"),
+        &mut file,
+        &LineFeedHandling::Native.apply("ten minutes, please\n"),
     )?;
 
     Ok(())
@@ -478,10 +473,8 @@ async fn test_write_insert_final_newline_unchanged_if_missing_and_false() -> any
 
     test_key_sequence(&mut app, Some(":w<ret>"), None, false).await?;
 
-    helpers::assert_file_has_content(
-        file.as_file_mut(),
-        "the quiet rain continued through the night",
-    )?;
+    reload_file(&mut file).unwrap();
+    helpers::assert_file_has_content(&mut file, "the quiet rain continued through the night")?;
 
     Ok(())
 }
@@ -507,13 +500,13 @@ async fn test_write_all_insert_final_newline_add_if_missing_and_modified() -> an
     .await?;
 
     helpers::assert_file_has_content(
-        file1.as_file_mut(),
-        &helpers::platform_line("we don't serve time travelers here\n"),
+        &mut file1,
+        &LineFeedHandling::Native.apply("we don't serve time travelers here\n"),
     )?;
 
     helpers::assert_file_has_content(
-        file2.as_file_mut(),
-        &helpers::platform_line("a time traveler walks into a bar\n"),
+        &mut file2,
+        &LineFeedHandling::Native.apply("a time traveler walks into a bar\n"),
     )?;
 
     Ok(())
@@ -531,7 +524,127 @@ async fn test_write_all_insert_final_newline_do_not_add_if_unmodified() -> anyho
 
     test_key_sequence(&mut app, Some(":wa<ret>"), None, false).await?;
 
-    helpers::assert_file_has_content(file.as_file_mut(), "i lost on Jeopardy!")?;
+    helpers::assert_file_has_content(&mut file, "i lost on Jeopardy!")?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_symlink_write() -> anyhow::Result<()> {
+    #[cfg(unix)]
+    use std::os::unix::fs::symlink;
+    #[cfg(not(unix))]
+    use std::os::windows::fs::symlink_file as symlink;
+
+    let dir = tempfile::tempdir()?;
+
+    let mut file = tempfile::NamedTempFile::new_in(&dir)?;
+    let symlink_path = dir.path().join("linked");
+    symlink(file.path(), &symlink_path)?;
+
+    let mut app = helpers::AppBuilder::new()
+        .with_file(&symlink_path, None)
+        .build()?;
+
+    test_key_sequence(
+        &mut app,
+        Some("ithe gostak distims the doshes<ret><esc>:w<ret>"),
+        None,
+        false,
+    )
+    .await?;
+
+    reload_file(&mut file).unwrap();
+    let mut file_content = String::new();
+    file.as_file_mut().read_to_string(&mut file_content)?;
+
+    assert_eq!(
+        LineFeedHandling::Native.apply("the gostak distims the doshes"),
+        file_content
+    );
+    assert!(symlink_path.is_symlink());
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_symlink_write_fail() -> anyhow::Result<()> {
+    #[cfg(unix)]
+    use std::os::unix::fs::symlink;
+    #[cfg(not(unix))]
+    use std::os::windows::fs::symlink_file as symlink;
+
+    let dir = tempfile::tempdir()?;
+
+    let file = helpers::new_readonly_tempfile_in_dir(&dir)?;
+    let symlink_path = dir.path().join("linked");
+    symlink(file.path(), &symlink_path)?;
+
+    let mut app = helpers::AppBuilder::new()
+        .with_file(&symlink_path, None)
+        .build()?;
+
+    test_key_sequence(
+        &mut app,
+        Some("ihello<esc>:wq<ret>"),
+        Some(&|app| {
+            let mut docs: Vec<_> = app.editor.documents().collect();
+            assert_eq!(1, docs.len());
+
+            let doc = docs.pop().unwrap();
+            assert_eq!(Some(&path::normalize(&symlink_path)), doc.path());
+            assert_eq!(&Severity::Error, app.editor.get_status().unwrap().1);
+        }),
+        false,
+    )
+    .await?;
+
+    assert!(symlink_path.is_symlink());
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_symlink_write_relative() -> anyhow::Result<()> {
+    #[cfg(unix)]
+    use std::os::unix::fs::symlink;
+    #[cfg(not(unix))]
+    use std::os::windows::fs::symlink_file as symlink;
+
+    // tempdir
+    // |- - b
+    // |  |- file
+    // |- linked (symlink to file)
+    let dir = tempfile::tempdir()?;
+    let inner_dir = dir.path().join("b");
+    std::fs::create_dir(&inner_dir)?;
+
+    let mut file = tempfile::NamedTempFile::new_in(&inner_dir)?;
+    let symlink_path = dir.path().join("linked");
+    let relative_path = std::path::PathBuf::from("b").join(file.path().file_name().unwrap());
+    symlink(relative_path, &symlink_path)?;
+
+    let mut app = helpers::AppBuilder::new()
+        .with_file(&symlink_path, None)
+        .build()?;
+
+    test_key_sequence(
+        &mut app,
+        Some("ithe gostak distims the doshes<ret><esc>:w<ret>"),
+        None,
+        false,
+    )
+    .await?;
+
+    reload_file(&mut file).unwrap();
+    let mut file_content = String::new();
+    file.as_file_mut().read_to_string(&mut file_content)?;
+
+    assert_eq!(
+        LineFeedHandling::Native.apply("the gostak distims the doshes"),
+        file_content
+    );
+    assert!(symlink_path.is_symlink());
 
     Ok(())
 }
@@ -557,7 +670,7 @@ async fn edit_file_with_content(file_content: &[u8]) -> anyhow::Result<()> {
     )
     .await?;
 
-    file.rewind()?;
+    reload_file(&mut file).unwrap();
     let mut new_file_content: Vec<u8> = Vec::new();
     file.read_to_end(&mut new_file_content)?;
 

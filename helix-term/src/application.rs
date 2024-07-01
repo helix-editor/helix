@@ -4,12 +4,12 @@ use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Selection};
 use helix_lsp::{
     lsp::{self, notification::Notification},
     util::lsp_range_to_range,
-    LspProgressMap,
+    LanguageServerId, LspProgressMap,
 };
 use helix_stdx::path::get_relative_path;
 use helix_view::{
     align_view,
-    document::DocumentSavedEventResult,
+    document::{DocumentOpenError, DocumentSavedEventResult},
     editor::{ConfigEvent, EditorEvent},
     graphics::Rect,
     theme,
@@ -186,9 +186,15 @@ impl Application {
                             Some(Layout::Horizontal) => Action::HorizontalSplit,
                             None => Action::Load,
                         };
-                        let doc_id = editor
-                            .open(&file, action)
-                            .context(format!("open '{}'", file.to_string_lossy()))?;
+                        let doc_id = match editor.open(&file, action) {
+                            // Ignore irregular files during application init.
+                            Err(DocumentOpenError::IrregularFile) => {
+                                nr_of_files -= 1;
+                                continue;
+                            }
+                            Err(err) => return Err(anyhow::anyhow!(err)),
+                            Ok(doc_id) => doc_id,
+                        };
                         // with Action::Load all documents have the same view
                         // NOTE: this isn't necessarily true anymore. If
                         // `--vsplit` or `--hsplit` are used, the file which is
@@ -199,15 +205,21 @@ impl Application {
                         doc.set_selection(view_id, pos);
                     }
                 }
-                editor.set_status(format!(
-                    "Loaded {} file{}.",
-                    nr_of_files,
-                    if nr_of_files == 1 { "" } else { "s" } // avoid "Loaded 1 files." grammo
-                ));
-                // align the view to center after all files are loaded,
-                // does not affect views without pos since it is at the top
-                let (view, doc) = current!(editor);
-                align_view(doc, view, Align::Center);
+
+                // if all files were invalid, replace with empty buffer
+                if nr_of_files == 0 {
+                    editor.new_file(Action::VerticalSplit);
+                } else {
+                    editor.set_status(format!(
+                        "Loaded {} file{}.",
+                        nr_of_files,
+                        if nr_of_files == 1 { "" } else { "s" } // avoid "Loaded 1 files." grammo
+                    ));
+                    // align the view to center after all files are loaded,
+                    // does not affect views without pos since it is at the top
+                    let (view, doc) = current!(editor);
+                    align_view(doc, view, Align::Center);
+                }
             } else {
                 editor.new_file(Action::VerticalSplit);
             }
@@ -655,7 +667,7 @@ impl Application {
     pub async fn handle_language_server_message(
         &mut self,
         call: helix_lsp::Call,
-        server_id: usize,
+        server_id: LanguageServerId,
     ) {
         use helix_lsp::{Call, MethodCall, Notification};
 
@@ -724,7 +736,7 @@ impl Application {
                     }
                     Notification::PublishDiagnostics(mut params) => {
                         let path = match params.uri.to_file_path() {
-                            Ok(path) => helix_stdx::path::normalize(&path),
+                            Ok(path) => helix_stdx::path::normalize(path),
                             Err(_) => {
                                 log::error!("Unsupported file URI: {}", params.uri);
                                 return;
@@ -1030,12 +1042,7 @@ impl Application {
                         Ok(json!(result))
                     }
                     Ok(MethodCall::RegisterCapability(params)) => {
-                        if let Some(client) = self
-                            .editor
-                            .language_servers
-                            .iter_clients()
-                            .find(|client| client.id() == server_id)
-                        {
+                        if let Some(client) = self.editor.language_servers.get_by_id(server_id) {
                             for reg in params.registrations {
                                 match reg.method.as_str() {
                                     lsp::notification::DidChangeWatchedFiles::METHOD => {

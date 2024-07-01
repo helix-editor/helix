@@ -1,103 +1,93 @@
-# Author: Shafkath Shuhan <shafkathshuhannyc@gmail.com>
+# Author: David Else <12832280+David-Else@users.noreply.github.com>
 
-"namespace" = { fg = "type" }
-"module" = { fg = "type" }
+# SYNTAX
+"attribute"                 = "fn_declaration"
+"comment"                   = "dark_green"
+"constant"                  = "constant"
+"constant.builtin"          = "blue2"
+"constant.character"        = "orange"
+"constant.character.escape" = "gold"
+"constant.numeric"          = "pale_green"
+"constructor"               = "type"
+"diff.delta"                = "blue4"
+"diff.minus"                = "orange_red"
+"diff.plus"                 = "dark_green2"
+"function"                  = "fn_declaration"
+"function.builtin"          = "fn_declaration"
+"function.macro"            = "blue2"
+"keyword"                   = "blue2"
+"keyword.control"           = "special"
+"keyword.directive"         = "special"
+"label"                     = "blue2"
+"module"                    = "type"
+"namespace"                 = "type"
+"operator"                  = "text"
+"punctuation"               = "text"
+"punctuation.delimiter"     = "text"
+"special"                   = "text"
+"string"                    = "orange"
+"string.regexp"             = "gold"
+"tag"                       = "blue2"
+"type"                      = "type"
+"type.builtin"              = "type"
+"type.enum.variant"         = "constant"
+"variable"                  = "variable"
+"variable.builtin"          = "blue2"
+"variable.other.member"     = "variable"
+"variable.parameter"        = "variable"
 
-"type" = { fg = "type" }
-"type.builtin" = { fg = "type" }
-"type.enum.variant" = { fg = "constant" }
-"constructor" = { fg = "type" }
-"variable.other.member" = { fg = "variable" }
-
-"keyword" = { fg = "blue2" }
-"keyword.directive" = { fg = "blue2" }
-"keyword.control" = { fg = "special" }
-"label" = { fg = "blue2" }
-"tag" = "blue2"
-
-"special" = { fg = "text" }
-"operator" = { fg = "text" }
-
-"punctuation" = { fg = "text" }
-"punctuation.delimiter" = { fg = "text" }
-
-"variable" = { fg = "variable" }
-"variable.parameter" = { fg = "variable" }
-"variable.builtin" = { fg = "blue2" }
-"constant" = { fg = "constant" }
-"constant.builtin" = { fg = "blue2" }
-
-"function" = { fg = "fn_declaration" }
-"function.builtin" = { fg = "fn_declaration" }
-"function.macro" = { fg = "blue2" }
-"attribute" = { fg = "fn_declaration" }
-
-"comment" = { fg = "dark_green" }
-
-"string" = { fg = "orange" }
-"constant.character" = { fg = "orange" }
-"string.regexp" = { fg = "gold" }
-"constant.numeric" = { fg = "pale_green" }
-"constant.character.escape" = { fg = "gold" }
-
-"markup.heading" = { fg = "blue2", modifiers = ["bold"] }
-"markup.list" = "blue3"
-"markup.bold" = { fg = "blue2", modifiers = ["bold"] }
-"markup.italic" = { modifiers = ["italic"] }
+# MARKUP
+"markup.heading"       = { fg = "blue2", modifiers = ["bold"] }
+"markup.list"          = "blue3"
+"markup.bold"          = { fg = "blue2", modifiers = ["bold"] }
+"markup.italic"        = { modifiers = ["italic"] }
 "markup.strikethrough" = { modifiers = ["crossed_out"] }
-"markup.link.url" = { modifiers = ["underlined"] }
-"markup.link.text" = "orange"
-"markup.quote" = "dark_green"
-"markup.raw" = "orange"
+"markup.link.url"      = { modifiers = ["underlined"] }
+"markup.link.text"     = "orange"
+"markup.quote"         = "dark_green"
+"markup.raw"           = "orange"
 
-"diff.plus" = { fg = "dark_green2" }
-"diff.delta" = { fg = "blue4" }
-"diff.minus" = { fg = "orange_red" }
-
-"ui.background" = { fg = "light_gray", bg = "dark_gray2" }
-
-"ui.window" = { bg = "widget" }
-"ui.popup" = { fg = "text", bg = "widget" }
-"ui.help" = { fg = "text", bg = "widget" }
-"ui.menu" = { fg = "text", bg = "widget" }
-"ui.menu.selected" = { bg = "dark_blue2" }
-
+# UI
+"ui.background"              = { fg = "light_gray", bg = "dark_gray2" }
+"ui.window"                  = { bg = "widget" }
+"ui.popup"                   = { fg = "text", bg = "widget" }
+"ui.help"                    = { fg = "text", bg = "widget" }
+"ui.menu"                    = { fg = "text", bg = "widget" }
+"ui.menu.selected"           = { bg = "dark_blue2" }
 # TODO: Alternate bg colour for `ui.cursor.match` and `ui.selection`.
-"ui.cursor" = { fg = "cursor", modifiers = ["reversed"] }
-"ui.cursor.primary" = { fg = "cursor", modifiers = ["reversed"] }
-"ui.cursor.match" = { bg = "#3a3d41", modifiers = ["underlined"] }
-
-"ui.selection" = { bg = "#3a3d41" }
-"ui.selection.primary" = { bg = "dark_blue" }
-
-"ui.linenr" = { fg = "dark_gray" }
-"ui.linenr.selected" = { fg = "light_gray2" }
-
-"ui.cursorline.primary" = { bg = "dark_gray3" }
-"ui.statusline" = { fg = "white", bg = "blue" }
-"ui.statusline.inactive" = { fg = "white", bg = "blue" }
-"ui.statusline.insert" = { fg = "white", bg = "yellow" }
-"ui.statusline.select" = { fg = "white", bg = "magenta" }
-
-"ui.bufferline" = { fg = "text", bg = "widget" }
-"ui.bufferline.active" = { fg = "white", bg = "blue" }
-"ui.bufferline.background" = { bg = "background" }
-
-"ui.text" = { fg = "text" }
-"ui.text.focus" = { fg = "white" }
-
-"ui.virtual.whitespace" = { fg = "dark_gray" }
-"ui.virtual.ruler" = { bg = "borders" }
-"ui.virtual.indent-guide" = { fg = "dark_gray4" }
-"ui.virtual.inlay-hint" = { fg = "dark_gray5"}
-
-"warning" = { fg = "gold2" }
-"error" = { fg = "red" }
-"info" = { fg = "light_blue" }
-"hint" = { fg = "light_gray3" }
-
+"ui.cursor"                  = { fg = "cursor", modifiers = ["reversed"] }
+"ui.cursor.primary"          = { fg = "cursor", modifiers = ["reversed"] }
+"ui.cursor.match"            = { bg = "#3a3d41", modifiers = ["underlined"] }
+"ui.selection"               = { bg = "#3a3d41" }
+"ui.selection.primary"       = { bg = "dark_blue" }
+"ui.linenr"                  = { fg = "dark_gray" }
+"ui.linenr.selected"         = { fg = "light_gray2" }
+"ui.cursorline.primary"      = { bg = "dark_gray3" }
+"ui.statusline"              = { fg = "white", bg = "blue" }
+"ui.statusline.inactive"     = { fg = "white", bg = "widget" }
+"ui.statusline.insert"       = { fg = "white", bg = "yellow" }
+"ui.statusline.select"       = { fg = "white", bg = "magenta" }
+"ui.bufferline"              = { fg = "text", bg = "widget" }
+"ui.bufferline.active"       = { fg = "white", bg = "blue" }
+"ui.bufferline.background"   = { bg = "background" }
+"ui.text"                    = { fg = "text" }
+"ui.text.focus"              = { fg = "white" }
+"ui.virtual.whitespace"      = { fg = "#3e3e3d" }
+"ui.virtual.ruler"           = { bg = "borders" }
+"ui.virtual.indent-guide"    = { fg = "dark_gray4" }
+"ui.virtual.inlay-hint"      = { fg = "dark_gray5"}
+"ui.virtual.jump-label"      = { fg = "dark_gray", modifiers = ["bold"] }
+"ui.highlight.frameline"     = { bg = "#4b4b18" }
+"ui.debug.active"            = { fg = "#ffcc00" }
+"ui.debug.breakpoint"        = { fg = "#e51400" }
+"warning"                    = { fg = "gold2" }
+"error"                      = { fg = "red" }
+"info"                       = { fg = "light_blue" }
+"hint"                       = { fg = "light_gray3" }
 "diagnostic.error".underline = { color = "red", style = "curl" }
-"diagnostic".underline = { color = "gold", style = "curl" }
+"diagnostic".underline       = { color = "gold", style = "curl" }
+"diagnostic.unnecessary"     = { modifiers = ["dim"] }
+"diagnostic.deprecated"      = { modifiers = ["crossed_out"] }
 
 [palette]
 white = "#ffffff"

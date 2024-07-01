@@ -13,7 +13,8 @@ use crate::{
 };
 use helix_stdx::rope::{self, RopeSliceExt};
 use smallvec::{smallvec, SmallVec};
-use std::borrow::Cow;
+use std::{borrow::Cow, iter, slice};
+use tree_sitter::Node;
 
 /// A single selection range.
 ///
@@ -73,6 +74,12 @@ impl Range {
         Self::new(head, head)
     }
 
+    pub fn from_node(node: Node, text: RopeSlice, direction: Direction) -> Self {
+        let from = text.byte_to_char(node.start_byte());
+        let to = text.byte_to_char(node.end_byte());
+        Range::new(from, to).with_direction(direction)
+    }
+
     /// Start of the range.
     #[inline]
     #[must_use]
@@ -115,7 +122,7 @@ impl Range {
     }
 
     /// `Direction::Backward` when head < anchor.
-    /// `Direction::Backward` otherwise.
+    /// `Direction::Forward` otherwise.
     #[inline]
     #[must_use]
     pub fn direction(&self) -> Direction {
@@ -376,6 +383,12 @@ impl Range {
         let second = graphemes.next();
         first.is_some() && second.is_none()
     }
+
+    /// Converts this char range into an in order byte range, discarding
+    /// direction.
+    pub fn into_byte_range(&self, text: RopeSlice) -> (usize, usize) {
+        (text.char_to_byte(self.from()), text.char_to_byte(self.to()))
+    }
 }
 
 impl From<(usize, usize)> for Range {
@@ -488,6 +501,16 @@ impl Selection {
 
     pub fn ranges(&self) -> &[Range] {
         &self.ranges
+    }
+
+    /// Returns an iterator over the line ranges of each range in the selection.
+    ///
+    /// Adjacent and overlapping line ranges of the [Range]s in the selection are merged.
+    pub fn line_ranges<'a>(&'a self, text: RopeSlice<'a>) -> LineRangeIter<'a> {
+        LineRangeIter {
+            ranges: self.ranges.iter().peekable(),
+            text,
+        }
     }
 
     pub fn primary_index(&self) -> usize {
@@ -705,6 +728,42 @@ impl IntoIterator for Selection {
     }
 }
 
+impl From<Range> for Selection {
+    fn from(range: Range) -> Self {
+        Self {
+            ranges: smallvec![range],
+            primary_index: 0,
+        }
+    }
+}
+
+pub struct LineRangeIter<'a> {
+    ranges: iter::Peekable<slice::Iter<'a, Range>>,
+    text: RopeSlice<'a>,
+}
+
+impl<'a> Iterator for LineRangeIter<'a> {
+    type Item = (usize, usize);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (start, mut end) = self.ranges.next()?.line_range(self.text);
+        while let Some((next_start, next_end)) =
+            self.ranges.peek().map(|range| range.line_range(self.text))
+        {
+            // Merge overlapping and adjacent ranges.
+            // This subtraction cannot underflow because the ranges are sorted.
+            if next_start - end <= 1 {
+                end = next_end;
+                self.ranges.next();
+            } else {
+                break;
+            }
+        }
+
+        Some((start, end))
+    }
+}
+
 // TODO: checkSelection -> check if valid for doc length && sorted
 
 pub fn keep_or_remove_matches(
@@ -774,7 +833,9 @@ pub fn split_on_newline(text: RopeSlice, selection: &Selection) -> Selection {
         let mut start = sel_start;
 
         for line in sel.slice(text).lines() {
-            let Some(line_ending) = get_line_ending(&line) else { break };
+            let Some(line_ending) = get_line_ending(&line) else {
+                break;
+            };
             let line_end = start + line.len_chars();
             // TODO: retain range direction
             result.push(Range::new(start, line_end - line_ending.len_chars()));
@@ -1139,6 +1200,32 @@ mod test {
         assert_eq!(Range::new(3, 2).line_range(s), (1, 1));
         assert_eq!(Range::new(8, 3).line_range(s), (1, 2));
         assert_eq!(Range::new(12, 0).line_range(s), (0, 2));
+    }
+
+    #[test]
+    fn selection_line_ranges() {
+        let (text, selection) = crate::test::print(
+            r#"                                           L0
+            #[|these]# line #(|ranges)# are #(|merged)#   L1
+                                                          L2
+            single one-line #(|range)#                    L3
+                                                          L4
+            single #(|multiline                           L5
+            range)#                                       L6
+                                                          L7
+            these #(|multiline                            L8
+            ranges)# are #(|also                          L9
+            merged)#                                      L10
+                                                          L11
+            adjacent #(|ranges)#                          L12
+            are merged #(|the same way)#                  L13
+            "#,
+        );
+        let rope = Rope::from_str(&text);
+        assert_eq!(
+            vec![(1, 1), (3, 3), (5, 6), (8, 10), (12, 13)],
+            selection.line_ranges(rope.slice(..)).collect::<Vec<_>>(),
+        );
     }
 
     #[test]

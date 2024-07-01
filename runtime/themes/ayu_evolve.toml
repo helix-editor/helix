@@ -27,6 +27,7 @@ inherits = 'ayu_dark'
 "ui.text.inactive" = "gray"
 "ui.bufferline" = { fg = "light_gray", bg = "background" }
 "ui.bufferline.active" = { fg = "light_gray", bg = "dark_gray" }
+"ui.virtual.jump-label" = { fg = "red", modifiers = ["italic", "bold"] }
 
 [palette]
 background = '#020202'

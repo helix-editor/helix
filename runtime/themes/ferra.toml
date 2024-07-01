@@ -68,6 +68,8 @@
 "diagnostic.error" = { underline = { color = "ferra_ember", style = "curl" } }
 "diagnostic.info" = { underline = { color = "ferra_blush", style = "curl" } }
 "diagnostic.hint" = { underline = { color = "ferra_blush", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 [palette]
 ferra_night = "#2b292d"

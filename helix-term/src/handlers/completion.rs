@@ -30,6 +30,8 @@ use crate::ui::lsp::SignatureHelp;
 use crate::ui::{self, CompletionItem, Popup};
 
 use super::Handlers;
+pub use resolve::ResolveHandler;
+mod resolve;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 enum TriggerKind {
@@ -251,7 +253,7 @@ fn request_completion(
                 .into_iter()
                 .map(|item| CompletionItem {
                     item,
-                    language_server_id,
+                    provider: language_server_id,
                     resolved: false,
                 })
                 .collect();

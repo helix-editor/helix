@@ -13,7 +13,7 @@ mod spinner;
 mod statusline;
 mod text;
 
-use crate::compositor::{Component, Compositor};
+use crate::compositor::Compositor;
 use crate::filter_picker_entry;
 use crate::job::{self, Callback};
 pub use completion::{Completion, CompletionItem};
@@ -29,7 +29,7 @@ pub use text::Text;
 
 use helix_view::Editor;
 
-use std::path::PathBuf;
+use std::{error::Error, path::PathBuf};
 
 pub fn prompt(
     cx: &mut crate::commands::Context,
@@ -143,14 +143,12 @@ pub fn raw_regex_prompt(
                                         move |_editor: &mut Editor, compositor: &mut Compositor| {
                                             let contents = Text::new(format!("{}", err));
                                             let size = compositor.size();
-                                            let mut popup = Popup::new("invalid-regex", contents)
+                                            let popup = Popup::new("invalid-regex", contents)
                                                 .position(Some(helix_core::Position::new(
                                                     size.height as usize - 2, // 2 = statusline + commandline
                                                     0,
                                                 )))
                                                 .auto_close(true);
-                                            popup.required_size((size.width, size.height));
-
                                             compositor.replace_or_push("invalid-regex", popup);
                                         },
                                     ));
@@ -508,5 +506,19 @@ pub mod completers {
             files.sort_unstable_by(|(_, path1), (_, path2)| path1.cmp(path2));
             files
         }
+    }
+
+    pub fn register(editor: &Editor, input: &str) -> Vec<Completion> {
+        let iter = editor
+            .registers
+            .iter_preview()
+            // Exclude special registers that shouldn't be written to
+            .filter(|(ch, _)| !matches!(ch, '%' | '#' | '.'))
+            .map(|(ch, _)| ch.to_string());
+
+        fuzzy_match(input, iter, false)
+            .into_iter()
+            .map(|(name, _)| ((0..), name.into()))
+            .collect()
     }
 }

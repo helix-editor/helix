@@ -1,28 +1,24 @@
 use crate::{
     compositor::{Component, Context, Event, EventResult},
-    handlers::trigger_auto_completion,
-    job,
+    handlers::{completion::ResolveHandler, trigger_auto_completion},
 };
-use helix_event::AsyncHook;
 use helix_view::{
     document::SavePoint,
     editor::CompleteAction,
-    graphics::Margin,
     handlers::lsp::SignatureHelpInvoked,
     theme::{Modifier, Style},
     ViewId,
 };
-use tokio::time::Instant;
 use tui::{buffer::Buffer as Surface, text::Span};
 
-use std::{borrow::Cow, sync::Arc, time::Duration};
+use std::{borrow::Cow, sync::Arc};
 
 use helix_core::{chars, Change, Transaction};
 use helix_view::{graphics::Rect, Document, Editor};
 
 use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
 
-use helix_lsp::{lsp, util, OffsetEncoding};
+use helix_lsp::{lsp, util, LanguageServerId, OffsetEncoding};
 
 impl menu::Item for CompletionItem {
     type Data = ();
@@ -94,7 +90,7 @@ impl menu::Item for CompletionItem {
 #[derive(Debug, PartialEq, Default, Clone)]
 pub struct CompletionItem {
     pub item: lsp::CompletionItem,
-    pub language_server_id: usize,
+    pub provider: LanguageServerId,
     pub resolved: bool,
 }
 
@@ -104,7 +100,7 @@ pub struct Completion {
     #[allow(dead_code)]
     trigger_offset: usize,
     filter: String,
-    resolve_handler: tokio::sync::mpsc::Sender<CompletionItem>,
+    resolve_handler: ResolveHandler,
 }
 
 impl Completion {
@@ -224,7 +220,7 @@ impl Completion {
                 ($item:expr) => {
                     match editor
                         .language_servers
-                        .get_by_id($item.language_server_id)
+                        .get_by_id($item.provider)
                     {
                         Some(ls) => ls,
                         None => {
@@ -285,12 +281,6 @@ impl Completion {
                     let language_server = language_server!(item);
                     let offset_encoding = language_server.offset_encoding();
 
-                    let language_server = editor
-                        .language_servers
-                        .get_by_id(item.language_server_id)
-                        .unwrap();
-
-                    // resolve item if not yet resolved
                     if !item.resolved {
                         if let Some(resolved) =
                             Self::resolve_completion_item(language_server, item.item.clone())
@@ -343,16 +333,9 @@ impl Completion {
             }
         });
 
-        let margin = if editor.menu_border() {
-            Margin::vertical(1)
-        } else {
-            Margin::none()
-        };
-
         let popup = Popup::new(Self::ID, menu)
             .with_scrollbar(false)
-            .ignore_escape_key(true)
-            .margin(margin);
+            .ignore_escape_key(true);
 
         let (view, doc) = current_ref!(editor);
         let text = doc.text().slice(..);
@@ -371,7 +354,7 @@ impl Completion {
             // TODO: expand nucleo api to allow moving straight to a Utf32String here
             // and avoid allocation during matching
             filter: String::from(fragment),
-            resolve_handler: ResolveHandler::default().spawn(),
+            resolve_handler: ResolveHandler::new(),
         };
 
         // need to recompute immediately in case start_offset != trigger_offset
@@ -389,7 +372,16 @@ impl Completion {
         language_server: &helix_lsp::Client,
         completion_item: lsp::CompletionItem,
     ) -> Option<lsp::CompletionItem> {
-        let future = language_server.resolve_completion_item(completion_item)?;
+        if !matches!(
+            language_server.capabilities().completion_provider,
+            Some(lsp::CompletionOptions {
+                resolve_provider: Some(true),
+                ..
+            })
+        ) {
+            return None;
+        }
+        let future = language_server.resolve_completion_item(&completion_item);
         let response = helix_lsp::block_on(future);
         match response {
             Ok(item) => Some(item),
@@ -422,7 +414,7 @@ impl Completion {
         self.popup.contents().is_empty()
     }
 
-    fn replace_item(&mut self, old_item: CompletionItem, new_item: CompletionItem) {
+    pub fn replace_item(&mut self, old_item: &CompletionItem, new_item: CompletionItem) {
         self.popup.contents_mut().replace_option(old_item, new_item);
     }
 
@@ -444,12 +436,12 @@ impl Component for Completion {
         self.popup.render(area, surface, cx);
 
         // if we have a selection, render a markdown popup on top/below with info
-        let option = match self.popup.contents().selection() {
+        let option = match self.popup.contents_mut().selection_mut() {
             Some(option) => option,
             None => return,
         };
         if !option.resolved {
-            helix_event::send_blocking(&self.resolve_handler, option.clone());
+            self.resolve_handler.ensure_item_resolved(cx.editor, option);
         }
         // need to render:
         // option.detail
@@ -498,12 +490,7 @@ impl Component for Completion {
             None => return,
         };
 
-        let popup_area = {
-            let (popup_x, popup_y) = self.popup.get_rel_position(area, cx.editor);
-            let (popup_width, popup_height) = self.popup.get_size();
-            Rect::new(popup_x, popup_y, popup_width, popup_height)
-        };
-
+        let popup_area = self.popup.area(area, cx.editor);
         let doc_width_available = area.width.saturating_sub(popup_area.right());
         let doc_area = if doc_width_available > 30 {
             let mut doc_width = doc_width_available;
@@ -545,95 +532,10 @@ impl Component for Completion {
         surface.clear_with(doc_area, background);
 
         if cx.editor.popup_border() {
-            use tui::widgets::{Block, Borders, Widget};
-            Widget::render(Block::default().borders(Borders::ALL), doc_area, surface);
+            use tui::widgets::{Block, Widget};
+            Widget::render(Block::bordered(), doc_area, surface);
         }
 
         markdown_doc.render(doc_area, surface, cx);
     }
-}
-
-/// A hook for resolving incomplete completion items.
-///
-/// From the [LSP spec](https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_completion):
-///
-/// > If computing full completion items is expensive, servers can additionally provide a
-/// > handler for the completion item resolve request. ...
-/// > A typical use case is for example: the `textDocument/completion` request doesn't fill
-/// > in the `documentation` property for returned completion items since it is expensive
-/// > to compute. When the item is selected in the user interface then a
-/// > 'completionItem/resolve' request is sent with the selected completion item as a parameter.
-/// > The returned completion item should have the documentation property filled in.
-#[derive(Debug, Default)]
-struct ResolveHandler {
-    trigger: Option<CompletionItem>,
-    request: Option<helix_event::CancelTx>,
-}
-
-impl AsyncHook for ResolveHandler {
-    type Event = CompletionItem;
-
-    fn handle_event(
-        &mut self,
-        item: Self::Event,
-        timeout: Option<tokio::time::Instant>,
-    ) -> Option<tokio::time::Instant> {
-        if self
-            .trigger
-            .as_ref()
-            .is_some_and(|trigger| trigger == &item)
-        {
-            timeout
-        } else {
-            self.trigger = Some(item);
-            self.request = None;
-            Some(Instant::now() + Duration::from_millis(150))
-        }
-    }
-
-    fn finish_debounce(&mut self) {
-        let Some(item) = self.trigger.take() else { return };
-        let (tx, rx) = helix_event::cancelation();
-        self.request = Some(tx);
-        job::dispatch_blocking(move |editor, _| resolve_completion_item(editor, item, rx))
-    }
-}
-
-fn resolve_completion_item(
-    editor: &mut Editor,
-    item: CompletionItem,
-    cancel: helix_event::CancelRx,
-) {
-    let Some(language_server) = editor.language_server_by_id(item.language_server_id) else {
-        return;
-    };
-
-    let Some(future) = language_server.resolve_completion_item(item.item.clone()) else {
-        return;
-    };
-
-    tokio::spawn(async move {
-        match helix_event::cancelable_future(future, cancel).await {
-            Some(Ok(resolved_item)) => {
-                job::dispatch(move |_, compositor| {
-                    if let Some(completion) = &mut compositor
-                        .find::<crate::ui::EditorView>()
-                        .unwrap()
-                        .completion
-                    {
-                        let resolved_item = CompletionItem {
-                            item: resolved_item,
-                            language_server_id: item.language_server_id,
-                            resolved: true,
-                        };
-
-                        completion.replace_item(item, resolved_item);
-                    };
-                })
-                .await
-            }
-            Some(Err(err)) => log::error!("completion resolve request failed: {err}"),
-            None => (),
-        }
-    });
 }

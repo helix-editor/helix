@@ -17,7 +17,7 @@ use tui::{
     buffer::Buffer as Surface,
     layout::Constraint,
     text::{Span, Spans},
-    widgets::{Block, BorderType, Borders, Cell, Table},
+    widgets::{Block, BorderType, Cell, Table},
 };
 
 use tui::widgets::Widget;
@@ -539,13 +539,12 @@ impl<T: Item + 'static> Picker<T> {
         let background = cx.editor.theme.get("ui.background");
         surface.clear_with(area, background);
 
-        // don't like this but the lifetime sucks
-        let block = Block::default().borders(Borders::ALL);
+        const BLOCK: Block<'_> = Block::bordered();
 
         // calculate the inner area inside the box
-        let inner = block.inner(area);
+        let inner = BLOCK.inner(area);
 
-        block.render(area, surface);
+        BLOCK.render(area, surface);
 
         // -- Render the input bar:
 
@@ -690,15 +689,14 @@ impl<T: Item + 'static> Picker<T> {
         let text = cx.editor.theme.get("ui.text");
         surface.clear_with(area, background);
 
-        // don't like this but the lifetime sucks
-        let block = Block::default().borders(Borders::ALL);
+        const BLOCK: Block<'_> = Block::bordered();
 
         // calculate the inner area inside the box
-        let inner = block.inner(area);
+        let inner = BLOCK.inner(area);
         // 1 column gap on either side
         let margin = Margin::horizontal(1);
-        let inner = inner.inner(&margin);
-        block.render(area, surface);
+        let inner = inner.inner(margin);
+        BLOCK.render(area, surface);
 
         if let Some((path, range)) = self.current_file(cx.editor) {
             let preview = self.get_preview(path, cx.editor);
@@ -921,7 +919,7 @@ impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
     }
 
     fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
-        let block = Block::default().borders(Borders::ALL);
+        let block = Block::bordered();
         // calculate the inner area inside the box
         let inner = block.inner(area);
 

@@ -1,4 +1,4 @@
-# Keymap
+## Keymap
 
 - [Normal mode](#normal-mode)
   - [Movement](#movement)
@@ -12,8 +12,9 @@
     - [Match mode](#match-mode)
     - [Window mode](#window-mode)
     - [Space mode](#space-mode)
-      - [Comment mode](#comment-mode)
       - [Popup](#popup)
+      - [Completion Menu](#completion-menu)
+      - [Signature-help Popup](#signature-help-popup)
     - [Unimpaired](#unimpaired)
 - [Insert mode](#insert-mode)
 - [Select / extend mode](#select--extend-mode)
@@ -23,6 +24,8 @@
 > 💡 Mappings marked (**LSP**) require an active language server for the file.
 
 > 💡 Mappings marked (**TS**) require a tree-sitter grammar for the file type.
+
+> ⚠️ Some terminals' default key mappings conflict with Helix's. If any of the mappings described on this page do not work as expected, check your terminal's mappings to ensure they do not conflict. See the [wiki](https://github.com/helix-editor/helix/wiki/Terminal-Support) for known conflicts.
 
 ## Normal mode
 
@@ -49,7 +52,7 @@ Normal mode is the default mode when you launch helix. You can return to it from
 | `T`                   | Find 'till previous char                           | `till_prev_char`            |
 | `F`                   | Find previous char                                 | `find_prev_char`            |
 | `G`                   | Go to line number `<n>`                            | `goto_line`                 |
-| `Alt-.`               | Repeat last motion (`f`, `t` or `m`)               | `repeat_last_motion`        |
+| `Alt-.`               | Repeat last motion (`f`, `t`, `m`, `[` or `]`)     | `repeat_last_motion`        |
 | `Home`                | Move to the start of the line                      | `goto_line_start`           |
 | `End`                 | Move to the end of the line                        | `goto_line_end`             |
 | `Ctrl-b`, `PageUp`    | Move page up                                       | `page_up`                   |
@@ -86,7 +89,7 @@ Normal mode is the default mode when you launch helix. You can return to it from
 | `"` `<reg>` | Select a register to yank to or paste from                           | `select_register`         |
 | `>`         | Indent selection                                                     | `indent`                  |
 | `<`         | Unindent selection                                                   | `unindent`                |
-| `=`         | Format selection (currently nonfunctional/disabled) (**LSP**)        | `format_selections`       |
+| `=`         | Format selection (**LSP**)                                           | `format_selections`       |
 | `d`         | Delete selection                                                     | `delete_selection`        |
 | `Alt-d`     | Delete selection, without yanking                                    | `delete_selection_noyank` |
 | `c`         | Change selection (delete and enter insert mode)                      | `change_selection`        |
@@ -224,13 +227,13 @@ Jumps to various locations.
 | `.`   | Go to last modification in current file          | `goto_last_modification`   |
 | `j`   | Move down textual (instead of visual) line       | `move_line_down`           |
 | `k`   | Move up textual (instead of visual) line         | `move_line_up`             |
+| `w`   | Show labels at each word and select the word that belongs to the entered labels | `goto_word` |
 
 #### Match mode
 
 Accessed by typing `m` in [normal mode](#normal-mode).
 
-See the relevant section in [Usage](./usage.md) for an explanation about
-[surround](./usage.md#surround) and [textobject](./usage.md#navigating-using-tree-sitter-textobjects) usage.
+Please refer to the relevant sections for detailed explanations about [surround](./surround.md) and [textobjects](./textobjects.md).
 
 | Key              | Description                                     | Command                    |
 | -----            | -----------                                     | -------                    |
@@ -279,7 +282,8 @@ This layer is a kludge of mappings, mostly pickers.
 | `F`     | Open file picker at current working directory                           | `file_picker_in_current_directory`         |
 | `b`     | Open buffer picker                                                      | `buffer_picker`                            |
 | `j`     | Open jumplist picker                                                    | `jumplist_picker`                          |
-| `g`     | Debug (experimental)                                                    | N/A                                        |
+| `g`     | Open changed file picker                                                | `changed_file_picker`                      |
+| `G`     | Debug (experimental)                                                    | N/A                                        |
 | `k`     | Show documentation for item under cursor in a [popup](#popup) (**LSP**) | `hover`                                    |
 | `s`     | Open document symbol picker (**LSP**)                                   | `symbol_picker`                            |
 | `S`     | Open workspace symbol picker (**LSP**)                                  | `workspace_symbol_picker`                  |
@@ -305,12 +309,30 @@ This layer is a kludge of mappings, mostly pickers.
 
 ##### Popup
 
-Displays documentation for item under cursor.
+Displays documentation for item under cursor. Remapping currently not supported.
 
 | Key      | Description |
 | ----     | ----------- |
 | `Ctrl-u` | Scroll up   |
 | `Ctrl-d` | Scroll down |
+
+##### Completion Menu
+
+Displays documentation for the selected completion item. Remapping currently not supported.
+
+| Key                         | Description    |
+| ----                        | -----------    |
+| `Shift-Tab`, `Ctrl-p`, `Up` | Previous entry |
+| `Tab`, `Ctrl-n`, `Down`     | Next entry     |
+
+##### Signature-help Popup
+
+Displays the signature of the selected completion item. Remapping currently not supported.
+
+| Key     | Description        |
+| ----    | -----------        |
+| `Alt-p` | Previous signature |
+| `Alt-n` | Next signature     |
 
 #### Unimpaired
 

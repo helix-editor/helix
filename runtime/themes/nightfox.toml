@@ -34,6 +34,7 @@
 "ui.virtual.whitespace" = { fg = "bg3" } # Whitespace markers in editing area.
 "ui.virtual.indent-guide" = { fg = "black" } # Vertical indent width guides
 "ui.virtual.inlay-hint" = { fg = "comment", bg = "bg2" } # Default style for inlay hints of all kinds
+"ui.virtual.jump-label" = { fg = "blue", modifiers = ["bold"] } # Style for virtual jump labels
 
 "ui.statusline" = { fg = "fg2", bg = "bg0" } # Status line.
 "ui.statusline.inactive" = { fg = "fg3", bg = "bg0" } # Status line in unfocused windows.
@@ -75,6 +76,8 @@
 "diagnostic.error" = { underline = { color = "red", style = "curl" } } #	Diagnostics error (editing area)
 "diagnostic.info" = { underline = { color = "blue", style = "curl" } } #	Diagnostics info (editing area)
 "diagnostic.hint" = { underline = { color = "green", style = "curl" } } #	Diagnostics hint (editing area)
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 
 # SYNTAX HIGHLIGHTING

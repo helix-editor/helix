@@ -23,12 +23,32 @@ use std::{
     fmt,
     io::{self, Write},
 };
+use termini::TermInfo;
 
 fn term_program() -> Option<String> {
-    std::env::var("TERM_PROGRAM").ok()
+    // Some terminals don't set $TERM_PROGRAM
+    match std::env::var("TERM_PROGRAM") {
+        Err(_) => std::env::var("TERM").ok(),
+        Ok(term_program) => Some(term_program),
+    }
 }
 fn vte_version() -> Option<usize> {
     std::env::var("VTE_VERSION").ok()?.parse().ok()
+}
+fn reset_cursor_approach(terminfo: TermInfo) -> String {
+    let mut reset_str = "\x1B[0 q".to_string();
+
+    if let Some(termini::Value::Utf8String(se_str)) = terminfo.extended_cap("Se") {
+        reset_str.push_str(se_str);
+    };
+
+    reset_str.push_str(
+        terminfo
+            .utf8_string_cap(termini::StringCapability::CursorNormal)
+            .unwrap_or(""),
+    );
+
+    reset_str
 }
 
 /// Describes terminal capabilities like extended underline, truecolor, etc.
@@ -52,23 +72,24 @@ impl Default for Capabilities {
 impl Capabilities {
     /// Detect capabilities from the terminfo database located based
     /// on the $TERM environment variable. If detection fails, returns
-    /// a default value where no capability is supported.
+    /// a default value where no capability is supported, or just undercurl
+    /// if config.undercurl is set.
     pub fn from_env_or_default(config: &EditorConfig) -> Self {
         match termini::TermInfo::from_env() {
-            Err(_) => Capabilities::default(),
+            Err(_) => Capabilities {
+                has_extended_underlines: config.undercurl,
+                ..Capabilities::default()
+            },
             Ok(t) => Capabilities {
                 // Smulx, VTE: https://unix.stackexchange.com/a/696253/246284
                 // Su (used by kitty): https://sw.kovidgoyal.net/kitty/underlines
-                // WezTerm supports underlines but a lot of distros don't properly install it's terminfo
+                // WezTerm supports underlines but a lot of distros don't properly install its terminfo
                 has_extended_underlines: config.undercurl
                     || t.extended_cap("Smulx").is_some()
                     || t.extended_cap("Su").is_some()
                     || vte_version() >= Some(5102)
                     || matches!(term_program().as_deref(), Some("WezTerm")),
-                reset_cursor_command: t
-                    .utf8_string_cap(termini::StringCapability::CursorNormal)
-                    .unwrap_or("\x1B[0 q")
-                    .to_string(),
+                reset_cursor_command: reset_cursor_approach(t),
             },
         }
     }
@@ -87,6 +108,10 @@ where
     W: Write,
 {
     pub fn new(buffer: W, config: &EditorConfig) -> CrosstermBackend<W> {
+        // helix is not usable without colors, but crossterm will disable
+        // them by default if NO_COLOR is set in the environment. Override
+        // this behaviour.
+        crossterm::style::force_color_output(true);
         CrosstermBackend {
             buffer,
             capabilities: Capabilities::from_env_or_default(config),

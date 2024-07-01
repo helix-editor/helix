@@ -18,7 +18,7 @@
 (
   ((methodCallExpr (identifier) @methodName (argumentList (slStringLiteral) @injection.content))
     (#set! injection.language "regex"))
-  (eq? @methodName "Regex"))
+  (#eq? @methodName "Regex"))
  
 ((lineComment) @injection.content
  (#set! injection.language "comment"))

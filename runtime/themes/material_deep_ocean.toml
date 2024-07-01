@@ -63,9 +63,9 @@
 
 "ui.statusline" = { bg = "bg", fg = "text" }
 "ui.statusline.inactive" = { bg = "bg", fg = "disabled" }
-"ui.statusline.normal" = { bg = "accent", fg = "text" }
-"ui.statusline.insert" = { bg = "green", fg = "text" }
-"ui.statusline.select" = { bg = "purple", fg = "text" }
+"ui.statusline.normal" = { bg = "blue", fg = "bg" }
+"ui.statusline.insert" = { bg = "green", fg = "bg" }
+"ui.statusline.select" = { bg = "purple", fg = "bg" }
 
 
 "ui.selection" = { bg = "selection" }
@@ -76,7 +76,7 @@
 "ui.cursor" = { bg = "highlight", fg = "white" }
 
 "ui.cursor.primary" = { bg = "white", fg = "gray" }
-"ui.cursorline.primary" = { bg = "white" }
+"ui.cursorline.primary" = { bg = "active" }
 
 "ui.virtual" = { fg = "gray" }
 "ui.virtual.ruler" = { bg = "highlight" }
@@ -85,15 +85,27 @@
 "ui.highlight" = { bg = "highlight" }
 
 "ui.menu" = { bg = "highlight", fg = "text" }
+"ui.menu.selected" = { bg = "blue", fg = "bg" }
 
 "ui.help" = { bg = "highlight", fg = "text" }
 
 "ui.popup" = { bg = "highlight", fg = "text" }
 
+"ui.virtual.jump-label" = { fg = "purple", modifiers = ["bold"] }
+
 warning = "yellow"
 error = "error"
 info = "blue"
 hint = "purple"
+
+"diagnostic" = { underline = { color = "error", style = "curl" } }
+"diagnostic.info" = { underline = { color = "blue", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "purple", style = "curl" } }
+"diagnostic.error" = { underline = { color = "error", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "yellow", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"]}
+"diagnostic.deprecated" = { modifiers = ["crossed_out"]}
+
 
 [palette]
 bg = "#0f111a"
@@ -114,6 +126,7 @@ disabled = "#464b5d"
 
 accent = "#84ffff"
 
+active = "#1a1c25"
 highlight = "#1f2233"
 
 comment = "#464b5d"

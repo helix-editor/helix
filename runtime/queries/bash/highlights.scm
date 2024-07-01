@@ -60,7 +60,6 @@
   ">>"
   "<"
   "|"
-  (expansion_flags)
 ] @operator
 
 (

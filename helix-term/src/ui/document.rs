@@ -7,6 +7,7 @@ use helix_core::syntax::Highlight;
 use helix_core::syntax::HighlightEvent;
 use helix_core::text_annotations::TextAnnotations;
 use helix_core::{visual_offset_from_block, Position, RopeSlice};
+use helix_stdx::rope::RopeSliceExt;
 use helix_view::editor::{WhitespaceConfig, WhitespaceRenderValue};
 use helix_view::graphics::Rect;
 use helix_view::theme::Style;
@@ -32,14 +33,27 @@ impl<F: FnMut(&mut TextRenderer, LinePos)> LineDecoration for F {
     }
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
+enum StyleIterKind {
+    /// base highlights (usually emitted by TS), byte indices (potentially not codepoint aligned)
+    BaseHighlights,
+    /// overlay highlights (emitted by custom code from selections), char indices
+    Overlay,
+}
+
 /// A wrapper around a HighlightIterator
 /// that merges the layered highlights to create the final text style
 /// and yields the active text style and the char_idx where the active
 /// style will have to be recomputed.
+///
+/// TODO(ropey2): hopefully one day helix and ropey will operate entirely
+/// on byte ranges and we can remove this
 struct StyleIter<'a, H: Iterator<Item = HighlightEvent>> {
     text_style: Style,
     active_highlights: Vec<Highlight>,
     highlight_iter: H,
+    kind: StyleIterKind,
+    text: RopeSlice<'a>,
     theme: &'a Theme,
 }
 
@@ -54,7 +68,7 @@ impl<H: Iterator<Item = HighlightEvent>> Iterator for StyleIter<'_, H> {
                 HighlightEvent::HighlightEnd => {
                     self.active_highlights.pop();
                 }
-                HighlightEvent::Source { start, end } => {
+                HighlightEvent::Source { start, mut end } => {
                     if start == end {
                         continue;
                     }
@@ -64,6 +78,9 @@ impl<H: Iterator<Item = HighlightEvent>> Iterator for StyleIter<'_, H> {
                         .fold(self.text_style, |acc, span| {
                             acc.patch(self.theme.highlight(span.0))
                         });
+                    if self.kind == StyleIterKind::BaseHighlights {
+                        end = self.text.byte_to_next_char(end);
+                    }
                     return Some((style, end));
                 }
             }
@@ -185,13 +202,17 @@ pub fn render_text<'t>(
         text_style: renderer.text_style,
         active_highlights: Vec::with_capacity(64),
         highlight_iter: syntax_highlight_iter,
+        kind: StyleIterKind::BaseHighlights,
         theme,
+        text,
     };
     let mut overlay_styles = StyleIter {
         text_style: Style::default(),
         active_highlights: Vec::with_capacity(64),
         highlight_iter: overlay_highlight_iter,
+        kind: StyleIterKind::Overlay,
         theme,
+        text,
     };
 
     let mut last_line_pos = LinePos {
@@ -341,6 +362,7 @@ pub struct TextRenderer<'a> {
     pub indent_guide_style: Style,
     pub newline: String,
     pub nbsp: String,
+    pub nnbsp: String,
     pub space: String,
     pub tab: String,
     pub virtual_tab: String,
@@ -395,6 +417,11 @@ impl<'a> TextRenderer<'a> {
         } else {
             " ".to_owned()
         };
+        let nnbsp = if ws_render.nnbsp() == WhitespaceRenderValue::All {
+            ws_chars.nnbsp.into()
+        } else {
+            " ".to_owned()
+        };
 
         let text_style = theme.get("ui.text");
 
@@ -405,6 +432,7 @@ impl<'a> TextRenderer<'a> {
             indent_guide_char: editor_config.indent_guides.character.into(),
             newline,
             nbsp,
+            nnbsp,
             space,
             tab,
             virtual_tab,
@@ -448,6 +476,7 @@ impl<'a> TextRenderer<'a> {
         let width = grapheme.width();
         let space = if is_virtual { " " } else { &self.space };
         let nbsp = if is_virtual { " " } else { &self.nbsp };
+        let nnbsp = if is_virtual { " " } else { &self.nnbsp };
         let tab = if is_virtual {
             &self.virtual_tab
         } else {
@@ -461,6 +490,7 @@ impl<'a> TextRenderer<'a> {
             // TODO special rendering for other whitespaces?
             Grapheme::Other { ref g } if g == " " => space,
             Grapheme::Other { ref g } if g == "\u{00A0}" => nbsp,
+            Grapheme::Other { ref g } if g == "\u{202F}" => nnbsp,
             Grapheme::Other { ref g } => g,
             Grapheme::Newline => &self.newline,
         };

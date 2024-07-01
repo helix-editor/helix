@@ -4,15 +4,19 @@ constant = "purple"
 "constant.numeric" = "orange"
 "constant.builtin" = "orange"
 variable = "red"
+attribute = "brown"
 comment = "light-gray"
 special = "purple"
+"punctuation" = "red"
 "punctuation.bracket" = "purple"
+"punctuation.delimiter" = "white"
 keyword = "purple"
 function = "blue"
 label = "orange"
 type = "orange"
 constructor = "orange"
 namespace = "orange"
+tag = "red"
 
 # User Interface
 "ui.background" = { bg = "bg", fg = "gray" }
@@ -27,8 +31,9 @@ namespace = "orange"
 "ui.gutter" = "gray"
 "ui.gutter.selected" = "light-gray"
 "ui.selection" = { bg = "selection" }
-"ui.virtual.indent-guide" = { fg = "gray"}
-"ui.virtual.whitespace" = { fg = "light-gray"}
+"ui.virtual.indent-guide" = { fg = "gray" }
+"ui.virtual.whitespace" = { fg = "light-gray" }
+"ui.virtual.ruler" = { bg ="dark-bg" }
 "ui.statusline" = { bg = "dark-bg", fg = "light-gray" }
 "ui.popup" = { bg = "dark-bg", fg = "orange" }
 "ui.help" = { bg = "dark-bg", fg = "orange" }
@@ -37,13 +42,16 @@ namespace = "orange"
 "ui.window" = "selection"
 "ui.bufferline" = { bg = "dark-bg", fg = "light-gray" }
 "ui.bufferline.active" = { bg = "dark-bg", fg = "orange" }
+"ui.virtual.jump-label" = { fg = "pink", modifiers = ["bold"] }
 
 # Diagnostics
 "diagnostic" = { underline = { style = "curl" } }
 "diagnostic.hint" = { underline = { color = "green", style = "curl" } }
 "diagnostic.info" = { underline = { color = "blue", style = "curl" } }
-"diagnostics.error" = { underline = { color = "red", style = "curl"} }
-"diagnostics.warning" = { underline = { color = "orange", style = "curl"} }
+"diagnostics.error" = { underline = { color = "red", style = "curl" } }
+"diagnostics.warning" = { underline = { color = "orange", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 warning = { fg = "orange", modifiers = ["bold"] }
 error = { fg = "red", modifiers = ["bold"] }
@@ -62,7 +70,7 @@ hint = { fg = "green", modifiers = ["bold"] }
 "markup.quote" = "orange"
 "markup.raw" = "orange"
 
-"diff.plus" =  "green"
+"diff.plus" = "green"
 "diff.minus" = "red"
 "diff.delta" = "orange"
 
@@ -76,6 +84,7 @@ pink = "#EE64AE"
 selection = "#353747"
 green = "#27D796"
 orange = "#FAB795"
+brown = "#F09383"
 purple = "#B877DB"
 red = "#E95678"
 blue = "#25B2BC"

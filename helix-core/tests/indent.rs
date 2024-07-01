@@ -36,7 +36,7 @@ fn test_treesitter_indent_rust_helix() {
         .unwrap();
     let files = String::from_utf8(files.stdout).unwrap();
 
-    let ignored_files = vec![
+    let ignored_files = [
         // Contains many macros that tree-sitter does not parse in a meaningful way and is otherwise not very interesting
         "helix-term/src/health.rs",
     ];
@@ -45,6 +45,7 @@ fn test_treesitter_indent_rust_helix() {
         if ignored_files.contains(&file) {
             continue;
         }
+        #[allow(clippy::single_range_in_vec_init)]
         let ignored_lines: Vec<Range<usize>> = match file {
             "helix-term/src/application.rs" => vec![
                 // We can't handle complicated indent rules inside macros (`json!` in this case) since
