@@ -56,7 +56,7 @@ to be used as typed commands. For example:
 (require (prefix-in helix. "helix/commands.scm"))
 (require (prefix-in helix.static. "helix/static.scm"))
 
-(provide shell git-add open-helix-scm open-init-scm reload-helix-scm)
+(provide shell git-add open-helix-scm open-init-scm)
 
 ;;@doc
 ;; Specialized shell implementation, where % is a wildcard for the current file
@@ -81,13 +81,6 @@ to be used as typed commands. For example:
          [document (editor-get-doc-if-exists focus-doc-id)])
 
     (if document (Document-path document) #f)))
-
-
-;;@doc
-;; Reload the helix.scm file
-(define (reload-helix-scm cx)
-  (helix.static.run-in-engine! cx
-                               (string-append "(require \"" (helix.static.get-helix-scm-path) "\")")))
 
 ;;@doc
 ;; Open the helix.scm file
