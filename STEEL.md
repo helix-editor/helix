@@ -63,7 +63,7 @@ to be used as typed commands. For example:
 (define (shell cx . args)
   ;; Replace the % with the current file
   (define expanded (map (lambda (x) (if (equal? x "%") (current-path cx) x)) args))
-  (helix.run-shell-command cx expanded helix.PromptEvent::Validate))
+  (helix.run-shell-command expanded))
 
 ;;@doc
 ;; Adds the current file to git	
@@ -72,15 +72,13 @@ to be used as typed commands. For example:
 
 
 ;; Functions to assist with the above
-
 (define (editor-get-doc-if-exists editor doc-id)
   (if (editor-doc-exists? editor doc-id) (editor->get-document editor doc-id) #f))
 
-(define (current-path cx)
-  (let* ([editor (cx-editor! cx)]
-         [focus (editor-focus editor)]
-         [focus-doc-id (editor->doc-id editor focus)]
-         [document (editor-get-doc-if-exists editor focus-doc-id)])
+(define (current-path)
+  (let* ([focus (editor-focus)]
+         [focus-doc-id (editor->doc-id focus)]
+         [document (editor-get-doc-if-exists focus-doc-id)])
 
     (if document (Document-path document) #f)))
 
@@ -93,15 +91,13 @@ to be used as typed commands. For example:
 
 ;;@doc
 ;; Open the helix.scm file
-(define (open-helix-scm cx)
-  (helix.open cx (list (helix.static.get-helix-scm-path)) helix.PromptEvent::Validate))
+(define (open-helix-scm)
+  (helix.open (helix.static.get-helix-scm-path)))
 
 ;;@doc
 ;; Opens the init.scm file
-(define (open-init-scm cx)
-  (helix.open cx (list (helix.static.get-init-scm-path)) helix.PromptEvent::Validate))
-
-
+(define (open-init-scm)
+  (helix.open (helix.static.get-init-scm-path)))
   
 	
 ```
@@ -137,7 +133,7 @@ For example, if we wanted to select a random theme at startup:
 
 (define (randomly-pick-theme options)
   ;; Randomly select the theme from the possible themes list
-  (helix.theme *helix.cx* (list (select-random options)) helix.PromptEvent::Validate))
+  (helix.theme *helix.cx* (list (select-random options))))
 
 (randomly-pick-theme possible-themes)
 
