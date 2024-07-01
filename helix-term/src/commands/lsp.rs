@@ -198,13 +198,10 @@ fn jump_to_location(
     let (view, doc) = current!(editor);
     push_jump(view, doc);
 
-    let path = match location.uri.to_file_path() {
-        Ok(path) => path,
-        Err(_) => {
-            let err = format!("unable to convert URI to filepath: {}", location.uri);
-            editor.set_error(err);
-            return;
-        }
+    let Ok(path) = location.uri.to_file_path() else {
+        let err = format!("unable to convert URI to filepath: {}", location.uri);
+        editor.set_error(err);
+        return;
     };
     jump_to_position(editor, &path, location.range, offset_encoding, action);
 }
@@ -351,9 +348,8 @@ pub fn symbol_picker(cx: &mut Context) {
             async move {
                 let json = request.await?;
                 let response: Option<lsp::DocumentSymbolResponse> = serde_json::from_value(json)?;
-                let symbols = match response {
-                    Some(symbols) => symbols,
-                    None => return anyhow::Ok(vec![]),
+                let Some(symbols) = response else {
+                    return anyhow::Ok(vec![]);
                 };
                 // lsp has two ways to represent symbols (flat/nested)
                 // convert the nested variant to flat, so that we have a homogeneous list
@@ -602,9 +598,8 @@ pub fn code_action(cx: &mut Context) {
         .map(|(request, ls_id)| async move {
             let json = request.await?;
             let response: Option<lsp::CodeActionResponse> = serde_json::from_value(json)?;
-            let mut actions = match response {
-                Some(a) => a,
-                None => return anyhow::Ok(Vec::new()),
+            let Some(mut actions) = response else {
+                return anyhow::Ok(Vec::new());
             };
 
             // remove disabled code actions
@@ -755,15 +750,12 @@ pub fn execute_lsp_command(
 ) {
     // the command is executed on the server and communicated back
     // to the client asynchronously using workspace edits
-    let future = match editor
+    let Some(future) = editor
         .language_server_by_id(language_server_id)
         .and_then(|language_server| language_server.command(cmd))
-    {
-        Some(future) => future,
-        None => {
-            editor.set_error("Language server does not support executing commands");
-            return;
-        }
+    else {
+        editor.set_error("Language server does not support executing commands");
+        return;
     };
 
     tokio::spawn(async move {
@@ -1172,9 +1164,8 @@ pub fn compute_inlay_hints_for_all_views(editor: &mut Editor, jobs: &mut crate::
     }
 
     for (view, _) in editor.tree.views() {
-        let doc = match editor.documents.get(&view.doc) {
-            Some(doc) => doc,
-            None => continue,
+        let Some(doc) = editor.documents.get(&view.doc) else {
+            continue;
         };
         if let Some(callback) = compute_inlay_hints_for_view(view, doc) {
             jobs.callback(callback);
@@ -1241,9 +1232,8 @@ fn compute_inlay_hints_for_view(
             }
 
             // Add annotations to relevant document, not the current one (it may have changed in between)
-            let doc = match editor.documents.get_mut(&doc_id) {
-                Some(doc) => doc,
-                None => return,
+            let Some(doc) = editor.documents.get_mut(&doc_id) else {
+                return;
             };
 
             // If we have neither hints nor an LSP, empty the inlay hints since they're now oudated

@@ -1166,9 +1166,8 @@ impl EditorView {
 
                     let (view, doc) = current!(cxt.editor);
 
-                    let path = match doc.path() {
-                        Some(path) => path.clone(),
-                        None => return EventResult::Ignored(None),
+                    let Some(path) = doc.path().cloned() else {
+                        return EventResult::Ignored(None);
                     };
 
                     if let Some(char_idx) =
@@ -1186,9 +1185,8 @@ impl EditorView {
             MouseEventKind::Drag(MouseButton::Left) => {
                 let (view, doc) = current!(cxt.editor);
 
-                let pos = match view.pos_at_screen_coords(doc, row, column, true) {
-                    Some(pos) => pos,
-                    None => return EventResult::Ignored(None),
+                let Some(pos) = view.pos_at_screen_coords(doc, row, column, true) else {
+                    return EventResult::Ignored(None);
                 };
 
                 let mut selection = doc.selection(view.id).clone();

@@ -2211,9 +2211,8 @@ fn make_search_word_bounded(cx: &mut Context) {
     let register = cx
         .register
         .unwrap_or(cx.editor.registers.last_search_register);
-    let regex = match cx.editor.registers.first(register, cx.editor) {
-        Some(regex) => regex,
-        None => return,
+    let Some(regex) = cx.editor.registers.first(register, cx.editor) else {
+        return;
     };
     let start_anchored = regex.starts_with("\\b");
     let end_anchored = regex.ends_with("\\b");
@@ -2359,9 +2358,8 @@ fn global_search(cx: &mut Context) {
                         let injector = injector_.clone();
                         let documents = &documents;
                         Box::new(move |entry: Result<DirEntry, ignore::Error>| -> WalkState {
-                            let entry = match entry {
-                                Ok(entry) => entry,
-                                Err(_) => return WalkState::Continue,
+                            let Ok(entry) = entry else {
+                                return WalkState::Continue;
                             };
 
                             match entry.file_type() {
@@ -2864,12 +2862,9 @@ fn file_picker_in_current_buffer_directory(cx: &mut Context) {
         .path()
         .and_then(|path| path.parent().map(|path| path.to_path_buf()));
 
-    let path = match doc_dir {
-        Some(path) => path,
-        None => {
-            cx.editor.set_error("current buffer has no path or parent");
-            return;
-        }
+    let Some(path) = doc_dir else {
+        cx.editor.set_error("current buffer has no path or parent");
+        return;
     };
 
     let picker = ui::file_picker(path, &cx.editor.config());
@@ -3570,20 +3565,18 @@ fn exit_select_mode(cx: &mut Context) {
 
 fn goto_first_diag(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let selection = match doc.diagnostics().first() {
-        Some(diag) => Selection::single(diag.range.start, diag.range.end),
-        None => return,
+    let Some(diag) = doc.diagnostics().first() else {
+        return;
     };
-    doc.set_selection(view.id, selection);
+    doc.set_selection(view.id, Selection::single(diag.range.start, diag.range.end));
 }
 
 fn goto_last_diag(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    let selection = match doc.diagnostics().last() {
-        Some(diag) => Selection::single(diag.range.start, diag.range.end),
-        None => return,
+    let Some(diag) = doc.diagnostics().last() else {
+        return;
     };
-    doc.set_selection(view.id, selection);
+    doc.set_selection(view.id, Selection::single(diag.range.start, diag.range.end));
 }
 
 fn goto_next_diag(cx: &mut Context) {
@@ -3601,11 +3594,8 @@ fn goto_next_diag(cx: &mut Context) {
             .find(|diag| diag.range.start > cursor_pos)
             .or_else(|| doc.diagnostics().first());
 
-        let selection = match diag {
-            Some(diag) => Selection::single(diag.range.start, diag.range.end),
-            None => return,
-        };
-        doc.set_selection(view.id, selection);
+        let Some(diag) = diag else { return };
+        doc.set_selection(view.id, Selection::single(diag.range.start, diag.range.end));
     };
 
     cx.editor.apply_motion(motion);
@@ -3627,13 +3617,10 @@ fn goto_prev_diag(cx: &mut Context) {
             .find(|diag| diag.range.start < cursor_pos)
             .or_else(|| doc.diagnostics().last());
 
-        let selection = match diag {
-            // NOTE: the selection is reversed because we're jumping to the
-            // previous diagnostic.
-            Some(diag) => Selection::single(diag.range.end, diag.range.start),
-            None => return,
-        };
-        doc.set_selection(view.id, selection);
+        let Some(diag) = diag else { return };
+        // NOTE: the selection is reversed because we're jumping to the
+        // previous diagnostic.
+        doc.set_selection(view.id, Selection::single(diag.range.end, diag.range.start));
     };
     cx.editor.apply_motion(motion)
 }
@@ -5366,9 +5353,9 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                 let text = doc.text().slice(..);
 
                 let textobject_treesitter = |obj_name: &str, range: Range| -> Range {
-                    let (lang_config, syntax) = match doc.language_config().zip(doc.syntax()) {
-                        Some(t) => t,
-                        None => return range,
+                    let Some((lang_config, syntax)) = doc.language_config().zip(doc.syntax())
+                    else {
+                        return range;
                     };
                     textobject::textobject_treesitter(
                         text,
@@ -5537,9 +5524,8 @@ fn surround_replace(cx: &mut Context) {
 
         cx.on_next_key(move |cx, event| {
             let (view, doc) = current!(cx.editor);
-            let to = match event.char() {
-                Some(to) => to,
-                None => return doc.set_selection(view.id, selection),
+            let Some(to) = event.char() else {
+                return doc.set_selection(view.id, selection);
             };
             let (open, close) = match_brackets::get_pair(to);
 

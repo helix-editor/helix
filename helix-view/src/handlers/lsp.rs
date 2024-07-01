@@ -79,14 +79,11 @@ impl Editor {
         text_edits: Vec<lsp::TextEdit>,
         offset_encoding: OffsetEncoding,
     ) -> Result<(), ApplyEditErrorKind> {
-        let path = match uri.to_file_path() {
-            Ok(path) => path,
-            Err(_) => {
-                let err = format!("unable to convert URI to filepath: {}", uri);
-                log::error!("{}", err);
-                self.set_error(err);
-                return Err(ApplyEditErrorKind::UnknownURISchema);
-            }
+        let Ok(path) = uri.to_file_path() else {
+            let err = format!("unable to convert URI to filepath: {}", uri);
+            log::error!("{}", err);
+            self.set_error(err);
+            return Err(ApplyEditErrorKind::UnknownURISchema);
         };
 
         let doc_id = match self.open(&path, Action::Load) {

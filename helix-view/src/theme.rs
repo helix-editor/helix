@@ -506,9 +506,8 @@ impl TryFrom<Value> for ThemePalette {
     type Error = String;
 
     fn try_from(value: Value) -> Result<Self, Self::Error> {
-        let map = match value {
-            Value::Table(entries) => entries,
-            _ => return Ok(Self::default()),
+        let Value::Table(map) = value else {
+            return Ok(Self::default());
         };
 
         let mut palette = HashMap::with_capacity(map.len());

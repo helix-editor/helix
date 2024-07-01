@@ -42,9 +42,8 @@ pub fn highlighted_code_block<'a>(
     let text_style = get_theme(Markdown::TEXT_STYLE);
     let code_style = get_theme(Markdown::BLOCK_STYLE);
 
-    let theme = match theme {
-        Some(t) => t,
-        None => return styled_multiline_text(text, code_style),
+    let Some(theme) = theme else {
+        return styled_multiline_text(text, code_style);
     };
 
     let ropeslice = RopeSlice::from(text);
@@ -56,9 +55,8 @@ pub fn highlighted_code_block<'a>(
         .and_then(|config| config.highlight_config(theme.scopes()))
         .and_then(|config| Syntax::new(ropeslice, config, Arc::clone(&config_loader)));
 
-    let syntax = match syntax {
-        Some(s) => s,
-        None => return styled_multiline_text(text, code_style),
+    let Some(syntax) = syntax else {
+        return styled_multiline_text(text, code_style);
     };
 
     let highlight_iter = syntax

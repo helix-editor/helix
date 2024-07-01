@@ -122,9 +122,8 @@ pub fn print(s: &str) -> (String, Selection) {
         }
     }
 
-    let primary = match primary_idx {
-        Some(i) => i,
-        None => panic!("missing primary `#[|]#` {:?}", s),
+    let Some(primary) = primary_idx else {
+        panic!("missing primary `#[|]#` {:?}", s);
     };
 
     let selection = Selection::new(ranges, primary);
