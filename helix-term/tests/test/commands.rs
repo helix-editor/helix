@@ -209,13 +209,10 @@ async fn test_multi_selection_shell_commands() -> anyhow::Result<()> {
             "},
         "|echo foo<ret>",
         indoc! {"\
-            #[|foo\n]#
-            
-            #(|foo\n)#
-            
-            #(|foo\n)#
-            
-            "},
+            #[|foo]#
+            #(|foo)#
+            #(|foo)#"
+        },
     ))
     .await?;
 
@@ -228,12 +225,9 @@ async fn test_multi_selection_shell_commands() -> anyhow::Result<()> {
             "},
         "!echo foo<ret>",
         indoc! {"\
-            #[|foo\n]#
-            lorem
-            #(|foo\n)#
-            ipsum
-            #(|foo\n)#
-            dolor
+            #[|foo]#lorem
+            #(|foo)#ipsum
+            #(|foo)#dolor
             "},
     ))
     .await?;
@@ -247,12 +241,9 @@ async fn test_multi_selection_shell_commands() -> anyhow::Result<()> {
             "},
         "<A-!>echo foo<ret>",
         indoc! {"\
-            lorem#[|foo\n]#
-            
-            ipsum#(|foo\n)#
-            
-            dolor#(|foo\n)#
-            
+            lorem#[|foo]#
+            ipsum#(|foo)#
+            dolor#(|foo)#
             "},
     ))
     .await?;
