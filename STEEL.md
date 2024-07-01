@@ -72,8 +72,8 @@ to be used as typed commands. For example:
 
 
 ;; Functions to assist with the above
-(define (editor-get-doc-if-exists editor doc-id)
-  (if (editor-doc-exists? editor doc-id) (editor->get-document editor doc-id) #f))
+(define (editor-get-doc-if-exists doc-id)
+  (if (editor-doc-exists? doc-id) (editor->get-document doc-id) #f))
 
 (define (current-path)
   (let* ([focus (editor-focus)]
