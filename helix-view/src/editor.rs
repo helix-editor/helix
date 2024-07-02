@@ -343,6 +343,23 @@ pub struct Config {
         deserialize_with = "deserialize_alphabet"
     )]
     pub jump_label_alphabet: Vec<char>,
+    /// When to show command hint popup. Defaults to `always`
+    pub command_hints: CommandHints,
+    /// Whether to show command description or not. Defaults to `true`
+    pub command_docs: bool,
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum CommandHints {
+    /// Always show command hint popup
+    #[default]
+    Always,
+    /// Never show it
+    Never,
+    /// Show only for command's arguments
+    #[serde(rename = "only-args")]
+    OnlyArguments,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -975,6 +992,8 @@ impl Default for Config {
             popup_border: PopupBorderConfig::None,
             indent_heuristic: IndentationHeuristic::default(),
             jump_label_alphabet: ('a'..='z').collect(),
+            command_hints: CommandHints::default(),
+            command_docs: true,
         }
     }
 }

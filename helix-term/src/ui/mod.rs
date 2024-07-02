@@ -23,7 +23,7 @@ pub use markdown::Markdown;
 pub use menu::Menu;
 pub use picker::{DynamicPicker, FileLocation, Picker};
 pub use popup::Popup;
-pub use prompt::{Prompt, PromptEvent};
+pub use prompt::{CompletionResult, Prompt, PromptEvent};
 pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
 
@@ -35,7 +35,7 @@ pub fn prompt(
     cx: &mut crate::commands::Context,
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
-    completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
+    completion_fn: impl FnMut(&Editor, &str) -> CompletionResult + 'static,
     callback_fn: impl FnMut(&mut crate::compositor::Context, &str, PromptEvent) + 'static,
 ) {
     let mut prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn);
@@ -49,7 +49,7 @@ pub fn prompt_with_input(
     prompt: std::borrow::Cow<'static, str>,
     input: String,
     history_register: Option<char>,
-    completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
+    completion_fn: impl FnMut(&Editor, &str) -> CompletionResult + 'static,
     callback_fn: impl FnMut(&mut crate::compositor::Context, &str, PromptEvent) + 'static,
 ) {
     let prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn)
@@ -61,7 +61,7 @@ pub fn regex_prompt(
     cx: &mut crate::commands::Context,
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
-    completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
+    completion_fn: impl FnMut(&Editor, &str) -> CompletionResult + 'static,
     fun: impl Fn(&mut crate::compositor::Context, rope::Regex, PromptEvent) + 'static,
 ) {
     raw_regex_prompt(
@@ -72,11 +72,12 @@ pub fn regex_prompt(
         move |cx, regex, _, event| fun(cx, regex, event),
     );
 }
+
 pub fn raw_regex_prompt(
     cx: &mut crate::commands::Context,
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
-    completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
+    completion_fn: impl FnMut(&Editor, &str) -> CompletionResult + 'static,
     fun: impl Fn(&mut crate::compositor::Context, rope::Regex, &str, PromptEvent) + 'static,
 ) {
     let (view, doc) = current!(cx.editor);
@@ -254,6 +255,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> Picker
 }
 
 pub mod completers {
+    use super::CompletionResult;
     use crate::ui::prompt::Completion;
     use helix_core::fuzzy::fuzzy_match;
     use helix_core::syntax::LanguageServerFeature;
@@ -263,26 +265,29 @@ pub mod completers {
     use once_cell::sync::Lazy;
     use std::borrow::Cow;
 
-    pub type Completer = fn(&Editor, &str) -> Vec<Completion>;
+    pub type Completer = fn(&Editor, &str) -> CompletionResult;
 
-    pub fn none(_editor: &Editor, _input: &str) -> Vec<Completion> {
-        Vec::new()
+    pub fn none(_editor: &Editor, _input: &str) -> CompletionResult {
+        CompletionResult::default()
     }
 
-    pub fn buffer(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn buffer(editor: &Editor, input: &str) -> CompletionResult {
         let names = editor.documents.values().map(|doc| {
             doc.relative_path()
                 .map(|p| p.display().to_string().into())
                 .unwrap_or_else(|| Cow::from(SCRATCH_BUFFER_NAME))
         });
 
-        fuzzy_match(input, names, true)
-            .into_iter()
-            .map(|(name, _)| ((0..), name))
-            .collect()
+        CompletionResult::new(
+            fuzzy_match(input, names, true)
+                .into_iter()
+                .map(|(name, _)| ((0..), name))
+                .collect::<Vec<Completion>>(),
+            false,
+        )
     }
 
-    pub fn theme(_editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn theme(_editor: &Editor, input: &str) -> CompletionResult {
         let mut names = theme::Loader::read_names(&helix_loader::config_dir().join("themes"));
         for rt_dir in helix_loader::runtime_dirs() {
             names.extend(theme::Loader::read_names(&rt_dir.join("themes")));
@@ -292,10 +297,13 @@ pub mod completers {
         names.sort();
         names.dedup();
 
-        fuzzy_match(input, names, false)
-            .into_iter()
-            .map(|(name, _)| ((0..), name.into()))
-            .collect()
+        CompletionResult::new(
+            fuzzy_match(input, names, false)
+                .into_iter()
+                .map(|(name, _)| ((0..), name.into()))
+                .collect::<Vec<Completion>>(),
+            false,
+        )
     }
 
     /// Recursive function to get all keys from this value and add them to vec
@@ -314,7 +322,7 @@ pub mod completers {
         }
     }
 
-    pub fn setting(_editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn setting(_editor: &Editor, input: &str) -> CompletionResult {
         static KEYS: Lazy<Vec<String>> = Lazy::new(|| {
             let mut keys = Vec::new();
             let json = serde_json::json!(Config::default());
@@ -322,21 +330,24 @@ pub mod completers {
             keys
         });
 
-        fuzzy_match(input, &*KEYS, false)
-            .into_iter()
-            .map(|(name, _)| ((0..), name.into()))
-            .collect()
+        CompletionResult::new(
+            fuzzy_match(input, &*KEYS, false)
+                .into_iter()
+                .map(|(name, _)| ((0..), name.into()))
+                .collect::<Vec<Completion>>(),
+            false,
+        )
     }
 
-    pub fn filename(editor: &Editor, input: &str) -> Vec<Completion> {
-        filename_with_git_ignore(editor, input, true)
+    pub fn filename(editor: &Editor, input: &str) -> CompletionResult {
+        filename_with_git_ignore(editor, input, true).into()
     }
 
     pub fn filename_with_git_ignore(
         editor: &Editor,
         input: &str,
         git_ignore: bool,
-    ) -> Vec<Completion> {
+    ) -> CompletionResult {
         filename_impl(editor, input, git_ignore, |entry| {
             let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
 
@@ -346,9 +357,10 @@ pub mod completers {
                 FileMatch::Accept
             }
         })
+        .into()
     }
 
-    pub fn language(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn language(editor: &Editor, input: &str) -> CompletionResult {
         let text: String = "text".into();
 
         let loader = editor.syn_loader.load();
@@ -357,35 +369,41 @@ pub mod completers {
             .map(|config| &config.language_id)
             .chain(std::iter::once(&text));
 
-        fuzzy_match(input, language_ids, false)
-            .into_iter()
-            .map(|(name, _)| ((0..), name.to_owned().into()))
-            .collect()
+        CompletionResult::new(
+            fuzzy_match(input, language_ids, false)
+                .into_iter()
+                .map(|(name, _)| ((0..), name.to_owned().into()))
+                .collect::<Vec<Completion>>(),
+            false,
+        )
     }
 
-    pub fn lsp_workspace_command(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn lsp_workspace_command(editor: &Editor, input: &str) -> CompletionResult {
         let Some(options) = doc!(editor)
             .language_servers_with_feature(LanguageServerFeature::WorkspaceCommand)
             .find_map(|ls| ls.capabilities().execute_command_provider.as_ref())
         else {
-            return vec![];
+            return CompletionResult::default();
         };
 
-        fuzzy_match(input, &options.commands, false)
-            .into_iter()
-            .map(|(name, _)| ((0..), name.to_owned().into()))
-            .collect()
+        CompletionResult::new(
+            fuzzy_match(input, &options.commands, false)
+                .into_iter()
+                .map(|(name, _)| ((0..), name.to_owned().into()))
+                .collect::<Vec<Completion>>(),
+            false,
+        )
     }
 
-    pub fn directory(editor: &Editor, input: &str) -> Vec<Completion> {
-        directory_with_git_ignore(editor, input, true)
+    pub fn directory(editor: &Editor, input: &str) -> CompletionResult {
+        directory_with_git_ignore(editor, input, true).into()
     }
 
     pub fn directory_with_git_ignore(
         editor: &Editor,
         input: &str,
         git_ignore: bool,
-    ) -> Vec<Completion> {
+    ) -> CompletionResult {
         filename_impl(editor, input, git_ignore, |entry| {
             let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
 
@@ -395,6 +413,7 @@ pub mod completers {
                 FileMatch::Reject
             }
         })
+        .into()
     }
 
     #[derive(Copy, Clone, PartialEq, Eq)]
@@ -414,7 +433,7 @@ pub mod completers {
         input: &str,
         git_ignore: bool,
         filter_fn: F,
-    ) -> Vec<Completion>
+    ) -> CompletionResult
     where
         F: Fn(&ignore::DirEntry) -> FileMatch,
     {
@@ -495,20 +514,23 @@ pub mod completers {
         // if empty, return a list of dirs and files in current dir
         if let Some(file_name) = file_name {
             let range = (input.len().saturating_sub(file_name.len()))..;
-            fuzzy_match(&file_name, files, true)
-                .into_iter()
-                .map(|(name, _)| (range.clone(), name))
-                .collect()
+            CompletionResult::new(
+                fuzzy_match(&file_name, files, true)
+                    .into_iter()
+                    .map(|(name, _)| (range.clone(), name))
+                    .collect::<Vec<Completion>>(),
+                false,
+            )
 
             // TODO: complete to longest common match
         } else {
             let mut files: Vec<_> = files.map(|file| (end.clone(), file)).collect();
             files.sort_unstable_by(|(_, path1), (_, path2)| path1.cmp(path2));
-            files
+            CompletionResult::new(files, false)
         }
     }
 
-    pub fn register(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn register(editor: &Editor, input: &str) -> CompletionResult {
         let iter = editor
             .registers
             .iter_preview()
@@ -516,9 +538,10 @@ pub mod completers {
             .filter(|(ch, _)| !matches!(ch, '%' | '#' | '.'))
             .map(|(ch, _)| ch.to_string());
 
-        fuzzy_match(input, iter, false)
+        let results = fuzzy_match(input, iter, false)
             .into_iter()
             .map(|(name, _)| ((0..), name.into()))
-            .collect()
+            .collect::<Vec<Completion>>();
+        CompletionResult::new(results, false)
     }
 }
