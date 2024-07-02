@@ -42,7 +42,7 @@ use helix_core::{
 };
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
-    editor::Action,
+    editor::{Action, Config},
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
@@ -1666,6 +1666,34 @@ fn switch_to_lowercase(cx: &mut Context) {
     switch_case_impl(cx, |string| {
         string.chunks().map(|chunk| chunk.to_lowercase()).collect()
     });
+}
+
+/// Checks, if the line from line `line_num` is commented with one of the comment tokens in the language config and
+/// returns the token which comments out the line.
+fn has_line_comment(config: &Config, doc: &Document, line_num: usize) -> Option<String> {
+    if config.continue_comments {
+        let line_tokens = {
+            let mut line_tokens: Vec<String> = doc
+                .language_config()
+                .and_then(|lc| lc.comment_tokens.as_ref())?
+                .clone();
+            line_tokens.sort_by(|a, b| a.len().partial_cmp(&b.len()).unwrap().reverse());
+            line_tokens
+        };
+
+        let text = doc.text();
+        let line = text.line(line_num);
+
+        if let Some(pos) = line.first_non_whitespace_char() {
+            let text_line = line.slice(pos..);
+            return line_tokens
+                .iter()
+                .find(|&token| text_line.starts_with(token.as_str()))
+                .cloned();
+        }
+    }
+
+    None
 }
 
 pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor: bool) {
@@ -3366,6 +3394,7 @@ fn open(cx: &mut Context, open: Open) {
     enter_insert_mode(cx);
     let (view, doc) = current!(cx.editor);
 
+    let config = doc.config.load();
     let text = doc.text().slice(..);
     let contents = doc.text();
     let selection = doc.selection(view.id);
@@ -3415,6 +3444,12 @@ fn open(cx: &mut Context, open: Open) {
         let mut text = String::with_capacity(1 + indent_len);
         text.push_str(doc.line_ending.as_str());
         text.push_str(&indent);
+
+        if let Some(comment_token) = has_line_comment(&config, doc, line_num) {
+            text.push_str(&comment_token);
+            text.push(' ');
+        }
+
         let text = text.repeat(count);
 
         // calculate new selection ranges
@@ -3434,6 +3469,9 @@ fn open(cx: &mut Context, open: Open) {
     transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
 
     doc.apply(&transaction, view.id);
+
+    // Since we might have added a comment token, move to the end of the line.
+    goto_line_end_newline(cx);
 }
 
 // o inserts a new line after each line with a selection
@@ -3826,6 +3864,7 @@ pub mod insert {
 
     pub fn insert_newline(cx: &mut Context) {
         let (view, doc) = current_ref!(cx.editor);
+        let config = doc.config.load();
         let text = doc.text().slice(..);
 
         let contents = doc.text();
@@ -3895,6 +3934,12 @@ pub mod insert {
                     new_text.reserve_exact(1 + indent.len());
                     new_text.push_str(doc.line_ending.as_str());
                     new_text.push_str(&indent);
+
+                    if let Some(comment_token) = has_line_comment(&config, doc, current_line) {
+                        new_text.push_str(&comment_token);
+                        new_text.push(' ');
+                    }
+
                     new_text.chars().count()
                 };
 
