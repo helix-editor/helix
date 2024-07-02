@@ -2425,7 +2425,10 @@ fn global_search(cx: &mut Context) {
                         let picker = Picker::with_stream(
                             picker,
                             injector,
-                            move |cx, FileResult { path, line_num }, action| {
+                            move |cx, file_result, action| {
+                                let Some(FileResult { path, line_num }) = file_result else {
+                                    return;
+                                };
                                 let doc = match cx.editor.open(path, action) {
                                     Ok(id) => doc_mut!(cx.editor, &id),
                                     Err(e) => {
@@ -2941,7 +2944,8 @@ fn buffer_picker(cx: &mut Context) {
     // mru
     items.sort_unstable_by_key(|item| std::cmp::Reverse(item.focused_at));
 
-    let picker = Picker::new(items, (), |cx, meta, action| {
+    let picker = Picker::new(items, (), |cx, buffer_meta, action| {
+        let Some(meta) = buffer_meta else { return };
         cx.editor.switch(meta.id, action);
     })
     .with_preview(|editor, meta| {
@@ -3030,7 +3034,8 @@ fn jumplist_picker(cx: &mut Context) {
             })
             .collect(),
         (),
-        |cx, meta, action| {
+        |cx, jump_meta, action| {
+            let Some(meta) = jump_meta else { return };
             cx.editor.switch(meta.id, action);
             let config = cx.editor.config();
             let (view, doc) = (view_mut!(cx.editor), doc_mut!(cx.editor, &meta.id));
@@ -3108,7 +3113,8 @@ fn changed_file_picker(cx: &mut Context) {
             style_deleted: deleted,
             style_renamed: renamed,
         },
-        |cx, meta: &FileChange, action| {
+        |cx, file_meta: Option<&FileChange>, action| {
+            let Some(meta) = file_meta else { return };
             let path_to_open = meta.path();
             if let Err(e) = cx.editor.open(path_to_open, action) {
                 let err = if let Some(err) = e.source() {
@@ -3184,7 +3190,10 @@ pub fn command_palette(cx: &mut Context) {
                 }
             }));
 
-            let picker = Picker::new(commands, keymap, move |cx, command, _action| {
+            let picker = Picker::new(commands, keymap, move |cx, mappable_command, _action| {
+                let Some(command) = mappable_command else {
+                    return;
+                };
                 let mut ctx = Context {
                     register,
                     count,

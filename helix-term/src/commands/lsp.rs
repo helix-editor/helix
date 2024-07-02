@@ -245,7 +245,8 @@ type SymbolPicker = Picker<SymbolInformationItem>;
 
 fn sym_picker(symbols: Vec<SymbolInformationItem>, current_path: Option<lsp::Url>) -> SymbolPicker {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
-    Picker::new(symbols, current_path, move |cx, item, action| {
+    Picker::new(symbols, current_path, move |cx, symbol_item, action| {
+        let Some(item) = symbol_item else { return };
         jump_to_location(
             cx.editor,
             &item.symbol.location,
@@ -296,13 +297,15 @@ fn diag_picker(
     Picker::new(
         flat_diag,
         (styles, format),
-        move |cx,
-              PickerDiagnostic {
-                  path,
-                  diag,
-                  offset_encoding,
-              },
-              action| {
+        move |cx, picker_diagnostic, action| {
+            let Some(PickerDiagnostic {
+                path,
+                diag,
+                offset_encoding,
+            }) = picker_diagnostic
+            else {
+                return;
+            };
             jump_to_position(cx.editor, path, diag.range, *offset_encoding, action)
         },
     )
@@ -506,6 +509,13 @@ impl ui::menu::Item for CodeActionOrCommandItem {
             lsp::CodeActionOrCommand::CodeAction(action) => action.title.as_str().into(),
             lsp::CodeActionOrCommand::Command(command) => command.title.as_str().into(),
         }
+    }
+}
+
+impl ui::menu::Item for lsp::MessageActionItem {
+    type Data = ();
+    fn format(&self, _data: &Self::Data) -> Row {
+        self.title.as_str().into()
     }
 }
 
@@ -818,7 +828,8 @@ fn goto_impl(
         [] => unreachable!("`locations` should be non-empty for `goto_impl`"),
         _locations => {
             let picker = Picker::new(locations, cwdir, move |cx, location, action| {
-                jump_to_location(cx.editor, location, offset_encoding, action)
+                let Some(l) = location else { return };
+                jump_to_location(cx.editor, l, offset_encoding, action)
             })
             .with_preview(move |_editor, location| Some(location_to_file_location(location)));
             compositor.push(Box::new(overlaid(picker)));

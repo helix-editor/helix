@@ -1413,7 +1413,8 @@ fn lsp_workspace_command(
                         commands,
                         (),
                         move |cx, LsIdCommand(ls_id, command), _action| {
-                            execute_lsp_command(cx.editor, *ls_id, command.clone());
+                            let Some(c) = command else { return };
+                        execute_lsp_command(cx.editor, *ls_id, c.clone());
                         },
                     );
                     compositor.push(Box::new(overlaid(picker)))

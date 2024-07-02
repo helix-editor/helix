@@ -35,7 +35,7 @@ use std::{
 use crate::ui::{Prompt, PromptEvent};
 use helix_core::{
     char_idx_at_visual_offset, fuzzy::MATCHER, movement::Direction,
-    text_annotations::TextAnnotations, unicode::segmentation::UnicodeSegmentation, Position,
+    text_annotations::TextAnnotations, unicode::segmentation::UnicodeSegmentation, Position, Rope,
     Syntax,
 };
 use helix_view::{
@@ -57,6 +57,7 @@ pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
 pub enum PathOrId {
     Id(DocumentId),
     Path(PathBuf),
+    Text(Rope),
 }
 
 impl PathOrId {
@@ -65,7 +66,14 @@ impl PathOrId {
         match self {
             Path(path) => Path(helix_stdx::path::canonicalize(path)),
             Id(id) => Id(id),
+            Text(rope) => Text(rope),
         }
+    }
+}
+
+impl From<Rope> for PathOrId {
+    fn from(text: Rope) -> Self {
+        Self::Text(text)
     }
 }
 
@@ -98,6 +106,7 @@ pub enum CachedPreview {
 pub enum Preview<'picker, 'editor> {
     Cached(&'picker CachedPreview),
     EditorDocument(&'editor Document),
+    Text(Box<Document>),
 }
 
 impl Preview<'_, '_> {
@@ -105,6 +114,7 @@ impl Preview<'_, '_> {
         match self {
             Preview::EditorDocument(doc) => Some(doc),
             Preview::Cached(CachedPreview::Document(doc)) => Some(doc),
+            Preview::Text(doc) => Some(doc.as_ref()),
             _ => None,
         }
     }
@@ -112,6 +122,7 @@ impl Preview<'_, '_> {
     /// Alternate text to show for the preview.
     fn placeholder(&self) -> &str {
         match *self {
+            Self::Text(_) => "<Text>",
             Self::EditorDocument(_) => "<Invalid file location>",
             Self::Cached(preview) => match preview {
                 CachedPreview::Document(_) => "<Invalid file location>",
@@ -222,7 +233,7 @@ impl<T: Item + 'static> Picker<T> {
     pub fn new(
         options: Vec<T>,
         editor_data: T::Data,
-        callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
+        callback_fn: impl Fn(&mut Context, Option<&T>, Action) + 'static,
     ) -> Self {
         let matcher = Nucleo::new(
             Config::DEFAULT,
@@ -247,7 +258,7 @@ impl<T: Item + 'static> Picker<T> {
     pub fn with_stream(
         matcher: Nucleo<T>,
         injector: Injector<T>,
-        callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
+        callback_fn: impl Fn(&mut Context, Option<&T>, Action) + 'static,
     ) -> Self {
         Self::with(matcher, injector.editor_data, injector.shutown, callback_fn)
     }
@@ -256,7 +267,7 @@ impl<T: Item + 'static> Picker<T> {
         matcher: Nucleo<T>,
         editor_data: Arc<T::Data>,
         shutdown: Arc<AtomicBool>,
-        callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
+        callback_fn: impl Fn(&mut Context, Option<&T>, Action) + 'static,
     ) -> Self {
         let prompt = Prompt::new(
             "".into(),
@@ -440,6 +451,10 @@ impl<T: Item + 'static> Picker<T> {
                 let doc = editor.documents.get(&id).unwrap();
                 Preview::EditorDocument(doc)
             }
+            PathOrId::Text(rope) => {
+                let doc = Document::from(rope, None, editor.config.clone());
+                Preview::Text(Box::new(doc))
+            }
         }
     }
 
@@ -455,6 +470,7 @@ impl<T: Item + 'static> Picker<T> {
                 Some(CachedPreview::Document(ref mut doc)) => doc,
                 _ => return EventResult::Consumed(None),
             },
+            PathOrId::Text(_) => return EventResult::Consumed(None),
         };
 
         let mut callback: Option<compositor::Callback> = None;
@@ -502,6 +518,7 @@ impl<T: Item + 'static> Picker<T> {
                                 }
                                 _ => return,
                             },
+                            PathOrId::Text(_rope) => return,
                         };
                         doc.syntax = Some(syntax);
                     };
@@ -885,26 +902,18 @@ impl<T: Item + 'static + Send + Sync> Component for Picker<T> {
             }
             key!(Esc) | ctrl!('c') => return close_fn(self),
             alt!(Enter) => {
-                if let Some(option) = self.selection() {
-                    (self.callback_fn)(ctx, option, Action::Load);
-                }
+                (self.callback_fn)(ctx, self.selection(), Action::Load);
             }
             key!(Enter) => {
-                if let Some(option) = self.selection() {
-                    (self.callback_fn)(ctx, option, Action::Replace);
-                }
+                (self.callback_fn)(ctx, self.selection(), Action::Replace);
                 return close_fn(self);
             }
             ctrl!('s') => {
-                if let Some(option) = self.selection() {
-                    (self.callback_fn)(ctx, option, Action::HorizontalSplit);
-                }
+                (self.callback_fn)(ctx, self.selection(), Action::HorizontalSplit);
                 return close_fn(self);
             }
             ctrl!('v') => {
-                if let Some(option) = self.selection() {
-                    (self.callback_fn)(ctx, option, Action::VerticalSplit);
-                }
+                (self.callback_fn)(ctx, self.selection(), Action::VerticalSplit);
                 return close_fn(self);
             }
             ctrl!('t') => {
@@ -945,7 +954,7 @@ impl<T: Item> Drop for Picker<T> {
     }
 }
 
-type PickerCallback<T> = Box<dyn Fn(&mut Context, &T, Action)>;
+type PickerCallback<T> = Box<dyn Fn(&mut Context, Option<&T>, Action)>;
 
 /// Returns a new list of options to replace the contents of the picker
 /// when called with the current picker query,
