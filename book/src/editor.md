@@ -108,6 +108,7 @@ The following statusline elements can be configured:
 | `spacer` | Inserts a space between elements (multiple/contiguous spacers may be specified) |
 | `version-control` | The current branch name or detached commit hash of the opened workspace |
 | `register` | The current selected register |
+| `indent-style` | The current document indent style formatted like "s2" or "t4" |
 
 ### `[editor.lsp]` Section
 

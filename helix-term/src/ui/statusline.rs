@@ -1,3 +1,4 @@
+use helix_core::indent::IndentStyle;
 use helix_core::{coords_at_pos, encoding, Position};
 use helix_lsp::lsp::DiagnosticSeverity;
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
@@ -163,6 +164,7 @@ where
         helix_view::editor::StatusLineElement::Spacer => render_spacer,
         helix_view::editor::StatusLineElement::VersionControl => render_version_control,
         helix_view::editor::StatusLineElement::Register => render_register,
+        helix_view::editor::StatusLineElement::IndentStyle => render_indent_style,
     }
 }
 
@@ -530,4 +532,22 @@ where
     if let Some(reg) = context.editor.selected_register {
         write(context, format!(" reg={} ", reg), None)
     }
+}
+
+fn render_indent_style<F>(context: &mut RenderContext, write: F)
+where
+    F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
+{
+    let s = {
+        match context.doc.indent_style {
+            IndentStyle::Tabs => {
+                let n = context.doc.tab_width();
+                format!("t{}", n).to_string() // "tnnn"
+            }
+            IndentStyle::Spaces(n) => {
+                format!("s{}", n).to_string() // "snnn"
+            }
+        }
+    };
+    write(context, s, None);
 }
