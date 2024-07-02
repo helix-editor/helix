@@ -209,8 +209,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             },
         },
 
-        // move under <space>c
-        "C-c" => toggle_comments,
+        "#" => toggle_comments,
 
         // z family for save/restore/combine from/to sels from register
 
