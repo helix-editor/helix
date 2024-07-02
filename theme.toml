@@ -63,7 +63,7 @@ tabstop = { modifiers = ["italic"], bg = "bossanova" }
 
 "ui.virtual.indent-guide" = { fg = "comet" }
 
-"ui.selection" = { bg = "#540099" }
+"ui.selection" = { bg = "#481173" }
 "ui.selection.primary" = { bg = "#540099" }
 # TODO: namespace ui.cursor as ui.selection.cursor?
 "ui.cursor.select" = { bg = "delta" }
