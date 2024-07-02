@@ -1,4 +1,5 @@
-# Author : Eric Correia <correia.eh@gmail.com>
+# Zed OneDark
+# Author : EricHenry
 
 "attribute" = { fg = "yellow" }
 "comment" = { fg = "light-gray", modifiers = ["italic"] }
