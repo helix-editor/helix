@@ -4144,18 +4144,19 @@ fn yank_joined_impl(editor: &mut Editor, separator: &str, register: char) {
 
     let selection = doc.selection(view.id);
     let selections = selection.len();
+    let separator = helix_stdx::str::unescape(separator);
     let joined = selection
         .fragments(text)
         .fold(String::new(), |mut acc, fragment| {
             if !acc.is_empty() {
-                acc.push_str(separator);
+                acc.push_str(&separator);
             }
             acc.push_str(&fragment);
             acc
         });
 
     match editor.registers.write(register, vec![joined]) {
-        Ok(_) => editor.set_status(format!(
+        Ok(()) => editor.set_status(format!(
             "joined and yanked {selections} selection{} to register {register}",
             if selections == 1 { "" } else { "s" }
         )),
