@@ -1269,7 +1269,7 @@ source = { git = "https://github.com/ikatyang/tree-sitter-yaml", rev = "0e36bed1
 name = "haskell"
 scope = "source.haskell"
 injection-regex = "hs|haskell"
-file-types = ["hs", "hs-boot"]
+file-types = ["hs", "hs-boot", "hsc"]
 roots = ["Setup.hs", "stack.yaml", "cabal.project"]
 comment-token = "--"
 block-comment-tokens = { start = "{-", end = "-}" }
