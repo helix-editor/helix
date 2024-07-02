@@ -22,7 +22,8 @@ macro_rules! current {
 #[macro_export]
 macro_rules! current_ref {
     ($editor:expr) => {{
-        let view = $editor.tree.get($editor.tree.focus);
+        let tree = $editor.tabs.curr_tree();
+        let view = tree.get(tree.focus);
         let doc = &$editor.documents[&view.doc];
         (view, doc)
     }};
@@ -45,10 +46,12 @@ macro_rules! doc_mut {
 #[macro_export]
 macro_rules! view_mut {
     ($editor:expr, $id:expr) => {{
-        $editor.tree.get_mut($id)
+        let tree = $editor.tabs.curr_tree_mut();
+        tree.get_mut($id)
     }};
     ($editor:expr) => {{
-        $editor.tree.get_mut($editor.tree.focus)
+        let tree = $editor.tabs.curr_tree_mut();
+        tree.get_mut(tree.focus)
     }};
 }
 
@@ -57,10 +60,12 @@ macro_rules! view_mut {
 #[macro_export]
 macro_rules! view {
     ($editor:expr, $id:expr) => {{
-        $editor.tree.get($id)
+        let tree = $editor.tabs.curr_tree();
+        tree.get($id)
     }};
     ($editor:expr) => {{
-        $editor.tree.get($editor.tree.focus)
+        let tree = $editor.tabs.curr_tree();
+        tree.get(tree.focus)
     }};
 }
 

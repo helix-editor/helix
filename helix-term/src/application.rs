@@ -199,7 +199,7 @@ impl Application {
                         // NOTE: this isn't necessarily true anymore. If
                         // `--vsplit` or `--hsplit` are used, the file which is
                         // opened last is focused on.
-                        let view_id = editor.tree.focus;
+                        let view_id = editor.tabs.curr_tree().focus;
                         let doc = doc_mut!(editor, &doc_id);
                         let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
                         doc.set_selection(view_id, pos);
@@ -394,7 +394,7 @@ impl Application {
 
         // reset view position in case softwrap was enabled/disabled
         let scrolloff = self.editor.config().scrolloff;
-        for (view, _) in self.editor.tree.views_mut() {
+        for (view, _) in self.editor.tabs.curr_tree_mut().views_mut() {
             let doc = &self.editor.documents[&view.doc];
             view.ensure_cursor_in_view(doc, scrolloff)
         }
