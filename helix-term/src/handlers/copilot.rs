@@ -5,63 +5,54 @@ use helix_event::{
 };
 use helix_lsp::copilot_types::DocCompletion;
 use helix_lsp::util::{lsp_pos_to_pos, lsp_range_to_range};
-use helix_view::document::{Copilot, Mode};
+use helix_view::document::Mode;
 use helix_view::Editor;
 use helix_view::events::DocumentDidChange;
 use tokio::time::Instant;
 use crate::events::OnModeSwitch;
 use crate::handlers::Handlers;
-use helix_view::{handlers::lsp::CopilotEvent, DocumentId};
+use helix_view::handlers::lsp::CopilotRequestCompletionEvent;
 use crate::job::{dispatch, dispatch_blocking};
 
 pub struct CopilotHandler {
-    doc_id: Option<DocumentId>,
     cancel: Option<CancelTx>,
 }
 
 impl CopilotHandler {
     pub fn new() -> Self {
         Self {
-            doc_id: None,
             cancel: None,
         }
     }
 }
 
 impl helix_event::AsyncHook for CopilotHandler {
-    type Event = CopilotEvent;
+    type Event = CopilotRequestCompletionEvent;
     fn handle_event(
         &mut self,
-        event: Self::Event,
+        _: Self::Event,
         _: Option<Instant>,
     ) -> Option<Instant> {
-        match event {
-            CopilotEvent::RequestCompletion { doc_id } => {
-                self.doc_id = Some(doc_id);
-                self.cancel.take();
-                Some(Instant::now() + Duration::from_millis(100))
-            }
-            CopilotEvent::CancelInFlightCompletion => {
-                self.cancel.take();
-                None
-            }
-        }
+        self.cancel.take();
+        Some(Instant::now() + Duration::from_millis(100))
     }
 
     fn finish_debounce(&mut self) {
-        let Some(doc_id) = self.doc_id else {return;};
         let (tx, rx) = cancelation();
         self.cancel = Some(tx);
 
         dispatch_blocking(move |editor, _| {
-            copilot_completion(editor, doc_id, rx);
+            copilot_completion(editor, rx);
         });
     }
 }
 
-fn copilot_completion(editor: &mut Editor, doc_id: DocumentId, cancel: CancelRx) {
+fn copilot_completion(editor: &mut Editor, cancel: CancelRx) {
     let (view, doc) = current_ref!(editor);
-    if doc.id() != doc_id || editor.mode() != Mode::Insert { return; }
+    // check editor mode since we request a completion on DocumentDidChange even when not in Insert Mode  
+    // (this cannot be checked within try_register_hooks unforunately)
+    // (the completion will not render, but there is still not point sending the request to the copilot lsp)
+    if editor.mode() != Mode::Insert { return; }
 
     let Some(copilot_ls) = doc
         .language_servers()
@@ -86,9 +77,8 @@ fn copilot_completion(editor: &mut Editor, doc_id: DocumentId, cancel: CancelRx)
                         return;
                     };
 
-                    if editor.mode() != Mode::Insert { return; }
                     let (view, doc) = current!(editor);
-                    let doc_completion = completions
+                    let doc_completions = completions
                         .into_iter()
                         .filter_map(|completion| {
                             /*
@@ -139,12 +129,7 @@ fn copilot_completion(editor: &mut Editor, doc_id: DocumentId, cancel: CancelRx)
                         })
                         .collect::<Vec<DocCompletion>>();
 
-                    doc.copilot = Some(Copilot {
-                        should_render: editor.auto_render_copilot,
-                        completions: doc_completion,
-                        idx: 0,
-                        offset_encoding,
-                    });
+                    doc.copilot.fill_with_completions(doc_completions, offset_encoding);
                 })
                 .await;
             }
@@ -157,19 +142,20 @@ pub(super) fn try_register_hooks(handlers: &Handlers) {
 
     let tx = copilot_handler.clone();
     register_hook!(move |event: &mut DocumentDidChange<'_>| {
-        event.doc.clear_copilot_completions();
-        send_blocking(&tx, CopilotEvent::RequestCompletion { doc_id: event.doc.id() });
+        event.doc.copilot.delete_state_and_reset_should_render();
+        send_blocking(&tx, CopilotRequestCompletionEvent);
         Ok(())
     });
 
     let tx = copilot_handler.clone();
     register_hook!(move |event: &mut OnModeSwitch<'_, '_>| {
         let (_, doc) = current!(event.cx.editor);
-        doc.clear_copilot_completions();
+
         if event.old_mode == Mode::Insert {
-            send_blocking(&tx, CopilotEvent::CancelInFlightCompletion);
+            doc.copilot.delete_state_and_should_not_render();
         } else if event.new_mode == Mode::Insert {
-            send_blocking(&tx, CopilotEvent::RequestCompletion { doc_id: doc.id() });
+            doc.copilot.delete_state_and_reset_should_render();
+            send_blocking(&tx, CopilotRequestCompletionEvent);
         }
         Ok(())
     });

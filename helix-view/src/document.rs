@@ -40,6 +40,7 @@ use helix_core::{
     ChangeSet, Diagnostic, LineEnding, Rope, RopeBuilder, Selection, Syntax, Transaction,
 };
 
+use crate::copilot::Copilot;
 use crate::editor::Config;
 use crate::events::{DocumentDidChange, SelectionDidChange};
 use crate::{DocumentId, Editor, Theme, View, ViewId};
@@ -129,16 +130,8 @@ pub enum DocumentOpenError {
     IoError(#[from] io::Error),
 }
 
-#[derive(Clone, Debug)]
-pub struct Copilot {
-    pub should_render: bool,
-    pub completions: Vec<DocCompletion>,
-    pub idx: usize,
-    pub offset_encoding: OffsetEncoding,
-}
-
 pub struct Document {
-    pub copilot: Option<Copilot>,
+    pub copilot: Copilot,
     pub(crate) id: DocumentId,
     text: Rope,
     selections: HashMap<ViewId, Selection>,
@@ -649,46 +642,25 @@ use helix_lsp::{copilot_types, Client, LanguageServerId, LanguageServerName};
 use url::Url;
 
 impl Document {
-    pub fn clear_copilot_completions(&mut self) {
-        self.copilot = None;
-    }
-
     pub fn get_copilot_completion_for_rendering(&self) -> Option<&DocCompletion> {
-        let Some(copilot) = self.copilot.as_ref() else {
-            return None;
-        };
-        if !copilot.should_render {
-            return None;
-        }
+        let completion = self.copilot.get_completion_if_should_render()?;
 
-        let completion = copilot.completions.get(copilot.idx)?;
         if self.version as usize != completion.doc_version {
             return None;
         }
-        return Some(completion);
+        Some(completion)
     }
 
-    pub fn apply_copilot_completion(&mut self, view_id: ViewId) {
-        if let None = self.get_copilot_completion_for_rendering() {
-            return;
-        }
-        let Some(copilot) = self.copilot.as_ref() else {
-            return;
-        };
-
-        let Some(completion) = copilot.completions.get(copilot.idx) else {
-            return;
-        };
-        if completion.doc_version != self.version as usize {
-            return;
-        }
+     pub fn apply_copilot_completion(&mut self, view_id: ViewId) {
+        let Some(completion) = self.copilot.get_completion_if_should_render() else { return; };
+        let Some(offset_encoding) = self.copilot.offset_encoding() else { return; };
 
         let edit = lsp::TextEdit {
             range: completion.lsp_range,
             new_text: completion.text.clone(),
         };
         let transaction =
-            generate_transaction_from_edits(self.text(), vec![edit], copilot.offset_encoding);
+            generate_transaction_from_edits(self.text(), vec![edit], offset_encoding);
 
         self.apply(&transaction, view_id);
     }
@@ -702,9 +674,10 @@ impl Document {
         let line_ending = config.load().default_line_ending.into();
         let changes = ChangeSet::new(text.slice(..));
         let old_state = None;
+        let copilot_auto_render = config.load().copilot_auto_render;
 
         Self {
-            copilot: None,
+            copilot: Copilot::new(copilot_auto_render),
             id: DocumentId::default(),
             path: None,
             encoding,

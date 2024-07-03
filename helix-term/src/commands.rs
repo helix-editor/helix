@@ -6123,16 +6123,16 @@ fn copilot_apply_completion(cx: &mut Context) {
 
 fn copilot_show_completion(cx: &mut Context) {
     let (_, doc) = current!(cx.editor);
-    if let Some(copilot) = doc.copilot.as_mut() {
-        copilot.should_render = true;
-    }
+    doc.copilot.show_completion();
 }
 
 fn copilot_toggle_auto_render(cx: &mut Context) {
-    cx.editor.auto_render_copilot = !cx.editor.auto_render_copilot;
+    let (_, doc) = current!(cx.editor);
+    let auto_render = doc.copilot.toggle_auto_render();
+
     cx.editor.set_status(format!(
         "copilot-auto-render = {}",
-        cx.editor.auto_render_copilot
+        auto_render,
     ));
 }
 

@@ -4,10 +4,7 @@ use crate::{DocumentId, ViewId};
 use helix_lsp::util::generate_transaction_from_edits;
 use helix_lsp::{lsp, OffsetEncoding};
 
-pub enum CopilotEvent {
-    RequestCompletion { doc_id: DocumentId },
-    CancelInFlightCompletion,
-}
+pub struct CopilotRequestCompletionEvent;
 
 pub enum CompletionEvent {
     /// Auto completion was triggered by typing a word char

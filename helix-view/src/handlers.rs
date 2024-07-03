@@ -18,7 +18,7 @@ pub struct Handlers {
     pub completions: Sender<lsp::CompletionEvent>,
     pub signature_hints: Sender<lsp::SignatureHelpEvent>,
     pub auto_save: Sender<AutoSaveEvent>,
-    pub copilot: Option<Sender<lsp::CopilotEvent>>,
+    pub copilot: Option<Sender<lsp::CopilotRequestCompletionEvent>>,
 }
 
 impl Handlers {
