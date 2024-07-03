@@ -145,7 +145,7 @@ you can configure Helix to show up in the application menu by copying the
 provided `.desktop` and icon files to their correct folders:
 
 ```sh
-xdg-desktop-icon install --novendor contrib/Helix.desktop
+cp contrib/Helix.desktop -- "$HOME/.local/share/applications"
 xdg-icon-resource install --novendor --size 256 contrib/helix.png
 ```
 
