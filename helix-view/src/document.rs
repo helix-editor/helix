@@ -1410,6 +1410,7 @@ impl Document {
     }
 
     fn undo_redo_impl(&mut self, view: &mut View, undo: bool) -> bool {
+        self.append_changes_to_history(view);
         let mut history = self.history.take();
         let txn = if undo { history.undo() } else { history.redo() };
         let success = if let Some(txn) = txn {
@@ -1490,6 +1491,7 @@ impl Document {
     }
 
     fn earlier_later_impl(&mut self, view: &mut View, uk: UndoKind, earlier: bool) -> bool {
+        self.append_changes_to_history(view);
         let txns = if earlier {
             self.history.get_mut().earlier(uk)
         } else {
