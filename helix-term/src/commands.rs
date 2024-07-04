@@ -24,15 +24,16 @@ use helix_core::{
     encoding, find_workspace,
     graphemes::{self, next_grapheme_boundary, RevRopeGraphemes},
     history::UndoKind,
-    increment, indent,
-    indent::IndentStyle,
+    increment,
+    indent::{self, IndentStyle},
     line_ending::{get_line_ending_of_str, line_end_char_index},
     match_brackets,
     movement::{self, move_vertically_visual, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
     search::{self, CharMatcher},
-    selection, shellwords, surround,
+    selection, shellwords,
+    surround::{self, FindType},
     syntax::{BlockCommentToken, LanguageServerFeature},
     text_annotations::{Overlay, TextAnnotations},
     textobject,
@@ -5344,19 +5345,26 @@ fn goto_prev_entry(cx: &mut Context) {
 }
 
 fn select_textobject_around(cx: &mut Context) {
-    select_textobject(cx, textobject::TextObject::Around);
+    select_textobject(cx, textobject::TextObject::Around, false);
 }
 
 fn select_textobject_inner(cx: &mut Context) {
-    select_textobject(cx, textobject::TextObject::Inside);
+    select_textobject(cx, textobject::TextObject::Inside, false);
 }
 
-fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
+fn select_textobject(cx: &mut Context, objtype: textobject::TextObject, find_next: bool) {
     let count = cx.count();
 
     cx.on_next_key(move |cx, event| {
         cx.editor.autoinfo = None;
         if let Some(ch) = event.char() {
+            if ch == 'n' {
+                if !find_next {
+                    select_textobject(cx, objtype, true)
+                }
+                return;
+            }
+
             let textobject = move |editor: &mut Editor| {
                 let (view, doc) = current!(editor);
                 let text = doc.text().slice(..);
@@ -5424,7 +5432,11 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                             range,
                             objtype,
                             ch,
-                            count,
+                            if find_next {
+                                FindType::Next
+                            } else {
+                                FindType::Count(count)
+                            },
                         ),
                         _ => range,
                     }
