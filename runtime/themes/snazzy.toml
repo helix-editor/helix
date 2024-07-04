@@ -75,6 +75,7 @@
 "ui.virtual.whitespace" = { fg = "comment" }
 "ui.virtual.indent-guide" = { fg = "opal" }
 "ui.virtual.ruler" = { bg = "background_dark" }
+"ui.virtual.inlay-hint" = { bg = "background_dark", fg = "comment" }
 
 "error" = { fg = "red" }
 "warning" = { fg = "cyan" }
