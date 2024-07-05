@@ -2396,6 +2396,28 @@ fn redraw(
     Ok(())
 }
 
+fn move_buffer_impl(
+    cx: &mut compositor::Context,
+    path: &Cow<str>,
+    force: bool,
+) -> anyhow::Result<()> {
+    let doc = doc!(cx.editor);
+    let old_path = doc
+        .path()
+        .context("Scratch buffer cannot be moved. Use `:write` instead")?
+        .clone();
+    let new_path = path.to_string();
+
+    if !force && Path::new(&new_path).exists() {
+        bail!("Destination already exists. Use `:move!` to overwrite");
+    }
+
+    if let Err(err) = cx.editor.move_path(&old_path, new_path.as_ref()) {
+        bail!("Could not move file: {err}");
+    }
+    Ok(())
+}
+
 fn move_buffer(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -2406,16 +2428,7 @@ fn move_buffer(
     }
 
     ensure!(args.len() == 1, format!(":move takes one argument"));
-    let doc = doc!(cx.editor);
-    let old_path = doc
-        .path()
-        .context("Scratch buffer cannot be moved. Use :write instead")?
-        .clone();
-    let new_path = args.first().unwrap().to_string();
-    if let Err(err) = cx.editor.move_path(&old_path, new_path.as_ref()) {
-        bail!("Could not move file: {err}");
-    }
-    Ok(())
+    move_buffer_impl(cx, args.first().unwrap(), false)
 }
 
 fn yank_diagnostic(
