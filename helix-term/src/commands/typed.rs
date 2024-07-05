@@ -2396,11 +2396,7 @@ fn redraw(
     Ok(())
 }
 
-fn move_buffer_impl(
-    cx: &mut compositor::Context,
-    path: &Cow<str>,
-    force: bool,
-) -> anyhow::Result<()> {
+fn move_buffer_impl(cx: &mut compositor::Context, path: &str, force: bool) -> anyhow::Result<()> {
     let doc = doc!(cx.editor);
     let old_path = doc
         .path()
