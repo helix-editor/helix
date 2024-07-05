@@ -96,8 +96,7 @@ pub fn diff<'doc>(
     let added = theme.get("diff.plus.gutter");
     let deleted = theme.get("diff.minus.gutter");
     let modified = theme.get("diff.delta.gutter");
-    if let Some(diff_handle) = doc.diff_handle() {
-        let hunks = diff_handle.load();
+    if let Some(hunks) = doc.diff_handle().and_then(|d| d.try_load()) {
         let mut hunk_i = 0;
         let mut hunk = hunks.nth_hunk(hunk_i);
         Box::new(
