@@ -2402,16 +2402,15 @@ fn move_buffer_impl(cx: &mut compositor::Context, path: &str, force: bool) -> an
         .path()
         .context("Scratch buffer cannot be moved. Use `:write` instead")?
         .clone();
-    let new_path = path.to_string();
+    let new_path = Path::new(path);
 
-    if !force && Path::new(&new_path).exists() {
-        bail!("Destination already exists. Use `:move!` to overwrite");
+    if !force && new_path.exists() {
+        bail!("Destination exists. Use `:move!` to overwrite");
     }
 
-    if let Err(err) = cx.editor.move_path(&old_path, new_path.as_ref()) {
-        bail!("Could not move file: {err}");
-    }
-    Ok(())
+    cx.editor
+        .move_path(&old_path, new_path)
+        .map_err(|err| anyhow!("Failed to move file: {err}"))
 }
 
 fn move_buffer(
