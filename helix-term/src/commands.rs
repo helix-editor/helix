@@ -13,6 +13,10 @@ use helix_vcs::{FileChange, Hunk};
 pub use lsp::*;
 
 pub use engine::ScriptingEngine;
+
+#[cfg(feature = "steel")]
+pub use engine::steel::{helix_module_file, steel_init_file};
+
 use tui::{
     text::Span,
     widgets::{Cell, Row},

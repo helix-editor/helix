@@ -1,42 +1,27 @@
 # Building
 
-You will need a handful of things:
+You will need:
 
 * A clone of this fork, on the branch `steel-event-system`
-* A clone of the steel git repo -> https://github.com/mattwparas/steel, on the branch `master` (default)
 
-I also cannot promise that this will work on windows. I develop off of ubuntu and mac, so for now you can probably safely assume it will work on unix.
-
-The `Cargo.toml` for helix points to a local development version of steel. Set this up so that it points to wherever you've cloned steel:
-
-```
-[workspace.dependencies]
-# CHANGE 'path = ...' to point to the path to steel-core
-steel-core = { path = "/home/matt/code/scratch/steel/crates/steel-core", version = "0.6.0", features = ["anyhow", "dylibs"] }
-```
-
-Since I'm actively developing steel alongside the helix integration in order to make things as smooth as possible, its not referencing a published version yet.
-
-## Installing Steel
-
-Follow the instructions here https://github.com/mattwparas/steel and https://github.com/mattwparas/steel/issues/71
-
-Setting a `STEEL_HOME` env var, then running `cargo run -- cogs/install.scm` in the root of that repo will set up the steel core libraries so that helix can reference them.
+`steel` is included as a git submodule for ease of building.
 
 ## Installing helix
 
-Once you're set up with steel, just run
+Just run
 
-`cargo install --path helix-term --locked`
+`cargo xtask steel`
 
-To install the `hx` executable, with steel as the plugin language.
+To install the `hx` executable, with steel as a plugin language. This also includes:
+
+The `steel` executable, the steel language server, the steel dylib installer, and the steel standard library.
 
 
 ## Setting up configurations for helix
 
 Note, this API is entirely subjet to change, and I promise absolutely 0 backwards compatibility while this is in development.
 
-There are 2 important files you'll want:
+There are 2 important files you'll want, which should be auto generated during the installation process:
 
 * `~/.config/helix/helix.scm`
 * `~/.config/helix/init.scm`
