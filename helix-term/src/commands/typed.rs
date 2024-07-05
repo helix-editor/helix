@@ -2431,6 +2431,19 @@ fn move_buffer(
     move_buffer_impl(cx, args.first().unwrap(), false)
 }
 
+fn force_move_buffer(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    ensure!(args.len() == 1, format!(":move! takes one argument"));
+    move_buffer_impl(cx, args.first().unwrap(), true)
+}
+
 fn yank_diagnostic(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -3109,6 +3122,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Move the current buffer and its corresponding file to a different path",
         fun: move_buffer,
+        signature: CommandSignature::positional(&[completers::filename]),
+    },
+    TypableCommand {
+        name: "move!",
+        aliases: &[],
+        doc: "Force move the current buffer and its corresponding file to a different path, overwriting the destination.",
+        fun: force_move_buffer,
         signature: CommandSignature::positional(&[completers::filename]),
     },
     TypableCommand {
