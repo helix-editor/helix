@@ -3120,7 +3120,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "move",
         aliases: &[],
-        doc: "Move the current buffer and its corresponding file to a different path",
+        doc: "Move the current buffer and its corresponding file to a different path.",
         fun: move_buffer,
         signature: CommandSignature::positional(&[completers::filename]),
     },
