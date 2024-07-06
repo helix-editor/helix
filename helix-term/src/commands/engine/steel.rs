@@ -702,7 +702,6 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
     // Arity 1
     module.register_fn("editor->doc-id", cx_get_document_id);
     module.register_fn("editor-switch!", cx_switch);
-    module.register_fn("editor-switch-replace!", cx_switch_replace);
     module.register_fn("editor-set-focus!", |cx: &mut Context, view_id: ViewId| {
         cx.editor.focus(view_id)
     });
@@ -710,6 +709,9 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
     module.register_fn("editor-doc-in-view?", cx_is_document_in_view);
     module.register_fn("set-scratch-buffer-name!", set_scratch_buffer_name);
     module.register_fn("editor-doc-exists?", cx_document_exists);
+
+    // Arity 2
+    module.register_fn("editor-switch-action!", cx_switch_action);
 
     // Arity 1
     RegisterFn::<
@@ -758,13 +760,25 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
 
         template_function_arity_1("editor->doc-id");
         template_function_arity_1("editor-switch!");
-        template_function_arity_1("editor-switch-replace!");
         template_function_arity_1("editor-set-focus!");
         template_function_arity_1("editor-set-mode!");
         template_function_arity_1("editor-doc-in-view?");
         template_function_arity_1("set-scratch-buffer-name!");
         template_function_arity_1("editor-doc-exists?");
         template_function_arity_1("editor->get-document");
+
+        let mut template_function_arity_2 = |name: &str| {
+            builtin_editor_command_module.push_str(&format!(
+                r#"
+(provide {})
+(define ({} arg1 arg2)
+    (helix.{} *helix.cx* arg1 arg2))
+"#,
+                name, name, name
+            ));
+        };
+
+        template_function_arity_2("editor-switch-action!");
 
         let mut target_directory = helix_runtime_search_path();
 
@@ -2268,8 +2282,8 @@ fn cx_switch(cx: &mut Context, doc_id: DocumentId) {
     cx.editor.switch(doc_id, Action::VerticalSplit)
 }
 
-fn cx_switch_replace(cx: &mut Context, doc_id: DocumentId) {
-    cx.editor.switch(doc_id, Action::Replace)
+fn cx_switch_action(cx: &mut Context, doc_id: DocumentId, action: Action) {
+    cx.editor.switch(doc_id, action)
 }
 
 fn cx_get_mode(cx: &mut Context) -> Mode {
