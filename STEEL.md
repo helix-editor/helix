@@ -37,7 +37,7 @@ to be used as typed commands. For example:
 
 ```scheme
 # helix.scm
-
+(require "helix/editor.scm")
 (require (prefix-in helix. "helix/commands.scm"))
 (require (prefix-in helix.static. "helix/static.scm"))
 
