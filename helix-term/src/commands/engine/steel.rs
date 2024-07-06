@@ -692,6 +692,12 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
 fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
     let mut module = BuiltInModule::new("helix/core/editor");
 
+    // Types
+    module.register_fn("Action::Load", || Action::Load);
+    module.register_fn("Action::Replace", || Action::Replace);
+    module.register_fn("Action::HorizontalSplit", || Action::HorizontalSplit);
+    module.register_fn("Action::VerticalSplit", || Action::VerticalSplit);
+
     // Arity 0
     module.register_fn("editor-focus", cx_current_focus);
     module.register_fn("editor-mode", cx_get_mode);
@@ -729,6 +735,22 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
     if generate_sources {
         let mut builtin_editor_command_module =
             "(require-builtin helix/core/editor as helix.)".to_string();
+
+        let mut template_function_type_constructor = |name: &str| {
+            builtin_editor_command_module.push_str(&format!(
+                r#"
+(provide {})
+(define ({})
+    (helix.{}))
+"#,
+                name, name, name
+            ));
+        };
+
+        template_function_type_constructor("Action::Load");
+        template_function_type_constructor("Action::Replace");
+        template_function_type_constructor("Action::HorizontalSplit");
+        template_function_type_constructor("Action::VerticalSplit");
 
         let mut template_function_arity_0 = |name: &str| {
             builtin_editor_command_module.push_str(&format!(
