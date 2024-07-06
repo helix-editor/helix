@@ -15,9 +15,7 @@ mod steel_implementations {
     use crate::{
         document::Mode,
         editor::{
-            BufferLine, CursorShapeConfig, FilePickerConfig, GutterConfig, IndentGuidesConfig,
-            LineEndingConfig, LineNumber, LspConfig, SearchConfig, SmartTabConfig,
-            StatusLineConfig, TerminalConfig, WhitespaceConfig,
+            Action, BufferLine, CursorShapeConfig, FilePickerConfig, GutterConfig, IndentGuidesConfig, LineEndingConfig, LineNumber, LspConfig, SearchConfig, SmartTabConfig, StatusLineConfig, TerminalConfig, WhitespaceConfig
         },
         graphics::{Color, Rect, Style, UnderlineStyle},
         input::Event,
@@ -55,6 +53,8 @@ mod steel_implementations {
     impl Custom for DocumentId {}
     impl Custom for ViewId {}
     impl CustomReference for Document {}
+
+    impl Custom for Action {}
 
     impl Custom for FilePickerConfig {}
     impl Custom for StatusLineConfig {}

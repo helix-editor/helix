@@ -692,6 +692,12 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
 fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
     let mut module = BuiltInModule::new("helix/core/editor");
 
+    // Types
+    module.register_fn("Action/Load", || Action::Load);
+    module.register_fn("Action/Replace", || Action::Replace);
+    module.register_fn("Action/HorizontalSplit", || Action::HorizontalSplit);
+    module.register_fn("Action/VerticalSplit", || Action::VerticalSplit);
+
     // Arity 0
     module.register_fn("editor-focus", cx_current_focus);
     module.register_fn("editor-mode", cx_get_mode);
@@ -710,6 +716,9 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
     module.register_fn("set-scratch-buffer-name!", set_scratch_buffer_name);
     module.register_fn("editor-doc-exists?", cx_document_exists);
 
+    // Arity 2
+    module.register_fn("editor-switch-action!", cx_switch_action);
+
     // Arity 1
     RegisterFn::<
         _,
@@ -726,6 +735,22 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
     if generate_sources {
         let mut builtin_editor_command_module =
             "(require-builtin helix/core/editor as helix.)".to_string();
+
+        let mut template_function_type_constructor = |name: &str| {
+            builtin_editor_command_module.push_str(&format!(
+                r#"
+(provide {})
+(define ({})
+    (helix.{}))
+"#,
+                name, name, name
+            ));
+        };
+
+        template_function_type_constructor("Action/Load");
+        template_function_type_constructor("Action/Replace");
+        template_function_type_constructor("Action/HorizontalSplit");
+        template_function_type_constructor("Action/VerticalSplit");
 
         let mut template_function_arity_0 = |name: &str| {
             builtin_editor_command_module.push_str(&format!(
@@ -763,6 +788,19 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
         template_function_arity_1("set-scratch-buffer-name!");
         template_function_arity_1("editor-doc-exists?");
         template_function_arity_1("editor->get-document");
+
+        let mut template_function_arity_2 = |name: &str| {
+            builtin_editor_command_module.push_str(&format!(
+                r#"
+(provide {})
+(define ({} arg1 arg2)
+    (helix.{} *helix.cx* arg1 arg2))
+"#,
+                name, name, name
+            ));
+        };
+
+        template_function_arity_2("editor-switch-action!");
 
         let mut target_directory = helix_runtime_search_path();
 
@@ -2264,6 +2302,10 @@ fn cx_editor_all_documents(cx: &mut Context) -> Vec<DocumentId> {
 
 fn cx_switch(cx: &mut Context, doc_id: DocumentId) {
     cx.editor.switch(doc_id, Action::VerticalSplit)
+}
+
+fn cx_switch_action(cx: &mut Context, doc_id: DocumentId, action: Action) {
+    cx.editor.switch(doc_id, action)
 }
 
 fn cx_get_mode(cx: &mut Context) -> Mode {
