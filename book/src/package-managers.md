@@ -104,7 +104,7 @@ chmod +x helix-*.AppImage # change permission for executable mode
 
 You can optionally [add the `.desktop` file](./building-from-source.md#configure-the-desktop-shortcut). Helix must be installed in `PATH` with the name `hx`. For example:
 ```sh
-mkdir -p "$HOME/.local/bin" && \
+mkdir -p "$HOME/.local/bin"
 mv helix-*.AppImage "$HOME/.local/bin/hx"
 ```
 
