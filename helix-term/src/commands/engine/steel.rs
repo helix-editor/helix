@@ -702,6 +702,7 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
     // Arity 1
     module.register_fn("editor->doc-id", cx_get_document_id);
     module.register_fn("editor-switch!", cx_switch);
+    module.register_fn("editor-switch-replace!", cx_switch_replace);
     module.register_fn("editor-set-focus!", |cx: &mut Context, view_id: ViewId| {
         cx.editor.focus(view_id)
     });
@@ -757,6 +758,7 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
 
         template_function_arity_1("editor->doc-id");
         template_function_arity_1("editor-switch!");
+        template_function_arity_1("editor-switch-replace!");
         template_function_arity_1("editor-set-focus!");
         template_function_arity_1("editor-set-mode!");
         template_function_arity_1("editor-doc-in-view?");
@@ -2264,6 +2266,10 @@ fn cx_editor_all_documents(cx: &mut Context) -> Vec<DocumentId> {
 
 fn cx_switch(cx: &mut Context, doc_id: DocumentId) {
     cx.editor.switch(doc_id, Action::VerticalSplit)
+}
+
+fn cx_switch_replace(cx: &mut Context, doc_id: DocumentId) {
+    cx.editor.switch(doc_id, Action::Replace)
 }
 
 fn cx_get_mode(cx: &mut Context) -> Mode {
