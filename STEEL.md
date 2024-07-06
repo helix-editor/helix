@@ -111,7 +111,7 @@ For example, if we wanted to select a random theme at startup:
 
 (define (randomly-pick-theme options)
   ;; Randomly select the theme from the possible themes list
-  (helix.theme (list (select-random options))))
+  (helix.theme (select-random options)))
 
 (randomly-pick-theme possible-themes)
 
