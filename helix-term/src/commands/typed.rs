@@ -9,6 +9,7 @@ use super::*;
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::{line_ending, shellwords::Shellwords};
+use helix_lsp::LanguageServerId;
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
 use serde_json::Value;
@@ -1371,7 +1372,7 @@ fn lsp_workspace_command(
         return Ok(());
     }
 
-    struct LsIdCommand(usize, helix_lsp::lsp::Command);
+    struct LsIdCommand(LanguageServerId, helix_lsp::lsp::Command);
 
     impl ui::menu::Item for LsIdCommand {
         type Data = ();
