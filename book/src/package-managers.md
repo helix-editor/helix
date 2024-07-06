@@ -108,7 +108,7 @@ mkdir -p "$HOME/.local/bin" && \
 mv helix-*.AppImage "$HOME/.local/bin/hx"
 ```
 
-`hx` can be anywhere in your `$PATH`, but (by [convention](https://askubuntu.com/a/1408444)) `~/.local/bin` is preferred.
+and make sure `~/.local/bin` is in your `PATH`.
 
 ## macOS
 
