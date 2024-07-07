@@ -40,6 +40,7 @@ package.helix-term.opt-level = 2
 tree-sitter = { version = "0.22" }
 nucleo = "0.2.0"
 slotmap = "1.0.7"
+thiserror = "1.0"
 
 [workspace.package]
 version = "24.3.0"

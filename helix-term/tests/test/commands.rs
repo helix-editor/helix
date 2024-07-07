@@ -722,5 +722,19 @@ fn foo() {
     ))
     .await?;
 
+    test((
+        indoc! {"\
+            #[a
+            b
+            c
+            d
+            e|]#
+            f
+            "},
+        "s\\n<ret>r,",
+        "a#[,|]#b#(,|)#c#(,|)#d#(,|)#e\nf\n",
+    ))
+    .await?;
+
     Ok(())
 }

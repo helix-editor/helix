@@ -1,338 +1,134 @@
-(comment) @comment
-
-; Keywords
 [
-  ; vhdl 08
-  "abs"
-  "access"
-  "after"
-  "alias"
-  "all"
-  "and"
-  "architecture"
-  "array"
-  "assert"
-  "attribute"
-  "begin"
-  "block"
-  "body"
-  "buffer"
-  "bus"
-  "case"
-  "component"
-  "configuration"
-  "constant"
-  "disconnect"
-  "downto"
-  "else"
-  "elsif"
-  "end"
-  "entity"
-  "exit"
-  "file"
-  "for"
-  "function"
-  "generic"
-  "group"
-  "guarded"
-  "if"
-  "impure"
-  "in"
-  "inertial"
-  "inout"
-  "is"
-  "label"
-  "library"
-  "linkage"
-  "literal"
-  "loop"
-  "map"
-  "mod"
-  "nand"
-  "new"
-  "next"
-  "nor"
-  "not"
-  "null"
-  "of"
-  "on"
-  "open"
-  "or"
-  "others"
-  "out"
-  "package"
-  "port"
-  "postponed"
-  "procedure"
-  "process"
-  "protected"
-  "pure"
-  "range"
-  "record"
-  "register"
-  "reject"
-  "rem"
-  "report"
-  "return"
-  "rol"
-  "ror"
-  "select"
-  "severity"
-  "shared"
-  "signal"
-  "sla"
-  "sll"
-  "sra"
-  "srl"
-  "subtype"
-  "then"
-  "to"
-  "transport"
-  "type"
-  "unaffected"
-  "units"
-  "until"
-  "use"
-  "variable"
-  "wait"
-  "when"
-  "while"
-  "with"
-  "xnor"
-  "xor"
-  ; vhdl 08
-  "context"
-  "force"
-  "property"
-  "release"
-  "sequence"
+  "alias" "package" "file" "entity" "architecture" "type" "subtype"
+  "attribute" "to" "downto" "signal" "variable" "record" "array"
+  "others" "process" "component" "shared" "constant" "port" "generic"
+  "generate" "range" "map" "in" "inout" "of" "out" "configuration"
+  "pure" "impure" "is" "begin" "end" "context" "wait" "until" "after"
+  "report" "open" "exit" "assert" "next" "null" "force" "property"
+  "release" "sequence" "transport" "unaffected" "select" "severity"
+  "register" "reject" "postponed" "on" "new" "literal" "linkage"
+  "inertial" "guarded" "group" "disconnect" "bus" "buffer" "body"
+  "all" "block" "access"
 ] @keyword
 
 [
-  ; vhdl 02
-  "boolean"
-  "bit"
-  "bit_vector"
-  ;"character"
-  ;"severity_level"
-  ;"integer"
-  ;"real"
-  ;"time"
-  ;"natural"
-  ;"positive"
-  "string"
-  ;"line"
-  ;"text"
-  ;"side"
-  ;"unsigned"
-  ;"signed"
-  ;"delay_length"
-  ;"file_open_kind"
-  ;"file_open_status"
-  ;"std_logic"
-  ;"std_logic_vector"
-  ;"std_ulogic"
-  ;"std_ulogic_vector"
-  ; vhdl 08
-  ;"boolean_vector"
-  ;"integer_vector"
-  ;"real_vector"
-  ;"time_vector"
-  ; math types
-  ;"complex"
-  ;"complex_polar"
-  ;"positive_real"
-  ;"principal_value"
-] @type.builtin
+  "function" "procedure"
+] @keyword.function
 
 [
-  ; vhdl 02
-  "base"
-  "left"
-  "right"
-  "high"
-  "low"
-  "pos"
-  "val"
-  "succ"
-  "pred"
-  "leftof"
-  "rightof"
-  "range"
-  "reverse_range"
-  "length"
-  "delayed"
-  "stable"
-  "quiet"
-  "transaction"
-  "event"
-  "active"
-  "last_event"
-  "last_active"
-  "last_value"
-  "driving"
-  "driving_value"
-  "ascending"
-  "value"
-  "image"
-  "simple_name"
-  "instance_name"
-  "path_name"
-  ;"foreign"
-  ; vhdl 08
-  "instance_name"
-  "path_name"
-] @attribute
-
-;[
-  ; vhdl 02
-  ;"now"
-  ;"resolved"
-  ;"rising_edge"
-  ;"falling_edge"
-  ;"read"
-  ;"readline"
-  ;"hread"
-  ;"oread"
-  ;"write"
-  ;"writeline"
-  ;"hwrite"
-  ;"owrite"
-  ;"endfile"
-  ;"resize"
-  ;"is_X"
-  ;"std_match"
-  ;"shift_left"
-  ;"shift_right"
-  ;"rotate_left"
-  ;"rotate_right"
-  ;"to_unsigned"
-  ;"to_signed"
-  ;"to_integer"
-  ;"to_stdLogicVector"
-  ;"to_stdULogic"
-  ;"to_stdULogicVector"
-  ;"to_bit"
-  ;"to_bitVector"
-  ;"to_X01"
-  ;"to_X01Z"
-  ;"to_UX01"
-  ;"to_01"
-  ;"conv_unsigned"
-  ;"conv_signed"
-  ;"conv_integer"
-  ;"conv_std_logic_vector"
-  ;"shl"
-  ;"shr"
-  ;"ext"
-  ;"sxt"
-  ;"deallocate"
-  ; vhdl 08
-  ;"finish"
-  ;"flush"
-  ;"justify"
-  ;"maximum"
-  ;"minimum"
-  ;"resolution_limit"
-  ;"stop"
-  ;"swrite"
-  ;"tee"
-  ;"to_binarystring"
-  ;"to_bstring"
-  ;"to_hexstring"
-  ;"to_hstring"
-  ;"to_octalstring"
-  ;"to_ostring"
-  ;"to_string"
-  ; vhdl math
-  ;"arccos"
-  ;"arccosh"
-  ;"arcsin"
-  ;"arcsinh"
-  ;"arctan"
-  ;"arctanh"
-  ;"arg"
-  ;"cbrt"
-  ;"ceil"
-  ;"cmplx"
-  ;"complex_to_polar"
-  ;"conj"
-  ;"cos"
-  ;"cosh"
-  ;"exp"
-  ;"floor"
-  ;"get_principal_value"
-  ;"log"
-  ;"log10"
-  ;"log2"
-  ;"polar_to_complex"
-  ;"realmax"
-  ;"realmin"
-  ;"round"
-  ;"sign"
-  ;"sin"
-  ;"sinh"
-  ;"sqrt"
-  ;"tan"
-  ;"tanh"
-  ;"trunc"
-  ;"uniform"
-;] @function.builtin
-
-; Operators
-[
-  "+"
-  "-"
-  "*"
-  "/"
-  "**"
-  "abs"
-  "not"
-  "mod"
-  "rem"
-  "&"
-  "sll"
-  "srl"
-  "sla"
-  "sra"
-  "rol"
-  "ror"
-  "="
-  "/="
-  "?="
-  "?/="
-  "?<"
-  "?<="
-  "?>"
-  "?>="
-  "<"
-  "<="
-  ">"
-  ">="
-  "and"
-  "or"
-  "nand"
-  "nor"
-  "xor"
-  "xnor"
-  ":="
-  "<="
-  "??"
-] @operator
+  "return"
+] @keyword.control.return
 
 [
-  ";"
-  ","
+  "for" "loop" "while"
+] @keyword.control.repeat
+
+[ 
+  "if" "elsif" "else" "case" "then" "when"
+] @keyword.control.conditional
+
+[ 
+  "library" "use"
+] @keyword.control.import
+
+(comment) @comment
+
+(type_mark) @type
+
+[
+  "(" ")" "[" "]"
+] @punctuation.bracket
+
+[
+  "." ";" "," ":"
 ] @punctuation.delimiter
 
 [
-  "("
-  ")"
-  "'"
-] @punctuation.bracket
+  "=>" "<=" "+" ":=" "=" "/=" "<" ">" "-" "*"
+  "**" "/" "?>" "?<" "?<=" "?>=" "?=" "?/="
+; "?/" errors, maybe due to escape character
+  (attribute_name "'")
+  (index_subtype_definition (any))
+] @operator
 
-(full_type_declaration "type" name: (identifier) @type)
-(signal_declaration "signal" (identifier_list) @variable)
-(variable_declaration "variable" (identifier_list) @variable)
-(constant_declaration "constant" (identifier_list) @variable)
+[
+  "not" "xor" "xnor" "and" "nand" "or" "nor" "mod" "rem"
+  (attribute_name "'")
+  (index_subtype_definition (any))
+] @keyword.operator
+
+[
+  (real_decimal)
+  (integer_decimal)
+] @constant.numeric
+
+(character_literal) @constant.character
+
+[
+  (string_literal)
+  (bit_string_literal)
+] @string
+
+(physical_literal
+  unit: (simple_name) @attribute)
+
+(attribute_name
+  prefix: (_) @variable
+  designator: (_) @attribute)
+
+((simple_name) @variable.builtin (#any-of? @variable.builtin
+  "true" "false" "now"))
+
+(severity_expression) @constant.builtin
+
+(procedure_call_statement
+  procedure: (simple_name) @function)
+
+(ambiguous_name
+  prefix: (simple_name) @function.builtin (#any-of? @function.builtin
+    "rising_edge" "falling_edge" "find_rightmost" "find_leftmost"
+    "maximum" "minimum" "shift_left" "shift_right" "rotate_left"
+    "rotate_right" "sll" "srl" "rol" "ror" "sla" "sra" "resize"
+    "mod" "rem" "abs" "saturate"
+    "to_sfixed" "to_ufixed" "to_signed" "to_unsigned" "to_real"
+    "to_integer" "sfixed_low" "ufixed_low" "sfixed_high"
+    "ufixed_high" "to_slv" "to_stdulogicvector" "to_sulv"
+    "to_float" "std_logic" "std_logic_vector" "integer" "signed"
+    "unsigned" "real" "std_ulogic_vector"
+    "std_ulogic" "x01" "x01z" "ux01" "ux01Z"
+;math_real
+    "sign" "ceil" "floor" "round" "fmax" "fmin" "uniform" "srand"
+    "rand" "get_rand_max" "sqrt" "cbrt" "exp" "log" "log2" "log10"
+    "sin" "cos" "tan" "asin" "acos" "atan" "atan2" "sinh" "cosh"
+    "tanh" "asinh" "acosh" "atanh" "realmax" "realmin" "trunc"
+    "conj" "arg" "polar_to_complex" "complex_to_polar"
+    "get_principal_value" "cmplx"
+;std_textio
+    "read" "write" "hread" "hwrite" "to_hstring" "to_string"
+    "from_hstring" "from_string"
+    "justify" "readline" "sread" "string_read" " bread"
+    "binary_read" "oread" "octal_read" "hex_read"
+    "writeline" "swrite" "string_write" "bwrite"
+    "binary_write" "owrite" "octal_write" "hex_write"
+    "synthesis_return"
+;std_logic_1164
+    "resolved" "logic_type_encoding" "is_signed" "to_bit"
+    "to_bitvector" "to_stdulogic" "to_stdlogicvector"
+    "to_bit_vector" "to_bv" "to_std_logic_vector"
+    "to_std_ulogic_vector" "to_01" "to_x01" "to_x01z" "to_ux01"
+    "is_x" "to_bstring" "to_binary_string" "to_ostring"
+    "to_octal_string" "to_hex_string"
+;float_pkg
+    "add" "subtract" "multiply" "divide" "remainder" "modulo"
+    "reciprocal" "dividebyp2" "mac" "eq" "ne" "lt" "gt" "le" "ge"
+    "to_float32" "to_float64" "to_float128" "realtobits" "bitstoreal"
+    "break_number" "normalize" "copysign" "scalb" "logb" "nextafter"
+    "unordered" "finite" "isnan" "zerofp" "nanfp" "qnanfp"
+    "pos_inffp" "neg_inffp" "neg_zerofp" "from_bstring"
+    "from_binary_string" "from_ostring" "from_octal_string"
+    "from_hex_string"
+;fixed_pkg
+    "add_carry" "to_ufix" "to_sfix" "ufix_high"
+    "ufix_low" "sfix_high" "sfix_low"
+))
 

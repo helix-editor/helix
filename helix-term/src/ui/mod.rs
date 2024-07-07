@@ -29,7 +29,7 @@ pub use text::Text;
 
 use helix_view::Editor;
 
-use std::path::PathBuf;
+use std::{error::Error, path::PathBuf};
 
 pub fn prompt(
     cx: &mut crate::commands::Context,
@@ -364,14 +364,16 @@ pub mod completers {
     }
 
     pub fn lsp_workspace_command(editor: &Editor, input: &str) -> Vec<Completion> {
-        let Some(options) = doc!(editor)
+        let commands = doc!(editor)
             .language_servers_with_feature(LanguageServerFeature::WorkspaceCommand)
-            .find_map(|ls| ls.capabilities().execute_command_provider.as_ref())
-        else {
-            return vec![];
-        };
+            .flat_map(|ls| {
+                ls.capabilities()
+                    .execute_command_provider
+                    .iter()
+                    .flat_map(|options| options.commands.iter())
+            });
 
-        fuzzy_match(input, &options.commands, false)
+        fuzzy_match(input, commands, false)
             .into_iter()
             .map(|(name, _)| ((0..), name.to_owned().into()))
             .collect()

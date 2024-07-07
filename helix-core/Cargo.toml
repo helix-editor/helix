@@ -30,7 +30,7 @@ tree-sitter.workspace = true
 once_cell = "1.19"
 arc-swap = "1"
 regex = "1"
-bitflags = "2.5"
+bitflags = "2.6"
 ahash = "0.8.11"
 hashbrown = { version = "0.14.5", features = ["raw"] }
 dunce = "1.0"
