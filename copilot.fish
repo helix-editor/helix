@@ -1,5 +1,6 @@
 # Downloading Copilot lsp
 function clone_copilot_lsp
+    echo "*** Cloning the copilot lsp into /usr/local/bin ***"
     set -l url "https://github.com/github/copilot.vim"
     set -l folder_name "dist/"
     set -l temp_dir (mktemp -d)
@@ -23,6 +24,7 @@ end
 
 function create_copilot_exe
     set -l target_binary "/usr/local/bin/copilot"
+    echo "*** Creating an executable in /usr/local/bin to call the copilot lsp ***"
     if test -x $target_binary
         echo "The file '$target_binary' already exists. Delete this to re-install. Aborting."
         return
@@ -57,6 +59,7 @@ function oath
 end
 
 function auth
+    echo "*** Creating a github access-key file for copilot in ~/.config/github-copilot/hosts.json ***"
     set file_path ~/.config/github-copilot/hosts.json
     if test -e $file_path
         echo "Copilot access-key file $file_path already exists. Delete this to re-install/re-authenticate .Aborting."
@@ -101,6 +104,7 @@ end
 switch $argv[1]
     case --create-lsp
         clone_copilot_lsp
+        echo ""
         create_copilot_exe
     case --auth
         auth
