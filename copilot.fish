@@ -28,7 +28,7 @@ function create_copilot_exe
         return
     end
     echo '#! /usr/bin/env bash' > $target_binary
-    echo 'node /usr/local/bin/dist/agent.js' >> $target_binary
+    echo 'node /usr/local/bin/dist/language-server.js' >>$target_binary
     sudo chmod +x $target_binary
     echo "The executable 'copilot' has been created at $target_binary"
 end
