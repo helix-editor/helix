@@ -24,6 +24,10 @@
 "ui.cursor.match" = { fg = "light-yellow", underline = { color = "light-yellow", style = "line" } }
 "ui.cursor.primary" = { modifiers = ["reversed", "slow_blink"] }
 "ui.cursor.secondary" = { modifiers = ["reversed"] }
+"ui.cursorline.primary" = { underline = { color = "light-gray", style = "line" } }
+"ui.cursorline.secondary" = { underline = { color = "light-gray", style = "line" } }
+"ui.cursorcolumn.primary" = { bg = "gray" }
+"ui.cursorcolumn.secondary" = { bg = "gray" }
 "ui.virtual.ruler" = { bg = "gray" }
 "ui.virtual.whitespace" = "gray"
 "ui.virtual.indent-guide" = "gray"

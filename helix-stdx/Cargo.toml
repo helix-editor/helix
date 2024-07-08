@@ -17,7 +17,7 @@ etcetera = "0.8"
 ropey = { version = "1.6.1", default-features = false }
 which = "6.0"
 regex-cursor = "0.1.4"
-bitflags = "2.4"
+bitflags = "2.6"
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.52", features = ["Win32_Security", "Win32_Security_Authorization", "Win32_System_Threading"] }

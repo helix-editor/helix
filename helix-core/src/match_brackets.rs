@@ -9,11 +9,13 @@ use crate::Syntax;
 const MAX_PLAINTEXT_SCAN: usize = 10000;
 const MATCH_LIMIT: usize = 16;
 
-pub const BRACKETS: [(char, char); 7] = [
+pub const BRACKETS: [(char, char); 9] = [
     ('(', ')'),
     ('{', '}'),
     ('[', ']'),
     ('<', '>'),
+    ('‘', '’'),
+    ('“', '”'),
     ('«', '»'),
     ('「', '」'),
     ('（', '）'),

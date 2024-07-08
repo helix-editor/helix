@@ -38,18 +38,25 @@ impl JumpList {
         Self { jumps, current: 0 }
     }
 
-    pub fn push(&mut self, jump: Jump) {
+    fn push_impl(&mut self, jump: Jump) -> usize {
+        let mut num_removed_from_front = 0;
         self.jumps.truncate(self.current);
         // don't push duplicates
         if self.jumps.back() != Some(&jump) {
             // If the jumplist is full, drop the oldest item.
             while self.jumps.len() >= JUMP_LIST_CAPACITY {
                 self.jumps.pop_front();
+                num_removed_from_front += 1;
             }
 
             self.jumps.push_back(jump);
             self.current = self.jumps.len();
         }
+        num_removed_from_front
+    }
+
+    pub fn push(&mut self, jump: Jump) {
+        self.push_impl(jump);
     }
 
     pub fn forward(&mut self, count: usize) -> Option<&Jump> {
@@ -63,13 +70,22 @@ impl JumpList {
 
     // Taking view and doc to prevent unnecessary cloning when jump is not required.
     pub fn backward(&mut self, view_id: ViewId, doc: &mut Document, count: usize) -> Option<&Jump> {
-        if let Some(current) = self.current.checked_sub(count) {
+        if let Some(mut current) = self.current.checked_sub(count) {
             if self.current == self.jumps.len() {
                 let jump = (doc.id(), doc.selection(view_id).clone());
-                self.push(jump);
+                let num_removed = self.push_impl(jump);
+                current = current.saturating_sub(num_removed);
             }
             self.current = current;
-            self.jumps.get(self.current)
+
+            // Avoid jumping to the current location.
+            let jump @ (doc_id, selection) = self.jumps.get(self.current)?;
+            if doc.id() == *doc_id && doc.selection(view_id) == selection {
+                self.current = self.current.checked_sub(1)?;
+                self.jumps.get(self.current)
+            } else {
+                Some(jump)
+            }
         } else {
             None
         }

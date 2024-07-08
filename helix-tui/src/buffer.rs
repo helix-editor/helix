@@ -734,13 +734,16 @@ mod tests {
         let area = Rect::new(0, 0, 1, 1);
         let mut buffer = Buffer::empty(area);
 
+        // U+200B is the zero-width space codepoint
+        assert_eq!("\u{200B}".width(), 0);
+
         // Leading grapheme with zero width
-        let s = "\u{1}a";
+        let s = "\u{200B}a";
         buffer.set_stringn(0, 0, s, 1, Style::default());
         assert_eq!(buffer, Buffer::with_lines(vec!["a"]));
 
-        // Trailing grapheme with zero with
-        let s = "a\u{1}";
+        // Trailing grapheme with zero width
+        let s = "a\u{200B}";
         buffer.set_stringn(0, 0, s, 1, Style::default());
         assert_eq!(buffer, Buffer::with_lines(vec!["a"]));
     }

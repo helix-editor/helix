@@ -276,7 +276,7 @@ args = { attachCommands = [ "platform select remote-gdb-server", "platform conne
 
 [[grammar]]
 name = "rust"
-source = { git = "https://github.com/tree-sitter/tree-sitter-rust", rev = "473634230435c18033384bebaa6d6a17c2523281" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-rust", rev = "9c84af007b0f144954adb26b3f336495cbb320a7" }
 
 [[language]]
 name = "sway"
@@ -431,6 +431,7 @@ file-types = [
   "ts.map",
   "css.map",
   { glob = ".jslintrc" },
+  "jsonl",
   "jsonld",
   { glob = ".vuerc" },
   { glob = "composer.lock" },
@@ -1078,6 +1079,8 @@ comment-token = "--"
 block-comment-tokens = { start = "/-", end = "-/" }
 language-servers = [ "lean" ]
 indent = { tab-width = 2, unit = "  " }
+rulers = [101]
+text-width = 100
 
 [language.auto-pairs]
 '(' = ')'
@@ -1266,7 +1269,7 @@ source = { git = "https://github.com/ikatyang/tree-sitter-yaml", rev = "0e36bed1
 name = "haskell"
 scope = "source.haskell"
 injection-regex = "hs|haskell"
-file-types = ["hs", "hs-boot"]
+file-types = ["hs", "hs-boot", "hsc"]
 roots = ["Setup.hs", "stack.yaml", "cabal.project"]
 comment-token = "--"
 block-comment-tokens = { start = "{-", end = "-}" }
@@ -2074,8 +2077,11 @@ file-types = ["cairo"]
 comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
 # auto-format = true
-grammar = "rust"
 language-servers = [ "cairo-language-server" ]
+
+[[grammar]]
+name = "cairo"
+source = { git = "https://github.com/starkware-libs/tree-sitter-cairo", rev = "e3a0212261c125cb38248458cd856c0ffee2b398" }
 
 [[language]]
 name = "cpon"
@@ -3159,6 +3165,7 @@ scope = "source.typst"
 injection-regex = "typ(st)?"
 file-types = ["typst", "typ"]
 comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = ["tinymist", "typst-lsp"]
 indent = { tab-width = 2, unit = "  " }
 

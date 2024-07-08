@@ -27,7 +27,7 @@ function or block of code.
 
 > 💡 `f`, `t`, etc. need a tree-sitter grammar active for the current
 document and a special tree-sitter query file to work properly. [Only
-some grammars][lang-support] currently have the query file implemented.
+some grammars](./lang-support.md) currently have the query file implemented.
 Contributions are welcome!
 
 ## Navigating using tree-sitter textobjects
@@ -37,9 +37,9 @@ possible using tree-sitter and textobject queries. For
 example to move to the next function use `]f`, to move to previous
 type use `[t`, and so on.
 
-![Tree-sitter-nav-demo][tree-sitter-nav-demo]
+![Tree-sitter-nav-demo](https://user-images.githubusercontent.com/23398472/152332550-7dfff043-36a2-4aec-b8f2-77c13eb56d6f.gif)
 
-For the full reference see the [unimpaired][unimpaired-keybinds] section of the key bind
+For the full reference see the [unimpaired](./keymap.html#unimpaired) section of the key bind
 documentation.
 
 > 💡 This feature relies on tree-sitter textobjects
