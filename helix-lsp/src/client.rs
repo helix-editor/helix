@@ -616,6 +616,9 @@ impl Client {
                         prepare_support_default_behavior: None,
                         honors_change_annotations: Some(false),
                     }),
+                    formatting: Some(lsp::DocumentFormattingClientCapabilities {
+                        dynamic_registration: Some(false),
+                    }),
                     code_action: Some(lsp::CodeActionClientCapabilities {
                         code_action_literal_support: Some(lsp::CodeActionLiteralSupport {
                             code_action_kind: lsp::CodeActionKindLiteralSupport {
