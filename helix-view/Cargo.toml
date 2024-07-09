@@ -53,7 +53,7 @@ parking_lot = "0.12.3"
 thiserror.workspace = true
 
 [target.'cfg(windows)'.dependencies]
-clipboard-win = { version = "5.3", features = ["std"] }
+clipboard-win = { version = "5.4", features = ["std"] }
 
 [target.'cfg(unix)'.dependencies]
 libc = "0.2"

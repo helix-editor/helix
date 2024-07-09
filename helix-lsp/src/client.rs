@@ -123,7 +123,7 @@ impl Client {
                 {
                     client.add_workspace_folder(
                         root_uri,
-                        &workspace_folders_caps.change_notifications,
+                        workspace_folders_caps.change_notifications.as_ref(),
                     );
                 }
             });
@@ -136,7 +136,10 @@ impl Client {
             .and_then(|cap| cap.workspace_folders.as_ref())
             .filter(|cap| cap.supported.unwrap_or(false))
         {
-            self.add_workspace_folder(root_uri, &workspace_folders_caps.change_notifications);
+            self.add_workspace_folder(
+                root_uri,
+                workspace_folders_caps.change_notifications.as_ref(),
+            );
             true
         } else {
             // the server doesn't support multi workspaces, we need a new client
@@ -147,7 +150,7 @@ impl Client {
     fn add_workspace_folder(
         &self,
         root_uri: Option<lsp::Url>,
-        change_notifications: &Option<OneOf<bool, String>>,
+        change_notifications: Option<&OneOf<bool, String>>,
     ) {
         // root_uri is None just means that there isn't really any LSP workspace
         // associated with this file. For servers that support multiple workspaces
@@ -162,7 +165,7 @@ impl Client {
         self.workspace_folders
             .lock()
             .push(workspace_for_uri(root_uri.clone()));
-        if &Some(OneOf::Left(false)) == change_notifications {
+        if Some(&OneOf::Left(false)) == change_notifications {
             // server specifically opted out of DidWorkspaceChange notifications
             // let's assume the server will request the workspace folders itself
             // and that we can therefore reuse the client (but are done now)
