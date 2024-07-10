@@ -11,19 +11,21 @@ _hx() {
 		"-V[Prints version information]" \
 		"--version[Prints version information]" \
 		"--tutor[Loads the tutorial]" \
-		"--health[Checks for errors in editor setup]:language:->health" \
+		"--health[Checks for potential errors in editor setup]:language:->health" \
 		"-g[Fetches or builds tree-sitter grammars]:action:->grammar" \
 		"--grammar[Fetches or builds tree-sitter grammars]:action:->grammar" \
-		"--vsplit[Splits all given files vertically into different windows]" \
-		"--hsplit[Splits all given files horizontally into different windows]" \
-		"-c[Specifies a file to use for configuration]" \
-		"--config[Specifies a file to use for configuration]" \
-		"--log[Specifies a file to write log data into]" \
+		"--vsplit[Splits all given files vertically]" \
+		"--hsplit[Splits all given files horizontally]" \
+		"-c[Specifies a file to use for config]" \
+		"--config[Specifies a file to use for config]" \
+		"-w[Specify initial working directory]" \
+		"--working-dir[Specify initial working directory]" \
+		"--log[Specifies a file to use for logging]" \
 		"*:file:_files"
 
 	case "$state" in
 	health)
-		local languages=($(hx --health |tail -n '+7' |awk '{print $1}' |sed 's/\x1b\[[0-9;]*m//g'))
+		local languages=($(hx --health | tail -n '+11' | awk '{print $1}' | sed 's/\x1b\[[0-9;]*m//g;s/[✘✓]//g'))
 		_values 'language' $languages
 		;;
 	grammar)
