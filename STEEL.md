@@ -48,7 +48,7 @@ to be used as typed commands. For example:
 (define (shell cx . args)
   ;; Replace the % with the current file
   (define expanded (map (lambda (x) (if (equal? x "%") (current-path cx) x)) args))
-  (helix.run-shell-command expanded))
+  (apply helix.run-shell-command expanded))
 
 ;;@doc
 ;; Adds the current file to git	
