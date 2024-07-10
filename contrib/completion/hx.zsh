@@ -11,13 +11,13 @@ _hx() {
 		"-V[Prints version information]" \
 		"--version[Prints version information]" \
 		"--tutor[Loads the tutorial]" \
-		"--health[Checks for potential errors in editor setup]:language:->health" \
+		"--health[Checks for errors in editor setup]:language:->health" \
 		"-g[Fetches or builds tree-sitter grammars]:action:->grammar" \
 		"--grammar[Fetches or builds tree-sitter grammars]:action:->grammar" \
 		"--vsplit[Splits all given files vertically]" \
 		"--hsplit[Splits all given files horizontally]" \
-		"-c[Specifies a file to use for config]" \
-		"--config[Specifies a file to use for config]" \
+		"-c[Specifies a file to use for configuration]" \
+		"--config[Specifies a file to use for configuration]" \
 		"-w[Specify initial working directory]" \
 		"--working-dir[Specify initial working directory]" \
 		"--log[Specifies a file to use for logging]" \
