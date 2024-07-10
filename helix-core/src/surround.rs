@@ -428,6 +428,23 @@ mod test {
     }
 
     #[test]
+    fn test_find_inside_next_quote() {
+        #[rustfmt::skip]
+        let (doc, selection, expectations) =
+            rope_with_selections_and_expectations(
+                "some 'nested 'quoted' text' on this 'line'\n'and this one'",
+                " ^   _       _                            \n              "
+            );
+
+        assert_eq!(2, expectations.len());
+        assert_eq!(
+            find_nth_pairs_pos(doc.slice(..), '\'', selection.primary(), FindType::Next)
+                .expect("find should succeed"),
+            (expectations[0], expectations[1])
+        )
+    }
+
+    #[test]
     fn test_find_nth_pairs_pos_inside_quote_ambiguous() {
         #[rustfmt::skip]
         let (doc, selection, _) =
