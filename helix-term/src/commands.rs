@@ -580,8 +580,28 @@ impl MappableCommand {
         surround_add, "Surround add",
         surround_replace, "Surround replace",
         surround_delete, "Surround delete",
-        select_textobject_around, "Select around object",
-        select_textobject_inner, "Select inside object",
+        select_textobject_inside_type, "Select inside type definition (tree-sitter)",
+        select_textobject_around_type, "Select around type definition (tree-sitter)",
+        select_textobject_inside_function, "Select inside function (tree-sitter)",
+        select_textobject_around_function, "Select around function (tree-sitter)",
+        select_textobject_inside_parameter, "Select inside argument/parameter (tree-sitter)",
+        select_textobject_around_parameter, "Select around argument/parameter (tree-sitter)",
+        select_textobject_inside_comment, "Select inside comment (tree-sitter)",
+        select_textobject_around_comment, "Select around comment (tree-sitter)",
+        select_textobject_inside_test, "Select inside test (tree-sitter)",
+        select_textobject_around_test, "Select around test (tree-sitter)",
+        select_textobject_inside_entry, "Select inside data structure entry (tree-sitter)",
+        select_textobject_around_entry, "Select around data structure entry (tree-sitter)",
+        select_textobject_inside_paragraph, "Select inside paragraph",
+        select_textobject_around_paragraph, "Select around paragraph",
+        select_textobject_inside_closest_surrounding_pair, "Select inside closest surrounding pair (tree-sitter)",
+        select_textobject_around_closest_surrounding_pair, "Select around closest surrounding pair (tree-sitter)",
+        select_textobject_inside_word, "Select inside word",
+        select_textobject_around_word, "Select around word",
+        select_textobject_inside_WORD, "Select inside WORD",
+        select_textobject_around_WORD, "Select around WORD",
+        select_textobject_inside_change, "Select inside VCS change",
+        select_textobject_around_change, "Select around VCS change",
         goto_next_function, "Goto next function",
         goto_prev_function, "Goto previous function",
         goto_next_class, "Goto next type definition",
@@ -5613,6 +5633,208 @@ fn goto_next_entry(cx: &mut Context) {
 
 fn goto_prev_entry(cx: &mut Context) {
     goto_ts_object_impl(cx, "entry", Direction::Backward)
+}
+
+fn select_textobject_inside_type(cx: &mut Context) {
+    textobject_treesitter(cx, textobject::TextObject::Inside, "class");
+}
+
+fn select_textobject_around_type(cx: &mut Context) {
+    textobject_treesitter(cx, textobject::TextObject::Around, "class");
+}
+
+fn select_textobject_inside_function(cx: &mut Context) {
+    textobject_treesitter(cx, textobject::TextObject::Inside, "function");
+}
+
+fn select_textobject_around_function(cx: &mut Context) {
+    textobject_treesitter(cx, textobject::TextObject::Around, "function");
+}
+
+fn select_textobject_inside_parameter(cx: &mut Context) {
+    textobject_treesitter(cx, textobject::TextObject::Inside, "parameter");
+}
+
+fn select_textobject_around_parameter(cx: &mut Context) {
+    textobject_treesitter(cx, textobject::TextObject::Around, "parameter");
+}
+
+fn select_textobject_inside_comment(cx: &mut Context) {
+    textobject_treesitter(cx, textobject::TextObject::Inside, "comment");
+}
+
+fn select_textobject_around_comment(cx: &mut Context) {
+    textobject_treesitter(cx, textobject::TextObject::Around, "comment");
+}
+
+fn select_textobject_inside_test(cx: &mut Context) {
+    textobject_treesitter(cx, textobject::TextObject::Inside, "test");
+}
+
+fn select_textobject_around_test(cx: &mut Context) {
+    textobject_treesitter(cx, textobject::TextObject::Around, "test");
+}
+
+fn select_textobject_inside_entry(cx: &mut Context) {
+    textobject_treesitter(cx, textobject::TextObject::Inside, "entry");
+}
+
+fn select_textobject_around_entry(cx: &mut Context) {
+    textobject_treesitter(cx, textobject::TextObject::Around, "entry");
+}
+
+fn textobject_treesitter(
+    cx: &mut Context,
+    textobject: textobject::TextObject,
+    object_name: &'static str,
+) {
+    let count = cx.count();
+    let motion = move |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
+        let Some(syntax) = doc.syntax() else {
+            editor.set_status("Syntax information is not available in current buffer");
+            return;
+        };
+        let text = doc.text().slice(..);
+        let selection = doc.selection(view.id).clone().transform(|range| {
+            textobject::textobject_treesitter(syntax, text, range, textobject, object_name, count)
+        });
+        doc.set_selection(view.id, selection);
+    };
+    cx.editor.apply_motion(motion);
+}
+
+fn select_textobject_inside_paragraph(cx: &mut Context) {
+    textobject_paragraph(cx, textobject::TextObject::Inside);
+}
+
+fn select_textobject_around_paragraph(cx: &mut Context) {
+    textobject_paragraph(cx, textobject::TextObject::Around);
+}
+
+fn textobject_paragraph(cx: &mut Context, textobject: textobject::TextObject) {
+    let count = cx.count();
+    let motion = move |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
+        let text = doc.text().slice(..);
+        let selection = doc
+            .selection(view.id)
+            .clone()
+            .transform(|range| textobject::textobject_paragraph(text, range, textobject, count));
+        doc.set_selection(view.id, selection);
+    };
+    cx.editor.apply_motion(motion);
+}
+
+fn select_textobject_inside_closest_surrounding_pair(cx: &mut Context) {
+    textobject_closest_surrounding_pair(cx, textobject::TextObject::Inside);
+}
+
+fn select_textobject_around_closest_surrounding_pair(cx: &mut Context) {
+    textobject_closest_surrounding_pair(cx, textobject::TextObject::Around);
+}
+
+fn textobject_closest_surrounding_pair(cx: &mut Context, textobject: textobject::TextObject) {
+    let count = cx.count();
+    let motion = move |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
+        let text = doc.text().slice(..);
+        let syntax = doc.syntax();
+        let selection = doc.selection(view.id).clone().transform(|range| {
+            textobject::textobject_pair_surround_closest(syntax, text, range, textobject, count)
+        });
+        doc.set_selection(view.id, selection);
+    };
+    cx.editor.apply_motion(motion);
+}
+
+fn select_textobject_inside_word(cx: &mut Context) {
+    textobject_word(cx, textobject::TextObject::Inside, false);
+}
+
+fn select_textobject_around_word(cx: &mut Context) {
+    textobject_word(cx, textobject::TextObject::Around, false);
+}
+
+#[allow(non_snake_case)]
+fn select_textobject_inside_WORD(cx: &mut Context) {
+    textobject_word(cx, textobject::TextObject::Inside, true);
+}
+
+#[allow(non_snake_case)]
+fn select_textobject_around_WORD(cx: &mut Context) {
+    textobject_word(cx, textobject::TextObject::Around, true);
+}
+
+fn textobject_word(cx: &mut Context, textobject: textobject::TextObject, longword: bool) {
+    let count = cx.count();
+    let motion = move |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
+        let text = doc.text().slice(..);
+        let selection = doc.selection(view.id).clone().transform(|range| {
+            textobject::textobject_word(text, range, textobject, count, longword)
+        });
+        doc.set_selection(view.id, selection);
+    };
+    cx.editor.apply_motion(motion);
+}
+
+fn select_textobject_inside_change(cx: &mut Context) {
+    textobject_change(cx);
+}
+
+fn select_textobject_around_change(cx: &mut Context) {
+    textobject_change(cx);
+}
+
+fn textobject_change(cx: &mut Context) {
+    let motion = move |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
+        let Some(diff_handle) = doc.diff_handle() else {
+            editor.set_status("Diff is not available in current buffer");
+            return;
+        };
+        let diff = diff_handle.load();
+        let text = doc.text().slice(..);
+        let selection = doc.selection(view.id).clone().transform(|range| {
+            let line = range.cursor_line(text);
+            let hunk_idx = if let Some(hunk_idx) = diff.hunk_at(line as u32, false) {
+                hunk_idx
+            } else {
+                return range;
+            };
+            let hunk = diff.nth_hunk(hunk_idx).after;
+
+            let start = text.line_to_char(hunk.start as usize);
+            let end = text.line_to_char(hunk.end as usize);
+            Range::new(start, end).with_direction(range.direction())
+        });
+        drop(diff);
+        doc.set_selection(view.id, selection);
+    };
+    cx.editor.apply_motion(motion);
+}
+
+fn textobject_surrounding_pair(
+    cx: &mut Context,
+    textobject: textobject::TextObject,
+    pair_char: char,
+) {
+    if pair_char.is_ascii_alphanumeric() {
+        return;
+    }
+
+    let count = cx.count();
+    let motion = move |editor: &mut Editor| {
+        let (view, doc) = current!(editor);
+        let text = doc.text().slice(..);
+        let syntax = doc.syntax();
+        let selection = doc.selection(view.id).clone().transform(|range| {
+            textobject::textobject_pair_surround(syntax, text, range, textobject, pair_char, count)
+        });
+        doc.set_selection(view.id, selection);
+    };
+    cx.editor.apply_motion(motion);
 }
 
 fn select_textobject_around(cx: &mut Context) {
