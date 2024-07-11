@@ -145,7 +145,7 @@
 
  You can also type wq or write-quit to save and exit.
 
- Note: You can optionally enter a filepath after the w / write
+ Note: You can optionally enter a file path after the w / write
        command in order to save to that path.
  Note: If there are any unsaved changes to a file, a plus [+]
        will appear next to the file name in the status bar.
@@ -1124,14 +1124,14 @@ letters! that is not good grammar. you can fix this.
 =                     11.1 COMMENTING A LINE                    =
 =================================================================
 
-Press Ctrl-c to comment the line under your cursor.
-To uncomment the line, press Ctrl-c again.
+ Press Ctrl-c to comment the line under your cursor.
+ To uncomment the line, press Ctrl-c again.
 
-1. Move your cursor to the line marked '-->' below.
-2. Now comment the line marked with '-->'.
-3. Now try uncommenting the line.
+ 1. Move your cursor to the line marked '-->' below.
+ 2. Now comment the line marked with '-->'.
+ 3. Now try uncommenting the line.
 
---> Comment me please
+ --> Comment me please
 
 
 
@@ -1146,23 +1146,23 @@ To uncomment the line, press Ctrl-c again.
 =                 11.2 COMMENTING MULTIPLE LINES                =
 =================================================================
 
-Using the selections and multi-cursor functionality, you can
-comment multiple lines as long as it is under the selection or
-cursors.
+ Using the selections and multi-cursor functionality, you can
+ comment multiple lines as long as it is under the selection or
+ cursors.
 
-1. Move your cursor to the line marked with '-->' below.
-2. Now try to select or add more cursors the other lines marked
-   with '-->'.
-3. Comment those lines.
+ 1. Move your cursor to the line marked with '-->' below.
+ 2. Now try to select or add more cursors the other lines marked
+    with '-->'.
+ 3. Comment those lines.
 
---> How many are you going to comment?
---> Is this enough for a comment?
---> What are you doing?!
---> Stop commenting me!
---> AAAAaargh!!!
+ --> How many are you going to comment?
+ --> Is this enough for a comment?
+ --> What are you doing?!
+ --> Stop commenting me!
+ --> AAAAaargh!!!
 
-Note: If there are already commented lines under selections or
-multiple cursors, they won't be uncommented but commented again.
+ Note: If there are already commented lines under selections or
+ multiple cursors, they won't be uncommented but commented again.
 
 =================================================================
 =                       CHAPTER 11 RECAP                        =
@@ -1190,20 +1190,20 @@ multiple cursors, they won't be uncommented but commented again.
 =                   12.1 USING MATCH MODE JUMP                  =
 =================================================================
 
-To switch to match mode from normal mode, type m. This feature
-is particularly useful for handling bracket pairs and their
-contents.
+ To switch to match mode from normal mode, type m. This feature
+ is particularly useful for handling bracket pairs and their
+ contents.
 
-There are several actions that can be performed in match mode,
-as indicated by the help pop-up. To jump to a matching bracket pair,
-simply press mm. For example on the lines below (starting with
--->), move the cursor in normal mode to (, and then press mm to jump
-to the matching ). You can do the same on the line below: for example
-move to ], and press mm to jump to [ .
+ There are several actions that can be performed in match mode,
+ as indicated by the help pop-up. To jump to a matching bracket pair,
+ simply press mm. For example on the lines below (starting with
+ -->), move the cursor in normal mode to (, and then press mm to jump
+ to the matching ). You can do the same on the line below: for example
+ move to ], and press mm to jump to [ .
 
---> you can (jump between matching parenthesis)
---> or between matching [ square brackets ]
---> now { you know the drill: this works with brackets too }
+ --> you can (jump between matching parenthesis)
+ --> or between matching [ square brackets ]
+ --> now { you know the drill: this works with brackets too }
 
 
 
@@ -1212,41 +1212,41 @@ move to ], and press mm to jump to [ .
 =              12.2 USING MATCH MODE SELECT INSIDE              =
 =================================================================
 
-Match mode also lets you select the "inside" content between a
-pair of brackets or other delimiters. In the lines below:
+ Match mode also lets you select the "inside" content between a
+ pair of brackets or other delimiters. In the lines below:
 
-- move to the --> line, put your cursor in normal mode at any
-location between the parenthesis, for example at 'x', and press
-mi( or mi) to select the whole content inside the parenthesis
-(parenthesis excluded). As usual, you can then do anything you want
-with the selection (for example, press c to change it)
+ - move to the --> line, put your cursor in normal mode at any
+ location between the parenthesis, for example at 'x', and press
+ mi( or mi) to select the whole content inside the parenthesis
+ (parenthesis excluded). As usual, you can then do anything you want
+ with the selection (for example, press c to change it)
 
---> outside and (inside x parenthesis) - and outside again
+ --> outside and (inside x parenthesis) - and outside again
 
-Test below that you can do the same with [], or {}, or with
-nested combinations of these (this will act on the immediately
-surrounding matching pair). This also works with "" and similar
+ Test below that you can do the same with [], or {}, or with
+ nested combinations of these (this will act on the immediately
+ surrounding matching pair). This also works with "" and similar
 
---> test [ with square brackets ] !
---> try ( with nested [ pairs of ( parenthesis) and "brackets" ])
+ --> test [ with square brackets ] !
+ --> try ( with nested [ pairs of ( parenthesis) and "brackets" ])
 
 =================================================================
 =               12.3 USING MATCH MODE SELECT AROUND             =
 =================================================================
 
-You can also select the "around" content, i.e. both the inside
-content and the delimiters themselves, by using the ma select.
-For example, move to the line under, move your cursor in normal
-mode to any position between the (), and select the content of
-the (), including the surrounding (), by typing ma( or ma). As
-usual, you can do anything you want with the selection, for
-example delete it all with ma(d .
+ You can also select the "around" content, i.e. both the inside
+ content and the delimiters themselves, by using the ma select.
+ For example, move to the line under, move your cursor in normal
+ mode to any position between the (), and select the content of
+ the (), including the surrounding (), by typing ma( or ma). As
+ usual, you can do anything you want with the selection, for
+ example delete it all with ma(d .
 
---> you ( select x around ) to include delimiters in the select
+ --> you ( select x around ) to include delimiters in the select
 
-This naturally works with other delimiters too:
+ This naturally works with other delimiters too:
 
---> try [ with 'square' brackets ] too!
+ --> try [ with 'square' brackets ] too!
 
 
 
@@ -1256,21 +1256,21 @@ This naturally works with other delimiters too:
 =                12.4 USING MATCH MODE SURROUND                 =
 =================================================================
 
-The match mode can also be used to add surrounding around the
-current selection. For example, move to the line below, then:
- * i) select the "select all of this" line segment (for example,
-move in normal mode the cursor to the start of select, then enter
-selection mode with v , then select the 4 next words with 4e ),
- * ii) press ms( or ms) to surround the selection with a pair of
-parenthesis.
+ The match mode can also be used to add surrounding around the
+ current selection. For example, move to the line below, then:
+  * i) select the "select all of this" line segment (for example,
+ move in normal mode the cursor to the start of select, then enter
+ selection mode with v , then select the 4 next words with 4e ),
+  * ii) press ms( or ms) to surround the selection with a pair of
+ parenthesis.
 
---> so, select all of this, and surround it with ()
+ --> so, select all of this, and surround it with ()
 
-You can do the same with other delimiters: for example, ms' on
-WORD below to surround it with a pair of ''. You can try also
-with adding a surrounding pair of "", or {}, or [].
+ You can do the same with other delimiters: for example, ms' on
+ WORD below to surround it with a pair of ''. You can try also
+ with adding a surrounding pair of "", or {}, or [].
 
---> surround this WORD !
+ --> surround this WORD !
 
 
 
@@ -1278,64 +1278,64 @@ with adding a surrounding pair of "", or {}, or [].
 =              12.5 USING MATCH MODE DELETE SURROUND            =
 =================================================================
 
-You can delete surrounding pair of delimiters with the md
-command. On the line below, move the cursor anywhere
-within the pair of (), for example to the 'x', then from there,
-in normal mode, press md( or md) to delete the surrounding
-pair of parenthesis.
+ You can delete surrounding pair of delimiters with the md
+ command. On the line below, move the cursor anywhere
+ within the pair of (), for example to the 'x', then from there,
+ in normal mode, press md( or md) to delete the surrounding
+ pair of parenthesis.
 
---> delete (the x pair of parenthesis) from within!
+ --> delete (the x pair of parenthesis) from within!
 
-You can naturally delete other kinds of surroundings:
+ You can naturally delete other kinds of surroundings:
 
---> delete (nested [delimiters]): "this" will delete the nearest
-matching surrounding pair.
---> delete "layers "of" quote marks" too: this will delete the
-nearest previous and following quote marks
+ --> delete (nested [delimiters]): "this" will delete the nearest
+ matching surrounding pair.
+ --> delete "layers "of" quote marks" too: this will delete the
+ nearest previous and following quote marks
 
-Trying to delete unexisting surrounding delimiters print an error
-at the bottom bar and does nothing.
+ Trying to delete unexisting surrounding delimiters print an error
+ at the bottom bar and does nothing.
 
 =================================================================
 =             12.6 USING MATCH MODE REPLACE SURROUND            =
 =================================================================
 
-You can replace surrounding pairs of delimiters with the mr
-command. On the line below, move the cursor to
-anywhere within the pair of (), for example on the 'x', then in
-normal mode, press mr([ to replace the pair of () with a pair
-of [].
+ You can replace surrounding pairs of delimiters with the mr
+ command. On the line below, move the cursor to
+ anywhere within the pair of (), for example on the 'x', then in
+ normal mode, press mr([ to replace the pair of () with a pair
+ of [].
 
---> replace the (pair from x within), with something else
+ --> replace the (pair from x within), with something else
 
-This command will act on the closest enclosing pair, so you
-can try replacing different surrounding in the following:
+ This command will act on the closest enclosing pair, so you
+ can try replacing different surrounding in the following:
 
---> some (nested surroundings [can be replaced])
---> this "works with 'other surroundings' too"
+ --> some (nested surroundings [can be replaced])
+ --> this "works with 'other surroundings' too"
 
-You can try to replace a non existing pair: this will show
-an error warning at the bottom bar and do nothing.
+ You can try to replace a non existing pair: this will show
+ an error warning at the bottom bar and do nothing.
 
 
 =================================================================
 =                       CHAPTER 12 RECAP                        =
 =================================================================
 
-You can enter the match mode with the m key; this will show the
-actions available in a popup. This will allow you to:
- * jump to matching pair of delimiters with mm (you must have a
- delimiter belonging to a pair under your cursor)
- * select inside a pair of delimiters surrounding your cursor
- (i.e. select the content but not the delimiters) with mi(
- and similar
- * select around a pair of delimiters surrounding your cursor
- (i.e. select the content and the delimiters) with ma( and
- similar
- * delete surrounding delimiters with md( and similar
- * add surrounding delimiters around the selection with ms(
- * replace a pair of delimiters surrounding your selection with
- mr([ to replace for example surrounding () with []
+ You can enter the match mode with the m key; this will show the
+ actions available in a popup. This will allow you to:
+  * jump to matching pair of delimiters with mm (you must have a
+  delimiter belonging to a pair under your cursor)
+  * select inside a pair of delimiters surrounding your cursor
+  (i.e. select the content but not the delimiters) with mi(
+  and similar
+  * select around a pair of delimiters surrounding your cursor
+  (i.e. select the content and the delimiters) with ma( and
+  similar
+  * delete surrounding delimiters with md( and similar
+  * add surrounding delimiters around the selection with ms(
+  * replace a pair of delimiters surrounding your selection with
+  mr([ to replace for example surrounding () with []
 
 
 
@@ -1344,20 +1344,20 @@ actions available in a popup. This will allow you to:
 =                CHAPTER 13.1 CREATE NEW SPLIT                  =
 =================================================================
 
-In Normal mode, press Ctrl-w to open the Window menu, which displays
-a list of available commands.
+ In Normal mode, press Ctrl-w to open the Window menu, which displays
+ a list of available commands.
 
-To open a new empty buffer in a vertical split on the right half
-of your current window, use Ctrl-w nv (i.e., press Ctrl
-and w simultaneously, then press n, followed by v). Your current
-window will now split in 2 vertically. A new empty buffer split
-will appear on the right half and your cursor will jump to the
-new vertical split.
+ To open a new empty buffer in a vertical split on the right half
+ of your current window, use Ctrl-w nv (i.e., press Ctrl
+ and w simultaneously, then press n, followed by v). Your current
+ window will now split in 2 vertically. A new empty buffer split
+ will appear on the right half and your cursor will jump to the
+ new vertical split.
 
-To create a new empty buffer in a horizontal split, press
-Ctrl-w ns. This action divides your current window into two
-horizontally, creates a new buffer, and moves your cursor to the
-new horizontal split.
+ To create a new empty buffer in a horizontal split, press
+ Ctrl-w ns. This action divides your current window into two
+ horizontally, creates a new buffer, and moves your cursor to the
+ new horizontal split.
 
 
 
@@ -1366,33 +1366,33 @@ new horizontal split.
 =                CHAPTER 13.2 MOVE BETWEEN SPLITS               =
 =================================================================
 
-Use Ctrl-w k to move to the split above your current split. Use
-Ctrl-w j to move to the split below. Use Ctrl-w h to move to
-the split on the left and Ctrl-w l to move to the split on the
-right. To navigate to the next split (in the order they were
-opened), press Ctrl-w w.
+ Use Ctrl-w k to move to the split above your current split. Use
+ Ctrl-w j to move to the split below. Use Ctrl-w h to move to
+ the split on the left and Ctrl-w l to move to the split on the
+ right. To navigate to the next split (in the order they were
+ opened), press Ctrl-w w.
 
-You can now do whatever you want in your new buffers and splits.
-Once you are done with using your new buffer split,
-you can close it with Ctrl-w q . Move to the bottom right split
-with Ctrl-w l then Ctrl-w j, then press Ctrl-w q to close this
-specific split.
+ You can now do whatever you want in your new buffers and splits.
+ Once you are done with using your new buffer split,
+ you can close it with Ctrl-w q . Move to the bottom right split
+ with Ctrl-w l then Ctrl-w j, then press Ctrl-w q to close this
+ specific split.
 
-You can also close all splits except the current one with Ctrl-w o .
-Open a third vertical split with Ctrl-w nv , then move to the
-leftmost split with Ctrl-w h twice, then from inside the split on
-the left press Ctrl-w o to close all except this split.
+ You can also close all splits except the current one with Ctrl-w o .
+ Open a third vertical split with Ctrl-w nv , then move to the
+ leftmost split with Ctrl-w h twice, then from inside the split on
+ the left press Ctrl-w o to close all except this split.
 
 
 =================================================================
 =               CHAPTER 13.3 SPLIT CURRENT BUFFER               =
 =================================================================
 
-Use Ctrl-w s to split the view of the current buffer horizontally
-and Ctrl-w v to split it vertically with the buffer opened in both
-splits.
+ Use Ctrl-w s to split the view of the current buffer horizontally
+ and Ctrl-w v to split it vertically with the buffer opened in both
+ splits.
 
-Close extra splits with Ctrl-w o to return to a single window view.
+ Close extra splits with Ctrl-w o to return to a single window view.
 
 
 
@@ -1410,41 +1410,41 @@ Close extra splits with Ctrl-w o to return to a single window view.
 =               CHAPTER 13.4 USE COMMANDS TO SPLIT              =
 =================================================================
 
-The :vsplit (or :vs for short) and :hsplit (or :hs) commands can
-also be used to split a specific buffer vertically or horizontally.
-For example, enter the command:
+ The :vsplit (or :vs for short) and :hsplit (or :hs) commands can
+ also be used to split a specific buffer vertically or horizontally.
+ For example, enter the command:
 
-:vs something
+ :vs something
 
-to open a new vertical split named "something" to the right. Here,
-"something" is not an existing file, so a new buffer with this name
-will open; however, you can replace "something" with any file name
-to open it in a new buffer. Similarly, you can enter the command:
+ to open a new vertical split named "something" to the right. Here,
+ "something" is not an existing file, so a new buffer with this name
+ will open; however, you can replace "something" with any file name
+ to open it in a new buffer. Similarly, you can enter the command:
 
-:hs some_more
+ :hs some_more
 
-to open a new buffer named "some_more" in the lower half.
-"some_more" could be any file or path to open this specific file
-or path instead of a new empty buffer.
+ to open a new buffer named "some_more" in the lower half.
+ "some_more" could be any file or path to open this specific file
+ or path instead of a new empty buffer.
 
 
 =================================================================
 =                  CHAPTER 13.5 SWAPPING SPLITS                 =
 =================================================================
 
-Open a split on the left with :vs hello1 and then a split below
-with :hs hello2.
+ Open a split on the left with :vs hello1 and then a split below
+ with :hs hello2.
 
-From hello2, press Ctrl-w K to swap it with the split above. Now
-hello2 is at the top while hello1 is at the bottom.
+ From hello2, press Ctrl-w K to swap it with the split above. Now
+ hello2 is at the top while hello1 is at the bottom.
 
-Still from hello2, press Ctrl-w H to swap with the split on the
-left: now hello2 is on the left and the tutor is on the top
-right. After Ctrl-w you can use HJKL to split with the buffer
-on the left / below / above / on the right.
+ Still from hello2, press Ctrl-w H to swap with the split on the
+ left: now hello2 is on the left and the tutor is on the top
+ right. After Ctrl-w you can use HJKL to split with the buffer
+ on the left / below / above / on the right.
 
-Move back to the tutor split, and press Ctrl-w o to only keep
-this split.
+ Move back to the tutor split, and press Ctrl-w o to only keep
+ this split.
 
 
 
@@ -1454,21 +1454,21 @@ this split.
 =                CHAPTER 13.6 TRANSPOSE SPLITS                  =
 =================================================================
 
-Open a split on the left with :vs hello1 and then a split below
-with :vs hello2.
+ Open a split on the left with :vs hello1 and then a split below
+ with :vs hello2.
 
-Move to the tutor split, then press Ctrl-w t to transpose the
-vertical split opened from this window: now, hello1 and
-hello2 are below, rather than to the right of, the tutor. Press
-Ctrl-w t again to transpose back.
+ Move to the tutor split, then press Ctrl-w t to transpose the
+ vertical split opened from this window: now, hello1 and
+ hello2 are below, rather than to the right of, the tutor. Press
+ Ctrl-w t again to transpose back.
 
-Move to the hello1 split, then press Ctrl-w t to transpose the
-horizontal split that was opened from this window: now hello2
-is on the right, rather than below, hello1. Press Ctrl-w t to
-transpose back.
+ Move to the hello1 split, then press Ctrl-w t to transpose the
+ horizontal split that was opened from this window: now hello2
+ is on the right, rather than below, hello1. Press Ctrl-w t to
+ transpose back.
 
-Move back to the tutor split and press Ctrl-w o to close all but
-the tutor window.
+ Move back to the tutor split and press Ctrl-w o to close all but
+ the tutor window.
 
 
 
@@ -1476,21 +1476,21 @@ the tutor window.
 =             CHAPTER 13.7 OPEN SPLIT FROM FILEPICKER           =
 =================================================================
 
-Splits can also be opened directly from the file picker. Press
-space f to open the file picker. From there, you can type in text
-to perform file lookup with fuzzy matching, and use the arrows
-up and down to move the selected file (indicated by the > symbol).
-If you want to exit the file picker, press Escape.
+ Splits can also be opened directly from the file picker. Press
+ space f to open the file picker. From there, you can type in text
+ to perform file lookup with fuzzy matching, and use the arrows
+ up and down to move the selected file (indicated by the > symbol).
+ If you want to exit the file picker, press Escape.
 
-Select any file you like in the file picker. You could open it in
-the current view by pressing enter (do not do this at present).
-But you can also open it in a new split. Press Ctrl-v to open
-the selected file in a new vertical split. Press space f again,
-select any file you want, and press Ctrl-s to open it in a
-horizontal split.
+ Select any file you like in the file picker. You could open it in
+ the current view by pressing enter (do not do this at present).
+ But you can also open it in a new split. Press Ctrl-v to open
+ the selected file in a new vertical split. Press space f again,
+ select any file you want, and press Ctrl-s to open it in a
+ horizontal split.
 
-Move back to the tutor split, and press Ctrl-w o to close all
-splits except this one.
+ Move back to the tutor split, and press Ctrl-w o to close all
+ splits except this one.
 
 
 
@@ -1498,18 +1498,18 @@ splits except this one.
 =                        CHAPTER 13 RECAP                       =
 =================================================================
 
-Splits can be used to display either the same buffer several times
-or several buffers. To access the main windows and splits commands,
-press Ctrl-w . You can move between splits with Ctrl-w hjkl ,
-you can close a split with Ctrl-w q , and you can close all but
-the present split with Ctrl-w o .
+ Splits can be used to display either the same buffer several times
+ or several buffers. To access the main windows and splits commands,
+ press Ctrl-w . You can move between splits with Ctrl-w hjkl ,
+ you can close a split with Ctrl-w q , and you can close all but
+ the present split with Ctrl-w o .
 
-Splits can also be opened by using the :vs FILENAME and
-:hs FILENAME commands.
+ Splits can also be opened by using the :vs FILENAME and
+ :hs FILENAME commands.
 
-Splits can also be used directly from the file pickers, by using
-Ctrl-v to open the file selected in a new vertical split, and
-Ctrl-s in a horizontal split.
+ Splits can also be used directly from the file pickers, by using
+ Ctrl-v to open the file selected in a new vertical split, and
+ Ctrl-s in a horizontal split.
 
 
 
