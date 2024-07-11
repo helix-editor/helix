@@ -2084,7 +2084,7 @@ impl Editor {
                 };
 
                 let doc = doc_mut!(self, &save_event.doc_id);
-                doc.set_last_saved_revision(save_event.revision);
+                doc.set_last_saved_revision(save_event.revision, save_event.save_time);
             }
         }
 
