@@ -1,4 +1,4 @@
-compdef _hx hx
+#compdef _hx hx
 # Zsh completion script for Helix editor
 
 _hx() {
@@ -33,4 +33,3 @@ _hx() {
 		;;
 	esac
 }
-
