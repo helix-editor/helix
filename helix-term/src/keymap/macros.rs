@@ -84,9 +84,9 @@ macro_rules! keymap {
     };
 
     (@trie
-        { $label:literal $(sticky=$sticky:literal)? $($($key:literal)|+ => $value:tt,)+ }
+        { $label:literal $(sticky=$sticky:literal)? $(fallback=$fallback:ident)? $($($key:literal)|+ => $value:tt,)+ }
     ) => {
-        keymap!({ $label $(sticky=$sticky)? $($($key)|+ => $value,)+ })
+        keymap!({ $label $(sticky=$sticky)? $(fallback=$fallback)? $($($key)|+ => $value,)+ })
     };
 
     (@trie [$($cmd:ident),* $(,)?]) => {
@@ -94,7 +94,7 @@ macro_rules! keymap {
     };
 
     (
-        { $label:literal $(sticky=$sticky:literal)? $($($key:literal)|+ => $value:tt,)+ }
+        { $label:literal $(sticky=$sticky:literal)? $(fallback=$fallback:ident)? $($($key:literal)|+ => $value:tt,)+ }
     ) => {
         // modified from the hashmap! macro
         {
@@ -114,6 +114,7 @@ macro_rules! keymap {
             )*
             let mut _node = $crate::keymap::KeyTrieNode::new($label, _map, _order);
             $( _node.is_sticky = $sticky; )?
+            $( _node.fallback = Some($crate::commands::FallbackCommand::$fallback); )?
             $crate::keymap::KeyTrie::Node(_node)
         }
     };

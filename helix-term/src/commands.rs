@@ -755,6 +755,47 @@ impl PartialEq for MappableCommand {
     }
 }
 
+// TODO: this is mostly a copy of MappableCommand. Fold this into MappableCommand?
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FallbackCommand {
+    name: &'static str,
+    fun: fn(cx: &mut Context, ch: char),
+    doc: &'static str,
+}
+
+macro_rules! static_fallback_commands {
+    ( $($name:ident, $doc:literal,)* ) => {
+        $(
+            #[allow(non_upper_case_globals)]
+            pub const $name: Self = Self {
+                name: stringify!($name),
+                fun: $name,
+                doc: $doc
+            };
+        )*
+
+        pub const FALLBACK_COMMAND_LIST: &'static [Self] = &[
+            $( Self::$name, )*
+        ];
+    }
+}
+
+impl FallbackCommand {
+    pub fn execute(&self, cx: &mut Context, ch: char) {
+        (self.fun)(cx, ch)
+    }
+
+    pub fn doc(&self) -> &str {
+        self.doc
+    }
+
+    #[rustfmt::skip]
+    static_fallback_commands!(
+        select_textobject_inside_surrounding_pair, "Select inside any character acting as a pair (tree-sitter)",
+        select_textobject_around_surrounding_pair, "Select around any character acting as a pair (tree-sitter)",
+    );
+}
+
 fn no_op(_cx: &mut Context) {}
 
 type MoveFn =
@@ -5813,6 +5854,14 @@ fn textobject_change(cx: &mut Context) {
         doc.set_selection(view.id, selection);
     };
     cx.editor.apply_motion(motion);
+}
+
+fn select_textobject_inside_surrounding_pair(cx: &mut Context, ch: char) {
+    textobject_surrounding_pair(cx, textobject::TextObject::Inside, ch);
+}
+
+fn select_textobject_around_surrounding_pair(cx: &mut Context, ch: char) {
+    textobject_surrounding_pair(cx, textobject::TextObject::Inside, ch);
 }
 
 fn textobject_surrounding_pair(

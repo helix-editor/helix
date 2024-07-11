@@ -104,7 +104,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "s" => surround_add,
             "r" => surround_replace,
             "d" => surround_delete,
-            "i" => { "Match inside"
+            "i" => { "Match inside" fallback=select_textobject_inside_surrounding_pair
                 "w" => select_textobject_inside_word,
                 "W" => select_textobject_inside_WORD,
                 "p" => select_textobject_inside_paragraph,
@@ -117,7 +117,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
                 "m" => select_textobject_inside_closest_surrounding_pair,
                 "g" => select_textobject_inside_change,
             },
-            "a" => { "Match around"
+            "a" => { "Match around" fallback=select_textobject_around_surrounding_pair
                 "w" => select_textobject_around_word,
                 "W" => select_textobject_around_WORD,
                 "p" => select_textobject_around_paragraph,
