@@ -980,6 +980,19 @@ impl Document {
             };
 
             if let Some(ref sidewrite_path) = sidewrite_path {
+                if !force {
+                    if let Ok(metadata) = fs::metadata(&path).await {
+                        if let Ok(mtime) = metadata.modified() {
+                            if last_saved_time < mtime {
+                                let _ = std::fs::remove_file(sidewrite_path).map_err(|e| {
+                                    log::error!("Failed to remove sidewrite file: {e}")
+                                });
+                                bail!("file is changed while writting, use :w! to ignore it");
+                            }
+                        }
+                    }
+                }
+
                 let _ = std::fs::remove_file(target_path.clone())
                     .map_err(|e| log::error!("Failed to remove origin file: {e}"));
                 let _ = tokio::fs::rename(sidewrite_path, target_path)
