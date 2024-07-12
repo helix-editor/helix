@@ -305,6 +305,10 @@ provided <code>.desktop</code> and icon files to their correct folders:</p>
 <pre><code class="language-sh">cp contrib/Helix.desktop ~/.local/share/applications
 cp contrib/helix.png ~/.icons # or ~/.local/share/icons
 </code></pre>
+<p>It is recommended to convert the links in the <code>.desktop</code> file to absolute paths to avoid potential problems:</p>
+<pre><code class="language-sh">sed -i -e "s|Exec=hx %F|Exec=$(readlink -f ~/.cargo/bin/hx) %F|g" \
+  -e "s|Icon=helix|Icon=$(readlink -f ~/.icons/helix.png)|g" ~/.local/share/applications/Helix.desktop
+</code></pre>
 <p>To use another terminal than the system default, you can modify the <code>.desktop</code>
 file. For example, to use <code>kitty</code>:</p>
 <pre><code class="language-sh">sed -i "s|Exec=hx %F|Exec=kitty hx %F|g" ~/.local/share/applications/Helix.desktop
