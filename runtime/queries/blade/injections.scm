@@ -7,6 +7,8 @@
 
 ((php_only) @injection.content
     (#set! injection.language "php-only"))
-((parameter) @injection.content
-    (#set! injection.language "php-only"))
+
+((parameter) @injection.content                                                                                                 
+    (#set! injection.include-children)                                                                                          
+    (#set! injection.language "php-only")) 
 
