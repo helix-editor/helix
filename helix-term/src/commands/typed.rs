@@ -3198,7 +3198,8 @@ pub(super) fn command_mode(cx: &mut Context) {
                     completer(editor, word)
                         .into_iter()
                         .map(|(range, file)| {
-                            let file = shellwords::escape(file);
+                            // TEST: Might not need to escape with new changes?
+                            // let file = shellwords::escape(&file);
 
                             // offset ranges to input
                             let offset = input.len() - word_len;
