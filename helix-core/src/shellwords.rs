@@ -1,6 +1,497 @@
-use std::borrow::Cow;
+use smartstring::{LazyCompact, SmartString};
+use std::{
+    borrow::Cow,
+    ops::{Index, RangeFrom},
+};
+
+/// A utility for parsing shell-like command lines.
+///
+/// The `Shellwords` struct takes an input string and allows extracting the command and its arguments.
+///
+/// # Features
+///
+/// - Parses command and arguments from input strings.
+/// - Supports single, double, and backtick quoted arguments.
+/// - Respects backslash escaping in arguments.
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// # use helix_core::shellwords::Shellwords;
+/// let shellwords = Shellwords::from(":o helix-core/src/shellwords.rs");
+/// assert_eq!(":o", shellwords.command());
+/// assert_eq!("helix-core/src/shellwords.rs", shellwords.args().next().unwrap());
+/// ```
+///
+/// Empty command:
+///
+/// ```
+/// # use helix_core::shellwords::Shellwords;
+/// let shellwords = Shellwords::from(" ");
+/// assert!(shellwords.command().is_empty());
+/// ```
+///
+/// # Iterator
+///
+/// The `args` method returns a non-allocating iterator, `Args`, over the arguments of the input.
+///
+/// ```
+/// # use helix_core::shellwords::Shellwords;
+/// let shellwords = Shellwords::from(":o a b c");
+/// let mut args = shellwords.args();
+/// assert_eq!(Some("a"), args.next().as_deref());
+/// assert_eq!(Some("b"), args.next().as_deref());
+/// assert_eq!(Some("c"), args.next().as_deref());
+/// assert_eq!(None, args.next());
+/// ```
+#[derive(Clone, Copy)]
+pub struct Shellwords<'a> {
+    input: &'a str,
+}
+
+impl<'a> From<&'a str> for Shellwords<'a> {
+    #[inline]
+    fn from(input: &'a str) -> Self {
+        Self { input }
+    }
+}
+
+impl<'a> From<&'a String> for Shellwords<'a> {
+    #[inline]
+    fn from(input: &'a String) -> Self {
+        Self { input }
+    }
+}
+
+impl<'a> From<&'a Cow<'a, str>> for Shellwords<'a> {
+    #[inline]
+    fn from(input: &'a Cow<str>) -> Self {
+        Self { input }
+    }
+}
+
+impl<'a> Shellwords<'a> {
+    #[inline]
+    #[must_use]
+    pub fn command(&self) -> &str {
+        self.input
+            .split_once(' ')
+            .map_or(self.input, |(command, _)| command)
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn args(&self) -> Args<'a> {
+        let args = self
+            .input
+            .split_once([' ', '\t'])
+            .map_or("", |(_, args)| args);
+
+        Args {
+            input: args,
+            args: ArgsParser::from(args).collect(),
+        }
+    }
+
+    #[inline]
+    pub fn input(&self) -> &str {
+        self.input
+    }
+
+    /// Checks that the input ends with a whitespace character which is not escaped.
+    ///
+    /// # Examples
+    ///
+    /// ```rust
+    /// # use helix_core::shellwords::Shellwords;
+    /// assert_eq!(Shellwords::from(" ").ends_with_whitespace(), true);
+    /// assert_eq!(Shellwords::from(":open ").ends_with_whitespace(), true);
+    /// assert_eq!(Shellwords::from(":open foo.txt ").ends_with_whitespace(), true);
+    /// assert_eq!(Shellwords::from(":open").ends_with_whitespace(), false);
+    /// assert_eq!(Shellwords::from(":open a\\ b.txt").ends_with_whitespace(), false);
+    /// #[cfg(windows)]
+    /// assert_eq!(Shellwords::from(":open a\\\t").ends_with_whitespace(), true);
+    /// #[cfg(windows)]
+    /// assert_eq!(Shellwords::from(":open a\\ ").ends_with_whitespace(), true);
+    /// #[cfg(unix)]
+    /// assert_eq!(Shellwords::from(":open a\\ ").ends_with_whitespace(), false);
+    /// #[cfg(unix)]
+    /// assert_eq!(Shellwords::from(":open a\\\t").ends_with_whitespace(), false);
+    /// ```
+    #[inline]
+    #[must_use]
+    pub fn ends_with_whitespace(&self) -> bool {
+        self.args().last().map_or(
+            self.input.ends_with(' ') || self.input.ends_with('\t'),
+            |last| {
+                if cfg!(windows) {
+                    self.input.ends_with(' ') || self.input.ends_with('\t')
+                } else {
+                    !(last.ends_with("\\ ") || last.ends_with("\\\t"))
+                        && (self.input.ends_with(' ') || self.input.ends_with('\t'))
+                }
+            },
+        )
+    }
+}
+
+#[derive(Debug)]
+pub struct Args<'a> {
+    input: &'a str,
+    args: Vec<Cow<'a, str>>,
+}
+
+impl Args<'_> {
+    pub fn count(&self) -> usize {
+        self.args.len()
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.args.is_empty()
+    }
+
+    pub fn get(&self, index: usize) -> Option<&str> {
+        self.args.get(index).map(|arg| arg.as_ref())
+    }
+
+    pub fn first(&self) -> Option<&str> {
+        self.args.first().map(|first| first.as_ref())
+    }
+
+    pub fn last(&self) -> Option<&str> {
+        self.args.last().map(|last| last.as_ref())
+    }
+
+    pub fn raw(&self) -> &str {
+        self.input
+    }
+
+    pub fn raw_parser(&self) -> ArgsParser<'_> {
+        ArgsParser::from(self.input)
+    }
+
+    pub fn iter(&self) -> std::slice::Iter<'_, Cow<'_, str>> {
+        self.args.iter()
+    }
+
+    #[inline(always)]
+    pub fn empty() -> Self {
+        Self {
+            input: "",
+            args: Vec::new(),
+        }
+    }
+}
+
+impl<'a> IntoIterator for Args<'a> {
+    type Item = Cow<'a, str>;
+    type IntoIter = std::vec::IntoIter<Cow<'a, str>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.args.into_iter()
+    }
+}
+
+impl<'a> IntoIterator for &'a Args<'a> {
+    type Item = &'a Cow<'a, str>;
+    type IntoIter = std::slice::Iter<'a, Cow<'a, str>>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.args.iter()
+    }
+}
+
+impl<'a> AsRef<[Cow<'a, str>]> for Args<'a> {
+    fn as_ref(&self) -> &[Cow<'a, str>] {
+        self.args.as_ref()
+    }
+}
+
+impl PartialEq<&[&str]> for Args<'_> {
+    fn eq(&self, other: &&[&str]) -> bool {
+        let this = self.args.iter();
+        let other = other.iter().copied();
+
+        for (left, right) in this.zip(other) {
+            if left != right {
+                return false;
+            }
+        }
+
+        true
+    }
+}
+
+impl<'a> Index<usize> for Args<'a> {
+    type Output = str;
+
+    fn index(&self, index: usize) -> &Self::Output {
+        let cow = &self.args[index];
+        cow.as_ref()
+    }
+}
+
+impl<'a> Index<RangeFrom<usize>> for Args<'a> {
+    type Output = [Cow<'a, str>];
+
+    fn index(&self, index: RangeFrom<usize>) -> &Self::Output {
+        &self.args[index]
+    }
+}
+
+impl<'a> From<&'a String> for Args<'a> {
+    fn from(args: &'a String) -> Self {
+        Args {
+            input: args,
+            args: ArgsParser::from(args).collect(),
+        }
+    }
+}
+
+impl<'a> From<&'a str> for Args<'a> {
+    fn from(args: &'a str) -> Self {
+        Args {
+            input: args,
+            args: ArgsParser::from(args).collect(),
+        }
+    }
+}
+
+impl<'a> From<&'a Cow<'_, str>> for Args<'a> {
+    fn from(args: &'a Cow<str>) -> Self {
+        Args {
+            input: args,
+            args: ArgsParser::from(args).collect(),
+        }
+    }
+}
+
+/// An iterator over an input string which yields arguments.
+///
+/// Splits on whitespace, but respects quoted substrings (using double quotes, single quotes, or backticks).
+#[derive(Debug, Clone)]
+pub struct ArgsParser<'a> {
+    input: &'a str,
+    idx: usize,
+    start: usize,
+}
+
+impl<'a> ArgsParser<'a> {
+    #[inline]
+    fn parse(input: &'a str) -> Self {
+        Self {
+            input,
+            idx: 0,
+            start: 0,
+        }
+    }
+
+    #[inline]
+    pub fn is_empty(&self) -> bool {
+        self.input.is_empty()
+    }
+
+    /// Returns the args exactly as input.
+    ///
+    /// # Examples
+    /// ```
+    /// # use helix_core::shellwords::Args;
+    /// let args = Args::from(r#"sed -n "s/test t/not /p""#);
+    /// assert_eq!(r#"sed -n "s/test t/not /p""#, args.raw());
+    ///
+    /// let args = Args::from(r#"cat "file name with space.txt""#);
+    /// assert_eq!(r#"cat "file name with space.txt""#, args.raw());
+    /// ```
+    #[inline]
+    pub fn raw(&self) -> &str {
+        self.input
+    }
+
+    /// Returns the remainder of the args exactly as input.
+    ///
+    /// # Examples
+    /// ```
+    /// # use helix_core::shellwords::Args;
+    /// let mut args = Args::from(r#"sed -n "s/test t/not /p""#);
+    /// assert_eq!("sed", args.next().unwrap());
+    /// assert_eq!(r#"-n "s/test t/not /p""#, args.rest());
+    /// ```
+    ///
+    /// Never calling `next` and using `rest` is functionally equivalent to calling `raw`.
+    #[inline]
+    pub fn rest(&self) -> &str {
+        &self.input[self.idx..]
+    }
+
+    /// Returns a reference to the `next()` value without advancing the iterator.
+    ///
+    /// Unlike `std::iter::Peakable::peek` this does not return a double reference, `&&str`
+    /// but a normal `&str`.
+    #[inline]
+    #[must_use]
+    pub fn peek(&self) -> Option<Cow<'_, str>> {
+        self.clone().next()
+    }
+
+    /// Convenient function to return an empty `Args`.
+    ///
+    /// When used in any iteration, it will always return `None`.
+    #[inline(always)]
+    pub const fn empty() -> Self {
+        Self {
+            input: "",
+            idx: 0,
+            start: 0,
+        }
+    }
+}
+
+impl<'a> Iterator for ArgsParser<'a> {
+    type Item = Cow<'a, str>;
+
+    #[inline]
+    #[allow(clippy::too_many_lines)]
+    fn next(&mut self) -> Option<Self::Item> {
+        // The parser loop is split into three main blocks to handle different types of input processing:
+        //
+        // 1. Quote block:
+        //    - Detects an unescaped quote character, either starting an in-quote scan or, if already in-quote,
+        //      locating the closing quote to return the quoted argument.
+        //    - Handles cases where mismatched quotes are ignored and when quotes appear as the last character.
+        //
+        // 2. Whitespace block:
+        //    - Handles arguments separated by whitespace (space or tab), respecting quotes so quoted phrases
+        //      remain grouped together.
+        //    - Splits arguments by whitespace when outside of a quoted context and updates boundaries accordingly.
+        //
+        // 3. Catch-all block:
+        //    - Handles any other character, updating the `is_escaped` status if a backslash is encountered,
+        //      advancing the loop to the next character.
+
+        let bytes = self.input.as_bytes();
+        let mut in_quotes = false;
+        let mut quote = b'\0';
+        let mut is_escaped = false;
+
+        while self.idx < bytes.len() {
+            match bytes[self.idx] {
+                b'"' | b'\'' | b'`' if !is_escaped => {
+                    if in_quotes {
+                        // Found the proper closing quote, so can return the arg and advance the state along.
+                        if bytes[self.idx] == quote {
+                            let arg = &self.input[self.start..self.idx];
+                            self.idx += 1;
+                            self.start = self.idx;
+                            return Some(unescape(arg, true));
+                        }
+                        // If quote does not match the type of the opening quote, then do nothing and advance.
+                        self.idx += 1;
+                    } else if self.idx == bytes.len() - 1 {
+                        // Special case for when a quote is the last input in args.
+                        // e.g: :read "file with space.txt""
+                        // This preserves the quote as an arg:
+                        // - `file with space`
+                        // - `"`
+                        let arg = &self.input[self.idx..];
+                        self.idx = bytes.len();
+                        self.start = bytes.len();
+                        return Some(unescape(arg, true));
+                    } else {
+                        // Found opening quote.
+                        in_quotes = true;
+                        // Kind of quote that was found.
+                        quote = bytes[self.idx];
+
+                        if self.start < self.idx {
+                            // When part of the input ends in a quote, `one two" three`, this properly returns the `two`
+                            // before advancing to the quoted arg for the next iteration:
+                            // - `one` <- previous arg
+                            // - `two` <- this step
+                            // - ` three` <- next arg
+                            let arg = &self.input[self.start..self.idx];
+                            self.idx += 1;
+                            self.start = self.idx;
+                            return Some(unescape(arg, true));
+                        }
+
+                        // Advance after quote.
+                        self.idx += 1;
+                        // Exclude quote from arg output.
+                        self.start = self.idx;
+                    }
+                }
+                b' ' | b'\t' if !in_quotes && !is_escaped => {
+                    // Found a true whitespace separator that wasn't inside quotes.
+
+                    // Check if there is anything to return or if its just advancing over whitespace.
+                    // `start` will only be less than `idx` when there is something to return.
+                    if self.start < self.idx {
+                        let arg = &self.input[self.start..self.idx];
+                        self.idx += 1;
+                        self.start = self.idx;
+                        return Some(unescape(arg, true));
+                    }
+
+                    // Advance beyond the whitespace.
+                    self.idx += 1;
+
+                    // This is where `start` will be set to the start of an arg boundary, either encountering a word
+                    // boundary or a quote boundary. If it finds a quote, then it will be advanced again in that part
+                    // of the code. Either way, all that remains for the check above will be to return a full arg.
+                    self.start = self.idx;
+                }
+                _ => {
+                    // If previous loop didn't find any backslash and was already escaped it will change to false
+                    // as the backslash chain was broken.
+                    //
+                    // If the previous loop had no backslash escape, and found one this iteration, then its the start
+                    // of an escape chain.
+                    is_escaped = match (is_escaped, bytes[self.idx]) {
+                        (false, b'\\') => true, // Set `is_escaped` if the current byte is a backslash
+                        _ => false, //Reset `is_escaped` if it was true, otherwise keep `is_escaped` as false
+                    };
+
+                    // Advance to next `char`.
+                    self.idx += 1;
+                }
+            }
+        }
+
+        // Fallback that catches when the loop would have exited but failed to return the arg between start and the end.
+        if self.start < bytes.len() {
+            let arg = &self.input[self.start..];
+            self.start = bytes.len();
+            return Some(unescape(arg, true));
+        }
+
+        // All args have been parsed.
+        None
+    }
+}
+
+impl<'a> From<&'a String> for ArgsParser<'a> {
+    fn from(args: &'a String) -> Self {
+        ArgsParser::parse(args)
+    }
+}
+
+impl<'a> From<&'a str> for ArgsParser<'a> {
+    fn from(args: &'a str) -> Self {
+        ArgsParser::parse(args)
+    }
+}
+
+impl<'a> From<&'a Cow<'_, str>> for ArgsParser<'a> {
+    fn from(args: &'a Cow<str>) -> Self {
+        ArgsParser::parse(args)
+    }
+}
 
 /// Auto escape for shellwords usage.
+#[inline]
+#[must_use]
 pub fn escape(input: Cow<str>) -> Cow<str> {
     if !input.chars().any(|x| x.is_ascii_whitespace()) {
         input
@@ -13,186 +504,153 @@ pub fn escape(input: Cow<str>) -> Cow<str> {
             buf
         }))
     } else {
-        Cow::Owned(format!("\"{}\"", input))
+        Cow::Owned(format!("\"{input}\""))
     }
 }
 
-enum State {
-    OnWhitespace,
-    Unquoted,
-    UnquotedEscaped,
-    Quoted,
-    QuoteEscaped,
-    Dquoted,
-    DquoteEscaped,
-}
+/// Unescapes a string, converting escape sequences into their literal characters.
+///
+/// This function handles the following escape sequences:
+/// - `\\n` is converted to `\n` (newline)
+/// - `\\t` is converted to `\t` (tab)
+/// - `\\t` is converted to `\t` (tab)
+/// - `\\"` is converted to `"` (double-quote)
+/// - `\\'` is converted to `'` (single-quote)
+/// - `\\u{...}` is converted to the corresponding Unicode character
+///
+/// Other escape sequences, such as `\\` followed by any character not listed above, will remain unchanged.
+///
+/// If input is invalid, for example if there is invalid unicode, \u{999999999}, it will return the input as is.
+///
+/// # Examples
+///
+/// Basic usage:
+///
+/// ```
+/// # use helix_core::shellwords::unescape;
+/// let unescaped = unescape(r"hello\nworld", true);
+/// assert_eq!("hello\nworld", unescaped);
+/// ```
+///
+/// Unescaping tabs:
+///
+/// ```
+/// # use helix_core::shellwords::unescape;
+/// let unescaped = unescape(r"hello\tworld", true);
+/// assert_eq!("hello\tworld", unescaped);
+/// ```
+///
+/// Unescaping Unicode characters:
+///
+/// ```
+/// # use helix_core::shellwords::unescape;
+/// let unescaped = unescape(r"hello\u{1f929}world", true);
+/// assert_eq!("hello\u{1f929}world", unescaped);
+/// assert_eq!("hello🤩world", unescaped);
+/// ```
+///
+/// Handling backslashes:
+///
+/// ```
+/// # use helix_core::shellwords::unescape;
+/// let unescaped = unescape(r"hello\\world", true);
+/// assert_eq!(r"hello\world", unescaped);
+///
+/// let unescaped = unescape(r"hello\\world", false);
+/// assert_eq!(r"hello\\world", unescaped);
+///
+/// let unescaped = unescape(r"hello\\\\world", true);
+/// assert_eq!(r"hello\\world", unescaped);
+///
+/// let unescaped = unescape(r"hello\\\\world", false);
+/// assert_eq!(r"hello\\\\world", unescaped);
+/// ```
+///
+/// # Note
+///
+/// This function is opinionated, with a clear purpose of handling user input, not a general or generic unescaping utility, and does not unescape sequences like `\\'` or `\\\"`, leaving them as is.
+#[inline]
+#[must_use]
+pub fn unescape(input: &str, unescape_blackslash: bool) -> Cow<'_, str> {
+    enum State {
+        Normal,
+        Escaped,
+        Unicode,
+    }
 
-pub struct Shellwords<'a> {
-    state: State,
-    /// Shellwords where whitespace and escapes has been resolved.
-    words: Vec<Cow<'a, str>>,
-    /// The parts of the input that are divided into shellwords. This can be
-    /// used to retrieve the original text for a given word by looking up the
-    /// same index in the Vec as the word in `words`.
-    parts: Vec<&'a str>,
-}
+    let mut unescaped = String::new();
+    let mut state = State::Normal;
+    let mut is_escaped = false;
+    // NOTE: Max unicode code point is U+10FFFF for a maximum of 6 chars
+    let mut unicode = SmartString::<LazyCompact>::new_const();
 
-impl<'a> From<&'a str> for Shellwords<'a> {
-    fn from(input: &'a str) -> Self {
-        use State::*;
-
-        let mut state = Unquoted;
-        let mut words = Vec::new();
-        let mut parts = Vec::new();
-        let mut escaped = String::with_capacity(input.len());
-
-        let mut part_start = 0;
-        let mut unescaped_start = 0;
-        let mut end = 0;
-
-        for (i, c) in input.char_indices() {
-            state = match state {
-                OnWhitespace => match c {
-                    '"' => {
-                        end = i;
-                        Dquoted
-                    }
-                    '\'' => {
-                        end = i;
-                        Quoted
-                    }
-                    '\\' => {
-                        if cfg!(unix) {
-                            escaped.push_str(&input[unescaped_start..i]);
-                            unescaped_start = i + 1;
-                            UnquotedEscaped
-                        } else {
-                            OnWhitespace
+    for (idx, ch) in input.char_indices() {
+        match state {
+            State::Normal => match ch {
+                '\\' => {
+                    if !is_escaped {
+                        // PERF: As not every separator will be escaped, we use `String::new` as that has no initial
+                        // allocation. If an escape is found, then we reserve capacity thats the len of the separator,
+                        // as the new unescaped string will be at least that long.
+                        unescaped.reserve(input.len());
+                        if idx > 0 {
+                            // First time finding an escape, so all prior chars can be added to the new unescaped
+                            // version if its not the very first char found.
+                            unescaped.push_str(&input[0..idx]);
                         }
                     }
-                    c if c.is_ascii_whitespace() => {
-                        end = i;
-                        OnWhitespace
-                    }
-                    _ => Unquoted,
-                },
-                Unquoted => match c {
-                    '\\' => {
-                        if cfg!(unix) {
-                            escaped.push_str(&input[unescaped_start..i]);
-                            unescaped_start = i + 1;
-                            UnquotedEscaped
-                        } else {
-                            Unquoted
-                        }
-                    }
-                    c if c.is_ascii_whitespace() => {
-                        end = i;
-                        OnWhitespace
-                    }
-                    _ => Unquoted,
-                },
-                UnquotedEscaped => Unquoted,
-                Quoted => match c {
-                    '\\' => {
-                        if cfg!(unix) {
-                            escaped.push_str(&input[unescaped_start..i]);
-                            unescaped_start = i + 1;
-                            QuoteEscaped
-                        } else {
-                            Quoted
-                        }
-                    }
-                    '\'' => {
-                        end = i;
-                        OnWhitespace
-                    }
-                    _ => Quoted,
-                },
-                QuoteEscaped => Quoted,
-                Dquoted => match c {
-                    '\\' => {
-                        if cfg!(unix) {
-                            escaped.push_str(&input[unescaped_start..i]);
-                            unescaped_start = i + 1;
-                            DquoteEscaped
-                        } else {
-                            Dquoted
-                        }
-                    }
-                    '"' => {
-                        end = i;
-                        OnWhitespace
-                    }
-                    _ => Dquoted,
-                },
-                DquoteEscaped => Dquoted,
-            };
-
-            let c_len = c.len_utf8();
-            if i == input.len() - c_len && end == 0 {
-                end = i + c_len;
-            }
-
-            if end > 0 {
-                let esc_trim = escaped.trim();
-                let inp = &input[unescaped_start..end];
-
-                if !(esc_trim.is_empty() && inp.trim().is_empty()) {
-                    if esc_trim.is_empty() {
-                        words.push(inp.into());
-                        parts.push(inp);
-                    } else {
-                        words.push([escaped, inp.into()].concat().into());
-                        parts.push(&input[part_start..end]);
-                        escaped = "".to_string();
+                    state = State::Escaped;
+                    is_escaped = true;
+                }
+                _ => {
+                    if is_escaped {
+                        unescaped.push(ch);
                     }
                 }
-                unescaped_start = i + 1;
-                part_start = i + 1;
-                end = 0;
+            },
+            State::Escaped => {
+                match ch {
+                    'n' => unescaped.push('\n'),
+                    't' => unescaped.push('\t'),
+                    ' ' => unescaped.push(' '),
+                    '\'' => unescaped.push('\''),
+                    '"' => unescaped.push('"'),
+                    '`' => unescaped.push('`'),
+                    'u' => {
+                        state = State::Unicode;
+                        continue;
+                    }
+                    '\\' if unescape_blackslash => unescaped.push('\\'),
+                    _ => {
+                        unescaped.push('\\');
+                        unescaped.push(ch);
+                    }
+                }
+                state = State::Normal;
             }
+            State::Unicode => match ch {
+                '{' => continue,
+                '}' => {
+                    let Ok(digit) = u32::from_str_radix(&unicode, 16) else {
+                        return input.into();
+                    };
+                    let Some(point) = char::from_u32(digit) else {
+                        return input.into();
+                    };
+                    unescaped.push(point);
+                    // Might be more unicode to unescape so clear for reuse.
+                    unicode.clear();
+                    state = State::Normal;
+                }
+                _ => unicode.push(ch),
+            },
         }
-
-        debug_assert!(words.len() == parts.len());
-
-        Self {
-            state,
-            words,
-            parts,
-        }
-    }
-}
-
-impl<'a> Shellwords<'a> {
-    /// Checks that the input ends with a whitespace character which is not escaped.
-    ///
-    /// # Examples
-    ///
-    /// ```rust
-    /// use helix_core::shellwords::Shellwords;
-    /// assert_eq!(Shellwords::from(" ").ends_with_whitespace(), true);
-    /// assert_eq!(Shellwords::from(":open ").ends_with_whitespace(), true);
-    /// assert_eq!(Shellwords::from(":open foo.txt ").ends_with_whitespace(), true);
-    /// assert_eq!(Shellwords::from(":open").ends_with_whitespace(), false);
-    /// #[cfg(unix)]
-    /// assert_eq!(Shellwords::from(":open a\\ ").ends_with_whitespace(), false);
-    /// #[cfg(unix)]
-    /// assert_eq!(Shellwords::from(":open a\\ b.txt").ends_with_whitespace(), false);
-    /// ```
-    pub fn ends_with_whitespace(&self) -> bool {
-        matches!(self.state, State::OnWhitespace)
     }
 
-    /// Returns the list of shellwords calculated from the input string.
-    pub fn words(&self) -> &[Cow<'a, str>] {
-        &self.words
-    }
-
-    /// Returns a list of strings which correspond to [`Self::words`] but represent the original
-    /// text in the input string - including escape characters - without separating whitespace.
-    pub fn parts(&self) -> &[&'a str] {
-        &self.parts
+    if is_escaped {
+        unescaped.into()
+    } else {
+        input.into()
     }
 }
 
@@ -201,114 +659,191 @@ mod test {
     use super::*;
 
     #[test]
-    #[cfg(windows)]
-    fn test_normal() {
-        let input = r#":o single_word twó wörds \three\ \"with\ escaping\\"#;
+    fn base() {
+        let input = r#":o single_word twó wörds \\three\ \"with\ escaping\\"#;
         let shellwords = Shellwords::from(input);
-        let result = shellwords.words().to_vec();
-        let expected = vec![
-            Cow::from(":o"),
-            Cow::from("single_word"),
-            Cow::from("twó"),
-            Cow::from("wörds"),
-            Cow::from("\\three\\"),
-            Cow::from("\\"),
-            Cow::from("with\\ escaping\\\\"),
-        ];
-        // TODO test is_owned and is_borrowed, once they get stabilized.
-        assert_eq!(expected, result);
+        let args = vec!["single_word", "twó", "wörds", r#"\three "with escaping\"#];
+
+        assert_eq!(":o", shellwords.command());
+        assert_eq!(args, shellwords.args().as_ref());
     }
 
     #[test]
-    #[cfg(unix)]
-    fn test_normal() {
-        let input = r#":o single_word twó wörds \three\ \"with\ escaping\\"#;
-        let shellwords = Shellwords::from(input);
-        let result = shellwords.words().to_vec();
-        let expected = vec![
-            Cow::from(":o"),
-            Cow::from("single_word"),
-            Cow::from("twó"),
-            Cow::from("wörds"),
-            Cow::from(r#"three "with escaping\"#),
-        ];
-        // TODO test is_owned and is_borrowed, once they get stabilized.
-        assert_eq!(expected, result);
+    fn should_have_empty_args() {
+        let shellwords = Shellwords::from(":quit");
+        assert!(
+            shellwords.args().is_empty(),
+            "args: `{:#?}`",
+            shellwords.args()
+        );
     }
 
     #[test]
-    #[cfg(unix)]
-    fn test_quoted() {
-        let quoted =
-            r#":o 'single_word' 'twó wörds' '' ' ''\three\' \"with\ escaping\\' 'quote incomplete"#;
+    fn should_return_empty_command() {
+        let shellwords = Shellwords::from(" ");
+        assert!(shellwords.command().is_empty());
+    }
+
+    #[test]
+    fn should_support_unicode_args() {
+        assert_eq!(Shellwords::from(":sh echo 𒀀").args(), &["echo", "𒀀"]);
+        assert_eq!(
+            Shellwords::from(":sh echo 𒀀 hello world𒀀").args(),
+            &["echo", "𒀀", "hello", "world𒀀"]
+        );
+    }
+
+    #[test]
+    fn should_preserve_quote_if_last_argument() {
+        let shellwords = Shellwords::from(r#":read "file with space.txt"""#);
+        let args = shellwords.args();
+        assert_eq!("file with space.txt", args.first().unwrap());
+        assert_eq!(r#"""#, args.last().unwrap());
+    }
+
+    #[test]
+    fn should_respect_escaped_quote_in_what_looks_like_non_closed_arg() {
+        let sh = Shellwords::from(r":rename 'should be one \'argument");
+        assert_eq!(r"should be one 'argument", sh.args().first().unwrap());
+    }
+
+    #[test]
+    fn should_split_args() {
+        assert_eq!(Shellwords::from(":o a").args(), &["a"]);
+    }
+
+    #[test]
+    fn should_escape_whitespace() {
+        assert_eq!(Shellwords::from(r":o a\ ").args().first(), Some("a "));
+        assert_eq!(Shellwords::from(r":o a\t").args().first(), Some("a\t"));
+        assert_eq!(
+            Shellwords::from(r":o a\ b.txt").args().first(),
+            Some("a b.txt")
+        );
+    }
+
+    #[test]
+    fn should_parse_args_even_with_leading_whitespace() {
+        // Three spaces
+        assert_eq!(Shellwords::from(":o   a").args().as_ref(), &["a"]);
+    }
+
+    #[test]
+    fn should_peek_next_arg_and_not_consume() {
+        let mut args = ArgsParser::parse("a");
+
+        assert_eq!(Some(Cow::Borrowed("a")), args.peek());
+        assert_eq!(Some(Cow::Borrowed("a")), args.next());
+        assert_eq!(None, args.next());
+    }
+
+    #[test]
+    fn should_parse_single_quotes_while_respecting_escapes() {
+        let quoted = r#":o 'single_word' 'twó wörds' '' ' ''\\three\' \"with\ escaping\\' 'quote incomplete"#;
         let shellwords = Shellwords::from(quoted);
-        let result = shellwords.words().to_vec();
+        let result = shellwords.args();
         let expected = vec![
-            Cow::from(":o"),
-            Cow::from("single_word"),
-            Cow::from("twó wörds"),
-            Cow::from(r#"three' "with escaping\"#),
-            Cow::from("quote incomplete"),
+            "single_word",
+            "twó wörds",
+            "",
+            " ",
+            r#"\three' "with escaping\"#,
+            "quote incomplete",
         ];
-        assert_eq!(expected, result);
+        assert_eq!(expected, result.as_ref());
     }
 
     #[test]
-    #[cfg(unix)]
-    fn test_dquoted() {
-        let dquoted = r#":o "single_word" "twó wörds" "" "  ""\three\' \"with\ escaping\\" "dquote incomplete"#;
+    fn should_parse_double_quotes_while_respecting_escapes() {
+        let dquoted = r#":o "single_word" "twó wörds" "" "  ""\\three\' \"with\ escaping\\" "dquote incomplete"#;
         let shellwords = Shellwords::from(dquoted);
-        let result = shellwords.words().to_vec();
+        let result = shellwords.args();
         let expected = vec![
-            Cow::from(":o"),
-            Cow::from("single_word"),
-            Cow::from("twó wörds"),
-            Cow::from(r#"three' "with escaping\"#),
-            Cow::from("dquote incomplete"),
+            "single_word",
+            "twó wörds",
+            "",
+            "  ",
+            r#"\three' "with escaping\"#,
+            "dquote incomplete",
         ];
-        assert_eq!(expected, result);
+        assert_eq!(expected, result.as_ref());
     }
 
     #[test]
-    #[cfg(unix)]
-    fn test_mixed() {
-        let dquoted = r#":o single_word 'twó wörds' "\three\' \"with\ escaping\\""no space before"'and after' $#%^@ "%^&(%^" ')(*&^%''a\\\\\b' '"#;
+    fn should_respect_escapes_with_mixed_quotes() {
+        let dquoted = r#":o single_word 'twó wörds' "\\three\' \"with\ escaping\\""no space before"'and after' $#%^@ "%^&(%^" ')(*&^%''a\\\\\b' '"#;
         let shellwords = Shellwords::from(dquoted);
-        let result = shellwords.words().to_vec();
+        let result = shellwords.args();
         let expected = vec![
-            Cow::from(":o"),
-            Cow::from("single_word"),
-            Cow::from("twó wörds"),
-            Cow::from("three' \"with escaping\\"),
-            Cow::from("no space before"),
-            Cow::from("and after"),
-            Cow::from("$#%^@"),
-            Cow::from("%^&(%^"),
-            Cow::from(")(*&^%"),
-            Cow::from(r#"a\\b"#),
-            //last ' just changes to quoted but since we dont have anything after it, it should be ignored
+            "single_word",
+            "twó wörds",
+            r#"\three' "with escaping\"#,
+            "no space before",
+            "and after",
+            "$#%^@",
+            "%^&(%^",
+            r")(*&^%",
+            r"a\\\b",
+            // Last ' is important, as if the user input an accidental quote at the end, this should be checked in
+            // commands where there should only be one input and return an error rather than silently succeed.
+            "'",
         ];
-        assert_eq!(expected, result);
+        assert_eq!(expected, result.as_ref());
     }
 
     #[test]
-    fn test_lists() {
-        let input =
-            r#":set statusline.center ["file-type","file-encoding"] '["list", "in", "quotes"]'"#;
-        let shellwords = Shellwords::from(input);
-        let result = shellwords.words().to_vec();
-        let expected = vec![
-            Cow::from(":set"),
-            Cow::from("statusline.center"),
-            Cow::from(r#"["file-type","file-encoding"]"#),
-            Cow::from(r#"["list", "in", "quotes"]"#),
-        ];
-        assert_eq!(expected, result);
+    fn should_return_rest_from_raw_parser() {
+        let shellwords =
+            Shellwords::from(r#":set statusline.center ["file-type","file-encoding"]"#);
+        let args = shellwords.args();
+
+        assert_eq!(
+            r#"statusline.center ["file-type","file-encoding"]"#,
+            args.input
+        );
+
+        let mut parser = args.raw_parser();
+
+        assert_eq!(":set", shellwords.command());
+
+        assert_eq!(Some("statusline.center"), parser.next().as_deref());
+        assert_eq!(r#"["file-type","file-encoding"]"#, parser.rest());
+    }
+
+    #[test]
+    fn should_return_no_args() {
+        let mut args = ArgsParser::parse("");
+        assert!(args.next().is_none());
+        assert!(args.is_empty());
+    }
+
+    #[test]
+    fn should_leave_escaped_quotes() {
+        let input = r#"\" \` \' \"with \'with \`with"#;
+        let result = ArgsParser::parse(input).collect::<Vec<_>>();
+        assert_eq!(r#"""#, result[0]);
+        assert_eq!(r"`", result[1]);
+        assert_eq!(r"'", result[2]);
+        assert_eq!(r#""with"#, result[3]);
+        assert_eq!(r"'with", result[4]);
+        assert_eq!(r"`with", result[5]);
+    }
+
+    #[test]
+    fn should_leave_literal_newline_alone() {
+        let result = ArgsParser::parse(r"\n").collect::<Vec<_>>();
+        assert_eq!("\n", result[0]);
+    }
+
+    #[test]
+    fn should_leave_literal_unicode_alone() {
+        let result = ArgsParser::parse(r"\u{C}").collect::<Vec<_>>();
+        assert_eq!("\u{C}", result[0]);
     }
 
     #[test]
     #[cfg(unix)]
-    fn test_escaping_unix() {
+    fn should_escape_unix() {
         assert_eq!(escape("foobar".into()), Cow::Borrowed("foobar"));
         assert_eq!(escape("foo bar".into()), Cow::Borrowed("foo\\ bar"));
         assert_eq!(escape("foo\tbar".into()), Cow::Borrowed("foo\\\tbar"));
@@ -316,35 +851,79 @@ mod test {
 
     #[test]
     #[cfg(windows)]
-    fn test_escaping_windows() {
+    fn should_escape_windows() {
         assert_eq!(escape("foobar".into()), Cow::Borrowed("foobar"));
         assert_eq!(escape("foo bar".into()), Cow::Borrowed("\"foo bar\""));
     }
 
     #[test]
-    #[cfg(unix)]
-    fn test_parts() {
-        assert_eq!(Shellwords::from(":o a").parts(), &[":o", "a"]);
-        assert_eq!(Shellwords::from(":o a\\ ").parts(), &[":o", "a\\ "]);
+    fn should_unescape_newline() {
+        let unescaped = unescape("hello\\nworld", true);
+        assert_eq!("hello\nworld", unescaped);
     }
 
     #[test]
-    #[cfg(windows)]
-    fn test_parts() {
-        assert_eq!(Shellwords::from(":o a").parts(), &[":o", "a"]);
-        assert_eq!(Shellwords::from(":o a\\ ").parts(), &[":o", "a\\"]);
+    fn should_unescape_tab() {
+        let unescaped = unescape("hello\\tworld", true);
+        assert_eq!("hello\tworld", unescaped);
     }
 
     #[test]
-    fn test_multibyte_at_end() {
-        assert_eq!(Shellwords::from("𒀀").parts(), &["𒀀"]);
-        assert_eq!(
-            Shellwords::from(":sh echo 𒀀").parts(),
-            &[":sh", "echo", "𒀀"]
-        );
-        assert_eq!(
-            Shellwords::from(":sh echo 𒀀 hello world𒀀").parts(),
-            &[":sh", "echo", "𒀀", "hello", "world𒀀"]
-        );
+    fn should_unescape_unicode() {
+        let unescaped = unescape("hello\\u{1f929}world", true);
+        assert_eq!("hello\u{1f929}world", unescaped, "char: 🤩 ");
+        assert_eq!("hello🤩world", unescaped);
+    }
+
+    #[test]
+    fn should_return_original_input_due_to_bad_unicode() {
+        let unescaped = unescape("hello\\u{999999999}world", true);
+        assert_eq!("hello\\u{999999999}world", unescaped);
+    }
+
+    #[test]
+    fn should_not_unescape_slash() {
+        let unescaped = unescape(r"hello\\world", true);
+        assert_eq!(r"hello\world", unescaped);
+
+        let unescaped = unescape(r"hello\\\\world", true);
+        assert_eq!(r"hello\\world", unescaped);
+    }
+
+    #[test]
+    fn should_unescape_slash_single_quote() {
+        let unescaped = unescape(r"\\'", true);
+        assert_eq!(r"\'", unescaped);
+    }
+
+    #[test]
+    fn should_unescape_slash_double_quote() {
+        let unescaped = unescape(r#"\\\""#, true);
+        assert_eq!(r#"\""#, unescaped);
+    }
+
+    #[test]
+    fn should_not_change_anything() {
+        let unescaped = unescape("'", true);
+        assert_eq!("'", unescaped);
+        let unescaped = unescape(r#"""#, true);
+        assert_eq!(r#"""#, unescaped);
+    }
+
+    #[test]
+    fn should_only_unescape_newline_not_slash_single_quote() {
+        let unescaped = unescape("\\n\'", true);
+        assert_eq!("\n'", unescaped);
+        let unescaped = unescape(r"\\n\\'", true);
+        assert_eq!(r"\n\'", unescaped);
+    }
+
+    #[test]
+    fn should_unescape_args() {
+        // 1f929: 🤩
+        let args = ArgsParser::parse(r#"'hello\u{1f929} world' '["hello", "\u{1f929}", "world"]'"#)
+            .collect::<Vec<_>>();
+        assert_eq!("hello\u{1f929} world", unescape(&args[0], false));
+        assert_eq!(r#"["hello", "🤩", "world"]"#, unescape(&args[1], false));
     }
 }
