@@ -12,6 +12,7 @@
   - [Syntax aware motions](./syntax-aware-motions.md)
   - [Keymap](./keymap.md)
   - [Commands](./commands.md)
+  - [Static Commands](./static-commands.md)
   - [Language support](./lang-support.md)
 - [Migrating from Vim](./from-vim.md)
 - [Configuration](./configuration.md)
