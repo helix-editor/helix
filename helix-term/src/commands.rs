@@ -2377,7 +2377,7 @@ fn global_search(cx: &mut Context) {
                             // search the buffer instead of the file because it's faster
                             // and captures new edits without requiring a save
                             if searcher.multi_line_with_matcher(&matcher) {
-                                // in this case a continous buffer is required
+                                // in this case a continuous buffer is required
                                 // convert the rope to a string
                                 let text = doc.to_string();
                                 searcher.search_slice(&matcher, text.as_bytes(), sink)
@@ -6138,7 +6138,7 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
     let mut cursor_rev = Range::point(cursor);
     if text.get_char(cursor).is_some_and(|c| !c.is_whitespace()) {
         let cursor_word_end = movement::move_next_word_end(text, cursor_fwd, 1);
-        //  single grapheme words need a specical case
+        //  single grapheme words need a special case
         if cursor_word_end.anchor == cursor {
             cursor_fwd = cursor_word_end;
         }
