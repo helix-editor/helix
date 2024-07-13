@@ -8,7 +8,7 @@ use helix_term::health::TsFeature;
 use std::fs;
 
 pub const TYPABLE_COMMANDS_MD_OUTPUT: &str = "typable-cmd.md";
-pub const STATIC_COMMANDS_MC_OUTPUT: &str = "static-cmd.md";
+pub const STATIC_COMMANDS_MD_OUTPUT: &str = "static-cmd.md";
 pub const LANG_SUPPORT_MD_OUTPUT: &str = "lang-support.md";
 
 fn md_table_heading(cols: &[String]) -> String {
@@ -51,16 +51,14 @@ pub fn typable_commands() -> Result<String, DynError> {
 }
 
 pub fn static_commands() -> Result<String, DynError> {
-    let mut md: String = String::new();
+    let mut md = String::new();
     md.push_str(&md_table_heading(&[
         "Name".to_owned(),
         "Description".to_owned(),
     ]));
 
-    let cmdify = |s: &str| format!("`{}`", s);
-
     for cmd in MappableCommand::STATIC_COMMAND_LIST {
-        md.push_str(&md_table_row(&[cmdify(cmd.name()).to_owned(), cmd.doc().to_owned()]));
+        md.push_str(&md_table_row(&[md_mono(cmd.name()).to_owned(), cmd.doc().to_owned()]));
     }
 
     Ok(md)
