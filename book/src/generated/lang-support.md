@@ -104,7 +104,7 @@
 | hocon | ✓ | ✓ | ✓ |  |
 | hoon | ✓ |  |  |  |
 | hosts | ✓ |  |  |  |
-| html | ✓ |  |  | `vscode-html-language-server`, `superhtml` |
+| html | ✓ | ✓ |  | `vscode-html-language-server`, `superhtml` |
 | htmldjango | ✓ |  |  | `djlsp`, `vscode-html-language-server`, `superhtml` |
 | hurl | ✓ | ✓ | ✓ |  |
 | hyprlang | ✓ |  | ✓ | `hyprls` |
@@ -270,7 +270,7 @@
 | wit | ✓ |  | ✓ |  |
 | wren | ✓ | ✓ | ✓ |  |
 | xit | ✓ |  |  |  |
-| xml | ✓ |  | ✓ |  |
+| xml | ✓ | ✓ | ✓ |  |
 | xtc | ✓ |  |  |  |
 | yaml | ✓ | ✓ | ✓ | `yaml-language-server`, `ansible-language-server` |
 | yara | ✓ |  |  | `yls` |
