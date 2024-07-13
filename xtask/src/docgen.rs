@@ -58,10 +58,7 @@ pub fn static_commands() -> Result<String, DynError> {
     ]));
 
     for cmd in MappableCommand::STATIC_COMMAND_LIST {
-        md.push_str(&md_table_row(&[
-                md_mono(cmd.name()),
-                cmd.doc().to_owned()
-        ]));
+        md.push_str(&md_table_row(&[md_mono(cmd.name()), cmd.doc().to_owned()]));
     }
 
     Ok(md)

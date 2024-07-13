@@ -9,7 +9,9 @@ type DynError = Box<dyn Error>;
 
 pub mod tasks {
     use crate::docgen::{lang_features, static_commands, typable_commands, write};
-    use crate::docgen::{TYPABLE_COMMANDS_MD_OUTPUT, STATIC_COMMANDS_MD_OUTPUT, LANG_SUPPORT_MD_OUTPUT};
+    use crate::docgen::{
+        LANG_SUPPORT_MD_OUTPUT, STATIC_COMMANDS_MD_OUTPUT, TYPABLE_COMMANDS_MD_OUTPUT,
+    };
     use crate::querycheck::query_check;
     use crate::DynError;
 
