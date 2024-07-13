@@ -2,8 +2,8 @@ use crate::helpers;
 use crate::path;
 use crate::DynError;
 
-use helix_term::commands::TYPABLE_COMMAND_LIST;
 use helix_term::commands::MappableCommand;
+use helix_term::commands::TYPABLE_COMMAND_LIST;
 use helix_term::health::TsFeature;
 use std::fs;
 
@@ -58,7 +58,10 @@ pub fn static_commands() -> Result<String, DynError> {
     ]));
 
     for cmd in MappableCommand::STATIC_COMMAND_LIST {
-        md.push_str(&md_table_row(&[md_mono(cmd.name()).to_owned(), cmd.doc().to_owned()]));
+        md.push_str(&md_table_row(&[
+                md_mono(cmd.name()),
+                cmd.doc().to_owned()
+        ]));
     }
 
     Ok(md)
