@@ -340,8 +340,11 @@ fn write_impl(
     let path = path.map(AsRef::as_ref);
 
     if config.insert_final_newline {
-        insert_final_newline(doc, view);
+        insert_final_newline(doc, view.id);
     }
+
+    // Save an undo checkpoint for any outstanding changes.
+    doc.append_changes_to_history(view);
 
     let fmt = if config.auto_format {
         doc.auto_format().map(|fmt| {
@@ -367,13 +370,12 @@ fn write_impl(
     Ok(())
 }
 
-fn insert_final_newline(doc: &mut Document, view: &mut View) {
+fn insert_final_newline(doc: &mut Document, view_id: ViewId) {
     let text = doc.text();
     if line_ending::get_line_ending(&text.slice(..)).is_none() {
         let eof = Selection::point(text.len_chars());
         let insert = Transaction::insert(text, &eof, doc.line_ending.as_str().into());
-        doc.apply(&insert, view.id);
-        doc.append_changes_to_history(view);
+        doc.apply(&insert, view_id);
     }
 }
 
@@ -704,10 +706,14 @@ pub fn write_all_impl(
 
     for (doc_id, target_view) in saves {
         let doc = doc_mut!(cx.editor, &doc_id);
+        let view = view_mut!(cx.editor, target_view);
 
         if config.insert_final_newline {
-            insert_final_newline(doc, view_mut!(cx.editor, target_view));
+            insert_final_newline(doc, target_view);
         }
+
+        // Save an undo checkpoint for any outstanding changes.
+        doc.append_changes_to_history(view);
 
         let fmt = if config.auto_format {
             doc.auto_format().map(|fmt| {
