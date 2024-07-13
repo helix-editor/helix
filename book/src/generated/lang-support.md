@@ -85,7 +85,7 @@
 | hocon | ✓ |  | ✓ |  |
 | hoon | ✓ |  |  |  |
 | hosts | ✓ |  |  |  |
-| html | ✓ |  |  | `vscode-html-language-server` |
+| html | ✓ | ✓ |  | `vscode-html-language-server` |
 | hurl | ✓ | ✓ | ✓ |  |
 | hyprlang | ✓ |  | ✓ |  |
 | idris |  |  |  | `idris2-lsp` |
@@ -221,7 +221,7 @@
 | wit | ✓ |  | ✓ |  |
 | wren | ✓ | ✓ | ✓ |  |
 | xit | ✓ |  |  |  |
-| xml | ✓ |  | ✓ |  |
+| xml | ✓ | ✓ | ✓ |  |
 | xtc | ✓ |  |  |  |
 | yaml | ✓ |  | ✓ | `yaml-language-server`, `ansible-language-server` |
 | yuck | ✓ |  |  |  |
