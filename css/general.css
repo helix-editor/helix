@@ -1,7 +1,5 @@
 /* Base styles and content styles */
 
-@import 'variables.css';
-
 :root {
     /* Browser default font-size is 16px, this way 1 rem = 10px */
     font-size: 62.5%;
