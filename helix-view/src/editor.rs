@@ -266,6 +266,8 @@ pub struct Config {
     /// etc. Optionally, this can be a list of 2-tuples to specify a
     /// global list of characters to pair. Defaults to true.
     pub auto_pairs: AutoPairConfig,
+    /// Automatic overtype closing of pairs. Defaults to true.
+    pub auto_pairs_overtype: bool,
     /// Automatic auto-completion, automatically pop up without user trigger. Defaults to true.
     pub auto_completion: bool,
     /// Automatic formatting on save. Defaults to true.
@@ -941,6 +943,7 @@ impl Default for Config {
             gutters: GutterConfig::default(),
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
+            auto_pairs_overtype: true,
             auto_completion: true,
             auto_format: true,
             auto_save: AutoSave::default(),
