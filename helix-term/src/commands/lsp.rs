@@ -16,7 +16,10 @@ use tui::{
 
 use super::{align_view, push_jump, Align, Context, Editor};
 
-use helix_core::{syntax::LanguageServerFeature, text_annotations::InlineAnnotation, Selection};
+use helix_core::{
+    movement::Direction, syntax::LanguageServerFeature, text_annotations::InlineAnnotation,
+    Selection,
+};
 use helix_stdx::path;
 use helix_view::{
     document::{DocumentInlayHints, DocumentInlayHintsId},
@@ -925,6 +928,63 @@ pub fn goto_reference(cx: &mut Context) {
                 editor.set_error("No references found.");
             } else {
                 goto_impl(editor, compositor, items, offset_encoding);
+            }
+        },
+    );
+}
+
+pub fn goto_reference_direction(cx: &mut Context, direction: Direction) {
+    let config = cx.editor.config();
+    let (view, doc) = current!(cx.editor);
+    let language_server =
+        language_server_with_feature!(cx.editor, doc, LanguageServerFeature::GotoReference);
+    let offset_encoding = language_server.offset_encoding();
+
+    let pos = doc.position(view.id, offset_encoding);
+
+    let future = match language_server.goto_reference(
+        doc.identifier(),
+        pos,
+        config.lsp.goto_reference_include_declaration,
+        None,
+    ) {
+        Some(future) => future,
+        None => {
+            cx.editor
+                .set_error("Language server does not support goto-reference");
+            return;
+        }
+    };
+
+    cx.callback(
+        future,
+        move |editor, _compositor, response: Option<Vec<lsp::Location>>| {
+            let items = response.unwrap_or_default();
+            let (view, doc) = current!(editor);
+            let locations: Vec<lsp::Location> = items
+                .into_iter()
+                .filter(|loc| loc.uri.path() == doc.identifier().uri.path())
+                .collect();
+            let curr_pos = doc.position(view.id, offset_encoding);
+
+            let new_location = match direction {
+                Direction::Forward => locations
+                    .into_iter()
+                    .filter(|l| l.range.start.line > curr_pos.line)
+                    .min_by_key(|l| l.range.start.line),
+                Direction::Backward => locations
+                    .into_iter()
+                    .filter(|l| l.range.start.line < curr_pos.line)
+                    .max_by_key(|l| l.range.start.line),
+            };
+            match new_location {
+                Some(location) => {
+                    jump_to_location(editor, &location, offset_encoding, Action::Replace)
+                }
+                None => {
+                    editor.set_error("No more references found in this file");
+                    return;
+                }
             }
         },
     );
