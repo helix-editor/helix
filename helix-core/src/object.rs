@@ -41,13 +41,7 @@ pub fn select_next_sibling(syntax: &Syntax, text: RopeSlice, selection: Selectio
         syntax,
         text,
         selection,
-        |cursor| {
-            while !cursor.goto_next_sibling() {
-                if !cursor.goto_parent() {
-                    break;
-                }
-            }
-        },
+        |cursor| move_to_sibling(cursor, Direction::Forward),
         Some(Direction::Forward),
     )
 }
@@ -94,16 +88,50 @@ pub fn select_prev_sibling(syntax: &Syntax, text: RopeSlice, selection: Selectio
         syntax,
         text,
         selection,
-        |cursor| {
-            while !cursor.goto_previous_sibling() {
-                if !cursor.goto_parent() {
-                    break;
-                }
-            }
-        },
+        |cursor| move_to_sibling(cursor, Direction::Backward),
         Some(Direction::Backward),
     )
 }
+
+
+/// Move the cursor to its sibling along the requested direction, wrapping at
+/// the ends.
+///
+/// If the node has no siblings, the cursor is left unchanged.
+fn move_to_sibling(cursor: &mut TreeCursor, direction: Direction) {
+    // A node can either be a root, an only child or have siblings.
+    let Some(parent) = cursor.node().parent() else {
+        return; // Root node case
+    };
+    if parent.child_count() <= 1 {
+        return; // Only child case
+    }
+
+    let moved = match direction {
+        Direction::Forward => cursor.goto_next_sibling(),
+        Direction::Backward => cursor.goto_previous_sibling(),
+    };
+    if moved {
+        return; // Had a sibling in the requested direction
+    }
+
+    // Wrap
+    cursor.goto_parent();
+    // Workaround. Currently used version of `tree-house` does not expose
+    // `goto_last_child` binding from `tree-house-bindings`. The following is
+    // equivalent to
+    // ```rust
+    // match direction {
+    //      Direction::Forward => cursor.goto_first_child(),
+    //      Direction::Backward => cursor.goto_last_child(),
+    // }
+    // ```
+    cursor.goto_first_child();
+    if direction == Direction::Backward {
+        while cursor.goto_next_sibling() {}
+    }
+}
+
 
 fn select_node_impl<F>(
     syntax: &Syntax,
@@ -131,4 +159,33 @@ where
 
         Range::new(from, to).with_direction(direction.unwrap_or_else(|| range.direction()))
     })
+}
+
+
+#[cfg(test)]
+mod tests {
+    use std::{assert_eq, sync::LazyLock};
+
+    use super::*;
+    use crate::{config::default_lang_loader, Rope};
+
+    static LOADER: LazyLock<crate::syntax::Loader> = LazyLock::new(default_lang_loader);
+
+    #[test]
+    fn sibling_motions_are_mutual_inverses_and_wrap() {
+        let language = LOADER.language_for_name("scheme").unwrap();
+        let source = Rope::from_str("(a)\n(b)");
+        let syntax = Syntax::new(source.slice(..), language, &LOADER).unwrap();
+        let list = syntax.tree().root_node(); // (a)\n(b)
+
+        let a = list.named_child(0).unwrap(); // (a)
+        let b = list.named_child(1).unwrap(); // (b)
+
+        let mut cursor = syntax.walk();
+        cursor.goto_first_child(); // (a)
+        move_to_sibling(&mut cursor, Direction::Backward);
+        assert_eq!(cursor.node().id(), b.id()); // Wraps
+        move_to_sibling(&mut cursor, Direction::Forward);
+        assert_eq!(cursor.node().id(), a.id()); // Is inverse
+    }
 }
