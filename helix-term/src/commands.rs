@@ -4523,7 +4523,11 @@ fn format_selections(cx: &mut Context) {
         .text_document_range_formatting(
             doc.identifier(),
             range,
-            lsp::FormattingOptions::default(),
+            lsp::FormattingOptions {
+                tab_size: doc.tab_width() as u32,
+                insert_spaces: matches!(doc.indent_style, IndentStyle::Spaces(_)),
+                ..Default::default()
+            },
             None,
         )
         .unwrap();
