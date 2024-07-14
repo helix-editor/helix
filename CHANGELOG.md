@@ -1,6 +1,6 @@
-# 24.06 (2024-06-16)
+# 24.07 (2024-07-14)
 
-Thanks to all of the contributors! This release has changes from 137 contributors.
+Thanks to all of the contributors! This release has changes from 160 contributors.
 
 Breaking changes:
 
@@ -11,7 +11,7 @@ Features:
 - Use a temporary file for writes (#9236, #10339, #10790)
 - Allow cycling through LSP signature-help signatures with `A-n`/`A-p` (#9974, #10654, #10655)
 - Use tree-sitter when finding matching brackets and closest pairs (#8294, #10613, #10777)
-- Auto-save all buffers after a delay (#10899)
+- Auto-save all buffers after a delay (#10899, #11047)
 
 Commands:
 
@@ -31,6 +31,11 @@ Usability improvements:
 - Await pending writes in the `suspend` command (`C-z`) (#10797)
 - Remove special handling of line ending characters in `replace` (`r`) (#10786)
 - Use the selected register as a history register for `rename_symbol` (`<space>r`) (#10932)
+- Use the configured insert-mode cursor for prompt entry (#10945)
+- Add tilted quotes to the matching brackets list (#10971)
+- Prevent improper files like `/dev/urandom` from being used as file arguments (#10733)
+- Allow multiple language servers to provide `:lsp-workspace-command`s (#10176, #11105)
+- Trim output of commands executed through `:pipe` (#10952)
 
 Fixes:
 
@@ -64,6 +69,13 @@ Fixes:
 - Fix logic for updating `--version` when development VCS HEAD changes (#10896)
 - Set a max value for the count (#10930)
 - Deserialize number IDs in DAP module types (#10943)
+- Fix the behavior of `jump_backwords` when the jumplist is at capacity (#10968)
+- Fix injection layer heritage tracking for reused tree-sitter injection layers (#1098)
+- Fix pluralization of "buffers" in the statusline for `:q`, `:q!`, `:wq` (#11018)
+- Declare LSP formatting client capabilities (#11064)
+- Commit uncommitted changes before attempting undo/earlier (#11090)
+- Expand tilde for selected paths in `goto_file` (#10964)
+- Commit undo checkpoints before `:write[-all]`, fixing the modification indicator (#11062)
 
 Themes:
 
@@ -99,11 +111,18 @@ Themes:
 - Add `tag` and `attribute` highlights to `dark_high_contrast` (#10705)
 - Improve readability of virtual text with `noctis` theme (#10910)
 - Sync `catppuccin` themes with upstream (#10954)
+- Improve jump colors for `github_dark` themes (#10946)
+- Add modeline and default virtual highlights to `base16_default` (#10858)
+- Add `iroaseta` (#10381)
+- Refactor `gruvbox` (#10773, #11071)
+- Add cursorcolumn and cursorline to `base16_transparent` (#11099)
+- Update cursorline color for `fleet_dark` (#11046)
+- Add `kanagawa-dragon` (#10172)
 
 New languages:
 
 - BitBake (#10010)
-- Earthfile (#10111, #10489)
+- Earthfile (#10111, #10489, #10779)
 - TCL (#9837)
 - ADL (#10029)
 - LDIF (#10330)
@@ -157,16 +176,31 @@ Updated languages and queries:
 - Update `tree-sitter-slint` (#10749)
 - Add missing operators for Solidity highlights (#10735)
 - Update `tree-sitter-inko` (#10805)
-- Update `tree-sitter-earthfile` (#10779)
 - Add `py`, `hs`, `rs` and `typ` injection regexes (#10785)
 - Update Swift grammar and queries (#10802)
-- Update Cairo grammar and queries (#10919)
+- Update Cairo grammar and queries (#10919, #11067)
+- Update Rust grammar (#10973)
+- Add block comment tokens for typst (#10955)
+- Recognize `jsonl` as JSON (#11004)
+- Add rulers and text-width at 100 columns for Lean language (#10969)
+- Improve VDHL highlights (#10845)
+- Recognize `hsc` as Haskell (#11074)
+- Fix heredoc and `$'<ansi_string>'` highlights in Bash (#11118)
+- Add LSP configuration for `basedpyright` (#11121)
+- Recognize `npmrc` and `.nmprc` files as INI (#11131)
+- Recognize `~/.config/git/ignore` as git-ignore (#11131)
+- Recognize `pdm.lock` and `uv.lock` as TOML (#11131)
+- Recognize `.yml` as well as `.yaml` for Helm chart templates (#11135)
+- Add regex injections for Bash (#11112)
+- Update tree-sitter-todo (#11097)
 
 Packaging:
 
 - Make `Helix.appdata.xml` spec-compliant (#10051)
 - Expose all flake outputs through flake-compat (#10673)
 - Bump the MSRV to 1.74.0 (#10714)
+- Improve FiSH completions (#10853)
+- Improve ZSH completions (#10853)
 
 # 24.03 (2024-03-30)
 
