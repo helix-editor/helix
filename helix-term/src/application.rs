@@ -34,7 +34,7 @@ use log::{debug, error, info, warn};
 use std::io::stdout;
 use std::{collections::btree_map::Entry, io::stdin, path::Path, sync::Arc};
 
-use anyhow::{Context, Error};
+use anyhow::{Error};
 
 use crossterm::{event::Event as CrosstermEvent, tty::IsTty};
 #[cfg(not(windows))]
