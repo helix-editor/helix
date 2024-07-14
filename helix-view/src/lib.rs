@@ -70,8 +70,55 @@ pub fn align_view(doc: &Document, view: &mut View, align: Align) {
     );
 }
 
+/// Returns the left-side position of the primary selection.
+pub fn primary_cursor(view: &View, doc: &Document) -> usize {
+    doc.selection(view.id)
+        .primary()
+        .cursor(doc.text().slice(..))
+}
+
+/// Returns the next diagnostic in the document if any.
+///
+/// This does not wrap-around.
+pub fn next_diagnostic_in_doc<'d>(
+    view: &View,
+    doc: &'d Document,
+    severity_filter: Option<helix_core::diagnostic::Severity>,
+) -> Option<&'d Diagnostic> {
+    let cursor = primary_cursor(view, doc);
+    doc.diagnostics()
+        .iter()
+        .filter(|diagnostic| diagnostic.severity >= severity_filter)
+        .find(|diag| diag.range.start > cursor)
+}
+
+/// Returns the previous diagnostic in the document if any.
+///
+/// This does not wrap-around.
+pub fn prev_diagnostic_in_doc<'d>(
+    view: &View,
+    doc: &'d Document,
+    severity_filter: Option<helix_core::diagnostic::Severity>,
+) -> Option<&'d Diagnostic> {
+    let cursor = primary_cursor(view, doc);
+    doc.diagnostics()
+        .iter()
+        .rev()
+        .filter(|diagnostic| diagnostic.severity >= severity_filter)
+        .find(|diag| diag.range.start < cursor)
+}
+
+pub fn ensure_selections_forward(view: &View, doc: &mut Document) {
+    let selection = doc
+        .selection(view.id)
+        .clone()
+        .transform(|r| r.with_direction(Direction::Forward));
+
+    doc.set_selection(view.id, selection);
+}
+
 pub use document::Document;
 pub use editor::Editor;
-use helix_core::char_idx_at_visual_offset;
+use helix_core::{char_idx_at_visual_offset, movement::Direction, Diagnostic};
 pub use theme::Theme;
 pub use view::View;

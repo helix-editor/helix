@@ -3,6 +3,8 @@ use std::fmt;
 
 use serde::{Deserialize, Serialize};
 
+use crate::Selection;
+
 /// Describes the severity level of a [`Diagnostic`].
 #[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Deserialize, Serialize)]
 pub enum Severity {
@@ -53,6 +55,18 @@ pub struct Diagnostic {
     pub tags: Vec<DiagnosticTag>,
     pub source: Option<String>,
     pub data: Option<serde_json::Value>,
+}
+
+impl Diagnostic {
+    /// Returns a single selection spanning the range of the diagnostic.
+    pub fn single_selection(&self) -> Selection {
+        Selection::single(self.range.start, self.range.end)
+    }
+
+    /// Returns a single reversed selection spanning the range of the diagnostic.
+    pub fn single_selection_rev(&self) -> Selection {
+        Selection::single(self.range.end, self.range.start)
+    }
 }
 
 // TODO turn this into an enum + feature flag when lsp becomes optional
