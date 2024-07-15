@@ -1171,7 +1171,7 @@ pub fn compute_inlay_hints_for_all_views(editor: &mut Editor, jobs: &mut crate::
         return;
     }
 
-    for (view, _) in editor.tree.views() {
+    for (view, _) in editor.tabs.curr_tree().views() {
         let doc = match editor.documents.get(&view.doc) {
             Some(doc) => doc,
             None => continue,
@@ -1236,7 +1236,9 @@ fn compute_inlay_hints_for_view(
         language_server.text_document_range_inlay_hints(doc.identifier(), range, None)?,
         move |editor, _compositor, response: Option<Vec<lsp::InlayHint>>| {
             // The config was modified or the window was closed while the request was in flight
-            if !editor.config().lsp.display_inlay_hints || editor.tree.try_get(view_id).is_none() {
+            if !editor.config().lsp.display_inlay_hints
+                || editor.tabs.curr_tree().try_get(view_id).is_none()
+            {
                 return;
             }
 

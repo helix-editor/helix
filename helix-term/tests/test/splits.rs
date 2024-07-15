@@ -47,14 +47,14 @@ async fn test_split_write_quit_all() -> anyhow::Result<()> {
                     assert_eq!("hello3", doc3.text().to_string());
 
                     helpers::assert_status_not_error(&app.editor);
-                    assert_eq!(3, app.editor.tree.views().count());
+                    assert_eq!(3, app.editor.tabs.curr_tree().views().count());
                 }),
             ),
             (
                 Some(":wqa<ret>"),
                 Some(&|app| {
                     helpers::assert_status_not_error(&app.editor);
-                    assert_eq!(0, app.editor.tree.views().count());
+                    assert_eq!(0, app.editor.tabs.curr_tree().views().count());
                 }),
             ),
         ],
@@ -82,7 +82,7 @@ async fn test_split_write_quit_same_file() -> anyhow::Result<()> {
             (
                 Some("O<esc>ihello<esc>:sp<ret>ogoodbye<esc>"),
                 Some(&|app| {
-                    assert_eq!(2, app.editor.tree.views().count());
+                    assert_eq!(2, app.editor.tabs.curr_tree().views().count());
                     helpers::assert_status_not_error(&app.editor);
 
                     let mut docs: Vec<_> = app.editor.documents().collect();
@@ -102,7 +102,7 @@ async fn test_split_write_quit_same_file() -> anyhow::Result<()> {
                 Some(":wq<ret>"),
                 Some(&|app| {
                     helpers::assert_status_not_error(&app.editor);
-                    assert_eq!(1, app.editor.tree.views().count());
+                    assert_eq!(1, app.editor.tabs.curr_tree().views().count());
 
                     let mut docs: Vec<_> = app.editor.documents().collect();
                     assert_eq!(1, docs.len());
