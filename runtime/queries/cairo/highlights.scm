@@ -95,6 +95,12 @@
 ; -------
 ; Keywords
 ; -------
+
+(for_expression
+  "for" @keyword.control.repeat)
+
+"in" @keyword.control
+
 [
   "match"
   "if"

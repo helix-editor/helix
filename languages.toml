@@ -73,6 +73,7 @@ prisma-language-server = { command = "prisma-language-server", args = ["--stdio"
 purescript-language-server = { command = "purescript-language-server", args = ["--stdio"] }
 pylsp = { command = "pylsp" }
 pyright = { command = "pyright-langserver", args = ["--stdio"], config = {} }
+basedpyright = { command = "basedpyright-langserver", args = ["--stdio"], config = {} }
 pylyzer = { command = "pylyzer", args = ["--server"] }
 qmlls = { command = "qmlls" }
 r = { command = "R", args = ["--no-echo", "-e", "languageserver::run()"] }
@@ -296,7 +297,7 @@ source = { git = "https://github.com/FuelLabs/tree-sitter-sway", rev = "e491a005
 name = "toml"
 scope = "source.toml"
 injection-regex = "toml"
-file-types = ["toml", { glob = "poetry.lock" }, { glob = "Cargo.lock" }]
+file-types = ["toml", { glob = "pdm.lock" }, { glob = "poetry.lock" }, { glob = "Cargo.lock" }, { glob = "uv.lock" }]
 comment-token = "#"
 language-servers = [ "taplo" ]
 indent = { tab-width = 2, unit = "  " }
@@ -431,6 +432,7 @@ file-types = [
   "ts.map",
   "css.map",
   { glob = ".jslintrc" },
+  "jsonl",
   "jsonld",
   { glob = ".vuerc" },
   { glob = "composer.lock" },
@@ -1078,6 +1080,8 @@ comment-token = "--"
 block-comment-tokens = { start = "/-", end = "-/" }
 language-servers = [ "lean" ]
 indent = { tab-width = 2, unit = "  " }
+rulers = [101]
+text-width = 100
 
 [language.auto-pairs]
 '(' = ')'
@@ -1266,7 +1270,7 @@ source = { git = "https://github.com/ikatyang/tree-sitter-yaml", rev = "0e36bed1
 name = "haskell"
 scope = "source.haskell"
 injection-regex = "hs|haskell"
-file-types = ["hs", "hs-boot"]
+file-types = ["hs", "hs-boot", "hsc"]
 roots = ["Setup.hs", "stack.yaml", "cabal.project"]
 comment-token = "--"
 block-comment-tokens = { start = "{-", end = "-}" }
@@ -1690,7 +1694,7 @@ source = { git = "https://github.com/mtoohey31/tree-sitter-gitattributes", rev =
 [[language]]
 name = "git-ignore"
 scope = "source.gitignore"
-file-types = [{ glob = ".gitignore_global" }, { glob = ".ignore" }, { glob = "CODEOWNERS" }, { glob = ".config/helix/ignore" }, { glob = ".helix/ignore" }, { glob = ".*ignore" }]
+file-types = [{ glob = ".gitignore_global" }, { glob = "git/ignore" }, { glob = ".ignore" }, { glob = "CODEOWNERS" }, { glob = ".config/helix/ignore" }, { glob = ".helix/ignore" }, { glob = ".*ignore" }]
 injection-regex = "git-ignore"
 comment-token = "#"
 grammar = "gitignore"
@@ -2051,7 +2055,7 @@ indent = { tab-width = 8, unit = "\t" }
 
 [[grammar]]
 name = "hare"
-source = { git = "https://git.sr.ht/~ecmma/tree-sitter-hare", rev = "2495958aaf3f93581c87ec020164255e80655331" }
+source = { git = "https://git.sr.ht/~ecs/tree-sitter-hare", rev = "07035a248943575444aa0b893ffe306e1444c0ab" }
 
 [[language]]
 name = "devicetree"
@@ -2078,7 +2082,7 @@ language-servers = [ "cairo-language-server" ]
 
 [[grammar]]
 name = "cairo"
-source = { git = "https://github.com/starkware-libs/tree-sitter-cairo", rev = "0596baab741ffacdc65c761d5d5ffbbeae97f033" }
+source = { git = "https://github.com/starkware-libs/tree-sitter-cairo", rev = "e3a0212261c125cb38248458cd856c0ffee2b398" }
 
 [[language]]
 name = "cpon"
@@ -2699,6 +2703,8 @@ file-types = [
   "kube",
   "network",
   { glob = ".editorconfig" },
+  { glob = ".npmrc" },
+  { glob = "npmrc" },
   { glob = "rclone.conf" },
   "properties",
   "cfg",
@@ -3162,6 +3168,7 @@ scope = "source.typst"
 injection-regex = "typ(st)?"
 file-types = ["typst", "typ"]
 comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = ["tinymist", "typst-lsp"]
 indent = { tab-width = 2, unit = "  " }
 
@@ -3238,7 +3245,7 @@ auto-format = true
 
 [[grammar]]
 name = "todotxt"
-source = { git = "https://github.com/arnarg/tree-sitter-todotxt", rev = "0207f6a4ab6aeafc4b091914d31d8235049a2578" }
+source = { git = "https://github.com/arnarg/tree-sitter-todotxt", rev = "3937c5cd105ec4127448651a21aef45f52d19609" }
 
 [[language]]
 name = "strace"
@@ -3509,7 +3516,7 @@ scope = "source.helm"
 roots = ["Chart.yaml"]
 comment-token = "#"
 language-servers = ["helm_ls"]
-file-types = [ { glob = "templates/*.yaml" }, { glob = "templates/_*.tpl"}, { glob = "templates/NOTES.txt" } ]
+file-types = [ { glob = "templates/*.yaml" }, { glob = "templates/*.yml" }, { glob = "templates/_*.tpl"}, { glob = "templates/NOTES.txt" } ]
 
 [[language]]
 name = "glimmer"

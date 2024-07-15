@@ -99,7 +99,6 @@ impl Serialize for Mode {
         serializer.collect_str(self)
     }
 }
-
 /// A snapshot of the text of a document that we want to write out to disk
 #[derive(Debug, Clone)]
 pub struct DocumentSavedEvent {
@@ -1321,7 +1320,7 @@ impl Document {
                 true
             });
 
-            self.diagnostics.sort_unstable_by_key(|diagnostic| {
+            self.diagnostics.sort_by_key(|diagnostic| {
                 (diagnostic.range, diagnostic.severity, diagnostic.provider)
             });
 
@@ -1410,6 +1409,11 @@ impl Document {
     }
 
     fn undo_redo_impl(&mut self, view: &mut View, undo: bool) -> bool {
+        if undo {
+            self.append_changes_to_history(view);
+        } else if !self.changes.is_empty() {
+            return false;
+        }
         let mut history = self.history.take();
         let txn = if undo { history.undo() } else { history.redo() };
         let success = if let Some(txn) = txn {
@@ -1490,6 +1494,11 @@ impl Document {
     }
 
     fn earlier_later_impl(&mut self, view: &mut View, uk: UndoKind, earlier: bool) -> bool {
+        if earlier {
+            self.append_changes_to_history(view);
+        } else if !self.changes.is_empty() {
+            return false;
+        }
         let txns = if earlier {
             self.history.get_mut().earlier(uk)
         } else {
@@ -1731,6 +1740,10 @@ impl Document {
         Url::from_file_path(self.path()?).ok()
     }
 
+    pub fn uri(&self) -> Option<helix_core::Uri> {
+        Some(self.path()?.clone().into())
+    }
+
     #[inline]
     pub fn text(&self) -> &Rope {
         &self.text
@@ -1897,9 +1910,8 @@ impl Document {
             });
         }
         self.diagnostics.extend(diagnostics);
-        self.diagnostics.sort_unstable_by_key(|diagnostic| {
-            (diagnostic.range, diagnostic.severity, diagnostic.provider)
-        });
+        self.diagnostics
+            .sort_by_key(|diagnostic| (diagnostic.range, diagnostic.severity, diagnostic.provider));
     }
 
     /// clears diagnostics for a given language server id if set, otherwise all diagnostics are cleared
@@ -1939,7 +1951,7 @@ impl Document {
             .language_config()
             .and_then(|config| config.text_width)
             .unwrap_or(config.text_width);
-        let soft_wrap_at_text_width = self
+        let mut soft_wrap_at_text_width = self
             .language_config()
             .and_then(|config| {
                 config
@@ -1950,12 +1962,13 @@ impl Document {
             .or(config.soft_wrap.wrap_at_text_width)
             .unwrap_or(false);
         if soft_wrap_at_text_width {
-            // We increase max_line_len by 1 because softwrap considers the newline character
-            // as part of the line length while the "typical" expectation is that this is not the case.
-            // In particular other commands like :reflow do not count the line terminator.
-            // This is technically inconsistent for the last line as that line never has a line terminator
-            // but having the last visual line exceed the width by 1 seems like a rare edge case.
-            viewport_width = viewport_width.min(text_width as u16 + 1)
+            // if the viewport is smaller than the specified
+            // width then this setting has no effcet
+            if text_width >= viewport_width as usize {
+                soft_wrap_at_text_width = false;
+            } else {
+                viewport_width = text_width as u16;
+            }
         }
         let config = self.config.load();
         let editor_soft_wrap = &config.soft_wrap;
@@ -1992,6 +2005,7 @@ impl Document {
             wrap_indicator_highlight: theme
                 .and_then(|theme| theme.find_scope_index("ui.virtual.wrap"))
                 .map(Highlight),
+            soft_wrap_at_text_width,
         }
     }
 
