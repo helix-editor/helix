@@ -1418,8 +1418,11 @@ fn lsp_workspace_command(
                     let picker = ui::Picker::new(
                         commands,
                         (),
-                        move |cx, LsIdCommand(ls_id, command), _action| {
-                            execute_lsp_command(cx.editor, *ls_id, command.clone());
+                        move |cx, ls_id_command: Option<&LsIdCommand>, _action| {
+                            let Some(LsIdCommand(ls_id, c)) = ls_id_command else {
+                                return;
+                            };
+                            execute_lsp_command(cx.editor, *ls_id, c.clone());
                         },
                     );
                     compositor.push(Box::new(overlaid(picker)))
