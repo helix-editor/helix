@@ -76,7 +76,7 @@
 | graphql | ✓ | ✓ |  | `graphql-lsp` |
 | groovy | ✓ |  |  |  |
 | gts | ✓ | ✓ | ✓ | `typescript-language-server`, `vscode-eslint-language-server`, `ember-language-server` |
-| hare | ✓ |  |  |  |
+| hare | ✓ | ✓ |  |  |
 | haskell | ✓ | ✓ |  | `haskell-language-server-wrapper` |
 | haskell-persistent | ✓ |  |  |  |
 | hcl | ✓ | ✓ | ✓ | `terraform-ls` |
