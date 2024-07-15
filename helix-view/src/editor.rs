@@ -1544,7 +1544,9 @@ impl Editor {
             return;
         }
 
-        self.enter_normal_mode();
+        if !matches!(action, Action::Load) {
+            self.enter_normal_mode();
+        }
 
         match action {
             Action::Replace => {
