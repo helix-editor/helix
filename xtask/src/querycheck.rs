@@ -11,6 +11,7 @@ pub fn query_check() -> Result<(), DynError> {
         "injections.scm",
         "textobjects.scm",
         "indents.scm",
+        "context.scm",
     ];
 
     for language in lang_config().language {
