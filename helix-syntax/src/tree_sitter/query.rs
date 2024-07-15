@@ -4,6 +4,8 @@ use std::path::{Path, PathBuf};
 use std::ptr::NonNull;
 use std::{slice, str};
 
+use regex_cursor::Cursor;
+
 use crate::tree_sitter::query::predicate::{InvalidPredicateError, Predicate, TextPredicate};
 use crate::tree_sitter::query::property::QueryProperty;
 use crate::tree_sitter::Grammar;
@@ -153,6 +155,24 @@ impl Query {
             .collect();
         query.patterns = patterns?;
         Ok(query)
+    }
+
+    pub fn satsifies_text_predicate<C: Cursor>(
+        &self,
+        cursor: &mut regex_cursor::Input<C>,
+        pattern: u32,
+    ) {
+        let text_predicates = self.patterns[pattern as usize].text_predicates;
+        let text_predicates =
+            &self.text_predicates[text_predicates.start as usize..text_predicates.end as usize];
+        for predicate in text_predicates {
+            match predicate.kind {
+                predicate::TextPredicateKind::EqString(_) => todo!(),
+                predicate::TextPredicateKind::EqCapture(_) => todo!(),
+                predicate::TextPredicateKind::MatchString(_) => todo!(),
+                predicate::TextPredicateKind::AnyString(_) => todo!(),
+            }
+        }
     }
 
     // fn parse_predicates(&mut self) {

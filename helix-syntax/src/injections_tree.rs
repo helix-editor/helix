@@ -4,9 +4,9 @@ use std::sync::Arc;
 
 use hashbrown::HashMap;
 use slotmap::{new_key_type, SlotMap};
-use tree_sitter::Tree;
 
 use crate::parse::LayerUpdateFlags;
+use crate::tree_sitter::SyntaxTree;
 use crate::{HighlightConfiguration, RopeProvider};
 
 // TODO(perf): replace std::ops::Range with helix_core::Range once added
@@ -20,7 +20,7 @@ new_key_type! {
 #[derive(Debug)]
 pub struct LanguageLayer {
     pub config: Arc<HighlightConfiguration>,
-    pub(crate) parse_tree: Option<Tree>,
+    pub(crate) parse_tree: Option<SyntaxTree>,
     /// internal flags used during parsing to track incremental invalidation
     pub(crate) flags: LayerUpdateFlags,
     pub(crate) parent: Option<LayerId>,

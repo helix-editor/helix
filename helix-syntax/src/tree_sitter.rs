@@ -1,6 +1,7 @@
 mod grammar;
 mod parser;
 mod query;
+mod query_captures;
 mod ropey;
 mod syntax_tree;
 mod syntax_tree_node;
