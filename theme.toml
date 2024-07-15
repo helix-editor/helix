@@ -56,7 +56,7 @@ label = "honey"
 "ui.text.focus" = { fg = "white" }
 "ui.text.inactive" = "sirocco"
 "ui.virtual" = { fg = "comet" }
-"ui.virtual.ruler" = { bg = "revolver" }
+"ui.virtual.ruler" = { bg = "bossanova" }
 "ui.virtual.jump-label" = { fg = "apricot", modifiers = ["bold"] }
 
 "ui.virtual.indent-guide" = { fg = "comet" }

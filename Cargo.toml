@@ -43,7 +43,7 @@ slotmap = "1.0.7"
 thiserror = "1.0"
 
 [workspace.package]
-version = "24.3.0"
+version = "24.7.0"
 edition = "2021"
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
 categories = ["editor"]

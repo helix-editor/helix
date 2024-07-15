@@ -148,6 +148,12 @@ provided `.desktop` and icon files to their correct folders:
 cp contrib/Helix.desktop ~/.local/share/applications
 cp contrib/helix.png ~/.icons # or ~/.local/share/icons
 ```
+It is recommended to convert the links in the `.desktop` file to absolute paths to avoid potential problems:
+
+```sh
+sed -i -e "s|Exec=hx %F|Exec=$(readlink -f ~/.cargo/bin/hx) %F|g" \
+  -e "s|Icon=helix|Icon=$(readlink -f ~/.icons/helix.png)|g" ~/.local/share/applications/Helix.desktop
+```
 
 To use another terminal than the system default, you can modify the `.desktop`
 file. For example, to use `kitty`:

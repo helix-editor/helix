@@ -1,0 +1,125 @@
+# Kanagawa Dragon
+# Author: EricHenry
+
+# Adaptation of https://github.com/rebelot/kanagawa.nvim
+# Original author: rebelot
+# All credits to the original author, the palette is taken from the README
+# because of some theming differences, it's not an exact copy of the original.
+
+inherits = "kanagawa"
+
+## User interface
+"ui.selection" = { bg = "waveBlue2" }
+"ui.selection.primary" = { bg = "waveBlue1" }
+"ui.background" = { fg = "dragonWhite", bg = "dragonBlack3" }
+"ui.gutter" = { fg = "dragonBlack6", bg = "dragonBlack4" }
+
+"ui.linenr" = { fg = "dragonBlack6", bg = "dragonBlack4" }
+"ui.linenr.selected" = { fg = "roninYellow", modifiers = ["bold"] }
+
+"ui.virtual" = "dragonBlack4"
+"ui.virtual.ruler" = { bg = "dragonBlack5" }
+"ui.virtual.inlay-hint" = "dragonGray2"
+"ui.virtual.inlay-hint.parameter" = { fg = "dragonYellow", modifiers = ["dim"] }
+"ui.virtual.inlay-hint.type" = { fg = "dragonAqua", modifiers = ["dim"] }
+"ui.virtual.jump-label" = { fg = "dragonRed", modifiers = ["bold"] }
+
+"ui.statusline" = { fg = "oldWhite", bg = "dragonBlack0" }
+
+"ui.bufferline" = { fg = "oldWhite", bg = "dragonBlack0" }
+"ui.bufferline.active" = { fg = "oldWhite", bg = "dragonBlack0" }
+"ui.bufferline.background" = { bg = "sumiInk0" }
+
+"ui.popup" = { fg = "oldWhite", bg = "dragonBlack0" }
+"ui.window" = { fg = "sumiInk0" }
+"ui.help" = { fg = "fujiWhite", bg = "sumiInk0" }
+"ui.text" = "dragonWhite"
+"ui.text.focus" = { fg = "dragonWhite", bg = "waveBlue1", modifiers = ["bold"] }
+
+"ui.cursor" = { fg = "waveBlue1", bg = "waveAqua2" }
+"ui.cursor.primary" = { fg = "waveBlue1", bg = "fujiWhite" }
+"ui.cursor.match" = { fg = "roninYellow", modifiers = ["bold"] }
+"ui.highlight" = { fg = "fujiWhite", bg = "waveBlue2" }
+
+"ui.cursorline.primary" = { bg = "dragonBlack5" }
+"ui.cursorcolumn.primary" = { bg = "dragonBlack5" }
+
+"diagnostic.info" = { underline = { color = "dragonBlue", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "waveAqua1", style = "curl" } }
+"diagnostic.deprecated" = { fg= "katanaGray", modifiers = ["crossed_out"] }
+
+## Syntax highlighting
+"attribute" = "waveRed"
+"type" = "dragonAqua"
+"type.enum.variant" = "dragonOrange"
+"constructor" = "dragonTeal"
+"constant" = "dragonOrange"
+"constant.numeric" = "dragonPink"
+"constant.character.escape" = "dragonBlue2"
+"string" = "dragonGreen2"
+"string.regexp" = "dragonRed"
+"string.special.url" = "dragonTeal"
+"string.special.symbol" = "dragonTeal"
+"comment" = "dragonAsh"
+"variable" = "dragonWhite"
+"variable.builtin" = "dragonRed"
+"variable.parameter" = "dragonGray"
+"variable.other.member" = "dragonYellow"
+"label" = "dragonRed"
+"punctuation" = "dragonWhite"
+"keyword" = "dragonViolet"
+"keyword.control.return" = "dragonRed"
+"keyword.control.exception" = "dragonRed"
+"keyword.directive" = "dragonRed"
+"operator" = "dragonRed"
+"function" = "dragonBlue2"
+"function.builtin" = "dragonBlue2"
+"function.macro" = "dragonRed"
+"tag" = "dragonYellow"
+"namespace" = "dragonWhite"
+"special" = "dragonYellow"
+
+## Markup modifiers
+"markup.heading.marker" = "dragonViolet"
+"markup.heading.1" = { fg = "dragonOrange", modifiers = ["bold"] }
+"markup.heading.2" = { fg = "dragonYellow", modifiers = ["bold"] }
+"markup.heading.3" = { fg = "dragonBlue2", modifiers = ["bold"] }
+"markup.heading.4" = { fg = "dragonWhite", modifiers = ["bold"] }
+"markup.heading.5" = { fg = "dragonRed", modifiers = ["bold"] }
+"markup.heading.6" = { fg = "dragonPink", modifiers = ["bold"] }
+"markup.list.numbered" = "dragonPink"
+"markup.list.unnumbered" = "dragonRed"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.text" = "dragonTeal"
+"markup.link.url" = { fg = "dragonPink", underline.style = "line" }
+"markup.link.label" = "dragonBlue2"
+"markup.quote" = "springViolet1"
+"markup.raw" = "dragonGreen2"
+
+[palette]
+dragonBlack0 = "#0d0c0c"
+dragonBlack1 = "#12120f"
+dragonBlack2 = "#1D1C19"
+dragonBlack3 = "#181616"
+dragonBlack4 = "#282727"
+dragonBlack5 = "#393836"
+dragonBlack6 = "#625e5a"
+
+dragonWhite = "#c5c9c5"
+dragonGreen = "#87a987"
+dragonGreen2 = "#8a9a7b"
+dragonPink = "#a292a3"
+dragonOrange = "#b6927b"
+dragonOrange2 = "#b98d7b"
+dragonGray = "#a6a69c"
+dragonGray2 = "#9e9b93"
+dragonGray3 = "#7a8382"
+dragonBlue2 = "#8ba4b0"
+dragonViolet= "#8992a7"
+dragonRed = "#c4746e"
+dragonAqua = "#8ea4a2"
+dragonAsh = "#737c73"
+dragonTeal = "#949fb5"
+dragonYellow = "#c4b28a"
