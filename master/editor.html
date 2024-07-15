@@ -200,6 +200,7 @@
 </li>
 <li><a href="#editorsoft-wrap-section"><code>[editor.soft-wrap]</code> Section</a></li>
 <li><a href="#editorsmart-tab-section"><code>[editor.smart-tab]</code> Section</a></li>
+<li><a href="#editorinline-diagnostics-section"><code>[editor.inline-diagnostics]</code> Section</a></li>
 </ul>
 <h3 id="editor-section"><a class="header" href="#editor-section"><code>[editor]</code> Section</a></h3>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
@@ -232,6 +233,7 @@
 <tr><td><code>popup-border</code></td><td>Draw border around <code>popup</code>, <code>menu</code>, <code>all</code>, or <code>none</code></td><td><code>none</code></td></tr>
 <tr><td><code>indent-heuristic</code></td><td>How the indentation for a newly inserted line is computed: <code>simple</code> just copies the indentation level from the previous line, <code>tree-sitter</code> computes the indentation based on the syntax tree and <code>hybrid</code> combines both approaches. If the chosen heuristic is not available, a different one will be used as a fallback (the fallback order being <code>hybrid</code> -&gt; <code>tree-sitter</code> -&gt; <code>simple</code>).</td><td><code>hybrid</code></td></tr>
 <tr><td><code>jump-label-alphabet</code></td><td>The characters that are used to generate two character jump labels. Characters at the start of the alphabet are used first.</td><td><code>"abcdefghijklmnopqrstuvwxyz"</code></td></tr>
+<tr><td><code>end-of-line-diagnostics</code></td><td>Minimum severity of diagnostics to render at the end of the line. Set to <code>disable</code> to disable entirely. Refer to the setting about <code>inline-diagnostics</code> for more details</td><td>"disable"</td></tr>
 </tbody></table>
 </div>
 <h3 id="editorstatusline-section"><a class="header" href="#editorstatusline-section"><code>[editor.statusline]</code> Section</a></h3>
@@ -500,6 +502,33 @@ S-tab = "move_parent_node_start"
 [keys.select]
 tab = "extend_parent_node_end"
 S-tab = "extend_parent_node_start"
+</code></pre>
+<h3 id="editorinline-diagnostics-section"><a class="header" href="#editorinline-diagnostics-section"><code>[editor.inline-diagnostics]</code> Section</a></h3>
+<p>Options for rendering diagnostics inside the text like shown below</p>
+<pre><code>fn main() {
+  let foo = bar;
+            └─ no such value in this scope
+}
+</code></pre>
+<div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Default</th></tr></thead><tbody>
+<tr><td><code>cursor-line</code></td><td>The minimum severity that a diagnostic must have to be shown inline on the line that contains the primary cursor. Set to <code>disable</code> to not show any diagnostics inline. This option does not have any effect when in insert-mode and will only take effect 350ms after moving the cursor to a different line.</td><td><code>"disable"</code></td></tr>
+<tr><td><code>other-lines</code></td><td>The minimum severity that a diagnostic must have to be shown inline on a line that does not contain the cursor-line. Set to <code>disable</code> to not show any diagnostics inline.</td><td><code>"disable"</code></td></tr>
+<tr><td><code>prefix-len</code></td><td>How many horizontal bars <code>─</code> are rendered before the diagnostic text.</td><td><code>1</code></td></tr>
+<tr><td><code>max-wrap</code></td><td>Equivalent of the <code>editor.soft-wrap.max-wrap</code> option for diagnostics.</td><td><code>20</code></td></tr>
+<tr><td><code>max-diagnostics</code></td><td>Maximum number of diagnostics to render inline for a given line</td><td><code>10</code></td></tr>
+</tbody></table>
+</div>
+<p>The (first) diagnostic with the highest severity that is not shown inline is rendered at the end of the line (as long as its severity is higher than the <code>end-of-line-diagnostics</code> config option):</p>
+<pre><code>fn main() {
+  let baz = 1;
+  let foo = bar; a local variable with a similar name exists: baz
+            └─ no such value in this scope
+}
+</code></pre>
+<p>The new diagnostic rendering is not yet enabled by default. As soon as end of line or inline diagnostics are enabled the old diagnostics rendering is automatically disabled. The recommended default setting are:</p>
+<pre><code>end-of-line-diagnostics = "hint"
+[editor.inline-diagnostics]
+cursor-line = "warning" # show warnings and errors on the cursorline inline
 </code></pre>
 
                     </main>
