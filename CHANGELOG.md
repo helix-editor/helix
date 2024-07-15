@@ -16,7 +16,7 @@ Features:
 Commands:
 
 - `select_all_siblings` (`A-a`) - select all siblings of each selection ([87c4161](https://github.com/helix-editor/helix/commit/87c4161))
-- `select_all_children` (`A-i`) - select all children of each selection ([fa67c5c](https://github.com/helix-editor/helix/commit/fa67c5c))
+- `select_all_children` (`A-I`) - select all children of each selection ([fa67c5c](https://github.com/helix-editor/helix/commit/fa67c5c))
 - `:read` - insert the contents of the given file at each selection ([#10447](https://github.com/helix-editor/helix/pull/10447))
 
 Usability improvements:
