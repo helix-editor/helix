@@ -448,14 +448,12 @@ impl Component for Completion {
         // ---
         // option.documentation
 
-        let (view, doc) = current!(cx.editor);
-        let language = doc.language_name().unwrap_or("");
-        let text = doc.text().slice(..);
-        let cursor_pos = doc.selection(view.id).primary().cursor(text);
-        let coords = view
-            .screen_coords_at_pos(doc, text, cursor_pos)
-            .expect("cursor must be in view");
+        let Some(coords) = cx.editor.cursor().0 else {
+            return;
+        };
         let cursor_pos = coords.row as u16;
+        let doc = doc!(cx.editor);
+        let language = doc.language_name().unwrap_or("");
 
         let markdowned = |lang: &str, detail: Option<&str>, doc: Option<&str>| {
             let md = match (detail, doc) {
