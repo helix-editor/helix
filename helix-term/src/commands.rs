@@ -185,7 +185,7 @@ use helix_view::{align_view, Align};
 pub enum MappableCommand {
     Typable {
         name: String,
-        args: Vec<String>,
+        args: String,
         doc: String,
     },
     Static {
@@ -223,19 +223,8 @@ impl MappableCommand {
                         scroll: None,
                     };
 
-                    // TODO: This is a workaround to get an `Args` as the current MappableCommand takes a `Vec<String>`
-                    // for its `args` field. Ideally it would be able to hold an `Args` but as lifetimes come into play
-                    // this can become unwieldy to manage in an enum that also expects `static lifetimes.
-                    let args = args.iter().fold(String::new(), |mut acc, arg| {
-                        if !acc.is_empty() {
-                            acc.push(' ');
-                        }
-                        acc.push_str(arg);
-                        acc
-                    });
-
                     if let Err(err) =
-                        (command.fun)(&mut cx, Args::from(&args), PromptEvent::Validate)
+                        (command.fun)(&mut cx, Args::from(args), PromptEvent::Validate)
                     {
                         cx.editor.set_error(format!("{err}"));
                     }
@@ -573,21 +562,15 @@ impl std::str::FromStr for MappableCommand {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some(suffix) = s.strip_prefix(':') {
-            let mut typable_command = suffix.split(' ').map(|arg| arg.trim());
-            let name = typable_command
-                .next()
-                .ok_or_else(|| anyhow!("Expected typable command name"))?;
-            let args = typable_command
-                .map(|s| s.to_owned())
-                .collect::<Vec<String>>();
+            let (name, args) = suffix.split_once(' ').unwrap_or((suffix, ""));
             typed::TYPABLE_COMMAND_MAP
                 .get(name)
                 .map(|cmd| MappableCommand::Typable {
                     name: cmd.name.to_owned(),
                     doc: format!(":{} {:?}", cmd.name, args),
-                    args,
+                    args: args.to_string(),
                 })
-                .ok_or_else(|| anyhow!("No TypableCommand named '{}'", s))
+                .ok_or_else(|| anyhow!("No TypableCommand named '{}'", name))
         } else {
             MappableCommand::STATIC_COMMAND_LIST
                 .iter()
@@ -3149,7 +3132,7 @@ pub fn command_palette(cx: &mut Context) {
                     .iter()
                     .map(|cmd| MappableCommand::Typable {
                         name: cmd.name.to_owned(),
-                        args: Vec::new(),
+                        args: String::new(),
                         doc: cmd.doc.to_owned(),
                     }),
             );
