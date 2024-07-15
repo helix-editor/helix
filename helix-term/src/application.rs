@@ -735,10 +735,10 @@ impl Application {
                         }
                     }
                     Notification::PublishDiagnostics(mut params) => {
-                        let path = match params.uri.to_file_path() {
-                            Ok(path) => helix_stdx::path::normalize(path),
-                            Err(_) => {
-                                log::error!("Unsupported file URI: {}", params.uri);
+                        let uri = match helix_core::Uri::try_from(params.uri) {
+                            Ok(uri) => uri,
+                            Err(err) => {
+                                log::error!("{err}");
                                 return;
                             }
                         };
@@ -749,11 +749,11 @@ impl Application {
                         }
                         // have to inline the function because of borrow checking...
                         let doc = self.editor.documents.values_mut()
-                            .find(|doc| doc.path().map(|p| p == &path).unwrap_or(false))
+                            .find(|doc| doc.uri().is_some_and(|u| u == uri))
                             .filter(|doc| {
                                 if let Some(version) = params.version {
                                     if version != doc.version() {
-                                        log::info!("Version ({version}) is out of date for {path:?} (expected ({}), dropping PublishDiagnostic notification", doc.version());
+                                        log::info!("Version ({version}) is out of date for {uri:?} (expected ({}), dropping PublishDiagnostic notification", doc.version());
                                         return false;
                                     }
                                 }
@@ -765,7 +765,7 @@ impl Application {
                             let lang_conf = doc.language.clone();
 
                             if let Some(lang_conf) = &lang_conf {
-                                if let Some(old_diagnostics) = self.editor.diagnostics.get(&path) {
+                                if let Some(old_diagnostics) = self.editor.diagnostics.get(&uri) {
                                     if !lang_conf.persistent_diagnostic_sources.is_empty() {
                                         // Sort diagnostics first by severity and then by line numbers.
                                         // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
@@ -798,7 +798,7 @@ impl Application {
                         // Insert the original lsp::Diagnostics here because we may have no open document
                         // for diagnosic message and so we can't calculate the exact position.
                         // When using them later in the diagnostics picker, we calculate them on-demand.
-                        let diagnostics = match self.editor.diagnostics.entry(path) {
+                        let diagnostics = match self.editor.diagnostics.entry(uri) {
                             Entry::Occupied(o) => {
                                 let current_diagnostics = o.into_mut();
                                 // there may entries of other language servers, which is why we can't overwrite the whole entry
@@ -1132,20 +1132,22 @@ impl Application {
             ..
         } = params;
 
-        let path = match uri.to_file_path() {
-            Ok(path) => path,
+        let uri = match helix_core::Uri::try_from(uri) {
+            Ok(uri) => uri,
             Err(err) => {
-                log::error!("unsupported file URI: {}: {:?}", uri, err);
+                log::error!("{err}");
                 return lsp::ShowDocumentResult { success: false };
             }
         };
+        // If `Uri` gets another variant other than `Path` this may not be valid.
+        let path = uri.as_path().expect("URIs are valid paths");
 
         let action = match take_focus {
             Some(true) => helix_view::editor::Action::Replace,
             _ => helix_view::editor::Action::VerticalSplit,
         };
 
-        let doc_id = match self.editor.open(&path, action) {
+        let doc_id = match self.editor.open(path, action) {
             Ok(id) => id,
             Err(err) => {
                 log::error!("failed to open path: {:?}: {:?}", uri, err);

@@ -44,7 +44,7 @@ pub use helix_core::diagnostic::Severity;
 use helix_core::{
     auto_pairs::AutoPairs,
     syntax::{self, AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
-    Change, LineEnding, Position, Range, Selection, NATIVE_LINE_ENDING,
+    Change, LineEnding, Position, Range, Selection, Uri, NATIVE_LINE_ENDING,
 };
 use helix_dap as dap;
 use helix_lsp::lsp;
@@ -1022,7 +1022,7 @@ pub struct Editor {
     pub macro_recording: Option<(char, Vec<KeyEvent>)>,
     pub macro_replaying: Vec<char>,
     pub language_servers: helix_lsp::Registry,
-    pub diagnostics: BTreeMap<PathBuf, Vec<(lsp::Diagnostic, LanguageServerId)>>,
+    pub diagnostics: BTreeMap<Uri, Vec<(lsp::Diagnostic, LanguageServerId)>>,
     pub diff_providers: DiffProviderRegistry,
 
     pub debugger: Option<dap::Client>,
@@ -1931,7 +1931,7 @@ impl Editor {
     /// Returns all supported diagnostics for the document
     pub fn doc_diagnostics<'a>(
         language_servers: &'a helix_lsp::Registry,
-        diagnostics: &'a BTreeMap<PathBuf, Vec<(lsp::Diagnostic, LanguageServerId)>>,
+        diagnostics: &'a BTreeMap<Uri, Vec<(lsp::Diagnostic, LanguageServerId)>>,
         document: &Document,
     ) -> impl Iterator<Item = helix_core::Diagnostic> + 'a {
         Editor::doc_diagnostics_with_filter(language_servers, diagnostics, document, |_, _| true)
@@ -1941,15 +1941,15 @@ impl Editor {
     /// filtered by `filter` which is invocated with the raw `lsp::Diagnostic` and the language server id it came from
     pub fn doc_diagnostics_with_filter<'a>(
         language_servers: &'a helix_lsp::Registry,
-        diagnostics: &'a BTreeMap<PathBuf, Vec<(lsp::Diagnostic, LanguageServerId)>>,
+        diagnostics: &'a BTreeMap<Uri, Vec<(lsp::Diagnostic, LanguageServerId)>>,
         document: &Document,
         filter: impl Fn(&lsp::Diagnostic, LanguageServerId) -> bool + 'a,
     ) -> impl Iterator<Item = helix_core::Diagnostic> + 'a {
         let text = document.text().clone();
         let language_config = document.language.clone();
         document
-            .path()
-            .and_then(|path| diagnostics.get(path))
+            .uri()
+            .and_then(|uri| diagnostics.get(&uri))
             .map(|diags| {
                 diags.iter().filter_map(move |(diagnostic, lsp_id)| {
                     let ls = language_servers.get_by_id(*lsp_id)?;

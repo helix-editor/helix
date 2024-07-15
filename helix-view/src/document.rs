@@ -1741,6 +1741,10 @@ impl Document {
         Url::from_file_path(self.path()?).ok()
     }
 
+    pub fn uri(&self) -> Option<helix_core::Uri> {
+        Some(self.path()?.clone().into())
+    }
+
     #[inline]
     pub fn text(&self) -> &Rope {
         &self.text
