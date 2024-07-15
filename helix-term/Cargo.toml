@@ -59,7 +59,7 @@ content_inspector = "0.2.4"
 thiserror = "1.0"
 
 # opening URLs
-open = "5.2.0"
+open = "5.3.0"
 url = "2.5.2"
 
 # config
