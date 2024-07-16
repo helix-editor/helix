@@ -1,4 +1,4 @@
-# Adding Injection Queries
+## Adding Injection Queries
 
 Writing language injection queries allows one to highlight a specific node as a different language.
 In addition to the [standard][upstream-docs] language injection options used by tree-sitter, there
