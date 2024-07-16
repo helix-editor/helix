@@ -1147,7 +1147,7 @@ you to selectively add search terms to your selections.</p>
 <tr><td><code>:yank-diagnostic</code></td><td>Yank diagnostic(s) under primary cursor to register, or clipboard by default</td></tr>
 <tr><td><code>:read</code>, <code>:r</code></td><td>Load a file into buffer</td></tr>
 </tbody></table>
-</div><div style="break-before: page; page-break-before: always;"></div><h1 id="language-support"><a class="header" href="#language-support">Language Support</a></h1>
+</div><div style="break-before: page; page-break-before: always;"></div><h2 id="language-support"><a class="header" href="#language-support">Language Support</a></h2>
 <p>The following languages and Language Servers are supported. To use
 Language Server features, you must first <a href="https://github.com/helix-editor/helix/wiki/Language-Server-Configurations">configure</a> the
 appropriate Language Server.</p>
@@ -1774,7 +1774,7 @@ S-tab = "extend_parent_node_start"
 [editor.inline-diagnostics]
 cursor-line = "warning" # show warnings and errors on the cursorline inline
 </code></pre>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="themes"><a class="header" href="#themes">Themes</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h2 id="themes"><a class="header" href="#themes">Themes</a></h2>
 <p>To use a theme add <code>theme = "&lt;name&gt;"</code> to the top of your <a href="./configuration.html"><code>config.toml</code></a> file, or select it during runtime using <code>:theme &lt;name&gt;</code>.</p>
 <h2 id="creating-a-theme"><a class="header" href="#creating-a-theme">Creating a theme</a></h2>
 <p>Create a file with the name of your theme as the file name (i.e <code>mytheme.toml</code>) and place it in your <code>themes</code> directory (i.e <code>~/.config/helix/themes</code> or <code>%AppData%\helix\themes</code> on Windows). The directory might have to be created beforehand.</p>
@@ -2182,7 +2182,7 @@ berry = "#2A2A4D"
 <tr><td><code>diagnostic.unnecessary</code></td><td>Diagnostics with unnecessary tag (editing area)</td></tr>
 <tr><td><code>diagnostic.deprecated</code></td><td>Diagnostics with deprecated tag (editing area)</td></tr>
 </tbody></table>
-</div><div style="break-before: page; page-break-before: always;"></div><h1 id="key-remapping"><a class="header" href="#key-remapping">Key remapping</a></h1>
+</div><div style="break-before: page; page-break-before: always;"></div><h2 id="key-remapping"><a class="header" href="#key-remapping">Key remapping</a></h2>
 <p>Helix currently supports one-way key remapping through a simple TOML configuration
 file. (More powerful solutions such as rebinding via commands will be
 available in the future).</p>
@@ -2249,7 +2249,7 @@ t = ":run-shell-command cargo test"
 <p>Keys can be disabled by binding them to the <code>no_op</code> command.</p>
 <p>A list of commands is available in the <a href="https://docs.helix-editor.com/keymap.html">Keymap</a> documentation
 and in the source code at <a href="https://github.com/helix-editor/helix/blob/master/helix-term/src/commands.rs"><code>helix-term/src/commands.rs</code></a> at the invocation of <code>static_commands!</code> macro and the <code>TypableCommandList</code>.</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="languages"><a class="header" href="#languages">Languages</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h2 id="languages"><a class="header" href="#languages">Languages</a></h2>
 <p>Language-specific settings and settings for language servers are configured
 in <code>languages.toml</code> files.</p>
 <h2 id="languagestoml-files"><a class="header" href="#languagestoml-files"><code>languages.toml</code> files</a></h2>
@@ -2451,7 +2451,7 @@ use-grammars = { except = [ "yaml", "json" ] }
 <div style="break-before: page; page-break-before: always;"></div><h1 id="guides"><a class="header" href="#guides">Guides</a></h1>
 <p>This section contains guides for adding new language server configurations,
 tree-sitter grammars, textobject queries, and other similar items.</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="adding-new-languages-to-helix"><a class="header" href="#adding-new-languages-to-helix">Adding new languages to Helix</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h2 id="adding-new-languages-to-helix"><a class="header" href="#adding-new-languages-to-helix">Adding new languages to Helix</a></h2>
 <p>In order to add a new language to Helix, you will need to follow the steps
 below.</p>
 <h2 id="language-configuration-1"><a class="header" href="#language-configuration-1">Language configuration</a></h2>
@@ -2507,7 +2507,7 @@ grammars.</li>
 remove the compiled parser located at <code>runtime/grammars/&lt;name&gt;.so</code>.</li>
 <li>If you are attempting to add queries and Helix is unable to locate them, ensure that the environment variable <code>HELIX_RUNTIME</code> is set to the location of the <code>runtime</code> folder you're developing in.</li>
 </ul>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="adding-textobject-queries"><a class="header" href="#adding-textobject-queries">Adding textobject queries</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h2 id="adding-textobject-queries"><a class="header" href="#adding-textobject-queries">Adding textobject queries</a></h2>
 <p>Helix supports textobjects that are language specific, such as functions, classes, etc.
 These textobjects require an accompanying tree-sitter grammar and a <code>textobjects.scm</code> query file
 to work properly. Tree-sitter allows us to query the source code syntax tree
@@ -2546,7 +2546,7 @@ following order:</p>
 in its <code>textobjects.scm</code> file, function navigation should also work automatically.
 <code>function.movement</code> should be defined only if the node captured by <code>function.around</code>
 doesn't make sense in a navigation context.</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="adding-indent-queries"><a class="header" href="#adding-indent-queries">Adding indent queries</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h2 id="adding-indent-queries"><a class="header" href="#adding-indent-queries">Adding indent queries</a></h2>
 <p>Helix uses tree-sitter to correctly indent new lines. This requires a tree-
 sitter grammar and an <code>indent.scm</code> query file placed in <code>runtime/queries/ {language}/indents.scm</code>. The indentation for a line is calculated by traversing
 the syntax tree from the lowest node at the beginning of the new line (see
@@ -2876,7 +2876,7 @@ Then, on the closing brace, we encounter an outdent with a scope of "all", which
 means the first line is included, and the indent level is cancelled out on this
 line. (Note these scopes are the defaults for <code>@indent</code> and <code>@outdent</code>—they are
 written explicitly for demonstration.)</p>
-<div style="break-before: page; page-break-before: always;"></div><h1 id="adding-injection-queries"><a class="header" href="#adding-injection-queries">Adding Injection Queries</a></h1>
+<div style="break-before: page; page-break-before: always;"></div><h2 id="adding-injection-queries"><a class="header" href="#adding-injection-queries">Adding Injection Queries</a></h2>
 <p>Writing language injection queries allows one to highlight a specific node as a different language.
 In addition to the <a href="http://tree-sitter.github.io/tree-sitter/syntax-highlighting#language-injection">standard</a> language injection options used by tree-sitter, there
 are a few Helix specific extensions that allow for more control.</p>
