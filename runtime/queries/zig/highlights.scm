@@ -7,6 +7,18 @@
   (line_comment)
 ] @comment.line
 
+[
+  variable: (IDENTIFIER)
+  variable_type_function: (IDENTIFIER)
+] @variable
+
+parameter: (IDENTIFIER) @variable.parameter
+
+[
+  field_member: (IDENTIFIER)
+  field_access: (IDENTIFIER)
+] @variable.other.member
+
 ;; assume TitleCase is a type
 (
   [
@@ -36,6 +48,13 @@
   (#match? @constant "^[A-Z][A-Z_0-9]+$")
 )
 
+[
+  function_call: (IDENTIFIER)
+  function: (IDENTIFIER)
+] @function
+
+exception: "!" @keyword.control.exception
+
 ;; _
 (
   (IDENTIFIER) @variable.builtin
@@ -44,25 +63,6 @@
 
 ;; C Pointers [*c]T
 (PtrTypeStart "c" @variable.builtin)
-
-[
-  variable: (IDENTIFIER)
-  variable_type_function: (IDENTIFIER)
-] @variable
-
-parameter: (IDENTIFIER) @variable.parameter
-
-[
-  field_member: (IDENTIFIER)
-  field_access: (IDENTIFIER)
-] @variable.other.member
-
-[
-  function_call: (IDENTIFIER)
-  function: (IDENTIFIER)
-] @function
-
-exception: "!" @keyword.control.exception
 
 field_constant: (IDENTIFIER) @constant
 
