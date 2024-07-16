@@ -31,7 +31,7 @@ being published.
 * Post to reddit
     * [Example post](https://www.reddit.com/r/rust/comments/uzp5ze/helix_editor_2205_released/)
 
-[homebrew formula]: https://github.com/Homebrew/homebrew-core/blob/master/Formula/helix.rb
+[homebrew formula]: https://github.com/Homebrew/homebrew-core/blob/master/Formula/h/helix.rb
 
 ## Changelog Curation
 

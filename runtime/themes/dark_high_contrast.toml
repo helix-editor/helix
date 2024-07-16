@@ -88,6 +88,8 @@
 "keyword.control" = "purple"
 "function" = "yellow"
 "label" = "blue"
+"tag" = "aqua"
+"attribute" = "blue"
 
 # Markup 
 "markup.heading" = { fg = "yellow", modifiers = [

@@ -2,12 +2,13 @@ use crate::compositor::{Component, Compositor, Context, Event, EventResult};
 use crate::{alt, ctrl, key, shift, ui};
 use arc_swap::ArcSwap;
 use helix_core::syntax;
+use helix_view::document::Mode;
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;
 use std::sync::Arc;
 use std::{borrow::Cow, ops::RangeFrom};
 use tui::buffer::Buffer as Surface;
-use tui::widgets::{Block, Borders, Widget};
+use tui::widgets::{Block, Widget};
 
 use helix_core::{
     unicode::segmentation::GraphemeCursor, unicode::width::UnicodeWidthStr, Position,
@@ -91,12 +92,22 @@ impl Prompt {
         }
     }
 
+    /// Gets the byte index in the input representing the current cursor location.
+    #[inline]
+    pub(crate) fn position(&self) -> usize {
+        self.cursor
+    }
+
     pub fn with_line(mut self, line: String, editor: &Editor) -> Self {
+        self.set_line(line, editor);
+        self
+    }
+
+    pub fn set_line(&mut self, line: String, editor: &Editor) {
         let cursor = line.len();
         self.line = line;
         self.cursor = cursor;
         self.recalculate_completion(editor);
-        self
     }
 
     pub fn with_language(
@@ -110,6 +121,19 @@ impl Prompt {
 
     pub fn line(&self) -> &String {
         &self.line
+    }
+
+    pub fn with_history_register(&mut self, history_register: Option<char>) -> &mut Self {
+        self.history_register = history_register;
+        self
+    }
+
+    pub(crate) fn first_history_completion<'a>(
+        &'a self,
+        editor: &'a Editor,
+    ) -> Option<Cow<'a, str>> {
+        self.history_register
+            .and_then(|reg| editor.registers.first(reg, editor))
     }
 
     pub fn recalculate_completion(&mut self, editor: &Editor) {
@@ -457,12 +481,11 @@ impl Prompt {
             let background = theme.get("ui.help");
             surface.clear_with(area, background);
 
-            let block = Block::default()
+            let block = Block::bordered()
                 // .title(self.title.as_str())
-                .borders(Borders::ALL)
                 .border_style(background);
 
-            let inner = block.inner(area).inner(&Margin::horizontal(1));
+            let inner = block.inner(area).inner(Margin::horizontal(1));
 
             block.render(area, surface);
             text.render(inner, surface, cx);
@@ -476,10 +499,7 @@ impl Prompt {
         let line_area = area.clip_left(self.prompt.len() as u16).clip_top(line);
         if self.line.is_empty() {
             // Show the most recently entered value as a suggestion.
-            if let Some(suggestion) = self
-                .history_register
-                .and_then(|reg| cx.editor.registers.first(reg, cx.editor))
-            {
+            if let Some(suggestion) = self.first_history_completion(cx.editor) {
                 surface.set_string(line_area.x, line_area.y, suggestion, suggestion_color);
             }
         } else if let Some((language, loader)) = self.language.as_ref() {
@@ -574,8 +594,7 @@ impl Component for Prompt {
                     self.recalculate_completion(cx.editor);
                 } else {
                     let last_item = self
-                        .history_register
-                        .and_then(|reg| cx.editor.registers.first(reg, cx.editor))
+                        .first_history_completion(cx.editor)
                         .map(|entry| entry.to_string())
                         .unwrap_or_else(|| String::from(""));
 
@@ -663,7 +682,7 @@ impl Component for Prompt {
         self.render_prompt(area, surface, cx)
     }
 
-    fn cursor(&self, area: Rect, _editor: &Editor) -> (Option<Position>, CursorKind) {
+    fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
         let line = area.height as usize - 1;
         (
             Some(Position::new(
@@ -672,7 +691,7 @@ impl Component for Prompt {
                     + self.prompt.len()
                     + UnicodeWidthStr::width(&self.line[..self.cursor]),
             )),
-            CursorKind::Block,
+            editor.config().cursor_shape.from_mode(Mode::Insert),
         )
     }
 }

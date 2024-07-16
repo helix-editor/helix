@@ -1,5 +1,6 @@
 use arc_swap::ArcSwapAny;
 use helix_core::{
+    diagnostic::Severity,
     extensions::steel_implementations::{rope_module, SteelRopeSlice},
     graphemes,
     shellwords::Shellwords,
@@ -9,11 +10,12 @@ use helix_core::{
 use helix_event::register_hook;
 use helix_stdx::path::expand_tilde;
 use helix_view::{
+    annotations::diagnostics::DiagnosticFilter,
     document::Mode,
     editor::{
-        Action, BufferLine, ConfigEvent, CursorShapeConfig, FilePickerConfig, GutterConfig,
-        IndentGuidesConfig, LineEndingConfig, LineNumber, LspConfig, SearchConfig, SmartTabConfig,
-        StatusLineConfig, TerminalConfig, WhitespaceConfig,
+        Action, AutoSave, BufferLine, ConfigEvent, CursorShapeConfig, FilePickerConfig,
+        GutterConfig, IndentGuidesConfig, LineEndingConfig, LineNumber, LspConfig, SearchConfig,
+        SmartTabConfig, StatusLineConfig, TerminalConfig, WhitespaceConfig,
     },
     extension::document_id_to_usize,
     input::KeyEvent,
@@ -31,6 +33,7 @@ use steel::{
 use std::{
     borrow::Cow,
     collections::HashMap,
+    error::Error,
     path::PathBuf,
     sync::atomic::{AtomicUsize, Ordering},
     time::Duration,
@@ -49,7 +52,7 @@ use crate::{
     events::{OnModeSwitch, PostCommand, PostInsertChar},
     job::{self, Callback},
     keymap::{self, merge_keys, KeyTrie, KeymapResult},
-    ui::{self, Popup, Prompt, PromptEvent},
+    ui::{self, picker::PathOrId, Popup, Prompt, PromptEvent},
 };
 
 use components::SteelDynamicComponent;
@@ -212,8 +215,7 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
     module.register_fn("set-current-selection-object!", set_selection);
     template_function_arity_1("set-current-selection-object!");
 
-    module.register_fn("search-in-directory", search_in_directory);
-    template_function_arity_1("search-in-directory");
+    // module.register_fn("search-in-directory", search_in_directory); // template_function_arity_1("search-in-directory");
     module.register_fn("regex-selection", regex_selection);
     template_function_arity_1("regex-selection");
     module.register_fn("replace-selection-with", replace_selection);
@@ -475,6 +477,20 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
         .register_fn("auto-pairs-map", |map: HashMap<char, char>| {
             AutoPairConfig::Pairs(map)
         })
+        // TODO: Finish this up
+        .register_fn("auto-save-default", || AutoSave::default())
+        .register_fn(
+            "auto-save-after-delay-enable",
+            HelixConfiguration::auto_save_after_delay_enable,
+        )
+        .register_fn(
+            "inline-diagnostics-cursor-line-enable",
+            HelixConfiguration::inline_diagnostics_cursor_line_enable,
+        )
+        .register_fn(
+            "inline-diagnostics-end-of-line-enable",
+            HelixConfiguration::inline_diagnostics_end_of_line_enable,
+        )
         .register_fn("auto-completion", HelixConfiguration::auto_completion)
         .register_fn("auto-format", HelixConfiguration::auto_format)
         .register_fn("auto-save", HelixConfiguration::auto_save)
@@ -669,6 +685,8 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
             "default-line-ending",
             "smart-tab",
             "keybindings",
+            "inline-diagnostics-cursor-line-enable",
+            "inline-diagnostics-end-of-line-enable",
         ];
 
         for func in functions {
@@ -1228,9 +1246,43 @@ impl HelixConfiguration {
         self.store_config(app_config);
     }
 
-    fn auto_save(&self, option: bool) {
+    fn auto_save(&self, option: AutoSave) {
         let mut app_config = self.load_config();
         app_config.editor.auto_save = option;
+        self.store_config(app_config);
+    }
+
+    // TODO: Finish the auto save options!
+    fn auto_save_after_delay_enable(&self, option: bool) {
+        let mut app_config = self.load_config();
+        app_config.editor.auto_save.after_delay.enable = option;
+        self.store_config(app_config);
+    }
+
+    // TODO: Finish diagnostic options!
+    fn inline_diagnostics_cursor_line_enable(&self, severity: String) {
+        let mut app_config = self.load_config();
+        let severity = match severity.as_str() {
+            "hint" => Severity::Hint,
+            "info" => Severity::Info,
+            "warning" => Severity::Warning,
+            "error" => Severity::Error,
+            _ => return,
+        };
+        app_config.editor.inline_diagnostics.cursor_line = DiagnosticFilter::Enable(severity);
+        self.store_config(app_config);
+    }
+
+    fn inline_diagnostics_end_of_line_enable(&self, severity: String) {
+        let mut app_config = self.load_config();
+        let severity = match severity.as_str() {
+            "hint" => Severity::Hint,
+            "info" => Severity::Info,
+            "warning" => Severity::Warning,
+            "error" => Severity::Error,
+            _ => return,
+        };
+        app_config.editor.end_of_line_diagnostics = DiagnosticFilter::Enable(severity);
         self.store_config(app_config);
     }
 
@@ -1998,7 +2050,9 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
     engine.register_fn("picker", |values: Vec<String>| -> WrappedDynComponent {
         let picker = ui::Picker::new(
             Vec::new(),
-            PathBuf::from(""),
+            0,
+            [PathBuf::from("")],
+            (),
             move |cx, path: &PathBuf, action| {
                 if let Err(e) = cx.editor.open(path, action) {
                     let err = if let Some(err) = e.source() {
@@ -2010,7 +2064,7 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
                 }
             },
         )
-        .with_preview(|_editor, path| Some((path.clone().into(), None)));
+        .with_preview(|_editor, path| Some((PathOrId::Path(path.clone().into()), None)));
 
         let injector = picker.injector();
 
@@ -2612,12 +2666,12 @@ pub fn custom_insert_newline(cx: &mut Context, indent: String) {
     doc.apply(&transaction, view.id);
 }
 
-fn search_in_directory(cx: &mut Context, directory: String) {
-    let buf = PathBuf::from(directory);
-    let search_path = expand_tilde(&buf);
-    let path = search_path.to_path_buf();
-    crate::commands::search_in_directory(cx, path);
-}
+// fn search_in_directory(cx: &mut Context, directory: String) {
+//     let buf = PathBuf::from(directory);
+//     let search_path = expand_tilde(&buf);
+//     let path = search_path.to_path_buf();
+//     crate::commands::search_in_directory(cx, path);
+// }
 
 // TODO: Result should create unrecoverable result, and should have a special
 // recoverable result - that way we can handle both, not one in particular
