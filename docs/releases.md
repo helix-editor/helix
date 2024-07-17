@@ -5,19 +5,18 @@ Helix releases are versioned in the Calendar Versioning scheme:
 `22.05.1`. In these instructions we'll use `<tag>` as a placeholder for the tag
 being published.
 
-* Merge the changelog PR
-* Add new `<release>` entry in `contrib/Helix.appdata.xml` with release information according to the [AppStream spec](https://www.freedesktop.org/software/appstream/docs/sect-Metadata-Releases.html)
+* Merge the PR with the release updates. That branch should:
+    * Update the version:
+        * Update the `workspace.package.version` key in `Cargo.toml`. Cargo only accepts
+          SemVer versions so a CalVer version of `22.07` for example must be formatted
+          as `22.7.0`. Patch/bugfix releases should increment the SemVer patch number. A
+          patch release for 22.07 would be `22.7.1`.
+        * Run `cargo check` and commit the resulting change to `Cargo.lock`
+    * Add changelog notes to `CHANGELOG.md`
+    * Add new `<release>` entry in `contrib/Helix.appdata.xml` with release information according to the [AppStream spec](https://www.freedesktop.org/software/appstream/docs/sect-Metadata-Releases.html)
 * Tag and push
-    * `git tag -s -m "<tag>" -a <tag> && git push`
-    * Make sure to switch to master and pull first
-* Edit the `Cargo.toml` file and change the date in the `version` field to the next planned release
-    * Due to Cargo having a strict requirement on SemVer with 3 or more version
-      numbers, a `0` is required in the micro version; however, unless we are
-      publishing a patch release after a major release, the `.0` is dropped in
-      the user facing version.
-    * Releases are planned to happen every two months, so `22.05.0` would change to `22.07.0`
-    * If we are pushing a patch/bugfix release in the same month as the previous
-      release, bump the micro version, e.g. `22.07.0` to `22.07.1`
+    * Switch to master and pull
+    * `git tag -s -m "<tag>" -a <tag> && git push` (note the `-s` which signs the tag)
 * Wait for the Release CI to finish
     * It will automatically turn the git tag into a GitHub release when it uploads artifacts
 * Edit the new release

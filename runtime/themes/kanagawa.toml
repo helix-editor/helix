@@ -11,14 +11,13 @@
 "ui.selection.primary" = { bg = "waveBlue2" }
 "ui.background" = { fg = "fujiWhite", bg = "sumiInk1" }
 
-"ui.linenr" = { fg = "sumiInk4" }
-"ui.linenr.selected" = { fg = "roninYellow" }
+"ui.linenr" = { fg = "sumiInk6" }
+"ui.linenr.selected" = { fg = "roninYellow", modifiers = ["bold"] }
+"ui.gutter" = { fg = "sumiInk6", bg = "sumiInk4" }
 
-"ui.virtual" = "sumiInk4"
+"ui.virtual" = "sumiInk6"
 "ui.virtual.ruler" = { bg = "sumiInk2" }
-"ui.virtual.inlay-hint" = "fujiGray"
-"ui.virtual.inlay-hint.parameter" = { fg = "carpYellow", modifiers = ["dim"] }
-"ui.virtual.inlay-hint.type" = { fg = "waveAqua2", modifiers = ["dim"] }
+"ui.virtual.inlay-hint" = "sumiInk6"
 "ui.virtual.jump-label" = { fg = "peachRed", modifiers = ["bold"] }
 
 "ui.statusline" = { fg = "oldWhite", bg = "sumiInk0" }
@@ -26,6 +25,7 @@
 "ui.statusline.normal" = { fg = "sumiInk0", bg = "crystalBlue", modifiers = ["bold"] }
 "ui.statusline.insert" = { fg = "sumiInk0", bg = "autumnGreen", modifiers = ["bold"] }
 "ui.statusline.select" = { fg = "sumiInk0", bg = "oniViolet", modifiers = ["bold"] }
+"ui.statusline.separator" = { fg = "", bg = "" }
 
 "ui.bufferline" = { fg = "fujiGray", bg = "sumiInk0" }
 "ui.bufferline.active" = { fg = "oldWhite", bg = "sumiInk0" }
@@ -35,7 +35,7 @@
 "ui.window" = { fg = "sumiInk0" }
 "ui.help" = { fg = "fujiWhite", bg = "sumiInk0" }
 "ui.text" = "fujiWhite"
-"ui.text.focus" = { fg = "fujiWhite", bg = "waveBlue1", modifiers = ["bold"] }
+"ui.text.focus" = { fg = "fujiWhite", bg = "waveBlue2", modifiers = ["bold"] }
 
 "ui.cursor" = { fg = "waveBlue1", bg = "waveAqua2" }
 "ui.cursor.primary" = { fg = "waveBlue1", bg = "fujiWhite" }
@@ -48,30 +48,37 @@
 "ui.cursorline.primary" = { bg = "sumiInk3" }
 "ui.cursorcolumn.primary" = { bg = "sumiInk3" }
 
+"ui.debug.breakpoint" = "springBlue"
+"ui.debug.active" = "winterRed"
+
 "diagnostic.error" = { underline = { color = "samuraiRed", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "roninYellow", style = "curl" } }
-"diagnostic.info" = { underline = { color = "waveAqua1", style = "curl" } }
-"diagnostic.hint" = { underline = { color = "dragonBlue", style = "curl" } }
+"diagnostic.info" = { underline = { color = "dragonBlue", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "waveAqua1", style = "curl" } }
 "diagnostic.unnecessary" = { modifiers = ["dim"] }
 "diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 error = "samuraiRed"
 warning = "roninYellow"
-info = "waveAqua1"
-hint = "dragonBlue"
+info = "dragonBlue"
+hint = "waveAqua1"
 
-## Git gutter
-"diff.plus" = "autumnGreen"
-"diff.minus" = "autumnRed"
-"diff.delta" = "autumnYellow"
+## Diff
+"diff.plus" = "winterGreen"
+"diff.plus.gutter" = "autumnGreen"
+"diff.minus" = "winterRed"
+"diff.minus.gutter" = "autumnRed"
+"diff.delta" = "winterBlue"
+"diff.delta.gutter" = "autumnYellow"
 
 ## Syntax highlighting
 "attribute" = "waveRed"
 "type" = "waveAqua2"
+"type.builtin" = "springBlue"
 "constructor" = "springBlue"
 "constant" = "surimiOrange"
 "constant.numeric" = "sakuraPink"
-"constant.character.escape" = "springBlue"
+"constant.character.escape" = { fg = "boatYellow2", modifiers = ["bold"] }
 "string" = "springGreen"
 "string.regexp" = "boatYellow2"
 "string.special.url" = "springBlue"
@@ -79,14 +86,14 @@ hint = "dragonBlue"
 "comment" = "fujiGray"
 "variable" = "fujiWhite"
 "variable.builtin" = "waveRed"
-"variable.parameter" = "carpYellow"
+"variable.parameter" = "oniViolet2"
 "variable.other.member" = "carpYellow"
 "label" = "springBlue"
 "punctuation" = "springViolet2"
-"keyword" = "oniViolet"
+"keyword" = { fg = "oniViolet", modifiers = ["italic"] }
 "keyword.control.return" = "peachRed"
 "keyword.control.exception" = "peachRed"
-"keyword.directive" = "peachRed"
+"keyword.directive" = "waveRed"
 "operator" = "boatYellow2"
 "function" = "crystalBlue"
 "function.builtin" = "springBlue"
@@ -97,19 +104,13 @@ hint = "dragonBlue"
 
 ## Markup modifiers
 "markup.heading.marker" = "springViolet2"
-"markup.heading.1" = { fg = "surimiOrange", modifiers = ["bold"] }
-"markup.heading.2" = { fg = "carpYellow", modifiers = ["bold"] }
-"markup.heading.3" = { fg = "waveAqua2", modifiers = ["bold"] }
-"markup.heading.4" = { fg = "lightBlue", modifiers = ["bold"] }
-"markup.heading.5" = { fg = "oniViolet", modifiers = ["bold"] }
-"markup.heading.6" = { fg = "springViolet1", modifiers = ["bold"] }
-"markup.list.numbered" = "sakuraPink"
-"markup.list.unnumbered" = "waveRed"
+"markup.heading" = { fg = "crystalBlue", modifiers = ["bold"] }
+"markup.list" = "oniViolet"
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
 "markup.strikethrough" = { modifiers = ["crossed_out"] }
-"markup.link.text" = "crystalBlue"
-"markup.link.url" = { fg = "springBlue", underline.style = "line" }
+"markup.link.text" = { fg = "springBlue" }
+"markup.link.url" = { fg = "sakuraPink" }
 "markup.link.label" = "surimiOrange"
 "markup.quote" = "springViolet1"
 "markup.raw" = "springGreen"
@@ -122,7 +123,8 @@ sumiInk0 = "#16161D"      # dark background, e.g. statuslines, floating windows
 sumiInk1 = "#1F1F28"      # default background
 sumiInk2 = "#2A2A37"      # lighter background, e.g. colorcolumns, folds
 sumiInk3 = "#363646"      # lighter background, e.g. cursorline
-sumiInk4 = "#54546D"      # darker foreground, e.g. linenumbers, fold column
+sumiInk4 = "#2A2A37"      # darker foreground, e.g. linenumbers, fold column
+sumiInk6 = "#54546D"      # inlay hints
 waveBlue1 = "#223249"     # popup background, visual selection background
 waveBlue2 = "#2D4F67"     # popup selection background, search background
 winterGreen = "#2B3328"   # diff add background
@@ -139,6 +141,7 @@ dragonBlue = "#658594"    # diagnostic hint
 fujiGray = "#727169"      # comments
 springViolet1 = "#938AA9" # light foreground
 oniViolet = "#957FB8"     # statements and keywords
+oniViolet2 = "#B8B4D0"    # parameters
 crystalBlue = "#7E9CD8"   # functions and titles
 springViolet2 = "#9CABCA" # brackets and punctuation
 springBlue = "#7FB4CA"    # specials and builtins

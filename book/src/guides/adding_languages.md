@@ -1,4 +1,4 @@
-# Adding new languages to Helix
+## Adding new languages to Helix
 
 In order to add a new language to Helix, you will need to follow the steps
 below.
