@@ -1031,6 +1031,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                     self.handle_prompt_change();
                 } else {
                     if let Some(option) = self.selection() {
+                        self.prompt.save_line_to_history(ctx.editor);
                         (self.callback_fn)(ctx, option, Action::Replace);
                     }
                     return close_fn(self);

@@ -516,6 +516,16 @@ impl Prompt {
             surface.set_string(line_area.x, line_area.y, self.line.clone(), prompt_color);
         }
     }
+
+    /// Saves the current line to the configured history register, if there is one.
+    pub(crate) fn save_line_to_history(&self, editor: &mut Editor) {
+        let Some(register) = self.history_register else {
+            return;
+        };
+        if let Err(err) = editor.registers.push(register, self.line.clone()) {
+            editor.set_error(err.to_string());
+        }
+    }
 }
 
 impl Component for Prompt {
@@ -603,14 +613,7 @@ impl Component for Prompt {
                         &last_item
                     } else {
                         if last_item != self.line {
-                            // store in history
-                            if let Some(register) = self.history_register {
-                                if let Err(err) =
-                                    cx.editor.registers.push(register, self.line.clone())
-                                {
-                                    cx.editor.set_error(err.to_string());
-                                }
-                            };
+                            self.save_line_to_history(cx.editor);
                         }
 
                         &self.line
