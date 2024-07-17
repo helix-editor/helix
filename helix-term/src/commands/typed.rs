@@ -563,16 +563,7 @@ fn earlier(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyh
         return Ok(());
     }
 
-    let uk = args
-        .fold(String::new(), |mut acc, arg| {
-            if !acc.is_empty() {
-                acc.push(' ');
-            }
-            acc.push_str(arg);
-            acc
-        })
-        .parse::<UndoKind>()
-        .map_err(|s| anyhow!(s))?;
+    let uk = args.raw().parse::<UndoKind>().map_err(|s| anyhow!(s))?;
 
     let (view, doc) = current!(cx.editor);
     let success = doc.earlier(view, uk);
@@ -588,16 +579,7 @@ fn later(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow
         return Ok(());
     }
 
-    let uk = args
-        .fold(String::new(), |mut acc, arg| {
-            if !acc.is_empty() {
-                acc.push(' ');
-            }
-            acc.push_str(arg);
-            acc
-        })
-        .parse::<UndoKind>()
-        .map_err(|s| anyhow!(s))?;
+    let uk = args.raw().parse::<UndoKind>().map_err(|s| anyhow!(s))?;
 
     let (view, doc) = current!(cx.editor);
     let success = doc.later(view, uk);
@@ -1359,13 +1341,7 @@ fn lsp_workspace_command(
         };
         cx.jobs.callback(callback);
     } else {
-        let command = args.fold(String::new(), |mut acc, arg| {
-            if !acc.is_empty() {
-                acc.push(' ');
-            }
-            acc.push_str(arg);
-            acc
-        });
+        let command = args.raw().to_string();
 
         let matches: Vec<_> = ls_id_commands
             .filter(|(_ls_id, c)| *c == &command)
@@ -1637,13 +1613,7 @@ fn debug_eval(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
 
         // TODO: support no frame_id
         let frame_id = debugger.stack_frames[&thread_id][frame].id;
-        let expression = args.fold(String::new(), |mut acc, arg| {
-            if !acc.is_empty() {
-                acc.push(' ');
-            }
-            acc.push_str(arg);
-            acc
-        });
+        let expression = args.raw().to_string();
 
         let response = helix_lsp::block_on(debugger.eval(expression, Some(frame_id)))?;
         cx.editor.set_status(response.result);
@@ -2119,13 +2089,7 @@ fn append_output(
         return Ok(());
     }
     ensure!(!args.is_empty(), "Shell command required");
-    let cmd = args.fold(String::new(), |mut acc, arg| {
-        if !acc.is_empty() {
-            acc.push(' ');
-        }
-        acc.push_str(arg);
-        acc
-    });
+    let cmd = helix_core::shellwords::unescape(args.raw());
     shell(cx, &cmd, &ShellBehavior::Append);
     Ok(())
 }
@@ -2139,13 +2103,7 @@ fn insert_output(
         return Ok(());
     }
     ensure!(!args.is_empty(), "Shell command required");
-    let cmd = args.fold(String::new(), |mut acc, arg| {
-        if !acc.is_empty() {
-            acc.push(' ');
-        }
-        acc.push_str(arg);
-        acc
-    });
+    let cmd = helix_core::shellwords::unescape(args.raw());
     shell(cx, &cmd, &ShellBehavior::Insert);
     Ok(())
 }
@@ -2167,16 +2125,8 @@ fn pipe_impl(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
     ensure!(!args.is_empty(), "Shell command required");
-
-    let cmd = args.fold(String::new(), |mut acc, arg| {
-        if !acc.is_empty() {
-            acc.push(' ');
-        }
-        acc.push_str(arg);
-        acc
-    });
+    let cmd = helix_core::shellwords::unescape(args.raw());
     shell(cx, &cmd, behavior);
     Ok(())
 }
@@ -2191,13 +2141,8 @@ fn run_shell_command(
     }
 
     let shell = cx.editor.config().shell.clone();
-    let args = args.fold(String::new(), |mut acc, arg| {
-        if !acc.is_empty() {
-            acc.push(' ');
-        }
-        acc.push_str(&helix_core::shellwords::unescape(arg));
-        acc
-    });
+
+    let args = helix_core::shellwords::unescape(args.raw()).into_owned();
 
     let callback = async move {
         let output = shell_impl_async(&shell, &args, None).await?;
