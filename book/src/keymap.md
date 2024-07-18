@@ -453,8 +453,10 @@ Keys to use within picker. Remapping currently not supported.
 | `Escape`, `Ctrl-c`           | Close picker                                               |
 
 In pickers, you can filter specific columns by prefixing the column name with `%`.
-For example, in the file picker, `init %path .proto` searches for files ending
-in ".proto" containing the text "init".
+All words after a `%<column>` term are treated as filters for that column.
+The base filter is a regex, while column filters are a space-separated of literals.
+For example, in the file picker, `init %path api .proto` searches for files containing
+the text "init", whose filenames contain "api" and ".proto".
 
 ## Prompt
 
