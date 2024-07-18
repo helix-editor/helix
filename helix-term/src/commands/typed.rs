@@ -1953,8 +1953,8 @@ fn toggle_option(
         }
         Value::String(ref value) => {
             ensure!(
-                args.len() > 2,
-                "Bad arguments. For string configurations use: `:toggle key val1 val2 ...`",
+                args.len() >= 2,
+                "Bad arguments. For string configurations use: `:toggle key val1 [val2 ...]`",
             );
 
             Value::String(
@@ -1968,8 +1968,8 @@ fn toggle_option(
         }
         Value::Number(ref value) => {
             ensure!(
-                args.len() > 2,
-                "Bad arguments. For number configurations use: `:toggle key val1 val2 ...`",
+                args.len() >= 2,
+                "Bad arguments. For number configurations use: `:toggle key val1 [val2 ...]`",
             );
 
             Value::Number(
