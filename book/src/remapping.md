@@ -1,4 +1,4 @@
-# Key remapping
+## Key remapping
 
 Helix currently supports one-way key remapping through a simple TOML configuration
 file. (More powerful solutions such as rebinding via commands will be

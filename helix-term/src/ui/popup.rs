@@ -5,7 +5,7 @@ use crate::{
 };
 use tui::{
     buffer::Buffer as Surface,
-    widgets::{Block, Borders, Widget},
+    widgets::{Block, Widget},
 };
 
 use helix_core::Position;
@@ -323,8 +323,8 @@ impl<T: Component> Component for Popup<T> {
 
         let mut inner = area;
         if render_borders {
-            inner = area.inner(&Margin::all(1));
-            Widget::render(Block::default().borders(Borders::ALL), area, surface);
+            inner = area.inner(Margin::all(1));
+            Widget::render(Block::bordered(), area, surface);
         }
         let border = usize::from(render_borders);
 

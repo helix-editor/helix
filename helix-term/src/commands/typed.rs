@@ -164,9 +164,10 @@ fn buffer_close_by_ids_impl(
             cx.editor.switch(*first, Action::Replace);
         }
         bail!(
-            "{} unsaved buffer(s) remaining: {:?}",
+            "{} unsaved buffer{} remaining: {:?}",
             modified_names.len(),
-            modified_names
+            if modified_names.len() == 1 { "" } else { "s" },
+            modified_names,
         );
     }
 
@@ -338,8 +339,11 @@ fn write_impl(
     let path = path.map(AsRef::as_ref);
 
     if config.insert_final_newline {
-        insert_final_newline(doc, view);
+        insert_final_newline(doc, view.id);
     }
+
+    // Save an undo checkpoint for any outstanding changes.
+    doc.append_changes_to_history(view);
 
     let fmt = if config.auto_format {
         doc.auto_format().map(|fmt| {
@@ -365,13 +369,12 @@ fn write_impl(
     Ok(())
 }
 
-fn insert_final_newline(doc: &mut Document, view: &mut View) {
+fn insert_final_newline(doc: &mut Document, view_id: ViewId) {
     let text = doc.text();
     if line_ending::get_line_ending(&text.slice(..)).is_none() {
         let eof = Selection::point(text.len_chars());
         let insert = Transaction::insert(text, &eof, doc.line_ending.as_str().into());
-        doc.apply(&insert, view.id);
-        doc.append_changes_to_history(view);
+        doc.apply(&insert, view_id);
     }
 }
 
@@ -658,9 +661,10 @@ pub(super) fn buffers_remaining_impl(editor: &mut Editor) -> anyhow::Result<()> 
             editor.switch(*first, Action::Replace);
         }
         bail!(
-            "{} unsaved buffer(s) remaining: {:?}",
+            "{} unsaved buffer{} remaining: {:?}",
             modified_names.len(),
-            modified_names
+            if modified_names.len() == 1 { "" } else { "s" },
+            modified_names,
         );
     }
     Ok(())
@@ -701,10 +705,14 @@ pub fn write_all_impl(
 
     for (doc_id, target_view) in saves {
         let doc = doc_mut!(cx.editor, &doc_id);
+        let view = view_mut!(cx.editor, target_view);
 
         if config.insert_final_newline {
-            insert_final_newline(doc, view_mut!(cx.editor, target_view));
+            insert_final_newline(doc, target_view);
         }
+
+        // Save an undo checkpoint for any outstanding changes.
+        doc.append_changes_to_history(view);
 
         let fmt = if config.auto_format {
             doc.auto_format().map(|fmt| {
@@ -1368,37 +1376,49 @@ fn lsp_workspace_command(
     if event != PromptEvent::Validate {
         return Ok(());
     }
+
     let doc = doc!(cx.editor);
-    let Some((language_server_id, options)) = doc
+    let ls_id_commands = doc
         .language_servers_with_feature(LanguageServerFeature::WorkspaceCommand)
-        .find_map(|ls| {
+        .flat_map(|ls| {
             ls.capabilities()
                 .execute_command_provider
-                .as_ref()
-                .map(|options| (ls.id(), options))
-        })
-    else {
-        cx.editor
-            .set_status("No active language servers for this document support workspace commands");
-        return Ok(());
-    };
+                .iter()
+                .flat_map(|options| options.commands.iter())
+                .map(|command| (ls.id(), command))
+        });
 
     if args.is_empty() {
-        let commands = options
-            .commands
-            .iter()
-            .map(|command| helix_lsp::lsp::Command {
-                title: command.clone(),
-                command: command.clone(),
-                arguments: None,
+        let commands = ls_id_commands
+            .map(|(ls_id, command)| {
+                (
+                    ls_id,
+                    helix_lsp::lsp::Command {
+                        title: command.clone(),
+                        command: command.clone(),
+                        arguments: None,
+                    },
+                )
             })
             .collect::<Vec<_>>();
         let callback = async move {
             let call: job::Callback = Callback::EditorCompositor(Box::new(
                 move |_editor: &mut Editor, compositor: &mut Compositor| {
-                    let picker = ui::Picker::new(commands, (), move |cx, command, _action| {
-                        execute_lsp_command(cx.editor, language_server_id, command.clone());
-                    });
+                    let columns = [ui::PickerColumn::new(
+                        "title",
+                        |(_ls_id, command): &(_, helix_lsp::lsp::Command), _| {
+                            command.title.as_str().into()
+                        },
+                    )];
+                    let picker = ui::Picker::new(
+                        columns,
+                        0,
+                        commands,
+                        (),
+                        move |cx, (ls_id, command), _action| {
+                            execute_lsp_command(cx.editor, *ls_id, command.clone());
+                        },
+                    );
                     compositor.push(Box::new(overlaid(picker)))
                 },
             ));
@@ -1407,21 +1427,32 @@ fn lsp_workspace_command(
         cx.jobs.callback(callback);
     } else {
         let command = args.join(" ");
-        if options.commands.iter().any(|c| c == &command) {
-            execute_lsp_command(
-                cx.editor,
-                language_server_id,
-                helix_lsp::lsp::Command {
-                    title: command.clone(),
-                    arguments: None,
-                    command,
-                },
-            );
-        } else {
-            cx.editor.set_status(format!(
-                "`{command}` is not supported for this language server"
-            ));
-            return Ok(());
+        let matches: Vec<_> = ls_id_commands
+            .filter(|(_ls_id, c)| *c == &command)
+            .collect();
+
+        match matches.as_slice() {
+            [(ls_id, _command)] => {
+                execute_lsp_command(
+                    cx.editor,
+                    *ls_id,
+                    helix_lsp::lsp::Command {
+                        title: command.clone(),
+                        arguments: None,
+                        command,
+                    },
+                );
+            }
+            [] => {
+                cx.editor.set_status(format!(
+                    "`{command}` is not supported for any language server"
+                ));
+            }
+            _ => {
+                cx.editor.set_status(format!(
+                    "`{command}` supported by multiple language servers"
+                ));
+            }
         }
     }
     Ok(())
@@ -1495,6 +1526,8 @@ fn lsp_stop(
         for doc in cx.editor.documents_mut() {
             if let Some(client) = doc.remove_language_server_by_name(ls_name) {
                 doc.clear_diagnostics(Some(client.id()));
+                doc.reset_all_inlay_hints();
+                doc.inlay_hints_oudated = true;
             }
         }
     }
@@ -2305,37 +2338,36 @@ fn reset_diff_change(
 
     let diff = handle.load();
     let doc_text = doc.text().slice(..);
-    let line = doc.selection(view.id).primary().cursor_line(doc_text);
-
-    let Some(hunk_idx) = diff.hunk_at(line as u32, true) else {
-        bail!("There is no change at the cursor")
-    };
-    let hunk = diff.nth_hunk(hunk_idx);
     let diff_base = diff.diff_base();
-    let before_start = diff_base.line_to_char(hunk.before.start as usize);
-    let before_end = diff_base.line_to_char(hunk.before.end as usize);
-    let text: Tendril = diff
-        .diff_base()
-        .slice(before_start..before_end)
-        .chunks()
-        .collect();
-    let anchor = doc_text.line_to_char(hunk.after.start as usize);
+    let mut changes = 0;
+
     let transaction = Transaction::change(
         doc.text(),
-        [(
-            anchor,
-            doc_text.line_to_char(hunk.after.end as usize),
-            (!text.is_empty()).then_some(text),
-        )]
-        .into_iter(),
+        diff.hunks_intersecting_line_ranges(doc.selection(view.id).line_ranges(doc_text))
+            .map(|hunk| {
+                changes += 1;
+                let start = diff_base.line_to_char(hunk.before.start as usize);
+                let end = diff_base.line_to_char(hunk.before.end as usize);
+                let text: Tendril = diff_base.slice(start..end).chunks().collect();
+                (
+                    doc_text.line_to_char(hunk.after.start as usize),
+                    doc_text.line_to_char(hunk.after.end as usize),
+                    (!text.is_empty()).then_some(text),
+                )
+            }),
     );
+    if changes == 0 {
+        bail!("There are no changes under any selection");
+    }
+
     drop(diff); // make borrow check happy
     doc.apply(&transaction, view.id);
-    // select inserted text
-    let text_len = before_end - before_start;
-    doc.set_selection(view.id, Selection::single(anchor, anchor + text_len));
     doc.append_changes_to_history(view);
     view.ensure_cursor_in_view(doc, scrolloff);
+    cx.editor.set_status(format!(
+        "Reset {changes} change{}",
+        if changes == 1 { "" } else { "s" }
+    ));
     Ok(())
 }
 
@@ -2505,7 +2537,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "open",
-        aliases: &["o"],
+        aliases: &["o", "edit", "e"],
         doc: "Open a file from disk into the current view.",
         fun: open,
         signature: CommandSignature::all(completers::filename),

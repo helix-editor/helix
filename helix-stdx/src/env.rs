@@ -14,13 +14,23 @@ pub fn current_working_dir() -> PathBuf {
         return path.clone();
     }
 
-    let path = std::env::current_dir()
-        .map(crate::path::normalize)
-        .expect("Couldn't determine current working directory");
-    let mut cwd = CWD.write().unwrap();
-    *cwd = Some(path.clone());
+    // implementation of crossplatform pwd -L
+    // we want pwd -L so that symlinked directories are handled correctly
+    let mut cwd = std::env::current_dir().expect("Couldn't determine current working directory");
 
-    path
+    let pwd = std::env::var_os("PWD");
+    #[cfg(windows)]
+    let pwd = pwd.or_else(|| std::env::var_os("CD"));
+
+    if let Some(pwd) = pwd.map(PathBuf::from) {
+        if pwd.canonicalize().ok().as_ref() == Some(&cwd) {
+            cwd = pwd;
+        }
+    }
+    let mut dst = CWD.write().unwrap();
+    *dst = Some(cwd.clone());
+
+    cwd
 }
 
 pub fn set_current_working_dir(path: impl AsRef<Path>) -> std::io::Result<()> {

@@ -27,6 +27,7 @@ pub mod test;
 pub mod text_annotations;
 pub mod textobject;
 mod transaction;
+pub mod uri;
 pub mod wrap;
 
 pub mod unicode {
@@ -52,8 +53,8 @@ pub use {regex, tree_sitter};
 
 pub use graphemes::RopeGraphemes;
 pub use position::{
-    char_idx_at_visual_offset, coords_at_pos, pos_at_coords, visual_offset_from_anchor,
-    visual_offset_from_block, Position, VisualOffsetError,
+    char_idx_at_visual_offset, coords_at_pos, pos_at_coords, softwrapped_dimensions,
+    visual_offset_from_anchor, visual_offset_from_block, Position, VisualOffsetError,
 };
 #[allow(deprecated)]
 pub use position::{pos_at_visual_coords, visual_coords_at_pos};
@@ -66,3 +67,5 @@ pub use diagnostic::Diagnostic;
 
 pub use line_ending::{LineEnding, NATIVE_LINE_ENDING};
 pub use transaction::{Assoc, Change, ChangeSet, Deletion, Operation, Transaction};
+
+pub use uri::Uri;

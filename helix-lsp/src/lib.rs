@@ -678,7 +678,7 @@ impl Registry {
     pub fn remove_by_id(&mut self, id: LanguageServerId) {
         let Some(client) = self.inner.remove(id) else {
             log::error!("client was already removed");
-            return
+            return;
         };
         self.file_event_handler.remove_client(id);
         let instances = self

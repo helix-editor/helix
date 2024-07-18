@@ -123,7 +123,7 @@ impl Registers {
                     _ => unreachable!(),
                 };
                 let contents = self.clipboard_provider.get_contents(clipboard_type)?;
-                let saved_values = self.inner.entry(name).or_insert_with(Vec::new);
+                let saved_values = self.inner.entry(name).or_default();
 
                 if !contents_are_saved(saved_values, &contents) {
                     anyhow::bail!("Failed to push to register {name}: clipboard does not match register contents");
@@ -140,7 +140,7 @@ impl Registers {
                 Ok(())
             }
             _ => {
-                self.inner.entry(name).or_insert_with(Vec::new).push(value);
+                self.inner.entry(name).or_default().push(value);
                 Ok(())
             }
         }
@@ -233,7 +233,9 @@ fn read_from_clipboard<'a>(
             // If we're pasting the same values that we just yanked, re-use
             // the saved values. This allows pasting multiple selections
             // even when yanked to a clipboard.
-            let Some(values) = saved_values else { return RegisterValues::new(iter::once(contents.into())) };
+            let Some(values) = saved_values else {
+                return RegisterValues::new(iter::once(contents.into()));
+            };
 
             if contents_are_saved(values, &contents) {
                 RegisterValues::new(values.iter().map(Cow::from).rev())

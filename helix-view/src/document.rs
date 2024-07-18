@@ -1,4 +1,4 @@
-use anyhow::{anyhow, bail, Context, Error};
+use anyhow::{anyhow, bail, Error};
 use arc_swap::access::DynAccess;
 use arc_swap::ArcSwap;
 use futures_util::future::BoxFuture;
@@ -12,6 +12,7 @@ use helix_core::text_annotations::{InlineAnnotation, Overlay};
 use helix_lsp::util::lsp_pos_to_pos;
 use helix_stdx::faccess::{copy_metadata, readonly};
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
+use thiserror;
 
 use ::parking_lot::Mutex;
 use serde::de::{self, Deserialize, Deserializer};
@@ -21,6 +22,7 @@ use std::cell::Cell;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::future::Future;
+use std::io;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::{Arc, Weak};
@@ -97,7 +99,6 @@ impl Serialize for Mode {
         serializer.collect_str(self)
     }
 }
-
 /// A snapshot of the text of a document that we want to write out to disk
 #[derive(Debug, Clone)]
 pub struct DocumentSavedEvent {
@@ -115,6 +116,14 @@ pub struct SavePoint {
     /// The view this savepoint is associated with
     pub view: ViewId,
     revert: Mutex<Transaction>,
+}
+
+#[derive(Debug, thiserror::Error)]
+pub enum DocumentOpenError {
+    #[error("path must be a regular file, simlink, or directory")]
+    IrregularFile,
+    #[error(transparent)]
+    IoError(#[from] io::Error),
 }
 
 pub struct Document {
@@ -380,7 +389,7 @@ fn apply_bom(encoding: &'static encoding::Encoding, buf: &mut [u8; BUF_SIZE]) ->
 pub fn from_reader<R: std::io::Read + ?Sized>(
     reader: &mut R,
     encoding: Option<&'static Encoding>,
-) -> Result<(Rope, &'static Encoding, bool), Error> {
+) -> Result<(Rope, &'static Encoding, bool), io::Error> {
     // These two buffers are 8192 bytes in size each and are used as
     // intermediaries during the decoding process. Text read into `buf`
     // from `reader` is decoded into `buf_out` as UTF-8. Once either
@@ -523,7 +532,7 @@ fn read_and_detect_encoding<R: std::io::Read + ?Sized>(
     reader: &mut R,
     encoding: Option<&'static Encoding>,
     buf: &mut [u8],
-) -> Result<(&'static Encoding, bool, encoding::Decoder, usize), Error> {
+) -> Result<(&'static Encoding, bool, encoding::Decoder, usize), io::Error> {
     let read = reader.read(buf)?;
     let is_empty = read == 0;
     let (encoding, has_bom) = encoding
@@ -685,11 +694,18 @@ impl Document {
         encoding: Option<&'static Encoding>,
         config_loader: Option<Arc<ArcSwap<syntax::Loader>>>,
         config: Arc<dyn DynAccess<Config>>,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, DocumentOpenError> {
+        // If the path is not a regular file (e.g.: /dev/random) it should not be opened.
+        if path
+            .metadata()
+            .map_or(false, |metadata| !metadata.is_file())
+        {
+            return Err(DocumentOpenError::IrregularFile);
+        }
+
         // Open the file if it exists, otherwise assume it is a new file (and thus empty).
         let (rope, encoding, has_bom) = if path.exists() {
-            let mut file =
-                std::fs::File::open(path).context(format!("unable to open {:?}", path))?;
+            let mut file = std::fs::File::open(path)?;
             from_reader(&mut file, encoding)?
         } else {
             let line_ending: LineEnding = config.load().default_line_ending.into();
@@ -895,7 +911,15 @@ impl Document {
             }
             let write_path = tokio::fs::read_link(&path)
                 .await
-                .unwrap_or_else(|_| path.clone());
+                .ok()
+                .and_then(|p| {
+                    if p.is_relative() {
+                        path.parent().map(|parent| parent.join(p))
+                    } else {
+                        Some(p)
+                    }
+                })
+                .unwrap_or_else(|| path.clone());
 
             if readonly(&write_path) {
                 bail!(std::io::Error::new(
@@ -930,6 +954,7 @@ impl Document {
             let write_result: anyhow::Result<_> = async {
                 let mut dst = tokio::fs::File::create(&write_path).await?;
                 to_writer(&mut dst, encoding_with_bom_info, &text).await?;
+                dst.sync_all().await?;
                 Ok(())
             }
             .await;
@@ -1295,7 +1320,7 @@ impl Document {
                 true
             });
 
-            self.diagnostics.sort_unstable_by_key(|diagnostic| {
+            self.diagnostics.sort_by_key(|diagnostic| {
                 (diagnostic.range, diagnostic.severity, diagnostic.provider)
             });
 
@@ -1384,6 +1409,11 @@ impl Document {
     }
 
     fn undo_redo_impl(&mut self, view: &mut View, undo: bool) -> bool {
+        if undo {
+            self.append_changes_to_history(view);
+        } else if !self.changes.is_empty() {
+            return false;
+        }
         let mut history = self.history.take();
         let txn = if undo { history.undo() } else { history.redo() };
         let success = if let Some(txn) = txn {
@@ -1464,6 +1494,11 @@ impl Document {
     }
 
     fn earlier_later_impl(&mut self, view: &mut View, uk: UndoKind, earlier: bool) -> bool {
+        if earlier {
+            self.append_changes_to_history(view);
+        } else if !self.changes.is_empty() {
+            return false;
+        }
         let txns = if earlier {
             self.history.get_mut().earlier(uk)
         } else {
@@ -1705,6 +1740,10 @@ impl Document {
         Url::from_file_path(self.path()?).ok()
     }
 
+    pub fn uri(&self) -> Option<helix_core::Uri> {
+        Some(self.path()?.clone().into())
+    }
+
     #[inline]
     pub fn text(&self) -> &Rope {
         &self.text
@@ -1871,9 +1910,8 @@ impl Document {
             });
         }
         self.diagnostics.extend(diagnostics);
-        self.diagnostics.sort_unstable_by_key(|diagnostic| {
-            (diagnostic.range, diagnostic.severity, diagnostic.provider)
-        });
+        self.diagnostics
+            .sort_by_key(|diagnostic| (diagnostic.range, diagnostic.severity, diagnostic.provider));
     }
 
     /// clears diagnostics for a given language server id if set, otherwise all diagnostics are cleared
@@ -1913,7 +1951,7 @@ impl Document {
             .language_config()
             .and_then(|config| config.text_width)
             .unwrap_or(config.text_width);
-        let soft_wrap_at_text_width = self
+        let mut soft_wrap_at_text_width = self
             .language_config()
             .and_then(|config| {
                 config
@@ -1924,12 +1962,13 @@ impl Document {
             .or(config.soft_wrap.wrap_at_text_width)
             .unwrap_or(false);
         if soft_wrap_at_text_width {
-            // We increase max_line_len by 1 because softwrap considers the newline character
-            // as part of the line length while the "typical" expectation is that this is not the case.
-            // In particular other commands like :reflow do not count the line terminator.
-            // This is technically inconsistent for the last line as that line never has a line terminator
-            // but having the last visual line exceed the width by 1 seems like a rare edge case.
-            viewport_width = viewport_width.min(text_width as u16 + 1)
+            // if the viewport is smaller than the specified
+            // width then this setting has no effcet
+            if text_width >= viewport_width as usize {
+                soft_wrap_at_text_width = false;
+            } else {
+                viewport_width = text_width as u16;
+            }
         }
         let config = self.config.load();
         let editor_soft_wrap = &config.soft_wrap;
@@ -1966,6 +2005,7 @@ impl Document {
             wrap_indicator_highlight: theme
                 .and_then(|theme| theme.find_scope_index("ui.virtual.wrap"))
                 .map(Highlight),
+            soft_wrap_at_text_width,
         }
     }
 

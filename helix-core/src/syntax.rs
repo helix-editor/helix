@@ -21,7 +21,7 @@ use std::{
     borrow::Cow,
     cell::RefCell,
     collections::{HashMap, HashSet, VecDeque},
-    fmt::{self, Display},
+    fmt::{self, Display, Write},
     hash::{Hash, Hasher},
     mem::replace,
     path::{Path, PathBuf},
@@ -510,6 +510,7 @@ pub enum DebugArgumentValue {
 pub struct DebugTemplate {
     pub name: String,
     pub request: String,
+    #[serde(default)]
     pub completion: Vec<DebugConfigCompletion>,
     pub args: HashMap<String, DebugArgumentValue>,
 }
@@ -728,8 +729,11 @@ pub fn read_query(language: &str, filename: &str) -> String {
         .replace_all(&query, |captures: &regex::Captures| {
             captures[1]
                 .split(',')
-                .map(|language| format!("\n{}\n", read_query(language, filename)))
-                .collect::<String>()
+                .fold(String::new(), |mut output, language| {
+                    // `write!` to a String cannot fail.
+                    write!(output, "\n{}\n", read_query(language, filename)).unwrap();
+                    output
+                })
         })
         .to_string()
 }
@@ -1244,7 +1248,7 @@ impl Syntax {
         PARSER.with(|ts_parser| {
             let ts_parser = &mut ts_parser.borrow_mut();
             ts_parser.parser.set_timeout_micros(1000 * 500); // half a second is pretty generours
-            let mut cursor = ts_parser.cursors.pop().unwrap_or_else(QueryCursor::new);
+            let mut cursor = ts_parser.cursors.pop().unwrap_or_default();
             // TODO: might need to set cursor range
             cursor.set_byte_range(0..usize::MAX);
             cursor.set_match_limit(TREE_SITTER_MATCH_LIMIT);
@@ -1359,13 +1363,14 @@ impl Syntax {
                 let depth = layer.depth + 1;
                 // TODO: can't inline this since matches borrows self.layers
                 for (config, ranges) in injections {
+                    let parent = Some(layer_id);
                     let new_layer = LanguageLayer {
                         tree: None,
                         config,
                         depth,
                         ranges,
                         flags: LayerUpdateFlags::empty(),
-                        parent: Some(layer_id),
+                        parent: None,
                     };
 
                     // Find an identical existing layer
@@ -1377,6 +1382,7 @@ impl Syntax {
 
                     // ...or insert a new one.
                     let layer_id = layer.unwrap_or_else(|| self.layers.insert(new_layer));
+                    self.layers[layer_id].parent = parent;
 
                     queue.push_back(layer_id);
                 }
@@ -1418,7 +1424,7 @@ impl Syntax {
                 // Reuse a cursor from the pool if available.
                 let mut cursor = PARSER.with(|ts_parser| {
                     let highlighter = &mut ts_parser.borrow_mut();
-                    highlighter.cursors.pop().unwrap_or_else(QueryCursor::new)
+                    highlighter.cursors.pop().unwrap_or_default()
                 });
 
                 // The `captures` iterator borrows the `Tree` and the `QueryCursor`, which

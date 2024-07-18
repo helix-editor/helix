@@ -351,7 +351,7 @@ impl Component for Markdown {
             .scroll((cx.scroll.unwrap_or_default() as u16, 0));
 
         let margin = Margin::all(1);
-        par.render(area.inner(&margin), surface);
+        par.render(area.inner(margin), surface);
     }
 
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
