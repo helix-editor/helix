@@ -480,7 +480,7 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
             }
         },
     )
-    .with_dynamic_query(get_symbols, Some(275))
+    .with_dynamic_query(get_symbols, Some(200))
     .with_preview(move |_editor, symbol| {
         Some((
             symbol.doc.path_or_id()?,
