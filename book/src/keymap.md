@@ -452,6 +452,10 @@ Keys to use within picker. Remapping currently not supported.
 | `Ctrl-t`                     | Toggle preview                                             |
 | `Escape`, `Ctrl-c`           | Close picker                                               |
 
+In pickers, you can filter specific columns by prefixing the column name with `%`.
+For example, in the file picker, `init %path .proto` searches for files ending
+in ".proto" containing the text "init".
+
 ## Prompt
 
 Keys to use within prompt, Remapping currently not supported.
