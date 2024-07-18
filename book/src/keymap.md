@@ -457,6 +457,7 @@ All words after a `%<column>` term are treated as filters for that column.
 The base filter is a regex, while column filters are a space-separated of literals.
 For example, in the file picker, `init %path api .proto` searches for files containing
 the text "init", whose filenames contain "api" and ".proto".
+Column names can be abbreviated, so `%p` means the same as `%path`.
 
 ## Prompt
 
