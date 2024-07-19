@@ -52,7 +52,7 @@ use helix_view::{
     Document, DocumentId, Editor,
 };
 
-use self::handlers::{DynamicQueryHandler, PreviewHighlightHandler};
+use self::handlers::{DynamicQueryChange, DynamicQueryHandler, PreviewHighlightHandler};
 
 pub const ID: &str = "picker";
 
@@ -272,7 +272,7 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     file_fn: Option<FileCallback<T>>,
     /// An event handler for syntax highlighting the currently previewed file.
     preview_highlight_handler: Sender<Arc<Path>>,
-    dynamic_query_handler: Option<Sender<Arc<str>>>,
+    dynamic_query_handler: Option<Sender<DynamicQueryChange>>,
 }
 
 impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
@@ -435,7 +435,12 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         debounce_ms: Option<u64>,
     ) -> Self {
         let handler = DynamicQueryHandler::new(callback, debounce_ms).spawn();
-        helix_event::send_blocking(&handler, self.primary_query());
+        let event = DynamicQueryChange {
+            query: self.primary_query(),
+            // Treat the initial query as a paste.
+            is_paste: true,
+        };
+        helix_event::send_blocking(&handler, event);
         self.dynamic_query_handler = Some(handler);
         self
     }
@@ -511,12 +516,12 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
 
     fn prompt_handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         if let EventResult::Consumed(_) = self.prompt.handle_event(event, cx) {
-            self.handle_prompt_change();
+            self.handle_prompt_change(matches!(event, Event::Paste(_)));
         }
         EventResult::Consumed(None)
     }
 
-    fn handle_prompt_change(&mut self) {
+    fn handle_prompt_change(&mut self, is_paste: bool) {
         // TODO: better track how the pattern has changed
         let line = self.prompt.line();
         let old_query = self.query.parse(line);
@@ -557,7 +562,11 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         // If this is a dynamic picker, notify the query hook that the primary
         // query might have been updated.
         if let Some(handler) = &self.dynamic_query_handler {
-            helix_event::send_blocking(handler, self.primary_query());
+            let event = DynamicQueryChange {
+                query: self.primary_query(),
+                is_paste,
+            };
+            helix_event::send_blocking(handler, event);
         }
     }
 
@@ -1028,7 +1037,8 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                     .filter(|_| self.prompt.line().is_empty())
                 {
                     self.prompt.set_line(completion.to_string(), ctx.editor);
-                    self.handle_prompt_change();
+                    // Inserting from the history register is a paste.
+                    self.handle_prompt_change(true);
                 } else {
                     if let Some(option) = self.selection() {
                         (self.callback_fn)(ctx, option, Action::Replace);
