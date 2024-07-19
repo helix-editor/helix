@@ -48,6 +48,8 @@ RUSTFLAGS="-C target-feature=-crt-static"
 > the `runtime` directory within the user's helix config directory (more
 > [details below](#multiple-runtime-directories)).
 
+> 💡 The `runtime/sources` folder can be removed after building from source, which will save over 1GB of disk space.
+
 ### Configuring Helix's runtime files
 
 #### Linux and macOS
