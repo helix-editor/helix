@@ -1995,12 +1995,12 @@ shebangs = []
 roots = ["project.godot"]
 auto-format = true
 formatter = { command = "gdformat", args = ["-"] }
-comment-token = "#"
+comment-tokens = ["#", "##"]
 indent = { tab-width = 4, unit = "\t" }
 
 [[grammar]]
 name = "gdscript"
-source = { git = "https://github.com/PrestonKnopp/tree-sitter-gdscript", rev = "a4b57cc3bcbfc24550e858159647e9238e7ad1ac" }
+source = { git = "https://github.com/PrestonKnopp/tree-sitter-gdscript", rev = "1f1e782fe2600f50ae57b53876505b8282388d77" }
 
 [[language]]
 name = "godot-resource"
@@ -2015,7 +2015,7 @@ indent = { tab-width = 4, unit = "\t" }
 
 [[grammar]]
 name = "godot-resource"
-source = { git = "https://github.com/PrestonKnopp/tree-sitter-godot-resource", rev = "b6ef0768711086a86b3297056f9ffb5cc1d77b4a" }
+source = { git = "https://github.com/PrestonKnopp/tree-sitter-godot-resource", rev = "2ffb90de47417018651fc3b970e5f6b67214dc9d" }
 
 [[language]]
 name = "nu"
