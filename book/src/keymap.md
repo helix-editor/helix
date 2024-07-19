@@ -436,6 +436,7 @@ you to selectively add search terms to your selections.
 ## Picker
 
 Keys to use within picker. Remapping currently not supported.
+See the documentation page on [pickers](./pickers.md) for more info.
 
 | Key                          | Description                                                |
 | -----                        | -------------                                              |
@@ -451,13 +452,6 @@ Keys to use within picker. Remapping currently not supported.
 | `Ctrl-v`                     | Open vertically                                            |
 | `Ctrl-t`                     | Toggle preview                                             |
 | `Escape`, `Ctrl-c`           | Close picker                                               |
-
-In pickers, you can filter specific columns by prefixing the column name with `%`.
-All words after a `%<column>` term are treated as filters for that column.
-The base filter is a regex, while column filters are a space-separated of literals.
-For example, in the global search picker, `init %path api .proto` searches for files containing
-the text "init", whose filenames contain "api" and ".proto".
-Column names can be shortened to any prefix, so `%p`, `%pa` or `%pat` all mean the same as `%path`.
 
 ## Prompt
 
