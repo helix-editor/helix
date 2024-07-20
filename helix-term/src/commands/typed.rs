@@ -1909,6 +1909,12 @@ fn set_option(
         // JSON strings require quotes, so we can't .parse() directly
         Value::String(arg.to_string())
     } else {
+        let arg = match arg.deref() {
+            "on" | "y" | "yes" => "true",
+            "off" | "n" | "no" => "false",
+            else_value => else_value,
+        };
+
         arg.parse().map_err(field_error)?
     };
     let config = serde_json::from_value(config).map_err(field_error)?;
