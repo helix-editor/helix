@@ -4,8 +4,6 @@ use std::path::{Path, PathBuf};
 use std::ptr::NonNull;
 use std::{slice, str};
 
-use regex_cursor::Cursor;
-
 use crate::tree_sitter::query::predicate::{InvalidPredicateError, Predicate, TextPredicate};
 use crate::tree_sitter::query::property::QueryProperty;
 use crate::tree_sitter::Grammar;
@@ -13,20 +11,23 @@ use crate::tree_sitter::Grammar;
 mod predicate;
 mod property;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Pattern(pub(crate) u32);
+
 pub enum QueryData {}
 
-pub(super) struct Pattern {
+pub(super) struct PatternData {
     text_predicates: Range<u32>,
     properties: Range<u32>,
 }
 
 pub struct Query {
-    raw: NonNull<QueryData>,
+    pub(crate) raw: NonNull<QueryData>,
     num_captures: u32,
     num_strings: u32,
     text_predicates: Vec<TextPredicate>,
     properties: Vec<QueryProperty>,
-    patterns: Box<[Pattern]>,
+    patterns: Box<[PatternData]>,
 }
 
 impl Query {
@@ -40,7 +41,7 @@ impl Query {
         grammar: Grammar,
         source: &str,
         path: impl AsRef<Path>,
-        mut custom_predicate: impl FnMut(Predicate) -> Result<(), InvalidPredicateError>,
+        mut custom_predicate: impl FnMut(Pattern, Predicate) -> Result<(), InvalidPredicateError>,
     ) -> Result<Self, ParseError> {
         assert!(
             source.len() <= i32::MAX as usize,
@@ -121,7 +122,7 @@ impl Query {
                 }
                 RawQueryError::Language => unreachable!("should be handled at grammar load"),
             };
-            return Err(err)
+            return Err(err);
         };
 
         // I am not going to bother with safety comments here, all of these are
@@ -141,7 +142,7 @@ impl Query {
         let patterns: Result<_, ParseError> = (0..num_patterns)
             .map(|pattern| {
                 query
-                    .parse_pattern_predicates(pattern, &mut custom_predicate)
+                    .parse_pattern_predicates(Pattern(pattern), &mut custom_predicate)
                     .map_err(|err| ParseError::InvalidPredicate {
                         message: err.msg.into(),
                         location: ParserErrorLocation::new(
@@ -156,35 +157,6 @@ impl Query {
         query.patterns = patterns?;
         Ok(query)
     }
-
-    pub fn satsifies_text_predicate<C: Cursor>(
-        &self,
-        cursor: &mut regex_cursor::Input<C>,
-        pattern: u32,
-    ) {
-        let text_predicates = self.patterns[pattern as usize].text_predicates;
-        let text_predicates =
-            &self.text_predicates[text_predicates.start as usize..text_predicates.end as usize];
-        for predicate in text_predicates {
-            match predicate.kind {
-                predicate::TextPredicateKind::EqString(_) => todo!(),
-                predicate::TextPredicateKind::EqCapture(_) => todo!(),
-                predicate::TextPredicateKind::MatchString(_) => todo!(),
-                predicate::TextPredicateKind::AnyString(_) => todo!(),
-            }
-        }
-    }
-
-    // fn parse_predicates(&mut self) {
-    //     let pattern_count = unsafe { ts_query_pattern_count(self.raw) };
-
-    //     let mut text_predicates = Vec::with_capacity(pattern_count as usize);
-    //     let mut property_predicates = Vec::with_capacity(pattern_count as usize);
-    //     let mut property_settings = Vec::with_capacity(pattern_count as usize);
-    //     let mut general_predicates = Vec::with_capacity(pattern_count as usize);
-
-    //     for i in 0..pattern_count {}
-    // }
 
     #[inline]
     fn get_string(&self, str: QueryStr) -> &str {
@@ -218,9 +190,14 @@ impl Query {
         }
     }
 
-    pub fn pattern_properies(&self, pattern_idx: u32) -> &[QueryProperty] {
-        let range = self.patterns[pattern_idx as usize].properties.clone();
+    pub fn pattern_properies(&self, pattern_idx: Pattern) -> &[QueryProperty] {
+        let range = self.patterns[pattern_idx.0 as usize].properties.clone();
         &self.properties[range.start as usize..range.end as usize]
+    }
+
+    pub(crate) fn pattern_text_predicates(&self, pattern_idx: u16) -> &[TextPredicate] {
+        let range = self.patterns[pattern_idx as usize].text_predicates.clone();
+        &self.text_predicates[range.start as usize..range.end as usize]
     }
 }
 
@@ -231,6 +208,7 @@ impl Drop for Query {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[repr(transparent)]
 pub struct Capture(u32);
 
 impl Capture {

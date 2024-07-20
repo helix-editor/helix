@@ -1433,6 +1433,7 @@ dependencies = [
  "ahash",
  "arc-swap",
  "bitflags 2.6.0",
+ "cc",
  "hashbrown 0.14.5",
  "helix-stdx",
  "libloading",

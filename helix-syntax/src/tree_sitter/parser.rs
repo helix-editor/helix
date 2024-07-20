@@ -1,10 +1,12 @@
 use std::os::raw::c_void;
-use std::panic::catch_unwind;
+use std::panic::{catch_unwind, AssertUnwindSafe};
 use std::ptr::NonNull;
 use std::{fmt, ptr};
 
+use regex_cursor::Cursor;
+
 use crate::tree_sitter::syntax_tree::{SyntaxTree, SyntaxTreeData};
-use crate::tree_sitter::{Grammar, Point, Range};
+use crate::tree_sitter::{Grammar, IntoTsInput, Point, Range, TsInput};
 
 // opaque data
 enum ParserData {}
@@ -51,25 +53,28 @@ impl Parser {
     }
 
     #[must_use]
-    pub fn parse<I: ParserInput>(
+    pub fn parse<I: TsInput>(
         &mut self,
-        input: impl IntoParserInput<ParserInput = I>,
+        input: impl IntoTsInput<TsInput = I>,
         old_tree: Option<&SyntaxTree>,
     ) -> Option<SyntaxTree> {
-        let mut input = input.into_parser_input();
-        unsafe extern "C" fn read<C: ParserInput>(
+        let mut input = input.into_ts_input();
+        unsafe extern "C" fn read<C: TsInput>(
             payload: NonNull<c_void>,
             byte_index: u32,
             _position: Point,
-            bytes_read: &mut u32,
+            bytes_read: *mut u32,
         ) -> *const u8 {
-            match catch_unwind(|| {
-                let cursor: &mut C = payload.cast().as_mut();
-                cursor.read(byte_index as usize)
-            }) {
-                Ok(slice) => {
-                    *bytes_read = slice.len() as u32;
-                    slice.as_ptr()
+            let cursor = catch_unwind(AssertUnwindSafe(move || {
+                let input: &mut C = payload.cast().as_mut();
+                let cursor = input.cursor_at(byte_index as usize);
+                let slice = cursor.chunk();
+                (slice.as_ptr(), slice.len().try_into().unwrap())
+            }));
+            match cursor {
+                Ok((ptr, len)) => {
+                    *bytes_read = len;
+                    ptr
                 }
                 Err(_) => {
                     *bytes_read = 0;
@@ -121,7 +126,7 @@ type TreeSitterReadFn = unsafe extern "C" fn(
     payload: NonNull<c_void>,
     byte_index: u32,
     position: Point,
-    bytes_read: &mut u32,
+    bytes_read: *mut u32,
 ) -> *const u8;
 
 #[repr(C)]
@@ -130,15 +135,6 @@ pub struct ParserInputRaw {
     pub payload: NonNull<c_void>,
     pub read: TreeSitterReadFn,
     pub encoding: u32,
-}
-
-pub trait ParserInput {
-    fn read(&mut self, offset: usize) -> &[u8];
-}
-
-pub trait IntoParserInput {
-    type ParserInput;
-    fn into_parser_input(self) -> Self::ParserInput;
 }
 
 extern "C" {

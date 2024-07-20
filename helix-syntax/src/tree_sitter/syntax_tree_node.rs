@@ -25,6 +25,7 @@ impl From<SyntaxTreeNode<'_>> for SyntaxTreeNodeRaw {
 }
 
 #[derive(Debug, Clone)]
+#[repr(C)]
 pub struct SyntaxTreeNode<'tree> {
     context: [u32; 4],
     id: NonNull<c_void>,
@@ -44,7 +45,7 @@ impl<'tree> SyntaxTreeNode<'tree> {
     }
 
     #[inline]
-    fn as_raw(&self) -> SyntaxTreeNodeRaw {
+    pub(crate) fn as_raw(&self) -> SyntaxTreeNodeRaw {
         SyntaxTreeNodeRaw {
             context: self.context,
             id: self.id.as_ptr(),

@@ -337,7 +337,7 @@ thread_local! {
 pub fn with_cursor<T>(f: impl FnOnce(&mut QueryCursor) -> T) -> T {
     PARSER.with(|parser| {
         let mut parser = parser.borrow_mut();
-        let mut cursor = parser.cursors.pop().unwrap_or_else(QueryCursor::new);
+        let mut cursor = parser.cursors.pop().unwrap_or_default();
         let res = f(&mut cursor);
         parser.cursors.push(cursor);
         res
