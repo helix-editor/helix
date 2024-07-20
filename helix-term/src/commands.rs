@@ -1670,6 +1670,8 @@ fn has_line_comment(config: &Config, doc: &Document, line_num: usize) -> Option<
                 .language_config()
                 .and_then(|lc| lc.comment_tokens.as_ref())?
                 .clone();
+            // Use case (example): Rust supports `//` and `///`. We're reverse-sorting them to priorize `///` before `//`
+            // because otherwise a doc comment `/// like this` would get `//` as the next comment-token
             line_tokens.sort_by(|a, b| a.len().partial_cmp(&b.len()).unwrap().reverse());
             line_tokens
         };
