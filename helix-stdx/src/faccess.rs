@@ -163,7 +163,7 @@ mod imp {
             }
         }
 
-        // This is licensed to vim under the Vim license
+        // This is from vim under the Vim license
         fn is_acl_inherited(&self) -> bool {
             let mut acl_info: ACL_SIZE_INFORMATION = unsafe { ::core::mem::zeroed() };
             let acl_info_ptr: *mut c_void = &mut acl_info as *mut _ as *mut c_void;
