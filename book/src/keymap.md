@@ -437,6 +437,7 @@ you to selectively add search terms to your selections.
 
 Keys to use within picker. Remapping currently not supported.
 See the documentation page on [pickers](./pickers.md) for more info.
+[Prompt](#prompt) keybinds also work in pickers, except where they conflict with picker keybinds.
 
 | Key                          | Description                                                |
 | -----                        | -------------                                              |
