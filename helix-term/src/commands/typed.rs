@@ -3129,7 +3129,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "yank-diagnostic",
-        aliases: &[],
+        aliases: &["yd"],
         doc: "Yank diagnostic(s) under primary cursor to register, or clipboard by default",
         fun: yank_diagnostic,
         signature: CommandSignature::all(completers::register),
