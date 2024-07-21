@@ -395,9 +395,13 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "home" => goto_line_start,
         "end" => goto_line_end_newline,
     });
+    let overtype = keymap!({ "Overtype mode"
+        "esc" => normal_mode,
+    });
     hashmap!(
         Mode::Normal => normal,
         Mode::Select => select,
         Mode::Insert => insert,
+        Mode::Overtype => overtype,
     )
 }
