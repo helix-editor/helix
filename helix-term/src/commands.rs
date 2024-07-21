@@ -22,18 +22,19 @@ use helix_core::{
     encoding, find_workspace,
     graphemes::{self, next_grapheme_boundary, RevRopeGraphemes},
     history::UndoKind,
-    increment, indent,
-    indent::IndentStyle,
+    increment,
+    indent::{self, IndentStyle},
     line_ending::{get_line_ending_of_str, line_end_char_index},
     match_brackets,
     movement::{self, move_vertically_visual, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
     search::{self, CharMatcher},
-    selection, shellwords, surround,
+    selection, shellwords,
+    surround::{self, FindType},
     syntax::{BlockCommentToken, LanguageServerFeature},
     text_annotations::{Overlay, TextAnnotations},
-    textobject,
+    textobject::{self, TextObject},
     unicode::width::UnicodeWidthChar,
     visual_offset_from_block, Deletion, LineEnding, Position, Range, Rope, RopeGraphemes,
     RopeReader, RopeSlice, Selection, SmallVec, Syntax, Tendril, Transaction,
@@ -485,6 +486,8 @@ impl MappableCommand {
         surround_delete, "Surround delete",
         select_textobject_around, "Select around object",
         select_textobject_inner, "Select inside object",
+        goto_next, "Goto next",
+        goto_prev, "Goto prev",
         goto_next_function, "Goto next function",
         goto_prev_function, "Goto previous function",
         goto_next_class, "Goto next type definition",
@@ -5246,6 +5249,127 @@ fn scroll_down(cx: &mut Context) {
     scroll(cx, cx.count(), Direction::Forward, false);
 }
 
+fn goto_impl(cx: &mut Context, direction: Direction) {
+    let count = cx.count();
+
+    cx.on_next_key(move |cx, event| {
+        cx.editor.autoinfo = None;
+
+        if let Some(ch) = event.char() {
+            match ch {
+                'd' => match direction {
+                    Direction::Forward => goto_next_diag(cx),
+                    Direction::Backward => goto_prev_diag(cx),
+                },
+                'D' => match direction {
+                    Direction::Forward => goto_last_diag(cx),
+                    Direction::Backward => goto_first_diag(cx),
+                },
+                'g' => match direction {
+                    Direction::Forward => goto_next_change(cx),
+                    Direction::Backward => goto_prev_change(cx),
+                },
+                'G' => match direction {
+                    Direction::Forward => goto_last_change(cx),
+                    Direction::Backward => goto_first_change(cx),
+                },
+                'f' => match direction {
+                    Direction::Forward => goto_next_function(cx),
+                    Direction::Backward => goto_prev_function(cx),
+                },
+                't' => match direction {
+                    Direction::Forward => goto_next_class(cx),
+                    Direction::Backward => goto_prev_class(cx),
+                },
+                'a' => match direction {
+                    Direction::Forward => goto_next_parameter(cx),
+                    Direction::Backward => goto_prev_parameter(cx),
+                },
+                'c' => match direction {
+                    Direction::Forward => goto_next_comment(cx),
+                    Direction::Backward => goto_prev_comment(cx),
+                },
+                'e' => match direction {
+                    Direction::Forward => goto_next_entry(cx),
+                    Direction::Backward => goto_prev_entry(cx),
+                },
+                'T' => match direction {
+                    Direction::Forward => goto_next_test(cx),
+                    Direction::Backward => goto_prev_test(cx),
+                },
+                'p' => match direction {
+                    Direction::Forward => goto_next_paragraph(cx),
+                    Direction::Backward => goto_prev_paragraph(cx),
+                },
+                ch if !ch.is_ascii_alphanumeric() => {
+                    let (view, doc) = current!(cx.editor);
+                    let text = doc.text().slice(..);
+
+                    let selection = doc.selection(view.id).clone().transform(|range| {
+                        let range = textobject::textobject_pair_surround(
+                            doc.syntax(),
+                            text,
+                            range,
+                            TextObject::Inside,
+                            ch,
+                            match direction {
+                                Direction::Forward => FindType::Next(count),
+                                Direction::Backward => FindType::Prev(count),
+                            },
+                        );
+
+                        range.with_direction(direction)
+                    });
+                    doc.set_selection(view.id, selection);
+                }
+                _ => {}
+            };
+        }
+    });
+
+    let title = match direction {
+        Direction::Backward => "Left bracket",
+        Direction::Forward => "Right bracket",
+    };
+    let previous_or_next = match direction {
+        Direction::Backward => "previous",
+        Direction::Forward => "next",
+    };
+    let first_or_last = match direction {
+        Direction::Backward => "first",
+        Direction::Forward => "last",
+    };
+    let above_or_below = match direction {
+        Direction::Backward => "above",
+        Direction::Forward => "below",
+    };
+    let help_text = [
+        ("d", format!("Goto {} diagnostic", previous_or_next)),
+        ("D", format!("Goto {} diagnostic", first_or_last)),
+        ("g", format!("Goto {} change", previous_or_next)),
+        ("G", format!("Goto {} change", first_or_last)),
+        ("f", format!("Goto {} function", previous_or_next)),
+        ("t", format!("Goto {} type definition", previous_or_next)),
+        ("a", format!("Goto {} parameter", previous_or_next)),
+        ("c", format!("Goto {} comment", previous_or_next)),
+        ("e", format!("Goto {} pairing", previous_or_next)),
+        ("T", format!("Goto {} test", previous_or_next)),
+        ("p", format!("Goto {} paragraph", previous_or_next)),
+        (" ", format!("Goto {} matching chars", previous_or_next)),
+        ("space", format!("Add newline {}", above_or_below)),
+    ];
+
+    cx.editor.autoinfo = Some(Info::new(title, &help_text));
+}
+
+fn goto_next(cx: &mut Context) {
+    goto_impl(cx, Direction::Forward)
+}
+
+fn goto_prev(cx: &mut Context) {
+    goto_impl(cx, Direction::Backward)
+}
+
 fn goto_ts_object_impl(cx: &mut Context, object: &'static str, direction: Direction) {
     let count = cx.count();
     let motion = move |editor: &mut Editor| {
@@ -5415,7 +5539,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                             range,
                             objtype,
                             ch,
-                            count,
+                            FindType::Surround(count),
                         ),
                         _ => range,
                     }
