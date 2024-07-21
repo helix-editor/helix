@@ -212,8 +212,8 @@ jobs:
           ./appimagetool -s deploy squashfs-root/usr/share/applications/Helix.desktop
           ARCH=x86_64 VERSION="$VERSION-anylinux" ./appimagetool -s squashfs-root
           mv *anylinux*AppImage dist
-          mv "$APP"-*-"$ARCH.AppImage".AppImage \
-              "$APP"-*-"$ARCH.AppImage".AppImage.zsync dist
+          mv "$APP"-*-"$ARCH".AppImage \
+              "$APP"-*-"$ARCH".AppImage.zsync dist
 
       - name: Build archive
         shell: bash
