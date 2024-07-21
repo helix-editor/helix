@@ -5253,6 +5253,7 @@ fn goto_impl(cx: &mut Context, direction: Direction) {
     let count = cx.count();
 
     cx.on_next_key(move |cx, event| {
+        cx.count = NonZeroUsize::new(count);
         cx.editor.autoinfo = None;
 
         if let Some(ch) = event.char() {
