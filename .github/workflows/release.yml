@@ -207,8 +207,8 @@ jobs:
           APPIMAGETOOL=$(wget -q https://api.github.com/repos/probonopd/go-appimage/releases -O - \
           | sed 's/[()",{} ]/\n/g' | grep -oi 'https.*continuous.*tool.*86_64.*mage$')
           wget -q "$APPIMAGETOOL" -O ./appimagetool
-          chmod +x ./appimagetool
-          "$APP-$VERSION-$ARCH.AppImage" --appimage-extract
+          chmod +x ./appimagetool ./*AppImage
+          ./"$APP-$VERSION-$ARCH.AppImage" --appimage-extract
           ./appimagetool -s deploy squashfs-root/usr/share/applications/Helix.desktop
           ARCH=x86_64 VERSION="$VERSION-anylinux" ./appimagetool -s squashfs-root
           mv *anylinux*AppImage dist
