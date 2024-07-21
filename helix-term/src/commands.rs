@@ -5301,6 +5301,10 @@ fn goto_impl(cx: &mut Context, direction: Direction) {
                     Direction::Forward => goto_next_paragraph(cx),
                     Direction::Backward => goto_prev_paragraph(cx),
                 },
+                ' ' => match direction {
+                    Direction::Forward => add_newline_below(cx),
+                    Direction::Backward => add_newline_above(cx),
+                },
                 ch if !ch.is_ascii_alphanumeric() => {
                     let (view, doc) = current!(cx.editor);
                     let text = doc.text().slice(..);
