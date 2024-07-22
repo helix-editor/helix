@@ -210,6 +210,7 @@ jobs:
           chmod +x ./appimagetool ./*AppImage
           ./"$APP-$VERSION-$ARCH.AppImage" --appimage-extract
           ./appimagetool -s deploy squashfs-root/usr/share/applications/Helix.desktop
+          sed -i '13i\export HELIX_RUNTIME="${HERE}"/usr/lib/helix/runtime' squashfs-root/AppRun
           ARCH=x86_64 VERSION="$VERSION-anylinux" ./appimagetool -s squashfs-root
           mv *anylinux*AppImage dist
           mv "$APP"-*-"$ARCH".AppImage \
