@@ -3203,6 +3203,19 @@ grammar = "jinja2"
 name = "jinja2"
 source = { git = "https://github.com/varpeti/tree-sitter-jinja2", rev = "a533cd3c33aea6acb0f9bf9a56f35dcfe6a8eb53" }
 
+[[language]]
+name = "jjdescription"
+scope = "jj.description"
+file-types = [{ glob = "*.jjdescription" }]
+comment-token = "JJ:"
+indent = { tab-width = 2, unit = "  " }
+rulers = [51, 73]
+text-width = 72
+
+[[grammar]]
+name = "jjdescription"
+source = { git = "https://github.com/kareigu/tree-sitter-jjdescription", rev = "2ddec6cad07b366aee276a608e1daa2c29d3caf2" }
+
 [[grammar]]
 name = "wren"
 source = { git = "https://git.sr.ht/~jummit/tree-sitter-wren", rev = "6748694be32f11e7ec6b5faeb1b48ca6156d4e06" }
