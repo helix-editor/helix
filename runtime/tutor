@@ -417,6 +417,28 @@
 
 
 =================================================================
+=             3.10 JUMP WITH TWO-CHARACTER LABELS               =
+=================================================================
+
+ Type gw to enable the 2-character labels. The start of each word
+ will be replaced by 2 highlighted characters. Type any sequence
+ of 2 highlighted characters to jump to the corresponding label,
+ or use ESC to drop the labels.
+
+ The 2-character labels allow to quickly jump to any location
+ in the viewable selection.
+
+ 1. Move the cursor to the start of the line marked '-->' below.
+ 2. Press gw to enable the 2-character labels, and then bm to
+    jump to the word here (which appears as bmre with the label).
+
+ --> This is just a simple line of text.
+     There may be many such lines
+     But you really want to jump here!
+     This is fast with the 2-character labels.
+
+
+=================================================================
 =                        CHAPTER 3 RECAP                        =
 =================================================================
 
@@ -437,6 +459,9 @@
    select the next line.
 
  * Type semicolon ( ; ) to collapse selection.
+
+ * Type gw to enable 2-characters labels, and any 2 characters
+   to jump to the corresponding label.
 
 =================================================================
 =                         4.1 UNDOING                           =
