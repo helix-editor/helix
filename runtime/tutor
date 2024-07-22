@@ -843,9 +843,9 @@ lines.
  
  1. Move the cursor to the first line marked '-->' below.
  2. Move the cursor to the first '0'.
- 3. Press '4s-c' to select all '0's.
- 4. Press '"#' followed by 'c-a' to progressively increment the 
-    the person id ('c-x' to decrement).
+ 3. Press '4Shift-c' to select all '0's.
+ 4. Press '"#' followed by 'Ctrl-a' to progressively increment the 
+    the person id ('Ctrl-x' to decrement).
 
  --> Person 1 with id xxxx-xxxx-0
  --> Person 2 with id xxxx-xxxx-0
