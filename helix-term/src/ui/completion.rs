@@ -278,16 +278,30 @@ impl Completion {
                     // always present here
                     let mut item = item.unwrap().clone();
 
-                    let language_server = language_server!(item);
-                    let offset_encoding = language_server.offset_encoding();
+                    // let language_server = language_server!(item);
+                    // let offset_encoding = language_server.offset_encoding();
+
+                    let mut language_server_option = None;
 
                     if !item.resolved {
+                        let language_server = language_server!(item);
+                        // let offset_encoding = language_server.offset_encoding();
+
                         if let Some(resolved) =
                             Self::resolve_completion_item(language_server, item.item.clone())
                         {
                             item.item = resolved;
                         }
+
+                        language_server_option = Some(language_server);
                     };
+
+                    // let language_server = language_server!(item);
+                    let offset_encoding = language_server_option
+                        .as_ref()
+                        .map(|x| x.offset_encoding())
+                        .unwrap_or_default();
+
                     // if more text was entered, remove it
                     doc.restore(view, &savepoint, true);
                     // save an undo checkpoint before the completion
