@@ -838,7 +838,7 @@ lines.
 =         7.5 PROGRESSIVE INCREMENTING AND DECREMENTING         =
 =================================================================
 
- Type '"#c-a' ('"#c-x') on multiple selections to progressively
+ Type '"#Ctrl-a' ('"#Ctrl-x') on multiple selections to progressively
  increment (decrement) numbers.
  
  1. Move the cursor to the first line marked '-->' below.
