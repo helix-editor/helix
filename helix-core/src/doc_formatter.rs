@@ -116,7 +116,7 @@ impl Default for TextFormat {
 #[derive(Debug)]
 pub struct DocumentFormatter<'t> {
     text_fmt: &'t TextFormat,
-    annotations: &'t TextAnnotations,
+    annotations: &'t TextAnnotations<'t>,
 
     /// The visual position at the end of the last yielded word boundary
     visual_pos: Position,

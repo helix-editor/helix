@@ -61,9 +61,16 @@
 
 ; Literals
 (string) @string
+((escape_sequence) @warning
+ (#eq? @warning "\\e")) ; deprecated escape sequence
+(escape_sequence) @constant.character.escape
 (bit_string_segment_option) @function.builtin
 (integer) @constant.numeric.integer
 (float) @constant.numeric.float
+
+; Reserved identifiers
+((identifier) @error
+ (#any-of? @error "auto" "delegate" "derive" "else" "implement" "macro" "test" "echo"))
 
 ; Variables
 (identifier) @variable

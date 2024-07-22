@@ -1,13 +1,13 @@
 # Author: Matous Dzivjak <matousdzivjak@gmail.com>
 # Adapted from: https://protesilaos.com/emacs/modus-themes, by Protesilaos Stavrou
 # Source: https://github.com/protesilaos/modus-themes/blob/main/modus-vivendi-tinted-theme.el
-# Version 4.3.0
+# Version 4.4.0
 
 inherits = "modus_vivendi"
 
 "comment" = "red-faint"
 
-"ui.cursor.primary" = { fg = "bg-main", bg = "red" }
+"ui.cursor.primary" = { fg = "bg-main", bg = "magenta-intense" }
 
 [palette]
 # Basic values
@@ -76,12 +76,12 @@ bg-blue-subtle = "#242679"
 bg-magenta-subtle = "#552f5f"
 bg-cyan-subtle = "#004065"
 
-bg-red-nuanced = "#350f14"
-bg-green-nuanced = "#002718"
-bg-yellow-nuanced = "#2c1f00"
-bg-blue-nuanced = "#131c4d"
-bg-magenta-nuanced = "#2f133f"
-bg-cyan-nuanced = "#04253f"
+bg-red-nuanced = "#3a0c14"
+bg-green-nuanced = "#092f1f"
+bg-yellow-nuanced = "#381d0f"
+bg-blue-nuanced = "#12154a"
+bg-magenta-nuanced = "#2f0c3f"
+bg-cyan-nuanced = "#042837"
 
 # Special purpose
 bg-completion = "#483d8a"
@@ -140,5 +140,5 @@ bg-lavender = "#38325c"
 bg-sage = "#0f3d30"
 
 # Paren match
-bg-paren-match = "#2f7f9f"
+bg-paren-match = "#5f789f"
 bg-paren-expression = "#453040"

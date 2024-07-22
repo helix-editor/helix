@@ -3,60 +3,102 @@ use std::sync::Arc;
 use arc_swap::ArcSwap;
 use helix_core::syntax;
 use helix_view::graphics::{Margin, Rect, Style};
+use helix_view::input::Event;
 use tui::buffer::Buffer;
+use tui::layout::Alignment;
+use tui::text::Text;
 use tui::widgets::{BorderType, Paragraph, Widget, Wrap};
 
-use crate::compositor::{Component, Compositor, Context};
+use crate::compositor::{Component, Compositor, Context, EventResult};
 
+use crate::alt;
 use crate::ui::Markdown;
 
 use super::Popup;
 
-pub struct SignatureHelp {
-    signature: String,
-    signature_doc: Option<String>,
+pub struct Signature {
+    pub signature: String,
+    pub signature_doc: Option<String>,
     /// Part of signature text
-    active_param_range: Option<(usize, usize)>,
+    pub active_param_range: Option<(usize, usize)>,
+}
 
+pub struct SignatureHelp {
     language: String,
     config_loader: Arc<ArcSwap<syntax::Loader>>,
+    active_signature: usize,
+    lsp_signature: Option<usize>,
+    signatures: Vec<Signature>,
 }
 
 impl SignatureHelp {
     pub const ID: &'static str = "signature-help";
 
     pub fn new(
-        signature: String,
         language: String,
         config_loader: Arc<ArcSwap<syntax::Loader>>,
+        active_signature: usize,
+        lsp_signature: Option<usize>,
+        signatures: Vec<Signature>,
     ) -> Self {
         Self {
-            signature,
-            signature_doc: None,
-            active_param_range: None,
             language,
             config_loader,
+            active_signature,
+            lsp_signature,
+            signatures,
         }
     }
 
-    pub fn set_signature_doc(&mut self, signature_doc: Option<String>) {
-        self.signature_doc = signature_doc;
+    pub fn active_signature(&self) -> usize {
+        self.active_signature
     }
 
-    pub fn set_active_param_range(&mut self, offset: Option<(usize, usize)>) {
-        self.active_param_range = offset;
+    pub fn lsp_signature(&self) -> Option<usize> {
+        self.lsp_signature
     }
 
     pub fn visible_popup(compositor: &mut Compositor) -> Option<&mut Popup<Self>> {
         compositor.find_id::<Popup<Self>>(Self::ID)
     }
+
+    fn signature_index(&self) -> String {
+        format!("({}/{})", self.active_signature + 1, self.signatures.len())
+    }
 }
 
 impl Component for SignatureHelp {
+    fn handle_event(&mut self, event: &Event, _cx: &mut Context) -> EventResult {
+        let Event::Key(event) = event else {
+            return EventResult::Ignored(None);
+        };
+
+        if self.signatures.len() <= 1 {
+            return EventResult::Ignored(None);
+        }
+
+        match event {
+            alt!('p') => {
+                self.active_signature = self
+                    .active_signature
+                    .checked_sub(1)
+                    .unwrap_or(self.signatures.len() - 1);
+                EventResult::Consumed(None)
+            }
+            alt!('n') => {
+                self.active_signature = (self.active_signature + 1) % self.signatures.len();
+                EventResult::Consumed(None)
+            }
+            _ => EventResult::Ignored(None),
+        }
+    }
+
     fn render(&mut self, area: Rect, surface: &mut Buffer, cx: &mut Context) {
         let margin = Margin::horizontal(1);
 
-        let active_param_span = self.active_param_range.map(|(start, end)| {
+        let signature = &self.signatures[self.active_signature];
+
+        let active_param_span = signature.active_param_range.map(|(start, end)| {
             vec![(
                 cx.editor
                     .theme
@@ -66,21 +108,29 @@ impl Component for SignatureHelp {
             )]
         });
 
+        let sig = &self.signatures[self.active_signature];
         let sig_text = crate::ui::markdown::highlighted_code_block(
-            &self.signature,
+            sig.signature.as_str(),
             &self.language,
             Some(&cx.editor.theme),
             Arc::clone(&self.config_loader),
             active_param_span,
         );
 
+        if self.signatures.len() > 1 {
+            let signature_index = self.signature_index();
+            let text = Text::from(signature_index);
+            let paragraph = Paragraph::new(&text).alignment(Alignment::Right);
+            paragraph.render(area.clip_top(1).with_height(1).clip_right(1), surface);
+        }
+
         let (_, sig_text_height) = crate::ui::text::required_size(&sig_text, area.width);
         let sig_text_area = area.clip_top(1).with_height(sig_text_height);
-        let sig_text_area = sig_text_area.inner(&margin).intersection(surface.area);
+        let sig_text_area = sig_text_area.inner(margin).intersection(surface.area);
         let sig_text_para = Paragraph::new(&sig_text).wrap(Wrap { trim: false });
         sig_text_para.render(sig_text_area, surface);
 
-        if self.signature_doc.is_none() {
+        if sig.signature_doc.is_none() {
             return;
         }
 
@@ -92,7 +142,7 @@ impl Component for SignatureHelp {
             }
         }
 
-        let sig_doc = match &self.signature_doc {
+        let sig_doc = match &sig.signature_doc {
             None => return,
             Some(doc) => Markdown::new(doc.clone(), Arc::clone(&self.config_loader)),
         };
@@ -103,20 +153,19 @@ impl Component for SignatureHelp {
         let sig_doc_para = Paragraph::new(&sig_doc)
             .wrap(Wrap { trim: false })
             .scroll((cx.scroll.unwrap_or_default() as u16, 0));
-        sig_doc_para.render(sig_doc_area.inner(&margin), surface);
+        sig_doc_para.render(sig_doc_area.inner(margin), surface);
     }
 
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
         const PADDING: u16 = 2;
         const SEPARATOR_HEIGHT: u16 = 1;
 
-        if PADDING >= viewport.1 || PADDING >= viewport.0 {
-            return None;
-        }
-        let max_text_width = (viewport.0 - PADDING).min(120);
+        let sig = &self.signatures[self.active_signature];
+
+        let max_text_width = viewport.0.saturating_sub(PADDING).clamp(10, 120);
 
         let signature_text = crate::ui::markdown::highlighted_code_block(
-            &self.signature,
+            sig.signature.as_str(),
             &self.language,
             None,
             Arc::clone(&self.config_loader),
@@ -125,7 +174,7 @@ impl Component for SignatureHelp {
         let (sig_width, sig_height) =
             crate::ui::text::required_size(&signature_text, max_text_width);
 
-        let (width, height) = match self.signature_doc {
+        let (width, height) = match sig.signature_doc {
             Some(ref doc) => {
                 let doc_md = Markdown::new(doc.clone(), Arc::clone(&self.config_loader));
                 let doc_text = doc_md.parse(None);
@@ -139,6 +188,12 @@ impl Component for SignatureHelp {
             None => (sig_width, sig_height),
         };
 
-        Some((width + PADDING, height + PADDING))
+        let sig_index_width = if self.signatures.len() > 1 {
+            self.signature_index().len() + 1
+        } else {
+            0
+        };
+
+        Some((width + PADDING + sig_index_width as u16, height + PADDING))
     }
 }

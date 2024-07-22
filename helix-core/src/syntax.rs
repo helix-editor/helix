@@ -1,3 +1,5 @@
+mod tree_cursor;
+
 use crate::{
     auto_pairs::AutoPairs,
     chars::char_is_line_ending,
@@ -19,9 +21,9 @@ use std::{
     borrow::Cow,
     cell::RefCell,
     collections::{HashMap, HashSet, VecDeque},
-    fmt::{self, Display},
+    fmt::{self, Display, Write},
     hash::{Hash, Hasher},
-    mem::{replace, transmute},
+    mem::replace,
     path::{Path, PathBuf},
     str::FromStr,
     sync::Arc,
@@ -31,6 +33,8 @@ use once_cell::sync::{Lazy, OnceCell};
 use serde::{ser::SerializeSeq, Deserialize, Serialize};
 
 use helix_loader::grammar::{get_language, load_runtime_file};
+
+pub use tree_cursor::TreeCursor;
 
 fn deserialize_regex<'de, D>(deserializer: D) -> Result<Option<Regex>, D::Error>
 where
@@ -506,6 +510,7 @@ pub enum DebugArgumentValue {
 pub struct DebugTemplate {
     pub name: String,
     pub request: String,
+    #[serde(default)]
     pub completion: Vec<DebugConfigCompletion>,
     pub args: HashMap<String, DebugArgumentValue>,
 }
@@ -724,8 +729,11 @@ pub fn read_query(language: &str, filename: &str) -> String {
         .replace_all(&query, |captures: &regex::Captures| {
             captures[1]
                 .split(',')
-                .map(|language| format!("\n{}\n", read_query(language, filename)))
-                .collect::<String>()
+                .fold(String::new(), |mut output, language| {
+                    // `write!` to a String cannot fail.
+                    write!(output, "\n{}\n", read_query(language, filename)).unwrap();
+                    output
+                })
         })
         .to_string()
 }
@@ -805,7 +813,7 @@ impl LanguageConfiguration {
         if query_text.is_empty() {
             return None;
         }
-        let lang = self.highlight_config.get()?.as_ref()?.language;
+        let lang = &self.highlight_config.get()?.as_ref()?.language;
         Query::new(lang, &query_text)
             .map_err(|e| {
                 log::error!(
@@ -1090,6 +1098,7 @@ impl Syntax {
                 start_point: Point::new(0, 0),
                 end_point: Point::new(usize::MAX, usize::MAX),
             }],
+            parent: None,
         };
 
         // track scope_descriptor: a Vec of scopes for item in tree
@@ -1239,7 +1248,7 @@ impl Syntax {
         PARSER.with(|ts_parser| {
             let ts_parser = &mut ts_parser.borrow_mut();
             ts_parser.parser.set_timeout_micros(1000 * 500); // half a second is pretty generours
-            let mut cursor = ts_parser.cursors.pop().unwrap_or_else(QueryCursor::new);
+            let mut cursor = ts_parser.cursors.pop().unwrap_or_default();
             // TODO: might need to set cursor range
             cursor.set_byte_range(0..usize::MAX);
             cursor.set_match_limit(TREE_SITTER_MATCH_LIMIT);
@@ -1354,12 +1363,14 @@ impl Syntax {
                 let depth = layer.depth + 1;
                 // TODO: can't inline this since matches borrows self.layers
                 for (config, ranges) in injections {
+                    let parent = Some(layer_id);
                     let new_layer = LanguageLayer {
                         tree: None,
                         config,
                         depth,
                         ranges,
                         flags: LayerUpdateFlags::empty(),
+                        parent: None,
                     };
 
                     // Find an identical existing layer
@@ -1371,6 +1382,7 @@ impl Syntax {
 
                     // ...or insert a new one.
                     let layer_id = layer.unwrap_or_else(|| self.layers.insert(new_layer));
+                    self.layers[layer_id].parent = parent;
 
                     queue.push_back(layer_id);
                 }
@@ -1412,7 +1424,7 @@ impl Syntax {
                 // Reuse a cursor from the pool if available.
                 let mut cursor = PARSER.with(|ts_parser| {
                     let highlighter = &mut ts_parser.borrow_mut();
-                    highlighter.cursors.pop().unwrap_or_else(QueryCursor::new)
+                    highlighter.cursors.pop().unwrap_or_default()
                 });
 
                 // The `captures` iterator borrows the `Tree` and the `QueryCursor`, which
@@ -1493,6 +1505,12 @@ impl Syntax {
             .descendant_for_byte_range(start, end)
     }
 
+    pub fn walk(&self) -> TreeCursor<'_> {
+        // data structure to find the smallest range that contains a point
+        // when some of the ranges in the structure can overlap.
+        TreeCursor::new(&self.layers, self.root)
+    }
+
     // Commenting
     // comment_strings_for_pos
     // is_commented
@@ -1525,6 +1543,7 @@ pub struct LanguageLayer {
     pub ranges: Vec<Range>,
     pub depth: u32,
     flags: LayerUpdateFlags,
+    parent: Option<LayerId>,
 }
 
 /// This PartialEq implementation only checks if that
@@ -1544,13 +1563,7 @@ impl PartialEq for LanguageLayer {
 impl Hash for LanguageLayer {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.depth.hash(state);
-        // The transmute is necessary here because tree_sitter::Language does not derive Hash at the moment.
-        // However it does use #[repr] transparent so the transmute here is safe
-        // as `Language` (which `Grammar` is an alias for) is just a newtype wrapper around a (thin) pointer.
-        // This is also compatible with the PartialEq implementation of language
-        // as that is just a pointer comparison.
-        let language: *const () = unsafe { transmute(self.config.language) };
-        language.hash(state);
+        self.config.language.hash(state);
         self.ranges.hash(state);
     }
 }
@@ -1567,7 +1580,7 @@ impl LanguageLayer {
             .map_err(|_| Error::InvalidRanges)?;
 
         parser
-            .set_language(self.config.language)
+            .set_language(&self.config.language)
             .map_err(|_| Error::InvalidLanguage)?;
 
         // unsafe { syntax.parser.set_cancellation_flag(cancellation_flag) };
@@ -1726,7 +1739,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::{iter, mem, ops, str, usize};
 use tree_sitter::{
     Language as Grammar, Node, Parser, Point, Query, QueryCaptures, QueryCursor, QueryError,
-    QueryMatch, Range, TextProvider, Tree, TreeCursor,
+    QueryMatch, Range, TextProvider, Tree,
 };
 
 const CANCELLATION_CHECK_INTERVAL: usize = 100;
@@ -1867,7 +1880,7 @@ impl HighlightConfiguration {
 
         // Construct a single query by concatenating the three query strings, but record the
         // range of pattern indices that belong to each individual string.
-        let query = Query::new(language, &query_source)?;
+        let query = Query::new(&language, &query_source)?;
         let mut highlights_pattern_index = 0;
         for i in 0..(query.pattern_count()) {
             let pattern_offset = query.start_byte_for_pattern(i);
@@ -1876,7 +1889,7 @@ impl HighlightConfiguration {
             }
         }
 
-        let injections_query = Query::new(language, injection_query)?;
+        let injections_query = Query::new(&language, injection_query)?;
         let combined_injections_patterns = (0..injections_query.pattern_count())
             .filter(|&i| {
                 injections_query
@@ -2660,7 +2673,7 @@ pub fn pretty_print_tree<W: fmt::Write>(fmt: &mut W, node: Node) -> fmt::Result 
 
 fn pretty_print_tree_impl<W: fmt::Write>(
     fmt: &mut W,
-    cursor: &mut TreeCursor,
+    cursor: &mut tree_sitter::TreeCursor,
     depth: usize,
 ) -> fmt::Result {
     let node = cursor.node();
@@ -2730,7 +2743,7 @@ mod test {
         .unwrap();
         let language = get_language("rust").unwrap();
 
-        let query = Query::new(language, query_str).unwrap();
+        let query = Query::new(&language, query_str).unwrap();
         let textobject = TextObjectQuery { query };
         let mut cursor = QueryCursor::new();
 
@@ -2758,10 +2771,10 @@ mod test {
             )
         };
 
-        test("quantified_nodes", 1..36);
+        test("quantified_nodes", 1..37);
         // NOTE: Enable after implementing proper node group capturing
-        // test("quantified_nodes_grouped", 1..36);
-        // test("multiple_nodes_grouped", 1..36);
+        // test("quantified_nodes_grouped", 1..37);
+        // test("multiple_nodes_grouped", 1..37);
     }
 
     #[test]
@@ -2932,7 +2945,7 @@ mod test {
 
     #[test]
     fn test_pretty_print() {
-        let source = r#"/// Hello"#;
+        let source = r#"// Hello"#;
         assert_pretty_print("rust", source, "(line_comment)", 0, source.len());
 
         // A large tree should be indented with fields:
@@ -2951,7 +2964,8 @@ mod test {
                 "      (macro_invocation\n",
                 "        macro: (identifier)\n",
                 "        (token_tree\n",
-                "          (string_literal))))))",
+                "          (string_literal\n",
+                "            (string_content)))))))",
             ),
             0,
             source.len(),
@@ -2970,7 +2984,7 @@ mod test {
         // rule but `name` and `body` belong to an unnamed helper `_method_rest`.
         // This can cause a bug with a pretty-printing implementation that
         // uses `Node::field_name_for_child` to determine field names but is
-        // fixed when using `TreeCursor::field_name`.
+        // fixed when using `tree_sitter::TreeCursor::field_name`.
         let source = "def self.method_name
           true
         end";

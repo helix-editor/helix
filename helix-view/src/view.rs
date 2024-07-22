@@ -19,7 +19,6 @@ use helix_core::{
 use std::{
     collections::{HashMap, VecDeque},
     fmt,
-    rc::Rc,
 };
 
 const JUMP_LIST_CAPACITY: usize = 30;
@@ -39,18 +38,25 @@ impl JumpList {
         Self { jumps, current: 0 }
     }
 
-    pub fn push(&mut self, jump: Jump) {
+    fn push_impl(&mut self, jump: Jump) -> usize {
+        let mut num_removed_from_front = 0;
         self.jumps.truncate(self.current);
         // don't push duplicates
         if self.jumps.back() != Some(&jump) {
             // If the jumplist is full, drop the oldest item.
             while self.jumps.len() >= JUMP_LIST_CAPACITY {
                 self.jumps.pop_front();
+                num_removed_from_front += 1;
             }
 
             self.jumps.push_back(jump);
             self.current = self.jumps.len();
         }
+        num_removed_from_front
+    }
+
+    pub fn push(&mut self, jump: Jump) {
+        self.push_impl(jump);
     }
 
     pub fn forward(&mut self, count: usize) -> Option<&Jump> {
@@ -64,13 +70,22 @@ impl JumpList {
 
     // Taking view and doc to prevent unnecessary cloning when jump is not required.
     pub fn backward(&mut self, view_id: ViewId, doc: &mut Document, count: usize) -> Option<&Jump> {
-        if let Some(current) = self.current.checked_sub(count) {
+        if let Some(mut current) = self.current.checked_sub(count) {
             if self.current == self.jumps.len() {
                 let jump = (doc.id(), doc.selection(view_id).clone());
-                self.push(jump);
+                let num_removed = self.push_impl(jump);
+                current = current.saturating_sub(num_removed);
             }
             self.current = current;
-            self.jumps.get(self.current)
+
+            // Avoid jumping to the current location.
+            let jump @ (doc_id, selection) = self.jumps.get(self.current)?;
+            if doc.id() == *doc_id && doc.selection(view_id) == selection {
+                self.current = self.current.checked_sub(1)?;
+                self.jumps.get(self.current)
+            } else {
+                Some(jump)
+            }
         } else {
             None
         }
@@ -80,7 +95,7 @@ impl JumpList {
         self.jumps.retain(|(other_id, _)| other_id != doc_id);
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &Jump> {
+    pub fn iter(&self) -> impl DoubleEndedIterator<Item = &Jump> {
         self.jumps.iter()
     }
 
@@ -409,10 +424,19 @@ impl View {
     }
 
     /// Get the text annotations to display in the current view for the given document and theme.
-    pub fn text_annotations(&self, doc: &Document, theme: Option<&Theme>) -> TextAnnotations {
-        // TODO custom annotations for custom views like side by side diffs
+    pub fn text_annotations<'a>(
+        &self,
+        doc: &'a Document,
+        theme: Option<&Theme>,
+    ) -> TextAnnotations<'a> {
+        let mut text_annotations = TextAnnotations::default();
 
-        let mut text_annotations = doc.text_annotations(theme);
+        if let Some(labels) = doc.jump_labels.get(&self.id) {
+            let style = theme
+                .and_then(|t| t.find_scope_index("ui.virtual.jump-label"))
+                .map(Highlight);
+            text_annotations.add_overlay(labels, style);
+        }
 
         let DocumentInlayHints {
             id: _,
@@ -436,20 +460,15 @@ impl View {
             .and_then(|t| t.find_scope_index("ui.virtual.inlay-hint"))
             .map(Highlight);
 
-        let mut add_annotations = |annotations: &Rc<[_]>, style| {
-            if !annotations.is_empty() {
-                text_annotations.add_inline_annotations(Rc::clone(annotations), style);
-            }
-        };
-
         // Overlapping annotations are ignored apart from the first so the order here is not random:
         // types -> parameters -> others should hopefully be the "correct" order for most use cases,
         // with the padding coming before and after as expected.
-        add_annotations(padding_before_inlay_hints, None);
-        add_annotations(type_inlay_hints, type_style);
-        add_annotations(parameter_inlay_hints, parameter_style);
-        add_annotations(other_inlay_hints, other_style);
-        add_annotations(padding_after_inlay_hints, None);
+        text_annotations
+            .add_inline_annotations(padding_before_inlay_hints, None)
+            .add_inline_annotations(type_inlay_hints, type_style)
+            .add_inline_annotations(parameter_inlay_hints, parameter_style)
+            .add_inline_annotations(other_inlay_hints, other_style)
+            .add_inline_annotations(padding_after_inlay_hints, None);
 
         text_annotations
     }

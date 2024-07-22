@@ -20,8 +20,6 @@ mod handlers;
 use ignore::DirEntry;
 use url::Url;
 
-pub use keymap::macros::*;
-
 #[cfg(windows)]
 fn true_color() -> bool {
     true
@@ -48,10 +46,13 @@ fn true_color() -> bool {
 
 /// Function used for filtering dir entries in the various file pickers.
 fn filter_picker_entry(entry: &DirEntry, root: &Path, dedup_symlinks: bool) -> bool {
-    // We always want to ignore the .git directory, otherwise if
+    // We always want to ignore popular VCS directories, otherwise if
     // `ignore` is turned off, we end up with a lot of noise
     // in our picker.
-    if entry.file_name() == ".git" {
+    if matches!(
+        entry.file_name().to_str(),
+        Some(".git" | ".pijul" | ".jj" | ".hg" | ".svn")
+    ) {
         return false;
     }
 

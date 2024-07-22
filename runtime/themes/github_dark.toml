@@ -61,6 +61,7 @@ label = "scale.red.3"
 "ui.text.inactive" = "fg.subtle"
 "ui.virtual" = { fg = "scale.gray.6" }
 "ui.virtual.ruler" = { bg = "canvas.subtle" }
+"ui.virtual.jump-label" = { fg = "scale.red.2", modifiers = ["bold"] }
 
 "ui.selection" = { bg = "scale.blue.8" }
 "ui.selection.primary" = { bg = "scale.blue.7" }
@@ -78,6 +79,8 @@ label = "scale.red.3"
 "diagnostic.info" = { underline = { color = "accent.fg", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "attention.fg", style = "curl" } }
 "diagnostic.error" = { underline = { color = "danger.fg", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 hint = "success.fg"
 info = "accent.fg"

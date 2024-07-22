@@ -24,7 +24,7 @@
 //                     Row::new(vec!["Row41", "Row42", "Row43"]),
 //                 ])
 //                 .header(Row::new(vec!["Head1", "Head2", "Head3"]).bottom_margin(1))
-//                 .block(Block::default().borders(Borders::ALL))
+//                 .block(Block::bordered())
 //                 .widths(&[
 //                     Constraint::Length(5),
 //                     Constraint::Length(5),
@@ -122,7 +122,7 @@
 //                     Row::new(vec!["Row41", "Row42", "Row43"]),
 //                 ])
 //                 .header(Row::new(vec!["Head1", "Head2", "Head3"]).bottom_margin(1))
-//                 .block(Block::default().borders(Borders::ALL))
+//                 .block(Block::bordered())
 //                 .widths(widths);
 //                 f.render_widget(table, size);
 //             })
@@ -210,7 +210,7 @@
 //                     Row::new(vec!["Row41", "Row42", "Row43"]),
 //                 ])
 //                 .header(Row::new(vec!["Head1", "Head2", "Head3"]).bottom_margin(1))
-//                 .block(Block::default().borders(Borders::ALL))
+//                 .block(Block::bordered())
 //                 .widths(widths)
 //                 .column_spacing(0);
 //                 f.render_widget(table, size);
@@ -316,7 +316,7 @@
 //                     Row::new(vec!["Row41", "Row42", "Row43"]),
 //                 ])
 //                 .header(Row::new(vec!["Head1", "Head2", "Head3"]).bottom_margin(1))
-//                 .block(Block::default().borders(Borders::ALL))
+//                 .block(Block::bordered())
 //                 .widths(widths);
 //                 f.render_widget(table, size);
 //             })
@@ -425,7 +425,7 @@
 //                     Row::new(vec!["Row41", "Row42", "Row43"]),
 //                 ])
 //                 .header(Row::new(vec!["Head1", "Head2", "Head3"]).bottom_margin(1))
-//                 .block(Block::default().borders(Borders::ALL))
+//                 .block(Block::bordered())
 //                 .widths(widths)
 //                 .column_spacing(0);
 //                 f.render_widget(table, size);
@@ -530,7 +530,7 @@
 //                     Row::new(vec!["Row41", "Row42", "Row43"]).height(2),
 //                 ])
 //                 .header(Row::new(vec!["Head1", "Head2", "Head3"]).bottom_margin(1))
-//                 .block(Block::default().borders(Borders::ALL))
+//                 .block(Block::bordered())
 //                 .highlight_symbol(">> ")
 //                 .widths(&[
 //                     Constraint::Length(5),

@@ -2,12 +2,13 @@ use crate::compositor::{Component, Compositor, Context, Event, EventResult};
 use crate::{alt, ctrl, key, shift, ui};
 use arc_swap::ArcSwap;
 use helix_core::syntax;
+use helix_view::document::Mode;
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;
 use std::sync::Arc;
 use std::{borrow::Cow, ops::RangeFrom};
 use tui::buffer::Buffer as Surface;
-use tui::widgets::{Block, Borders, Widget};
+use tui::widgets::{Block, Widget};
 
 use helix_core::{
     unicode::segmentation::GraphemeCursor, unicode::width::UnicodeWidthStr, Position,
@@ -457,12 +458,11 @@ impl Prompt {
             let background = theme.get("ui.help");
             surface.clear_with(area, background);
 
-            let block = Block::default()
+            let block = Block::bordered()
                 // .title(self.title.as_str())
-                .borders(Borders::ALL)
                 .border_style(background);
 
-            let inner = block.inner(area).inner(&Margin::horizontal(1));
+            let inner = block.inner(area).inner(Margin::horizontal(1));
 
             block.render(area, surface);
             text.render(inner, surface, cx);
@@ -663,7 +663,7 @@ impl Component for Prompt {
         self.render_prompt(area, surface, cx)
     }
 
-    fn cursor(&self, area: Rect, _editor: &Editor) -> (Option<Position>, CursorKind) {
+    fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
         let line = area.height as usize - 1;
         (
             Some(Position::new(
@@ -672,7 +672,7 @@ impl Component for Prompt {
                     + self.prompt.len()
                     + UnicodeWidthStr::width(&self.line[..self.cursor]),
             )),
-            CursorKind::Block,
+            editor.config().cursor_shape.from_mode(Mode::Insert),
         )
     }
 }
