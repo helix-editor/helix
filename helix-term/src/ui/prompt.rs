@@ -92,12 +92,22 @@ impl Prompt {
         }
     }
 
+    /// Gets the byte index in the input representing the current cursor location.
+    #[inline]
+    pub(crate) fn position(&self) -> usize {
+        self.cursor
+    }
+
     pub fn with_line(mut self, line: String, editor: &Editor) -> Self {
+        self.set_line(line, editor);
+        self
+    }
+
+    pub fn set_line(&mut self, line: String, editor: &Editor) {
         let cursor = line.len();
         self.line = line;
         self.cursor = cursor;
         self.recalculate_completion(editor);
-        self
     }
 
     pub fn with_language(
@@ -111,6 +121,23 @@ impl Prompt {
 
     pub fn line(&self) -> &String {
         &self.line
+    }
+
+    pub fn with_history_register(&mut self, history_register: Option<char>) -> &mut Self {
+        self.history_register = history_register;
+        self
+    }
+
+    pub(crate) fn history_register(&self) -> Option<char> {
+        self.history_register
+    }
+
+    pub(crate) fn first_history_completion<'a>(
+        &'a self,
+        editor: &'a Editor,
+    ) -> Option<Cow<'a, str>> {
+        self.history_register
+            .and_then(|reg| editor.registers.first(reg, editor))
     }
 
     pub fn recalculate_completion(&mut self, editor: &Editor) {
@@ -476,10 +503,7 @@ impl Prompt {
         let line_area = area.clip_left(self.prompt.len() as u16).clip_top(line);
         if self.line.is_empty() {
             // Show the most recently entered value as a suggestion.
-            if let Some(suggestion) = self
-                .history_register
-                .and_then(|reg| cx.editor.registers.first(reg, cx.editor))
-            {
+            if let Some(suggestion) = self.first_history_completion(cx.editor) {
                 surface.set_string(line_area.x, line_area.y, suggestion, suggestion_color);
             }
         } else if let Some((language, loader)) = self.language.as_ref() {
@@ -574,8 +598,7 @@ impl Component for Prompt {
                     self.recalculate_completion(cx.editor);
                 } else {
                     let last_item = self
-                        .history_register
-                        .and_then(|reg| cx.editor.registers.first(reg, cx.editor))
+                        .first_history_completion(cx.editor)
                         .map(|entry| entry.to_string())
                         .unwrap_or_else(|| String::from(""));
 

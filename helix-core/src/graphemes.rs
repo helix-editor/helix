@@ -28,6 +28,11 @@ pub enum Grapheme<'a> {
 }
 
 impl<'a> Grapheme<'a> {
+    pub fn new_decoration(g: &'static str) -> Grapheme<'a> {
+        assert_ne!(g, "\t");
+        Grapheme::new(g.into(), 0, 0)
+    }
+
     pub fn new(g: GraphemeStr<'a>, visual_x: usize, tab_width: u16) -> Grapheme<'a> {
         match g {
             g if g == "\t" => Grapheme::Tab {

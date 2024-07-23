@@ -14,6 +14,7 @@ pub use helix_view::handlers::Handlers;
 
 mod auto_save;
 pub mod completion;
+mod diagnostics;
 mod signature_help;
 
 pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
@@ -32,5 +33,6 @@ pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
     completion::register_hooks(&handlers);
     signature_help::register_hooks(&handlers);
     auto_save::register_hooks(&handlers);
+    diagnostics::register_hooks(&handlers);
     handlers
 }

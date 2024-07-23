@@ -34,6 +34,7 @@ bitflags = "2.6"
 ahash = "0.8.11"
 hashbrown = { version = "0.14.5", features = ["raw"] }
 dunce = "1.0"
+url = "2.5.0"
 
 log = "0.4"
 serde = { version = "1.0", features = ["derive"] }
