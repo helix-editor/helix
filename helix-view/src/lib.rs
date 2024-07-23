@@ -61,14 +61,13 @@ pub fn align_view(doc: &mut Document, view: &View, align: Align) {
     };
 
     let text_fmt = doc.text_format(viewport.width, None);
-    let annotations = view.text_annotations(doc, None);
     (view_offset.anchor, view_offset.vertical_offset) = char_idx_at_visual_offset(
         doc_text,
         cursor,
         -(relative as isize),
         0,
         &text_fmt,
-        &annotations,
+        &view.text_annotations(doc, None),
     );
     doc.set_view_offset(view.id, view_offset);
 }

@@ -1683,14 +1683,14 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
     let doc_text = doc.text().slice(..);
     let viewport = view.inner_area(doc);
     let text_fmt = doc.text_format(viewport.width, None);
-    let annotations = view.text_annotations(&*doc, None);
     (view_offset.anchor, view_offset.vertical_offset) = char_idx_at_visual_offset(
         doc_text,
         view_offset.anchor,
         view_offset.vertical_offset as isize + offset,
         0,
         &text_fmt,
-        &annotations,
+        // &annotations,
+        &view.text_annotations(&*doc, None),
     );
     doc.set_view_offset(view.id, view_offset);
 
@@ -5236,14 +5236,13 @@ fn align_view_middle(cx: &mut Context) {
         return;
     }
     let doc_text = doc.text().slice(..);
-    let annotations = view.text_annotations(doc, None);
     let pos = doc.selection(view.id).primary().cursor(doc_text);
     let pos = visual_offset_from_block(
         doc_text,
         doc.view_offset(view.id).anchor,
         pos,
         &text_fmt,
-        &annotations,
+        &view.text_annotations(doc, None),
     )
     .0;
 

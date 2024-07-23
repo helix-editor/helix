@@ -486,7 +486,7 @@ impl View {
                 doc,
                 cursor,
                 width,
-                self.offset.horizontal_offset,
+                doc.view_offset(self.id).horizontal_offset,
                 config,
             ));
         }
