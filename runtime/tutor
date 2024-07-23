@@ -1001,14 +1001,14 @@ lines.
  in the viewable selection.
 
  1. Move the cursor to the start of the line marked '-->' below.
- 2. Press gw to enable the 2-character labels, and then bm to
-    jump to the word here (which appears as bmre with the label).
+ 2. Press gw to enable the 2-character labels, and then the two
+    characters that replace the two leters he at the start of
+    here to jump to the corresponding word.
 
  --> This is just a simple line of text.
      There may be many such lines
      But you really want to jump here!
      This is fast with the 2-character labels.
-
 
 =================================================================
 =                        CHAPTER 9 RECAP                        =
