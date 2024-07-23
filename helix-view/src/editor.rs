@@ -1,5 +1,4 @@
 use crate::{
-    align_view,
     annotations::diagnostics::{DiagnosticFilter, InlineDiagnosticsConfig},
     document::{
         DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
@@ -11,8 +10,7 @@ use crate::{
     register::Registers,
     theme::{self, Theme},
     tree::{self, Tree},
-    view::ViewPosition,
-    Align, Document, DocumentId, View, ViewId,
+    Document, DocumentId, View, ViewId,
 };
 use dap::StackFrame;
 use helix_vcs::DiffProviderRegistry;
@@ -1530,16 +1528,17 @@ impl Editor {
     }
 
     fn replace_document_in_view(&mut self, current_view: ViewId, doc_id: DocumentId) {
+        let scrolloff = self.config().scrolloff;
         let view = self.tree.get_mut(current_view);
-        view.doc = doc_id;
-        view.offset = ViewPosition::default();
 
+        view.doc = doc_id;
         let doc = doc_mut!(self, &doc_id);
+
         doc.ensure_view_init(view.id);
         view.sync_changes(doc);
         doc.mark_as_focused();
 
-        align_view(doc, view, Align::Center);
+        view.ensure_cursor_in_view(doc, scrolloff)
     }
 
     pub fn switch(&mut self, id: DocumentId, action: Action) {
@@ -1899,8 +1898,8 @@ impl Editor {
 
     pub fn ensure_cursor_in_view(&mut self, id: ViewId) {
         let config = self.config();
-        let view = self.tree.get_mut(id);
-        let doc = &self.documents[&view.doc];
+        let view = self.tree.get(id);
+        let doc = doc_mut!(self, &view.doc);
         view.ensure_cursor_in_view(doc, config.scrolloff)
     }
 

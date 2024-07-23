@@ -1587,7 +1587,7 @@ fn tree_sitter_highlight_name(
         // Query the same range as the one used in syntax highlighting.
         let range = {
             // Calculate viewport byte ranges:
-            let row = text.char_to_line(view.offset.anchor.min(text.len_chars()));
+            let row = text.char_to_line(doc.view_offset(view.id).anchor.min(text.len_chars()));
             // Saturating subs to make it inclusive zero indexing.
             let last_line = text.len_lines().saturating_sub(1);
             let height = view.inner_area(doc).height;

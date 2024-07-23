@@ -37,9 +37,12 @@ use helix_core::{
     ChangeSet, Diagnostic, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax, Transaction,
 };
 
-use crate::editor::Config;
-use crate::events::{DocumentDidChange, SelectionDidChange};
-use crate::{DocumentId, Editor, Theme, View, ViewId};
+use crate::{
+    editor::Config,
+    events::{DocumentDidChange, SelectionDidChange},
+    view::ViewPosition,
+    DocumentId, Editor, Theme, View, ViewId,
+};
 
 /// 8kB of buffer space for encoding and decoding `Rope`s.
 const BUF_SIZE: usize = 8192;
@@ -130,6 +133,7 @@ pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
     selections: HashMap<ViewId, Selection>,
+    view_data: HashMap<ViewId, ViewData>,
 
     /// Inlay hints annotations for the document, by view.
     ///
@@ -265,6 +269,7 @@ impl fmt::Debug for Document {
             .field("selections", &self.selections)
             .field("inlay_hints_oudated", &self.inlay_hints_oudated)
             .field("text_annotations", &self.inlay_hints)
+            .field("view_data", &self.view_data)
             .field("path", &self.path)
             .field("encoding", &self.encoding)
             .field("restore_cursor", &self.restore_cursor)
@@ -656,6 +661,7 @@ impl Document {
             selections: HashMap::default(),
             inlay_hints: HashMap::default(),
             inlay_hints_oudated: false,
+            view_data: Default::default(),
             indent_style: DEFAULT_INDENT,
             line_ending,
             restore_cursor: false,
@@ -1184,12 +1190,14 @@ impl Document {
         self.set_selection(view_id, Selection::single(origin.anchor, origin.head));
     }
 
-    /// Initializes a new selection for the given view if it does not
-    /// already have one.
+    /// Initializes a new selection and view_data for the given view
+    /// if it does not already have them.
     pub fn ensure_view_init(&mut self, view_id: ViewId) {
         if self.selections.get(&view_id).is_none() {
             self.reset_selection(view_id);
         }
+
+        self.view_data_mut(view_id);
     }
 
     /// Mark document as recent used for MRU sorting
@@ -1233,6 +1241,12 @@ impl Document {
                     .map(transaction.changes())
                     // Ensure all selections across all views still adhere to invariants.
                     .ensure_invariants(self.text.slice(..));
+            }
+
+            for view_data in self.view_data.values_mut() {
+                view_data.view_position.anchor = transaction
+                    .changes()
+                    .map_pos(view_data.view_position.anchor, Assoc::Before);
             }
 
             // if specified, the current selection should instead be replaced by transaction.selection
@@ -1759,6 +1773,28 @@ impl Document {
         &self.selections
     }
 
+    fn view_data(&self, view_id: ViewId) -> &ViewData {
+        self.view_data
+            .get(&view_id)
+            .expect("This should only be called after ensure_view_init")
+    }
+
+    fn view_data_mut(&mut self, view_id: ViewId) -> &mut ViewData {
+        self.view_data.entry(view_id).or_default()
+    }
+
+    pub(crate) fn get_view_offset(&self, view_id: ViewId) -> Option<ViewPosition> {
+        Some(self.view_data.get(&view_id)?.view_position)
+    }
+
+    pub fn view_offset(&self, view_id: ViewId) -> ViewPosition {
+        self.view_data(view_id).view_position
+    }
+
+    pub fn set_view_offset(&mut self, view_id: ViewId, new_offset: ViewPosition) {
+        self.view_data_mut(view_id).view_position = new_offset;
+    }
+
     pub fn relative_path(&self) -> Option<Cow<Path>> {
         self.path
             .as_deref()
@@ -2032,6 +2068,11 @@ impl Document {
     pub fn reset_all_inlay_hints(&mut self) {
         self.inlay_hints = Default::default();
     }
+}
+
+#[derive(Debug, Default)]
+pub struct ViewData {
+    view_position: ViewPosition,
 }
 
 #[derive(Clone, Debug)]
