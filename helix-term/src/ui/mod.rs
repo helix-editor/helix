@@ -277,7 +277,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
     picker
 }
 
-pub fn file_browser(root: PathBuf, _config: &helix_view::editor::Config) -> FilePicker {
+pub fn file_browser(root: PathBuf) -> FilePicker {
     let directory_content = directory_content(&root);
 
     let columns = [PickerColumn::new(
@@ -290,7 +290,18 @@ pub fn file_browser(root: PathBuf, _config: &helix_view::editor::Config) -> File
         },
     )];
     let picker = Picker::new(columns, 0, [], root, move |cx, path: &PathBuf, action| {
-        if let Err(e) = cx.editor.open(path, action) {
+        if path.is_dir() {
+            let owned_path = path.clone();
+            let callback = Box::pin(async move {
+                let call: Callback =
+                    Callback::EditorCompositor(Box::new(move |_editor, compositor| {
+                        let picker = file_browser(owned_path);
+                        compositor.push(Box::new(overlay::overlaid(picker)));
+                    }));
+                Ok(call)
+            });
+            cx.jobs.callback(callback);
+        } else if let Err(e) = cx.editor.open(path, action) {
             let err = if let Some(err) = e.source() {
                 format!("{}", err)
             } else {

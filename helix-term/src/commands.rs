@@ -2994,7 +2994,7 @@ fn file_browser(cx: &mut Context) {
             .set_error("Current working directory does not exist");
         return;
     }
-    let picker = ui::file_browser(cwd, &cx.editor.config());
+    let picker = ui::file_browser(cwd);
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
