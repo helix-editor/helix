@@ -1517,5 +1517,22 @@ letters! that is not good grammar. you can fix this.
 
 
 =================================================================
+=              CHAPTER 14.1 RUN SHELL COMMANDS                  =
+=================================================================
+
+ Shell commands can be run from within helix using the command
+ :run-shell-command , also aliased as :sh . This will execute the
+ command in the parent terminal, and print the output in a new
+ popup.
+
+ For example, on a linux system, type :sh date to show the date
+ in a new popup.
+
+ git status
+=================================================================
+=          CHAPTER 14.2 INSERT SHELL COMMAND OUTPUT             =
+=================================================================
+
+=================================================================
  This tutorial is still a work-in-progress.
  More sections are planned.
