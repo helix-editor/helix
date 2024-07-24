@@ -3073,7 +3073,7 @@ source = { git = "https://github.com/lefp/tree-sitter-opencl", rev = "8e1d24a570
 [[language]]
 name = "just"
 scope = "source.just"
-file-types = [{ glob = "justfile" }, { glob = "Justfile" }, { glob = ".justfile" }, { glob = ".Justfile" }]
+file-types = ["just", { glob = "justfile" }, { glob = "Justfile" }, { glob = ".justfile" }, { glob = ".Justfile" }]
 injection-regex = "just"
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
