@@ -1525,14 +1525,40 @@ letters! that is not good grammar. you can fix this.
  command in the parent terminal, and print the output in a new
  popup.
 
- For example, on a linux system, type :sh date to show the date
- in a new popup.
+ For example, on a linux system, type in helix
+     :sh date
+ to show the date in a new popup. Use ESC to remove the popup.
 
- git status
+ Commands performing side effects work. For example,
+ type
+     :sh touch hello.txt
+ to create a file hello.txt at the location from which helix was
+ opened initially.
+
 =================================================================
 =          CHAPTER 14.2 INSERT SHELL COMMAND OUTPUT             =
 =================================================================
 
+ The :insert-output command inserts a shell command output before
+ each active selection. Similary, the :append-output appends a
+ shell command output after each active selection.
+
+ Go the the next line starting with -->, move to the space
+ character at the end of the line, and enter
+     :append-output date
+ to append the date at the end of the line.
+
+ --> insert date at the end of line: 
+
+ The :insert-output command is aliased as ! in normal mode. Move
+ to the end of the next line starting with --> , and type !date
+ to append the date at the end of the line.
+
+ --> insert date at the end of line: 
+
+=================================================================
+=          CHAPTER 14.3 INSERT SHELL COMMAND OUTPUT             =
+=================================================================
 =================================================================
  This tutorial is still a work-in-progress.
  More sections are planned.
