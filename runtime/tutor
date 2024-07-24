@@ -997,12 +997,12 @@ lines.
  of 2 highlighted characters to jump to the corresponding label,
  or use ESC to drop the labels.
 
- The 2-character labels allow to quickly jump to any location
+ The 2-character labels allow you to quickly jump to any location
  in the viewable selection.
 
  1. Move the cursor to the start of the line marked '-->' below.
  2. Press gw to enable the 2-character labels, and then the two
-    characters that replace the two leters he at the start of
+    characters that replace the two letters he at the start of
     here to jump to the corresponding word.
 
  --> This is just a simple line of text.
@@ -1023,8 +1023,8 @@ lines.
    * Press Ctrl-i and Ctrl-o to go forward and backward in the
      jumplist.
 
- * Type gw to enable 2-characters labels, and any 2 characters
-   to jump to the corresponding label, or ESC to drop the labels.
+ * Type gw to enable 2-character labels, and any 2 characters to
+   jump to the corresponding label, or ESC to drop the labels.
 
 
 
