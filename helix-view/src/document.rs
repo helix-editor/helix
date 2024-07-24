@@ -1222,34 +1222,12 @@ impl Document {
         use helix_core::Assoc;
 
         let old_doc = self.text().clone();
+        let changes = transaction.changes();
+        if !changes.apply(&mut self.text) {
+            return false;
+        }
 
-        let success = transaction.changes().apply(&mut self.text);
-
-        if success {
-            if emit_lsp_notification {
-                helix_event::dispatch(DocumentDidChange {
-                    doc: self,
-                    view: view_id,
-                    old_text: &old_doc,
-                });
-            }
-
-            for selection in self.selections.values_mut() {
-                *selection = selection
-                    .clone()
-                    // Map through changes
-                    .map(transaction.changes())
-                    // Ensure all selections across all views still adhere to invariants.
-                    .ensure_invariants(self.text.slice(..));
-            }
-
-            for view_data in self.view_data.values_mut() {
-                view_data.view_position.anchor = transaction
-                    .changes()
-                    .map_pos(view_data.view_position.anchor, Assoc::Before);
-            }
-
-            // if specified, the current selection should instead be replaced by transaction.selection
+        if changes.is_empty() {
             if let Some(selection) = transaction.selection() {
                 self.selections.insert(
                     view_id,
@@ -1260,129 +1238,160 @@ impl Document {
                     view: view_id,
                 });
             }
-
-            self.modified_since_accessed = true;
+            return true;
         }
 
-        if !transaction.changes().is_empty() {
-            self.version += 1;
-            // start computing the diff in parallel
-            if let Some(diff_handle) = &self.diff_handle {
-                diff_handle.update_document(self.text.clone(), false);
-            }
+        self.modified_since_accessed = true;
+        self.version += 1;
 
-            // generate revert to savepoint
-            if !self.savepoints.is_empty() {
-                let revert = transaction.invert(&old_doc);
-                self.savepoints
-                    .retain_mut(|save_point| match save_point.upgrade() {
-                        Some(savepoint) => {
-                            let mut revert_to_savepoint = savepoint.revert.lock();
-                            *revert_to_savepoint =
-                                revert.clone().compose(mem::take(&mut revert_to_savepoint));
-                            true
-                        }
-                        None => false,
-                    })
-            }
+        for selection in self.selections.values_mut() {
+            *selection = selection
+                .clone()
+                // Map through changes
+                .map(transaction.changes())
+                // Ensure all selections across all views still adhere to invariants.
+                .ensure_invariants(self.text.slice(..));
+        }
 
-            // update tree-sitter syntax tree
-            if let Some(syntax) = &mut self.syntax {
-                // TODO: no unwrap
-                let res = syntax.update(
-                    old_doc.slice(..),
-                    self.text.slice(..),
-                    transaction.changes(),
-                );
-                if res.is_err() {
-                    log::error!("TS parser failed, disabling TS for the current buffer: {res:?}");
-                    self.syntax = None;
-                }
-            }
+        for view_data in self.view_data.values_mut() {
+            view_data.view_position.anchor = transaction
+                .changes()
+                .map_pos(view_data.view_position.anchor, Assoc::Before);
+        }
 
-            let changes = transaction.changes();
-
-            // map diagnostics over changes too
-            changes.update_positions(self.diagnostics.iter_mut().map(|diagnostic| {
-                let assoc = if diagnostic.starts_at_word {
-                    Assoc::BeforeWord
-                } else {
-                    Assoc::After
-                };
-                (&mut diagnostic.range.start, assoc)
-            }));
-            changes.update_positions(self.diagnostics.iter_mut().filter_map(|diagnostic| {
-                if diagnostic.zero_width {
-                    // for zero width diagnostics treat the diagnostic as a point
-                    // rather than a range
-                    return None;
-                }
-                let assoc = if diagnostic.ends_at_word {
-                    Assoc::AfterWord
-                } else {
-                    Assoc::Before
-                };
-                Some((&mut diagnostic.range.end, assoc))
-            }));
-            self.diagnostics.retain_mut(|diagnostic| {
-                if diagnostic.zero_width {
-                    diagnostic.range.end = diagnostic.range.start
-                } else if diagnostic.range.start >= diagnostic.range.end {
-                    return false;
-                }
-                diagnostic.line = self.text.char_to_line(diagnostic.range.start);
-                true
-            });
-
-            self.diagnostics.sort_by_key(|diagnostic| {
-                (diagnostic.range, diagnostic.severity, diagnostic.provider)
-            });
-
-            // Update the inlay hint annotations' positions, helping ensure they are displayed in the proper place
-            let apply_inlay_hint_changes = |annotations: &mut Vec<InlineAnnotation>| {
-                changes.update_positions(
-                    annotations
-                        .iter_mut()
-                        .map(|annotation| (&mut annotation.char_idx, Assoc::After)),
-                );
-            };
-
-            self.inlay_hints_oudated = true;
-            for text_annotation in self.inlay_hints.values_mut() {
-                let DocumentInlayHints {
-                    id: _,
-                    type_inlay_hints,
-                    parameter_inlay_hints,
-                    other_inlay_hints,
-                    padding_before_inlay_hints,
-                    padding_after_inlay_hints,
-                } = text_annotation;
-
-                apply_inlay_hint_changes(padding_before_inlay_hints);
-                apply_inlay_hint_changes(type_inlay_hints);
-                apply_inlay_hint_changes(parameter_inlay_hints);
-                apply_inlay_hint_changes(other_inlay_hints);
-                apply_inlay_hint_changes(padding_after_inlay_hints);
-            }
-
-            if emit_lsp_notification {
-                // TODO: move to hook
-                // emit lsp notification
-                for language_server in self.language_servers() {
-                    let notify = language_server.text_document_did_change(
-                        self.versioned_identifier(),
-                        &old_doc,
-                        self.text(),
-                        changes,
-                    );
-
-                    if let Some(notify) = notify {
-                        tokio::spawn(notify);
+        // generate revert to savepoint
+        if !self.savepoints.is_empty() {
+            let revert = transaction.invert(&old_doc);
+            self.savepoints
+                .retain_mut(|save_point| match save_point.upgrade() {
+                    Some(savepoint) => {
+                        let mut revert_to_savepoint = savepoint.revert.lock();
+                        *revert_to_savepoint =
+                            revert.clone().compose(mem::take(&mut revert_to_savepoint));
+                        true
                     }
+                    None => false,
+                })
+        }
+
+        // update tree-sitter syntax tree
+        if let Some(syntax) = &mut self.syntax {
+            // TODO: no unwrap
+            let res = syntax.update(
+                old_doc.slice(..),
+                self.text.slice(..),
+                transaction.changes(),
+            );
+            if res.is_err() {
+                log::error!("TS parser failed, disabling TS for the current buffer: {res:?}");
+                self.syntax = None;
+            }
+        }
+
+        // TODO: all of that should likely just be hooks
+        // start computing the diff in parallel
+        if let Some(diff_handle) = &self.diff_handle {
+            diff_handle.update_document(self.text.clone(), false);
+        }
+
+        // map diagnostics over changes too
+        changes.update_positions(self.diagnostics.iter_mut().map(|diagnostic| {
+            let assoc = if diagnostic.starts_at_word {
+                Assoc::BeforeWord
+            } else {
+                Assoc::After
+            };
+            (&mut diagnostic.range.start, assoc)
+        }));
+        changes.update_positions(self.diagnostics.iter_mut().filter_map(|diagnostic| {
+            if diagnostic.zero_width {
+                // for zero width diagnostics treat the diagnostic as a point
+                // rather than a range
+                return None;
+            }
+            let assoc = if diagnostic.ends_at_word {
+                Assoc::AfterWord
+            } else {
+                Assoc::Before
+            };
+            Some((&mut diagnostic.range.end, assoc))
+        }));
+        self.diagnostics.retain_mut(|diagnostic| {
+            if diagnostic.zero_width {
+                diagnostic.range.end = diagnostic.range.start
+            } else if diagnostic.range.start >= diagnostic.range.end {
+                return false;
+            }
+            diagnostic.line = self.text.char_to_line(diagnostic.range.start);
+            true
+        });
+
+        self.diagnostics
+            .sort_by_key(|diagnostic| (diagnostic.range, diagnostic.severity, diagnostic.provider));
+
+        // Update the inlay hint annotations' positions, helping ensure they are displayed in the proper place
+        let apply_inlay_hint_changes = |annotations: &mut Vec<InlineAnnotation>| {
+            changes.update_positions(
+                annotations
+                    .iter_mut()
+                    .map(|annotation| (&mut annotation.char_idx, Assoc::After)),
+            );
+        };
+
+        self.inlay_hints_oudated = true;
+        for text_annotation in self.inlay_hints.values_mut() {
+            let DocumentInlayHints {
+                id: _,
+                type_inlay_hints,
+                parameter_inlay_hints,
+                other_inlay_hints,
+                padding_before_inlay_hints,
+                padding_after_inlay_hints,
+            } = text_annotation;
+
+            apply_inlay_hint_changes(padding_before_inlay_hints);
+            apply_inlay_hint_changes(type_inlay_hints);
+            apply_inlay_hint_changes(parameter_inlay_hints);
+            apply_inlay_hint_changes(other_inlay_hints);
+            apply_inlay_hint_changes(padding_after_inlay_hints);
+        }
+
+        helix_event::dispatch(DocumentDidChange {
+            doc: self,
+            view: view_id,
+            old_text: &old_doc,
+        });
+
+        // if specified, the current selection should instead be replaced by transaction.selection
+        if let Some(selection) = transaction.selection() {
+            self.selections.insert(
+                view_id,
+                selection.clone().ensure_invariants(self.text.slice(..)),
+            );
+            helix_event::dispatch(SelectionDidChange {
+                doc: self,
+                view: view_id,
+            });
+        }
+
+        if emit_lsp_notification {
+            // TODO: move to hook
+            // emit lsp notification
+            for language_server in self.language_servers() {
+                let notify = language_server.text_document_did_change(
+                    self.versioned_identifier(),
+                    &old_doc,
+                    self.text(),
+                    changes,
+                );
+
+                if let Some(notify) = notify {
+                    tokio::spawn(notify);
                 }
             }
         }
-        success
+
+        true
     }
 
     fn apply_inner(
