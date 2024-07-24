@@ -284,10 +284,8 @@ pub mod util {
         if replace_mode {
             end += text
                 .chars_at(cursor)
-                .skip(1)
                 .take_while(|ch| chars::char_is_word(*ch))
-                .count()
-                + 1;
+                .count();
         }
         (start, end)
     }
