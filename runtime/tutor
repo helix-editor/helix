@@ -1557,8 +1557,29 @@ letters! that is not good grammar. you can fix this.
  --> insert date at the end of line: 
 
 =================================================================
-=          CHAPTER 14.3 INSERT SHELL COMMAND OUTPUT             =
+=          CHAPTER 14.3 PIPE INPUT TO SHELL COMMAND             =
 =================================================================
+
+ The :pipe-to command is used to pipe the current selection(s)
+ as argument(s) to a shell command. This can be useful e.g.
+ for scripting. If you have a Linux like system with spd-say
+ text-to-speech installed, move to the line starting by -->,
+ select the text on the line, and enter
+     :pipe-to spd-say
+ to read out loud the text.
+
+ The :pipe command is used to provide the selection(s) as
+ argument(s) to a shell command, and then replace these with
+ the output of the command. This can be used to apply external
+ commands to modify text in helix.
+
+ On a linux system with jq installed, move to the line starting
+ with a { , select the whole line content, and enter
+     :pipe jq 
+ to replace the line with its jq-formatted version.
+
+ {"field1": "f1", "field2": {"part1":"f21", "part2": "f22"}}
+
 =================================================================
  This tutorial is still a work-in-progress.
  More sections are planned.
