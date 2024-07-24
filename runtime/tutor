@@ -1535,6 +1535,9 @@ letters! that is not good grammar. you can fix this.
  to create a file hello.txt at the location from which helix was
  opened initially.
 
+
+
+
 =================================================================
 =          CHAPTER 14.2 INSERT SHELL COMMAND OUTPUT             =
 =================================================================
@@ -1552,33 +1555,66 @@ letters! that is not good grammar. you can fix this.
 
  The :insert-output command is aliased as ! in normal mode. Move
  to the end of the next line starting with --> , and type !date
- to append the date at the end of the line.
+ to insert the date at the end of the line.
 
  --> insert date at the end of line: 
+
+ Similarly, the :append-output is aliased as Alt-! .
 
 =================================================================
 =          CHAPTER 14.3 PIPE INPUT TO SHELL COMMAND             =
 =================================================================
 
  The :pipe-to command is used to pipe the current selection(s)
- as argument(s) to a shell command. This can be useful e.g.
- for scripting. If you have a Linux like system with spd-say
- text-to-speech installed, move to the line starting by -->,
- select the text on the line, and enter
-     :pipe-to spd-say
+ to a shell command, as would be done by
+     echo "<selection contents>" | <command>
+ This can be useful e.g. for scripting. If you have a Linux like
+ system with spd-say text-to-speech installed, move to the line
+ starting by -->, select the text on the line, and enter
+     :pipe-to spd-say -e
  to read out loud the text.
 
- The :pipe command is used to provide the selection(s) as
- argument(s) to a shell command, and then replace these with
- the output of the command. This can be used to apply external
+ --> hello world
+
+ The :pipe command is used to pipe the selection(s) to a shell
+ command, and then replace the selection(s) with the output of
+ the command. This can be used for example to apply external
  commands to modify text in helix.
 
  On a linux system with jq installed, move to the line starting
- with a { , select the whole line content, and enter
+ with a { , select the whole line content pressing x, and enter
      :pipe jq 
  to replace the line with its jq-formatted version.
 
  {"field1": "f1", "field2": {"part1":"f21", "part2": "f22"}}
+
+ The :pipe command is aliased as | , and pipe-to as Alt-| .
+ Select the line starting with { below with x, and type |jq to
+ format it.
+ 
+ {"field1": "f1", "field2": {"part1":"f21", "part2": "f22"}}
+
+=================================================================
+=                     CHAPTER 14.3 RECAP                        =
+=================================================================
+
+ * Shell commands can be run from helix, showing output in a
+ popup, with :sh .
+
+ * Shell commands can be run from helix and their output inserted
+ (resp. appended) using :insert-output (resp :append-output),
+ also aliased as Alt-! (resp !)
+
+ * Selections can be piped to a shell command and their output 
+ can overwrite the commmand (resp. be discarded) using :pipe
+ (resp. :pipe-to), also aliased as | (resp. Alt-| ). Remember
+ that this is piping the selection(s), not providing as
+ arguments.
+
+
+
+
+
 
 =================================================================
  This tutorial is still a work-in-progress.
