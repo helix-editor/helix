@@ -223,6 +223,9 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
     module.register_fn("cx->current-file", current_path);
     template_function_arity_1("cx->current-file");
 
+    module.register_fn("enqueue-expression-in-engine", run_expression_in_engine);
+    template_function_arity_1("enqueue-expression-in-engine");
+
     let mut template_function_arity_0 = |name: &str| {
         if generate_sources {
             builtin_static_command_module.push_str(&format!(
@@ -2217,6 +2220,58 @@ fn get_selection(cx: &mut Context) -> String {
     });
 
     printable
+}
+
+pub fn run_expression_in_engine(cx: &mut Context, text: String) -> anyhow::Result<()> {
+    let callback = async move {
+        let call: Box<dyn FnOnce(&mut Editor, &mut Compositor, &mut job::Jobs)> = Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor, jobs: &mut job::Jobs| {
+                let mut ctx = Context {
+                    register: None,
+                    count: None,
+                    editor,
+                    callback: Vec::new(),
+                    on_next_key_callback: None,
+                    jobs,
+                };
+
+                let output = ENGINE.with(|x| {
+                    let mut guard = x.borrow_mut();
+
+                    guard
+                        .with_mut_reference::<Context, Context>(&mut ctx)
+                        .consume(move |engine, args| {
+                            let context = args[0].clone();
+                            engine.update_value("*helix.cx*", context);
+
+                            engine.compile_and_run_raw_program(text.clone())
+                        })
+                });
+
+                match output {
+                    Ok(output) => {
+                        let (output, _success) = (Tendril::from(format!("{:?}", output)), true);
+
+                        let contents = ui::Markdown::new(
+                            format!("```\n{}\n```", output),
+                            editor.syn_loader.clone(),
+                        );
+                        let popup = Popup::new("engine", contents).position(Some(
+                            helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
+                        ));
+                        compositor.replace_or_push("engine", popup);
+                    }
+                    Err(e) => ENGINE.with(|x| {
+                        present_error_inside_engine_context(&mut ctx, &mut x.borrow_mut(), e)
+                    }),
+                }
+            },
+        );
+        Ok(call)
+    };
+    cx.jobs.local_callback(callback);
+
+    Ok(())
 }
 
 pub fn load_buffer(cx: &mut Context) -> anyhow::Result<()> {
