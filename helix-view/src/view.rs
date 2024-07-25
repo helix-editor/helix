@@ -250,6 +250,15 @@ impl View {
                 scrolloff.min(viewport.height as usize / 2),
             )
         };
+        let (scrolloff_left, scrolloff_right) = if CENTERING {
+            (0, 0)
+        } else {
+            (
+                // - 1 from the top so we have at least one gap in the middle.
+                scrolloff.min(viewport.width.saturating_sub(1) as usize / 2),
+                scrolloff.min(viewport.width as usize / 2),
+            )
+        };
 
         let cursor = doc.selection(self.id).primary().cursor(doc_text);
         let mut offset = view_offset;
@@ -307,15 +316,12 @@ impl View {
                 .col;
 
             let last_col = offset.horizontal_offset + viewport.width.saturating_sub(1) as usize;
-            // TODO scrolloff_top and *_bottom are incorrect for horizontal scrolloff.
-            // With high enough scrolloff values, the view will violently shake horizontally
-            // when moving the cursor horizontally.
-            if col > last_col.saturating_sub(scrolloff_bottom) {
+            if col > last_col.saturating_sub(scrolloff_right) {
                 // scroll right
-                offset.horizontal_offset += col - (last_col.saturating_sub(scrolloff_bottom))
-            } else if col < offset.horizontal_offset + scrolloff_top {
+                offset.horizontal_offset += col - (last_col.saturating_sub(scrolloff_right))
+            } else if col < offset.horizontal_offset + scrolloff_left {
                 // scroll left
-                offset.horizontal_offset = col.saturating_sub(scrolloff_top)
+                offset.horizontal_offset = col.saturating_sub(scrolloff_left)
             };
         }
 
