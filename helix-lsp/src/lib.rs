@@ -735,6 +735,11 @@ impl Registry {
             .iter()
             .filter_map(|LanguageServerFeatures { name, .. }| {
                 if let Some(old_clients) = self.inner_by_name.remove(name) {
+                    if old_clients.is_empty() {
+                        log::info!("restarting client for '{name}' which was manually stopped");
+                    } else {
+                        log::info!("stopping existing clients for '{name}'");
+                    }
                     for old_client in old_clients {
                         self.file_event_handler.remove_client(old_client.id());
                         self.inner.remove(old_client.id());
@@ -763,8 +768,13 @@ impl Registry {
     }
 
     pub fn stop(&mut self, name: &str) {
-        if let Some(clients) = self.inner_by_name.remove(name) {
-            for client in clients {
+        if let Some(clients) = self.inner_by_name.get_mut(name) {
+            // Drain the clients vec so that the entry in `inner_by_name` remains
+            // empty. We use the empty vec as a "tombstone" to mean that a server
+            // has been manually stopped with :lsp-stop and shouldn't be automatically
+            // restarted by `get`. :lsp-restart can be used to restart the server
+            // manually.
+            for client in clients.drain(..) {
                 self.file_event_handler.remove_client(client.id());
                 self.inner.remove(client.id());
                 tokio::spawn(async move {
@@ -784,6 +794,14 @@ impl Registry {
         language_config.language_servers.iter().filter_map(
             move |LanguageServerFeatures { name, .. }| {
                 if let Some(clients) = self.inner_by_name.get(name) {
+                    // If the clients vec is empty, do not automatically start a client
+                    // for this server. The empty vec is a tombstone left to mean that a
+                    // server has been manually stopped and shouldn't be started automatically.
+                    // See `stop`.
+                    if clients.is_empty() {
+                        return None;
+                    }
+
                     if let Some((_, client)) = clients.iter().enumerate().find(|(i, client)| {
                         client.try_add_doc(&language_config.roots, root_dirs, doc_path, *i == 0)
                     }) {
