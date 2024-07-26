@@ -254,7 +254,7 @@ impl View {
             (0, 0)
         } else {
             (
-                // - 1 from the top so we have at least one gap in the middle.
+                // - 1 from the left so we have at least one gap in the middle.
                 scrolloff.min(viewport.width.saturating_sub(1) as usize / 2),
                 scrolloff.min(viewport.width as usize / 2),
             )
