@@ -1,7 +1,13 @@
 [package]
-name = "lsp-types"
+name = "helix-lsp-types"
 version = "0.95.1"
-authors = ["Markus Westerlind <marwes91@gmail.com>", "Bruno Medeiros <bruno.do.medeiros@gmail.com>"]
+authors = [
+  # Original authors
+  "Markus Westerlind <marwes91@gmail.com>",
+  "Bruno Medeiros <bruno.do.medeiros@gmail.com>",
+  # Since forking
+  "Helix contributors"
+]
 edition = "2018"
 description = "Types for interaction with a language server, using VSCode's Language Server Protocol"
 
