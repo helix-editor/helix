@@ -677,7 +677,7 @@ async fn test_hardlink_write() -> anyhow::Result<()> {
         LineFeedHandling::Native.apply("the gostak distims the doshes"),
         file_content
     );
-    assert!(helix_stdx::hardlink_count(&hardlink_path)? > 1);
+    assert!(helix_stdx::faccess::hardlink_count(&hardlink_path)? > 1);
     assert!(same_file::is_same_file(file.path(), &hardlink_path)?);
 
     Ok(())

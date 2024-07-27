@@ -76,7 +76,6 @@ mod imp {
     }
 
     pub fn hardlink_count(p: &Path) -> std::io::Result<u64> {
-        use std::os::unix::fs::MetadataExt;
         let metadata = p.metadata()?;
         Ok(metadata.nlink())
     }
@@ -100,8 +99,8 @@ mod imp {
         SID_IDENTIFIER_AUTHORITY, TOKEN_DUPLICATE, TOKEN_QUERY,
     };
     use windows_sys::Win32::Storage::FileSystem::{
-        FILE_ACCESS_RIGHTS, FILE_ALL_ACCESS, FILE_GENERIC_EXECUTE, FILE_GENERIC_READ,
-        FILE_GENERIC_WRITE,
+        GetFileInformationByHandle, BY_HANDLE_FILE_INFORMATION, FILE_ACCESS_RIGHTS,
+        FILE_ALL_ACCESS, FILE_GENERIC_EXECUTE, FILE_GENERIC_READ, FILE_GENERIC_WRITE,
     };
     use windows_sys::Win32::System::Threading::{GetCurrentThread, OpenThreadToken};
 
@@ -109,7 +108,7 @@ mod imp {
 
     use std::ffi::c_void;
 
-    use std::os::windows::{ffi::OsStrExt, fs::OpenOptionsExt};
+    use std::os::windows::{ffi::OsStrExt, fs::OpenOptionsExt, io::AsRawHandle};
 
     struct SecurityDescriptor {
         sd: PSECURITY_DESCRIPTOR,
@@ -419,11 +418,6 @@ mod imp {
     }
 
     pub fn hardlink_count(p: &Path) -> std::io::Result<u64> {
-        use std::os::windows::io::AsRawHandle;
-        use windows_sys::Win32::Storage::FileSystem::{
-            GetFileInformationByHandle, BY_HANDLE_FILE_INFORMATION,
-        };
-
         let file = std::fs::File::open(p)?;
         let handle = file.as_raw_handle() as isize;
         let mut info: BY_HANDLE_FILE_INFORMATION = unsafe { std::mem::zeroed() };

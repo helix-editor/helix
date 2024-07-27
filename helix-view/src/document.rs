@@ -934,9 +934,9 @@ impl Document {
                 ));
             }
 
-            // Effectively ignores hardlink check if the metadata cant be read (e.g. on certain Windows configurations)
-            let is_hardlink = helix_stdx::faccess::hardlink_count(&write_path).unwrap_or(1) > 1;
-            let backup = if path.exists() && !is_hardlink {
+            // Assume it is a hardlink to prevent data loss if the metadata cant be read (e.g. on certain Windows configurations)
+            let is_hardlink = helix_stdx::faccess::hardlink_count(&write_path).unwrap_or(2) > 1;
+            let backup = if path.exists() {
                 let path_ = write_path.clone();
                 // hacks: we use tempfile to handle the complex task of creating
                 // non clobbered temporary path for us we don't want
@@ -944,14 +944,22 @@ impl Document {
                 // since the path doesn't exist yet, we just want
                 // the path
                 tokio::task::spawn_blocking(move || -> Option<PathBuf> {
-                    tempfile::Builder::new()
-                        .prefix(path_.file_name()?)
-                        .suffix(".bck")
-                        .make_in(path_.parent()?, |backup| std::fs::rename(&path_, backup))
-                        .ok()?
-                        .into_temp_path()
-                        .keep()
-                        .ok()
+                    let mut builder = tempfile::Builder::new();
+                    builder.prefix(path_.file_name()?).suffix(".bck");
+
+                    let backup_path = if is_hardlink {
+                        builder
+                            .make_in(path_.parent()?, |backup| std::fs::copy(&path_, backup))
+                            .ok()?
+                            .into_temp_path()
+                    } else {
+                        builder
+                            .make_in(path_.parent()?, |backup| std::fs::rename(&path_, backup))
+                            .ok()?
+                            .into_temp_path()
+                    };
+
+                    backup_path.keep().ok()
                 })
                 .await
                 .ok()
@@ -969,7 +977,19 @@ impl Document {
             .await;
 
             if let Some(backup) = backup {
-                if write_result.is_err() {
+                if is_hardlink {
+                    if write_result.is_err() {
+                        // Restore backup
+                        let _ = tokio::fs::copy(backup, &write_path).await.map_err(|e| {
+                            log::error!("Failed to restore backup on write failure: {e}")
+                        });
+                    } else {
+                        // Delete backup
+                        let _ = tokio::fs::remove_file(backup)
+                            .await
+                            .map_err(|e| log::error!("Failed to remove backup file on write: {e}"));
+                    }
+                } else if write_result.is_err() {
                     // restore backup
                     let _ = tokio::fs::rename(&backup, &write_path)
                         .await
