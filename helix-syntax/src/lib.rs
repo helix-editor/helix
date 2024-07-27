@@ -1,211 +1,32 @@
 use ::ropey::RopeSlice;
-use ::tree_sitter::{Node, Parser, Point, Query, QueryCursor, Range, Tree};
-use slotmap::HopSlotMap;
+use slotmap::{new_key_type, HopSlotMap};
 
 use std::borrow::Cow;
-use std::cell::RefCell;
 use std::hash::{Hash, Hasher};
 use std::path::Path;
 use std::str;
 use std::sync::Arc;
 
-use crate::injections_tree::LayerId;
 use crate::parse::LayerUpdateFlags;
 
 pub use crate::config::{read_query, HighlightConfiguration};
-pub use crate::ropey::RopeProvider;
-pub use merge::merge;
+use crate::tree_sitter::{SyntaxTree, SyntaxTreeNode};
 pub use pretty_print::pretty_print_tree;
 pub use tree_cursor::TreeCursor;
 
 mod config;
 pub mod highlighter;
-mod injections_tree;
-mod merge;
+pub mod highlighter2;
 mod parse;
 mod pretty_print;
-mod ropey;
+mod query_iter;
+pub mod text_object;
 mod tree_cursor;
 pub mod tree_sitter;
 
-#[derive(Debug)]
-pub struct Syntax {
-    layers: HopSlotMap<LayerId, LanguageLayer>,
-    root: LayerId,
-}
-
-impl Syntax {
-    pub fn new(
-        source: RopeSlice,
-        config: Arc<HighlightConfiguration>,
-        injection_callback: impl Fn(&InjectionLanguageMarker) -> Option<Arc<HighlightConfiguration>>,
-    ) -> Option<Self> {
-        let root_layer = LanguageLayer {
-            tree: None,
-            config,
-            depth: 0,
-            flags: LayerUpdateFlags::empty(),
-            ranges: vec![Range {
-                start_byte: 0,
-                end_byte: usize::MAX,
-                start_point: Point::new(0, 0),
-                end_point: Point::new(usize::MAX, usize::MAX),
-            }],
-            parent: None,
-        };
-
-        // track scope_descriptor: a Vec of scopes for item in tree
-
-        let mut layers = HopSlotMap::default();
-        let root = layers.insert(root_layer);
-
-        let mut syntax = Self { root, layers };
-
-        let res = syntax.update(source, Vec::new(), injection_callback);
-
-        if res.is_err() {
-            log::error!("TS parser failed, disabling TS for the current buffer: {res:?}");
-            return None;
-        }
-        Some(syntax)
-    }
-
-    pub fn tree(&self) -> &Tree {
-        self.layers[self.root].tree()
-    }
-
-    pub fn tree_for_byte_range(&self, start: usize, end: usize) -> &Tree {
-        let mut container_id = self.root;
-
-        for (layer_id, layer) in self.layers.iter() {
-            if layer.depth > self.layers[container_id].depth
-                && layer.contains_byte_range(start, end)
-            {
-                container_id = layer_id;
-            }
-        }
-
-        self.layers[container_id].tree()
-    }
-
-    pub fn named_descendant_for_byte_range(&self, start: usize, end: usize) -> Option<Node<'_>> {
-        self.tree_for_byte_range(start, end)
-            .root_node()
-            .named_descendant_for_byte_range(start, end)
-    }
-
-    pub fn descendant_for_byte_range(&self, start: usize, end: usize) -> Option<Node<'_>> {
-        self.tree_for_byte_range(start, end)
-            .root_node()
-            .descendant_for_byte_range(start, end)
-    }
-
-    pub fn walk(&self) -> TreeCursor<'_> {
-        TreeCursor::new(&self.layers, self.root)
-    }
-}
-
-#[derive(Debug)]
-pub struct LanguageLayer {
-    // mode
-    // grammar
-    pub config: Arc<HighlightConfiguration>,
-    pub(crate) tree: Option<Tree>,
-    pub ranges: Vec<Range>,
-    pub depth: u32,
-    flags: LayerUpdateFlags,
-    parent: Option<LayerId>,
-}
-
-/// This PartialEq implementation only checks if that
-/// two layers are theoretically identical (meaning they highlight the same text range with the same language).
-/// It does not check whether the layers have the same internal treesitter
-/// state.
-impl PartialEq for LanguageLayer {
-    fn eq(&self, other: &Self) -> bool {
-        self.depth == other.depth
-            && self.config.language == other.config.language
-            && self.ranges == other.ranges
-    }
-}
-
-/// Hash implementation belongs to PartialEq implementation above.
-/// See its documentation for details.
-impl Hash for LanguageLayer {
-    fn hash<H: Hasher>(&self, state: &mut H) {
-        self.depth.hash(state);
-        self.config.language.hash(state);
-        self.ranges.hash(state);
-    }
-}
-
-impl LanguageLayer {
-    pub fn tree(&self) -> &Tree {
-        // TODO: no unwrap
-        self.tree.as_ref().unwrap()
-    }
-
-    /// Whether the layer contains the given byte range.
-    ///
-    /// If the layer has multiple ranges (i.e. combined injections), the
-    /// given range is considered contained if it is within the start and
-    /// end bytes of the first and last ranges **and** if the given range
-    /// starts or ends within any of the layer's ranges.
-    fn contains_byte_range(&self, start: usize, end: usize) -> bool {
-        let layer_start = self
-            .ranges
-            .first()
-            .expect("ranges should not be empty")
-            .start_byte;
-        let layer_end = self
-            .ranges
-            .last()
-            .expect("ranges should not be empty")
-            .end_byte;
-
-        layer_start <= start
-            && layer_end >= end
-            && self.ranges.iter().any(|range| {
-                let byte_range = range.start_byte..range.end_byte;
-                byte_range.contains(&start) || byte_range.contains(&end)
-            })
-    }
-}
-
-#[derive(Debug, Clone)]
-pub enum InjectionLanguageMarker<'a> {
-    Name(Cow<'a, str>),
-    Filename(Cow<'a, Path>),
-    Shebang(String),
-}
-
-const SHEBANG: &str = r"#!\s*(?:\S*[/\\](?:env\s+(?:\-\S+\s+)*)?)?([^\s\.\d]+)";
-
-#[derive(Debug)]
-pub enum CapturedNode<'a> {
-    Single(Node<'a>),
-    /// Guaranteed to be not empty
-    Grouped(Vec<Node<'a>>),
-}
-
-impl<'a> CapturedNode<'a> {
-    pub fn start_byte(&self) -> usize {
-        match self {
-            Self::Single(n) => n.start_byte(),
-            Self::Grouped(ns) => ns[0].start_byte(),
-        }
-    }
-
-    pub fn end_byte(&self) -> usize {
-        match self {
-            Self::Single(n) => n.end_byte(),
-            Self::Grouped(ns) => ns.last().unwrap().end_byte(),
-        }
-    }
-
-    pub fn byte_range(&self) -> std::ops::Range<usize> {
-        self.start_byte()..self.end_byte()
-    }
+new_key_type! {
+    /// The default slot map key type.
+    pub struct LayerId;
 }
 
 /// The maximum number of in-progress matches a TS cursor can consider at once.
@@ -226,72 +47,192 @@ impl<'a> CapturedNode<'a> {
 /// Neovim chose 64 for this value somewhat arbitrarily (<https://github.com/neovim/neovim/pull/18397>).
 /// 64 is too low for some languages though. In particular, it breaks some highlighting for record fields in Erlang record definitions.
 /// This number can be increased if new syntax highlight breakages are found, as long as the performance penalty is not too high.
-const TREE_SITTER_MATCH_LIMIT: u32 = 256;
+pub const TREE_SITTER_MATCH_LIMIT: u32 = 256;
 
+// TODO(perf): replace std::ops::Range<usize> with helix_stdx::Range<u32> once added
+type Range = std::ops::Range<usize>;
+
+/// The Tree siitter syntax tree for a single language.
+
+/// This is really multipe nested  different syntax trees due to tree sitter
+/// injections. A single syntax tree/parser is called layer. Each layer
+/// is parsed as a single "file" by tree sitter. There can be multiple layers
+/// for the same language. A layer corresponds to one of three things:
+/// * the root layer
+/// * a singular injection limited to a single node in it's parent layer
+/// * Multiple injections (multiple disjoint nodes in parent layer) that are
+/// parsed as tough they are a single uninterrupted file.
+///
+/// An injection always refer to a single node into which another layer is
+/// injected. As injections only correspond to syntax tree nodes injections in
+/// the same layer do not intersect. However, the syntax tree in a an injected
+/// layer can have nodes that intersect with nodes from the parent layer. For
+/// example:
+/// ```
+/// layer2: | Sibling A |      Sibling B (layer3)     | Sibling C |
+/// layer1: | Sibling A (layer2) | Sibling B | Sibling C (layer2) |
+/// ````
+/// In this case Sibling B really spans across a "GAP" in layer2. While the syntax
+/// node can not be split up by tree sitter directly, we can treat Sibling B as two
+/// seperate injections. That is done while parsing/running the query capture. As
+/// a result the injections from a tree. Note that such other queries must account for
+/// such multi injection nodes.
 #[derive(Debug)]
-pub struct TextObjectQuery {
-    pub query: Query,
+pub struct Syntax {
+    layers: HopSlotMap<LayerId, LanguageLayer>,
+    root: LayerId,
 }
 
-impl TextObjectQuery {
-    /// Run the query on the given node and return sub nodes which match given
-    /// capture ("function.inside", "class.around", etc).
-    ///
-    /// Captures may contain multiple nodes by using quantifiers (+, *, etc),
-    /// and support for this is partial and could use improvement.
-    ///
-    /// ```query
-    /// (comment)+ @capture
-    ///
-    /// ; OR
-    /// (
-    ///   (comment)*
-    ///   .
-    ///   (function)
-    /// ) @capture
-    /// ```
-    pub fn capture_nodes<'a>(
-        &'a self,
-        capture_name: &str,
-        node: Node<'a>,
-        slice: RopeSlice<'a>,
-        cursor: &'a mut QueryCursor,
-    ) -> Option<impl Iterator<Item = CapturedNode<'a>>> {
-        self.capture_nodes_any(&[capture_name], node, slice, cursor)
+impl Syntax {
+    pub fn new(
+        source: RopeSlice,
+        config: Arc<HighlightConfiguration>,
+        injection_callback: impl Fn(&InjectionLanguageMarker) -> Option<Arc<HighlightConfiguration>>,
+    ) -> Option<Self> {
+        let root_layer = LanguageLayer {
+            parse_tree: None,
+            config,
+            flags: LayerUpdateFlags::empty(),
+            ranges: vec![tree_sitter::Range {
+                start_byte: 0,
+                end_byte: u32::MAX,
+                start_point: tree_sitter::Point { row: 0, col: 0 },
+                end_point: tree_sitter::Point {
+                    row: u32::MAX,
+                    col: u32::MAX,
+                },
+            }]
+            .into_boxed_slice(),
+            injections: Box::new([]),
+            parent: None,
+        };
+
+        // track scope_descriptor: a Vec of scopes for item in tree
+
+        let mut layers = HopSlotMap::default();
+        let root = layers.insert(root_layer);
+
+        let mut syntax = Self { root, layers };
+
+        let res = syntax.update(source, Vec::new(), injection_callback);
+
+        if res.is_err() {
+            log::error!("TS parser failed, disabling TS for the current buffer: {res:?}");
+            return None;
+        }
+        Some(syntax)
     }
 
-    /// Find the first capture that exists out of all given `capture_names`
-    /// and return sub nodes that match this capture.
-    pub fn capture_nodes_any<'a>(
-        &'a self,
-        capture_names: &[&str],
-        node: Node<'a>,
-        slice: RopeSlice<'a>,
-        cursor: &'a mut QueryCursor,
-    ) -> Option<impl Iterator<Item = CapturedNode<'a>>> {
-        let capture_idx = capture_names
-            .iter()
-            .find_map(|cap| self.query.capture_index_for_name(cap))?;
+    pub fn tree(&self) -> &SyntaxTree {
+        self.layers[self.root].tree()
+    }
 
-        cursor.set_match_limit(TREE_SITTER_MATCH_LIMIT);
+    pub fn tree_for_byte_range(&self, start: usize, end: usize) -> &SyntaxTree {
+        let layer = self.layer_for_byte_range(start, end);
+        self.layers[layer].tree()
+    }
 
-        let nodes = cursor
-            .captures(&self.query, node, RopeProvider(slice))
-            .filter_map(move |(mat, _)| {
-                let nodes: Vec<_> = mat
-                    .captures
-                    .iter()
-                    .filter_map(|cap| (cap.index == capture_idx).then_some(cap.node))
-                    .collect();
+    pub fn named_descendant_for_byte_range(
+        &self,
+        start: usize,
+        end: usize,
+    ) -> Option<SyntaxTreeNode<'_>> {
+        self.tree_for_byte_range(start, end)
+            .root_node()
+            .named_descendant_for_byte_range(start, end)
+    }
 
-                if nodes.len() > 1 {
-                    Some(CapturedNode::Grouped(nodes))
-                } else {
-                    nodes.into_iter().map(CapturedNode::Single).next()
-                }
-            });
+    pub fn descendant_for_byte_range(
+        &self,
+        start: usize,
+        end: usize,
+    ) -> Option<SyntaxTreeNode<'_>> {
+        self.tree_for_byte_range(start, end)
+            .root_node()
+            .descendant_for_byte_range(start, end)
+    }
 
-        Some(nodes)
+    pub fn layer_for_byte_range(&self, start: usize, end: usize) -> LayerId {
+        let mut cursor = self.root;
+        loop {
+            let layer = &self.layers[cursor];
+            let Some(start_injection) = layer.injection_at_byte_idx(start) else {
+                break;
+            };
+            let Some(end_injection) = layer.injection_at_byte_idx(end) else {
+                break;
+            };
+            if start_injection.layer == end_injection.layer {
+                cursor = start_injection.layer;
+            } else {
+                break;
+            }
+        }
+        cursor
+    }
+
+    pub fn walk(&self) -> TreeCursor<'_> {
+        TreeCursor::new(&self.layers, self.root)
+    }
+}
+
+#[derive(Debug, Clone)]
+pub(crate) struct Injection {
+    pub byte_range: Range,
+    pub layer: LayerId,
+}
+
+#[derive(Debug)]
+pub struct LanguageLayer {
+    pub config: Arc<HighlightConfiguration>,
+    parse_tree: Option<SyntaxTree>,
+    ranges: Box<[tree_sitter::Range]>,
+    /// a list of **sorted** non-overlapping injection ranges. Note that
+    /// injection ranges are not relative to the start of this layer but the
+    /// start of the root layer
+    injections: Box<[Injection]>,
+    /// internal flags used during parsing to track incremental invalidation
+    flags: LayerUpdateFlags,
+    parent: Option<LayerId>,
+}
+
+/// This PartialEq implementation only checks if that
+/// two layers are theoretically identical (meaning they highlight the same text range with the same language).
+/// It does not check whether the layers have the same internal treesitter
+/// state.
+impl PartialEq for LanguageLayer {
+    fn eq(&self, other: &Self) -> bool {
+        self.parent == other.parent
+            && self.config.grammar == other.config.grammar
+            && self.ranges == other.ranges
+    }
+}
+
+/// Hash implementation belongs to PartialEq implementation above.
+/// See its documentation for details.
+impl Hash for LanguageLayer {
+    fn hash<H: Hasher>(&self, state: &mut H) {
+        self.parent.hash(state);
+        self.config.grammar.hash(state);
+        self.ranges.hash(state);
+    }
+}
+
+impl LanguageLayer {
+    pub fn tree(&self) -> &SyntaxTree {
+        // TODO: no unwrap
+        self.parse_tree.as_ref().unwrap()
+    }
+
+    /// Returns the injection range **within this layers** that contains `idx`.
+    /// This function will not descend into nested injections
+    pub(crate) fn injection_at_byte_idx(&self, idx: usize) -> Option<&Injection> {
+        let i = self
+            .injections
+            .partition_point(|range| range.byte_range.start < idx);
+        self.injections
+            .get(i)
+            .filter(|injection| injection.byte_range.end > idx)
     }
 }
 
@@ -304,42 +245,6 @@ pub enum Error {
     Unknown,
 }
 
-#[derive(Clone)]
-enum IncludedChildren {
-    None,
-    All,
-    Unnamed,
-}
-
-impl Default for IncludedChildren {
-    fn default() -> Self {
-        Self::None
-    }
-}
-
 fn byte_range_to_str(range: std::ops::Range<usize>, source: RopeSlice) -> Cow<str> {
     Cow::from(source.byte_slice(range))
-}
-
-struct TsParser {
-    parser: ::tree_sitter::Parser,
-    pub cursors: Vec<QueryCursor>,
-}
-
-// could also just use a pool, or a single instance?
-thread_local! {
-    static PARSER: RefCell<TsParser> = RefCell::new(TsParser {
-        parser: Parser::new(),
-        cursors: Vec::new(),
-    })
-}
-
-pub fn with_cursor<T>(f: impl FnOnce(&mut QueryCursor) -> T) -> T {
-    PARSER.with(|parser| {
-        let mut parser = parser.borrow_mut();
-        let mut cursor = parser.cursors.pop().unwrap_or_default();
-        let res = f(&mut cursor);
-        parser.cursors.push(cursor);
-        res
-    })
 }

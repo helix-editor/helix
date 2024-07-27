@@ -5,7 +5,9 @@ use std::ptr::NonNull;
 use std::{fmt, slice};
 
 use crate::tree_sitter::query::property::QueryProperty;
-use crate::tree_sitter::query::{Capture, Pattern, PatternData, Query, QueryData, QueryStr};
+use crate::tree_sitter::query::{
+    Capture, Pattern, PatternData, Query, QueryData, QueryStr, UserPredicate,
+};
 use crate::tree_sitter::query_cursor::MatchedNode;
 use crate::tree_sitter::TsInput;
 
@@ -34,6 +36,7 @@ pub(super) enum TextPredicateKind {
     AnyString(Box<[QueryStr]>),
 }
 
+#[derive(Debug)]
 pub(crate) struct TextPredicate {
     capture: Capture,
     kind: TextPredicateKind,
@@ -161,10 +164,9 @@ impl Query {
     pub(super) fn parse_pattern_predicates(
         &mut self,
         pattern: Pattern,
-        mut custom_predicate: impl FnMut(Pattern, Predicate) -> Result<(), InvalidPredicateError>,
+        mut custom_predicate: impl FnMut(Pattern, UserPredicate) -> Result<(), InvalidPredicateError>,
     ) -> Result<PatternData, InvalidPredicateError> {
         let text_predicate_start = self.text_predicates.len() as u32;
-        let property_start = self.properties.len() as u32;
 
         let predicate_steps = unsafe {
             let mut len = 0u32;
@@ -203,7 +205,7 @@ impl Query {
                 "match?" | "not-match?" | "any-match?" | "any-not-match?" => {
                     predicate.check_arg_count(2)?;
                     let capture_idx = predicate.capture_arg(0)?;
-                    let regex = predicate.str_arg(1)?.get(self);
+                    let regex = predicate.query_str_arg(1)?.get(self);
 
                     let negated = matches!(predicate.name(), "not-match?" | "any-not-match?");
                     let match_all = matches!(predicate.name(), "match?" | "not-match?");
@@ -219,14 +221,34 @@ impl Query {
                     });
                 }
 
-                "set!" => self.properties.push(QueryProperty::parse(&predicate)?),
+                "set!" => {
+                    let property = QueryProperty::parse(&predicate)?;
+                    custom_predicate(
+                        pattern,
+                        UserPredicate::SetProperty {
+                            key: property.key.get(&self),
+                            val: property.val.map(|val| val.get(&self)),
+                        },
+                    )?
+                }
+                "is-not?" | "is?" => {
+                    let property = QueryProperty::parse(&predicate)?;
+                    custom_predicate(
+                        pattern,
+                        UserPredicate::IsPropertySet {
+                            negate: predicate.name() == "is-not?",
+                            key: property.key.get(&self),
+                            val: property.val.map(|val| val.get(&self)),
+                        },
+                    )?
+                }
 
                 "any-of?" | "not-any-of?" => {
                     predicate.check_min_arg_count(1)?;
                     let capture = predicate.capture_arg(0)?;
                     let negated = predicate.name() == "not-any-of?";
                     let values: Result<_, InvalidPredicateError> = (1..predicate.num_args())
-                        .map(|i| predicate.str_arg(i))
+                        .map(|i| predicate.query_str_arg(i))
                         .collect();
                     self.text_predicates.push(TextPredicate {
                         capture,
@@ -239,12 +261,11 @@ impl Query {
                 // is and is-not are better handeled as custom predicates since interpreting is context dependent
                 // "is?" => property_predicates.push((QueryProperty::parse(&predicate), false)),
                 // "is-not?" => property_predicates.push((QueryProperty::parse(&predicate), true)),
-                _ => custom_predicate(pattern, predicate)?,
+                _ => custom_predicate(pattern, UserPredicate::Other(predicate))?,
             }
         }
         Ok(PatternData {
             text_predicates: text_predicate_start..self.text_predicates.len() as u32,
-            properties: property_start..self.properties.len() as u32,
         })
     }
 }
@@ -312,7 +333,7 @@ impl<'a> Predicate<'a> {
         Ok(())
     }
 
-    pub fn str_arg(&self, i: usize) -> Result<QueryStr, InvalidPredicateError> {
+    pub fn query_str_arg(&self, i: usize) -> Result<QueryStr, InvalidPredicateError> {
         match self.arg(i) {
             PredicateArg::String(str) => Ok(str),
             PredicateArg::Capture(capture) => bail!(
@@ -321,6 +342,10 @@ impl<'a> Predicate<'a> {
                 capture.name(self.query)
             ),
         }
+    }
+
+    pub fn str_arg(&self, i: usize) -> Result<&str, InvalidPredicateError> {
+        Ok(self.query_str_arg(i)?.get(self.query))
     }
 
     pub fn num_args(&self) -> usize {
@@ -350,6 +375,20 @@ impl<'a> Predicate<'a> {
 #[derive(Debug)]
 pub struct InvalidPredicateError {
     pub(super) msg: Box<str>,
+}
+
+impl From<String> for InvalidPredicateError {
+    fn from(value: String) -> Self {
+        InvalidPredicateError {
+            msg: value.into_boxed_str(),
+        }
+    }
+}
+
+impl<'a> From<&'a str> for InvalidPredicateError {
+    fn from(value: &'a str) -> Self {
+        InvalidPredicateError { msg: value.into() }
+    }
 }
 
 impl fmt::Display for InvalidPredicateError {

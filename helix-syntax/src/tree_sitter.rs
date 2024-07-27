@@ -1,6 +1,6 @@
 mod grammar;
 mod parser;
-mod query;
+pub mod query;
 mod query_cursor;
 mod query_match;
 mod ropey;
@@ -11,21 +11,21 @@ use std::ops;
 
 pub use grammar::Grammar;
 pub use parser::{Parser, ParserInputRaw};
-pub use query::{Capture, ParserErrorLocation, Pattern, Query, QueryStr};
+pub use query::{Capture, Pattern, Query, QueryStr};
 pub use query_cursor::{InactiveQueryCursor, MatchedNode, MatchedNodeIdx, QueryCursor, QueryMatch};
 pub use ropey::RopeTsInput;
 pub use syntax_tree::{InputEdit, SyntaxTree};
 pub use syntax_tree_node::SyntaxTreeNode;
 
 #[repr(C)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Point {
     pub row: u32,
-    pub column: u32,
+    pub col: u32,
 }
 
 #[repr(C)]
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
 pub struct Range {
     pub start_point: Point,
     pub end_point: Point,

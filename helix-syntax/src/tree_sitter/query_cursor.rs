@@ -1,4 +1,5 @@
 use core::slice;
+use std::cell::UnsafeCell;
 use std::marker::PhantomData;
 use std::mem::replace;
 use std::ops::Range;
@@ -9,6 +10,15 @@ use crate::tree_sitter::syntax_tree_node::SyntaxTreeNodeRaw;
 use crate::tree_sitter::{SyntaxTree, SyntaxTreeNode, TsInput};
 
 enum QueryCursorData {}
+
+thread_local! {
+    static CURSOR_CACHE: UnsafeCell<Vec<InactiveQueryCursor>> = UnsafeCell::new(Vec::with_capacity(8));
+}
+
+/// SAFETY: must not call itself recuresively
+unsafe fn with_cache<T>(f: impl FnOnce(&mut Vec<InactiveQueryCursor>) -> T) -> T {
+    CURSOR_CACHE.with(|cache| f(&mut *cache.get()))
+}
 
 pub struct QueryCursor<'a, 'tree, I: TsInput> {
     query: &'a Query,
@@ -115,8 +125,8 @@ impl<I: TsInput> Drop for QueryCursor<'_, '_, I> {
     fn drop(&mut self) {
         // we allow moving the cursor data out so we need the null check here
         // would be cleaner with a subtype but doesn't really matter at the end of the day
-        if !self.ptr.is_null() {
-            unsafe { ts_query_cursor_delete(self.ptr) }
+        if let Some(ptr) = NonNull::new(self.ptr) {
+            unsafe { with_cache(|cache| cache.push(InactiveQueryCursor { ptr })) }
         }
     }
 }
@@ -128,8 +138,12 @@ pub struct InactiveQueryCursor {
 
 impl InactiveQueryCursor {
     pub fn new() -> Self {
-        InactiveQueryCursor {
-            ptr: unsafe { NonNull::new_unchecked(ts_query_cursor_new()) },
+        unsafe {
+            with_cache(|cache| {
+                cache.pop().unwrap_or_else(|| InactiveQueryCursor {
+                    ptr: NonNull::new_unchecked(ts_query_cursor_new()),
+                })
+            })
         }
     }
 
@@ -206,6 +220,16 @@ pub struct QueryMatch<'cursor, 'tree> {
 impl<'tree> QueryMatch<'_, 'tree> {
     pub fn matched_nodes(&self) -> impl Iterator<Item = &MatchedNode<'tree>> {
         self.matched_nodes.iter()
+    }
+
+    pub fn nodes_for_capture(
+        &self,
+        capture: Capture,
+    ) -> impl Iterator<Item = &SyntaxTreeNode<'tree>> {
+        self.matched_nodes
+            .iter()
+            .filter(move |mat| mat.capture == capture)
+            .map(|mat| &mat.syntax_node)
     }
 
     pub fn matched_node(&self, i: MatchedNodeIdx) -> &MatchedNode {

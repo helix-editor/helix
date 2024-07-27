@@ -246,7 +246,7 @@ impl LanguageConfiguration {
         if query_text.is_empty() {
             return None;
         }
-        let lang = &self.highlight_config.get()?.as_ref()?.language;
+        let lang = &self.highlight_config.get()?.as_ref()?.grammar;
         Query::new(lang, &query_text)
             .map_err(|e| {
                 log::error!(

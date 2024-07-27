@@ -5,28 +5,64 @@ use std::ptr::NonNull;
 use std::{slice, str};
 
 use crate::tree_sitter::query::predicate::{InvalidPredicateError, Predicate, TextPredicate};
-use crate::tree_sitter::query::property::QueryProperty;
 use crate::tree_sitter::Grammar;
 
 mod predicate;
 mod property;
 
+pub enum UserPredicate<'a> {
+    IsPropertySet {
+        negate: bool,
+        key: &'a str,
+        val: Option<&'a str>,
+    },
+    SetProperty {
+        key: &'a str,
+        val: Option<&'a str>,
+    },
+    Other(Predicate<'a>),
+}
+
+impl Display for UserPredicate<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match *self {
+            UserPredicate::IsPropertySet { negate, key, val } => {
+                let predicate = if negate { "is-not?" } else { "is?" };
+                write!(f, " ({predicate} {key} {})", val.unwrap_or(""))
+            }
+            UserPredicate::SetProperty { key, val } => {
+                write!(f, "(set! {key} {})", val.unwrap_or(""))
+            }
+            UserPredicate::Other(ref predicate) => {
+                write!(f, "{}", predicate.name())
+            }
+        }
+    }
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Pattern(pub(crate) u32);
 
-pub enum QueryData {}
-
-pub(super) struct PatternData {
-    text_predicates: Range<u32>,
-    properties: Range<u32>,
+impl Pattern {
+    pub const SENTINEL: Pattern = Pattern(u32::MAX);
+    pub fn idx(&self) -> usize {
+        self.0 as usize
+    }
 }
 
+pub enum QueryData {}
+
+#[derive(Debug)]
+pub(super) struct PatternData {
+    text_predicates: Range<u32>,
+}
+
+#[derive(Debug)]
 pub struct Query {
     pub(crate) raw: NonNull<QueryData>,
     num_captures: u32,
     num_strings: u32,
     text_predicates: Vec<TextPredicate>,
-    properties: Vec<QueryProperty>,
     patterns: Box<[PatternData]>,
 }
 
@@ -41,7 +77,7 @@ impl Query {
         grammar: Grammar,
         source: &str,
         path: impl AsRef<Path>,
-        mut custom_predicate: impl FnMut(Pattern, Predicate) -> Result<(), InvalidPredicateError>,
+        mut custom_predicate: impl FnMut(Pattern, UserPredicate) -> Result<(), InvalidPredicateError>,
     ) -> Result<Self, ParseError> {
         assert!(
             source.len() <= i32::MAX as usize,
@@ -136,7 +172,6 @@ impl Query {
             num_captures,
             num_strings,
             text_predicates: Vec::new(),
-            properties: Vec::new(),
             patterns: Box::default(),
         };
         let patterns: Result<_, ParseError> = (0..num_patterns)
@@ -190,14 +225,53 @@ impl Query {
         }
     }
 
-    pub fn pattern_properies(&self, pattern_idx: Pattern) -> &[QueryProperty] {
-        let range = self.patterns[pattern_idx.0 as usize].properties.clone();
-        &self.properties[range.start as usize..range.end as usize]
+    #[inline]
+    pub fn captures(&self) -> impl ExactSizeIterator<Item = (Capture, &str)> {
+        (0..self.num_captures).map(|cap| (Capture(cap), self.capture_name(Capture(cap))))
+    }
+
+    #[inline]
+    pub fn num_captures(&self) -> u32 {
+        self.num_captures
+    }
+
+    #[inline]
+    pub fn get_capture(&self, capture_name: &str) -> Option<Capture> {
+        for capture in 0..self.num_captures {
+            if capture_name == self.capture_name(Capture(capture)) {
+                return Some(Capture(capture));
+            }
+        }
+        None
     }
 
     pub(crate) fn pattern_text_predicates(&self, pattern_idx: u16) -> &[TextPredicate] {
         let range = self.patterns[pattern_idx as usize].text_predicates.clone();
         &self.text_predicates[range.start as usize..range.end as usize]
+    }
+
+    /// Get the byte offset where the given pattern starts in the query's
+    /// source.
+    #[doc(alias = "ts_query_start_byte_for_pattern")]
+    #[must_use]
+    pub fn start_byte_for_pattern(&self, pattern: Pattern) -> usize {
+        assert!(
+            pattern.0 < self.text_predicates.len() as u32,
+            "Pattern index is {pattern_index} but the pattern count is {}",
+            self.text_predicates.len(),
+        );
+        unsafe { ts_query_start_byte_for_pattern(self.raw, pattern.0) as usize }
+    }
+
+    /// Get the number of patterns in the query.
+    #[must_use]
+    pub fn pattern_count(&self) -> usize {
+        unsafe { ts_query_pattern_count(self.raw) as usize }
+    }
+    /// Get the number of patterns in the query.
+    #[must_use]
+    pub fn patterns(&self) -> impl ExactSizeIterator<Item = Pattern> {
+        (0..self.pattern_count() as u32).map(Pattern)
     }
 }
 
@@ -214,6 +288,9 @@ pub struct Capture(u32);
 impl Capture {
     pub fn name(self, query: &Query) -> &str {
         query.capture_name(self)
+    }
+    pub fn idx(self) -> usize {
+        self.0 as usize
     }
 }
 
