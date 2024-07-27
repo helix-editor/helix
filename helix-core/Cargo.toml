@@ -26,7 +26,8 @@ unicode-segmentation = "1.11"
 # unicode-width is changing width definitions
 # that both break our logic and disagree with common
 # width definitions in terminals, we need to replace it.
-# For now lets lock the version to avoid 
+# For now lets lock the version to avoid rendering glitches
+# when installing without `--locked`
 unicode-width = "=0.1.12"
 unicode-general-category = "0.6"
 slotmap.workspace = true
