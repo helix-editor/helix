@@ -935,7 +935,7 @@ impl Document {
             }
 
             // Effectively ignores hardlink check if the metadata cant be read (e.g. on certain Windows configurations)
-            let is_hardlink = helix_stdx::get_hardlink_count(&write_path).unwrap_or(1) > 1;
+            let is_hardlink = helix_stdx::faccess::hardlink_count(&write_path).unwrap_or(1) > 1;
             let backup = if path.exists() && !is_hardlink {
                 let path_ = write_path.clone();
                 // hacks: we use tempfile to handle the complex task of creating
