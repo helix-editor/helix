@@ -1455,6 +1455,7 @@ dependencies = [
  "once_cell",
  "open",
  "pulldown-cmark",
+ "same-file",
  "serde",
  "serde_json",
  "signal-hook",

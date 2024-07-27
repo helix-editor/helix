@@ -678,6 +678,7 @@ async fn test_hardlink_write() -> anyhow::Result<()> {
         file_content
     );
     assert!(helix_stdx::get_hardlink_count(&hardlink_path)? > 1);
+    assert!(same_file::is_same_file(file.path(), &hardlink_path)?);
 
     Ok(())
 }
