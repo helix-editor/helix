@@ -649,6 +649,40 @@ async fn test_symlink_write_relative() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn test_hardlink_write() -> anyhow::Result<()> {
+    let dir = tempfile::tempdir()?;
+
+    let mut file = tempfile::NamedTempFile::new_in(&dir)?;
+    let hardlink_path = dir.path().join("linked");
+    std::fs::hard_link(file.path(), &hardlink_path)?;
+
+    let mut app = helpers::AppBuilder::new()
+        .with_file(&hardlink_path, None)
+        .build()?;
+
+    test_key_sequence(
+        &mut app,
+        Some("ithe gostak distims the doshes<ret><esc>:w<ret>"),
+        None,
+        false,
+    )
+    .await?;
+
+    reload_file(&mut file).unwrap();
+    let mut file_content = String::new();
+    file.as_file_mut().read_to_string(&mut file_content)?;
+
+    assert_eq!(
+        LineFeedHandling::Native.apply("the gostak distims the doshes"),
+        file_content
+    );
+    assert!(helix_stdx::faccess::hardlink_count(&hardlink_path)? > 1);
+    assert!(same_file::is_same_file(file.path(), &hardlink_path)?);
+
+    Ok(())
+}
+
 async fn edit_file_with_content(file_content: &[u8]) -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
 
