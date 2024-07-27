@@ -978,12 +978,16 @@ impl Document {
 
             if let Some(backup) = backup {
                 if is_hardlink {
+                    let mut delete = true;
                     if write_result.is_err() {
                         // Restore backup
-                        let _ = tokio::fs::copy(backup, &write_path).await.map_err(|e| {
+                        let _ = tokio::fs::copy(&backup, &write_path).await.map_err(|e| {
+                            delete = false;
                             log::error!("Failed to restore backup on write failure: {e}")
                         });
-                    } else {
+                    }
+
+                    if delete {
                         // Delete backup
                         let _ = tokio::fs::remove_file(backup)
                             .await
