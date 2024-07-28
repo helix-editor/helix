@@ -217,25 +217,17 @@ impl<T: Component> Popup<T> {
         }
     }
 
-    fn handle_mouse_event(
-        &mut self,
-        &MouseEvent {
-            kind,
-            column: x,
-            row: y,
-            ..
-        }: &MouseEvent,
-    ) -> EventResult {
-        let mouse_is_within_popup = x >= self.area.left()
-            && x < self.area.right()
-            && y >= self.area.top()
-            && y < self.area.bottom();
+    fn handle_mouse_event(&mut self, event: &MouseEvent, cx: &mut Context) -> EventResult {
+        let mouse_is_within_popup = event.column >= self.area.left()
+            && event.column < self.area.right()
+            && event.row >= self.area.top()
+            && event.row < self.area.bottom();
 
         if !mouse_is_within_popup {
             return EventResult::Ignored(None);
         }
 
-        match kind {
+        match event.kind {
             MouseEventKind::ScrollDown if self.has_scrollbar => {
                 self.scroll_half_page_down();
                 EventResult::Consumed(None)
@@ -244,7 +236,7 @@ impl<T: Component> Popup<T> {
                 self.scroll_half_page_up();
                 EventResult::Consumed(None)
             }
-            _ => EventResult::Ignored(None),
+            _ => self.contents.handle_event(&Event::Mouse(*event), cx),
         }
     }
 }
@@ -253,7 +245,7 @@ impl<T: Component> Component for Popup<T> {
     fn handle_event(&mut self, event: &Event, cx: &mut Context) -> EventResult {
         let key = match event {
             Event::Key(event) => *event,
-            Event::Mouse(event) => return self.handle_mouse_event(event),
+            Event::Mouse(mouse_event) => return self.handle_mouse_event(mouse_event, cx),
             Event::Resize(_, _) => {
                 // TODO: calculate inner area, call component's handle_event with that area
                 return EventResult::Ignored(None);
