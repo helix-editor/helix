@@ -1084,17 +1084,13 @@ impl Document {
             Some(path) => match path.metadata() {
                 Ok(metadata) => match metadata.modified() {
                     Ok(mtime) => mtime,
-                    Err(e) => {
-                        log::error!(
-                            "Using system time instead of fs' mtime: not supported on this platform: {e}"
-                        );
+                    Err(err) => {
+                        log::debug!("Could not fetch file system's mtime, falling back to current system time: {}", err);
                         SystemTime::now()
                     }
                 },
-                Err(e) => {
-                    log::error!(
-                        "Using system time instead of fs' mtime: failed to read file's metadata: {e}"
-                    );
+                Err(err) => {
+                    log::debug!("Could not fetch file system's mtime, falling back to current system time: {}", err);
                     SystemTime::now()
                 }
             },
