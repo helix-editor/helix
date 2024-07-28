@@ -238,7 +238,9 @@ pub type LSPArray = Vec<serde_json::Value>;
 
 /// Position in a text document expressed as zero-based line and character offset.
 /// A position is between two characters like an 'insert' cursor in a editor.
-#[derive(Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Default, Deserialize, Serialize, Hash)]
+#[derive(
+    Debug, Eq, PartialEq, Ord, PartialOrd, Copy, Clone, Default, Deserialize, Serialize, Hash,
+)]
 pub struct Position {
     /// Line position in a document (zero-based).
     pub line: u32,
