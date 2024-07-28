@@ -1025,9 +1025,10 @@ impl Loader {
         match capture {
             InjectionLanguageMarker::Name(string) => self.language_config_for_name(string),
             InjectionLanguageMarker::Filename(file) => self.language_config_for_file_name(file),
-            InjectionLanguageMarker::Shebang(shebang) => {
-                self.language_config_for_language_id(shebang)
-            }
+            InjectionLanguageMarker::Shebang(shebang) => self
+                .language_config_ids_by_shebang
+                .get(shebang)
+                .and_then(|&id| self.language_configs.get(id).cloned()),
         }
     }
 

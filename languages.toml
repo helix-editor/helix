@@ -3082,7 +3082,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "just"
-source = { git = "https://github.com/IndianBoy42/tree-sitter-just", rev = "8af0aab79854aaf25b620a52c39485849922f766" }
+source = { git = "https://github.com/IndianBoy42/tree-sitter-just", rev = "379fbe36d1e441bc9414ea050ad0c85c9d6935ea" }
 
 [[language]]
 name = "gn"
