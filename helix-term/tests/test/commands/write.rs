@@ -650,6 +650,7 @@ async fn test_symlink_write_relative() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+#[cfg(not(target_os = "android"))]
 async fn test_hardlink_write() -> anyhow::Result<()> {
     let dir = tempfile::tempdir()?;
 
