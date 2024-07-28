@@ -578,20 +578,26 @@ mod tests {
 
     #[test]
     fn test_tag_support_deserialization() {
-        let mut empty = CompletionItemCapability::default();
-        empty.tag_support = None;
+        let empty = CompletionItemCapability {
+            tag_support: None,
+            ..CompletionItemCapability::default()
+        };
 
         test_deserialization(r#"{}"#, &empty);
         test_deserialization(r#"{"tagSupport": false}"#, &empty);
 
-        let mut t = CompletionItemCapability::default();
-        t.tag_support = Some(TagSupport { value_set: vec![] });
+        let t = CompletionItemCapability {
+            tag_support: Some(TagSupport { value_set: vec![] }),
+            ..CompletionItemCapability::default()
+        };
         test_deserialization(r#"{"tagSupport": true}"#, &t);
 
-        let mut t = CompletionItemCapability::default();
-        t.tag_support = Some(TagSupport {
-            value_set: vec![CompletionItemTag::DEPRECATED],
-        });
+        let t = CompletionItemCapability {
+            tag_support: Some(TagSupport {
+                value_set: vec![CompletionItemTag::DEPRECATED],
+            }),
+            ..CompletionItemCapability::default()
+        };
         test_deserialization(r#"{"tagSupport": {"valueSet": [1]}}"#, &t);
     }
 
