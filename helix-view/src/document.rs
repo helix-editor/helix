@@ -1080,22 +1080,25 @@ impl Document {
     }
 
     pub fn pickup_last_saved_time(&mut self) {
-        self.last_saved_time = match self.path.as_mut().unwrap().metadata() {
-            Ok(metadata) => match metadata.modified() {
-                Ok(mtime) => mtime,
-                Err(_) => {
+        self.last_saved_time = match self.path().as_mut() {
+            Some(path) => match path.metadata() {
+                Ok(metadata) => match metadata.modified() {
+                    Ok(mtime) => mtime,
+                    Err(_) => {
+                        log::error!(
+                            "Use a system time instead of fs' mtime not supported on this platform"
+                        );
+                        SystemTime::now()
+                    }
+                },
+                Err(e) => {
                     log::error!(
-                        "Use a system time instead of fs' mtime not supported on this platform"
+                        "Use a system time instead of fs' mtime: failed to file's metadata: {e}"
                     );
                     SystemTime::now()
                 }
             },
-            Err(e) => {
-                log::error!(
-                    "Use a system time instead of fs' mtime: failed to file's metadata: {e}"
-                );
-                SystemTime::now()
-            }
+            None => SystemTime::now(),
         };
     }
 
