@@ -1360,7 +1360,7 @@ fn compute_inlay_hints_for_view(
 
             // Most language servers will already send them sorted but ensure this is the case to
             // avoid errors on our end.
-            hints.sort_unstable_by_key(|inlay_hint| inlay_hint.position);
+            hints.sort_by_key(|inlay_hint| inlay_hint.position);
 
             let mut padding_before_inlay_hints = Vec::new();
             let mut type_inlay_hints = Vec::new();
