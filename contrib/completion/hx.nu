@@ -4,7 +4,11 @@
 #       so it has not been specified here and will not be proposed in the autocompletion of Nushell.
 #       The help message won't be overriden though, so it will still be present here
 
-def health_categories [] { ["all", "clipboard", "languages"] }
+def health_categories [] {
+    let languages = ^hx --health languages | detect columns | get Language | filter { $in != null }
+    let completions = [ "all", "clipboard", "languages" ] | append $languages
+    return $completions
+}
 
 def grammar_categories [] { ["fetch", "build"] }
 
@@ -12,7 +16,7 @@ def grammar_categories [] { ["fetch", "build"] }
 export extern hx [
     --help(-h),                                 # Prints help information
     --tutor,                                    # Loads the tutorial
-    --health: string@health_categories = "all", # Checks for potential errors in editor setup
+    --health: string@health_categories,         # Checks for potential errors in editor setup
     --grammar(-g): string@grammar_categories,   # Fetches or builds tree-sitter grammars listed in `languages.toml`
     --config(-c): glob,                         # Specifies a file to use for configuration
     -v,                                         # Increases logging verbosity each use for up to 3 times

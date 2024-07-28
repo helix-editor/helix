@@ -1,48 +1,18 @@
-(body) @function.inside
-(recipe) @function.around
-(expression 
-    if:(expression) @function.inside 
-) 
-(expression 
-    else:(expression) @function.inside
-) 
-(interpolation (expression) @function.inside) @function.around
-(settinglist (stringlist) @function.inside) @function.around
+; From <https://github.com/IndianBoy42/tree-sitter-just/blob/6c2f018ab1d90946c0ce029bb2f7d57f56895dff/queries-flavored/helix/textobjects.scm>
+;
+; Specify how to navigate around logical blocks in code
 
-(call (NAME) @class.inside) @class.around
-(dependency (NAME) @class.inside) @class.around
-(depcall (NAME) @class.inside)
+(recipe
+  (recipe_body) @function.inside) @function.around
 
-(dependency) @parameter.around
-(depcall) @parameter.inside
-(depcall (expression) @parameter.inside) 
+(parameters
+  ((_) @parameter.inside . ","? @parameter.around)) @parameter.around
 
-(stringlist 
-    (string) @parameter.inside
-    . ","? @_end
-    ; Commented out since we don't support `#make-range!` at the moment
-    ; (#make-range! "parameter.around" @parameter.inside @_end)
-)
-(parameters 
-    [(parameter) 
-    (variadic_parameters)] @parameter.inside
-    . " "? @_end
-    ; Commented out since we don't support `#make-range!` at the moment
-    ; (#make-range! "parameter.around" @parameter.inside @_end)
-)
+(dependency_expression
+  (_) @parameter.inside) @parameter.around
 
-(expression 
-    (condition) @function.inside
-) @function.around
-(expression 
-    if:(expression) @function.inside 
-)
-(expression 
-    else:(expression) @function.inside
-)
-
-(item [(alias) (assignment) (export) (setting)]) @class.around
-(recipeheader) @class.around
-(line) @class.around
+(function_call
+  arguments: (sequence
+    (expression) @parameter.inside) @parameter.around) @function.around
 
 (comment) @comment.around
