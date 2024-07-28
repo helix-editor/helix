@@ -5,7 +5,6 @@ use helix_core::NATIVE_LINE_ENDING;
 
 use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider, ClipboardType},
-    document::SCRATCH_BUFFER_NAME,
     Editor,
 };
 
@@ -61,14 +60,7 @@ impl Registers {
                 Some(RegisterValues::new(doc.selection(view.id).fragments(text)))
             }
             '%' => {
-                let doc = doc!(editor);
-
-                let path = doc
-                    .path()
-                    .as_ref()
-                    .map(|p| p.to_string_lossy())
-                    .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
-
+                let path = doc!(editor).display_name();
                 Some(RegisterValues::new(iter::once(path)))
             }
             '*' | '+' => Some(read_from_clipboard(
