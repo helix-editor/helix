@@ -53,6 +53,10 @@ Existing tests can be used as examples. Helpers can be found in
 [helpers.rs][helpers.rs]. The log level can be set with the `HELIX_LOG_LEVEL`
 environment variable, e.g. `HELIX_LOG_LEVEL=debug cargo integration-test`.
 
+Contributors using MacOS might encounter `Too many open files (os error 24)`
+failures while running integration tests. This can be resolved by increasing
+the default value (e.g. to `10240` from `256`) by running `ulimit -n 10240`.
+
 ## Minimum Stable Rust Version (MSRV) Policy
 
 Helix follows the MSRV of Firefox.

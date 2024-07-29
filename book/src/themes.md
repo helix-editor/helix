@@ -293,12 +293,13 @@ These scopes are used for theming the editor interface:
 | `ui.statusline.select`            | Statusline mode during select mode ([only if `editor.color-modes` is enabled][editor-section]) |
 | `ui.statusline.separator`         | Separator character in statusline                                                              |
 | `ui.bufferline`                   | Style for the buffer line                                                                      |
-| `ui.bufferline.active`            | Style for the active buffer in buffer line                                                        |
+| `ui.bufferline.active`            | Style for the active buffer in buffer line                                                     |
 | `ui.bufferline.background`        | Style for bufferline background                                                                |
 | `ui.popup`                        | Documentation popups (e.g. Space + k)                                                          |
 | `ui.popup.info`                   | Prompt for multiple key options                                                                |
-| `ui.picker.header`                | Column names in pickers with multiple columns                                                  |
-| `ui.picker.header.active`         | The column name in pickers with multiple columns where the cursor is entering into.            |
+| `ui.picker.header`                | Header row area in pickers with multiple columns                                              |
+| `ui.picker.header.column`         | Column names in pickers with multiple columns                                                  |
+| `ui.picker.header.column.active`  | The column name in pickers with multiple columns where the cursor is entering into.            |
 | `ui.window`                       | Borderlines separating splits                                                                  |
 | `ui.help`                         | Description box for commands                                                                   |
 | `ui.text`                         | Default text style, command prompts, popup text, etc.                                          |
