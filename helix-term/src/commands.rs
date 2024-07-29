@@ -4624,6 +4624,13 @@ fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
                 selection::keep_or_remove_matches(text, doc.selection(view.id), &regex, remove)
             {
                 doc.set_selection(view.id, selection);
+            } else {
+                if remove {
+                    cx.editor.set_status("no selection to remove");
+                } else {
+                    doc.reset_selection(view.id);
+                    cx.editor.set_status("no matches found");
+                }
             }
         },
     )
