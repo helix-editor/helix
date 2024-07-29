@@ -1,0 +1,165 @@
+# Theme: Ao
+# Author: YardQuit
+
+# SYNTAX HIGHLIGHTING
+"attribute" = { fg = "yellow" }
+"type" = { fg = "white" }
+"type.builtin" = { fg = "white" }
+"type.parameter" = { fg = "white" }
+"type.enum" = { fg = "white" }
+"type.enum.variant" = { fg = "white" }
+"constructor" = { fg = "orange" }
+"constant" = { fg = "blue" }
+"constant.character.escape" = { fg = "yellow" }
+"string" = { fg = "blue" }
+"string.regexp" = { fg = "yellow" }
+"comment" = { fg = "gray" }
+"variable" = { fg = "orange" }
+"variable.parameter" = { fg = "yellow" }
+"variable.other" = { fg = "green" }
+"variable.other.member" = { fg = "green" }
+"label" = { fg = "blue" }
+"punctuation" = { fg = "white" }
+"punctuation.bracket" = { fg = "orange" }
+"punctuation.special" = { fg = "yellow" }
+"keyword" = { fg = "red" }
+"keyword.operator" = { fg = "blue" }
+"keyword.directive" = { fg = "white" }
+"keyword.function" = { fg = "red" }
+"keyword.storage" = { fg = "red" }
+"keyword.storage.modifier" = { fg = "green" }
+"operator" = { fg = "white" }
+"function" = { fg = "purple" }
+"function.method" = { fg = "green" }
+"function.macro" = { fg = "green" }
+"function.special" = { fg = "yellow" }
+"tag" = { fg = "green" }
+"namespace" = { fg = "white" }
+"diff" = { fg = "white" }
+"diff.minus" = { fg = "red" }
+"diff.delta" = { fg = "brown" }
+
+# MARKUP, SYNAX HIGHLIGHTING AND INTERFACE HYBRID
+"markup.heading" = { fg = "blaze_orange" }
+"markup.heading.1" = { fg = "crystal_blue", modifiers = ["bold"] }
+"markup.heading.2" = { fg = "sky_blue", modifiers = ["bold"] }
+"markup.heading.3" = { fg = "dreamy_blue", modifiers = ["bold"] }
+"markup.heading.4" = { fg = "crystal_blue" }
+"markup.heading.5" = { fg = "sky_blue" }
+"markup.heading.6" = { fg = "dreamy_blue" }
+"markup.list" = { fg = "blaze_orange" }
+"markup.bold" = { fg = "crystal_blue", modifiers = ["bold"] }
+"markup.italic" = { fg = "crystal_blue", modifiers = ["italic"] }
+"markup.strikethrough" = { fg = "crystal_blue", modifiers = ["crossed_out"] }
+"markup.link" = { fg = "crystal_blue", underline = { color = "light_purple", style = "line" } }
+"markup.link.url" = { fg = "slate_purple", underline = { color = "slate_purple", style = "line" } }
+"markup.link.label" = { fg = "crystal_blue" }
+"markup.link.text" = { fg = "crystal_blue", modifiers = ["bold"] }
+"markup.quote" = { fg = "winter_sky", modifiers = ["italic"] }
+"markup.raw" = { fg = "winter_sky" }
+"markup.raw.block" = { fg = "white" }
+
+# USER INTERFACE 
+"ui.background" = { bg = "deep_abyss"}                                                               # workspace background
+"ui.background.separator" = { fg = "winter_sky" }                                                    # picker separator below input line (space + j)
+"ui.gutter" = { bg = "deep_abyss" }                                                                  # gutter
+"ui.gutter.selected" = { bg = "pitch_black" }                                                        # gutter for the line the cursor is on
+"ui.linenr" = { fg = "slate_gray" }                                                                  # line numbers
+"ui.linenr.selected" = { fg = "blaze_orange", modifiers = ["bold"] }                                 # line number for the line the cursor is on
+"ui.statusline" = { fg = "winter_sky", bg = "twilight_blue" }                                        # statusline, fucused
+"ui.statusline.inactive" = { fg = "slate_gray", bg = "pitch_black" }                                 # statusline, unfocused
+"ui.statusline.normal" = { fg = "deep_abyss", bg = "leafy_green", modifiers = ["bold"] }             # statusline normal mode (if editor.color-modes is enabled)
+"ui.statusline.insert" = { fg = "deep_abyss", bg = "blaze_orange", modifiers = ["bold"] }            # statusline insert mode (if editor.color-modes is enabled)
+"ui.statusline.select" = { fg = "deep_abyss", bg = "sky_blue", modifiers = ["bold"] }                # statusline select mode (if editor.color-modes is enabled)
+"ui.statusline.separator" = { fg = "winter_sky" }                                                    # separator character is statusline
+"ui.bufferline" = { fg = "slate_gray", modifiers = ["bold"] }                                        # bufferline inactive tab
+"ui.bufferline.active" = { fg = "winter_sky", bg = "twilight_blue" }                                 # bufferline active tab
+"ui.bufferline.background" = { bg = "pitch_black" }                                                  # bufferline background
+"ui.virtual.ruler" = { bg = "stormy_night" }                                                         # ruler columns
+"ui.virtual.whitespace" = { fg = "stormy_night" }                                                    # whitespace characters
+"ui.virtual.indent-guide" = { fg = "stormy_night" }                                                  # vertical indent width guides
+"ui.virtual.inlay-hint" = { fg = "slate_gray" }                                                      # inlay hints of all kinds
+"ui.virtual.inlay-hint.parameter" = { fg = "slate_gray" }                                            # inlay hints of kind parameter (lsps are not required to set a kind)
+"ui.virtual.inlay-hint.type" = { fg = "slate_gray" }                                                 # inlay hints of kind type (lsps are not required to set a kind)
+"ui.virtual.wrap" = { fg = "slate_gray" }                                                            # soft-wrap indicator
+"ui.virtual.jump-label" = { modifiers = ["reversed"] }                                               # virtual jump labels (g + w)
+"ui.selection" = { bg = "deep_purple" }                                                              # slave selections in the editing area
+"ui.selection.primary" = { bg = "light_purple" }                                                     # primary selection in the editing area
+"ui.cursor" = { modifiers = ["reversed"] }                                                           # only if "ui.cursor.primary.normal" isn't set
+"ui.cursor.normal" = { fg = "winter_sky", bg = "twilight_blue" }                                     # slave cursor block in normal mode
+"ui.cursor.insert" = { bg = "rustic_red" }                                                           # slave cursor block in insert mode
+"ui.cursor.select" = { bg = "deep_purple" }                                                          # slave cursor block in select mode
+"ui.cursor.match" = { fg = "deep_abyss", bg = "blaze_orange", modifiers = ["bold"] }                 # matching bracket etc
+"ui.cursor.primary" = { modifiers = ["reversed"] }                                                   # cursor with primary selection (has no effect due to "ui.cursor.primary.normal" is set)
+"ui.cursor.primary.normal" = { fg = "deep_abyss", bg = "sky_blue" }                                  # cursor block in normal mode
+"ui.cursor.primary.insert" = { fg = "deep_abyss", bg = "ruby_glow" }                                 # cursor block in insert mode
+"ui.cursor.primary.select" = { fg = "winter_sky", bg = "deep_purple" }                               # cursor block in select mode (not the selected color)
+"ui.cursorline.primary" = { bg = "nightfall_blue" }                                                  # line of the primary cursor
+"ui.cursorline.secondary" = { bg = "midnight_thunder"}                                               # lines of secondary cursors
+"ui.cursorcolumn.primary" = { bg = "nightfall_blue" }                                                # column of the primary cursor
+"ui.cursorcolumn.secondary" = { bg = "midnight_thunder" }                                            # columns of secondary cursors
+
+# USER INTERFACE - MENUS AND POPUP
+"ui.popup" = { fg = "winter_sky", bg = "midnight_thunder" }                                          # documentation popups (space + k)
+"ui.popup.info" = { fg = "winter_sky", bg = "nightfall_blue" }                                       # prompt for multiple key options, menu border (space, g, z, m, etc)
+"ui.window" = { fg = "slate_gray" }                                                                  # borderlines separating splits
+"ui.help" = { fg = "winter_sky", bg = "nightfall_blue" }                                             # description box for commands
+"ui.text" = { fg = "white" }                                                                         # default text style, command prompts, popup text, etc
+"ui.text.focus" = { fg = "dreamy_blue" }                                                             # the currently selected line in the picker (space j, space f, space s, etc)
+"ui.text.inactive" = { fg = "slate_gray" }                                                           # same as ui.text but when the text is inactive e.g. suggestions
+"ui.text.info" = { fg = "winter_sky", bg = "nightfall_blue" }                                        # the key: command in ui.popup.info boxes (space, g, z, m, etc)
+"ui.menu" = { fg = "winter_sky", bg = "midnight_thunder" }                                           # code and command completion menus ":"
+"ui.menu.selected" = { fg = "winter_sky", bg = "twilight_blue" }                                     # selected autocomplete item
+"ui.menu.scroll" = { fg = "crystal_blue", bg = "moonlight_ocean" }                                   # scrollbar
+"ui.highlight" = { underline = { color = "sky_blue", style = "line" } }                              # highlighted lines in the picker preview
+
+# USER INTERFACE - DIAGNOSTICS
+"warning" = { fg = "lemon_zest" }                                                                    # diagnostics warning (gutter)
+"error" = { fg = "ruby_glow" }                                                                       # diagnostics error (gutter)
+"info" = { fg = "sky_blue" }                                                                         # diagnostics info (gutter)
+"hint" = { fg = "walnut_brown" }                                                                     # diagnostics hint (gutter)
+"diagnostic" = { modifiers = ["reversed"] }                                                          # diagnostics fallback style (editing area)
+"diagnostic.hint" = { fg = "deep_abyss", bg = "walnut_brown" }                                       # diagnostics hint (editing area)
+"diagnostic.info" = { fg = "winter_sky", bg = "twilight_blue" }                                      # diagnostics info (editing area)
+"diagnostic.warning" = { fg = "winter_sky", bg = "rustic_amber" }                                    # diagnostics warning (editing area)
+"diagnostic.error" = { fg = "winter_sky", bg = "rustic_red" }                                        # diagnostics error (editing area)
+
+# COLOR NAMES
+[palette] 
+# PALETTE USER INTERFACE
+deep_abyss = "#080d15"
+stormy_night = "#254862"
+nightfall_blue = "#1f2937"
+midnight_thunder = "#0d1526"
+twilight_blue = "#2c5484"
+pitch_black = "#000000"
+winter_sky = "#f3f4f6"
+slate_gray = "#838a97"
+blaze_orange = "#ff9000"
+lemon_zest = "#ffba00"
+leafy_green = "#81be83"
+dreamy_blue = "#6eb0ff"
+crystal_blue = "#99c7ff"
+sky_blue = "#45b1e8"
+moonlight_ocean = "#0c1420"
+rustic_red = "#540b0c"
+ruby_glow = "#fa7970"
+walnut_brown = "#987654"
+rustic_amber = "#9d5800"
+slate_purple = "#d2a8ff"
+light_purple = "#7533bd"
+deep_purple = "#4c1785"
+
+# SYNTAX HIGHLIGHTING
+black = "#0d1117"
+red = "#fa7970"
+green = "#81be83"
+yellow = "#ffba00"
+orange = "#ff9000"
+blue = "#45b1e8"
+purple = "#d2a8ff"
+brown = "#987654"
+gray = "#838a97"
+white = "#dadada"
+
+

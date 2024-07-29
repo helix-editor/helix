@@ -128,7 +128,6 @@ pub struct ViewPosition {
 #[derive(Clone)]
 pub struct View {
     pub id: ViewId,
-    pub offset: ViewPosition,
     pub area: Rect,
     pub doc: DocumentId,
     pub jumps: JumpList,
@@ -173,11 +172,6 @@ impl View {
         Self {
             id: ViewId::default(),
             doc,
-            offset: ViewPosition {
-                anchor: 0,
-                horizontal_offset: 0,
-                vertical_offset: 0,
-            },
             area: Rect::default(), // will get calculated upon inserting into tree
             jumps: JumpList::new((doc, Selection::point(0))), // TODO: use actual sel
             docs_access_history: Vec::new(),
@@ -240,23 +234,34 @@ impl View {
         doc: &Document,
         scrolloff: usize,
     ) -> Option<ViewPosition> {
+        let view_offset = doc.get_view_offset(self.id)?;
         let doc_text = doc.text().slice(..);
         let viewport = self.inner_area(doc);
-        let vertical_viewport_end = self.offset.vertical_offset + viewport.height as usize;
+        let vertical_viewport_end = view_offset.vertical_offset + viewport.height as usize;
         let text_fmt = doc.text_format(viewport.width, None);
         let annotations = self.text_annotations(doc, None);
 
-        // - 1 so we have at least one gap in the middle.
-        // a height of 6 with padding of 3 on each side will keep shifting the view back and forth
-        // as we type
-        let scrolloff = if CENTERING {
-            0
+        let (scrolloff_top, scrolloff_bottom) = if CENTERING {
+            (0, 0)
         } else {
-            scrolloff.min(viewport.height.saturating_sub(1) as usize / 2)
+            (
+                // - 1 from the top so we have at least one gap in the middle.
+                scrolloff.min(viewport.height.saturating_sub(1) as usize / 2),
+                scrolloff.min(viewport.height as usize / 2),
+            )
+        };
+        let (scrolloff_left, scrolloff_right) = if CENTERING {
+            (0, 0)
+        } else {
+            (
+                // - 1 from the left so we have at least one gap in the middle.
+                scrolloff.min(viewport.width.saturating_sub(1) as usize / 2),
+                scrolloff.min(viewport.width as usize / 2),
+            )
         };
 
         let cursor = doc.selection(self.id).primary().cursor(doc_text);
-        let mut offset = self.offset;
+        let mut offset = view_offset;
         let off = visual_offset_from_anchor(
             doc_text,
             offset.anchor,
@@ -267,14 +272,14 @@ impl View {
         );
 
         let (new_anchor, at_top) = match off {
-            Ok((visual_pos, _)) if visual_pos.row < scrolloff + offset.vertical_offset => {
+            Ok((visual_pos, _)) if visual_pos.row < scrolloff_top + offset.vertical_offset => {
                 if CENTERING {
                     // cursor out of view
                     return None;
                 }
                 (true, true)
             }
-            Ok((visual_pos, _)) if visual_pos.row + scrolloff >= vertical_viewport_end => {
+            Ok((visual_pos, _)) if visual_pos.row + scrolloff_bottom >= vertical_viewport_end => {
                 (true, false)
             }
             Ok((_, _)) => (false, false),
@@ -285,9 +290,9 @@ impl View {
 
         if new_anchor {
             let v_off = if at_top {
-                scrolloff as isize
+                scrolloff_top as isize
             } else {
-                viewport.height as isize - scrolloff as isize - 1
+                viewport.height as isize - scrolloff_bottom as isize - 1
             };
             (offset.anchor, offset.vertical_offset) =
                 char_idx_at_visual_offset(doc_text, cursor, -v_off, 0, &text_fmt, &annotations);
@@ -311,32 +316,32 @@ impl View {
                 .col;
 
             let last_col = offset.horizontal_offset + viewport.width.saturating_sub(1) as usize;
-            if col > last_col.saturating_sub(scrolloff) {
+            if col > last_col.saturating_sub(scrolloff_right) {
                 // scroll right
-                offset.horizontal_offset += col - (last_col.saturating_sub(scrolloff))
-            } else if col < offset.horizontal_offset + scrolloff {
+                offset.horizontal_offset += col - (last_col.saturating_sub(scrolloff_right))
+            } else if col < offset.horizontal_offset + scrolloff_left {
                 // scroll left
-                offset.horizontal_offset = col.saturating_sub(scrolloff)
+                offset.horizontal_offset = col.saturating_sub(scrolloff_left)
             };
         }
 
         // if we are not centering return None if view position is unchanged
-        if !CENTERING && offset == self.offset {
+        if !CENTERING && offset == view_offset {
             return None;
         }
 
         Some(offset)
     }
 
-    pub fn ensure_cursor_in_view(&mut self, doc: &Document, scrolloff: usize) {
+    pub fn ensure_cursor_in_view(&self, doc: &mut Document, scrolloff: usize) {
         if let Some(offset) = self.offset_coords_to_in_view_center::<false>(doc, scrolloff) {
-            self.offset = offset;
+            doc.set_view_offset(self.id, offset);
         }
     }
 
-    pub fn ensure_cursor_in_view_center(&mut self, doc: &Document, scrolloff: usize) {
+    pub fn ensure_cursor_in_view_center(&self, doc: &mut Document, scrolloff: usize) {
         if let Some(offset) = self.offset_coords_to_in_view_center::<true>(doc, scrolloff) {
-            self.offset = offset;
+            doc.set_view_offset(self.id, offset);
         } else {
             align_view(doc, self, Align::Center);
         }
@@ -354,7 +359,7 @@ impl View {
     #[inline]
     pub fn estimate_last_doc_line(&self, doc: &Document) -> usize {
         let doc_text = doc.text().slice(..);
-        let line = doc_text.char_to_line(self.offset.anchor.min(doc_text.len_chars()));
+        let line = doc_text.char_to_line(doc.view_offset(self.id).anchor.min(doc_text.len_chars()));
         // Saturating subs to make it inclusive zero indexing.
         (line + self.inner_height())
             .min(doc_text.len_lines())
@@ -368,9 +373,10 @@ impl View {
         let viewport = self.inner_area(doc);
         let text_fmt = doc.text_format(viewport.width, None);
         let annotations = self.text_annotations(doc, None);
+        let view_offset = doc.view_offset(self.id);
 
         // last visual line in view is trivial to compute
-        let visual_height = self.offset.vertical_offset + viewport.height as usize;
+        let visual_height = doc.view_offset(self.id).vertical_offset + viewport.height as usize;
 
         // fast path when the EOF is not visible on the screen,
         if self.estimate_last_doc_line(doc) < doc_text.len_lines() - 1 {
@@ -380,7 +386,7 @@ impl View {
         // translate to document line
         let pos = visual_offset_from_anchor(
             doc_text,
-            self.offset.anchor,
+            view_offset.anchor,
             usize::MAX,
             &text_fmt,
             &annotations,
@@ -388,7 +394,7 @@ impl View {
         );
 
         match pos {
-            Ok((Position { row, .. }, _)) => row.saturating_sub(self.offset.vertical_offset),
+            Ok((Position { row, .. }, _)) => row.saturating_sub(view_offset.vertical_offset),
             Err(PosAfterMaxRow) => visual_height.saturating_sub(1),
             Err(PosBeforeAnchorRow) => 0,
         }
@@ -403,13 +409,15 @@ impl View {
         text: RopeSlice,
         pos: usize,
     ) -> Option<Position> {
+        let view_offset = doc.view_offset(self.id);
+
         let viewport = self.inner_area(doc);
         let text_fmt = doc.text_format(viewport.width, None);
         let annotations = self.text_annotations(doc, None);
 
         let mut pos = visual_offset_from_anchor(
             text,
-            self.offset.anchor,
+            view_offset.anchor,
             pos,
             &text_fmt,
             &annotations,
@@ -417,14 +425,14 @@ impl View {
         )
         .ok()?
         .0;
-        if pos.row < self.offset.vertical_offset {
+        if pos.row < view_offset.vertical_offset {
             return None;
         }
-        pos.row -= self.offset.vertical_offset;
+        pos.row -= view_offset.vertical_offset;
         if pos.row >= viewport.height as usize {
             return None;
         }
-        pos.col = pos.col.saturating_sub(self.offset.horizontal_offset);
+        pos.col = pos.col.saturating_sub(view_offset.horizontal_offset);
 
         Some(pos)
     }
@@ -488,7 +496,7 @@ impl View {
                 doc,
                 cursor,
                 width,
-                self.offset.horizontal_offset,
+                doc.view_offset(self.id).horizontal_offset,
                 config,
             ));
         }
@@ -535,13 +543,14 @@ impl View {
         ignore_virtual_text: bool,
     ) -> Option<usize> {
         let text = doc.text().slice(..);
+        let view_offset = doc.view_offset(self.id);
 
-        let text_row = row as usize + self.offset.vertical_offset;
-        let text_col = column as usize + self.offset.horizontal_offset;
+        let text_row = row as usize + view_offset.vertical_offset;
+        let text_col = column as usize + view_offset.horizontal_offset;
 
         let (char_idx, virt_lines) = char_idx_at_visual_offset(
             text,
-            self.offset.anchor,
+            view_offset.anchor,
             text_row as isize,
             text_col,
             &text_fmt,
@@ -689,11 +698,12 @@ mod tests {
         let mut view = View::new(DocumentId::default(), GutterConfig::default());
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
-        let doc = Document::from(
+        let mut doc = Document::from(
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
         );
+        doc.ensure_view_init(view.id);
 
         assert_eq!(
             view.text_pos_at_screen_coords(
@@ -863,11 +873,12 @@ mod tests {
         );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
-        let doc = Document::from(
+        let mut doc = Document::from(
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
         );
+        doc.ensure_view_init(view.id);
         assert_eq!(
             view.text_pos_at_screen_coords(
                 &doc,
@@ -892,11 +903,12 @@ mod tests {
         );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
-        let doc = Document::from(
+        let mut doc = Document::from(
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
         );
+        doc.ensure_view_init(view.id);
         assert_eq!(
             view.text_pos_at_screen_coords(
                 &doc,
@@ -915,11 +927,12 @@ mod tests {
         let mut view = View::new(DocumentId::default(), GutterConfig::default());
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hi! こんにちは皆さん");
-        let doc = Document::from(
+        let mut doc = Document::from(
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
         );
+        doc.ensure_view_init(view.id);
 
         assert_eq!(
             view.text_pos_at_screen_coords(
@@ -998,11 +1011,12 @@ mod tests {
         let mut view = View::new(DocumentId::default(), GutterConfig::default());
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hèl̀l̀ò world!");
-        let doc = Document::from(
+        let mut doc = Document::from(
             rope,
             None,
             Arc::new(ArcSwap::new(Arc::new(Config::default()))),
         );
+        doc.ensure_view_init(view.id);
 
         assert_eq!(
             view.text_pos_at_screen_coords(

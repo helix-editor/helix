@@ -115,6 +115,11 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> AsyncHook
     }
 }
 
+pub(super) struct DynamicQueryChange {
+    pub query: Arc<str>,
+    pub is_paste: bool,
+}
+
 pub(super) struct DynamicQueryHandler<T: 'static + Send + Sync, D: 'static + Send + Sync> {
     callback: Arc<DynQueryCallback<T, D>>,
     // Duration used as a debounce.
@@ -137,9 +142,10 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> DynamicQueryHandler<T, 
 }
 
 impl<T: 'static + Send + Sync, D: 'static + Send + Sync> AsyncHook for DynamicQueryHandler<T, D> {
-    type Event = Arc<str>;
+    type Event = DynamicQueryChange;
 
-    fn handle_event(&mut self, query: Self::Event, _timeout: Option<Instant>) -> Option<Instant> {
+    fn handle_event(&mut self, change: Self::Event, _timeout: Option<Instant>) -> Option<Instant> {
+        let DynamicQueryChange { query, is_paste } = change;
         if query == self.last_query {
             // If the search query reverts to the last one we requested, no need to
             // make a new request.
@@ -147,7 +153,12 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> AsyncHook for DynamicQu
             None
         } else {
             self.query = Some(query);
-            Some(Instant::now() + self.debounce)
+            if is_paste {
+                self.finish_debounce();
+                None
+            } else {
+                Some(Instant::now() + self.debounce)
+            }
         }
     }
 
