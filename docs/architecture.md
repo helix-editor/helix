@@ -1,10 +1,12 @@
 
 | Crate        | Description                                                      |
 | -----------  | -----------                                                      |
+| helix-stdx   | Functionality not specific to Helix (extended std)               |
 | helix-core   | Core editing primitives, functional.                             |
 | helix-lsp    | Language server client                                           |
 | helix-dap    | Debug Adapter Protocol (DAP) client                              |
 | helix-loader | Functions for building, fetching, and loading external resources |
+| helix-event  | Event system with debouncing                                     |
 | helix-view   | UI abstractions for use in backends, imperative shell.           |
 | helix-term   | Terminal UI                                                      |
 | helix-tui    | TUI primitives, forked from tui-rs, inspired by Cursive          |
@@ -109,3 +111,18 @@ The `main` function sets up a new `Application` that runs the event loop.
 ## TUI / Term
 
 TODO: document Component and rendering related stuff
+
+## Event
+
+In Helix, the event system is used to (a)synchronously respond to events that may be instantiated at runtime. At the time of writing, this is used for auto-completion, signature-help, and auto-save after timeout.
+
+`helix-event` contains the building blocks used for the event system. The system utilizes `AsyncHook` callbacks that act upon `Event`s that are instantiated via `helix_event::dispatch(event)`.
+
+To implement a new `AsyncHook`, you can define some `CustomHandler` or an `fn(Sender<EventA>, EventB)`. Depending on the task, it may be useful to store state over a series of events such as in the case of the `CompletionHandler` which continuously updates the position to request completion for. 
+
+Event debouncing is implemented in `AsyncHook::handle_event` which is invoked whenever a targeted `Event` is instantiated. If and only if `Some(future_instant)` is returned does the event system invoke `CustomHandler::finish_debounce` when it arrives at the deadline. Otherwise, the event system waits for the next event.
+
+Synchronous events can be sent via `helix_event::debounce::send_blocking`
+
+It is recommended to read through `helix-event`'s documentation as it goes into a lot more detail.
+
