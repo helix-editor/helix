@@ -1015,10 +1015,8 @@ impl Document {
                         .await
                         .map_err(|e| log::error!("Failed to restore backup on write failure: {e}"));
                 } else {
-                    // copy metadata and delete backup
+                    // delete backup
                     let _ = tokio::task::spawn_blocking(move || {
-                        let _ = copy_metadata(&backup, &write_path)
-                            .map_err(|e| log::error!("Failed to copy metadata on write: {e}"));
                         let _ = std::fs::remove_file(backup)
                             .map_err(|e| log::error!("Failed to remove backup file on write: {e}"));
                     })
