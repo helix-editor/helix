@@ -355,6 +355,35 @@ pub struct Config {
     pub end_of_line_diagnostics: DiagnosticFilter,
     // Set to override the default clipboard provider
     pub clipboard_provider: ClipboardProvider,
+    pub backup: BackupConfig,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
+#[serde(rename_all = "kebab-case", default)]
+pub struct BackupConfig {
+    pub kind: BackupKind,
+    pub directories: Vec<PathBuf>,
+    pub extension: String,
+}
+
+impl Default for BackupConfig {
+    fn default() -> Self {
+        Self {
+            kind: BackupKind::Auto,
+            // TODO: Prevent empty vector
+            directories: vec![helix_loader::state_dir().join("backup")],
+            // TODO: Prevent empty strings
+            extension: String::from("bck"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
+#[serde(rename_all = "kebab-case")]
+pub enum BackupKind {
+    None,
+    Copy,
+    Auto,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -995,6 +1024,7 @@ impl Default for Config {
             inline_diagnostics: InlineDiagnosticsConfig::default(),
             end_of_line_diagnostics: DiagnosticFilter::Disable,
             clipboard_provider: ClipboardProvider::default(),
+            backup: BackupConfig::default(),
         }
     }
 }

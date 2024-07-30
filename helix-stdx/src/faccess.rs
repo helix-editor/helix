@@ -1,5 +1,6 @@
 //! From <https://github.com/Freaky/faccess>
 
+use std::fs::File;
 use std::io;
 use std::path::Path;
 
@@ -24,7 +25,10 @@ bitflags! {
 mod imp {
     use super::*;
 
-    use rustix::fs::Access;
+    use rustix::{
+        fd::AsFd,
+        fs::{Access, OpenOptionsExt},
+    };
     use std::os::unix::fs::{MetadataExt, PermissionsExt};
 
     pub fn access(p: &Path, mode: AccessMode) -> io::Result<()> {
@@ -50,10 +54,17 @@ mod imp {
         Ok(())
     }
 
-    fn chown(p: &Path, uid: Option<u32>, gid: Option<u32>) -> io::Result<()> {
+    pub fn chown(p: &Path, uid: Option<u32>, gid: Option<u32>) -> io::Result<()> {
         let uid = uid.map(|n| unsafe { rustix::fs::Uid::from_raw(n) });
         let gid = gid.map(|n| unsafe { rustix::fs::Gid::from_raw(n) });
         rustix::fs::chown(p, uid, gid)?;
+        Ok(())
+    }
+
+    pub fn fchown(fd: impl AsFd, uid: Option<u32>, gid: Option<u32>) -> io::Result<()> {
+        let uid = uid.map(|n| unsafe { rustix::fs::Uid::from_raw(n) });
+        let gid = gid.map(|n| unsafe { rustix::fs::Gid::from_raw(n) });
+        rustix::fs::fchown(fd, uid, gid)?;
         Ok(())
     }
 
@@ -79,15 +90,34 @@ mod imp {
         let metadata = p.metadata()?;
         Ok(metadata.nlink())
     }
+
+    pub fn create_copy_mode(from: &Path, to: &Path) -> io::Result<File> {
+        let from_meta = std::fs::metadata(from)?;
+        let mode = from_meta.permissions().mode();
+        let file = std::fs::OpenOptions::new()
+            .mode(mode)
+            .read(true)
+            .write(true)
+            .create_new(true)
+            .open(to)?;
+
+        // Change ownership
+        let from_meta = std::fs::metadata(from)?;
+        let uid = from_meta.uid();
+        let gid = from_meta.gid();
+        fchown(file.as_fd(), Some(uid), Some(gid))?;
+        Ok(file)
+    }
 }
 
-// Licensed under MIT from faccess except for `chown`, `copy_metadata` and `is_acl_inherited`
 #[cfg(windows)]
 mod imp {
 
-    use windows_sys::Win32::Foundation::{CloseHandle, LocalFree, ERROR_SUCCESS, HANDLE};
+    use windows_sys::Win32::Foundation::{
+        CloseHandle, LocalFree, ERROR_SUCCESS, GENERIC_READ, GENERIC_WRITE, HANDLE,
+    };
     use windows_sys::Win32::Security::Authorization::{
-        GetNamedSecurityInfoW, SetNamedSecurityInfoW, SE_FILE_OBJECT,
+        GetNamedSecurityInfoW, SetSecurityInfo, SE_FILE_OBJECT,
     };
     use windows_sys::Win32::Security::{
         AccessCheck, AclSizeInformation, GetAce, GetAclInformation, GetSidIdentifierAuthority,
@@ -100,7 +130,8 @@ mod imp {
     };
     use windows_sys::Win32::Storage::FileSystem::{
         GetFileInformationByHandle, BY_HANDLE_FILE_INFORMATION, FILE_ACCESS_RIGHTS,
-        FILE_ALL_ACCESS, FILE_GENERIC_EXECUTE, FILE_GENERIC_READ, FILE_GENERIC_WRITE,
+        FILE_ALL_ACCESS, FILE_GENERIC_EXECUTE, FILE_GENERIC_READ, FILE_GENERIC_WRITE, WRITE_DAC,
+        WRITE_OWNER,
     };
     use windows_sys::Win32::System::Threading::{GetCurrentThread, OpenThreadToken};
 
@@ -110,6 +141,7 @@ mod imp {
 
     use std::os::windows::{ffi::OsStrExt, fs::OpenOptionsExt, io::AsRawHandle};
 
+    // Licensed under MIT from faccess
     struct SecurityDescriptor {
         sd: PSECURITY_DESCRIPTOR,
         owner: PSID,
@@ -128,6 +160,7 @@ mod imp {
     }
 
     impl SecurityDescriptor {
+        // Licensed under MIT from faccess
         fn for_path(p: &Path) -> io::Result<SecurityDescriptor> {
             let path = std::fs::canonicalize(p)?;
             let pathos = path.into_os_string();
@@ -202,6 +235,7 @@ mod imp {
         }
     }
 
+    // Licensed under MIT from faccess
     struct ThreadToken(HANDLE);
     impl Drop for ThreadToken {
         fn drop(&mut self) {
@@ -211,6 +245,7 @@ mod imp {
         }
     }
 
+    // Licensed under MIT from faccess
     impl ThreadToken {
         fn new() -> io::Result<Self> {
             unsafe {
@@ -237,6 +272,7 @@ mod imp {
         }
     }
 
+    // Licensed under MIT from faccess
     // Based roughly on Tcl's NativeAccess()
     // https://github.com/tcltk/tcl/blob/2ee77587e4dc2150deb06b48f69db948b4ab0584/win/tclWinFile.c
     fn eaccess(p: &Path, mut mode: FILE_ACCESS_RIGHTS) -> io::Result<()> {
@@ -330,6 +366,7 @@ mod imp {
         }
     }
 
+    // Licensed under MIT from faccess
     pub fn access(p: &Path, mode: AccessMode) -> io::Result<()> {
         let mut imode = 0;
 
@@ -356,13 +393,8 @@ mod imp {
         }
     }
 
-    fn chown(p: &Path, sd: SecurityDescriptor) -> io::Result<()> {
-        let path = std::fs::canonicalize(p)?;
-        let pathos = path.as_os_str();
-        let mut pathw = Vec::with_capacity(pathos.len() + 1);
-        pathw.extend(pathos.encode_wide());
-        pathw.push(0);
-
+    // SAFETY: It is the caller's responsibility to close the handle
+    fn chown(handle: HANDLE, sd: SecurityDescriptor) -> io::Result<()> {
         let mut owner = std::ptr::null_mut();
         let mut group = std::ptr::null_mut();
         let mut dacl = std::ptr::null();
@@ -387,8 +419,8 @@ mod imp {
         }
 
         let err = unsafe {
-            SetNamedSecurityInfoW(
-                pathw.as_ptr(),
+            SetSecurityInfo(
+                handle,
                 SE_FILE_OBJECT,
                 si,
                 owner,
@@ -405,9 +437,18 @@ mod imp {
         }
     }
 
-    pub fn copy_metadata(from: &Path, to: &Path) -> io::Result<()> {
+    pub fn copy_ownership(from: &Path, to: &Path) -> io::Result<()> {
         let sd = SecurityDescriptor::for_path(from)?;
-        chown(to, sd)?;
+        let to_file = std::fs::OpenOptions::new()
+            .read(true)
+            .access_mode(GENERIC_READ | GENERIC_WRITE | WRITE_OWNER | WRITE_DAC)
+            .open(to)?;
+        chown(to_file.as_raw_handle(), sd)?;
+        Ok(())
+    }
+
+    pub fn copy_metadata(from: &Path, to: &Path) -> io::Result<()> {
+        copy_ownership(from, to)?;
 
         let meta = std::fs::metadata(from)?;
         let perms = meta.permissions();
@@ -417,16 +458,41 @@ mod imp {
         Ok(())
     }
 
-    pub fn hardlink_count(p: &Path) -> std::io::Result<u64> {
-        let file = std::fs::File::open(p)?;
+    fn file_info(p: &Path) -> io::Result<BY_HANDLE_FILE_INFORMATION> {
+        let file = File::open(p)?;
         let handle = file.as_raw_handle();
         let mut info: BY_HANDLE_FILE_INFORMATION = unsafe { std::mem::zeroed() };
 
         if unsafe { GetFileInformationByHandle(handle, &mut info) } == 0 {
-            Err(std::io::Error::last_os_error())
+            Err(io::Error::last_os_error())
         } else {
-            Ok(info.nNumberOfLinks as u64)
+            Ok(info)
         }
+    }
+
+    pub fn hardlink_count(p: &Path) -> io::Result<u64> {
+        let n = file_info(p)?.nNumberOfLinks as u64;
+        Ok(n)
+    }
+
+    pub fn create_copy_mode(from: &Path, to: &Path) -> io::Result<File> {
+        let sd = SecurityDescriptor::for_path(from)?;
+
+        // read/write still need to be set to true or `create_new` returns an error
+        let to_file = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .access_mode(GENERIC_READ | GENERIC_WRITE | WRITE_OWNER | WRITE_DAC)
+            .create_new(true)
+            .open(to)?;
+
+        // Necessary because `security_attributes` is not exposed: https://github.com/rust-lang/libs-team/issues/314
+        chown(to_file.as_raw_handle(), sd)?;
+
+        let meta = std::fs::metadata(from)?;
+        let perms = meta.permissions();
+        std::fs::set_permissions(to, perms)?;
+        Ok(to_file)
     }
 }
 
@@ -453,14 +519,6 @@ mod imp {
             Err(io::Error::new(io::ErrorKind::NotFound, "Path not found"))
         }
     }
-
-    pub fn copy_metadata(from: &path, to: &Path) -> io::Result<()> {
-        let meta = std::fs::metadata(from)?;
-        let perms = meta.permissions();
-        std::fs::set_permissions(to, perms)?;
-
-        Ok(())
-    }
 }
 
 pub fn readonly(p: &Path) -> bool {
@@ -471,10 +529,86 @@ pub fn readonly(p: &Path) -> bool {
     }
 }
 
+pub fn hardlink_count(p: &Path) -> io::Result<u64> {
+    imp::hardlink_count(p)
+}
+
 pub fn copy_metadata(from: &Path, to: &Path) -> io::Result<()> {
     imp::copy_metadata(from, to)
 }
 
-pub fn hardlink_count(p: &Path) -> io::Result<u64> {
-    imp::hardlink_count(p)
+// /// Create a file copying permissions, uid, and gid of `from` at the the target destination `to`
+// pub fn create_copy_mode(from: &Path, to: &Path) -> io::Result<File> {
+//     imp::create_copy_mode(from, to)
+// }
+
+#[cfg(windows)]
+pub fn copy_ownership(from: &Path, to: &Path) -> io::Result<()> {
+    imp::copy_ownership(from, to)
 }
+
+/*
+Neovim backup path function:
+- If a backup is desired (would be disabled by a user if using a file watcher):
+    - Checks if user explicitly requested a copy
+    - Or automatically choose whether to copy or rename
+    - Offers options for:
+        - Breaking symlinks or hardlinks (not offered in Helix)
+    - Offers the ability to have a list of directories where the backup file is written:
+        - Default is: ".,$XDG_STATE_HOME/nvim/backup//"
+    - Offers ability to set backup extension
+- For copy backup:
+    - If the file is a link, then the backup will have the name of the link
+- Auto backup:
+    - Immediately set copy if:
+        - Is hardlink or symlink
+    - Then, tries to:
+        - Create a temporary file with the same permissions as the file to test if its ok to rename later
+            - If it fails, then set copy
+        - fchown created file
+            - If it fails or perms weren't copied, then set copy
+        - Delete test file
+    - Otherwise, will rename
+- Break symlink/hardlink if requested
+- Copy backup:
+    - If there is an error while creating the file, it will be propogated unless force write is true
+    - Try to create backup path in bdir:
+        - Tries first directory where this is possible
+        - If no directory exists, the last directory is created
+        - Filename is escaped and extension applied
+    - Check if backup already exists:
+        - Check if pre-existing file is a symlink to the original file (and don't attempt to create one)
+        - Dunno what p_bk is, but if false, it tries to create a different backup file path where each character before the extension is changed (if all attempts fail, then error)
+    - Copies file with UV_FS_COPYFILE_FICLONE
+    - Sets perm as os_setperm(*backupp, perm & 0777);
+    - On Unix:
+        - Attempts to set gid via chown:
+            - os_setperm(*backupp, (perm & 0707) | ((perm & 07) << 3) if fails
+        - Sets file time:
+            os_file_settime(*backupp,
+                        (double)file_info_old->stat.st_atim.tv_sec,
+                        (double)file_info_old->stat.st_mtim.tv_sec);
+    - On Windows, sets ACL
+    - Attempts to copy xattr if exists
+- Rename backup:
+    - Backup is created by renaming original file:
+        - Don't if file is read-only and cpoptions has "W" flag
+    - Tries to find backup file name w/ bdir (similar to copy)
+    - Checks if a file with that name already exists:
+        - Attempts same method as copy backup to create a different filename
+
+Neovim write:
+- On Unix:
+    - If using :w! and file was read-only, make it writable (if process uid is same as file):
+- Reset read-only flag if overwriting
+- Executes fsync (will not propogate error if storage does not support op)
+- Copies xattr for non-copy backups
+- If a rename backup is being performed:
+    - Check if uid and gid are same as original file, and set if they aren't
+    - Set perms
+- Either way, copy perms from old file to new file
+- Either way, if not a backup copy, also set ACL (method seems to not do anything?)
+- On failure:
+    - If a copy, copy contents from copy to original file
+    - Otherwise, rename backup back to original path
+*/
