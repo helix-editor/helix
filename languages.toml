@@ -3490,7 +3490,7 @@ name = "tcl"
 scope = "source.tcl"
 injection-regex = "tcl"
 file-types = [ "tcl" ]
-shebangs = [ "tclish", "jimsh", "wish" ]
+shebangs = [ "tclsh", "tclish", "jimsh", "wish" ]
 comment-token = '#'
 
 [[grammar]]
