@@ -5708,19 +5708,16 @@ async fn shell_impl_async(
                 None => bail!("Shell command failed"),
             }
         }
-        let err = std::str::from_utf8(&output.stderr)
-            .map_err(|_| anyhow!("Process did not output valid UTF-8"))?;
-        log::error!("Shell error: {err}");
-        err
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        log::error!("Shell error: {stderr}");
+        stderr
         // Prioritize `stderr` output over `stdout`
     } else if !output.stderr.is_empty() {
-        let err = std::str::from_utf8(&output.stderr)
-            .map_err(|_| anyhow!("Process did not output valid UTF-8"))?;
-        log::debug!("Command printed to stderr: {err}");
-        err
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        log::debug!("Command printed to stderr: {stderr}");
+        stderr
     } else {
-        std::str::from_utf8(&output.stdout)
-            .map_err(|_| anyhow!("Process did not output valid UTF-8"))?
+        String::from_utf8_lossy(&output.stdout)
     };
 
     Ok(Tendril::from(output))
