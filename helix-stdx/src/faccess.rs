@@ -448,10 +448,15 @@ mod imp {
         Ok(n)
     }
 
-    // Needed because `security_attributes` is not exposed: https://github.com/rust-lang/libs-team/issues/314
     pub fn create_copy_mode(from: &Path, to: &Path) -> io::Result<File> {
         let sd = SecurityDescriptor::for_path(from)?;
-        let to_file = File::create_new(to)?;
+        let to_file = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create_new(true)
+            .open(to)?;
+
+        // Necessary because `security_attributes` is not exposed: https://github.com/rust-lang/libs-team/issues/314
         chown(to_file.as_raw_handle() as isize, sd)?;
 
         let meta = std::fs::metadata(from)?;
