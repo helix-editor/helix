@@ -973,9 +973,11 @@ impl Document {
                     let write_path = write_path.clone();
 
                     // This can fail if the file already exists, but since we moved the original file, it should be fine
-                    fs::File::from_std(
-                        create_copy_mode(from.as_path(), write_path.as_path()).unwrap(),
-                    )
+                    let file = tokio::task::spawn_blocking(move || {
+                        create_copy_mode(from.as_path(), write_path.as_path())
+                    })
+                    .await??;
+                    fs::File::from_std(file)
                 } else {
                     tokio::fs::File::create(&write_path).await.unwrap()
                 };
