@@ -1,5 +1,6 @@
 //! From <https://github.com/Freaky/faccess>
 
+use std::fs::File;
 use std::io;
 use std::path::Path;
 
@@ -80,7 +81,7 @@ mod imp {
         Ok(metadata.nlink())
     }
 
-    pub fn create_copy_mode(from: &Path, to: &Path) -> io::Result<std::fs::File> {
+    pub fn create_copy_mode(from: &Path, to: &Path) -> io::Result<File> {
         let from_meta = std::fs::metadata(from)?;
         let mode = from_meta.permissions().mode();
 
@@ -101,7 +102,7 @@ mod imp {
         INVALID_HANDLE_VALUE, PSID,
     };
     use windows_sys::Win32::Security::Authorization::{
-        GetNamedSecurityInfoW, SetNamedSecurityInfoW, SE_FILE_OBJECT,
+        GetNamedSecurityInfoW, SetNamedSecurityInfoW, SetSecurityInfo, SE_FILE_OBJECT,
     };
     use windows_sys::Win32::Security::{
         AccessCheck, AclSizeInformation, GetAce, GetAclInformation, GetSidIdentifierAuthority,
@@ -378,13 +379,8 @@ mod imp {
         }
     }
 
-    fn chown(p: &Path, sd: SecurityDescriptor) -> io::Result<()> {
-        let path = std::fs::canonicalize(p)?;
-        let pathos = path.as_os_str();
-        let mut pathw = Vec::with_capacity(pathos.len() + 1);
-        pathw.extend(pathos.encode_wide());
-        pathw.push(0);
-
+    // SAFETY: It is the caller's responsibility to close the handle
+    fn chown(handle: HANDLE, sd: SecurityDescriptor) -> io::Result<()> {
         let mut owner = std::ptr::null_mut();
         let mut group = std::ptr::null_mut();
         let mut dacl = std::ptr::null();
@@ -409,8 +405,8 @@ mod imp {
         }
 
         let err = unsafe {
-            SetNamedSecurityInfoW(
-                pathw.as_ptr(),
+            SetSecurityInfo(
+                handle,
                 SE_FILE_OBJECT,
                 si,
                 owner,
@@ -429,7 +425,8 @@ mod imp {
 
     pub fn copy_metadata(from: &Path, to: &Path) -> io::Result<()> {
         let sd = SecurityDescriptor::for_path(from)?;
-        chown(to, sd)?;
+        let to_file = File::open(to)?;
+        chown(to_file.as_raw_handle() as isize, sd)?;
 
         let meta = std::fs::metadata(from)?;
         let perms = meta.permissions();
@@ -440,7 +437,7 @@ mod imp {
     }
 
     fn file_info(p: &Path) -> io::Result<BY_HANDLE_FILE_INFORMATION> {
-        let file = std::fs::File::open(p)?;
+        let file = File::open(p)?;
         let handle = file.as_raw_handle() as isize;
         let mut info: BY_HANDLE_FILE_INFORMATION = unsafe { std::mem::zeroed() };
 
@@ -456,43 +453,16 @@ mod imp {
         Ok(n)
     }
 
-    pub fn create_copy_mode(from: &Path, to: &Path) -> io::Result<std::fs::File> {
-        let sa = SECURITY_ATTRIBUTES {
-            nLength: std::mem::size_of::<SECURITY_ATTRIBUTES>() as u32,
-            lpSecurityDescriptor: SecurityDescriptor::for_path(from)?.sd,
-            bInheritHandle: FALSE,
-        };
-        let attributes = file_info(from)?.dwFileAttributes;
+    // Needed because `security_attributes` is not exposed: https://github.com/rust-lang/libs-team/issues/314
+    pub fn create_copy_mode(from: &Path, to: &Path) -> io::Result<File> {
+        let sd = SecurityDescriptor::for_path(from)?;
+        let to_file = File::create_new(to)?;
+        chown(to_file.as_raw_handle() as isize, sd)?;
 
-        let from_file = std::fs::File::open(from)?;
-        let from_handle = from_file.as_raw_handle() as isize;
-
-        let to_path = std::fs::canonicalize(to)?;
-        let to_pathos = to_path.into_os_string();
-        let mut to_pathw: Vec<u16> = Vec::with_capacity(to_pathos.len() + 1);
-        to_pathw.extend(to_pathos.encode_wide());
-        to_pathw.push(0);
-
-        let handle = unsafe {
-            CreateFileW(
-                to_pathw.as_ptr(),
-                GENERIC_READ | GENERIC_WRITE,
-                FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
-                &sa,
-                CREATE_NEW,
-                attributes,
-                from_handle,
-            )
-        };
-
-        if handle == INVALID_HANDLE_VALUE {
-            return Err(io::Error::last_os_error());
-        }
-
-        // SAFETY: We already checked if the handle was valid
-        let res = unsafe { std::fs::File::from_raw_handle(handle as *mut c_void) };
-
-        Ok(res)
+        let meta = std::fs::metadata(from)?;
+        let perms = meta.permissions();
+        std::fs::set_permissions(to, perms)?;
+        Ok(to_file)
     }
 }
 
@@ -545,6 +515,6 @@ pub fn hardlink_count(p: &Path) -> io::Result<u64> {
     imp::hardlink_count(p)
 }
 
-pub fn create_copy_mode(from: &Path, to: &Path) -> io::Result<std::fs::File> {
+pub fn create_copy_mode(from: &Path, to: &Path) -> io::Result<File> {
     imp::create_copy_mode(from, to)
 }

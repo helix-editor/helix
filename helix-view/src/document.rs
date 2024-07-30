@@ -968,17 +968,17 @@ impl Document {
 
             let write_result: anyhow::Result<_> = async {
                 // Create the new file with the same permissions as the original file
-                if backup.is_some() && !backup_copy {
+                let mut dst = if backup.is_some() && !backup_copy {
                     let from = backup.clone().unwrap();
                     let write_path = write_path.clone();
 
-                    // This can fail if the file already exists, but `tempfile` ensures that this never happens
-                    let _ = tokio::task::spawn_blocking(move || {
-                        create_copy_mode(from.as_path(), write_path.as_path())
-                    })
-                    .await??;
-                }
-                let mut dst = tokio::fs::File::create(&write_path).await?;
+                    // This can fail if the file already exists, but since we moved the original file, it should be fine
+                    fs::File::from_std(
+                        create_copy_mode(from.as_path(), write_path.as_path()).unwrap(),
+                    )
+                } else {
+                    tokio::fs::File::create(&write_path).await.unwrap()
+                };
                 to_writer(&mut dst, encoding_with_bom_info, &text).await?;
                 dst.sync_all().await?;
                 Ok(())
