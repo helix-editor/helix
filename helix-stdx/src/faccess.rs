@@ -24,7 +24,7 @@ bitflags! {
 mod imp {
     use super::*;
 
-    use rustix::fs::Access;
+    use rustix::fs::{Access, OpenOptionsExt};
     use std::os::unix::fs::{MetadataExt, PermissionsExt};
 
     pub fn access(p: &Path, mode: AccessMode) -> io::Result<()> {
@@ -80,10 +80,19 @@ mod imp {
         Ok(metadata.nlink())
     }
 
-    pub fn create_copy_mode(from: &Path, to: &Path) -> io::Result<File> {}
+    pub fn create_copy_mode(from: &Path, to: &Path) -> io::Result<std::fs::File> {
+        let from_meta = std::fs::metadata(from)?;
+        let mode = from_meta.permissions().mode();
+
+        std::fs::OpenOptions::new()
+            .mode(mode)
+            .read(true)
+            .write(true)
+            .create_new(true)
+            .open(to)
+    }
 }
 
-// Licensed under MIT from faccess except for `chown`, `copy_metadata` and `is_acl_inherited`
 #[cfg(windows)]
 mod imp {
 
@@ -117,6 +126,7 @@ mod imp {
     use std::os::windows::io::FromRawHandle;
     use std::os::windows::{ffi::OsStrExt, fs::OpenOptionsExt, io::AsRawHandle};
 
+    // Licensed under MIT from faccess
     struct SecurityDescriptor {
         sd: PSECURITY_DESCRIPTOR,
         owner: PSID,
@@ -135,6 +145,7 @@ mod imp {
     }
 
     impl SecurityDescriptor {
+        // Licensed under MIT from faccess
         fn for_path(p: &Path) -> io::Result<SecurityDescriptor> {
             let path = std::fs::canonicalize(p)?;
             let pathos = path.into_os_string();
@@ -209,6 +220,7 @@ mod imp {
         }
     }
 
+    // Licensed under MIT from faccess
     struct ThreadToken(HANDLE);
     impl Drop for ThreadToken {
         fn drop(&mut self) {
@@ -218,6 +230,7 @@ mod imp {
         }
     }
 
+    // Licensed under MIT from faccess
     impl ThreadToken {
         fn new() -> io::Result<Self> {
             unsafe {
@@ -244,6 +257,7 @@ mod imp {
         }
     }
 
+    // Licensed under MIT from faccess
     // Based roughly on Tcl's NativeAccess()
     // https://github.com/tcltk/tcl/blob/2ee77587e4dc2150deb06b48f69db948b4ab0584/win/tclWinFile.c
     fn eaccess(p: &Path, mut mode: FILE_ACCESS_RIGHTS) -> io::Result<()> {
@@ -337,6 +351,7 @@ mod imp {
         }
     }
 
+    // Licensed under MIT from faccess
     pub fn access(p: &Path, mode: AccessMode) -> io::Result<()> {
         let mut imode = 0;
 
@@ -528,4 +543,8 @@ pub fn copy_metadata(from: &Path, to: &Path) -> io::Result<()> {
 
 pub fn hardlink_count(p: &Path) -> io::Result<u64> {
     imp::hardlink_count(p)
+}
+
+pub fn create_copy_mode(from: &Path, to: &Path) -> io::Result<std::fs::File> {
+    imp::create_copy_mode(from, to)
 }
