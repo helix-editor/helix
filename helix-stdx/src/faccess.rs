@@ -79,13 +79,18 @@ mod imp {
         let metadata = p.metadata()?;
         Ok(metadata.nlink())
     }
+
+    pub fn create_copy_mode(from: &Path, to: &Path) -> io::Result<File> {}
 }
 
 // Licensed under MIT from faccess except for `chown`, `copy_metadata` and `is_acl_inherited`
 #[cfg(windows)]
 mod imp {
 
-    use windows_sys::Win32::Foundation::{CloseHandle, LocalFree, ERROR_SUCCESS, HANDLE, PSID};
+    use windows_sys::Win32::Foundation::{
+        CloseHandle, LocalFree, ERROR_SUCCESS, FALSE, GENERIC_READ, GENERIC_WRITE, HANDLE,
+        INVALID_HANDLE_VALUE, PSID,
+    };
     use windows_sys::Win32::Security::Authorization::{
         GetNamedSecurityInfoW, SetNamedSecurityInfoW, SE_FILE_OBJECT,
     };
@@ -96,11 +101,12 @@ mod imp {
         DACL_SECURITY_INFORMATION, GENERIC_MAPPING, GROUP_SECURITY_INFORMATION, INHERITED_ACE,
         LABEL_SECURITY_INFORMATION, OBJECT_SECURITY_INFORMATION, OWNER_SECURITY_INFORMATION,
         PRIVILEGE_SET, PROTECTED_DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR,
-        SID_IDENTIFIER_AUTHORITY, TOKEN_DUPLICATE, TOKEN_QUERY,
+        SECURITY_ATTRIBUTES, SID_IDENTIFIER_AUTHORITY, TOKEN_DUPLICATE, TOKEN_QUERY,
     };
     use windows_sys::Win32::Storage::FileSystem::{
-        GetFileInformationByHandle, BY_HANDLE_FILE_INFORMATION, FILE_ACCESS_RIGHTS,
-        FILE_ALL_ACCESS, FILE_GENERIC_EXECUTE, FILE_GENERIC_READ, FILE_GENERIC_WRITE,
+        CreateFileW, GetFileInformationByHandle, BY_HANDLE_FILE_INFORMATION, CREATE_NEW,
+        FILE_ACCESS_RIGHTS, FILE_ALL_ACCESS, FILE_GENERIC_EXECUTE, FILE_GENERIC_READ,
+        FILE_GENERIC_WRITE, FILE_SHARE_DELETE, FILE_SHARE_READ, FILE_SHARE_WRITE,
     };
     use windows_sys::Win32::System::Threading::{GetCurrentThread, OpenThreadToken};
 
@@ -108,6 +114,7 @@ mod imp {
 
     use std::ffi::c_void;
 
+    use std::os::windows::io::FromRawHandle;
     use std::os::windows::{ffi::OsStrExt, fs::OpenOptionsExt, io::AsRawHandle};
 
     struct SecurityDescriptor {
@@ -417,16 +424,60 @@ mod imp {
         Ok(())
     }
 
-    pub fn hardlink_count(p: &Path) -> std::io::Result<u64> {
+    fn file_info(p: &Path) -> io::Result<BY_HANDLE_FILE_INFORMATION> {
         let file = std::fs::File::open(p)?;
         let handle = file.as_raw_handle() as isize;
         let mut info: BY_HANDLE_FILE_INFORMATION = unsafe { std::mem::zeroed() };
 
         if unsafe { GetFileInformationByHandle(handle, &mut info) } == 0 {
-            Err(std::io::Error::last_os_error())
+            Err(io::Error::last_os_error())
         } else {
-            Ok(info.nNumberOfLinks as u64)
+            Ok(info)
         }
+    }
+
+    pub fn hardlink_count(p: &Path) -> io::Result<u64> {
+        let n = file_info(p)?.nNumberOfLinks as u64;
+        Ok(n)
+    }
+
+    pub fn create_copy_mode(from: &Path, to: &Path) -> io::Result<std::fs::File> {
+        let sa = SECURITY_ATTRIBUTES {
+            nLength: std::mem::size_of::<SECURITY_ATTRIBUTES>() as u32,
+            lpSecurityDescriptor: SecurityDescriptor::for_path(from)?.sd,
+            bInheritHandle: FALSE,
+        };
+        let attributes = file_info(from)?.dwFileAttributes;
+
+        let from_file = std::fs::File::open(from)?;
+        let from_handle = from_file.as_raw_handle() as isize;
+
+        let to_path = std::fs::canonicalize(to)?;
+        let to_pathos = to_path.into_os_string();
+        let mut to_pathw: Vec<u16> = Vec::with_capacity(to_pathos.len() + 1);
+        to_pathw.extend(to_pathos.encode_wide());
+        to_pathw.push(0);
+
+        let handle = unsafe {
+            CreateFileW(
+                to_pathw.as_ptr(),
+                GENERIC_READ | GENERIC_WRITE,
+                FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE,
+                &sa,
+                CREATE_NEW,
+                attributes,
+                from_handle,
+            )
+        };
+
+        if handle == INVALID_HANDLE_VALUE {
+            return Err(io::Error::last_os_error());
+        }
+
+        // SAFETY: We already checked if the handle was valid
+        let res = unsafe { std::fs::File::from_raw_handle(handle as *mut c_void) };
+
+        Ok(res)
     }
 }
 
