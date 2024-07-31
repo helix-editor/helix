@@ -2498,7 +2498,7 @@ fn read(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     ensure!(!args.is_empty(), "file name is expected");
     ensure!(args.len() == 1, "only the file name is expected");
 
-    let filename = args.get(0).unwrap();
+    let filename = args.first().unwrap();
     let path = PathBuf::from(filename.to_string());
     ensure!(
         path.exists() && path.is_file(),

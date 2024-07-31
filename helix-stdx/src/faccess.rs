@@ -295,21 +295,21 @@ mod imp {
         let mut privileges_length = std::mem::size_of::<PRIVILEGE_SET>() as u32;
         let mut result = 0;
 
-        let mut mapping = GENERIC_MAPPING {
+        let mapping = GENERIC_MAPPING {
             GenericRead: FILE_GENERIC_READ,
             GenericWrite: FILE_GENERIC_WRITE,
             GenericExecute: FILE_GENERIC_EXECUTE,
             GenericAll: FILE_ALL_ACCESS,
         };
 
-        unsafe { MapGenericMask(&mut mode, &mut mapping) };
+        unsafe { MapGenericMask(&mut mode, &mapping) };
 
         if unsafe {
             AccessCheck(
                 *sd.descriptor(),
                 *token.as_handle(),
                 mode,
-                &mut mapping,
+                &mapping,
                 &mut privileges,
                 &mut privileges_length,
                 &mut granted_access,
