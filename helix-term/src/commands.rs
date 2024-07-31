@@ -5708,9 +5708,7 @@ async fn shell_impl_async(
                 None => bail!("Shell command failed"),
             }
         }
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        log::error!("Shell error: {stderr}");
-        stderr
+        String::from_utf8_lossy(&output.stderr)
         // Prioritize `stderr` output over `stdout`
     } else if !output.stderr.is_empty() {
         let stderr = String::from_utf8_lossy(&output.stderr);
