@@ -772,9 +772,6 @@ impl Client {
         new_path: &Path,
         is_dir: bool,
     ) -> Option<impl Future<Output = std::result::Result<(), Error>>> {
-        if !self.is_initialized() {
-            return None;
-        }
         let capabilities = self.file_operations_intests();
         if !capabilities.did_rename.has_interest(new_path, is_dir) {
             return None;
