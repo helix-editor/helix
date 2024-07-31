@@ -2308,7 +2308,7 @@ fn run_shell_command(
                     ));
                     compositor.replace_or_push("shell", popup);
                 }
-                editor.set_status("Command succeeded");
+                editor.set_status("Command run");
             },
         ));
         Ok(call)
