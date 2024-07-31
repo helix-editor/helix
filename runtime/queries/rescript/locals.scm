@@ -3,5 +3,5 @@
 ; Definitions
 ;------------
 (type_declaration) @local.definition
-(let_binding) @local
-(module_declaration) @local.namespace
+(let_binding) @local.definition
+(module_declaration) @local.definition
