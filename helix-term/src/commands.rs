@@ -433,6 +433,7 @@ impl MappableCommand {
         file_picker, "Open file picker",
         file_picker_in_current_buffer_directory, "Open file picker at current buffer's directory",
         file_picker_in_current_directory, "Open file picker at current working directory",
+        file_browser, "Open file browser at current buffer's directory",
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
         jumplist_picker, "Open jumplist picker",
@@ -3063,6 +3064,18 @@ fn file_picker_in_current_directory(cx: &mut Context) {
         return;
     }
     let picker = ui::file_picker(cwd, &cx.editor.config());
+    cx.push_layer(Box::new(overlaid(picker)));
+}
+
+fn file_browser(cx: &mut Context) {
+    let cwd = helix_stdx::env::current_working_dir();
+    let picker = match ui::file_browser(cwd, &cx.editor.theme) {
+        Ok(picker) => picker,
+        Err(err) => {
+            cx.editor.set_error(err.to_string());
+            return;
+        }
+    };
     cx.push_layer(Box::new(overlaid(picker)));
 }
 

@@ -85,6 +85,7 @@ pub type FileLocation<'a> = (PathOrId<'a>, Option<(usize, usize)>);
 
 pub enum CachedPreview {
     Document(Box<Document>),
+    Directory(Vec<String>),
     Binary,
     LargeFile,
     NotFound,
@@ -106,12 +107,20 @@ impl Preview<'_, '_> {
         }
     }
 
+    fn dir_content(&self) -> Option<&Vec<String>> {
+        match self {
+            Preview::Cached(CachedPreview::Directory(dir_content)) => Some(dir_content),
+            _ => None,
+        }
+    }
+
     /// Alternate text to show for the preview.
     fn placeholder(&self) -> &str {
         match *self {
             Self::EditorDocument(_) => "<Invalid file location>",
             Self::Cached(preview) => match preview {
                 CachedPreview::Document(_) => "<Invalid file location>",
+                CachedPreview::Directory(_) => "<Invalid directory location>",
                 CachedPreview::Binary => "<Binary file>",
                 CachedPreview::LargeFile => "<File too large to preview>",
                 CachedPreview::NotFound => "<File not found>",
@@ -262,30 +271,6 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
 }
 
 impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
-    pub fn stream(
-        columns: impl IntoIterator<Item = Column<T, D>>,
-        editor_data: D,
-    ) -> (Nucleo<T>, Injector<T, D>) {
-        let columns: Arc<[_]> = columns.into_iter().collect();
-        let matcher_columns = columns.iter().filter(|col| col.filter).count() as u32;
-        assert!(matcher_columns > 0);
-        let matcher = Nucleo::new(
-            Config::DEFAULT,
-            Arc::new(helix_event::request_redraw),
-            None,
-            matcher_columns,
-        );
-        let streamer = Injector {
-            dst: matcher.injector(),
-            columns,
-            editor_data: Arc::new(editor_data),
-            version: 0,
-            picker_version: Arc::new(AtomicUsize::new(0)),
-            _redraw: helix_event::RequestRedrawOnDrop,
-        };
-        (matcher, streamer)
-    }
-
     pub fn new<C, O, F>(
         columns: C,
         primary_column: usize,
@@ -311,41 +296,6 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         for item in options {
             inject_nucleo_item(&injector, &columns, item, &editor_data);
         }
-        Self::with(
-            matcher,
-            columns,
-            primary_column,
-            Arc::new(editor_data),
-            Arc::new(AtomicUsize::new(0)),
-            callback_fn,
-        )
-    }
-
-    pub fn with_stream(
-        matcher: Nucleo<T>,
-        primary_column: usize,
-        injector: Injector<T, D>,
-        callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
-    ) -> Self {
-        Self::with(
-            matcher,
-            injector.columns,
-            primary_column,
-            injector.editor_data,
-            injector.picker_version,
-            callback_fn,
-        )
-    }
-
-    fn with(
-        matcher: Nucleo<T>,
-        columns: Arc<[Column<T, D>]>,
-        default_column: usize,
-        editor_data: Arc<D>,
-        version: Arc<AtomicUsize>,
-        callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
-    ) -> Self {
-        assert!(!columns.is_empty());
 
         let prompt = Prompt::new(
             "".into(),
@@ -359,14 +309,14 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             .map(|column| Constraint::Length(column.name.chars().count() as u16))
             .collect();
 
-        let query = PickerQuery::new(columns.iter().map(|col| &col.name).cloned(), default_column);
+        let query = PickerQuery::new(columns.iter().map(|col| &col.name).cloned(), primary_column);
 
         Self {
             columns,
-            primary_column: default_column,
+            primary_column,
             matcher,
-            editor_data,
-            version,
+            editor_data: Arc::new(editor_data),
+            version: Arc::new(AtomicUsize::new(0)),
             cursor: 0,
             prompt,
             query,
@@ -584,33 +534,53 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 }
 
                 let path: Arc<Path> = path.into();
-                let data = std::fs::File::open(&path).and_then(|file| {
-                    let metadata = file.metadata()?;
-                    // Read up to 1kb to detect the content type
-                    let n = file.take(1024).read_to_end(&mut self.read_buffer)?;
-                    let content_type = content_inspector::inspect(&self.read_buffer[..n]);
-                    self.read_buffer.clear();
-                    Ok((metadata, content_type))
-                });
-                let preview = data
-                    .map(
-                        |(metadata, content_type)| match (metadata.len(), content_type) {
-                            (_, content_inspector::ContentType::BINARY) => CachedPreview::Binary,
-                            (size, _) if size > MAX_FILE_SIZE_FOR_PREVIEW => {
-                                CachedPreview::LargeFile
+                let preview = std::fs::metadata(&path)
+                    .and_then(|metadata| {
+                        if metadata.is_dir() {
+                            let files = super::directory_content(&path)?;
+                            let file_names: Vec<_> = files
+                                .iter()
+                                .map(|(path, _is_dir)| path)
+                                .filter_map(|file| file.file_name())
+                                .map(|name| name.to_string_lossy().into_owned())
+                                .collect();
+                            Ok(CachedPreview::Directory(file_names))
+                        } else if metadata.is_file() {
+                            if metadata.len() > MAX_FILE_SIZE_FOR_PREVIEW {
+                                return Ok(CachedPreview::LargeFile);
                             }
-                            _ => Document::open(&path, None, None, editor.config.clone())
-                                .map(|doc| {
+                            let content_type = std::fs::File::open(&path).and_then(|file| {
+                                // Read up to 1kb to detect the content type
+                                let n = file.take(1024).read_to_end(&mut self.read_buffer)?;
+                                let content_type =
+                                    content_inspector::inspect(&self.read_buffer[..n]);
+                                self.read_buffer.clear();
+                                Ok(content_type)
+                            })?;
+                            if content_type.is_binary() {
+                                return Ok(CachedPreview::Binary);
+                            }
+                            Document::open(&path, None, None, editor.config.clone()).map_or(
+                                Err(std::io::Error::new(
+                                    std::io::ErrorKind::NotFound,
+                                    "Cannot open document",
+                                )),
+                                |doc| {
                                     // Asynchronously highlight the new document
                                     helix_event::send_blocking(
                                         &self.preview_highlight_handler,
                                         path.clone(),
                                     );
-                                    CachedPreview::Document(Box::new(doc))
-                                })
-                                .unwrap_or(CachedPreview::NotFound),
-                        },
-                    )
+                                    Ok(CachedPreview::Document(Box::new(doc)))
+                                },
+                            )
+                        } else {
+                            Err(std::io::Error::new(
+                                std::io::ErrorKind::NotFound,
+                                "Neither a dir, nor a file",
+                            ))
+                        }
+                    })
                     .unwrap_or(CachedPreview::NotFound);
                 self.preview_cache.insert(path.clone(), preview);
                 Some((Preview::Cached(&self.preview_cache[&path]), range))
@@ -844,6 +814,20 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                     doc
                 }
                 _ => {
+                    if let Some(dir_content) = preview.dir_content() {
+                        for (i, entry) in dir_content.iter().take(inner.height as usize).enumerate()
+                        {
+                            surface.set_stringn(
+                                inner.x,
+                                inner.y + i as u16,
+                                entry,
+                                inner.width as usize,
+                                text,
+                            );
+                        }
+                        return;
+                    }
+
                     let alt_text = preview.placeholder();
                     let x = inner.x + inner.width.saturating_sub(alt_text.len() as u16) / 2;
                     let y = inner.y + inner.height / 2;

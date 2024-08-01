@@ -20,6 +20,7 @@ use crate::job::{self, Callback};
 pub use completion::{Completion, CompletionItem};
 pub use editor::EditorView;
 use helix_stdx::rope;
+use helix_view::theme::Style;
 pub use markdown::Markdown;
 pub use menu::Menu;
 pub use picker::{Column as PickerColumn, FileLocation, Picker};
@@ -30,6 +31,7 @@ pub use text::Text;
 
 use helix_view::Editor;
 
+use std::path::Path;
 use std::{error::Error, path::PathBuf};
 
 pub fn prompt(
@@ -264,6 +266,96 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         });
     }
     picker
+}
+
+pub struct FileBrowserData {
+    root: PathBuf,
+    directory_style: Style,
+    file_style: Style,
+}
+type FileBrowser = Picker<(PathBuf, bool), FileBrowserData>;
+
+pub fn file_browser(
+    root: PathBuf,
+    theme: &helix_view::Theme,
+) -> Result<FileBrowser, std::io::Error> {
+    let directory_content = directory_content(&root)?;
+    let data = FileBrowserData {
+        root,
+        directory_style: theme.get("variable.other.member"),
+        file_style: theme.get("function"),
+    };
+
+    let columns = [PickerColumn::new(
+        "path",
+        |(item, is_dir): &(PathBuf, bool), data: &FileBrowserData| {
+            let style = if *is_dir {
+                data.directory_style
+            } else {
+                data.file_style
+            };
+            tui::text::Span::styled(
+                item.strip_prefix(&data.root)
+                    .unwrap_or(item)
+                    .to_string_lossy(),
+                style,
+            )
+            .into()
+        },
+    )];
+    let picker = Picker::new(
+        columns,
+        0,
+        directory_content,
+        data,
+        move |cx, (path, is_dir): &(PathBuf, bool), action| {
+            if *is_dir {
+                let owned_path = path.clone();
+                let callback = Box::pin(async move {
+                    let call: Callback =
+                        Callback::EditorCompositor(Box::new(move |editor, compositor| {
+                            let picker = match file_browser(owned_path, &editor.theme) {
+                                Ok(picker) => picker,
+                                Err(err) => {
+                                    editor.set_error(err.to_string());
+                                    return crate::job::RequireRender::Render;
+                                }
+                            };
+                            compositor.push(Box::new(overlay::overlaid(picker)));
+                            crate::job::RequireRender::Render
+                        }));
+                    Ok(call)
+                });
+                cx.jobs.callback(callback);
+            } else if let Err(e) = cx.editor.open(path, action) {
+                let err = if let Some(err) = e.source() {
+                    format!("{}", err)
+                } else {
+                    format!("unable to open \"{}\"", path.display())
+                };
+                cx.editor.set_error(err);
+            }
+        },
+    )
+    .with_preview(|_editor, (path, _is_dir)| Some((path.as_path().into(), None)));
+    Ok(picker)
+}
+
+fn directory_content(path: &Path) -> Result<Vec<(PathBuf, bool)>, std::io::Error> {
+    let mut dirs = Vec::new();
+    let mut files = Vec::new();
+    for entry in std::fs::read_dir(path)?.flatten() {
+        let entry_path = entry.path();
+        if entry.path().is_dir() {
+            dirs.push((entry_path, true));
+        } else {
+            files.push((entry_path, false));
+        }
+    }
+    dirs.sort();
+    files.sort();
+    dirs.extend(files);
+    Ok(dirs)
 }
 
 pub mod completers {
