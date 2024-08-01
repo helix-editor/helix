@@ -178,6 +178,20 @@ pub fn compare_ropes(before: &Rope, after: &Rope) -> Transaction {
     res
 }
 
+/// Compares `old` and `new` to generate a text diff
+pub fn diff_ropes(before: RopeSlice, after: RopeSlice) -> String {
+    let file = InternedInput::new(RopeLines(before), RopeLines(after));
+    imara_diff::diff(
+        Algorithm::Histogram,
+        &file,
+        imara_diff::UnifiedDiffBuilder::new(&file),
+    )
+    // Unsure why we get empty lines...
+    .split_inclusive('\n')
+    .filter(|line| !line.trim().is_empty())
+    .collect()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
