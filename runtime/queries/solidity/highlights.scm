@@ -75,6 +75,7 @@
 
 ; Invocations
 (emit_statement . (identifier) @type)
+(revert_statement error: (identifier) @type)
 (modifier_invocation (identifier) @function)
 
 (call_expression . (member_expression property: (identifier) @function.method))
@@ -223,6 +224,16 @@
   "new"
   "++"
   "--"
+  "+="
+  "-="
+  "*="
+  "/="
+  "%="
+  "^="
+  "&="
+  "|="
+  "<<="
+  ">>="
 ] @operator
 
 [

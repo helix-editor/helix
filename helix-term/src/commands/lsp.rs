@@ -9,14 +9,13 @@ use helix_lsp::{
     Client, LanguageServerId, OffsetEncoding,
 };
 use tokio_stream::StreamExt;
-use tui::{
-    text::{Span, Spans},
-    widgets::Row,
-};
+use tui::{text::Span, widgets::Row};
 
 use super::{align_view, push_jump, Align, Context, Editor};
 
-use helix_core::{syntax::LanguageServerFeature, text_annotations::InlineAnnotation, Selection};
+use helix_core::{
+    syntax::LanguageServerFeature, text_annotations::InlineAnnotation, Selection, Uri,
+};
 use helix_stdx::path;
 use helix_view::{
     document::{DocumentInlayHints, DocumentInlayHintsId},
@@ -29,15 +28,15 @@ use helix_view::{
 use crate::{
     compositor::{self, Compositor},
     job::Callback,
-    ui::{self, overlay::overlaid, DynamicPicker, FileLocation, Picker, Popup, PromptEvent},
+    ui::{self, overlay::overlaid, FileLocation, Picker, Popup, PromptEvent},
 };
 
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, HashSet},
-    fmt::Write,
+    fmt::{Display, Write},
     future::Future,
-    path::{Path, PathBuf},
+    path::Path,
 };
 
 /// Gets the first language server that is attached to a document which supports a specific feature.
@@ -62,67 +61,10 @@ macro_rules! language_server_with_feature {
     }};
 }
 
-impl ui::menu::Item for lsp::Location {
-    /// Current working directory.
-    type Data = PathBuf;
-
-    fn format(&self, cwdir: &Self::Data) -> Row {
-        // The preallocation here will overallocate a few characters since it will account for the
-        // URL's scheme, which is not used most of the time since that scheme will be "file://".
-        // Those extra chars will be used to avoid allocating when writing the line number (in the
-        // common case where it has 5 digits or less, which should be enough for a cast majority
-        // of usages).
-        let mut res = String::with_capacity(self.uri.as_str().len());
-
-        if self.uri.scheme() == "file" {
-            // With the preallocation above and UTF-8 paths already, this closure will do one (1)
-            // allocation, for `to_file_path`, else there will be two (2), with `to_string_lossy`.
-            let mut write_path_to_res = || -> Option<()> {
-                let path = self.uri.to_file_path().ok()?;
-                res.push_str(&path.strip_prefix(cwdir).unwrap_or(&path).to_string_lossy());
-                Some(())
-            };
-            write_path_to_res();
-        } else {
-            // Never allocates since we declared the string with this capacity already.
-            res.push_str(self.uri.as_str());
-        }
-
-        // Most commonly, this will not allocate, especially on Unix systems where the root prefix
-        // is a simple `/` and not `C:\` (with whatever drive letter)
-        write!(&mut res, ":{}", self.range.start.line + 1)
-            .expect("Will only failed if allocating fail");
-        res.into()
-    }
-}
-
 struct SymbolInformationItem {
     symbol: lsp::SymbolInformation,
     offset_encoding: OffsetEncoding,
-}
-
-impl ui::menu::Item for SymbolInformationItem {
-    /// Path to currently focussed document
-    type Data = Option<lsp::Url>;
-
-    fn format(&self, current_doc_path: &Self::Data) -> Row {
-        if current_doc_path.as_ref() == Some(&self.symbol.location.uri) {
-            self.symbol.name.as_str().into()
-        } else {
-            match self.symbol.location.uri.to_file_path() {
-                Ok(path) => {
-                    let get_relative_path = path::get_relative_path(path.as_path());
-                    format!(
-                        "{} ({})",
-                        &self.symbol.name,
-                        get_relative_path.to_string_lossy()
-                    )
-                    .into()
-                }
-                Err(_) => format!("{} ({})", &self.symbol.name, &self.symbol.location.uri).into(),
-            }
-        }
-    }
+    uri: Uri,
 }
 
 struct DiagnosticStyles {
@@ -133,60 +75,15 @@ struct DiagnosticStyles {
 }
 
 struct PickerDiagnostic {
-    path: PathBuf,
+    uri: Uri,
     diag: lsp::Diagnostic,
     offset_encoding: OffsetEncoding,
 }
 
-impl ui::menu::Item for PickerDiagnostic {
-    type Data = (DiagnosticStyles, DiagnosticsFormat);
-
-    fn format(&self, (styles, format): &Self::Data) -> Row {
-        let mut style = self
-            .diag
-            .severity
-            .map(|s| match s {
-                DiagnosticSeverity::HINT => styles.hint,
-                DiagnosticSeverity::INFORMATION => styles.info,
-                DiagnosticSeverity::WARNING => styles.warning,
-                DiagnosticSeverity::ERROR => styles.error,
-                _ => Style::default(),
-            })
-            .unwrap_or_default();
-
-        // remove background as it is distracting in the picker list
-        style.bg = None;
-
-        let code = match self.diag.code.as_ref() {
-            Some(NumberOrString::Number(n)) => format!(" ({n})"),
-            Some(NumberOrString::String(s)) => format!(" ({s})"),
-            None => String::new(),
-        };
-
-        let path = match format {
-            DiagnosticsFormat::HideSourcePath => String::new(),
-            DiagnosticsFormat::ShowSourcePath => {
-                let path = path::get_truncated_path(&self.path);
-                format!("{}: ", path.to_string_lossy())
-            }
-        };
-
-        Spans::from(vec![
-            Span::raw(path),
-            Span::styled(&self.diag.message, style),
-            Span::styled(code, style),
-        ])
-        .into()
-    }
-}
-
-fn location_to_file_location(location: &lsp::Location) -> FileLocation {
-    let path = location.uri.to_file_path().unwrap();
-    let line = Some((
-        location.range.start.line as usize,
-        location.range.end.line as usize,
-    ));
-    (path.into(), line)
+fn uri_to_file_location<'a>(uri: &'a Uri, range: &lsp::Range) -> Option<FileLocation<'a>> {
+    let path = uri.as_path()?;
+    let line = Some((range.start.line as usize, range.end.line as usize));
+    Some((path.into(), line))
 }
 
 fn jump_to_location(
@@ -241,20 +138,39 @@ fn jump_to_position(
     }
 }
 
-type SymbolPicker = Picker<SymbolInformationItem>;
-
-fn sym_picker(symbols: Vec<SymbolInformationItem>, current_path: Option<lsp::Url>) -> SymbolPicker {
-    // TODO: drop current_path comparison and instead use workspace: bool flag?
-    Picker::new(symbols, current_path, move |cx, item, action| {
-        jump_to_location(
-            cx.editor,
-            &item.symbol.location,
-            item.offset_encoding,
-            action,
-        );
-    })
-    .with_preview(move |_editor, item| Some(location_to_file_location(&item.symbol.location)))
-    .truncate_start(false)
+fn display_symbol_kind(kind: lsp::SymbolKind) -> &'static str {
+    match kind {
+        lsp::SymbolKind::FILE => "file",
+        lsp::SymbolKind::MODULE => "module",
+        lsp::SymbolKind::NAMESPACE => "namespace",
+        lsp::SymbolKind::PACKAGE => "package",
+        lsp::SymbolKind::CLASS => "class",
+        lsp::SymbolKind::METHOD => "method",
+        lsp::SymbolKind::PROPERTY => "property",
+        lsp::SymbolKind::FIELD => "field",
+        lsp::SymbolKind::CONSTRUCTOR => "construct",
+        lsp::SymbolKind::ENUM => "enum",
+        lsp::SymbolKind::INTERFACE => "interface",
+        lsp::SymbolKind::FUNCTION => "function",
+        lsp::SymbolKind::VARIABLE => "variable",
+        lsp::SymbolKind::CONSTANT => "constant",
+        lsp::SymbolKind::STRING => "string",
+        lsp::SymbolKind::NUMBER => "number",
+        lsp::SymbolKind::BOOLEAN => "boolean",
+        lsp::SymbolKind::ARRAY => "array",
+        lsp::SymbolKind::OBJECT => "object",
+        lsp::SymbolKind::KEY => "key",
+        lsp::SymbolKind::NULL => "null",
+        lsp::SymbolKind::ENUM_MEMBER => "enummem",
+        lsp::SymbolKind::STRUCT => "struct",
+        lsp::SymbolKind::EVENT => "event",
+        lsp::SymbolKind::OPERATOR => "operator",
+        lsp::SymbolKind::TYPE_PARAMETER => "typeparam",
+        _ => {
+            log::warn!("Unknown symbol kind: {:?}", kind);
+            ""
+        }
+    }
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -263,22 +179,24 @@ enum DiagnosticsFormat {
     HideSourcePath,
 }
 
+type DiagnosticsPicker = Picker<PickerDiagnostic, DiagnosticStyles>;
+
 fn diag_picker(
     cx: &Context,
-    diagnostics: BTreeMap<PathBuf, Vec<(lsp::Diagnostic, LanguageServerId)>>,
+    diagnostics: BTreeMap<Uri, Vec<(lsp::Diagnostic, LanguageServerId)>>,
     format: DiagnosticsFormat,
-) -> Picker<PickerDiagnostic> {
+) -> DiagnosticsPicker {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
 
     // flatten the map to a vec of (url, diag) pairs
     let mut flat_diag = Vec::new();
-    for (path, diags) in diagnostics {
+    for (uri, diags) in diagnostics {
         flat_diag.reserve(diags.len());
 
         for (diag, ls) in diags {
             if let Some(ls) = cx.editor.language_server_by_id(ls) {
                 flat_diag.push(PickerDiagnostic {
-                    path: path.clone(),
+                    uri: uri.clone(),
                     diag,
                     offset_encoding: ls.offset_encoding(),
                 });
@@ -293,22 +211,75 @@ fn diag_picker(
         error: cx.editor.theme.get("error"),
     };
 
+    let mut columns = vec![
+        ui::PickerColumn::new(
+            "severity",
+            |item: &PickerDiagnostic, styles: &DiagnosticStyles| {
+                match item.diag.severity {
+                    Some(DiagnosticSeverity::HINT) => Span::styled("HINT", styles.hint),
+                    Some(DiagnosticSeverity::INFORMATION) => Span::styled("INFO", styles.info),
+                    Some(DiagnosticSeverity::WARNING) => Span::styled("WARN", styles.warning),
+                    Some(DiagnosticSeverity::ERROR) => Span::styled("ERROR", styles.error),
+                    _ => Span::raw(""),
+                }
+                .into()
+            },
+        ),
+        ui::PickerColumn::new("code", |item: &PickerDiagnostic, _| {
+            match item.diag.code.as_ref() {
+                Some(NumberOrString::Number(n)) => n.to_string().into(),
+                Some(NumberOrString::String(s)) => s.as_str().into(),
+                None => "".into(),
+            }
+        }),
+        ui::PickerColumn::new("message", |item: &PickerDiagnostic, _| {
+            item.diag.message.as_str().into()
+        }),
+    ];
+    let mut primary_column = 2; // message
+
+    if format == DiagnosticsFormat::ShowSourcePath {
+        columns.insert(
+            // between message code and message
+            2,
+            ui::PickerColumn::new("path", |item: &PickerDiagnostic, _| {
+                if let Some(path) = item.uri.as_path() {
+                    path::get_truncated_path(path)
+                        .to_string_lossy()
+                        .to_string()
+                        .into()
+                } else {
+                    Default::default()
+                }
+            }),
+        );
+        primary_column += 1;
+    }
+
     Picker::new(
+        columns,
+        primary_column,
         flat_diag,
-        (styles, format),
+        styles,
         move |cx,
               PickerDiagnostic {
-                  path,
+                  uri,
                   diag,
                   offset_encoding,
               },
               action| {
-            jump_to_position(cx.editor, path, diag.range, *offset_encoding, action)
+            let Some(path) = uri.as_path() else {
+                return;
+            };
+            jump_to_position(cx.editor, path, diag.range, *offset_encoding, action);
+            let (view, doc) = current!(cx.editor);
+            view.diagnostics_handler
+                .immediately_show_diagnostic(doc, view.id);
         },
     )
-    .with_preview(move |_editor, PickerDiagnostic { path, diag, .. }| {
+    .with_preview(move |_editor, PickerDiagnostic { uri, diag, .. }| {
         let line = Some((diag.range.start.line as usize, diag.range.end.line as usize));
-        Some((path.clone().into(), line))
+        Some((uri.as_path()?.into(), line))
     })
     .truncate_start(false)
 }
@@ -317,6 +288,7 @@ pub fn symbol_picker(cx: &mut Context) {
     fn nested_to_flat(
         list: &mut Vec<SymbolInformationItem>,
         file: &lsp::TextDocumentIdentifier,
+        uri: &Uri,
         symbol: lsp::DocumentSymbol,
         offset_encoding: OffsetEncoding,
     ) {
@@ -331,9 +303,10 @@ pub fn symbol_picker(cx: &mut Context) {
                 container_name: None,
             },
             offset_encoding,
+            uri: uri.clone(),
         });
         for child in symbol.children.into_iter().flatten() {
-            nested_to_flat(list, file, child, offset_encoding);
+            nested_to_flat(list, file, uri, child, offset_encoding);
         }
     }
     let doc = doc!(cx.editor);
@@ -347,6 +320,9 @@ pub fn symbol_picker(cx: &mut Context) {
             let request = language_server.document_symbols(doc.identifier()).unwrap();
             let offset_encoding = language_server.offset_encoding();
             let doc_id = doc.identifier();
+            let doc_uri = doc
+                .uri()
+                .expect("docs with active language servers must be backed by paths");
 
             async move {
                 let json = request.await?;
@@ -361,6 +337,7 @@ pub fn symbol_picker(cx: &mut Context) {
                     lsp::DocumentSymbolResponse::Flat(symbols) => symbols
                         .into_iter()
                         .map(|symbol| SymbolInformationItem {
+                            uri: doc_uri.clone(),
                             symbol,
                             offset_encoding,
                         })
@@ -368,7 +345,13 @@ pub fn symbol_picker(cx: &mut Context) {
                     lsp::DocumentSymbolResponse::Nested(symbols) => {
                         let mut flat_symbols = Vec::new();
                         for symbol in symbols {
-                            nested_to_flat(&mut flat_symbols, &doc_id, symbol, offset_encoding)
+                            nested_to_flat(
+                                &mut flat_symbols,
+                                &doc_id,
+                                &doc_uri,
+                                symbol,
+                                offset_encoding,
+                            )
                         }
                         flat_symbols
                     }
@@ -377,7 +360,6 @@ pub fn symbol_picker(cx: &mut Context) {
             }
         })
         .collect();
-    let current_url = doc.url();
 
     if futures.is_empty() {
         cx.editor
@@ -392,7 +374,37 @@ pub fn symbol_picker(cx: &mut Context) {
             symbols.append(&mut lsp_items);
         }
         let call = move |_editor: &mut Editor, compositor: &mut Compositor| {
-            let picker = sym_picker(symbols, current_url);
+            let columns = [
+                ui::PickerColumn::new("kind", |item: &SymbolInformationItem, _| {
+                    display_symbol_kind(item.symbol.kind).into()
+                }),
+                // Some symbols in the document symbol picker may have a URI that isn't
+                // the current file. It should be rare though, so we concatenate that
+                // URI in with the symbol name in this picker.
+                ui::PickerColumn::new("name", |item: &SymbolInformationItem, _| {
+                    item.symbol.name.as_str().into()
+                }),
+            ];
+
+            let picker = Picker::new(
+                columns,
+                1, // name column
+                symbols,
+                (),
+                move |cx, item, action| {
+                    jump_to_location(
+                        cx.editor,
+                        &item.symbol.location,
+                        item.offset_encoding,
+                        action,
+                    );
+                },
+            )
+            .with_preview(move |_editor, item| {
+                uri_to_file_location(&item.uri, &item.symbol.location.range)
+            })
+            .truncate_start(false);
+
             compositor.push(Box::new(overlaid(picker)))
         };
 
@@ -401,6 +413,8 @@ pub fn symbol_picker(cx: &mut Context) {
 }
 
 pub fn workspace_symbol_picker(cx: &mut Context) {
+    use crate::ui::picker::Injector;
+
     let doc = doc!(cx.editor);
     if doc
         .language_servers_with_feature(LanguageServerFeature::WorkspaceSymbols)
@@ -412,25 +426,37 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
         return;
     }
 
-    let get_symbols = move |pattern: String, editor: &mut Editor| {
+    let get_symbols = |pattern: &str, editor: &mut Editor, _data, injector: &Injector<_, _>| {
         let doc = doc!(editor);
         let mut seen_language_servers = HashSet::new();
         let mut futures: FuturesOrdered<_> = doc
             .language_servers_with_feature(LanguageServerFeature::WorkspaceSymbols)
             .filter(|ls| seen_language_servers.insert(ls.id()))
             .map(|language_server| {
-                let request = language_server.workspace_symbols(pattern.clone()).unwrap();
+                let request = language_server
+                    .workspace_symbols(pattern.to_string())
+                    .unwrap();
                 let offset_encoding = language_server.offset_encoding();
                 async move {
                     let json = request.await?;
 
-                    let response =
+                    let response: Vec<_> =
                         serde_json::from_value::<Option<Vec<lsp::SymbolInformation>>>(json)?
                             .unwrap_or_default()
                             .into_iter()
-                            .map(|symbol| SymbolInformationItem {
-                                symbol,
-                                offset_encoding,
+                            .filter_map(|symbol| {
+                                let uri = match Uri::try_from(&symbol.location.uri) {
+                                    Ok(uri) => uri,
+                                    Err(err) => {
+                                        log::warn!("discarding symbol with invalid URI: {err}");
+                                        return None;
+                                    }
+                                };
+                                Some(SymbolInformationItem {
+                                    symbol,
+                                    uri,
+                                    offset_encoding,
+                                })
                             })
                             .collect();
 
@@ -443,44 +469,66 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
             editor.set_error("No configured language server supports workspace symbols");
         }
 
+        let injector = injector.clone();
         async move {
-            let mut symbols = Vec::new();
             // TODO if one symbol request errors, all other requests are discarded (even if they're valid)
-            while let Some(mut lsp_items) = futures.try_next().await? {
-                symbols.append(&mut lsp_items);
+            while let Some(lsp_items) = futures.try_next().await? {
+                for item in lsp_items {
+                    injector.push(item)?;
+                }
             }
-            anyhow::Ok(symbols)
+            Ok(())
         }
         .boxed()
     };
+    let columns = [
+        ui::PickerColumn::new("kind", |item: &SymbolInformationItem, _| {
+            display_symbol_kind(item.symbol.kind).into()
+        }),
+        ui::PickerColumn::new("name", |item: &SymbolInformationItem, _| {
+            item.symbol.name.as_str().into()
+        })
+        .without_filtering(),
+        ui::PickerColumn::new("path", |item: &SymbolInformationItem, _| {
+            if let Some(path) = item.uri.as_path() {
+                path::get_relative_path(path)
+                    .to_string_lossy()
+                    .to_string()
+                    .into()
+            } else {
+                item.symbol.location.uri.to_string().into()
+            }
+        }),
+    ];
 
-    let current_url = doc.url();
-    let initial_symbols = get_symbols("".to_owned(), cx.editor);
+    let picker = Picker::new(
+        columns,
+        1, // name column
+        [],
+        (),
+        move |cx, item, action| {
+            jump_to_location(
+                cx.editor,
+                &item.symbol.location,
+                item.offset_encoding,
+                action,
+            );
+        },
+    )
+    .with_preview(|_editor, item| uri_to_file_location(&item.uri, &item.symbol.location.range))
+    .with_dynamic_query(get_symbols, None)
+    .truncate_start(false);
 
-    cx.jobs.callback(async move {
-        let symbols = initial_symbols.await?;
-        let call = move |_editor: &mut Editor, compositor: &mut Compositor| {
-            let picker = sym_picker(symbols, current_url);
-            let dyn_picker = DynamicPicker::new(picker, Box::new(get_symbols));
-            compositor.push(Box::new(overlaid(dyn_picker)))
-        };
-
-        Ok(Callback::EditorCompositor(Box::new(call)))
-    });
+    cx.push_layer(Box::new(overlaid(picker)));
 }
 
 pub fn diagnostics_picker(cx: &mut Context) {
     let doc = doc!(cx.editor);
-    if let Some(current_path) = doc.path() {
-        let diagnostics = cx
-            .editor
-            .diagnostics
-            .get(current_path)
-            .cloned()
-            .unwrap_or_default();
+    if let Some(uri) = doc.uri() {
+        let diagnostics = cx.editor.diagnostics.get(&uri).cloned().unwrap_or_default();
         let picker = diag_picker(
             cx,
-            [(current_path.clone(), diagnostics)].into(),
+            [(uri, diagnostics)].into(),
             DiagnosticsFormat::HideSourcePath,
         );
         cx.push_layer(Box::new(overlaid(picker)));
@@ -741,13 +789,6 @@ pub fn code_action(cx: &mut Context) {
     });
 }
 
-impl ui::menu::Item for lsp::Command {
-    type Data = ();
-    fn format(&self, _data: &Self::Data) -> Row {
-        self.title.as_str().into()
-    }
-}
-
 pub fn execute_lsp_command(
     editor: &mut Editor,
     language_server_id: LanguageServerId,
@@ -791,13 +832,13 @@ pub enum ApplyEditErrorKind {
     // InvalidEdit,
 }
 
-impl ToString for ApplyEditErrorKind {
-    fn to_string(&self) -> String {
+impl Display for ApplyEditErrorKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ApplyEditErrorKind::DocumentChanged => "document has changed".to_string(),
-            ApplyEditErrorKind::FileNotFound => "file not found".to_string(),
-            ApplyEditErrorKind::UnknownURISchema => "URI schema not supported".to_string(),
-            ApplyEditErrorKind::IoError(err) => err.to_string(),
+            ApplyEditErrorKind::DocumentChanged => f.write_str("document has changed"),
+            ApplyEditErrorKind::FileNotFound => f.write_str("file not found"),
+            ApplyEditErrorKind::UnknownURISchema => f.write_str("URI schema not supported"),
+            ApplyEditErrorKind::IoError(err) => f.write_str(&format!("{err}")),
         }
     }
 }
@@ -817,10 +858,67 @@ fn goto_impl(
         }
         [] => unreachable!("`locations` should be non-empty for `goto_impl`"),
         _locations => {
-            let picker = Picker::new(locations, cwdir, move |cx, location, action| {
+            let columns = [ui::PickerColumn::new(
+                "location",
+                |item: &lsp::Location, cwdir: &std::path::PathBuf| {
+                    // The preallocation here will overallocate a few characters since it will account for the
+                    // URL's scheme, which is not used most of the time since that scheme will be "file://".
+                    // Those extra chars will be used to avoid allocating when writing the line number (in the
+                    // common case where it has 5 digits or less, which should be enough for a cast majority
+                    // of usages).
+                    let mut res = String::with_capacity(item.uri.as_str().len());
+
+                    if item.uri.scheme() == "file" {
+                        // With the preallocation above and UTF-8 paths already, this closure will do one (1)
+                        // allocation, for `to_file_path`, else there will be two (2), with `to_string_lossy`.
+                        if let Ok(path) = item.uri.to_file_path() {
+                            // We don't convert to a `helix_core::Uri` here because we've already checked the scheme.
+                            // This path won't be normalized but it's only used for display.
+                            res.push_str(
+                                &path.strip_prefix(cwdir).unwrap_or(&path).to_string_lossy(),
+                            );
+                        }
+                    } else {
+                        // Never allocates since we declared the string with this capacity already.
+                        res.push_str(item.uri.as_str());
+                    }
+
+                    // Most commonly, this will not allocate, especially on Unix systems where the root prefix
+                    // is a simple `/` and not `C:\` (with whatever drive letter)
+                    write!(&mut res, ":{}", item.range.start.line + 1)
+                        .expect("Will only failed if allocating fail");
+                    res.into()
+                },
+            )];
+
+            let picker = Picker::new(columns, 0, locations, cwdir, move |cx, location, action| {
                 jump_to_location(cx.editor, location, offset_encoding, action)
             })
-            .with_preview(move |_editor, location| Some(location_to_file_location(location)));
+            .with_preview(move |_editor, location| {
+                use crate::ui::picker::PathOrId;
+
+                let lines = Some((
+                    location.range.start.line as usize,
+                    location.range.end.line as usize,
+                ));
+
+                // TODO: we should avoid allocating by doing the Uri conversion ahead of time.
+                //
+                // To do this, introduce a `Location` type in `helix-core` that reuses the core
+                // `Uri` type instead of the LSP `Url` type and replaces the LSP `Range` type.
+                // Refactor the callers of `goto_impl` to pass iterators that translate the
+                // LSP location type to the custom one in core, or have them collect and pass
+                // `Vec<Location>`s. Replace the `uri_to_file_location` function with
+                // `location_to_file_location` that takes only `&helix_core::Location` as
+                // parameters.
+                //
+                // By doing this we can also eliminate the duplicated URI info in the
+                // `SymbolInformationItem` type and introduce a custom Symbol type in `helix-core`
+                // which will be reused in the future for tree-sitter based symbol pickers.
+                let path = Uri::try_from(&location.uri).ok()?.as_path_buf()?;
+                #[allow(deprecated)]
+                Some((PathOrId::from_path_buf(path), lines))
+            });
             compositor.push(Box::new(overlaid(picker)));
         }
     }
@@ -1029,11 +1127,12 @@ pub fn rename_symbol(cx: &mut Context) {
     fn create_rename_prompt(
         editor: &Editor,
         prefill: String,
+        history_register: Option<char>,
         language_server_id: Option<LanguageServerId>,
     ) -> Box<ui::Prompt> {
         let prompt = ui::Prompt::new(
             "rename-to:".into(),
-            None,
+            history_register,
             ui::completers::none,
             move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
                 if event != PromptEvent::Validate {
@@ -1070,6 +1169,7 @@ pub fn rename_symbol(cx: &mut Context) {
     }
 
     let (view, doc) = current_ref!(cx.editor);
+    let history_register = cx.register;
 
     if doc
         .language_servers_with_feature(LanguageServerFeature::RenameSymbol)
@@ -1112,14 +1212,14 @@ pub fn rename_symbol(cx: &mut Context) {
                     }
                 };
 
-                let prompt = create_rename_prompt(editor, prefill, Some(ls_id));
+                let prompt = create_rename_prompt(editor, prefill, history_register, Some(ls_id));
 
                 compositor.push(prompt);
             },
         );
     } else {
         let prefill = get_prefill_from_word_boundary(cx.editor);
-        let prompt = create_rename_prompt(cx.editor, prefill, None);
+        let prompt = create_rename_prompt(cx.editor, prefill, history_register, None);
         cx.push_layer(prompt);
     }
 }
@@ -1199,7 +1299,8 @@ fn compute_inlay_hints_for_view(
     // than computing all the hints for the full file (which could be dozens of time
     // longer than the view is).
     let view_height = view.inner_height();
-    let first_visible_line = doc_text.char_to_line(view.offset.anchor.min(doc_text.len_chars()));
+    let first_visible_line =
+        doc_text.char_to_line(doc.view_offset(view_id).anchor.min(doc_text.len_chars()));
     let first_line = first_visible_line.saturating_sub(view_height);
     let last_line = first_visible_line
         .saturating_add(view_height.saturating_mul(2))
@@ -1259,7 +1360,7 @@ fn compute_inlay_hints_for_view(
 
             // Most language servers will already send them sorted but ensure this is the case to
             // avoid errors on our end.
-            hints.sort_unstable_by_key(|inlay_hint| inlay_hint.position);
+            hints.sort_by_key(|inlay_hint| inlay_hint.position);
 
             let mut padding_before_inlay_hints = Vec::new();
             let mut type_inlay_hints = Vec::new();

@@ -1,4 +1,4 @@
-# Adding textobject queries
+## Adding textobject queries
 
 Helix supports textobjects that are language specific, such as functions, classes, etc.
 These textobjects require an accompanying tree-sitter grammar and a `textobjects.scm` query file

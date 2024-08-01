@@ -652,7 +652,7 @@ impl Tree {
             id
         } else {
             // extremely crude, take the last item
-            let (key, _) = self.traverse().rev().next().unwrap();
+            let (key, _) = self.traverse().next_back().unwrap();
             key
         }
     }
