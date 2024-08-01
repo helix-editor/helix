@@ -4625,12 +4625,7 @@ fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
             {
                 doc.set_selection(view.id, selection);
             } else {
-                if remove {
-                    cx.editor.set_status("no selection to remove");
-                } else {
-                    doc.reset_selection(view.id);
-                    cx.editor.set_status("no matches found");
-                }
+                cx.editor.set_error("no selections remaining");
             }
         },
     )
