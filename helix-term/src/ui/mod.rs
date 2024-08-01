@@ -352,10 +352,12 @@ fn directory_content(path: &Path) -> Result<Vec<(PathBuf, bool)>, std::io::Error
             files.push((entry_path, false));
         }
     }
+    let mut all = vec![(PathBuf::from(".."), true)];
     dirs.sort();
     files.sort();
-    dirs.extend(files);
-    Ok(dirs)
+    all.extend(dirs);
+    all.extend(files);
+    Ok(all)
 }
 
 pub mod completers {
