@@ -1245,7 +1245,7 @@ impl Document {
     /// Initializes a new selection and view_data for the given view
     /// if it does not already have them.
     pub fn ensure_view_init(&mut self, view_id: ViewId) {
-        if self.selections.get(&view_id).is_none() {
+        if !self.selections.contains_key(&view_id) {
             self.reset_selection(view_id);
         }
 

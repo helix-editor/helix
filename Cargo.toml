@@ -5,6 +5,7 @@ members = [
   "helix-view",
   "helix-term",
   "helix-tui",
+  "helix-lsp-types",
   "helix-lsp",
   "helix-event",
   "helix-dap",
