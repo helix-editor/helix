@@ -1939,6 +1939,8 @@ fn select_regex(cx: &mut Context) {
                 selection::select_on_matches(text, doc.selection(view.id), &regex)
             {
                 doc.set_selection(view.id, selection);
+            } else {
+                cx.editor.set_error("nothing selected");
             }
         },
     );
@@ -4624,6 +4626,8 @@ fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
                 selection::keep_or_remove_matches(text, doc.selection(view.id), &regex, remove)
             {
                 doc.set_selection(view.id, selection);
+            } else {
+                cx.editor.set_error("no selections remaining");
             }
         },
     )
