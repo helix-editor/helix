@@ -83,13 +83,45 @@ impl EditorView {
         surface: &mut Surface,
         is_focused: bool,
     ) {
-        let inner = view.inner_area(doc);
+        let areas = view.get_areas(doc);
+
+        // TODO: use the 'areas' struct for these!
+        let inner = areas.text;
         let area = view.area;
         let theme = &editor.theme;
         let config = editor.config();
         let loader = editor.syn_loader.load();
 
-        let view_offset = doc.view_offset(view.id);
+        if config.nullspace.enable {
+            // helper:
+            fn fill_area(s: &mut Surface, r: Rect, c: char, style: Style) {
+                if r.width > 0 && r.height > 0 {
+                    s.set_style(r, style);
+                    for y in r.top()..r.bottom() {
+                        for x in r.left()..r.right() {
+                            let cell = s.get_mut(x, y).unwrap();
+                            cell.symbol.clear();
+                            cell.symbol.push(c);
+                        }
+                    }
+                }
+            }
+
+            if areas.left.width > 0 || areas.right.width > 0 {
+                let style = theme
+                    .try_get("ui.nullspace")
+                    .or_else(|| Some(theme.get("ui.linenr")))
+                    .unwrap();
+
+                // We currently on use the first
+                // char in the 'pattern'.
+                //
+                let c = config.nullspace.pattern.chars().nth(0).unwrap();
+
+                fill_area(surface, areas.left, c, style);
+                fill_area(surface, areas.right, c, style);
+            }
+        }
 
         let text_annotations = view.text_annotations(doc, Some(theme));
         let mut decorations = DecorationManager::default();
@@ -115,6 +147,8 @@ impl EditorView {
 
             decorations.add_decoration(line_decoration);
         }
+
+        let view_offset = doc.view_offset(view.id);
 
         let syntax_highlighter =
             Self::doc_syntax_highlighter(doc, view_offset.anchor, inner.height, &loader);
@@ -158,13 +192,15 @@ impl EditorView {
             }
         }
 
-        let gutter_overflow = view.gutter_offset(doc) == 0;
-        if !gutter_overflow {
+        let gutter_width = view.gutter_offset(doc);
+        if gutter_width > 0 {
+            let gutter_area = inner.with_width(gutter_width).shift_left(gutter_width);
+
             Self::render_gutter(
                 editor,
                 doc,
                 view,
-                view.area,
+                gutter_area,
                 theme,
                 is_focused & self.terminal_focused,
                 &mut decorations,
@@ -196,6 +232,7 @@ impl EditorView {
             inline_diagnostic_config,
             config.end_of_line_diagnostics,
         ));
+
         render_document(
             surface,
             inner,
@@ -211,7 +248,7 @@ impl EditorView {
         // if we're not at the edge of the screen, draw a right border
         if viewport.right() != view.area.right() {
             let x = area.right();
-            let border_style = theme.get("ui.window");
+            let border_style = theme.try_get("ui.divide").unwrap_or(theme.get("ui.window"));
             for y in area.top()..area.bottom() {
                 surface[(x, y)]
                     .set_symbol(tui::symbols::line::VERTICAL)
@@ -223,7 +260,7 @@ impl EditorView {
         if config.inline_diagnostics.disabled()
             && config.end_of_line_diagnostics == DiagnosticFilter::Disable
         {
-            Self::render_diagnostics(doc, view, inner, surface, theme);
+            Self::render_diagnostics(doc, view, surface, theme);
         }
 
         let statusline_area = view
@@ -709,13 +746,7 @@ impl EditorView {
         }
     }
 
-    pub fn render_diagnostics(
-        doc: &Document,
-        view: &View,
-        viewport: Rect,
-        surface: &mut Surface,
-        theme: &Theme,
-    ) {
+    pub fn render_diagnostics(doc: &Document, view: &View, surface: &mut Surface, theme: &Theme) {
         use helix_core::diagnostic::Severity;
         use tui::{
             layout::Alignment,
@@ -737,11 +768,56 @@ impl EditorView {
         let info = theme.get("info");
         let hint = theme.get("hint");
 
+        let areas = view.get_areas(doc);
+        let width = 50.min(areas.text.width);
+
+        let height = 15.min(areas.text.height); // .min(text.lines.len() as u16);
+
+        // decide where this diagnostic is gonna get rendered
+        //
+        let mut x = areas.text.right() - width;
+        let mut y = areas.text.top() + 1;
+        let mut align = Alignment::Right;
+        let mut background = theme.get("ui.background");
+
+        // do we have space in the nullspace to render the diagnostic?
+        //
+        const PADDING: u16 = 2;
+        let width_pad = width + PADDING;
+
+        if areas.left.width >= width_pad || areas.right.width >= width_pad {
+            if let Some(pos) = view.screen_coords_at_pos(doc, doc.text().slice(..), cursor) {
+                background = theme
+                    .try_get("ui.nullspace")
+                    .unwrap_or(theme.get("ui.background"));
+
+                // decide if we are placing the diagnositcs in the
+                // left or right nullspace?
+                //
+                y = pos.row as u16 + areas.text.top();
+
+                x = if areas.left.width >= width_pad {
+                    align = Alignment::Right;
+                    areas.left.right() - PADDING - width
+                } else {
+                    align = Alignment::Left;
+                    areas.right.left() + PADDING
+                };
+
+                // correct for overflow in y position
+                //
+                if y + height > areas.text.bottom() {
+                    y -= (y + height) - areas.text.bottom();
+                }
+            }
+        }
+
+        // build diagnostic lines
+        //
         let mut lines = Vec::new();
-        let background_style = theme.get("ui.background");
         for diagnostic in diagnostics {
             let style = Style::reset()
-                .patch(background_style)
+                .patch(background)
                 .patch(match diagnostic.severity {
                     Some(Severity::Error) => error,
                     Some(Severity::Warning) | None => warning,
@@ -761,15 +837,12 @@ impl EditorView {
         }
 
         let text = Text::from(lines);
+
         let paragraph = Paragraph::new(&text)
-            .alignment(Alignment::Right)
+            .alignment(align)
             .wrap(Wrap { trim: true });
-        let width = 100.min(viewport.width);
-        let height = 15.min(viewport.height);
-        paragraph.render(
-            Rect::new(viewport.right() - width, viewport.y + 1, width, height),
-            surface,
-        );
+
+        paragraph.render(Rect::new(x, y, width, height), surface);
     }
 
     /// Apply the highlighting on the lines where a cursor is active
@@ -792,7 +865,7 @@ impl EditorView {
 
         let primary_style = theme.get("ui.cursorline.primary");
         let secondary_style = theme.get("ui.cursorline.secondary");
-        let viewport = view.area;
+        let viewport = view.inner_area(doc);
 
         move |renderer: &mut TextRenderer, pos: LinePos| {
             let area = Rect::new(viewport.x, pos.visual_line, viewport.width, 1);
