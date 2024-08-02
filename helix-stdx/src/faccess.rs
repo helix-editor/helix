@@ -25,7 +25,10 @@ bitflags! {
 mod imp {
     use super::*;
 
-    use rustix::fs::{Access, OpenOptionsExt};
+    use rustix::{
+        fd::AsFd,
+        fs::{Access, OpenOptionsExt},
+    };
     use std::os::unix::fs::{MetadataExt, PermissionsExt};
 
     pub fn access(p: &Path, mode: AccessMode) -> io::Result<()> {
@@ -58,6 +61,13 @@ mod imp {
         Ok(())
     }
 
+    fn fchown(fd: impl AsFd, uid: Option<u32>, gid: Option<u32>) -> io::Result<()> {
+        let uid = uid.map(|n| unsafe { rustix::fs::Uid::from_raw(n) });
+        let gid = gid.map(|n| unsafe { rustix::fs::Gid::from_raw(n) });
+        rustix::fs::fchown(fd, uid, gid)?;
+        Ok(())
+    }
+
     pub fn copy_metadata(from: &Path, to: &Path) -> io::Result<()> {
         let from_meta = std::fs::metadata(from)?;
         let to_meta = std::fs::metadata(to)?;
@@ -84,13 +94,19 @@ mod imp {
     pub fn create_copy_mode(from: &Path, to: &Path) -> io::Result<File> {
         let from_meta = std::fs::metadata(from)?;
         let mode = from_meta.permissions().mode();
-
-        std::fs::OpenOptions::new()
+        let file = std::fs::OpenOptions::new()
             .mode(mode)
             .read(true)
             .write(true)
             .create_new(true)
-            .open(to)
+            .open(to)?;
+
+        // Change ownership
+        let from_meta = std::fs::metadata(from)?;
+        let uid = from_meta.uid();
+        let gid = from_meta.gid();
+        fchown(file.as_fd(), Some(uid), Some(gid))?;
+        Ok(file)
     }
 }
 
