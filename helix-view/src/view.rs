@@ -190,7 +190,25 @@ impl View {
     }
 
     pub fn inner_area(&self, doc: &Document) -> Rect {
-        self.area.clip_left(self.gutter_offset(doc)).clip_bottom(1) // -1 for statusline
+        let config = doc.config.load();
+        let gutter_width = self.gutter_offset(doc);
+
+        if config.nullspace.enable {
+            let text_width = config.text_width as u16;
+            let view_width = gutter_width + text_width;
+
+            if self.area.width > view_width {
+                let null_width = (self.area.width - view_width) / 2;
+
+                return self
+                    .area
+                    .clip_left(gutter_width + null_width)
+                    .clip_bottom(1)
+                    .with_width(text_width.min(self.area.width));
+            }
+        }
+
+        self.area.clip_left(gutter_width).clip_bottom(1) // -1 for statusline
     }
 
     pub fn inner_height(&self) -> usize {

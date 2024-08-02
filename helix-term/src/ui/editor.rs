@@ -89,7 +89,51 @@ impl EditorView {
         let config = editor.config();
         let loader = editor.syn_loader.load();
 
-        let view_offset = doc.view_offset(view.id);
+        if config.nullspace.enable {
+            let gutter_width = view.gutter_offset(doc);
+            let text_width = config.text_width as u16;
+
+            let view_width = text_width + gutter_width;
+
+            if view_width < view.area.width {
+                let null_width = (area.width - view_width) / 2;
+
+                let null_l = area.with_width(null_width).clip_bottom(1);
+                let null_r = Rect::new(
+                    area.x + view_width + null_width,
+                    area.y,
+                    area.width - view_width - null_width,
+                    area.height,
+                )
+                .clip_bottom(1);
+
+                let null_style = theme
+                    .try_get("ui.null")
+                    .or_else(|| Some(theme.get("ui.linenr")))
+                    .unwrap();
+
+                fn fill_area(s: &mut Surface, r: Rect, c: char) {
+                    for y in r.top()..r.bottom() {
+                        for x in r.left()..r.right() {
+                            let cell = s.get_mut(x, y).unwrap();
+                            cell.symbol.clear();
+                            cell.symbol.push(c);
+                        }
+                    }
+                }
+
+                // We currently on use the first char in the 'pattern'
+                // but in future I would like to use the whole string
+                // to render nicer patterns.
+                let c = config.nullspace.pattern.chars().nth(0).unwrap();
+
+                fill_area(surface, null_l, c);
+                fill_area(surface, null_r, c);
+
+                surface.set_style(null_l, null_style);
+                surface.set_style(null_r, null_style);
+            }
+        }
 
         let text_annotations = view.text_annotations(doc, Some(theme));
         let mut decorations = DecorationManager::default();
@@ -158,13 +202,16 @@ impl EditorView {
             }
         }
 
-        let gutter_overflow = view.gutter_offset(doc) == 0;
-        if !gutter_overflow {
+        let gutter_width = view.gutter_offset(doc);
+        if gutter_width > 0 {
+            let mut gutter_area = inner.with_width(gutter_width);
+            gutter_area.x -= gutter_width;
+
             Self::render_gutter(
                 editor,
                 doc,
                 view,
-                view.area,
+                gutter_area,
                 theme,
                 is_focused & self.terminal_focused,
                 &mut decorations,
@@ -196,6 +243,7 @@ impl EditorView {
             inline_diagnostic_config,
             config.end_of_line_diagnostics,
         ));
+
         render_document(
             surface,
             inner,
