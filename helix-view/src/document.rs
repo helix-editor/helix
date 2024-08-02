@@ -1080,22 +1080,21 @@ impl Document {
     }
 
     pub fn pickup_last_saved_time(&mut self) {
-        self.last_saved_time = match self.path.as_mut().unwrap().metadata() {
-            Ok(metadata) => match metadata.modified() {
-                Ok(mtime) => mtime,
-                Err(_) => {
-                    log::error!(
-                        "Use a system time instead of fs' mtime not supported on this platform"
-                    );
+        self.last_saved_time = match self.path() {
+            Some(path) => match path.metadata() {
+                Ok(metadata) => match metadata.modified() {
+                    Ok(mtime) => mtime,
+                    Err(err) => {
+                        log::debug!("Could not fetch file system's mtime, falling back to current system time: {}", err);
+                        SystemTime::now()
+                    }
+                },
+                Err(err) => {
+                    log::debug!("Could not fetch file system's mtime, falling back to current system time: {}", err);
                     SystemTime::now()
                 }
             },
-            Err(e) => {
-                log::error!(
-                    "Use a system time instead of fs' mtime: failed to file's metadata: {e}"
-                );
-                SystemTime::now()
-            }
+            None => SystemTime::now(),
         };
     }
 
@@ -1246,7 +1245,7 @@ impl Document {
     /// Initializes a new selection and view_data for the given view
     /// if it does not already have them.
     pub fn ensure_view_init(&mut self, view_id: ViewId) {
-        if self.selections.get(&view_id).is_none() {
+        if !self.selections.contains_key(&view_id) {
             self.reset_selection(view_id);
         }
 

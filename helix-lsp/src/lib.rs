@@ -8,9 +8,9 @@ mod transport;
 use arc_swap::ArcSwap;
 pub use client::Client;
 pub use futures_executor::block_on;
+pub use helix_lsp_types as lsp;
 pub use jsonrpc::Call;
 pub use lsp::{Position, Url};
-pub use lsp_types as lsp;
 
 use futures_util::stream::select_all::SelectAll;
 use helix_core::syntax::{
@@ -503,7 +503,7 @@ pub mod util {
     ) -> Transaction {
         // Sort edits by start range, since some LSPs (Omnisharp) send them
         // in reverse order.
-        edits.sort_unstable_by_key(|edit| edit.range.start);
+        edits.sort_by_key(|edit| edit.range.start);
 
         // Generate a diff if the edit is a full document replacement.
         #[allow(clippy::collapsible_if)]
@@ -1113,7 +1113,7 @@ mod tests {
 
     #[test]
     fn emoji_format_gh_4791() {
-        use lsp_types::{Position, Range, TextEdit};
+        use lsp::{Position, Range, TextEdit};
 
         let edits = vec![
             TextEdit {
