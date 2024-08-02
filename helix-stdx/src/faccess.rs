@@ -439,7 +439,10 @@ mod imp {
 
     pub fn copy_metadata(from: &Path, to: &Path) -> io::Result<()> {
         let sd = SecurityDescriptor::for_path(from)?;
-        let to_file = File::open(to)?;
+        let to_file = std::fs::OpenOptions::new()
+            .read(true)
+            .access_mode(GENERIC_READ | GENERIC_WRITE | WRITE_OWNER | WRITE_DAC)
+            .open(to)?;
         chown(to_file.as_raw_handle() as isize, sd)?;
 
         let meta = std::fs::metadata(from)?;
