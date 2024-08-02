@@ -108,7 +108,7 @@ impl EditorView {
                 .clip_bottom(1);
 
                 let null_style = theme
-                    .try_get("ui.null")
+                    .try_get("ui.nullspace")
                     .or_else(|| Some(theme.get("ui.linenr")))
                     .unwrap();
 
