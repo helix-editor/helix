@@ -821,7 +821,7 @@ pub struct NullspaceConfig {
 impl Default for NullspaceConfig {
     fn default() -> Self {
         Self {
-            enable: true,
+            enable: false,
             pattern: String::from("╲"),
         }
     }

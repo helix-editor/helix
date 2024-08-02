@@ -153,6 +153,22 @@ impl Rect {
         }
     }
 
+    // Returns a new Rect shifted left.
+    pub fn shift_left(self, shift: u16) -> Rect {
+        Rect {
+            x: self.x - shift,
+            ..self
+        }
+    }
+
+    // Returns a new Rect shifted left.
+    pub fn shift_right(self, shift: u16) -> Rect {
+        Rect {
+            x: self.x + shift,
+            ..self
+        }
+    }
+
     // Returns a new Rect with height reduced from the bottom.
     // This does _not_ change the `y` coordinate.
     pub fn clip_bottom(self, height: u16) -> Rect {

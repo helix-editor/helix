@@ -204,8 +204,7 @@ impl EditorView {
 
         let gutter_width = view.gutter_offset(doc);
         if gutter_width > 0 {
-            let mut gutter_area = inner.with_width(gutter_width);
-            gutter_area.x -= gutter_width;
+            let gutter_area = inner.with_width(gutter_width).shift_left(gutter_width);
 
             Self::render_gutter(
                 editor,
