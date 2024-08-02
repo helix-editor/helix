@@ -10,7 +10,7 @@ use helix_core::encoding::Encoding;
 use helix_core::syntax::{Highlight, LanguageServerFeature};
 use helix_core::text_annotations::{InlineAnnotation, Overlay};
 use helix_lsp::util::lsp_pos_to_pos;
-use helix_stdx::faccess::{copy_metadata, readonly};
+use helix_stdx::faccess::{copy_metadata, create_copy_mode, readonly};
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
 use thiserror;
 
@@ -936,7 +936,7 @@ impl Document {
             }
 
             // Assume it is a hardlink to prevent data loss if the metadata cant be read (e.g. on certain Windows configurations)
-            let is_hardlink = helix_stdx::faccess::hardlink_count(&write_path).unwrap_or(2) > 1;
+            let backup_copy = helix_stdx::faccess::hardlink_count(&write_path).unwrap_or(2) > 1;
             let backup = if path.exists() {
                 let path_ = write_path.clone();
                 // hacks: we use tempfile to handle the complex task of creating
@@ -948,19 +948,16 @@ impl Document {
                     let mut builder = tempfile::Builder::new();
                     builder.prefix(path_.file_name()?).suffix(".bck");
 
-                    let backup_path = if is_hardlink {
-                        builder
-                            .make_in(path_.parent()?, |backup| std::fs::copy(&path_, backup))
-                            .ok()?
-                            .into_temp_path()
+                    let backup_path = if backup_copy {
+                        builder.make_in(path_.parent()?, |backup| {
+                            let _ = std::fs::copy(&path_, backup)?;
+                            copy_metadata(&path_, backup)
+                        })
                     } else {
-                        builder
-                            .make_in(path_.parent()?, |backup| std::fs::rename(&path_, backup))
-                            .ok()?
-                            .into_temp_path()
+                        builder.make_in(path_.parent()?, |backup| std::fs::rename(&path_, backup))
                     };
 
-                    backup_path.keep().ok()
+                    backup_path.ok()?.into_temp_path().keep().ok()
                 })
                 .await
                 .ok()
@@ -970,7 +967,20 @@ impl Document {
             };
 
             let write_result: anyhow::Result<_> = async {
-                let mut dst = tokio::fs::File::create(&write_path).await?;
+                // Create the new file with the same permissions as the original file
+                let mut dst = if backup.is_some() && !backup_copy {
+                    let from = backup.clone().unwrap();
+                    let write_path = write_path.clone();
+
+                    // This can fail if the file already exists, but since we moved the original file, it should be fine
+                    let file = tokio::task::spawn_blocking(move || {
+                        create_copy_mode(from.as_path(), write_path.as_path())
+                    })
+                    .await??;
+                    fs::File::from_std(file)
+                } else {
+                    tokio::fs::File::create(&write_path).await.unwrap()
+                };
                 to_writer(&mut dst, encoding_with_bom_info, &text).await?;
                 dst.sync_all().await?;
                 Ok(())
@@ -983,7 +993,7 @@ impl Document {
             };
 
             if let Some(backup) = backup {
-                if is_hardlink {
+                if backup_copy {
                     let mut delete = true;
                     if write_result.is_err() {
                         // Restore backup
@@ -1005,10 +1015,8 @@ impl Document {
                         .await
                         .map_err(|e| log::error!("Failed to restore backup on write failure: {e}"));
                 } else {
-                    // copy metadata and delete backup
+                    // delete backup
                     let _ = tokio::task::spawn_blocking(move || {
-                        let _ = copy_metadata(&backup, &write_path)
-                            .map_err(|e| log::error!("Failed to copy metadata on write: {e}"));
                         let _ = std::fs::remove_file(backup)
                             .map_err(|e| log::error!("Failed to remove backup file on write: {e}"));
                     })

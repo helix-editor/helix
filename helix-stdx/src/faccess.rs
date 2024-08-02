@@ -1,5 +1,6 @@
 //! From <https://github.com/Freaky/faccess>
 
+use std::fs::File;
 use std::io;
 use std::path::Path;
 
@@ -24,7 +25,10 @@ bitflags! {
 mod imp {
     use super::*;
 
-    use rustix::fs::Access;
+    use rustix::{
+        fd::AsFd,
+        fs::{Access, OpenOptionsExt},
+    };
     use std::os::unix::fs::{MetadataExt, PermissionsExt};
 
     pub fn access(p: &Path, mode: AccessMode) -> io::Result<()> {
@@ -57,6 +61,13 @@ mod imp {
         Ok(())
     }
 
+    fn fchown(fd: impl AsFd, uid: Option<u32>, gid: Option<u32>) -> io::Result<()> {
+        let uid = uid.map(|n| unsafe { rustix::fs::Uid::from_raw(n) });
+        let gid = gid.map(|n| unsafe { rustix::fs::Gid::from_raw(n) });
+        rustix::fs::fchown(fd, uid, gid)?;
+        Ok(())
+    }
+
     pub fn copy_metadata(from: &Path, to: &Path) -> io::Result<()> {
         let from_meta = std::fs::metadata(from)?;
         let to_meta = std::fs::metadata(to)?;
@@ -79,15 +90,34 @@ mod imp {
         let metadata = p.metadata()?;
         Ok(metadata.nlink())
     }
+
+    pub fn create_copy_mode(from: &Path, to: &Path) -> io::Result<File> {
+        let from_meta = std::fs::metadata(from)?;
+        let mode = from_meta.permissions().mode();
+        let file = std::fs::OpenOptions::new()
+            .mode(mode)
+            .read(true)
+            .write(true)
+            .create_new(true)
+            .open(to)?;
+
+        // Change ownership
+        let from_meta = std::fs::metadata(from)?;
+        let uid = from_meta.uid();
+        let gid = from_meta.gid();
+        fchown(file.as_fd(), Some(uid), Some(gid))?;
+        Ok(file)
+    }
 }
 
-// Licensed under MIT from faccess except for `chown`, `copy_metadata` and `is_acl_inherited`
 #[cfg(windows)]
 mod imp {
 
-    use windows_sys::Win32::Foundation::{CloseHandle, LocalFree, ERROR_SUCCESS, HANDLE, PSID};
+    use windows_sys::Win32::Foundation::{
+        CloseHandle, LocalFree, ERROR_SUCCESS, GENERIC_READ, GENERIC_WRITE, HANDLE, PSID,
+    };
     use windows_sys::Win32::Security::Authorization::{
-        GetNamedSecurityInfoW, SetNamedSecurityInfoW, SE_FILE_OBJECT,
+        GetNamedSecurityInfoW, SetSecurityInfo, SE_FILE_OBJECT,
     };
     use windows_sys::Win32::Security::{
         AccessCheck, AclSizeInformation, GetAce, GetAclInformation, GetSidIdentifierAuthority,
@@ -100,7 +130,8 @@ mod imp {
     };
     use windows_sys::Win32::Storage::FileSystem::{
         GetFileInformationByHandle, BY_HANDLE_FILE_INFORMATION, FILE_ACCESS_RIGHTS,
-        FILE_ALL_ACCESS, FILE_GENERIC_EXECUTE, FILE_GENERIC_READ, FILE_GENERIC_WRITE,
+        FILE_ALL_ACCESS, FILE_GENERIC_EXECUTE, FILE_GENERIC_READ, FILE_GENERIC_WRITE, WRITE_DAC,
+        WRITE_OWNER,
     };
     use windows_sys::Win32::System::Threading::{GetCurrentThread, OpenThreadToken};
 
@@ -110,6 +141,7 @@ mod imp {
 
     use std::os::windows::{ffi::OsStrExt, fs::OpenOptionsExt, io::AsRawHandle};
 
+    // Licensed under MIT from faccess
     struct SecurityDescriptor {
         sd: PSECURITY_DESCRIPTOR,
         owner: PSID,
@@ -128,6 +160,7 @@ mod imp {
     }
 
     impl SecurityDescriptor {
+        // Licensed under MIT from faccess
         fn for_path(p: &Path) -> io::Result<SecurityDescriptor> {
             let path = std::fs::canonicalize(p)?;
             let pathos = path.into_os_string();
@@ -202,6 +235,7 @@ mod imp {
         }
     }
 
+    // Licensed under MIT from faccess
     struct ThreadToken(HANDLE);
     impl Drop for ThreadToken {
         fn drop(&mut self) {
@@ -211,6 +245,7 @@ mod imp {
         }
     }
 
+    // Licensed under MIT from faccess
     impl ThreadToken {
         fn new() -> io::Result<Self> {
             unsafe {
@@ -237,6 +272,7 @@ mod imp {
         }
     }
 
+    // Licensed under MIT from faccess
     // Based roughly on Tcl's NativeAccess()
     // https://github.com/tcltk/tcl/blob/2ee77587e4dc2150deb06b48f69db948b4ab0584/win/tclWinFile.c
     fn eaccess(p: &Path, mut mode: FILE_ACCESS_RIGHTS) -> io::Result<()> {
@@ -330,6 +366,7 @@ mod imp {
         }
     }
 
+    // Licensed under MIT from faccess
     pub fn access(p: &Path, mode: AccessMode) -> io::Result<()> {
         let mut imode = 0;
 
@@ -356,13 +393,8 @@ mod imp {
         }
     }
 
-    fn chown(p: &Path, sd: SecurityDescriptor) -> io::Result<()> {
-        let path = std::fs::canonicalize(p)?;
-        let pathos = path.as_os_str();
-        let mut pathw = Vec::with_capacity(pathos.len() + 1);
-        pathw.extend(pathos.encode_wide());
-        pathw.push(0);
-
+    // SAFETY: It is the caller's responsibility to close the handle
+    fn chown(handle: HANDLE, sd: SecurityDescriptor) -> io::Result<()> {
         let mut owner = std::ptr::null_mut();
         let mut group = std::ptr::null_mut();
         let mut dacl = std::ptr::null();
@@ -387,8 +419,8 @@ mod imp {
         }
 
         let err = unsafe {
-            SetNamedSecurityInfoW(
-                pathw.as_ptr(),
+            SetSecurityInfo(
+                handle,
                 SE_FILE_OBJECT,
                 si,
                 owner,
@@ -407,7 +439,11 @@ mod imp {
 
     pub fn copy_metadata(from: &Path, to: &Path) -> io::Result<()> {
         let sd = SecurityDescriptor::for_path(from)?;
-        chown(to, sd)?;
+        let to_file = std::fs::OpenOptions::new()
+            .read(true)
+            .access_mode(GENERIC_READ | GENERIC_WRITE | WRITE_OWNER | WRITE_DAC)
+            .open(to)?;
+        chown(to_file.as_raw_handle() as isize, sd)?;
 
         let meta = std::fs::metadata(from)?;
         let perms = meta.permissions();
@@ -417,16 +453,41 @@ mod imp {
         Ok(())
     }
 
-    pub fn hardlink_count(p: &Path) -> std::io::Result<u64> {
-        let file = std::fs::File::open(p)?;
+    fn file_info(p: &Path) -> io::Result<BY_HANDLE_FILE_INFORMATION> {
+        let file = File::open(p)?;
         let handle = file.as_raw_handle() as isize;
         let mut info: BY_HANDLE_FILE_INFORMATION = unsafe { std::mem::zeroed() };
 
         if unsafe { GetFileInformationByHandle(handle, &mut info) } == 0 {
-            Err(std::io::Error::last_os_error())
+            Err(io::Error::last_os_error())
         } else {
-            Ok(info.nNumberOfLinks as u64)
+            Ok(info)
         }
+    }
+
+    pub fn hardlink_count(p: &Path) -> io::Result<u64> {
+        let n = file_info(p)?.nNumberOfLinks as u64;
+        Ok(n)
+    }
+
+    pub fn create_copy_mode(from: &Path, to: &Path) -> io::Result<File> {
+        let sd = SecurityDescriptor::for_path(from)?;
+
+        // read/write still need to be set to true or `create_new` returns an error
+        let to_file = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .access_mode(GENERIC_READ | GENERIC_WRITE | WRITE_OWNER | WRITE_DAC)
+            .create_new(true)
+            .open(to)?;
+
+        // Necessary because `security_attributes` is not exposed: https://github.com/rust-lang/libs-team/issues/314
+        chown(to_file.as_raw_handle() as isize, sd)?;
+
+        let meta = std::fs::metadata(from)?;
+        let perms = meta.permissions();
+        std::fs::set_permissions(to, perms)?;
+        Ok(to_file)
     }
 }
 
@@ -477,4 +538,8 @@ pub fn copy_metadata(from: &Path, to: &Path) -> io::Result<()> {
 
 pub fn hardlink_count(p: &Path) -> io::Result<u64> {
     imp::hardlink_count(p)
+}
+
+pub fn create_copy_mode(from: &Path, to: &Path) -> io::Result<File> {
+    imp::create_copy_mode(from, to)
 }
