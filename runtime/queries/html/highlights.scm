@@ -1,4 +1,5 @@
 (tag_name) @tag
+(erroneous_end_tag_name) @error
 (doctype) @constant
 (attribute_name) @attribute
 (comment) @comment
@@ -14,8 +15,7 @@
   (text) @markup.link.label)
   (#eq? @_tag "a"))
 
-((attribute
-  (quoted_attribute_value) @string))
+(attribute [(attribute_value) (quoted_attribute_value)] @string)
 
 ((element
   (start_tag
