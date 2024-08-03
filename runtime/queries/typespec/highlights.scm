@@ -76,11 +76,11 @@
 
 [
   (single_line_comment)
-] @comment.line @spell
+] @comment.line
 
 [
   (multi_line_comment)
-] @comment.block @spell
+] @comment.block
 
 ; Decorators
 
