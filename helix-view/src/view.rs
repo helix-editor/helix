@@ -204,7 +204,7 @@ impl View {
                     .area
                     .clip_left(gutter_width + null_width)
                     .clip_bottom(1)
-                    .with_width(text_width.min(self.area.width));
+                    .with_width(text_width.min(self.area.width - gutter_width));
             }
         }
 
