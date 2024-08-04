@@ -254,6 +254,74 @@ impl Rect {
             && self.y < other.y + other.height
             && self.y + self.height > other.y
     }
+
+    pub fn split_left(self, width: u16) -> (Rect, Rect) {
+        (
+            Rect { width, ..self },
+            Rect {
+                x: self.x + width,
+                width: self.width - width,
+                ..self
+            },
+        )
+    }
+
+    pub fn split_right(self, width: u16) -> (Rect, Rect) {
+        (
+            Rect {
+                width: self.width - width,
+                ..self
+            },
+            Rect {
+                x: self.right() - width,
+                width,
+                ..self
+            },
+        )
+    }
+
+    pub fn split_top(self, height: u16) -> (Rect, Rect) {
+        (
+            Rect { height, ..self },
+            Rect {
+                y: self.y + height,
+                height: self.height - height,
+                ..self
+            },
+        )
+    }
+
+    pub fn split_bottom(self, height: u16) -> (Rect, Rect) {
+        (
+            Rect {
+                height: self.height - height,
+                ..self
+            },
+            Rect {
+                y: self.bottom() - height,
+                height,
+                ..self
+            },
+        )
+    }
+
+    pub fn split_centre_vertical(self, width: u16) -> (Rect, Rect, Rect) {
+        let l = (self.width - width) / 2;
+        let r = self.width - width - l;
+        (
+            Rect { width: l, ..self },
+            Rect {
+                width,
+                x: self.x + l,
+                ..self
+            },
+            Rect {
+                width: r,
+                x: self.right() - r,
+                ..self
+            },
+        )
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
