@@ -782,7 +782,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "typespec"
-source = { git = "https://github.com/happenslol/tree-sitter-typespec", rev = "af7a97eea5d4c62473b29655a238d4f4e055798b" }
+source = { git = "https://github.com/happenslol/tree-sitter-typespec", rev = "0ee05546d73d8eb64635ed8125de6f35c77759fe" }
 
 [[language]]
 name = "tsx"
