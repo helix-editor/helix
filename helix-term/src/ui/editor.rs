@@ -91,8 +91,6 @@ impl EditorView {
 
         if config.nullspace.enable {
             if inner.width < view.area.width {
-                let (null_l, _, null_r) = area.clip_bottom(1).split_centre_vertical(inner.width);
-
                 let null_style = theme
                     .try_get("ui.nullspace")
                     .or_else(|| Some(theme.get("ui.linenr")))
@@ -107,6 +105,9 @@ impl EditorView {
                         }
                     }
                 }
+
+                let view_width = inner.width + view.gutter_offset(doc);
+                let (null_l, _, null_r) = area.clip_bottom(1).split_centre_vertical(view_width);
 
                 // We currently on use the first char in the 'pattern'
                 // but in future I would like to use the whole string
