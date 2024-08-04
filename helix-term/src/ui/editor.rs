@@ -90,22 +90,8 @@ impl EditorView {
         let loader = editor.syn_loader.load();
 
         if config.nullspace.enable {
-            let gutter_width = view.gutter_offset(doc);
-            let text_width = config.text_width as u16;
-
-            let view_width = text_width + gutter_width;
-
-            if view_width < view.area.width {
-                let null_width = (area.width - view_width) / 2;
-
-                let null_l = area.with_width(null_width).clip_bottom(1);
-                let null_r = Rect::new(
-                    area.x + view_width + null_width,
-                    area.y,
-                    area.width - view_width - null_width,
-                    area.height,
-                )
-                .clip_bottom(1);
+            if inner.width < view.area.width {
+                let (null_l, _, null_r) = area.clip_bottom(1).split_centre_vertical(inner.width);
 
                 let null_style = theme
                     .try_get("ui.nullspace")
