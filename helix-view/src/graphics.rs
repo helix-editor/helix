@@ -256,6 +256,7 @@ impl Rect {
     }
 
     pub fn split_left(self, width: u16) -> (Rect, Rect) {
+        let width = width.min(self.width);
         (
             Rect { width, ..self },
             Rect {
@@ -267,6 +268,7 @@ impl Rect {
     }
 
     pub fn split_right(self, width: u16) -> (Rect, Rect) {
+        let width = width.min(self.width);
         (
             Rect {
                 width: self.width - width,
@@ -281,6 +283,7 @@ impl Rect {
     }
 
     pub fn split_top(self, height: u16) -> (Rect, Rect) {
+        let height = height.min(self.height);
         (
             Rect { height, ..self },
             Rect {
@@ -292,6 +295,7 @@ impl Rect {
     }
 
     pub fn split_bottom(self, height: u16) -> (Rect, Rect) {
+        let height = height.min(self.height);
         (
             Rect {
                 height: self.height - height,
@@ -306,6 +310,7 @@ impl Rect {
     }
 
     pub fn split_centre_vertical(self, width: u16) -> (Rect, Rect, Rect) {
+        let width = width.min(self.width);
         let l = (self.width - width) / 2;
         let r = self.width - width - l;
         (
