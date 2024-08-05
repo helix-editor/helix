@@ -125,7 +125,7 @@
 | markdown.inline | ✓ |  |  |  |
 | matlab | ✓ | ✓ | ✓ |  |
 | mermaid | ✓ |  |  |  |
-| meson | ✓ |  | ✓ |  |
+| meson | ✓ |  | ✓ | `mesonlsp` |
 | mint |  |  |  | `mint` |
 | mojo | ✓ | ✓ | ✓ | `mojo-lsp-server` |
 | move | ✓ |  |  |  |
