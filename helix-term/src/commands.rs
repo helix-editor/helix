@@ -2655,7 +2655,7 @@ fn delete_selection_impl(cx: &mut Context, op: Operation, yank: YankAction) {
         // yank the selection
         let text = doc.text().slice(..);
         let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
-        let reg_name = cx.register.unwrap_or('"');
+        let reg_name = cx.register.unwrap_or(&cx.editor.config().default_register);
         if let Err(err) = cx.editor.registers.write(reg_name, values) {
             cx.editor.set_error(err.to_string());
             return;
@@ -4097,7 +4097,10 @@ fn commit_undo_checkpoint(cx: &mut Context) {
 // Yank / Paste
 
 fn yank(cx: &mut Context) {
-    yank_impl(cx.editor, cx.register.unwrap_or('"'));
+    yank_impl(
+        cx.editor,
+        cx.register.unwrap_or(&cx.editor.config().default_register),
+    );
     exit_select_mode(cx);
 }
 
@@ -4158,7 +4161,11 @@ fn yank_joined_impl(editor: &mut Editor, separator: &str, register: char) {
 
 fn yank_joined(cx: &mut Context) {
     let separator = doc!(cx.editor).line_ending.as_str();
-    yank_joined_impl(cx.editor, separator, cx.register.unwrap_or('"'));
+    yank_joined_impl(
+        cx.editor,
+        separator,
+        cx.register.unwrap_or(&cx.editor.config().default_register),
+    );
     exit_select_mode(cx);
 }
 
@@ -4314,7 +4321,11 @@ fn paste_primary_clipboard_before(cx: &mut Context) {
 }
 
 fn replace_with_yanked(cx: &mut Context) {
-    replace_with_yanked_impl(cx.editor, cx.register.unwrap_or('"'), cx.count());
+    replace_with_yanked_impl(
+        cx.editor,
+        cx.register.unwrap_or(&cx.editor.config().default_register),
+        cx.count(),
+    );
     exit_select_mode(cx);
 }
 
@@ -4377,7 +4388,7 @@ fn paste(editor: &mut Editor, register: char, pos: Paste, count: usize) {
 fn paste_after(cx: &mut Context) {
     paste(
         cx.editor,
-        cx.register.unwrap_or('"'),
+        cx.register.unwrap_or(&cx.editor.config().default_register),
         Paste::After,
         cx.count(),
     );
@@ -4387,7 +4398,7 @@ fn paste_after(cx: &mut Context) {
 fn paste_before(cx: &mut Context) {
     paste(
         cx.editor,
-        cx.register.unwrap_or('"'),
+        cx.register.unwrap_or(&cx.editor.config().default_register),
         Paste::Before,
         cx.count(),
     );
@@ -5208,7 +5219,7 @@ fn insert_register(cx: &mut Context) {
             cx.register = Some(ch);
             paste(
                 cx.editor,
-                cx.register.unwrap_or('"'),
+                cx.register.unwrap_or(&cx.editor.config().default_register),
                 Paste::Cursor,
                 cx.count(),
             );
