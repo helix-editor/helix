@@ -2495,6 +2495,7 @@ pub struct RelativePattern {
 pub type Pattern = String;
 
 bitflags! {
+#[derive(PartialEq, Eq, PartialOrd, Ord, Hash, Debug, Clone, Copy)]
 pub struct WatchKind: u8 {
     /// Interested in create events.
     const Create = 1;
