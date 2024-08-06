@@ -2294,6 +2294,9 @@ fn run_shell_command(
     let shell = cx.editor.config().shell.clone();
     let args = args.join(" ");
 
+    let running_status = format!("Running command \"{}\"...", args);
+    cx.editor.set_status(running_status);
+
     let callback = async move {
         let output = shell_impl_async(&shell, &args, None).await?;
         let call: job::Callback = Callback::EditorCompositor(Box::new(
