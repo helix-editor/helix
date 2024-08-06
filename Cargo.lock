@@ -271,6 +271,7 @@ dependencies = [
  "crossterm_winapi",
  "filedescriptor",
  "futures-core",
+ "libc",
  "mio",
  "parking_lot",
  "rustix",
