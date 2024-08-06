@@ -337,7 +337,7 @@ pub struct Config {
     pub popup_border: PopupBorderConfig,
     /// Which indent heuristic to use when a new line is inserted
     #[serde(default)]
-    pub indent_heuristic: IndentationHeuristic,
+    indent_heuristic: IndentationHeuristic,
     /// labels characters used in jumpmode
     #[serde(
         serialize_with = "serialize_alphabet",
@@ -349,6 +349,16 @@ pub struct Config {
     /// Display diagnostic below the line they occur.
     pub inline_diagnostics: InlineDiagnosticsConfig,
     pub end_of_line_diagnostics: DiagnosticFilter,
+}
+
+impl Config {
+    pub fn indent_heuristic(&self) -> IndentationHeuristic {
+        if self.continue_comments {
+            IndentationHeuristic::Simple
+        } else {
+            self.indent_heuristic.clone()
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]

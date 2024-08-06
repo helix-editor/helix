@@ -3248,7 +3248,7 @@ fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
             let indent = indent::indent_for_newline(
                 language_config,
                 syntax,
-                &doc.config.load().indent_heuristic,
+                &doc.config.load().indent_heuristic(),
                 &doc.indent_style,
                 tab_width,
                 text,
@@ -3375,16 +3375,10 @@ fn open(cx: &mut Context, open: Open) {
             )
         };
 
-        let indent_heuristic = if config.continue_comments {
-            helix_core::syntax::IndentationHeuristic::Simple
-        } else {
-            doc.config.load().indent_heuristic.clone()
-        };
-
         let indent = indent::indent_for_newline(
             doc.language_config(),
             doc.syntax(),
-            &indent_heuristic,
+            &doc.config.load().indent_heuristic(),
             &doc.indent_style,
             doc.tab_width(),
             doc_text,
@@ -3837,6 +3831,7 @@ pub mod insert {
 
     pub fn insert_newline(cx: &mut Context) {
         let (view, doc) = current_ref!(cx.editor);
+        let config = doc.config.load();
         let text = doc.text().slice(..);
 
         let contents = doc.text();
@@ -3876,7 +3871,7 @@ pub mod insert {
                 let indent = indent::indent_for_newline(
                     doc.language_config(),
                     doc.syntax(),
-                    &doc.config.load().indent_heuristic,
+                    &doc.config.load().indent_heuristic(),
                     &doc.indent_style,
                     doc.tab_width(),
                     text,
@@ -3893,7 +3888,7 @@ pub mod insert {
                     .and_then(|pairs| pairs.get(prev))
                     .map_or(false, |pair| pair.open == prev && pair.close == curr);
 
-                let local_offs = if on_auto_pair {
+                let mut local_offs = if on_auto_pair {
                     let inner_indent = indent.clone() + doc.indent_style.as_str();
                     new_text.reserve_exact(2 + indent.len() + inner_indent.len());
                     new_text.push_str(doc.line_ending.as_str());
@@ -3910,6 +3905,25 @@ pub mod insert {
                     new_text.chars().count()
                 };
 
+                if config.continue_comments {
+                    let tokens = doc
+                        .language_config()
+                        .and_then(|config| config.comment_tokens.as_ref())
+                        .unwrap();
+
+                    for token in tokens {
+                        let (is_commented, _, _, _) =
+                            find_line_comment(token, text, [current_line]);
+
+                        if is_commented {
+                            new_text.push_str(token);
+                            new_text.push(' ');
+
+                            local_offs += token.len() + 1; // '1' for ' '
+                            break;
+                        }
+                    }
+                }
                 (pos, pos, local_offs)
             };
 
