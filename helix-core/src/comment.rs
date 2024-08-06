@@ -11,6 +11,27 @@ use std::borrow::Cow;
 
 pub const DEFAULT_COMMENT_TOKEN: &str = "//";
 
+/// Little helper function append the comment token of the previous line, if it's also commented.
+pub fn continue_comment<'a>(
+    doc: &Rope,
+    tokens: &'a [String],
+    line_num: usize,
+    new_line: &mut String,
+) -> Option<&'a str> {
+    let text = doc.slice(..);
+
+    for token in tokens {
+        let (is_commented, _, _, _) = find_line_comment(token, text, [line_num]);
+
+        if is_commented {
+            new_line.push_str(token);
+            new_line.push(' ');
+            return Some(token);
+        }
+    }
+    None
+}
+
 /// Given text, a comment token, and a set of line indices, returns the following:
 /// - Whether the given lines should be considered commented
 ///     - If any of the lines are uncommented, all lines are considered as such.
@@ -20,7 +41,7 @@ pub const DEFAULT_COMMENT_TOKEN: &str = "//";
 ///     - Column of existing tokens, if the lines are commented; column to place tokens at otherwise.
 /// - The margin to the right of the comment tokens
 ///     - Defaults to `1`. If any existing comment token is not followed by a space, changes to `0`.
-pub fn find_line_comment(
+fn find_line_comment(
     token: &str,
     text: RopeSlice,
     lines: impl IntoIterator<Item = usize>,

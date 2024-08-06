@@ -17,7 +17,7 @@ pub use typed::*;
 use helix_core::{
     char_idx_at_visual_offset,
     chars::char_is_word,
-    comment::{self, find_line_comment},
+    comment::{self, continue_comment},
     doc_formatter::TextFormat,
     encoding, find_workspace,
     graphemes::{self, next_grapheme_boundary, RevRopeGraphemes},
@@ -3398,15 +3398,7 @@ fn open(cx: &mut Context, open: Open) {
                 .and_then(|config| config.comment_tokens.as_ref())
                 .unwrap();
 
-            for token in tokens {
-                let (is_commented, _, _, _) = find_line_comment(token, doc_text, [line_num]);
-
-                if is_commented {
-                    text.push_str(token);
-                    text.push(' ');
-                    break;
-                }
-            }
+            continue_comment(doc.text(), tokens, line_num, &mut text);
         }
 
         let text = text.repeat(count);
@@ -3858,6 +3850,10 @@ pub mod insert {
                 .all(|char| char.is_ascii_whitespace());
 
             let mut new_text = String::new();
+            let comment_tokens = doc
+                .language_config()
+                .and_then(|config| config.comment_tokens.as_ref())
+                .unwrap();
 
             // If the current line is all whitespace, insert a line ending at the beginning of
             // the current line. This makes the current line empty and the new line contain the
@@ -3888,42 +3884,31 @@ pub mod insert {
                     .and_then(|pairs| pairs.get(prev))
                     .map_or(false, |pair| pair.open == prev && pair.close == curr);
 
-                let mut local_offs = if on_auto_pair {
+                let local_offs = if on_auto_pair {
+                    // line where the cursor will be
                     let inner_indent = indent.clone() + doc.indent_style.as_str();
-                    new_text.reserve_exact(2 + indent.len() + inner_indent.len());
+                    new_text.reserve_exact(4 + indent.len() + inner_indent.len());
                     new_text.push_str(doc.line_ending.as_str());
                     new_text.push_str(&inner_indent);
+
+                    // line where the matching pair will be
                     let local_offs = new_text.chars().count();
                     new_text.push_str(doc.line_ending.as_str());
                     new_text.push_str(&indent);
+
                     local_offs
                 } else {
-                    new_text.reserve_exact(1 + indent.len());
+                    new_text.reserve_exact(3 + indent.len());
                     new_text.push_str(doc.line_ending.as_str());
                     new_text.push_str(&indent);
+
+                    if config.continue_comments {
+                        continue_comment(doc.text(), comment_tokens, current_line, &mut new_text);
+                    }
 
                     new_text.chars().count()
                 };
 
-                if config.continue_comments {
-                    let tokens = doc
-                        .language_config()
-                        .and_then(|config| config.comment_tokens.as_ref())
-                        .unwrap();
-
-                    for token in tokens {
-                        let (is_commented, _, _, _) =
-                            find_line_comment(token, text, [current_line]);
-
-                        if is_commented {
-                            new_text.push_str(token);
-                            new_text.push(' ');
-
-                            local_offs += token.len() + 1; // '1' for ' '
-                            break;
-                        }
-                    }
-                }
                 (pos, pos, local_offs)
             };
 
