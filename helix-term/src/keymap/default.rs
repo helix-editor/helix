@@ -223,6 +223,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "F" => file_picker_in_current_directory,
             "b" => buffer_picker,
             "j" => jumplist_picker,
+            ":" => command_history_picker,
             "s" => symbol_picker,
             "S" => workspace_symbol_picker,
             "d" => diagnostics_picker,
