@@ -175,7 +175,7 @@ impl Range {
     /// function runs in O(N) (N is number of changes) and can therefore
     /// cause performance problems if run for a large number of ranges as the
     /// complexity is then O(MN) (for multicuror M=N usually). Instead use
-    /// [Selection::map] or [ChangeSet::update_positions] instead
+    /// [Selection::map] or [ChangeSet::update_positions].
     pub fn map(mut self, changes: &ChangeSet) -> Self {
         use std::cmp::Ordering;
         if changes.is_empty() {
@@ -541,6 +541,8 @@ impl Selection {
     }
 
     /// Normalizes a `Selection`.
+    ///
+    /// Ranges are sorted by [Range::from], with overlapping ranges merged.
     fn normalize(mut self) -> Self {
         if self.len() < 2 {
             return self;

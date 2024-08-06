@@ -1,33 +1,149 @@
-(assignment (NAME) @variable)
-(alias (NAME) @variable)
-(value (NAME) @variable)
-(parameter (NAME) @variable)
-(setting (NAME) @keyword)
-(setting "shell" @keyword)
+; From <https://github.com/IndianBoy42/tree-sitter-just/blob/6c2f018ab1d90946c0ce029bb2f7d57f56895dff/queries-flavored/helix/highlights.scm>
 
-(call (NAME) @function)
-(dependency (NAME) @function)
-(depcall (NAME) @function)
-(recipeheader (NAME) @function)
+; This file specifies how matched syntax patterns should be highlighted
 
-(depcall (expression) @variable.parameter)
-(parameter) @variable.parameter
-(variadic_parameters) @variable.parameter
+[
+  "export"
+  "import"
+] @keyword.control.import
 
-["if" "else"] @keyword.control.conditional
+"mod" @keyword.directive
 
-(string) @string
+[
+  "alias"
+  "set"
+  "shell"
+] @keyword
 
-(boolean ["true" "false"]) @constant.builtin.boolean
+[
+  "if"
+  "else"
+] @keyword.control.conditional
 
-(comment) @comment
+; Variables
 
-; (interpolation) @string
+(value
+  (identifier) @variable)
 
-(shebang interpreter:(TEXT) @keyword ) @comment
+(alias
+  left: (identifier) @variable)
 
-["export" "alias" "set"] @keyword
+(assignment
+  left: (identifier) @variable)
 
-["@" "==" "!=" "+" ":="] @operator
+; Functions
 
-[ "(" ")" "[" "]" "{{" "}}" "{" "}"] @punctuation.bracket
+(recipe_header
+  name: (identifier) @function)
+
+(dependency
+  name: (identifier) @function)
+
+(dependency_expression
+  name: (identifier) @function)
+
+(function_call
+  name: (identifier) @function)
+
+; Parameters
+
+(parameter
+  name: (identifier) @variable.parameter)
+
+; Namespaces
+
+(module
+  name: (identifier) @namespace)
+
+; Operators
+
+[
+  ":="
+  "?"
+  "=="
+  "!="
+  "=~"
+  "@"
+  "="
+  "$"
+  "*"
+  "+"
+  "&&"
+  "@-"
+  "-@"
+  "-"
+  "/"
+  ":"
+] @operator
+
+; Punctuation
+
+"," @punctuation.delimiter
+
+[
+  "{"
+  "}"
+  "["
+  "]"
+  "("
+  ")"
+  "{{"
+  "}}"
+] @punctuation.bracket
+
+[ "`" "```" ] @punctuation.special
+
+; Literals
+
+(boolean) @constant.builtin.boolean
+
+[
+  (string)
+  (external_command)
+] @string
+
+(escape_sequence) @constant.character.escape
+
+; Comments
+
+(comment) @comment.line
+
+(shebang) @keyword.directive
+
+; highlight known settings (filtering does not always work)
+(setting
+  left: (identifier) @keyword
+  (#any-of? @keyword
+    "allow-duplicate-recipes"
+    "dotenv-filename"
+    "dotenv-load"
+    "dotenv-path"
+    "export"
+    "fallback"
+    "ignore-comments"
+    "positional-arguments"
+    "shell"
+    "tempdi"
+    "windows-powershell"
+    "windows-shell"))
+
+; highlight known attributes (filtering does not always work)
+(attribute
+  (identifier) @attribute
+  (#any-of? @attribute
+    "private"
+    "allow-duplicate-recipes"
+    "dotenv-filename"
+    "dotenv-load"
+    "dotenv-path"
+    "export"
+    "fallback"
+    "ignore-comments"
+    "positional-arguments"
+    "shell"
+    "tempdi"
+    "windows-powershell"
+    "windows-shell"))
+
+; Numbers are part of the syntax tree, even if disallowed
+(numeric_error) @error

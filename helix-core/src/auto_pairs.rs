@@ -75,9 +75,9 @@ impl From<(&char, &char)> for Pair {
 
 impl AutoPairs {
     /// Make a new AutoPairs set with the given pairs and default conditions.
-    pub fn new<'a, V: 'a, A>(pairs: V) -> Self
+    pub fn new<'a, V, A>(pairs: V) -> Self
     where
-        V: IntoIterator<Item = A>,
+        V: IntoIterator<Item = A> + 'a,
         A: Into<Pair>,
     {
         let mut auto_pairs = HashMap::new();
