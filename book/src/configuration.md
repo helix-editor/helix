@@ -32,4 +32,3 @@ signal to the Helix process on Unix operating systems, such as by using the comm
 
 Finally, you can have a `config.toml` local to a project by putting it under a `.helix` directory in your repository.
 Its settings will be merged with the configuration directory `config.toml` and the built-in configuration.
-

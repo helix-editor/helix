@@ -422,6 +422,8 @@ impl MappableCommand {
         paste_after, "Paste after selection",
         paste_before, "Paste before selection",
         paste_clipboard_after, "Paste clipboard after selections",
+        code_lens_under_cursor, "Show code lenses under cursor",
+        request_code_lenses, "Show code lense picker",
         paste_clipboard_before, "Paste clipboard before selections",
         paste_primary_clipboard_after, "Paste primary clipboard after selections",
         paste_primary_clipboard_before, "Paste primary clipboard before selections",
