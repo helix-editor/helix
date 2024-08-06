@@ -3726,3 +3726,15 @@ grammar = "typescript"
 "{" = "}"
 "(" = ")"
 '"' = '"'
+
+[[language]]
+name = "ispc"
+scope = "source.ispc"
+injection-regex = "ispc"
+file-types = ["ispc"]
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "ispc"
+source = { git = "https://github.com/fab4100/tree-sitter-ispc", rev = "9b2f9aec2106b94b4e099fe75e73ebd8ae707c04" }
