@@ -17,13 +17,13 @@ pub use typed::*;
 use helix_core::{
     char_idx_at_visual_offset,
     chars::char_is_word,
-    comment,
+    comment::{self, find_line_comment},
     doc_formatter::TextFormat,
     encoding, find_workspace,
     graphemes::{self, next_grapheme_boundary, RevRopeGraphemes},
     history::UndoKind,
-    increment, indent,
-    indent::IndentStyle,
+    increment,
+    indent::{self, IndentStyle},
     line_ending::{get_line_ending_of_str, line_end_char_index},
     match_brackets,
     movement::{self, move_vertically_visual, Direction},
@@ -40,7 +40,7 @@ use helix_core::{
 };
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
-    editor::{Action, Config},
+    editor::Action,
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
@@ -1659,36 +1659,6 @@ fn switch_to_lowercase(cx: &mut Context) {
     switch_case_impl(cx, |string| {
         string.chunks().map(|chunk| chunk.to_lowercase()).collect()
     });
-}
-
-/// Checks, if the line from line `line_num` is commented with one of the comment tokens in the language config and
-/// returns the token which comments out the line.
-fn has_line_comment(config: &Config, doc: &Document, line_num: usize) -> Option<String> {
-    if config.continue_comments {
-        let line_tokens = {
-            let mut line_tokens: Vec<String> = doc
-                .language_config()
-                .and_then(|lc| lc.comment_tokens.as_ref())?
-                .clone();
-            // Use case (example): Rust supports `//` and `///`. We're reverse-sorting them to priorize `///` before `//`
-            // because otherwise a doc comment `/// like this` would get `//` as the next comment-token
-            line_tokens.sort_unstable_by(|a, b| b.len().partial_cmp(&a.len()).unwrap());
-            line_tokens
-        };
-
-        let text = doc.text();
-        let line = text.line(line_num);
-
-        if let Some(pos) = line.first_non_whitespace_char() {
-            let text_line = line.slice(pos..);
-            return line_tokens
-                .iter()
-                .find(|&token| text_line.starts_with(token.as_str()))
-                .cloned();
-        }
-    }
-
-    None
 }
 
 pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor: bool) {
@@ -3372,7 +3342,7 @@ fn open(cx: &mut Context, open: Open) {
     let (view, doc) = current!(cx.editor);
 
     let config = doc.config.load();
-    let text = doc.text().slice(..);
+    let doc_text = doc.text().slice(..);
     let contents = doc.text();
     let selection = doc.selection(view.id);
 
@@ -3380,8 +3350,8 @@ fn open(cx: &mut Context, open: Open) {
     let mut offs = 0;
 
     let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
-        let cursor_line = text.char_to_line(match open {
-            Open::Below => graphemes::prev_grapheme_boundary(text, range.to()),
+        let cursor_line = doc_text.char_to_line(match open {
+            Open::Below => graphemes::prev_grapheme_boundary(doc_text, range.to()),
             Open::Above => range.from(),
         });
 
@@ -3400,18 +3370,24 @@ fn open(cx: &mut Context, open: Open) {
             (0, 0)
         } else {
             (
-                line_end_char_index(&text, line_num),
+                line_end_char_index(&doc_text, line_num),
                 doc.line_ending.len_chars(),
             )
+        };
+
+        let indent_heuristic = if config.continue_comments {
+            helix_core::syntax::IndentationHeuristic::Simple
+        } else {
+            doc.config.load().indent_heuristic.clone()
         };
 
         let indent = indent::indent_for_newline(
             doc.language_config(),
             doc.syntax(),
-            &doc.config.load().indent_heuristic,
+            &indent_heuristic,
             &doc.indent_style,
             doc.tab_width(),
-            text,
+            doc_text,
             line_num,
             line_end_index,
             cursor_line,
@@ -3422,9 +3398,21 @@ fn open(cx: &mut Context, open: Open) {
         text.push_str(doc.line_ending.as_str());
         text.push_str(&indent);
 
-        if let Some(comment_token) = has_line_comment(&config, doc, line_num) {
-            text.push_str(&comment_token);
-            text.push(' ');
+        if config.continue_comments {
+            let tokens = doc
+                .language_config()
+                .and_then(|config| config.comment_tokens.as_ref())
+                .unwrap();
+
+            for token in tokens {
+                let (is_commented, _, _, _) = find_line_comment(token, doc_text, [line_num]);
+
+                if is_commented {
+                    text.push_str(token);
+                    text.push(' ');
+                    break;
+                }
+            }
         }
 
         let text = text.repeat(count);
@@ -3849,7 +3837,6 @@ pub mod insert {
 
     pub fn insert_newline(cx: &mut Context) {
         let (view, doc) = current_ref!(cx.editor);
-        let config = doc.config.load();
         let text = doc.text().slice(..);
 
         let contents = doc.text();
@@ -3919,11 +3906,6 @@ pub mod insert {
                     new_text.reserve_exact(1 + indent.len());
                     new_text.push_str(doc.line_ending.as_str());
                     new_text.push_str(&indent);
-
-                    if let Some(comment_token) = has_line_comment(&config, doc, current_line) {
-                        new_text.push_str(&comment_token);
-                        new_text.push(' ');
-                    }
 
                     new_text.chars().count()
                 };

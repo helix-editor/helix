@@ -9,6 +9,8 @@ use crate::{
 use helix_stdx::rope::RopeSliceExt;
 use std::borrow::Cow;
 
+pub const DEFAULT_COMMENT_TOKEN: &str = "//";
+
 /// Given text, a comment token, and a set of line indices, returns the following:
 /// - Whether the given lines should be considered commented
 ///     - If any of the lines are uncommented, all lines are considered as such.
@@ -18,7 +20,7 @@ use std::borrow::Cow;
 ///     - Column of existing tokens, if the lines are commented; column to place tokens at otherwise.
 /// - The margin to the right of the comment tokens
 ///     - Defaults to `1`. If any existing comment token is not followed by a space, changes to `0`.
-fn find_line_comment(
+pub fn find_line_comment(
     token: &str,
     text: RopeSlice,
     lines: impl IntoIterator<Item = usize>,
@@ -63,7 +65,7 @@ fn find_line_comment(
 pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&str>) -> Transaction {
     let text = doc.slice(..);
 
-    let token = token.unwrap_or("//");
+    let token = token.unwrap_or(DEFAULT_COMMENT_TOKEN);
     let comment = Tendril::from(format!("{} ", token));
 
     let mut lines: Vec<usize> = Vec::with_capacity(selection.len());
