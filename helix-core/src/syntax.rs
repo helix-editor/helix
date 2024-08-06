@@ -103,6 +103,7 @@ pub struct LanguageConfiguration {
     pub shebangs: Vec<String>, // interpreter(s) associated with language
     #[serde(default)]
     pub roots: Vec<String>, // these indicate project roots <.git, Cargo.toml>
+    // Invariant: Tokens are sorted by their length. Starting from the longest up to smallest.
     #[serde(
         default,
         skip_serializing,
@@ -269,7 +270,10 @@ where
     Ok(
         Option::<CommentTokens>::deserialize(deserializer)?.map(|tokens| match tokens {
             CommentTokens::Single(val) => vec![val],
-            CommentTokens::Multiple(vals) => vals,
+            CommentTokens::Multiple(mut vals) => {
+                vals.sort_unstable_by(|a, b| b.len().partial_cmp(&a.len()).unwrap());
+                vals
+            }
         }),
     )
 }
