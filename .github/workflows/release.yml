@@ -203,8 +203,18 @@ jobs:
               --appdir "$APP.AppDir" -d contrib/Helix.desktop \
               -i contrib/helix.png --output appimage
 
-          mv "$APP-$VERSION-$ARCH.AppImage" \
-              "$APP-$VERSION-$ARCH.AppImage.zsync" dist
+          # anylinux appimage
+          APPIMAGETOOL=$(wget -q https://api.github.com/repos/probonopd/go-appimage/releases -O - \
+          | sed 's/[()",{} ]/\n/g' | grep -oi 'https.*continuous.*tool.*86_64.*mage$')
+          wget -q "$APPIMAGETOOL" -O ./appimagetool
+          chmod +x ./appimagetool ./*AppImage
+          ./"$APP-$VERSION-$ARCH.AppImage" --appimage-extract
+          ./appimagetool -s deploy squashfs-root/usr/share/applications/Helix.desktop
+          sed -i '13i\export HELIX_RUNTIME="${HERE}"/usr/lib/helix/runtime' squashfs-root/AppRun
+          ARCH=x86_64 VERSION="$VERSION-anylinux" ./appimagetool -s squashfs-root
+          mv *anylinux*AppImage dist
+          mv "$APP"-*-"$ARCH".AppImage \
+              "$APP"-*-"$ARCH".AppImage.zsync dist
 
       - name: Build archive
         shell: bash
