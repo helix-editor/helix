@@ -419,7 +419,7 @@ mod imp {
 
     pub fn hardlink_count(p: &Path) -> std::io::Result<u64> {
         let file = std::fs::File::open(p)?;
-        let handle = file.as_raw_handle() as isize;
+        let handle = file.as_raw_handle();
         let mut info: BY_HANDLE_FILE_INFORMATION = unsafe { std::mem::zeroed() };
 
         if unsafe { GetFileInformationByHandle(handle, &mut info) } == 0 {
