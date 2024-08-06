@@ -84,6 +84,9 @@
 "ui.statusline.insert" = { fg = "bg0", bg = "statusline2", modifiers = [
   "bold",
 ] }
+"ui.statusline.overtype" = { fg = "bg0", bg = "statusline3", modifiers = [
+  "bold",
+] }
 "ui.statusline.select" = { fg = "bg0", bg = "blue", modifiers = ["bold"] }
 "ui.bufferline" = { fg = "grey2", bg = "bg3" }
 "ui.bufferline.active" = { fg = "bg0", bg = "statusline1", modifiers = [
