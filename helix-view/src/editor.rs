@@ -341,7 +341,7 @@ pub struct Config {
     pub popup_border: PopupBorderConfig,
     /// Which indent heuristic to use when a new line is inserted
     #[serde(default)]
-    indent_heuristic: IndentationHeuristic,
+    pub indent_heuristic: IndentationHeuristic,
     /// labels characters used in jumpmode
     #[serde(
         serialize_with = "serialize_alphabet",
