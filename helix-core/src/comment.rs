@@ -369,7 +369,7 @@ mod test {
             let doc = Rope::from("");
 
             let (is_commented, _, _, _) = find_line_comment("//", doc.slice(..), [0]);
-            assert_eq!(is_commented, false);
+            assert!(!is_commented);
         }
 
         #[test]
