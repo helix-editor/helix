@@ -489,7 +489,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             },
         };
     }
-    
+
     /// Move the cursor by a number of lines, either down (`Forward`) or up (`Backward`)
     pub fn move_by(&mut self, amount: u32, direction: Direction) {
         let len = self.matcher.snapshot().matched_item_count();
@@ -902,7 +902,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             preview_scroll_offset = (Direction::Forward, 0);
             self.cursor_picker = self.cursor;
         }
-        
+
         if let Some((preview, range)) = self.get_preview(cx.editor) {
             let doc = match preview.document() {
                 Some(doc)
@@ -920,8 +920,8 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                     return;
                 }
             };
-            let doc_height = doc.text().len_lines();            
-            
+            let doc_height = doc.text().len_lines();
+
             let mut offset = ViewPosition::default();
             if let Some((start_line, end_line)) = range {
                 let height = end_line - start_line;
@@ -958,12 +958,12 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                         .saturating_sub(inner.height as usize),
                 ),
             };
-            
+
             offset.vertical_offset = match preview_scroll_offset.0 {
                 Direction::Backward => offset.anchor.saturating_sub(preview_scroll_offset.1),
                 Direction::Forward => offset.anchor.saturating_add(preview_scroll_offset.1),
-            };            
-            
+            };
+
             let syntax_highlights = EditorView::doc_syntax_highlights(
                 doc,
                 offset.anchor,
@@ -1015,7 +1015,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             );
 
             self.preview_scroll_offset = preview_scroll_offset;
-            
+
             let win_height = inner.height as usize;
             let len = doc_height;
             let fits = len <= win_height;
@@ -1045,7 +1045,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                         cell.set_fg(scroll_style.bg.unwrap_or(helix_view::theme::Color::Reset));
                     }
                 }
-            }        
+            }
         }
     }
 }
@@ -1179,8 +1179,8 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
             }
             alt!('k') | shift!(Up) if self.show_preview => {
                 self.move_preview_by(
-                        ctx.editor.config().scroll_lines.unsigned_abs(),
-                        Direction::Backward,
+                    ctx.editor.config().scroll_lines.unsigned_abs(),
+                    Direction::Backward,
                 );
             }
             alt!('j') | shift!(Down) if self.show_preview => {
@@ -1206,7 +1206,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
             }
             alt!('f') if self.show_preview => {
                 self.move_preview_by(self.preview_height as usize, Direction::Forward);
-            }           
+            }
             _ => {
                 self.prompt_handle_event(event, ctx);
             }
@@ -1228,8 +1228,8 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
 
     fn required_size(&mut self, (width, height): (u16, u16)) -> Option<(u16, u16)> {
         self.completion_height = height.saturating_sub(4 + self.header_height());
-        self.preview_height = height.saturating_sub(2);            
-        
+        self.preview_height = height.saturating_sub(2);
+
         Some((width, height))
     }
 
