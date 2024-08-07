@@ -19,16 +19,31 @@ pub fn continue_comment<'a>(
     new_line: &mut String,
 ) -> Option<&'a str> {
     let text = doc.slice(..);
+    let mut apply_token = false;
+
+    let mut used_token = tokens
+        .first()
+        .map(|token| token.as_str())
+        .unwrap_or(DEFAULT_COMMENT_TOKEN);
 
     for token in tokens {
         let (is_commented, _, _, _) = find_line_comment(token, text, [line_num]);
 
         if is_commented {
-            new_line.push_str(token);
-            new_line.push(' ');
-            return Some(token);
+            apply_token = true;
+
+            if token.len() > used_token.len() {
+                used_token = token;
+            }
         }
     }
+
+    if apply_token {
+        new_line.push_str(used_token);
+        new_line.push(' ');
+        return Some(used_token);
+    }
+
     None
 }
 

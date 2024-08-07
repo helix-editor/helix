@@ -105,7 +105,6 @@ pub struct LanguageConfiguration {
     #[serde(default)]
     pub roots: Vec<String>, // these indicate project roots <.git, Cargo.toml>
     // Invariants:
-    //  - Tokens are sorted by their length. Starting from the longest up to smallest.
     //  - `comment_tokens.is_some()` is always true
     //  - the inner Vec is never empty
     #[serde(
@@ -274,10 +273,7 @@ where
     Ok(
         Option::<CommentTokens>::deserialize(deserializer)?.map(|tokens| match tokens {
             CommentTokens::Single(val) => vec![val],
-            CommentTokens::Multiple(mut vals) => {
-                vals.sort_unstable_by(|a, b| b.len().partial_cmp(&a.len()).unwrap());
-                vals
-            }
+            CommentTokens::Multiple(vals) => vals,
         }),
     )
 }
