@@ -14,34 +14,43 @@ pub const DEFAULT_COMMENT_TOKEN: &str = "//";
 /// Little helper function append the comment token of the previous line, if it's also commented.
 pub fn continue_comment<'a>(
     doc: &Rope,
-    tokens: &'a [String],
+    tokens: Option<&'a Vec<String>>,
     line_num: usize,
     new_line: &mut String,
 ) -> Option<&'a str> {
     let text = doc.slice(..);
     let mut apply_token = false;
 
-    let mut used_token = tokens
-        .first()
-        .map(|token| token.as_str())
-        .unwrap_or(DEFAULT_COMMENT_TOKEN);
+    if let Some(tokens) = tokens {
+        let mut used_token = tokens
+            .first()
+            .map(|token| token.as_str())
+            .unwrap_or(DEFAULT_COMMENT_TOKEN);
 
-    for token in tokens {
-        let (is_commented, _, _, _) = find_line_comment(token, text, [line_num]);
+        for token in tokens {
+            let (is_commented, _, _, _) = find_line_comment(token, text, [line_num]);
 
-        if is_commented {
-            apply_token = true;
+            if is_commented {
+                apply_token = true;
 
-            if token.len() > used_token.len() {
-                used_token = token;
+                if token.len() > used_token.len() {
+                    used_token = token;
+                }
             }
         }
-    }
 
-    if apply_token {
-        new_line.push_str(used_token);
-        new_line.push(' ');
-        return Some(used_token);
+        if apply_token {
+            new_line.push_str(used_token);
+            new_line.push(' ');
+            return Some(used_token);
+        }
+    } else {
+        let (is_commented, _, _, _) = find_line_comment(DEFAULT_COMMENT_TOKEN, text, [line_num]);
+        if is_commented {
+            new_line.push_str(DEFAULT_COMMENT_TOKEN);
+            new_line.push(' ');
+            return Some(DEFAULT_COMMENT_TOKEN);
+        }
     }
 
     None

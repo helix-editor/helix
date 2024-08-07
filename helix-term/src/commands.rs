@@ -3395,8 +3395,7 @@ fn open(cx: &mut Context, open: Open) {
         if config.continue_comments {
             let tokens = doc
                 .language_config()
-                .and_then(|config| config.comment_tokens.as_ref())
-                .unwrap();
+                .and_then(|config| config.comment_tokens.as_ref());
 
             continue_comment(doc.text(), tokens, cursor_line, &mut text);
         }
@@ -3852,8 +3851,7 @@ pub mod insert {
             let mut new_text = String::new();
             let comment_tokens = doc
                 .language_config()
-                .and_then(|config| config.comment_tokens.as_ref())
-                .unwrap();
+                .and_then(|config| config.comment_tokens.as_ref());
 
             // If the current line is all whitespace, insert a line ending at the beginning of
             // the current line. This makes the current line empty and the new line contain the
