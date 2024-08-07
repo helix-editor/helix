@@ -47,6 +47,7 @@ fn find_line_comment(
     lines: impl IntoIterator<Item = usize>,
 ) -> (bool, Vec<usize>, usize, usize) {
     let mut commented = true;
+    let mut text_is_empty = true;
     let mut to_change = Vec::new();
     let mut min = usize::MAX; // minimum col for first_non_whitespace_char
     let mut margin = 1;
@@ -55,6 +56,7 @@ fn find_line_comment(
     for line in lines {
         let line_slice = text.line(line);
         if let Some(pos) = line_slice.first_non_whitespace_char() {
+            text_is_empty = false;
             let len = line_slice.len_chars();
 
             min = std::cmp::min(min, pos);
@@ -64,7 +66,9 @@ fn find_line_comment(
 
             // as soon as one of the non-blank lines doesn't have a comment, the whole block is
             // considered uncommented.
-            commented = commented && !(fragment != token);
+            if fragment != token {
+                commented = false;
+            }
 
             // determine margin of 0 or 1 for uncommenting; if any comment token is not followed by a space,
             // a margin of 0 is used for all lines.
@@ -76,6 +80,11 @@ fn find_line_comment(
             to_change.push(line);
         }
     }
+
+    if text_is_empty {
+        commented = false;
+    }
+
     (commented, to_change, min, margin)
 }
 
