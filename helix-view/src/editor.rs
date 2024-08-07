@@ -357,6 +357,7 @@ pub struct Config {
 }
 
 impl Config {
+    /// Returns the `indent_heuristic` depending, if `continue_comments` is set or not.
     pub fn indent_heuristic(&self) -> IndentationHeuristic {
         if self.continue_comments {
             IndentationHeuristic::Simple
