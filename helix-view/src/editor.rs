@@ -217,6 +217,10 @@ impl Default for FilePickerConfig {
     }
 }
 
+fn default_continue_comments() -> bool {
+    true
+}
+
 fn serialize_alphabet<S>(alphabet: &[char], serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -345,6 +349,7 @@ pub struct Config {
     )]
     pub jump_label_alphabet: Vec<char>,
     /// Whether to prepend a comment token onto a new line that follows a commented line.
+    #[serde(default = "default_continue_comments")]
     pub continue_comments: bool,
     /// Display diagnostic below the line they occur.
     pub inline_diagnostics: InlineDiagnosticsConfig,

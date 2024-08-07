@@ -3398,7 +3398,7 @@ fn open(cx: &mut Context, open: Open) {
                 .and_then(|config| config.comment_tokens.as_ref())
                 .unwrap();
 
-            continue_comment(doc.text(), tokens, line_num, &mut text);
+            continue_comment(doc.text(), tokens, cursor_line, &mut text);
         }
 
         let text = text.repeat(count);
