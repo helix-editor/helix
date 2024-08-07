@@ -57,18 +57,14 @@ fn find_line_comment(
         if let Some(pos) = line_slice.first_non_whitespace_char() {
             let len = line_slice.len_chars();
 
-            if pos < min {
-                min = pos;
-            }
+            min = std::cmp::min(min, pos);
 
             // line can be shorter than pos + token len
             let fragment = Cow::from(line_slice.slice(pos..std::cmp::min(pos + token.len(), len)));
 
-            if fragment != token {
-                // as soon as one of the non-blank lines doesn't have a comment, the whole block is
-                // considered uncommented.
-                commented = false;
-            }
+            // as soon as one of the non-blank lines doesn't have a comment, the whole block is
+            // considered uncommented.
+            commented = commented && !(fragment != token);
 
             // determine margin of 0 or 1 for uncommenting; if any comment token is not followed by a space,
             // a margin of 0 is used for all lines.
@@ -344,13 +340,13 @@ mod test {
     mod find_line_comment {
         use super::*;
 
-        // #[test]
-        // fn empty_line() {
-        //     let doc = Rope::from("");
+        #[test]
+        fn empty_line() {
+            let doc = Rope::from("");
 
-        //     let (is_commented, _, _, _) = find_line_comment("//", doc.slice(..), [0]);
-        //     assert_eq!(is_commented, false);
-        // }
+            let (is_commented, _, _, _) = find_line_comment("//", doc.slice(..), [0]);
+            assert_eq!(is_commented, false);
+        }
 
         #[test]
         fn not_commented() {
@@ -360,8 +356,19 @@ mod test {
             let text = doc.slice(..);
 
             let res = find_line_comment("//", text, 0..3);
-            // (commented = true, to_change = [line 0, line 2], min = col 2, margin = 0)
+            // (commented = false, to_change = [line 0, line 2], min = col 2, margin = 0)
             assert_eq!(res, (false, vec![0, 2], 2, 0));
+        }
+
+        #[test]
+        fn is_commented() {
+            // three lines where the second line is empty.
+            let doc = Rope::from("// hello\n\n// there");
+
+            let res = find_line_comment("//", doc.slice(..), 0..3);
+
+            // (commented = true, to_change = [line 0, line 2], min = col 0, margin = 1)
+            assert_eq!(res, (true, vec![0, 2], 0, 1));
         }
     }
 
