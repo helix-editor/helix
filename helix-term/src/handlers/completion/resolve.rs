@@ -9,6 +9,7 @@ use helix_view::Editor;
 
 use crate::handlers::completion::CompletionItem;
 use crate::job;
+use crate::ui::CompletionItemSource;
 
 /// A hook for resolving incomplete completion items.
 ///
@@ -42,6 +43,11 @@ impl ResolveHandler {
         if item.resolved {
             return;
         }
+
+        let CompletionItemSource::LanguageServer(ls_id) = item.provider else {
+            return;
+        };
+
         // We consider an item to be fully resolved if it has non-empty, none-`None` details,
         // docs and additional text-edits. Ideally we could use `is_some` instead of this
         // check but some language servers send values like `Some([])` for additional text
@@ -72,7 +78,7 @@ impl ResolveHandler {
         if self.last_request.as_deref().is_some_and(|it| it == item) {
             return;
         }
-        let Some(ls) = editor.language_servers.get_by_id(item.provider).cloned() else {
+        let Some(ls) = editor.language_servers.get_by_id(ls_id).cloned() else {
             item.resolved = true;
             return;
         };

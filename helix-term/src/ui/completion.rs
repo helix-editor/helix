@@ -87,10 +87,16 @@ impl menu::Item for CompletionItem {
     }
 }
 
-#[derive(Debug, PartialEq, Default, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
+pub enum CompletionItemSource {
+    LanguageServer(LanguageServerId),
+    Path,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub struct CompletionItem {
     pub item: lsp::CompletionItem,
-    pub provider: LanguageServerId,
+    pub provider: CompletionItemSource,
     pub resolved: bool,
 }
 
@@ -217,10 +223,10 @@ impl Completion {
             let (view, doc) = current!(editor);
 
             macro_rules! language_server {
-                ($item:expr) => {
+                ($language_server_id:expr) => {
                     match editor
                         .language_servers
-                        .get_by_id($item.provider)
+                        .get_by_id($language_server_id)
                     {
                         Some(ls) => ls,
                         None => {
@@ -257,11 +263,18 @@ impl Completion {
                     // always present here
                     let item = item.unwrap();
 
+                    let offset_encoding = match item.provider {
+                        CompletionItemSource::LanguageServer(id) => {
+                            language_server!(id).offset_encoding()
+                        }
+                        CompletionItemSource::Path => Default::default(),
+                    };
+
                     let transaction = item_to_transaction(
                         doc,
                         view.id,
                         &item.item,
-                        language_server!(item).offset_encoding(),
+                        offset_encoding,
                         trigger_offset,
                         true,
                         replace_mode,
@@ -278,16 +291,24 @@ impl Completion {
                     // always present here
                     let mut item = item.unwrap().clone();
 
-                    let language_server = language_server!(item);
-                    let offset_encoding = language_server.offset_encoding();
+                    let offset_encoding = match item.provider {
+                        CompletionItemSource::LanguageServer(ls_id) => {
+                            let language_server = language_server!(ls_id);
 
-                    if !item.resolved {
-                        if let Some(resolved) =
-                            Self::resolve_completion_item(language_server, item.item.clone())
-                        {
-                            item.item = resolved;
+                            // resolve item if not yet resolved
+                            if !item.resolved {
+                                if let Some(resolved) = Self::resolve_completion_item(
+                                    language_server,
+                                    item.item.clone(),
+                                ) {
+                                    item.item = resolved;
+                                }
+                            };
+                            language_server.offset_encoding()
                         }
+                        CompletionItemSource::Path => Default::default(),
                     };
+
                     // if more text was entered, remove it
                     doc.restore(view, &savepoint, true);
                     // save an undo checkpoint before the completion
