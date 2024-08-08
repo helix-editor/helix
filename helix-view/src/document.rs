@@ -33,6 +33,7 @@ use helix_core::{
     history::{History, State, UndoKind},
     indent::{auto_detect_indent_style, IndentStyle},
     line_ending::auto_detect_line_ending,
+    modeline::Modeline,
     syntax::{self, LanguageConfiguration},
     ChangeSet, Diagnostic, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax, Transaction,
 };
@@ -192,6 +193,8 @@ pub struct Document {
     pub focused_at: std::time::Instant,
 
     pub readonly: bool,
+
+    modeline: Modeline,
 }
 
 /// Inlay hints for a single `(Document, View)` combo.
@@ -652,6 +655,7 @@ impl Document {
         let line_ending = config.load().default_line_ending.into();
         let changes = ChangeSet::new(text.slice(..));
         let old_state = None;
+        let modeline = Modeline::parse(text.slice(..));
 
         Self {
             id: DocumentId::default(),
@@ -684,6 +688,7 @@ impl Document {
             focused_at: std::time::Instant::now(),
             readonly: false,
             jump_labels: HashMap::new(),
+            modeline,
         }
     }
 
@@ -1060,21 +1065,35 @@ impl Document {
         &self,
         config_loader: &syntax::Loader,
     ) -> Option<Arc<helix_core::syntax::LanguageConfiguration>> {
-        config_loader
-            .language_config_for_file_name(self.path.as_ref()?)
-            .or_else(|| config_loader.language_config_for_shebang(self.text().slice(..)))
+        self.modeline
+            .language()
+            .and_then(|language| config_loader.language_config_for_language_id(language))
+            .or_else(|| {
+                config_loader
+                    .language_config_for_file_name(self.path.as_ref()?)
+                    .or_else(|| config_loader.language_config_for_shebang(self.text().slice(..)))
+            })
     }
 
     /// Detect the indentation used in the file, or otherwise defaults to the language indentation
     /// configured in `languages.toml`, with a fallback to tabs if it isn't specified. Line ending
     /// is likewise auto-detected, and will remain unchanged if no line endings were detected.
     pub fn detect_indent_and_line_ending(&mut self) {
-        self.indent_style = auto_detect_indent_style(&self.text).unwrap_or_else(|| {
-            self.language_config()
-                .and_then(|config| config.indent.as_ref())
-                .map_or(DEFAULT_INDENT, |config| IndentStyle::from_str(&config.unit))
-        });
-        if let Some(line_ending) = auto_detect_line_ending(&self.text) {
+        self.indent_style = self
+            .modeline
+            .indent_style()
+            .or_else(|| auto_detect_indent_style(&self.text))
+            .unwrap_or_else(|| {
+                self.language_config()
+                    .and_then(|config| config.indent.as_ref())
+                    .map_or(DEFAULT_INDENT, |config| IndentStyle::from_str(&config.unit))
+            });
+
+        if let Some(line_ending) = self
+            .modeline
+            .line_ending()
+            .or_else(|| auto_detect_line_ending(&self.text))
+        {
             self.line_ending = line_ending;
         }
     }
