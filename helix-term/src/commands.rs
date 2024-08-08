@@ -17,13 +17,13 @@ pub use typed::*;
 use helix_core::{
     char_idx_at_visual_offset,
     chars::char_is_word,
-    comment,
+    comment::{self, continue_comment},
     doc_formatter::TextFormat,
     encoding, find_workspace,
     graphemes::{self, next_grapheme_boundary, RevRopeGraphemes},
     history::UndoKind,
-    increment, indent,
-    indent::IndentStyle,
+    increment,
+    indent::{self, IndentStyle},
     line_ending::{get_line_ending_of_str, line_end_char_index},
     match_brackets,
     movement::{self, move_vertically_visual, Direction},
@@ -3298,7 +3298,7 @@ fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
             let indent = indent::indent_for_newline(
                 language_config,
                 syntax,
-                &doc.config.load().indent_heuristic,
+                &doc.config.load().indent_heuristic(),
                 &doc.indent_style,
                 tab_width,
                 text,
@@ -3391,7 +3391,8 @@ fn open(cx: &mut Context, open: Open) {
     enter_insert_mode(cx);
     let (view, doc) = current!(cx.editor);
 
-    let text = doc.text().slice(..);
+    let config = doc.config.load();
+    let doc_text = doc.text().slice(..);
     let contents = doc.text();
     let selection = doc.selection(view.id);
 
@@ -3399,8 +3400,8 @@ fn open(cx: &mut Context, open: Open) {
     let mut offs = 0;
 
     let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
-        let cursor_line = text.char_to_line(match open {
-            Open::Below => graphemes::prev_grapheme_boundary(text, range.to()),
+        let cursor_line = doc_text.char_to_line(match open {
+            Open::Below => graphemes::prev_grapheme_boundary(doc_text, range.to()),
             Open::Above => range.from(),
         });
 
@@ -3419,7 +3420,7 @@ fn open(cx: &mut Context, open: Open) {
             (0, 0)
         } else {
             (
-                line_end_char_index(&text, line_num),
+                line_end_char_index(&doc_text, line_num),
                 doc.line_ending.len_chars(),
             )
         };
@@ -3427,10 +3428,10 @@ fn open(cx: &mut Context, open: Open) {
         let indent = indent::indent_for_newline(
             doc.language_config(),
             doc.syntax(),
-            &doc.config.load().indent_heuristic,
+            &doc.config.load().indent_heuristic(),
             &doc.indent_style,
             doc.tab_width(),
-            text,
+            doc_text,
             line_num,
             line_end_index,
             cursor_line,
@@ -3440,6 +3441,15 @@ fn open(cx: &mut Context, open: Open) {
         let mut text = String::with_capacity(1 + indent_len);
         text.push_str(doc.line_ending.as_str());
         text.push_str(&indent);
+
+        if config.continue_comments {
+            let tokens = doc
+                .language_config()
+                .and_then(|config| config.comment_tokens.as_ref());
+
+            continue_comment(doc.text(), tokens, cursor_line, &mut text);
+        }
+
         let text = text.repeat(count);
 
         // calculate new selection ranges
@@ -3459,6 +3469,9 @@ fn open(cx: &mut Context, open: Open) {
     transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
 
     doc.apply(&transaction, view.id);
+
+    // Since we might have added a comment token, move to the end of the line.
+    goto_line_end_newline(cx);
 }
 
 // o inserts a new line after each line with a selection
@@ -3859,6 +3872,7 @@ pub mod insert {
 
     pub fn insert_newline(cx: &mut Context) {
         let (view, doc) = current_ref!(cx.editor);
+        let config = doc.config.load();
         let text = doc.text().slice(..);
 
         let contents = doc.text();
@@ -3885,6 +3899,9 @@ pub mod insert {
                 .all(|char| char.is_ascii_whitespace());
 
             let mut new_text = String::new();
+            let comment_tokens = doc
+                .language_config()
+                .and_then(|config| config.comment_tokens.as_ref());
 
             // If the current line is all whitespace, insert a line ending at the beginning of
             // the current line. This makes the current line empty and the new line contain the
@@ -3898,7 +3915,7 @@ pub mod insert {
                 let indent = indent::indent_for_newline(
                     doc.language_config(),
                     doc.syntax(),
-                    &doc.config.load().indent_heuristic,
+                    &doc.config.load().indent_heuristic(),
                     &doc.indent_style,
                     doc.tab_width(),
                     text,
@@ -3916,18 +3933,27 @@ pub mod insert {
                     .map_or(false, |pair| pair.open == prev && pair.close == curr);
 
                 let local_offs = if on_auto_pair {
+                    // line where the cursor will be
                     let inner_indent = indent.clone() + doc.indent_style.as_str();
-                    new_text.reserve_exact(2 + indent.len() + inner_indent.len());
+                    new_text.reserve_exact(4 + indent.len() + inner_indent.len());
                     new_text.push_str(doc.line_ending.as_str());
                     new_text.push_str(&inner_indent);
+
+                    // line where the matching pair will be
                     let local_offs = new_text.chars().count();
                     new_text.push_str(doc.line_ending.as_str());
                     new_text.push_str(&indent);
+
                     local_offs
                 } else {
-                    new_text.reserve_exact(1 + indent.len());
+                    new_text.reserve_exact(3 + indent.len());
                     new_text.push_str(doc.line_ending.as_str());
                     new_text.push_str(&indent);
+
+                    if config.continue_comments {
+                        continue_comment(doc.text(), comment_tokens, current_line, &mut new_text);
+                    }
+
                     new_text.chars().count()
                 };
 

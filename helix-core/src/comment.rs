@@ -9,6 +9,53 @@ use crate::{
 use helix_stdx::rope::RopeSliceExt;
 use std::borrow::Cow;
 
+pub const DEFAULT_COMMENT_TOKEN: &str = "//";
+
+/// Little helper function append the comment token of the previous line, if it's also commented.
+pub fn continue_comment<'a>(
+    doc: &Rope,
+    tokens: Option<&'a Vec<String>>,
+    line_num: usize,
+    new_line: &mut String,
+) -> Option<&'a str> {
+    let text = doc.slice(..);
+    let mut apply_token = false;
+
+    if let Some(tokens) = tokens {
+        let mut used_token = tokens
+            .first()
+            .map(|token| token.as_str())
+            .unwrap_or(DEFAULT_COMMENT_TOKEN);
+
+        for token in tokens {
+            let (is_commented, _, _, _) = find_line_comment(token, text, [line_num]);
+
+            if is_commented {
+                apply_token = true;
+
+                if token.len() > used_token.len() {
+                    used_token = token;
+                }
+            }
+        }
+
+        if apply_token {
+            new_line.push_str(used_token);
+            new_line.push(' ');
+            return Some(used_token);
+        }
+    } else {
+        let (is_commented, _, _, _) = find_line_comment(DEFAULT_COMMENT_TOKEN, text, [line_num]);
+        if is_commented {
+            new_line.push_str(DEFAULT_COMMENT_TOKEN);
+            new_line.push(' ');
+            return Some(DEFAULT_COMMENT_TOKEN);
+        }
+    }
+
+    None
+}
+
 /// Given text, a comment token, and a set of line indices, returns the following:
 /// - Whether the given lines should be considered commented
 ///     - If any of the lines are uncommented, all lines are considered as such.
@@ -24,25 +71,26 @@ fn find_line_comment(
     lines: impl IntoIterator<Item = usize>,
 ) -> (bool, Vec<usize>, usize, usize) {
     let mut commented = true;
+    let mut text_is_empty = true;
     let mut to_change = Vec::new();
     let mut min = usize::MAX; // minimum col for first_non_whitespace_char
     let mut margin = 1;
     let token_len = token.chars().count();
+
     for line in lines {
         let line_slice = text.line(line);
         if let Some(pos) = line_slice.first_non_whitespace_char() {
+            text_is_empty = false;
             let len = line_slice.len_chars();
 
-            if pos < min {
-                min = pos;
-            }
+            min = std::cmp::min(min, pos);
 
             // line can be shorter than pos + token len
             let fragment = Cow::from(line_slice.slice(pos..std::cmp::min(pos + token.len(), len)));
 
+            // as soon as one of the non-blank lines doesn't have a comment, the whole block is
+            // considered uncommented.
             if fragment != token {
-                // as soon as one of the non-blank lines doesn't have a comment, the whole block is
-                // considered uncommented.
                 commented = false;
             }
 
@@ -56,6 +104,11 @@ fn find_line_comment(
             to_change.push(line);
         }
     }
+
+    if text_is_empty {
+        commented = false;
+    }
+
     (commented, to_change, min, margin)
 }
 
@@ -63,7 +116,7 @@ fn find_line_comment(
 pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&str>) -> Transaction {
     let text = doc.slice(..);
 
-    let token = token.unwrap_or("//");
+    let token = token.unwrap_or(DEFAULT_COMMENT_TOKEN);
     let comment = Tendril::from(format!("{} ", token));
 
     let mut lines: Vec<usize> = Vec::with_capacity(selection.len());
@@ -317,56 +370,95 @@ pub fn split_lines_of_selection(text: RopeSlice, selection: &Selection) -> Selec
 mod test {
     use super::*;
 
-    #[test]
-    fn test_find_line_comment() {
-        // four lines, two space indented, except for line 1 which is blank.
-        let mut doc = Rope::from("  1\n\n  2\n  3");
-        // select whole document
-        let mut selection = Selection::single(0, doc.len_chars() - 1);
+    mod find_line_comment {
+        use super::*;
 
-        let text = doc.slice(..);
+        #[test]
+        fn empty_line() {
+            let doc = Rope::from("");
 
-        let res = find_line_comment("//", text, 0..3);
-        // (commented = true, to_change = [line 0, line 2], min = col 2, margin = 0)
-        assert_eq!(res, (false, vec![0, 2], 2, 0));
+            let (is_commented, _, _, _) = find_line_comment("//", doc.slice(..), [0]);
+            assert!(!is_commented);
+        }
 
-        // comment
-        let transaction = toggle_line_comments(&doc, &selection, None);
-        transaction.apply(&mut doc);
-        selection = selection.map(transaction.changes());
+        #[test]
+        fn not_commented() {
+            // four lines, two space indented, except for line 1 which is blank.
+            let doc = Rope::from("  1\n\n  2\n  3");
 
-        assert_eq!(doc, "  // 1\n\n  // 2\n  // 3");
+            let text = doc.slice(..);
 
-        // uncomment
-        let transaction = toggle_line_comments(&doc, &selection, None);
-        transaction.apply(&mut doc);
-        selection = selection.map(transaction.changes());
-        assert_eq!(doc, "  1\n\n  2\n  3");
-        assert!(selection.len() == 1); // to ignore the selection unused warning
+            let res = find_line_comment("//", text, 0..3);
+            // (commented = false, to_change = [line 0, line 2], min = col 2, margin = 0)
+            assert_eq!(res, (false, vec![0, 2], 2, 0));
+        }
 
-        // 0 margin comments
-        doc = Rope::from("  //1\n\n  //2\n  //3");
-        // reset the selection.
-        selection = Selection::single(0, doc.len_chars() - 1);
+        #[test]
+        fn is_commented() {
+            // three lines where the second line is empty.
+            let doc = Rope::from("// hello\n\n// there");
 
-        let transaction = toggle_line_comments(&doc, &selection, None);
-        transaction.apply(&mut doc);
-        selection = selection.map(transaction.changes());
-        assert_eq!(doc, "  1\n\n  2\n  3");
-        assert!(selection.len() == 1); // to ignore the selection unused warning
+            let res = find_line_comment("//", doc.slice(..), 0..3);
 
-        // 0 margin comments, with no space
-        doc = Rope::from("//");
-        // reset the selection.
-        selection = Selection::single(0, doc.len_chars() - 1);
+            // (commented = true, to_change = [line 0, line 2], min = col 0, margin = 1)
+            assert_eq!(res, (true, vec![0, 2], 0, 1));
+        }
+    }
 
-        let transaction = toggle_line_comments(&doc, &selection, None);
-        transaction.apply(&mut doc);
-        selection = selection.map(transaction.changes());
-        assert_eq!(doc, "");
-        assert!(selection.len() == 1); // to ignore the selection unused warning
+    // TODO: account for uncommenting with uneven comment indentation
+    mod toggle_line_comment {
+        use super::*;
 
-        // TODO: account for uncommenting with uneven comment indentation
+        #[test]
+        fn comment() {
+            // four lines, two space indented, except for line 1 which is blank.
+            let mut doc = Rope::from("  1\n\n  2\n  3");
+            // select whole document
+            let selection = Selection::single(0, doc.len_chars() - 1);
+
+            let transaction = toggle_line_comments(&doc, &selection, None);
+            transaction.apply(&mut doc);
+
+            assert_eq!(doc, "  // 1\n\n  // 2\n  // 3");
+        }
+
+        #[test]
+        fn uncomment() {
+            let mut doc = Rope::from("  // 1\n\n  // 2\n  // 3");
+            let mut selection = Selection::single(0, doc.len_chars() - 1);
+
+            let transaction = toggle_line_comments(&doc, &selection, None);
+            transaction.apply(&mut doc);
+            selection = selection.map(transaction.changes());
+
+            assert_eq!(doc, "  1\n\n  2\n  3");
+            assert!(selection.len() == 1); // to ignore the selection unused warning
+        }
+
+        #[test]
+        fn uncomment_0_margin_comments() {
+            let mut doc = Rope::from("  //1\n\n  //2\n  //3");
+            let mut selection = Selection::single(0, doc.len_chars() - 1);
+
+            let transaction = toggle_line_comments(&doc, &selection, None);
+            transaction.apply(&mut doc);
+            selection = selection.map(transaction.changes());
+
+            assert_eq!(doc, "  1\n\n  2\n  3");
+            assert!(selection.len() == 1); // to ignore the selection unused warning
+        }
+
+        #[test]
+        fn uncomment_0_margin_comments_with_no_space() {
+            let mut doc = Rope::from("//");
+            let mut selection = Selection::single(0, doc.len_chars() - 1);
+
+            let transaction = toggle_line_comments(&doc, &selection, None);
+            transaction.apply(&mut doc);
+            selection = selection.map(transaction.changes());
+            assert_eq!(doc, "");
+            assert!(selection.len() == 1); // to ignore the selection unused warning
+        }
     }
 
     #[test]
