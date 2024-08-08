@@ -8,8 +8,8 @@ use crossterm::{
     },
     execute, queue,
     style::{
-        Attribute as CAttribute, Color as CColor, Print, SetAttribute, SetBackgroundColor,
-        SetForegroundColor,
+        Attribute as CAttribute, Color as CColor, Colors, Print, SetAttribute, SetBackgroundColor,
+        SetColors, SetForegroundColor,
     },
     terminal::{self, Clear, ClearType},
     Command,
@@ -260,14 +260,12 @@ where
                 diff.queue(&mut self.buffer)?;
                 modifier = cell.modifier;
             }
-            if cell.fg != fg {
-                let color = CColor::from(cell.fg);
-                queue!(self.buffer, SetForegroundColor(color))?;
+            if cell.fg != fg || cell.bg != bg {
+                queue!(
+                    self.buffer,
+                    SetColors(Colors::new(cell.fg.into(), cell.bg.into()))
+                )?;
                 fg = cell.fg;
-            }
-            if cell.bg != bg {
-                let color = CColor::from(cell.bg);
-                queue!(self.buffer, SetBackgroundColor(color))?;
                 bg = cell.bg;
             }
 
