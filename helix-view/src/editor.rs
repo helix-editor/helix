@@ -1929,13 +1929,15 @@ impl Editor {
     }
 
     pub fn document_by_path<P: AsRef<Path>>(&self, path: P) -> Option<&Document> {
+        let path = helix_stdx::path::canonicalize(path);
         self.documents()
-            .find(|doc| doc.path().map(|p| p == path.as_ref()).unwrap_or(false))
+            .find(|doc| doc.path().map(|p| p == &path).unwrap_or(false))
     }
 
     pub fn document_by_path_mut<P: AsRef<Path>>(&mut self, path: P) -> Option<&mut Document> {
+        let path = helix_stdx::path::canonicalize(path);
         self.documents_mut()
-            .find(|doc| doc.path().map(|p| p == path.as_ref()).unwrap_or(false))
+            .find(|doc| doc.path().map(|p| p == &path).unwrap_or(false))
     }
 
     /// Returns all supported diagnostics for the document

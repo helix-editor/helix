@@ -12,6 +12,7 @@ use helix_core::{line_ending, shellwords::Shellwords};
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
 use serde_json::Value;
+
 use ui::completers::{self, Completer};
 
 #[derive(Clone)]
@@ -334,36 +335,41 @@ fn write_impl(
     force: bool,
 ) -> anyhow::Result<()> {
     let config = cx.editor.config();
-    let jobs = &mut cx.jobs;
-    let (view, doc) = current!(cx.editor);
     let path = path.map(AsRef::as_ref);
 
+    let (view, doc) = current!(cx.editor);
+    let doc_id = doc.id();
+    let view_id = view.id;
+
     if config.insert_final_newline {
-        insert_final_newline(doc, view.id);
+        insert_final_newline(doc, view_id);
     }
 
     // Save an undo checkpoint for any outstanding changes.
     doc.append_changes_to_history(view);
 
+    code_actions_on_save(cx, &doc_id);
+
     let fmt = if config.auto_format {
+        let doc = doc!(cx.editor, &doc_id);
         doc.auto_format().map(|fmt| {
             let callback = make_format_callback(
                 doc.id(),
                 doc.version(),
-                view.id,
+                view_id,
                 fmt,
                 Some((path.map(Into::into), force)),
             );
 
-            jobs.add(Job::with_callback(callback).wait_before_exiting());
+            cx.jobs
+                .add(Job::with_callback(callback).wait_before_exiting());
         })
     } else {
         None
     };
 
     if fmt.is_none() {
-        let id = doc.id();
-        cx.editor.save(id, path, force)?;
+        cx.editor.save(doc_id, path, force)?;
     }
 
     Ok(())
@@ -677,7 +683,6 @@ pub fn write_all_impl(
 ) -> anyhow::Result<()> {
     let mut errors: Vec<&'static str> = Vec::new();
     let config = cx.editor.config();
-    let jobs = &mut cx.jobs;
     let saves: Vec<_> = cx
         .editor
         .documents
@@ -708,13 +713,16 @@ pub fn write_all_impl(
         let view = view_mut!(cx.editor, target_view);
 
         if config.insert_final_newline {
-            insert_final_newline(doc, target_view);
+            insert_final_newline(doc, view.id);
         }
 
         // Save an undo checkpoint for any outstanding changes.
         doc.append_changes_to_history(view);
 
+        code_actions_on_save(cx, &doc_id);
+
         let fmt = if config.auto_format {
+            let doc = doc!(cx.editor, &doc_id);
             doc.auto_format().map(|fmt| {
                 let callback = make_format_callback(
                     doc_id,
@@ -723,7 +731,8 @@ pub fn write_all_impl(
                     fmt,
                     Some((None, force)),
                 );
-                jobs.add(Job::with_callback(callback).wait_before_exiting());
+                cx.jobs
+                    .add(Job::with_callback(callback).wait_before_exiting());
             })
         } else {
             None
