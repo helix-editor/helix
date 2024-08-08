@@ -23,6 +23,10 @@
 | `move_prev_long_word_start` | Move to start of previous long word |
 | `move_next_long_word_end` | Move to end of next long word |
 | `move_prev_long_word_end` | Move to end of previous long word |
+| `move_next_sub_word_start` | Move to start of next sub word |
+| `move_prev_sub_word_start` | Move to start of previous sub word |
+| `move_next_sub_word_end` | Move to end of next sub word |
+| `move_prev_sub_word_end` | Move to end of previous sub word |
 | `move_parent_node_end` | Move to end of the parent node |
 | `move_parent_node_start` | Move to beginning of the parent node |
 | `extend_next_word_start` | Extend to start of next word |
@@ -33,6 +37,10 @@
 | `extend_prev_long_word_start` | Extend to start of previous long word |
 | `extend_next_long_word_end` | Extend to end of next long word |
 | `extend_prev_long_word_end` | Extend to end of prev long word |
+| `extend_next_sub_word_start` | Extend to start of next sub word |
+| `extend_prev_sub_word_start` | Extend to start of previous sub word |
+| `extend_next_sub_word_end` | Extend to end of next sub word |
+| `extend_prev_sub_word_end` | Extend to end of prev sub word |
 | `extend_parent_node_end` | Extend to end of the parent node |
 | `extend_parent_node_start` | Extend to beginning of the parent node |
 | `find_till_char` | Move till next occurrence of char |
