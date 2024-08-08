@@ -47,7 +47,7 @@ Note: Only certain languages have indentation definitions at the moment. Check
 
 [Installation documentation](https://docs.helix-editor.com/install.html).
 
-[![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
+[![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg?exclude_unsupported=1)](https://repology.org/project/helix/versions)
 
 # Contributing
 

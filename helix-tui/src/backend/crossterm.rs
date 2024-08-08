@@ -8,8 +8,8 @@ use crossterm::{
     },
     execute, queue,
     style::{
-        Attribute as CAttribute, Color as CColor, Print, SetAttribute, SetBackgroundColor,
-        SetForegroundColor,
+        Attribute as CAttribute, Color as CColor, Colors, Print, SetAttribute, SetBackgroundColor,
+        SetColors, SetForegroundColor,
     },
     terminal::{self, Clear, ClearType},
     Command,
@@ -83,7 +83,7 @@ impl Capabilities {
             Ok(t) => Capabilities {
                 // Smulx, VTE: https://unix.stackexchange.com/a/696253/246284
                 // Su (used by kitty): https://sw.kovidgoyal.net/kitty/underlines
-                // WezTerm supports underlines but a lot of distros don't properly install it's terminfo
+                // WezTerm supports underlines but a lot of distros don't properly install its terminfo
                 has_extended_underlines: config.undercurl
                     || t.extended_cap("Smulx").is_some()
                     || t.extended_cap("Su").is_some()
@@ -260,14 +260,12 @@ where
                 diff.queue(&mut self.buffer)?;
                 modifier = cell.modifier;
             }
-            if cell.fg != fg {
-                let color = CColor::from(cell.fg);
-                queue!(self.buffer, SetForegroundColor(color))?;
+            if cell.fg != fg || cell.bg != bg {
+                queue!(
+                    self.buffer,
+                    SetColors(Colors::new(cell.fg.into(), cell.bg.into()))
+                )?;
                 fg = cell.fg;
-            }
-            if cell.bg != bg {
-                let color = CColor::from(cell.bg);
-                queue!(self.buffer, SetBackgroundColor(color))?;
                 bg = cell.bg;
             }
 

@@ -16,6 +16,7 @@
   - [`[editor.gutters.spacer]` Section](#editorguttersspacer-section)
 - [`[editor.soft-wrap]` Section](#editorsoft-wrap-section)
 - [`[editor.smart-tab]` Section](#editorsmart-tab-section)
+- [`[editor.inline-diagnostics]` Section](#editorinline-diagnostics-section)
 
 ### `[editor]` Section
 
@@ -32,7 +33,6 @@
 | `gutters` | Gutters to display: Available are `diagnostics` and `diff` and `line-numbers` and `spacer`, note that `diagnostics` also includes other features like breakpoints, 1-width padding will be inserted if gutters is non-empty | `["diagnostics", "spacer", "line-numbers", "spacer", "diff"]` |
 | `auto-completion` | Enable automatic pop up of auto-completion | `true` |
 | `auto-format` | Enable automatic formatting on save | `true` |
-| `auto-save` | Enable automatic saving on the focus moving away from Helix. Requires [focus event support](https://github.com/helix-editor/helix/wiki/Terminal-Support) from your terminal | `false` |
 | `idle-timeout` | Time in milliseconds since last keypress before idle timers trigger. | `250` |
 | `completion-timeout` | Time in milliseconds after typing a word character before completions are shown, set to 5 for instant.  | `250` |
 | `preview-completion-insert` | Whether to apply completion item instantly when selected | `true` |
@@ -51,6 +51,7 @@
 | `popup-border` | Draw border around `popup`, `menu`, `all`, or `none` | `none` |
 | `indent-heuristic` | How the indentation for a newly inserted line is computed: `simple` just copies the indentation level from the previous line, `tree-sitter` computes the indentation based on the syntax tree and `hybrid` combines both approaches. If the chosen heuristic is not available, a different one will be used as a fallback (the fallback order being `hybrid` -> `tree-sitter` -> `simple`). | `hybrid`
 | `jump-label-alphabet` | The characters that are used to generate two character jump labels. Characters at the start of the alphabet are used first. | `"abcdefghijklmnopqrstuvwxyz"`
+| `end-of-line-diagnostics` | Minimum severity of diagnostics to render at the end of the line. Set to `disable` to disable entirely. Refer to the setting about `inline-diagnostics` for more details | "disable"
 
 ### `[editor.statusline]` Section
 
@@ -222,6 +223,16 @@ name = "rust"
 '<' = '>'
 ```
 
+### `[editor.auto-save]` Section
+
+Control auto save behavior.
+
+| Key | Description | Default |
+|--|--|---------|
+| `focus-lost` | Enable automatic saving on the focus moving away from Helix. Requires [focus event support](https://github.com/helix-editor/helix/wiki/Terminal-Support) from your terminal | `false` |
+| `after-delay.enable` | Enable automatic saving after `auto-save.after-delay.timeout` milliseconds have passed since last edit. | `false` |
+| `after-delay.timeout` | Time in milliseconds since last edit before auto save timer triggers. | `3000` |
+
 ### `[editor.search]` Section
 
 Search specific options.
@@ -383,4 +394,42 @@ S-tab = "move_parent_node_start"
 [keys.select]
 tab = "extend_parent_node_end"
 S-tab = "extend_parent_node_start"
+```
+
+### `[editor.inline-diagnostics]` Section
+
+Options for rendering diagnostics inside the text like shown below
+
+```
+fn main() {
+  let foo = bar;
+            └─ no such value in this scope
+}
+````
+
+| Key        | Description | Default |
+|------------|-------------|---------|
+| `cursor-line` | The minimum severity that a diagnostic must have to be shown inline on the line that contains the primary cursor. Set to `disable` to not show any diagnostics inline. This option does not have any effect when in insert-mode and will only take effect 350ms after moving the cursor to a different line. | `"disable"` |
+| `other-lines` | The minimum severity that a diagnostic must have to be shown inline on a line that does not contain the cursor-line. Set to `disable` to not show any diagnostics inline. | `"disable"` |
+| `prefix-len` | How many horizontal bars `─` are rendered before the diagnostic text.  | `1` |
+| `max-wrap` | Equivalent of the `editor.soft-wrap.max-wrap` option for diagnostics.  | `20` |
+| `max-diagnostics` | Maximum number of diagnostics to render inline for a given line  | `10` |
+
+The (first) diagnostic with the highest severity that is not shown inline is rendered at the end of the line (as long as its severity is higher than the `end-of-line-diagnostics` config option):
+
+```
+fn main() {
+  let baz = 1;
+  let foo = bar; a local variable with a similar name exists: baz
+            └─ no such value in this scope
+}
+```
+
+
+The new diagnostic rendering is not yet enabled by default. As soon as end of line or inline diagnostics are enabled the old diagnostics rendering is automatically disabled. The recommended default setting are:
+
+```
+end-of-line-diagnostics = "hint"
+[editor.inline-diagnostics]
+cursor-line = "warning" # show warnings and errors on the cursorline inline
 ```
