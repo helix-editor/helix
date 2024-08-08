@@ -22,15 +22,17 @@ use helix_core::{
     encoding, find_workspace,
     graphemes::{self, next_grapheme_boundary, RevRopeGraphemes},
     history::UndoKind,
-    increment, indent,
-    indent::IndentStyle,
+    increment,
+    indent::{self, IndentStyle},
     line_ending::{get_line_ending_of_str, line_end_char_index},
     match_brackets,
     movement::{self, move_vertically_visual, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
     search::{self, CharMatcher},
-    selection, shellwords, surround,
+    selection,
+    shellwords::{self, Args},
+    surround,
     syntax::{BlockCommentToken, LanguageServerFeature},
     text_annotations::{Overlay, TextAnnotations},
     textobject,
@@ -183,7 +185,7 @@ use helix_view::{align_view, Align};
 pub enum MappableCommand {
     Typable {
         name: String,
-        args: Vec<String>,
+        args: String,
         doc: String,
     },
     Static {
@@ -214,15 +216,17 @@ impl MappableCommand {
     pub fn execute(&self, cx: &mut Context) {
         match &self {
             Self::Typable { name, args, doc: _ } => {
-                let args: Vec<Cow<str>> = args.iter().map(Cow::from).collect();
                 if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
                     let mut cx = compositor::Context {
                         editor: cx.editor,
                         jobs: cx.jobs,
                         scroll: None,
                     };
-                    if let Err(e) = (command.fun)(&mut cx, &args[..], PromptEvent::Validate) {
-                        cx.editor.set_error(format!("{}", e));
+
+                    if let Err(err) =
+                        (command.fun)(&mut cx, Args::from(args), PromptEvent::Validate)
+                    {
+                        cx.editor.set_error(format!("{err}"));
                     }
                 }
             }
@@ -566,21 +570,15 @@ impl std::str::FromStr for MappableCommand {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some(suffix) = s.strip_prefix(':') {
-            let mut typable_command = suffix.split(' ').map(|arg| arg.trim());
-            let name = typable_command
-                .next()
-                .ok_or_else(|| anyhow!("Expected typable command name"))?;
-            let args = typable_command
-                .map(|s| s.to_owned())
-                .collect::<Vec<String>>();
+            let (name, args) = suffix.split_once(' ').unwrap_or((suffix, ""));
             typed::TYPABLE_COMMAND_MAP
                 .get(name)
                 .map(|cmd| MappableCommand::Typable {
                     name: cmd.name.to_owned(),
                     doc: format!(":{} {:?}", cmd.name, args),
-                    args,
+                    args: args.to_string(),
                 })
-                .ok_or_else(|| anyhow!("No TypableCommand named '{}'", s))
+                .ok_or_else(|| anyhow!("No TypableCommand named '{}'", name))
         } else {
             MappableCommand::STATIC_COMMAND_LIST
                 .iter()
@@ -2419,7 +2417,7 @@ fn global_search(cx: &mut Context) {
                             // search the buffer instead of the file because it's faster
                             // and captures new edits without requiring a save
                             if searcher.multi_line_with_matcher(&matcher) {
-                                // in this case a continous buffer is required
+                                // in this case a continuous buffer is required
                                 // convert the rope to a string
                                 let text = doc.to_string();
                                 searcher.search_slice(&matcher, text.as_bytes(), sink)
@@ -3176,7 +3174,7 @@ pub fn command_palette(cx: &mut Context) {
                     .iter()
                     .map(|cmd| MappableCommand::Typable {
                         name: cmd.name.to_owned(),
-                        args: Vec::new(),
+                        args: String::new(),
                         doc: cmd.doc.to_owned(),
                     }),
             );
@@ -4163,7 +4161,7 @@ fn yank_impl(editor: &mut Editor, register: char) {
     let selections = values.len();
 
     match editor.registers.write(register, values) {
-        Ok(_) => editor.set_status(format!(
+        Ok(()) => editor.set_status(format!(
             "yanked {selections} selection{} to register {register}",
             if selections == 1 { "" } else { "s" }
         )),
@@ -4181,14 +4179,14 @@ fn yank_joined_impl(editor: &mut Editor, separator: &str, register: char) {
         .fragments(text)
         .fold(String::new(), |mut acc, fragment| {
             if !acc.is_empty() {
-                acc.push_str(separator);
+                acc.push_str(&helix_core::shellwords::unescape(separator));
             }
             acc.push_str(&fragment);
             acc
         });
 
     match editor.registers.write(register, vec![joined]) {
-        Ok(_) => editor.set_status(format!(
+        Ok(()) => editor.set_status(format!(
             "joined and yanked {selections} selection{} to register {register}",
             if selections == 1 { "" } else { "s" }
         )),
@@ -6182,7 +6180,7 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
     let mut cursor_rev = Range::point(cursor);
     if text.get_char(cursor).is_some_and(|c| !c.is_whitespace()) {
         let cursor_word_end = movement::move_next_word_end(text, cursor_fwd, 1);
-        //  single grapheme words need a specical case
+        //  single grapheme words need a special case
         if cursor_word_end.anchor == cursor {
             cursor_fwd = cursor_word_end;
         }
