@@ -2655,7 +2655,9 @@ fn delete_selection_impl(cx: &mut Context, op: Operation, yank: YankAction) {
         // yank the selection
         let text = doc.text().slice(..);
         let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
-        let reg_name = cx.register.unwrap_or(&cx.editor.config().default_register);
+        let reg_name = cx
+            .register
+            .unwrap_or(&cx.editor.config().default_yank_register);
         if let Err(err) = cx.editor.registers.write(reg_name, values) {
             cx.editor.set_error(err.to_string());
             return;
@@ -4099,7 +4101,8 @@ fn commit_undo_checkpoint(cx: &mut Context) {
 fn yank(cx: &mut Context) {
     yank_impl(
         cx.editor,
-        cx.register.unwrap_or(&cx.editor.config().default_register),
+        cx.register
+            .unwrap_or(&cx.editor.config().default_yank_register),
     );
     exit_select_mode(cx);
 }
@@ -4164,7 +4167,8 @@ fn yank_joined(cx: &mut Context) {
     yank_joined_impl(
         cx.editor,
         separator,
-        cx.register.unwrap_or(&cx.editor.config().default_register),
+        cx.register
+            .unwrap_or(&cx.editor.config().default_yank_register),
     );
     exit_select_mode(cx);
 }
@@ -4323,7 +4327,8 @@ fn paste_primary_clipboard_before(cx: &mut Context) {
 fn replace_with_yanked(cx: &mut Context) {
     replace_with_yanked_impl(
         cx.editor,
-        cx.register.unwrap_or(&cx.editor.config().default_register),
+        cx.register
+            .unwrap_or(&cx.editor.config().default_yank_register),
         cx.count(),
     );
     exit_select_mode(cx);
@@ -4388,7 +4393,8 @@ fn paste(editor: &mut Editor, register: char, pos: Paste, count: usize) {
 fn paste_after(cx: &mut Context) {
     paste(
         cx.editor,
-        cx.register.unwrap_or(&cx.editor.config().default_register),
+        cx.register
+            .unwrap_or(&cx.editor.config().default_yank_register),
         Paste::After,
         cx.count(),
     );
@@ -4398,7 +4404,8 @@ fn paste_after(cx: &mut Context) {
 fn paste_before(cx: &mut Context) {
     paste(
         cx.editor,
-        cx.register.unwrap_or(&cx.editor.config().default_register),
+        cx.register
+            .unwrap_or(&cx.editor.config().default_yank_register),
         Paste::Before,
         cx.count(),
     );
@@ -5219,7 +5226,8 @@ fn insert_register(cx: &mut Context) {
             cx.register = Some(ch);
             paste(
                 cx.editor,
-                cx.register.unwrap_or(&cx.editor.config().default_register),
+                cx.register
+                    .unwrap_or(&cx.editor.config().default_yank_register),
                 Paste::Cursor,
                 cx.count(),
             );
