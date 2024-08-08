@@ -86,6 +86,7 @@ slint-lsp = { command = "slint-lsp", args = [] }
 solargraph = { command = "solargraph", args = ["stdio"] }
 solc = { command = "solc", args = ["--lsp"] }
 sourcekit-lsp = { command = "sourcekit-lsp" }
+spade-language-server = {command = "spade-language-server"}
 svlangserver = { command = "svlangserver", args = [] }
 swipl = { command = "swipl", args = [ "-g", "use_module(library(lsp_server))", "-g", "lsp_server:main", "-t", "halt", "--", "stdio" ] }
 tailwindcss-ls = { command = "tailwindcss-language-server", args = ["--stdio"] }
@@ -3726,3 +3727,29 @@ grammar = "typescript"
 "{" = "}"
 "(" = ")"
 '"' = '"'
+
+[[language]]
+name = "spade"
+scope = "source.spade"
+roots = ["swim.toml"]
+file-types = ['spade']
+injection-regex = "spade"
+comment-tokens = ["//", "///", "//"]
+block-comment-tokens = [
+  { start = "/*", end = "*/" },
+  { start = "/**", end = "*/" },
+]
+language-servers = [ "spade-language-server" ]
+indent = { tab-width = 4, unit = "    " }
+
+[language.auto-pairs] 
+'(' = ')' 
+'{' = '}' 
+'[' = ']' 
+'"' = '"' 
+'<' = '>' 
+
+[[grammar]]
+name = "spade"
+source = {git = "https://gitlab.com/spade-lang/tree-sitter-spade/", rev = "c9c71108394d33d25820baed07107d4c03b97589"}
+
