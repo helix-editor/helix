@@ -231,7 +231,10 @@ pub fn merge_toml_values(left: toml::Value, right: toml::Value, merge_depth: usi
 pub fn find_workspace() -> (PathBuf, bool) {
     let current_dir = current_working_dir();
     for ancestor in current_dir.ancestors() {
-        if ancestor.join(".git").exists() || ancestor.join(".svn").exists() || ancestor.join(".helix").exists() {
+        if ancestor.join(".git").exists()
+            || ancestor.join(".svn").exists()
+            || ancestor.join(".helix").exists()
+        {
             return (ancestor.to_owned(), false);
         }
     }
