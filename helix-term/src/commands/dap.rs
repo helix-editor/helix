@@ -2,7 +2,7 @@ use super::{Context, Editor};
 use crate::{
     compositor::{self, Compositor},
     job::{Callback, Jobs, RequireRender},
-    ui::{self, overlay::overlaid, Picker, Popup, Prompt, PromptEvent, Text},
+    ui::{self, overlay::overlaid, picker::PreviewRange, Picker, Popup, Prompt, PromptEvent, Text},
 };
 use dap::{StackFrame, Thread, ThreadStates};
 use helix_core::syntax::{DebugArgumentValue, DebugConfigCompletion, DebugTemplate};
@@ -65,7 +65,7 @@ fn thread_picker(
                 let frames = editor.debugger.as_ref()?.stack_frames.get(&thread.id)?;
                 let frame = frames.first()?;
                 let path = frame.source.as_ref()?.path.as_ref()?.as_path();
-                let pos = Some((
+                let pos = Some(PreviewRange::lines(
                     frame.line.saturating_sub(1),
                     frame.end_line.unwrap_or(frame.line).saturating_sub(1),
                 ));
@@ -790,7 +790,7 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
             .map(|path| {
                 (
                     path.as_path().into(),
-                    Some((
+                    Some(PreviewRange::lines(
                         frame.line.saturating_sub(1),
                         frame.end_line.unwrap_or(frame.line).saturating_sub(1),
                     )),

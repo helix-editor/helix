@@ -61,7 +61,10 @@ use crate::{
     compositor::{self, Component, Compositor},
     events, filter_picker_entry,
     job::{Callback, RequireRender},
-    ui::{self, overlay::overlaid, Picker, PickerColumn, Popup, Prompt, PromptEvent},
+    ui::{
+        self, overlay::overlaid, picker::PreviewRange, Picker, PickerColumn, Popup, Prompt,
+        PromptEvent,
+    },
 };
 
 use crate::job::{self, Jobs};
@@ -2645,7 +2648,10 @@ fn global_search(cx: &mut Context) {
         },
     )
     .with_preview(|_editor, FileResult { path, line_num, .. }| {
-        Some((path.as_path().into(), Some((*line_num, *line_num))))
+        Some((
+            path.as_path().into(),
+            Some(PreviewRange::lines(*line_num, *line_num)),
+        ))
     })
     .with_history_register(Some(reg))
     .with_dynamic_query(get_files, Some(200));
@@ -3138,11 +3144,11 @@ fn buffer_picker(cx: &mut Context) {
     .with_preview(|editor, meta| {
         let doc = &editor.documents.get(&meta.id)?;
         let &view_id = doc.selections().keys().next()?;
-        let line = doc
-            .selection(view_id)
-            .primary()
-            .cursor_line(doc.text().slice(..));
-        Some((meta.id.into(), Some((line, line))))
+        let range = doc.selection(view_id).primary();
+        Some((
+            meta.id.into(),
+            Some(PreviewRange::chars(range.from(), range.to())),
+        ))
     });
     cx.push_layer(Box::new(overlaid(picker)));
 }
@@ -3230,10 +3236,12 @@ fn jumplist_picker(cx: &mut Context) {
             }
         },
     )
-    .with_preview(|editor, meta| {
-        let doc = &editor.documents.get(&meta.id)?;
-        let line = meta.selection.primary().cursor_line(doc.text().slice(..));
-        Some((meta.id.into(), Some((line, line))))
+    .with_preview(|_editor, meta| {
+        let range = meta.selection.primary();
+        Some((
+            meta.id.into(),
+            Some(PreviewRange::chars(range.from(), range.to())),
+        ))
     });
     cx.push_layer(Box::new(overlaid(picker)));
 }
@@ -3464,7 +3472,10 @@ fn document_change_picker(cx: &mut Context) {
         } else {
             hunk.after.end as usize
         };
-        Some((doc_id.into(), Some((start_line, end_line))))
+        Some((
+            doc_id.into(),
+            Some(PreviewRange::lines(start_line, end_line)),
+        ))
     });
 
     drop(diff);

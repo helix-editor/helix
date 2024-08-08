@@ -11,6 +11,9 @@ impl<T: PartialOrd> Range<T> {
     pub fn contains(&self, other: Self) -> bool {
         self.start <= other.start && other.end <= self.end
     }
+    pub fn contains_point(&self, point: T) -> bool {
+        self.start <= point && point <= self.end
+    }
     pub fn is_empty(&self) -> bool {
         self.end <= self.start
     }

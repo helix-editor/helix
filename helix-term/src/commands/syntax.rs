@@ -28,7 +28,7 @@ use crate::{
     filter_picker_entry,
     ui::{
         overlay::overlaid,
-        picker::{Injector, PathOrId},
+        picker::{Injector, PathOrId, PreviewRange},
         Picker, PickerColumn,
     },
 };
@@ -121,8 +121,6 @@ struct Symbol {
     name: String,
     start: usize,
     end: usize,
-    start_line: usize,
-    end_line: usize,
     doc: UriOrDocumentId,
 }
 
@@ -162,8 +160,6 @@ pub fn syntax_symbol_picker(cx: &mut Context) {
                     name: text.slice(start..end).to_string(),
                     start,
                     end,
-                    start_line: text.char_to_line(start),
-                    end_line: text.char_to_line(end),
                     doc: doc_id.into(),
                 })
             });
@@ -186,7 +182,7 @@ pub fn syntax_symbol_picker(cx: &mut Context) {
     .with_preview(move |_editor, symbol| {
         Some((
             symbol.doc.path_or_id()?,
-            Some((symbol.start_line, symbol.end_line)),
+            Some(PreviewRange::chars(symbol.start, symbol.end)),
         ))
     })
     .truncate_start(false);
@@ -219,8 +215,6 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
                     name: text.slice(start..end).to_string(),
                     start,
                     end,
-                    start_line: text.char_to_line(start),
-                    end_line: text.char_to_line(end),
                     doc: doc.clone(),
                 })
             })
@@ -484,7 +478,7 @@ pub fn syntax_workspace_symbol_picker(cx: &mut Context) {
     .with_preview(move |_editor, symbol| {
         Some((
             symbol.doc.path_or_id()?,
-            Some((symbol.start_line, symbol.end_line)),
+            Some(PreviewRange::chars(symbol.start, symbol.end)),
         ))
     })
     .truncate_start(false);

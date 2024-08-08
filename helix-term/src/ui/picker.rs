@@ -43,6 +43,7 @@ use crate::ui::{Prompt, PromptEvent};
 use helix_core::{
     char_idx_at_visual_offset, fuzzy::MATCHER, movement::Direction,
     text_annotations::TextAnnotations, unicode::segmentation::UnicodeSegmentation, Position,
+    RopeSlice,
 };
 use helix_view::{
     editor::Action,
@@ -80,8 +81,38 @@ impl<'a> From<DocumentId> for PathOrId<'a> {
 
 type FileCallback<T> = Box<dyn for<'a> Fn(&'a Editor, &'a T) -> Option<FileLocation<'a>>>;
 
+#[derive(Debug, Clone, Copy)]
+pub enum PreviewRange {
+    Chars(helix_stdx::Range),
+    Lines(helix_stdx::Range),
+}
+
+impl PreviewRange {
+    pub fn lines(start: usize, end: usize) -> Self {
+        Self::Lines(helix_stdx::Range { start, end })
+    }
+
+    pub fn chars(start: usize, end: usize) -> Self {
+        Self::Chars(helix_stdx::Range { start, end })
+    }
+
+    fn line_range(&self, text: RopeSlice) -> helix_stdx::Range {
+        match self {
+            Self::Lines(range) => *range,
+            Self::Chars(range) => {
+                let start = text.char_to_line(range.start);
+                helix_stdx::Range {
+                    start,
+                    // -1 because the range is inclusive on the end.
+                    end: text.char_to_line(range.end).saturating_sub(1).max(start),
+                }
+            }
+        }
+    }
+}
+
 /// File path and range of lines (used to align and highlight lines)
-pub type FileLocation<'a> = (PathOrId<'a>, Option<(usize, usize)>);
+pub type FileLocation<'a> = (PathOrId<'a>, Option<PreviewRange>);
 
 pub enum CachedPreview {
     Document(Box<Document>),
@@ -511,7 +542,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
     fn get_preview<'picker, 'editor>(
         &'picker mut self,
         editor: &'editor Editor,
-    ) -> Option<(Preview<'picker, 'editor>, Option<(usize, usize)>)> {
+    ) -> Option<(Preview<'picker, 'editor>, Option<PreviewRange>)> {
         let current = self.selection()?;
         let (path_or_id, range) = (self.file_fn.as_ref()?)(editor, current)?;
 
@@ -807,8 +838,10 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         if let Some((preview, range)) = self.get_preview(cx.editor) {
             let doc = match preview.document() {
                 Some(doc)
-                    if range.map_or(true, |(start, end)| {
-                        start <= end && end <= doc.text().len_lines()
+                    if range.map_or(true, |range| {
+                        let text = doc.text().slice(..);
+                        let range = range.line_range(text);
+                        range.start <= range.end && range.end <= text.len_lines()
                     }) =>
                 {
                     doc
@@ -837,7 +870,11 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             };
 
             let mut offset = ViewPosition::default();
-            if let Some((start_line, end_line)) = range {
+            let text = doc.text().slice(..);
+            if let Some(range) = range {
+                let line_range = range.line_range(text);
+                let start_line = line_range.start;
+                let end_line = line_range.end;
                 let height = end_line - start_line;
                 let text = doc.text().slice(..);
                 let start = text.line_to_char(start_line);
@@ -880,14 +917,14 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             }
             let mut decorations = DecorationManager::default();
 
-            if let Some((start, end)) = range {
+            if let Some(line_range) = range.map(|r| r.line_range(text)) {
                 let style = cx
                     .editor
                     .theme
                     .try_get("ui.highlight")
                     .unwrap_or_else(|| cx.editor.theme.get("ui.selection"));
                 let draw_highlight = move |renderer: &mut TextRenderer, pos: LinePos| {
-                    if (start..=end).contains(&pos.doc_line) {
+                    if line_range.contains_point(pos.doc_line) {
                         let area = Rect::new(
                             renderer.viewport.x,
                             pos.visual_line,

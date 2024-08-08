@@ -28,7 +28,7 @@ use helix_view::{
 use crate::{
     compositor::{self, Compositor},
     job::{Callback, RequireRender},
-    ui::{self, overlay::overlaid, FileLocation, Picker, Popup, PromptEvent},
+    ui::{self, overlay::overlaid, picker::PreviewRange, FileLocation, Picker, Popup, PromptEvent},
 };
 
 use std::{
@@ -103,7 +103,7 @@ struct PickerDiagnostic {
 
 fn location_to_file_location(location: &Location) -> Option<FileLocation> {
     let path = location.uri.as_path()?;
-    let line = Some((
+    let line = Some(PreviewRange::lines(
         location.range.start.line as usize,
         location.range.end.line as usize,
     ));
