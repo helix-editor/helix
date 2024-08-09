@@ -122,12 +122,17 @@ FLAGS:
     }
     // NOTE: Set the working directory early so the correct configuration is loaded. Be aware that
     // Application::new() depends on this logic so it must be updated if this changes.
-    if let Some(path) = &args.working_directory {
-        helix_stdx::env::set_current_working_dir(path)?;
-    } else if let Some((path, _)) = args.files.first().filter(|p| p.0.is_dir()) {
+    let first_arg = args.files.first();
+    let cwd_changed = if let Some(path) = &args.working_directory {
+        helix_stdx::env::set_current_working_dir(path, false)?;
+        true
+    } else if let Some((path, _)) = first_arg.filter(|p| p.0.is_dir()) {
         // If the first file is a directory, it will be the working directory unless -w was specified
-        helix_stdx::env::set_current_working_dir(path)?;
-    }
+        helix_stdx::env::set_current_working_dir(path, false)?;
+        true
+    } else {
+        false
+    };
 
     let config = match Config::load_default() {
         Ok(config) => config,
@@ -143,6 +148,12 @@ FLAGS:
             Config::default()
         }
     };
+
+    if let Some((path, _)) = first_arg {
+        if !cwd_changed && config.editor.first_file_sets_work_dir {
+            helix_stdx::env::set_current_working_dir(path, true)?;
+        }
+    }
 
     let lang_loader = helix_core::config::user_lang_loader().unwrap_or_else(|err| {
         eprintln!("{}", err);
