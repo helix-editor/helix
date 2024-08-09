@@ -2,11 +2,13 @@ use crate::helpers;
 use crate::path;
 use crate::DynError;
 
+use helix_term::commands::MappableCommand;
 use helix_term::commands::TYPABLE_COMMAND_LIST;
 use helix_term::health::TsFeature;
 use std::fs;
 
 pub const TYPABLE_COMMANDS_MD_OUTPUT: &str = "typable-cmd.md";
+pub const STATIC_COMMANDS_MD_OUTPUT: &str = "static-cmd.md";
 pub const LANG_SUPPORT_MD_OUTPUT: &str = "lang-support.md";
 
 fn md_table_heading(cols: &[String]) -> String {
@@ -43,6 +45,20 @@ pub fn typable_commands() -> Result<String, DynError> {
         let doc = cmd.doc.replace('\n', "<br>");
 
         md.push_str(&md_table_row(&[names.to_owned(), doc.to_owned()]));
+    }
+
+    Ok(md)
+}
+
+pub fn static_commands() -> Result<String, DynError> {
+    let mut md = String::new();
+    md.push_str(&md_table_heading(&[
+        "Name".to_owned(),
+        "Description".to_owned(),
+    ]));
+
+    for cmd in MappableCommand::STATIC_COMMAND_LIST {
+        md.push_str(&md_table_row(&[md_mono(cmd.name()), cmd.doc().to_owned()]));
     }
 
     Ok(md)
