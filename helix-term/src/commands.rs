@@ -4204,7 +4204,7 @@ fn yank_impl(editor: &mut Editor, register: char) {
     let selections = values.len();
 
     match editor.registers.write(register, values) {
-        Ok(()) => editor.set_status(format!(
+        Ok(_) => editor.set_status(format!(
             "yanked {selections} selection{} to register {register}",
             if selections == 1 { "" } else { "s" }
         )),
