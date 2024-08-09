@@ -3298,7 +3298,7 @@ fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
             let indent = indent::indent_for_newline(
                 language_config,
                 syntax,
-                &doc.config.load().indent_heuristic,
+                &doc.config.load().indent_heuristic(),
                 &doc.indent_style,
                 tab_width,
                 text,
@@ -3428,7 +3428,7 @@ fn open(cx: &mut Context, open: Open) {
         let indent = indent::indent_for_newline(
             doc.language_config(),
             doc.syntax(),
-            &doc.config.load().indent_heuristic,
+            &doc.config.load().indent_heuristic(),
             &doc.indent_style,
             doc.tab_width(),
             doc_text,
@@ -3915,7 +3915,7 @@ pub mod insert {
                 let indent = indent::indent_for_newline(
                     doc.language_config(),
                     doc.syntax(),
-                    &doc.config.load().indent_heuristic,
+                    &doc.config.load().indent_heuristic(),
                     &doc.indent_style,
                     doc.tab_width(),
                     text,
