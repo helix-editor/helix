@@ -949,6 +949,8 @@ file-types = [
   "tcshrc",
   "bashrc_Apple_Terminal",
   "zshrc_Apple_Terminal",
+  { glob = "i3/config" },
+  { glob = "sway/config" },
   { glob = "tmux.conf" },
   { glob = ".bash_history" },
   { glob = ".bash_login" },
