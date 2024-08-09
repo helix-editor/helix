@@ -269,6 +269,10 @@ impl MappableCommand {
         move_prev_long_word_start, "Move to start of previous long word",
         move_next_long_word_end, "Move to end of next long word",
         move_prev_long_word_end, "Move to end of previous long word",
+        move_next_sub_word_start, "Move to start of next sub word",
+        move_prev_sub_word_start, "Move to start of previous sub word",
+        move_next_sub_word_end, "Move to end of next sub word",
+        move_prev_sub_word_end, "Move to end of previous sub word",
         move_parent_node_end, "Move to end of the parent node",
         move_parent_node_start, "Move to beginning of the parent node",
         extend_next_word_start, "Extend to start of next word",
@@ -279,6 +283,10 @@ impl MappableCommand {
         extend_prev_long_word_start, "Extend to start of previous long word",
         extend_next_long_word_end, "Extend to end of next long word",
         extend_prev_long_word_end, "Extend to end of prev long word",
+        extend_next_sub_word_start, "Extend to start of next sub word",
+        extend_prev_sub_word_start, "Extend to start of previous sub word",
+        extend_next_sub_word_end, "Extend to end of next sub word",
+        extend_prev_sub_word_end, "Extend to end of prev sub word",
         extend_parent_node_end, "Extend to end of the parent node",
         extend_parent_node_start, "Extend to beginning of the parent node",
         find_till_char, "Move till next occurrence of char",
@@ -1126,6 +1134,22 @@ fn move_next_long_word_end(cx: &mut Context) {
     move_word_impl(cx, movement::move_next_long_word_end)
 }
 
+fn move_next_sub_word_start(cx: &mut Context) {
+    move_word_impl(cx, movement::move_next_sub_word_start)
+}
+
+fn move_prev_sub_word_start(cx: &mut Context) {
+    move_word_impl(cx, movement::move_prev_sub_word_start)
+}
+
+fn move_prev_sub_word_end(cx: &mut Context) {
+    move_word_impl(cx, movement::move_prev_sub_word_end)
+}
+
+fn move_next_sub_word_end(cx: &mut Context) {
+    move_word_impl(cx, movement::move_next_sub_word_end)
+}
+
 fn goto_para_impl<F>(cx: &mut Context, move_fn: F)
 where
     F: Fn(RopeSlice, Range, usize, Movement) -> Range + 'static,
@@ -1360,6 +1384,22 @@ fn extend_prev_long_word_end(cx: &mut Context) {
 
 fn extend_next_long_word_end(cx: &mut Context) {
     extend_word_impl(cx, movement::move_next_long_word_end)
+}
+
+fn extend_next_sub_word_start(cx: &mut Context) {
+    extend_word_impl(cx, movement::move_next_sub_word_start)
+}
+
+fn extend_prev_sub_word_start(cx: &mut Context) {
+    extend_word_impl(cx, movement::move_prev_sub_word_start)
+}
+
+fn extend_prev_sub_word_end(cx: &mut Context) {
+    extend_word_impl(cx, movement::move_prev_sub_word_end)
+}
+
+fn extend_next_sub_word_end(cx: &mut Context) {
+    extend_word_impl(cx, movement::move_next_sub_word_end)
 }
 
 /// Separate branch to find_char designed only for `<ret>` char.
@@ -1939,6 +1979,8 @@ fn select_regex(cx: &mut Context) {
                 selection::select_on_matches(text, doc.selection(view.id), &regex)
             {
                 doc.set_selection(view.id, selection);
+            } else {
+                cx.editor.set_error("nothing selected");
             }
         },
     );
@@ -4624,6 +4666,8 @@ fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
                 selection::keep_or_remove_matches(text, doc.selection(view.id), &regex, remove)
             {
                 doc.set_selection(view.id, selection);
+            } else {
+                cx.editor.set_error("no selections remaining");
             }
         },
     )
@@ -5716,27 +5760,24 @@ async fn shell_impl_async(
         process.wait_with_output().await?
     };
 
-    if !output.status.success() {
-        if !output.stderr.is_empty() {
-            let err = String::from_utf8_lossy(&output.stderr).to_string();
-            log::error!("Shell error: {}", err);
-            bail!("Shell error: {}", err);
+    let output = if !output.status.success() {
+        if output.stderr.is_empty() {
+            match output.status.code() {
+                Some(exit_code) => bail!("Shell command failed: status {}", exit_code),
+                None => bail!("Shell command failed"),
+            }
         }
-        match output.status.code() {
-            Some(exit_code) => bail!("Shell command failed: status {}", exit_code),
-            None => bail!("Shell command failed"),
-        }
+        String::from_utf8_lossy(&output.stderr)
+        // Prioritize `stderr` output over `stdout`
     } else if !output.stderr.is_empty() {
-        log::debug!(
-            "Command printed to stderr: {}",
-            String::from_utf8_lossy(&output.stderr).to_string()
-        );
-    }
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        log::debug!("Command printed to stderr: {stderr}");
+        stderr
+    } else {
+        String::from_utf8_lossy(&output.stdout)
+    };
 
-    let str = std::str::from_utf8(&output.stdout)
-        .map_err(|_| anyhow!("Process did not output valid UTF-8"))?;
-    let tendril = Tendril::from(str);
-    Ok(tendril)
+    Ok(Tendril::from(output))
 }
 
 fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
