@@ -78,6 +78,10 @@ use std::{
     num::NonZeroUsize,
 };
 
+use rayon::prelude::*;
+use std::fs::File;
+use std::io::{BufRead, BufReader};
+
 use std::{
     borrow::Cow,
     path::{Path, PathBuf},
@@ -380,6 +384,7 @@ impl MappableCommand {
         search_selection_detect_word_boundaries, "Use current selection as the search pattern, automatically wrapping with `\\b` on word boundaries",
         make_search_word_bounded, "Modify current search to make it word bounded",
         global_search, "Global search in workspace folder",
+        tag_search, "Tag search in workspace folder",
         extend_line, "Select current line, if already selected, extend to another line based on the anchor",
         extend_line_below, "Select current line, if already selected, extend to next line",
         extend_line_above, "Select current line, if already selected, extend to previous line",
@@ -2672,6 +2677,334 @@ fn global_search(cx: &mut Context) {
     .with_preview(|_editor, FileResult { path, line_num, .. }| {
         Some((path.as_path().into(), Some((*line_num, *line_num))))
     })
+    .with_history_register(Some(reg))
+    .with_dynamic_query(get_files, Some(275));
+
+    cx.push_layer(Box::new(overlaid(picker)));
+}
+
+// Helper function for tag_search
+struct ParsedData {
+    symbol: String,
+    path: String,
+    regex: String,
+}
+
+fn parse_string(input: &str) -> Option<ParsedData> {
+    let parts: Vec<&str> = input.split('\t').collect();
+    let mut result = ParsedData {
+        symbol: String::from(parts[0]),
+        path: String::from(parts[1]),
+        regex: String::from(parts[2]),
+    };
+
+    result.regex.pop();
+
+    if let Some(stripped) = result.regex.strip_prefix("/^") {
+        result.regex = stripped.to_string();
+    }
+
+    if let Some(stripped) = result.regex.strip_suffix("$/;") {
+        result.regex = stripped.to_string();
+    }
+
+    if let Some(stripped) = result.regex.strip_suffix("$/") {
+        result.regex = stripped.to_string();
+    }
+
+    if let Some(stripped) = result.regex.strip_suffix("/") {
+        result.regex = stripped.to_string();
+    }
+
+    if let Some(stripped) = result.regex.strip_suffix("/;") {
+        result.regex = stripped.to_string();
+    }
+
+    // Remove leading/trailing whitespace from result.regex
+    result.regex = result.regex.trim_start().trim_end().to_string();
+    result.regex = escape_regex(&result.regex);
+
+    Some(result)
+}
+
+fn escape_regex(regex: &str) -> String {
+    regex
+        .chars()
+        .map(|c| match c {
+            '.' | '\\' | '@' | '+' | '*' | '?' | '^' | '$' | '(' | ')' | '[' | ']' | '{' | '}'
+            | '|' => {
+                format!("\\{}", c)
+            }
+            _ => c.to_string(),
+        })
+        .collect::<String>()
+}
+
+fn find_line_number_parallel(
+    path: PathBuf,
+    regex: &Regex,
+) -> Result<Option<usize>, Box<dyn std::error::Error>> {
+    let file = File::open(&path)?;
+    let reader = BufReader::new(file);
+    let lines: Vec<String> = reader.lines().collect::<Result<_, _>>()?;
+
+    let result = lines
+        .into_par_iter()
+        .enumerate()
+        .find_any(|(_, line)| regex.is_match(line))
+        .map(|(index, _)| index + 0);
+
+    Ok(result)
+}
+
+fn tag_search(cx: &mut Context) {
+    #[derive(Debug)]
+    struct FileResult {
+        symbol: String,
+        path: PathBuf,
+        /// 0 indexed lines
+        line_num: usize,
+    }
+
+    impl FileResult {
+        fn new(symbol: String, path: &Path, line_num: usize) -> Self {
+            Self {
+                symbol,
+                path: path.to_path_buf(),
+                line_num,
+            }
+        }
+    }
+
+    struct GlobalSearchConfig {
+        smart_case: bool,
+        file_picker_config: helix_view::editor::FilePickerConfig,
+    }
+
+    let config = cx.editor.config();
+    let config = GlobalSearchConfig {
+        smart_case: config.search.smart_case,
+        file_picker_config: config.file_picker.clone(),
+    };
+
+    let columns = [
+        PickerColumn::new("symbol", |item: &FileResult, _| {
+            let symbol = item.symbol.clone();
+            format!("{}", symbol).into()
+        }),
+        PickerColumn::new("path", |item: &FileResult, _| {
+            let path = helix_stdx::path::get_relative_path(&item.path);
+            format!("{}", path.to_string_lossy()).into()
+        }),
+    ];
+
+    let get_files = |query: &str,
+                     editor: &mut Editor,
+                     config: std::sync::Arc<GlobalSearchConfig>,
+                     injector: &ui::picker::Injector<_, _>| {
+        if query.is_empty() {
+            return async { Ok(()) }.boxed();
+        }
+
+        let mut search_root = helix_stdx::env::current_working_dir();
+        search_root.push("tags");
+
+        if !search_root.exists() {
+            return async { Err(anyhow::anyhow!("Tag file does not exist")) }.boxed();
+        }
+
+        let documents: Vec<_> = editor
+            .documents()
+            .map(|doc| (doc.path().cloned(), doc.text().to_owned()))
+            .collect();
+
+        let matcher = match RegexMatcherBuilder::new()
+            .case_smart(config.smart_case)
+            .build(query)
+        {
+            Ok(matcher) => {
+                // Clear any "Failed to compile regex" errors out of the statusline.
+                editor.clear_status();
+                matcher
+            }
+            Err(err) => {
+                log::info!("Failed to compile search pattern in tag search: {}", err);
+                return async { Err(anyhow::anyhow!("Failed to compile regex")) }.boxed();
+            }
+        };
+
+        let dedup_symlinks = config.file_picker_config.deduplicate_links;
+        let absolute_root = search_root
+            .canonicalize()
+            .unwrap_or_else(|_| search_root.clone());
+
+        let injector = injector.clone();
+        async move {
+            let searcher = SearcherBuilder::new()
+                .binary_detection(BinaryDetection::quit(b'\x00'))
+                .build();
+            WalkBuilder::new(search_root)
+                .hidden(config.file_picker_config.hidden)
+                .parents(config.file_picker_config.parents)
+                .ignore(config.file_picker_config.ignore)
+                .follow_links(config.file_picker_config.follow_symlinks)
+                .git_ignore(config.file_picker_config.git_ignore)
+                .git_global(config.file_picker_config.git_global)
+                .git_exclude(config.file_picker_config.git_exclude)
+                .max_depth(config.file_picker_config.max_depth)
+                .filter_entry(move |entry| {
+                    filter_picker_entry(entry, &absolute_root, dedup_symlinks)
+                })
+                .add_custom_ignore_filename(helix_loader::config_dir().join("ignore"))
+                .add_custom_ignore_filename(".helix/ignore")
+                .build_parallel()
+                .run(|| {
+                    let mut searcher = searcher.clone();
+                    let matcher = matcher.clone();
+                    let injector = injector.clone();
+                    let documents = &documents;
+                    Box::new(move |entry: Result<DirEntry, ignore::Error>| -> WalkState {
+                        let entry = match entry {
+                            Ok(entry) => entry,
+                            Err(_) => return WalkState::Continue,
+                        };
+
+                        match entry.file_type() {
+                            Some(entry) if entry.is_file() => {}
+                            // skip everything else
+                            _ => return WalkState::Continue,
+                        };
+
+                        let mut stop = false;
+                        let sink = sinks::UTF8(|_line_num, line_content| {
+                            match parse_string(line_content) {
+                                Some(parsed) => {
+                                    let path = PathBuf::from(parsed.path.as_str());
+                                    let regex_pattern = Regex::new(parsed.regex.as_str()).unwrap();
+
+                                    match find_line_number_parallel(path, &regex_pattern) {
+                                        Ok(line_number) => {
+                                            stop = injector
+                                                .push(FileResult::new(
+                                                    parsed.symbol,
+                                                    Path::new(parsed.path.as_str()),
+                                                    line_number.unwrap_or(0),
+                                                ))
+                                                .is_err();
+                                            Ok(!stop)
+                                        }
+                                        Err(_e) => {
+                                            log::error!(
+                                                "Unable to find line number for {}, {}, {}",
+                                                parsed.symbol,
+                                                parsed.path,
+                                                parsed.regex
+                                            );
+                                            Ok(!stop)
+                                        }
+                                    }
+                                }
+                                None => {
+                                    log::error!(
+                                        "Line content not parsed correctly: {}",
+                                        line_content
+                                    );
+                                    Ok(!stop)
+                                }
+                            }
+                        });
+
+                        let doc = documents.iter().find(|&(doc_path, _)| {
+                            doc_path
+                                .as_ref()
+                                .map_or(false, |doc_path| doc_path == entry.path())
+                        });
+
+                        let result = if let Some((_, doc)) = doc {
+                            // there is already a buffer for this file
+                            // search the buffer instead of the file because it's faster
+                            // and captures new edits without requiring a save
+                            if searcher.multi_line_with_matcher(&matcher) {
+                                // in this case a continuous buffer is required
+                                // convert the rope to a string
+                                let text = doc.to_string();
+                                searcher.search_slice(&matcher, text.as_bytes(), sink)
+                            } else {
+                                searcher.search_reader(
+                                    &matcher,
+                                    RopeReader::new(doc.slice(..)),
+                                    sink,
+                                )
+                            }
+                        } else {
+                            searcher.search_path(&matcher, entry.path(), sink)
+                        };
+
+                        if let Err(err) = result {
+                            log::error!("Tag search error: {}, {}", entry.path().display(), err);
+                        }
+                        if stop {
+                            WalkState::Quit
+                        } else {
+                            WalkState::Continue
+                        }
+                    })
+                });
+            Ok(())
+        }
+        .boxed()
+    };
+
+    let reg = cx.register.unwrap_or('/');
+    cx.editor.registers.last_search_register = reg;
+
+    let picker = Picker::new(
+        columns,
+        0, // symbols
+        [],
+        config,
+        move |cx,
+              FileResult {
+                  symbol: _,
+                  path,
+                  line_num,
+              },
+              action| {
+            let doc = match cx.editor.open(path, action) {
+                Ok(id) => doc_mut!(cx.editor, &id),
+                Err(e) => {
+                    cx.editor
+                        .set_error(format!("Failed to open file '{}': {}", path.display(), e));
+                    return;
+                }
+            };
+
+            let line_num = *line_num;
+            let view = view_mut!(cx.editor);
+            let text = doc.text();
+            if line_num >= text.len_lines() {
+                cx.editor.set_error(
+                    "The line you jumped to does not exist anymore because the file has changed.",
+                );
+                return;
+            }
+            let start = text.line_to_char(line_num);
+            let end = text.line_to_char((line_num + 1).min(text.len_lines()));
+
+            doc.set_selection(view.id, Selection::single(start, end));
+            if action.align_view(view, doc.id()) {
+                align_view(doc, view, Align::Center);
+            }
+        },
+    )
+    .with_preview(
+        |_editor,
+         FileResult {
+             symbol: _,
+             path,
+             line_num,
+         }| { Some((path.as_path().into(), Some((*line_num, *line_num)))) },
+    )
     .with_history_register(Some(reg))
     .with_dynamic_query(get_files, Some(275));
 
