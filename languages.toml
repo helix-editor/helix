@@ -3765,6 +3765,17 @@ grammar = "typescript"
 '"' = '"'
 
 [[language]]
+name = "gherkin"
+scope = "source.feature"
+file-types = ["feature"]
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "gherkin"
+source = { git = "https://github.com/SamyAB/tree-sitter-gherkin", rev = "43873ee8de16476635b48d52c46f5b6407cb5c09" }
+
+[[language]]
 name = "thrift"
 scope = "source.thrift"
 file-types = ["thrift"]
@@ -3775,4 +3786,3 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "thrift"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-thrift" , rev = "68fd0d80943a828d9e6f49c58a74be1e9ca142cf" }
-

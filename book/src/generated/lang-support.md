@@ -58,6 +58,7 @@
 | gas | ✓ | ✓ |  |  |
 | gdscript | ✓ | ✓ | ✓ |  |
 | gemini | ✓ |  |  |  |
+| gherkin | ✓ |  |  |  |
 | git-attributes | ✓ |  |  |  |
 | git-commit | ✓ | ✓ |  |  |
 | git-config | ✓ |  |  |  |
