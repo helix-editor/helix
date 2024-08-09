@@ -2300,7 +2300,7 @@ fn run_shell_command(
             move |editor: &mut Editor, compositor: &mut Compositor| {
                 if !output.is_empty() {
                     let contents = ui::Markdown::new(
-                        format!("```sh\n{}\n```", output),
+                        format!("```sh\n{}\n```", output.trim_end()),
                         editor.syn_loader.clone(),
                     );
                     let popup = Popup::new("shell", contents).position(Some(
