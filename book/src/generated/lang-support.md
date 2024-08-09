@@ -200,6 +200,7 @@
 | tcl | ✓ |  | ✓ |  |
 | templ | ✓ |  |  | `templ` |
 | tfvars | ✓ |  | ✓ | `terraform-ls` |
+| thrift | ✓ |  |  |  |
 | todotxt | ✓ |  |  |  |
 | toml | ✓ | ✓ |  | `taplo` |
 | tsq | ✓ |  |  |  |

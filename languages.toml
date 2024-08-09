@@ -3762,3 +3762,16 @@ grammar = "typescript"
 "{" = "}"
 "(" = ")"
 '"' = '"'
+
+[[language]]
+name = "thrift"
+scope = "source.thrift"
+file-types = ["thrift"]
+comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "thrift"
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-thrift" , rev = "68fd0d80943a828d9e6f49c58a74be1e9ca142cf" }
+
