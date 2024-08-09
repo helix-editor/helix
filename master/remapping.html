@@ -244,8 +244,23 @@ t = ":run-shell-command cargo test"
 </tbody></table>
 </div>
 <p>Keys can be disabled by binding them to the <code>no_op</code> command.</p>
-<p>A list of commands is available in the <a href="https://docs.helix-editor.com/keymap.html">Keymap</a> documentation
-and in the source code at <a href="https://github.com/helix-editor/helix/blob/master/helix-term/src/commands.rs"><code>helix-term/src/commands.rs</code></a> at the invocation of <code>static_commands!</code> macro and the <code>TypableCommandList</code>.</p>
+<h2 id="commands"><a class="header" href="#commands">Commands</a></h2>
+<p>There are three kinds of commands that can be used in keymaps:</p>
+<ul>
+<li>Static commands: commands like <code>move_char_right</code> which are usually bound to
+keys and used for movement and editing. A list of static commands is
+available in the <a href="./keymap.html">Keymap</a> documentation and in the source code
+in <a href="https://github.com/helix-editor/helix/blob/master/helix-term/src/commands.rs"><code>helix-term/src/commands.rs</code></a>
+at the invocation of <code>static_commands!</code> macro and the <code>TypableCommandList</code>.</li>
+<li>Typable commands: commands that can be executed from command mode (<code>:</code>), for
+example <code>:write!</code>. See the <a href="./commands.html">Commands</a> documentation for a
+list of available typeable commands.</li>
+<li>Macros: sequences of keys that are executed in order. These keybindings
+start with <code>@</code> and then list any number of keys to be executed. For example
+<code>@miw</code> can be used to select the surrounding word. For now, macro keybindings
+are not allowed in keybinding sequences due to limitations in the way that
+command sequences are executed.</li>
+</ul>
 
                     </main>
 
