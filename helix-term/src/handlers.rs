@@ -16,6 +16,7 @@ mod auto_save;
 pub mod completion;
 mod diagnostics;
 mod signature_help;
+mod snippet;
 
 pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
     events::register();
@@ -34,5 +35,6 @@ pub fn setup(config: Arc<ArcSwap<Config>>) -> Handlers {
     signature_help::register_hooks(&handlers);
     auto_save::register_hooks(&handlers);
     diagnostics::register_hooks(&handlers);
+    snippet::register_hooks(&handlers);
     handlers
 }

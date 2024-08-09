@@ -1,6 +1,7 @@
 pub use encoding_rs as encoding;
 
 pub mod auto_pairs;
+pub mod case_conversion;
 pub mod chars;
 pub mod comment;
 pub mod config;
@@ -21,6 +22,7 @@ mod position;
 pub mod search;
 pub mod selection;
 pub mod shellwords;
+pub mod snippets;
 pub mod surround;
 pub mod syntax;
 pub mod test;
