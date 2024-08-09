@@ -192,6 +192,8 @@ pub struct Document {
     pub focused_at: std::time::Instant,
 
     pub readonly: bool,
+
+    pub repo_root_dir: Arc<PathBuf>,
 }
 
 /// Inlay hints for a single `(Document, View)` combo.
@@ -684,6 +686,7 @@ impl Document {
             focused_at: std::time::Instant::now(),
             readonly: false,
             jump_labels: HashMap::new(),
+            repo_root_dir: Arc::new(PathBuf::from("/")),
         }
     }
 
@@ -701,6 +704,7 @@ impl Document {
         encoding: Option<&'static Encoding>,
         config_loader: Option<Arc<ArcSwap<syntax::Loader>>>,
         config: Arc<dyn DynAccess<Config>>,
+        provider_registry: &DiffProviderRegistry,
     ) -> Result<Self, DocumentOpenError> {
         // If the path is not a regular file (e.g.: /dev/random) it should not be opened.
         if path
@@ -729,6 +733,8 @@ impl Document {
         }
 
         doc.detect_indent_and_line_ending();
+
+        doc.repo_root_dir = provider_registry.get_repo_root(path);
 
         Ok(doc)
     }
