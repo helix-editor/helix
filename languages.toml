@@ -44,6 +44,7 @@ haskell-language-server = { command = "haskell-language-server-wrapper", args = 
 idris2-lsp = { command = "idris2-lsp" }
 intelephense = { command = "intelephense", args = ["--stdio"] }
 jdtls = { command = "jdtls" }
+jq-lsp = { command = "jq-lsp" }
 jsonnet-language-server = { command = "jsonnet-language-server", args= ["-t", "--lint"] }
 julia = { command = "julia", timeout = 60, args = [ "--startup-file=no", "--history-file=no", "--quiet", "-e", "using LanguageServer; runserver()", ] }
 koka = { command = "koka", args = ["--language-server", "--lsstdio"] }
@@ -3237,6 +3238,19 @@ text-width = 72
 [[grammar]]
 name = "jjdescription"
 source = { git = "https://github.com/kareigu/tree-sitter-jjdescription", rev = "2ddec6cad07b366aee276a608e1daa2c29d3caf2" }
+
+[[language]]
+name = "jq"
+scope = "source.jq"
+injection-regex = "jq"
+file-types = ["jq"]
+comment-token = "#"
+language-servers = ["jq-lsp"]
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "jq"
+source = { git = "https://github.com/flurie/tree-sitter-jq", rev = "13990f530e8e6709b7978503da9bc8701d366791" }
 
 [[grammar]]
 name = "wren"
