@@ -216,7 +216,7 @@ impl Default for FilePickerConfig {
 }
 
 fn default_continue_comments() -> bool {
-    false
+    true
 }
 
 fn serialize_alphabet<S>(alphabet: &[char], serializer: S) -> Result<S::Ok, S::Error>
@@ -346,7 +346,7 @@ pub struct Config {
         deserialize_with = "deserialize_alphabet"
     )]
     pub jump_label_alphabet: Vec<char>,
-    /// Whether to prepend a comment token onto a new line that follows a commented line.
+    /// Whether to prepend a comment token onto a new line that follows a commented line. (default: false)
     #[serde(default = "default_continue_comments")]
     pub continue_comments: bool,
     /// Display diagnostic below the line they occur.
@@ -358,7 +358,7 @@ impl Config {
     /// Returns the `indent_heuristic` depending, if `continue_comments` is set or not.
     pub fn indent_heuristic(&self) -> IndentationHeuristic {
         if self.continue_comments {
-            IndentationHeuristic::Simple
+            IndentationHeuristic::Hybrid
         } else {
             self.indent_heuristic.clone()
         }
