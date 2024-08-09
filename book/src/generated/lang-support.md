@@ -183,6 +183,7 @@
 | smithy | ✓ |  |  | `cs` |
 | sml | ✓ |  |  |  |
 | solidity | ✓ | ✓ |  | `solc` |
+| spade | ✓ |  | ✓ | `spade-language-server` |
 | spicedb | ✓ |  |  |  |
 | sql | ✓ |  |  |  |
 | sshclientconfig | ✓ |  |  |  |
