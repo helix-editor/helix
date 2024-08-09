@@ -112,7 +112,7 @@ fn open(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
         let path = helix_stdx::path::expand_tilde(path);
         // If the path is a directory, open a file picker on that directory and update the status
         // message
-        if matches!(std::fs::canonicalize(&path).map(|p| p.is_dir()), Ok(true)) {
+        if let Ok(true) = std::fs::canonicalize(&path).map(|p| p.is_dir()) {
             let callback = async move {
                 let call: job::Callback = job::Callback::EditorCompositor(Box::new(
                     move |editor: &mut Editor, compositor: &mut Compositor| {
