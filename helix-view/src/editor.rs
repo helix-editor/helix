@@ -216,7 +216,7 @@ impl Default for FilePickerConfig {
 }
 
 fn default_continue_comments() -> bool {
-    true
+    false
 }
 
 fn serialize_alphabet<S>(alphabet: &[char], serializer: S) -> Result<S::Ok, S::Error>
