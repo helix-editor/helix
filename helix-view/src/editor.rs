@@ -2154,6 +2154,92 @@ impl Editor {
             current_view.id
         }
     }
+
+    pub fn add_diagnostics(
+        &mut self,
+        diagnostics: Vec<(lsp::Diagnostic, LanguageServerId)>,
+        server_id: LanguageServerId,
+        uri: helix_core::Uri,
+        document_version: Option<i32>,
+        result_id: Option<String>,
+    ) {
+        let doc = self.documents.values_mut()
+                            .find(|doc| doc.uri().is_some_and(|u| u == uri))
+                            .filter(|doc| {
+                                if let Some(version) = document_version{
+                                    if version != doc.version() {
+                                        log::info!("Version ({version}) is out of date for {uri:?} (expected ({}), dropping PublishDiagnostic notification", doc.version());
+                                        return false;
+                                    }
+                                }
+                                true
+                            });
+
+        if let Some(doc) = doc {
+            let mut unchanged_diag_sources = Vec::new();
+            if let Some(old_diagnostics) = self.diagnostics.get(&uri) {
+                if let Some(lang_conf) = doc.language_config() {
+                    for source in &lang_conf.persistent_diagnostic_sources {
+                        let new_diagnostics = diagnostics
+                            .iter()
+                            .filter(|d| d.0.source.as_ref() == Some(source));
+                        let old_diagnostics = old_diagnostics
+                            .iter()
+                            .filter(|(d, d_server)| {
+                                *d_server == server_id && d.source.as_ref() == Some(source)
+                            })
+                            .map(|(d, _)| d);
+                        if new_diagnostics.map(|x| &x.0).eq(old_diagnostics) {
+                            unchanged_diag_sources.push(source.clone())
+                        }
+                    }
+                }
+            }
+
+            // Insert the original lsp::Diagnostics here because we may have no open document
+            // for diagnosic message and so we can't calculate the exact position.
+            // When using them later in the diagnostics picker, we calculate them on-demand.
+            let diagnostics = match self.diagnostics.entry(uri) {
+                std::collections::btree_map::Entry::Occupied(o) => {
+                    let current_diagnostics = o.into_mut();
+                    // there may entries of other language servers, which is why we can't overwrite the whole entry
+                    current_diagnostics.retain(|(_, lsp_id)| *lsp_id != server_id);
+                    current_diagnostics.extend(diagnostics);
+                    current_diagnostics
+                    // Sort diagnostics first by severity and then by line numbers.
+                }
+                std::collections::btree_map::Entry::Vacant(v) => v.insert(diagnostics),
+            };
+
+            // Sort diagnostics first by severity and then by line numbers.
+            // Note: The `lsp::DiagnosticSeverity` enum is already defined in decreasing order
+            diagnostics.sort_by_key(|(d, server_id)| (d.severity, d.range.start, *server_id));
+
+            let diagnostic_of_language_server_and_not_in_unchanged_sources =
+                |diagnostic: &lsp::Diagnostic, ls_id| {
+                    ls_id == server_id
+                        && diagnostic
+                            .source
+                            .as_ref()
+                            .map_or(true, |source| !unchanged_diag_sources.contains(source))
+                };
+            let diagnostics = Editor::doc_diagnostics_with_filter(
+                &self.language_servers,
+                &self.diagnostics,
+                doc,
+                diagnostic_of_language_server_and_not_in_unchanged_sources,
+            );
+            doc.replace_diagnostics(diagnostics, &unchanged_diag_sources, Some(server_id));
+
+            if result_id.is_some() {
+                doc.previous_diagnostic_id = result_id;
+            }
+
+            let doc = doc.id();
+
+            helix_event::dispatch(crate::events::DiagnosticsDidChange { editor: self, doc });
+        }
+    }
 }
 
 fn try_restore_indent(doc: &mut Document, view: &mut View) {

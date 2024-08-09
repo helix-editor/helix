@@ -47,6 +47,10 @@ pub enum SignatureHelpEvent {
     RequestComplete { open: bool },
 }
 
+pub enum PullDiagnosticsEvent {
+    Trigger,
+}
+
 #[derive(Debug)]
 pub struct ApplyEditError {
     pub kind: ApplyEditErrorKind,
