@@ -134,7 +134,7 @@
 | nasm | ✓ | ✓ |  |  |
 | nickel | ✓ |  | ✓ | `nls` |
 | nim | ✓ | ✓ | ✓ | `nimlangserver` |
-| nix | ✓ | ✓ |  | `nil` |
+| nix | ✓ | ✓ |  | `nil`, `nixd` |
 | nu | ✓ |  |  | `nu` |
 | nunjucks | ✓ |  |  |  |
 | ocaml | ✓ |  | ✓ | `ocamllsp` |

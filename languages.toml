@@ -61,6 +61,7 @@ mojo-lsp = { command = "mojo-lsp-server" }
 nil = { command = "nil" }
 nimlangserver = { command = "nimlangserver" }
 nimlsp = { command = "nimlsp" }
+nixd = { command = "nixd" }
 nls = { command = "nls" }
 nu-lsp = { command = "nu", args = [ "--lsp" ] }
 ocamllsp = { command = "ocamllsp" }
@@ -886,7 +887,7 @@ injection-regex = "nix"
 file-types = ["nix"]
 shebangs = []
 comment-token = "#"
-language-servers = [ "nil" ]
+language-servers = [ "nil", "nixd" ]
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
