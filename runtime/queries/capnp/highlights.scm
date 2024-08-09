@@ -1,7 +1,9 @@
 ; Preproc
 
-(unique_id) @keyword.directive
-(top_level_annotation_body) @keyword.directive
+[
+  (unique_id)
+  (top_level_annotation_body)
+] @keyword.directive
 
 ; Includes
 
@@ -9,6 +11,7 @@
   "import"
   "$import"
   "embed"
+  "using"
 ] @keyword.control.import
 
 (import_path) @string
@@ -84,10 +87,10 @@
   "union"
 ] @keyword.storage.type
 
+"extends" @keyword
+
 [
-  "extends"
   "namespace"
-  "using"
   (annotation_target)
 ] @special
 

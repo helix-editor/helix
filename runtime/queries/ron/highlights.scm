@@ -1,3 +1,11 @@
+; Structs
+;------------
+
+(enum_variant) @type.enum.variant
+(struct_entry (_) @variable.other.member ":")
+(struct_name (identifier)) @type
+(unit_struct) @type.builtin
+
 ; Literals
 ;------------
 
@@ -6,16 +14,6 @@
 (integer) @constant.numeric.integer
 (float) @constant.numeric.float
 (char) @constant.character
-
-; Structs
-;------------
-
-(enum_variant) @type.enum.variant
-(struct_entry (_) @variable.other.member ":")
-(struct_name (identifier)) @type
-
-
-
 
 ; Comments
 ;------------
@@ -37,6 +35,7 @@
 "{" @punctuation.bracket
 "}" @punctuation.bracket
 
+"-" @operator
 
 ; Special
 ;------------
