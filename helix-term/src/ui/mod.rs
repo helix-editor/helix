@@ -278,6 +278,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
 }
 
 pub fn file_browser(root: PathBuf) -> Result<FilePicker, std::io::Error> {
+    let root = root.canonicalize()?;
     let directory_content = directory_content(&root)?;
 
     let columns = [PickerColumn::new(
@@ -335,8 +336,15 @@ fn directory_content(path: &Path) -> Result<Vec<PathBuf>, std::io::Error> {
     }
     dirs.sort();
     files.sort();
-    dirs.extend(files);
-    Ok(dirs)
+
+    let mut content = Vec::new();
+    if path.parent().is_some() {
+        log::warn!("{}", path.to_string_lossy());
+        content.insert(0, path.join(".."));
+    }
+    content.extend(dirs);
+    content.extend(files);
+    Ok(content)
 }
 
 pub mod completers {
