@@ -3858,7 +3858,7 @@ scope = "source.spade"
 roots = ["swim.toml"]
 file-types = ['spade']
 injection-regex = "spade"
-comment-tokens = ["//", "///", "//"]
+comment-tokens = ["//", "///"]
 block-comment-tokens = [
   { start = "/*", end = "*/" },
   { start = "/**", end = "*/" },
@@ -3875,5 +3875,5 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "spade"
-source = {git = "https://gitlab.com/spade-lang/tree-sitter-spade/", rev = "c9c71108394d33d25820baed07107d4c03b97589"}
+source = {git = "https://gitlab.com/spade-lang/tree-sitter-spade/", rev = "9e0dfb320aaaf7c47a1d309a5de96c60826d71ff"}
 
