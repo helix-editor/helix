@@ -3,7 +3,6 @@ mod tree_cursor;
 use crate::{
     auto_pairs::AutoPairs,
     chars::char_is_line_ending,
-    comment::DEFAULT_COMMENT_TOKEN,
     diagnostic::Severity,
     regex::Regex,
     transaction::{ChangeSet, Operation},
@@ -104,11 +103,8 @@ pub struct LanguageConfiguration {
     pub shebangs: Vec<String>, // interpreter(s) associated with language
     #[serde(default)]
     pub roots: Vec<String>, // these indicate project roots <.git, Cargo.toml>
-    // Invariants:
-    //  - `comment_tokens.is_some()` is always true
-    //  - the inner Vec is never empty
     #[serde(
-        default = "default_comment_tokens",
+        default,
         skip_serializing,
         deserialize_with = "from_comment_tokens",
         alias = "comment-token"
@@ -276,10 +272,6 @@ where
             CommentTokens::Multiple(vals) => vals,
         }),
     )
-}
-
-fn default_comment_tokens() -> Option<Vec<String>> {
-    Some(vec![DEFAULT_COMMENT_TOKEN.to_string()])
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

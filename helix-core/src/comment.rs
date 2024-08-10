@@ -18,10 +18,10 @@ pub fn get_comment_token<'a>(
     line_num: usize,
 ) -> Option<&'a str> {
     let text = text.slice(..);
-    let mut apply_token = false;
+    let mut token_found = false;
 
     if let Some(tokens) = tokens {
-        let mut used_token = tokens
+        let mut final_token = tokens
             .first()
             .map(|token| token.as_str())
             .unwrap_or(DEFAULT_COMMENT_TOKEN);
@@ -30,16 +30,18 @@ pub fn get_comment_token<'a>(
             let (is_commented, _, _, _) = find_line_comment(token, text, [line_num]);
 
             if is_commented {
-                apply_token = true;
+                token_found = true;
 
-                if token.len() > used_token.len() {
-                    used_token = token;
+                // in rust for example, there's `//` and `///`.
+                // We need to find the longest matching comment token so we can't immediately return the first matching token.
+                if token.len() > final_token.len() {
+                    final_token = token;
                 }
             }
         }
 
-        if apply_token {
-            return Some(used_token);
+        if token_found {
+            return Some(final_token);
         }
     } else {
         let (is_commented, _, _, _) = find_line_comment(DEFAULT_COMMENT_TOKEN, text, [line_num]);
