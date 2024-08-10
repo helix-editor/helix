@@ -17,7 +17,7 @@ pub use typed::*;
 use helix_core::{
     char_idx_at_visual_offset,
     chars::char_is_word,
-    comment::{self, continue_comment},
+    comment::{self, get_comment_token},
     doc_formatter::TextFormat,
     encoding, find_workspace,
     graphemes::{self, next_grapheme_boundary, RevRopeGraphemes},
@@ -3298,7 +3298,7 @@ fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
             let indent = indent::indent_for_newline(
                 language_config,
                 syntax,
-                &doc.config.load().indent_heuristic(),
+                &doc.config.load().indent_heuristic,
                 &doc.indent_style,
                 tab_width,
                 text,
@@ -3425,17 +3425,39 @@ fn open(cx: &mut Context, open: Open) {
             )
         };
 
-        let indent = indent::indent_for_newline(
-            doc.language_config(),
-            doc.syntax(),
-            &doc.config.load().indent_heuristic(),
-            &doc.indent_style,
-            doc.tab_width(),
-            doc_text,
-            line_num,
-            line_end_index,
-            cursor_line,
-        );
+        let comment_token = {
+            let tokens = doc
+                .language_config()
+                .and_then(|config| config.comment_tokens.as_ref());
+
+            get_comment_token(doc.text(), tokens, cursor_line)
+        };
+        let new_line_will_be_comment = config.continue_comments && comment_token.is_some();
+        let indent = if new_line_will_be_comment {
+            indent::indent_for_newline(
+                doc.language_config(),
+                doc.syntax(),
+                &helix_core::syntax::IndentationHeuristic::Simple,
+                &doc.indent_style,
+                doc.tab_width(),
+                doc_text,
+                line_num,
+                line_end_index,
+                cursor_line,
+            )
+        } else {
+            indent::indent_for_newline(
+                doc.language_config(),
+                doc.syntax(),
+                &doc.config.load().indent_heuristic,
+                &doc.indent_style,
+                doc.tab_width(),
+                doc_text,
+                line_num,
+                line_end_index,
+                cursor_line,
+            )
+        };
 
         let indent_len = indent.len();
         let mut text = String::with_capacity(1 + indent_len);
@@ -3443,11 +3465,10 @@ fn open(cx: &mut Context, open: Open) {
         text.push_str(&indent);
 
         if config.continue_comments {
-            let tokens = doc
-                .language_config()
-                .and_then(|config| config.comment_tokens.as_ref());
-
-            continue_comment(doc.text(), tokens, cursor_line, &mut text);
+            if let Some(token) = comment_token {
+                text.push_str(token);
+                text.push(' ');
+            }
         }
 
         let text = text.repeat(count);
@@ -3899,9 +3920,14 @@ pub mod insert {
                 .all(|char| char.is_ascii_whitespace());
 
             let mut new_text = String::new();
-            let comment_tokens = doc
-                .language_config()
-                .and_then(|config| config.comment_tokens.as_ref());
+
+            let comment_token = {
+                let tokens = doc
+                    .language_config()
+                    .and_then(|config| config.comment_tokens.as_ref());
+
+                get_comment_token(doc.text(), tokens, current_line)
+            };
 
             // If the current line is all whitespace, insert a line ending at the beginning of
             // the current line. This makes the current line empty and the new line contain the
@@ -3912,17 +3938,33 @@ pub mod insert {
 
                 (line_start, line_start, new_text.chars().count())
             } else {
-                let indent = indent::indent_for_newline(
-                    doc.language_config(),
-                    doc.syntax(),
-                    &doc.config.load().indent_heuristic(),
-                    &doc.indent_style,
-                    doc.tab_width(),
-                    text,
-                    current_line,
-                    pos,
-                    current_line,
-                );
+                let new_line_will_be_comment = config.continue_comments && comment_token.is_some();
+
+                let indent = if new_line_will_be_comment {
+                    indent::indent_for_newline(
+                        doc.language_config(),
+                        doc.syntax(),
+                        &helix_core::syntax::IndentationHeuristic::Simple,
+                        &doc.indent_style,
+                        doc.tab_width(),
+                        text,
+                        current_line,
+                        pos,
+                        current_line,
+                    )
+                } else {
+                    indent::indent_for_newline(
+                        doc.language_config(),
+                        doc.syntax(),
+                        &doc.config.load().indent_heuristic,
+                        &doc.indent_style,
+                        doc.tab_width(),
+                        text,
+                        current_line,
+                        pos,
+                        current_line,
+                    )
+                };
 
                 // If we are between pairs (such as brackets), we want to
                 // insert an additional line which is indented one level
@@ -3951,7 +3993,10 @@ pub mod insert {
                     new_text.push_str(&indent);
 
                     if config.continue_comments {
-                        continue_comment(doc.text(), comment_tokens, current_line, &mut new_text);
+                        if let Some(token) = comment_token {
+                            new_text.push_str(token);
+                            new_text.push(' ');
+                        }
                     }
 
                     new_text.chars().count()

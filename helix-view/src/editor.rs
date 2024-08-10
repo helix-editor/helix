@@ -354,17 +354,6 @@ pub struct Config {
     pub end_of_line_diagnostics: DiagnosticFilter,
 }
 
-impl Config {
-    /// Returns the `indent_heuristic` depending, if `continue_comments` is set or not.
-    pub fn indent_heuristic(&self) -> IndentationHeuristic {
-        if self.continue_comments {
-            IndentationHeuristic::Hybrid
-        } else {
-            self.indent_heuristic.clone()
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
 #[serde(rename_all = "kebab-case", default)]
 pub struct SmartTabConfig {

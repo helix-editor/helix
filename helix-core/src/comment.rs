@@ -11,12 +11,11 @@ use std::borrow::Cow;
 
 pub const DEFAULT_COMMENT_TOKEN: &str = "//";
 
-/// Little helper function append the comment token of the previous line, if it's also commented.
-pub fn continue_comment<'a>(
+/// Returns the matching comment token of the given line (if it exists).
+pub fn get_comment_token<'a>(
     doc: &Rope,
     tokens: Option<&'a Vec<String>>,
     line_num: usize,
-    new_line: &mut String,
 ) -> Option<&'a str> {
     let text = doc.slice(..);
     let mut apply_token = false;
@@ -40,15 +39,11 @@ pub fn continue_comment<'a>(
         }
 
         if apply_token {
-            new_line.push_str(used_token);
-            new_line.push(' ');
             return Some(used_token);
         }
     } else {
         let (is_commented, _, _, _) = find_line_comment(DEFAULT_COMMENT_TOKEN, text, [line_num]);
         if is_commented {
-            new_line.push_str(DEFAULT_COMMENT_TOKEN);
-            new_line.push(' ');
             return Some(DEFAULT_COMMENT_TOKEN);
         }
     }
