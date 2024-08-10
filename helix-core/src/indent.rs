@@ -6,7 +6,7 @@ use tree_sitter::{Query, QueryCursor, QueryPredicateArg};
 use crate::{
     chars::{char_is_line_ending, char_is_whitespace},
     graphemes::{grapheme_width, tab_width_at},
-    syntax::{IndentationHeuristic, LanguageConfiguration, RopeProvider, Syntax},
+    syntax::{self, IndentationHeuristic, LanguageConfiguration, RopeProvider, Syntax},
     tree_sitter::Node,
     Position, Rope, RopeGraphemes, RopeSlice, Tendril,
 };
@@ -932,6 +932,7 @@ pub fn treesitter_indent_for_pos<'a>(
 pub fn indent_for_newline(
     language_config: Option<&LanguageConfiguration>,
     syntax: Option<&Syntax>,
+    loader: &syntax::Loader,
     indent_heuristic: &IndentationHeuristic,
     indent_style: &IndentStyle,
     tab_width: usize,
@@ -947,7 +948,7 @@ pub fn indent_for_newline(
         Some(syntax),
     ) = (
         indent_heuristic,
-        language_config.and_then(|config| config.indent_query()),
+        language_config.and_then(|config| config.indent_query(loader)),
         syntax,
     ) {
         if let Some(indent) = treesitter_indent_for_pos(

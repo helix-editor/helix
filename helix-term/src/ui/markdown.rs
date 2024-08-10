@@ -48,12 +48,12 @@ pub fn highlighted_code_block<'a>(
     };
 
     let ropeslice = RopeSlice::from(text);
-    let syntax = config_loader
-        .load()
+    let loader = config_loader.load();
+    let syntax = loader
         .language_configuration_for_injection_string(&InjectionLanguageMarker::Name(
             language.into(),
         ))
-        .and_then(|config| config.highlight_config(theme.scopes()))
+        .and_then(|config| config.highlight_config(&loader))
         .and_then(|config| Syntax::new(ropeslice, config, Arc::clone(&config_loader)));
 
     let syntax = match syntax {

@@ -2,7 +2,6 @@ use crate::helpers;
 use crate::path;
 use crate::DynError;
 use helix_term::commands::TYPABLE_COMMAND_LIST;
-use helix_term::health::TsFeature;
 use std::collections::HashSet;
 use std::fs;
 
@@ -50,15 +49,8 @@ pub fn typable_commands() -> Result<String, DynError> {
 
 pub fn lang_features() -> Result<String, DynError> {
     let mut md = String::new();
-    let ts_features = TsFeature::all();
 
     let mut cols = vec!["Language".to_owned()];
-    cols.append(
-        &mut ts_features
-            .iter()
-            .map(|t| t.long_title().to_string())
-            .collect::<Vec<_>>(),
-    );
     cols.push("Default LSP".to_owned());
 
     md.push_str(&md_table_heading(&cols));
@@ -71,11 +63,6 @@ pub fn lang_features() -> Result<String, DynError> {
         .collect::<Vec<_>>();
     langs.sort_unstable();
 
-    let mut ts_features_to_langs = Vec::new();
-    for &feat in ts_features {
-        ts_features_to_langs.push((feat, helpers::ts_lang_support(feat)));
-    }
-
     let mut row = Vec::new();
     for lang in langs {
         let lc = config
@@ -85,16 +72,6 @@ pub fn lang_features() -> Result<String, DynError> {
             .unwrap(); // lang comes from config
         row.push(lc.language_id.clone());
 
-        for (_feat, support_list) in &ts_features_to_langs {
-            row.push(
-                if support_list.contains(&lang) {
-                    "✓"
-                } else {
-                    ""
-                }
-                .to_owned(),
-            );
-        }
         let mut seen_commands = HashSet::new();
         let mut commands = String::new();
         for ls_config in lc

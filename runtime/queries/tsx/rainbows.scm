@@ -1,2 +1,0 @@
-; inherits: typescript
-; inherits: jsx

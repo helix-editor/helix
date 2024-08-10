@@ -3495,6 +3495,7 @@ fn insert_at_line_end(cx: &mut Context) {
 fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
     enter_insert_mode(cx);
 
+    let loader = cx.editor.syn_loader.clone().load();
     let (view, doc) = current!(cx.editor);
 
     let text = doc.text().slice(..);
@@ -3519,6 +3520,7 @@ fn insert_with_indent(cx: &mut Context, cursor_fallback: IndentFallbackPos) {
             let indent = indent::indent_for_newline(
                 language_config,
                 syntax,
+                &loader,
                 &doc.config.load().indent_heuristic,
                 &doc.indent_style,
                 tab_width,
@@ -3611,6 +3613,7 @@ pub enum Open {
 fn open(cx: &mut Context, open: Open) {
     let count = cx.count();
     enter_insert_mode(cx);
+    let loader = cx.editor.syn_loader.load();
     let (view, doc) = current!(cx.editor);
 
     let text = doc.text().slice(..);
@@ -3649,6 +3652,7 @@ fn open(cx: &mut Context, open: Open) {
         let indent = indent::indent_for_newline(
             doc.language_config(),
             doc.syntax(),
+            &loader,
             &doc.config.load().indent_heuristic,
             &doc.indent_style,
             doc.tab_width(),
@@ -4101,6 +4105,7 @@ pub mod insert {
     }
 
     pub fn insert_newline(cx: &mut Context) {
+        let loader = cx.editor.syn_loader.load();
         let (view, doc) = current_ref!(cx.editor);
         let text = doc.text().slice(..);
 
@@ -4147,6 +4152,7 @@ pub mod insert {
                 let indent = indent::indent_for_newline(
                     doc.language_config(),
                     doc.syntax(),
+                    &loader,
                     &doc.config.load().indent_heuristic,
                     &doc.indent_style,
                     doc.tab_width(),

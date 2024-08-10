@@ -10,8 +10,7 @@ pub struct Args {
     pub health: bool,
     pub health_arg: Option<String>,
     pub load_tutor: bool,
-    pub fetch_grammars: bool,
-    pub build_grammars: bool,
+    pub update_grammars: bool,
     pub split: Option<Layout>,
     pub verbosity: u64,
     pub log_file: Option<PathBuf>,
@@ -47,10 +46,9 @@ impl Args {
                     args.health_arg = argv.next_if(|opt| !opt.starts_with('-'));
                 }
                 "-g" | "--grammar" => match argv.next().as_deref() {
-                    Some("fetch") => args.fetch_grammars = true,
-                    Some("build") => args.build_grammars = true,
+                    Some("update") => args.update_grammars = true,
                     _ => {
-                        anyhow::bail!("--grammar must be followed by either 'fetch' or 'build'")
+                        anyhow::bail!("--grammar must be followed by 'update'")
                     }
                 },
                 "-c" | "--config" => match argv.next().as_deref() {

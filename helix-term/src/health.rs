@@ -2,8 +2,10 @@ use crossterm::{
     style::{Color, Print, Stylize},
     tty::IsTty,
 };
-use helix_core::config::{default_lang_config, user_lang_config};
-use helix_loader::grammar::load_runtime_file;
+use helix_core::{
+    config::{default_lang_config, user_lang_config},
+    syntax::{self, Loader},
+};
 use helix_view::clipboard::get_clipboard_provider;
 use std::io::Write;
 
@@ -101,6 +103,46 @@ pub fn general() -> std::io::Result<()> {
             writeln!(stdout, "{}", msg.yellow())?;
         }
     }
+
+    match user_lang_config() {
+        Ok(conf) => match syntax::Loader::new(conf) {
+            Ok(loader) => {
+                writeln!(stdout, "Language support repositories:")?;
+                for (repo, dir) in loader.grammars().repository_dirs() {
+                    if !dir.exists() {
+                        writeln!(stdout, "* {} {}", repo, "(does not exist)".yellow())?;
+                    } else if dir.read_dir().ok().map(|it| it.count()) == Some(0) {
+                        writeln!(stdout, "* {} {}", repo, "(empty)".yellow())?;
+                    } else {
+                        writeln!(stdout, "* {}", repo)?;
+                    }
+                }
+            }
+            Err(err) => {
+                let stderr = std::io::stderr();
+                let mut stderr = stderr.lock();
+
+                writeln!(
+                    stderr,
+                    "{}: {}",
+                    "Error loading language support".red(),
+                    err
+                )?;
+            }
+        },
+        Err(err) => {
+            let stderr = std::io::stderr();
+            let mut stderr = stderr.lock();
+
+            writeln!(
+                stderr,
+                "{}: {}",
+                "Error parsing user language config".red(),
+                err
+            )?;
+        }
+    }
+
     writeln!(stdout, "Clipboard provider: {}", clipboard_provider.name())?;
 
     Ok(())
@@ -137,7 +179,7 @@ pub fn languages_all() -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
 
-    let mut syn_loader_conf = match user_lang_config() {
+    let syn_loader_conf = match user_lang_config() {
         Ok(conf) => conf,
         Err(err) => {
             let stderr = std::io::stderr();
@@ -181,14 +223,26 @@ pub fn languages_all() -> std::io::Result<()> {
         let _ = crossterm::execute!(std::io::stdout(), Print(data));
     };
 
+    let loader = match syntax::Loader::new(syn_loader_conf) {
+        Ok(loader) => loader,
+        Err(err) => {
+            let stderr = std::io::stderr();
+            let mut stderr = stderr.lock();
+
+            writeln!(
+                stderr,
+                "{}: {}",
+                "Error loading language support".red(),
+                err
+            )?;
+            return Ok(());
+        }
+    };
+
     for heading in headings {
         column(heading, Color::White);
     }
     writeln!(stdout)?;
-
-    syn_loader_conf
-        .language
-        .sort_unstable_by_key(|l| l.language_id.clone());
 
     let check_binary = |cmd: Option<&str>| match cmd {
         Some(cmd) => match helix_stdx::env::which(cmd) {
@@ -198,12 +252,15 @@ pub fn languages_all() -> std::io::Result<()> {
         None => column("None", Color::Yellow),
     };
 
-    for lang in &syn_loader_conf.language {
+    let mut languages: Vec<_> = loader.language_configs().collect();
+    languages.sort_unstable_by_key(|l| l.language_id.clone());
+
+    for lang in &languages {
         column(&lang.language_id, Color::Reset);
 
         let mut cmds = lang.language_servers.iter().filter_map(|ls| {
-            syn_loader_conf
-                .language_server
+            loader
+                .language_server_configs()
                 .get(&ls.name)
                 .map(|config| config.command.as_str())
         });
@@ -219,7 +276,10 @@ pub fn languages_all() -> std::io::Result<()> {
         check_binary(formatter);
 
         for ts_feat in TsFeature::all() {
-            match load_runtime_file(&lang.language_id, ts_feat.runtime_filename()).is_ok() {
+            match loader
+                .read_grammar_file(&lang.language_id, ts_feat.runtime_filename())
+                .is_ok()
+            {
                 true => column("✓", Color::Green),
                 false => column("✘", Color::Red),
             }
@@ -259,19 +319,32 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
             default_lang_config()
         }
     };
+    let loader = match syntax::Loader::new(syn_loader_conf) {
+        Ok(loader) => loader,
+        Err(err) => {
+            let stderr = std::io::stderr();
+            let mut stderr = stderr.lock();
 
-    let lang = match syn_loader_conf
-        .language
-        .iter()
+            writeln!(
+                stderr,
+                "{}: {}",
+                "Error loading language support".red(),
+                err
+            )?;
+            return Ok(());
+        }
+    };
+
+    let lang = match loader
+        .language_configs()
         .find(|l| l.language_id == lang_str)
     {
         Some(l) => l,
         None => {
             let msg = format!("Language '{}' not found", lang_str);
             writeln!(stdout, "{}", msg.red())?;
-            let suggestions: Vec<&str> = syn_loader_conf
-                .language
-                .iter()
+            let suggestions: Vec<&str> = loader
+                .language_configs()
                 .filter(|l| l.language_id.starts_with(lang_str.chars().next().unwrap()))
                 .map(|l| l.language_id.as_str())
                 .collect();
@@ -291,7 +364,7 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
         "language server",
         lang.language_servers
             .iter()
-            .filter_map(|ls| syn_loader_conf.language_server.get(&ls.name))
+            .filter_map(|ls| loader.language_server_configs().get(&ls.name))
             .map(|config| config.command.as_str()),
     )?;
 
@@ -308,7 +381,7 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
     )?;
 
     for ts_feat in TsFeature::all() {
-        probe_treesitter_feature(&lang_str, *ts_feat)?
+        probe_treesitter_feature(&loader, &lang_str, *ts_feat)?
     }
 
     Ok(())
@@ -365,11 +438,18 @@ fn probe_protocol(protocol_name: &str, server_cmd: Option<String>) -> std::io::R
 
 /// Display diagnostics about a feature that requires tree-sitter
 /// query files (highlights, textobjects, etc).
-fn probe_treesitter_feature(lang: &str, feature: TsFeature) -> std::io::Result<()> {
+fn probe_treesitter_feature(
+    loader: &Loader,
+    lang: &str,
+    feature: TsFeature,
+) -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
 
-    let found = match load_runtime_file(lang, feature.runtime_filename()).is_ok() {
+    let found = match loader
+        .read_grammar_file(lang, feature.runtime_filename())
+        .is_ok()
+    {
         true => "✓".green(),
         false => "✘".red(),
     };

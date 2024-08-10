@@ -496,7 +496,7 @@ fn syntax_for_path(path: &Path, loader: &Arc<ArcSwapAny<Arc<Loader>>>) -> Option
         .load()
         .language_config_for_file_name(path)
         .or_else(|| loader.load().language_config_for_shebang(text))?;
-    let highlight_config = lang_config.highlight_config(&loader.load().scopes())?;
+    let highlight_config = lang_config.highlight_config(&loader.load())?;
     Syntax::new(text, highlight_config, loader.clone()).map(|syntax| (rope, syntax))
 }
 

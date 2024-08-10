@@ -1,3 +1,0 @@
-[
- (entity_definition)
-] @fold

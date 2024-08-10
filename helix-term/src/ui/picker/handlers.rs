@@ -82,11 +82,12 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> AsyncHook
             let loader = editor.syn_loader.clone();
 
             tokio::task::spawn_blocking(move || {
-                let Some(syntax) = language_config
-                    .highlight_config(&loader.load().scopes())
-                    .and_then(|highlight_config| {
-                        helix_core::Syntax::new(text.slice(..), highlight_config, loader)
-                    })
+                let Some(syntax) =
+                    language_config
+                        .highlight_config(&loader.load())
+                        .and_then(|highlight_config| {
+                            helix_core::Syntax::new(text.slice(..), highlight_config, loader)
+                        })
                 else {
                     log::info!("highlighting picker item failed");
                     return;

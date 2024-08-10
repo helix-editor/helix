@@ -15,10 +15,6 @@ pub fn runtime() -> PathBuf {
     project_root().join("runtime")
 }
 
-pub fn ts_queries() -> PathBuf {
-    runtime().join("queries")
-}
-
 pub fn themes() -> PathBuf {
     runtime().join("themes")
 }

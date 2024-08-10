@@ -1,2 +1,0 @@
-; inherits: json
-(comment) @comment

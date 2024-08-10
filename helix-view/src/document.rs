@@ -1188,9 +1188,7 @@ impl Document {
         loader: Option<Arc<ArcSwap<helix_core::syntax::Loader>>>,
     ) {
         if let (Some(language_config), Some(loader)) = (language_config, loader) {
-            if let Some(highlight_config) =
-                language_config.highlight_config(&(*loader).load().scopes())
-            {
+            if let Some(highlight_config) = language_config.highlight_config(&loader.load()) {
                 self.syntax = Syntax::new(self.text.slice(..), highlight_config, loader);
             }
 

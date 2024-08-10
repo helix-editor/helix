@@ -198,15 +198,15 @@ fn test_treesitter_indent(
 
     let language_config = loader.language_config_for_scope(lang_scope).unwrap();
     let indent_style = IndentStyle::from_str(&language_config.indent.as_ref().unwrap().unit);
-    let highlight_config = language_config.highlight_config(&[]).unwrap();
+    let highlight_config = language_config.highlight_config(&loader).unwrap();
     let text = doc.slice(..);
+    let indent_query = language_config.indent_query(&loader).unwrap();
     let syntax = Syntax::new(
         text,
         highlight_config,
         Arc::new(ArcSwap::from_pointee(loader)),
     )
     .unwrap();
-    let indent_query = language_config.indent_query().unwrap();
 
     for i in 0..doc.len_lines() {
         let line = text.line(i);
