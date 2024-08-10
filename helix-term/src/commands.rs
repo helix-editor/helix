@@ -3433,30 +3433,23 @@ fn open(cx: &mut Context, open: Open) {
             get_comment_token(doc.text(), tokens, cursor_line)
         };
         let new_line_will_be_comment = config.continue_comments && comment_token.is_some();
-        let indent = if new_line_will_be_comment {
-            indent::indent_for_newline(
-                doc.language_config(),
-                doc.syntax(),
-                &helix_core::syntax::IndentationHeuristic::Simple,
-                &doc.indent_style,
-                doc.tab_width(),
-                doc_text,
-                line_num,
-                line_end_index,
-                cursor_line,
-            )
-        } else {
-            indent::indent_for_newline(
-                doc.language_config(),
-                doc.syntax(),
-                &doc.config.load().indent_heuristic,
-                &doc.indent_style,
-                doc.tab_width(),
-                doc_text,
-                line_num,
-                line_end_index,
-                cursor_line,
-            )
+
+        let indent = {
+            let line = doc_text.line(cursor_line);
+            match line.first_non_whitespace_char() {
+                Some(pos) if new_line_will_be_comment => line.slice(..pos).to_string(),
+                _ => indent::indent_for_newline(
+                    doc.language_config(),
+                    doc.syntax(),
+                    &doc.config.load().indent_heuristic,
+                    &doc.indent_style,
+                    doc.tab_width(),
+                    doc_text,
+                    line_num,
+                    line_end_index,
+                    cursor_line,
+                ),
+            }
         };
 
         let indent_len = indent.len();
@@ -3939,21 +3932,11 @@ pub mod insert {
                 (line_start, line_start, new_text.chars().count())
             } else {
                 let new_line_will_be_comment = config.continue_comments && comment_token.is_some();
+                let line = text.line(current_line);
 
-                let indent = if new_line_will_be_comment {
-                    indent::indent_for_newline(
-                        doc.language_config(),
-                        doc.syntax(),
-                        &helix_core::syntax::IndentationHeuristic::Simple,
-                        &doc.indent_style,
-                        doc.tab_width(),
-                        text,
-                        current_line,
-                        pos,
-                        current_line,
-                    )
-                } else {
-                    indent::indent_for_newline(
+                let indent = match line.first_non_whitespace_char() {
+                    Some(pos) if new_line_will_be_comment => line.slice(..pos).to_string(),
+                    _ => indent::indent_for_newline(
                         doc.language_config(),
                         doc.syntax(),
                         &doc.config.load().indent_heuristic,
@@ -3963,7 +3946,7 @@ pub mod insert {
                         current_line,
                         pos,
                         current_line,
-                    )
+                    ),
                 };
 
                 // If we are between pairs (such as brackets), we want to

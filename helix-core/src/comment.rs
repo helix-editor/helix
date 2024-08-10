@@ -13,11 +13,11 @@ pub const DEFAULT_COMMENT_TOKEN: &str = "//";
 
 /// Returns the matching comment token of the given line (if it exists).
 pub fn get_comment_token<'a>(
-    doc: &Rope,
+    text: &Rope,
     tokens: Option<&'a Vec<String>>,
     line_num: usize,
 ) -> Option<&'a str> {
-    let text = doc.slice(..);
+    let text = text.slice(..);
     let mut apply_token = false;
 
     if let Some(tokens) = tokens {
