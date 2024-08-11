@@ -1878,9 +1878,8 @@ fn language(
 
     if args.is_empty() {
         let doc = doc!(cx.editor);
-        let language = &doc.language_name().unwrap_or(DEFAULT_LANGUAGE_NAME);
-        // PERF: `&str` has a fast specialization for `to_string` so deref `&&str`
-        cx.editor.set_status((*language).to_string());
+        let language = doc.language_name().unwrap_or(DEFAULT_LANGUAGE_NAME);
+        cx.editor.set_status(language.to_string());
         return Ok(());
     }
 
