@@ -58,11 +58,16 @@ impl PickerQuery {
             () => {
                 let key = field.take().unwrap_or(primary_field);
 
+                // Trims one space from the end, enabling leading and trailing
+                // spaces in search patterns, while also retaining spaces as separators
+                // between column filters.
+                let pat = text.strip_suffix(' ').unwrap_or(&text);
+
                 if let Some(pattern) = fields.get_mut(key) {
                     pattern.push(' ');
-                    pattern.push_str(text.trim());
+                    pattern.push_str(pat);
                 } else {
-                    fields.insert(key.clone(), text.trim().to_string());
+                    fields.insert(key.clone(), pat.to_string());
                 }
                 text.clear();
             };

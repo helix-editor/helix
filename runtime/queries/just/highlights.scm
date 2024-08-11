@@ -1,5 +1,3 @@
-; From <https://github.com/IndianBoy42/tree-sitter-just/blob/6c2f018ab1d90946c0ce029bb2f7d57f56895dff/queries-flavored/helix/highlights.scm>
-
 ; This file specifies how matched syntax patterns should be highlighted
 
 [
@@ -26,34 +24,56 @@
   (identifier) @variable)
 
 (alias
-  left: (identifier) @variable)
+  name: (identifier) @variable)
 
 (assignment
-  left: (identifier) @variable)
+  name: (identifier) @variable)
+
+(shell_variable_name) @variable
 
 ; Functions
 
-(recipe_header
+(recipe
   name: (identifier) @function)
 
-(dependency
-  name: (identifier) @function)
-
-(dependency_expression
-  name: (identifier) @function)
+(recipe_dependency
+  name: (identifier) @function.call)
 
 (function_call
-  name: (identifier) @function)
+  name: (identifier) @function.builtin)
 
 ; Parameters
 
-(parameter
+(recipe_parameter
   name: (identifier) @variable.parameter)
 
 ; Namespaces
 
-(module
+(mod
   name: (identifier) @namespace)
+
+; Paths
+
+(mod
+  (path) @string.special.path)
+
+(import
+  (path) @string.special.path)
+
+; Shebangs
+
+(shebang_line) @keyword.directive
+(shebang_line
+  (shebang_shell) @string.special)
+
+
+(shell_expanded_string
+  [
+    (expansion_short_start)
+    (expansion_long_start)
+    (expansion_long_middle)
+    (expansion_long_end)
+  ] @punctuation.special)
 
 ; Operators
 
@@ -95,55 +115,31 @@
 
 ; Literals
 
-(boolean) @constant.builtin.boolean
+; Booleans are not allowed anywhere except in settings
+(setting
+  (boolean) @constant.builtin.boolean)
 
 [
   (string)
   (external_command)
 ] @string
 
-(escape_sequence) @constant.character.escape
+[
+  (escape_sequence)
+  (escape_variable_end)
+] @constant.character.escape
 
 ; Comments
 
 (comment) @comment.line
 
-(shebang) @keyword.directive
-
-; highlight known settings (filtering does not always work)
+; highlight known settings
 (setting
-  left: (identifier) @keyword
-  (#any-of? @keyword
-    "allow-duplicate-recipes"
-    "dotenv-filename"
-    "dotenv-load"
-    "dotenv-path"
-    "export"
-    "fallback"
-    "ignore-comments"
-    "positional-arguments"
-    "shell"
-    "tempdi"
-    "windows-powershell"
-    "windows-shell"))
+  name: (_) @keyword.function)
 
-; highlight known attributes (filtering does not always work)
+; highlight known attributes
 (attribute
-  (identifier) @attribute
-  (#any-of? @attribute
-    "private"
-    "allow-duplicate-recipes"
-    "dotenv-filename"
-    "dotenv-load"
-    "dotenv-path"
-    "export"
-    "fallback"
-    "ignore-comments"
-    "positional-arguments"
-    "shell"
-    "tempdi"
-    "windows-powershell"
-    "windows-shell"))
+  name: (identifier) @attribute)
 
 ; Numbers are part of the syntax tree, even if disallowed
 (numeric_error) @error

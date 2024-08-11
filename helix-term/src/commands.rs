@@ -176,9 +176,16 @@ where
 
 use helix_view::{align_view, Align};
 
-/// A MappableCommand is either a static command like "jump_view_up" or a Typable command like
-/// :format. It causes a side-effect on the state (usually by creating and applying a transaction).
-/// Both of these types of commands can be mapped with keybindings in the config.toml.
+/// MappableCommands are commands that can be bound to keys, executable in
+/// normal, insert or select mode.
+///
+/// There are three kinds:
+///
+/// * Static: commands usually bound to keys and used for editing, movement,
+///   etc., for example `move_char_left`.
+/// * Typable: commands executable from command mode, prefixed with a `:`,
+///   for example `:write!`.
+/// * Macro: a sequence of keys to execute, for example `@miw`.
 #[derive(Clone)]
 pub enum MappableCommand {
     Typable {
@@ -190,6 +197,10 @@ pub enum MappableCommand {
         name: &'static str,
         fun: fn(cx: &mut Context),
         doc: &'static str,
+    },
+    Macro {
+        name: String,
+        keys: Vec<KeyEvent>,
     },
 }
 
@@ -227,6 +238,23 @@ impl MappableCommand {
                 }
             }
             Self::Static { fun, .. } => (fun)(cx),
+            Self::Macro { keys, .. } => {
+                // Protect against recursive macros.
+                if cx.editor.macro_replaying.contains(&'@') {
+                    cx.editor.set_error(
+                        "Cannot execute macro because the [@] register is already playing a macro",
+                    );
+                    return;
+                }
+                cx.editor.macro_replaying.push('@');
+                let keys = keys.clone();
+                cx.callback.push(Box::new(move |compositor, cx| {
+                    for key in keys.into_iter() {
+                        compositor.handle_event(&compositor::Event::Key(key), cx);
+                    }
+                    cx.editor.macro_replaying.pop();
+                }));
+            }
         }
     }
 
@@ -234,6 +262,7 @@ impl MappableCommand {
         match &self {
             Self::Typable { name, .. } => name,
             Self::Static { name, .. } => name,
+            Self::Macro { name, .. } => name,
         }
     }
 
@@ -241,6 +270,7 @@ impl MappableCommand {
         match &self {
             Self::Typable { doc, .. } => doc,
             Self::Static { doc, .. } => doc,
+            Self::Macro { name, .. } => name,
         }
     }
 
@@ -269,6 +299,10 @@ impl MappableCommand {
         move_prev_long_word_start, "Move to start of previous long word",
         move_next_long_word_end, "Move to end of next long word",
         move_prev_long_word_end, "Move to end of previous long word",
+        move_next_sub_word_start, "Move to start of next sub word",
+        move_prev_sub_word_start, "Move to start of previous sub word",
+        move_next_sub_word_end, "Move to end of next sub word",
+        move_prev_sub_word_end, "Move to end of previous sub word",
         move_parent_node_end, "Move to end of the parent node",
         move_parent_node_start, "Move to beginning of the parent node",
         extend_next_word_start, "Extend to start of next word",
@@ -279,6 +313,10 @@ impl MappableCommand {
         extend_prev_long_word_start, "Extend to start of previous long word",
         extend_next_long_word_end, "Extend to end of next long word",
         extend_prev_long_word_end, "Extend to end of prev long word",
+        extend_next_sub_word_start, "Extend to start of next sub word",
+        extend_prev_sub_word_start, "Extend to start of previous sub word",
+        extend_next_sub_word_end, "Extend to end of next sub word",
+        extend_prev_sub_word_end, "Extend to end of prev sub word",
         extend_parent_node_end, "Extend to end of the parent node",
         extend_parent_node_start, "Extend to beginning of the parent node",
         find_till_char, "Move till next occurrence of char",
@@ -543,6 +581,11 @@ impl fmt::Debug for MappableCommand {
                 .field(name)
                 .field(args)
                 .finish(),
+            MappableCommand::Macro { name, keys, .. } => f
+                .debug_tuple("MappableCommand")
+                .field(name)
+                .field(keys)
+                .finish(),
         }
     }
 }
@@ -573,6 +616,11 @@ impl std::str::FromStr for MappableCommand {
                     args,
                 })
                 .ok_or_else(|| anyhow!("No TypableCommand named '{}'", s))
+        } else if let Some(suffix) = s.strip_prefix('@') {
+            helix_view::input::parse_macro(suffix).map(|keys| Self::Macro {
+                name: s.to_string(),
+                keys,
+            })
         } else {
             MappableCommand::STATIC_COMMAND_LIST
                 .iter()
@@ -1126,6 +1174,22 @@ fn move_next_long_word_end(cx: &mut Context) {
     move_word_impl(cx, movement::move_next_long_word_end)
 }
 
+fn move_next_sub_word_start(cx: &mut Context) {
+    move_word_impl(cx, movement::move_next_sub_word_start)
+}
+
+fn move_prev_sub_word_start(cx: &mut Context) {
+    move_word_impl(cx, movement::move_prev_sub_word_start)
+}
+
+fn move_prev_sub_word_end(cx: &mut Context) {
+    move_word_impl(cx, movement::move_prev_sub_word_end)
+}
+
+fn move_next_sub_word_end(cx: &mut Context) {
+    move_word_impl(cx, movement::move_next_sub_word_end)
+}
+
 fn goto_para_impl<F>(cx: &mut Context, move_fn: F)
 where
     F: Fn(RopeSlice, Range, usize, Movement) -> Range + 'static,
@@ -1360,6 +1424,22 @@ fn extend_prev_long_word_end(cx: &mut Context) {
 
 fn extend_next_long_word_end(cx: &mut Context) {
     extend_word_impl(cx, movement::move_next_long_word_end)
+}
+
+fn extend_next_sub_word_start(cx: &mut Context) {
+    extend_word_impl(cx, movement::move_next_sub_word_start)
+}
+
+fn extend_prev_sub_word_start(cx: &mut Context) {
+    extend_word_impl(cx, movement::move_prev_sub_word_start)
+}
+
+fn extend_prev_sub_word_end(cx: &mut Context) {
+    extend_word_impl(cx, movement::move_prev_sub_word_end)
+}
+
+fn extend_next_sub_word_end(cx: &mut Context) {
+    extend_word_impl(cx, movement::move_next_sub_word_end)
 }
 
 /// Separate branch to find_char designed only for `<ret>` char.
@@ -3145,6 +3225,9 @@ pub fn command_palette(cx: &mut Context) {
                 ui::PickerColumn::new("name", |item, _| match item {
                     MappableCommand::Typable { name, .. } => format!(":{name}").into(),
                     MappableCommand::Static { name, .. } => (*name).into(),
+                    MappableCommand::Macro { .. } => {
+                        unreachable!("macros aren't included in the command palette")
+                    }
                 }),
                 ui::PickerColumn::new(
                     "bindings",

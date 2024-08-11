@@ -1,5 +1,3 @@
-; From <https://github.com/IndianBoy42/tree-sitter-just/blob/6c2f018ab1d90946c0ce029bb2f7d57f56895dff/queries-flavored/helix/injections.scm>
-;
 ; Specify nested languages that live within a `justfile`
 
 ; ================ Always applicable ================
@@ -8,7 +6,7 @@
   (#set! injection.language "comment"))
 
 ; Highlight the RHS of `=~` as regex
-((regex_literal
+((regex
   (_) @injection.content)
   (#set! injection.language "regex"))
 
@@ -21,7 +19,7 @@
   (#set! injection.include-children)) @injection.content
 
 (external_command
-  (command_body) @injection.content
+  (content) @injection.content
   (#set! injection.language "bash"))
 
 ; ================ Global language specified ================
@@ -43,7 +41,7 @@
 ; they default to bash. Limitations...
 ; See https://github.com/tree-sitter/tree-sitter/issues/880 for more on that.
 
-(source_file
+(file
   (setting "shell" ":=" "[" (string) @_langstr
     (#match? @_langstr ".*(powershell|pwsh|cmd).*")
     (#set! injection.language "powershell"))
@@ -57,10 +55,10 @@
       (expression
         (value
           (external_command
-            (command_body) @injection.content))))
+            (content) @injection.content))))
   ])
 
-(source_file
+(file
   (setting "shell" ":=" "[" (string) @injection.language
     (#not-match? @injection.language ".*(powershell|pwsh|cmd).*"))
   [
@@ -73,12 +71,12 @@
       (expression
         (value
           (external_command
-            (command_body) @injection.content))))
+            (content) @injection.content))))
   ])
 
 ; ================ Recipe language specified - Helix only ================
 
 ; Set highlighting for recipes that specify a language using builtin shebang matching
 (recipe_body
-  (shebang) @injection.shebang
+  (shebang_line) @injection.shebang
   (#set! injection.include-children)) @injection.content
