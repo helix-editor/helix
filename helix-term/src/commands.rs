@@ -4229,7 +4229,7 @@ fn yank_joined_impl(editor: &mut Editor, separator: &str, register: char) {
         });
 
     match editor.registers.write(register, vec![joined]) {
-        Ok(()) => editor.set_status(format!(
+        Ok(_) => editor.set_status(format!(
             "joined and yanked {selections} selection{} to register {register}",
             if selections == 1 { "" } else { "s" }
         )),
