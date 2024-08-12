@@ -272,11 +272,7 @@ impl<'a> Iterator for Args<'a> {
                     }
                 }
                 b' ' | b'\t' if !self.in_quotes => {
-                    if self.idx + 1 == self.bytes.len() {
-                        self.is_finished = true;
-                        // Preserves whitespace if very last char of input.
-                        return Some(&self.input[self.start..=self.idx]);
-                    } else if self.start < self.idx {
+                    if self.start < self.idx {
                         let arg = Some(&self.input[self.start..self.idx]);
                         self.idx += 1;
                         self.start = self.idx;
@@ -540,7 +536,7 @@ mod test {
         assert_eq!(Shellwords::from(":o a").args().collect::<Vec<_>>(), &["a"]);
         assert_eq!(
             Shellwords::from(":o a\\ ").args().collect::<Vec<_>>(),
-            &["a\\ "]
+            &["a\\"]
         );
     }
 
