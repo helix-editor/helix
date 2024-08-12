@@ -116,7 +116,6 @@ impl<'a> Shellwords<'a> {
 #[derive(Debug, Clone, Copy)]
 pub struct Args<'a> {
     input: &'a str,
-    bytes: &'a [u8],
     idx: usize,
     start: usize,
     in_quotes: bool,
@@ -129,7 +128,6 @@ impl<'a> Args<'a> {
     fn parse(input: &'a str) -> Self {
         Self {
             input,
-            bytes: input.as_bytes(),
             idx: 0,
             start: 0,
             in_quotes: false,
@@ -179,7 +177,6 @@ impl<'a> Args<'a> {
     pub const fn empty() -> Self {
         Self {
             input: "",
-            bytes: &[],
             idx: 0,
             start: 0,
             in_quotes: false,
@@ -221,13 +218,13 @@ impl<'a> Iterator for Args<'a> {
             return None;
         }
 
-        while self.idx < self.bytes.len() {
-            match self.bytes[self.idx] {
+        let bytes = self.input.as_bytes();
+
+        while self.idx < bytes.len() {
+            match bytes[self.idx] {
                 b'"' | b'\'' | b'`' => {
                     if self.in_quotes {
-                        if self.bytes[self.idx] == self.quote
-                            && !is_escaped(&self.bytes[..self.idx])
-                        {
+                        if bytes[self.idx] == self.quote && !is_escaped(&bytes[..self.idx]) {
                             let arg = Some(&self.input[self.start..self.idx]);
                             self.in_quotes = false;
                             self.quote = b'\0';
@@ -236,19 +233,19 @@ impl<'a> Iterator for Args<'a> {
                             return arg;
                         }
                         self.idx += 1;
-                    } else if self.idx == self.bytes.len() - 1 {
+                    } else if self.idx == bytes.len() - 1 {
                         // Special case for when a quote is the last input in args
                         // e.g: :yank-join , "
                         self.is_finished = true;
-                        return Some(&self.input[self.idx..self.bytes.len()]);
-                    } else if self.start < self.idx && !is_escaped(&self.bytes[..self.idx]) {
+                        return Some(&self.input[self.idx..bytes.len()]);
+                    } else if self.start < self.idx && !is_escaped(&bytes[..self.idx]) {
                         // When part of the input end in a quote, `one two" three` this returns the `two` properly.
                         let arg = Some(&self.input[self.start..self.idx]);
                         self.start = self.idx;
                         return arg;
-                    } else if self.idx == 0 || !is_escaped(&self.bytes[..self.idx]) {
+                    } else if self.idx == 0 || !is_escaped(&bytes[..self.idx]) {
                         self.in_quotes = true;
-                        self.quote = self.bytes[self.idx];
+                        self.quote = bytes[self.idx];
                         self.idx += 1;
                         // Exclude quote from arg output.
                         self.start = self.idx;
@@ -256,8 +253,7 @@ impl<'a> Iterator for Args<'a> {
                         // Check if quote is ever closed, and if not, then return the rest of the input as one arg.
                         let mut found = false;
                         for idx in self.start..self.input.len() {
-                            if self.bytes[idx] == self.quote && !is_escaped(&self.bytes[..self.idx])
-                            {
+                            if bytes[idx] == self.quote && !is_escaped(&bytes[..self.idx]) {
                                 found = true;
                                 break;
                             }
@@ -287,7 +283,7 @@ impl<'a> Iterator for Args<'a> {
             }
         }
 
-        if self.start < self.bytes.len() {
+        if self.start < bytes.len() {
             self.is_finished = true;
             return Some(&self.input[self.start..]);
         }
