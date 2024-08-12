@@ -11,7 +11,6 @@ use smartstring::{LazyCompact, SmartString};
 /// - Parses command and arguments from input strings.
 /// - Supports single, double, and backtick quoted arguments.
 /// - Respects backslash escaping in arguments.
-/// - Parses lists with `[]` syntax.
 ///
 /// # Examples
 ///
@@ -114,7 +113,6 @@ impl<'a> Shellwords<'a> {
 /// An iterator over an input string which yields arguments.
 ///
 /// Splits on whitespace, but respects quoted substrings (using double quotes, single quotes, or backticks).
-/// It also handles lists enclosed in square brackets, treating them as a single argument.
 #[derive(Debug, Clone, Copy)]
 pub struct Args<'a> {
     input: &'a str,
@@ -123,7 +121,6 @@ pub struct Args<'a> {
     start: usize,
     in_quotes: bool,
     quote: u8,
-    in_list: bool,
     is_finished: bool,
 }
 
@@ -137,7 +134,6 @@ impl<'a> Args<'a> {
             start: 0,
             in_quotes: false,
             quote: b'\0',
-            in_list: false,
             is_finished: false,
         }
     }
@@ -163,6 +159,22 @@ impl<'a> Args<'a> {
         self.input
     }
 
+    /// Returns the remainder of the args exactly as input.
+    ///
+    /// # Examples
+    /// ```
+    /// # use helix_core::shellwords::Args;
+    /// let mut args = Args::from(r#"sed -n "s/test t/not /p""#);
+    /// assert_eq!("sed", args.next().unwrap());
+    /// assert_eq!(r#"-n "s/test t/not /p""#, args.rest());
+    /// ```
+    ///
+    /// Never calling `next` and using `rest` is functionally equivalent to calling `raw`.
+    #[inline]
+    pub fn rest(&self) -> &str {
+        &self.input[self.idx..]
+    }
+
     #[inline(always)]
     pub const fn empty() -> Self {
         Self {
@@ -172,7 +184,6 @@ impl<'a> Args<'a> {
             start: 0,
             in_quotes: false,
             quote: b'\0',
-            in_list: false,
             is_finished: true,
         }
     }
@@ -212,7 +223,7 @@ impl<'a> Iterator for Args<'a> {
 
         while self.idx < self.bytes.len() {
             match self.bytes[self.idx] {
-                b'"' | b'\'' | b'`' if !self.in_list => {
+                b'"' | b'\'' | b'`' => {
                     if self.in_quotes {
                         if self.bytes[self.idx] == self.quote
                             && !is_escaped(&self.bytes[..self.idx])
@@ -260,7 +271,7 @@ impl<'a> Iterator for Args<'a> {
                         self.idx += 1;
                     }
                 }
-                b' ' | b'\t' if !self.in_quotes && !self.in_list => {
+                b' ' | b'\t' if !self.in_quotes => {
                     if self.idx + 1 == self.bytes.len() {
                         self.is_finished = true;
                         // Preserves whitespace if very last char of input.
@@ -273,20 +284,6 @@ impl<'a> Iterator for Args<'a> {
                     }
                     self.idx += 1;
                     self.start = self.idx;
-                }
-                b'[' if !self.in_quotes => {
-                    self.in_list = true;
-                    // Includes the `[` bracket
-                    self.start = self.idx;
-                    self.idx += 1;
-                }
-                b']' if self.in_list => {
-                    self.in_list = false;
-                    // Includes the `]` bracket
-                    let arg = Some(&self.input[self.start..=self.idx]);
-                    self.idx += 1;
-                    self.start = self.idx;
-                    return arg;
                 }
                 _ => {
                     self.idx += 1;
@@ -603,17 +600,13 @@ mod test {
     }
 
     #[test]
-    fn should_parse_lists() {
-        let input =
-            r#":set statusline.center ["file-type","file-encoding"] '["list", "in", "quotes"]'"#;
+    fn should_return_rest() {
+        let input = r#":set statusline.center ["file-type","file-encoding"]"#;
         let shellwords = Shellwords::from(input);
-        let args = vec![
-            "statusline.center",
-            r#"["file-type","file-encoding"]"#,
-            r#"["list", "in", "quotes"]"#,
-        ];
+        let mut args = shellwords.args();
         assert_eq!(":set", shellwords.command());
-        assert_eq!(args, shellwords.args().collect::<Vec<_>>());
+        assert_eq!(Some("statusline.center"), args.next());
+        assert_eq!(r#"["file-type","file-encoding"]"#, args.rest());
     }
 
     #[test]
@@ -644,15 +637,6 @@ mod test {
     fn should_leave_literal_unicode_alone() {
         let result = Args::parse(r"\u{C}").collect::<Vec<_>>();
         assert_eq!(r"\u{C}", result[0]);
-    }
-
-    #[test]
-    fn should_parse_list() {
-        let result = Args::parse(r#"["test", "list"]"#).collect::<Vec<_>>();
-        assert_eq!(r#"["test", "list"]"#, result[0]);
-
-        let result = Args::parse(r#"'["test", "list"]'"#).collect::<Vec<_>>();
-        assert_eq!(r#"["test", "list"]"#, result[0]);
     }
 
     #[test]
@@ -735,7 +719,7 @@ mod test {
     #[test]
     fn should_unescape_args() {
         // 1f929: 🤩
-        let args = Args::parse(r#"'hello\u{1f929} world' ["hello", "\u{1f929}", "world"]"#)
+        let args = Args::parse(r#"'hello\u{1f929} world' '["hello", "\u{1f929}", "world"]'"#)
             .collect::<Vec<_>>();
         assert_eq!("hello\u{1f929} world", unescape(args[0]));
         assert_eq!(r#"["hello", "🤩", "world"]"#, unescape(args[1]));
