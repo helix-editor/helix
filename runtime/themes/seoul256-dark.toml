@@ -4,7 +4,7 @@
 # Syntax highlighting configuration
 "attribute" = { fg = "yellow" }
 "comment" = { fg = "green1" }
-"constant" = { fg = "salmon1" }
+"constant" = { fg = "blue5" }
 "constant.numeric" = { fg = "yellow1" }
 "constant.builtin.boolean" = { fg = "purple" }
 "constant.character.escape" = { fg = "salmon" }
@@ -27,19 +27,19 @@
 "variable.parameter" = { fg = "white" }
 "variable.other.member" = { fg = "white" }
 
-"markup.heading" = { fg = "salmon", modifiers = ["bold"] }
+"markup.heading" = { fg = "salmon2", modifiers = ["bold"] }
 "markup.raw.inline" = { fg = "green" }
 "markup.bold" = { fg = "yellow1", modifiers = ["bold"] }
 "markup.italic" = { fg = "magenta1", modifiers = ["italic"] }
 "markup.strikethrough" = { modifiers = ["crossed_out"] }
-"markup.list" = { fg = "red" }
+"markup.list" = { fg = "salmon" }
 "markup.quote" = { fg = "yellow" }
 "markup.link.url" = { fg = "cyan", modifiers = ["underlined"] }
-"markup.link.text" = { fg = "mauve" }
+"markup.link.text" = { fg = "salmon2" }
 
-"diff.plus" = { fg = "green2" }
-"diff.delta" = { fg = "orange" }
-"diff.minus" = { fg = "red" }
+"diff.plus" = { fg = "green3" }
+"diff.delta" = { fg = "blue1" }
+"diff.minus" = { fg = "magenta3" }
 
 "diagnostic.info".underline = { color = "cyan", style = "curl" }
 "diagnostic.hint".underline = { color = "green1", style = "curl" }
@@ -102,6 +102,7 @@ red = '#d70000'      # Red
 green = '#afd75f'    # Greenish Yellow
 green1 = '#5f875f'   # Greenish Gray
 green2 = '#5f8700'   # Green
+green3 = '#87af87'
 yellow = '#d8af5f'   # Yellow
 yellow1 = '#ffd787'  # Bright Yellow
 yellow2 = '#d7d7af'  # Yellowish
@@ -112,9 +113,11 @@ blue1 = '#5f87d7'    # Bright Blue
 blue2 = '#5f5f87'    # Blue
 blue3 = '#a6dbff'    # Lightest Blue
 blue4 = '#005f5f'    # Blue Green
+blue5 = '#5fafaf'    # Dark Blue
 magenta = '#af5f5f'  # Magenta
 magenta1 = '#af5f87' # Soft Magenta
 magenta2 = '#875f5f' # Dark Magenta
+magenta3 = '#d7005f' # Darker Magenta
 cyan = '#87d7d7'     # Bright Cyan
 white = '#d0d0d0'    # White
 purple = '#8787af'   # Purple
@@ -122,6 +125,7 @@ brown = '#af875f'    # Brownish
 orange = '#ff5f00'   # Orange
 salmon = '#ffaf87'   # Salmon
 salmon1 = '#d78787'  # Salmon Bright
+salmon2 = '#d7afaf'  # Salmon Light
 mauve = '#d75f87'    # Mauve
 
 gray = '#121212'     # Very Dark Gray
