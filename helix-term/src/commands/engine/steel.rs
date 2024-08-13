@@ -8,7 +8,6 @@ use helix_core::{
     Range, Selection, Tendril,
 };
 use helix_event::register_hook;
-use helix_stdx::path::expand_tilde;
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
     document::Mode,
@@ -177,31 +176,59 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
     // Register everything in the static command list as well
     // These just accept the context, no arguments
     for command in MappableCommand::STATIC_COMMAND_LIST {
-        if let MappableCommand::Static { name, fun, .. } = command {
+        if let MappableCommand::Static { name, fun, doc } = command {
             module.register_fn(name, fun);
 
             if generate_sources {
+                let mut docstring = doc
+                    .lines()
+                    .map(|x| {
+                        let mut line = ";;".to_string();
+                        line.push_str(x);
+                        line.push_str("\n");
+                        line
+                    })
+                    .collect::<String>();
+
+                docstring.pop();
+
                 builtin_static_command_module.push_str(&format!(
                     r#"
 (provide {})
+;;@doc
+{}
 (define ({})
     (helix.static.{} *helix.cx*))
 "#,
-                    name, name, name
+                    name, docstring, name, name
                 ));
             }
         }
     }
 
-    let mut template_function_arity_1 = |name: &str| {
+    let mut template_function_arity_1 = |name: &str, doc: &str| {
         if generate_sources {
+            let mut docstring = doc
+                .lines()
+                .map(|x| {
+                    let mut line = ";;".to_string();
+                    line.push_str(x);
+                    line.push_str("\n");
+                    line
+                })
+                .collect::<String>();
+
+            docstring.pop();
+
             builtin_static_command_module.push_str(&format!(
                 r#"
 (provide {})
+;;@doc
+{}
 (define ({} arg)
     (helix.static.{} *helix.cx* arg))
 "#,
-                name, name, name
+                name, docstring, name, name
             ));
         }
     };
@@ -209,22 +236,40 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
     // Adhoc static commands that probably needs evaluating
     // Arity 1
     module.register_fn("insert_char", insert_char);
-    template_function_arity_1("insert_char");
+    template_function_arity_1(
+        "insert_char",
+        "Insert a given character at the cursor cursor position",
+    );
     module.register_fn("insert_string", insert_string);
-    template_function_arity_1("insert_string");
+    template_function_arity_1(
+        "insert_string",
+        "Insert a given string at the current cursor position",
+    );
     module.register_fn("set-current-selection-object!", set_selection);
-    template_function_arity_1("set-current-selection-object!");
+    template_function_arity_1(
+        "set-current-selection-object!",
+        "Update the selection object to the current selection within the editor",
+    );
 
-    // module.register_fn("search-in-directory", search_in_directory); // template_function_arity_1("search-in-directory");
     module.register_fn("regex-selection", regex_selection);
-    template_function_arity_1("regex-selection");
+    template_function_arity_1(
+        "regex-selection",
+        "Run the given regex within the existing buffer",
+    );
     module.register_fn("replace-selection-with", replace_selection);
-    template_function_arity_1("replace-selection-with");
+    template_function_arity_1(
+        "replace-selection-with",
+        "Replace the existing selection with the given string",
+    );
     module.register_fn("cx->current-file", current_path);
-    template_function_arity_1("cx->current-file");
+    template_function_arity_1("cx->current-file", "Get the currently focused file path");
 
     module.register_fn("enqueue-expression-in-engine", run_expression_in_engine);
-    template_function_arity_1("enqueue-expression-in-engine");
+    template_function_arity_1(
+        "enqueue-expression-in-engine",
+        "Enqueue an expression to run at the top level context, 
+        after the existing function context has exited.",
+    );
 
     let mut template_function_arity_0 = |name: &str| {
         if generate_sources {
@@ -998,6 +1043,13 @@ impl super::PluginSystem for SteelScriptingEngine {
         // Generate sources directly with a fresh engine
         let mut engine = Engine::new();
         configure_builtin_sources(&mut engine, true);
+        // Generate documentation as well
+        let target = helix_runtime_search_path();
+
+        let mut writer = std::io::BufWriter::new(std::fs::File::create("steel-docs.md").unwrap());
+
+        // Generate markdown docs
+        steel_doc::walk_dir(&mut writer, target, &mut engine).unwrap();
     }
 }
 
@@ -1912,7 +1964,7 @@ fn load_misc_api(engine: &mut Engine, generate_sources: bool) {
     engine.register_module(module);
 }
 
-fn helix_runtime_search_path() -> PathBuf {
+pub fn helix_runtime_search_path() -> PathBuf {
     helix_loader::config_dir().join("helix")
 }
 

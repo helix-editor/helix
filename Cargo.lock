@@ -1606,6 +1606,7 @@ dependencies = [
  "signal-hook-tokio",
  "smallvec",
  "steel-core",
+ "steel-doc",
  "tempfile",
  "termini",
  "thiserror",
@@ -2636,7 +2637,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 [[package]]
 name = "steel-core"
 version = "0.6.0"
-source = "git+https://github.com/mattwparas/steel.git#9e84aa69fd145fe91bc314319db41e41a8d379e8"
+source = "git+https://github.com/mattwparas/steel.git#d31238b17b28db5cca34d92d5c1217d51e91ab82"
 dependencies = [
  "abi_stable",
  "anyhow",
@@ -2676,7 +2677,7 @@ dependencies = [
 [[package]]
 name = "steel-derive"
 version = "0.5.0"
-source = "git+https://github.com/mattwparas/steel.git#9e84aa69fd145fe91bc314319db41e41a8d379e8"
+source = "git+https://github.com/mattwparas/steel.git#d31238b17b28db5cca34d92d5c1217d51e91ab82"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2684,9 +2685,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "steel-doc"
+version = "0.6.0"
+source = "git+https://github.com/mattwparas/steel.git#d31238b17b28db5cca34d92d5c1217d51e91ab82"
+dependencies = [
+ "steel-core",
+]
+
+[[package]]
 name = "steel-gen"
 version = "0.2.0"
-source = "git+https://github.com/mattwparas/steel.git#9e84aa69fd145fe91bc314319db41e41a8d379e8"
+source = "git+https://github.com/mattwparas/steel.git#d31238b17b28db5cca34d92d5c1217d51e91ab82"
 dependencies = [
  "codegen",
  "serde",
@@ -2696,7 +2705,7 @@ dependencies = [
 [[package]]
 name = "steel-parser"
 version = "0.6.0"
-source = "git+https://github.com/mattwparas/steel.git#9e84aa69fd145fe91bc314319db41e41a8d379e8"
+source = "git+https://github.com/mattwparas/steel.git#d31238b17b28db5cca34d92d5c1217d51e91ab82"
 dependencies = [
  "fxhash",
  "lasso",
