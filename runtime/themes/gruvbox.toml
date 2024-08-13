@@ -94,6 +94,8 @@
 "ui.menu" = { fg = "fg1", bg = "bg2" }
 "ui.menu.selected" = { fg = "bg2", bg = "blue1", modifiers = ["bold"] }
 "ui.popup" = { bg = "bg1" }
+"ui.picker.header.column" = { underline.style = "line" }
+"ui.picker.header.column.active" = { modifiers = ["bold"], underline.style = "line" }
 "ui.selection" = { bg = "bg2" }
 "ui.selection.primary" = { bg = "bg3" }
 
