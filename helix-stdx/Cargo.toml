@@ -26,4 +26,4 @@ windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Securit
 rustix = { version = "0.38", features = ["fs"] }
 
 [dev-dependencies]
-tempfile = "3.11"
+tempfile = "3.12"
