@@ -118,7 +118,6 @@ pub struct Args<'a> {
     input: &'a str,
     idx: usize,
     start: usize,
-    is_finished: bool,
 }
 
 impl<'a> Args<'a> {
@@ -128,7 +127,6 @@ impl<'a> Args<'a> {
             input,
             idx: 0,
             start: 0,
-            is_finished: false,
         }
     }
 
@@ -175,7 +173,6 @@ impl<'a> Args<'a> {
             input: "",
             idx: 0,
             start: 0,
-            is_finished: true,
         }
     }
 }
@@ -208,10 +205,6 @@ impl<'a> Iterator for Args<'a> {
             (backslashes % 2) != 0
         }
 
-        if self.is_finished {
-            return None;
-        }
-
         let bytes = self.input.as_bytes();
         let mut in_quotes = false;
         let mut quote = b'\0';
@@ -230,8 +223,10 @@ impl<'a> Iterator for Args<'a> {
                     } else if self.idx == bytes.len() - 1 {
                         // Special case for when a quote is the last input in args
                         // e.g: :yank-join , "
-                        self.is_finished = true;
-                        return Some(&self.input[self.idx..bytes.len()]);
+                        let arg = Some(&self.input[self.idx..bytes.len()]);
+                        self.idx = bytes.len();
+                        self.start = bytes.len();
+                        return arg;
                     } else if self.start < self.idx && !is_escaped(&bytes[..self.idx]) {
                         // When part of the input end in a quote, `one two" three` this returns the `two` properly.
                         let arg = Some(&self.input[self.start..self.idx]);
@@ -254,8 +249,10 @@ impl<'a> Iterator for Args<'a> {
                         }
 
                         if !found {
-                            self.is_finished = true;
-                            return Some(&self.input[self.idx..]);
+                            let arg = Some(&self.input[self.idx..]);
+                            self.idx = bytes.len();
+                            self.start = bytes.len();
+                            return arg;
                         }
                     } else {
                         self.idx += 1;
@@ -278,8 +275,9 @@ impl<'a> Iterator for Args<'a> {
         }
 
         if self.start < bytes.len() {
-            self.is_finished = true;
-            return Some(&self.input[self.start..]);
+            let arg = Some(&self.input[self.start..]);
+            self.start = bytes.len();
+            return arg;
         }
 
         None
