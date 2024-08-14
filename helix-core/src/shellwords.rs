@@ -118,7 +118,6 @@ pub struct Args<'a> {
     input: &'a str,
     idx: usize,
     start: usize,
-    quote: u8,
     is_finished: bool,
 }
 
@@ -129,7 +128,6 @@ impl<'a> Args<'a> {
             input,
             idx: 0,
             start: 0,
-            quote: b'\0',
             is_finished: false,
         }
     }
@@ -177,7 +175,6 @@ impl<'a> Args<'a> {
             input: "",
             idx: 0,
             start: 0,
-            quote: b'\0',
             is_finished: true,
         }
     }
@@ -217,13 +214,14 @@ impl<'a> Iterator for Args<'a> {
 
         let bytes = self.input.as_bytes();
         let mut in_quotes = false;
+        let mut quote = b'\0';
 
         while self.idx < bytes.len() {
             match bytes[self.idx] {
                 b'"' | b'\'' | b'`' => {
                     if in_quotes {
+                        if bytes[self.idx] == quote && !is_escaped(&bytes[..self.idx]) {
                             let arg = Some(&self.input[self.start..self.idx]);
-                            self.quote = b'\0';
                             self.idx += 1;
                             self.start = self.idx;
                             return arg;
@@ -240,8 +238,8 @@ impl<'a> Iterator for Args<'a> {
                         self.start = self.idx;
                         return arg;
                     } else if self.idx == 0 || !is_escaped(&bytes[..self.idx]) {
-                        self.quote = bytes[self.idx];
                         in_quotes = true;
+                        quote = bytes[self.idx];
                         self.idx += 1;
                         // Exclude quote from arg output.
                         self.start = self.idx;
@@ -249,7 +247,7 @@ impl<'a> Iterator for Args<'a> {
                         // Check if quote is ever closed, and if not, then return the rest of the input as one arg.
                         let mut found = false;
                         for idx in self.start..self.input.len() {
-                            if bytes[idx] == self.quote && !is_escaped(&bytes[..self.idx]) {
+                            if bytes[idx] == quote && !is_escaped(&bytes[..self.idx]) {
                                 found = true;
                                 break;
                             }
