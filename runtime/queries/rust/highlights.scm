@@ -53,7 +53,7 @@
 ; ---
 
 ((identifier) @type.enum.variant.builtin
- (#any-of? @constant.builtin "Some" "None" "Ok" "Err"))
+ (#any-of? @type.enum.variant.builtin "Some" "None" "Ok" "Err"))
 
 
 
