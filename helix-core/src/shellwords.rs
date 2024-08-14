@@ -118,7 +118,6 @@ pub struct Args<'a> {
     input: &'a str,
     idx: usize,
     start: usize,
-    in_quotes: bool,
     quote: u8,
     is_finished: bool,
 }
@@ -130,7 +129,6 @@ impl<'a> Args<'a> {
             input,
             idx: 0,
             start: 0,
-            in_quotes: false,
             quote: b'\0',
             is_finished: false,
         }
@@ -179,7 +177,6 @@ impl<'a> Args<'a> {
             input: "",
             idx: 0,
             start: 0,
-            in_quotes: false,
             quote: b'\0',
             is_finished: true,
         }
@@ -219,14 +216,13 @@ impl<'a> Iterator for Args<'a> {
         }
 
         let bytes = self.input.as_bytes();
+        let mut in_quotes = false;
 
         while self.idx < bytes.len() {
             match bytes[self.idx] {
                 b'"' | b'\'' | b'`' => {
-                    if self.in_quotes {
-                        if bytes[self.idx] == self.quote && !is_escaped(&bytes[..self.idx]) {
+                    if in_quotes {
                             let arg = Some(&self.input[self.start..self.idx]);
-                            self.in_quotes = false;
                             self.quote = b'\0';
                             self.idx += 1;
                             self.start = self.idx;
@@ -244,8 +240,8 @@ impl<'a> Iterator for Args<'a> {
                         self.start = self.idx;
                         return arg;
                     } else if self.idx == 0 || !is_escaped(&bytes[..self.idx]) {
-                        self.in_quotes = true;
                         self.quote = bytes[self.idx];
+                        in_quotes = true;
                         self.idx += 1;
                         // Exclude quote from arg output.
                         self.start = self.idx;
@@ -267,7 +263,7 @@ impl<'a> Iterator for Args<'a> {
                         self.idx += 1;
                     }
                 }
-                b' ' | b'\t' if !self.in_quotes => {
+                b' ' | b'\t' if !in_quotes => {
                     if self.start < self.idx {
                         let arg = Some(&self.input[self.start..self.idx]);
                         self.idx += 1;
