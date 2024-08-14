@@ -223,7 +223,7 @@ impl<'a> Iterator for Args<'a> {
                     } else if self.idx == bytes.len() - 1 {
                         // Special case for when a quote is the last input in args
                         // e.g: :read "file with space.txt""
-                        let arg = Some(&self.input[self.idx..bytes.len()]);
+                        let arg = Some(&self.input[self.idx..]);
                         self.idx = bytes.len();
                         self.start = bytes.len();
                         return arg;
