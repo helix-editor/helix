@@ -222,7 +222,7 @@ impl<'a> Iterator for Args<'a> {
                         self.idx += 1;
                     } else if self.idx == bytes.len() - 1 {
                         // Special case for when a quote is the last input in args
-                        // e.g: :yank-join , "
+                        // e.g: :read "file with space.txt""
                         let arg = Some(&self.input[self.idx..bytes.len()]);
                         self.idx = bytes.len();
                         self.start = bytes.len();
@@ -508,9 +508,11 @@ mod test {
     }
 
     #[test]
-    fn should_preserve_quote_if_only_argument() {
-        let sh = Shellwords::from(r#":yank-join ""#);
-        assert_eq!(r#"""#, sh.args().next().unwrap());
+    fn should_preserve_quote_if_last_argument() {
+        let sh = Shellwords::from(r#":read "file with space.txt"""#);
+        let mut args = sh.args();
+        assert_eq!("file with space.txt", args.next().unwrap());
+        assert_eq!(r#"""#, args.next().unwrap());
     }
 
     #[test]
