@@ -21,8 +21,8 @@
     "Option"
     "Memory"))
 
-((identifier) @constant.builtin
- (#any-of? @constant.builtin "Some" "None"))
+((identifier) @type.enum.variant.builtin
+ (#any-of? @type.enum.variant.builtin "Some" "None"))
 
 ((pipeline_stage_name) @label)
 
