@@ -1025,9 +1025,10 @@ impl Loader {
         match capture {
             InjectionLanguageMarker::Name(string) => self.language_config_for_name(string),
             InjectionLanguageMarker::Filename(file) => self.language_config_for_file_name(file),
-            InjectionLanguageMarker::Shebang(shebang) => {
-                self.language_config_for_language_id(shebang)
-            }
+            InjectionLanguageMarker::Shebang(shebang) => self
+                .language_config_ids_by_shebang
+                .get(shebang)
+                .and_then(|&id| self.language_configs.get(id).cloned()),
         }
     }
 
@@ -1430,8 +1431,11 @@ impl Syntax {
                 // The `captures` iterator borrows the `Tree` and the `QueryCursor`, which
                 // prevents them from being moved. But both of these values are really just
                 // pointers, so it's actually ok to move them.
-                let cursor_ref =
-                    unsafe { mem::transmute::<_, &'static mut QueryCursor>(&mut cursor) };
+                let cursor_ref = unsafe {
+                    mem::transmute::<&mut tree_sitter::QueryCursor, &mut tree_sitter::QueryCursor>(
+                        &mut cursor,
+                    )
+                };
 
                 // if reusing cursors & no range this resets to whole range
                 cursor_ref.set_byte_range(range.clone().unwrap_or(0..usize::MAX));
@@ -1736,7 +1740,7 @@ pub(crate) fn generate_edits(
 }
 
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::{iter, mem, ops, str, usize};
+use std::{iter, mem, ops, str};
 use tree_sitter::{
     Language as Grammar, Node, Parser, Point, Query, QueryCaptures, QueryCursor, QueryError,
     QueryMatch, Range, TextProvider, Tree,

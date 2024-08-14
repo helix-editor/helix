@@ -1587,7 +1587,7 @@ fn tree_sitter_highlight_name(
         // Query the same range as the one used in syntax highlighting.
         let range = {
             // Calculate viewport byte ranges:
-            let row = text.char_to_line(view.offset.anchor.min(text.len_chars()));
+            let row = text.char_to_line(doc.view_offset(view.id).anchor.min(text.len_chars()));
             // Saturating subs to make it inclusive zero indexing.
             let last_line = text.len_lines().saturating_sub(1);
             let height = view.inner_area(doc).height;
@@ -2300,7 +2300,7 @@ fn run_shell_command(
             move |editor: &mut Editor, compositor: &mut Compositor| {
                 if !output.is_empty() {
                     let contents = ui::Markdown::new(
-                        format!("```sh\n{}\n```", output),
+                        format!("```sh\n{}\n```", output.trim_end()),
                         editor.syn_loader.clone(),
                     );
                     let popup = Popup::new("shell", contents).position(Some(
@@ -2308,7 +2308,7 @@ fn run_shell_command(
                     ));
                     compositor.replace_or_push("shell", popup);
                 }
-                editor.set_status("Command succeeded");
+                editor.set_status("Command run");
             },
         ));
         Ok(call)
@@ -2498,7 +2498,7 @@ fn read(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     ensure!(!args.is_empty(), "file name is expected");
     ensure!(args.len() == 1, "only the file name is expected");
 
-    let filename = args.get(0).unwrap();
+    let filename = args.first().unwrap();
     let path = PathBuf::from(filename.to_string());
     ensure!(
         path.exists() && path.is_file(),

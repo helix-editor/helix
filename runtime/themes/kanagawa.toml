@@ -64,12 +64,9 @@ info = "dragonBlue"
 hint = "waveAqua1"
 
 ## Diff
-"diff.plus" = "winterGreen"
-"diff.plus.gutter" = "autumnGreen"
-"diff.minus" = "winterRed"
-"diff.minus.gutter" = "autumnRed"
-"diff.delta" = "winterBlue"
-"diff.delta.gutter" = "autumnYellow"
+"diff.plus" = "autumnGreen"
+"diff.minus" = "autumnRed"
+"diff.delta" = "autumnYellow"
 
 ## Syntax highlighting
 "attribute" = "waveRed"

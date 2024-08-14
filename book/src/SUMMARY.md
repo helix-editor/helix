@@ -10,6 +10,7 @@
   - [Surround](./surround.md)
   - [Textobjects](./textobjects.md)
   - [Syntax aware motions](./syntax-aware-motions.md)
+  - [Pickers](./pickers.md)
   - [Keymap](./keymap.md)
   - [Commands](./commands.md)
   - [Language support](./lang-support.md)

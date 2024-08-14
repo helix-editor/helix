@@ -34,7 +34,7 @@ use crate::{
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, HashSet},
-    fmt::Write,
+    fmt::{Display, Write},
     future::Future,
     path::Path,
 };
@@ -832,13 +832,13 @@ pub enum ApplyEditErrorKind {
     // InvalidEdit,
 }
 
-impl ToString for ApplyEditErrorKind {
-    fn to_string(&self) -> String {
+impl Display for ApplyEditErrorKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ApplyEditErrorKind::DocumentChanged => "document has changed".to_string(),
-            ApplyEditErrorKind::FileNotFound => "file not found".to_string(),
-            ApplyEditErrorKind::UnknownURISchema => "URI schema not supported".to_string(),
-            ApplyEditErrorKind::IoError(err) => err.to_string(),
+            ApplyEditErrorKind::DocumentChanged => f.write_str("document has changed"),
+            ApplyEditErrorKind::FileNotFound => f.write_str("file not found"),
+            ApplyEditErrorKind::UnknownURISchema => f.write_str("URI schema not supported"),
+            ApplyEditErrorKind::IoError(err) => f.write_str(&format!("{err}")),
         }
     }
 }
@@ -1299,7 +1299,8 @@ fn compute_inlay_hints_for_view(
     // than computing all the hints for the full file (which could be dozens of time
     // longer than the view is).
     let view_height = view.inner_height();
-    let first_visible_line = doc_text.char_to_line(view.offset.anchor.min(doc_text.len_chars()));
+    let first_visible_line =
+        doc_text.char_to_line(doc.view_offset(view_id).anchor.min(doc_text.len_chars()));
     let first_line = first_visible_line.saturating_sub(view_height);
     let last_line = first_visible_line
         .saturating_add(view_height.saturating_mul(2))
@@ -1359,7 +1360,7 @@ fn compute_inlay_hints_for_view(
 
             // Most language servers will already send them sorted but ensure this is the case to
             // avoid errors on our end.
-            hints.sort_unstable_by_key(|inlay_hint| inlay_hint.position);
+            hints.sort_by_key(|inlay_hint| inlay_hint.position);
 
             let mut padding_before_inlay_hints = Vec::new();
             let mut type_inlay_hints = Vec::new();
