@@ -368,6 +368,14 @@ impl Editor {
                     };
                     let mut process = std::process::Command::new(config.command);
 
+                    process
+                        .args(
+                            config
+                                .args
+                                .into_iter()
+                                .map(|s| s.replace("%{cwd}", &arguments.cwd)), // temporary until #11164 is merged
+                        )
+                        .current_dir(arguments.cwd);
 
                     if config.join_args {
                         process.arg(arguments.args.join(" "));
