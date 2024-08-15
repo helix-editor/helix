@@ -1,4 +1,4 @@
-# Adding indent queries
+## Adding indent queries
 
 Helix uses tree-sitter to correctly indent new lines. This requires a tree-
 sitter grammar and an `indent.scm` query file placed in `runtime/queries/

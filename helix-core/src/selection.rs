@@ -175,7 +175,7 @@ impl Range {
     /// function runs in O(N) (N is number of changes) and can therefore
     /// cause performance problems if run for a large number of ranges as the
     /// complexity is then O(MN) (for multicuror M=N usually). Instead use
-    /// [Selection::map] or [ChangeSet::update_positions] instead
+    /// [Selection::map] or [ChangeSet::update_positions].
     pub fn map(mut self, changes: &ChangeSet) -> Self {
         use std::cmp::Ordering;
         if changes.is_empty() {
@@ -184,16 +184,16 @@ impl Range {
 
         let positions_to_map = match self.anchor.cmp(&self.head) {
             Ordering::Equal => [
-                (&mut self.anchor, Assoc::After),
-                (&mut self.head, Assoc::After),
+                (&mut self.anchor, Assoc::AfterSticky),
+                (&mut self.head, Assoc::AfterSticky),
             ],
             Ordering::Less => [
-                (&mut self.anchor, Assoc::After),
-                (&mut self.head, Assoc::Before),
+                (&mut self.anchor, Assoc::AfterSticky),
+                (&mut self.head, Assoc::BeforeSticky),
             ],
             Ordering::Greater => [
-                (&mut self.head, Assoc::After),
-                (&mut self.anchor, Assoc::Before),
+                (&mut self.head, Assoc::AfterSticky),
+                (&mut self.anchor, Assoc::BeforeSticky),
             ],
         };
         changes.update_positions(positions_to_map.into_iter());
@@ -482,16 +482,16 @@ impl Selection {
             range.old_visual_position = None;
             match range.anchor.cmp(&range.head) {
                 Ordering::Equal => [
-                    (&mut range.anchor, Assoc::After),
-                    (&mut range.head, Assoc::After),
+                    (&mut range.anchor, Assoc::AfterSticky),
+                    (&mut range.head, Assoc::AfterSticky),
                 ],
                 Ordering::Less => [
-                    (&mut range.anchor, Assoc::After),
-                    (&mut range.head, Assoc::Before),
+                    (&mut range.anchor, Assoc::AfterSticky),
+                    (&mut range.head, Assoc::BeforeSticky),
                 ],
                 Ordering::Greater => [
-                    (&mut range.head, Assoc::After),
-                    (&mut range.anchor, Assoc::Before),
+                    (&mut range.head, Assoc::AfterSticky),
+                    (&mut range.anchor, Assoc::BeforeSticky),
                 ],
             }
         });
@@ -541,6 +541,8 @@ impl Selection {
     }
 
     /// Normalizes a `Selection`.
+    ///
+    /// Ranges are sorted by [Range::from], with overlapping ranges merged.
     fn normalize(mut self) -> Self {
         if self.len() < 2 {
             return self;
