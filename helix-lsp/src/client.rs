@@ -32,14 +32,17 @@ use tokio::{
     },
 };
 
-fn workspace_for_uri(uri: lsp::Url) -> WorkspaceFolder {
+fn workspace_for_path(path: &Path) -> WorkspaceFolder {
+    let name = path
+        .iter()
+        .last()
+        .expect("workspace paths should be non-empty")
+        .to_string_lossy()
+        .to_string();
+
     lsp::WorkspaceFolder {
-        name: uri
-            .path_segments()
-            .and_then(|segments| segments.last())
-            .map(|basename| basename.to_string())
-            .unwrap_or_default(),
-        uri,
+        name,
+        uri: lsp::Url::from_file_path(path).expect("absolute paths can be converted to `Url`s"),
     }
 }
 
@@ -55,7 +58,7 @@ pub struct Client {
     config: Option<Value>,
     root_path: std::path::PathBuf,
     root_uri: Option<lsp::Url>,
-    workspace_folders: Mutex<Vec<lsp::WorkspaceFolder>>,
+    workspace_folders: Mutex<Vec<PathBuf>>,
     initialize_notify: Arc<Notify>,
     /// workspace folders added while the server is still initializing
     req_timeout: u64,
@@ -80,16 +83,13 @@ impl Client {
             &workspace,
             workspace_is_cwd,
         );
-        let root_uri = root
-            .as_ref()
-            .and_then(|root| lsp::Url::from_file_path(root).ok());
 
-        if self.root_path == root.unwrap_or(workspace)
-            || root_uri.as_ref().map_or(false, |root_uri| {
+        if &self.root_path == root.as_ref().unwrap_or(&workspace)
+            || root.as_ref().is_some_and(|root| {
                 self.workspace_folders
                     .lock()
                     .iter()
-                    .any(|workspace| &workspace.uri == root_uri)
+                    .any(|workspace| workspace == root)
             })
         {
             // workspace URI is already registered so we can use this client
@@ -113,15 +113,16 @@ impl Client {
             // wait and see if anyone ever runs into it.
             tokio::spawn(async move {
                 client.initialize_notify.notified().await;
-                if let Some(workspace_folders_caps) = client
+                if let Some((workspace_folders_caps, root)) = client
                     .capabilities()
                     .workspace
                     .as_ref()
                     .and_then(|cap| cap.workspace_folders.as_ref())
                     .filter(|cap| cap.supported.unwrap_or(false))
+                    .zip(root)
                 {
                     client.add_workspace_folder(
-                        root_uri,
+                        root,
                         workspace_folders_caps.change_notifications.as_ref(),
                     );
                 }
@@ -129,16 +130,14 @@ impl Client {
             return true;
         };
 
-        if let Some(workspace_folders_caps) = capabilities
+        if let Some((workspace_folders_caps, root)) = capabilities
             .workspace
             .as_ref()
             .and_then(|cap| cap.workspace_folders.as_ref())
             .filter(|cap| cap.supported.unwrap_or(false))
+            .zip(root)
         {
-            self.add_workspace_folder(
-                root_uri,
-                workspace_folders_caps.change_notifications.as_ref(),
-            );
+            self.add_workspace_folder(root, workspace_folders_caps.change_notifications.as_ref());
             true
         } else {
             // the server doesn't support multi workspaces, we need a new client
@@ -148,29 +147,19 @@ impl Client {
 
     fn add_workspace_folder(
         &self,
-        root_uri: Option<lsp::Url>,
+        root: PathBuf,
         change_notifications: Option<&OneOf<bool, String>>,
     ) {
-        // root_uri is None just means that there isn't really any LSP workspace
-        // associated with this file. For servers that support multiple workspaces
-        // there is just one server so we can always just use that shared instance.
-        // No need to add a new workspace root here as there is no logical root for this file
-        // let the server deal with this
-        let Some(root_uri) = root_uri else {
-            return;
-        };
-
+        let workspace = workspace_for_path(&root);
         // server supports workspace folders, let's add the new root to the list
-        self.workspace_folders
-            .lock()
-            .push(workspace_for_uri(root_uri.clone()));
+        self.workspace_folders.lock().push(root);
         if Some(&OneOf::Left(false)) == change_notifications {
             // server specifically opted out of DidWorkspaceChange notifications
             // let's assume the server will request the workspace folders itself
             // and that we can therefore reuse the client (but are done now)
             return;
         }
-        tokio::spawn(self.did_change_workspace(vec![workspace_for_uri(root_uri)], Vec::new()));
+        tokio::spawn(self.did_change_workspace(vec![workspace], Vec::new()));
     }
 
     #[allow(clippy::type_complexity, clippy::too_many_arguments)]
@@ -179,8 +168,8 @@ impl Client {
         args: &[String],
         config: Option<Value>,
         server_environment: HashMap<String, String>,
-        root_path: PathBuf,
-        root_uri: Option<lsp::Url>,
+        root: Option<PathBuf>,
+        workspace: PathBuf,
         id: LanguageServerId,
         name: String,
         req_timeout: u64,
@@ -212,10 +201,13 @@ impl Client {
         let (server_rx, server_tx, initialize_notify) =
             Transport::start(reader, writer, stderr, id, name.clone());
 
-        let workspace_folders = root_uri
-            .clone()
-            .map(|root| vec![workspace_for_uri(root)])
-            .unwrap_or_default();
+        let workspace_folders = root.clone().into_iter().collect();
+        let root_uri = root.clone().map(|root| {
+            lsp::Url::from_file_path(root).expect("absolute paths can be converted to `Url`s")
+        });
+        // `root_uri` and `workspace_folder` can be empty in case there is no workspace
+        // `root_url` can not, use `workspace` as a fallback
+        let root_path = root.unwrap_or(workspace);
 
         let client = Self {
             id,
@@ -376,10 +368,12 @@ impl Client {
         self.config.as_ref()
     }
 
-    pub async fn workspace_folders(
-        &self,
-    ) -> parking_lot::MutexGuard<'_, Vec<lsp::WorkspaceFolder>> {
-        self.workspace_folders.lock()
+    pub async fn workspace_folders(&self) -> Vec<lsp::WorkspaceFolder> {
+        self.workspace_folders
+            .lock()
+            .iter()
+            .map(|path| workspace_for_path(path))
+            .collect()
     }
 
     /// Execute a RPC request on the language server.
@@ -526,7 +520,7 @@ impl Client {
         #[allow(deprecated)]
         let params = lsp::InitializeParams {
             process_id: Some(std::process::id()),
-            workspace_folders: Some(self.workspace_folders.lock().clone()),
+            workspace_folders: Some(self.workspace_folders().await),
             // root_path is obsolete, but some clients like pyright still use it so we specify both.
             // clients will prefer _uri if possible
             root_path: self.root_path.to_str().map(|path| path.to_owned()),

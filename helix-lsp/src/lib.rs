@@ -853,12 +853,8 @@ fn start_client(
         workspace_is_cwd,
     );
 
-    // `root_uri` and `workspace_folder` can be empty in case there is no workspace
-    // `root_url` can not, use `workspace` as a fallback
-    let root_path = root.clone().unwrap_or_else(|| workspace.clone());
-    let root_uri = root.and_then(|root| lsp::Url::from_file_path(root).ok());
-
     if let Some(globset) = &ls_config.required_root_patterns {
+        let root_path = root.as_ref().unwrap_or(&workspace);
         if !root_path
             .read_dir()?
             .flatten()
@@ -874,8 +870,8 @@ fn start_client(
         &ls_config.args,
         ls_config.config.clone(),
         ls_config.environment.clone(),
-        root_path,
-        root_uri,
+        root,
+        workspace,
         id,
         name,
         ls_config.timeout,
