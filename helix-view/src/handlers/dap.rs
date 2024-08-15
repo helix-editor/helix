@@ -375,6 +375,15 @@ impl Editor {
                         process.args(arguments.args);
                     }
 
+                    if let Some(env) = arguments.env {
+                        for (k, v) in env {
+                            match v {
+                                Some(v) => process.env(k, v),
+                                None => process.env_remove(k),
+                            };
+                        }
+                    }
+
                     let process = match process.spawn() {
                         Ok(process) => process,
                         Err(err) => {
