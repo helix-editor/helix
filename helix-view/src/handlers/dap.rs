@@ -366,12 +366,16 @@ impl Editor {
                         Some(debugger) => debugger,
                         None => return false,
                     };
+                    let mut process = std::process::Command::new(config.command);
 
-                    let process = match std::process::Command::new(config.command)
-                        .args(config.args)
-                        .arg(arguments.args.join(" "))
-                        .spawn()
-                    {
+
+                    if config.join_args {
+                        process.arg(arguments.args.join(" "));
+                    } else {
+                        process.args(arguments.args);
+                    }
+
+                    let process = match process.spawn() {
                         Ok(process) => process,
                         Err(err) => {
                             self.set_error(format!("Error starting external terminal: {}", err));

@@ -370,6 +370,8 @@ pub struct TerminalConfig {
     #[serde(default)]
     #[serde(skip_serializing_if = "Vec::is_empty")]
     pub args: Vec<String>,
+    #[serde(default)]
+    pub join_args: bool,
 }
 
 #[cfg(windows)]
@@ -403,6 +405,7 @@ pub fn get_terminal_provider() -> Option<TerminalConfig> {
         return Some(TerminalConfig {
             command: "tmux".to_string(),
             args: vec!["split-window".to_string()],
+            join_args: false,
         });
     }
 
@@ -410,6 +413,7 @@ pub fn get_terminal_provider() -> Option<TerminalConfig> {
         return Some(TerminalConfig {
             command: "wezterm".to_string(),
             args: vec!["cli".to_string(), "split-pane".to_string()],
+            join_args: false,
         });
     }
 
