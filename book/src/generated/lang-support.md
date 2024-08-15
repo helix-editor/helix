@@ -48,7 +48,7 @@
 | elvish | ✓ |  |  | `elvish` |
 | env | ✓ |  |  |  |
 | erb | ✓ |  |  |  |
-| erlang | ✓ | ✓ |  | `erlang_ls` |
+| erlang | ✓ | ✓ |  | `erlang_ls`, `elp` |
 | esdl | ✓ |  |  |  |
 | fidl | ✓ |  |  |  |
 | fish | ✓ | ✓ | ✓ |  |
