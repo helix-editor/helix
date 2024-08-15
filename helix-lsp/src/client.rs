@@ -42,7 +42,8 @@ fn workspace_for_path(path: &Path) -> WorkspaceFolder {
 
     lsp::WorkspaceFolder {
         name,
-        uri: lsp::Url::from_file_path(path).expect("absolute paths can be converted to `Url`s"),
+        uri: lsp::Url::from_directory_path(path)
+            .expect("absolute paths can be converted to `Url`s"),
     }
 }
 
@@ -742,7 +743,7 @@ impl Client {
             } else {
                 Url::from_file_path(path)
             };
-            Some(url.ok()?.to_string())
+            Some(url.ok()?.into_string())
         };
         let files = vec![lsp::FileRename {
             old_uri: url_from_path(old_path)?,
@@ -776,7 +777,7 @@ impl Client {
             } else {
                 Url::from_file_path(path)
             };
-            Some(url.ok()?.to_string())
+            Some(url.ok()?.into_string())
         };
 
         let files = vec![lsp::FileRename {

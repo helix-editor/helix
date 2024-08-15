@@ -1237,6 +1237,7 @@ dependencies = [
  "nucleo",
  "once_cell",
  "parking_lot",
+ "percent-encoding",
  "quickcheck",
  "regex",
  "regex-cursor",
@@ -1252,7 +1253,6 @@ dependencies = [
  "unicode-general-category",
  "unicode-segmentation",
  "unicode-width",
- "url",
 ]
 
 [[package]]
@@ -1332,10 +1332,10 @@ name = "helix-lsp-types"
 version = "0.95.1"
 dependencies = [
  "bitflags",
+ "percent-encoding",
  "serde",
  "serde_json",
  "serde_repr",
- "url",
 ]
 
 [[package]]
@@ -1468,7 +1468,6 @@ dependencies = [
  "tokio",
  "tokio-stream",
  "toml",
- "url",
 ]
 
 [[package]]
@@ -2622,7 +2621,6 @@ dependencies = [
  "form_urlencoded",
  "idna",
  "percent-encoding",
- "serde",
 ]
 
 [[package]]

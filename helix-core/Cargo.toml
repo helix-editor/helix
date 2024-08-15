@@ -40,7 +40,7 @@ bitflags = "2.6"
 ahash = "0.8.11"
 hashbrown = { version = "0.14.5", features = ["raw"] }
 dunce = "1.0"
-url = "2.5.4"
+percent-encoding.workspace = true
 
 log = "0.4"
 anyhow = "1.0"

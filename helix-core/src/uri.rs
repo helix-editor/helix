@@ -1,6 +1,7 @@
 use std::{
     fmt,
     path::{Path, PathBuf},
+    str::FromStr,
     sync::Arc,
 };
 
@@ -16,14 +17,6 @@ pub enum Uri {
 }
 
 impl Uri {
-    // This clippy allow mirrors url::Url::from_file_path
-    #[allow(clippy::result_unit_err)]
-    pub fn to_url(&self) -> Result<url::Url, ()> {
-        match self {
-            Uri::File(path) => url::Url::from_file_path(path),
-        }
-    }
-
     pub fn as_path(&self) -> Option<&Path> {
         match self {
             Self::File(path) => Some(path),
@@ -45,81 +38,96 @@ impl fmt::Display for Uri {
     }
 }
 
-#[derive(Debug)]
-pub struct UrlConversionError {
-    source: url::Url,
-    kind: UrlConversionErrorKind,
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct UriParseError {
+    source: String,
+    kind: UriParseErrorKind,
 }
 
-#[derive(Debug)]
-pub enum UrlConversionErrorKind {
-    UnsupportedScheme,
-    UnableToConvert,
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum UriParseErrorKind {
+    UnsupportedScheme(String),
+    MalformedUri,
 }
 
-impl fmt::Display for UrlConversionError {
+impl fmt::Display for UriParseError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        match self.kind {
-            UrlConversionErrorKind::UnsupportedScheme => {
+        match &self.kind {
+            UriParseErrorKind::UnsupportedScheme(scheme) => {
+                write!(f, "unsupported scheme '{scheme}' in URI {}", self.source)
+            }
+            UriParseErrorKind::MalformedUri => {
                 write!(
                     f,
-                    "unsupported scheme '{}' in URL {}",
-                    self.source.scheme(),
+                    "unable to convert malformed URI to file path: {}",
                     self.source
                 )
-            }
-            UrlConversionErrorKind::UnableToConvert => {
-                write!(f, "unable to convert URL to file path: {}", self.source)
             }
         }
     }
 }
 
-impl std::error::Error for UrlConversionError {}
+impl std::error::Error for UriParseError {}
 
-fn convert_url_to_uri(url: &url::Url) -> Result<Uri, UrlConversionErrorKind> {
-    if url.scheme() == "file" {
-        url.to_file_path()
-            .map(|path| Uri::File(helix_stdx::path::normalize(path).into()))
-            .map_err(|_| UrlConversionErrorKind::UnableToConvert)
-    } else {
-        Err(UrlConversionErrorKind::UnsupportedScheme)
+impl FromStr for Uri {
+    type Err = UriParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        use std::ffi::OsStr;
+        #[cfg(any(unix, target_os = "redox"))]
+        use std::os::unix::prelude::OsStrExt;
+        #[cfg(target_os = "wasi")]
+        use std::os::wasi::prelude::OsStrExt;
+
+        let Some((scheme, rest)) = s.split_once("://") else {
+            return Err(Self::Err {
+                source: s.to_string(),
+                kind: UriParseErrorKind::MalformedUri,
+            });
+        };
+
+        if scheme != "file" {
+            return Err(Self::Err {
+                source: s.to_string(),
+                kind: UriParseErrorKind::UnsupportedScheme(scheme.to_string()),
+            });
+        }
+
+        // Assert there is no query or fragment in the URI.
+        if s.find(['?', '#']).is_some() {
+            return Err(Self::Err {
+                source: s.to_string(),
+                kind: UriParseErrorKind::MalformedUri,
+            });
+        }
+
+        let mut bytes = Vec::new();
+        bytes.extend(percent_encoding::percent_decode(rest.as_bytes()));
+        Ok(PathBuf::from(OsStr::from_bytes(&bytes)).into())
     }
 }
 
-impl TryFrom<url::Url> for Uri {
-    type Error = UrlConversionError;
+impl TryFrom<&str> for Uri {
+    type Error = UriParseError;
 
-    fn try_from(url: url::Url) -> Result<Self, Self::Error> {
-        convert_url_to_uri(&url).map_err(|kind| Self::Error { source: url, kind })
-    }
-}
-
-impl TryFrom<&url::Url> for Uri {
-    type Error = UrlConversionError;
-
-    fn try_from(url: &url::Url) -> Result<Self, Self::Error> {
-        convert_url_to_uri(url).map_err(|kind| Self::Error {
-            source: url.clone(),
-            kind,
-        })
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        s.parse()
     }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
-    use url::Url;
 
     #[test]
     fn unknown_scheme() {
-        let url = Url::parse("csharp:/metadata/foo/bar/Baz.cs").unwrap();
-        assert!(matches!(
-            Uri::try_from(url),
-            Err(UrlConversionError {
-                kind: UrlConversionErrorKind::UnsupportedScheme,
-                ..
+        let uri = "csharp://metadata/foo/barBaz.cs";
+        assert_eq!(
+            uri.parse::<Uri>(),
+            Err(UriParseError {
+                source: uri.to_string(),
+                kind: UriParseErrorKind::UnsupportedScheme("csharp".to_string()),
             })
-        ));
+        );
     }
 }
