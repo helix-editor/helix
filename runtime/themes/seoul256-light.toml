@@ -1,0 +1,7 @@
+# Seoul256 Light
+# Author : EricHenry
+# Original Creator: https://github.com/junegunn/seoul256.vim
+
+inherits = "seoul256-dark"
+
+[palette]
