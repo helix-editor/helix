@@ -1,4 +1,4 @@
-# Seoul256 Dark Hard
+# Seoul256 Dark
 # Author : EricHenry
 
 # Syntax highlighting configuration
@@ -52,32 +52,32 @@
 "warning" = { fg = "yellow", modifiers = ["bold"] }
 "error" = { fg = "red", modifiers = ["bold"] }
 
-"ui.background" = { bg = "gray1" }
-"ui.gutter" = { bg = "gray2" }
-"ui.gutter.selected" = { bg = "gray" }
+"ui.background" = { bg = "gray4" }
+"ui.gutter" = { bg = "gray5" }
+"ui.gutter.selected" = { bg = "gray3" }
 "ui.virtual" = { fg = "gray6" }
 "ui.virtual.indent-guide" = { fg = "gray6" }
 "ui.virtual.whitespace" = { fg = "gray6" }
-"ui.virtual.ruler" = { bg = "gray4" }
-"ui.virtual.inlay-hint" = { fg = "gray3", modifiers = ["bold"] }
+"ui.virtual.ruler" = { bg = "gray5" }
+"ui.virtual.inlay-hint" = { fg = "gray4", modifiers = ["bold"] }
 "ui.virtual.jump-label" = { fg = "red", modifiers = ["bold"] }
 
 "ui.cursor" = { fg = "white", modifiers = ["reversed"] }
 "ui.cursor.primary" = { fg = "white", modifiers = ["reversed"] }
-"ui.cursor.match" = { bg = "gray3", modifiers = ["underlined"] }
+"ui.cursor.match" = { bg = "gray4", modifiers = ["underlined"] }
 "ui.cursor.insert" = { fg = "blue1" }
 
 "ui.selection" = { bg = "magenta2" }
 "ui.selection.primary" = { bg = "blue4" }
-"ui.cursorline.primary" = { bg = "gray" }
+"ui.cursorline.primary" = { bg = "gray3" }
 
-"ui.highlight" = { bg = "gray4" }
+"ui.highlight" = { bg = "gray5" }
 "ui.highlight.frameline" = { bg = "red" }
 
 "ui.linenr" = { fg = "yellow4" }
-"ui.linenr.selected" = { bg = "gray", fg = "magenta", modifiers = ["bold"] }
+"ui.linenr.selected" = { bg = "gray3", fg = "magenta", modifiers = ["bold"] }
 
-"ui.statusline" = { fg = "white", bg = "gray4" }
+"ui.statusline" = { fg = "white", bg = "gray5" }
 "ui.statusline.inactive" = { fg = "gray6", bg = "black" }
 "ui.statusline.normal" = { fg = "black", bg = "blue2" }
 "ui.statusline.insert" = { fg = "black", bg = "green2" }
@@ -131,7 +131,17 @@ mauve = '#d75f87'    # Mauve
 gray = '#121212'     # Very Dark Gray
 gray1 = '#1c1c1c'    # Darker Gray
 gray2 = '#262626'    # Dark Gray
-gray3 = '#3a3a3a'    # Medium Gray
-gray4 = '#444444'    # Lighter Medium Gray
+gray3 = '#303030'    # Dark Medium Gray
+gray4 = '#3a3a3a'    # Medium Gray
+gray5 = '#444444'    # Lighter Medium Gray
 gray6 = '#585858'    # Light Gray
 gray7 = '#626262'    # Lighter Gray
+gray8 = '#4e4e4e'    # Even Lighter Gray
+
+# 233 = '#121212' 
+# 234 = '#1c1c1c'
+# 235 = '#262626'
+# 236 = '#303030'
+# 237 = '#3a3a3a' # Default
+# 238 = '#444444'
+# 239 = '#4e4e4e'
