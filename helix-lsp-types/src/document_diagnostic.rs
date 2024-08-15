@@ -1,11 +1,10 @@
 use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
-use url::Url;
 
 use crate::{
     Diagnostic, PartialResultParams, StaticRegistrationOptions, TextDocumentIdentifier,
-    TextDocumentRegistrationOptions, WorkDoneProgressOptions, WorkDoneProgressParams,
+    TextDocumentRegistrationOptions, Url, WorkDoneProgressOptions, WorkDoneProgressParams,
 };
 
 /// Client capabilities specific to diagnostic pull requests.
