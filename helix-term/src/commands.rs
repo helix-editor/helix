@@ -2657,7 +2657,7 @@ fn delete_selection_impl(cx: &mut Context, op: Operation, yank: YankAction) {
         let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
         let reg_name = cx
             .register
-            .unwrap_or(cx.editor.config().default_yank_register);
+            .unwrap_or_else(|| cx.editor.config.load().default_yank_register);
         if let Err(err) = cx.editor.registers.write(reg_name, values) {
             cx.editor.set_error(err.to_string());
             return;
