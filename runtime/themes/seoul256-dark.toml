@@ -60,7 +60,7 @@
 "ui.virtual.indent-guide" = { fg = "gray6" }
 "ui.virtual.whitespace" = { fg = "gray6" }
 "ui.virtual.ruler" = { bg = "gray5" }
-"ui.virtual.inlay-hint" = { fg = "gray4", modifiers = ["bold"] }
+"ui.virtual.inlay-hint" = { fg = "gray9", modifiers = ["bold"] }
 "ui.virtual.jump-label" = { fg = "red", modifiers = ["bold"] }
 
 "ui.cursor" = { fg = "white", modifiers = ["reversed"] }
@@ -87,10 +87,10 @@
 "ui.text" = { fg = "white" }
 "ui.text.focus" = { fg = "white", bg = "magenta2", modifiers = ["bold"] }
 
-"ui.help" = { fg = "white", bg = "gray2" }
-"ui.popup" = { fg = "white", bg = "gray2" }
+"ui.help" = { fg = "white", bg = "gray3" }
+"ui.popup" = { fg = "white", bg = "gray3" }
 "ui.window" = { fg = "white" }
-"ui.menu" = { fg = "white", bg = "gray2" }
+"ui.menu" = { fg = "white", bg = "gray3" }
 "ui.menu.selected" = { fg = "white", bg = "magenta2" }
 "ui.menu.scroll" = { fg = "gray7", bg = "gray6" }
 
@@ -138,6 +138,7 @@ gray5 = '#444444'    # Lighter Medium Gray
 gray6 = '#585858'    # Light Gray
 gray7 = '#626262'    # Lighter Gray
 gray8 = '#4e4e4e'    # Even Lighter Gray
+gray9 = '#5f5f5f'
 
 # 233 = '#121212' 
 # 234 = '#1c1c1c'
