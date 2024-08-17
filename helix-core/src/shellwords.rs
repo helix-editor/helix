@@ -1,6 +1,5 @@
-use std::borrow::Cow;
-
 use smartstring::{LazyCompact, SmartString};
+use std::borrow::Cow;
 
 /// A utility for parsing shell-like command lines.
 ///
@@ -184,36 +183,16 @@ impl<'a> Iterator for Args<'a> {
     #[inline]
     #[allow(clippy::too_many_lines)]
     fn next(&mut self) -> Option<Self::Item> {
-        /// Walks backwords checking for `\` and counting them to determine if escaped.
-        #[inline]
-        const fn is_escaped(bytes: &[u8]) -> bool {
-            let mut backslashes = 0;
-            let mut idx = bytes.len() - 1;
-
-            loop {
-                if bytes[idx] != b'\\' {
-                    break;
-                }
-                backslashes += 1;
-
-                idx = match idx.checked_sub(1) {
-                    Some(idx) => idx,
-                    None => break,
-                };
-            }
-
-            (backslashes % 2) != 0
-        }
-
         let bytes = self.input.as_bytes();
         let mut in_quotes = false;
         let mut quote = b'\0';
+        let mut is_escaped = false;
 
         while self.idx < bytes.len() {
             match bytes[self.idx] {
                 b'"' | b'\'' | b'`' => {
                     if in_quotes {
-                        if bytes[self.idx] == quote && !is_escaped(&bytes[..self.idx]) {
+                        if bytes[self.idx] == quote && !is_escaped {
                             let arg = Some(&self.input[self.start..self.idx]);
                             self.idx += 1;
                             self.start = self.idx;
@@ -227,12 +206,12 @@ impl<'a> Iterator for Args<'a> {
                         self.idx = bytes.len();
                         self.start = bytes.len();
                         return arg;
-                    } else if self.start < self.idx && !is_escaped(&bytes[..self.idx]) {
+                    } else if self.start < self.idx && !is_escaped {
                         // When part of the input end in a quote, `one two" three` this returns the `two` properly.
                         let arg = Some(&self.input[self.start..self.idx]);
                         self.start = self.idx;
                         return arg;
-                    } else if self.idx == 0 || !is_escaped(&bytes[..self.idx]) {
+                    } else if self.idx == 0 || !is_escaped {
                         in_quotes = true;
                         quote = bytes[self.idx];
                         self.idx += 1;
@@ -240,9 +219,15 @@ impl<'a> Iterator for Args<'a> {
                         self.start = self.idx;
 
                         // Check if quote is ever closed, and if not, then return the rest of the input as one arg.
+                        let mut is_escaped = false;
                         let mut found = false;
-                        for idx in self.start..self.input.len() {
-                            if bytes[idx] == quote && !is_escaped(&bytes[..self.idx]) {
+                        for byte in bytes.iter().take(bytes.len()).skip(self.start) {
+                            is_escaped = match (is_escaped, *byte) {
+                                (false, b'\\') => true, // Set `is_escaped` if the current byte is a backslash
+                                _ => false, //Reset `is_escaped` if it was true, otherwise keep `is_escaped` as false
+                            };
+
+                            if *byte == quote && !is_escaped {
                                 found = true;
                                 break;
                             }
@@ -269,6 +254,10 @@ impl<'a> Iterator for Args<'a> {
                     self.start = self.idx;
                 }
                 _ => {
+                    is_escaped = match (is_escaped, bytes[self.idx]) {
+                        (false, b'\\') => true, // Set `is_escaped` if the current byte is a backslash
+                        _ => false, //Reset `is_escaped` if it was true, otherwise keep `is_escaped` as false
+                    };
                     self.idx += 1;
                 }
             }
@@ -519,6 +508,14 @@ mod test {
     fn should_return_rest_of_non_closed_quote_as_one_argument() {
         let sh = Shellwords::from(r":rename 'should be one \'argument");
         assert_eq!(r"should be one \'argument", sh.args().next().unwrap());
+    }
+
+    #[test]
+    fn should_respect_escaped_quote_in_what_looks_like_non_closed_arg() {
+        let sh = Shellwords::from(r":rename 'should be one \\'argument");
+        let mut args = sh.args();
+        assert_eq!(r"should be one \\", args.next().unwrap());
+        assert_eq!(r"argument", args.next().unwrap());
     }
 
     #[test]
