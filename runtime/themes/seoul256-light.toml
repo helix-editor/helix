@@ -32,7 +32,7 @@ inherits = "seoul256-dark"
 "ui.background" = { bg = "white1" }
 "ui.cursor" = { fg = "gray4", modifiers = ["reversed"] }
 "ui.cursor.primary" = { fg = "gray4", modifiers = ["reversed"] }
-"ui.cursor.match" = { bg = "gray4", modifiers = ["underlined"] }
+"ui.cursor.match" = { bg = "gray13", modifiers = ["underlined"] }
 "ui.cursor.insert" = { fg = "blue1" }
 "ui.cursorline.primary" = { bg = "white" }
 "ui.gutter" = { bg = "gray10" }

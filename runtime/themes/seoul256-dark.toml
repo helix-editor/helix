@@ -148,6 +148,9 @@ gray7 = '#626262'    # Lighter Gray
 gray8 = '#4e4e4e'    # Even Lighter Gray
 gray9 = '#5f5f5f'
 gray10 = '#c6c6c6'
+gray11 = '#eeeeee'
+gray12 = '#e4e4e4'
+gray13 = '#bcbcbc'
 
 # 233 = '#121212' 
 # 234 = '#1c1c1c'
