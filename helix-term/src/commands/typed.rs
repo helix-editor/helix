@@ -1862,7 +1862,29 @@ fn toggle_option(
                     .parse()?,
             )
         }
-        Value::Null | Value::Object(_) | Value::Array(_) => {
+        Value::Array(value) => {
+            let mut lists = serde_json::Deserializer::from_str(args.rest()).into_iter::<Value>();
+
+            let (Some(first), Some(second)) =
+                (lists.next().transpose()?, lists.next().transpose()?)
+            else {
+                anyhow::bail!(
+                    "Bad arguments. For list configurations use: `:toggle key [...] [...]`",
+                )
+            };
+
+            match (&first, &second) {
+                (Value::Array(list), Value::Array(_)) => {
+                    if list == value {
+                        second
+                    } else {
+                        first
+                    }
+                }
+                _ => anyhow::bail!("values must be lists"),
+            }
+        }
+        Value::Null | Value::Object(_) => {
             anyhow::bail!("Configuration {key} does not support toggle yet")
         }
     };
@@ -1874,7 +1896,9 @@ fn toggle_option(
         .config_events
         .0
         .send(ConfigEvent::Update(config))?;
+
     cx.editor.set_status(status);
+
     Ok(())
 }
 
