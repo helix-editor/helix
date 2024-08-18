@@ -238,17 +238,20 @@ pub fn render_text(
         };
         decorations.decorate_grapheme(renderer, &grapheme);
 
-        let virt = grapheme.is_virtual();
+        let is_virtual = grapheme.is_virtual();
         let is_selected = selection.is_some_and(|selection| {
             selection
                 .iter()
                 .any(|range| range.contains(grapheme.char_idx))
         });
+        let grapheme_render_data = GraphemeRenderData {
+            is_virtual,
+            is_selected,
+        };
         let grapheme_width = renderer.draw_grapheme(
             grapheme.raw,
             grapheme_style,
-            virt,
-            is_selected,
+            grapheme_render_data,
             &mut last_line_indent_level,
             &mut is_in_indent_area,
             grapheme.visual_pos,
@@ -278,6 +281,11 @@ pub struct TextRenderer<'a> {
 pub struct GraphemeStyle {
     syntax_style: Style,
     overlay_style: Style,
+}
+
+pub struct GraphemeRenderData {
+    is_virtual: bool,
+    is_selected: bool,
 }
 
 impl<'a> TextRenderer<'a> {
@@ -365,8 +373,7 @@ impl<'a> TextRenderer<'a> {
         &mut self,
         grapheme: Grapheme,
         grapheme_style: GraphemeStyle,
-        is_virtual: bool,
-        is_selected: bool,
+        grapheme_render_data: GraphemeRenderData,
         last_indent_level: &mut usize,
         is_in_indent_area: &mut bool,
         mut position: Position,
@@ -387,6 +394,10 @@ impl<'a> TextRenderer<'a> {
 
         let width = grapheme.width();
 
+        let GraphemeRenderData {
+            is_virtual,
+            is_selected,
+        } = grapheme_render_data;
         let ws = &self.whitespace_entries;
         let tab = &ws.tab.render(is_virtual, is_selected);
         let space = &ws.space.render(is_virtual, is_selected);
