@@ -1044,8 +1044,8 @@ lines.
  1. Move the cursor to the line marked '-->' below.
  2. Select both lines with xx or 2x.
  3. Type s to select, type "would" and enter.
- 4. Use ( and ) to cycle the primary selection and remove the
-    very second "would" with Alt-, .
+ 4. Use ( and ) to cycle the primary selection and deselect
+    the second "would" with Alt-, .
  5. Type c "wood" to change the remaining "would"s to "wood".
 
  --> How much would would a wouldchuck chuck
