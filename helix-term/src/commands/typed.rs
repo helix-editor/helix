@@ -1761,31 +1761,43 @@ fn set_option(
         return Ok(());
     }
 
-    if args.count() != 2 {
-        anyhow::bail!("Bad arguments. Usage: `:set key field`");
+    let Some(key) = args.next().map(|arg| arg.to_lowercase()) else {
+        anyhow::bail!("Bad arguments. Usage: `:set key field`, didn't provide `key`");
+    };
+
+    let field = args.rest();
+
+    if field.is_empty() {
+        anyhow::bail!("Bad arguments. Usage: `:set key field`, didn't provide `field`");
     }
 
-    let (key, arg) = (args.next().unwrap().to_lowercase(), args.next().unwrap());
-
-    let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
-    let field_error = |_| anyhow::anyhow!("Could not parse field `{}`", arg);
-
-    let mut config = serde_json::json!(&cx.editor.config().deref());
+    let mut config = serde_json::json!(&*cx.editor.config());
     let pointer = format!("/{}", key.replace('.', "/"));
-    let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
+    let value = config
+        .pointer_mut(&pointer)
+        .ok_or_else(|| anyhow::anyhow!("Unknown key `{key}`"))?;
 
     *value = if value.is_string() {
         // JSON strings require quotes, so we can't .parse() directly
-        Value::String(arg.to_string())
+        Value::String(field.to_string())
     } else {
-        arg.parse().map_err(field_error)?
+        field
+            .parse()
+            .map_err(|err| anyhow::anyhow!("Could not parse field `{field}`: {err}"))?
     };
-    let config = serde_json::from_value(config).map_err(field_error)?;
+
+    let config = serde_json::from_value(config).expect(
+        "`Config` was already deserialized, serialization is just a 'repacking' and should be valid",
+    );
 
     cx.editor
         .config_events
         .0
         .send(ConfigEvent::Update(config))?;
+
+    cx.editor
+        .set_status(format!("'{key}' is now set to {field}"));
+
     Ok(())
 }
 
