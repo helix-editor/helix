@@ -24,6 +24,7 @@ crystalline = { command = "crystalline", args = ["--stdio"] }
 cs = { command = "cs", args = ["launch", "--contrib", "smithy-language-server", "--", "0"] }
 csharp-ls = { command = "csharp-ls" }
 cuelsp = { command = "cuelsp" }
+c3-lsp = { command = "c3-lsp" }
 dart = { command = "dart", args = ["language-server", "--client-id=helix"] }
 dhall-lsp-server = { command = "dhall-lsp-server" }
 docker-langserver = { command = "docker-langserver", args = ["--stdio"] }
@@ -416,6 +417,21 @@ grammar = "janet-simple"
 [[grammar]]
 name = "janet-simple"
 source = { git = "https://github.com/sogaiu/tree-sitter-janet-simple", rev = "51271e260346878e1a1aa6c506ce6a797b7c25e2" }
+
+[[grammar]]
+name = "c3"
+source = { git = "https://github.com/c3lang/tree-sitter-c3.git" , rev = "790a0326833cd647e00d8dec01268aa1ec2e3bdb" }
+
+[[language]]
+name = "c3"
+scope = "source.c3" 
+file-types = [ "c3" ]
+roots = [ "project.json" ]
+comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 4, unit="    "}
+language-servers = [ "c3-lsp" ]
+grammar = "c3"
 
 [[language]]
 name = "json"
