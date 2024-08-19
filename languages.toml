@@ -425,7 +425,7 @@ source = { git = "https://github.com/c3lang/tree-sitter-c3.git" , rev = "790a032
 [[language]]
 name = "c3"
 scope = "source.c3" 
-file-types = [ "c3" ]
+file-types = [ "c3" "c3i" ]
 roots = [ "project.json" ]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
