@@ -6,27 +6,27 @@
 
 ;; Constant
 (const_ident) @constant
-["true" "false"] @boolean
+["true" "false"] @constant.builtin.boolean
 ["null"] @constant.builtin
 
 ;; Variable
 [(ident) (ct_ident)] @variable
 ;; 1) Member
-(field_expr field: (access_ident (ident) @variable.member))
-(struct_member_declaration (ident) @variable.member)
-(struct_member_declaration (identifier_list (ident) @variable.member))
-(bitstruct_member_declaration (ident) @variable.member)
-(initializer_list (arg (param_path (param_path_element (ident) @variable.member))))
+(field_expr field: (access_ident (ident) @variable.other.member))
+(struct_member_declaration (ident) @variable.other.member)
+(struct_member_declaration (identifier_list (ident) @variable.other.member))
+(bitstruct_member_declaration (ident) @variable.other.member)
+(initializer_list (arg (param_path (param_path_element (ident) @variable.other.member))))
 ;; 2) Parameter
 (parameter name: (_) @variable.parameter)
 (call_invocation (arg (param_path (param_path_element [(ident) (ct_ident)] @variable.parameter))))
 (enum_param_declaration (ident) @variable.parameter)
 ;; 3) Declaration
-(global_declaration (ident) @variable.declaration)
-(local_decl_after_type name: [(ident) (ct_ident)] @variable.declaration)
-(var_decl name: [(ident) (ct_ident)] @variable.declaration)
-(try_unwrap (ident) @variable.declaration)
-(catch_unwrap (ident) @variable.declaration)
+(global_declaration (ident) @variable)
+(local_decl_after_type name: [(ident) (ct_ident)] @variable.other.member)
+(var_decl name: [(ident) (ct_ident)] @variable)
+(try_unwrap (ident) @variable)
+(catch_unwrap (ident) @variable)
 
 ;; Keyword (from `c3c --list-keywords`)
 [
@@ -86,9 +86,9 @@
 
 "fn" @keyword.function
 "macro" @keyword.function
-"return" @keyword.return
-"import" @keyword.import
-"module" @keyword.module
+"return" @keyword.control.return
+"import" @keyword.control.import
+"module" @keyword.storage.type
 
 [
   "bitstruct"
@@ -99,7 +99,7 @@
   "interface"
   "struct"
   "union"
-] @keyword.type
+] @keyword.storage.type
 
 [
   "case"
@@ -108,7 +108,7 @@
   "if"
   "nextcase"
   "switch"
-] @keyword.conditional
+] @keyword.control.conditional
 
 [
   "break"
@@ -118,7 +118,7 @@
   "foreach"
   "foreach_r"
   "while"
-] @keyword.repeat
+] @keyword.control.repeat
 
 [
   "const"
@@ -126,7 +126,7 @@
   "inline"
   "static"
   "tlocal"
-] @keyword.modifier
+] @keyword.storage.modifier
 
 ;; Operator (from `c3c --list-operators`)
 [
@@ -190,35 +190,35 @@
   "..."
   "<<="
   ">>="
-] @operator
+] @keyword.operator
 
-(range_expr ":" @operator)
-(foreach_cond ":" @operator)
+(range_expr ":" @keyword.operator)
+(foreach_cond ":" @keyword.operator)
 
 (ternary_expr
   [
     "?"
     ":"
-  ] @keyword.conditional.ternary)
+  ] @keyword.control.conditional)
 
 (elvis_orelse_expr
   [
     "?:"
     "??"
-  ] @keyword.conditional.ternary)
+  ] @keyword.control.conditional)
 
 ;; Literal
-(integer_literal) @number
-(real_literal) @number.float
-(char_literal) @character
-(bytes_literal) @number
+(integer_literal) @type.builtin
+(real_literal) @type.builtin
+(char_literal) @type.builtin
+(bytes_literal) @type.builtin
 
 ;; String
 (string_literal) @string
 (raw_string_literal) @string
 
 ;; Escape Sequence
-(escape_sequence) @string.escape
+(escape_sequence) @string
 
 ;; Builtin (constants)
 ((builtin) @constant.builtin (#match? @constant.builtin "_*[A-Z][_A-Z0-9]*"))
@@ -256,12 +256,12 @@
 [
   (label)
   (label_target)
-] @label
+] @keyword.storage.type
 
 ;; Module
-(module_resolution (ident) @module)
-(module (path_ident (ident) @module))
-(import_declaration (path_ident (ident) @module))
+(module_resolution (ident) @keyword.storage.type)
+(module (path_ident (ident) @keyword.storage.type))
+(import_declaration (path_ident (ident) @keyword.storage.type))
 
 ;; Attribute
 (attribute name: (_) @attribute)
@@ -284,13 +284,13 @@
 (macro_header method_type: (_) name: (_) @function.method)
 
 ;; Function Call
-(call_expr function: [(ident) (at_ident)] @function.call)
-(call_expr function: [(builtin)] @function.builtin.call)
-(call_expr function: (module_ident_expr ident: (_) @function.call))
-(call_expr function: (trailing_generic_expr argument: (module_ident_expr ident: (_) @function.call)))
-(call_expr function: (field_expr field: (access_ident [(ident) (at_ident)] @function.method.call))) ; NOTE Ambiguous, could be calling a method or function pointer
+(call_expr function: [(ident) (at_ident)] @function)
+(call_expr function: [(builtin)] @function.builtin)
+(call_expr function: (module_ident_expr ident: (_) @function))
+(call_expr function: (trailing_generic_expr argument: (module_ident_expr ident: (_) @function)))
+(call_expr function: (field_expr field: (access_ident [(ident) (at_ident)] @function.method))) ; NOTE Ambiguous, could be calling a method or function pointer
 ;; Method on type
-(call_expr function: (type_access_expr field: (access_ident [(ident) (at_ident)] @function.method.call)))
+(call_expr function: (type_access_expr field: (access_ident [(ident) (at_ident)] @function.method)))
 
 ;; Assignment
 ;; (assignment_expr left: (ident) @variable.member)
@@ -318,6 +318,6 @@
 [
   (line_comment)
   (block_comment)
-] @comment @spell
+] @comment
 
-(doc_comment) @comment.documentation @spell
+(doc_comment) @comment.block.documentation
