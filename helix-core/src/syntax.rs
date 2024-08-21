@@ -2692,6 +2692,8 @@ fn pretty_print_tree_impl<W: fmt::Write>(
         }
 
         write!(fmt, "({}", node.kind())?;
+    } else {
+        write!(fmt, " \"{}\"", node.kind())?;
     }
 
     // Handle children.
