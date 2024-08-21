@@ -834,7 +834,7 @@ source = { git = "https://github.com/serenadeai/tree-sitter-scss", rev = "c478c6
 name = "html"
 scope = "text.html.basic"
 injection-regex = "html"
-file-types = ["html", "htm", "shtml", "xhtml", "xht", "jsp", "asp", "aspx", "jshtm", "volt", "rhtml"]
+file-types = ["html", "htm", "shtml", "xhtml", "xht", "jsp", "asp", "aspx", "jshtm", "volt", "rhtml", "cshtml"]
 block-comment-tokens = { start = "<!--", end = "-->" }
 language-servers = [ "vscode-html-language-server" ]
 auto-format = true
