@@ -420,7 +420,7 @@ source = { git = "https://github.com/sogaiu/tree-sitter-janet-simple", rev = "51
 
 [[grammar]]
 name = "c3"
-source = { git = "https://github.com/c3lang/tree-sitter-c3.git" , rev = "790a0326833cd647e00d8dec01268aa1ec2e3bdb" }
+source = { git = "https://github.com/c3lang/tree-sitter-c3" , rev = "790a0326833cd647e00d8dec01268aa1ec2e3bdb" }
 
 [[language]]
 name = "c3"
