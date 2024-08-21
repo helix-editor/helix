@@ -98,6 +98,8 @@ Normal mode is the default mode when you launch helix. You can return to it from
 | `Ctrl-x`    | Decrement object (number) under cursor                               | `decrement`               |
 | `Q`         | Start/stop macro recording to the selected register (experimental)   | `record_macro`            |
 | `q`         | Play back a recorded macro from the selected register (experimental) | `replay_macro`            |
+| `@`         | Insert selected file path before each selection                      | `insert_file_path`        |
+| `Alt-@`     | Insert selected file path after each selection                       | `append_file_path`        |
 
 #### Shell
 

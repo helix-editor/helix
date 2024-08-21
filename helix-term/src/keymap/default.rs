@@ -328,6 +328,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "!" => shell_insert_output,
         "A-!" => shell_append_output,
         "$" => shell_keep_pipe,
+        "@" => insert_file_path,
+        "A-@" => append_file_path,
         "C-z" => suspend,
 
         "C-a" => increment,

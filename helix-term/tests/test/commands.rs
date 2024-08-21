@@ -445,6 +445,41 @@ async fn test_delete_char_forward() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn test_multiselection_file_path_commands() -> anyhow::Result<()> {
+    // insert_file_path
+    test((
+        indoc! {"\
+            #[|lorem]#
+            #(|ipsum)#
+            #(|dolor)#
+            "},
+        "@/some/path",
+        indoc! {"\
+            #[|/some/path]#lorem
+            #(|/some/path)#ipsum
+            #(|/some/path)#dolor
+            "},
+    ))
+    .await?;
+
+    // append_file_path
+    test((
+        indoc! {"\
+            #[|lorem]#
+            #(|ipsum)#
+            #(|dolor)#
+            "},
+        "<A-@>/some/path",
+        indoc! {"\
+            lorem#[|/some/path]#
+            ipsum#(|/some/path)#
+            dolor#(|/some/path)#
+            "},
+    ))
+    .await?;
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_insert_with_indent() -> anyhow::Result<()> {
     const INPUT: &str = indoc! { "
         #[f|]#n foo() {

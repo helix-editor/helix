@@ -511,6 +511,8 @@ impl MappableCommand {
         wonly, "Close windows except current",
         select_register, "Select register",
         insert_register, "Insert register",
+        insert_file_path, "Insert file path",
+        append_file_path, "Append file path",
         align_view_middle, "Align view middle",
         align_view_top, "Align view top",
         align_view_center, "Align view center",
@@ -5285,6 +5287,80 @@ fn select_register(cx: &mut Context) {
             cx.editor.selected_register = Some(ch);
         }
     })
+}
+
+#[derive(Eq, PartialEq)]
+enum FilePathBehavior {
+    Insert,
+    Append,
+}
+
+fn file_path(cx: &mut Context, prompt: Cow<'static, str>, behavior: FilePathBehavior) {
+    ui::prompt(
+        cx,
+        prompt,
+        Some('|'),
+        ui::completers::filename,
+        move |cx, input: &str, event: PromptEvent| {
+            if event != PromptEvent::Validate {
+                return;
+            }
+            if input.is_empty() {
+                return;
+            }
+
+            let config = cx.editor.config();
+            let (view, doc) = current!(cx.editor);
+            let selection = doc.selection(view.id);
+
+            let mut changes = Vec::with_capacity(selection.len());
+            let mut ranges = SmallVec::with_capacity(selection.len());
+
+            let mut offset = 0isize;
+
+            for range in selection.ranges() {
+                let input_len = input.chars().count();
+
+                let (from, to, deleted_len) = match behavior {
+                    FilePathBehavior::Insert => (range.from(), range.from(), 0),
+                    FilePathBehavior::Append => (range.to(), range.to(), 0),
+                };
+
+                // These `usize`s cannot underflow because selection ranges cannot overlap.
+                let anchor = to
+                    .checked_add_signed(offset)
+                    .expect("Selection ranges cannot overlap")
+                    .checked_sub(deleted_len)
+                    .expect("Selection ranges cannot overlap");
+                let new_range = Range::new(anchor, anchor + input_len).with_direction(range.direction());
+                ranges.push(new_range);
+                offset = offset
+                    .checked_add_unsigned(input_len)
+                    .expect("Selection ranges cannot overlap")
+                    .checked_sub_unsigned(deleted_len)
+                    .expect("Selection ranges cannot overlap");
+
+                changes.push((from, to, Some(Tendril::from(input))));
+            }
+
+            let transaction = Transaction::change(doc.text(), changes.into_iter())
+                .with_selection(Selection::new(ranges, selection.primary_index()));
+            doc.apply(&transaction, view.id);
+            doc.append_changes_to_history(view);
+
+            // after replace cursor may be out of bounds, do this to
+            // make sure cursor is in view and update scroll as well
+            view.ensure_cursor_in_view(doc, config.scrolloff);
+        }
+    )
+}
+
+fn insert_file_path(cx: &mut Context) {
+    file_path(cx, "insert-file-path:".into(), FilePathBehavior::Insert)
+}
+
+fn append_file_path(cx: &mut Context) {
+    file_path(cx, "append-file-path:".into(), FilePathBehavior::Append)
 }
 
 fn insert_register(cx: &mut Context) {
