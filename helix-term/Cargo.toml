@@ -53,7 +53,7 @@ log = "0.4"
 nucleo.workspace = true
 ignore = "0.4"
 # markdown doc rendering
-pulldown-cmark = { version = "0.11", default-features = false }
+pulldown-cmark = { version = "0.12", default-features = false }
 # file type detection
 content_inspector = "0.2.4"
 thiserror = "1.0"
@@ -74,7 +74,7 @@ grep-searcher = "0.1.13"
 
 [target.'cfg(not(windows))'.dependencies]  # https://github.com/vorner/signal-hook/issues/100
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
-libc = "0.2.155"
+libc = "0.2.158"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 crossterm = { version = "0.28", features = ["event-stream", "use-dev-tty", "libc"] }
