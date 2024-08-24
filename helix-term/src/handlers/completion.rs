@@ -493,7 +493,7 @@ fn path_completion(
                     #[cfg(not(unix))]
                     {
                         format!(
-                            "type: `{path_kind}`\n\
+                            "type: `{kind}`\n\
                              {resolved}full path: `{full_path_name}`",
                         )
                     }
