@@ -173,6 +173,7 @@
 | rmarkdown | ✓ |  | ✓ | `R` |
 | robot | ✓ |  |  | `robotframework_ls` |
 | ron | ✓ |  | ✓ |  |
+| rpmspec | ✓ |  |  | `rpm_lsp_server` |
 | rst | ✓ |  |  |  |
 | ruby | ✓ | ✓ | ✓ | `solargraph` |
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
