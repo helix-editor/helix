@@ -1924,6 +1924,33 @@ fn load_misc_api(engine: &mut Engine, generate_sources: bool) {
     template_function_arity_1("push-component!");
     template_function_arity_1("enqueue-thread-local-callback");
 
+    module.register_fn("send-lsp-command", send_arbitrary_lsp_command);
+    if generate_sources {
+        builtin_misc_module.push_str(
+            r#"
+    (provide send-lsp-command)
+    ;;@doc
+    ;; Send an lsp command. The `lsp-name` must correspond to an active lsp.
+    ;; The method name corresponds to the method name that you'd expect to see
+    ;; with the lsp, and the params can be passed as a hash table. The callback
+    ;; provided will be called with whatever result is returned from the LSP,
+    ;; deserialized from json to a steel value.
+    ;; 
+    ;; # Example
+    ;; ```scheme
+    ;; (define (view-crate-graph)
+    ;;   (send-lsp-command "rust-analyzer"
+    ;;                     "rust-analyzer/viewCrateGraph"
+    ;;                     (hash "full" #f)
+    ;;                     ;; Callback to run with the result
+    ;;                     (lambda (result) (displayln result))))
+    ;; ```
+    (define (send-lsp-command lsp-name method-name params callback)
+        (helix.send-lsp-command *helix.cx* lsp-name method-name params callback))
+            "#,
+        );
+    }
+
     let mut template_function_arity_2 = |name: &str| {
         if generate_sources {
             builtin_misc_module.push_str(&format!(
@@ -2828,4 +2855,96 @@ fn move_window_to_the_right(cx: &mut Context) {
         .swap_split_in_direction(helix_view::tree::Direction::Right)
         .is_some()
     {}
+}
+
+// TODO: Get LSP id correctly, and then format a json blob (or something)
+// that can be serialized by serde
+fn send_arbitrary_lsp_command(
+    cx: &mut Context,
+    name: SteelString,
+    command: SteelString,
+    // Arguments - these will be converted to some json stuff
+    json_argument: Option<SteelVal>,
+    callback_fn: SteelVal,
+) -> anyhow::Result<()> {
+    let argument = json_argument.map(|x| serde_json::Value::try_from(x).unwrap());
+
+    let (_view, doc) = current!(cx.editor);
+
+    let language_server_id = anyhow::Context::context(
+        doc.language_servers().find(|x| x.name() == name.as_str()),
+        "Unable to find the language server specified!",
+    )?
+    .id();
+
+    let future = match cx
+        .editor
+        .language_server_by_id(language_server_id)
+        .and_then(|language_server| {
+            language_server.non_standard_extension(command.to_string(), argument)
+        }) {
+        Some(future) => future,
+        None => {
+            // TODO: Come up with a better message once we check the capabilities for
+            // the arbitrary thing you're trying to do, since for now the above actually
+            // always returns a `Some`
+            cx.editor.set_error(
+                "Language server does not support whatever command you just tried to do",
+            );
+            return Ok(());
+        }
+    };
+
+    let rooted = callback_fn.as_rooted();
+
+    let callback = async move {
+        // Result of the future - this will be whatever we get back
+        // from the lsp call
+        let res = future.await?;
+
+        let call: Box<dyn FnOnce(&mut Editor, &mut Compositor, &mut job::Jobs)> = Box::new(
+            move |editor: &mut Editor, _compositor: &mut Compositor, jobs: &mut job::Jobs| {
+                let mut ctx = Context {
+                    register: None,
+                    count: None,
+                    editor,
+                    callback: Vec::new(),
+                    on_next_key_callback: None,
+                    jobs,
+                };
+
+                let cloned_func = rooted.value();
+
+                ENGINE.with(move |x| {
+                    let mut guard = x.borrow_mut();
+
+                    match SteelVal::try_from(res) {
+                        Ok(result) => {
+                            if let Err(e) = guard
+                                .with_mut_reference::<Context, Context>(&mut ctx)
+                                .consume(move |engine, args| {
+                                    let context = args[0].clone();
+                                    engine.update_value("*helix.cx*", context);
+
+                                    engine.call_function_with_args(
+                                        cloned_func.clone(),
+                                        vec![result.clone()],
+                                    )
+                                })
+                            {
+                                present_error_inside_engine_context(&mut ctx, &mut guard, e);
+                            }
+                        }
+                        Err(e) => {
+                            present_error_inside_engine_context(&mut ctx, &mut guard, e);
+                        }
+                    }
+                })
+            },
+        );
+        Ok(call)
+    };
+    cx.jobs.local_callback(callback);
+
+    Ok(())
 }
