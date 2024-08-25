@@ -1920,12 +1920,15 @@ impl Document {
             return None;
         };
 
-        let severity = diagnostic.severity.map(|severity| match severity {
-            lsp::DiagnosticSeverity::ERROR => Error,
-            lsp::DiagnosticSeverity::WARNING => Warning,
-            lsp::DiagnosticSeverity::INFORMATION => Info,
-            lsp::DiagnosticSeverity::HINT => Hint,
-            severity => unreachable!("unrecognized diagnostic severity: {:?}", severity),
+        let severity = diagnostic.severity.and_then(|severity| match severity {
+            lsp::DiagnosticSeverity::ERROR => Some(Error),
+            lsp::DiagnosticSeverity::WARNING => Some(Warning),
+            lsp::DiagnosticSeverity::INFORMATION => Some(Info),
+            lsp::DiagnosticSeverity::HINT => Some(Hint),
+            severity => {
+                log::error!("unrecognized diagnostic severity: {:?}", severity);
+                None
+            }
         });
 
         if let Some(lang_conf) = language_config {
