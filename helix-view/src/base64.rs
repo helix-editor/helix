@@ -1,3 +1,12 @@
+//!
+//! This Source Code Form is subject to the terms of the Mozilla Public
+//! License, v. 2.0. If a copy of the MPL was not distributed with this
+//! file, You can find the complete license text at
+//! https://mozilla.org/MPL/2.0/
+//!
+//! Copyright (c) 2024 Helix Editor Contributors
+
+
 // A minimal base64 implementation to keep from pulling in a crate for just that. It's based on
 // https://github.com/marshallpierce/rust-base64 but without all the customization options.
 // The biggest portion comes from

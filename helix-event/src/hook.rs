@@ -1,3 +1,12 @@
+//!
+//! This Source Code Form is subject to the terms of the Mozilla Public
+//! License, v. 2.0. If a copy of the MPL was not distributed with this
+//! file, You can find the complete license text at
+//! https://mozilla.org/MPL/2.0/
+//!
+//! Copyright (c) 2024 Helix Editor Contributors
+
+
 //! rust dynamic dispatch is extremely limited so we have to build our
 //! own vtable implementation. Otherwise implementing the event system would not be possible.
 //! A nice bonus of this approach is that we can optimize the vtable a bit more. Normally

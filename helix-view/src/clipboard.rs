@@ -1,3 +1,12 @@
+//!
+//! This Source Code Form is subject to the terms of the Mozilla Public
+//! License, v. 2.0. If a copy of the MPL was not distributed with this
+//! file, You can find the complete license text at
+//! https://mozilla.org/MPL/2.0/
+//!
+//! Copyright (c) 2024 Helix Editor Contributors
+
+
 // Implementation reference: https://github.com/neovim/neovim/blob/f2906a4669a2eef6d7bf86a29648793d63c98949/runtime/autoload/provider/clipboard.vim#L68-L152
 
 use anyhow::Result;

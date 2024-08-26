@@ -1,3 +1,12 @@
+//!
+//! This Source Code Form is subject to the terms of the Mozilla Public
+//! License, v. 2.0. If a copy of the MPL was not distributed with this
+//! file, You can find the complete license text at
+//! https://mozilla.org/MPL/2.0/
+//!
+//! Copyright (c) 2024 Helix Editor Contributors
+
+
 // Each component declares its own size constraints and gets fitted based on its parent.
 // Q: how does this work with popups?
 // cursive does compositor.screen_mut().add_layer_at(pos::absolute(x, y), <component>)

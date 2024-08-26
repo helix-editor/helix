@@ -1,3 +1,12 @@
+//!
+//! This Source Code Form is subject to the terms of the Mozilla Public
+//! License, v. 2.0. If a copy of the MPL was not distributed with this
+//! file, You can find the complete license text at
+//! https://mozilla.org/MPL/2.0/
+//!
+//! Copyright (c) 2024 Helix Editor Contributors
+
+
 //! The `DocumentFormatter` forms the bridge between the raw document text
 //! and onscreen positioning. It yields the text graphemes as an iterator
 //! and traverses (part) of the document text. During that traversal it

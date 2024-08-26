@@ -1,3 +1,12 @@
+//!
+//! This Source Code Form is subject to the terms of the Mozilla Public
+//! License, v. 2.0. If a copy of the MPL was not distributed with this
+//! file, You can find the complete license text at
+//! https://mozilla.org/MPL/2.0/
+//!
+//! Copyright (c) 2024 Helix Editor Contributors
+
+
 //! An implementation of the JSONRPC 2.0 spec types
 
 // Upstream implementation: https://github.com/paritytech/jsonrpc/tree/38af3c9439aa75481805edf6c05c6622a5ab1e70/core/src/types
