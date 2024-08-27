@@ -133,10 +133,7 @@ impl Component for Hover {
     }
 
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
-        if PADDING >= viewport.1 || PADDING >= viewport.0 {
-            return None;
-        }
-        let max_text_width = (viewport.0 - PADDING).min(120);
+        let max_text_width = viewport.0.saturating_sub(PADDING).clamp(10, 120);
 
         let (Some(header), Some(contents)) = (self.header.as_ref(), self.contents.as_ref()) else {
     log::info!("markdown not ready");
