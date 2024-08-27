@@ -44,8 +44,12 @@ impl Hover {
 
     fn prepare_markdowns(&mut self) {
         let Some((lsp_name, hover)) = self.hovers.get(self.active_index) else {
-            log::info!("prepare_markdowns: failed \nindex:{}\ncount:{}", self.active_index, self.hovers.len());
-            return
+            log::info!(
+                "prepare_markdowns: failed \nindex:{}\ncount:{}",
+                self.active_index,
+                self.hovers.len()
+            );
+            return;
         };
         self.header = Some(Markdown::new(
             format!(
@@ -136,7 +140,7 @@ impl Component for Hover {
         let max_text_width = viewport.0.saturating_sub(PADDING).clamp(10, 120);
 
         let (Some(header), Some(contents)) = (self.header.as_ref(), self.contents.as_ref()) else {
-    log::info!("markdown not ready");
+            log::info!("markdown not ready");
             return None;
         };
 
