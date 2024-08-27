@@ -97,13 +97,15 @@ impl Hover {
     }
 }
 
-const PADDING: u16 = 2;
+const PADDING_HORIZONTAL: u16 = 2;
+const PADDING_TOP: u16 = 1;
+const PADDING_BOTTOM: u16 = 1;
 const HEADER_HEIGHT: u16 = 1;
 const SEPARATOR_HEIGHT: u16 = 1;
 
 impl Component for Hover {
     fn render(&mut self, area: Rect, surface: &mut Buffer, cx: &mut Context) {
-        let margin = Margin::horizontal(1);
+        let margin = Margin::all(1);
         let area = area.inner(margin);
 
         let (Some(header), Some(contents)) = (self.header.as_ref(), self.contents.as_ref()) else {
@@ -111,24 +113,31 @@ impl Component for Hover {
             return;
         };
 
-        // header LSP Name
-        let header = header.parse(Some(&cx.editor.theme));
-        let header = Paragraph::new(&header);
-        header.render(area.with_height(HEADER_HEIGHT), surface);
+        // show header and border only when more than one results
+        if self.hovers.len() > 1 {
+            // header LSP Name
+            let header = header.parse(Some(&cx.editor.theme));
+            let header = Paragraph::new(&header);
+            header.render(area.with_height(HEADER_HEIGHT), surface);
 
-        // border
-        let sep_style = Style::default();
-        let borders = BorderType::line_symbols(BorderType::Plain);
-        for x in area.left()..area.right() {
-            if let Some(cell) = surface.get_mut(x, area.top() + HEADER_HEIGHT) {
-                cell.set_symbol(borders.horizontal).set_style(sep_style);
+            // border
+            let sep_style = Style::default();
+            let borders = BorderType::line_symbols(BorderType::Plain);
+            for x in area.left()..area.right() {
+                if let Some(cell) = surface.get_mut(x, area.top() + HEADER_HEIGHT) {
+                    cell.set_symbol(borders.horizontal).set_style(sep_style);
+                }
             }
         }
 
         // hover content
         let contents = contents.parse(Some(&cx.editor.theme));
         let contents_area = area
-            .clip_top(2)
+            .clip_top(if self.hovers.len() > 1 {
+                HEADER_HEIGHT + SEPARATOR_HEIGHT
+            } else {
+                0
+            })
             .clip_bottom(u16::from(cx.editor.popup_border()));
         let contents_para = Paragraph::new(&contents)
             .wrap(Wrap { trim: false })
@@ -137,7 +146,7 @@ impl Component for Hover {
     }
 
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
-        let max_text_width = viewport.0.saturating_sub(PADDING).clamp(10, 120);
+        let max_text_width = viewport.0.saturating_sub(PADDING_HORIZONTAL).clamp(10, 120);
 
         let (Some(header), Some(contents)) = (self.header.as_ref(), self.contents.as_ref()) else {
             log::info!("markdown not ready");
@@ -152,12 +161,14 @@ impl Component for Hover {
         let (content_width, content_height) =
             crate::ui::text::required_size(&contents, max_text_width);
 
-        let (width, height) = (
-            header_width.max(content_width),
-            HEADER_HEIGHT + SEPARATOR_HEIGHT + content_height,
-        );
+        let width = PADDING_HORIZONTAL + header_width.max(content_width);
+        let height = if self.hovers.len() > 1 {
+            PADDING_TOP + HEADER_HEIGHT + SEPARATOR_HEIGHT + content_height + PADDING_BOTTOM
+        } else {
+            PADDING_TOP + content_height + PADDING_BOTTOM
+        };
 
-        Some((width + PADDING, height + PADDING))
+        Some((width, height))
     }
 
     fn handle_event(&mut self, event: &Event, _ctx: &mut Context) -> EventResult {
