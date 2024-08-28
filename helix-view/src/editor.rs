@@ -1078,6 +1078,8 @@ pub struct Editor {
 
     pub mouse_down_range: Option<Range>,
     pub cursor_cache: CursorCache,
+
+    pub previously_visited_doc: Option<DocumentId>,
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
@@ -1195,6 +1197,7 @@ impl Editor {
             handlers,
             mouse_down_range: None,
             cursor_cache: CursorCache::default(),
+            previously_visited_doc: None,
         }
     }
 
@@ -1536,6 +1539,7 @@ impl Editor {
         let scrolloff = self.config().scrolloff;
         let view = self.tree.get_mut(current_view);
 
+        self.previously_visited_doc = Some(view.doc);
         view.doc = doc_id;
         let doc = doc_mut!(self, &doc_id);
 
@@ -1544,6 +1548,12 @@ impl Editor {
         doc.mark_as_focused();
 
         view.ensure_cursor_in_view(doc, scrolloff)
+    }
+
+    pub fn switch_to_previously_visited_doc(&mut self) {
+        if let Some(id) = self.previously_visited_doc {
+            self.switch(id, Action::Replace);
+        }
     }
 
     pub fn switch(&mut self, id: DocumentId, action: Action) {

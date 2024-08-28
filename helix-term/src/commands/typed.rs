@@ -328,6 +328,20 @@ fn buffer_previous(
     Ok(())
 }
 
+fn buffer_previously_visited(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    cx.editor.switch_to_previously_visited_doc();
+
+    Ok(())
+}
+
 fn write_impl(
     cx: &mut compositor::Context,
     path: Option<&Cow<str>>,
@@ -2596,6 +2610,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["bp", "bprev"],
         doc: "Goto previous buffer.",
         fun: buffer_previous,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "buffer-previously-visited",
+        aliases: &["b#"],
+        doc: "Goto previously visited buffer.",
+        fun: buffer_previously_visited,
         signature: CommandSignature::none(),
     },
     TypableCommand {

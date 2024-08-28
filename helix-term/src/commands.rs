@@ -424,6 +424,7 @@ impl MappableCommand {
         goto_line_end, "Goto line end",
         goto_next_buffer, "Goto next buffer",
         goto_previous_buffer, "Goto previous buffer",
+        goto_previously_visited_buffer, "Goto previously visited buffer",
         goto_line_end_newline, "Goto newline at line end",
         goto_first_nonwhitespace, "Goto first non-blank in line",
         trim_selections, "Trim whitespace from selections",
@@ -886,6 +887,10 @@ fn goto_buffer(editor: &mut Editor, direction: Direction, count: usize) {
     let id = *id;
 
     editor.switch(id, Action::Replace);
+}
+
+fn goto_previously_visited_buffer(cx: &mut Context) {
+    cx.editor.switch_to_previously_visited_doc();
 }
 
 fn extend_to_line_start(cx: &mut Context) {
