@@ -23,8 +23,17 @@ use crate::ui::LspCompletionItem;
 /// > 'completionItem/resolve' request is sent with the selected completion item as a parameter.
 /// > The returned completion item should have the documentation property filled in.
 pub struct ResolveHandler {
-    last_request: Option<Arc<LspCompletionItem>>,
+    last_request: Option<Arc<CompletionItem>>,
     resolver: Sender<ResolveRequest>,
+}
+
+macro_rules! lsp_variant {
+    ($item: expr) => {
+        match $item {
+            CompletionItem::Lsp(item) => item,
+            _ => unreachable!("This should always be an lsp completion item"),
+        }
+    };
 }
 
 impl ResolveHandler {
@@ -39,8 +48,12 @@ impl ResolveHandler {
         }
     }
 
-    pub fn ensure_item_resolved(&mut self, editor: &mut Editor, item: &mut LspCompletionItem) {
-        if item.resolved {
+    /// # Panics
+    /// When the item is not a `CompletionItem::Lsp(_)`
+    pub fn ensure_item_resolved(&mut self, editor: &mut Editor, item: &mut CompletionItem) {
+        let lsp_item = lsp_variant!(item);
+
+        if lsp_item.resolved {
             return;
         }
         // We consider an item to be fully resolved if it has non-empty, none-`None` details,
@@ -48,7 +61,7 @@ impl ResolveHandler {
         // check but some language servers send values like `Some([])` for additional text
         // edits although the items need to be resolved. This is probably a consequence of
         // how `null` works in the JavaScript world.
-        let is_resolved = item
+        let is_resolved = lsp_item
             .item
             .documentation
             .as_ref()
@@ -56,25 +69,31 @@ impl ResolveHandler {
                 lsp::Documentation::String(text) => !text.is_empty(),
                 lsp::Documentation::MarkupContent(markup) => !markup.value.is_empty(),
             })
-            && item
+            && lsp_item
                 .item
                 .detail
                 .as_ref()
                 .is_some_and(|detail| !detail.is_empty())
-            && item
+            && lsp_item
                 .item
                 .additional_text_edits
                 .as_ref()
                 .is_some_and(|edits| !edits.is_empty());
         if is_resolved {
-            item.resolved = true;
+            lsp_item.resolved = true;
             return;
         }
         if self.last_request.as_deref().is_some_and(|it| it == item) {
             return;
         }
-        let Some(ls) = editor.language_servers.get_by_id(item.provider).cloned() else {
-            item.resolved = true;
+
+        let lsp_item = lsp_variant!(item);
+        let Some(ls) = editor
+            .language_servers
+            .get_by_id(lsp_item.provider)
+            .cloned()
+        else {
+            lsp_item.resolved = true;
             return;
         };
         if matches!(
@@ -88,20 +107,20 @@ impl ResolveHandler {
             self.last_request = Some(item.clone());
             send_blocking(&self.resolver, ResolveRequest { item, ls })
         } else {
-            item.resolved = true;
+            lsp_item.resolved = true;
         }
     }
 }
 
 struct ResolveRequest {
-    item: Arc<LspCompletionItem>,
+    item: Arc<CompletionItem>,
     ls: Arc<helix_lsp::Client>,
 }
 
 #[derive(Default)]
 struct ResolveTimeout {
     next_request: Option<ResolveRequest>,
-    in_flight: Option<(helix_event::CancelTx, Arc<LspCompletionItem>)>,
+    in_flight: Option<(helix_event::CancelTx, Arc<CompletionItem>)>,
 }
 
 impl AsyncHook for ResolveTimeout {
@@ -121,7 +140,7 @@ impl AsyncHook for ResolveTimeout {
         } else if self
             .in_flight
             .as_ref()
-            .is_some_and(|(_, old_request)| old_request.item == request.item.item)
+            .is_some_and(|(_, old_request)| *old_request == request.item)
         {
             self.next_request = None;
             None
@@ -143,7 +162,9 @@ impl AsyncHook for ResolveTimeout {
 
 impl ResolveRequest {
     async fn execute(self, cancel: CancelRx) {
-        let future = self.ls.resolve_completion_item(&self.item.item);
+        let lsp_item = &lsp_variant!(&*self.item).item;
+
+        let future = self.ls.resolve_completion_item(lsp_item);
         let Some(resolved_item) = helix_event::cancelable_future(future, cancel).await else {
             return;
         };
@@ -153,23 +174,22 @@ impl ResolveRequest {
                 .unwrap()
                 .completion
             {
-                let resolved_item = CompletionItem::Lsp(match resolved_item {
-                    Ok(item) => LspCompletionItem {
+                let resolved_item = match resolved_item {
+                    Ok(item) => CompletionItem::Lsp(LspCompletionItem {
                         item,
+                        provider: lsp_variant!(&*self.item).provider,
                         resolved: true,
-                        ..*self.item
-                    },
+                    }),
                     Err(err) => {
                         log::error!("completion resolve request failed: {err}");
                         // set item to resolved so we don't request it again
                         // we could also remove it but that oculd be odd ui
                         let mut item = (*self.item).clone();
-                        item.resolved = true;
+                        lsp_variant!(&mut item).resolved = true;
                         item
                     }
-                });
-                let old_item = CompletionItem::Lsp((*self.item).clone());
-                completion.replace_item(&old_item, resolved_item);
+                };
+                completion.replace_item(&self.item, resolved_item);
             };
         })
         .await

@@ -359,7 +359,7 @@ impl Completion {
                     doc.append_changes_to_history(view);
 
                     // item always present here
-                    let (mut transaction, additional_edits) = match item.unwrap().clone() {
+                    let (transaction, additional_edits) = match item.unwrap().clone() {
                         CompletionItem::Lsp(mut item) => {
                             let language_server = language_server!(item);
 
@@ -374,39 +374,23 @@ impl Completion {
                             };
 
                             let encoding = language_server.offset_encoding();
-                            (
-                                lsp_item_to_transaction(
-                                    doc,
-                                    view.id,
-                                    &item.item,
-                                    encoding,
-                                    trigger_offset,
-                                    false,
-                                    replace_mode,
-                                ),
-                                item.item.additional_text_edits.map(|e| (e, encoding)),
-                            )
+                            let transaction = lsp_item_to_transaction(
+                                doc,
+                                view.id,
+                                &item.item,
+                                encoding,
+                                trigger_offset,
+                                false,
+                                replace_mode,
+                            );
+                            let add_edits = item.item.additional_text_edits;
+
+                            (transaction, add_edits.map(|edits| (edits, encoding)))
                         }
                         CompletionItem::Path(PathCompletionItem { item, .. }) => {
                             (item.transaction, None)
                         }
                     };
-
-                    if let Some((additional_edits, offset_encoding)) = additional_edits {
-                        if !additional_edits.is_empty() {
-                            // use the selection of the completion, instead of the (empty) one from the additional text edits
-                            let selection = transaction.selection().cloned();
-                            transaction =
-                                transaction.compose(util::generate_transaction_from_edits(
-                                    doc.text(),
-                                    additional_edits,
-                                    offset_encoding, // TODO: should probably transcode in Client
-                                ));
-                            if let Some(selection) = selection {
-                                transaction = transaction.with_selection(selection);
-                            }
-                        }
-                    }
 
                     doc.apply(&transaction, view.id);
 
@@ -415,6 +399,17 @@ impl Completion {
                         changes: completion_changes(&transaction, trigger_offset),
                     });
 
+                    // TODO: add additional _edits to completion_changes?
+                    if let Some((additional_edits, offset_encoding)) = additional_edits {
+                        if !additional_edits.is_empty() {
+                            let transaction = util::generate_transaction_from_edits(
+                                doc.text(),
+                                additional_edits,
+                                offset_encoding, // TODO: should probably transcode in Client
+                            );
+                            doc.apply(&transaction, view.id);
+                        }
+                    }
                     // we could have just inserted a trigger char (like a `crate::` completion for rust
                     // so we want to retrigger immediately when accepting a completion.
                     trigger_auto_completion(&editor.handlers.completions, editor, true);
@@ -536,7 +531,7 @@ impl Component for Completion {
             Some(option) => option,
             None => return,
         };
-        if let CompletionItem::Lsp(option) = option {
+        if let CompletionItem::Lsp(_) = option {
             self.resolve_handler.ensure_item_resolved(cx.editor, option);
         }
         // need to render:
