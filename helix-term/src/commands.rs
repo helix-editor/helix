@@ -393,7 +393,7 @@ impl MappableCommand {
         file_picker, "Open file picker",
         file_picker_in_current_buffer_directory, "Open file picker at current buffer's directory",
         file_picker_in_current_directory, "Open file picker at current working directory",
-        file_browser, "Open file browser at current working directory",
+        file_browser, "Open file browser at current buffer's directory",
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
         jumplist_picker, "Open jumplist picker",
@@ -2988,13 +2988,19 @@ fn file_picker_in_current_directory(cx: &mut Context) {
 }
 
 fn file_browser(cx: &mut Context) {
-    let cwd = helix_stdx::env::current_working_dir();
-    if !cwd.exists() {
-        cx.editor
-            .set_error("Current working directory does not exist");
-        return;
-    }
-    if let Ok(picker) = ui::file_browser(cwd) {
+    let doc_dir = doc!(cx.editor)
+        .path()
+        .and_then(|path| path.parent().map(|path| path.to_path_buf()));
+
+    let path = match doc_dir {
+        Some(path) => path,
+        None => {
+            cx.editor.set_error("Current buffer has no path or parent");
+            return;
+        }
+    };
+
+    if let Ok(picker) = ui::file_browser(path) {
         cx.push_layer(Box::new(overlaid(picker)));
     }
 }
