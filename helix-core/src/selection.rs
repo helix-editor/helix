@@ -184,16 +184,16 @@ impl Range {
 
         let positions_to_map = match self.anchor.cmp(&self.head) {
             Ordering::Equal => [
-                (&mut self.anchor, Assoc::After),
-                (&mut self.head, Assoc::After),
+                (&mut self.anchor, Assoc::AfterSticky),
+                (&mut self.head, Assoc::AfterSticky),
             ],
             Ordering::Less => [
-                (&mut self.anchor, Assoc::After),
-                (&mut self.head, Assoc::Before),
+                (&mut self.anchor, Assoc::AfterSticky),
+                (&mut self.head, Assoc::BeforeSticky),
             ],
             Ordering::Greater => [
-                (&mut self.head, Assoc::After),
-                (&mut self.anchor, Assoc::Before),
+                (&mut self.head, Assoc::AfterSticky),
+                (&mut self.anchor, Assoc::BeforeSticky),
             ],
         };
         changes.update_positions(positions_to_map.into_iter());
@@ -482,16 +482,16 @@ impl Selection {
             range.old_visual_position = None;
             match range.anchor.cmp(&range.head) {
                 Ordering::Equal => [
-                    (&mut range.anchor, Assoc::After),
-                    (&mut range.head, Assoc::After),
+                    (&mut range.anchor, Assoc::AfterSticky),
+                    (&mut range.head, Assoc::AfterSticky),
                 ],
                 Ordering::Less => [
-                    (&mut range.anchor, Assoc::After),
-                    (&mut range.head, Assoc::Before),
+                    (&mut range.anchor, Assoc::AfterSticky),
+                    (&mut range.head, Assoc::BeforeSticky),
                 ],
                 Ordering::Greater => [
-                    (&mut range.head, Assoc::After),
-                    (&mut range.anchor, Assoc::Before),
+                    (&mut range.head, Assoc::AfterSticky),
+                    (&mut range.anchor, Assoc::BeforeSticky),
                 ],
             }
         });
