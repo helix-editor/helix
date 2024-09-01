@@ -1376,6 +1376,11 @@ impl Editor {
         }
         let is_dir = new_path.is_dir();
         for ls in self.language_servers.iter_clients() {
+            // A new language server might have been started in `set_doc_path` and won't
+            // be initialized yet. Skip the `did_rename` notification for this server.
+            if !ls.is_initialized() {
+                continue;
+            }
             if let Some(notification) = ls.did_rename(old_path, &new_path, is_dir) {
                 tokio::spawn(notification);
             };
