@@ -1,25 +1,32 @@
-; Scopes
-;-------
+(identifier) @local.reference
 
 [
-  (ce_expression)
-  (module_defn)
-  (for_expression)
-  (do_expression)
-  (fun_expression)
-  (function_expression)
-  (try_expression)
-  (match_expression)
-  (elif_expression)
-  (if_expression)
+  (namespace)
+  (named_module)
+  (function_or_value_defn)
 ] @local.scope
 
-; Definitions
-;------------
+(value_declaration_left
+  .
+  [
+   (_ (identifier) @local.definition)
+   (_ (_ (identifier) @local.definition))
+   (_ (_ (_ (identifier) @local.definition)))
+   (_ (_ (_ (_ (identifier) @local.definition))))
+   (_ (_ (_ (_ (_ (identifier) @local.definition)))))
+   (_ (_ (_ (_ (_ (_ (identifier) @local.definition))))))
+  ])
 
-(function_or_value_defn) @local.definition
-
-; References
-;-----------
-
-(identifier) @local.reference
+(function_declaration_left
+  .
+  ((_) @local.definition)
+  ((argument_patterns
+    [
+     (_ (identifier) @local.definition)
+     (_ (_ (identifier) @local.definition))
+     (_ (_ (_ (identifier) @local.definition)))
+     (_ (_ (_ (_ (identifier) @local.definition))))
+     (_ (_ (_ (_ (_ (identifier) @local.definition)))))
+     (_ (_ (_ (_ (_ (_ (identifier) @local.definition))))))
+    ])
+  ))
