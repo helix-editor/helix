@@ -1824,7 +1824,7 @@ impl Editor {
                 let doc_len = doc.text().len_chars();
                 // don't restore the view and selection if the selection goes beyond the file's end
                 if !selection.ranges().iter().any(|range| range.to() >= doc_len) {
-                    view.offset = view_position;
+                    doc.set_view_offset(view.id, view_position);
                     doc.set_selection(view.id, selection);
                 }
             }
@@ -1834,20 +1834,15 @@ impl Editor {
     }
 
     pub fn close(&mut self, id: ViewId) {
-        let offset = self.tree.get(id).offset;
-
         let mut file_locs = Vec::new();
 
         for doc in self.documents_mut() {
             // Persist file location history for this view
-            // FIXME: The view offset here is currently wrong when a doc is not current for that view.
-            // Right now it uses the current offset of the view, which is on a another document.
-            // We need to persist ViewPositions on documents a la PR #7568, then fetch that here.
             if doc.selections().contains_key(&id) {
                 if let Some(path) = doc.path() {
                     file_locs.push(FileHistoryEntry::new(
                         path.clone(),
-                        offset,
+                        doc.view_offset(id),
                         doc.selection(id).clone(),
                     ));
                 }
@@ -1911,7 +1906,7 @@ impl Editor {
                     if let Some(path) = doc.path() {
                         file_locs.push(FileHistoryEntry::new(
                             path.clone(),
-                            view.offset,
+                            doc.view_offset(view.id),
                             doc.selection(view.id).clone(),
                         ));
                     };
