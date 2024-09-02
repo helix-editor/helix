@@ -1019,7 +1019,7 @@ impl Default for Config {
             persist_search: false,
             persist_clipboard: false,
             // TODO: any more defaults we should add here?
-            persistence_file_exclusions: [r".*/\.git/.*"]
+            persistence_file_exclusions: [r".*/\.git/.*", r".*/COMMIT_EDITMSG"]
                 .iter()
                 .map(|s| Regex::new(s).unwrap().into())
                 .collect(),
