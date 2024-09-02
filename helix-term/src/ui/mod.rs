@@ -425,42 +425,32 @@ pub mod completers {
     fn best_match(opt1: &str, opt2: &str, input: &str) -> std::cmp::Ordering {
         let min_len = std::cmp::min(std::cmp::min(opt1.len(), opt2.len()), input.len());
 
-        let mut opt1vals = (0, false);
-        let mut opt2vals = (0, false);
-
-        for i in 0..min_len {
-            if opt1vals.1 && opt2vals.1 {
-                break;
-            }
-
-            if !opt1vals.1 {
-                if opt1[i..=i] == input[i..=i] {
-                    opt1vals.0 += 1;
-                } else {
-                    opt1vals.1 = true;
+        let (opt1match, opt2match) = (0..min_len)
+            .fold(((false, false), (0, 0)), |acc, i| match acc {
+                ((false, b), (n, m)) => {
+                    if opt1[..=i] == input[..=i] {
+                        ((false, b), (n + 1, m))
+                    } else {
+                        ((true, b), (n, m))
+                    }
                 }
-            }
 
-            if !opt2vals.1 {
-                if opt2[i..=i] == input[i..=i] {
-                    opt2vals.0 += 1;
-                } else {
-                    opt2vals.1 = true;
+                ((b, false), (n, m)) => {
+                    if opt2[..=i] == input[..=i] {
+                        ((b, false), (n, m + 1))
+                    } else {
+                        ((b, true), (n, m))
+                    }
                 }
-            }
+
+                v => v,
+            })
+            .1;
+
+        match opt2match.cmp(&opt1match) {
+            std::cmp::Ordering::Equal => opt1.len().cmp(&opt2.len()),
+            ord => ord,
         }
-
-        let ord = opt2vals.0.cmp(&opt1vals.0);
-
-        if ord == std::cmp::Ordering::Equal {
-            if opt1.len() < opt2.len() {
-                return std::cmp::Ordering::Less;
-            } else if opt1.len() > opt2.len() {
-                return std::cmp::Ordering::Greater;
-            }
-        }
-
-        ord
     }
 
     // TODO: we could return an iter/lazy thing so it can fetch as many as it needs.
