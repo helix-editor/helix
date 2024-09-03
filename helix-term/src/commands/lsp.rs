@@ -836,7 +836,7 @@ pub fn code_actions_on_save(cx: &mut compositor::Context, doc_id: &DocumentId) {
                 // TODO: Find a better way to handle this
                 // Sleep to avoid race condition between next code action/auto-format
                 // and the textDocument/didChange notification
-                std::thread::sleep(std::time::Duration::from_millis(100));
+                std::thread::sleep(std::time::Duration::from_millis(10));
             }
         }
     }
