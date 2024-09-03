@@ -12,7 +12,6 @@ use helix_core::{line_ending, shellwords::Shellwords};
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
 use serde_json::Value;
-
 use ui::completers::{self, Completer};
 
 #[derive(Clone)]

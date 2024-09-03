@@ -546,9 +546,9 @@ pub fn workspace_diagnostics_picker(cx: &mut Context) {
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
-pub struct CodeActionOrCommandItem {
-    pub lsp_item: lsp::CodeActionOrCommand,
-    pub language_server_id: LanguageServerId,
+struct CodeActionOrCommandItem {
+    lsp_item: lsp::CodeActionOrCommand,
+    language_server_id: LanguageServerId,
 }
 
 impl ui::menu::Item for CodeActionOrCommandItem {
@@ -842,7 +842,7 @@ pub fn code_actions_on_save(cx: &mut compositor::Context, doc_id: &DocumentId) {
     }
 }
 
-pub fn apply_code_action(editor: &mut Editor, action: &CodeActionOrCommandItem) {
+fn apply_code_action(editor: &mut Editor, action: &CodeActionOrCommandItem) {
     let Some(language_server) = editor.language_server_by_id(action.language_server_id) else {
         editor.set_error("Language Server disappeared");
         return;

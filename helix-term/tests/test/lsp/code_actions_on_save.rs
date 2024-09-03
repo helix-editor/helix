@@ -9,6 +9,11 @@ use super::*;
 // Give time to send textDocument/didOpen notification
 const IDLE_TIMEOUT: std::time::Duration = std::time::Duration::from_millis(500);
 
+// Gopls does not use native line endings so set default line ending
+// to LF to avoid issues in Windows tests.
+const DEFAULT_LINE_ENDING: helix_view::editor::LineEndingConfig =
+    helix_view::editor::LineEndingConfig::LF;
+
 // Check that we have gopls available while also allowing
 // for gopls to initialize
 fn assert_gopls(app: &Application, path: &Path) {
@@ -22,9 +27,6 @@ fn assert_gopls(app: &Application, path: &Path) {
             if let Some(gopls) = ls {
                 if gopls.is_initialized() {
                     initialized = true;
-                    // TODO: Make this deterministic
-                    // Sleep to give time to send textDocument/didOpen notification
-                    // std::thread::sleep(std::time::Duration::from_millis(IDLE_TIMEOUT));
                     break;
                 }
             }
@@ -74,7 +76,7 @@ async fn test_organize_imports_go() -> anyhow::Result<()> {
         .with_config(Config {
             editor: helix_view::editor::Config {
                 idle_timeout: IDLE_TIMEOUT,
-                default_line_ending: helix_view::editor::LineEndingConfig::LF,
+                default_line_ending: DEFAULT_LINE_ENDING,
                 ..Default::default()
             },
             ..Default::default()
@@ -134,7 +136,7 @@ async fn test_organize_imports_go_write_all_quit() -> anyhow::Result<()> {
         .with_config(Config {
             editor: helix_view::editor::Config {
                 idle_timeout: IDLE_TIMEOUT,
-                default_line_ending: helix_view::editor::LineEndingConfig::LF,
+                default_line_ending: DEFAULT_LINE_ENDING,
                 ..Default::default()
             },
             ..Default::default()
@@ -204,7 +206,7 @@ async fn test_invalid_code_action_go() -> anyhow::Result<()> {
         .with_config(Config {
             editor: helix_view::editor::Config {
                 idle_timeout: IDLE_TIMEOUT,
-                default_line_ending: helix_view::editor::LineEndingConfig::LF,
+                default_line_ending: DEFAULT_LINE_ENDING,
                 ..Default::default()
             },
             ..Default::default()
