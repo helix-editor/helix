@@ -11,14 +11,18 @@ pub fn book_gen() -> PathBuf {
     project_root().join("book/src/generated/")
 }
 
+pub fn runtime() -> PathBuf {
+    project_root().join("runtime")
+}
+
 pub fn ts_queries() -> PathBuf {
-    project_root().join("runtime/queries")
+    runtime().join("queries")
+}
+
+pub fn themes() -> PathBuf {
+    runtime().join("themes")
 }
 
 pub fn lang_config() -> PathBuf {
     project_root().join("languages.toml")
-}
-
-pub fn themes() -> PathBuf {
-    project_root().join("runtime/themes")
 }

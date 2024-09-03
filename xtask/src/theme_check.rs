@@ -13,7 +13,7 @@ pub fn theme_check() -> Result<(), DynError> {
     log::set_max_level(log::LevelFilter::Warn);
 
     let theme_names = Loader::read_names(&path::themes());
-    let loader = Loader::new(&vec![path::project_root().join("runtime")]);
+    let loader = Loader::new(&vec![path::runtime()]);
 
     let mut issues_found = false;
     for name in theme_names {
@@ -28,6 +28,7 @@ pub fn theme_check() -> Result<(), DynError> {
                 for warning in warnings.iter() {
                     println!("{warning}");
                 }
+                println!("\n");
             }
         }
 
