@@ -6,6 +6,9 @@ use std::{
 
 use super::*;
 
+// Give time to send textDocument/didOpen notification
+const IDLE_TIMEOUT: std::time::Duration = std::time::Duration::from_millis(500);
+
 // Check that we have gopls available while also allowing
 // for gopls to initialize
 fn assert_gopls(app: &Application, path: &Path) {
@@ -21,7 +24,7 @@ fn assert_gopls(app: &Application, path: &Path) {
                     initialized = true;
                     // TODO: Make this deterministic
                     // Sleep to give time to send textDocument/didOpen notification
-                    std::thread::sleep(std::time::Duration::from_millis(1000));
+                    // std::thread::sleep(std::time::Duration::from_millis(IDLE_TIMEOUT));
                     break;
                 }
             }
@@ -68,7 +71,13 @@ async fn test_organize_imports_go() -> anyhow::Result<()> {
     let dir = tempfile::Builder::new().tempdir()?;
     let mut file = tempfile::Builder::new().suffix(".go").tempfile_in(&dir)?;
     let mut app = helpers::AppBuilder::new()
-        .with_config(Config::default())
+        .with_config(Config {
+            editor: helix_view::editor::Config {
+                idle_timeout: IDLE_TIMEOUT,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
         .with_lang_loader(helpers::test_syntax_loader(Some(lang_conf.into())))
         .with_file(file.path(), None)
         .with_input_text(text)
@@ -121,7 +130,13 @@ async fn test_organize_imports_go_write_all_quit() -> anyhow::Result<()> {
     let mut file1 = tempfile::Builder::new().suffix(".go").tempfile_in(&dir)?;
     let mut file2 = tempfile::Builder::new().suffix(".go").tempfile_in(&dir)?;
     let mut app = helpers::AppBuilder::new()
-        .with_config(Config::default())
+        .with_config(Config {
+            editor: helix_view::editor::Config {
+                idle_timeout: IDLE_TIMEOUT,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
         .with_lang_loader(helpers::test_syntax_loader(Some(lang_conf.into())))
         .with_file(file1.path(), None)
         .with_input_text(text)
@@ -155,7 +170,10 @@ async fn test_organize_imports_go_write_all_quit() -> anyhow::Result<()> {
         "package main\n\nimport (\n\t\"fmt\"\n\t\"path\"\n)\n\nfunc main() {\n\tfmt.Println(\"a\")\n\tpath.Join(\"b\")\n}\n",
     )?;
 
-    assert_file_has_content(&mut file2, "package main\n\nfunc test()\n")?;
+    assert_file_has_content(
+        &mut file2,
+        &LineFeedHandling::Native.apply("package main\n\nfunc test()\n"),
+    )?;
 
     Ok(())
 }
@@ -184,7 +202,13 @@ async fn test_invalid_code_action_go() -> anyhow::Result<()> {
     let dir = tempfile::Builder::new().tempdir()?;
     let mut file = tempfile::Builder::new().suffix(".go").tempfile_in(&dir)?;
     let mut app = helpers::AppBuilder::new()
-        .with_config(Config::default())
+        .with_config(Config {
+            editor: helix_view::editor::Config {
+                idle_timeout: IDLE_TIMEOUT,
+                ..Default::default()
+            },
+            ..Default::default()
+        })
         .with_lang_loader(helpers::test_syntax_loader(Some(lang_conf.into())))
         .with_file(file.path(), None)
         .with_input_text(text)
