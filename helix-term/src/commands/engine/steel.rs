@@ -51,7 +51,7 @@ use crate::{
     events::{OnModeSwitch, PostCommand, PostInsertChar},
     job::{self, Callback},
     keymap::{self, merge_keys, KeyTrie, KeymapResult},
-    ui::{self, picker::PathOrId, Popup, Prompt, PromptEvent},
+    ui::{self, picker::PathOrId, PickerColumn, Popup, Prompt, PromptEvent},
 };
 
 use components::SteelDynamicComponent;
@@ -2130,11 +2130,22 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
     );
 
     engine.register_fn("picker", |values: Vec<String>| -> WrappedDynComponent {
+        let columns = [PickerColumn::new(
+            "path",
+            |item: &PathBuf, root: &PathBuf| {
+                item.strip_prefix(root)
+                    .unwrap_or(item)
+                    .to_string_lossy()
+                    .into()
+            },
+        )];
+        let cwd = helix_stdx::env::current_working_dir();
+
         let picker = ui::Picker::new(
-            Vec::new(),
+            columns,
             0,
             [PathBuf::from("")],
-            (),
+            cwd,
             move |cx, path: &PathBuf, action| {
                 if let Err(e) = cx.editor.open(path, action) {
                     let err = if let Some(err) = e.source() {
