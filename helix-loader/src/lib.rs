@@ -168,9 +168,17 @@ pub fn cache_dir() -> PathBuf {
 pub fn state_dir() -> PathBuf {
     // TODO: allow env var override
     let strategy = choose_base_strategy().expect("Unable to find the state directory!");
-    let mut path = strategy.state_dir().unwrap();
-    path.push("helix");
-    path
+    match strategy.state_dir() {
+        Some(mut path) => {
+            path.push("helix");
+            path
+        }
+        None => {
+            let mut path = strategy.cache_dir();
+            path.push("helix/state");
+            path
+        }
+    }
 }
 
 pub fn config_file() -> PathBuf {
