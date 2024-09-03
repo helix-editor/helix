@@ -74,6 +74,7 @@ async fn test_organize_imports_go() -> anyhow::Result<()> {
         .with_config(Config {
             editor: helix_view::editor::Config {
                 idle_timeout: IDLE_TIMEOUT,
+                default_line_ending: helix_view::editor::LineEndingConfig::LF,
                 ..Default::default()
             },
             ..Default::default()
@@ -133,6 +134,7 @@ async fn test_organize_imports_go_write_all_quit() -> anyhow::Result<()> {
         .with_config(Config {
             editor: helix_view::editor::Config {
                 idle_timeout: IDLE_TIMEOUT,
+                default_line_ending: helix_view::editor::LineEndingConfig::LF,
                 ..Default::default()
             },
             ..Default::default()
@@ -170,10 +172,7 @@ async fn test_organize_imports_go_write_all_quit() -> anyhow::Result<()> {
         "package main\n\nimport (\n\t\"fmt\"\n\t\"path\"\n)\n\nfunc main() {\n\tfmt.Println(\"a\")\n\tpath.Join(\"b\")\n}\n",
     )?;
 
-    assert_file_has_content(
-        &mut file2,
-        &LineFeedHandling::Native.apply("package main\n\nfunc test()\n"),
-    )?;
+    assert_file_has_content(&mut file2, "package main\n\nfunc test()\n")?;
 
     Ok(())
 }
@@ -205,6 +204,7 @@ async fn test_invalid_code_action_go() -> anyhow::Result<()> {
         .with_config(Config {
             editor: helix_view::editor::Config {
                 idle_timeout: IDLE_TIMEOUT,
+                default_line_ending: helix_view::editor::LineEndingConfig::LF,
                 ..Default::default()
             },
             ..Default::default()
