@@ -33,11 +33,21 @@ pub fn current_working_dir() -> PathBuf {
     cwd
 }
 
-pub fn set_current_working_dir(path: impl AsRef<Path>) -> std::io::Result<()> {
+/// Updates the current working directory of the current thread
+///
+/// Should the given path be a file, it will fail **unless** `allow_file` is passed and its parent
+/// can be found.
+pub fn set_current_working_dir(path: impl AsRef<Path>, allow_file: bool) -> std::io::Result<()> {
     let path = crate::path::canonicalize(path);
-    std::env::set_current_dir(&path)?;
+    if path.is_file() && allow_file {
+        std::env::set_current_dir(path.parent().ok_or_else(|| {
+            std::io::Error::new(std::io::ErrorKind::NotFound, "File has no parent?")
+        })?)?;
+    } else {
+        std::env::set_current_dir(&path)?;
+    }
     let mut cwd = CWD.write().unwrap();
-    *cwd = Some(path);
+    *cwd = Some(std::env::current_dir()?);
     Ok(())
 }
 
@@ -83,7 +93,7 @@ mod tests {
         let cwd = current_working_dir();
         assert_ne!(cwd, new_path);
 
-        set_current_working_dir(&new_path).expect("Couldn't set new path");
+        set_current_working_dir(&new_path, false).expect("Couldn't set new path");
 
         let cwd = current_working_dir();
         assert_eq!(cwd, new_path);

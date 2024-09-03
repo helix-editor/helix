@@ -1093,7 +1093,7 @@ fn change_current_directory(
         .as_ref();
     let dir = helix_stdx::path::expand_tilde(Path::new(dir));
 
-    helix_stdx::env::set_current_working_dir(dir)?;
+    helix_stdx::env::set_current_working_dir(dir, false)?;
 
     cx.editor.set_status(format!(
         "Current working directory is now {}",
