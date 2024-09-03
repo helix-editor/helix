@@ -17,3 +17,5 @@ helix-core = { path = "../helix-core" }
 helix-view = { path = "../helix-view" }
 helix-loader = { path = "../helix-loader" }
 toml = "0.8"
+log = "~0.4"
+once_cell = "1.19"

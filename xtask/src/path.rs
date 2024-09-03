@@ -18,3 +18,7 @@ pub fn ts_queries() -> PathBuf {
 pub fn lang_config() -> PathBuf {
     project_root().join("languages.toml")
 }
+
+pub fn themes() -> PathBuf {
+    project_root().join("runtime/themes")
+}
