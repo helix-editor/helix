@@ -120,6 +120,12 @@ impl Application {
                         log::warn!("failed to load theme `{}` - {}", theme, e);
                         e
                     })
+                    .map(|(theme, validation_failures)| {
+                        for validation_failure in validation_failures {
+                            log::warn!("{validation_failure}");
+                        }
+                        theme
+                    })
                     .ok()
                     .filter(|theme| (true_color || theme.is_16_color()))
             })
@@ -434,6 +440,12 @@ impl Application {
                     .map_err(|e| {
                         log::warn!("failed to load theme `{}` - {}", theme, e);
                         e
+                    })
+                    .map(|(theme, validation_failures)| {
+                        for validation_failure in validation_failures {
+                            log::warn!("{validation_failure}");
+                        }
+                        theme
                     })
                     .ok()
                     .filter(|theme| (true_color || theme.is_16_color()))

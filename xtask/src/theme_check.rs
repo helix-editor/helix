@@ -1,18 +1,14 @@
-use std::fs;
-
-use helix_view::{theme::Loader, Theme};
+use helix_view::theme::Loader;
 
 use crate::{path, DynError};
 
 pub fn theme_check() -> Result<(), DynError> {
     let theme_names = Loader::read_names(&path::themes());
+    let loader = Loader::new(&[path::runtime()]);
     let mut failures_found = false;
 
     for name in theme_names {
-        let path = path::themes().join(format!("{name}.toml"));
-        let content = fs::read_to_string(path).unwrap();
-        let toml = toml::from_str(&content).unwrap();
-        let (_, validation_failures) = Theme::from_keys(toml);
+        let (_, validation_failures) = loader.load(&name).unwrap();
 
         if !validation_failures.is_empty() {
             failures_found = true;

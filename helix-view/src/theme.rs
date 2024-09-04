@@ -52,21 +52,24 @@ impl Loader {
     }
 
     /// Loads a theme searching directories in priority order.
-    pub fn load(&self, name: &str) -> Result<Theme> {
+    pub fn load(&self, name: &str) -> Result<(Theme, Vec<String>)> {
         if name == "default" {
-            return Ok(self.default());
+            return Ok((self.default(), Vec::new()));
         }
         if name == "base16_default" {
-            return Ok(self.base16_default());
+            return Ok((self.base16_default(), Vec::new()));
         }
 
         let mut visited_paths = HashSet::new();
-        let theme = self.load_theme(name, &mut visited_paths).map(Theme::from)?;
+        let (theme, validation_failures) = self
+            .load_theme(name, &mut visited_paths)
+            .map(Theme::from_toml)?;
 
-        Ok(Theme {
+        let theme = Theme {
             name: name.into(),
             ..theme
-        })
+        };
+        Ok((theme, validation_failures))
     }
 
     /// Recursively load a theme, merging with any inherited parent themes.
@@ -220,16 +223,8 @@ pub struct Theme {
 
 impl From<Value> for Theme {
     fn from(value: Value) -> Self {
-        if let Value::Table(table) = value {
-            let (theme, validation_failures) = Theme::from_keys(table);
-            for validation_failure in validation_failures {
-                warn!("{}", validation_failure);
-            }
-            theme
-        } else {
-            warn!("Expected theme TOML value to be a table, found {:?}", value);
-            Default::default()
-        }
+        let (theme, _) = Theme::from_toml(value);
+        theme
     }
 }
 
@@ -287,21 +282,6 @@ fn build_theme_values(
 }
 
 impl Theme {
-    /// Construct a Theme instance from a map of Toml keys
-    /// If any validation issues are encountered due the theme containing
-    /// invalid style definitions, the details are returned
-    pub fn from_keys(toml_keys: Map<String, Value>) -> (Self, Vec<String>) {
-        let (styles, scopes, highlights, validation_failures) = build_theme_values(toml_keys);
-
-        let theme = Self {
-            styles,
-            scopes,
-            highlights,
-            ..Default::default()
-        };
-        (theme, validation_failures)
-    }
-
     #[inline]
     pub fn highlight(&self, index: usize) -> Style {
         self.highlights[index]
@@ -363,6 +343,27 @@ impl Theme {
                 .into_iter()
                 .all(|color| !matches!(color, Some(Color::Rgb(..))))
         })
+    }
+
+    fn from_toml(value: Value) -> (Self, Vec<String>) {
+        if let Value::Table(table) = value {
+            Theme::from_keys(table)
+        } else {
+            warn!("Expected theme TOML value to be a table, found {:?}", value);
+            Default::default()
+        }
+    }
+
+    fn from_keys(toml_keys: Map<String, Value>) -> (Self, Vec<String>) {
+        let (styles, scopes, highlights, validation_failures) = build_theme_values(toml_keys);
+
+        let theme = Self {
+            styles,
+            scopes,
+            highlights,
+            ..Default::default()
+        };
+        (theme, validation_failures)
     }
 }
 
