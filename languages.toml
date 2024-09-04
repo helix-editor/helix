@@ -84,6 +84,7 @@ racket = { command = "racket", args = ["-l", "racket-langserver"] }
 regols = { command = "regols" }
 rescript-language-server = { command = "rescript-language-server", args = ["--stdio"] }
 robotframework_ls = { command = "robotframework_ls" }
+ruff = { command = "ruff", args = ["server"] }
 serve-d = { command = "serve-d" }
 slint-lsp = { command = "slint-lsp", args = [] }
 solargraph = { command = "solargraph", args = ["stdio"] }
@@ -852,7 +853,7 @@ file-types = ["py", "pyi", "py3", "pyw", "ptl", "rpy", "cpy", "ipy", "pyt", { gl
 shebangs = ["python"]
 roots = ["pyproject.toml", "setup.py", "poetry.lock", "pyrightconfig.json"]
 comment-token = "#"
-language-servers = [ "pylsp" ]
+language-servers = ["ruff", "pylsp"]
 # TODO: pyls needs utf-8 offsets
 indent = { tab-width = 4, unit = "    " }
 
