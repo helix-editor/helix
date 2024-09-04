@@ -2910,8 +2910,6 @@ dependencies = [
  "helix-loader",
  "helix-term",
  "helix-view",
- "log",
- "once_cell",
  "toml",
 ]
 

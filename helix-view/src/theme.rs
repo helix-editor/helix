@@ -221,14 +221,11 @@ pub struct Theme {
 impl From<Value> for Theme {
     fn from(value: Value) -> Self {
         if let Value::Table(table) = value {
-            let (styles, scopes, highlights) = build_theme_values(table);
-
-            Self {
-                styles,
-                scopes,
-                highlights,
-                ..Default::default()
+            let (theme, validation_failures) = Theme::from_keys(table);
+            for validation_failure in validation_failures {
+                warn!("{}", validation_failure);
             }
+            theme
         } else {
             warn!("Expected theme TOML value to be a table, found {:?}", value);
             Default::default()
@@ -242,31 +239,29 @@ impl<'de> Deserialize<'de> for Theme {
         D: Deserializer<'de>,
     {
         let values = Map::<String, Value>::deserialize(deserializer)?;
-
-        let (styles, scopes, highlights) = build_theme_values(values);
-
-        Ok(Self {
-            styles,
-            scopes,
-            highlights,
-            ..Default::default()
-        })
+        let (theme, validation_failures) = Theme::from_keys(values);
+        for validation_failure in validation_failures {
+            warn!("{}", validation_failure);
+        }
+        Ok(theme)
     }
 }
 
 fn build_theme_values(
     mut values: Map<String, Value>,
-) -> (HashMap<String, Style>, Vec<String>, Vec<Style>) {
+) -> (HashMap<String, Style>, Vec<String>, Vec<Style>, Vec<String>) {
     let mut styles = HashMap::new();
     let mut scopes = Vec::new();
     let mut highlights = Vec::new();
+
+    let mut validation_failures = Vec::new();
 
     // TODO: alert user of parsing failures in editor
     let palette = values
         .remove("palette")
         .map(|value| {
             ThemePalette::try_from(value).unwrap_or_else(|err| {
-                warn!("{}", err);
+                validation_failures.push(err);
                 ThemePalette::default()
             })
         })
@@ -279,7 +274,7 @@ fn build_theme_values(
     for (name, style_value) in values {
         let mut style = Style::default();
         if let Err(err) = palette.parse_style(&mut style, style_value) {
-            warn!("{}", err);
+            validation_failures.push(err);
         }
 
         // these are used both as UI and as highlights
@@ -288,10 +283,25 @@ fn build_theme_values(
         highlights.push(style);
     }
 
-    (styles, scopes, highlights)
+    (styles, scopes, highlights, validation_failures)
 }
 
 impl Theme {
+    /// Construct a Theme instance from a map of Toml keys
+    /// If any validation issues are encountered due the theme containing
+    /// invalid style definitions, the details are returned
+    pub fn from_keys(toml_keys: Map<String, Value>) -> (Self, Vec<String>) {
+        let (styles, scopes, highlights, validation_failures) = build_theme_values(toml_keys);
+
+        let theme = Self {
+            styles,
+            scopes,
+            highlights,
+            ..Default::default()
+        };
+        (theme, validation_failures)
+    }
+
     #[inline]
     pub fn highlight(&self, index: usize) -> Style {
         self.highlights[index]

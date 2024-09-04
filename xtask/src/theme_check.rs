@@ -1,70 +1,33 @@
-use std::sync::{Arc, Mutex};
+use std::fs;
 
-use helix_view::theme::Loader;
+use helix_view::{theme::Loader, Theme};
 
 use crate::{path, DynError};
-use once_cell::sync::Lazy;
-
-static LOGGER: Lazy<MockLog> = Lazy::new(MockLog::new);
 
 pub fn theme_check() -> Result<(), DynError> {
-    log::set_logger(&*LOGGER).unwrap();
-    log::set_max_level(log::LevelFilter::Warn);
-
     let theme_names = Loader::read_names(&path::themes());
-    let loader = Loader::new(&[path::runtime()]);
+    let mut failures_found = false;
 
-    let mut issues_found = false;
     for name in theme_names {
-        let _ = loader.load(&name).unwrap();
+        let path = path::themes().join(format!("{name}.toml"));
+        let content = fs::read_to_string(path).unwrap();
+        let toml = toml::from_str(&content).unwrap();
+        let (_, validation_failures) = Theme::from_keys(toml);
 
-        {
-            let warnings = LOGGER.warnings.lock().unwrap();
-            if !warnings.is_empty() {
-                issues_found = true;
-
-                println!("Theme '{name}' loaded with warnings:");
-                for warning in warnings.iter() {
-                    println!("{warning}");
-                }
+        if !validation_failures.is_empty() {
+            failures_found = true;
+            println!("Theme '{name}' loaded with warnings:");
+            for failure in validation_failures {
+                println!("\t* {failure}");
             }
         }
-
-        LOGGER.clear();
     }
-    match issues_found {
-        true => Err("Issues found in bundled themes".to_string().into()),
-        false => Ok(()),
-    }
-}
 
-struct MockLog {
-    warnings: Arc<Mutex<Vec<String>>>,
-}
-
-impl MockLog {
-    pub fn new() -> Self {
-        MockLog {
-            warnings: Arc::new(Mutex::new(Vec::new())),
+    match failures_found {
+        true => Err("Validation failures found in bundled themes".into()),
+        false => {
+            println!("Theme check successful!");
+            Ok(())
         }
-    }
-
-    pub fn clear(&self) {
-        let mut warnings = self.warnings.lock().unwrap();
-        warnings.clear();
-    }
-}
-
-impl log::Log for MockLog {
-    fn enabled(&self, _metadata: &log::Metadata) -> bool {
-        true
-    }
-
-    fn log(&self, record: &log::Record) {
-        let mut warnings = self.warnings.lock().unwrap();
-        warnings.push(record.args().to_string());
-    }
-
-    fn flush(&self) { // Do nothing
     }
 }
