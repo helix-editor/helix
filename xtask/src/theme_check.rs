@@ -3,7 +3,11 @@ use helix_view::theme::Loader;
 use crate::{path, DynError};
 
 pub fn theme_check() -> Result<(), DynError> {
-    let theme_names = Loader::read_names(&path::themes());
+    let theme_names = [
+        vec!["default".to_string(), "base16_default".to_string()],
+        Loader::read_names(&path::themes()),
+    ]
+    .concat();
     let loader = Loader::new(&[path::runtime()]);
     let mut failures_found = false;
 
