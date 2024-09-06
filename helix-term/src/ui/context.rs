@@ -8,7 +8,7 @@ use helix_core::{
     Position,
 };
 
-use helix_view::{editor::Config, graphics::Rect, Document, Theme, View, ViewId};
+use helix_view::{editor::Config, graphics::Rect, Document, DocumentId, Theme, View};
 
 use tui::buffer::Buffer as Surface;
 
@@ -27,7 +27,7 @@ pub struct StickyNode {
     pub indicator: Option<String>,
     pub anchor: usize,
     pub has_context_end: bool,
-    pub view_id: ViewId,
+    pub doc_id: DocumentId,
 }
 
 #[derive(Debug)]
@@ -106,7 +106,7 @@ pub fn calculate_sticky_nodes(
 
     let mut cached_nodes = build_cached_nodes(doc, nodes, view, &mut context).unwrap_or_default();
 
-    if cached_nodes.iter().any(|node| node.view_id != view.id) {
+    if cached_nodes.iter().any(|node| node.doc_id != view.doc) {
         cached_nodes.clear();
     }
 
@@ -207,7 +207,7 @@ pub fn calculate_sticky_nodes(
                 indicator: None,
                 anchor: doc.view_offset(view.id).anchor,
                 has_context_end: node_byte_range.is_some(),
-                view_id: view.id,
+                doc_id: view.doc,
             });
         }
     }
@@ -269,7 +269,7 @@ fn build_cached_nodes(
     context: &mut StickyNodeContext,
 ) -> Option<Vec<StickyNode>> {
     if let Some(nodes) = nodes {
-        if nodes.iter().any(|node| view.id != node.view_id) {
+        if nodes.iter().any(|node| view.doc != node.doc_id) {
             return None;
         }
 
@@ -363,7 +363,7 @@ fn add_indicator(
         indicator: Some(str),
         anchor: doc.view_offset(view.id).anchor,
         has_context_end: false,
-        view_id: view.id,
+        doc_id: view.doc,
     });
 
     res
