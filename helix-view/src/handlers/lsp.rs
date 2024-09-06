@@ -93,6 +93,7 @@ impl Editor {
         version: Option<i32>,
         text_edits: Vec<lsp::TextEdit>,
         offset_encoding: OffsetEncoding,
+        sync_lsp_notification: bool,
     ) -> Result<(), ApplyEditErrorKind> {
         let uri = match Uri::try_from(url) {
             Ok(uri) => uri,
@@ -133,16 +134,37 @@ impl Editor {
 
         let transaction = generate_transaction_from_edits(doc.text(), text_edits, offset_encoding);
         let view = view_mut!(self, view_id);
-        doc.apply(&transaction, view.id);
+        if sync_lsp_notification {
+            doc.apply_sync_notification(&transaction, view.id);
+        } else {
+            doc.apply(&transaction, view.id);
+        }
         doc.append_changes_to_history(view);
         Ok(())
     }
 
-    // TODO make this transactional (and set failureMode to transactional)
     pub fn apply_workspace_edit(
         &mut self,
         offset_encoding: OffsetEncoding,
         workspace_edit: &lsp::WorkspaceEdit,
+    ) -> Result<(), ApplyEditError> {
+        self.apply_workspace_edit_impl(offset_encoding, workspace_edit, false)
+    }
+
+    pub fn apply_workspace_edit_sync(
+        &mut self,
+        offset_encoding: OffsetEncoding,
+        workspace_edit: &lsp::WorkspaceEdit,
+    ) -> Result<(), ApplyEditError> {
+        self.apply_workspace_edit_impl(offset_encoding, workspace_edit, true)
+    }
+
+    // TODO make this transactional (and set failureMode to transactional)
+    fn apply_workspace_edit_impl(
+        &mut self,
+        offset_encoding: OffsetEncoding,
+        workspace_edit: &lsp::WorkspaceEdit,
+        sync_lsp_notificaiton: bool,
     ) -> Result<(), ApplyEditError> {
         if let Some(ref document_changes) = workspace_edit.document_changes {
             match document_changes {
@@ -164,6 +186,7 @@ impl Editor {
                             document_edit.text_document.version,
                             edits,
                             offset_encoding,
+                            sync_lsp_notificaiton,
                         )
                         .map_err(|kind| ApplyEditError {
                             kind,
@@ -201,6 +224,7 @@ impl Editor {
                                     document_edit.text_document.version,
                                     edits,
                                     offset_encoding,
+                                    sync_lsp_notificaiton,
                                 )
                                 .map_err(|kind| {
                                     ApplyEditError {
@@ -221,11 +245,17 @@ impl Editor {
             log::debug!("workspace changes: {:?}", changes);
             for (i, (uri, text_edits)) in changes.iter().enumerate() {
                 let text_edits = text_edits.to_vec();
-                self.apply_text_edits(uri, None, text_edits, offset_encoding)
-                    .map_err(|kind| ApplyEditError {
-                        kind,
-                        failed_change_idx: i,
-                    })?;
+                self.apply_text_edits(
+                    uri,
+                    None,
+                    text_edits,
+                    offset_encoding,
+                    sync_lsp_notificaiton,
+                )
+                .map_err(|kind| ApplyEditError {
+                    kind,
+                    failed_change_idx: i,
+                })?;
             }
         }
 

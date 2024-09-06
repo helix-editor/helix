@@ -551,6 +551,11 @@ struct CodeActionOrCommandItem {
     language_server_id: LanguageServerId,
 }
 
+struct CodeActionItem {
+    lsp_item: lsp::CodeAction,
+    language_server_id: LanguageServerId,
+}
+
 impl ui::menu::Item for CodeActionOrCommandItem {
     type Data = ();
     fn format(&self, _data: &Self::Data) -> Row {
@@ -712,8 +717,36 @@ pub fn code_action(cx: &mut Context) {
 
                 // always present here
                 let action = action.unwrap();
+                let Some(language_server) = editor.language_server_by_id(action.language_server_id)
+                else {
+                    editor.set_error("Language Server disappeared");
+                    return;
+                };
+                let offset_encoding = language_server.offset_encoding();
 
-                apply_code_action(editor, action);
+                match &action.lsp_item {
+                    lsp::CodeActionOrCommand::Command(command) => {
+                        log::debug!("code action command: {:?}", command);
+                        execute_lsp_command(editor, action.language_server_id, command.clone());
+                    }
+                    lsp::CodeActionOrCommand::CodeAction(code_action) => {
+                        log::debug!("code action: {:?}", code_action);
+                        let resolved_code_action =
+                            resolve_code_action(code_action, language_server);
+
+                        if let Some(ref workspace_edit) =
+                            resolved_code_action.as_ref().unwrap_or(code_action).edit
+                        {
+                            let _ = editor.apply_workspace_edit(offset_encoding, workspace_edit);
+                        }
+
+                        // if code action provides both edit and command first the edit
+                        // should be applied and then the command
+                        if let Some(command) = &code_action.command {
+                            execute_lsp_command(editor, action.language_server_id, command.clone());
+                        }
+                    }
+                }
             });
             picker.move_down(); // pre-select the first item
 
@@ -780,7 +813,7 @@ pub fn code_actions_on_save(cx: &mut compositor::Context, doc_id: &DocumentId) {
             log::debug!("Attempting code action on save {:?}", code_action_kind);
             let doc = doc!(cx.editor, doc_id);
             let full_range = Range::new(0, doc.text().len_chars());
-            let code_actions: Vec<CodeActionOrCommandItem> =
+            let code_actions: Vec<CodeActionItem> =
                 code_actions_for_range(doc, full_range, Some(vec![code_action_kind.clone()]))
                     .into_iter()
                     .filter_map(|(future, language_server_id)| {
@@ -808,10 +841,15 @@ pub fn code_actions_on_save(cx: &mut compositor::Context, doc_id: &DocumentId) {
 
                                 // Use the first matching code action
                                 if let Some(lsp_item) = actions.first() {
-                                    return Some(CodeActionOrCommandItem {
-                                        lsp_item: lsp_item.clone(),
-                                        language_server_id,
-                                    });
+                                    return match lsp_item {
+                                        CodeActionOrCommand::CodeAction(code_action) => {
+                                            Some(CodeActionItem {
+                                                lsp_item: code_action.clone(),
+                                                language_server_id,
+                                            })
+                                        }
+                                        _ => None,
+                                    };
                                 }
                             }
                         }
@@ -831,55 +869,52 @@ pub fn code_actions_on_save(cx: &mut compositor::Context, doc_id: &DocumentId) {
                     code_action.lsp_item,
                     code_action.language_server_id
                 );
-                apply_code_action(cx.editor, &code_action);
+                let Some(language_server) = cx
+                    .editor
+                    .language_server_by_id(code_action.language_server_id)
+                else {
+                    log::error!(
+                        "Language server disappeared {:?}",
+                        code_action.language_server_id
+                    );
+                    continue;
+                };
 
-                // TODO: Find a better way to handle this
-                // Sleep to avoid race condition between next code action/auto-format
-                // and the textDocument/didChange notification
-                std::thread::sleep(std::time::Duration::from_millis(10));
+                let offset_encoding = language_server.offset_encoding();
+
+                let resolved_code_action =
+                    resolve_code_action(&code_action.lsp_item, language_server);
+
+                if let Some(ref workspace_edit) = resolved_code_action
+                    .as_ref()
+                    .unwrap_or(&code_action.lsp_item)
+                    .edit
+                {
+                    let _ = cx
+                        .editor
+                        .apply_workspace_edit_sync(offset_encoding, workspace_edit);
+                }
             }
         }
     }
 }
 
-fn apply_code_action(editor: &mut Editor, action: &CodeActionOrCommandItem) {
-    let Some(language_server) = editor.language_server_by_id(action.language_server_id) else {
-        editor.set_error("Language Server disappeared");
-        return;
-    };
-    let offset_encoding = language_server.offset_encoding();
-
-    match &action.lsp_item {
-        lsp::CodeActionOrCommand::Command(command) => {
-            log::debug!("code action command: {:?}", command);
-            execute_lsp_command(editor, action.language_server_id, command.clone());
-        }
-        lsp::CodeActionOrCommand::CodeAction(code_action) => {
-            log::debug!("code action: {:?}", code_action);
-            // we support lsp "codeAction/resolve" for `edit` and `command` fields
-            let mut resolved_code_action = None;
-            if code_action.edit.is_none() || code_action.command.is_none() {
-                if let Some(future) = language_server.resolve_code_action(code_action.clone()) {
-                    if let Ok(response) = helix_lsp::block_on(future) {
-                        if let Ok(code_action) = serde_json::from_value::<CodeAction>(response) {
-                            resolved_code_action = Some(code_action);
-                        }
-                    }
+pub fn resolve_code_action(
+    code_action: &CodeAction,
+    language_server: &Client,
+) -> Option<CodeAction> {
+    // we support lsp "codeAction/resolve" for `edit` and `command` fields
+    let mut resolved_code_action = None;
+    if code_action.edit.is_none() || code_action.command.is_none() {
+        if let Some(future) = language_server.resolve_code_action(code_action.clone()) {
+            if let Ok(response) = helix_lsp::block_on(future) {
+                if let Ok(code_action) = serde_json::from_value::<CodeAction>(response) {
+                    resolved_code_action = Some(code_action);
                 }
-            }
-            let resolved_code_action = resolved_code_action.as_ref().unwrap_or(code_action);
-
-            if let Some(ref workspace_edit) = resolved_code_action.edit {
-                let _ = editor.apply_workspace_edit(offset_encoding, workspace_edit);
-            }
-
-            // if code action provides both edit and command first the edit
-            // should be applied and then the command
-            if let Some(command) = &code_action.command {
-                execute_lsp_command(editor, action.language_server_id, command.clone());
             }
         }
     }
+    resolved_code_action
 }
 
 pub fn execute_lsp_command(
