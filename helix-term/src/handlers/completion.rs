@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-use std::ffi::OsStr;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -397,20 +396,7 @@ fn path_completion(
 
         read_dir
             .filter_map(Result::ok)
-            .filter_map(|dir_entry| {
-                let path = dir_entry.path();
-                // check if <chars> in <path>/<chars><cursor> matches the start of the filename
-                let filename_starts_with_prefix =
-                    match (path.file_name().and_then(OsStr::to_str), &typed_file_name) {
-                        (Some(re_stem), Some(t)) => re_stem.starts_with(t),
-                        _ => true,
-                    };
-                if filename_starts_with_prefix {
-                    dir_entry.metadata().ok().map(|md| (path, md))
-                } else {
-                    None
-                }
-            })
+            .filter_map(|dir_entry| dir_entry.metadata().ok().map(|md| (dir_entry.path(), md)))
             .map(|(path, md)| {
                 let file_name = path
                     .file_name()

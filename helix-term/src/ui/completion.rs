@@ -155,6 +155,24 @@ pub enum CompletionItem {
     Path(PathCompletionItem),
 }
 
+impl PartialEq<CompletionItem> for LspCompletionItem {
+    fn eq(&self, other: &CompletionItem) -> bool {
+        match other {
+            CompletionItem::Lsp(other) => self == other,
+            _ => false,
+        }
+    }
+}
+
+impl PartialEq<CompletionItem> for PathCompletionItem {
+    fn eq(&self, other: &CompletionItem) -> bool {
+        match other {
+            CompletionItem::Path(other) => self == other,
+            _ => false,
+        }
+    }
+}
+
 impl CompletionItem {
     pub fn preselect(&self) -> bool {
         match self {
@@ -505,7 +523,11 @@ impl Completion {
         self.popup.contents().is_empty()
     }
 
-    pub fn replace_item(&mut self, old_item: &CompletionItem, new_item: CompletionItem) {
+    pub fn replace_item(
+        &mut self,
+        old_item: &impl PartialEq<CompletionItem>,
+        new_item: CompletionItem,
+    ) {
         self.popup.contents_mut().replace_option(old_item, new_item);
     }
 
@@ -531,7 +553,7 @@ impl Component for Completion {
             Some(option) => option,
             None => return,
         };
-        if let CompletionItem::Lsp(_) = option {
+        if let CompletionItem::Lsp(option) = option {
             self.resolve_handler.ensure_item_resolved(cx.editor, option);
         }
         // need to render:
