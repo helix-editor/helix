@@ -61,7 +61,7 @@ impl Loader {
         }
 
         let mut visited_paths = HashSet::new();
-        let (theme, validation_failures) = self
+        let (theme, load_errors) = self
             .load_theme(name, &mut visited_paths)
             .map(Theme::from_toml)?;
 
@@ -69,7 +69,7 @@ impl Loader {
             name: name.into(),
             ..theme
         };
-        Ok((theme, validation_failures))
+        Ok((theme, load_errors))
     }
 
     /// Recursively load a theme, merging with any inherited parent themes.
@@ -223,7 +223,10 @@ pub struct Theme {
 
 impl From<Value> for Theme {
     fn from(value: Value) -> Self {
-        let (theme, _) = Theme::from_toml(value);
+        let (theme, load_errors) = Theme::from_toml(value);
+        for error in load_errors {
+            warn!("{}", error);
+        }
         theme
     }
 }
@@ -234,9 +237,9 @@ impl<'de> Deserialize<'de> for Theme {
         D: Deserializer<'de>,
     {
         let values = Map::<String, Value>::deserialize(deserializer)?;
-        let (theme, validation_failures) = Theme::from_keys(values);
-        for validation_failure in validation_failures {
-            warn!("{}", validation_failure);
+        let (theme, load_errors) = Theme::from_keys(values);
+        for error in load_errors {
+            warn!("{}", error);
         }
         Ok(theme)
     }
@@ -249,14 +252,14 @@ fn build_theme_values(
     let mut scopes = Vec::new();
     let mut highlights = Vec::new();
 
-    let mut validation_failures = Vec::new();
+    let mut load_errors = Vec::new();
 
     // TODO: alert user of parsing failures in editor
     let palette = values
         .remove("palette")
         .map(|value| {
             ThemePalette::try_from(value).unwrap_or_else(|err| {
-                validation_failures.push(err);
+                load_errors.push(err);
                 ThemePalette::default()
             })
         })
@@ -269,7 +272,7 @@ fn build_theme_values(
     for (name, style_value) in values {
         let mut style = Style::default();
         if let Err(err) = palette.parse_style(&mut style, style_value) {
-            validation_failures.push(err);
+            load_errors.push(err);
         }
 
         // these are used both as UI and as highlights
@@ -278,7 +281,7 @@ fn build_theme_values(
         highlights.push(style);
     }
 
-    (styles, scopes, highlights, validation_failures)
+    (styles, scopes, highlights, load_errors)
 }
 
 impl Theme {
@@ -355,7 +358,7 @@ impl Theme {
     }
 
     fn from_keys(toml_keys: Map<String, Value>) -> (Self, Vec<String>) {
-        let (styles, scopes, highlights, validation_failures) = build_theme_values(toml_keys);
+        let (styles, scopes, highlights, load_errors) = build_theme_values(toml_keys);
 
         let theme = Self {
             styles,
@@ -363,7 +366,7 @@ impl Theme {
             highlights,
             ..Default::default()
         };
-        (theme, validation_failures)
+        (theme, load_errors)
     }
 }
 

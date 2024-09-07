@@ -120,9 +120,9 @@ impl Application {
                         log::warn!("failed to load theme `{}` - {}", theme, e);
                         e
                     })
-                    .map(|(theme, validation_failures)| {
-                        for validation_failure in validation_failures {
-                            log::warn!("{validation_failure}");
+                    .map(|(theme, load_errors)| {
+                        for error in load_errors {
+                            log::warn!("{}", error);
                         }
                         theme
                     })
@@ -441,9 +441,9 @@ impl Application {
                         log::warn!("failed to load theme `{}` - {}", theme, e);
                         e
                     })
-                    .map(|(theme, validation_failures)| {
-                        for validation_failure in validation_failures {
-                            log::warn!("{validation_failure}");
+                    .map(|(theme, load_errors)| {
+                        for error in load_errors {
+                            log::warn!("{}", error);
                         }
                         theme
                     })

@@ -9,22 +9,22 @@ pub fn theme_check() -> Result<(), DynError> {
     ]
     .concat();
     let loader = Loader::new(&[path::runtime()]);
-    let mut failures_found = false;
+    let mut errors_present = false;
 
     for name in theme_names {
-        let (_, validation_failures) = loader.load(&name).unwrap();
+        let (_, load_errors) = loader.load(&name).unwrap();
 
-        if !validation_failures.is_empty() {
-            failures_found = true;
-            println!("Theme '{name}' loaded with warnings:");
-            for failure in validation_failures {
-                println!("\t* {failure}");
+        if !load_errors.is_empty() {
+            errors_present = true;
+            println!("Theme '{name}' loaded with errors:");
+            for error in load_errors {
+                println!("\t* {}", error);
             }
         }
     }
 
-    match failures_found {
-        true => Err("Validation failures found in bundled themes".into()),
+    match errors_present {
+        true => Err("Errors found when loading bundled themes".into()),
         false => {
             println!("Theme check successful!");
             Ok(())
