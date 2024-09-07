@@ -1,7 +1,4 @@
-use futures_util::{
-    stream::{FuturesOrdered, FuturesUnordered},
-    FutureExt,
-};
+use futures_util::{stream::FuturesOrdered, FutureExt};
 use helix_lsp::{
     block_on,
     lsp::{
@@ -628,7 +625,7 @@ pub fn code_action(cx: &mut Context) {
 
     let selection_range = doc.selection(view.id).primary();
 
-    let mut futures: FuturesUnordered<_> = code_actions_for_range(doc, selection_range, None)
+    let mut futures: FuturesOrdered<_> = code_actions_for_range(doc, selection_range, None)
         .into_iter()
         .map(|(request, ls_id)| async move {
             let json = request.await?;
