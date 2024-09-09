@@ -2541,13 +2541,13 @@ fn reload_history(
         return Ok(());
     }
 
-    if cx.editor.config().persist_old_files {
+    if cx.editor.config().persistence.old_files {
         cx.editor.old_file_locs = HashMap::from_iter(
             persistence::read_file_history()
                 .into_iter()
                 .map(|entry| (entry.path.clone(), (entry.view_position, entry.selection))),
         );
-        let file_trim = cx.editor.config().persistence_old_files_trim;
+        let file_trim = cx.editor.config().persistence.old_files_trim;
         cx.jobs.add(
             Job::new(async move {
                 persistence::trim_file_history(file_trim);
@@ -2556,11 +2556,11 @@ fn reload_history(
             .wait_before_exiting(),
         );
     }
-    if cx.editor.config().persist_commands {
+    if cx.editor.config().persistence.commands {
         cx.editor
             .registers
             .write(':', persistence::read_command_history())?;
-        let commands_trim = cx.editor.config().persistence_commands_trim;
+        let commands_trim = cx.editor.config().persistence.commands_trim;
         cx.jobs.add(
             Job::new(async move {
                 persistence::trim_command_history(commands_trim);
@@ -2569,11 +2569,11 @@ fn reload_history(
             .wait_before_exiting(),
         );
     }
-    if cx.editor.config().persist_search {
+    if cx.editor.config().persistence.search {
         cx.editor
             .registers
             .write('/', persistence::read_search_history())?;
-        let search_trim = cx.editor.config().persistence_search_trim;
+        let search_trim = cx.editor.config().persistence.search_trim;
         cx.jobs.add(
             Job::new(async move {
                 persistence::trim_search_history(search_trim);
@@ -2582,7 +2582,7 @@ fn reload_history(
             .wait_before_exiting(),
         );
     }
-    if cx.editor.config().persist_clipboard {
+    if cx.editor.config().persistence.clipboard {
         cx.editor
             .registers
             .write('"', persistence::read_clipboard_file())?;

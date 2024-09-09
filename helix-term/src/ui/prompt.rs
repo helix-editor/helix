@@ -613,8 +613,8 @@ impl Component for Prompt {
                                 {
                                     cx.editor.set_error(err.to_string());
                                 }
-                                if (cx.editor.config().persist_commands && register == ':')
-                                    || (cx.editor.config().persist_search && register == '/')
+                                if (cx.editor.config().persistence.commands && register == ':')
+                                    || (cx.editor.config().persistence.search && register == '/')
                                 {
                                     persistence::push_reg_history(register, &self.line);
                                 }

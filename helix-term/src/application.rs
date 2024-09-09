@@ -143,7 +143,7 @@ impl Application {
         let mut compositor = Compositor::new(area);
         let config = Arc::new(ArcSwap::from_pointee(config));
         let handlers = handlers::setup(config.clone());
-        let old_file_locs = if config.load().editor.persist_old_files {
+        let old_file_locs = if config.load().editor.persistence.old_files {
             HashMap::from_iter(
                 persistence::read_file_history()
                     .into_iter()
@@ -164,21 +164,21 @@ impl Application {
         );
 
         // TODO: do most of this in the background?
-        if config.load().editor.persist_commands {
+        if config.load().editor.persistence.commands {
             editor
                 .registers
                 .write(':', persistence::read_command_history())
                 // TODO: do something about this unwrap
                 .unwrap();
         }
-        if config.load().editor.persist_search {
+        if config.load().editor.persistence.search {
             editor
                 .registers
                 .write('/', persistence::read_search_history())
                 // TODO: do something about this unwrap
                 .unwrap();
         }
-        if config.load().editor.persist_clipboard {
+        if config.load().editor.persistence.clipboard {
             editor
                 .registers
                 .write('"', persistence::read_clipboard_file())
@@ -296,7 +296,7 @@ impl Application {
         .context("build signal handler")?;
 
         let jobs = Jobs::new();
-        let file_trim = config.load().editor.persistence_old_files_trim;
+        let file_trim = config.load().editor.persistence.old_files_trim;
         jobs.add(
             Job::new(async move {
                 persistence::trim_file_history(file_trim);
@@ -304,7 +304,7 @@ impl Application {
             })
             .wait_before_exiting(),
         );
-        let commands_trim = config.load().editor.persistence_commands_trim;
+        let commands_trim = config.load().editor.persistence.commands_trim;
         jobs.add(
             Job::new(async move {
                 persistence::trim_command_history(commands_trim);
@@ -312,7 +312,7 @@ impl Application {
             })
             .wait_before_exiting(),
         );
-        let search_trim = config.load().editor.persistence_search_trim;
+        let search_trim = config.load().editor.persistence.search_trim;
         jobs.add(
             Job::new(async move {
                 persistence::trim_search_history(search_trim);

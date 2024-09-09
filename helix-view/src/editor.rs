@@ -365,14 +365,7 @@ pub struct Config {
     pub end_of_line_diagnostics: DiagnosticFilter,
     // Set to override the default clipboard provider
     pub clipboard_provider: ClipboardProvider,
-    pub persist_old_files: bool,
-    pub persist_commands: bool,
-    pub persist_search: bool,
-    pub persist_clipboard: bool,
-    pub persistence_file_exclusions: Vec<EqRegex>,
-    pub persistence_old_files_trim: usize,
-    pub persistence_commands_trim: usize,
-    pub persistence_search_trim: usize,
+    pub persistence: PersistenceConfig,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -957,6 +950,38 @@ pub enum PopupBorderConfig {
     Menu,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct PersistenceConfig {
+    pub old_files: bool,
+    pub commands: bool,
+    pub search: bool,
+    pub clipboard: bool,
+    pub old_files_exclusions: Vec<EqRegex>,
+    pub old_files_trim: usize,
+    pub commands_trim: usize,
+    pub search_trim: usize,
+}
+
+impl Default for PersistenceConfig {
+    fn default() -> Self {
+        Self {
+            old_files: false,
+            commands: false,
+            search: false,
+            clipboard: false,
+            // TODO: any more defaults we should add here?
+            old_files_exclusions: [r".*/\.git/.*", r".*/COMMIT_EDITMSG"]
+                .iter()
+                .map(|s| Regex::new(s).unwrap().into())
+                .collect(),
+            old_files_trim: 100,
+            commands_trim: 100,
+            search_trim: 100,
+        }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -1014,18 +1039,7 @@ impl Default for Config {
             inline_diagnostics: InlineDiagnosticsConfig::default(),
             end_of_line_diagnostics: DiagnosticFilter::Disable,
             clipboard_provider: ClipboardProvider::default(),
-            persist_old_files: false,
-            persist_commands: false,
-            persist_search: false,
-            persist_clipboard: false,
-            // TODO: any more defaults we should add here?
-            persistence_file_exclusions: [r".*/\.git/.*", r".*/COMMIT_EDITMSG"]
-                .iter()
-                .map(|s| Regex::new(s).unwrap().into())
-                .collect(),
-            persistence_old_files_trim: 100,
-            persistence_commands_trim: 100,
-            persistence_search_trim: 100,
+            persistence: PersistenceConfig::default(),
         }
     }
 }
@@ -1812,7 +1826,8 @@ impl Editor {
         if new_doc
             && !self
                 .config()
-                .persistence_file_exclusions
+                .persistence
+                .old_files_exclusions
                 .iter()
                 .any(|r| r.is_match(&path.to_string_lossy()))
         {
@@ -1852,11 +1867,12 @@ impl Editor {
             doc.remove_view(id);
         }
 
-        if self.config().persist_old_files {
+        if self.config().persistence.old_files {
             for loc in file_locs {
                 if !self
                     .config()
-                    .persistence_file_exclusions
+                    .persistence
+                    .old_files_exclusions
                     .iter()
                     .any(|r| r.is_match(&loc.path.to_string_lossy()))
                 {
@@ -1924,11 +1940,12 @@ impl Editor {
             })
             .collect();
 
-        if self.config().persist_old_files {
+        if self.config().persistence.old_files {
             for loc in file_locs {
                 if !self
                     .config()
-                    .persistence_file_exclusions
+                    .persistence
+                    .old_files_exclusions
                     .iter()
                     .any(|r| r.is_match(&loc.path.to_string_lossy()))
                 {
