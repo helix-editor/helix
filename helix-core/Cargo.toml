@@ -57,7 +57,7 @@ textwrap = "0.16.1"
 
 nucleo.workspace = true
 parking_lot = "0.12"
-globset = "0.4.14"
+globset = "0.4.15"
 
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }
