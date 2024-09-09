@@ -580,6 +580,9 @@ pub enum StatusLineElement {
 
     /// Indicator for selected register
     Register,
+
+    /// Search index and count
+    SearchPosition,
 }
 
 // Cursor shape is read and used on every rendered frame and so needs
