@@ -1200,6 +1200,7 @@ scope = "source.ocaml"
 injection-regex = "ocaml"
 file-types = ["ml"]
 shebangs = ["ocaml", "ocamlrun", "ocamlscript"]
+formatter = { command = "ocamlformat", args = [ "--impl", "-" ] }
 block-comment-tokens = { start = "(*", end = "*)" }
 language-servers = [ "ocamllsp" ]
 indent = { tab-width = 2, unit = "  " }
