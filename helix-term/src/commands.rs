@@ -42,7 +42,7 @@ use helix_core::{
     Selection, SmallVec, Syntax, Tendril, Transaction,
 };
 use helix_view::{
-    document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
+    document::{FormatterError, Mode, SearchMatch, SCRATCH_BUFFER_NAME},
     editor::Action,
     info::Info,
     input::KeyEvent,
@@ -2160,54 +2160,97 @@ fn search_impl(
     // it out, we need to add it back to the position of the selection.
     let doc = doc!(editor).text().slice(..);
 
-    // use find_at to find the next match after the cursor, loop around the end
-    // Careful, `Regex` uses `bytes` as offsets, not character indices!
-    let mut mat = match direction {
-        Direction::Forward => regex.find(doc.regex_input_at_bytes(start..)),
-        Direction::Backward => regex.find_iter(doc.regex_input_at_bytes(..start)).last(),
-    };
+    let mut all_matches = regex.find_iter(doc.regex_input()).enumerate().peekable();
 
-    if mat.is_none() {
-        if wrap_around {
-            mat = match direction {
-                Direction::Forward => regex.find(doc.regex_input()),
-                Direction::Backward => regex.find_iter(doc.regex_input_at_bytes(start..)).last(),
-            };
-        }
+    if all_matches.peek().is_none() {
         if show_warnings {
-            if wrap_around && mat.is_some() {
-                editor.set_status("Wrapped around document");
-            } else {
-                editor.set_error("No more matches");
-            }
+            editor.set_error("No matches");
         }
+        return;
     }
 
+    // We will get the number of the current match and total matches from
+    // `all_matches`. So, here we look in the iterator until we find exactly
+    // the match we were looking for (either after or behind `start`). In the
+    // `Backward` case, in particular, we need to look the match ahead to know
+    // if this is the one we need.
+
+    // Careful, `Regex` uses `bytes` as offsets, not character indices!
+    let mut mat = match direction {
+        Direction::Forward => all_matches.by_ref().find(|&(_, m)| m.start() >= start),
+        Direction::Backward => {
+            let one_behind = std::iter::once(None).chain(all_matches.by_ref().map(Some));
+            one_behind
+                .zip(regex.find_iter(doc.regex_input()))
+                .find(|&(_, m1)| m1.start() >= start)
+                .map(|(m0, _)| m0)
+                .unwrap_or(None)
+        }
+    };
+
+    if mat.is_none() && !wrap_around {
+        if show_warnings {
+            editor.set_error("No more matches");
+        }
+        return;
+    }
+
+    // If we didn't find a match before, lets wrap the search.
+    if mat.is_none() {
+        if show_warnings {
+            editor.set_status("Wrapped around document");
+        }
+
+        let doc = doc!(editor).text().slice(..);
+        all_matches = regex.find_iter(doc.regex_input()).enumerate().peekable();
+        mat = match direction {
+            Direction::Forward => all_matches.by_ref().next(),
+            Direction::Backward => all_matches.by_ref().last(),
+        };
+    }
+
+    let (idx, mat) = mat.unwrap();
+    let last_idx = match all_matches.last() {
+        None => idx,
+        Some((last_idx, _)) => last_idx,
+    };
+
+    // Move the cursor to the match.
     let (view, doc) = current!(editor);
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id);
 
-    if let Some(mat) = mat {
-        let start = text.byte_to_char(mat.start());
-        let end = text.byte_to_char(mat.end());
+    let start = text.byte_to_char(mat.start());
+    let end = text.byte_to_char(mat.end());
 
-        if end == 0 {
-            // skip empty matches that don't make sense
-            return;
-        }
+    if end == 0 {
+        // skip empty matches that don't make sense
+        return;
+    }
 
-        // Determine range direction based on the primary range
-        let primary = selection.primary();
-        let range = Range::new(start, end).with_direction(primary.direction());
+    // Determine range direction based on the primary range
+    let primary = selection.primary();
+    let range = Range::new(start, end).with_direction(primary.direction());
 
-        let selection = match movement {
-            Movement::Extend => selection.clone().push(range),
-            Movement::Move => selection.clone().replace(selection.primary_index(), range),
-        };
-
-        doc.set_selection(view.id, selection);
-        view.ensure_cursor_in_view_center(doc, scrolloff);
+    let selection = match movement {
+        Movement::Extend => selection.clone().push(range),
+        Movement::Move => selection.clone().replace(selection.primary_index(), range),
     };
+
+    doc.set_selection(view.id, selection);
+    view.ensure_cursor_in_view_center(doc, scrolloff);
+
+    // Set the index of this match and total number of matchs in the doc. It's
+    // important to set it after `set_selection` since that method resets the
+    // last match position.
+    let (view, doc) = current!(editor);
+    doc.set_last_search_match(
+        view.id,
+        SearchMatch {
+            idx: idx + 1,
+            count: last_idx + 1,
+        },
+    );
 }
 
 fn search_completions(cx: &mut Context, reg: Option<char>) -> Vec<String> {

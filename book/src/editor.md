@@ -139,6 +139,7 @@ The following statusline elements can be configured:
 | `diagnostics` | The number of warnings and/or errors |
 | `workspace-diagnostics` | The number of warnings and/or errors on workspace |
 | `selections` | The primary selection index out of the number of active selections |
+| `search-position` | Current search match and total matches in the view `[<current>/<total>]` |
 | `primary-selection-length` | The number of characters currently in primary selection |
 | `position` | The cursor position |
 | `position-percentage` | The cursor position as a percentage of the total number of lines |

@@ -4,7 +4,7 @@ use helix_core::{coords_at_pos, encoding, Position};
 use helix_lsp::lsp::DiagnosticSeverity;
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::{
-    document::{Mode, SCRATCH_BUFFER_NAME},
+    document::{Mode, SearchMatch, SCRATCH_BUFFER_NAME},
     graphics::Rect,
     theme::Style,
     Document, Editor, View,
@@ -156,6 +156,7 @@ where
         helix_view::editor::StatusLineElement::Spacer => render_spacer,
         helix_view::editor::StatusLineElement::VersionControl => render_version_control,
         helix_view::editor::StatusLineElement::Register => render_register,
+        helix_view::editor::StatusLineElement::SearchPosition => render_search_position,
     }
 }
 
@@ -552,5 +553,14 @@ where
 {
     if let Some(reg) = context.editor.selected_register {
         write(context, format!(" reg={} ", reg).into())
+    }
+}
+
+fn render_search_position<'a, F>(context: &mut RenderContext<'a>, write: F)
+where
+    F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
+{
+    if let Some(SearchMatch { idx, count }) = context.doc.get_last_search_match(context.view.id) {
+        write(context, format!(" [{}/{}] ", idx, count).into());
     }
 }

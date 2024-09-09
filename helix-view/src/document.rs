@@ -138,12 +138,22 @@ pub enum DocumentOpenError {
     IoError(#[from] io::Error),
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct SearchMatch {
+    /// nth match from the beginning of the document.
+    pub idx: usize,
+    /// Total number of matches in the document.
+    pub count: usize,
+}
+
 pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
     selections: HashMap<ViewId, Selection>,
     view_data: HashMap<ViewId, ViewData>,
     pub active_snippet: Option<ActiveSnippet>,
+    /// Current search information.
+    last_search_match: HashMap<ViewId, SearchMatch>,
 
     /// Inlay hints annotations for the document, by view.
     ///
@@ -701,6 +711,7 @@ impl Document {
             text,
             selections: HashMap::default(),
             inlay_hints: HashMap::default(),
+            last_search_match: HashMap::default(),
             inlay_hints_oudated: false,
             view_data: Default::default(),
             indent_style: DEFAULT_INDENT,
@@ -1321,6 +1332,8 @@ impl Document {
 
     /// Select text within the [`Document`].
     pub fn set_selection(&mut self, view_id: ViewId, selection: Selection) {
+        self.last_search_match.remove(&view_id);
+
         // TODO: use a transaction?
         self.selections
             .insert(view_id, selection.ensure_invariants(self.text().slice(..)));
@@ -1328,6 +1341,14 @@ impl Document {
             doc: self,
             view: view_id,
         })
+    }
+
+    pub fn set_last_search_match(&mut self, view_id: ViewId, search_match: SearchMatch) {
+        self.last_search_match.insert(view_id, search_match);
+    }
+
+    pub fn get_last_search_match(&self, view_id: ViewId) -> Option<SearchMatch> {
+        self.last_search_match.get(&view_id).copied()
     }
 
     /// Find the origin selection of the text in a document, i.e. where
