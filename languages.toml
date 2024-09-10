@@ -159,6 +159,9 @@ inlayHints.discriminantHints.enable = "fieldless"
 inlayHints.lifetimeElisionHints.enable = "skip_trivial"
 inlayHints.typeHints.hideClosureInitialization = false
 
+[language-server.rpm-spec-language-server]
+command = "rpm_lsp_server"
+args = ["--stdio"]
 
 [language-server.typescript-language-server]
 command = "typescript-language-server"
@@ -3786,3 +3789,14 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "thrift"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-thrift" , rev = "68fd0d80943a828d9e6f49c58a74be1e9ca142cf" }
+
+[[language]]
+name = "rpmspec"
+scope = "source.rpmspec"
+comment-token = "#"
+file-types = ["spec"]
+language-servers = ["rpm-spec-language-server"]
+
+[[grammar]]
+name = "rpmspec"
+source = { git = "https://gitlab.com/cryptomilk/tree-sitter-rpmspec", rev = "22298ebd815ce77b97d893b79c95c784448c4e05" }
