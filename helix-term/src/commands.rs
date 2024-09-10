@@ -1875,6 +1875,7 @@ fn switch_to_lowercase(cx: &mut Context) {
 
 pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor: bool) {
     use Direction::*;
+    let offset = offset.saturating_mul(cx.count());
     let config = cx.editor.config();
     let (view, doc) = current!(cx.editor);
     let mut view_offset = doc.view_offset(view.id);
