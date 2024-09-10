@@ -1603,13 +1603,13 @@ letters! that is not good grammar. you can fix this.
 
  * Shell commands can be run from helix and their output inserted
  (resp. appended) using :insert-output (resp :append-output),
- also aliased as Alt-! (resp !)
+ also aliased as ! (resp Alt-!)
 
  * Selections can be piped to a shell command and their output 
  can overwrite the commmand (resp. be discarded) using :pipe
  (resp. :pipe-to), also aliased as | (resp. Alt-| ). Remember
- that this is piping the selection(s), not providing as
- arguments.
+ that this is piping the selection(s) as the pipe operator would
+ do in bash, not providing the data as arguments.
 
 
 
