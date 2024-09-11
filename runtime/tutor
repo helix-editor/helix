@@ -1520,10 +1520,10 @@ letters! that is not good grammar. you can fix this.
 =              CHAPTER 14.1 RUN SHELL COMMANDS                  =
 =================================================================
 
- Shell commands can be run from within helix using the command
- :run-shell-command , also aliased as :sh . This will execute the
- command in the parent terminal, and print the output in a new
- popup.
+ Run shell commands directly within Helix
+ using :run-shell-command, also aliased as :sh. This command
+ executes in the parent terminal and prints the output in a new
+ popup window.
 
  For example, on a linux system, type in helix
      :sh date
