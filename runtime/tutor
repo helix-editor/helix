@@ -1525,14 +1525,14 @@ letters! that is not good grammar. you can fix this.
  executes in the parent terminal and prints the output in a new
  popup window.
 
- For example, on a linux system, type in helix
+ For example, on a Linux system, type in Helix
      :sh date
  to show the date in a new popup. Use ESC to remove the popup.
 
  Commands performing side effects work. For example,
  type
      :sh touch hello.txt
- to create a file hello.txt at the location from which helix was
+ to create a file hello.txt at the location from which Helix was
  opened initially.
 
 
