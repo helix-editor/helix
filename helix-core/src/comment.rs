@@ -64,7 +64,7 @@ pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&st
     let text = doc.slice(..);
 
     let token = token.unwrap_or("//");
-    let comment = Tendril::from(format!("{} ", token));
+    let comment = Tendril::from(token);
 
     let mut lines: Vec<usize> = Vec::with_capacity(selection.len());
 
@@ -255,19 +255,19 @@ pub fn create_block_comment_transaction(
                     start_token,
                     end_token,
                 } => {
+                    let offset = start_token.chars().count() + end_token.chars().count() + 2;
                     let from = range.from();
                     changes.push((
                         from + start_pos,
                         from + start_pos,
-                        Some(Tendril::from(format!("{} ", start_token))),
+                        Some(Tendril::from(start_token)),
                     ));
                     changes.push((
                         from + end_pos + 1,
                         from + end_pos + 1,
-                        Some(Tendril::from(format!(" {}", end_token))),
+                        Some(Tendril::from(end_token)),
                     ));
 
-                    let offset = start_token.chars().count() + end_token.chars().count() + 2;
                     ranges.push(
                         Range::new(from + offs, from + offs + end_pos + 1 + offset)
                             .with_direction(range.direction()),
