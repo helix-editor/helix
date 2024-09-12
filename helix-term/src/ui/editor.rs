@@ -221,8 +221,9 @@ impl EditorView {
         );
 
         if config.sticky_context.enable {
+            let nodes = self.sticky_nodes.to_owned();
             self.sticky_nodes = context::calculate_sticky_nodes(
-                self.sticky_nodes.as_ref(),
+                nodes,
                 doc,
                 view,
                 &config,

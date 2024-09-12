@@ -89,13 +89,14 @@ impl StickyNodeContext {
 
 /// Calculates the sticky nodes
 pub fn calculate_sticky_nodes(
-    nodes: Option<&Vec<StickyNode>>,
+    nodes: Option<Vec<StickyNode>>,
     doc: &Document,
     view: &View,
     config: &Config,
     cursor_cache: Option<&Position>,
 ) -> Option<Vec<StickyNode>> {
-    let Some(mut context) = StickyNodeContext::from_context(nodes, doc, view, config, cursor_cache)
+    let Some(mut context) =
+        StickyNodeContext::from_context(nodes.as_ref(), doc, view, config, cursor_cache)
     else {
         return None;
     };
@@ -125,7 +126,7 @@ pub fn calculate_sticky_nodes(
     let mut result: Vec<StickyNode> = Vec::new();
     let mut start_node = tree
         .root_node()
-        .descendant_for_byte_range(start_byte, start_byte.saturating_sub(1));
+        .descendant_for_byte_range(start_byte, start_byte);
 
     // When the start_node is the root node... there's no point in searching further
     if let Some(start_node) = start_node {
@@ -142,7 +143,11 @@ pub fn calculate_sticky_nodes(
         .byte_range()
         != tree.root_node().byte_range()
     {
-        start_node = start_node.expect("parent exists").parent();
+        let Some(start) = start_node else {
+            continue;
+        };
+
+        start_node = start.parent();
     }
 
     let context_nodes = doc
@@ -179,7 +184,7 @@ pub fn calculate_sticky_nodes(
         for node in matched_node.nodes_for_capture_index(start_index) {
             let mut last_node_add = 0;
             if let Some(last_node) = result.last() {
-                if last_node.line == (node.start_position().row + 1) {
+                if last_node.line == (node.start_position().row) {
                     last_node_add += text
                         .line(text.byte_to_line(context.topmost_byte))
                         .len_bytes();
@@ -264,7 +269,7 @@ pub fn calculate_sticky_nodes(
 
 fn build_cached_nodes(
     doc: &Document,
-    nodes: Option<&Vec<StickyNode>>,
+    nodes: Option<Vec<StickyNode>>,
     view: &View,
     context: &mut StickyNodeContext,
 ) -> Option<Vec<StickyNode>> {
@@ -284,9 +289,8 @@ fn build_cached_nodes(
         // Nodes are elligible for reuse
         // While the cached nodes are outside our search-range, pop them, too
         let valid_nodes: Vec<StickyNode> = nodes
-            .iter()
+            .into_iter()
             .filter(|node| node.byte_range.contains(&context.topmost_byte))
-            .cloned()
             .collect();
 
         return Some(valid_nodes);
@@ -328,7 +332,7 @@ fn get_context_paired_range(
                 let end = it.end_byte();
                 // check whether or not @context.params nodes are on different lines
                 (ctx_start_row != it.end_position().row && ctx_start_range.contains(&end))
-                    .then_some(ctx_start_byte..end.saturating_sub(1))
+                    .then_some(ctx_start_byte..end)
             })
         })
 }
