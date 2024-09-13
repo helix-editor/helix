@@ -2995,8 +2995,14 @@ fn file_browser(cx: &mut Context) {
     let path = match doc_dir {
         Some(path) => path,
         None => {
-            cx.editor.set_error("Current buffer has no path or parent");
-            return;
+            let cwd = helix_stdx::env::current_working_dir();
+            if !cwd.exists() {
+                cx.editor.set_error(
+                    "Current buffer has no parent and current working directory does not exist",
+                );
+                return;
+            }
+            cwd
         }
     };
 
