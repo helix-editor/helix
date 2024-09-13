@@ -108,6 +108,7 @@ Normal mode is the default mode when you launch helix. You can return to it from
 | `!`     | Run shell command, inserting output before each selection                        | `shell_insert_output` |
 | `Alt-!` | Run shell command, appending output after each selection                         | `shell_append_output` |
 | `$`     | Pipe each selection into shell command, keep selections where command returned 0 | `shell_keep_pipe`     |
+| `Alt-$` | Pipe each selection into shell command, execute output as helix command          | `shell_keep_pipe`     |
 
 
 ### Selection manipulation
