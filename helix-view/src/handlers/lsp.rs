@@ -1,6 +1,9 @@
+use std::fmt::Display;
+
 use crate::editor::Action;
 use crate::Editor;
 use crate::{DocumentId, ViewId};
+use helix_core::Uri;
 use helix_lsp::util::generate_transaction_from_edits;
 use helix_lsp::{lsp, OffsetEncoding};
 
@@ -54,19 +57,31 @@ pub struct ApplyEditError {
 pub enum ApplyEditErrorKind {
     DocumentChanged,
     FileNotFound,
-    UnknownURISchema,
+    InvalidUrl(helix_core::uri::UrlConversionError),
     IoError(std::io::Error),
     // TODO: check edits before applying and propagate failure
     // InvalidEdit,
 }
 
-impl ToString for ApplyEditErrorKind {
-    fn to_string(&self) -> String {
+impl From<std::io::Error> for ApplyEditErrorKind {
+    fn from(err: std::io::Error) -> Self {
+        ApplyEditErrorKind::IoError(err)
+    }
+}
+
+impl From<helix_core::uri::UrlConversionError> for ApplyEditErrorKind {
+    fn from(err: helix_core::uri::UrlConversionError) -> Self {
+        ApplyEditErrorKind::InvalidUrl(err)
+    }
+}
+
+impl Display for ApplyEditErrorKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ApplyEditErrorKind::DocumentChanged => "document has changed".to_string(),
-            ApplyEditErrorKind::FileNotFound => "file not found".to_string(),
-            ApplyEditErrorKind::UnknownURISchema => "URI schema not supported".to_string(),
-            ApplyEditErrorKind::IoError(err) => err.to_string(),
+            ApplyEditErrorKind::DocumentChanged => f.write_str("document has changed"),
+            ApplyEditErrorKind::FileNotFound => f.write_str("file not found"),
+            ApplyEditErrorKind::InvalidUrl(err) => f.write_str(&format!("{err}")),
+            ApplyEditErrorKind::IoError(err) => f.write_str(&format!("{err}")),
         }
     }
 }
@@ -74,25 +89,28 @@ impl ToString for ApplyEditErrorKind {
 impl Editor {
     fn apply_text_edits(
         &mut self,
-        uri: &helix_lsp::Url,
+        url: &helix_lsp::Url,
         version: Option<i32>,
         text_edits: Vec<lsp::TextEdit>,
         offset_encoding: OffsetEncoding,
     ) -> Result<(), ApplyEditErrorKind> {
-        let path = match uri.to_file_path() {
-            Ok(path) => path,
-            Err(_) => {
-                let err = format!("unable to convert URI to filepath: {}", uri);
-                log::error!("{}", err);
-                self.set_error(err);
-                return Err(ApplyEditErrorKind::UnknownURISchema);
+        let uri = match Uri::try_from(url) {
+            Ok(uri) => uri,
+            Err(err) => {
+                log::error!("{err}");
+                return Err(err.into());
             }
         };
+        let path = uri.as_path().expect("URIs are valid paths");
 
-        let doc_id = match self.open(&path, Action::Load) {
+        let doc_id = match self.open(path, Action::Load) {
             Ok(doc_id) => doc_id,
             Err(err) => {
-                let err = format!("failed to open document: {}: {}", uri, err);
+                let err = format!(
+                    "failed to open document: {}: {}",
+                    path.to_string_lossy(),
+                    err
+                );
                 log::error!("{}", err);
                 self.set_error(err);
                 return Err(ApplyEditErrorKind::FileNotFound);
@@ -158,9 +176,9 @@ impl Editor {
                     for (i, operation) in operations.iter().enumerate() {
                         match operation {
                             lsp::DocumentChangeOperation::Op(op) => {
-                                self.apply_document_resource_op(op).map_err(|io| {
+                                self.apply_document_resource_op(op).map_err(|err| {
                                     ApplyEditError {
-                                        kind: ApplyEditErrorKind::IoError(io),
+                                        kind: err,
                                         failed_change_idx: i,
                                     }
                                 })?;
@@ -214,12 +232,18 @@ impl Editor {
         Ok(())
     }
 
-    fn apply_document_resource_op(&mut self, op: &lsp::ResourceOp) -> std::io::Result<()> {
+    fn apply_document_resource_op(
+        &mut self,
+        op: &lsp::ResourceOp,
+    ) -> Result<(), ApplyEditErrorKind> {
         use lsp::ResourceOp;
         use std::fs;
+        // NOTE: If `Uri` gets another variant than `Path`, the below `expect`s
+        // may no longer be valid.
         match op {
             ResourceOp::Create(op) => {
-                let path = op.uri.to_file_path().unwrap();
+                let uri = Uri::try_from(&op.uri)?;
+                let path = uri.as_path_buf().expect("URIs are valid paths");
                 let ignore_if_exists = op.options.as_ref().map_or(false, |options| {
                     !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
                 });
@@ -236,7 +260,8 @@ impl Editor {
                 }
             }
             ResourceOp::Delete(op) => {
-                let path = op.uri.to_file_path().unwrap();
+                let uri = Uri::try_from(&op.uri)?;
+                let path = uri.as_path_buf().expect("URIs are valid paths");
                 if path.is_dir() {
                     let recursive = op
                         .options
@@ -251,17 +276,19 @@ impl Editor {
                     }
                     self.language_servers.file_event_handler.file_changed(path);
                 } else if path.is_file() {
-                    fs::remove_file(&path)?;
+                    fs::remove_file(path)?;
                 }
             }
             ResourceOp::Rename(op) => {
-                let from = op.old_uri.to_file_path().unwrap();
-                let to = op.new_uri.to_file_path().unwrap();
+                let from_uri = Uri::try_from(&op.old_uri)?;
+                let from = from_uri.as_path().expect("URIs are valid paths");
+                let to_uri = Uri::try_from(&op.new_uri)?;
+                let to = to_uri.as_path().expect("URIs are valid paths");
                 let ignore_if_exists = op.options.as_ref().map_or(false, |options| {
                     !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
                 });
                 if !ignore_if_exists || !to.exists() {
-                    self.move_path(&from, &to)?;
+                    self.move_path(from, to)?;
                 }
             }
         }

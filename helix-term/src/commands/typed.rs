@@ -9,7 +9,6 @@ use super::*;
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::{line_ending, shellwords::Shellwords};
-use helix_lsp::LanguageServerId;
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
 use serde_json::Value;
@@ -340,8 +339,11 @@ fn write_impl(
     let path = path.map(AsRef::as_ref);
 
     if config.insert_final_newline {
-        insert_final_newline(doc, view);
+        insert_final_newline(doc, view.id);
     }
+
+    // Save an undo checkpoint for any outstanding changes.
+    doc.append_changes_to_history(view);
 
     let fmt = if config.auto_format {
         doc.auto_format().map(|fmt| {
@@ -367,13 +369,12 @@ fn write_impl(
     Ok(())
 }
 
-fn insert_final_newline(doc: &mut Document, view: &mut View) {
+fn insert_final_newline(doc: &mut Document, view_id: ViewId) {
     let text = doc.text();
     if line_ending::get_line_ending(&text.slice(..)).is_none() {
         let eof = Selection::point(text.len_chars());
         let insert = Transaction::insert(text, &eof, doc.line_ending.as_str().into());
-        doc.apply(&insert, view.id);
-        doc.append_changes_to_history(view);
+        doc.apply(&insert, view_id);
     }
 }
 
@@ -704,10 +705,14 @@ pub fn write_all_impl(
 
     for (doc_id, target_view) in saves {
         let doc = doc_mut!(cx.editor, &doc_id);
+        let view = view_mut!(cx.editor, target_view);
 
         if config.insert_final_newline {
-            insert_final_newline(doc, view_mut!(cx.editor, target_view));
+            insert_final_newline(doc, target_view);
         }
+
+        // Save an undo checkpoint for any outstanding changes.
+        doc.append_changes_to_history(view);
 
         let fmt = if config.auto_format {
             doc.auto_format().map(|fmt| {
@@ -1372,16 +1377,6 @@ fn lsp_workspace_command(
         return Ok(());
     }
 
-    struct LsIdCommand(LanguageServerId, helix_lsp::lsp::Command);
-
-    impl ui::menu::Item for LsIdCommand {
-        type Data = ();
-
-        fn format(&self, _data: &Self::Data) -> Row {
-            self.1.title.as_str().into()
-        }
-    }
-
     let doc = doc!(cx.editor);
     let ls_id_commands = doc
         .language_servers_with_feature(LanguageServerFeature::WorkspaceCommand)
@@ -1396,7 +1391,7 @@ fn lsp_workspace_command(
     if args.is_empty() {
         let commands = ls_id_commands
             .map(|(ls_id, command)| {
-                LsIdCommand(
+                (
                     ls_id,
                     helix_lsp::lsp::Command {
                         title: command.clone(),
@@ -1409,10 +1404,18 @@ fn lsp_workspace_command(
         let callback = async move {
             let call: job::Callback = Callback::EditorCompositor(Box::new(
                 move |_editor: &mut Editor, compositor: &mut Compositor| {
+                    let columns = [ui::PickerColumn::new(
+                        "title",
+                        |(_ls_id, command): &(_, helix_lsp::lsp::Command), _| {
+                            command.title.as_str().into()
+                        },
+                    )];
                     let picker = ui::Picker::new(
+                        columns,
+                        0,
                         commands,
                         (),
-                        move |cx, LsIdCommand(ls_id, command), _action| {
+                        move |cx, (ls_id, command), _action| {
                             execute_lsp_command(cx.editor, *ls_id, command.clone());
                         },
                     );
@@ -1584,7 +1587,7 @@ fn tree_sitter_highlight_name(
         // Query the same range as the one used in syntax highlighting.
         let range = {
             // Calculate viewport byte ranges:
-            let row = text.char_to_line(view.offset.anchor.min(text.len_chars()));
+            let row = text.char_to_line(doc.view_offset(view.id).anchor.min(text.len_chars()));
             // Saturating subs to make it inclusive zero indexing.
             let last_line = text.len_lines().saturating_sub(1);
             let height = view.inner_area(doc).height;
@@ -2297,7 +2300,7 @@ fn run_shell_command(
             move |editor: &mut Editor, compositor: &mut Compositor| {
                 if !output.is_empty() {
                     let contents = ui::Markdown::new(
-                        format!("```sh\n{}\n```", output),
+                        format!("```sh\n{}\n```", output.trim_end()),
                         editor.syn_loader.clone(),
                     );
                     let popup = Popup::new("shell", contents).position(Some(
@@ -2305,7 +2308,7 @@ fn run_shell_command(
                     ));
                     compositor.replace_or_push("shell", popup);
                 }
-                editor.set_status("Command succeeded");
+                editor.set_status("Command run");
             },
         ));
         Ok(call)
@@ -2495,7 +2498,7 @@ fn read(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     ensure!(!args.is_empty(), "file name is expected");
     ensure!(args.len() == 1, "only the file name is expected");
 
-    let filename = args.get(0).unwrap();
+    let filename = args.first().unwrap();
     let path = PathBuf::from(filename.to_string());
     ensure!(
         path.exists() && path.is_file(),
@@ -2534,7 +2537,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "open",
-        aliases: &["o"],
+        aliases: &["o", "edit", "e"],
         doc: "Open a file from disk into the current view.",
         fun: open,
         signature: CommandSignature::all(completers::filename),
@@ -3119,7 +3122,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "move",
-        aliases: &[],
+        aliases: &["mv"],
         doc: "Move the current buffer and its corresponding file to a different path",
         fun: move_buffer,
         signature: CommandSignature::positional(&[completers::filename]),

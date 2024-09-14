@@ -2,11 +2,17 @@ use crate::helpers;
 use crate::path;
 use crate::DynError;
 
+use helix_term::commands::MappableCommand;
 use helix_term::commands::TYPABLE_COMMAND_LIST;
 use helix_term::health::TsFeature;
+use helix_term::ui::EditorView;
+use helix_view::document::Mode;
+
+use std::collections::HashSet;
 use std::fs;
 
 pub const TYPABLE_COMMANDS_MD_OUTPUT: &str = "typable-cmd.md";
+pub const STATIC_COMMANDS_MD_OUTPUT: &str = "static-cmd.md";
 pub const LANG_SUPPORT_MD_OUTPUT: &str = "lang-support.md";
 
 fn md_table_heading(cols: &[String]) -> String {
@@ -43,6 +49,71 @@ pub fn typable_commands() -> Result<String, DynError> {
         let doc = cmd.doc.replace('\n', "<br>");
 
         md.push_str(&md_table_row(&[names.to_owned(), doc.to_owned()]));
+    }
+
+    Ok(md)
+}
+
+pub fn static_commands() -> Result<String, DynError> {
+    let mut md = String::new();
+    let keymap = EditorView::default().keymaps.map();
+    let keymaps = [
+        ("normal", keymap[&Mode::Normal].reverse_map()),
+        ("select", keymap[&Mode::Select].reverse_map()),
+        ("insert", keymap[&Mode::Insert].reverse_map()),
+    ];
+
+    md.push_str(&md_table_heading(&[
+        "Name".to_owned(),
+        "Description".to_owned(),
+        "Default keybinds".to_owned(),
+    ]));
+
+    for cmd in MappableCommand::STATIC_COMMAND_LIST {
+        let keymap_strings: Vec<String> = keymaps
+            .iter()
+            .enumerate()
+            .map(|(_, keymap)| {
+                keymap
+                    .1
+                    .get(cmd.name())
+                    .map(|bindings| {
+                        bindings.iter().fold(String::new(), |mut acc, bind| {
+                            if !acc.is_empty() {
+                                acc.push_str(", ");
+                            }
+                            acc.push_str("`` ");
+                            for key in bind {
+                                acc.push_str(&key.key_sequence_format());
+                            }
+                            acc.push_str(" ``");
+                            acc
+                        })
+                    })
+                    .unwrap_or_default()
+            })
+            .collect();
+
+        let keymap_string = keymap_strings
+            .iter()
+            .filter(|s| !s.is_empty())
+            .map(|s| {
+                let mode = match keymap_strings.iter().position(|t| t == s) {
+                    Some(0) => "normal",
+                    Some(1) => "select",
+                    Some(2) => "insert",
+                    _ => unreachable!(),
+                };
+                format!("{}: {}", mode, s)
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        md.push_str(&md_table_row(&[
+            md_mono(cmd.name()),
+            cmd.doc().to_owned(),
+            keymap_string,
+        ]));
     }
 
     Ok(md)
@@ -95,14 +166,25 @@ pub fn lang_features() -> Result<String, DynError> {
                 .to_owned(),
             );
         }
-        row.push(
-            lc.language_servers
-                .iter()
-                .filter_map(|ls| config.language_server.get(&ls.name))
-                .map(|s| md_mono(&s.command.clone()))
-                .collect::<Vec<_>>()
-                .join(", "),
-        );
+        let mut seen_commands = HashSet::new();
+        let mut commands = String::new();
+        for ls_config in lc
+            .language_servers
+            .iter()
+            .filter_map(|ls| config.language_server.get(&ls.name))
+        {
+            let command = &ls_config.command;
+            if !seen_commands.insert(command) {
+                continue;
+            }
+
+            if !commands.is_empty() {
+                commands.push_str(", ");
+            }
+
+            commands.push_str(&md_mono(command));
+        }
+        row.push(commands);
 
         md.push_str(&md_table_row(&row));
         row.clear();

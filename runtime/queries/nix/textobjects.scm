@@ -7,3 +7,6 @@
 (function_expression
   body: (_) @function.inside) @function.around
 
+(binding
+  (_) @entry.inside) @entry.around
+

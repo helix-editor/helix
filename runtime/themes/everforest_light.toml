@@ -64,7 +64,7 @@
 "diff.minus" = "red"
 
 "ui.background" = { bg = "bg0" }
-"ui.background.separator" = "bg_visual"
+"ui.background.separator" = "grey0"
 "ui.cursor" = { fg = "bg1", bg = "grey2" }
 "ui.cursor.insert" = { fg = "bg0", bg = "grey1" }
 "ui.cursor.select" = { fg = "bg0", bg = "blue" }
@@ -89,6 +89,7 @@
   "bold",
 ] }
 "ui.popup" = { fg = "grey2", bg = "bg2" }
+"ui.picker.header" = { modifiers = ["bold", "underlined"] }
 "ui.window" = { fg = "bg4", bg = "bg_dim" }
 "ui.help" = { fg = "fg", bg = "bg2" }
 "ui.text" = "fg"
