@@ -36,7 +36,8 @@ use helix_core::{
     object, pos_at_coords,
     regex::{self, Regex},
     search::{self, CharMatcher},
-    selection, surround,
+    selection,
+    surround::{self, FindType},
     syntax::config::{BlockCommentToken, LanguageServerFeature},
     text_annotations::{Overlay, TextAnnotations},
     textobject,
@@ -776,8 +777,10 @@ impl FallbackCommand {
 
     #[rustfmt::skip]
     static_fallback_commands!(
-        select_textobject_inside_surrounding_pair, "Select inside any character acting as a pair (tree-sitter)",
-        select_textobject_around_surrounding_pair, "Select around any character acting as a pair (tree-sitter)",
+        select_textobject_inside_surrounding_pair, "Select inside any character pair (tree-sitter)",
+        select_textobject_around_surrounding_pair, "Select around any character pair (tree-sitter)",
+        select_textobject_inside_prev_pair, "Select inside previous character pair (tree-sitter)",
+        select_textobject_inside_next_pair, "Select inside next character pair (tree-sitter)",
     );
 }
 
@@ -6244,17 +6247,36 @@ fn textobject_change(cx: &mut Context) {
 }
 
 fn select_textobject_inside_surrounding_pair(cx: &mut Context, ch: char) {
-    textobject_surrounding_pair(cx, textobject::TextObject::Inside, ch);
+    textobject_surrounding_pair(cx, textobject::TextObject::Inside, ch, None);
 }
 
 fn select_textobject_around_surrounding_pair(cx: &mut Context, ch: char) {
-    textobject_surrounding_pair(cx, textobject::TextObject::Around, ch);
+    textobject_surrounding_pair(cx, textobject::TextObject::Around, ch, None);
+}
+
+fn select_textobject_inside_prev_pair(cx: &mut Context, ch: char) {
+    textobject_surrounding_pair(
+        cx,
+        textobject::TextObject::Inside,
+        ch,
+        Some(Direction::Backward),
+    );
+}
+
+fn select_textobject_inside_next_pair(cx: &mut Context, ch: char) {
+    textobject_surrounding_pair(
+        cx,
+        textobject::TextObject::Inside,
+        ch,
+        Some(Direction::Forward),
+    );
 }
 
 fn textobject_surrounding_pair(
     cx: &mut Context,
     textobject: textobject::TextObject,
     pair_char: char,
+    direction: Option<Direction>,
 ) {
     if pair_char.is_ascii_alphanumeric() {
         return;
@@ -6266,7 +6288,18 @@ fn textobject_surrounding_pair(
         let text = doc.text().slice(..);
         let syntax = doc.syntax();
         let selection = doc.selection(view.id).clone().transform(|range| {
-            textobject::textobject_pair_surround(syntax, text, range, textobject, pair_char, count)
+            let find_type = match direction {
+                None => FindType::Surround,
+                Some(Direction::Forward) => FindType::Next,
+                Some(Direction::Backward) => FindType::Prev,
+            }(count);
+            let mut range = textobject::textobject_pair_surround(
+                syntax, text, range, textobject, pair_char, find_type,
+            );
+            if let Some(direction) = direction {
+                range = range.with_direction(direction);
+            }
+            range
         });
         doc.set_selection(view.id, selection);
     };
