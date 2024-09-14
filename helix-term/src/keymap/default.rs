@@ -131,7 +131,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
                 "g" => select_textobject_around_change,
             },
         },
-        "[" => { "Left bracket"
+        "[" => { "Left bracket" fallback=select_textobject_inside_prev_pair
             "d" => goto_prev_diag,
             "D" => goto_first_diag,
             "g" => goto_prev_change,
@@ -145,7 +145,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "p" => goto_prev_paragraph,
             "space" => add_newline_above,
         },
-        "]" => { "Right bracket"
+        "]" => { "Right bracket" fallback=select_textobject_inside_next_pair
             "d" => goto_next_diag,
             "D" => goto_last_diag,
             "g" => goto_next_change,
