@@ -26,7 +26,7 @@ use helix_core::{
     indent::{self, IndentStyle},
     line_ending::{get_line_ending_of_str, line_end_char_index},
     match_brackets,
-    movement::{self, move_vertically_visual, Direction},
+    movement::{self, current_node_byte_range, move_vertically_visual, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
     search::{self, CharMatcher},
@@ -414,6 +414,7 @@ impl MappableCommand {
         goto_declaration, "Goto declaration",
         add_newline_above, "Add newline above",
         add_newline_below, "Add newline below",
+        add_function_parameter, "Add function parameter",
         goto_type_definition, "Goto type definition",
         goto_implementation, "Goto implementation",
         goto_file_start, "Goto line number <n> else file start",
@@ -444,6 +445,7 @@ impl MappableCommand {
         goto_previous_buffer, "Goto previous buffer",
         goto_line_end_newline, "Goto newline at line end",
         goto_first_nonwhitespace, "Goto first non-blank in line",
+        goto_return_type, "Goto the return type of the current function",
         trim_selections, "Trim whitespace from selections",
         extend_to_line_start, "Extend to line start",
         extend_to_first_nonwhitespace, "Extend to first non-blank in line",
@@ -6153,6 +6155,120 @@ fn add_newline_impl(cx: &mut Context, open: Open) {
 
     let transaction = Transaction::change(text, changes);
     doc.apply(&transaction, view.id);
+}
+
+fn add_function_parameter(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text();
+    let slice = text.slice(..);
+
+    if let Some((lang_config, syntax)) = doc.language_config().zip(doc.syntax()) {
+        let root = syntax.tree().root_node();
+
+        let selection = doc.selection(view.id).clone().into_single();
+
+        let Some(new_range) = movement::goto_current_function_parameters(
+            slice,
+            selection.ranges()[0],
+            root,
+            lang_config,
+        ) else {
+            return;
+        };
+
+        let mut cursor = helix_core::tree_sitter::QueryCursor::new();
+        cursor.set_match_limit(1);
+        cursor
+            .set_byte_range(text.char_to_byte(new_range.anchor)..text.char_to_byte(new_range.head));
+
+        let has_args = lang_config
+            .textobject_query()
+            .and_then(|q| {
+                q.capture_nodes_any(&["parameter.around"], root, slice, &mut cursor)?
+                    .next()
+            })
+            .is_some();
+
+        push_jump(view, doc);
+
+        doc.set_selection(view.id, selection.transform(|_| new_range));
+        if has_args {
+            insert_char(cx, ',');
+        }
+        collapse_selection(cx);
+        insert_mode(cx);
+    }
+    // };
+}
+
+fn goto_return_type(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text();
+    let slice = text.slice(..);
+
+    if let Some((lang_config, syntax)) = doc.language_config().zip(doc.syntax()) {
+        let root = syntax.tree().root_node();
+
+        let selection = doc.selection(view.id).clone().into_single();
+        let range = selection.ranges()[0];
+        let mut cursor = helix_core::tree_sitter::QueryCursor::new();
+        let byte_pos = slice.char_to_byte(range.cursor(slice));
+        let Some(func_range) = current_node_byte_range(
+            lang_config,
+            root,
+            slice,
+            &mut cursor,
+            "function.around",
+            byte_pos,
+        ) else {
+            return;
+        };
+
+        cursor.set_match_limit(1);
+        cursor.set_byte_range(func_range.clone());
+
+        let new_byte_range = if let Some(return_node) =
+            lang_config.textobject_query().and_then(|q| {
+                q.capture_nodes_any(&["return_type.around"], root, slice, &mut cursor)?
+                    .next()
+            }) {
+            return_node.byte_range()
+        } else {
+            // let parameters_range =
+            let parameters_node = lang_config.textobject_query().and_then(|q| {
+                q.capture_nodes_any(&["parameters.around"], root, slice, &mut cursor)?
+                    .next()
+                    .map(|node| node.byte_range())
+            });
+
+            cursor.set_byte_range(0..func_range.end + 1);
+            let function_body_range = current_node_byte_range(
+                lang_config,
+                root,
+                slice,
+                &mut cursor,
+                "function.inside",
+                byte_pos,
+            );
+
+            match (parameters_node, function_body_range) {
+                (Some(pr), Some(br)) => pr.end..br.start,
+                (_, Some(br)) => br.start..br.start,
+                (Some(pr), _) => pr.end..pr.end,
+                _ => {
+                    return;
+                }
+            }
+        };
+
+        push_jump(view, doc);
+        let new_range = Range::new(
+            slice.byte_to_char(new_byte_range.start),
+            slice.byte_to_char(new_byte_range.end),
+        );
+        doc.set_selection(view.id, selection.transform(|_| new_range));
+    }
+    // };
 }
 
 enum IncrementDirection {

@@ -558,6 +558,54 @@ fn reached_target(target: WordMotionTarget, prev_ch: char, next_ch: char) -> boo
     }
 }
 
+pub fn goto_current_function_parameters(
+    slice: RopeSlice,
+    range: Range,
+    slice_tree: Node,
+    lang_config: &LanguageConfiguration,
+) -> Option<Range> {
+    let byte_pos = slice.char_to_byte(range.cursor(slice));
+
+    let mut cursor = QueryCursor::new();
+    let current_function_range = current_node_byte_range(
+        lang_config,
+        slice_tree,
+        slice,
+        &mut cursor,
+        "function.around",
+        byte_pos,
+    )?;
+
+    cursor.set_byte_range(current_function_range);
+
+    let parameters_node = lang_config
+        .textobject_query()?
+        .capture_nodes_any(&["parameters.around"], slice_tree, slice, &mut cursor)?
+        .next()?;
+
+    Some(Range::new(
+        slice.byte_to_char(parameters_node.start_byte()),
+        slice.byte_to_char(parameters_node.end_byte()),
+    ))
+}
+
+pub fn current_node_byte_range(
+    lang_config: &LanguageConfiguration,
+    slice_tree: Node<'_>,
+    slice: RopeSlice<'_>,
+    cursor: &mut QueryCursor,
+    node: &'static str,
+    byte_pos: usize,
+) -> Option<std::ops::Range<usize>> {
+    let current_function_range = lang_config
+        .textobject_query()?
+        .capture_nodes_any(&[node], slice_tree, slice, cursor)?
+        .filter(|func| func.byte_range().contains(&byte_pos))
+        .max_by_key(|func| func.end_byte())?
+        .byte_range();
+    Some(current_function_range)
+}
+
 /// Finds the range of the next or previous textobject in the syntax sub-tree of `node`.
 /// Returns the range in the forwards direction.
 pub fn goto_treesitter_object(
