@@ -89,6 +89,7 @@ slint-lsp = { command = "slint-lsp", args = [] }
 solargraph = { command = "solargraph", args = ["stdio"] }
 solc = { command = "solc", args = ["--lsp"] }
 sourcekit-lsp = { command = "sourcekit-lsp" }
+spade-language-server = {command = "spade-language-server"}
 svlangserver = { command = "svlangserver", args = [] }
 swipl = { command = "swipl", args = [ "-g", "use_module(library(lsp_server))", "-g", "lsp_server:main", "-t", "halt", "--", "stdio" ] }
 tailwindcss-ls = { command = "tailwindcss-language-server", args = ["--stdio"] }
@@ -3786,3 +3787,28 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "thrift"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-thrift" , rev = "68fd0d80943a828d9e6f49c58a74be1e9ca142cf" }
+
+[[language]]
+name = "spade"
+scope = "source.spade"
+roots = ["swim.toml"]
+file-types = ["spade"]
+injection-regex = "spade"
+comment-tokens = ["//", "///"]
+block-comment-tokens = [
+  { start = "/*", end = "*/" },
+  { start = "/**", end = "*/" },
+]
+language-servers = [ "spade-language-server" ]
+indent = { tab-width = 4, unit = "    " }
+
+[language.auto-pairs] 
+'(' = ')' 
+'{' = '}' 
+'[' = ']' 
+'"' = '"' 
+'<' = '>' 
+
+[[grammar]]
+name = "spade"
+source = { git = "https://gitlab.com/spade-lang/tree-sitter-spade/", rev = "9e0dfb320aaaf7c47a1d309a5de96c60826d71ff" }
