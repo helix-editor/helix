@@ -18,6 +18,10 @@ use helix_vcs::DiffProviderRegistry;
 use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
 use helix_lsp::{Call, LanguageServerId};
+
+#[cfg(feature = "scancode")]
+use crate::scancode::{deserialize_scancode, KeyboardState, ScanCodeMap};
+
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
@@ -345,6 +349,9 @@ pub struct Config {
     /// Display diagnostic below the line they occur.
     pub inline_diagnostics: InlineDiagnosticsConfig,
     pub end_of_line_diagnostics: DiagnosticFilter,
+    #[cfg(feature = "scancode")]
+    #[serde(skip_serializing, deserialize_with = "deserialize_scancode")]
+    pub scancode: ScanCodeMap,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -909,6 +916,7 @@ impl From<LineEndingConfig> for LineEnding {
             LineEndingConfig::Crlf => LineEnding::Crlf,
             #[cfg(feature = "unicode-lines")]
             LineEndingConfig::FF => LineEnding::FF,
+
             #[cfg(feature = "unicode-lines")]
             LineEndingConfig::CR => LineEnding::CR,
             #[cfg(feature = "unicode-lines")]
@@ -979,6 +987,8 @@ impl Default for Config {
             jump_label_alphabet: ('a'..='z').collect(),
             inline_diagnostics: InlineDiagnosticsConfig::default(),
             end_of_line_diagnostics: DiagnosticFilter::Disable,
+            #[cfg(feature = "scancode")]
+            scancode: ScanCodeMap::default(),
         }
     }
 }
@@ -1078,6 +1088,8 @@ pub struct Editor {
 
     pub mouse_down_range: Option<Range>,
     pub cursor_cache: CursorCache,
+    #[cfg(feature = "scancode")]
+    pub keyboard_state: KeyboardState,
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
@@ -1195,6 +1207,8 @@ impl Editor {
             handlers,
             mouse_down_range: None,
             cursor_cache: CursorCache::default(),
+            #[cfg(feature = "scancode")]
+            keyboard_state: KeyboardState::new(),
         }
     }
 
@@ -2153,6 +2167,13 @@ impl Editor {
             doc.ensure_view_init(current_view.id);
             current_view.id
         }
+    }
+
+    #[cfg(feature = "scancode")]
+    pub fn scancode_apply(&mut self, event: KeyEvent) -> KeyEvent {
+        self.config()
+            .scancode
+            .apply(event, &mut self.keyboard_state)
     }
 }
 
