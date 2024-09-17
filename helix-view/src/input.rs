@@ -1,10 +1,9 @@
 //! Input event handling, currently backed by crossterm.
+pub use crate::keyboard::{KeyCode, KeyModifiers, MediaKeyCode, ModifierKeyCode};
 use anyhow::{anyhow, Error};
 use helix_core::unicode::{segmentation::UnicodeSegmentation, width::UnicodeWidthStr};
 use serde::de::{self, Deserialize, Deserializer};
 use std::fmt;
-
-pub use crate::keyboard::{KeyCode, KeyModifiers, MediaKeyCode, ModifierKeyCode};
 
 #[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Hash)]
 pub enum Event {
@@ -162,12 +161,7 @@ pub(crate) mod keys {
 impl fmt::Display for KeyEvent {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
-            "{}{}{}{}",
-            if self.modifiers.contains(KeyModifiers::SUPER) {
-                "Meta-"
-            } else {
-                ""
-            },
+            "{}{}{}",
             if self.modifiers.contains(KeyModifiers::SHIFT) {
                 "S-"
             } else {
@@ -317,10 +311,6 @@ impl UnicodeWidthStr for KeyEvent {
         if self.modifiers.contains(KeyModifiers::CONTROL) {
             width += 2;
         }
-        if self.modifiers.contains(KeyModifiers::SUPER) {
-            // "-Meta"
-            width += 5;
-        }
         width
     }
 
@@ -334,7 +324,43 @@ impl std::str::FromStr for KeyEvent {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut tokens: Vec<_> = s.split('-').collect();
-        let mut code = match tokens.pop().ok_or_else(|| anyhow!("Missing key code"))? {
+        let mut code = KeyCode::from_str(tokens.pop().ok_or_else(|| anyhow!("Missing key code"))?)?;
+        let mut modifiers = KeyModifiers::empty();
+        for token in tokens {
+            let flag = match token {
+                "S" => KeyModifiers::SHIFT,
+                "A" => KeyModifiers::ALT,
+                "C" => KeyModifiers::CONTROL,
+                _ => return Err(anyhow!("Invalid key modifier '{}-'", token)),
+            };
+
+            if modifiers.contains(flag) {
+                return Err(anyhow!("Repeated key modifier '{}-'", token));
+            }
+            modifiers.insert(flag);
+        }
+
+        // Normalize character keys so that characters like C-S-r and C-R
+        // are represented by equal KeyEvents.
+        match code {
+            KeyCode::Char(ch)
+                if ch.is_ascii_lowercase() && modifiers.contains(KeyModifiers::SHIFT) =>
+            {
+                code = KeyCode::Char(ch.to_ascii_uppercase());
+                modifiers.remove(KeyModifiers::SHIFT);
+            }
+            _ => (),
+        }
+
+        Ok(KeyEvent { code, modifiers })
+    }
+}
+
+impl std::str::FromStr for KeyCode {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
             keys::BACKSPACE => KeyCode::Backspace,
             keys::ENTER => KeyCode::Enter,
             keys::LEFT => KeyCode::Left,
@@ -396,55 +422,8 @@ impl std::str::FromStr for KeyEvent {
                     .then_some(KeyCode::F(function))
                     .ok_or_else(|| anyhow!("Invalid function key '{}'", function))?
             }
-            // Checking that the last token is empty ensures that this branch is only taken if
-            // `-` is used as a code. For example this branch will not be taken for `S-` (which is
-            // missing a code).
-            _ if s.ends_with('-') && tokens.last().is_some_and(|t| t.is_empty()) => {
-                if s == "-" {
-                    return Ok(KeyEvent {
-                        code: KeyCode::Char('-'),
-                        modifiers: KeyModifiers::empty(),
-                    });
-                } else {
-                    let suggestion = format!("{}-{}", s.trim_end_matches('-'), keys::MINUS);
-                    return Err(anyhow!(
-                        "Key '-' cannot be used with modifiers, use '{}' instead",
-                        suggestion
-                    ));
-                }
-            }
             invalid => return Err(anyhow!("Invalid key code '{}'", invalid)),
-        };
-
-        let mut modifiers = KeyModifiers::empty();
-        for token in tokens {
-            let flag = match token {
-                "S" => KeyModifiers::SHIFT,
-                "A" => KeyModifiers::ALT,
-                "C" => KeyModifiers::CONTROL,
-                "Meta" | "Cmd" | "Win" => KeyModifiers::SUPER,
-                _ => return Err(anyhow!("Invalid key modifier '{}-'", token)),
-            };
-
-            if modifiers.contains(flag) {
-                return Err(anyhow!("Repeated key modifier '{}-'", token));
-            }
-            modifiers.insert(flag);
-        }
-
-        // Normalize character keys so that characters like C-S-r and C-R
-        // are represented by equal KeyEvents.
-        match code {
-            KeyCode::Char(ch)
-                if ch.is_ascii_lowercase() && modifiers.contains(KeyModifiers::SHIFT) =>
-            {
-                code = KeyCode::Char(ch.to_ascii_uppercase());
-                modifiers.remove(KeyModifiers::SHIFT);
-            }
-            _ => (),
-        }
-
-        Ok(KeyEvent { code, modifiers })
+        })
     }
 }
 
@@ -688,13 +667,6 @@ mod test {
                 modifiers: KeyModifiers::NONE
             }
         );
-        assert_eq!(
-            str::parse::<KeyEvent>("-").unwrap(),
-            KeyEvent {
-                code: KeyCode::Char('-'),
-                modifiers: KeyModifiers::NONE,
-            }
-        );
     }
 
     #[test]
@@ -743,28 +715,6 @@ mod test {
                 modifiers: KeyModifiers::NONE
             }
         );
-
-        assert_eq!(
-            str::parse::<KeyEvent>("Meta-c").unwrap(),
-            KeyEvent {
-                code: KeyCode::Char('c'),
-                modifiers: KeyModifiers::SUPER
-            }
-        );
-        assert_eq!(
-            str::parse::<KeyEvent>("Win-s").unwrap(),
-            KeyEvent {
-                code: KeyCode::Char('s'),
-                modifiers: KeyModifiers::SUPER
-            }
-        );
-        assert_eq!(
-            str::parse::<KeyEvent>("Cmd-d").unwrap(),
-            KeyEvent {
-                code: KeyCode::Char('d'),
-                modifiers: KeyModifiers::SUPER
-            }
-        );
     }
 
     #[test]
@@ -777,7 +727,6 @@ mod test {
         assert!(str::parse::<KeyEvent>("FU").is_err());
         assert!(str::parse::<KeyEvent>("123").is_err());
         assert!(str::parse::<KeyEvent>("S--").is_err());
-        assert!(str::parse::<KeyEvent>("S-").is_err());
         assert!(str::parse::<KeyEvent>("S-percent").is_err());
     }
 
