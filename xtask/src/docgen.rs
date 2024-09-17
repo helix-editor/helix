@@ -70,12 +70,10 @@ pub fn static_commands() -> Result<String, DynError> {
     ]));
 
     for cmd in MappableCommand::STATIC_COMMAND_LIST {
-        let keymap_strings: Vec<String> = keymaps
+        let keymap_strings: Vec<_> = keymaps
             .iter()
-            .enumerate()
-            .map(|(_, keymap)| {
-                keymap
-                    .1
+            .map(|(mode, keymap)| {
+                let bindings = keymap
                     .get(cmd.name())
                     .map(|bindings| {
                         bindings.iter().fold(String::new(), |mut acc, bind| {
@@ -90,22 +88,16 @@ pub fn static_commands() -> Result<String, DynError> {
                             acc
                         })
                     })
-                    .unwrap_or_default()
+                    .unwrap_or_default();
+
+                (mode, bindings)
             })
             .collect();
 
         let keymap_string = keymap_strings
             .iter()
-            .filter(|s| !s.is_empty())
-            .map(|s| {
-                let mode = match keymap_strings.iter().position(|t| t == s) {
-                    Some(0) => "normal",
-                    Some(1) => "select",
-                    Some(2) => "insert",
-                    _ => unreachable!(),
-                };
-                format!("{}: {}", mode, s)
-            })
+            .filter(|(_, bindings)| !bindings.is_empty())
+            .map(|(mode, bindings)| format!("{}: {}", mode, bindings))
             .collect::<Vec<_>>()
             .join(", ");
 
