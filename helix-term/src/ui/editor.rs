@@ -942,6 +942,8 @@ impl EditorView {
     }
 
     fn command_mode(&mut self, mode: Mode, cxt: &mut commands::Context, event: KeyEvent) {
+        #[cfg(feature = "scancode")]
+        let event = cxt.editor.scancode_apply(event);
         match (event, cxt.editor.count) {
             // If the count is already started and the input is a number, always continue the count.
             (key!(i @ '0'..='9'), Some(count)) => {
