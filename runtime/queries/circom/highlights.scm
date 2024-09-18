@@ -4,81 +4,76 @@
 
 ; Pragma
 ; -----------
-(pragma_directive) @tag
+(pragma_directive) @keyword.directive
 
 ; Include
 ; -----------
-(include_directive) @include
+(include_directive) @keyword.directive
 
 ; Literals
 ; --------
-
 (string) @string
-(int_literal) @number
+(int_literal) @constant.numeric.integer
 (comment) @comment
 
 ; Definitions
 ; -----------
-
 (function_definition
-  name:  (identifier) @function)
+  name:  (identifier) @keyword.function)
 
 (template_definition
-  name:  (identifier) @function)
+  name:  (identifier) @keyword.function)
 
 ; Use contructor coloring for special functions
 (main_component_definition) @constructor
 
 ; Invocations
-
 (call_expression . (identifier) @function)
 
 ; Function parameters
 (parameter name: (identifier) @variable.parameter)
 
-
 ; Members
-(member_expression property: (property_identifier) @property)
-
+(member_expression property: (property_identifier) @variable.other.member)
 
 ; Tokens
 ; -------
 
 ; Keywords
+[
+ "signal"
+ "var"
+ "component"
+] @keyword.storage.type
+
+[  "include" ] @keyword.control.import
 
 [
  "public"
- "signal"
- "var"
- "include"
  "input"
  "output"
- "public"
- "component"
-] @keyword
+ ] @keyword.storage.modifier
 
 [
  "for"
  "while"
-] @repeat
+] @keyword.control.repeat
 
 [
  "if"
  "else"
-] @conditional
+] @keyword.control.conditional
 
 [
  "return"
-] @keyword.return
+] @keyword.control.return
 
 [
   "function"
   "template"
 ] @keyword.function
 
-
 ; Punctuation
-
 [
   "("
   ")"
@@ -88,41 +83,52 @@
   "}"
 ] @punctuation.bracket
 
-
 [
   "."
   ","
 ] @punctuation.delimiter
 
-
 ; Operators
-
+; https://docs.circom.io/circom-language/basic-operators
 [
+  "?"
   "&&"
   "||"
-  ">>"
-  "<<"
-  "&"
-  "^"
-  "|"
+  "!"
+  "<" 
+  ">" 
+  "<=" 
+  ">=" 
+  "==" 
+  "!=" 
   "+"
   "-"
   "*"
-  "/"
-  "%"
   "**"
-  "<"
-  "<="
-  "=="
-  "!="
-  ">="
-  ">"
-  "!"
-  "~"
-  "-"
-  "+"
+  "/"
+  "\\"
+  "%"
+  "+="
+  "-="
+  "*="
+  "**="
+  "/="
+  "\\="
+  "%="
   "++"
   "--"
+  "&"
+  "|"
+  "~"
+  "^"
+  ">>"
+  "<<"
+  "&="
+  "|="
+  "~="
+  "^="
+  ">>="
+  "<<="
 ] @operator
 
 [
@@ -131,4 +137,4 @@
   "<--"
   "-->"
   "==="
-] @assignment
+] @operator
