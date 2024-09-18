@@ -86,11 +86,13 @@
 [
   "."
   ","
+  ";"
 ] @punctuation.delimiter
 
 ; Operators
 ; https://docs.circom.io/circom-language/basic-operators
 [
+  "="
   "?"
   "&&"
   "||"
