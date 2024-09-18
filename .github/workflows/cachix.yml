@@ -14,7 +14,7 @@ jobs:
       uses: actions/checkout@v4
 
     - name: Install nix
-      uses: cachix/install-nix-action@V27
+      uses: cachix/install-nix-action@V28
 
     - name: Authenticate with Cachix
       uses: cachix/cachix-action@v15
