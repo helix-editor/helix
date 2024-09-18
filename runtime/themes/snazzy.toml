@@ -79,8 +79,13 @@
 "error" = { fg = "red" }
 "warning" = { fg = "cyan" }
 
+"diagnostic" = { underline = { style = "line", color = "coral" }, bg = "cyan"}
 "diagnostic.unnecessary" = { modifiers = ["dim"] }
 "diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+"diagnostic.error" = { underline = { style = "curl", color = "red" } }
+"diagnostic.hint" = { underline = { style = "line", color = "cyan" }}
+"diagnostic.info" = { underline = { style = "line" } }
+"diagnostic.warning" = { underline = { style = "curl", color = "yellow" } }
 
 "markup.heading" = { fg = "purple", modifiers = ["bold"] }
 "markup.link.label" = { fg = "blue", modifiers = ["italic"] }
