@@ -125,7 +125,7 @@
   "<<"
   "&="
   "|="
-  "~="
+  ; "\~=" ; bug, uncomment and circom will not highlight
   "^="
   ">>="
   "<<="
