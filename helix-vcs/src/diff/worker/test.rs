@@ -5,18 +5,14 @@ use crate::diff::{DiffHandle, Hunk};
 
 impl DiffHandle {
     fn new_test(diff_base: &str, doc: &str) -> (DiffHandle, JoinHandle<()>) {
-        DiffHandle::new_with_handle(
-            Rope::from_str(diff_base),
-            Rope::from_str(doc),
-            Default::default(),
-        )
+        DiffHandle::new_with_handle(Rope::from_str(diff_base), Rope::from_str(doc))
     }
     async fn into_diff(self, handle: JoinHandle<()>) -> Vec<Hunk> {
         let diff = self.diff;
         // dropping the channel terminates the task
         drop(self.channel);
         handle.await.unwrap();
-        let diff = diff.lock();
+        let diff = diff.read();
         Vec::clone(&diff.hunks)
     }
 }

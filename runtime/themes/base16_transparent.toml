@@ -3,13 +3,15 @@
 
 "ui.background" = { fg = "white"}
 "ui.background.separator" = { fg = "gray" }
+"ui.text" = { fg = "light-gray" }
+"ui.text.focus" = { fg = "white" }
 "ui.menu" = { fg = "white" }
 "ui.menu.selected" = { modifiers = ["reversed"] }
 "ui.menu.scroll" = { fg = "light-gray" }
 "ui.linenr" = { fg = "light-gray" }
 "ui.linenr.selected" = { fg = "white",  modifiers = ["bold"] }
 "ui.popup" = { fg = "white" }
-"ui.window" = { fg = "white" }
+"ui.window" = { fg = "gray" }
 "ui.selection" = { bg = "gray" }
 "comment" = "light-gray"
 "ui.statusline" = { fg = "white" }
@@ -22,9 +24,18 @@
 "ui.cursor.match" = { fg = "light-yellow", underline = { color = "light-yellow", style = "line" } }
 "ui.cursor.primary" = { modifiers = ["reversed", "slow_blink"] }
 "ui.cursor.secondary" = { modifiers = ["reversed"] }
+"ui.cursorline.primary" = { underline = { color = "light-gray", style = "line" } }
+"ui.cursorline.secondary" = { underline = { color = "light-gray", style = "line" } }
+"ui.cursorcolumn.primary" = { bg = "gray" }
+"ui.cursorcolumn.secondary" = { bg = "gray" }
 "ui.virtual.ruler" = { bg = "gray" }
 "ui.virtual.whitespace" = "gray"
 "ui.virtual.indent-guide" = "gray"
+"ui.virtual.inlay-hint" = { fg = "white", bg = "gray" }
+"ui.virtual.inlay-hint.parameter" = { fg = "white", bg = "gray"}
+"ui.virtual.inlay-hint.type" = { fg = "white", bg = "gray"}
+"ui.virtual.wrap" = "gray"
+"ui.virtual.jump-label" = { fg = "blue", modifiers = ["bold", "underlined"] }
 
 "variable" = "light-red"
 "constant.numeric" = "yellow"

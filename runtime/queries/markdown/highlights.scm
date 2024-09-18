@@ -39,6 +39,9 @@
   (list_marker_parenthesis)
 ] @markup.list.numbered
 
+(task_list_marker_checked) @markup.list.checked
+(task_list_marker_unchecked) @markup.list.unchecked
+
 (thematic_break) @punctuation.special
 
 [

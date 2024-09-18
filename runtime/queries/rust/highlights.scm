@@ -9,6 +9,13 @@
 ; Types
 ; -------
 
+(type_parameters
+  (type_identifier) @type.parameter)
+(constrained_type_parameter
+  left: (type_identifier) @type.parameter)
+(optional_type_parameter
+  name: (type_identifier) @type.parameter)
+
 ; ---
 ; Primitives
 ; ---
@@ -44,9 +51,58 @@
 (lifetime
   "'" @label
   (identifier) @label)
-(loop_label
+(label
   "'" @label
   (identifier) @label)
+
+; ---
+; Prelude
+; ---
+
+((identifier) @type.enum.variant.builtin
+ (#any-of? @type.enum.variant.builtin "Some" "None" "Ok" "Err"))
+
+
+
+((type_identifier) @type.builtin
+ (#any-of?
+    @type.builtin
+    "Send"
+    "Sized"
+    "Sync"
+    "Unpin"
+    "Drop"
+    "Fn"
+    "FnMut"
+    "FnOnce"
+    "AsMut"
+    "AsRef"
+    "From"
+    "Into"
+    "DoubleEndedIterator"
+    "ExactSizeIterator"
+    "Extend"
+    "IntoIterator"
+    "Iterator"
+    "Option"
+    "Result"
+    "Clone"
+    "Copy"
+    "Debug"
+    "Default"
+    "Eq"
+    "Hash"
+    "Ord"
+    "PartialEq"
+    "PartialOrd"
+    "ToOwned"
+    "Box"
+    "String"
+    "ToString"
+    "Vec"
+    "FromIterator"
+    "TryFrom"
+    "TryInto"))
 
 ; ---
 ; Punctuation
@@ -118,6 +174,7 @@
   "match"
   "if"
   "else"
+  "try"
 ] @keyword.control.conditional
 
 [
@@ -183,6 +240,33 @@
 ; TODO: variable.mut to highlight mutable identifiers via locals.scm
 
 ; -------
+; Constructors
+; -------
+; TODO: this is largely guesswork, remove it once we get actual info from locals.scm or r-a
+
+(struct_expression
+  name: (type_identifier) @constructor)
+
+(tuple_struct_pattern
+  type: [
+    (identifier) @constructor
+    (scoped_identifier
+      name: (identifier) @constructor)
+  ])
+(struct_pattern
+  type: [
+    ((type_identifier) @constructor)
+    (scoped_type_identifier
+      name: (type_identifier) @constructor)
+  ])
+(match_pattern
+  ((identifier) @constructor) (#match? @constructor "^[A-Z]"))
+(or_pattern
+  ((identifier) @constructor)
+  ((identifier) @constructor)
+  (#match? @constructor "^[A-Z]"))
+
+; -------
 ; Guess Other Types
 ; -------
 
@@ -196,33 +280,28 @@
 
 (call_expression
   function: [
-    ((identifier) @type.enum.variant
-      (#match? @type.enum.variant "^[A-Z]"))
+    ((identifier) @constructor
+      (#match? @constructor "^[A-Z]"))
     (scoped_identifier
-      name: ((identifier) @type.enum.variant
-        (#match? @type.enum.variant "^[A-Z]")))
+      name: ((identifier) @constructor
+        (#match? @constructor "^[A-Z]")))
   ])
 
 ; ---
-; Assume that types in match arms are enums and not
-; tuple structs. Same for `if let` expressions.
+; PascalCase identifiers under a path which is also PascalCase
+; are assumed to be constructors if they have methods or fields.
 ; ---
 
-(match_pattern
-    (scoped_identifier
-      name: (identifier) @constructor))
-(tuple_struct_pattern
-    type: [
-      ((identifier) @constructor)
-      (scoped_identifier  
-        name: (identifier) @constructor)
-      ])
-(struct_pattern
-  type: [
-    ((type_identifier) @constructor)
-    (scoped_type_identifier
-      name: (type_identifier) @constructor)
-    ])
+(field_expression
+  value: (scoped_identifier
+    path: [
+      (identifier) @type
+      (scoped_identifier
+        name: (identifier) @type)
+    ]
+    name: (identifier) @constructor
+      (#match? @type "^[A-Z]")
+      (#match? @constructor "^[A-Z]")))
 
 ; ---
 ; Other PascalCase identifiers are assumed to be structs.
@@ -347,7 +426,8 @@
 (use_wildcard
   (identifier) @namespace)
 (extern_crate_declaration
-  name: (identifier) @namespace)
+  name: (identifier) @namespace
+  alias: (identifier)? @namespace)
 (mod_item
   name: (identifier) @namespace)
 (scoped_use_list

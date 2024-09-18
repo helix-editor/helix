@@ -28,6 +28,11 @@ pub enum Grapheme<'a> {
 }
 
 impl<'a> Grapheme<'a> {
+    pub fn new_decoration(g: &'static str) -> Grapheme<'a> {
+        assert_ne!(g, "\t");
+        Grapheme::new(g.into(), 0, 0)
+    }
+
     pub fn new(g: GraphemeStr<'a>, visual_x: usize, tab_width: u16) -> Grapheme<'a> {
         match g {
             g if g == "\t" => Grapheme::Tab {
@@ -278,23 +283,6 @@ pub fn ensure_grapheme_boundary_prev(slice: RopeSlice, char_idx: usize) -> usize
     }
 }
 
-/// Returns the passed byte index if it's already a grapheme boundary,
-/// or the next grapheme boundary byte index if not.
-#[must_use]
-#[inline]
-pub fn ensure_grapheme_boundary_next_byte(slice: RopeSlice, byte_idx: usize) -> usize {
-    if byte_idx == 0 {
-        byte_idx
-    } else {
-        // TODO: optimize so we're not constructing grapheme cursor twice
-        if is_grapheme_boundary_byte(slice, byte_idx) {
-            byte_idx
-        } else {
-            next_grapheme_boundary_byte(slice, byte_idx)
-        }
-    }
-}
-
 /// Returns whether the given char position is a grapheme boundary.
 #[must_use]
 pub fn is_grapheme_boundary(slice: RopeSlice, char_idx: usize) -> bool {
@@ -425,6 +413,85 @@ impl<'a> Iterator for RopeGraphemes<'a> {
     }
 }
 
+/// An iterator over the graphemes of a `RopeSlice` in reverse.
+#[derive(Clone)]
+pub struct RevRopeGraphemes<'a> {
+    text: RopeSlice<'a>,
+    chunks: Chunks<'a>,
+    cur_chunk: &'a str,
+    cur_chunk_start: usize,
+    cursor: GraphemeCursor,
+}
+
+impl<'a> fmt::Debug for RevRopeGraphemes<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RevRopeGraphemes")
+            .field("text", &self.text)
+            .field("chunks", &self.chunks)
+            .field("cur_chunk", &self.cur_chunk)
+            .field("cur_chunk_start", &self.cur_chunk_start)
+            // .field("cursor", &self.cursor)
+            .finish()
+    }
+}
+
+impl<'a> RevRopeGraphemes<'a> {
+    #[must_use]
+    pub fn new(slice: RopeSlice) -> RevRopeGraphemes {
+        let (mut chunks, mut cur_chunk_start, _, _) = slice.chunks_at_byte(slice.len_bytes());
+        chunks.reverse();
+        let first_chunk = chunks.next().unwrap_or("");
+        cur_chunk_start -= first_chunk.len();
+        RevRopeGraphemes {
+            text: slice,
+            chunks,
+            cur_chunk: first_chunk,
+            cur_chunk_start,
+            cursor: GraphemeCursor::new(slice.len_bytes(), slice.len_bytes(), true),
+        }
+    }
+}
+
+impl<'a> Iterator for RevRopeGraphemes<'a> {
+    type Item = RopeSlice<'a>;
+
+    fn next(&mut self) -> Option<RopeSlice<'a>> {
+        let a = self.cursor.cur_cursor();
+        let b;
+        loop {
+            match self
+                .cursor
+                .prev_boundary(self.cur_chunk, self.cur_chunk_start)
+            {
+                Ok(None) => {
+                    return None;
+                }
+                Ok(Some(n)) => {
+                    b = n;
+                    break;
+                }
+                Err(GraphemeIncomplete::PrevChunk) => {
+                    self.cur_chunk = self.chunks.next().unwrap_or("");
+                    self.cur_chunk_start -= self.cur_chunk.len();
+                }
+                Err(GraphemeIncomplete::PreContext(idx)) => {
+                    let (chunk, byte_idx, _, _) = self.text.chunk_at_byte(idx.saturating_sub(1));
+                    self.cursor.provide_context(chunk, byte_idx);
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        if a >= self.cur_chunk_start + self.cur_chunk.len() {
+            Some(self.text.byte_slice(b..a))
+        } else {
+            let a2 = a - self.cur_chunk_start;
+            let b2 = b - self.cur_chunk_start;
+            Some((&self.cur_chunk[b2..a2]).into())
+        }
+    }
+}
+
 /// A highly compressed Cow<'a, str> that holds
 /// atmost u31::MAX bytes and is readonly
 pub struct GraphemeStr<'a> {
@@ -481,7 +548,7 @@ impl<'a> From<String> for GraphemeStr<'a> {
         let ptr = Box::into_raw(g.into_bytes().into_boxed_slice()) as *mut u8;
         GraphemeStr {
             ptr: unsafe { NonNull::new_unchecked(ptr) },
-            len: i32::try_from(len).unwrap() as u32,
+            len: (i32::try_from(len).unwrap() as u32) | Self::MASK_OWNED,
             phantom: PhantomData,
         }
     }

@@ -18,7 +18,7 @@
 
 ![Screenshot](./screenshot.png)
 
-A Kakoune / Neovim inspired editor, written in Rust.
+A [Kakoune](https://github.com/mawww/kakoune) / [Neovim](https://github.com/neovim/neovim) inspired editor, written in Rust.
 
 The editing model is very heavily based on Kakoune; during development I found
 myself agreeing with most of Kakoune's design decisions.
@@ -47,7 +47,7 @@ Note: Only certain languages have indentation definitions at the moment. Check
 
 [Installation documentation](https://docs.helix-editor.com/install.html).
 
-[![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
+[![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg?exclude_unsupported=1)](https://repology.org/project/helix/versions)
 
 # Contributing
 
@@ -61,4 +61,4 @@ Discuss the project on the community [Matrix Space](https://matrix.to/#/#helix-c
 
 # Credits
 
-Thanks to [@JakeHL](https://github.com/JakeHL) for designing the logo!
+Thanks to [@jakenvac](https://github.com/jakenvac) for designing the logo!

@@ -18,7 +18,7 @@
 "variable.property" = "yellow"
 "label" = "aqua"
 "punctuation" = "grey0"
-"punctuation.delimiter" = "grey2"
+"punctuation.delimiter" = "bg4"
 "punctuation.bracket" = "fg"
 "keyword" = "red"
 "operator" = "grey0"
@@ -52,6 +52,7 @@
 "ui.selection" = { bg = "bg3" }
 "ui.virtual.whitespace" = "bg2"
 "ui.virtual.ruler" = { bg = "grey2" } 
+"ui.virtual.inlay-hint" = { fg = "grey2", modifiers = ["italic"] }
 
 "hint" = "blue"
 "info" = "aqua"
@@ -62,6 +63,8 @@
 "diagnostic.info" = { underline = { style = "curl", color = "aqua" } }
 "diagnostic.warning" = { underline = { style = "curl", color = "yellow" } }
 "diagnostic.error" = { underline = { style = "curl", color = "nasty-red" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 "diff.plus" = { fg = "green" }
 "diff.delta" = { fg = "orange" }

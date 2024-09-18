@@ -79,6 +79,9 @@
 "error" = { fg = "red" }
 "warning" = { fg = "cyan" }
 
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
 "markup.heading" = { fg = "purple", modifiers = ["bold"] }
 "markup.link.label" = { fg = "blue", modifiers = ["italic"] }
 "markup.list" = "cyan"

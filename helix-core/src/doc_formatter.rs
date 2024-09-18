@@ -10,8 +10,9 @@
 //! called a "block" and the caller must advance it as needed.
 
 use std::borrow::Cow;
+use std::cmp::Ordering;
 use std::fmt::Debug;
-use std::mem::{replace, take};
+use std::mem::replace;
 
 #[cfg(test)]
 mod test;
@@ -37,52 +38,104 @@ pub enum GraphemeSource {
     },
 }
 
-#[derive(Debug, Clone)]
-pub struct FormattedGrapheme<'a> {
-    pub grapheme: Grapheme<'a>,
-    pub source: GraphemeSource,
+impl GraphemeSource {
+    /// Returns whether this grapheme is virtual inline text
+    pub fn is_virtual(self) -> bool {
+        matches!(self, GraphemeSource::VirtualText { .. })
+    }
+
+    pub fn is_eof(self) -> bool {
+        // all doc chars except the EOF char have non-zero codepoints
+        matches!(self, GraphemeSource::Document { codepoints: 0 })
+    }
+
+    pub fn doc_chars(self) -> usize {
+        match self {
+            GraphemeSource::Document { codepoints } => codepoints as usize,
+            GraphemeSource::VirtualText { .. } => 0,
+        }
+    }
 }
 
-impl<'a> FormattedGrapheme<'a> {
-    pub fn new(
+#[derive(Debug, Clone)]
+pub struct FormattedGrapheme<'a> {
+    pub raw: Grapheme<'a>,
+    pub source: GraphemeSource,
+    pub visual_pos: Position,
+    /// Document line at the start of the grapheme
+    pub line_idx: usize,
+    /// Document char position at the start of the grapheme
+    pub char_idx: usize,
+}
+
+impl FormattedGrapheme<'_> {
+    pub fn is_virtual(&self) -> bool {
+        self.source.is_virtual()
+    }
+
+    pub fn doc_chars(&self) -> usize {
+        self.source.doc_chars()
+    }
+
+    pub fn is_whitespace(&self) -> bool {
+        self.raw.is_whitespace()
+    }
+
+    pub fn width(&self) -> usize {
+        self.raw.width()
+    }
+
+    pub fn is_word_boundary(&self) -> bool {
+        self.raw.is_word_boundary()
+    }
+}
+
+#[derive(Debug, Clone)]
+struct GraphemeWithSource<'a> {
+    grapheme: Grapheme<'a>,
+    source: GraphemeSource,
+}
+
+impl<'a> GraphemeWithSource<'a> {
+    fn new(
         g: GraphemeStr<'a>,
         visual_x: usize,
         tab_width: u16,
         source: GraphemeSource,
-    ) -> FormattedGrapheme<'a> {
-        FormattedGrapheme {
+    ) -> GraphemeWithSource<'a> {
+        GraphemeWithSource {
             grapheme: Grapheme::new(g, visual_x, tab_width),
             source,
         }
     }
-    /// Returns whether this grapheme is virtual inline text
-    pub fn is_virtual(&self) -> bool {
-        matches!(self.source, GraphemeSource::VirtualText { .. })
-    }
-
-    pub fn placeholder() -> Self {
-        FormattedGrapheme {
+    fn placeholder() -> Self {
+        GraphemeWithSource {
             grapheme: Grapheme::Other { g: " ".into() },
             source: GraphemeSource::Document { codepoints: 0 },
         }
     }
 
-    pub fn doc_chars(&self) -> usize {
-        match self.source {
-            GraphemeSource::Document { codepoints } => codepoints as usize,
-            GraphemeSource::VirtualText { .. } => 0,
-        }
+    fn doc_chars(&self) -> usize {
+        self.source.doc_chars()
     }
 
-    pub fn is_whitespace(&self) -> bool {
+    fn is_whitespace(&self) -> bool {
         self.grapheme.is_whitespace()
     }
 
-    pub fn width(&self) -> usize {
+    fn is_newline(&self) -> bool {
+        matches!(self.grapheme, Grapheme::Newline)
+    }
+
+    fn is_eof(&self) -> bool {
+        self.source.is_eof()
+    }
+
+    fn width(&self) -> usize {
         self.grapheme.width()
     }
 
-    pub fn is_word_boundary(&self) -> bool {
+    fn is_word_boundary(&self) -> bool {
         self.grapheme.is_word_boundary()
     }
 }
@@ -96,6 +149,7 @@ pub struct TextFormat {
     pub wrap_indicator: Box<str>,
     pub wrap_indicator_highlight: Option<Highlight>,
     pub viewport_width: u16,
+    pub soft_wrap_at_text_width: bool,
 }
 
 // test implementation is basically only used for testing or when softwrap is always disabled
@@ -109,6 +163,7 @@ impl Default for TextFormat {
             wrap_indicator: Box::from(" "),
             viewport_width: 17,
             wrap_indicator_highlight: None,
+            soft_wrap_at_text_width: false,
         }
     }
 }
@@ -116,7 +171,7 @@ impl Default for TextFormat {
 #[derive(Debug)]
 pub struct DocumentFormatter<'t> {
     text_fmt: &'t TextFormat,
-    annotations: &'t TextAnnotations,
+    annotations: &'t TextAnnotations<'t>,
 
     /// The visual position at the end of the last yielded word boundary
     visual_pos: Position,
@@ -127,10 +182,7 @@ pub struct DocumentFormatter<'t> {
     line_pos: usize,
     exhausted: bool,
 
-    /// Line breaks to be reserved for virtual text
-    /// at the next line break
-    virtual_lines: usize,
-    inline_anntoation_graphemes: Option<(Graphemes<'t>, Option<Highlight>)>,
+    inline_annotation_graphemes: Option<(Graphemes<'t>, Option<Highlight>)>,
 
     // softwrap specific
     /// The indentation of the current line
@@ -139,9 +191,9 @@ pub struct DocumentFormatter<'t> {
     indent_level: Option<usize>,
     /// In case a long word needs to be split a single grapheme might need to be wrapped
     /// while the rest of the word stays on the same line
-    peeked_grapheme: Option<(FormattedGrapheme<'t>, usize)>,
+    peeked_grapheme: Option<GraphemeWithSource<'t>>,
     /// A first-in first-out (fifo) buffer for the Graphemes of any given word
-    word_buf: Vec<FormattedGrapheme<'t>>,
+    word_buf: Vec<GraphemeWithSource<'t>>,
     /// The index of the next grapheme that will be yielded from the `word_buf`
     word_i: usize,
 }
@@ -157,35 +209,35 @@ impl<'t> DocumentFormatter<'t> {
         text_fmt: &'t TextFormat,
         annotations: &'t TextAnnotations,
         char_idx: usize,
-    ) -> (Self, usize) {
+    ) -> Self {
         // TODO divide long lines into blocks to avoid bad performance for long lines
         let block_line_idx = text.char_to_line(char_idx.min(text.len_chars()));
         let block_char_idx = text.line_to_char(block_line_idx);
         annotations.reset_pos(block_char_idx);
-        (
-            DocumentFormatter {
-                text_fmt,
-                annotations,
-                visual_pos: Position { row: 0, col: 0 },
-                graphemes: RopeGraphemes::new(text.slice(block_char_idx..)),
-                char_pos: block_char_idx,
-                exhausted: false,
-                virtual_lines: 0,
-                indent_level: None,
-                peeked_grapheme: None,
-                word_buf: Vec::with_capacity(64),
-                word_i: 0,
-                line_pos: block_line_idx,
-                inline_anntoation_graphemes: None,
-            },
-            block_char_idx,
-        )
+
+        DocumentFormatter {
+            text_fmt,
+            annotations,
+            visual_pos: Position { row: 0, col: 0 },
+            graphemes: RopeGraphemes::new(text.slice(block_char_idx..)),
+            char_pos: block_char_idx,
+            exhausted: false,
+            indent_level: None,
+            peeked_grapheme: None,
+            word_buf: Vec::with_capacity(64),
+            word_i: 0,
+            line_pos: block_line_idx,
+            inline_annotation_graphemes: None,
+        }
     }
 
-    fn next_inline_annotation_grapheme(&mut self) -> Option<(&'t str, Option<Highlight>)> {
+    fn next_inline_annotation_grapheme(
+        &mut self,
+        char_pos: usize,
+    ) -> Option<(&'t str, Option<Highlight>)> {
         loop {
             if let Some(&mut (ref mut annotation, highlight)) =
-                self.inline_anntoation_graphemes.as_mut()
+                self.inline_annotation_graphemes.as_mut()
             {
                 if let Some(grapheme) = annotation.next() {
                     return Some((grapheme, highlight));
@@ -193,9 +245,9 @@ impl<'t> DocumentFormatter<'t> {
             }
 
             if let Some((annotation, highlight)) =
-                self.annotations.next_inline_annotation_at(self.char_pos)
+                self.annotations.next_inline_annotation_at(char_pos)
             {
-                self.inline_anntoation_graphemes = Some((
+                self.inline_annotation_graphemes = Some((
                     UnicodeSegmentation::graphemes(&*annotation.text, true),
                     highlight,
                 ))
@@ -205,21 +257,19 @@ impl<'t> DocumentFormatter<'t> {
         }
     }
 
-    fn advance_grapheme(&mut self, col: usize) -> Option<FormattedGrapheme<'t>> {
+    fn advance_grapheme(&mut self, col: usize, char_pos: usize) -> Option<GraphemeWithSource<'t>> {
         let (grapheme, source) =
-            if let Some((grapheme, highlight)) = self.next_inline_annotation_grapheme() {
+            if let Some((grapheme, highlight)) = self.next_inline_annotation_grapheme(char_pos) {
                 (grapheme.into(), GraphemeSource::VirtualText { highlight })
             } else if let Some(grapheme) = self.graphemes.next() {
-                self.virtual_lines += self.annotations.annotation_lines_at(self.char_pos);
                 let codepoints = grapheme.len_chars() as u32;
 
-                let overlay = self.annotations.overlay_at(self.char_pos);
+                let overlay = self.annotations.overlay_at(char_pos);
                 let grapheme = match overlay {
                     Some((overlay, _)) => overlay.grapheme.as_str().into(),
                     None => Cow::from(grapheme).into(),
                 };
 
-                self.char_pos += codepoints as usize;
                 (grapheme, GraphemeSource::Document { codepoints })
             } else {
                 if self.exhausted {
@@ -228,19 +278,19 @@ impl<'t> DocumentFormatter<'t> {
                 self.exhausted = true;
                 // EOF grapheme is required for rendering
                 // and correct position computations
-                return Some(FormattedGrapheme {
+                return Some(GraphemeWithSource {
                     grapheme: Grapheme::Other { g: " ".into() },
                     source: GraphemeSource::Document { codepoints: 0 },
                 });
             };
 
-        let grapheme = FormattedGrapheme::new(grapheme, col, self.text_fmt.tab_width, source);
+        let grapheme = GraphemeWithSource::new(grapheme, col, self.text_fmt.tab_width, source);
 
         Some(grapheme)
     }
 
     /// Move a word to the next visual line
-    fn wrap_word(&mut self, virtual_lines_before_word: usize) -> usize {
+    fn wrap_word(&mut self) -> usize {
         // softwrap this word to the next line
         let indent_carry_over = if let Some(indent) = self.indent_level {
             if indent as u16 <= self.text_fmt.max_indent_retain {
@@ -254,15 +304,17 @@ impl<'t> DocumentFormatter<'t> {
             0
         };
 
+        let virtual_lines =
+            self.annotations
+                .virtual_lines_at(self.char_pos, self.visual_pos, self.line_pos);
         self.visual_pos.col = indent_carry_over as usize;
-        self.virtual_lines -= virtual_lines_before_word;
-        self.visual_pos.row += 1 + virtual_lines_before_word;
+        self.visual_pos.row += 1 + virtual_lines;
         let mut i = 0;
         let mut word_width = 0;
         let wrap_indicator = UnicodeSegmentation::graphemes(&*self.text_fmt.wrap_indicator, true)
             .map(|g| {
                 i += 1;
-                let grapheme = FormattedGrapheme::new(
+                let grapheme = GraphemeWithSource::new(
                     g.into(),
                     self.visual_pos.col + word_width,
                     self.text_fmt.tab_width,
@@ -282,46 +334,71 @@ impl<'t> DocumentFormatter<'t> {
                 .change_position(visual_x, self.text_fmt.tab_width);
             word_width += grapheme.width();
         }
+        if let Some(grapheme) = &mut self.peeked_grapheme {
+            let visual_x = self.visual_pos.col + word_width;
+            grapheme
+                .grapheme
+                .change_position(visual_x, self.text_fmt.tab_width);
+        }
         word_width
+    }
+
+    fn peek_grapheme(&mut self, col: usize, char_pos: usize) -> Option<&GraphemeWithSource<'t>> {
+        if self.peeked_grapheme.is_none() {
+            self.peeked_grapheme = self.advance_grapheme(col, char_pos);
+        }
+        self.peeked_grapheme.as_ref()
+    }
+
+    fn next_grapheme(&mut self, col: usize, char_pos: usize) -> Option<GraphemeWithSource<'t>> {
+        self.peek_grapheme(col, char_pos);
+        self.peeked_grapheme.take()
     }
 
     fn advance_to_next_word(&mut self) {
         self.word_buf.clear();
         let mut word_width = 0;
-        let virtual_lines_before_word = self.virtual_lines;
-        let mut virtual_lines_before_grapheme = self.virtual_lines;
+        let mut word_chars = 0;
+
+        if self.exhausted {
+            return;
+        }
 
         loop {
-            // softwrap word if necessary
-            if word_width + self.visual_pos.col >= self.text_fmt.viewport_width as usize {
-                // wrapping this word would move too much text to the next line
-                // split the word at the line end instead
-                if word_width > self.text_fmt.max_wrap as usize {
-                    // Usually we stop accomulating graphemes as soon as softwrapping becomes necessary.
-                    // However if the last grapheme is multiple columns wide it might extend beyond the EOL.
-                    // The condition below ensures that this grapheme is not cutoff and instead wrapped to the next line
-                    if word_width + self.visual_pos.col > self.text_fmt.viewport_width as usize {
-                        self.peeked_grapheme = self.word_buf.pop().map(|grapheme| {
-                            (grapheme, self.virtual_lines - virtual_lines_before_grapheme)
-                        });
-                        self.virtual_lines = virtual_lines_before_grapheme;
-                    }
+            let mut col = self.visual_pos.col + word_width;
+            let char_pos = self.char_pos + word_chars;
+            match col.cmp(&(self.text_fmt.viewport_width as usize)) {
+                // The EOF char and newline chars are always selectable in helix. That means
+                // that wrapping happens "too-early" if a word fits a line perfectly. This
+                // is intentional so that all selectable graphemes are always visisble (and
+                // therefore the cursor never dissapears). However if the user manually set a
+                // lower softwrap width then this is undesirable. Just increasing the viewport-
+                // width by one doesn't work because if a line is wrapped multiple times then
+                // some words may extend past the specified width.
+                //
+                // So we special case a word that ends exactly at line bounds and is followed
+                // by a newline/eof character here.
+                Ordering::Equal
+                    if self.text_fmt.soft_wrap_at_text_width
+                        && self.peek_grapheme(col, char_pos).map_or(false, |grapheme| {
+                            grapheme.is_newline() || grapheme.is_eof()
+                        }) => {}
+                Ordering::Equal if word_width > self.text_fmt.max_wrap as usize => return,
+                Ordering::Greater if word_width > self.text_fmt.max_wrap as usize => {
+                    self.peeked_grapheme = self.word_buf.pop();
                     return;
                 }
-
-                word_width = self.wrap_word(virtual_lines_before_word);
+                Ordering::Equal | Ordering::Greater => {
+                    word_width = self.wrap_word();
+                    col = self.visual_pos.col + word_width;
+                }
+                Ordering::Less => (),
             }
 
-            virtual_lines_before_grapheme = self.virtual_lines;
-
-            let grapheme = if let Some((grapheme, virtual_lines)) = self.peeked_grapheme.take() {
-                self.virtual_lines += virtual_lines;
-                grapheme
-            } else if let Some(grapheme) = self.advance_grapheme(self.visual_pos.col + word_width) {
-                grapheme
-            } else {
+            let Some(grapheme) = self.next_grapheme(col, char_pos) else {
                 return;
             };
+            word_chars += grapheme.doc_chars();
 
             // Track indentation
             if !grapheme.is_whitespace() && self.indent_level.is_none() {
@@ -340,19 +417,18 @@ impl<'t> DocumentFormatter<'t> {
         }
     }
 
-    /// returns the document line pos of the **next** grapheme that will be yielded
-    pub fn line_pos(&self) -> usize {
-        self.line_pos
+    /// returns the char index at the end of the last yielded grapheme
+    pub fn next_char_pos(&self) -> usize {
+        self.char_pos
     }
-
-    /// returns the visual pos of the **next** grapheme that will be yielded
-    pub fn visual_pos(&self) -> Position {
+    /// returns the visual position at the end of the last yielded grapheme
+    pub fn next_visual_pos(&self) -> Position {
         self.visual_pos
     }
 }
 
 impl<'t> Iterator for DocumentFormatter<'t> {
-    type Item = (FormattedGrapheme<'t>, Position);
+    type Item = FormattedGrapheme<'t>;
 
     fn next(&mut self) -> Option<Self::Item> {
         let grapheme = if self.text_fmt.soft_wrap {
@@ -362,23 +438,40 @@ impl<'t> Iterator for DocumentFormatter<'t> {
             }
             let grapheme = replace(
                 self.word_buf.get_mut(self.word_i)?,
-                FormattedGrapheme::placeholder(),
+                GraphemeWithSource::placeholder(),
             );
             self.word_i += 1;
             grapheme
         } else {
-            self.advance_grapheme(self.visual_pos.col)?
+            self.advance_grapheme(self.visual_pos.col, self.char_pos)?
         };
 
-        let pos = self.visual_pos;
-        if grapheme.grapheme == Grapheme::Newline {
-            self.visual_pos.row += 1;
-            self.visual_pos.row += take(&mut self.virtual_lines);
+        let grapheme = FormattedGrapheme {
+            raw: grapheme.grapheme,
+            source: grapheme.source,
+            visual_pos: self.visual_pos,
+            line_idx: self.line_pos,
+            char_idx: self.char_pos,
+        };
+
+        self.char_pos += grapheme.doc_chars();
+        if !grapheme.is_virtual() {
+            self.annotations.process_virtual_text_anchors(&grapheme);
+        }
+        if grapheme.raw == Grapheme::Newline {
+            // move to end of newline char
+            self.visual_pos.col += 1;
+            let virtual_lines =
+                self.annotations
+                    .virtual_lines_at(self.char_pos, self.visual_pos, self.line_pos);
+            self.visual_pos.row += 1 + virtual_lines;
             self.visual_pos.col = 0;
-            self.line_pos += 1;
+            if !grapheme.is_virtual() {
+                self.line_pos += 1;
+            }
         } else {
             self.visual_pos.col += grapheme.width();
         }
-        Some((grapheme, pos))
+        Some(grapheme)
     }
 }

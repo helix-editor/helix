@@ -22,7 +22,10 @@
 "namespace" = "blue"
 "markup.heading" = "orange"
 "markup.list" = "yellow"
-"markup.raw.block" = { bg = "gray", fg = "orange" }
+"markup.bold" = { fg = "orange", modifiers = ["bold"] }
+"markup.italic" = { fg = "orange", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.raw.block" = "orange"
 "markup.link.url" = "blue"
 "markup.link.text" = "yellow"
 "markup.link.label" = "green"
@@ -33,11 +36,15 @@
 
 # Interface
 "ui.background"= { bg = "background" }
-"ui.cursor" = { fg = "dark_gray", bg = "orange" }
+"ui.cursor" = { fg = "dark_gray", bg = "yellow" }
+"ui.cursor.primary" = { fg = "dark_gray", bg = "orange" }
 "ui.cursor.match" = "orange"
 "ui.linenr" = "dark_gray"
 "ui.linenr.selected" = "gray"
 "ui.statusline" = { fg = "foreground", bg = "black" }
+"ui.statusline.normal" = { fg = "black", bg = "blue" }
+"ui.statusline.insert" = { fg = "black", bg = "orange" }
+"ui.statusline.select" = { fg = "black", bg = "magenta" }
 "ui.cursorline" = { bg = "black" }
 "ui.popup" = { fg = "#7B91b3", bg = "black" }
 "ui.window" = "dark_gray"
@@ -47,6 +54,7 @@
 "ui.text.info" = "foreground"
 "ui.virtual.whitespace" = "dark_gray"
 "ui.virtual.ruler" = { bg = "black" }
+"ui.virtual.inlay-hint" = { fg = "#ffcc66", bg = "#47433d" }  # original bg #ffcc6633
 "ui.menu" = { fg = "foreground", bg = "black" }
 "ui.menu.selected" = { bg = "gray", fg = "background" }
 "ui.selection" = { bg = "dark_gray" }
@@ -58,8 +66,13 @@
 "diagnostic.info"= { underline = { color = "blue", style = "curl" } }
 "diagnostic.warning"= { underline = { color = "yellow", style = "curl" } }
 "diagnostic.error"= { underline = { color = "red", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 "ui.bufferline" = { fg = "gray", bg = "background" }
 "ui.bufferline.active" = { fg = "foreground", bg = "dark_gray" }
+"ui.debug" = { fg = "orange", bg = "background" }
+"ui.highlight.frameline" = { bg = "#0067a3" }
+"ui.virtual.jump-label" = { fg = "red", modifiers = ["italic", "bold"] }
 
 "special" = "orange"
 

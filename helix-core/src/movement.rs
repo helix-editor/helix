@@ -1,4 +1,4 @@
-use std::iter;
+use std::{cmp::Reverse, iter};
 
 use ropey::iter::Chars;
 use tree_sitter::{Node, QueryCursor};
@@ -16,7 +16,7 @@ use crate::{
     syntax::LanguageConfiguration,
     text_annotations::TextAnnotations,
     textobject::TextObject,
-    visual_offset_from_block, Range, RopeSlice,
+    visual_offset_from_block, Range, RopeSlice, Selection, Syntax,
 };
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -62,7 +62,7 @@ pub fn move_vertically_visual(
     annotations: &mut TextAnnotations,
 ) -> Range {
     if !text_fmt.soft_wrap {
-        move_vertically(slice, range, dir, count, behaviour, text_fmt, annotations);
+        return move_vertically(slice, range, dir, count, behaviour, text_fmt, annotations);
     }
     annotations.clear_line_annotations();
     let pos = range.cursor(slice);
@@ -79,19 +79,19 @@ pub fn move_vertically_visual(
         Direction::Backward => -(count as isize),
     };
 
-    // TODO how to handle inline annotations that span an entire visual line (very unlikely).
-
     // Compute visual offset relative to block start to avoid trasversing the block twice
     row_off += visual_pos.row as isize;
-    let new_pos = char_idx_at_visual_offset(
+    let (mut new_pos, virtual_rows) = char_idx_at_visual_offset(
         slice,
         block_off,
         row_off,
         new_col as usize,
         text_fmt,
         annotations,
-    )
-    .0;
+    );
+    if dir == Direction::Forward {
+        new_pos += (virtual_rows != 0) as usize;
+    }
 
     // Special-case to avoid moving to the end of the last non-empty line.
     if behaviour == Movement::Extend && slice.line(slice.char_to_line(new_pos)).len_chars() == 0 {
@@ -177,6 +177,10 @@ pub fn move_prev_word_start(slice: RopeSlice, range: Range, count: usize) -> Ran
     word_move(slice, range, count, WordMotionTarget::PrevWordStart)
 }
 
+pub fn move_prev_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::PrevWordEnd)
+}
+
 pub fn move_next_long_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
     word_move(slice, range, count, WordMotionTarget::NextLongWordStart)
 }
@@ -189,8 +193,24 @@ pub fn move_prev_long_word_start(slice: RopeSlice, range: Range, count: usize) -
     word_move(slice, range, count, WordMotionTarget::PrevLongWordStart)
 }
 
-pub fn move_prev_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
-    word_move(slice, range, count, WordMotionTarget::PrevWordEnd)
+pub fn move_prev_long_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::PrevLongWordEnd)
+}
+
+pub fn move_next_sub_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::NextSubWordStart)
+}
+
+pub fn move_next_sub_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::NextSubWordEnd)
+}
+
+pub fn move_prev_sub_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::PrevSubWordStart)
+}
+
+pub fn move_prev_sub_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::PrevSubWordEnd)
 }
 
 fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTarget) -> Range {
@@ -198,7 +218,10 @@ fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTar
         target,
         WordMotionTarget::PrevWordStart
             | WordMotionTarget::PrevLongWordStart
+            | WordMotionTarget::PrevSubWordStart
             | WordMotionTarget::PrevWordEnd
+            | WordMotionTarget::PrevLongWordEnd
+            | WordMotionTarget::PrevSubWordEnd
     );
 
     // Special-case early-out.
@@ -377,6 +400,13 @@ pub enum WordMotionTarget {
     NextLongWordStart,
     NextLongWordEnd,
     PrevLongWordStart,
+    PrevLongWordEnd,
+    // A sub word is similar to a regular word, except it is also delimited by
+    // underscores and transitions from lowercase to uppercase.
+    NextSubWordStart,
+    NextSubWordEnd,
+    PrevSubWordStart,
+    PrevSubWordEnd,
 }
 
 pub trait CharHelpers {
@@ -392,7 +422,10 @@ impl CharHelpers for Chars<'_> {
             target,
             WordMotionTarget::PrevWordStart
                 | WordMotionTarget::PrevLongWordStart
+                | WordMotionTarget::PrevSubWordStart
                 | WordMotionTarget::PrevWordEnd
+                | WordMotionTarget::PrevLongWordEnd
+                | WordMotionTarget::PrevSubWordEnd
         );
 
         // Reverse the iterator if needed for the motion direction.
@@ -469,6 +502,25 @@ fn is_long_word_boundary(a: char, b: char) -> bool {
     }
 }
 
+fn is_sub_word_boundary(a: char, b: char, dir: Direction) -> bool {
+    match (categorize_char(a), categorize_char(b)) {
+        (CharCategory::Word, CharCategory::Word) => {
+            if (a == '_') != (b == '_') {
+                return true;
+            }
+
+            // Subword boundaries are directional: in 'fooBar', there is a
+            // boundary between 'o' and 'B', but not between 'B' and 'a'.
+            match dir {
+                Direction::Forward => a.is_lowercase() && b.is_uppercase(),
+                Direction::Backward => a.is_uppercase() && b.is_lowercase(),
+            }
+        }
+        (a, b) if a != b => true,
+        _ => false,
+    }
+}
+
 fn reached_target(target: WordMotionTarget, prev_ch: char, next_ch: char) -> bool {
     match target {
         WordMotionTarget::NextWordStart | WordMotionTarget::PrevWordEnd => {
@@ -479,13 +531,29 @@ fn reached_target(target: WordMotionTarget, prev_ch: char, next_ch: char) -> boo
             is_word_boundary(prev_ch, next_ch)
                 && (!prev_ch.is_whitespace() || char_is_line_ending(next_ch))
         }
-        WordMotionTarget::NextLongWordStart => {
+        WordMotionTarget::NextLongWordStart | WordMotionTarget::PrevLongWordEnd => {
             is_long_word_boundary(prev_ch, next_ch)
                 && (char_is_line_ending(next_ch) || !next_ch.is_whitespace())
         }
         WordMotionTarget::NextLongWordEnd | WordMotionTarget::PrevLongWordStart => {
             is_long_word_boundary(prev_ch, next_ch)
                 && (!prev_ch.is_whitespace() || char_is_line_ending(next_ch))
+        }
+        WordMotionTarget::NextSubWordStart => {
+            is_sub_word_boundary(prev_ch, next_ch, Direction::Forward)
+                && (char_is_line_ending(next_ch) || !(next_ch.is_whitespace() || next_ch == '_'))
+        }
+        WordMotionTarget::PrevSubWordEnd => {
+            is_sub_word_boundary(prev_ch, next_ch, Direction::Backward)
+                && (char_is_line_ending(next_ch) || !(next_ch.is_whitespace() || next_ch == '_'))
+        }
+        WordMotionTarget::NextSubWordEnd => {
+            is_sub_word_boundary(prev_ch, next_ch, Direction::Forward)
+                && (!(prev_ch.is_whitespace() || prev_ch == '_') || char_is_line_ending(next_ch))
+        }
+        WordMotionTarget::PrevSubWordStart => {
+            is_sub_word_boundary(prev_ch, next_ch, Direction::Backward)
+                && (!(prev_ch.is_whitespace() || prev_ch == '_') || char_is_line_ending(next_ch))
         }
     }
 }
@@ -520,10 +588,10 @@ pub fn goto_treesitter_object(
         let node = match dir {
             Direction::Forward => nodes
                 .filter(|n| n.start_byte() > byte_pos)
-                .min_by_key(|n| n.start_byte())?,
+                .min_by_key(|n| (n.start_byte(), Reverse(n.end_byte())))?,
             Direction::Backward => nodes
                 .filter(|n| n.end_byte() < byte_pos)
-                .max_by_key(|n| n.end_byte())?,
+                .max_by_key(|n| (n.end_byte(), Reverse(n.start_byte())))?,
         };
 
         let len = slice.len_bytes();
@@ -547,6 +615,80 @@ pub fn goto_treesitter_object(
         }
     }
     last_range
+}
+
+fn find_parent_start(mut node: Node) -> Option<Node> {
+    let start = node.start_byte();
+
+    while node.start_byte() >= start || !node.is_named() {
+        node = node.parent()?;
+    }
+
+    Some(node)
+}
+
+pub fn move_parent_node_end(
+    syntax: &Syntax,
+    text: RopeSlice,
+    selection: Selection,
+    dir: Direction,
+    movement: Movement,
+) -> Selection {
+    selection.transform(|range| {
+        let start_from = text.char_to_byte(range.from());
+        let start_to = text.char_to_byte(range.to());
+
+        let mut node = match syntax.named_descendant_for_byte_range(start_from, start_to) {
+            Some(node) => node,
+            None => {
+                log::debug!(
+                    "no descendant found for byte range: {} - {}",
+                    start_from,
+                    start_to
+                );
+                return range;
+            }
+        };
+
+        let mut end_head = match dir {
+            // moving forward, we always want to move one past the end of the
+            // current node, so use the end byte of the current node, which is an exclusive
+            // end of the range
+            Direction::Forward => text.byte_to_char(node.end_byte()),
+
+            // moving backward, we want the cursor to land on the start char of
+            // the current node, or if it is already at the start of a node, to traverse up to
+            // the parent
+            Direction::Backward => {
+                let end_head = text.byte_to_char(node.start_byte());
+
+                // if we're already on the beginning, look up to the parent
+                if end_head == range.cursor(text) {
+                    node = find_parent_start(node).unwrap_or(node);
+                    text.byte_to_char(node.start_byte())
+                } else {
+                    end_head
+                }
+            }
+        };
+
+        if movement == Movement::Move {
+            // preserve direction of original range
+            if range.direction() == Direction::Forward {
+                Range::new(end_head, end_head + 1)
+            } else {
+                Range::new(end_head + 1, end_head)
+            }
+        } else {
+            // if we end up with a forward range, then adjust it to be one past
+            // where we want
+            if end_head >= range.anchor {
+                end_head += 1;
+            }
+
+            Range::new(range.anchor, end_head)
+        }
+    })
 }
 
 #[cfg(test)]
@@ -932,6 +1074,178 @@ mod test {
     }
 
     #[test]
+    fn test_behaviour_when_moving_to_start_of_next_sub_words() {
+        let tests = [
+            (
+                "NextSubwordStart",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 4)),
+                    (1, Range::new(4, 4), Range::new(4, 11)),
+                ],
+            ),
+            (
+                "next_subword_start",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 5)),
+                    (1, Range::new(4, 4), Range::new(5, 13)),
+                ],
+            ),
+            (
+                "Next_Subword_Start",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 5)),
+                    (1, Range::new(4, 4), Range::new(5, 13)),
+                ],
+            ),
+            (
+                "NEXT_SUBWORD_START",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 5)),
+                    (1, Range::new(4, 4), Range::new(5, 13)),
+                ],
+            ),
+            (
+                "next subword start",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 5)),
+                    (1, Range::new(4, 4), Range::new(5, 13)),
+                ],
+            ),
+            (
+                "Next Subword Start",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 5)),
+                    (1, Range::new(4, 4), Range::new(5, 13)),
+                ],
+            ),
+            (
+                "NEXT SUBWORD START",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 5)),
+                    (1, Range::new(4, 4), Range::new(5, 13)),
+                ],
+            ),
+            (
+                "next__subword__start",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 6)),
+                    (1, Range::new(4, 4), Range::new(4, 6)),
+                    (1, Range::new(5, 5), Range::new(6, 15)),
+                ],
+            ),
+            (
+                "Next__Subword__Start",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 6)),
+                    (1, Range::new(4, 4), Range::new(4, 6)),
+                    (1, Range::new(5, 5), Range::new(6, 15)),
+                ],
+            ),
+            (
+                "NEXT__SUBWORD__START",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 6)),
+                    (1, Range::new(4, 4), Range::new(4, 6)),
+                    (1, Range::new(5, 5), Range::new(6, 15)),
+                ],
+            ),
+        ];
+
+        for (sample, scenario) in tests {
+            for (count, begin, expected_end) in scenario.into_iter() {
+                let range = move_next_sub_word_start(Rope::from(sample).slice(..), begin, count);
+                assert_eq!(range, expected_end, "Case failed: [{}]", sample);
+            }
+        }
+    }
+
+    #[test]
+    fn test_behaviour_when_moving_to_end_of_next_sub_words() {
+        let tests = [
+            (
+                "NextSubwordEnd",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 4)),
+                    (1, Range::new(4, 4), Range::new(4, 11)),
+                ],
+            ),
+            (
+                "next subword end",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 4)),
+                    (1, Range::new(4, 4), Range::new(4, 12)),
+                ],
+            ),
+            (
+                "Next Subword End",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 4)),
+                    (1, Range::new(4, 4), Range::new(4, 12)),
+                ],
+            ),
+            (
+                "NEXT SUBWORD END",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 4)),
+                    (1, Range::new(4, 4), Range::new(4, 12)),
+                ],
+            ),
+            (
+                "next_subword_end",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 4)),
+                    (1, Range::new(4, 4), Range::new(4, 12)),
+                ],
+            ),
+            (
+                "Next_Subword_End",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 4)),
+                    (1, Range::new(4, 4), Range::new(4, 12)),
+                ],
+            ),
+            (
+                "NEXT_SUBWORD_END",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 4)),
+                    (1, Range::new(4, 4), Range::new(4, 12)),
+                ],
+            ),
+            (
+                "next__subword__end",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 4)),
+                    (1, Range::new(4, 4), Range::new(4, 13)),
+                    (1, Range::new(5, 5), Range::new(5, 13)),
+                ],
+            ),
+            (
+                "Next__Subword__End",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 4)),
+                    (1, Range::new(4, 4), Range::new(4, 13)),
+                    (1, Range::new(5, 5), Range::new(5, 13)),
+                ],
+            ),
+            (
+                "NEXT__SUBWORD__END",
+                vec![
+                    (1, Range::new(0, 0), Range::new(0, 4)),
+                    (1, Range::new(4, 4), Range::new(4, 13)),
+                    (1, Range::new(5, 5), Range::new(5, 13)),
+                ],
+            ),
+        ];
+
+        for (sample, scenario) in tests {
+            for (count, begin, expected_end) in scenario.into_iter() {
+                let range = move_next_sub_word_end(Rope::from(sample).slice(..), begin, count);
+                assert_eq!(range, expected_end, "Case failed: [{}]", sample);
+            }
+        }
+    }
+
+    #[test]
     fn test_behaviour_when_moving_to_start_of_next_long_words() {
         let tests = [
             ("Basic forward motion stops at the first space",
@@ -1095,6 +1409,92 @@ mod test {
         for (sample, scenario) in tests {
             for (count, begin, expected_end) in scenario.into_iter() {
                 let range = move_prev_word_start(Rope::from(sample).slice(..), begin, count);
+                assert_eq!(range, expected_end, "Case failed: [{}]", sample);
+            }
+        }
+    }
+
+    #[test]
+    fn test_behaviour_when_moving_to_start_of_previous_sub_words() {
+        let tests = [
+            (
+                "PrevSubwordEnd",
+                vec![
+                    (1, Range::new(13, 13), Range::new(14, 11)),
+                    (1, Range::new(11, 11), Range::new(11, 4)),
+                ],
+            ),
+            (
+                "prev subword end",
+                vec![
+                    (1, Range::new(15, 15), Range::new(16, 13)),
+                    (1, Range::new(12, 12), Range::new(13, 5)),
+                ],
+            ),
+            (
+                "Prev Subword End",
+                vec![
+                    (1, Range::new(15, 15), Range::new(16, 13)),
+                    (1, Range::new(12, 12), Range::new(13, 5)),
+                ],
+            ),
+            (
+                "PREV SUBWORD END",
+                vec![
+                    (1, Range::new(15, 15), Range::new(16, 13)),
+                    (1, Range::new(12, 12), Range::new(13, 5)),
+                ],
+            ),
+            (
+                "prev_subword_end",
+                vec![
+                    (1, Range::new(15, 15), Range::new(16, 13)),
+                    (1, Range::new(12, 12), Range::new(13, 5)),
+                ],
+            ),
+            (
+                "Prev_Subword_End",
+                vec![
+                    (1, Range::new(15, 15), Range::new(16, 13)),
+                    (1, Range::new(12, 12), Range::new(13, 5)),
+                ],
+            ),
+            (
+                "PREV_SUBWORD_END",
+                vec![
+                    (1, Range::new(15, 15), Range::new(16, 13)),
+                    (1, Range::new(12, 12), Range::new(13, 5)),
+                ],
+            ),
+            (
+                "prev__subword__end",
+                vec![
+                    (1, Range::new(17, 17), Range::new(18, 15)),
+                    (1, Range::new(13, 13), Range::new(14, 6)),
+                    (1, Range::new(14, 14), Range::new(15, 6)),
+                ],
+            ),
+            (
+                "Prev__Subword__End",
+                vec![
+                    (1, Range::new(17, 17), Range::new(18, 15)),
+                    (1, Range::new(13, 13), Range::new(14, 6)),
+                    (1, Range::new(14, 14), Range::new(15, 6)),
+                ],
+            ),
+            (
+                "PREV__SUBWORD__END",
+                vec![
+                    (1, Range::new(17, 17), Range::new(18, 15)),
+                    (1, Range::new(13, 13), Range::new(14, 6)),
+                    (1, Range::new(14, 14), Range::new(15, 6)),
+                ],
+            ),
+        ];
+
+        for (sample, scenario) in tests {
+            for (count, begin, expected_end) in scenario.into_iter() {
+                let range = move_prev_sub_word_start(Rope::from(sample).slice(..), begin, count);
                 assert_eq!(range, expected_end, "Case failed: [{}]", sample);
             }
         }
@@ -1364,6 +1764,92 @@ mod test {
     }
 
     #[test]
+    fn test_behaviour_when_moving_to_end_of_previous_sub_words() {
+        let tests = [
+            (
+                "PrevSubwordEnd",
+                vec![
+                    (1, Range::new(13, 13), Range::new(14, 11)),
+                    (1, Range::new(11, 11), Range::new(11, 4)),
+                ],
+            ),
+            (
+                "prev subword end",
+                vec![
+                    (1, Range::new(15, 15), Range::new(16, 12)),
+                    (1, Range::new(12, 12), Range::new(12, 4)),
+                ],
+            ),
+            (
+                "Prev Subword End",
+                vec![
+                    (1, Range::new(15, 15), Range::new(16, 12)),
+                    (1, Range::new(12, 12), Range::new(12, 4)),
+                ],
+            ),
+            (
+                "PREV SUBWORD END",
+                vec![
+                    (1, Range::new(15, 15), Range::new(16, 12)),
+                    (1, Range::new(12, 12), Range::new(12, 4)),
+                ],
+            ),
+            (
+                "prev_subword_end",
+                vec![
+                    (1, Range::new(15, 15), Range::new(16, 12)),
+                    (1, Range::new(12, 12), Range::new(12, 4)),
+                ],
+            ),
+            (
+                "Prev_Subword_End",
+                vec![
+                    (1, Range::new(15, 15), Range::new(16, 12)),
+                    (1, Range::new(12, 12), Range::new(12, 4)),
+                ],
+            ),
+            (
+                "PREV_SUBWORD_END",
+                vec![
+                    (1, Range::new(15, 15), Range::new(16, 12)),
+                    (1, Range::new(12, 12), Range::new(12, 4)),
+                ],
+            ),
+            (
+                "prev__subword__end",
+                vec![
+                    (1, Range::new(17, 17), Range::new(18, 13)),
+                    (1, Range::new(13, 13), Range::new(13, 4)),
+                    (1, Range::new(14, 14), Range::new(15, 13)),
+                ],
+            ),
+            (
+                "Prev__Subword__End",
+                vec![
+                    (1, Range::new(17, 17), Range::new(18, 13)),
+                    (1, Range::new(13, 13), Range::new(13, 4)),
+                    (1, Range::new(14, 14), Range::new(15, 13)),
+                ],
+            ),
+            (
+                "PREV__SUBWORD__END",
+                vec![
+                    (1, Range::new(17, 17), Range::new(18, 13)),
+                    (1, Range::new(13, 13), Range::new(13, 4)),
+                    (1, Range::new(14, 14), Range::new(15, 13)),
+                ],
+            ),
+        ];
+
+        for (sample, scenario) in tests {
+            for (count, begin, expected_end) in scenario.into_iter() {
+                let range = move_prev_sub_word_end(Rope::from(sample).slice(..), begin, count);
+                assert_eq!(range, expected_end, "Case failed: [{}]", sample);
+            }
+        }
+    }
+
+    #[test]
     fn test_behaviour_when_moving_to_end_of_next_long_words() {
         let tests = [
             ("Basic forward motion from the start of a word to the end of it",
@@ -1446,6 +1932,100 @@ mod test {
     }
 
     #[test]
+    fn test_behaviour_when_moving_to_end_of_prev_long_words() {
+        let tests = [
+            (
+                "Basic backward motion from the middle of a word",
+                vec![(1, Range::new(3, 3), Range::new(4, 0))],
+            ),
+            ("Starting from after boundary retreats the anchor",
+                vec![(1, Range::new(0, 9), Range::new(8, 0))],
+            ),
+            (
+                "Jump    to end of a word succeeded by whitespace",
+                vec![(1, Range::new(10, 10), Range::new(10, 4))],
+            ),
+            (
+                "    Jump to start of line from end of word preceded by whitespace",
+                vec![(1, Range::new(3, 4), Range::new(4, 0))],
+            ),
+            ("Previous anchor is irrelevant for backward motions",
+                vec![(1, Range::new(12, 5), Range::new(6, 0))]),
+            (
+                "    Starting from whitespace moves to first space in sequence",
+                vec![(1, Range::new(0, 4), Range::new(4, 0))],
+            ),
+            ("Identifiers_with_underscores are considered a single word",
+                vec![(1, Range::new(0, 20), Range::new(20, 0))]),
+            (
+                "Jumping\n    \nback through a newline selects whitespace",
+                vec![(1, Range::new(0, 13), Range::new(12, 8))],
+            ),
+            (
+                "Jumping to start of word from the end selects the word",
+                vec![(1, Range::new(6, 7), Range::new(7, 0))],
+            ),
+            (
+                "alphanumeric.!,and.?=punctuation are treated exactly the same",
+                vec![(1, Range::new(29, 30), Range::new(30, 0))],
+            ),
+            (
+                "...   ... punctuation and spaces behave as expected",
+                vec![
+                    (1, Range::new(0, 10), Range::new(9, 3)),
+                    (1, Range::new(10, 6), Range::new(7, 3)),
+                ],
+            ),
+            (".._.._ punctuation is joined by underscores into a single block",
+                vec![(1, Range::new(0, 6), Range::new(6, 0))]),
+            (
+                "Newlines\n\nare bridged seamlessly.",
+                vec![(1, Range::new(0, 10), Range::new(8, 0))],
+            ),
+            (
+                "Jumping    \n\n\n\n\nback from within a newline group selects previous block",
+                vec![(1, Range::new(0, 13), Range::new(11, 7))],
+            ),
+            (
+                "Failed motions do not modify the range",
+                vec![(0, Range::new(3, 0), Range::new(3, 0))],
+            ),
+            (
+                "Multiple motions at once resolve correctly",
+                vec![(3, Range::new(19, 19), Range::new(8, 0))],
+            ),
+            (
+                "Excessive motions are performed partially",
+                vec![(999, Range::new(40, 40), Range::new(9, 0))],
+            ),
+            (
+                "", // Edge case of moving backwards in empty string
+                vec![(1, Range::new(0, 0), Range::new(0, 0))],
+            ),
+            (
+                "\n\n\n\n\n", // Edge case of moving backwards in all newlines
+                vec![(1, Range::new(5, 5), Range::new(0, 0))],
+            ),
+            ("   \n   \nJumping back through alternated space blocks and newlines selects the space blocks",
+                vec![
+                    (1, Range::new(0, 8), Range::new(7, 4)),
+                    (1, Range::new(7, 4), Range::new(3, 0)),
+                ]),
+            ("ヒーリ..クス multibyte characters behave as normal characters, including when interacting with punctuation",
+                vec![
+                    (1, Range::new(0, 8), Range::new(7, 0)),
+                ]),
+        ];
+
+        for (sample, scenario) in tests {
+            for (count, begin, expected_end) in scenario.into_iter() {
+                let range = move_prev_long_word_end(Rope::from(sample).slice(..), begin, count);
+                assert_eq!(range, expected_end, "Case failed: [{}]", sample);
+            }
+        }
+    }
+
+    #[test]
     fn test_behaviour_when_moving_to_prev_paragraph_single() {
         let tests = [
             ("#[|]#", "#[|]#"),
@@ -1474,7 +2054,7 @@ mod test {
             let text = Rope::from(s.as_str());
             let selection =
                 selection.transform(|r| move_prev_paragraph(text.slice(..), r, 1, Movement::Move));
-            let actual = crate::test::plain(&s, selection);
+            let actual = crate::test::plain(s.as_ref(), &selection);
             assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
         }
     }
@@ -1497,7 +2077,7 @@ mod test {
             let text = Rope::from(s.as_str());
             let selection =
                 selection.transform(|r| move_prev_paragraph(text.slice(..), r, 2, Movement::Move));
-            let actual = crate::test::plain(&s, selection);
+            let actual = crate::test::plain(s.as_ref(), &selection);
             assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
         }
     }
@@ -1520,7 +2100,7 @@ mod test {
             let text = Rope::from(s.as_str());
             let selection = selection
                 .transform(|r| move_prev_paragraph(text.slice(..), r, 1, Movement::Extend));
-            let actual = crate::test::plain(&s, selection);
+            let actual = crate::test::plain(s.as_ref(), &selection);
             assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
         }
     }
@@ -1540,7 +2120,7 @@ mod test {
                 "a\nb\n\n#[goto\nthird\n\n|]#paragraph",
             ),
             (
-                "a\nb#[\n|]#\ngoto\nsecond\n\nparagraph",
+                "a\nb#[\n|]#\n\ngoto\nsecond\n\nparagraph",
                 "a\nb#[\n\n|]#goto\nsecond\n\nparagraph",
             ),
             (
@@ -1562,7 +2142,7 @@ mod test {
             let text = Rope::from(s.as_str());
             let selection =
                 selection.transform(|r| move_next_paragraph(text.slice(..), r, 1, Movement::Move));
-            let actual = crate::test::plain(&s, selection);
+            let actual = crate::test::plain(s.as_ref(), &selection);
             assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
         }
     }
@@ -1585,7 +2165,7 @@ mod test {
             let text = Rope::from(s.as_str());
             let selection =
                 selection.transform(|r| move_next_paragraph(text.slice(..), r, 2, Movement::Move));
-            let actual = crate::test::plain(&s, selection);
+            let actual = crate::test::plain(s.as_ref(), &selection);
             assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
         }
     }
@@ -1608,7 +2188,7 @@ mod test {
             let text = Rope::from(s.as_str());
             let selection = selection
                 .transform(|r| move_next_paragraph(text.slice(..), r, 1, Movement::Extend));
-            let actual = crate::test::plain(&s, selection);
+            let actual = crate::test::plain(s.as_ref(), &selection);
             assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
         }
     }

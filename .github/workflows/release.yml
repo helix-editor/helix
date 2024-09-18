@@ -23,7 +23,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install stable toolchain
         uses: dtolnay/rust-toolchain@stable
@@ -36,7 +36,7 @@ jobs:
       - name: Bundle grammars
         run: tar cJf grammars.tar.xz -C runtime/grammars/sources .
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: grammars
           path: grammars.tar.xz
@@ -70,11 +70,11 @@ jobs:
           rust: stable
           target: aarch64-unknown-linux-gnu
           cross: true
-        - build: riscv64-linux
-          os: ubuntu-latest
-          rust: stable
-          target: riscv64gc-unknown-linux-gnu
-          cross: true
+        # - build: riscv64-linux
+        #   os: ubuntu-latest
+        #   rust: stable
+        #   target: riscv64gc-unknown-linux-gnu
+        #   cross: true
         - build: x86_64-macos
           os: macos-latest
           rust: stable
@@ -85,6 +85,7 @@ jobs:
           rust: stable
           target: x86_64-pc-windows-msvc
           cross: false
+        # 23.03: build issues
         - build: aarch64-macos
           os: macos-latest
           rust: stable
@@ -102,16 +103,22 @@ jobs:
 
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Download grammars
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
 
       - name: Move grammars under runtime
         if: "!startsWith(matrix.os, 'windows')"
         run: |
           mkdir -p runtime/grammars/sources
           tar xJf grammars/grammars.tar.xz -C runtime/grammars/sources
+
+      # The rust-toolchain action ignores rust-toolchain.toml files.
+      # Removing this before building with cargo ensures that the rust-toolchain
+      # is considered the same between installation and usage.
+      - name: Remove the rust-toolchain.toml file
+        run: rm rust-toolchain.toml
 
       - name: Install ${{ matrix.rust }} toolchain
         uses: dtolnay/rust-toolchain@master
@@ -153,8 +160,12 @@ jobs:
 
       - name: Build AppImage
         shell: bash
-        if: matrix.build == 'aarch64-linux' || matrix.build == 'x86_64-linux'
+        if: matrix.build == 'x86_64-linux'
         run: |
+          # Required as of 22.x https://github.com/AppImage/AppImageKit/wiki/FUSE
+          sudo add-apt-repository universe
+          sudo apt install libfuse2
+
           mkdir dist
 
           name=dev
@@ -209,7 +220,7 @@ jobs:
           fi
           cp -r runtime dist
 
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         with:
           name: bins-${{ matrix.build }}
           path: dist
@@ -220,9 +231,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - uses: actions/download-artifact@v3
+      - uses: actions/download-artifact@v4
 
       - name: Build archive
         shell: bash
@@ -244,7 +255,7 @@ jobs:
                   exe=".exe"
               fi
               pkgname=helix-$GITHUB_REF_NAME-$platform
-              mkdir $pkgname
+              mkdir -p $pkgname
               cp $source/LICENSE $source/README.md $pkgname
               mkdir $pkgname/contrib
               cp -r $source/contrib/completion $pkgname/contrib
@@ -252,7 +263,7 @@ jobs:
               mv bins-$platform/hx$exe $pkgname
               chmod +x $pkgname/hx$exe
 
-              if [[ "$platform" = "aarch64-linux" || "$platform" = "x86_64-linux" ]]; then
+              if [[ "$platform" = "x86_64-linux" ]]; then
                   mv bins-$platform/helix-*.AppImage* dist/
               fi
 
@@ -277,7 +288,7 @@ jobs:
           overwrite: true
       
       - name: Upload binaries as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         if: env.preview == 'true'
         with:
           name: release

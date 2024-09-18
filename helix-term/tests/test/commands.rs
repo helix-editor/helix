@@ -1,199 +1,97 @@
-use std::ops::RangeInclusive;
-
-use helix_core::diagnostic::Severity;
 use helix_term::application::Application;
 
 use super::*;
 
-#[tokio::test(flavor = "multi_thread")]
-async fn test_write_quit_fail() -> anyhow::Result<()> {
-    let file = helpers::new_readonly_tempfile()?;
-    let mut app = helpers::AppBuilder::new()
-        .with_file(file.path(), None)
-        .build()?;
-
-    test_key_sequence(
-        &mut app,
-        Some("ihello<esc>:wq<ret>"),
-        Some(&|app| {
-            let mut docs: Vec<_> = app.editor.documents().collect();
-            assert_eq!(1, docs.len());
-
-            let doc = docs.pop().unwrap();
-            assert_eq!(Some(file.path()), doc.path().map(PathBuf::as_path));
-            assert_eq!(&Severity::Error, app.editor.get_status().unwrap().1);
-        }),
-        false,
-    )
-    .await?;
-
-    Ok(())
-}
-
-#[tokio::test(flavor = "multi_thread")]
-async fn test_buffer_close_concurrent() -> anyhow::Result<()> {
-    test_key_sequences(
-        &mut helpers::AppBuilder::new().build()?,
-        vec![
-            (
-                None,
-                Some(&|app| {
-                    assert_eq!(1, app.editor.documents().count());
-                    assert!(!app.editor.is_err());
-                }),
-            ),
-            (
-                Some("ihello<esc>:new<ret>"),
-                Some(&|app| {
-                    assert_eq!(2, app.editor.documents().count());
-                    assert!(!app.editor.is_err());
-                }),
-            ),
-            (
-                Some(":buffer<minus>close<ret>"),
-                Some(&|app| {
-                    assert_eq!(1, app.editor.documents().count());
-                    assert!(!app.editor.is_err());
-                }),
-            ),
-        ],
-        false,
-    )
-    .await?;
-
-    // verify if writes are queued up, it finishes them before closing the buffer
-    let mut file = tempfile::NamedTempFile::new()?;
-    let mut command = String::new();
-    const RANGE: RangeInclusive<i32> = 1..=1000;
-
-    for i in RANGE {
-        let cmd = format!("%c{}<esc>:w!<ret>", i);
-        command.push_str(&cmd);
-    }
-
-    command.push_str(":buffer<minus>close<ret>");
-
-    let mut app = helpers::AppBuilder::new()
-        .with_file(file.path(), None)
-        .build()?;
-
-    test_key_sequence(
-        &mut app,
-        Some(&command),
-        Some(&|app| {
-            assert!(!app.editor.is_err(), "error: {:?}", app.editor.get_status());
-
-            let doc = app.editor.document_by_path(file.path());
-            assert!(doc.is_none(), "found doc: {:?}", doc);
-        }),
-        false,
-    )
-    .await?;
-
-    helpers::assert_file_has_content(file.as_file_mut(), &RANGE.end().to_string())?;
-
-    Ok(())
-}
+mod movement;
+mod write;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_selection_duplication() -> anyhow::Result<()> {
     // Forward
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             #[lo|]#rem
             ipsum
             dolor
-            "})
-        .as_str(),
+            "},
         "CC",
-        platform_line(indoc! {"\
+        indoc! {"\
             #(lo|)#rem
             #(ip|)#sum
             #[do|]#lor
-            "})
-        .as_str(),
+            "},
     ))
     .await?;
 
     // Backward
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             #[|lo]#rem
             ipsum
             dolor
-            "})
-        .as_str(),
+            "},
         "CC",
-        platform_line(indoc! {"\
+        indoc! {"\
             #(|lo)#rem
             #(|ip)#sum
             #[|do]#lor
-            "})
-        .as_str(),
+            "},
     ))
     .await?;
 
     // Copy the selection to previous line, skipping the first line in the file
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             test
             #[testitem|]#
-            "})
-        .as_str(),
+            "},
         "<A-C>",
-        platform_line(indoc! {"\
+        indoc! {"\
             test
             #[testitem|]#
-            "})
-        .as_str(),
+            "},
     ))
     .await?;
 
     // Copy the selection to previous line, including the first line in the file
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             test
             #[test|]#
-            "})
-        .as_str(),
+            "},
         "<A-C>",
-        platform_line(indoc! {"\
+        indoc! {"\
             #[test|]#
             #(test|)#
-            "})
-        .as_str(),
+            "},
     ))
     .await?;
 
     // Copy the selection to next line, skipping the last line in the file
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             #[testitem|]#
             test
-            "})
-        .as_str(),
+            "},
         "C",
-        platform_line(indoc! {"\
+        indoc! {"\
             #[testitem|]#
             test
-            "})
-        .as_str(),
+            "},
     ))
     .await?;
 
     // Copy the selection to next line, including the last line in the file
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             #[test|]#
             test
-            "})
-        .as_str(),
+            "},
         "C",
-        platform_line(indoc! {"\
+        indoc! {"\
             #(test|)#
             #[test|]#
-            "})
-        .as_str(),
+            "},
     ))
     .await?;
     Ok(())
@@ -255,25 +153,45 @@ async fn test_goto_file_impl() -> anyhow::Result<()> {
     )
     .await?;
 
+    // ';' is behind the path
+    test_key_sequence(
+        &mut AppBuilder::new().with_file(file.path(), None).build()?,
+        Some("iimport 'one.js';<esc>B;gf"),
+        Some(&|app| {
+            assert_eq!(1, match_paths(app, vec!["one.js"]));
+        }),
+        false,
+    )
+    .await?;
+
+    // allow numeric values in path
+    test_key_sequence(
+        &mut AppBuilder::new().with_file(file.path(), None).build()?,
+        Some("iimport 'one123.js'<esc>B;gf"),
+        Some(&|app| {
+            assert_eq!(1, match_paths(app, vec!["one123.js"]));
+        }),
+        false,
+    )
+    .await?;
+
     Ok(())
 }
 
 #[tokio::test(flavor = "multi_thread")]
 async fn test_multi_selection_paste() -> anyhow::Result<()> {
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             #[|lorem]#
             #(|ipsum)#
             #(|dolor)#
-            "})
-        .as_str(),
+            "},
         "yp",
-        platform_line(indoc! {"\
+        indoc! {"\
             lorem#[|lorem]#
             ipsum#(|ipsum)#
             dolor#(|dolor)#
-            "})
-        .as_str(),
+            "},
     ))
     .await?;
 
@@ -284,64 +202,49 @@ async fn test_multi_selection_paste() -> anyhow::Result<()> {
 async fn test_multi_selection_shell_commands() -> anyhow::Result<()> {
     // pipe
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             #[|lorem]#
             #(|ipsum)#
             #(|dolor)#
-            "})
-        .as_str(),
+            "},
         "|echo foo<ret>",
-        platform_line(indoc! {"\
-            #[|foo
-            ]#
-            #(|foo
-            )#
-            #(|foo
-            )#
-            "})
-        .as_str(),
+        indoc! {"\
+            #[|foo]#
+            #(|foo)#
+            #(|foo)#"
+        },
     ))
     .await?;
 
     // insert-output
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             #[|lorem]#
             #(|ipsum)#
             #(|dolor)#
-            "})
-        .as_str(),
+            "},
         "!echo foo<ret>",
-        platform_line(indoc! {"\
-            #[|foo
-            ]#lorem
-            #(|foo
-            )#ipsum
-            #(|foo
-            )#dolor
-            "})
-        .as_str(),
+        indoc! {"\
+            #[|foo]#lorem
+            #(|foo)#ipsum
+            #(|foo)#dolor
+            "},
     ))
     .await?;
 
     // append-output
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             #[|lorem]#
             #(|ipsum)#
             #(|dolor)#
-            "})
-        .as_str(),
+            "},
         "<A-!>echo foo<ret>",
-        platform_line(indoc! {"\
-            lorem#[|foo
-            ]#
-            ipsum#(|foo
-            )#
-            dolor#(|foo
-            )#
-            "})
-        .as_str(),
+        indoc! {"\
+            lorem#[|foo]#
+            ipsum#(|foo)#
+            dolor#(|foo)#
+            "},
     ))
     .await?;
 
@@ -357,7 +260,13 @@ async fn test_undo_redo() -> anyhow::Result<()> {
     // * u           Undo the two newlines. We're now on line 1.
     // * <C-o><C-i>  Jump forward an back again in the jumplist. This would panic
     //               if the jumplist were not being updated correctly.
-    test(("#[|]#", "2[<space><C-s>u<C-o><C-i>", "#[|]#")).await?;
+    test((
+        "#[|]#",
+        "2[<space><C-s>u<C-o><C-i>",
+        "#[|]#",
+        LineFeedHandling::AsIs,
+    ))
+    .await?;
 
     // A jumplist selection is passed through an edit and then an undo and then a redo.
     //
@@ -368,10 +277,22 @@ async fn test_undo_redo() -> anyhow::Result<()> {
     // * <C-o>       Jump back in the jumplist. This would panic if the jumplist were not being
     //               updated correctly.
     // * <C-i>       Jump forward to line 1.
-    test(("#[|]#", "[<space><C-s>kduU<C-o><C-i>", "#[|]#")).await?;
+    test((
+        "#[|]#",
+        "[<space><C-s>kduU<C-o><C-i>",
+        "#[|]#",
+        LineFeedHandling::AsIs,
+    ))
+    .await?;
 
     // In this case we 'redo' manually to ensure that the transactions are composing correctly.
-    test(("#[|]#", "[<space>u[<space>u", "#[|]#")).await?;
+    test((
+        "#[|]#",
+        "[<space>u[<space>u",
+        "#[|]#",
+        LineFeedHandling::AsIs,
+    ))
+    .await?;
 
     Ok(())
 }
@@ -380,39 +301,35 @@ async fn test_undo_redo() -> anyhow::Result<()> {
 async fn test_extend_line() -> anyhow::Result<()> {
     // extend with line selected then count
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             #[l|]#orem
             ipsum
             dolor
             
-            "})
-        .as_str(),
+            "},
         "x2x",
-        platform_line(indoc! {"\
+        indoc! {"\
             #[lorem
             ipsum
-            dolor
-            |]#
-            "})
-        .as_str(),
+            dolor\n|]#
+            
+            "},
     ))
     .await?;
 
     // extend with count on partial selection
     test((
-        platform_line(indoc! {"\
+        indoc! {"\
             #[l|]#orem
             ipsum
             
-            "})
-        .as_str(),
+            "},
         "2x",
-        platform_line(indoc! {"\
+        indoc! {"\
             #[lorem
-            ipsum
-            |]#
-            "})
-        .as_str(),
+            ipsum\n|]#
+            
+            "},
     ))
     .await?;
 
@@ -472,6 +389,342 @@ async fn test_character_info() -> anyhow::Result<()> {
         }),
         false,
     )
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_delete_char_backward() -> anyhow::Result<()> {
+    // don't panic when deleting overlapping ranges
+    test(("#(x|)# #[x|]#", "c<space><backspace><esc>", "#[\n|]#")).await?;
+    test((
+        "#( |)##( |)#a#( |)#axx#[x|]#a",
+        "li<backspace><esc>",
+        "#(a|)##(|a)#xx#[|a]#",
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_delete_word_backward() -> anyhow::Result<()> {
+    // don't panic when deleting overlapping ranges
+    test(("fo#[o|]#ba#(r|)#", "a<C-w><esc>", "#[\n|]#")).await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_delete_word_forward() -> anyhow::Result<()> {
+    // don't panic when deleting overlapping ranges
+    test(("fo#[o|]#b#(|ar)#", "i<A-d><esc>", "fo#[\n|]#")).await?;
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_delete_char_forward() -> anyhow::Result<()> {
+    test((
+        indoc! {"\
+                #[abc|]#def
+                #(abc|)#ef
+                #(abc|)#f
+                #(abc|)#
+            "},
+        "a<del><esc>",
+        indoc! {"\
+                #[abc|]#ef
+                #(abc|)#f
+                #(abc|)#
+                #(abc|)#
+            "},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_insert_with_indent() -> anyhow::Result<()> {
+    const INPUT: &str = indoc! { "
+        #[f|]#n foo() {
+            if let Some(_) = None {
+
+            }
+         
+        }
+
+        fn bar() {
+
+        }
+        "
+    };
+
+    // insert_at_line_start
+    test((
+        INPUT,
+        ":lang rust<ret>%<A-s>I",
+        indoc! { "
+            #[f|]#n foo() {
+                #(i|)#f let Some(_) = None {
+                    #(\n|)#
+                #(}|)#
+            #( |)#
+            #(}|)#
+            #(\n|)#
+            #(f|)#n bar() {
+                #(\n|)#
+            #(}|)#
+            "
+        },
+    ))
+    .await?;
+
+    // insert_at_line_end
+    test((
+        INPUT,
+        ":lang rust<ret>%<A-s>A",
+        indoc! { "
+            fn foo() {#[\n|]#
+                if let Some(_) = None {#(\n|)#
+                    #(\n|)#
+                }#(\n|)#
+             #(\n|)#
+            }#(\n|)#
+            #(\n|)#
+            fn bar() {#(\n|)#
+                #(\n|)#
+            }#(\n|)#
+            "
+        },
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_join_selections() -> anyhow::Result<()> {
+    // normal join
+    test((
+        indoc! {"\
+            #[a|]#bc
+            def
+        "},
+        "J",
+        indoc! {"\
+            #[a|]#bc def
+        "},
+    ))
+    .await?;
+
+    // join with empty line
+    test((
+        indoc! {"\
+            #[a|]#bc
+
+            def
+        "},
+        "JJ",
+        indoc! {"\
+            #[a|]#bc def
+        "},
+    ))
+    .await?;
+
+    // join with additional space in non-empty line
+    test((
+        indoc! {"\
+            #[a|]#bc
+
+                def
+        "},
+        "JJ",
+        indoc! {"\
+            #[a|]#bc def
+        "},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_join_selections_space() -> anyhow::Result<()> {
+    // join with empty lines panic
+    test((
+        indoc! {"\
+            #[a
+
+            b
+
+            c
+
+            d
+
+            e|]#
+        "},
+        "<A-J>",
+        indoc! {"\
+            a#[ |]#b#( |)#c#( |)#d#( |)#e
+        "},
+    ))
+    .await?;
+
+    // normal join
+    test((
+        indoc! {"\
+            #[a|]#bc
+            def
+        "},
+        "<A-J>",
+        indoc! {"\
+            abc#[ |]#def
+        "},
+    ))
+    .await?;
+
+    // join with empty line
+    test((
+        indoc! {"\
+            #[a|]#bc
+
+            def
+        "},
+        "<A-J>",
+        indoc! {"\
+            #[a|]#bc
+            def
+        "},
+    ))
+    .await?;
+
+    // join with additional space in non-empty line
+    test((
+        indoc! {"\
+            #[a|]#bc
+
+                def
+        "},
+        "<A-J><A-J>",
+        indoc! {"\
+            abc#[ |]#def
+        "},
+    ))
+    .await?;
+
+    // join with retained trailing spaces
+    test((
+        indoc! {"\
+            #[aaa   
+
+            bb  
+
+            c |]#
+        "},
+        "<A-J>",
+        indoc! {"\
+            aaa   #[ |]#bb  #( |)#c 
+        "},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_read_file() -> anyhow::Result<()> {
+    let mut file = tempfile::NamedTempFile::new()?;
+    let contents_to_read = "some contents";
+    let output_file = helpers::temp_file_with_contents(contents_to_read)?;
+
+    test_key_sequence(
+        &mut helpers::AppBuilder::new()
+            .with_file(file.path(), None)
+            .build()?,
+        Some(&format!(":r {:?}<ret><esc>:w<ret>", output_file.path())),
+        Some(&|app| {
+            assert!(!app.editor.is_err(), "error: {:?}", app.editor.get_status());
+        }),
+        false,
+    )
+    .await?;
+
+    let expected_contents = LineFeedHandling::Native.apply(contents_to_read);
+    helpers::assert_file_has_content(&mut file, &expected_contents)?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn surround_delete() -> anyhow::Result<()> {
+    // Test `surround_delete` when head < anchor
+    test(("(#[|  ]#)", "mdm", "#[|  ]#")).await?;
+    test(("(#[|  ]#)", "md(", "#[|  ]#")).await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn surround_replace_ts() -> anyhow::Result<()> {
+    const INPUT: &str = r#"\
+fn foo() {
+    if let Some(_) = None {
+        todo!("f#[|o]#o)");
+    }
+}
+"#;
+    test((
+        INPUT,
+        ":lang rust<ret>mrm'",
+        r#"\
+fn foo() {
+    if let Some(_) = None {
+        todo!('f#[|o]#o)');
+    }
+}
+"#,
+    ))
+    .await?;
+
+    test((
+        INPUT,
+        ":lang rust<ret>3mrm[",
+        r#"\
+fn foo() {
+    if let Some(_) = None [
+        todo!("f#[|o]#o)");
+    ]
+}
+"#,
+    ))
+    .await?;
+
+    test((
+        INPUT,
+        ":lang rust<ret>2mrm{",
+        r#"\
+fn foo() {
+    if let Some(_) = None {
+        todo!{"f#[|o]#o)"};
+    }
+}
+"#,
+    ))
+    .await?;
+
+    test((
+        indoc! {"\
+            #[a
+            b
+            c
+            d
+            e|]#
+            f
+            "},
+        "s\\n<ret>r,",
+        "a#[,|]#b#(,|)#c#(,|)#d#(,|)#e\nf\n",
+    ))
     .await?;
 
     Ok(())

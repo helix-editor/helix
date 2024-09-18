@@ -29,9 +29,15 @@ files, run
 cargo xtask docgen
 ```
 
-inside the project. We use [xtask][xtask] as an ad-hoc task runner and
-thus do not require any dependencies other than `cargo` (You don't have
-to `cargo install` anything either).
+inside the project. We use [xtask][xtask] as an ad-hoc task runner.
+
+To preview the book itself, install [mdbook][mdbook]. Then, run
+
+```shell
+mdbook serve book
+```
+
+and visit [http://localhost:3000](http://localhost:3000).
 
 # Testing
 
@@ -47,6 +53,10 @@ Existing tests can be used as examples. Helpers can be found in
 [helpers.rs][helpers.rs]. The log level can be set with the `HELIX_LOG_LEVEL`
 environment variable, e.g. `HELIX_LOG_LEVEL=debug cargo integration-test`.
 
+Contributors using MacOS might encounter `Too many open files (os error 24)`
+failures while running integration tests. This can be resolved by increasing
+the default value (e.g. to `10240` from `256`) by running `ulimit -n 10240`.
+
 ## Minimum Stable Rust Version (MSRV) Policy
 
 Helix follows the MSRV of Firefox.
@@ -58,4 +68,5 @@ The current MSRV and future changes to the MSRV are listed in the [Firefox docum
 [architecture.md]: ./architecture.md
 [docs]: https://docs.helix-editor.com/
 [xtask]: https://github.com/matklad/cargo-xtask
+[mdbook]: https://rust-lang.github.io/mdBook/guide/installation.html
 [helpers.rs]: ../helix-term/tests/test/helpers.rs

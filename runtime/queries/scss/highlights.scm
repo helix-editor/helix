@@ -44,9 +44,9 @@
 "@while" @keyword.control.repeat
 
 ((property_name) @variable
- (match? @variable "^--"))
+ (#match? @variable "^--"))
 ((plain_value) @variable
- (match? @variable "^--"))
+ (#match? @variable "^--"))
 
 (tag_name) @tag
 (universal_selector) @tag

@@ -2,7 +2,7 @@ use helix_core::{auto_pairs::DEFAULT_PAIRS, hashmap};
 
 use super::*;
 
-const LINE_END: &str = helix_core::DEFAULT_LINE_ENDING.as_str();
+const LINE_END: &str = helix_core::NATIVE_LINE_ENDING.as_str();
 
 fn differing_pairs() -> impl Iterator<Item = &'static (char, char)> {
     DEFAULT_PAIRS.iter().filter(|(open, close)| open != close)
@@ -19,6 +19,7 @@ async fn insert_basic() -> anyhow::Result<()> {
             format!("#[{}|]#", LINE_END),
             format!("i{}", pair.0),
             format!("{}#[|{}]#{}", pair.0, pair.1, LINE_END),
+            LineFeedHandling::AsIs,
         ))
         .await?;
     }
@@ -41,25 +42,23 @@ async fn insert_configured_multi_byte_chars() -> anyhow::Result<()> {
 
     for (open, close) in pairs.iter() {
         test_with_config(
-            Args::default(),
-            config.clone(),
-            helpers::test_syntax_conf(None),
+            AppBuilder::new().with_config(config.clone()),
             (
                 format!("#[{}|]#", LINE_END),
                 format!("i{}", open),
                 format!("{}#[|{}]#{}", open, close, LINE_END),
+                LineFeedHandling::AsIs,
             ),
         )
         .await?;
 
         test_with_config(
-            Args::default(),
-            config.clone(),
-            helpers::test_syntax_conf(None),
+            AppBuilder::new().with_config(config.clone()),
             (
                 format!("{}#[{}|]#{}", open, close, LINE_END),
                 format!("i{}", close),
                 format!("{}{}#[|{}]#", open, close, LINE_END),
+                LineFeedHandling::AsIs,
             ),
         )
         .await?;
@@ -75,6 +74,7 @@ async fn insert_after_word() -> anyhow::Result<()> {
             format!("foo#[{}|]#", LINE_END),
             format!("i{}", pair.0),
             format!("foo{}#[|{}]#{}", pair.0, pair.1, LINE_END),
+            LineFeedHandling::AsIs,
         ))
         .await?;
     }
@@ -84,6 +84,7 @@ async fn insert_after_word() -> anyhow::Result<()> {
             format!("foo#[{}|]#", LINE_END),
             format!("i{}", pair.0),
             format!("foo{}#[|{}]#", pair.0, LINE_END),
+            LineFeedHandling::AsIs,
         ))
         .await?;
     }
@@ -98,6 +99,7 @@ async fn insert_before_word() -> anyhow::Result<()> {
             format!("#[f|]#oo{}", LINE_END),
             format!("i{}", pair.0),
             format!("{}#[|f]#oo{}", pair.0, LINE_END),
+            LineFeedHandling::AsIs,
         ))
         .await?;
     }
@@ -112,6 +114,7 @@ async fn insert_before_word_selection() -> anyhow::Result<()> {
             format!("#[foo|]#{}", LINE_END),
             format!("i{}", pair.0),
             format!("{}#[|foo]#{}", pair.0, LINE_END),
+            LineFeedHandling::AsIs,
         ))
         .await?;
     }
@@ -126,6 +129,7 @@ async fn insert_before_word_selection_trailing_word() -> anyhow::Result<()> {
             format!("foo#[ wor|]#{}", LINE_END),
             format!("i{}", pair.0),
             format!("foo{}#[|{} wor]#{}", pair.0, pair.1, LINE_END),
+            LineFeedHandling::AsIs,
         ))
         .await?;
     }
@@ -140,6 +144,7 @@ async fn insert_closer_selection_trailing_word() -> anyhow::Result<()> {
             format!("foo{}#[|{} wor]#{}", pair.0, pair.1, LINE_END),
             format!("i{}", pair.1),
             format!("foo{}{}#[| wor]#{}", pair.0, pair.1, LINE_END),
+            LineFeedHandling::AsIs,
         ))
         .await?;
     }
@@ -159,6 +164,7 @@ async fn insert_before_eol() -> anyhow::Result<()> {
                 open = pair.0,
                 close = pair.1
             ),
+            LineFeedHandling::AsIs,
         ))
         .await?;
     }
@@ -170,19 +176,18 @@ async fn insert_before_eol() -> anyhow::Result<()> {
 async fn insert_auto_pairs_disabled() -> anyhow::Result<()> {
     for pair in DEFAULT_PAIRS {
         test_with_config(
-            Args::default(),
-            Config {
+            AppBuilder::new().with_config(Config {
                 editor: helix_view::editor::Config {
                     auto_pairs: AutoPairConfig::Enable(false),
                     ..Default::default()
                 },
                 ..Default::default()
-            },
-            helpers::test_syntax_conf(None),
+            }),
             (
                 format!("#[{}|]#", LINE_END),
                 format!("i{}", pair.0),
                 format!("{}#[|{}]#", pair.0, LINE_END),
+                LineFeedHandling::AsIs,
             ),
         )
         .await?;
@@ -203,6 +208,7 @@ async fn insert_multi_range() -> anyhow::Result<()> {
                 close = pair.1,
                 eol = LINE_END
             ),
+            LineFeedHandling::AsIs,
         ))
         .await?;
     }
@@ -217,6 +223,7 @@ async fn insert_before_multi_code_point_graphemes() -> anyhow::Result<()> {
             format!("hello #[👨‍👩‍👧‍👦|]# goodbye{}", LINE_END),
             format!("i{}", pair.1),
             format!("hello {}#[|👨‍👩‍👧‍👦]# goodbye{}", pair.1, LINE_END),
+            LineFeedHandling::AsIs,
         ))
         .await?;
     }
@@ -232,6 +239,7 @@ async fn insert_at_end_of_document() -> anyhow::Result<()> {
             in_keys: format!("i{}", pair.0),
             out_text: format!("{}{}{}", LINE_END, pair.0, pair.1),
             out_selection: Selection::single(LINE_END.len() + 1, LINE_END.len() + 2),
+            line_feed_handling: LineFeedHandling::AsIs,
         })
         .await?;
 
@@ -241,6 +249,7 @@ async fn insert_at_end_of_document() -> anyhow::Result<()> {
             in_keys: format!("i{}", pair.0),
             out_text: format!("foo{}{}{}", LINE_END, pair.0, pair.1),
             out_selection: Selection::single(LINE_END.len() + 4, LINE_END.len() + 5),
+            line_feed_handling: LineFeedHandling::AsIs,
         })
         .await?;
     }
@@ -265,6 +274,7 @@ async fn insert_close_inside_pair() -> anyhow::Result<()> {
                 close = pair.1,
                 eol = LINE_END
             ),
+            LineFeedHandling::AsIs,
         ))
         .await?;
     }
@@ -289,6 +299,7 @@ async fn insert_close_inside_pair_multi() -> anyhow::Result<()> {
                 close = pair.1,
                 eol = LINE_END
             ),
+            LineFeedHandling::AsIs,
         ))
         .await?;
     }
@@ -313,6 +324,7 @@ async fn insert_nested_open_inside_pair() -> anyhow::Result<()> {
                 close = pair.1,
                 eol = LINE_END
             ),
+            LineFeedHandling::AsIs,
         ))
         .await?;
     }
@@ -344,6 +356,7 @@ async fn insert_nested_open_inside_pair_multi() -> anyhow::Result<()> {
                     inner_close = inner_pair.1,
                     eol = LINE_END
                 ),
+                LineFeedHandling::AsIs,
             ))
             .await?;
         }
@@ -364,6 +377,7 @@ async fn append_basic() -> anyhow::Result<()> {
                 close = pair.1,
                 eol = LINE_END
             ),
+            LineFeedHandling::AsIs,
         ))
         .await?;
     }
@@ -383,6 +397,7 @@ async fn append_multi_range() -> anyhow::Result<()> {
                 close = pair.1,
                 eol = LINE_END
             ),
+            LineFeedHandling::AsIs,
         ))
         .await?;
     }
@@ -407,6 +422,7 @@ async fn append_close_inside_pair() -> anyhow::Result<()> {
                 close = pair.1,
                 eol = LINE_END
             ),
+            LineFeedHandling::AsIs,
         ))
         .await?;
     }
@@ -431,6 +447,7 @@ async fn append_close_inside_pair_multi() -> anyhow::Result<()> {
                 close = pair.1,
                 eol = LINE_END
             ),
+            LineFeedHandling::AsIs,
         ))
         .await?;
     }
@@ -450,6 +467,7 @@ async fn append_end_of_word() -> anyhow::Result<()> {
                 close = pair.1,
                 eol = LINE_END
             ),
+            LineFeedHandling::AsIs,
         ))
         .await?;
     }
@@ -464,6 +482,7 @@ async fn append_middle_of_word() -> anyhow::Result<()> {
             format!("#[wo|]#rd{}", LINE_END),
             format!("a{}", pair.1),
             format!("#[wo{}r|]#d{}", pair.1, LINE_END),
+            LineFeedHandling::AsIs,
         ))
         .await?;
     }
@@ -483,6 +502,7 @@ async fn append_end_of_word_multi() -> anyhow::Result<()> {
                 close = pair.1,
                 eol = LINE_END
             ),
+            LineFeedHandling::AsIs,
         ))
         .await?;
     }
@@ -507,6 +527,7 @@ async fn append_inside_nested_pair() -> anyhow::Result<()> {
                 close = pair.1,
                 eol = LINE_END
             ),
+            LineFeedHandling::AsIs,
         ))
         .await?;
     }
@@ -538,6 +559,7 @@ async fn append_inside_nested_pair_multi() -> anyhow::Result<()> {
                     inner_close = inner_pair.1,
                     eol = LINE_END
                 ),
+                LineFeedHandling::AsIs,
             ))
             .await?;
         }

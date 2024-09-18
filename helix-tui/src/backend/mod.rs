@@ -14,6 +14,7 @@ pub use self::test::TestBackend;
 
 pub trait Backend {
     fn claim(&mut self, config: Config) -> Result<(), io::Error>;
+    fn reconfigure(&mut self, config: Config) -> Result<(), io::Error>;
     fn restore(&mut self, config: Config) -> Result<(), io::Error>;
     fn force_restore() -> Result<(), io::Error>;
     fn draw<'a, I>(&mut self, content: I) -> Result<(), io::Error>

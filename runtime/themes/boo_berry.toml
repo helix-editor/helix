@@ -52,6 +52,7 @@
 "ui.virtual.whitespace" = { fg = "berry_desaturated" }
 "ui.virtual.ruler" = { bg = "berry_dim" }
 "ui.virtual.indent-guide" = { fg = "berry_fade" }
+"ui.virtual.inlay-hint" = { fg = "berry_desaturated" }
 
 "diff.plus" = { fg = "mint" }
 "diff.delta" = { fg = "gold" }
@@ -66,6 +67,8 @@
 "diagnostic.error" = { underline = { color = "gold", style = "curl"} }
 "diagnostic.info" = { underline = { color = "lilac", style = "curl"} }
 "diagnostic.hint" = { underline = { color = "lilac", style = "curl"} }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 [palette]
 berry = "#3A2A4D"

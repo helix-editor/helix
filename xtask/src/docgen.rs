@@ -1,9 +1,9 @@
 use crate::helpers;
 use crate::path;
 use crate::DynError;
-
 use helix_term::commands::TYPABLE_COMMAND_LIST;
 use helix_term::health::TsFeature;
+use std::collections::HashSet;
 use std::fs;
 
 pub const TYPABLE_COMMANDS_MD_OUTPUT: &str = "typable-cmd.md";
@@ -95,13 +95,25 @@ pub fn lang_features() -> Result<String, DynError> {
                 .to_owned(),
             );
         }
-        row.push(
-            lc.language_server
-                .as_ref()
-                .map(|s| s.command.clone())
-                .map(|c| md_mono(&c))
-                .unwrap_or_default(),
-        );
+        let mut seen_commands = HashSet::new();
+        let mut commands = String::new();
+        for ls_config in lc
+            .language_servers
+            .iter()
+            .filter_map(|ls| config.language_server.get(&ls.name))
+        {
+            let command = &ls_config.command;
+            if !seen_commands.insert(command) {
+                continue;
+            }
+
+            if !commands.is_empty() {
+                commands.push_str(", ");
+            }
+
+            commands.push_str(&md_mono(command));
+        }
+        row.push(commands);
 
         md.push_str(&md_table_row(&row));
         row.clear();

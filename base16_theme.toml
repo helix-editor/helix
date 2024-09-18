@@ -28,6 +28,11 @@
 "label" = "magenta"
 "namespace" = "magenta"
 "ui.help" = { fg = "white", bg = "black" }
+"ui.statusline.insert" = { fg = "black", bg = "green" }
+"ui.statusline.select" = { fg = "black", bg = "blue" }
+"ui.virtual" = { fg = "gray", modifiers = ["italic"] }
+"ui.virtual.jump-label" = { fg = "blue", modifiers = ["bold", "underlined"] }
+"ui.virtual.ruler" = { bg = "black" }
 
 "markup.heading" = "blue"
 "markup.list" = "red"

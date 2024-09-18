@@ -4,7 +4,7 @@ use std::sync::Arc;
 
 use helix_core::{Rope, RopeSlice};
 use imara_diff::intern::InternedInput;
-use parking_lot::Mutex;
+use parking_lot::RwLock;
 use tokio::sync::mpsc::UnboundedReceiver;
 use tokio::sync::Notify;
 use tokio::time::{timeout, timeout_at, Duration};
@@ -21,9 +21,8 @@ mod test;
 
 pub(super) struct DiffWorker {
     pub channel: UnboundedReceiver<Event>,
-    pub diff: Arc<Mutex<DiffInner>>,
+    pub diff: Arc<RwLock<DiffInner>>,
     pub new_hunks: Vec<Hunk>,
-    pub redraw_notify: Arc<Notify>,
     pub diff_finished_notify: Arc<Notify>,
 }
 
@@ -32,11 +31,7 @@ impl DiffWorker {
         let mut accumulator = EventAccumulator::new();
         accumulator.handle_event(event).await;
         accumulator
-            .accumulate_debounced_events(
-                &mut self.channel,
-                self.redraw_notify.clone(),
-                self.diff_finished_notify.clone(),
-            )
+            .accumulate_debounced_events(&mut self.channel, self.diff_finished_notify.clone())
             .await;
         (accumulator.doc, accumulator.diff_base)
     }
@@ -78,7 +73,7 @@ impl DiffWorker {
     /// `self.new_hunks` is always empty after this function runs.
     /// To improve performance this function tries to reuse the allocation of the old diff previously stored in `self.line_diffs`
     fn apply_hunks(&mut self, diff_base: Rope, doc: Rope) {
-        let mut diff = self.diff.lock();
+        let mut diff = self.diff.write();
         diff.diff_base = diff_base;
         diff.doc = doc;
         swap(&mut diff.hunks, &mut self.new_hunks);
@@ -137,7 +132,6 @@ impl<'a> EventAccumulator {
     async fn accumulate_debounced_events(
         &mut self,
         channel: &mut UnboundedReceiver<Event>,
-        redraw_notify: Arc<Notify>,
         diff_finished_notify: Arc<Notify>,
     ) {
         let async_debounce = Duration::from_millis(DIFF_DEBOUNCE_TIME_ASYNC);
@@ -164,7 +158,7 @@ impl<'a> EventAccumulator {
             None => {
                 tokio::spawn(async move {
                     diff_finished_notify.notified().await;
-                    redraw_notify.notify_one();
+                    helix_event::request_redraw();
                 });
             }
             // diff is performed inside the rendering loop
@@ -190,7 +184,7 @@ impl<'a> EventAccumulator {
                     // and wait until the diff occurs to trigger an async redraw
                     log::info!("Diff computation timed out, update of diffs might appear delayed");
                     diff_finished_notify.notified().await;
-                    redraw_notify.notify_one();
+                    helix_event::request_redraw()
                 });
             }
             // a blocking diff is performed inside the rendering loop

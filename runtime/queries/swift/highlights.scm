@@ -1,15 +1,16 @@
-; Upstream: https://github.com/alex-pinkus/tree-sitter-swift/blob/8d2fd80e3322df51e3f70952e60d57f5d4077eb8/queries/highlights.scm
+; Upstream: https://github.com/alex-pinkus/tree-sitter-swift/blob/57c1c6d6ffa1c44b330182d41717e6fe37430704/queries/highlights.scm
 
 (line_string_literal
   ["\\(" ")"] @punctuation.special)
 
 ["." ";" ":" "," ] @punctuation.delimiter
-["(" ")" "[" "]" "{" "}"] @punctuation.bracket ; TODO: "\\(" ")" in interpolations should be @punctuation.special
+["(" ")" "[" "]" "{" "}"] @punctuation.bracket
 
 ; Identifiers
 (attribute) @variable
 (type_identifier) @type
 (self_expression) @variable.builtin
+(user_type (type_identifier) @variable.builtin (#eq? @variable.builtin "Self"))
 
 ; Declarations
 "func" @keyword.function
@@ -23,9 +24,12 @@
 ] @keyword
 
 (function_declaration (simple_identifier) @function.method)
-(function_declaration "init" @constructor)
+(init_declaration ["init" @constructor])
+(deinit_declaration ["deinit" @constructor])
+
 (throws) @keyword
 "async" @keyword
+"await" @keyword
 (where_keyword) @keyword
 (parameter external_name: (simple_identifier) @variable.parameter)
 (parameter name: (simple_identifier) @variable.parameter)
@@ -47,8 +51,22 @@
   "override"
   "convenience"
   "required"
-  "some"
+  "mutating"
+  "associatedtype"
+  "package"
+  "any"
 ] @keyword
+
+(opaque_type ["some" @keyword])
+(existential_type ["any" @keyword])
+
+(precedence_group_declaration
+ ["precedencegroup" @keyword]
+ (simple_identifier) @type)
+(precedence_group_attribute
+ (simple_identifier) @keyword
+ [(simple_identifier) @type
+  (boolean_literal) @constant.builtin.boolean])
 
 [
   (getter_specifier)
@@ -71,6 +89,10 @@
 ((navigation_expression
    (simple_identifier) @type) ; SomeType.method(): highlight SomeType as a type
    (#match? @type "^[A-Z]"))
+(call_expression (simple_identifier) @keyword (#eq? @keyword "defer")) ; defer { ... }
+
+(try_operator) @operator
+(try_operator ["try" @keyword])
 
 (directive) @function.macro
 (diagnostic) @function.macro
@@ -134,10 +156,8 @@
 
 ; Operators
 [
-  "try"
-  "try?"
-  "try!"
   "!"
+  "?"
   "+"
   "-"
   "*"
@@ -169,3 +189,8 @@
   "..."
   (custom_operator)
 ] @operator
+
+(value_parameter_pack ["each" @keyword])
+(value_pack_expansion ["repeat" @keyword])
+(type_parameter_pack ["each" @keyword])
+(type_pack_expansion ["repeat" @keyword])

@@ -8,7 +8,8 @@
 "ui.popup" = { bg = "uibg" }
 "ui.selection" = { bg = "#304a3d" }
 "ui.selection.primary" = { bg = "#2f2f2f" }
-"comment" = { fg = "#7f9f7f" }
+"comment" = { fg = "comment" }
+"ui.virtual.inlay-hint" = { fg = "#9f9f9f" }
 "comment.block.documentation" = { fg = "black", modifiers = ["bold"] }
 "ui.statusline" = { bg = "statusbg", fg = "#ccdc90" }
 "ui.statusline.inactive" = { fg = '#2e3330', bg = '#88b090' }
@@ -44,12 +45,15 @@
 
 "diagnostic" = {bg = "statusbg"}
 "diagnostic.error" = { fg = "errorfg", bg = "errorbg"}
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 "ui.gutter" = { bg = "statusbg" }
 "hint" = {fg = "numeric", bg = "statusbg"}
 "warning" = "numeric"
 "error" = "errorfg"
 
 [palette]
+comment = "#7f9f7f"
 bg = "#3f3f3f"
 uibg = "#2c2e2e"
 constant = "#dca3a3"

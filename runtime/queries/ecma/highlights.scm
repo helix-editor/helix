@@ -29,14 +29,23 @@
   name: (identifier) @function)
 (method_definition
   name: (property_identifier) @function.method)
+(method_definition
+  name: (private_property_identifier) @function.method.private)
 
 (pair
   key: (property_identifier) @function.method
+  value: [(function) (arrow_function)])
+(pair
+  key: (private_property_identifier) @function.method.private
   value: [(function) (arrow_function)])
 
 (assignment_expression
   left: (member_expression
     property: (property_identifier) @function.method)
+  right: [(function) (arrow_function)])
+(assignment_expression
+  left: (member_expression
+    property: (private_property_identifier) @function.method.private)
   right: [(function) (arrow_function)])
 
 (variable_declarator
@@ -46,8 +55,15 @@
 (assignment_expression
   left: (identifier) @function
   right: [(function) (arrow_function)])
-  
 
+; Function and method parameters
+;-------------------------------
+
+; Arrow function parameters in the form `p => ...` are supported by both
+; javascript and typescript grammars without conflicts.
+(arrow_function
+  parameter: (identifier) @variable.parameter)
+  
 ; Function and method calls
 ;--------------------------
 
@@ -57,6 +73,9 @@
 (call_expression
   function: (member_expression
     property: (property_identifier) @function.method))
+(call_expression
+  function: (member_expression
+    property: (private_property_identifier) @function.method.private))
 
 ; Variables
 ;----------
@@ -67,6 +86,7 @@
 ;-----------
 
 (property_identifier) @variable.other.member
+(private_property_identifier) @variable.other.member.private
 (shorthand_property_identifier) @variable.other.member
 (shorthand_property_identifier_pattern) @variable.other.member
 
@@ -102,7 +122,7 @@
 
 [
   ";"
-  "?."
+  (optional_chain) ; ?.
   "."
   ","
 ] @punctuation.delimiter

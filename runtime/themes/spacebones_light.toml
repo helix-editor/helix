@@ -14,6 +14,7 @@
 "variable" = "#715ab1"
 "variable.builtin" = "#715ab1"
 "variable.parameter" = "#7590db"
+"variable.other.member" = "#002db3"
 "type" = "#6c3163"
 "type.builtin" = "#6c3163"
 "constructor" = { fg = "#4e3163", modifiers = ["bold"] }
@@ -77,6 +78,8 @@
 "diagnostic.error" = { underline = { style = "curl", color = "#e0211d" } }
 "diagnostic.info" = { underline = { style = "curl", color = "theme_yellow" } }
 "diagnostic.hint" = { underline = { style = "curl", color = "bg2" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 [palette]
 base = "#655370"

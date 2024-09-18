@@ -1,20 +1,19 @@
 #[macro_use]
 pub mod macros;
 
+pub mod annotations;
+pub mod base64;
 pub mod clipboard;
 pub mod document;
 pub mod editor;
-pub mod env;
+pub mod events;
 pub mod graphics;
 pub mod gutter;
-pub mod handlers {
-    pub mod dap;
-    pub mod lsp;
-}
-pub mod base64;
+pub mod handlers;
 pub mod info;
 pub mod input;
 pub mod keyboard;
+pub mod register;
 pub mod theme;
 pub mod tree;
 pub mod view;
@@ -48,11 +47,12 @@ pub enum Align {
     Bottom,
 }
 
-pub fn align_view(doc: &Document, view: &mut View, align: Align) {
+pub fn align_view(doc: &mut Document, view: &View, align: Align) {
     let doc_text = doc.text().slice(..);
     let cursor = doc.selection(view.id).primary().cursor(doc_text);
     let viewport = view.inner_area(doc);
     let last_line_height = viewport.height.saturating_sub(1);
+    let mut view_offset = doc.view_offset(view.id);
 
     let relative = match align {
         Align::Center => last_line_height / 2,
@@ -61,15 +61,15 @@ pub fn align_view(doc: &Document, view: &mut View, align: Align) {
     };
 
     let text_fmt = doc.text_format(viewport.width, None);
-    let annotations = view.text_annotations(doc, None);
-    (view.offset.anchor, view.offset.vertical_offset) = char_idx_at_visual_offset(
+    (view_offset.anchor, view_offset.vertical_offset) = char_idx_at_visual_offset(
         doc_text,
         cursor,
         -(relative as isize),
         0,
         &text_fmt,
-        &annotations,
+        &view.text_annotations(doc, None),
     );
+    doc.set_view_offset(view.id, view_offset);
 }
 
 pub use document::Document;

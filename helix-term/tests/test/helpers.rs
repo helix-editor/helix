@@ -1,6 +1,6 @@
 use std::{
-    fs::File,
     io::{Read, Write},
+    mem::replace,
     path::PathBuf,
     time::Duration,
 };
@@ -9,9 +9,49 @@ use anyhow::bail;
 use crossterm::event::{Event, KeyEvent};
 use helix_core::{diagnostic::Severity, test, Selection, Transaction};
 use helix_term::{application::Application, args::Args, config::Config, keymap::merge_keys};
-use helix_view::{doc, editor::LspConfig, input::parse_macro, Editor};
+use helix_view::{current_ref, doc, editor::LspConfig, input::parse_macro, Editor};
 use tempfile::NamedTempFile;
 use tokio_stream::wrappers::UnboundedReceiverStream;
+
+/// Specify how to set up the input text with line feeds
+#[derive(Clone, Debug)]
+pub enum LineFeedHandling {
+    /// Replaces all LF chars with the system's appropriate line feed character,
+    /// and if one doesn't exist already, appends the system's appropriate line
+    /// ending to the end of a string.
+    Native,
+
+    /// Do not modify the input text in any way. What you give is what you test.
+    AsIs,
+}
+
+impl LineFeedHandling {
+    /// Apply the line feed handling to the input string, yielding a set of
+    /// resulting texts with the appropriate line feed substitutions.
+    pub fn apply(&self, text: &str) -> String {
+        let line_end = match self {
+            LineFeedHandling::Native => helix_core::NATIVE_LINE_ENDING,
+            LineFeedHandling::AsIs => return text.into(),
+        }
+        .as_str();
+
+        // we can assume that the source files in this code base will always
+        // be LF, so indoc strings will always insert LF
+        let mut output = text.replace('\n', line_end);
+
+        if !output.ends_with(line_end) {
+            output.push_str(line_end);
+        }
+
+        output
+    }
+}
+
+impl Default for LineFeedHandling {
+    fn default() -> Self {
+        Self::Native
+    }
+}
 
 #[derive(Clone, Debug)]
 pub struct TestCase {
@@ -20,12 +60,30 @@ pub struct TestCase {
     pub in_keys: String,
     pub out_text: String,
     pub out_selection: Selection,
+
+    pub line_feed_handling: LineFeedHandling,
 }
 
-impl<S: Into<String>> From<(S, S, S)> for TestCase {
-    fn from((input, keys, output): (S, S, S)) -> Self {
-        let (in_text, in_selection) = test::print(&input.into());
-        let (out_text, out_selection) = test::print(&output.into());
+impl<S, R, V> From<(S, R, V)> for TestCase
+where
+    S: Into<String>,
+    R: Into<String>,
+    V: Into<String>,
+{
+    fn from((input, keys, output): (S, R, V)) -> Self {
+        TestCase::from((input, keys, output, LineFeedHandling::default()))
+    }
+}
+
+impl<S, R, V> From<(S, R, V, LineFeedHandling)> for TestCase
+where
+    S: Into<String>,
+    R: Into<String>,
+    V: Into<String>,
+{
+    fn from((input, keys, output, line_feed_handling): (S, R, V, LineFeedHandling)) -> Self {
+        let (in_text, in_selection) = test::print(&line_feed_handling.apply(&input.into()));
+        let (out_text, out_selection) = test::print(&line_feed_handling.apply(&output.into()));
 
         TestCase {
             in_text,
@@ -33,6 +91,7 @@ impl<S: Into<String>> From<(S, S, S)> for TestCase {
             in_keys: keys.into(),
             out_text,
             out_selection,
+            line_feed_handling,
         }
     }
 }
@@ -59,6 +118,11 @@ pub async fn test_key_sequences(
     let num_inputs = inputs.len();
 
     for (i, (in_keys, test_fn)) in inputs.into_iter().enumerate() {
+        let (view, doc) = current_ref!(app.editor);
+        let state = test::plain(doc.text().slice(..), doc.selection(view.id));
+
+        log::debug!("executing test with document state:\n\n-----\n\n{}", state);
+
         if let Some(in_keys) = in_keys {
             for key_event in parse_macro(in_keys)?.into_iter() {
                 let key = Event::Key(KeyEvent::from(key_event));
@@ -68,6 +132,16 @@ pub async fn test_key_sequences(
         }
 
         let app_exited = !app.event_loop_until_idle(&mut rx_stream).await;
+
+        if !app_exited {
+            let (view, doc) = current_ref!(app.editor);
+            let state = test::plain(doc.text().slice(..), doc.selection(view.id));
+
+            log::debug!(
+                "finished running test with document state:\n\n-----\n\n{}",
+                state
+            );
+        }
 
         // the app should not exit from any test until the last one
         if i < num_inputs - 1 && app_exited {
@@ -116,9 +190,10 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
     should_exit: bool,
 ) -> anyhow::Result<()> {
     let test_case = test_case.into();
+
     let mut app = match app {
         Some(app) => app,
-        None => Application::new(Args::default(), test_config(), test_syntax_conf(None))?,
+        None => Application::new(Args::default(), test_config(), test_syntax_loader(None))?,
     };
 
     let (view, doc) = helix_view::current!(app.editor);
@@ -141,9 +216,9 @@ pub async fn test_key_sequence_with_input_text<T: Into<TestCase>>(
     .await
 }
 
-/// Generates language configs that merge in overrides, like a user language
+/// Generates language config loader that merge in overrides, like a user language
 /// config. The argument string must be a raw TOML document.
-pub fn test_syntax_conf(overrides: Option<String>) -> helix_core::syntax::Configuration {
+pub fn test_syntax_loader(overrides: Option<String>) -> helix_core::syntax::Loader {
     let mut lang = helix_loader::config::default_lang_config();
 
     if let Some(overrides) = overrides {
@@ -151,21 +226,18 @@ pub fn test_syntax_conf(overrides: Option<String>) -> helix_core::syntax::Config
         lang = helix_loader::merge_toml_values(lang, override_toml, 3);
     }
 
-    lang.try_into().unwrap()
+    helix_core::syntax::Loader::new(lang.try_into().unwrap()).unwrap()
 }
 
 /// Use this for very simple test cases where there is one input
 /// document, selection, and sequence of key presses, and you just
 /// want to verify the resulting document and selection.
 pub async fn test_with_config<T: Into<TestCase>>(
-    args: Args,
-    mut config: Config,
-    syn_conf: helix_core::syntax::Configuration,
+    app_builder: AppBuilder,
     test_case: T,
 ) -> anyhow::Result<()> {
     let test_case = test_case.into();
-    config = helix_term::keymap::merge_keys(config);
-    let app = Application::new(args, config, syn_conf)?;
+    let app = app_builder.build()?;
 
     test_key_sequence_with_input_text(
         Some(app),
@@ -186,13 +258,7 @@ pub async fn test_with_config<T: Into<TestCase>>(
 }
 
 pub async fn test<T: Into<TestCase>>(test_case: T) -> anyhow::Result<()> {
-    test_with_config(
-        Args::default(),
-        test_config(),
-        test_syntax_conf(None),
-        test_case,
-    )
-    .await
+    test_with_config(AppBuilder::default(), test_case).await
 }
 
 pub fn temp_file_with_contents<S: AsRef<str>>(
@@ -211,33 +277,21 @@ pub fn temp_file_with_contents<S: AsRef<str>>(
 
 /// Generates a config with defaults more suitable for integration tests
 pub fn test_config() -> Config {
-    merge_keys(Config {
-        editor: helix_view::editor::Config {
-            lsp: LspConfig {
-                enable: false,
-                ..Default::default()
-            },
+    Config {
+        editor: test_editor_config(),
+        keys: helix_term::keymap::default(),
+        ..Default::default()
+    }
+}
+
+pub fn test_editor_config() -> helix_view::editor::Config {
+    helix_view::editor::Config {
+        lsp: LspConfig {
+            enable: false,
             ..Default::default()
         },
         ..Default::default()
-    })
-}
-
-/// Replaces all LF chars with the system's appropriate line feed
-/// character, and if one doesn't exist already, appends the system's
-/// appropriate line ending to the end of a string.
-pub fn platform_line(input: &str) -> String {
-    let line_end = helix_core::DEFAULT_LINE_ENDING.as_str();
-
-    // we can assume that the source files in this code base will always
-    // be LF, so indoc strings will always insert LF
-    let mut output = input.replace('\n', line_end);
-
-    if !output.ends_with(line_end) {
-        output.push_str(line_end);
     }
-
-    output
 }
 
 /// Creates a new temporary file that is set to read only. Useful for
@@ -251,10 +305,22 @@ pub fn new_readonly_tempfile() -> anyhow::Result<NamedTempFile> {
     Ok(file)
 }
 
+/// Creates a new temporary file in the directory that is set to read only. Useful for
+/// testing write failures.
+pub fn new_readonly_tempfile_in_dir(
+    dir: impl AsRef<std::path::Path>,
+) -> anyhow::Result<NamedTempFile> {
+    let mut file = tempfile::NamedTempFile::new_in(dir)?;
+    let metadata = file.as_file().metadata()?;
+    let mut perms = metadata.permissions();
+    perms.set_readonly(true);
+    file.as_file_mut().set_permissions(perms)?;
+    Ok(file)
+}
 pub struct AppBuilder {
     args: Args,
     config: Config,
-    syn_conf: helix_core::syntax::Configuration,
+    syn_loader: helix_core::syntax::Loader,
     input: Option<(String, Selection)>,
 }
 
@@ -262,8 +328,8 @@ impl Default for AppBuilder {
     fn default() -> Self {
         Self {
             args: Args::default(),
-            config: Config::default(),
-            syn_conf: test_syntax_conf(None),
+            config: test_config(),
+            syn_loader: test_syntax_loader(None),
             input: None,
         }
     }
@@ -285,7 +351,9 @@ impl AppBuilder {
 
     // Remove this attribute once `with_config` is used in a test:
     #[allow(dead_code)]
-    pub fn with_config(mut self, config: Config) -> Self {
+    pub fn with_config(mut self, mut config: Config) -> Self {
+        let keys = replace(&mut config.keys, helix_term::keymap::default());
+        merge_keys(&mut config.keys, keys);
         self.config = config;
         self
     }
@@ -295,13 +363,21 @@ impl AppBuilder {
         self
     }
 
-    pub fn with_lang_config(mut self, syn_conf: helix_core::syntax::Configuration) -> Self {
-        self.syn_conf = syn_conf;
+    pub fn with_lang_loader(mut self, syn_loader: helix_core::syntax::Loader) -> Self {
+        self.syn_loader = syn_loader;
         self
     }
 
     pub fn build(self) -> anyhow::Result<Application> {
-        let mut app = Application::new(self.args, self.config, self.syn_conf)?;
+        if let Some(path) = &self.args.working_directory {
+            bail!("Changing the working directory to {path:?} is not yet supported for integration tests");
+        }
+
+        if let Some((path, _)) = self.args.files.first().filter(|p| p.0.is_dir()) {
+            bail!("Having the directory {path:?} in args.files[0] is not yet supported for integration tests");
+        }
+
+        let mut app = Application::new(self.args, self.config, self.syn_loader)?;
 
         if let Some((text, selection)) = self.input {
             let (view, doc) = helix_view::current!(app.editor);
@@ -325,13 +401,12 @@ pub async fn run_event_loop_until_idle(app: &mut Application) {
     app.event_loop_until_idle(&mut rx_stream).await;
 }
 
-pub fn assert_file_has_content(file: &mut File, content: &str) -> anyhow::Result<()> {
-    file.flush()?;
-    file.sync_all()?;
+pub fn assert_file_has_content(file: &mut NamedTempFile, content: &str) -> anyhow::Result<()> {
+    reload_file(file)?;
 
     let mut file_content = String::new();
     file.read_to_string(&mut file_content)?;
-    assert_eq!(content, file_content);
+    assert_eq!(file_content, content);
 
     Ok(())
 }
@@ -340,4 +415,14 @@ pub fn assert_status_not_error(editor: &Editor) {
     if let Some((_, sev)) = editor.get_status() {
         assert_ne!(&Severity::Error, sev);
     }
+}
+
+pub fn reload_file(file: &mut NamedTempFile) -> anyhow::Result<()> {
+    let path = file.path();
+    let f = std::fs::OpenOptions::new()
+        .write(true)
+        .read(true)
+        .open(&path)?;
+    *file.as_file_mut() = f;
+    Ok(())
 }

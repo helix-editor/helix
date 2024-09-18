@@ -25,6 +25,8 @@
 "ui.cursor.match" = { fg = "green", modifiers = ["underlined"] }
 "ui.cursor.primary" = { fg = "background", bg = "cyan", modifiers = ["dim"] }
 "ui.help" = { fg = "foreground", bg = "background_dark" }
+"ui.debug" = { fg = "red" }
+"ui.highlight.frameline" = { fg = "black", bg = "red" }
 "ui.linenr" = { fg = "comment" }
 "ui.linenr.selected" = { fg = "foreground" }
 "ui.menu" = { fg = "foreground", bg = "background_dark" }
@@ -41,10 +43,14 @@
 "ui.text" = { fg = "foreground" }
 "ui.text.focus" = { fg = "cyan" }
 "ui.window" = { fg = "foreground" }
+"ui.virtual.jump-label" = { fg = "pink", modifiers = ["bold"] }
 "ui.virtual.ruler" = { bg = "background_dark" }
 
 "error" = { fg = "red" }
 "warning" = { fg = "cyan" }
+
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 "markup.heading" = { fg = "purple", modifiers = ["bold"] }
 "markup.list" = "cyan"

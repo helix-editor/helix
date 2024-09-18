@@ -37,7 +37,7 @@ pub async fn select_thread_id(editor: &mut Editor, thread_id: ThreadId, force: b
     debugger.thread_id = Some(thread_id);
     fetch_stack_trace(debugger, thread_id).await;
 
-    let frame = debugger.stack_frames[&thread_id].get(0).cloned();
+    let frame = debugger.stack_frames[&thread_id].first().cloned();
     if let Some(frame) = &frame {
         jump_to_stack_frame(editor, frame);
     }
@@ -226,10 +226,15 @@ impl Editor {
                                     breakpoints.iter().position(|b| b.id == breakpoint.id)
                                 {
                                     breakpoints[i].verified = breakpoint.verified;
-                                    breakpoints[i].message = breakpoint.message.clone();
-                                    breakpoints[i].line =
-                                        breakpoint.line.unwrap().saturating_sub(1); // TODO: no unwrap
-                                    breakpoints[i].column = breakpoint.column;
+                                    breakpoints[i].message = breakpoint
+                                        .message
+                                        .clone()
+                                        .or_else(|| breakpoints[i].message.take());
+                                    breakpoints[i].line = breakpoint
+                                        .line
+                                        .map_or(breakpoints[i].line, |line| line.saturating_sub(1));
+                                    breakpoints[i].column =
+                                        breakpoint.column.or(breakpoints[i].column);
                                 }
                             }
                         }
@@ -321,6 +326,7 @@ impl Editor {
                             }
                         }
                         None => {
+                            self.debugger = None;
                             self.set_status(
                                 "Terminated debugging session and disconnected debugger.",
                             );
@@ -368,9 +374,7 @@ impl Editor {
                     {
                         Ok(process) => process,
                         Err(err) => {
-                            // TODO replace the pretty print {:?} with a regular format {}
-                            // when the MSRV is raised to 1.60.0
-                            self.set_error(format!("Error starting external terminal: {:?}", err));
+                            self.set_error(format!("Error starting external terminal: {}", err));
                             return true;
                         }
                     };

@@ -3,10 +3,9 @@ use crossterm::event::EventStream;
 use helix_loader::VERSION_AND_GIT_HASH;
 use helix_term::application::Application;
 use helix_term::args::Args;
-use helix_term::config::Config;
-use std::path::PathBuf;
+use helix_term::config::{Config, ConfigLoadError};
 
-fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
+fn setup_logging(verbosity: u64) -> Result<()> {
     let mut base_config = fern::Dispatch::new();
 
     base_config = match verbosity {
@@ -27,7 +26,7 @@ fn setup_logging(logpath: PathBuf, verbosity: u64) -> Result<()> {
                 message
             ))
         })
-        .chain(fern::log_file(logpath)?);
+        .chain(fern::log_file(helix_loader::log_file())?);
 
     base_config.chain(file_config).apply()?;
 
@@ -41,12 +40,6 @@ fn main() -> Result<()> {
 
 #[tokio::main]
 async fn main_impl() -> Result<i32> {
-    let logpath = helix_loader::log_file();
-    let parent = logpath.parent().unwrap();
-    if !parent.exists() {
-        std::fs::create_dir_all(parent).ok();
-    }
-
     let help = format!(
         "\
 {} {}
@@ -68,20 +61,25 @@ FLAGS:
     -g, --grammar {{fetch|build}}    Fetches or builds tree-sitter grammars listed in languages.toml
     -c, --config <file>            Specifies a file to use for configuration
     -v                             Increases logging verbosity each use for up to 3 times
-    --log                          Specifies a file to use for logging
+    --log <file>                   Specifies a file to use for logging
                                    (default file: {})
     -V, --version                  Prints version information
     --vsplit                       Splits all given files vertically into different windows
     --hsplit                       Splits all given files horizontally into different windows
+    -w, --working-dir <path>       Specify an initial working directory
+    +N                             Open the first given file at line number N
 ",
         env!("CARGO_PKG_NAME"),
         VERSION_AND_GIT_HASH,
         env!("CARGO_PKG_AUTHORS"),
         env!("CARGO_PKG_DESCRIPTION"),
-        logpath.display(),
+        helix_loader::default_log_file().display(),
     );
 
-    let args = Args::parse_args().context("could not parse arguments")?;
+    let mut args = Args::parse_args().context("could not parse arguments")?;
+
+    helix_loader::initialize_config_file(args.config_file.clone());
+    helix_loader::initialize_log_file(args.log_file.clone());
 
     // Help has a higher priority and should be handled separately.
     if args.display_help {
@@ -116,42 +114,48 @@ FLAGS:
         return Ok(0);
     }
 
-    let logpath = args.log_file.as_ref().cloned().unwrap_or(logpath);
-    setup_logging(logpath, args.verbosity).context("failed to initialize logging")?;
+    setup_logging(args.verbosity).context("failed to initialize logging")?;
 
-    let config_dir = helix_loader::config_dir();
-    if !config_dir.exists() {
-        std::fs::create_dir_all(&config_dir).ok();
+    // Before setting the working directory, resolve all the paths in args.files
+    for (path, _) in &mut args.files {
+        *path = helix_stdx::path::canonicalize(&*path);
+    }
+    // NOTE: Set the working directory early so the correct configuration is loaded. Be aware that
+    // Application::new() depends on this logic so it must be updated if this changes.
+    if let Some(path) = &args.working_directory {
+        helix_stdx::env::set_current_working_dir(path)?;
+    } else if let Some((path, _)) = args.files.first().filter(|p| p.0.is_dir()) {
+        // If the first file is a directory, it will be the working directory unless -w was specified
+        helix_stdx::env::set_current_working_dir(path)?;
     }
 
-    helix_loader::initialize_config_file(args.config_file.clone());
-
-    let config = match std::fs::read_to_string(helix_loader::config_file()) {
-        Ok(config) => toml::from_str(&config)
-            .map(helix_term::keymap::merge_keys)
-            .unwrap_or_else(|err| {
-                eprintln!("Bad config: {}", err);
-                eprintln!("Press <ENTER> to continue with default config");
-                use std::io::Read;
-                let _ = std::io::stdin().read(&mut []);
-                Config::default()
-            }),
-        Err(err) if err.kind() == std::io::ErrorKind::NotFound => Config::default(),
-        Err(err) => return Err(Error::new(err)),
+    let config = match Config::load_default() {
+        Ok(config) => config,
+        Err(ConfigLoadError::Error(err)) if err.kind() == std::io::ErrorKind::NotFound => {
+            Config::default()
+        }
+        Err(ConfigLoadError::Error(err)) => return Err(Error::new(err)),
+        Err(ConfigLoadError::BadConfig(err)) => {
+            eprintln!("Bad config: {}", err);
+            eprintln!("Press <ENTER> to continue with default config");
+            use std::io::Read;
+            let _ = std::io::stdin().read(&mut []);
+            Config::default()
+        }
     };
 
-    let syn_loader_conf = helix_core::config::user_syntax_loader().unwrap_or_else(|err| {
-        eprintln!("Bad language config: {}", err);
+    let lang_loader = helix_core::config::user_lang_loader().unwrap_or_else(|err| {
+        eprintln!("{}", err);
         eprintln!("Press <ENTER> to continue with default language config");
         use std::io::Read;
         // This waits for an enter press.
         let _ = std::io::stdin().read(&mut []);
-        helix_core::config::default_syntax_loader()
+        helix_core::config::default_lang_loader()
     });
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
-    let mut app = Application::new(args, config, syn_loader_conf)
-        .context("unable to create new application")?;
+    let mut app =
+        Application::new(args, config, lang_loader).context("unable to create new application")?;
 
     let exit_code = app.run(&mut EventStream::new()).await?;
 

@@ -94,7 +94,7 @@
 ; Variables
 
 ((identifier) @constant
- (#match? @constant "^[A-Z_]{2,}$"))
+ (#match? @constant "^_*[A-Z][A-Z\\d_]*$"))
 
 ((identifier) @type
  (#match? @type "^[A-Z]"))
@@ -134,14 +134,17 @@
   "//="
   "/="
   "&"
+  "&="
   "%"
   "%="
   "^"
+  "^="
   "+"
   "->"
   "+="
   "<"
   "<<"
+  "<<="
   "<="
   "<>"
   "="
@@ -150,8 +153,11 @@
   ">"
   ">="
   ">>"
+  ">>="
   "|"
+  "|="
   "~"
+  "@="
 ] @operator
 
 [
@@ -198,20 +204,22 @@
 (for_in_clause "in" @keyword.control)
 
 [
-  "and"
   "async"
   "class"
   "exec"
   "global"
   "nonlocal"
   "print"
+  "type"
 ] @keyword
 [
   "and"
   "or"
+  "not in"
   "in"
   "not"
   "del"
+  "is not"
   "is"
 ] @keyword.operator
 

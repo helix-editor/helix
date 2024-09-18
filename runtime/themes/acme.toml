@@ -12,6 +12,8 @@
 "ui.virtual.ruler" = { bg = "acme_bar_bg" }
 "ui.cursor.match" = {bg="acme_bar_bg"}
 "ui.cursor" = {bg="cursor", fg="white"}
+"ui.debug" = {fg="orange"}
+"ui.highlight.frameline" = {bg="#da8581"}
 "string" = "red"
 "comment" = "green"
 "ui.help" = {fg="black", bg="acme_bg"}
@@ -22,6 +24,8 @@
 "diagnostic.error" = {bg="red", fg="white", modifiers=["bold"]}
 "diagnostic.warning" = {bg="orange", fg="black", modifiers=["bold"]}
 "diagnostic.hint" = {fg="gray", modifiers=["bold"]}
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 "ui.bufferline" = { fg = "black", bg = "acme_bar_bg" }
 "ui.bufferline.active" = { fg = "black", bg = "acme_bg" }
 "diff.plus" = {fg = "green"}

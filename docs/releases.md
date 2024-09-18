@@ -1,16 +1,22 @@
 ## Checklist
 
 Helix releases are versioned in the Calendar Versioning scheme:
-`YY.0M(.MICRO)`, for example `22.05` for May of 2022. In these instructions
-we'll use `<tag>` as a placeholder for the tag being published.
+`YY.0M(.MICRO)`, for example, `22.05` for May of 2022, or in a patch release,
+`22.05.1`. In these instructions we'll use `<tag>` as a placeholder for the tag
+being published.
 
-* Merge the changelog PR
-* Add new `<release>` entry in `contrib/Helix.appdata.xml` with release information according to the [AppStream spec](https://www.freedesktop.org/software/appstream/docs/sect-Metadata-Releases.html)
+* Merge the PR with the release updates. That branch should:
+    * Update the version:
+        * Update the `workspace.package.version` key in `Cargo.toml`. Cargo only accepts
+          SemVer versions so a CalVer version of `22.07` for example must be formatted
+          as `22.7.0`. Patch/bugfix releases should increment the SemVer patch number. A
+          patch release for 22.07 would be `22.7.1`.
+        * Run `cargo check` and commit the resulting change to `Cargo.lock`
+    * Add changelog notes to `CHANGELOG.md`
+    * Add new `<release>` entry in `contrib/Helix.appdata.xml` with release information according to the [AppStream spec](https://www.freedesktop.org/software/appstream/docs/sect-Metadata-Releases.html)
 * Tag and push
-    * `git tag -s -m "<tag>" -a <tag> && git push`
-    * Make sure to switch to master and pull first
-* Edit the `VERSION` file and change the date to the next planned release
-    * Releases are planned to happen every two months, so `22.05` would change to `22.07`
+    * Switch to master and pull
+    * `git tag -s -m "<tag>" -a <tag> && git push` (note the `-s` which signs the tag)
 * Wait for the Release CI to finish
     * It will automatically turn the git tag into a GitHub release when it uploads artifacts
 * Edit the new release
@@ -24,13 +30,13 @@ we'll use `<tag>` as a placeholder for the tag being published.
 * Post to reddit
     * [Example post](https://www.reddit.com/r/rust/comments/uzp5ze/helix_editor_2205_released/)
 
-[homebrew formula]: https://github.com/Homebrew/homebrew-core/blob/master/Formula/helix.rb
+[homebrew formula]: https://github.com/Homebrew/homebrew-core/blob/master/Formula/h/helix.rb
 
 ## Changelog Curation
 
 The changelog is currently created manually by reading through commits in the
 log since the last release. GitHub's compare view is a nice way to approach
-this. For example when creating the 22.07 release notes, this compare link
+this. For example, when creating the 22.07 release notes, this compare link
 may be used
 
 ```

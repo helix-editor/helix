@@ -19,8 +19,8 @@
 "ui.cursor.primary" = { bg = "fg1", fg = "bg1" } # The primary cursor when there are multiple (shift-c).
 "ui.cursor.match" = { fg = "yellow", modifiers = ["bold"] } # The matching parentheses of that under the cursor.
 
-"ui.selection" = { bg = "bg3" } # All currently selected text.
-"ui.selection.primary" = { bg = "bg4" } # The primary selection when there are multiple.
+"ui.selection" = { bg = "bg4" } # All currently selected text.
+"ui.selection.primary" = { bg = "sel1" } # The primary selection when there are multiple.
 "ui.cursorline.primary" = { bg = "bg3" } # The line of the primary cursor (if cursorline is enabled)
 # "ui.cursorline.secondary" = { } #	The lines of any other cursors (if cursorline is enabled)
 # "ui.cursorcolumn.primary" = { } #	The column of the primary cursor (if cursorcolumn is enabled)
@@ -33,12 +33,18 @@
 "ui.virtual.ruler" = { bg = "bg3" } # Vertical rulers (colored columns in editing area).
 "ui.virtual.whitespace" = { fg = "bg3" } # Whitespace markers in editing area.
 "ui.virtual.indent-guide" = { fg = "black" } # Vertical indent width guides
+"ui.virtual.inlay-hint" = { fg = "comment", bg = "bg2" } # Default style for inlay hints of all kinds
+"ui.virtual.jump-label" = { fg = "blue", modifiers = ["bold"] } # Style for virtual jump labels
 
 "ui.statusline" = { fg = "fg2", bg = "bg0" } # Status line.
 "ui.statusline.inactive" = { fg = "fg3", bg = "bg0" } # Status line in unfocused windows.
 "ui.statusline.normal" = { bg = "blue", fg = "bg0", modifiers = ["bold"] } # Statusline mode during normal mode (only if editor.color-modes is enabled)
 "ui.statusline.insert" = { bg = "green", fg = "bg0", modifiers = ["bold"] } # Statusline mode during insert mode (only if editor.color-modes is enabled)
 "ui.statusline.select" = { bg = "magenta", fg = "bg0", modifiers = ["bold"] } # Statusline mode during select mode (only if editor.color-modes is enabled)
+
+"ui.bufferline" = { fg = "fg3", bg = "bg2", underline = { style = "line" } }
+"ui.bufferline.active" = { fg = "fg2", bg = "bg4" }
+"ui.bufferline.background" = { bg = "bg0" }
 
 "ui.help" = { bg = "sel0", fg = "fg1" } # Description box for commands.
 
@@ -70,6 +76,8 @@
 "diagnostic.error" = { underline = { color = "red", style = "curl" } } #	Diagnostics error (editing area)
 "diagnostic.info" = { underline = { color = "blue", style = "curl" } } #	Diagnostics info (editing area)
 "diagnostic.hint" = { underline = { color = "green", style = "curl" } } #	Diagnostics hint (editing area)
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 
 # SYNTAX HIGHLIGHTING
@@ -120,7 +128,7 @@
 "keyword.control.exception" = { fg = "magenta" } # `try`, `catch`, `raise`/`throw` and related.
 "keyword.operator" = { fg = "fg2", modifiers = ["bold"] } # 'or', 'and', 'in'.
 "keyword.directive" = { fg = "pink-bright" } # Preprocessor directives (#if in C...).
-"keyword.function" = { fg = "red" } # The keyword to define a funtion: 'def', 'fun', 'fn'.
+"keyword.function" = { fg = "red" } # The keyword to define a function: 'def', 'fun', 'fn'.
 "keyword.storage" = { fg = "magenta" } # Keywords describing how things are stored
 "keyword.storage.type" = { fg = "magenta" } #  The type of something, class, function, var, let, etc.
 "keyword.storage.modifier" = { fg = "yellow" } # Storage modifiers like static, mut, const, ref, etc.
@@ -178,6 +186,6 @@ bg4            = "#39506d" # Conceal, border fg
 fg0            = "#d6d6d7" # Lighter fg
 fg1            = "#cdcecf" # Default fg
 fg2            = "#aeafb0" # Darker fg (status line)
-fg3            = "#71839b" # Darker fg (line numbers, fold colums)
+fg3            = "#71839b" # Darker fg (line numbers, fold columns)
 sel0           = "#2b3b51" # Popup bg, visual selection bg
 sel1           = "#3c5372" # Popup sel bg, search bg

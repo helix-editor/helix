@@ -22,7 +22,7 @@
 
 "constant.builtin.boolean" = "yellow"
 "constant.character" = "yellow"
-"constant.characted.escape" = "red_error"
+"constant.character.escape" = "red_error"
 "constant.numeric" = "dark_orange"
 "string" = "dark_green"
 "string.regexp" = "light_purple"
@@ -99,6 +99,8 @@
 "diagnostic.info" = { underline = { color = "blue_accent", style = "line" } }
 "diagnostic.warning" = { underline = { color = "yellow_accent", style = "line" } }
 "diagnostic.error" = { underline = { color = "red_error", style = "line" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 [palette]
 background = "#151515"

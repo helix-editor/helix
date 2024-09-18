@@ -1,4 +1,8 @@
-use crate::{jsonrpc, Error, Result};
+use crate::{
+    jsonrpc,
+    lsp::{self, notification::Notification as _},
+    Error, LanguageServerId, Result,
+};
 use anyhow::Context;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
@@ -37,7 +41,8 @@ enum ServerMessage {
 
 #[derive(Debug)]
 pub struct Transport {
-    id: usize,
+    id: LanguageServerId,
+    name: String,
     pending_requests: Mutex<HashMap<jsonrpc::Id, Sender<Result<Value>>>>,
 }
 
@@ -46,9 +51,10 @@ impl Transport {
         server_stdout: BufReader<ChildStdout>,
         server_stdin: BufWriter<ChildStdin>,
         server_stderr: BufReader<ChildStderr>,
-        id: usize,
+        id: LanguageServerId,
+        name: String,
     ) -> (
-        UnboundedReceiver<(usize, jsonrpc::Call)>,
+        UnboundedReceiver<(LanguageServerId, jsonrpc::Call)>,
         UnboundedSender<Payload>,
         Arc<Notify>,
     ) {
@@ -58,6 +64,7 @@ impl Transport {
 
         let transport = Self {
             id,
+            name,
             pending_requests: Mutex::new(HashMap::default()),
         };
 
@@ -83,6 +90,7 @@ impl Transport {
     async fn recv_server_message(
         reader: &mut (impl AsyncBufRead + Unpin + Send),
         buffer: &mut String,
+        language_server_name: &str,
     ) -> Result<ServerMessage> {
         let mut content_length = None;
         loop {
@@ -124,7 +132,7 @@ impl Transport {
         reader.read_exact(&mut content).await?;
         let msg = std::str::from_utf8(&content).context("invalid utf8 from server")?;
 
-        info!("<- {}", msg);
+        info!("{language_server_name} <- {msg}");
 
         // try parsing as output (server response) or call (server request)
         let output: serde_json::Result<ServerMessage> = serde_json::from_str(msg);
@@ -135,12 +143,13 @@ impl Transport {
     async fn recv_server_error(
         err: &mut (impl AsyncBufRead + Unpin + Send),
         buffer: &mut String,
+        language_server_name: &str,
     ) -> Result<()> {
         buffer.truncate(0);
         if err.read_line(buffer).await? == 0 {
             return Err(Error::StreamClosed);
         };
-        error!("err <- {:?}", buffer);
+        error!("{language_server_name} err <- {buffer:?}");
 
         Ok(())
     }
@@ -162,15 +171,17 @@ impl Transport {
             Payload::Notification(value) => serde_json::to_string(&value)?,
             Payload::Response(error) => serde_json::to_string(&error)?,
         };
-        self.send_string_to_server(server_stdin, json).await
+        self.send_string_to_server(server_stdin, json, &self.name)
+            .await
     }
 
     async fn send_string_to_server(
         &self,
         server_stdin: &mut BufWriter<ChildStdin>,
         request: String,
+        language_server_name: &str,
     ) -> Result<()> {
-        info!("-> {}", request);
+        info!("{language_server_name} -> {request}");
 
         // send the headers
         server_stdin
@@ -187,11 +198,15 @@ impl Transport {
 
     async fn process_server_message(
         &self,
-        client_tx: &UnboundedSender<(usize, jsonrpc::Call)>,
+        client_tx: &UnboundedSender<(LanguageServerId, jsonrpc::Call)>,
         msg: ServerMessage,
+        language_server_name: &str,
     ) -> Result<()> {
         match msg {
-            ServerMessage::Output(output) => self.process_request_response(output).await?,
+            ServerMessage::Output(output) => {
+                self.process_request_response(output, language_server_name)
+                    .await?
+            }
             ServerMessage::Call(call) => {
                 client_tx
                     .send((self.id, call))
@@ -202,14 +217,18 @@ impl Transport {
         Ok(())
     }
 
-    async fn process_request_response(&self, output: jsonrpc::Output) -> Result<()> {
+    async fn process_request_response(
+        &self,
+        output: jsonrpc::Output,
+        language_server_name: &str,
+    ) -> Result<()> {
         let (id, result) = match output {
             jsonrpc::Output::Success(jsonrpc::Success { id, result, .. }) => {
-                info!("<- {}", result);
+                info!("{language_server_name} <- {}", result);
                 (id, Ok(result))
             }
             jsonrpc::Output::Failure(jsonrpc::Failure { id, error, .. }) => {
-                error!("<- {}", error);
+                error!("{language_server_name} <- {error}");
                 (id, Err(error.into()))
             }
         };
@@ -236,21 +255,33 @@ impl Transport {
     async fn recv(
         transport: Arc<Self>,
         mut server_stdout: BufReader<ChildStdout>,
-        client_tx: UnboundedSender<(usize, jsonrpc::Call)>,
+        client_tx: UnboundedSender<(LanguageServerId, jsonrpc::Call)>,
     ) {
         let mut recv_buffer = String::new();
         loop {
-            match Self::recv_server_message(&mut server_stdout, &mut recv_buffer).await {
+            match Self::recv_server_message(&mut server_stdout, &mut recv_buffer, &transport.name)
+                .await
+            {
                 Ok(msg) => {
-                    match transport.process_server_message(&client_tx, msg).await {
+                    match transport
+                        .process_server_message(&client_tx, msg, &transport.name)
+                        .await
+                    {
                         Ok(_) => {}
                         Err(err) => {
-                            error!("err: <- {:?}", err);
+                            error!("{} err: <- {err:?}", transport.name);
                             break;
                         }
                     };
                 }
-                Err(Error::StreamClosed) => {
+                Err(err) => {
+                    if !matches!(err, Error::StreamClosed) {
+                        error!(
+                            "Exiting {} after unexpected error: {err:?}",
+                            &transport.name
+                        );
+                    }
+
                     // Close any outstanding requests.
                     for (id, tx) in transport.pending_requests.lock().await.drain() {
                         match tx.send(Err(Error::StreamClosed)).await {
@@ -262,15 +293,14 @@ impl Transport {
                     }
 
                     // Hack: inject a terminated notification so we trigger code that needs to happen after exit
-                    use lsp_types::notification::Notification as _;
                     let notification =
                         ServerMessage::Call(jsonrpc::Call::Notification(jsonrpc::Notification {
                             jsonrpc: None,
-                            method: lsp_types::notification::Exit::METHOD.to_string(),
+                            method: lsp::notification::Exit::METHOD.to_string(),
                             params: jsonrpc::Params::None,
                         }));
                     match transport
-                        .process_server_message(&client_tx, notification)
+                        .process_server_message(&client_tx, notification, &transport.name)
                         .await
                     {
                         Ok(_) => {}
@@ -280,21 +310,19 @@ impl Transport {
                     }
                     break;
                 }
-                Err(err) => {
-                    error!("err: <- {:?}", err);
-                    break;
-                }
             }
         }
     }
 
-    async fn err(_transport: Arc<Self>, mut server_stderr: BufReader<ChildStderr>) {
+    async fn err(transport: Arc<Self>, mut server_stderr: BufReader<ChildStderr>) {
         let mut recv_buffer = String::new();
         loop {
-            match Self::recv_server_error(&mut server_stderr, &mut recv_buffer).await {
+            match Self::recv_server_error(&mut server_stderr, &mut recv_buffer, &transport.name)
+                .await
+            {
                 Ok(_) => {}
                 Err(err) => {
-                    error!("err: <- {:?}", err);
+                    error!("{} err: <- {err:?}", transport.name);
                     break;
                 }
             }
@@ -304,7 +332,7 @@ impl Transport {
     async fn send(
         transport: Arc<Self>,
         mut server_stdin: BufWriter<ChildStdin>,
-        client_tx: UnboundedSender<(usize, jsonrpc::Call)>,
+        client_tx: UnboundedSender<(LanguageServerId, jsonrpc::Call)>,
         mut client_rx: UnboundedReceiver<Payload>,
         initialize_notify: Arc<Notify>,
     ) {
@@ -313,8 +341,8 @@ impl Transport {
 
         // Determine if a message is allowed to be sent early
         fn is_initialize(payload: &Payload) -> bool {
-            use lsp_types::{
-                notification::{Initialized, Notification},
+            use lsp::{
+                notification::Initialized,
                 request::{Initialize, Request},
             };
             match payload {
@@ -331,6 +359,11 @@ impl Transport {
             }
         }
 
+        fn is_shutdown(payload: &Payload) -> bool {
+            use lsp::request::{Request, Shutdown};
+            matches!(payload, Payload::Request { value: jsonrpc::MethodCall { method, .. }, .. } if method == Shutdown::METHOD)
+        }
+
         // TODO: events that use capabilities need to do the right thing
 
         loop {
@@ -340,18 +373,18 @@ impl Transport {
                     // server successfully initialized
                     is_pending = false;
 
-                    use lsp_types::notification::Notification;
                     // Hack: inject an initialized notification so we trigger code that needs to happen after init
                     let notification = ServerMessage::Call(jsonrpc::Call::Notification(jsonrpc::Notification {
                         jsonrpc: None,
 
-                        method: lsp_types::notification::Initialized::METHOD.to_string(),
+                        method: lsp::notification::Initialized::METHOD.to_string(),
                         params: jsonrpc::Params::None,
                     }));
-                    match transport.process_server_message(&client_tx, notification).await {
+                    let language_server_name = &transport.name;
+                    match transport.process_server_message(&client_tx, notification, language_server_name).await {
                         Ok(_) => {}
                         Err(err) => {
-                            error!("err: <- {:?}", err);
+                            error!("{language_server_name} err: <- {err:?}");
                         }
                     }
 
@@ -361,14 +394,17 @@ impl Transport {
                         match transport.send_payload_to_server(&mut server_stdin, msg).await {
                             Ok(_) => {}
                             Err(err) => {
-                                error!("err: <- {:?}", err);
+                                error!("{language_server_name} err: <- {err:?}");
                             }
                         }
                     }
                 }
                 msg = client_rx.recv() => {
                     if let Some(msg) = msg {
-                        if is_pending && !is_initialize(&msg) {
+                        if is_pending && is_shutdown(&msg) {
+                            log::info!("Language server not initialized, shutting down");
+                            break;
+                        } else if is_pending && !is_initialize(&msg) {
                             // ignore notifications
                             if let Payload::Notification(_) = msg {
                                 continue;
@@ -380,7 +416,7 @@ impl Transport {
                             match transport.send_payload_to_server(&mut server_stdin, msg).await {
                                 Ok(_) => {}
                                 Err(err) => {
-                                    error!("err: <- {:?}", err);
+                                    error!("{} err: <- {err:?}", transport.name);
                                 }
                             }
                         }

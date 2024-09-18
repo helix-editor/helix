@@ -1,6 +1,8 @@
 pub mod config;
 pub mod grammar;
 
+use helix_stdx::{env::current_working_dir, path};
+
 use etcetera::base_strategy::{choose_base_strategy, BaseStrategy};
 use std::path::{Path, PathBuf};
 
@@ -11,19 +13,18 @@ static RUNTIME_DIRS: once_cell::sync::Lazy<Vec<PathBuf>> =
 
 static CONFIG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
 
+static LOG_FILE: once_cell::sync::OnceCell<PathBuf> = once_cell::sync::OnceCell::new();
+
 pub fn initialize_config_file(specified_file: Option<PathBuf>) {
-    let config_file = specified_file.unwrap_or_else(|| {
-        let config_dir = config_dir();
-
-        if !config_dir.exists() {
-            std::fs::create_dir_all(&config_dir).ok();
-        }
-
-        config_dir.join("config.toml")
-    });
-
-    // We should only initialize this value once.
+    let config_file = specified_file.unwrap_or_else(default_config_file);
+    ensure_parent_dir(&config_file);
     CONFIG_FILE.set(config_file).ok();
+}
+
+pub fn initialize_log_file(specified_file: Option<PathBuf>) {
+    let log_file = specified_file.unwrap_or_else(default_log_file);
+    ensure_parent_dir(&log_file);
+    LOG_FILE.set(log_file).ok();
 }
 
 /// A list of runtime directories from highest to lowest priority
@@ -33,7 +34,8 @@ pub fn initialize_config_file(specified_file: Option<PathBuf>) {
 /// 1. sibling directory to `CARGO_MANIFEST_DIR` (if environment variable is set)
 /// 2. subdirectory of user config directory (always included)
 /// 3. `HELIX_RUNTIME` (if environment variable is set)
-/// 4. subdirectory of path to helix executable (always included)
+/// 4. `HELIX_DEFAULT_RUNTIME` (if environment variable is set *at build time*)
+/// 5. subdirectory of path to helix executable (always included)
 ///
 /// Postcondition: returns at least two paths (they might not exist).
 fn prioritize_runtime_dirs() -> Vec<PathBuf> {
@@ -42,7 +44,7 @@ fn prioritize_runtime_dirs() -> Vec<PathBuf> {
     let mut rt_dirs = Vec::new();
     if let Ok(dir) = std::env::var("CARGO_MANIFEST_DIR") {
         // this is the directory of the crate being run by cargo, we need the workspace path so we take the parent
-        let path = std::path::PathBuf::from(dir).parent().unwrap().join(RT_DIR);
+        let path = PathBuf::from(dir).parent().unwrap().join(RT_DIR);
         log::debug!("runtime dir: {}", path.to_string_lossy());
         rt_dirs.push(path);
     }
@@ -51,6 +53,15 @@ fn prioritize_runtime_dirs() -> Vec<PathBuf> {
     rt_dirs.push(conf_rt_dir);
 
     if let Ok(dir) = std::env::var("HELIX_RUNTIME") {
+        let dir = path::expand_tilde(Path::new(&dir));
+        rt_dirs.push(path::normalize(dir));
+    }
+
+    // If this variable is set during build time, it will always be included
+    // in the lookup list. This allows downstream packagers to set a fallback
+    // directory to a location that is conventional on their distro so that they
+    // need not resort to a wrapper script or a global environment variable.
+    if let Some(dir) = std::option_env!("HELIX_DEFAULT_RUNTIME") {
         rt_dirs.push(dir.into());
     }
 
@@ -113,52 +124,32 @@ pub fn config_dir() -> PathBuf {
     path
 }
 
-pub fn local_config_dirs() -> Vec<PathBuf> {
-    let directories = find_local_config_dirs()
-        .into_iter()
-        .map(|path| path.join(".helix"))
-        .collect();
-    log::debug!("Located configuration folders: {:?}", directories);
-    directories
-}
-
 pub fn cache_dir() -> PathBuf {
     // TODO: allow env var override
-    let strategy = choose_base_strategy().expect("Unable to find the config directory!");
+    let strategy = choose_base_strategy().expect("Unable to find the cache directory!");
     let mut path = strategy.cache_dir();
     path.push("helix");
     path
 }
 
 pub fn config_file() -> PathBuf {
-    CONFIG_FILE
-        .get()
-        .map(|path| path.to_path_buf())
-        .unwrap_or_else(|| config_dir().join("config.toml"))
+    CONFIG_FILE.get().map(|path| path.to_path_buf()).unwrap()
+}
+
+pub fn log_file() -> PathBuf {
+    LOG_FILE.get().map(|path| path.to_path_buf()).unwrap()
+}
+
+pub fn workspace_config_file() -> PathBuf {
+    find_workspace().0.join(".helix").join("config.toml")
 }
 
 pub fn lang_config_file() -> PathBuf {
     config_dir().join("languages.toml")
 }
 
-pub fn log_file() -> PathBuf {
+pub fn default_log_file() -> PathBuf {
     cache_dir().join("helix.log")
-}
-
-pub fn find_local_config_dirs() -> Vec<PathBuf> {
-    let current_dir = std::env::current_dir().expect("unable to determine current directory");
-    let mut directories = Vec::new();
-
-    for ancestor in current_dir.ancestors() {
-        if ancestor.join(".git").exists() {
-            directories.push(ancestor.to_path_buf());
-            // Don't go higher than repo if we're in one
-            break;
-        } else if ancestor.join(".helix").is_dir() {
-            directories.push(ancestor.to_path_buf());
-        }
-    }
-    directories
 }
 
 /// Merge two TOML documents, merging values from `right` onto `left`
@@ -227,6 +218,39 @@ pub fn merge_toml_values(left: toml::Value, right: toml::Value, merge_depth: usi
         }
         // Catch everything else we didn't handle, and use the right value
         (_, value) => value,
+    }
+}
+
+/// Finds the current workspace folder.
+/// Used as a ceiling dir for LSP root resolution, the filepicker and potentially as a future filewatching root
+///
+/// This function starts searching the FS upward from the CWD
+/// and returns the first directory that contains either `.git`, `.svn` or `.helix`.
+/// If no workspace was found returns (CWD, true).
+/// Otherwise (workspace, false) is returned
+pub fn find_workspace() -> (PathBuf, bool) {
+    let current_dir = current_working_dir();
+    for ancestor in current_dir.ancestors() {
+        if ancestor.join(".git").exists()
+            || ancestor.join(".svn").exists()
+            || ancestor.join(".helix").exists()
+        {
+            return (ancestor.to_owned(), false);
+        }
+    }
+
+    (current_dir, true)
+}
+
+fn default_config_file() -> PathBuf {
+    config_dir().join("config.toml")
+}
+
+fn ensure_parent_dir(path: &Path) {
+    if let Some(parent) = path.parent() {
+        if !parent.exists() {
+            std::fs::create_dir_all(parent).ok();
+        }
     }
 }
 
