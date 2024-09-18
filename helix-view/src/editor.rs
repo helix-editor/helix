@@ -442,7 +442,7 @@ impl Default for LspConfig {
         Self {
             enable: true,
             display_progress_messages: false,
-            display_messages: false,
+            display_messages: true,
             auto_signature_help: true,
             display_signature_help_docs: true,
             display_inlay_hints: false,
