@@ -4,6 +4,22 @@ Helix currently supports one-way key remapping through a simple TOML configurati
 file. (More powerful solutions such as rebinding via commands will be
 available in the future).
 
+There are three kinds of commands that can be used in keymaps:
+
+* Static commands: commands like `move_char_right` which are usually bound to
+  keys and used for movement and editing. A list of static commands is
+  available in the [Keymap](./keymap.html) documentation and in the source code
+  in [`helix-term/src/commands.rs`](https://github.com/helix-editor/helix/blob/master/helix-term/src/commands.rs)
+  at the invocation of `static_commands!` macro and the `TypableCommandList`.
+* Typable commands: commands that can be executed from command mode (`:`), for
+  example `:write!`. See the [Commands](./commands.html) documentation for a
+  list of available typeable commands.
+* Macros: sequences of keys that are executed in order. These keybindings
+  start with `@` and then list any number of keys to be executed. For example
+  `@miw` can be used to select the surrounding word. For now, macro keybindings
+  are not allowed in keybinding sequences due to limitations in the way that
+  command sequences are executed.
+
 To remap keys, create a `config.toml` file in your `helix` configuration
 directory (default `~/.config/helix` on Linux systems) with a structure like
 this:
@@ -74,21 +90,3 @@ Ctrl, Shift and Alt modifiers are encoded respectively with the prefixes
 | Escape       | `"esc"`        |
 
 Keys can be disabled by binding them to the `no_op` command.
-
-## Commands
-
-There are three kinds of commands that can be used in keymaps:
-
-* Static commands: commands like `move_char_right` which are usually bound to
-  keys and used for movement and editing. A list of static commands is
-  available in the [Keymap](./keymap.html) documentation and in the source code
-  in [`helix-term/src/commands.rs`](https://github.com/helix-editor/helix/blob/master/helix-term/src/commands.rs)
-  at the invocation of `static_commands!` macro and the `TypableCommandList`.
-* Typable commands: commands that can be executed from command mode (`:`), for
-  example `:write!`. See the [Commands](./commands.html) documentation for a
-  list of available typeable commands.
-* Macros: sequences of keys that are executed in order. These keybindings
-  start with `@` and then list any number of keys to be executed. For example
-  `@miw` can be used to select the surrounding word. For now, macro keybindings
-  are not allowed in keybinding sequences due to limitations in the way that
-  command sequences are executed.
