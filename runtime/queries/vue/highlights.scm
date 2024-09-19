@@ -6,25 +6,13 @@
 
 (attribute
   (attribute_name) @attribute
-  (quoted_attribute_value
-    (attribute_value) @string)?
-)
-
- (attribute
-  (attribute_name) @attribute
-)
-
- (attribute
-   (attribute_name) @attribute
-   "=" @attribute_name
-   (#eq? @attribute_name "=")
-) @attribute
-
- (directive_attribute
-  (directive_name) @keyword
-  "=" @attribute_name
-  (#eq? @attribute_name "=")
- ) @attribute.empty
+  [(attribute_value) (quoted_attribute_value)]? @string)
+ 
+(directive_attribute
+  (directive_name) @attribute
+  (directive_argument)? @attribute
+  (directive_modifiers)? @attribute
+  [(attribute_value) (quoted_attribute_value)]? @string) 
 
 (comment) @comment
 
@@ -36,4 +24,5 @@
   "}}"
   "/>" 
 ] @punctuation.bracket
+"=" @punctuation.delimiter
 
