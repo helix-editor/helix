@@ -2141,22 +2141,16 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
         )];
         let cwd = helix_stdx::env::current_working_dir();
 
-        let picker = ui::Picker::new(
-            columns,
-            0,
-            [PathBuf::from("")],
-            cwd,
-            move |cx, path: &PathBuf, action| {
-                if let Err(e) = cx.editor.open(path, action) {
-                    let err = if let Some(err) = e.source() {
-                        format!("{}", err)
-                    } else {
-                        format!("unable to open \"{}\"", path.display())
-                    };
-                    cx.editor.set_error(err);
-                }
-            },
-        )
+        let picker = ui::Picker::new(columns, 0, [], cwd, move |cx, path: &PathBuf, action| {
+            if let Err(e) = cx.editor.open(path, action) {
+                let err = if let Some(err) = e.source() {
+                    format!("{}", err)
+                } else {
+                    format!("unable to open \"{}\"", path.display())
+                };
+                cx.editor.set_error(err);
+            }
+        })
         .with_preview(|_editor, path| Some((PathOrId::Path(path.clone().into()), None)));
 
         let injector = picker.injector();
