@@ -119,9 +119,10 @@
   declarator: [(identifier) (field_identifier)] @function)
 (parameter_declaration
   declarator: (identifier) @variable.parameter)
-(parameter_declaration
-  (pointer_declarator
-    declarator: (identifier) @variable.parameter))
+(pointer_declarator
+  declarator: (identifier) @variable.parameter)
+(array_declarator
+  declarator: (identifier) @variable.parameter)
 (preproc_function_def
   name: (identifier) @function.special)
 

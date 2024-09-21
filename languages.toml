@@ -3788,3 +3788,15 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "thrift"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-thrift" , rev = "68fd0d80943a828d9e6f49c58a74be1e9ca142cf" }
+
+[[language]]
+name = "ispc"
+scope = "source.ispc"
+injection-regex = "ispc"
+file-types = ["ispc"]
+comment-token = "//"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "ispc"
+source = { git = "https://github.com/fab4100/tree-sitter-ispc", rev = "9b2f9aec2106b94b4e099fe75e73ebd8ae707c04" }
