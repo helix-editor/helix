@@ -296,30 +296,36 @@ impl Application {
         .context("build signal handler")?;
 
         let jobs = Jobs::new();
-        let file_trim = config.load().editor.persistence.old_files_trim;
-        jobs.add(
-            Job::new(async move {
-                persistence::trim_file_history(file_trim);
-                Ok(())
-            })
-            .wait_before_exiting(),
-        );
-        let commands_trim = config.load().editor.persistence.commands_trim;
-        jobs.add(
-            Job::new(async move {
-                persistence::trim_command_history(commands_trim);
-                Ok(())
-            })
-            .wait_before_exiting(),
-        );
-        let search_trim = config.load().editor.persistence.search_trim;
-        jobs.add(
-            Job::new(async move {
-                persistence::trim_search_history(search_trim);
-                Ok(())
-            })
-            .wait_before_exiting(),
-        );
+        if config.load().editor.persistence.old_files {
+            let file_trim = config.load().editor.persistence.old_files_trim;
+            jobs.add(
+                Job::new(async move {
+                    persistence::trim_file_history(file_trim);
+                    Ok(())
+                })
+                .wait_before_exiting(),
+            );
+        }
+        if config.load().editor.persistence.commands {
+            let commands_trim = config.load().editor.persistence.commands_trim;
+            jobs.add(
+                Job::new(async move {
+                    persistence::trim_command_history(commands_trim);
+                    Ok(())
+                })
+                .wait_before_exiting(),
+            );
+        }
+        if config.load().editor.persistence.search {
+            let search_trim = config.load().editor.persistence.search_trim;
+            jobs.add(
+                Job::new(async move {
+                    persistence::trim_search_history(search_trim);
+                    Ok(())
+                })
+                .wait_before_exiting(),
+            );
+        }
 
         let app = Self {
             compositor,
