@@ -12,11 +12,9 @@ pub fn write_history<T: Serialize>(filepath: PathBuf, entries: &Vec<T>) {
         .create(true)
         .truncate(true)
         .open(filepath)
-        // TODO: do something about this unwrap
         .unwrap();
 
     for entry in entries {
-        // TODO: do something about this unwrap
         serialize_into(&file, &entry).unwrap();
     }
 }
@@ -26,19 +24,23 @@ pub fn push_history<T: Serialize>(filepath: PathBuf, entry: &T) {
         .append(true)
         .create(true)
         .open(filepath)
-        // TODO: do something about this unwrap
         .unwrap();
 
-    // TODO: do something about this unwrap
     serialize_into(file, entry).unwrap();
 }
 
-pub fn read_history<T: for<'a> Deserialize<'a>>(filepath: PathBuf) -> Vec<T> {
+pub fn read_history<T: for<'a> Deserialize<'a>>(filepath: &PathBuf) -> Vec<T> {
     match File::open(filepath) {
         Ok(file) => {
             let mut read = BufReader::new(file);
             let mut entries = Vec::new();
-            // TODO: more sophisticated error handling
+            // FIXME: Can we do better error handling here? It's unfortunate that bincode doesn't
+            // distinguish an empty reader from an actual error.
+            //
+            // Perhaps we could use the underlying bufreader to check for emptiness in the while
+            // condition, then we could know any errors from bincode should be surfaced or logged.
+            // BufRead has a method `has_data_left` that would work for this, but at the time of
+            // writing it is nightly-only and experimental :(
             while let Ok(entry) = deserialize_from(&mut read) {
                 entries.push(entry);
             }
@@ -46,8 +48,13 @@ pub fn read_history<T: for<'a> Deserialize<'a>>(filepath: PathBuf) -> Vec<T> {
         }
         Err(e) => match e.kind() {
             io::ErrorKind::NotFound => Vec::new(),
-            // TODO: do something about this panic
-            _ => panic!(),
+            // Going through the potential errors listed from the docs:
+            // - `InvalidInput` can't happen since we aren't setting options
+            // - `AlreadyExists` can't happen since we aren't setting `create_new`
+            // - `PermissionDenied` could happen if someone really borked their file permissions
+            //   in `~/.local`, but helix already panics in that case, and I think a panic is
+            //   acceptable.
+            _ => unreachable!(),
         },
     }
 }
@@ -56,8 +63,7 @@ pub fn trim_history<T: Clone + Serialize + for<'a> Deserialize<'a>>(
     filepath: PathBuf,
     limit: usize,
 ) {
-    // TODO: can we remove this clone?
-    let history: Vec<T> = read_history(filepath.clone());
+    let history: Vec<T> = read_history(&filepath);
     if history.len() > limit {
         let trim_start = history.len() - limit;
         let trimmed_history = history[trim_start..].to_vec();

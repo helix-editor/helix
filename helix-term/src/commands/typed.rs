@@ -133,10 +133,8 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
             if let Some(pos) = pos {
                 let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
                 doc.set_selection(view.id, pos);
+                align_view(doc, view, Align::Center);
             }
-            // does not affect opening a buffer without pos
-            // TODO: ensure removing this will not cause problems
-            // align_view(doc, view, Align::Center);
         }
     }
     Ok(())

@@ -53,11 +53,7 @@ async fn test_persistence() -> anyhow::Result<()> {
             .with_config(config_with_persistence())
             .with_file(file.path(), None)
             .build()?,
-        // TODO: remove the h with a bugfix?
-        Some("oa<esc>h:wq<ret>"),
-        // Some(&|app| {
-        //     assert!(!app.editor.is_err(), "error: {:?}", app.editor.get_status());
-        // }),
+        Some("oa<esc>:wq<ret>"),
         None,
         true,
     )
@@ -69,10 +65,10 @@ async fn test_persistence() -> anyhow::Result<()> {
     // Session 2:
     // open same file,
     // add newline, then b,
-    // copy the line
+    // copy the line ("b\n")
     // search for "a"
     // go back down to b
-    // use last command
+    // use last command (write-quit)
     test_key_sequence(
         &mut helpers::AppBuilder::new()
             .with_config(config_with_persistence())
@@ -91,10 +87,10 @@ async fn test_persistence() -> anyhow::Result<()> {
     // Session 3:
     // open same file,
     // paste
-    // use last search
+    // use last search ("/a")
     // append a
     // search for "1", "2", and "3" in sequence.
-    // use last command
+    // use last command (write-quit)
     test_key_sequence(
         &mut helpers::AppBuilder::new()
             .with_config(config_with_persistence())
@@ -112,7 +108,7 @@ async fn test_persistence() -> anyhow::Result<()> {
 
     // Session 4:
     // open same file
-    // use last command
+    // use last command (write-quit)
     test_key_sequence(
         &mut helpers::AppBuilder::new()
             .with_config(config_with_persistence())

@@ -31,7 +31,7 @@ pub fn push_file_history(entry: &FileHistoryEntry) {
 }
 
 pub fn read_file_history() -> Vec<FileHistoryEntry> {
-    read_history(file_histfile())
+    read_history(&file_histfile())
 }
 
 pub fn trim_file_history(limit: usize) {
@@ -49,7 +49,7 @@ pub fn push_reg_history(register: char, line: &String) {
 }
 
 fn read_reg_history(filepath: PathBuf) -> Vec<String> {
-    read_history(filepath)
+    read_history(&filepath)
 }
 
 pub fn read_command_history() -> Vec<String> {
@@ -77,5 +77,5 @@ pub fn write_clipboard_file(values: &Vec<String>) {
 }
 
 pub fn read_clipboard_file() -> Vec<String> {
-    read_history(clipboard_file())
+    read_history(&clipboard_file())
 }
