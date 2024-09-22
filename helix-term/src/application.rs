@@ -143,7 +143,8 @@ impl Application {
         let mut compositor = Compositor::new(area);
         let config = Arc::new(ArcSwap::from_pointee(config));
         let handlers = handlers::setup(config.clone());
-        let old_file_locs = if config.load().editor.persistence.old_files {
+        let persistence_config = config.load().editor.persistence.clone();
+        let old_file_locs = if persistence_config.old_files {
             HashMap::from_iter(
                 persistence::read_file_history()
                     .into_iter()
@@ -164,21 +165,21 @@ impl Application {
         );
 
         // TODO: do most of this in the background?
-        if config.load().editor.persistence.commands {
+        if persistence_config.commands {
             editor
                 .registers
                 .write(':', persistence::read_command_history())
                 // TODO: do something about this unwrap
                 .unwrap();
         }
-        if config.load().editor.persistence.search {
+        if persistence_config.search {
             editor
                 .registers
                 .write('/', persistence::read_search_history())
                 // TODO: do something about this unwrap
                 .unwrap();
         }
-        if config.load().editor.persistence.clipboard {
+        if persistence_config.clipboard {
             editor
                 .registers
                 .write('"', persistence::read_clipboard_file())
@@ -296,8 +297,8 @@ impl Application {
         .context("build signal handler")?;
 
         let jobs = Jobs::new();
-        if config.load().editor.persistence.old_files {
-            let file_trim = config.load().editor.persistence.old_files_trim;
+        if persistence_config.old_files {
+            let file_trim = persistence_config.old_files_trim;
             jobs.add(
                 Job::new(async move {
                     persistence::trim_file_history(file_trim);
@@ -306,8 +307,8 @@ impl Application {
                 .wait_before_exiting(),
             );
         }
-        if config.load().editor.persistence.commands {
-            let commands_trim = config.load().editor.persistence.commands_trim;
+        if persistence_config.commands {
+            let commands_trim = persistence_config.commands_trim;
             jobs.add(
                 Job::new(async move {
                     persistence::trim_command_history(commands_trim);
@@ -316,8 +317,8 @@ impl Application {
                 .wait_before_exiting(),
             );
         }
-        if config.load().editor.persistence.search {
-            let search_trim = config.load().editor.persistence.search_trim;
+        if persistence_config.search {
+            let search_trim = persistence_config.search_trim;
             jobs.add(
                 Job::new(async move {
                     persistence::trim_search_history(search_trim);
