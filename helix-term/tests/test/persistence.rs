@@ -60,7 +60,7 @@ async fn test_persistence() -> anyhow::Result<()> {
     .await?;
 
     // Sanity check contents of file after first session
-    helpers::assert_file_has_content(&mut file, "\na\n")?;
+    helpers::assert_file_has_content(&mut file, &LineFeedHandling::Native.apply("\na\n"))?;
 
     // Session 2:
     // open same file,
@@ -82,7 +82,7 @@ async fn test_persistence() -> anyhow::Result<()> {
 
     // This verifies both that the file position was persisted (since the b is inserted after the
     // a), and the command history (":<up>" resolves to the ":wq" from session 1)
-    helpers::assert_file_has_content(&mut file, "\na\nb\n")?;
+    helpers::assert_file_has_content(&mut file, &LineFeedHandling::Native.apply("\na\nb\n"))?;
 
     // Session 3:
     // open same file,
@@ -104,7 +104,7 @@ async fn test_persistence() -> anyhow::Result<()> {
 
     // This verifies search history was persisted ("/<up>" resolves to "/a" from session 2), and
     // the clipboard was persisted (paste pastes the "b\n" copied in session 2)
-    helpers::assert_file_has_content(&mut file, "\naa\nb\nb\n")?;
+    helpers::assert_file_has_content(&mut file, &LineFeedHandling::Native.apply("\naa\nb\nb\n"))?;
 
     // Session 4:
     // open same file
