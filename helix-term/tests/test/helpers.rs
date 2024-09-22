@@ -11,7 +11,7 @@ use helix_core::{diagnostic::Severity, test, Selection, Transaction};
 use helix_loader;
 use helix_term::{application::Application, args::Args, config::Config, keymap::merge_keys};
 use helix_view::{current_ref, doc, editor::LspConfig, input::parse_macro, Editor};
-use tempfile::{NamedTempFile, TempPath};
+use tempfile::NamedTempFile;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 /// Specify how to set up the input text with line feeds
@@ -230,26 +230,6 @@ pub fn test_syntax_loader(overrides: Option<String>) -> helix_core::syntax::Load
     helix_core::syntax::Loader::new(lang.try_into().unwrap()).unwrap()
 }
 
-fn init_persistence_files() -> anyhow::Result<(TempPath, TempPath, TempPath, TempPath)> {
-    let command_file = NamedTempFile::new()?;
-    let command_path = command_file.into_temp_path();
-    helix_loader::initialize_command_histfile(Some(command_path.to_path_buf()));
-
-    let search_file = NamedTempFile::new()?;
-    let search_path = search_file.into_temp_path();
-    helix_loader::initialize_search_histfile(Some(search_path.to_path_buf()));
-
-    let file_file = NamedTempFile::new()?;
-    let file_path = file_file.into_temp_path();
-    helix_loader::initialize_file_histfile(Some(file_path.to_path_buf()));
-
-    let clipboard_file = NamedTempFile::new()?;
-    let clipboard_path = clipboard_file.into_temp_path();
-    helix_loader::initialize_clipboard_file(Some(clipboard_path.to_path_buf()));
-
-    Ok((command_path, search_path, file_path, clipboard_path))
-}
-
 /// Use this for very simple test cases where there is one input
 /// document, selection, and sequence of key presses, and you just
 /// want to verify the resulting document and selection.
@@ -257,7 +237,6 @@ pub async fn test_with_config<T: Into<TestCase>>(
     app_builder: AppBuilder,
     test_case: T,
 ) -> anyhow::Result<()> {
-    let (_, _, _, _) = init_persistence_files()?;
     let test_case = test_case.into();
     let app = app_builder.build()?;
 
