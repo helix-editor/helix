@@ -171,6 +171,12 @@ pub fn show_signature_help(
 ) {
     let config = &editor.config();
 
+    if invoked == SignatureHelpInvoked::Manual 
+        && SignatureHelp::visible_popup(compositor).is_some() {
+        compositor.remove(SignatureHelp::ID);
+        return;
+    }
+
     if !(config.lsp.auto_signature_help
         || SignatureHelp::visible_popup(compositor).is_some()
         || invoked == SignatureHelpInvoked::Manual)
