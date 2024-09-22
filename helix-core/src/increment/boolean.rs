@@ -5,11 +5,11 @@ pub fn increment(selected_text: &str, _amount: i64) -> Option<String> {
         "true" => Some(String::from("false")),
         "false" => Some(String::from("true")),
 
-        // Python, Haskell, Ruby
+        // Python, Haskell
         "True" => Some(String::from("False")),
         "False" => Some(String::from("True")),
 
-        // R, SQL
+        // R, COBOL
         "TRUE" => Some(String::from("FALSE")),
         "FALSE" => Some(String::from("TRUE")),
 
