@@ -52,7 +52,18 @@ impl Loader {
     }
 
     /// Loads a theme searching directories in priority order.
-    pub fn load(&self, name: &str) -> Result<(Theme, Vec<String>)> {
+    pub fn load(&self, name: &str) -> Result<Theme> {
+        let (theme, warnings) = self.load_with_warnings(name)?;
+
+        for warning in warnings {
+            warn!("Theme '{}': {}", name, warning);
+        }
+
+        Ok(theme)
+    }
+
+    /// Loads a theme searching directories in priority order, returning any warnings
+    pub fn load_with_warnings(&self, name: &str) -> Result<(Theme, Vec<String>)> {
         if name == "default" {
             return Ok((self.default(), Vec::new()));
         }
@@ -90,10 +101,7 @@ impl Loader {
 
         let theme_toml = if let Some(parent_theme_name) = inherits {
             let parent_theme_name = parent_theme_name.as_str().ok_or_else(|| {
-                anyhow!(
-                    "Theme: expected 'inherits' to be a string: {}",
-                    parent_theme_name
-                )
+                anyhow!("Expected 'inherits' to be a string: {}", parent_theme_name)
             })?;
 
             let parent_theme_toml = match parent_theme_name {
@@ -184,9 +192,9 @@ impl Loader {
             })
             .ok_or_else(|| {
                 if cycle_found {
-                    anyhow!("Theme: cycle found in inheriting: {}", name)
+                    anyhow!("Cycle found in inheriting: {}", name)
                 } else {
-                    anyhow!("Theme: file not found for: {}", name)
+                    anyhow!("File not found for: {}", name)
                 }
             })
     }
@@ -237,9 +245,9 @@ impl<'de> Deserialize<'de> for Theme {
         D: Deserializer<'de>,
     {
         let values = Map::<String, Value>::deserialize(deserializer)?;
-        let (theme, load_errors) = Theme::from_keys(values);
-        for error in load_errors {
-            warn!("{}", error);
+        let (theme, warnings) = Theme::from_keys(values);
+        for warning in warnings {
+            warn!("{}", warning);
         }
         Ok(theme)
     }
@@ -252,14 +260,14 @@ fn build_theme_values(
     let mut scopes = Vec::new();
     let mut highlights = Vec::new();
 
-    let mut load_errors = Vec::new();
+    let mut warnings = Vec::new();
 
     // TODO: alert user of parsing failures in editor
     let palette = values
         .remove("palette")
         .map(|value| {
             ThemePalette::try_from(value).unwrap_or_else(|err| {
-                load_errors.push(err);
+                warnings.push(err);
                 ThemePalette::default()
             })
         })
@@ -272,7 +280,7 @@ fn build_theme_values(
     for (name, style_value) in values {
         let mut style = Style::default();
         if let Err(err) = palette.parse_style(&mut style, style_value) {
-            load_errors.push(err);
+            warnings.push(err);
         }
 
         // these are used both as UI and as highlights
@@ -281,7 +289,7 @@ fn build_theme_values(
         highlights.push(style);
     }
 
-    (styles, scopes, highlights, load_errors)
+    (styles, scopes, highlights, warnings)
 }
 
 impl Theme {
@@ -422,7 +430,7 @@ impl ThemePalette {
         if let Ok(index) = s.parse::<u8>() {
             return Ok(Color::Indexed(index));
         }
-        Err(format!("Theme: malformed ANSI: {}", s))
+        Err(format!("Malformed ANSI: {}", s))
     }
 
     fn hex_string_to_rgb(s: &str) -> Result<Color, String> {
@@ -436,13 +444,13 @@ impl ThemePalette {
             }
         }
 
-        Err(format!("Theme: malformed hexcode: {}", s))
+        Err(format!("Malformed hexcode: {}", s))
     }
 
     fn parse_value_as_str(value: &Value) -> Result<&str, String> {
         value
             .as_str()
-            .ok_or(format!("Theme: unrecognized value: {}", value))
+            .ok_or(format!("Unrecognized value: {}", value))
     }
 
     pub fn parse_color(&self, value: Value) -> Result<Color, String> {
@@ -459,14 +467,14 @@ impl ThemePalette {
         value
             .as_str()
             .and_then(|s| s.parse().ok())
-            .ok_or(format!("Theme: invalid modifier: {}", value))
+            .ok_or(format!("Invalid modifier: {}", value))
     }
 
     pub fn parse_underline_style(value: &Value) -> Result<UnderlineStyle, String> {
         value
             .as_str()
             .and_then(|s| s.parse().ok())
-            .ok_or(format!("Theme: invalid underline style: {}", value))
+            .ok_or(format!("Invalid underline style: {}", value))
     }
 
     pub fn parse_style(&self, style: &mut Style, value: Value) -> Result<(), String> {
@@ -476,9 +484,7 @@ impl ThemePalette {
                     "fg" => *style = style.fg(self.parse_color(value)?),
                     "bg" => *style = style.bg(self.parse_color(value)?),
                     "underline" => {
-                        let table = value
-                            .as_table_mut()
-                            .ok_or("Theme: underline must be table")?;
+                        let table = value.as_table_mut().ok_or("Underline must be table")?;
                         if let Some(value) = table.remove("color") {
                             *style = style.underline_color(self.parse_color(value)?);
                         }
@@ -487,13 +493,11 @@ impl ThemePalette {
                         }
 
                         if let Some(attr) = table.keys().next() {
-                            return Err(format!("Theme: invalid underline attribute: {attr}"));
+                            return Err(format!("Invalid underline attribute: {attr}"));
                         }
                     }
                     "modifiers" => {
-                        let modifiers = value
-                            .as_array()
-                            .ok_or("Theme: modifiers should be an array")?;
+                        let modifiers = value.as_array().ok_or("Modifiers should be an array")?;
 
                         for modifier in modifiers {
                             if modifier
@@ -506,7 +510,7 @@ impl ThemePalette {
                             }
                         }
                     }
-                    _ => return Err(format!("Theme: invalid style attribute: {}", name)),
+                    _ => return Err(format!("Invalid style attribute: {}", name)),
                 }
             }
         } else {

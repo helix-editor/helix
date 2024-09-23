@@ -879,12 +879,9 @@ fn theme(
                 // Ensures that a preview theme gets cleaned up if the user backspaces until the prompt is empty.
                 cx.editor.unset_theme_preview();
             } else if let Some(theme_name) = args.first() {
-                if let Ok((theme, load_errors)) = cx.editor.theme_loader.load(theme_name) {
+                if let Ok(theme) = cx.editor.theme_loader.load(theme_name) {
                     if !(true_color || theme.is_16_color()) {
                         bail!("Unsupported theme: theme requires true color support");
-                    }
-                    for error in load_errors {
-                        log::warn!("{}", error);
                     }
                     cx.editor.set_theme_preview(theme);
                 };
@@ -896,12 +893,6 @@ fn theme(
                     .editor
                     .theme_loader
                     .load(theme_name)
-                    .map(|(theme, load_errors)| {
-                        for error in load_errors {
-                            log::warn!("{}", error);
-                        }
-                        theme
-                    })
                     .map_err(|err| anyhow::anyhow!("Could not load theme: {}", err))?;
                 if !(true_color || theme.is_16_color()) {
                     bail!("Unsupported theme: theme requires true color support");

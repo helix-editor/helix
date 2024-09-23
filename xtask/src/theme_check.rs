@@ -12,13 +12,13 @@ pub fn theme_check() -> Result<(), DynError> {
     let mut errors_present = false;
 
     for name in theme_names {
-        let (_, load_errors) = loader.load(&name).unwrap();
+        let (_, warnings) = loader.load_with_warnings(&name).unwrap();
 
-        if !load_errors.is_empty() {
+        if !warnings.is_empty() {
             errors_present = true;
             println!("Theme '{name}' loaded with errors:");
-            for error in load_errors {
-                println!("\t* {}", error);
+            for warning in warnings {
+                println!("\t* {}", warning);
             }
         }
     }
