@@ -72,7 +72,7 @@ impl Loader {
         }
 
         let mut visited_paths = HashSet::new();
-        let (theme, load_errors) = self
+        let (theme, warnings) = self
             .load_theme(name, &mut visited_paths)
             .map(Theme::from_toml)?;
 
@@ -80,7 +80,7 @@ impl Loader {
             name: name.into(),
             ..theme
         };
-        Ok((theme, load_errors))
+        Ok((theme, warnings))
     }
 
     /// Recursively load a theme, merging with any inherited parent themes.
@@ -231,9 +231,9 @@ pub struct Theme {
 
 impl From<Value> for Theme {
     fn from(value: Value) -> Self {
-        let (theme, load_errors) = Theme::from_toml(value);
-        for error in load_errors {
-            warn!("{}", error);
+        let (theme, warnings) = Theme::from_toml(value);
+        for warning in warnings {
+            warn!("{}", warning);
         }
         theme
     }
