@@ -3,7 +3,6 @@ pub mod steel_implementations {
 
     use std::borrow::Cow;
 
-    use smallvec::SmallVec;
     use steel::{
         rvals::{as_underlying_type, Custom, SteelString},
         steel_vm::{builtin::BuiltInModule, register_fn::RegisterFn},
@@ -19,17 +18,28 @@ pub mod steel_implementations {
     impl steel::rvals::Custom for AutoPairConfig {}
     impl steel::rvals::Custom for SoftWrap {}
 
+    pub struct RopeyError(ropey::Error);
+
+    impl steel::rvals::Custom for RopeyError {}
+
+    impl From<ropey::Error> for RopeyError {
+        fn from(value: ropey::Error) -> Self {
+            Self(value)
+        }
+    }
+
     #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-    enum SliceKind {
-        Normal(usize, usize),
-        Byte(usize, usize),
-        Line(usize),
+    enum RangeKind {
+        Char,
+        Byte,
     }
 
     #[derive(Clone, PartialEq, Eq)]
     pub struct SteelRopeSlice {
         text: crate::Rope,
-        ranges: SmallVec<[SliceKind; 5]>,
+        start: usize,
+        end: usize,
+        kind: RangeKind,
     }
 
     impl Custom for SteelRopeSlice {
@@ -56,48 +66,121 @@ pub mod steel_implementations {
         pub fn from_string(string: SteelString) -> Self {
             Self {
                 text: crate::Rope::from_str(string.as_str()),
-                ranges: SmallVec::default(),
+                start: 0,
+                end: string.len(),
+                kind: RangeKind::Char,
             }
         }
 
         pub fn new(rope: crate::Rope) -> Self {
+            let end = rope.len_chars();
             Self {
                 text: rope,
-                ranges: SmallVec::default(),
+                start: 0,
+                end,
+                kind: RangeKind::Char,
             }
         }
 
         fn to_slice(&self) -> crate::RopeSlice<'_> {
-            let mut slice = self.text.slice(..);
+            match self.kind {
+                RangeKind::Char => self.text.slice(self.start..self.end),
+                RangeKind::Byte => self.text.byte_slice(self.start..self.end),
+            }
+        }
 
-            for range in &self.ranges {
-                match range {
-                    SliceKind::Normal(l, r) => slice = slice.slice(l..r),
-                    SliceKind::Byte(l, r) => slice = slice.byte_slice(l..r),
-                    SliceKind::Line(index) => slice = slice.line(*index),
+        pub fn line(mut self, cursor: usize) -> Result<Self, RopeyError> {
+            match self.kind {
+                RangeKind::Char => {
+                    let slice = self.text.get_slice(self.start..self.end).ok_or_else(|| {
+                        RopeyError(ropey::Error::CharIndexOutOfBounds(self.start, self.end))
+                    })?;
+
+                    // Move the start range, to wherever this lines up
+                    let index = slice.try_line_to_char(cursor)?;
+
+                    self.start += index;
+
+                    Ok(self)
+                }
+                RangeKind::Byte => {
+                    let slice =
+                        self.text
+                            .get_byte_slice(self.start..self.end)
+                            .ok_or_else(|| {
+                                RopeyError(ropey::Error::ByteIndexOutOfBounds(self.start, self.end))
+                            })?;
+
+                    // Move the start range, to wherever this lines up
+                    let index = slice.try_line_to_byte(cursor)?;
+
+                    self.start += index;
+
+                    Ok(self)
                 }
             }
-
-            slice
         }
 
-        pub fn slice(mut self, lower: usize, upper: usize) -> Self {
-            self.ranges.push(SliceKind::Normal(lower, upper));
-            self
+        pub fn slice(mut self, lower: usize, upper: usize) -> Result<Self, RopeyError> {
+            match self.kind {
+                RangeKind::Char => {
+                    self.end = self.start + upper;
+                    self.start += lower;
+
+                    // Just check that this is legal
+                    self.text.get_slice(self.start..self.end).ok_or_else(|| {
+                        RopeyError(ropey::Error::CharIndexOutOfBounds(self.start, self.end))
+                    })?;
+
+                    Ok(self)
+                }
+                RangeKind::Byte => {
+                    self.start = self.text.try_byte_to_char(self.start)? + lower;
+                    self.end = self.start + (upper - lower);
+
+                    self.text
+                        .get_byte_slice(self.start..self.end)
+                        .ok_or_else(|| {
+                            RopeyError(ropey::Error::ByteIndexOutOfBounds(self.start, self.end))
+                        })?;
+
+                    self.kind = RangeKind::Char;
+                    Ok(self)
+                }
+            }
         }
 
-        pub fn char_to_byte(&self, pos: usize) -> usize {
-            self.to_slice().char_to_byte(pos)
+        pub fn byte_slice(mut self, lower: usize, upper: usize) -> Result<Self, RopeyError> {
+            match self.kind {
+                RangeKind::Char => {
+                    self.start = self.text.try_char_to_byte(self.start)? + lower;
+                    self.end = self.start + (upper - lower);
+                    self.kind = RangeKind::Byte;
+
+                    // Just check that this is legal
+                    self.text.get_slice(self.start..self.end).ok_or_else(|| {
+                        RopeyError(ropey::Error::CharIndexOutOfBounds(self.start, self.end))
+                    })?;
+
+                    Ok(self)
+                }
+                RangeKind::Byte => {
+                    self.start += lower;
+                    self.end = self.start + (upper - lower);
+
+                    self.text
+                        .get_byte_slice(self.start..self.end)
+                        .ok_or_else(|| {
+                            RopeyError(ropey::Error::ByteIndexOutOfBounds(self.start, self.end))
+                        })?;
+
+                    Ok(self)
+                }
+            }
         }
 
-        pub fn byte_slice(mut self, lower: usize, upper: usize) -> Self {
-            self.ranges.push(SliceKind::Byte(lower, upper));
-            self
-        }
-
-        pub fn line(mut self, cursor: usize) -> Self {
-            self.ranges.push(SliceKind::Line(cursor));
-            self
+        pub fn char_to_byte(&self, pos: usize) -> Result<usize, RopeyError> {
+            Ok(self.to_slice().try_char_to_byte(pos)?)
         }
 
         pub fn to_string(&self) -> String {
@@ -117,9 +200,19 @@ pub mod steel_implementations {
         }
 
         pub fn trim_start(mut self) -> Self {
-            for (idx, c) in self.to_slice().chars().enumerate() {
+            let slice = self.to_slice();
+
+            for (idx, c) in slice.chars().enumerate() {
                 if !c.is_whitespace() {
-                    self.ranges.push(SliceKind::Normal(0, idx));
+                    match self.kind {
+                        RangeKind::Char => {
+                            self.start += idx;
+                        }
+                        RangeKind::Byte => {
+                            self.start += slice.char_to_byte(idx);
+                        }
+                    }
+
                     break;
                 }
             }
