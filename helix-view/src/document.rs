@@ -104,6 +104,16 @@ impl Serialize for Mode {
         serializer.collect_str(self)
     }
 }
+
+impl From<Mode> for Movement {
+    fn from(mode: Mode) -> Self {
+        match mode {
+            Mode::Select => Movement::Extend,
+            _ => Movement::Move,
+        }
+    }
+}
+
 /// A snapshot of the text of a document that we want to write out to disk
 #[derive(Debug, Clone)]
 pub struct DocumentSavedEvent {

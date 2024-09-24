@@ -803,15 +803,7 @@ fn goto_line_end_impl(view: &mut View, doc: &mut Document, movement: Movement) {
 
 fn goto_line_end(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    goto_line_end_impl(
-        view,
-        doc,
-        if cx.editor.mode == Mode::Select {
-            Movement::Extend
-        } else {
-            Movement::Move
-        },
-    )
+    goto_line_end_impl(view, doc, cx.editor.mode.into())
 }
 
 fn extend_to_line_end(cx: &mut Context) {
@@ -833,15 +825,7 @@ fn goto_line_end_newline_impl(view: &mut View, doc: &mut Document, movement: Mov
 
 fn goto_line_end_newline(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    goto_line_end_newline_impl(
-        view,
-        doc,
-        if cx.editor.mode == Mode::Select {
-            Movement::Extend
-        } else {
-            Movement::Move
-        },
-    )
+    goto_line_end_newline_impl(view, doc, cx.editor.mode.into())
 }
 
 fn extend_to_line_end_newline(cx: &mut Context) {
@@ -864,15 +848,7 @@ fn goto_line_start_impl(view: &mut View, doc: &mut Document, movement: Movement)
 
 fn goto_line_start(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-    goto_line_start_impl(
-        view,
-        doc,
-        if cx.editor.mode == Mode::Select {
-            Movement::Extend
-        } else {
-            Movement::Move
-        },
-    )
+    goto_line_start_impl(view, doc, cx.editor.mode.into())
 }
 
 fn goto_next_buffer(cx: &mut Context) {
@@ -962,16 +938,7 @@ fn kill_to_line_end(cx: &mut Context) {
 
 fn goto_first_nonwhitespace(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
-
-    goto_first_nonwhitespace_impl(
-        view,
-        doc,
-        if cx.editor.mode == Mode::Select {
-            Movement::Extend
-        } else {
-            Movement::Move
-        },
-    )
+    goto_first_nonwhitespace_impl(view, doc, cx.editor.mode.into())
 }
 
 fn extend_to_first_nonwhitespace(cx: &mut Context) {
@@ -1242,14 +1209,7 @@ fn goto_next_paragraph(cx: &mut Context) {
 }
 
 fn goto_file_start(cx: &mut Context) {
-    goto_file_start_impl(
-        cx,
-        if cx.editor.mode == Mode::Select {
-            Movement::Extend
-        } else {
-            Movement::Move
-        },
-    );
+    goto_file_start_impl(cx, cx.editor.mode.into());
 }
 
 fn extend_to_file_start(cx: &mut Context) {
@@ -1272,14 +1232,7 @@ fn goto_file_start_impl(cx: &mut Context, movement: Movement) {
 }
 
 fn goto_file_end(cx: &mut Context) {
-    goto_file_end_impl(
-        cx,
-        if cx.editor.mode == Mode::Select {
-            Movement::Extend
-        } else {
-            Movement::Move
-        },
-    );
+    goto_file_end_impl(cx, cx.editor.mode.into());
 }
 
 fn extend_to_file_end(cx: &mut Context) {
@@ -3627,14 +3580,7 @@ fn push_jump(view: &mut View, doc: &Document) {
 }
 
 fn goto_line(cx: &mut Context) {
-    goto_line_impl(
-        cx,
-        if cx.editor.mode == Mode::Select {
-            Movement::Extend
-        } else {
-            Movement::Move
-        },
-    );
+    goto_line_impl(cx, cx.editor.mode.into());
 }
 
 fn goto_line_impl(cx: &mut Context, movement: Movement) {
