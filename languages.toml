@@ -16,6 +16,7 @@ bicep-langserver = { command = "bicep-langserver" }
 bitbake-language-server = { command = "bitbake-language-server" }
 bufls = { command = "bufls", args = ["serve"] }
 cairo-language-server = { command = "cairo-language-server", args = [] }
+circom-lsp = { command = "circom-lsp" }
 cl-lsp = { command = "cl-lsp", args = [ "stdio" ] }
 clangd = { command = "clangd" }
 clojure-lsp = { command = "clojure-lsp" }
@@ -3788,3 +3789,19 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "thrift"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-thrift" , rev = "68fd0d80943a828d9e6f49c58a74be1e9ca142cf" }
+
+[[language]]
+name             = "circom"
+scope            = "source.circom"
+injection-regex  = "circom"
+file-types       = ["circom"]
+roots            = ["package.json"]
+comment-tokens   = "//"
+indent           = { tab-width = 4, unit = "    " }
+auto-format      = false
+language-servers = ["circom-lsp"]
+
+[[grammar]]
+name   = "circom"
+source = { git = "https://github.com/Decurity/tree-sitter-circom", rev = "02150524228b1e6afef96949f2d6b7cc0aaf999e" }
+
