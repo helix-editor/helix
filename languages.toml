@@ -2147,6 +2147,7 @@ roots = []
 comment-token = "//"
 indent = { tab-width = 4, unit = "    " }
 language-servers = [ "slint-lsp" ]
+formatter = { command = "slint-lsp", args = [ "format", "/dev/stdin" ] }
 
 [[grammar]]
 name = "slint"
