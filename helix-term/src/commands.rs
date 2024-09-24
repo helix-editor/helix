@@ -427,6 +427,8 @@ impl MappableCommand {
         goto_implementation, "Goto implementation",
         goto_file_start, "Goto line number <n> else file start",
         goto_file_end, "Goto file end",
+        extend_to_file_start, "Extend to line number<n> else file start",
+        extend_to_file_end, "Extend to file end",
         goto_file, "Goto files/URLs in selections",
         goto_file_hsplit, "Goto files in selections (hsplit)",
         goto_file_vsplit, "Goto files in selections (vsplit)",
@@ -1254,28 +1256,44 @@ fn goto_next_paragraph(cx: &mut Context) {
 }
 
 fn goto_file_start(cx: &mut Context) {
+    goto_file_start_impl(cx, Movement::Move);
+}
+
+fn extend_to_file_start(cx: &mut Context) {
+    goto_file_start_impl(cx, Movement::Extend);
+}
+
+fn goto_file_start_impl(cx: &mut Context, movement: Movement) {
     if cx.count.is_some() {
-        goto_line(cx);
+        goto_line_impl(cx, movement);
     } else {
         let (view, doc) = current!(cx.editor);
         let text = doc.text().slice(..);
         let selection = doc
             .selection(view.id)
             .clone()
-            .transform(|range| range.put_cursor(text, 0, cx.editor.mode == Mode::Select));
+            .transform(|range| range.put_cursor(text, 0, movement == Movement::Extend));
         push_jump(view, doc);
         doc.set_selection(view.id, selection);
     }
 }
 
 fn goto_file_end(cx: &mut Context) {
+    goto_file_end_impl(cx, Movement::Move);
+}
+
+fn extend_to_file_end(cx: &mut Context) {
+    goto_file_end_impl(cx, Movement::Extend)
+}
+
+fn goto_file_end_impl(cx: &mut Context, movement: Movement) {
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
     let pos = doc.text().len_chars();
     let selection = doc
         .selection(view.id)
         .clone()
-        .transform(|range| range.put_cursor(text, pos, cx.editor.mode == Mode::Select));
+        .transform(|range| range.put_cursor(text, pos, movement == Movement::Extend));
     push_jump(view, doc);
     doc.set_selection(view.id, selection);
 }
@@ -3747,15 +3765,23 @@ fn push_jump(view: &mut View, doc: &Document) {
 }
 
 fn goto_line(cx: &mut Context) {
+    goto_line_impl(cx, Movement::Move);
+}
+
+fn goto_line_impl(cx: &mut Context, movement: Movement) {
     if cx.count.is_some() {
         let (view, doc) = current!(cx.editor);
         push_jump(view, doc);
 
-        goto_line_without_jumplist(cx.editor, cx.count);
+        goto_line_without_jumplist(cx.editor, cx.count, movement);
     }
 }
 
-fn goto_line_without_jumplist(editor: &mut Editor, count: Option<NonZeroUsize>) {
+fn goto_line_without_jumplist(
+    editor: &mut Editor,
+    count: Option<NonZeroUsize>,
+    movement: Movement,
+) {
     if let Some(count) = count {
         let (view, doc) = current!(editor);
         let text = doc.text().slice(..);
@@ -3770,7 +3796,7 @@ fn goto_line_without_jumplist(editor: &mut Editor, count: Option<NonZeroUsize>) 
         let selection = doc
             .selection(view.id)
             .clone()
-            .transform(|range| range.put_cursor(text, pos, editor.mode == Mode::Select));
+            .transform(|range| range.put_cursor(text, pos, movement == Movement::Extend));
 
         doc.set_selection(view.id, selection);
     }
