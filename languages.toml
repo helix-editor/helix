@@ -1829,7 +1829,7 @@ auto-format = true
 
 [[grammar]]
 name = "hcl"
-source = { git = "https://github.com/MichaHoffmann/tree-sitter-hcl", rev = "3cb7fc28247efbcb2973b97e71c78838ad98a583" }
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-hcl", rev = "9e3ec9848f28d26845ba300fd73c740459b83e9b" }
 
 [[language]]
 name = "tfvars"
@@ -2133,7 +2133,7 @@ language-servers = [ "ols" ]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 4, unit = "\t" }
-formatter = { command = "odinfmt", args = [ "-stdin", "true" ] }
+formatter = { command = "odinfmt", args = [ "-stdin" ] }
 
 [language.debugger]
 name = "lldb-dap"
@@ -2400,7 +2400,7 @@ language-servers = [ "slint-lsp" ]
 
 [[grammar]]
 name = "slint"
-source = { git = "https://github.com/slint-ui/tree-sitter-slint", rev = "4a0558cc0fcd7a6110815b9bbd7cc12d7ab31e74" }
+source = { git = "https://github.com/slint-ui/tree-sitter-slint", rev = "34ccfd58d3baee7636f62d9326f32092264e8407" }
 
 [[language]]
 name = "task"
