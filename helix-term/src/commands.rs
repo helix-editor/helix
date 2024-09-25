@@ -422,10 +422,14 @@ impl MappableCommand {
         goto_last_change, "Goto last change",
         goto_line_start, "Goto line start",
         goto_line_end, "Goto line end",
-        goto_next_buffer, "Goto next buffer",
-        goto_previous_buffer, "Goto previous buffer",
         goto_line_end_newline, "Goto newline at line end",
         goto_first_nonwhitespace, "Goto first non-blank in line",
+        goto_next_buffer, "Goto next buffer",
+        goto_previous_buffer, "Goto previous buffer",
+        move_buffer_left, "Move focused buffer to the left",
+        move_buffer_right, "Move focused buffer to the right",
+        move_buffer_start, "Move focused buffer to the start of the buffer list",
+        move_buffer_end, "Move focused buffer to the end of the buffer list",
         trim_selections, "Trim whitespace from selections",
         extend_to_line_start, "Extend to line start",
         extend_to_first_nonwhitespace, "Extend to first non-blank in line",
@@ -886,6 +890,30 @@ fn goto_buffer(editor: &mut Editor, direction: Direction, count: usize) {
     let id = *id;
 
     editor.switch(id, Action::Replace);
+}
+
+fn move_buffer_left(cx: &mut Context) {
+    let count = cx.count();
+    // Equivalent to `(i - count).rem_euclid(len)` but avoids overflow issues.
+    move_buffer(cx.editor, |i, len| (i + len - count % len) % len)
+}
+fn move_buffer_right(cx: &mut Context) {
+    let count = cx.count();
+    move_buffer(cx.editor, |i, len| (i + count) % len)
+}
+fn move_buffer_start(cx: &mut Context) {
+    move_buffer(cx.editor, |_, _| 0)
+}
+fn move_buffer_end(cx: &mut Context) {
+    move_buffer(cx.editor, |_, len| len - 1)
+}
+
+#[inline]
+fn move_buffer(editor: &mut Editor, index_transform: impl FnOnce(usize, usize) -> usize) {
+    let current = view!(editor).doc;
+    let index = editor.documents.get_index_of(&current).unwrap();
+    let new_index = index_transform(index, editor.documents.len());
+    editor.documents.move_index(index, new_index);
 }
 
 fn extend_to_line_start(cx: &mut Context) {
