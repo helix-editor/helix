@@ -1829,7 +1829,7 @@ auto-format = true
 
 [[grammar]]
 name = "hcl"
-source = { git = "https://github.com/MichaHoffmann/tree-sitter-hcl", rev = "3cb7fc28247efbcb2973b97e71c78838ad98a583" }
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-hcl", rev = "9e3ec9848f28d26845ba300fd73c740459b83e9b" }
 
 [[language]]
 name = "tfvars"
