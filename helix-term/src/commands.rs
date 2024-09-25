@@ -868,33 +868,24 @@ fn goto_previous_buffer(cx: &mut Context) {
 }
 
 fn goto_buffer(editor: &mut Editor, direction: Direction, count: usize) {
-    let current = view!(editor).doc;
+    let index = editor.focused_document_index();
+    let len = editor.documents.len();
 
-    let id = match direction {
-        Direction::Forward => {
-            let iter = editor.documents.keys();
-            // skip 'count' times past current buffer
-            iter.cycle().skip_while(|id| *id != &current).nth(count)
-        }
-        Direction::Backward => {
-            let iter = editor.documents.keys();
-            // skip 'count' times past current buffer
-            iter.rev()
-                .cycle()
-                .skip_while(|id| *id != &current)
-                .nth(count)
-        }
-    }
-    .unwrap();
+    let index = match direction {
+        Direction::Forward => (index + count) % len,
+        // Equivalent to `(i - count).rem_euclid(len)` but avoids overflow.
+        Direction::Backward => (index + len - count % len) % len,
+    };
 
-    let id = *id;
+    let id = *editor.documents.get_index(index).unwrap().0;
 
+    // This could've probably been faster with an `editor.switch_by_index()` but
+    // the document indices are not integrated enough to implement that easily.
     editor.switch(id, Action::Replace);
 }
 
 fn move_buffer_left(cx: &mut Context) {
     let count = cx.count();
-    // Equivalent to `(i - count).rem_euclid(len)` but avoids overflow issues.
     move_buffer(cx.editor, |i, len| (i + len - count % len) % len)
 }
 fn move_buffer_right(cx: &mut Context) {
@@ -910,8 +901,7 @@ fn move_buffer_end(cx: &mut Context) {
 
 #[inline]
 fn move_buffer(editor: &mut Editor, index_transform: impl FnOnce(usize, usize) -> usize) {
-    let current = view!(editor).doc;
-    let index = editor.documents.get_index_of(&current).unwrap();
+    let index = editor.focused_document_index();
     let new_index = index_transform(index, editor.documents.len());
     editor.documents.move_index(index, new_index);
 }

@@ -1939,6 +1939,13 @@ impl Editor {
         self.documents.values_mut()
     }
 
+    #[inline]
+    pub fn focused_document_index(&self) -> usize {
+        self.documents
+            .get_index_of(&view!(self).doc)
+            .expect("focused document should always be present")
+    }
+
     pub fn document_by_path<P: AsRef<Path>>(&self, path: P) -> Option<&Document> {
         self.documents()
             .find(|doc| doc.path().map(|p| p == path.as_ref()).unwrap_or(false))
