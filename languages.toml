@@ -2133,7 +2133,7 @@ language-servers = [ "ols" ]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 4, unit = "\t" }
-formatter = { command = "odinfmt", args = [ "-stdin", "true" ] }
+formatter = { command = "odinfmt", args = [ "-stdin" ] }
 
 [language.debugger]
 name = "lldb-dap"
