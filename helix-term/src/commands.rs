@@ -398,6 +398,7 @@ impl MappableCommand {
         insert_tab, "Insert tab char",
         insert_newline, "Insert newline char",
         insert_char_interactive, "Insert an interactively-chosen char",
+        append_char_interactive, "Append an interactively-chosen char",
         delete_char_backward, "Delete previous char",
         delete_char_forward, "Delete next char",
         delete_word_backward, "Delete previous word",
@@ -3820,7 +3821,20 @@ pub mod insert {
         doc.apply(&transaction, view.id);
     }
 
+    pub fn append_char_interactive(cx: &mut Context) {
+        // Save the current mode, so we can restore it later.
+        let mode = cx.editor.mode;
+        append_mode(cx);
+        insert_selection_interactive(cx, mode);
+    }
+
     pub fn insert_char_interactive(cx: &mut Context) {
+        let mode = cx.editor.mode;
+        insert_mode(cx);
+        insert_selection_interactive(cx, mode);
+    }
+
+    fn insert_selection_interactive(cx: &mut Context, old_mode: Mode) {
         let count = cx.count();
 
         // need to wait for next key
@@ -3845,6 +3859,8 @@ pub mod insert {
                 key!(Tab) => insert_tab_impl(cx, count),
                 _ => (),
             };
+            // Restore the old mode.
+            cx.editor.mode = old_mode;
         });
     }
 
