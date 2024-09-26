@@ -1052,9 +1052,11 @@ mod test {
 
     #[test]
     fn vertical_visual_anchored_move_from_newline_stays_on_newline() {
-        let mut text_fmt = TextFormat::default();
-        text_fmt.soft_wrap = true;
-        text_fmt.viewport_width = 6;
+        let text_fmt = TextFormat {
+            soft_wrap: true,
+            viewport_width: 6,
+            ..Default::default()
+        };
 
         let text = Rope::from("a\naaaaaabb\naaaaaab\n\naa\n");
         let slice = text.slice(..);
@@ -1107,9 +1109,11 @@ mod test {
 
     #[test]
     fn vertical_visual_anchored_move_from_non_newline_avoids_newline() {
-        let mut text_fmt = TextFormat::default();
-        text_fmt.soft_wrap = true;
-        text_fmt.viewport_width = 6;
+        let text_fmt = TextFormat {
+            soft_wrap: true,
+            viewport_width: 6,
+            ..Default::default()
+        };
 
         let text = Rope::from("aaaaaabb\naaa\n\naaaaaa\n  aaaabb\na");
         let slice = text.slice(..);
