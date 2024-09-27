@@ -17,6 +17,7 @@ mod text_decorations;
 use crate::compositor::Compositor;
 use crate::filter_picker_entry;
 use crate::job::{self, Callback};
+use crate::ui::completers::CompletionResult;
 pub use completion::Completion;
 pub use editor::EditorView;
 use helix_stdx::rope;
@@ -50,7 +51,7 @@ pub fn prompt(
     cx: &mut crate::commands::Context,
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
-    completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
+    completion_fn: impl FnMut(&Editor, &str) -> CompletionResult + 'static,
     callback_fn: impl FnMut(&mut crate::compositor::Context, &str, PromptEvent) + 'static,
 ) {
     let mut prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn);
@@ -59,24 +60,11 @@ pub fn prompt(
     cx.push_layer(Box::new(prompt));
 }
 
-pub fn prompt_with_input(
-    cx: &mut crate::commands::Context,
-    prompt: std::borrow::Cow<'static, str>,
-    input: String,
-    history_register: Option<char>,
-    completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
-    callback_fn: impl FnMut(&mut crate::compositor::Context, &str, PromptEvent) + 'static,
-) {
-    let prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn)
-        .with_line(input, cx.editor);
-    cx.push_layer(Box::new(prompt));
-}
-
 pub fn regex_prompt(
     cx: &mut crate::commands::Context,
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
-    completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
+    completion_fn: impl FnMut(&Editor, &str) -> CompletionResult + 'static,
     fun: impl Fn(&mut crate::compositor::Context, rope::Regex, PromptEvent) + 'static,
 ) {
     raw_regex_prompt(
@@ -91,7 +79,7 @@ pub fn raw_regex_prompt(
     cx: &mut crate::commands::Context,
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
-    completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
+    completion_fn: impl FnMut(&Editor, &str) -> CompletionResult + 'static,
     fun: impl Fn(&mut crate::compositor::Context, rope::Regex, &str, PromptEvent) + 'static,
 ) {
     let (view, doc) = current!(cx.editor);
@@ -382,13 +370,40 @@ pub mod completers {
     use std::collections::BTreeSet;
     use tui::text::Span;
 
-    pub type Completer = fn(&Editor, &str) -> Vec<Completion>;
-
-    pub fn none(_editor: &Editor, _input: &str) -> Vec<Completion> {
-        Vec::new()
+    pub enum CompletionResult {
+        Immediate(Vec<Completion>),
+        Callback(Box<dyn FnOnce() -> Vec<Completion> + Send + Sync>),
     }
 
-    pub fn buffer(editor: &Editor, input: &str) -> Vec<Completion> {
+    fn callback(f: impl FnOnce() -> Vec<Completion> + Send + Sync + 'static) -> CompletionResult {
+        CompletionResult::Callback(Box::new(f))
+    }
+
+    impl CompletionResult {
+        pub fn map(
+            self,
+            f: impl FnOnce(Vec<Completion>) -> Vec<Completion> + Send + Sync + 'static,
+        ) -> CompletionResult {
+            match self {
+                CompletionResult::Immediate(v) => CompletionResult::Immediate(f(v)),
+                CompletionResult::Callback(v) => callback(move || f(v())),
+            }
+        }
+    }
+
+    impl FromIterator<Completion> for CompletionResult {
+        fn from_iter<T: IntoIterator<Item = Completion>>(items: T) -> Self {
+            Self::Immediate(items.into_iter().collect())
+        }
+    }
+
+    pub type Completer = fn(&Editor, &str) -> CompletionResult;
+
+    pub fn none(_editor: &Editor, _input: &str) -> CompletionResult {
+        CompletionResult::Immediate(Vec::new())
+    }
+
+    pub fn buffer(editor: &Editor, input: &str) -> CompletionResult {
         let names = editor.documents.values().map(|doc| {
             doc.relative_path()
                 .map(|p| p.display().to_string().into())
@@ -401,20 +416,23 @@ pub mod completers {
             .collect()
     }
 
-    pub fn theme(_editor: &Editor, input: &str) -> Vec<Completion> {
-        let mut names = theme::Loader::read_names(&helix_loader::config_dir().join("themes"));
-        for rt_dir in helix_loader::runtime_dirs() {
-            names.extend(theme::Loader::read_names(&rt_dir.join("themes")));
-        }
-        names.push("default".into());
-        names.push("base16_default".into());
-        names.sort();
-        names.dedup();
+    pub fn theme(_editor: &Editor, input: &str) -> CompletionResult {
+        let input = String::from(input);
+        callback(move || {
+            let mut names = theme::Loader::read_names(&helix_loader::config_dir().join("themes"));
+            for rt_dir in helix_loader::runtime_dirs() {
+                names.extend(theme::Loader::read_names(&rt_dir.join("themes")));
+            }
+            names.push("default".into());
+            names.push("base16_default".into());
+            names.sort();
+            names.dedup();
 
-        fuzzy_match(input, names, false)
-            .into_iter()
-            .map(|(name, _)| ((0..), name.into()))
-            .collect()
+            fuzzy_match(&input, names, false)
+                .into_iter()
+                .map(|(name, _)| ((0..), name.into()))
+                .collect()
+        })
     }
 
     /// Recursive function to get all keys from this value and add them to vec
@@ -434,7 +452,7 @@ pub mod completers {
     }
 
     /// Completes names of language servers which are running for the current document.
-    pub fn active_language_servers(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn active_language_servers(editor: &Editor, input: &str) -> CompletionResult {
         let language_servers = doc!(editor).language_servers().map(|ls| ls.name());
 
         fuzzy_match(input, language_servers, false)
@@ -445,7 +463,7 @@ pub mod completers {
 
     /// Completes names of language servers which are configured for the language of the current
     /// document.
-    pub fn configured_language_servers(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn configured_language_servers(editor: &Editor, input: &str) -> CompletionResult {
         let language_servers = doc!(editor)
             .language_config()
             .into_iter()
@@ -458,7 +476,7 @@ pub mod completers {
             .collect()
     }
 
-    pub fn setting(_editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn setting(_editor: &Editor, input: &str) -> CompletionResult {
         static KEYS: Lazy<Vec<String>> = Lazy::new(|| {
             let mut keys = Vec::new();
             let json = serde_json::json!(Config::default());
@@ -472,7 +490,7 @@ pub mod completers {
             .collect()
     }
 
-    pub fn filename(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn filename(editor: &Editor, input: &str) -> CompletionResult {
         filename_with_git_ignore(editor, input, true)
     }
 
@@ -480,7 +498,7 @@ pub mod completers {
         editor: &Editor,
         input: &str,
         git_ignore: bool,
-    ) -> Vec<Completion> {
+    ) -> CompletionResult {
         filename_impl(editor, input, git_ignore, |entry| {
             let is_dir = entry.file_type().is_some_and(|entry| entry.is_dir());
 
@@ -492,7 +510,7 @@ pub mod completers {
         })
     }
 
-    pub fn language(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn language(editor: &Editor, input: &str) -> CompletionResult {
         let text: String = "text".into();
 
         let loader = editor.syn_loader.load();
@@ -507,7 +525,7 @@ pub mod completers {
             .collect()
     }
 
-    pub fn lsp_workspace_command(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn lsp_workspace_command(editor: &Editor, input: &str) -> CompletionResult {
         let commands = doc!(editor)
             .language_servers_with_feature(LanguageServerFeature::WorkspaceCommand)
             .flat_map(|ls| {
@@ -523,7 +541,7 @@ pub mod completers {
             .collect()
     }
 
-    pub fn directory(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn directory(editor: &Editor, input: &str) -> CompletionResult {
         directory_with_git_ignore(editor, input, true)
     }
 
@@ -531,7 +549,7 @@ pub mod completers {
         editor: &Editor,
         input: &str,
         git_ignore: bool,
-    ) -> Vec<Completion> {
+    ) -> CompletionResult {
         filename_impl(editor, input, git_ignore, |entry| {
             let is_dir = entry.file_type().is_some_and(|entry| entry.is_dir());
 
@@ -560,113 +578,117 @@ pub mod completers {
         input: &str,
         git_ignore: bool,
         filter_fn: F,
-    ) -> Vec<Completion>
+    ) -> CompletionResult
     where
-        F: Fn(&ignore::DirEntry) -> FileMatch,
+        F: Fn(&ignore::DirEntry) -> FileMatch + Send + Sync + 'static,
     {
         // Rust's filename handling is really annoying.
 
         use ignore::WalkBuilder;
         use std::path::Path;
 
-        let is_tilde = input == "~";
-        let path = helix_stdx::path::expand_tilde(Path::new(input));
+        let input = String::from(input);
+        let directory_color = editor.theme.get("ui.text.directory");
 
-        let (dir, file_name) = if input.ends_with(std::path::MAIN_SEPARATOR) {
-            (path, None)
-        } else {
-            let is_period = (input.ends_with((format!("{}.", std::path::MAIN_SEPARATOR)).as_str())
-                && input.len() > 2)
-                || input == ".";
-            let file_name = if is_period {
-                Some(String::from("."))
+        callback(move || {
+            let is_tilde = input == "~";
+            let path = helix_stdx::path::expand_tilde(Path::new(&input));
+
+            let (dir, file_name) = if input.ends_with(std::path::MAIN_SEPARATOR) {
+                (path, None)
             } else {
-                path.file_name()
-                    .and_then(|file| file.to_str().map(|path| path.to_owned()))
+                let is_period = (input
+                    .ends_with((format!("{}.", std::path::MAIN_SEPARATOR)).as_str())
+                    && input.len() > 2)
+                    || input == ".";
+                let file_name = if is_period {
+                    Some(String::from("."))
+                } else {
+                    path.file_name()
+                        .and_then(|file| file.to_str().map(|path| path.to_owned()))
+                };
+
+                let path = if is_period {
+                    path
+                } else {
+                    match path.parent() {
+                        Some(path) if !path.as_os_str().is_empty() => Cow::Borrowed(path),
+                        // Path::new("h")'s parent is Some("")...
+                        _ => Cow::Owned(helix_stdx::env::current_working_dir()),
+                    }
+                };
+
+                (path, file_name)
             };
 
-            let path = if is_period {
-                path
-            } else {
-                match path.parent() {
-                    Some(path) if !path.as_os_str().is_empty() => Cow::Borrowed(path),
-                    // Path::new("h")'s parent is Some("")...
-                    _ => Cow::Owned(helix_stdx::env::current_working_dir()),
+            let end = input.len()..;
+
+            let files = WalkBuilder::new(&dir)
+                .hidden(false)
+                .follow_links(false) // We're scanning over depth 1
+                .git_ignore(git_ignore)
+                .max_depth(Some(1))
+                .build()
+                .filter_map(|file| {
+                    file.ok().and_then(|entry| {
+                        let fmatch = filter_fn(&entry);
+
+                        if fmatch == FileMatch::Reject {
+                            return None;
+                        }
+
+                        let is_dir = entry.file_type().is_some_and(|entry| entry.is_dir());
+
+                        let path = entry.path();
+                        let mut path = if is_tilde {
+                            // if it's a single tilde an absolute path is displayed so that when `TAB` is pressed on
+                            // one of the directories the tilde will be replaced with a valid path not with a relative
+                            // home directory name.
+                            // ~ -> <TAB> -> /home/user
+                            // ~/ -> <TAB> -> ~/first_entry
+                            path.to_path_buf()
+                        } else {
+                            path.strip_prefix(&dir).unwrap_or(path).to_path_buf()
+                        };
+
+                        if fmatch == FileMatch::AcceptIncomplete {
+                            path.push("");
+                        }
+
+                        let path = path.into_os_string().into_string().ok()?;
+                        Some(Utf8PathBuf { path, is_dir })
+                    })
+                }) // TODO: unwrap or skip
+                .filter(|path| !path.path.is_empty());
+
+            let style_from_file = |file: Utf8PathBuf| {
+                if file.is_dir {
+                    Span::styled(file.path, directory_color)
+                } else {
+                    Span::raw(file.path)
                 }
             };
 
-            (path, file_name)
-        };
+            // if empty, return a list of dirs and files in current dir
+            if let Some(file_name) = file_name {
+                let range = (input.len().saturating_sub(file_name.len()))..;
+                fuzzy_match(&file_name, files, true)
+                    .into_iter()
+                    .map(|(name, _)| (range.clone(), style_from_file(name)))
+                    .collect()
 
-        let end = input.len()..;
-
-        let files = WalkBuilder::new(&dir)
-            .hidden(false)
-            .follow_links(false) // We're scanning over depth 1
-            .git_ignore(git_ignore)
-            .max_depth(Some(1))
-            .build()
-            .filter_map(|file| {
-                file.ok().and_then(|entry| {
-                    let fmatch = filter_fn(&entry);
-
-                    if fmatch == FileMatch::Reject {
-                        return None;
-                    }
-
-                    let is_dir = entry.file_type().is_some_and(|entry| entry.is_dir());
-
-                    let path = entry.path();
-                    let mut path = if is_tilde {
-                        // if it's a single tilde an absolute path is displayed so that when `TAB` is pressed on
-                        // one of the directories the tilde will be replaced with a valid path not with a relative
-                        // home directory name.
-                        // ~ -> <TAB> -> /home/user
-                        // ~/ -> <TAB> -> ~/first_entry
-                        path.to_path_buf()
-                    } else {
-                        path.strip_prefix(&dir).unwrap_or(path).to_path_buf()
-                    };
-
-                    if fmatch == FileMatch::AcceptIncomplete {
-                        path.push("");
-                    }
-
-                    let path = path.into_os_string().into_string().ok()?;
-                    Some(Utf8PathBuf { path, is_dir })
-                })
-            }) // TODO: unwrap or skip
-            .filter(|path| !path.path.is_empty());
-
-        let directory_color = editor.theme.get("ui.text.directory");
-
-        let style_from_file = |file: Utf8PathBuf| {
-            if file.is_dir {
-                Span::styled(file.path, directory_color)
+                // TODO: complete to longest common match
             } else {
-                Span::raw(file.path)
+                let mut files: Vec<_> = files
+                    .map(|file| (end.clone(), style_from_file(file)))
+                    .collect();
+                files.sort_unstable_by(|(_, path1), (_, path2)| path1.content.cmp(&path2.content));
+                files
             }
-        };
-
-        // if empty, return a list of dirs and files in current dir
-        if let Some(file_name) = file_name {
-            let range = (input.len().saturating_sub(file_name.len()))..;
-            fuzzy_match(&file_name, files, true)
-                .into_iter()
-                .map(|(name, _)| (range.clone(), style_from_file(name)))
-                .collect()
-
-            // TODO: complete to longest common match
-        } else {
-            let mut files: Vec<_> = files
-                .map(|file| (end.clone(), style_from_file(file)))
-                .collect();
-            files.sort_unstable_by(|(_, path1), (_, path2)| path1.content.cmp(&path2.content));
-            files
-        }
+        })
     }
 
-    pub fn register(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn register(editor: &Editor, input: &str) -> CompletionResult {
         let iter = editor
             .registers
             .iter_preview()
@@ -680,7 +702,7 @@ pub mod completers {
             .collect()
     }
 
-    pub fn program(_editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn program(_editor: &Editor, input: &str) -> CompletionResult {
         static PROGRAMS_IN_PATH: Lazy<BTreeSet<String>> = Lazy::new(|| {
             // Go through the entire PATH and read all files into a set.
             let Some(path) = std::env::var_os("PATH") else {
@@ -708,7 +730,7 @@ pub mod completers {
     }
 
     /// This expects input to be a raw string of arguments, because this is what Signature's raw_after does.
-    pub fn repeating_filenames(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn repeating_filenames(editor: &Editor, input: &str) -> CompletionResult {
         let token = match Tokenizer::new(input, false).last() {
             Some(token) => token.unwrap(),
             None => return filename(editor, input),
@@ -716,26 +738,28 @@ pub mod completers {
 
         let offset = token.content_start;
 
-        let mut completions = filename(editor, &input[offset..]);
-        for completion in completions.iter_mut() {
-            completion.0.start += offset;
-        }
-        completions
+        filename(editor, &input[offset..]).map(move |mut completions| {
+            for completion in completions.iter_mut() {
+                completion.0.start += offset;
+            }
+            completions
+        })
     }
 
-    pub fn shell(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn shell(editor: &Editor, input: &str) -> CompletionResult {
         let (command, args, complete_command) = command_line::split(input);
 
         if complete_command {
             return program(editor, command);
         }
 
-        let mut completions = repeating_filenames(editor, args);
-        for completion in completions.iter_mut() {
-            // + 1 for separator between `command` and `args`
-            completion.0.start += command.len() + 1;
-        }
-
-        completions
+        let len = command.len();
+        repeating_filenames(editor, args).map(move |mut completions| {
+            for completion in completions.iter_mut() {
+                // + 1 for separator between `command` and `args`
+                completion.0.start += len + 1;
+            }
+            completions
+        })
     }
 }

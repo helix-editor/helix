@@ -15,7 +15,7 @@ use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
 use helix_view::expansion;
 use serde_json::Value;
-use ui::completers::{self, Completer};
+use ui::completers::{self, Completer, CompletionResult};
 
 #[derive(Clone)]
 pub struct TypableCommand {
@@ -3711,7 +3711,7 @@ fn command_line_doc(input: &str) -> Option<Cow<str>> {
     Some(Cow::Owned(doc))
 }
 
-fn complete_command_line(editor: &Editor, input: &str) -> Vec<ui::prompt::Completion> {
+fn complete_command_line(editor: &Editor, input: &str) -> CompletionResult {
     let (command, rest, complete_command) = command_line::split(input);
 
     if complete_command {
@@ -3726,7 +3726,7 @@ fn complete_command_line(editor: &Editor, input: &str) -> Vec<ui::prompt::Comple
     } else {
         TYPABLE_COMMAND_MAP
             .get(command)
-            .map_or_else(Vec::new, |cmd| {
+            .map_or(CompletionResult::Immediate(Vec::new()), |cmd| {
                 let args_offset = command.len() + 1;
                 complete_command_args(editor, cmd, rest, args_offset)
             })
@@ -3738,7 +3738,7 @@ fn complete_command_args(
     command: &TypableCommand,
     input: &str,
     offset: usize,
-) -> Vec<ui::prompt::Completion> {
+) -> CompletionResult {
     use command_line::{CompletionState, ExpansionKind, Tokenizer};
 
     // TODO: completion should depend on the location of the cursor instead of the end of the
@@ -3778,7 +3778,7 @@ fn complete_command_args(
 
     // Don't complete on closed tokens, for example after writing a closing double quote.
     if token.is_terminated {
-        return Vec::new();
+        return CompletionResult::Immediate(Vec::new());
     }
 
     match token.kind {
@@ -3793,10 +3793,15 @@ fn complete_command_args(
                         .expect("completion state to be positional");
                     let completer = command.completer_for_argument_number(n);
 
-                    completer(editor, &token.content)
-                        .into_iter()
-                        .map(|(range, span)| quote_completion(&token, range, span, offset))
-                        .collect()
+                    completer(editor, &token.content).map({
+                        let token = token.deep_clone();
+                        move |completions| {
+                            completions
+                                .into_iter()
+                                .map(|(range, span)| quote_completion(&token, range, span, offset))
+                                .collect()
+                        }
+                    })
                 }
                 CompletionState::Flag(_) => fuzzy_match(
                     token.content.trim_start_matches('-'),
@@ -3832,7 +3837,7 @@ fn complete_command_args(
         TokenKind::Expansion(ExpansionKind::Variable) => {
             complete_variable_expansion(&token.content, offset + token.content_start)
         }
-        TokenKind::Expansion(ExpansionKind::Unicode) => Vec::new(),
+        TokenKind::Expansion(ExpansionKind::Unicode) => CompletionResult::Immediate(Vec::new()),
         TokenKind::ExpansionKind => {
             complete_expansion_kind(&token.content, offset + token.content_start)
         }
@@ -3890,7 +3895,7 @@ fn complete_expand(
     token: &Token,
     completer: Option<&Completer>,
     offset: usize,
-) -> Vec<ui::prompt::Completion> {
+) -> CompletionResult {
     use command_line::{ExpansionKind, Tokenizer};
 
     let mut start = 0;
@@ -3935,15 +3940,20 @@ fn complete_expand(
 
     match completer {
         // If no expansions were found and an argument is being completed,
-        Some(completer) if start == 0 => completer(editor, &token.content)
-            .into_iter()
-            .map(|(range, span)| quote_completion(token, range, span, offset))
-            .collect(),
-        _ => Vec::new(),
+        Some(completer) if start == 0 => completer(editor, &token.content).map({
+            let token = token.deep_clone();
+            move |completions| {
+                completions
+                    .into_iter()
+                    .map(|(range, span)| quote_completion(&token, range, span, offset))
+                    .collect()
+            }
+        }),
+        _ => CompletionResult::Immediate(Vec::new()),
     }
 }
 
-fn complete_variable_expansion(content: &str, offset: usize) -> Vec<ui::prompt::Completion> {
+fn complete_variable_expansion(content: &str, offset: usize) -> CompletionResult {
     use expansion::Variable;
 
     fuzzy_match(
@@ -3956,7 +3966,7 @@ fn complete_variable_expansion(content: &str, offset: usize) -> Vec<ui::prompt::
     .collect()
 }
 
-fn complete_expansion_kind(content: &str, offset: usize) -> Vec<ui::prompt::Completion> {
+fn complete_expansion_kind(content: &str, offset: usize) -> CompletionResult {
     use command_line::ExpansionKind;
 
     fuzzy_match(
