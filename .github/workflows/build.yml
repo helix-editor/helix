@@ -16,6 +16,7 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
+
       - name: Install stable toolchain
         uses: dtolnay/rust-toolchain@1.70
 
@@ -106,6 +107,9 @@ jobs:
 
       - name: Validate queries
         run: cargo xtask query-check
+
+      - name: Validate themes
+        run: cargo xtask theme-check
 
       - name: Generate docs
         run: cargo xtask docgen
