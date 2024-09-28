@@ -101,12 +101,12 @@
             ]
 )
 
-; derived from builtin -n (fish 3.2.2)
+; derived from builtin -n (fish 3.7.1)
 (command
   name: [
-        (word) @function.builtin
-        (#any-of? @function.builtin "alias" "argparse" "bg" "bind" "block" "breakpoint" "builtin" "cd" "command" "commandline" "complete" "contains" "count" "disown" "echo" "emit" "eval" "exec" "exit" "fg" "functions" "history" "isatty" "jobs" "math" "printf" "pwd" "random" "read" "realpath" "set" "set_color" "source" "status" "string" "test" "time" "type" "ulimit" "wait")
-        ]
+    (word) @function.builtin
+    (#any-of? @function.builtin "abbr" "and" "argparse" "begin" "bg" "bind" "block" "break" "breakpoint" "builtin" "case" "cd" "command" "commandline" "complete" "contains" "continue" "count" "disown" "echo" "else" "emit" "end" "eval" "exec" "exit" "false" "fg" "for" "function" "functions" "history" "if" "jobs" "math" "not" "or" "path" "printf" "pwd" "random" "read" "realpath" "return" "set" "set_color" "source" "status" "string" "switch" "test" "time" "true" "type" "ulimit" "wait" "while")
+  ]
 )
 
 (test_command "test" @function.builtin)
