@@ -101,9 +101,6 @@
             ]
 )
 
-; non-builtin command names
-(command name: (word) @function)
-
 ; derived from builtin -n (fish 3.2.2)
 (command
   name: [
@@ -113,6 +110,9 @@
 )
 
 (test_command "test" @function.builtin)
+
+; non-builtin command names
+(command name: (word) @function)
 
 ;; Functions
 
