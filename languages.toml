@@ -912,6 +912,7 @@ file-types = [
   "podspec",
   "rjs",
   "rbi",
+  "rbs",
   { glob = "rakefile" },
   { glob = "gemfile" },
   { glob = "Rakefile" },
