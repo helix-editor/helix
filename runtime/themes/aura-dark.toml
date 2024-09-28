@@ -1,0 +1,143 @@
+# aura ported by:
+# Author: elainabialkowski
+
+# aura originally by:
+# Author: Dalton Menezes
+# License: MIT
+
+"ui.background" = { fg = "white", bg = "black"}
+
+"ui.linenr" = { fg = "accent17"}
+"ui.linenr.selected" = { bg = "accent33", modifiers = ["bold"]}
+
+"ui.statusline" = { fg = "accent10", bg = "accent24"}
+
+"ui.selection" = { bg = "purple_selection"}
+"ui.selection.background" = { fg = "purple_selection"}
+
+"ui.cursor" = { fg = "black", bg = "pink" }
+"ui.cursor.match" = { fg = "purple", modifiers = ["bold"] }
+
+"ui.text" = { fg = "white"}
+"ui.text.focus" = { fg = "white", bg = "purple_selection_solid"  }
+"ui.text.inactive" = { fg = "gray" }
+
+"ui.virtual.indent-guide" = "accent13"
+"ui.virtual.ruler" = { bg = "accent13" }
+"ui.virtual.whitespace" = { fg = "accent13" }
+"ui.virtual.inlay-hint" = { fg = "accent9", bg = "accent33" }
+"ui.virtual.jump-label" = { fg = "pink" , modifiers = ["bold"] }
+
+"ui.highlight" = { bg = "accent33", modifiers = ["bold"] }
+
+"ui.menu" = { fg = "accent9", bg = "accent24"}
+"ui.menu.selected" = { fg = "purple", bg = "accent33"}
+
+"ui.popup" = { fg = "accent9", bg = "accent24"}
+
+"ui.window" = { fg = "green" }
+
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "orange" , style = "curl" } }
+"diagnostic.info" = { underline = { color = "blue" , style = "curl" } }
+"diagnostic.hint" = { underline = { color = "blue" , style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+error = "red"
+warning = "orange" 
+info = "blue" 
+hint = "blue" 
+
+attributes = "purple"
+type = "blue" 
+
+constructor = "blue" 
+
+constant = "green" 
+string = "green" 
+
+comment = {fg = "gray" }
+
+variable = "white" # should be dimmed
+"variable.builtin" = "purple"
+"variable.other" = "pink" 
+
+"punctuation.delimeter" = "pink" 
+"punctuation.special" = "white"
+
+keyword = "purple"
+operator = "purple"
+
+function = "orange"
+tag = "purple"
+
+markup = "purple"
+"markup.heading" = "orange" 
+"markup.quote" = "gray"
+"markup.list" = "purple"
+"markup.link.url" = { fg = "green" , modifiers = ["underlined"]}
+
+"diff.plus" = "green" 
+"diff.delta" = "orange" 
+"diff.minus" = "red"
+
+[palette]
+# dark
+purple	= "#a277ff" #	162,119,255	accent1	Primary color
+purple_selection = "#3d375e7f" #	61,55,94	accent20	Selections
+purple_selection_solid	= "#29263c" #	41,38,60	accent38	Selections (without alpha)
+green	= "#61ffca" #	97,255,202	accent2	Secondary color
+orange	= "#ffca85" #	255,202,133	accent3	Tertiary color
+pink	= "#f694ff" #	246,148,255	accent6	Quaternary color
+blue	= "#82e2ff" #	130,226,255	accent32	Quinary color
+red	= "#ff6767"	# 255,103,103	accent5	Senary color
+white	= "#edecee" #	237,236,238	accent7	Foregrounds
+gray	= "#6d6d6d" #	109,109,109	accent8	Comments
+black	= "#15141b" #	21,20,27	accent12	Backgrounds
+
+
+# https://github.com/daltonmenezes/aura-theme/blob/main/src/core/colors/schemes/common.ts
+# commonColors = {
+# accent0 = "#0f0f0f" # black
+# ...
+# accent4 = "#9dff65" # bright green
+# ...
+# accent32 = "#82e2ff" # light blue!!
+# accent33 = "#24222c" # black
+# accent34 = "#00000000" # fully transparent,
+# accent35 = "#525156" # activity bar inactive foreground,
+# # }
+
+# export const commonUI = {
+accent9 = "#cdccce" # black
+accent10 = "#adacae" # light grey
+accent13 = "#2d2d2d" # black
+# accent14 = "#af8aff7f" # light purple
+# accent15 = "#4d4d4d"
+# accent16 = "#ffffff00"
+accent17 = "#a394f033" # secondary-selection
+# accent18 = "#a394f000" # light purple
+# accent19 = "#3ea7847f"
+# accent20 = "#3d375e7f" # primary-selection
+# accent22 = "#4d466e"
+# accent23 = "#3b334b"
+# accent25 = "#49c29a"
+# accent26 = "#00d89023"
+# accent27 = "#ff474720"
+# accent28 = "#121016"
+# accent29 = "#000000"
+# accent30 = "#2d2b38"
+accent33 = "#2e2b38"
+# accent36 = "#a19c77" # debugging background
+# accent37 = "#353424" # breakpoint frame highlight
+# accent38 = "#29263c" # primary-selection without alpha
+# accent39 = "#211D26"
+# }c',
+# accent34 = "#00000000" # fully transparent,
+# accent35 = "#525156" # activity bar inactive foreground,
+# }
+
+# https://github.com/daltonmenezes/aura-theme/tree/c607be79c8eeaa5a5d7ac66421f8b5c51d936fe8/src/core/colors/schemes
+accent24 = "#1f1a27" # soft dark
+
