@@ -20,6 +20,7 @@
 
 # TODO:
 # maybe add a fallback for every table..?
+# the orange used for functions is too bright, get a darker shade
 # figure out how to get alpha workin'..
   # how does this differ from saturation?
 # get a dim color for var/let/mut keyword
@@ -42,12 +43,12 @@
 'hint' = { fg = "cyan", modifiers = ["bold", "dim"] } # Code diagnostics hint in gutter (LSP).
   # ? Difference between info and hint ?
 
-'diagnostic' = { modifiers = ["underlined"] } # Code diagnostics in editing area (LSP).
+'diagnostic' = { underline = { style = "line" } } # Code diagnostics in editing area (LSP).
 'diagnostic.unnecessary' = { modifiers = ["dim"] } # took this from default theme
 'diagnostic.deprecated' = { modifiers = ["crossed_out"] } # took this from default theme
 'diagnostic.error' = { underline = { style = "curl", color = "red-error" }, modifiers = ["bold", "slow_blink", "dim"] }
-'diagnostic.hint' = { underline = { style = "line", color = "cyan" }, modifiers = ["bold", "dim"] }
-'diagnostic.info' = { underline = { style = "line", color = "blue-aqua" }, modifiers = ["bold", "dim"] }
+'diagnostic.hint' = { underline = { style = "line", color = "cyan" }, modifiers = ["bold", "dim", "slow_blink" ] }
+'diagnostic.info' = { underline = { style = "line", color = "blue-aqua" }, modifiers = ["bold", "dim", "slow_blink" ] }
   # TODO: TEST: diagnostics, might need a new set of colors..! can use all neon colors here!!
 
 # UI ==============================
@@ -62,7 +63,7 @@
 'ui.text.focus' = { fg = "pink", bg = "selection-ui", modifiers = ["bold"] } # Selection highlight in buffer-picker or file-picker.
 'ui.text.info' = { fg = "pink", bg ="bg" } # Info popup contents (space mode menu).
   # NOTE: pink pops out, making it better than the comfy purple-pleasant here
-'ui.text.inactive' = { fg = "gray-stone" } # i think used in autocomplete suggestion..
+'ui.text.inactive' = { fg = "gray-stone-lighter", modifiers = ["dim"] } # i think used in autocomplete suggestion..
   # TODO: a little hard to see, but i like it better than white-stone and purple-darker..
 
 'ui.cursor' = { fg = "light-green-complement", bg = "light-green", modifiers = ["reversed", "bold" ] } # Fallback cursor colour, non-primary cursors when there are multiple (shift-c).
@@ -92,14 +93,15 @@
 'ui.virtual.indent-guide' = { fg = "marker13" } # Indentation guides.
 
 # 'ui.bufferline' = { fg = "red-error"}
-# 'ui.bufferline.active' = { modifiers = ["underline"] } # doesn't work..
-# 'ui.bufferline.inactive' # also doesn't work..
-  # using ui.statusline instead:
+# 'ui.bufferline.active' = { underline = { style = "line" } }
+  # not so pretty.., and it extends past the text
+# 'ui.bufferline.inactive' # doesn't work..
+  # using ui.statusline as fallback instead:
 
 'ui.statusline' = { fg = "purple-pleasant", bg = "bg-ui", modifiers = ["dim"] } # Status line. and tab bar
   # NOTE: matches line numbers
 'ui.statusline.inactive' = { fg = "gray-stone", bg = "bg-ui", modifiers = [] } # Status line in unfocused windows.
-  # TODO: too dim, likely inherited, but i don't know how to uninherit it..
+  # seems very dim.., likely inherited, but i don't know how to uninherit it.., i do prefer it to be different from the text used for comments though.. so it's not bad..
 
 "ui.statusline.normal" = { fg = "purple-pleasant" }
 "ui.statusline.insert" = { fg = "pink-salmon", modifiers = [] }
@@ -175,7 +177,7 @@
   # even purple-pleasant dimmed doesn't look bad..
 # 'comment.line' = { } # Line comments, like this.
 # 'comment.block' = { } # Block comments, like /* this */ in some languages.
-'comment.block.documentation' = { fg = "gray-stone", modifiers = ["italic"] } # Doc comments, e.g '///' in rust.
+'comment.block.documentation' = { fg = "gray-stone-lighter", modifiers = ["dim", "italic"] } # Doc comments, e.g '///' in rust.
   # TODO: TEST: maybe okay to use italics here..
 
 'variable' = { fg = "white-stone" }  # Variable names.
@@ -185,7 +187,7 @@
   # TODO: this would be really useful to differentiate.. white-sea-tinged isn't too bad..
 # 'variable.other.member' = { } # Fields of composite data types (e.g. structs, unions).
   # TODO: could use another color here..
-'variable.function' = { fg = "orange-brighter" } # ? ruby-like everything is an object..?
+'variable.function' = { fg = "orange" } # ? ruby-like everything is an object..?
 # NOTE: variable.other = "pink" in aura ??
 
 'label' = { fg = "purple" } # Loop labels in rust.
@@ -220,6 +222,7 @@
 
 # top three are ordered from brightest to darkest
 'function' = { fg = "orange-brighter"}
+  # TODO: too bright.. :/ but much of the beauty of the theme comes from this color...
 'function.method' = { fg = "orange" } # Class / Struct methods.
 'function.builtin' = { fg = "gold-dim" }
   # TODO: TEST: gold-dim and orange-warning TODO: try minimus's yellow-orange
@@ -251,6 +254,8 @@ markup = "purple-pleasant" # fallback
 
 'markup.heading' = { fg = "orange-brighter", modifiers = ["bold"] } # Markdown headings
 # TODO: gold vs orange-brighter, i really just like the bolded gold, but if it's too bright, orange-brighter is perfect
+# NOTE: underline didn't bold, and looked wayyy too thin compared to the bold font..
+  # underline = { style = "curl", modifiers = ["bold"] }
 # 'markup.heading.1' = { } # Markdown heading 1 color.
 # 'markup.heading.2' = { } # Markdown heading 2 color.
 # 'markup.heading.3' = { } # Markdown heading 3 color.
@@ -265,7 +270,7 @@ markup = "purple-pleasant" # fallback
 'markup.list.numbered' = { fg = "gold" } # Numbered list.
 # 'markup.list.unnumbered' = { } # Bullet point list.
 
-'markup.link' = { modifiers = ["underline"] }
+'markup.link' = { underline = { style = "curl", modifiers = ["bold"] } }
   # different color is annoying in comments
   # seems to underline only when highlighted, which is great!!
 'markup.link.url' = { fg = "gray-stone"} # Urls pointed to by links.
@@ -332,7 +337,7 @@ purple-selection-solid = "#29263c"
 green-aqua = "#54c59f" # used for constants/literals, not the prettiest, but it fits the aqua sea feelin' of the overall theme.. maybe can try bogster's green
 orange-warning = "#c7a06f" # warning, like a dim hazard sign
 pink = "#c17ac8" # great, comfy pink for pop-up-menu ui text, TODO: shuold be second main text color, but using it for punctuation at the moment..
-pink-lighter = "#cb90d1" # 1/7th shade lighter (whiter)
+# pink-lighter = "#cb90d1" # 1/7th shade lighter (whiter)
 pink-hot = "#cc6cd6" # +25% saturation, nice 'n slight!
 green-sea = "#6cb2c7" # builtin type, a bit funky but very much readable
 red-error = "#c55858" # error, looks great when blinking, like red flashing like underwater!
