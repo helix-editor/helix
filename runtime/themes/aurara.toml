@@ -21,6 +21,7 @@
 # TODO:
 # maybe add a fallback for every table..?
 # the orange used for functions is slightly too bright, get a darker shade
+# create a white-stone with a tinge of color for variable.other
 # find a different color for built-in types, currently using aura's default green-sea
 # keyword.storage has wayyyy too many keywords categorized in there.. surely theres some sub-categories in there..
 # figure out how to get alpha workin'..
@@ -192,18 +193,18 @@
   # NOTE: matches class color
 'variable.parameter' = { fg = "white-stone" } # Function parameters.
   # TODO: this would be really useful to differentiate.. white-sea-tinged isn't too bad..
-# 'variable.other.member' = { } # Fields of composite data types (e.g. structs, unions).
-  # TODO: could use another color here..
 'variable.function' = { fg = "orange" } # ? ruby-like everything is an object..?
-# NOTE: variable.other = "pink" in aura ??
+'variable.other' = {fg = "pink" } # from aura..
+  # TODO: decide white-stone vs pink vs another color, and remember to turn down punctuation down a notch in hotness; would be nice to create a slightly tinged color, like noctis's white-sea-tinge
+# 'variable.other.member' = { } # Fields of composite data types (e.g. structs, unions).
 
 'label' = { fg = "purple" } # Loop labels in rust.
 
-'punctuation' =  { fg = "pink", modifiers = ["bold"] } # (){}[]:;,. 
+'punctuation' =  { fg = "pink-hot", modifiers = ["bold"] } # (){}[]:;,. 
   # NOTE: the bolded gold from noctic is really, really nice, but it collides with the orange-brighter color; also, bolded white is too much white, should save white just for variables only
-'punctuation.delimiter' = { fg = "pink-hot", modifiers = ["bold"] } # Commas and colons.
+'punctuation.delimiter' = { fg = "pink-hotter", modifiers = ["bold"] } # Commas and colons.
   # TODO: TEST: i might just prefer the same pink for consistency.. though this is very very slight..!
-'punctuation.bracket' = { fg = "pink", modifiers = ["bold"]  } # Parentheses, angle brackets, etc.
+'punctuation.bracket' = { fg = "pink-hot", modifiers = ["bold"]  } # Parentheses, angle brackets, etc.
 'punctuation.special' = { fg = "gold", modifiers = ["bold"] } # no clue..
 
 'keyword' = { fg = "purple" } # Language reserved keywords. var, void, struct, let, mut, was accent18 TODO: try it
@@ -221,8 +222,8 @@
   # TODO: doesn't look like it's working..??
 'keyword.directive' = { fg = "purple", modifiers = ["italic"] } # Preprocessor directives (#if, #include in C).
 'keyword.function' = { fg = "purple", modifiers = ["bold"] } # The keyword to define a funtion: 'def', 'fun', 'fn'.
-'keyword.storage' = { fg = "purple", modifiers = ["italic"] } # function and type modifiers/accessors: public/private, internal, readonly, const, etc.; also struct? var?? namespace?; also let, mut.. lots!! TODO: maybe there's more properties in here..??
-  # only makes sense to bold in C#..
+'keyword.storage' = { fg = "purple", modifiers = ["italic"] } # function and type modifiers/accessors: public/private, internal, readonly, const, etc.; also struct? enum? var?? namespace?; also let, mut.. lots!! TODO: maybe there's more properties in here..??
+  # only makes sense to bold in C#.. italics seems better fit for most languages, especially rust
   # NOTE: struct and var should match type.builtin
 
 
