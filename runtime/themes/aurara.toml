@@ -19,12 +19,11 @@
 
 
 # TODO:
-# test dimmed comments some more, seems too tough to see on transparent backgrounds..
 # maybe add a fallback for every table..?
 # figure out how to get alpha workin'..
+  # how does this differ from saturation?
 # get a dim color for var/let/mut keyword
   # currently using the same purple as operators.. which isn't too bad though, as it keeps a consistent scheme.. and it doesn't conflict with anything either. it's also good as a fallback for 'end', as that sometimes doesn't highlight properly..
-# punctuation.delimiter not working
 
 # NOTE:
 # struct counts as a keyword, not a type, which can be confusing.. maybe there's more keyword properties..??
@@ -35,16 +34,22 @@
 
 ## GENERAL ==============================
 
-"warning" = { fg ="orange-warning", modifiers = ["bold"] } # Editor warnings. TEMP/TEST/WARN
-"error" = { fg = "red-error", modifiers = ["bold", "slow_blink"] } # Editor errors, like mis-typing a command. BUG ISSUE
+'warning' = { fg ="orange-warning", modifiers = ["bold"] } # Editor warnings. TEMP/TEST/WARN
+'error' = { fg = "red-error", modifiers = ["bold", "slow_blink"] } # Editor errors, like mis-typing a command. BUG ISSUE
   # but not ERROR..?
-"info" = { fg = "blue-aqua" } # Code diagnostic info in gutter (LSP). TODO/INFO
+'info' = { fg = "blue-aqua" } # Code diagnostic info in gutter (LSP). TODO/INFO
   # def prefer noctis's blue-aqua over aura's here
-"hint" = { fg = "cyan", modifiers = ["bold", "dim"] } # Code diagnostics hint in gutter (LSP).
+'hint' = { fg = "cyan", modifiers = ["bold", "dim"] } # Code diagnostics hint in gutter (LSP).
   # ? Difference between info and hint ?
-"diagnostic" = { modifiers = ["underlined"] } # Code diagnostics in editing area (LSP).
-"diagnostic.unnecessary" = { modifiers = ["dim"] } # took this from default theme
-"diagnostic.deprecated" = { modifiers = ["crossed_out"] } # took this from default theme
+
+'diagnostic' = { modifiers = ["underlined"] } # Code diagnostics in editing area (LSP).
+'diagnostic.unnecessary' = { modifiers = ["dim"] } # took this from default theme
+'diagnostic.deprecated' = { modifiers = ["crossed_out"] } # took this from default theme
+'diagnostic.error' = { underline = { style = "curl", color = "red-error" }, modifiers = ["bold", "slow_blink", "dim"] }
+'diagnostic.hint' = { underline = { style = "line", color = "cyan" }, modifiers = ["bold", "dim"] }
+'diagnostic.info' = { underline = { style = "line", color = "blue-aqua" }, modifiers = ["bold", "dim"] }
+  # TODO: TEST: diagnostics, might need a new set of colors..! can use all neon colors here!!
+
 # UI ==============================
 # For styling helix itself.
 
@@ -73,16 +78,23 @@
   # TODO: decide purple-selection vs the neutral selection-ui: purple is easier to see immediately, but the neutral selection shows text more clearly / less muddy, and with the aid of blinking, it's pretty easy to see too
 # 'ui.selection.primary' = { bg = "purple-selection" } # The primary selection when there are multiple.
 # 'ui.cursorline.primary' = { bg = 'purple-selection' } #
-  # TODO: would need a very dim color, between selection and background
+  # TODO: would need a very dim color, between selection-ui and background.. it could work of primary selection has a tinge of color to it (purple-selection), but without that, it would make it even harder to see the selection
+
+# 'ui.highlight.frameline' = { bg = "selection-ui" } # hmmm, not sure..
 
 'ui.linenr' = { fg = "purple-pleasant", modifiers = ["dim"]} # Line numbers.
 'ui.linenr.selected' = { modifiers = [ "bold" ] } # Current line number.
 
 'ui.virtual' = { fg = "purple-selection" } # Namespace for additions to the editing area.
 'ui.virtual.ruler' = { bg = "selection-ui"} # Vertical rulers (colored columns in editing area).
-  # TODO: TEST: haven't seen these two yet..
+  # TODO: TEST: haven't seen these two yet..error
 'ui.virtual.whitespace' = { fg = "gray-stone"} # Whitespace markers in editing area: newline..
 'ui.virtual.indent-guide' = { fg = "marker13" } # Indentation guides.
+
+# 'ui.bufferline' = { fg = "red-error"}
+# 'ui.bufferline.active' = { modifiers = ["underline"] } # doesn't work..
+# 'ui.bufferline.inactive' # also doesn't work..
+  # using ui.statusline instead:
 
 'ui.statusline' = { fg = "purple-pleasant", bg = "bg-ui", modifiers = ["dim"] } # Status line. and tab bar
   # NOTE: matches line numbers
@@ -111,6 +123,7 @@
 'ui.popup.info' = { fg = "pink", bg = "bg" } # Info popups box (space mode menu).
   # bold was just too much.. the pink is nice tho! vs purple-pleasant
   # it seems ui.text.info overrides this..??
+# "ui.menu.scroll" = { }
 
 # SYNTAX HIGHLIGHTING ==============================
 # All the keys here are Treesitter scopes.
@@ -133,7 +146,7 @@
 
 'constant' = { fg = "green-aqua" } # Constant value
   # originally green in aura... and it seems a pretty good use of this green, as i don't use it for strings anymore..
-  # green feels good for numbers, literals, escape-sequence
+  # NOTE: if this is too dark, can use light-green, as there aren't too many of these..
 # 'constant.builtin' = { fg = "blue-aqua" } # Special constants like `true`, `false`, `none`, etc.
 # 'constant.builtin.boolean' = { } # True or False.
 # 'constant.character' = { fg = "blue-aqua"} # Constant of character type.
@@ -179,9 +192,10 @@
 
 'punctuation' =  { fg = "pink", modifiers = ["bold"] } # (){}[]:;,. 
   # NOTE: the bolded gold from noctic is really, really nice, but it collides with the orange-brighter color; also, bolded white is too much white, should save white just for variables only
-'punctuation.delimeter' = { fg = "gold", modifiers = ["bold"] } # Commas and colons.
-  # TODO: BUG: not working..?? TEST: gold
+'punctuation.delimiter' = { fg = "pink-hot", modifiers = ["bold"] } # Commas and colons.
+  # TODO: TEST: i might just prefer the same pink for consistency.. though this is very very slight..!
 'punctuation.bracket' = { fg = "pink", modifiers = ["bold"]  } # Parentheses, angle brackets, etc.
+'punctuation.special' = { fg = "gold", modifiers = ["bold"] } # no clue..
 
 'keyword' = { fg = "purple" } # Language reserved keywords. var, void, struct, let, mut, was accent18 TODO: try it
   # TODO: could use another color here.. something that doesn't stick out.. snazzy's yellow is too bright (and dim too dim), maybe a purple-dark with less alpha..?
@@ -193,9 +207,14 @@
 'keyword.control.return' = { fg = "pink-salmon", modifiers = ["italic"] } # 'return' in most languages.
   # NOTE: tried red, but it's so ugly!!.. :/ but could use it's own color.. stole noctis's pink-salmon here.. bold is really nice too, more pink-salmony, but it eventually bugged me..; italics makes it feel like it's *pressed* in
 'keyword.control.exception' = { fg = "pink-salmon", modifiers = ["italic"] } # 'raise' in python.
-'keyword.operator' = { fg = "purple-darker" } # 'or', 'and', 'in'.
+'keyword.operator' = { fg = "purple-darker", modifiers = ["bold"] } # 'or', 'and', 'in'.
+  # TODO: doesn't look like it's working..??
 'keyword.directive' = { fg = "purple", modifiers = ["italic"] } # Preprocessor directives (#if, #include in C).
 'keyword.function' = { fg = "purple", modifiers = ["bold"] } # The keyword to define a funtion: 'def', 'fun', 'fn'.
+'keyword.storage' = { fg = "purple" } # function and type modifiers/accessors: public/private, internal, readonly, const, etc.; also struct? var?? namespace?.. lots!!
+  # only makes sense to bold in C#..
+  # NOTE: struct and var should match type.builtin
+
 
 'operator' = { fg = "purple-darker", modifiers = ["bold"] } # Logical (&&, ||) and - I assume - Mathematical (+, %) operators
 
@@ -224,6 +243,12 @@
 
 markup = "purple-pleasant" # fallback
 
+'markup.bold' = { fg = "orange" } # Bold text.
+  # bold text isn't so easy to read.. but purple bold works pretty well alongside purple-pleasant
+  # this orange is surprisingly dim! not bad at all, and keeps a consistent two-color theme
+'markup.italic' = { modifiers = ["italic"] } # Italicised text.
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+
 'markup.heading' = { fg = "orange-brighter", modifiers = ["bold"] } # Markdown headings
 # TODO: gold vs orange-brighter, i really just like the bolded gold, but if it's too bright, orange-brighter is perfect
 # 'markup.heading.1' = { } # Markdown heading 1 color.
@@ -237,21 +262,19 @@ markup = "purple-pleasant" # fallback
 
 'markup.list' = { fg = "gold", modifiers = ["bold"] }
   # the bullet symbols are like shiny jewelry in the sea :)
-# 'markup.list.numbered' = { } # Numbered list.
+'markup.list.numbered' = { fg = "gold" } # Numbered list.
 # 'markup.list.unnumbered' = { } # Bullet point list.
-
-'markup.bold' = { fg = "orange" } # Bold text.
-  # bold text isn't so easy to read.. but purple bold works pretty well alongside purple-pleasant
-  # this orange is surprisingly dim! not bad at all, and keeps a consistent two-color theme
-'markup.italic' = { modifiers = ["italic"] } # Italicised text.
 
 'markup.link' = { modifiers = ["underline"] }
   # different color is annoying in comments
-# 'markup.link.url' = { } # Urls pointed to by links.
-# 'markup.link.label' = { } # Non-URL link references.
-# 'markup.link.text' = { fg = "purple-pleasant"} # URL and image descriptions in links.
+  # seems to underline only when highlighted, which is great!!
+'markup.link.url' = { fg = "gray-stone"} # Urls pointed to by links.
+'markup.link.label' = { fg = "gray-stone" } # Non-URL link references.
+'markup.link.text' = { fg = "purple-pleasant"} # URL and image descriptions in links.
 
-'markup.quote' = { fg = "gray-stone" } # `> Quotes` in Markdown.
+'markup.quote' = { fg = "pink", modifiers = ["italic"] } # `> Quotes` in Markdown.
+
+# 'markup.raw' # TODO: ??
 
 
 # Markup - Interface ==============================
@@ -309,12 +332,14 @@ purple-selection-solid = "#29263c"
 green-aqua = "#54c59f" # used for constants/literals, not the prettiest, but it fits the aqua sea feelin' of the overall theme.. maybe can try bogster's green
 orange-warning = "#c7a06f" # warning, like a dim hazard sign
 pink = "#c17ac8" # great, comfy pink for pop-up-menu ui text, TODO: shuold be second main text color, but using it for punctuation at the moment..
+pink-lighter = "#cb90d1" # 1/7th shade lighter (whiter)
+pink-hot = "#cc6cd6" # +25% saturation, nice 'n slight!
 green-sea = "#6cb2c7" # builtin type, a bit funky but very much readable
 red-error = "#c55858" # error, looks great when blinking, like red flashing like underwater!
 white-stone = "#bdbdbd" # variable, has a dim tinge of dirty stone to it
 gray-stone = "#6d6d6d" # comment, similar to white, but desaturated/grayed out, now a sort of dirty blonde; i didn't like it at first, but then became amazing once dimmed!!
   # gray-stone-dimmed = "#6d6d6d80" # 80 = 50%, 40 = 25%
-gray-stone-lighter = "#858585" # used for comments with the dim modifier; 9d9d9d dimmed seems slightly brighter than gray-stone undimmed.. 7d7d7d is out of the way, 858585 forces eyes to read it, vs 8d8d8d?
+gray-stone-lighter = "#7d7d7d" # used for comments with the dim modifier; 9d9d9d dimmed seems slightly brighter than gray-stone undimmed.. 7d7d7d is out of the way, 858585 forces eyes to read it, vs 8d8d8d?
   # TODO: alpha doesn't seem to affect these, only dim works..
 bg = "#15141b" # was "black"
 
