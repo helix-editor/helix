@@ -22,6 +22,7 @@
 # maybe add a fallback for every table..?
 # the orange used for functions is slightly too bright, get a darker shade
 # find a different color for built-in types, currently using aura's default green-sea
+# keyword.storage has wayyyy too many keywords categorized in there.. surely theres some sub-categories in there..
 # figure out how to get alpha workin'..
   # how does this differ from saturation?
 # get a different shade or color for var/let/mut general keywords?..
@@ -220,7 +221,7 @@
   # TODO: doesn't look like it's working..??
 'keyword.directive' = { fg = "purple", modifiers = ["italic"] } # Preprocessor directives (#if, #include in C).
 'keyword.function' = { fg = "purple", modifiers = ["bold"] } # The keyword to define a funtion: 'def', 'fun', 'fn'.
-'keyword.storage' = { fg = "purple" } # function and type modifiers/accessors: public/private, internal, readonly, const, etc.; also struct? var?? namespace?.. lots!! TODO: maybe there's more properties here..
+'keyword.storage' = { fg = "purple", modifiers = ["italic"] } # function and type modifiers/accessors: public/private, internal, readonly, const, etc.; also struct? var?? namespace?; also let, mut.. lots!! TODO: maybe there's more properties in here..??
   # only makes sense to bold in C#..
   # NOTE: struct and var should match type.builtin
 
