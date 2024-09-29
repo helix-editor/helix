@@ -256,12 +256,12 @@ markup = "purple-pleasant" # fallback
 # TODO: gold vs orange-brighter, i really just like the bolded gold, but if it's too bright, orange-brighter is perfect
 # NOTE: underline didn't bold, and looked wayyy too thin compared to the bold font..
   # underline = { style = "curl", modifiers = ["bold"] }
-# 'markup.heading.1' = { } # Markdown heading 1 color.
-# 'markup.heading.2' = { } # Markdown heading 2 color.
-# 'markup.heading.3' = { } # Markdown heading 3 color.
-# 'markup.heading.4' = { } # Markdown heading 4 color.
-# 'markup.heading.5' = { } # Markdown heading 5 color.
-# 'markup.heading.6' = { } # Markdown heading 6 color.
+'markup.heading.1' = { fg = "orange-brighter", modifiers = ["bold"]  }
+'markup.heading.2' = { fg = "orange", modifiers = ["bold"]  }
+'markup.heading.3' = { fg = "gold"  }
+'markup.heading.4' = { fg = "orange-brighter" }
+'markup.heading.5' = { fg = "orange" }
+'markup.heading.6' = { fg = "gold-dim" }
 'markup.heading.marker' = { fg = "gold" } # Hashtag color on Markdown headings.
   # bolded gold is too distracting..
 
