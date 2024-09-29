@@ -229,8 +229,8 @@
 'operator' = { fg = "purple-darker", modifiers = ["bold"] } # Logical (&&, ||) and - I assume - Mathematical (+, %) operators
 
 # top three are ordered from brightest to darkest
-'function' = { fg = "orange-brighter"}
-  # TODO: too bright.. :/ but much of the beauty of the theme comes from this color...
+'function' = { fg = "orange"}
+  # TODO: orange-brighter is too bright.. :/ but much of the beauty of the theme comes from this color... just need to get a notch lower..
 'function.method' = { fg = "orange" } # Class / Struct methods.
 'function.builtin' = { fg = "gold-dim" }
   # TODO: TEST: gold-dim and orange-warning TODO: try minimus's yellow-orange
