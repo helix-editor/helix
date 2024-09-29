@@ -68,8 +68,10 @@
 "ui.statusline.select" = { fg = "my_gray7", bg = "my_black", modifiers = ["bold"] }
 "ui.text.focus" = "my_white1"
 "ui.text" = "my_white1"
-"ui.virtual.inlay-hint" = { fg = "my_gray4", bg="my_black", modifiers = ["normal"] }
-"ui.virtual.inlay-hint.parameter" = { fg = "my_gray4", modifiers = ["normal"] }
+# Invalid modifier: "normal". See 'https://github.com/helix-editor/helix/issues/5709'
+"ui.virtual.inlay-hint" = { fg = "my_gray4", bg="my_black" } #, modifiers = ["normal"] }
+# "ui.virtual.inlay-hint.parameter" = { fg = "my_gray4", modifiers = ["normal"] }
+"ui.virtual.inlay-hint.parameter" = "my_gray4"
 "ui.virtual.inlay-hint.type" = { fg = "my_gray4", modifiers = ["italic"] }
 "ui.virtual.jump-label" = { fg = "my_yellow2", modifiers = ["bold"] }
 "ui.virtual.ruler" = { bg = "my_gray1" }
