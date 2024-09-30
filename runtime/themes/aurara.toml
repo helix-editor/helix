@@ -120,7 +120,7 @@
   # slow_blink on insert/select was too annoying..
   # using a colored background was also too annoying
 
-'ui.help' = { bg = "bg", fg = "pink"} # `:command` descriptions above the command line.
+'ui.help' = { bg = "bg", fg = "pink-even-dimmer"} # `:command` descriptions above the command line.
 
 'ui.highlight' = { bg = "selection-ui", modifiers = ["slow_blink"] } # selected contents of symbol pickers (spc-s, spc-S) and current line in buffer picker (spc-b).
 
@@ -304,7 +304,7 @@ markup = "purple-pleasant-dimmer" # fallback
 'markup.link.label' = { fg = "gray-stone" } # Non-URL link references.
 'markup.link.text' = { fg = "purple-pleasant-dimmer"} # URL and image descriptions in links.
 
-'markup.quote' = { fg = "pink", modifiers = ["italic"] } # `> Quotes` in Markdown.
+'markup.quote' = { fg = "pink-dimmer", modifiers = ["italic"] } # `> Quotes` in Markdown.
 
 # Markup - Interface ==============================
 # "These scopes are used for theming the editor interface."
