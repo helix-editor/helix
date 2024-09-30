@@ -102,6 +102,7 @@ terraform-ls = { command = "terraform-ls", args = ["serve"] }
 texlab = { command = "texlab" }
 typespec = { command = "tsp-server", args = ["--stdio"] }
 vala-language-server = { command = "vala-language-server" }
+vale-ls = { command = "vale-ls" }
 vhdl_ls = { command = "vhdl_ls", args = [] }
 vlang-language-server = { command = "v-analyzer" }
 vscode-css-language-server = { command = "vscode-css-language-server", args = ["--stdio"], config = { provideFormatter = true, css = { validate = { enable = true } } } }
@@ -3808,4 +3809,3 @@ language-servers = ["circom-lsp"]
 [[grammar]]
 name   = "circom"
 source = { git = "https://github.com/Decurity/tree-sitter-circom", rev = "02150524228b1e6afef96949f2d6b7cc0aaf999e" }
-
