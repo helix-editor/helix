@@ -4626,6 +4626,14 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
     let text = doc.text();
     let slice = text.slice(..);
 
+    let comment_tokens = doc
+        .language_config()
+        .and_then(|config| config.comment_tokens.as_deref())
+        .unwrap_or(&[]);
+    // Sort by length to handle Rust's /// vs //
+    let mut comment_tokens: Vec<&str> = comment_tokens.iter().map(|x| x.as_str()).collect();
+    comment_tokens.sort_unstable_by_key(|x| std::cmp::Reverse(x.len()));
+
     let mut changes = Vec::new();
 
     for selection in doc.selection(view.id) {
@@ -4637,10 +4645,31 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
 
         changes.reserve(lines.len());
 
+        let first_line_idx = slice.line_to_char(start);
+        let first_line_idx = skip_while(slice, first_line_idx, |ch| matches!(ch, ' ' | 't'))
+            .unwrap_or(first_line_idx);
+        let first_line = slice.slice(first_line_idx..);
+        let mut current_comment_token = comment_tokens
+            .iter()
+            .find(|token| first_line.starts_with(token));
+
         for line in lines {
             let start = line_end_char_index(&slice, line);
             let mut end = text.line_to_char(line + 1);
             end = skip_while(slice, end, |ch| matches!(ch, ' ' | '\t')).unwrap_or(end);
+            let slice_from_end = slice.slice(end..);
+            if let Some(token) = comment_tokens
+                .iter()
+                .find(|token| slice_from_end.starts_with(token))
+            {
+                if Some(token) == current_comment_token {
+                    end += token.chars().count();
+                    end = skip_while(slice, end, |ch| matches!(ch, ' ' | '\t')).unwrap_or(end);
+                } else {
+                    // update current token, but don't delete this one.
+                    current_comment_token = Some(token);
+                }
+            }
 
             let separator = if end == line_end_char_index(&slice, line + 1) {
                 // the joining line contains only space-characters => don't include a whitespace when joining
