@@ -22,7 +22,7 @@ helix-loader = { path = "../helix-loader" }
 ropey = { version = "1.6.1", default-features = false, features = ["simd"] }
 smallvec = "1.13"
 smartstring = "1.0.1"
-unicode-segmentation = "1.11"
+unicode-segmentation = "1.12"
 # unicode-width is changing width definitions
 # that both break our logic and disagree with common
 # width definitions in terminals, we need to replace it.
@@ -57,7 +57,7 @@ textwrap = "0.16.1"
 
 nucleo.workspace = true
 parking_lot = "0.12"
-globset = "0.4.14"
+globset = "0.4.15"
 
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }

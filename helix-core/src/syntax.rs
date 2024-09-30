@@ -2692,6 +2692,8 @@ fn pretty_print_tree_impl<W: fmt::Write>(
         }
 
         write!(fmt, "({}", node.kind())?;
+    } else {
+        write!(fmt, " \"{}\"", node.kind())?;
     }
 
     // Handle children.
@@ -2950,7 +2952,7 @@ mod test {
     #[test]
     fn test_pretty_print() {
         let source = r#"// Hello"#;
-        assert_pretty_print("rust", source, "(line_comment)", 0, source.len());
+        assert_pretty_print("rust", source, "(line_comment \"//\")", 0, source.len());
 
         // A large tree should be indented with fields:
         let source = r#"fn main() {
@@ -2960,16 +2962,16 @@ mod test {
             "rust",
             source,
             concat!(
-                "(function_item\n",
+                "(function_item \"fn\"\n",
                 "  name: (identifier)\n",
-                "  parameters: (parameters)\n",
-                "  body: (block\n",
+                "  parameters: (parameters \"(\" \")\")\n",
+                "  body: (block \"{\"\n",
                 "    (expression_statement\n",
                 "      (macro_invocation\n",
-                "        macro: (identifier)\n",
-                "        (token_tree\n",
-                "          (string_literal\n",
-                "            (string_content)))))))",
+                "        macro: (identifier) \"!\"\n",
+                "        (token_tree \"(\"\n",
+                "          (string_literal \"\"\"\n",
+                "            (string_content) \"\"\") \")\")) \";\") \"}\"))",
             ),
             0,
             source.len(),
@@ -2981,7 +2983,7 @@ mod test {
 
         // Error nodes are printed as errors:
         let source = r#"}{"#;
-        assert_pretty_print("rust", source, "(ERROR)", 0, source.len());
+        assert_pretty_print("rust", source, "(ERROR \"}\" \"{\")", 0, source.len());
 
         // Fields broken under unnamed nodes are determined correctly.
         // In the following source, `object` belongs to the `singleton_method`
@@ -2996,11 +2998,11 @@ mod test {
             "ruby",
             source,
             concat!(
-                "(singleton_method\n",
-                "  object: (self)\n",
+                "(singleton_method \"def\"\n",
+                "  object: (self) \".\"\n",
                 "  name: (identifier)\n",
                 "  body: (body_statement\n",
-                "    (true)))"
+                "    (true)) \"end\")"
             ),
             0,
             source.len(),

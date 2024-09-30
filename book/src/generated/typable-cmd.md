@@ -72,7 +72,7 @@
 | `:sort` | Sort ranges in selection. |
 | `:rsort` | Sort ranges in selection in reverse order. |
 | `:reflow` | Hard-wrap the current selection of lines to a given width. |
-| `:tree-sitter-subtree`, `:ts-subtree` | Display tree sitter subtree under cursor, primarily for debugging queries. |
+| `:tree-sitter-subtree`, `:ts-subtree` | Display the smallest tree-sitter subtree that spans the primary selection, primarily for debugging queries. |
 | `:config-reload` | Refresh user config. |
 | `:config-open` | Open the user config.toml file. |
 | `:config-open-workspace` | Open the workspace config.toml file. |
