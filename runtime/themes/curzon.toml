@@ -57,7 +57,7 @@ label = "label"
 
 "ui.virtual.indent-guide" = { fg = "window_color" }
 
-"ui.selection" = { bg = "#4f46e5" }
+"ui.selection" = { bg = "cursor_normal_bg_color" }
 "ui.selection.primary" = { bg = "#4f46e5" }
 "ui.cursor.select" = { bg = "cursor_normal_bg_color" }
 "ui.cursor.primary.insert" = { bg = "#f43f5e", fg = "white" }
