@@ -446,6 +446,8 @@ file-types = [
   { glob = ".watchmanconfig" },
   "avsc",
   { glob = ".prettierrc" },
+  "ldtk",
+  "ldtkl",
 ]
 language-servers = [ "vscode-json-language-server" ]
 auto-format = true
