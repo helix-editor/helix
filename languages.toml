@@ -33,6 +33,7 @@ dot-language-server = { command = "dot-language-server", args = ["--stdio"] }
 earthlyls = { command = "earthlyls" }
 elixir-ls = { command = "elixir-ls", config = { elixirLS.dialyzerEnabled = false } }
 elm-language-server = { command = "elm-language-server" }
+elp = { command = "elp", args = ["server"] }
 elvish = { command = "elvish", args = ["-lsp"] }
 erlang-ls = { command = "erlang_ls" }
 forc = { command = "forc", args = ["lsp"] }
@@ -94,6 +95,7 @@ solc = { command = "solc", args = ["--lsp"] }
 sourcekit-lsp = { command = "sourcekit-lsp" }
 svlangserver = { command = "svlangserver", args = [] }
 swipl = { command = "swipl", args = [ "-g", "use_module(library(lsp_server))", "-g", "lsp_server:main", "-t", "halt", "--", "stdio" ] }
+superhtml = {  command = "superhtml", args = ["lsp"]}
 tailwindcss-ls = { command = "tailwindcss-language-server", args = ["--stdio"] }
 taplo = { command = "taplo", args = ["lsp", "stdio"] }
 templ = { command = "templ", args = ["lsp"] }
@@ -101,6 +103,7 @@ terraform-ls = { command = "terraform-ls", args = ["serve"] }
 texlab = { command = "texlab" }
 typespec = { command = "tsp-server", args = ["--stdio"] }
 vala-language-server = { command = "vala-language-server" }
+vale-ls = { command = "vale-ls" }
 vhdl_ls = { command = "vhdl_ls", args = [] }
 vlang-language-server = { command = "v-analyzer" }
 vscode-css-language-server = { command = "vscode-css-language-server", args = ["--stdio"], config = { provideFormatter = true, css = { validate = { enable = true } } } }
@@ -446,6 +449,8 @@ file-types = [
   { glob = ".watchmanconfig" },
   "avsc",
   { glob = ".prettierrc" },
+  "ldtk",
+  "ldtkl",
 ]
 language-servers = [ "vscode-json-language-server" ]
 auto-format = true
@@ -839,7 +844,7 @@ scope = "text.html.basic"
 injection-regex = "html"
 file-types = ["html", "htm", "shtml", "xhtml", "xht", "jsp", "asp", "aspx", "jshtm", "volt", "rhtml", "cshtml"]
 block-comment-tokens = { start = "<!--", end = "-->" }
-language-servers = [ "vscode-html-language-server" ]
+language-servers = [ "vscode-html-language-server", "superhtml" ]
 auto-format = true
 indent = { tab-width = 2, unit = "  " }
 
@@ -1796,7 +1801,7 @@ roots = ["rebar.config"]
 shebangs = ["escript"]
 comment-token = "%%"
 indent = { tab-width = 4, unit = "    " }
-language-servers = [ "erlang-ls" ]
+language-servers = [ "erlang-ls", "elp" ]
 
 [[grammar]]
 name = "erlang"
@@ -3805,4 +3810,3 @@ language-servers = ["circom-lsp"]
 [[grammar]]
 name   = "circom"
 source = { git = "https://github.com/Decurity/tree-sitter-circom", rev = "02150524228b1e6afef96949f2d6b7cc0aaf999e" }
-

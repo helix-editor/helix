@@ -3032,7 +3032,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "tree-sitter-subtree",
         aliases: &["ts-subtree"],
-        doc: "Display tree sitter subtree under cursor, primarily for debugging queries.",
+        doc: "Display the smallest tree-sitter subtree that spans the primary selection, primarily for debugging queries.",
         fun: tree_sitter_subtree,
         signature: CommandSignature::none(),
     },

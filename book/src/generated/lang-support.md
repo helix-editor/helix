@@ -49,7 +49,7 @@
 | elvish | ✓ |  |  | `elvish` |
 | env | ✓ | ✓ |  |  |
 | erb | ✓ |  |  |  |
-| erlang | ✓ | ✓ |  | `erlang_ls` |
+| erlang | ✓ | ✓ |  | `erlang_ls`, `elp` |
 | esdl | ✓ |  |  |  |
 | fidl | ✓ |  |  |  |
 | fish | ✓ | ✓ | ✓ |  |
@@ -87,7 +87,7 @@
 | hocon | ✓ | ✓ | ✓ |  |
 | hoon | ✓ |  |  |  |
 | hosts | ✓ |  |  |  |
-| html | ✓ |  |  | `vscode-html-language-server` |
+| html | ✓ |  |  | `vscode-html-language-server`, `superhtml` |
 | hurl | ✓ | ✓ | ✓ |  |
 | hyprlang | ✓ |  | ✓ |  |
 | idris |  |  |  | `idris2-lsp` |
