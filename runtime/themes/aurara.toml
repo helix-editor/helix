@@ -20,7 +20,7 @@
 
 # TODO:
 # maybe add a fallback for every table..?
-# currently trying a dimmer shade of pink for variable-other, but there's too many keywords categorized in there..
+# currently trying a dimmer shade of pink for variable-other and ui-popup menus, but there's too many keywords categorized in there..
 # currently trying a dimmer shade for keyword.storage.modifier..
 # find out where the color for file picker is set, and try to dim it
   # i tried searching the other configs in the repo to no avail, just found ui.picker.header
@@ -69,7 +69,7 @@
 
 'ui.text' = { fg = "purple-pleasant-dimmer" } # Default text color. used in text files, pickers, ui, and more!
 'ui.text.focus' = { fg = "pink", bg = "selection-ui", modifiers = ["bold"] } # Selection highlight in buffer-picker or file-picker.
-'ui.text.info' = { fg = "pink-even-dimmer", bg ="bg" } # Info popup contents (space mode menu).
+'ui.text.info' = { fg = "pink-dimmer", bg ="bg" } # Info popup contents (space mode menu).
   # see ui.menu for auto-complete
   # NOTE: pink pops out more, making it better than the comfy purple-pleasant-dimmer here
 'ui.text.inactive' = { fg = "gray-stone-lighter", modifiers = ["dim"] } # i think used in autocomplete suggestion..
@@ -120,7 +120,7 @@
   # slow_blink on insert/select was too annoying..
   # using a colored background was also too annoying
 
-'ui.help' = { bg = "bg", fg = "pink-even-dimmer"} # `:command` descriptions above the command line.
+'ui.help' = { bg = "bg", fg = "pink-dimmer"} # `:command` descriptions above the command line.
 
 'ui.highlight' = { bg = "selection-ui", modifiers = ["slow_blink"] } # selected contents of symbol pickers (spc-s, spc-S) and current line in buffer picker (spc-b).
 
@@ -368,7 +368,7 @@ pink = "#c17ac8" # great, comfy pink for pop-up-menu ui text, TODO: shuold be se
 # pink-brighter = "#DE95E5"
 pink-dimmer = "#B56EBC" # slightly desaturated, used for fields/methods and elixir's @thing
 # fuschia = "#A955B2" # TODO: an interesting one to use..
-pink-even-dimmer = "#8C5C90" # used for pop-up menus, similar to pink with dim modifier TODO: maybe too dim..
+# pink-even-dimmer = "#8C5C90" # used for pop-up menus, similar to pink with dim modifier.. too dim, not even pink anymore! more like magenta.. but very comfy to read!
 pink-hot = "#cc6cd6" # +25% saturation, nice 'n slight! for delimiters via coolers.co gradient
 pink-hotter = "#d85ee3" # +50% saturation, for "special" symbols
 green-sea = "#6cb2c7" # builtin type, a bit funky but very much readable
