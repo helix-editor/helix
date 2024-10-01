@@ -22,7 +22,7 @@
 # maybe add a fallback for every table..?
 # not happy with aura's orange, it's just too dim.. boring! is noctis's orange really that bright..?
 # still not happy about aura's blue-green used for namespace, especially for rust.. desaturating didn't quite do it..
-# could try other colors for operators, and even punctuation
+# could try other colors either operators or punctuation..
 # currently trying a dimmer shade of pink for variable.other.member, but there's too many keywords categorized in there..
   # create a white-stone with a tinge of color for variable.other..?
 # find out where the color for file picker is set, and try to dim it
@@ -61,7 +61,7 @@
 'ui.window' = { fg = "gray-stone" } # Window border between splits.
   # pruple also works really well here.. maybe more needed when there are no line numbers..
 
-'ui.gutter' = { fg = "orange-bright" } # Left gutter for diagnostics and breakpoints.
+'ui.gutter' = { fg = "gold" } # Left gutter for diagnostics and breakpoints.
 
 'ui.text' = { fg = "purple-pleasant-dimmer" } # Default text color. used in text files, pickers, ui, and more!
 'ui.text.focus' = { fg = "pink", bg = "selection-ui", modifiers = ["bold"] } # Selection highlight in buffer-picker or file-picker.
@@ -252,7 +252,7 @@
   # italics works well here.. as does the magical gold of macros, as does orange-pumpkin
 'function.special' = { fg = "orange", modifiers = ["italic"] } # Preprocessor in C.
 
-'tag' = { fg = "purple-darker", modifiers = ["italic"] } # As in <body> for html.
+'tag' = { fg = "purple-darker", modifiers = ["italic"] } # As in <body> for html. also @tags in comments?
   # must be darker then the default text, and attribute
 
 'namespace' = { fg = "blue-green" } # * Namespace keyword in java, C#, etc.
@@ -320,9 +320,9 @@ markup = "purple-pleasant-dimmer" # fallback
 # Version control changes.
 
 'diff.plus' = "green-aqua" # { } # Additions.
-'diff.minus' = "red-error" # { } # Deletions.
+'diff.minus' = "pink-salmon" # { } # Deletions.
 'diff.delta' = "orange" # { } # Modifications.
-'diff.delta.moved' = "green-sea" # Renamed or moved files / changes.
+'diff.delta.moved' = "blue-aqua" # Renamed or moved files / changes.
 
 
 [palette] # Define your custom colors here.
@@ -336,15 +336,16 @@ markup = "purple-pleasant-dimmer" # fallback
 light-green = "#48e9a7" # a nice sea green, bright neon when bolded, like the displays of deep sea instruments, was "green", re-used for text under the cursor
 
 pink-salmon = "#df769b" # re-used for return, was "pink", it's perfect! :D use sparingly as i really don't like themes with lots of red in it, only returns and maybe exceptions
-gold = "#ffd800" # a nice, shiny bolded gold used for punctuation, was "yellow", ..maybe was also used for it's variable text..?
+gold = "#ffd800" # a nice, shiny bolded gold used for punctuation, was "yellow", ..maybe was also used for it's variable text..? unfortunately, it's very bright. used for matching fuzzy search, special symbols, markdown symbols
 purple-darker = "#6f60ea" # this purple is slightly darker than aura's, used for cascading keywords, but seems to match vs-code's aura better??
 white-sea-tinged = "#b1cace" # has a tinge of green in it.., pleasant tho
 orange-bright = "#e4b782" # looks fantastic in noctis, fit for the sea theme, like a clown-fish, but too bright :(
 green-dark = "#5b858b" # mainly for comments/background text, was "gray"
-red = "#e34e1b"
+# red = "#e34e1b" # an ugly red.. only good for errors.. using aura's instead, though they seem the same..
 
 blue-green = "#19a2b7" # TODO: quite hideous toxic aqua green... currently using for namespaces, as i don't have anymore colors.. just feels too saturated. it's closest to tokyonight's aqua, but dimmer
 # blue-green-desaturated = "#3B94A3" # hmmm, maybe desaturate isn't the answer.. just dims it.., but it's not a bad idea either..
+# blue-green = "#0098C2" # slightly bluer in hue
 # blue-green = "#2C98BF" blue-green, with slightly lower hue, more greener
 # blue-deep = "#3B8CFF" # a sort of standard blue, underwater deep blue, not bad for builtin types.. gives a different vibe..
 cyan-bright = "#87efff" # a tad too bright.. just used for cursor match
