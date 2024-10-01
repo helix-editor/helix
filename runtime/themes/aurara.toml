@@ -21,8 +21,8 @@
 # TODO:
 # maybe add a fallback for every table..?
 # not happy with aura's orange, it's just too dim.. boring! is noctis's orange really that bright..?
-# still not happy about aura's blue-green used for namespace, especially for rust..
-# could try other colors for operators to make them more clear, and even punctuation
+# still not happy about aura's blue-green used for namespace, especially for rust.. desaturating didn't quite do it..
+# could try other colors for operators, and even punctuation
 # currently trying a dimmer shade of pink for variable.other.member, but there's too many keywords categorized in there..
   # create a white-stone with a tinge of color for variable.other..?
 # find out where the color for file picker is set, and try to dim it
@@ -31,7 +31,6 @@
 # find a different color for built-in types, currently using aura's default green-sea
 
 # NOTE:
-# struct counts as a keyword, not a type, which can be confusing.. maybe there's more keyword properties..??
 # blinking doesn't work with italics, another reason to not italicize comments
 # can fetch syntax highlighting tests from here:
   # https://github.com/sharkdp/bat
@@ -209,11 +208,11 @@
 
 'label' = { fg = "purple" } # Loop labels in rust.
 
-'punctuation' =  { fg = "pink", modifiers = ["bold"] } # (){}[]:;,. 
+'punctuation' =  { fg = "pink-dimmer", modifiers = ["bold"] } # (){}[]:;,. 
   # NOTE: the bolded gold from noctic is really, really nice, but it collides with the orange-brighter color; also, bolded white is too much white, should save white just for variables only
 'punctuation.delimiter' = { fg = "pink-hot", modifiers = ["bold"] } # Commas and colons.
   # pink-hotter is slightly too annoying..
-'punctuation.bracket' = { fg = "pink", modifiers = ["bold"]  } # Parentheses, angle brackets, etc.
+'punctuation.bracket' = { fg = "pink-dimmer", modifiers = ["bold"]  } # Parentheses, angle brackets, etc.
 'punctuation.special' = { fg = "orange-bright", modifiers = ["bold"] } # no clue..
   # use gold to make it stick out a little..
 
