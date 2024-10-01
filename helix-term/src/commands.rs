@@ -827,7 +827,11 @@ fn goto_line_end_impl(view: &mut View, doc: &mut Document, movement: Movement) {
         let pos = graphemes::prev_grapheme_boundary(text, line_end_char_index(&text, line))
             .max(line_start);
 
-        range.put_cursor(text, pos, movement == Movement::Extend)
+        if movement != Movement::Extend {
+            Range::point(range.cursor(text)).put_cursor(text, pos, range.head <= pos)
+        } else {
+            range.put_cursor(text, pos, true)
+        }
     });
     doc.set_selection(view.id, selection);
 }
@@ -888,7 +892,14 @@ fn goto_line_start_impl(view: &mut View, doc: &mut Document, movement: Movement)
 
         // adjust to start of the line
         let pos = text.line_to_char(line);
-        range.put_cursor(text, pos, movement == Movement::Extend)
+        if movement != Movement::Extend {
+            // ignore head placed at newline, no point to `gh d`?
+            let head = graphemes::prev_grapheme_boundary(text, line_end_char_index(&text, line))
+                .min(range.cursor(text));
+            Range::point(head).put_cursor(text, pos, true)
+        } else {
+            range.put_cursor(text, pos, true)
+        }
     });
     doc.set_selection(view.id, selection);
 }
@@ -1018,7 +1029,11 @@ fn goto_first_nonwhitespace_impl(view: &mut View, doc: &mut Document, movement: 
 
         if let Some(pos) = text.line(line).first_non_whitespace_char() {
             let pos = pos + text.line_to_char(line);
-            range.put_cursor(text, pos, movement == Movement::Extend)
+            if movement != Movement::Extend {
+                Range::point(range.cursor(text)).put_cursor(text, pos, true)
+            } else {
+                range.put_cursor(text, pos, true)
+            }
         } else {
             range
         }
