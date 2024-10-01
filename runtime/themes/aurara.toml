@@ -20,18 +20,13 @@
 
 # TODO:
 # maybe add a fallback for every table..?
-# currently trying a dimmer shade of pink for variable-other and ui-popup menus, but there's too many keywords categorized in there..
-# currently trying a dimmer shade for keyword.storage.modifier..
+# still not happy about blue-green used for namespace, especially for rust..
+# currently trying a dimmer shade of pink for variable-other, but there's too many keywords categorized in there..
+  # create a white-stone with a tinge of color for variable.other..?
 # find out where the color for file picker is set, and try to dim it
   # i tried searching the other configs in the repo to no avail, just found ui.picker.header
 # oranger-brighter used for functions is slightly too bright, get a darker shade (using orange for now..)
-# create a white-stone with a tinge of color for variable.other
 # find a different color for built-in types, currently using aura's default green-sea
-# figure out how to get alpha workin'..
-  # how does this differ from saturation?
-# get a different shade or color for var/let/mut general keywords?..
-  # currently using the same purple as operators.. which isn't too bad though, as it keeps a consistent scheme.. and it doesn't conflict with anything either. it's also good as a fallback for 'end', as that sometimes doesn't highlight properly..
-  # also, when it's bolded, it becomes a different shade of purple, a brighter one, which is exactly what i wanted
 
 # NOTE:
 # struct counts as a keyword, not a type, which can be confusing.. maybe there's more keyword properties..??
@@ -47,14 +42,14 @@
   # but not ERROR..?
 'info' = { fg = "blue-aqua" } # Code diagnostic info in gutter (LSP). TODO/INFO
   # def prefer noctis's blue-aqua over aura's here
-'hint' = { fg = "cyan", modifiers = ["bold", "dim"] } # Code diagnostics hint in gutter (LSP).
+'hint' = { fg = "cyan", modifiers = ["bold"] } # Code diagnostics hint in gutter (LSP).
   # ? Difference between info and hint ?
 
 'diagnostic' = { underline = { style = "line" } } # Code diagnostics in editing area (LSP).
 'diagnostic.unnecessary' = { modifiers = ["dim"] } # took this from default theme
 'diagnostic.deprecated' = { modifiers = ["crossed_out"] } # took this from default theme
 'diagnostic.error' = { underline = { style = "curl", color = "red-error" }, modifiers = ["bold", "slow_blink", "dim"] }
-'diagnostic.hint' = { underline = { style = "line", color = "cyan" }, modifiers = ["bold", "dim", "slow_blink" ] }
+'diagnostic.hint' = { underline = { style = "line", color = "cyan-bright" }, modifiers = ["bold", "dim", "slow_blink" ] }
 'diagnostic.info' = { underline = { style = "line", color = "blue-aqua" }, modifiers = ["bold", "dim", "slow_blink" ] }
   # TODO: TEST: diagnostics, might need a new set of colors..! can use all neon colors here!!
 
@@ -81,7 +76,7 @@
   # TODO: NOTE: this blinking at a different timing then the selection's blink is too much!! lol, but i do prefer it to blink..
 # 'ui.cursor.insert' =  { fg = "pink", bg = "light-green", modifiers = ["reversed", "bold"] } # The cursor in insert mode (i).
 # 'ui.cursor.select' = { fg = "pink", bg = "light-green", modifiers = ["reversed", "bold"] } # The cursor in select mode (v).
-'ui.cursor.match' = { fg = "cyan", bg = "pink", modifiers = ["bold", "reversed", "slow_blink"] } # The matching parentheses of that under the cursor.
+'ui.cursor.match' = { fg = "cyan-bright", bg = "pink", modifiers = ["bold", "reversed", "slow_blink"] } # The matching parentheses of that under the cursor.
   # NOTE: changed from purple, which was a bit tough to see..; rapid_blink was just too annoying..; light-green was too much, trying cyan..
 
 'ui.selection' = { bg = "selection-ui", modifiers = [ "bold", "slow_blink" ] } # All currently selected text.
@@ -145,10 +140,9 @@
 
 'property' = { fg = "green-aqua" } # Regex group names.
   # TODO: no clue.. never seen this.. just matching regex strings for now..
-'special' = { fg = "gold", modifiers = ["bold"] } # Special symbols e.g `?` in Rust, `...` in Hare, derive macro in rust?.. TODO: it seems to be used for the fuzzy-matching in pickers..
-  # gold looks incredible for fuzzy-matching
-  # it's usually squashed between punctuation ()?; pink-hotter works well for this case..
-  # pink-hotter vs orange-brighter or another color?..
+'special' = { fg = "gold", modifiers = ["bold"] } # Special symbols e.g `?` in Rust, `...` in Hare, also derive macro..?? BUG: also used for fuzzy search??
+  # rust's ? is usually squashed between punctuation ()?;
+  # gold is too bright, but fantastic for fuzzy search. pink-hotter works well for punctuation. gold also works well for the derive macro. it's also nice for it to just stick out, so as to indicate a syntax highlighting problem
 'attribute' = { fg = "purple", modifiers = ["italic"] } # Class attributes, html tag attributes.
   # italics makes sense for html tag attributes.. matching tag
 
@@ -156,7 +150,6 @@
   # NOTE: sometimes there's class / end, which looks odd not bolded like other control/end statements
   # doesn't seperate declaration, parameters, instantiation (though there is constructor), so it's difficult to italicize
 'type.builtin' = { fg = "green-sea", modifiers = ["italic"] } # Primitive types of the language (string, int, float).
-  # blue-dark was just too ugly.. this is still a funky sea green.. TODO: this is still a funky sea green..
 'type.enum.variant' = { fg = "green-sea" } # A variant of an enum.
   # vs match constant color
   # NOTE: i think was pink in aura theme.. but i def didn't like that for the enum values TODO: maybe white is fine
@@ -167,13 +160,13 @@
 
 'constant' = { fg = "green-aqua" } # Constant value
   # originally green in aura... and it seems a pretty good use of this green, as i don't use it for strings anymore..
-  # NOTE: if this is too dark, can use light-green, as there aren't too many of these..
+  # NOTE: if this is too dark, can use cyan or light-green, as there aren't too many of these..
 # 'constant.builtin' = { fg = "blue-aqua" } # Special constants like `true`, `false`, `none`, etc.
 # 'constant.builtin.boolean' = { } # True or False.
 # 'constant.character' = { fg = "blue-aqua"} # Constant of character type.
 # 'constant.character.escape' = { fg = "mid-green", modifiers = ["bold"] } # escape codes like \n.
   # NOTE: matches regexp
-# 'constant.numeric'  = { fg = "blue-dark", modifiers = ["bold"] } # constant integer or float value.
+# 'constant.numeric'  = { fg = "blue-green", modifiers = ["bold"] } # constant integer or float value.
 # 'constant.numeric.integer' = { } # constant integer value.
 # 'constant.numeric.float' = { fg = "green-aqua" } # constant float value.
 
@@ -188,7 +181,8 @@
 # 'string.special.path' = { } # String containing a file path.
 # 'string.special.url' = { } # String containing a web URL.
 'string.special.symbol' = { fg = "berry-desaturated" } # Erlang/Elixir atoms, Ruby symbols, Clojure keywords.
-  # secondary text (pink) collides with punctuation :/
+  # secondary text (pink) collides with punctuation :/, so now pink is used for variable.other
+  # perhaps it could be similar to the color used for constant/literals.. a kind of green..?
 
 'comment' = { fg = "gray-stone-lighter", modifiers = ["dim"] } # This is a comment.
   # TODO: dim and italics should be optional
@@ -204,7 +198,7 @@
 'variable.builtin' = { fg = "blue-aqua" } # Language reserved variables: `this`, `self`, `super`, etc.
   # NOTE: matches class color
 'variable.parameter' = { fg = "white-stone" } # Function parameters.
-  # TODO: this would be really useful to differentiate.. white-sea-tinged isn't too bad..
+  # TODO: this would be really useful to differentiate.. white-sea-tinged isn't too bad.. italic is too anooying
 'variable.function' = { fg = "orange" } # ? ruby-like everything is an object..?
 'variable.other' = { fg = "white-stone" } # from aura..
   # fallback
@@ -219,15 +213,16 @@
   # pink-hotter is slightly too annoying..
 'punctuation.bracket' = { fg = "pink", modifiers = ["bold"]  } # Parentheses, angle brackets, etc.
 'punctuation.special' = { fg = "gold", modifiers = ["bold"] } # no clue..
+  # use gold to make it stick out a little..
 
-'keyword' = { fg = "purple" } # Language reserved keywords. var, void, struct, let, mut, was accent18 TODO: try it
-  # TODO: could use another color here.. something that doesn't stick out.. snazzy's yellow is too bright (and dim too dim), maybe a purple-dark with less alpha..?
+'keyword' = { fg = "purple" } # Language reserved keywords. var, void, let
 'keyword.control' = { fg = "purple", modifiers = ["bold"] } # Control keywords.
   # NOTE: bold makes it slightly brighter too
 'keyword.control.conditional' = { fg = "purple", modifiers = ["bold"] } # 'if', 'else', 'elif'.
   # TODO: could use a cascading shades of purple here, between purple and purple-darker of operator, darkest on the outside, yet it's also nice to have it consistent..
 # 'keyword.control.repeat' = { } # 'for', 'while', 'loop'.
 'keyword.control.import' = { fg = "orange", modifiers = ["italic", "bold"] } # 'import', 'export', 'use', 'mod'
+  # TODO: could use another color here..
 'keyword.control.return' = { fg = "pink-salmon", modifiers = ["italic"] } # 'return' in most languages.
   # NOTE: tried red-error, but it's so ugly!!.. :/ but could use it's own color.. stole noctis's pink-salmon here.. bold is really nice too, more pink-salmony, but it eventually bugged me..; italics makes it feel like it's *pressed* in
 'keyword.control.exception' = { fg = "pink-salmon", modifiers = ["italic"] } # 'raise' in python.
@@ -239,6 +234,7 @@
 'keyword.storage.modifier' = { fg = "purple-dimmer", modifiers = ["italic"] } # function and type modifiers/accessors: public/private, mut, dyn, ref, &, internal, readonly, const, etc.
   # these should be less visible
   # bold makes sense here for C#, as it's usually the start of a function, but not so much for rust..
+  # currently using the same purple as operators.. which isn't too bad though, as it keeps a consistent scheme.. and it doesn't conflict with anything either. it's also good as a fallback for 'end', as that sometimes doesn't highlight properly..
 'keyword.storage.type' = { fg = "green-sea", modifiers = ["italic"] } # class, struct, enum, namespace, sometimes var? (for javascript but not rust)
   # matches type.builtin
 
@@ -246,23 +242,22 @@
 'operator' = { fg = "purple-darker", modifiers = ["bold"] } # Logical (&&, ||) and - I assume - Mathematical (+, %) operators
 
 # top three are ordered from brightest to darkest
+  # also used in markup headings
 'function' = { fg = "orange"}
   # TODO: orange-brighter is too bright.. :/ but much of the beauty of the theme comes from this color... just need to get a notch lower..
-'function.method' = { fg = "orange" } # Class / Struct methods.
+'function.method' = { fg = "orange-dimmer" } # Class / Struct methods.
 'function.builtin' = { fg = "gold-dim" }
-  # TODO: TEST: gold-dim and orange-warning TODO: try minimus's yellow-orange
-'function.macro' = { fg = "gold", modifiers = ["italic"] } # Like macros in rust.
-  # italics here makes sense.. as does the magical gold of macros
-'function.special' = { fg = "orange-brighter", modifiers = ["italic"] } # Preprocessor in C.
-  # package, import
+'function.macro' = { fg = "orange", modifiers = ["italic"] } # Like macros in rust.
+  # italics works well here.. as does the magical gold of macros, as does orange-pumpkin
+'function.special' = { fg = "orange", modifiers = ["italic"] } # Preprocessor in C.
 
 'tag' = { fg = "purple-darker", modifiers = ["italic"] } # As in <body> for html.
   # must be darker then the default text, and attribute
 
-'namespace' = { fg = "blue-dark" } # * Namespace keyword in java, C#, etc.
+'namespace' = { fg = "blue-green" } # * Namespace keyword in java, C#, etc.
   # namespace::function, namespace::class, package main, *types.Tuple
   # requires a seperate color
-  # TODO: this nasty blue-dark accurately matches how i feel about namespace syntax..: *barf*.. pink-hotter is interesting... really changes things up!.. but i still prefer something similar to blue for logical reasoning
+  # TODO: this nasty blue-green accurately matches how i feel about namespace syntax..: *barf*.. pink-hotter is interesting... really changes things up!.. but i still prefer something similar to blue for logical reasoning
   # for a long time i was using italics here, but then discovered it was part of its ugliness! now it's actually tolerable..!
 
 # Markup ==============================
@@ -347,19 +342,24 @@ gold = "#ffd800" # a nice, shiny bolded gold used for punctuation, was "yellow",
 purple-darker = "#6f60ea" # this purple is slightly darker than aura's, used for cascading keywords, but seems to match vs-code's aura better??
 white-sea-tinged = "#b1cace" # has a tinge of green in it.., pleasant tho
 orange = "#e4b782" # looks fantastic in noctics, fit for the sea theme, like a clown-fish, using it for functions
+# orange-pumpkin = "#ff9e64" # orange from tokyonight, too bright but really orange!
+orange-dimmer = "#e0af68" # yellow from tokyonight
 green-dark = "#5b858b" # mainly for comments/background text, was "gray"
 red = "#e34e1b"
 
-blue-dark = "#19a2b7" # TODO: quite hideous toxic aqua green... currently using for namespaces, as i don't have anymore colors..
-blue-aqua = "#47ace8" # currently used for types, a pretty standard blue for classes..
-cyan = "#87efff" # a tadtoo bright..
+blue-green = "#19a2b7" # TODO: quite hideous toxic aqua green... currently using for namespaces, as i don't have anymore colors.. just feels too saturated. it's closest to tokyonight's aqua, but dimmer
+# blue-green-desaturated = "#3B94A3" # hmmm, maybe desaturate isn't the answer.. just dims it.., but it's not a bad idea either..
+# blue-green = "#2C98BF" blue-green, with slightly lower hue, more greener
+# blue-deep = "#3B8CFF" # a sort of standard blue, underwater deep blue, not bad for builtin types.. gives a different vibe..
+cyan-bright = "#87efff" # a tad too bright.. just used for cursor match
 
 
 # aura dark soft/dim
 purple = "#8464c6"
-purple-dimmer = "#705AA2" # via radix.ui.com
+purple-dimmer = "#7B57C2" # increased saturation??
 purple-selection = "#3d375e7f"
 purple-selection-solid = "#29263c"
+blue-aqua = "#47ace8" # currently used for types, a pretty standard blue for classes..
 green-aqua = "#54c59f" # used for constants/literals, not the prettiest, but it fits the aqua sea feelin' of the overall theme.. maybe can try bogster's green
 orange-warning = "#c7a06f" # warning, like a dim hazard sign
 pink = "#c17ac8" # great, comfy pink for pop-up-menu ui text, TODO: shuold be second main text color, but using it for punctuation at the moment..
@@ -374,6 +374,7 @@ pink-hotter = "#d85ee3" # +50% saturation, for "special" symbols
 green-sea = "#6cb2c7" # builtin type, a bit funky but very much readable
 red-error = "#c55858" # error, looks great when blinking, like red flashing like underwater!
 white-stone = "#bdbdbd" # variable, has a dim tinge of dirty stone to it
+# white-stone-yellow-tinge = "#BAB195" # just added a little saturation, but it feels less readable :/
 gray-stone = "#6d6d6d" # comment, similar to white, but desaturated/grayed out, now a sort of dirty blonde; i didn't like it at first, but then became amazing once dimmed!!
   # gray-stone-dimmed = "#6d6d6d80" # 80 = 50%, 40 = 25%
 gray-stone-lighter = "#7d7d7d" # used for comments with the dim modifier; 9d9d9d dimmed seems slightly brighter than gray-stone undimmed.. 7d7d7d is out of the way, 858585 forces eyes to read it, vs 8d8d8d?
@@ -394,7 +395,7 @@ selection-ui = "#2e2b38" # no purple tinge, more closer to gray-stone, was accen
 marker13 = "#2d2d2d" # a barely visible gray
 
 # others scraped from aura
-# cyan-aura = "#82e2ff" # seems like noctis's cyan.. also sticks out too much..
+cyan = "#82e2ff" # seems like noctis's cyan.. also sticks out too much..
 # purple14 = "#af8aff7f" # light purple TODO: try it
 # purple-pleasant-opaque = "#a394f000" # purple-pleasant with 00 alpha (opaque?), was accent18
   # NOTE: doesn't seem to make a difference..
