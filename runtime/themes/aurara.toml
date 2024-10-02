@@ -18,11 +18,28 @@
 # License: MIT
 
 
+# design
+# mostly from natural convergences
+# "soft"/"dim"/low-brightness colors
+  # this should've been done on the app/terminal level.. however, since i've already used mostly low-brightness colors, perhaps there can be special cases to use brighter colors, to make certain things stand out... anyway, now can make use of both palettes: dim and bright
+# simple color scheme: purple as main text color (plain text, ui, possibly strings and/or comments), a secondary color (popups, punctuation or operators, variable.other?), tertiary color (functions)
+
+# the mains things you read should stick out, while the rest shouldn't
+# a common line:
+# modifier type-declaration variable operator type.function("string")
+# most visible: variable operator function type
+# clearly visible: operator, punctuation
+# less visible: type-declaration
+# least visible: modifiers
+
 # TODO:
+# should just inherit the original aura theme
+# try purple for comments and something else for strings?
 # maybe add a fallback for every table..?
 # not happy with aura's orange, it's just too dim.. boring! is noctis's orange really that bright..?
 # still not happy about aura's blue-green used for namespace, especially for rust.. desaturating didn't quite do it..
-# could try other colors either operators or punctuation..
+# can try another color/shade for atoms..? although, it's not too bad..
+# could try other colors for either operators or punctuation..
 # currently trying a dimmer shade of pink for variable.other.member, but there's too many keywords categorized in there..
   # create a white-stone with a tinge of color for variable.other..?
 # find out where the color for file picker is set, and try to dim it
@@ -43,16 +60,17 @@
   # but not ERROR..?
 'info' = { fg = "blue-aqua" } # Code diagnostic info in gutter (LSP). TODO/INFO
   # def prefer noctis's blue-aqua over aura's here
-'hint' = { fg = "cyan", modifiers = ["bold"] } # Code diagnostics hint in gutter (LSP).
+'hint' = { fg = "green-aqua", modifiers = ["bold"] } # Code diagnostics hint in gutter (LSP).
   # ? Difference between info and hint ?
 
 'diagnostic' = { underline = { style = "line" } } # Code diagnostics in editing area (LSP).
+'diagnostic.error' = { underline = { style = "curl", color = "red-error" }, modifiers = ["bold", "dim", "slow_blink"] }
+"diagnostic.warning" = { underline = { style = "curl", color = "orange" }, modifiers = ["bold", "dim", "slow_blink" ] }
+'diagnostic.info' = { underline = { style = "line", color = "blue-aqua" }, modifiers = ["bold", "dim", "slow_blink" ] }
+'diagnostic.hint' = { underline = { style = "line", color = "green-aqua" }, modifiers = ["bold", "dim", "slow_blink" ] }
+  # TODO: TEST: diagnostics, might need a new set of colors..! can use all neon colors here!! definitely need to test all this blinking.. LOL
 'diagnostic.unnecessary' = { modifiers = ["dim"] } # took this from default theme
 'diagnostic.deprecated' = { modifiers = ["crossed_out"] } # took this from default theme
-'diagnostic.error' = { underline = { style = "curl", color = "red-error" }, modifiers = ["bold", "slow_blink", "dim"] }
-'diagnostic.hint' = { underline = { style = "line", color = "cyan-bright" }, modifiers = ["bold", "dim", "slow_blink" ] }
-'diagnostic.info' = { underline = { style = "line", color = "blue-aqua" }, modifiers = ["bold", "dim", "slow_blink" ] }
-  # TODO: TEST: diagnostics, might need a new set of colors..! can use all neon colors here!!
 
 # UI ==============================
 # For styling helix itself.
@@ -62,6 +80,8 @@
   # pruple also works really well here.. maybe more needed when there are no line numbers..
 
 'ui.gutter' = { fg = "gold" } # Left gutter for diagnostics and breakpoints.
+  # background affects the entire background of the gutter!
+  # breakpoints are kinda hard to see, only the outline..?
 
 'ui.text' = { fg = "purple-pleasant-dimmer" } # Default text color. used in text files, pickers, ui, and more!
 'ui.text.focus' = { fg = "pink", bg = "selection-ui", modifiers = ["bold"] } # Selection highlight in buffer-picker or file-picker.
@@ -69,7 +89,7 @@
   # see ui.menu for auto-complete
   # NOTE: pink pops out more, making it better than the comfy purple-pleasant-dimmer here
 'ui.text.inactive' = { fg = "gray-stone-lighter", modifiers = ["dim"] } # i think used in autocomplete suggestion..
-  # TODO: a little hard to see, but i like it better than white-stone and purple-darker..
+  # i might like this better than gray-purple
 
 'ui.cursor' = { fg = "light-green-complement", bg = "light-green", modifiers = ["reversed", "bold" ] } # Fallback cursor colour, non-primary cursors when there are multiple (shift-c).
   # should be slightly darker than primary cursor..
@@ -77,7 +97,7 @@
   # TODO: NOTE: this blinking at a different timing then the selection's blink is too much!! lol, but i do prefer it to blink..
 # 'ui.cursor.insert' =  { fg = "pink", bg = "light-green", modifiers = ["reversed", "bold"] } # The cursor in insert mode (i).
 # 'ui.cursor.select' = { fg = "pink", bg = "light-green", modifiers = ["reversed", "bold"] } # The cursor in select mode (v).
-'ui.cursor.match' = { fg = "cyan-bright", bg = "pink", modifiers = ["bold", "reversed", "slow_blink"] } # The matching parentheses of that under the cursor.
+'ui.cursor.match' = { fg = "cyan", bg = "pink", modifiers = ["bold", "reversed", "slow_blink"] } # The matching parentheses of that under the cursor.
   # NOTE: changed from purple, which was a bit tough to see..; rapid_blink was just too annoying..; light-green was too much, trying cyan..
 
 'ui.selection' = { bg = "selection-ui", modifiers = [ "bold", "slow_blink" ] } # All currently selected text.
@@ -97,10 +117,12 @@
 'ui.virtual.whitespace' = { fg = "gray-stone"} # Whitespace markers in editing area: newline..
 'ui.virtual.indent-guide' = { fg = "marker13" } # Indentation guides.
 
-# 'ui.bufferline' = { fg = "red-error"}
+
+# 'ui.bufferline' = { fg = "purple-pleasant", bg = "bg-ui", modifiers = ["dim"] }
 # 'ui.bufferline.active' = { underline = { style = "line" } }
   # not so pretty.., and it extends past the text
-# 'ui.bufferline.inactive' # doesn't work..
+# 'ui.bufferline.inactive' = { fg = "gray-purple" } # BUG: doesn't work..
+  # or berry-desturated
   # using ui.statusline as fallback instead:
 
 'ui.statusline' = { fg = "purple-pleasant", bg = "bg-ui", modifiers = ["dim"] } # Status line. and tab bar
@@ -259,11 +281,11 @@
   # namespace::function, namespace::class, package main, *types.Tuple
   # requires a seperate color
   # TODO: this nasty blue-green accurately matches how i feel about namespace syntax..: *barf*.. pink-hotter is interesting... really changes things up!.. but i still prefer something similar to blue for logical reasoning
-  # for -dima long time i was using italics here, but then discovered it was part of its ugliness! now it's actualltolerabl
-# pumpkin==============================
-# Colors for markup languages, like Markdown or XML. also affects comments!! 
+  # for a long time i was using italics here, but then discovered it was part of its ugliness! now it's actually tolerable
+  
+# Colors for markup languages, like Markdown or XML.
+  # a little different from code since it's so simple, using a simple two color scheme: purple 'n gold
 
-# a little different from code since it's so simple, using a simple two color scheme: purple 'n gold
 # NOTE: it inherits the main text color from ui.text, and punctuation too
 
 markup = "purple-pleasant-dimmer" # fallback
@@ -319,14 +341,18 @@ markup = "purple-pleasant-dimmer" # fallback
 # Diff ==============================
 # Version control changes.
 
-'diff.plus' = "green-aqua" # { } # Additions.
-'diff.minus' = "pink-salmon" # { } # Deletions.
-'diff.delta' = "orange" # { } # Modifications.
-'diff.delta.moved' = "blue-aqua" # Renamed or moved files / changes.
+'diff.plus' = { fg = "green-aqua" } # Additions.
+'diff.minus' = { fg = "pink-salmon", modifiers = ["slow_blink"] } # Deletions.
+  # shows up as a little red dash, so blinking actually works well here!
+'diff.delta' = { fg = "orange" } # Modifications.
+'diff.delta.moved' = {fg = "blue-aqua" } # Renamed or moved files / changes.
+  # could dim.. but i also quite like how clear it is.. especially without the line numbers. BUG: dim doesn't seem to work..
+  # slow_blink is fun, but epilepsy-inducing, lol
+  # not sure where you'd see diff.delta.moved..
 
 
 [palette] # Define your custom colors here.
-# NOTE: there are 16 colors in the palette by default, these will override any that have the same name
+# NOTE: there are 16 colors in the palette by default, these will override any that have the same name. TODO: in order to make it most compatible and future-proof, should really use thsoe color names, even if it's not actually that color
 
 # noctis
 # dark-green = "#00262a" # backgrounds
@@ -345,10 +371,9 @@ green-dark = "#5b858b" # mainly for comments/background text, was "gray"
 
 blue-green = "#19a2b7" # TODO: quite hideous toxic aqua green... currently using for namespaces, as i don't have anymore colors.. just feels too saturated. it's closest to tokyonight's aqua, but dimmer
 # blue-green-desaturated = "#3B94A3" # hmmm, maybe desaturate isn't the answer.. just dims it.., but it's not a bad idea either..
-# blue-green = "#0098C2" # slightly bluer in hue
-# blue-green = "#2C98BF" blue-green, with slightly lower hue, more greener
-# blue-deep = "#3B8CFF" # a sort of standard blue, underwater deep blue, not bad for builtin types.. gives a different vibe..
-cyan-bright = "#87efff" # a tad too bright.. just used for cursor match
+# blue-green-blue = "#0098C2" # slightly bluer in hue, possible replacement for type.builtin, then can use green-sea with namespace
+# blue-green-green = "#2C98BF" blue-green, with slightly lower hue, more greener
+# cyan-bright = "#87efff" # a tad too bright..
 
 
 # aura dark soft/dim
@@ -377,10 +402,13 @@ gray-stone = "#6d6d6d" # comment, similar to white, but desaturated/grayed out, 
   # gray-stone-dimmed = "#6d6d6d80" # 80 = 50%, 40 = 25%
 gray-stone-lighter = "#7d7d7d" # used for comments with the dim modifier; 9d9d9d dimmed seems slightly brighter than gray-stone undimmed.. 7d7d7d is out of the way, 858585 forces eyes to read it, vs 8d8d8d?
   # TODO: alpha doesn't seem to affect these, only dim works..
-bg = "#15141b" # was "black"
+# bg = "#121016" # black, was accent28, slightly darker
+bg = "#15141b" # was "black", quite dark.. high-contrast
+  # TODO: have to figure out how backgrounds work: shouldn't the gui app (terminal or not) handle it?
+# bg = "#211D26" # a darker raisin black, was accent39, seems like a nice alternative
+# bg = "#2d2b38" # raisin black, was accent30. much much lighter, tougher to see on transparent backgrounds
 
-orange-brighter = "#ffca85" # brighter than noctis's orange
-purple-pleasant = "#a394f033" # great comfy purp for ui, should be main color, used for text (in .txt files) and strings and ui, was accent17
+purple-pleasant = "#a394f033" # great comfy purp for ui, should be main color, used for text (in .txt files) and strings and ui, was accent17 (with 33 alpha) as TODO: secondary selection and accent18 (with 00 alpha)
   # NOTE: still use this with dim modifer to make a color even dimmer than purple-pleasant-dimmer
 purple-pleasant-dimmer = "#9889E4" # switch to using this as main text.. along with pink-dimmer
 
@@ -393,10 +421,20 @@ selection-ui = "#2e2b38" # no purple tinge, more closer to gray-stone, was accen
 marker13 = "#2d2d2d" # a barely visible gray
 
 # others scraped from aura
-cyan = "#82e2ff" # seems like noctis's cyan.. also sticks out too much..
+cyan = "#82e2ff" # seems like noctis's cyan.. also sticks out too much.., just used for cursor match..
 # purple14 = "#af8aff7f" # light purple TODO: try it
 # purple-pleasant-opaque = "#a394f000" # purple-pleasant with 00 alpha (opaque?), was accent18
   # NOTE: doesn't seem to make a difference..
+# accent4 = "#9dff65" # bright green
+orange-brighter = "#ffca85" # brighter than noctis's orange, beautiful, was accent31
+# green-aqua-darker = "#3ea7847f" # was accent19
+# gray-purple = "#4d466e" # was accent22, english violet, too dark to read, almost charcoal.. perhaps used for grayed out text like for auto-suggestions? too dark for even inactive tabs..
+# accent25 = "#49c29a" # mint green, seems very close to green-aqua
+# accent26 = "#00d89023" # emerald green, slightly brighter than the above, when without alpha
+# TODO: untested colors below..
+# accent36 = "#a19c77" # debugging background
+# accent37 = "#353424" # breakpoint frame highlight
+# accent35 = "#525156" # activity bar inactive foreground,
 
 # new colors
 light-green-complement = "#e9488a" # initially used to create a high-contrast color for match surrounding pairs but it was too fugly to use as a cursor.. pink is better. currently using for secondary cursors as it's darker than the primary cursor's pink
@@ -412,7 +450,7 @@ berry-desaturated = "#886C9C" # originally used for comments, but didn't quite w
 
 # TODO: try checking out noctis variants minimus and uva
 
-# this site seems fine for buildings shades of a color..
+# try this site for buildings shades of a color..
   # https://www.radix-ui.com/colors/custom
   
 # this site seems fun too..
