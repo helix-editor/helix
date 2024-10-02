@@ -102,10 +102,11 @@ impl Renderer<'_, '_> {
             return 0;
         }
         let col = (col - self.renderer.offset.col) as u16;
+        let message = diag.message.lines().next().unwrap_or("");
         let (new_col, _) = self.renderer.set_string_truncated(
             self.renderer.viewport.x + col + 1,
             row,
-            &diag.message,
+            message,
             width.saturating_sub(col + 1) as usize,
             |_| style,
             true,
