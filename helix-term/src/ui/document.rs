@@ -522,8 +522,6 @@ impl<'a> TextRenderer<'a> {
         self.surface.set_style(area, style);
     }
 
-    /// Sets the style of an area **within the text viewport* this accounts
-    /// both for the renderers vertical offset and its viewport
     #[allow(clippy::too_many_arguments)]
     pub fn set_string_truncated(
         &mut self,
