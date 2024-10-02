@@ -435,6 +435,8 @@ pub struct LspConfig {
     pub snippets: bool,
     /// Whether to include declaration in the goto reference query
     pub goto_reference_include_declaration: bool,
+    /// Enable code lense.
+    pub code_lens: bool,
 }
 
 impl Default for LspConfig {
@@ -448,6 +450,7 @@ impl Default for LspConfig {
             display_inlay_hints: false,
             snippets: true,
             goto_reference_include_declaration: true,
+            code_lens: false,
         }
     }
 }
@@ -1030,6 +1033,7 @@ pub struct Editor {
     pub macro_replaying: Vec<char>,
     pub language_servers: helix_lsp::Registry,
     pub diagnostics: BTreeMap<Uri, Vec<(lsp::Diagnostic, LanguageServerId)>>,
+    pub code_lenses: BTreeMap<Uri, Vec<lsp::CodeLens>>,
     pub diff_providers: DiffProviderRegistry,
 
     pub debugger: Option<dap::Client>,
@@ -1175,6 +1179,7 @@ impl Editor {
             theme: theme_loader.default(),
             language_servers,
             diagnostics: BTreeMap::new(),
+            code_lenses: BTreeMap::new(),
             diff_providers: DiffProviderRegistry::default(),
             debugger: None,
             debugger_events: SelectAll::new(),

@@ -65,7 +65,7 @@ pub use syntax::Syntax;
 
 pub use diagnostic::Diagnostic;
 
-pub use line_ending::{LineEnding, NATIVE_LINE_ENDING};
+pub use line_ending::{line_end_char_index, LineEnding, NATIVE_LINE_ENDING};
 pub use transaction::{Assoc, Change, ChangeSet, Deletion, Operation, Transaction};
 
 pub use uri::Uri;

@@ -57,6 +57,7 @@ pub fn diagnostic<'doc>(
     let info = theme.get("info");
     let hint = theme.get("hint");
     let diagnostics = &doc.diagnostics;
+    let lenses = &doc.code_lens;
 
     Box::new(
         move |line: usize, _selected: bool, first_visual_line: bool, out: &mut String| {
@@ -73,7 +74,7 @@ pub fn diagnostic<'doc>(
                             .language_servers_with_feature(LanguageServerFeature::Diagnostics)
                             .any(|ls| ls.id() == d.provider)
                 });
-            diagnostics_on_line.max_by_key(|d| d.severity).map(|d| {
+            if let Some(style) = diagnostics_on_line.max_by_key(|d| d.severity).map(|d| {
                 write!(out, "●").ok();
                 match d.severity {
                     Some(Severity::Error) => error,
@@ -81,7 +82,14 @@ pub fn diagnostic<'doc>(
                     Some(Severity::Info) => info,
                     Some(Severity::Hint) => hint,
                 }
-            })
+            }) {
+                return Some(style);
+            };
+            if lenses.iter().any(|l| l.line == line) {
+                write!(out, "▶").ok();
+                return Some(info);
+            }
+            None
         },
     )
 }
