@@ -98,20 +98,29 @@ impl Renderer<'_, '_> {
     fn draw_eol_diagnostic(&mut self, diag: &Diagnostic, row: u16, col: usize) -> u16 {
         let style = self.styles.severity_style(diag.severity());
         let width = self.renderer.viewport.width;
-        if !self.renderer.column_in_bounds(col + 1, 1) {
-            return 0;
+        let start_col = (col - self.renderer.offset.col) as u16;
+        let mut end_col = start_col;
+        let mut draw_col = (col + 1) as u16;
+
+        for line in diag.message.lines() {
+            if !self.renderer.column_in_bounds(draw_col as usize, 1) {
+                break;
+            }
+
+            (end_col, _) = self.renderer.set_string_truncated(
+                self.renderer.viewport.x + draw_col,
+                row,
+                line,
+                width.saturating_sub(draw_col) as usize,
+                |_| style,
+                true,
+                false,
+            );
+
+            draw_col = end_col - self.renderer.viewport.x + 2; // double space between lines
         }
-        let col = (col - self.renderer.offset.col) as u16;
-        let (new_col, _) = self.renderer.set_string_truncated(
-            self.renderer.viewport.x + col + 1,
-            row,
-            &diag.message,
-            width.saturating_sub(col + 1) as usize,
-            |_| style,
-            true,
-            false,
-        );
-        new_col - col
+
+        end_col - start_col
     }
 
     fn draw_diagnostic(&mut self, diag: &Diagnostic, col: u16, next_severity: Option<Severity>) {
