@@ -321,7 +321,10 @@ fn path_completion(
     let line_until_cursor = text.slice(start..cursor).regex_input_at(..);
 
     let (dir_path, typed_file_name) = PATH_REGEX.search(line_until_cursor).and_then(|m| {
-        let matched_path = &text.byte_slice(m.start()..m.end()).to_string();
+        let start_byte = text.char_to_byte(start);
+        let matched_path = &text
+            .byte_slice((start_byte + m.start())..(start_byte + m.end()))
+            .to_string();
 
         // resolve home dir (~/, $HOME/, ${HOME}/) on unix
         #[cfg(unix)]
