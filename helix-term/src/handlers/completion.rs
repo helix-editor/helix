@@ -468,7 +468,10 @@ fn path_completion(
                     }
                 };
 
-                let edit_diff = typed_file_name.as_ref().map(|f| f.len()).unwrap_or_default();
+                let edit_diff = typed_file_name
+                    .as_ref()
+                    .map(|f| f.len())
+                    .unwrap_or_default();
 
                 let transaction = Transaction::change(
                     &text,
