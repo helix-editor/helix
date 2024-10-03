@@ -3806,3 +3806,16 @@ language-servers = ["circom-lsp"]
 name   = "circom"
 source = { git = "https://github.com/Decurity/tree-sitter-circom", rev = "02150524228b1e6afef96949f2d6b7cc0aaf999e" }
 
+[[language]]
+name = "nginx"
+scope = "source.nginx"
+injection-regex = "nginx"
+file-types = ["conf"]
+roots = []
+comment-token = "#"
+indent = { tab-width = 4, unit = "    " }
+auto-format = false
+
+[[grammar]]
+name = "nginx"
+source = { git = "https://gitlab.com/joncoole/tree-sitter-nginx", rev = "b4b61db443602b69410ab469c122c01b1e685aa0" }
