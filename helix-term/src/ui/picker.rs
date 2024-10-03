@@ -599,8 +599,14 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                             let files = super::directory_content(&path)?;
                             let file_names: Vec<_> = files
                                 .iter()
-                                .filter_map(|file| file.file_name())
-                                .map(|name| name.to_string_lossy().into_owned())
+                                .filter_map(|file| {
+                                    let name = file.file_name()?.to_string_lossy();
+                                    if file.is_dir() {
+                                        Some(format!("{}/", name))
+                                    } else {
+                                        Some(name.into_owned())
+                                    }
+                                })
                                 .collect();
                             Ok(CachedPreview::Directory(file_names))
                         } else if metadata.is_file() {

@@ -284,10 +284,12 @@ pub fn file_browser(root: PathBuf) -> Result<FilePicker, std::io::Error> {
     let columns = [PickerColumn::new(
         "path",
         |item: &PathBuf, root: &PathBuf| {
-            item.strip_prefix(root)
-                .unwrap_or(item)
-                .to_string_lossy()
-                .into()
+            let name = item.strip_prefix(root).unwrap_or(item).to_string_lossy();
+            if item.is_dir() {
+                format!("{}/", name).into()
+            } else {
+                name.into()
+            }
         },
     )];
     let picker = Picker::new(
@@ -327,11 +329,10 @@ fn directory_content(path: &Path) -> Result<Vec<PathBuf>, std::io::Error> {
     let mut dirs = Vec::new();
     let mut files = Vec::new();
     for entry in std::fs::read_dir(path)?.flatten() {
-        let entry_path = entry.path();
         if entry.path().is_dir() {
-            dirs.push(entry_path);
+            dirs.push(entry.path());
         } else {
-            files.push(entry_path);
+            files.push(entry.path());
         }
     }
     dirs.sort();
@@ -339,7 +340,6 @@ fn directory_content(path: &Path) -> Result<Vec<PathBuf>, std::io::Error> {
 
     let mut content = Vec::new();
     if path.parent().is_some() {
-        log::warn!("{}", path.to_string_lossy());
         content.insert(0, path.join(".."));
     }
     content.extend(dirs);
