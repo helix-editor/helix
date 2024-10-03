@@ -49,12 +49,15 @@
 
 # NOTE:
 # blinking doesn't work with italics, another reason to not italicize comments
+# see keys here:
+  # https://github.com/helix-editor/helix/blob/master/book/src/themes.md#scopes
 # can fetch syntax highlighting tests from here:
   # https://github.com/sharkdp/bat
 
 
 ## GENERAL ==============================
 
+# the diagnostic info in the gutter area
 'warning' = { fg ="orange-bright", modifiers = ["bold"] } # Editor warnings. TEMP/TEST/WARN
 'error' = { fg = "red-error", modifiers = ["bold", "slow_blink"] } # Editor errors, like mis-typing a command. BUG ISSUE
   # but not ERROR..?
@@ -63,12 +66,14 @@
 'hint' = { fg = "green-aqua", modifiers = ["bold"] } # Code diagnostics hint in gutter (LSP).
   # ? Difference between info and hint ?
 
+# diagnostic info in the main text-editing area
 'diagnostic' = { underline = { style = "line" } } # Code diagnostics in editing area (LSP).
 'diagnostic.error' = { underline = { style = "curl", color = "red-error" }, modifiers = ["bold", "dim", "slow_blink"] }
-"diagnostic.warning" = { underline = { style = "curl", color = "orange" }, modifiers = ["bold", "dim", "slow_blink" ] }
-'diagnostic.info' = { underline = { style = "line", color = "blue-aqua" }, modifiers = ["bold", "dim", "slow_blink" ] }
-'diagnostic.hint' = { underline = { style = "line", color = "green-aqua" }, modifiers = ["bold", "dim", "slow_blink" ] }
+"diagnostic.warning" = { underline = { style = "curl", color = "orange" }, modifiers = ["bold", "dim" ] }
+'diagnostic.info' = { underline = { style = "dashed", color = "blue-aqua" }, modifiers = ["bold", "dim" ] }
+'diagnostic.hint' = { underline = { style = "dashed", color = "green-aqua" }, modifiers = ["bold", "dim" ] }
   # TODO: TEST: diagnostics, might need a new set of colors..! can use all neon colors here!! definitely need to test all this blinking.. LOL
+  # underline styles: line, curl, dashed, dotted, double_line
 'diagnostic.unnecessary' = { modifiers = ["dim"] } # took this from default theme
 'diagnostic.deprecated' = { modifiers = ["crossed_out"] } # took this from default theme
 
@@ -76,12 +81,18 @@
 # For styling helix itself.
 
 'ui.background' = { fg = "purple-pleasant-dimmer", bg = "bg"} # Default background color., the fg seems to be used for borders..
+'ui.background.separator' = { fg = "gray-stone" } # below the input line in picker
 'ui.window' = { fg = "gray-stone" } # Window border between splits.
   # pruple also works really well here.. maybe more needed when there are no line numbers..
 
 'ui.gutter' = { fg = "gold" } # Left gutter for diagnostics and breakpoints.
   # background affects the entire background of the gutter!
   # breakpoints are kinda hard to see, only the outline..?
+# 'ui.butter.selected' = { bg = "selection-ui" }
+# 'ui.debug.breakpoint' = "●" # character for breakpoint? nope, that's not it..
+'ui.debug.active' = { fg = "pink-dimmer" } # debug execution paused, gutter?
+'ui.highlight.frameline' = { bg = "selection-ui" } # debug execution paused, line
+  # TODO: could use a tinted color here.. a little confusing as it uses the same background as selected text
 
 'ui.text' = { fg = "purple-pleasant-dimmer" } # Default text color. used in text files, pickers, ui, and more!
 'ui.text.focus' = { fg = "pink", bg = "selection-ui", modifiers = ["bold"] } # Selection highlight in buffer-picker or file-picker.
@@ -106,17 +117,21 @@
 # 'ui.cursorline.primary' = { bg = 'purple-selection' } #
   # TODO: would need a very dim color, between selection-ui and background.. it could work of primary selection has a tinge of color to it (purple-selection), but without that, it would make it even harder to see the selection
 
-# 'ui.highlight.frameline' = { bg = "selection-ui" } # hmmm, not sure..
 
 'ui.linenr' = { fg = "purple-pleasant", modifiers = ["dim"]} # Line numbers.
 'ui.linenr.selected' = { modifiers = [ "bold" ] } # Current line number.
 
-'ui.virtual' = { fg = "purple-selection" } # Namespace for additions to the editing area.
+'ui.virtual' = { fg = "gray-stone" } # Namespace for additions to the editing area.
 'ui.virtual.ruler' = { bg = "selection-ui"} # Vertical rulers (colored columns in editing area).
   # TODO: TEST: haven't seen these two yet..error
-'ui.virtual.whitespace' = { fg = "gray-stone"} # Whitespace markers in editing area: newline..
+# 'ui.virtual.whitespace' = { fg = "gray-stone"} # Whitespace markers in editing area: newline..
+# 'ui.virtual.wrap'
+# 'ui.virtual.jump-label'
 'ui.virtual.indent-guide' = { fg = "marker13" } # Indentation guides.
 
+'ui.virtual.inlay-hint' = { fg = "purple-pleasant-dimmer" } # TODO: TEST:
+# ui.virtual.inlay-hint.parameter	
+# ui.virtual.inlay-hint.type	
 
 # 'ui.bufferline' = { fg = "purple-pleasant", bg = "bg-ui", modifiers = ["dim"] }
 # 'ui.bufferline.active' = { underline = { style = "line" } }
@@ -127,6 +142,8 @@
 
 'ui.statusline' = { fg = "purple-pleasant", bg = "bg-ui", modifiers = ["dim"] } # Status line. and tab bar
   # NOTE: matches line numbers
+# 'ui.statusline.separator' = '|' # not working..? don't think i'd need anyway, seems cleaner without it..
+  
 'ui.statusline.inactive' = { fg = "gray-stone", bg = "bg-ui", modifiers = [] } # Status line in unfocused windows.
   # seems very dim.., likely inherited, but i don't know how to uninherit it.., i do prefer it to be different from the text used for comments though.. so it's not bad..
 
@@ -148,6 +165,7 @@
 'ui.menu.selected' = { bg = "selection-ui", fg = "gold", modifiers = ["bold"] } # Selected autocomplete item.
   # not a fan of slow_blink here..
   # gold is fantastic for selected text and fuzzy matching
+# 'ui.menu.scroll'
 
 # 'ui.picker' = { fg = "purple" } # ope.. good guess..
 "ui.picker.header" = { modifiers = ["bold"] } # TODO: TEST: i found this in another config, no clue yet..
@@ -226,6 +244,7 @@
 'variable.other' = { fg = "white-stone" } # from aura..
   # fallback
 'variable.other.member' = { fg = "pink-dimmer" } # Fields of composite data types (e.g. structs, unions)., @callback in elixir, serialized data fields (like this config file..)
+# 'variable.other.member.private' # only for ECMAScript-based languages
   # TODO: decide white-stone vs pink vs another color, and remember to turn down punctuation down a notch in hotness; would be nice to create a slightly tinged color, like noctis's white-sea-tinge
 
 'label' = { fg = "purple" } # Loop labels in rust.
@@ -235,15 +254,14 @@
 'punctuation.delimiter' = { fg = "pink-hot", modifiers = ["bold"] } # Commas and colons.
   # pink-hotter is slightly too annoying..
 'punctuation.bracket' = { fg = "pink-dimmer", modifiers = ["bold"]  } # Parentheses, angle brackets, etc.
-'punctuation.special' = { fg = "orange-bright", modifiers = ["bold"] } # no clue..
-  # use gold to make it stick out a little..
+'punctuation.special' = { fg = "pink-dimmer", modifiers = ["bold"] } # string interpolation
 
 'keyword' = { fg = "purple" } # Language reserved keywords. var, void, let
 'keyword.control' = { fg = "purple", modifiers = ["bold"] } # Control keywords.
   # NOTE: bold makes it slightly brighter too
 'keyword.control.conditional' = { fg = "purple", modifiers = ["bold"] } # 'if', 'else', 'elif'.
   # TODO: could use a cascading shades of purple here, between purple and purple-darker of operator, darkest on the outside, yet it's also nice to have it consistent..
-# 'keyword.control.repeat' = { } # 'for', 'while', 'loop'.
+'keyword.control.repeat' = {  fg = "purple", modifiers = ["bold"] } # 'for', 'while', 'loop'.
 'keyword.control.import' = { fg = "purple", modifiers = ["italic"] } # 'import', 'export', 'use', 'mod'
   # use crate::blah blah conflicts, crate is the same color..
 'keyword.control.return' = { fg = "pink-salmon", modifiers = ["italic"] } # 'return' in most languages.
@@ -269,6 +287,7 @@
 'function' = { fg = "orange"}
   # TODO: orange-brighter is too bright.. :/ but much of the beauty of the theme comes from this color... just need to get a notch lower..
 'function.method' = { fg = "orange" } # Class / Struct methods.
+# 'function.method.private' # just ECMAScript-based languages..
 'function.builtin' = { fg = "orange-desaturated" }
 'function.macro' = { fg = "orange", modifiers = ["italic"] } # Like macros in rust.
   # italics works well here.. as does the magical gold of macros, as does orange-pumpkin
@@ -276,6 +295,7 @@
 
 'tag' = { fg = "purple-darker", modifiers = ["italic"] } # As in <body> for html. also @tags in comments?
   # must be darker then the default text, and attribute
+#'tag.builtin' # ?
 
 'namespace' = { fg = "blue-green" } # * Namespace keyword in java, C#, etc.
   # namespace::function, namespace::class, package main, *types.Tuple
@@ -346,8 +366,10 @@ markup = "purple-pleasant-dimmer" # fallback
   # shows up as a little red dash, so blinking actually works well here!
 'diff.delta' = { fg = "orange" } # Modifications.
 'diff.delta.moved' = {fg = "blue-aqua" } # Renamed or moved files / changes.
+'diff.delta.conflict' = { fg = "orange" }
   # could dim.. but i also quite like how clear it is.. especially without the line numbers. BUG: dim doesn't seem to work..
-  # slow_blink is fun, but epilepsy-inducing, lol
+  # slow_blink is fun, but epilepsy-inducing, lol.. at least they blink at the same time!
+    # TODO: TEST: blinking on deletions, is it too distracting..?
   # not sure where you'd see diff.delta.moved..
 
 
@@ -366,7 +388,7 @@ gold = "#ffd800" # a nice, shiny bolded gold used for punctuation, was "yellow",
 purple-darker = "#6f60ea" # this purple is slightly darker than aura's, used for cascading keywords, but seems to match vs-code's aura better??
 white-sea-tinged = "#b1cace" # has a tinge of green in it.., pleasant tho
 orange-bright = "#e4b782" # looks fantastic in noctis, fit for the sea theme, like a clown-fish, but too bright :(
-green-dark = "#5b858b" # mainly for comments/background text, was "gray"
+green-sea-darker = "#5b858b" # was mainly used for comments/background text in noctis, was "gray", it's very readable but rather less saturated compared to the other colors.. TODO: a very good, unused reading color, not bad for atoms..
 # red = "#e34e1b" # an ugly red.. only good for errors.. using aura's instead, though they seem the same..
 
 blue-green = "#19a2b7" # TODO: quite hideous toxic aqua green... currently using for namespaces, as i don't have anymore colors.. just feels too saturated. it's closest to tokyonight's aqua, but dimmer
