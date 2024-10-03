@@ -1,4 +1,5 @@
 use std::collections::HashSet;
+use std::ffi::OsString;
 use std::path::PathBuf;
 use std::sync::Arc;
 use std::time::Duration;
@@ -15,6 +16,7 @@ use helix_event::{
 };
 use helix_lsp::lsp;
 use helix_lsp::util::pos_to_lsp_pos;
+use helix_stdx::path::{canonicalize, fold_home_dir};
 use helix_stdx::rope::{self, RopeSliceExt};
 use helix_view::document::{Mode, SavePoint};
 use helix_view::handlers::lsp::CompletionEvent;
@@ -312,80 +314,69 @@ fn path_completion(
     // TODO find a good regex for most use cases (especially Windows, which is not yet covered...)
     // currently only one path match per line is possible in unix
     static PATH_REGEX: Lazy<rope::Regex> =
-        Lazy::new(|| rope::Regex::new(r"((?:~|\$HOME|\$\{HOME\})?(?:\.{0,2}/)+.*)").unwrap());
+        Lazy::new(|| rope::Regex::new(r"((?:~|\$HOME|\$\{HOME\})?(?:\.{0,2}/)+.*)$").unwrap());
 
     let cur_line = text.char_to_line(cursor);
     let start = text.line_to_char(cur_line).max(cursor.saturating_sub(1000));
-    let line_until_cursor = text.slice(..).regex_input_at(start..cursor);
+    let line_until_cursor = text.slice(start..cursor).regex_input_at(..);
 
-    let (dir_path, typed_file_name) = PATH_REGEX
-        .find_iter(line_until_cursor)
-        .last() // this is a workaround for missing "match end of slice" support in `rope::Regex`
-        .and_then(|matched_path| {
-            let end = text.byte_to_char(matched_path.end());
-            if end != cursor {
-                return None;
-            }
-            let start = text.byte_to_char(matched_path.start());
-            let matched_path = &text.slice(start..end).to_string();
+    let (dir_path, typed_file_name) = PATH_REGEX.search(line_until_cursor).and_then(|m| {
+        let matched_path = &text.byte_slice(m.start()..m.end()).to_string();
 
-            // resolve home dir (~/, $HOME/, ${HOME}/) on unix
-            #[cfg(unix)]
-            let mut path = {
-                static HOME_DIR: Lazy<Option<std::ffi::OsString>> =
-                    Lazy::new(|| std::env::var_os("HOME"));
+        // resolve home dir (~/, $HOME/, ${HOME}/) on unix
+        #[cfg(unix)]
+        let mut path = {
+            static HOME_DIR: Lazy<Option<OsString>> = Lazy::new(|| std::env::var_os("HOME"));
 
-                let home_resolved_path = if let Some(home) = &*HOME_DIR {
-                    let first_separator_after_home = if matched_path.starts_with("~/") {
-                        Some(1)
-                    } else if matched_path.starts_with("$HOME") {
-                        Some(5)
-                    } else if matched_path.starts_with("${HOME}") {
-                        Some(7)
-                    } else {
-                        None
-                    };
-                    if let Some(start_char) = first_separator_after_home {
-                        let mut path = home.to_owned();
-                        path.push(&matched_path[start_char..]);
-                        path
-                    } else {
-                        matched_path.into()
-                    }
+            let home_resolved_path = if let Some(home) = &*HOME_DIR {
+                let first_separator_after_home = if matched_path.starts_with("~/") {
+                    Some(1)
+                } else if matched_path.starts_with("$HOME") {
+                    Some(5)
+                } else if matched_path.starts_with("${HOME}") {
+                    Some(7)
+                } else {
+                    None
+                };
+                if let Some(start_char) = first_separator_after_home {
+                    let mut path = home.to_owned();
+                    path.push(&matched_path[start_char..]);
+                    path
                 } else {
                     matched_path.into()
-                };
-                PathBuf::from(home_resolved_path)
+                }
+            } else {
+                matched_path.into()
             };
-            #[cfg(not(unix))]
-            let mut path = PathBuf::from(matched_path);
+            PathBuf::from(home_resolved_path)
+        };
+        #[cfg(not(unix))]
+        let mut path = PathBuf::from(matched_path);
 
-            if path.is_relative() {
-                if let Some(doc_path) = doc.path().and_then(|dp| dp.parent()) {
-                    path = doc_path.join(path);
-                } else if let Ok(work_dir) = std::env::current_dir() {
-                    path = work_dir.join(path);
-                }
+        if path.is_relative() {
+            if let Some(doc_path) = doc.path().and_then(|dp| dp.parent()) {
+                path = doc_path.join(path);
+            } else if let Ok(work_dir) = std::env::current_dir() {
+                path = work_dir.join(path);
             }
-            let ends_with_slash = match matched_path.chars().last() {
-                Some(std::path::MAIN_SEPARATOR) => true,
-                None => return None,
-                _ => false,
-            };
-            // check if there are chars after the last slash, and if these chars represent a directory
-            match std::fs::metadata(path.clone()).ok() {
-                Some(m) if m.is_dir() && ends_with_slash => {
-                    Some((PathBuf::from(path.as_path()), None))
-                }
-                _ if !ends_with_slash => path.parent().map(|parent_path| {
-                    (
-                        PathBuf::from(parent_path),
-                        path.file_name().and_then(|f| f.to_str().map(String::from)),
-                    )
-                }),
-                _ => None,
-            }
-        })?;
+        }
+        let ends_with_slash = match matched_path.chars().last() {
+            Some(std::path::MAIN_SEPARATOR) => true,
+            None => return None,
+            _ => false,
+        };
+        // check if there are chars after the last slash, and if these chars represent a directory
+        match std::fs::metadata(path.clone()).ok() {
+            Some(m) if m.is_dir() && ends_with_slash => Some((PathBuf::from(path.as_path()), None)),
+            _ if !ends_with_slash => path.parent().map(|parent_path| {
+                (
+                    PathBuf::from(parent_path),
+                    path.file_name().and_then(|f| f.to_str().map(String::from)),
+                )
+            }),
+            _ => None,
+        }
+    })?;
 
     // The async file accessor functions of tokio were considered, but they were a bit slower
     // and less ergonomic than just using the std functions in a separate "thread"
@@ -404,14 +395,12 @@ fn path_completion(
                     .to_string_lossy()
                     .to_string();
 
-                let full_path = path.canonicalize().unwrap_or_default();
-                let full_path_name = full_path.to_string_lossy().into_owned();
-
-                let is_dir = full_path.is_dir();
+                let full_path = fold_home_dir(canonicalize(path));
+                let full_path_name = full_path.to_string_lossy();
 
                 let kind = if md.is_symlink() {
                     PathKind::Link
-                } else if is_dir {
+                } else if md.is_dir() {
                     PathKind::Folder
                 } else {
                     #[cfg(unix)]
@@ -431,12 +420,6 @@ fn path_completion(
                     }
                     #[cfg(not(unix))]
                     PathKind::File
-                };
-
-                let resolved = if kind == PathKind::Link {
-                    "resolved "
-                } else {
-                    ""
                 };
 
                 let documentation = {
@@ -473,14 +456,14 @@ fn path_completion(
                         format!(
                             "type: `{kind}`\n\
                              permissions: `[{perms}]`\n\
-                             {resolved}full path: `{full_path_name}`",
+                             full path: `{full_path_name}`",
                         )
                     }
                     #[cfg(not(unix))]
                     {
                         format!(
                             "type: `{kind}`\n\
-                             {resolved}full path: `{full_path_name}`",
+                             full path: `{full_path_name}`",
                         )
                     }
                 };
