@@ -91,7 +91,7 @@ impl menu::Item for CompletionItem {
             CompletionItem::Path(PathCompletionItem { kind, .. }) => kind.as_str(),
         };
 
-        menu::Row::new(vec![
+        menu::Row::new([
             menu::Cell::from(Span::styled(
                 label,
                 if deprecated {

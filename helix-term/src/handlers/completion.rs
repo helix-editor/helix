@@ -390,7 +390,7 @@ fn path_completion(
     // The async file accessor functions of tokio were considered, but they were a bit slower
     // and less ergonomic than just using the std functions in a separate "thread"
     let future = tokio::task::spawn_blocking(move || {
-        let Some(read_dir) = std::fs::read_dir(&dir_path).ok() else {
+        let Ok(read_dir) = std::fs::read_dir(&dir_path) else {
             return Vec::new();
         };
 
@@ -485,7 +485,7 @@ fn path_completion(
                     }
                 };
 
-                let edit_diff = typed_file_name.as_ref().map(|f| f.len()).unwrap_or(0);
+                let edit_diff = typed_file_name.as_ref().map(|f| f.len()).unwrap_or_default();
 
                 let transaction = Transaction::change(
                     &text,
