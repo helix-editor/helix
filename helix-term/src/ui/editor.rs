@@ -24,7 +24,7 @@ use helix_core::{
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
     document::{Mode, SavePoint, SCRATCH_BUFFER_NAME},
-    editor::{CompleteAction, CursorShapeConfig},
+    editor::{CompleteAction, CursorShapeConfig, RulerStyle},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
@@ -254,11 +254,12 @@ impl EditorView {
         theme: &Theme,
     ) {
         let editor_rulers = &editor.config().rulers;
-        let editor_ruler_char = editor.config().ruler_char.map(|c| c.to_string());
+        let ruler_style = &editor.config().ruler_style;
+        let ruler_char = editor.config().ruler_char.to_string();
 
-        let theme_key = match &editor_ruler_char {
-            None => "ui.virtual.ruler",
-            Some(_) => "ui.virtual.ruler.char",
+        let theme_key = match ruler_style {
+            RulerStyle::Bg => "ui.virtual.ruler",
+            RulerStyle::Char => "ui.virtual.ruler.char",
         };
 
         let ruler_theme = theme
@@ -280,12 +281,15 @@ impl EditorView {
             .filter(|ruler| ruler < &viewport.width)
             .map(|ruler| viewport.clip_left(ruler).with_width(1))
             .for_each(|area| {
-                if let Some(ruler_char) = &editor_ruler_char {
-                    for y in area.y..area.height {
-                        surface.set_string(area.x, y, ruler_char, ruler_theme)
+                match ruler_style {
+                    RulerStyle::Bg => {
+                        surface.set_style(area, ruler_theme);
                     }
-                } else {
-                    surface.set_style(area, ruler_theme)
+                    RulerStyle::Char => {
+                        for y in area.y..area.height {
+                            surface.set_string(area.x, y, &ruler_char, ruler_theme);
+                        }
+                    }
                 }
             })
     }
