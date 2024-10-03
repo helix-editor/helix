@@ -66,6 +66,25 @@ impl CommandSignature {
     }
 }
 
+fn xit(
+    cx: &mut compositor::Context, 
+    args: &[Cow<str>], 
+    event: PromptEvent,
+)-> anyhow::Result<()> {
+
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (_view, doc) = current!(cx.editor);
+    
+    if doc.is_modified() {
+        write_impl(cx, args.first(), false)?;
+    }
+    cx.block_try_flush_writes()?;
+    quit(cx, &[], event)
+}
+
 fn quit(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
     log::debug!("quitting...");
 
@@ -2520,7 +2539,18 @@ fn read(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     Ok(())
 }
 
+fn exit() {
+    
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
+    TypableCommand {
+        name: "xit",
+        aliases: &["x"],
+        doc: "Write changes to disk if any are made. Otherwise just close. Doesn't require a path if buffer is not modified.",
+        fun: xit,
+        signature: CommandSignature::positional(&[completers::filename]),
+    },
     TypableCommand {
         name: "quit",
         aliases: &["q"],
@@ -2673,14 +2703,14 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "write-quit",
-        aliases: &["wq", "x"],
+        aliases: &["wq"],
         doc: "Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt)",
         fun: write_quit,
         signature: CommandSignature::positional(&[completers::filename]),
     },
     TypableCommand {
         name: "write-quit!",
-        aliases: &["wq!", "x!"],
+        aliases: &["wq!"],
         doc: "Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt)",
         fun: force_write_quit,
         signature: CommandSignature::positional(&[completers::filename]),
