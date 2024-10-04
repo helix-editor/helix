@@ -39,8 +39,8 @@ use helix_core::{
     RopeReader, RopeSlice, Selection, SmallVec, Syntax, Tendril, Transaction,
 };
 use helix_view::{
-    document::{FormatterError, Mode, SearchMatch, SCRATCH_BUFFER_NAME},
-    editor::Action,
+    document::{FormatterError, Mode, SearchMatch, SearchMatchLimit, SCRATCH_BUFFER_NAME},
+    editor::{Action, OptionToml, SearchConfig},
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
@@ -2071,12 +2071,13 @@ fn search_impl(
     movement: Movement,
     direction: Direction,
     scrolloff: usize,
-    wrap_around: bool,
+    search_config: &SearchConfig,
     show_warnings: bool,
 ) {
     let (view, doc) = current!(editor);
     let text = doc.text().slice(..);
     let selection = doc.selection(view.id);
+    let wrap_around = search_config.wrap_around;
 
     // Get the right side of the primary block cursor for forward search, or the
     // grapheme before the start of the selection for reverse search.
@@ -2147,9 +2148,38 @@ fn search_impl(
     }
 
     let (idx, mat) = mat.unwrap();
-    let last_idx = match all_matches.last() {
-        None => idx,
-        Some((last_idx, _)) => last_idx,
+    let match_count = match search_config.max_matches {
+        OptionToml::None => match all_matches.last() {
+            None => SearchMatchLimit::Limitless(idx + 1),
+            Some((last_idx, _)) => SearchMatchLimit::Limitless(last_idx + 1),
+        },
+        OptionToml::Some(max) => {
+            if all_matches.peek().is_none() {
+                // Case #1: If we consumed `all_matches`, it means that we have
+                // the last match in `mat`. Hence, we know exactly how many
+                // matches there are. To respect the `max` option, if it goes
+                // beyong `max`, we limit the counter to `max`.
+                if idx + 1 > max {
+                    SearchMatchLimit::Limited(max)
+                } else {
+                    SearchMatchLimit::Limitless(idx + 1)
+                }
+            } else {
+                // Case #2: If we are here, we have at least one match in
+                // `all_matches`. We need to find the last match that's
+                // less than `max`. If we find it, we simply return it as a
+                // `Limitless` denominator because it doesn't go beyong the
+                // user option. The two remaining cases are `last_idx == max`
+                // and `None` (when the remaining matches are all greater than
+                // `max`) for which we return a `Limited` denominator.
+                match all_matches.take_while(|(idx, _)| idx <= &max).last() {
+                    Some((last_idx, _)) if last_idx < max => {
+                        SearchMatchLimit::Limitless(last_idx + 1)
+                    }
+                    _ => SearchMatchLimit::Limited(max),
+                }
+            }
+        }
     };
 
     // Move the cursor to the match.
@@ -2185,7 +2215,7 @@ fn search_impl(
         view.id,
         SearchMatch {
             idx: idx + 1,
-            count: last_idx + 1,
+            count: match_count,
         },
     );
 }
@@ -2211,7 +2241,6 @@ fn searcher(cx: &mut Context, direction: Direction) {
     let reg = cx.register.unwrap_or('/');
     let config = cx.editor.config();
     let scrolloff = config.scrolloff;
-    let wrap_around = config.search.wrap_around;
     let movement = if cx.editor.mode() == Mode::Select {
         Movement::Extend
     } else {
@@ -2244,7 +2273,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
                 movement,
                 direction,
                 scrolloff,
-                wrap_around,
+                &config.search,
                 false,
             );
         },
@@ -2265,7 +2294,6 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
         } else {
             false
         };
-        let wrap_around = search_config.wrap_around;
         if let Ok(regex) = rope::RegexBuilder::new()
             .syntax(
                 rope::Config::new()
@@ -2281,7 +2309,7 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
                     movement,
                     direction,
                     scrolloff,
-                    wrap_around,
+                    search_config,
                     true,
                 );
             }

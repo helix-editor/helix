@@ -2,7 +2,7 @@ use helix_core::{coords_at_pos, encoding, Position};
 use helix_lsp::lsp::DiagnosticSeverity;
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::{
-    document::{Mode, SearchMatch, SCRATCH_BUFFER_NAME},
+    document::{Mode, SearchMatch, SearchMatchLimit, SCRATCH_BUFFER_NAME},
     graphics::Rect,
     theme::Style,
     Document, Editor, View,
@@ -538,6 +538,10 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     if let Some(SearchMatch { idx, count }) = context.doc.get_last_search_match(context.view.id) {
-        write(context, format!(" [{}/{}] ", idx, count), None);
+        let count_str = match count {
+            SearchMatchLimit::Limitless(count) => format!("{}", count),
+            SearchMatchLimit::Limited(max) => format!(">{}", max),
+        };
+        write(context, format!(" [{}/{}] ", idx, count_str), None);
     }
 }
