@@ -139,11 +139,17 @@ pub enum DocumentOpenError {
 }
 
 #[derive(Debug, Clone, Copy)]
+pub enum SearchMatchLimit {
+    Limitless(usize),
+    Limited(usize),
+}
+
+#[derive(Debug, Clone, Copy)]
 pub struct SearchMatch {
     /// nth match from the beginning of the document.
     pub idx: usize,
     /// Total number of matches in the document.
-    pub count: usize,
+    pub count: SearchMatchLimit,
 }
 
 pub struct Document {

@@ -280,6 +280,7 @@ Search specific options.
 |--|--|---------|
 | `smart-case` | Enable smart case regex searching (case-insensitive unless pattern contains upper case characters) | `true` |
 | `wrap-around`| Whether the search should wrap after depleting the matches | `true` |
+| `max-matches`| Maximum number of matches that will be counted for the denominator of `search-position`. Possible values are integers or `"none"` for no limit. | `100` |
 
 ### `[editor.whitespace]` Section
 

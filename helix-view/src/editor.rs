@@ -484,12 +484,22 @@ impl Default for LspConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+pub enum OptionToml<T> {
+    None,
+    #[serde(untagged)]
+    Some(T),
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct SearchConfig {
     /// Smart case: Case insensitive searching unless pattern contains upper case characters. Defaults to true.
     pub smart_case: bool,
     /// Whether the search should wrap after depleting the matches. Default to true.
     pub wrap_around: bool,
+    /// Maximum number of counted matches when searching in a document. `None` means no limit. Default to 100.
+    pub max_matches: OptionToml<usize>,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -1036,6 +1046,7 @@ impl Default for SearchConfig {
         Self {
             wrap_around: true,
             smart_case: true,
+            max_matches: OptionToml::Some(100),
         }
     }
 }
