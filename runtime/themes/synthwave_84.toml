@@ -1,0 +1,184 @@
+# User interface
+"ui.background" = { fg = "white", bg = "#262335" }
+"ui.background.separator" = { fg = "white", bg = "#262335" }
+"ui.cursor" = { fg = "white", bg = "#f97e72" }
+"ui.cursor.normal" = { fg = "white", bg = "#f97e72" }
+"ui.cursor.insert" = { fg = "white", bg = "#f97e72" }
+"ui.cursor.select" = { fg = "white", bg = "#f97e72" }
+"ui.cursor.match" = { fg = "white", bg = "#f97e72" }
+"ui.cursor.primary" = { fg = "white", bg = "#f97e72" }
+"ui.cursor.primary.normal" = { fg = "white", bg = "#f97e72" }
+"ui.cursor.primary.insert" = { fg = "white", bg = "#f97e72" }
+"ui.cursor.primary.select" = { fg = "white", bg = "#f97e72" }
+"ui.debug.breakpoint" = { fg = "white", bg = "#262335" }
+"ui.debug.active" = { fg = "white", bg = "#262335" }
+"ui.gutter" = { fg = "#ffffff73" }
+"ui.gutter.selected" = { fg = "#ffffffcc" }
+"ui.highlight.frameline" = { fg = "white", bg = "#262335" }
+"ui.linenr" = { fg = "#ffffff73" }
+"ui.linenr.selected" = { fg = "#ffffffcc" }
+"ui.statusline" = { fg = "#ffffff80", bg = "#241b2f" }
+"ui.statusline.inactive" = { fg = "#ffffff80", bg = "#241b2f" }
+"ui.statusline.normal" = { fg = "#ffffff80", bg = "#241b2f" }
+"ui.statusline.insert" = { fg = "#ffffff80", bg = "#241b2f" }
+"ui.statusline.select" = { fg = "#ffffff80", bg = "#241b2f" }
+"ui.statusline.separator" = { fg = "#ffffff80", bg = "#241b2f" }
+"ui.bufferline" = { fg = "white", bg = "#262335" }
+"ui.bufferline.active" = { fg = "white", bg = "#262335" }
+"ui.bufferline.background" = { fg = "white", bg = "#262335" }
+"ui.popup" = { fg = "white", bg = "#171520DC" }
+"ui.popup.info" = { fg = "white", bg = "#171520DC" }
+"ui.window" = { fg = "white", bg = "#262335" }
+"ui.help" = { fg = "white", bg = "#262335" }
+"ui.text" = { fg = "white" }
+"ui.text.focus" = { fg = "white" }
+"ui.text.inactive" = { fg = "white" }
+"ui.text.info" = { fg = "white" }
+"ui.virtual.ruler" = { fg = "white", bg = "#262335" }
+"ui.virtual.whitespace" = { fg = "white", bg = "#262335" }
+"ui.virtual.indent-guide" = { fg = "white", bg = "#262335" }
+"ui.virtual.inlay-hint" = { fg = "white", bg = "#262335" }
+"ui.virtual.inlay-hint.parameter" = { fg = "white", bg = "#262335" }
+"ui.virtual.inlay-hint.type" = { fg = "white", bg = "#262335" }
+"ui.virtual.wrap" = { fg = "white", bg = "#262335" }
+"ui.virtual.jump-label" = { fg = "white", bg = "#262335" }
+"ui.menu" = { fg = "white", bg = "#463465" }
+"ui.menu.selected" = { fg = "white", bg = "#ffffff36" }
+"ui.menu.scroll" = { fg = "white", bg = "#262335" }
+"ui.selection" = { fg = "white", bg = "#ffffff20" }
+"ui.selection.primary" = { fg = "white", bg = "#ffffff20" }
+"ui.highlight" = { fg = "white", bg = "#ffffff20" }
+"ui.cursorline.primary" = { fg = "white", bg = "#ffffff20" }
+"ui.cursorline.secondary" = { fg = "white", bg = "#ffffff20" }
+"ui.cursorcolumn.primary" = { fg = "white", bg = "#ffffff20" }
+"ui.cursorcolumn.secondary" = { fg = "white", bg = "#ffffff20" }
+"warning" = { fg = "yellow", bg = "#262335" }
+"error" = { fg = "red", bg = "#262335" }
+"info" = { fg = "light-cyan", bg = "#262335" }
+"hint" = { fg = "light-green", bg = "#262335" }
+"diagnostic" = { fg = "white", bg = "#262335" }
+"diagnostic.hint" = { fg = "light-green", bg = "#262335" }
+"diagnostic.info" = { fg = "light-cyan", bg = "#262335" }
+"diagnostic.warning" = { fg = "yellow", bg = "#262335" }
+"diagnostic.error" = { fg = "red", bg = "#262335" }
+"diagnostic.unnecessary" = { fg = "white", bg = "#262335" }
+"diagnostic.deprecated" = { fg = "white", bg = "#262335" }
+
+# Syntax highlighting
+"attribute" = { fg = "white", bg = "#262335" }
+"type" = { fg = "yellow" }
+"type.builtin" = { fg = "yellow" }
+"type.parameter" = { fg = "yellow" }
+"type.enum" = { fg = "yellow" }
+"type.enum.variant" = { fg = "yellow" }
+"constructor" = { fg = "white", bg = "#262335" }
+"constant" = { fg = "light-red" }
+"constant.builtin" = { fg = "light-red" }
+"constant.builtin.boolean" = { fg = "light-red" }
+"constant.character" = { fg = "light-red" }
+"constant.character.escape" = { fg = "light-cyan" }
+"constant.numeric" = { fg = "light-red" }
+"constant.numeric.integer" = { fg = "light-red" }
+"constant.numeric.float" = { fg = "light-red" }
+"string" = { fg = "#ff8b39" }
+"string.regexp" = { fg = "#ff8b39" }
+"string.special" = { fg = "#ff8b39" }
+"string.special.path" = { fg = "#ff8b39" }
+"string.special.url" = { fg = "#ff8b39" }
+"string.special.symbol" = { fg = "#ff8b39" }
+"comment" = { fg = "gray", modifiers = ["italic"] }
+"comment.line" = { fg = "gray", modifiers = ["italic"] }
+"comment.block" = { fg = "gray", modifiers = ["italic"] }
+"comment.block.documentation" = { fg = "gray", modifiers = ["italic"] }
+"variable" = { fg = "magenta" }
+"variable.builtin" = { fg = "red", modifiers = ["bold"] }
+"variable.parameter" = { modifiers = ["italic"] }
+"variable.other" = { fg = "magenta" }
+"variable.other.member" = { fg = "magenta" }
+"variable.other.member.private" = { fg = "magenta" }
+"label" = { fg = "white", bg = "#262335" }
+"punctuation" = { fg = "white", bg = "#262335" }
+"punctuation.delimiter" = { fg = "white", bg = "#262335" }
+"punctuation.bracket" = { fg = "white", bg = "#262335" }
+"punctuation.special" = { fg = "white", bg = "#262335" }
+"keyword" = { fg = "yellow" }
+"keyword.control" = { fg = "yellow" }
+"keyword.control.conditional" = { fg = "yellow" }
+"keyword.control.repeat" = { fg = "yellow" }
+"keyword.control.import" = { fg = "yellow" }
+"keyword.control.return" = { fg = "yellow" }
+"keyword.control.exception" = { fg = "yellow" }
+"keyword.operator" = { fg = "yellow" }
+"keyword.directive" = { fg = "yellow" }
+"keyword.function" = { fg = "yellow" }
+"keyword.storage" = { fg = "yellow" }
+"keyword.storage.type" = { fg = "yellow" }
+"keyword.storage.modifier" = { fg = "yellow" }
+"operator" = { fg = "yellow" }
+"function" = { fg = "light-cyan" }
+"function.builtin" = { fg = "light-cyan" }
+"function.method" = { fg = "light-cyan" }
+"function.method.private" = { fg = "light-cyan" }
+"function.macro" = { fg = "light-cyan" }
+"function.special" = { fg = "light-cyan" }
+"function.special.preprocessor" = { fg = "light-cyan" }
+"tag" = { fg = "green" }
+"tag.builtin" = { fg = "green" }
+"namespace" = { fg = "white", bg = "#262335" }
+"special" = { fg = "white", bg = "#262335" }
+"markup" = { fg = "white", bg = "#262335" }
+"markup.heading" = { fg = "magenta" }
+"markup.heading.marker" = { fg = "magenta" }
+"markup.heading.1" = { fg = "magenta" }
+"markup.heading.2" = { fg = "magenta" }
+"markup.heading.3" = { fg = "magenta" }
+"markup.heading.4" = { fg = "magenta" }
+"markup.heading.5" = { fg = "magenta" }
+"markup.heading.6" = { fg = "magenta" }
+"markup.list" = { fg = "white", bg = "#262335" }
+"markup.list.unnumbered" = { fg = "white", bg = "#262335" }
+"markup.list.numbered" = { fg = "white", bg = "#262335" }
+"markup.list.checked" = { fg = "white", bg = "#262335" }
+"markup.list.unchecked" = { fg = "white", bg = "#262335" }
+"markup.bold" = { fg = "light-cyan", modifiers = ["bold"] }
+"markup.italic" = { fg = "light-cyan", modifiers = ["italic"] }
+"markup.strikethrough" = { fg = "white", bg = "#262335" }
+"markup.link" = { fg = "#D50" }
+"markup.link.url" = { fg = "#D50" }
+"markup.link.label" = { fg = "#D50" }
+"markup.link.text" = { fg = "#D50" }
+"markup.quote" = { fg = "#b6b1b1", modifiers = ["italic"] }
+"markup.raw" = { fg = "white", bg = "#262335" }
+"markup.raw.inline" = { fg = "white", bg = "#262335" }
+"markup.raw.block" = { fg = "white", bg = "#262335" }
+"diff" = { fg = "white", bg = "#262335" }
+"diff.plus" = { fg = "green" }
+"diff.minus" = { fg = "red" }
+"diff.delta" = { fg = "yellow" }
+"diff.moved" = { fg = "blue" }
+"diff.conflict" = { fg = "magenta" }
+"diff.gutter" = { fg = "white", bg = "#262335" }
+"diff.plus.gutter" = { fg = "green" }
+"diff.minus.gutter" = { fg = "red" }
+"diff.delta.gutter" = { fg = "yellow" }
+"diff.moved.gutter" = { fg = "blue" }
+"diff.conflict.gutter" = { fg = "magenta" }
+
+# Color palette
+[palette]
+white = "#ffffff"
+black = "#000000"
+red = "#fe4450"
+green = "#72f1b8"
+yellow = "#fede5d"
+blue = "#03edf9"
+magenta = "#ff7edb"
+cyan = "#03edf9"
+gray = "#848bbd"
+light-red = "#f97e72"
+light-green = "#72f1b8"
+light-yellow = "#fede5d"
+light-blue = "#36f9f6"
+light-magenta = "#ff7edb"
+light-cyan = "#36f9f6"
+light-gray = "#ffffff73"
