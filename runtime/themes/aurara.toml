@@ -42,6 +42,7 @@
 # could try other colors for either operators or punctuation..
 # currently trying a dimmer shade of pink for variable.other.member, but there's too many keywords categorized in there..
   # create a white-stone with a tinge of color for variable.other..?
+# never found out why the derive macro is a bolded bright orange color..
 # find out where the color for file picker is set, and try to dim it
   # i tried searching the other configs in the repo to no avail, just found ui.picker.header
 # oranger-brighter used for functions is slightly too bright, get a darker shade (using orange for now..)
@@ -80,7 +81,7 @@
 # UI ==============================
 # For styling helix itself.
 
-'ui.background' = { fg = "purple-pleasant-dimmer", bg = "bg"} # Default background color., the fg seems to be used for borders..
+'ui.background' = { fg = "purple-pleasant-dimmer", bg = "bg-ui"} # Default background color., the fg seems to be used for borders..
 'ui.background.separator' = { fg = "gray-stone" } # below the input line in picker
 'ui.window' = { fg = "gray-stone" } # Window border between splits.
   # pruple also works really well here.. maybe more needed when there are no line numbers..
@@ -88,7 +89,7 @@
 'ui.gutter' = { fg = "gold" } # Left gutter for diagnostics and breakpoints.
   # background affects the entire background of the gutter!
   # breakpoints are kinda hard to see, only the outline..?
-# 'ui.butter.selected' = { bg = "selection-ui" }
+# 'ui.gutter.selected' = { bg = "selection-ui" }
 # 'ui.debug.breakpoint' = "●" # character for breakpoint? nope, that's not it..
 'ui.debug.active' = { fg = "pink-dimmer" } # debug execution paused, gutter?
 'ui.highlight.frameline' = { bg = "selection-ui" } # debug execution paused, line
@@ -113,6 +114,7 @@
 
 'ui.selection' = { bg = "selection-ui", modifiers = [ "bold", "slow_blink" ] } # All currently selected text.
   # TODO: decide purple-selection vs the neutral selection-ui: purple is easier to see immediately, but the neutral selection shows text more clearly / less muddy, and with the aid of blinking, it's pretty easy to see too
+  # TODO: ...wish there were a "brighten" modifier..
 # 'ui.selection.primary' = { bg = "purple-selection" } # The primary selection when there are multiple.
 # 'ui.cursorline.primary' = { bg = 'purple-selection' } #
   # TODO: would need a very dim color, between selection-ui and background.. it could work of primary selection has a tinge of color to it (purple-selection), but without that, it would make it even harder to see the selection
@@ -158,11 +160,12 @@
 'ui.help' = { bg = "bg", fg = "pink-dimmer"} # `:command` descriptions above the command line.
 
 'ui.highlight' = { bg = "selection-ui", modifiers = ["slow_blink"] } # selected contents of symbol pickers (spc-s, spc-S) and current line in buffer picker (spc-b).
+  # bold doesn't seem to work here..
 
-'ui.menu' = { fg = "purple-pleasant", bg = "bg", modifiers = ["dim"] } # Autocomplete menu.
+'ui.menu' = { fg = "purple-pleasant", bg = "bg-ui", modifiers = ["dim"] } # Autocomplete menu.
   # a dim color that doesn't pop up makes sense here
-  # BUG: the dim modifier conflicts with the matching gold for the first line only
-'ui.menu.selected' = { bg = "selection-ui", fg = "gold", modifiers = ["bold"] } # Selected autocomplete item.
+  # BUG: the dim modifier conflicts with the matching gold for the first line only, maybe the parent key's dim affects the child key..?
+'ui.menu.selected' = { fg = "gold", bg = "selection-ui", modifiers = ["bold"] } # Selected autocomplete item.
   # not a fan of slow_blink here..
   # gold is fantastic for selected text and fuzzy matching
 # 'ui.menu.scroll'
@@ -170,8 +173,8 @@
 # 'ui.picker' = { fg = "purple" } # ope.. good guess..
 "ui.picker.header" = { modifiers = ["bold"] } # TODO: TEST: i found this in another config, no clue yet..
 
-'ui.popup' = { fg = "purple-pleasant-dimmer", bg = "bg" } # Documentation popups (space-k).
-'ui.popup.info' = { fg = "purple", bg = "bg" } # Info popups box (space mode menu). just the borders.
+'ui.popup' = { fg = "purple-pleasant-dimmer", bg = "bg-ui" } # Documentation popups (space-k).
+'ui.popup.info' = { fg = "purple", bg = "bg-ui" } # Info popups box (space mode menu). just the borders.
   # gold is very pretty here.., but distracting.. purple creates a solid frame and feels out of the way..
   # modifiers don't work here.. no shiny blinky stuff..; also dim doesn't work, so can't use purple-pleasant dimmed..
 # "ui.menu.scroll" = { }
@@ -181,9 +184,9 @@
 
 'property' = { fg = "green-aqua" } # Regex group names.
   # TODO: no clue.. never seen this.. just matching regex strings for now..
-'special' = { fg = "gold", modifiers = ["bold"] } # Special symbols e.g `?` in Rust, `...` in Hare, also derive macro..?? BUG: also used for fuzzy search??
+'special' = { fg = "orange-bright", modifiers = ["bold"] } # Special symbols e.g `?` in Rust, `...` in Hare, also derive macro..??
   # rust's ? is usually squashed between punctuation ()?;
-  # gold is too bright, but fantastic for fuzzy search. pink-hotter works well for punctuation. gold also works well for the derive macro. it's also nice for it to just stick out, so as to indicate a syntax highlighting problem
+  # pink-hotter works well for punctuation. gold also works well for the derive macro. it's also nice for it to just stick out, so as to indicate a syntax highlighting problem
 'attribute' = { fg = "purple", modifiers = ["italic"] } # Class attributes, html tag attributes.
   # italics makes sense for html tag attributes.. matching tag
 
@@ -384,7 +387,7 @@ markup = "purple-pleasant-dimmer" # fallback
 light-green = "#48e9a7" # a nice sea green, bright neon when bolded, like the displays of deep sea instruments, was "green", re-used for text under the cursor
 
 pink-salmon = "#df769b" # re-used for return, was "pink", it's perfect! :D use sparingly as i really don't like themes with lots of red in it, only returns and maybe exceptions
-gold = "#ffd800" # a nice, shiny bolded gold used for punctuation, was "yellow", ..maybe was also used for it's variable text..? unfortunately, it's very bright. used for matching fuzzy search, special symbols, markdown symbols
+gold = "#ffd800" # a nice, shiny bolded gold used for punctuation, was "yellow", ..maybe was also used for it's variable text..? unfortunately, it's very bright. used for matching fuzzy search, and other things that should really stick out, or otherwise highlighting selected text
 purple-darker = "#6f60ea" # this purple is slightly darker than aura's, used for cascading keywords, but seems to match vs-code's aura better??
 white-sea-tinged = "#b1cace" # has a tinge of green in it.., pleasant tho
 orange-bright = "#e4b782" # looks fantastic in noctis, fit for the sea theme, like a clown-fish, but too bright :(
