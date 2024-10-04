@@ -81,7 +81,10 @@
 # UI ==============================
 # For styling helix itself.
 
-'ui.background' = { fg = "purple-pleasant-dimmer", bg = "bg-ui"} # Default background color., the fg seems to be used for borders..
+# 'ui' = { bg = 'bg-ui' }
+  # doesn't work.. :/
+'ui.background' = { fg = "purple-pleasant-dimmer", bg = "bg"} # Default background color., the fg seems to be used for borders..
+  # NOTE:this effects the main background of the text-editing area; it's values don't cascade down to popup/auto-complete/etc; you must override them in each key
 'ui.background.separator' = { fg = "gray-stone" } # below the input line in picker
 'ui.window' = { fg = "gray-stone" } # Window border between splits.
   # pruple also works really well here.. maybe more needed when there are no line numbers..
@@ -97,7 +100,7 @@
 
 'ui.text' = { fg = "purple-pleasant-dimmer" } # Default text color. used in text files, pickers, ui, and more!
 'ui.text.focus' = { fg = "pink", bg = "selection-ui", modifiers = ["bold"] } # Selection highlight in buffer-picker or file-picker.
-'ui.text.info' = { fg = "pink-dimmer", bg ="bg" } # Info popup contents (space mode menu).
+'ui.text.info' = { fg = "pink-dimmer", bg = "bg-ui" } # Info popup contents (space mode menu).
   # see ui.menu for auto-complete
   # NOTE: pink pops out more, making it better than the comfy purple-pleasant-dimmer here
 'ui.text.inactive' = { fg = "gray-stone-lighter", modifiers = ["dim"] } # i think used in autocomplete suggestion..
@@ -157,7 +160,7 @@
   # slow_blink on insert/select was too annoying..
   # using a colored background was also too annoying
 
-'ui.help' = { bg = "bg", fg = "pink-dimmer"} # `:command` descriptions above the command line.
+'ui.help' = { fg = "pink-dimmer", bg = "bg-ui" } # `:command` descriptions above the command line.
 
 'ui.highlight' = { bg = "selection-ui", modifiers = ["slow_blink"] } # selected contents of symbol pickers (spc-s, spc-S) and current line in buffer picker (spc-b).
   # bold doesn't seem to work here..
