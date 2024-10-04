@@ -341,6 +341,7 @@ impl MappableCommand {
         page_cursor_half_up, "Move page and cursor half up",
         page_cursor_half_down, "Move page and cursor half down",
         select_all, "Select whole document",
+        select_first_and_last_chars, "Select first and last characters of each selection",
         select_regex, "Select all regex matches inside selections",
         split_selection, "Split selections on regex matches",
         split_selection_on_newline, "Split selection on newlines",
@@ -2000,6 +2001,21 @@ fn select_all(cx: &mut Context) {
 
     let end = doc.text().len_chars();
     doc.set_selection(view.id, Selection::single(0, end))
+}
+
+fn select_first_and_last_chars(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    let selection = doc.selection(view.id).clone().transform_iter(|range| {
+        [
+            Range::point(range.from()),
+            Range::point(graphemes::prev_grapheme_boundary(text, range.to())),
+        ]
+        .into_iter()
+    });
+
+    doc.set_selection(view.id, selection);
 }
 
 fn select_regex(cx: &mut Context) {
