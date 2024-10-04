@@ -4144,19 +4144,25 @@ pub mod insert {
             let curr = contents.get_char(pos).unwrap_or(' ');
 
             let current_line = text.char_to_line(pos);
-            let line_is_only_whitespace = text
-                .line(current_line)
-                .chars()
-                .all(|char| char.is_ascii_whitespace());
+            let line_start = text.line_to_char(current_line);
 
             let mut new_text = String::new();
 
-            // If the current line is all whitespace, insert a line ending at the beginning of
-            // the current line. This makes the current line empty and the new line contain the
-            // indentation of the old line.
-            let (from, to, local_offs) = if line_is_only_whitespace {
-                let line_start = text.line_to_char(current_line);
-                new_text.push_str(doc.line_ending.as_str());
+            let (from, to, local_offs) =
+                if let Some(idx) = text.slice(line_start..pos).last_non_whitespace_char() {
+                    let first_trailing_whitespace_char = (line_start + idx + 1).min(pos);
+                    let indent = indent::indent_for_newline(
+                        doc.language_config(),
+                        doc.syntax(),
+                        &loader,
+                        &doc.config.load().indent_heuristic,
+                        &doc.indent_style,
+                        doc.tab_width(),
+                        text,
+                        current_line,
+                        pos,
+                        current_line,
+                    );
 
                 (line_start, line_start, new_text.chars().count())
             } else {
@@ -4171,58 +4177,69 @@ pub mod insert {
                     pos,
                     current_line,
                 );
+                    let continue_comment = || {
+                        let comment_tokens = doc.language_config()?.comment_tokens.as_ref()?;
+                        comment::find_line_comment_token(doc.text(), current_line, comment_tokens)
+                    };
 
-                let continue_comment = || {
-                    let comment_tokens = doc.language_config()?.comment_tokens.as_ref()?;
-                    comment::find_line_comment_token(doc.text(), current_line, comment_tokens)
-                };
+                    // If we are between pairs (such as brackets), we want to
+                    // insert an additional line which is indented one level
+                    // more and place the cursor there
+                    let on_auto_pair = || {
+                        doc.auto_pairs(cx.editor)
+                            .and_then(|pairs| pairs.get(prev))
+                            .map_or(false, |pair| pair.open == prev && pair.close == curr)
+                    };
 
-                // If we are between pairs (such as brackets), we want to
-                // insert an additional line which is indented one level
-                // more and place the cursor there
-                let on_auto_pair = || {
-                    doc.auto_pairs(cx.editor)
-                        .and_then(|pairs| pairs.get(prev))
-                        .map_or(false, |pair| pair.open == prev && pair.close == curr)
-                };
+                    let local_offs = if let Some(comment_token) = continue_comment() {
+                        new_text.reserve_exact(1 + indent.len() + comment_token.len() + 1);
+                        new_text.push_str(doc.line_ending.as_str());
+                        new_text.push_str(&indent);
+                        new_text.push_str(comment_token);
+                        new_text.push(' ');
+                        new_text.chars().count()
+                    } else if on_auto_pair() {
+                        let inner_indent = indent.clone() + doc.indent_style.as_str();
+                        new_text.reserve_exact(2 + indent.len() + inner_indent.len());
+                        new_text.push_str(doc.line_ending.as_str());
+                        new_text.push_str(&inner_indent);
+                        let local_offs = new_text.chars().count();
+                        new_text.push_str(doc.line_ending.as_str());
+                        new_text.push_str(&indent);
+                        local_offs
+                    } else {
+                        new_text.reserve_exact(1 + indent.len());
+                        new_text.push_str(doc.line_ending.as_str());
+                        new_text.push_str(&indent);
+                        new_text.chars().count()
+                    };
 
-                let local_offs = if let Some(comment_token) = continue_comment() {
-                    new_text.reserve_exact(1 + indent.len() + comment_token.len() + 1);
-                    new_text.push_str(doc.line_ending.as_str());
-                    new_text.push_str(&indent);
-                    new_text.push_str(comment_token);
-                    new_text.push(' ');
-                    new_text.chars().count()
-                } else if on_auto_pair() {
-                    let inner_indent = indent.clone() + doc.indent_style.as_str();
-                    new_text.reserve_exact(2 + indent.len() + inner_indent.len());
-                    new_text.push_str(doc.line_ending.as_str());
-                    new_text.push_str(&inner_indent);
-                    let local_offs = new_text.chars().count();
-                    new_text.push_str(doc.line_ending.as_str());
-                    new_text.push_str(&indent);
-                    local_offs
+                    (
+                        first_trailing_whitespace_char,
+                        pos,
+                        local_offs as isize - (pos - first_trailing_whitespace_char) as isize,
+                    )
                 } else {
-                    new_text.reserve_exact(1 + indent.len());
+                    // If the current line is all whitespace, insert a line ending at the beginning of
+                    // the current line. This makes the current line empty and the new line contain
+                    // the indentation of the old line.
+                    let line_start = text.line_to_char(current_line);
                     new_text.push_str(doc.line_ending.as_str());
-                    new_text.push_str(&indent);
-                    new_text.chars().count()
-                };
 
-                (pos, pos, local_offs)
-            };
+                    (line_start, line_start, new_text.chars().count() as isize)
+                };
 
             let new_range = if range.cursor(text) > range.anchor {
                 // when appending, extend the range by local_offs
                 Range::new(
                     range.anchor + global_offs,
-                    range.head + local_offs + global_offs,
+                    (range.head as isize + local_offs) as usize + global_offs,
                 )
             } else {
                 // when inserting, slide the range by local_offs
                 Range::new(
-                    range.anchor + local_offs + global_offs,
-                    range.head + local_offs + global_offs,
+                    (range.anchor as isize + local_offs) as usize + global_offs,
+                    (range.head as isize + local_offs) as usize + global_offs,
                 )
             };
 
