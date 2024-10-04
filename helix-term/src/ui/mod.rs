@@ -278,7 +278,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
 }
 
 pub fn file_browser(root: PathBuf) -> Result<FilePicker, std::io::Error> {
-    let root = root.canonicalize()?;
+    let root = helix_stdx::path::canonicalize(root);
     let directory_content = directory_content(&root)?;
 
     let columns = [PickerColumn::new(
