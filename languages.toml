@@ -3810,3 +3810,15 @@ language-servers = ["circom-lsp"]
 [[grammar]]
 name   = "circom"
 source = { git = "https://github.com/Decurity/tree-sitter-circom", rev = "02150524228b1e6afef96949f2d6b7cc0aaf999e" }
+
+[[language]]
+name = "cylc"
+scope = "source.cylc"
+injection-regex = "cylc"
+file-types = ["cylc", { glob = "suite.rc" }]
+comment-tokens = "#"
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "cylc"
+source = { git = "https://github.com/elliotfontaine/tree-sitter-cylc", rev = "30dd40d9bf23912e4aefa93eeb4c7090bda3d0f6" }
