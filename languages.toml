@@ -1244,6 +1244,23 @@ name = "ocaml-interface"
 source = { git = "https://github.com/tree-sitter/tree-sitter-ocaml", rev = "9965d208337d88bbf1a38ad0b0fe49e5f5ec9677", subpath = "interface" }
 
 [[language]]
+name = "dune"
+scope = "source.dune"
+roots = ["dune-project"]
+file-types = [{ glob = "dune-project" }, { glob = "dune" }]
+comment-token = ";"
+indent = { tab-width = 1, unit = " " }
+grammar = "scheme"
+auto-format = true
+formatter = { command = "dune", args = ["format-dune-file"] }
+
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+
+[[language]]
 name = "lua"
 injection-regex = "lua"
 scope = "source.lua"
