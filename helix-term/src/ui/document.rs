@@ -245,6 +245,11 @@ pub fn render_text(
         last_line_end = grapheme.visual_pos.col + grapheme_width;
     }
 
+    renderer.surface.set_style(
+        renderer.viewport.clip_top(last_line_pos.visual_line),
+        theme.get("ui.background.eof"),
+    );
+
     renderer.draw_indent_guides(last_line_indent_level, last_line_pos.visual_line);
     decorations.render_virtual_lines(renderer, last_line_pos, last_line_end)
 }
