@@ -1184,7 +1184,7 @@ impl Editor {
             theme_loader,
             last_theme: None,
             last_selection: None,
-            registers: Registers::new(conf.clipboard_provider.get_provider()),
+            registers: Registers::new(conf.clipboard_provider.clone()),
             status_msg: None,
             autoinfo: None,
             idle_timer: Box::pin(sleep(conf.idle_timeout)),
@@ -1239,7 +1239,7 @@ impl Editor {
     pub fn refresh_config(&mut self) {
         let config = self.config();
         self.auto_pairs = (&config.auto_pairs).into();
-        self.registers.clipboard_provider = config.clipboard_provider.get_provider();
+        self.registers.clipboard_provider = config.clipboard_provider.clone();
         self.reset_idle_timer();
         self._refresh();
     }
@@ -1944,22 +1944,22 @@ impl Editor {
     }
 
     /// Returns all supported diagnostics for the document
-    pub fn doc_diagnostics<'a>(
-        language_servers: &'a helix_lsp::Registry,
-        diagnostics: &'a BTreeMap<Uri, Vec<(lsp::Diagnostic, LanguageServerId)>>,
+    pub fn doc_diagnostics<'b>(
+        language_servers: &'b helix_lsp::Registry,
+        diagnostics: &'b BTreeMap<Uri, Vec<(lsp::Diagnostic, LanguageServerId)>>,
         document: &Document,
-    ) -> impl Iterator<Item = helix_core::Diagnostic> + 'a {
+    ) -> impl Iterator<Item = helix_core::Diagnostic> + 'b {
         Editor::doc_diagnostics_with_filter(language_servers, diagnostics, document, |_, _| true)
     }
 
     /// Returns all supported diagnostics for the document
     /// filtered by `filter` which is invocated with the raw `lsp::Diagnostic` and the language server id it came from
-    pub fn doc_diagnostics_with_filter<'a>(
-        language_servers: &'a helix_lsp::Registry,
-        diagnostics: &'a BTreeMap<Uri, Vec<(lsp::Diagnostic, LanguageServerId)>>,
+    pub fn doc_diagnostics_with_filter<'b>(
+        language_servers: &'b helix_lsp::Registry,
+        diagnostics: &'b BTreeMap<Uri, Vec<(lsp::Diagnostic, LanguageServerId)>>,
         document: &Document,
-        filter: impl Fn(&lsp::Diagnostic, LanguageServerId) -> bool + 'a,
-    ) -> impl Iterator<Item = helix_core::Diagnostic> + 'a {
+        filter: impl Fn(&lsp::Diagnostic, LanguageServerId) -> bool + 'b,
+    ) -> impl Iterator<Item = helix_core::Diagnostic> + 'b {
         let text = document.text().clone();
         let language_config = document.language.clone();
         document

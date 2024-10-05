@@ -111,13 +111,7 @@ pub fn clipboard() -> std::io::Result<()> {
         }
     };
 
-    match config
-        .editor
-        .clipboard_provider
-        .get_provider()
-        .name()
-        .as_ref()
-    {
+    match config.editor.clipboard_provider.name().as_ref() {
         "none" => {
             writeln!(
                 stdout,
