@@ -3392,7 +3392,7 @@ fn open(cx: &mut Context, open: Open) {
     let (view, doc) = current!(cx.editor);
 
     let config = doc.config.load();
-    let doc_text = doc.text().slice(..);
+    let text = doc.text().slice(..);
     let contents = doc.text();
     let selection = doc.selection(view.id);
 
@@ -3400,8 +3400,8 @@ fn open(cx: &mut Context, open: Open) {
     let mut offs = 0;
 
     let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
-        let cursor_line = doc_text.char_to_line(match open {
-            Open::Below => graphemes::prev_grapheme_boundary(doc_text, range.to()),
+        let cursor_line = text.char_to_line(match open {
+            Open::Below => graphemes::prev_grapheme_boundary(text, range.to()),
             Open::Above => range.from(),
         });
 
@@ -3420,7 +3420,7 @@ fn open(cx: &mut Context, open: Open) {
             (0, 0)
         } else {
             (
-                line_end_char_index(&doc_text, line_num),
+                line_end_char_index(&text, line_num),
                 doc.line_ending.len_chars(),
             )
         };
@@ -3435,7 +3435,7 @@ fn open(cx: &mut Context, open: Open) {
         let new_line_will_be_comment = config.continue_comments && comment_token.is_some();
 
         let indent = {
-            let line = doc_text.line(cursor_line);
+            let line = text.line(cursor_line);
             match line.first_non_whitespace_char() {
                 Some(pos) if new_line_will_be_comment => line.slice(..pos).to_string(),
                 _ => indent::indent_for_newline(
@@ -3444,7 +3444,7 @@ fn open(cx: &mut Context, open: Open) {
                     &doc.config.load().indent_heuristic,
                     &doc.indent_style,
                     doc.tab_width(),
-                    doc_text,
+                    text,
                     line_num,
                     line_end_index,
                     cursor_line,
