@@ -195,7 +195,7 @@ pub fn get_line_ending_of_str(line: &str) -> Option<LineEnding> {
     }
 }
 
-/// Returns the char index of the end of the given line, not including its line ending.
+/// Returns the char index of the end of the given line.
 pub fn line_end_char_index(slice: &RopeSlice, line: usize) -> usize {
     slice.line_to_char(line + 1)
         - get_line_ending(&slice.line(line))
