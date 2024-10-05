@@ -62,10 +62,8 @@ label = "label"
 "ui.cursor.select" = { bg = "cursor_normal_bg_color" }
 "ui.cursor.primary.insert" = { bg = "#f43f5e", fg = "white" }
 "ui.cursor.match" = { fg = "#212121", bg = "#6C6999" }
-"ui.cursorcolumn" = { bg = "cursor_normal_bg_color"}
-"ui.cursorline" = { bg = "cursor_normal_bg_color"}
 "ui.cursorline.primary" = { bg = "dark"}
-"ui.highlight" = { bg = "cursor_normal_bg_color" }
+"ui.highlight" = { bg = "#4f46e5" }
 "ui.highlight.frameline" = { bg = "#634450" }
 "ui.debug" = { fg = "#634450" }
 "ui.debug.breakpoint" = { fg = "debug_breakpoint" }
