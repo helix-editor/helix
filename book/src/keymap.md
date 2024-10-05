@@ -1,4 +1,4 @@
-# Keymap
+## Keymap
 
 - [Normal mode](#normal-mode)
   - [Movement](#movement)
@@ -12,8 +12,9 @@
     - [Match mode](#match-mode)
     - [Window mode](#window-mode)
     - [Space mode](#space-mode)
-      - [Comment mode](#comment-mode)
       - [Popup](#popup)
+      - [Completion Menu](#completion-menu)
+      - [Signature-help Popup](#signature-help-popup)
     - [Unimpaired](#unimpaired)
 - [Insert mode](#insert-mode)
 - [Select / extend mode](#select--extend-mode)
@@ -23,6 +24,8 @@
 > 💡 Mappings marked (**LSP**) require an active language server for the file.
 
 > 💡 Mappings marked (**TS**) require a tree-sitter grammar for the file type.
+
+> ⚠️ Some terminals' default key mappings conflict with Helix's. If any of the mappings described on this page do not work as expected, check your terminal's mappings to ensure they do not conflict. See the [wiki](https://github.com/helix-editor/helix/wiki/Terminal-Support) for known conflicts.
 
 ## Normal mode
 
@@ -86,7 +89,7 @@ Normal mode is the default mode when you launch helix. You can return to it from
 | `"` `<reg>` | Select a register to yank to or paste from                           | `select_register`         |
 | `>`         | Indent selection                                                     | `indent`                  |
 | `<`         | Unindent selection                                                   | `unindent`                |
-| `=`         | Format selection (currently nonfunctional/disabled) (**LSP**)        | `format_selections`       |
+| `=`         | Format selection (**LSP**)                                           | `format_selections`       |
 | `d`         | Delete selection                                                     | `delete_selection`        |
 | `Alt-d`     | Delete selection, without yanking                                    | `delete_selection_noyank` |
 | `c`         | Change selection (delete and enter insert mode)                      | `change_selection`        |
@@ -142,6 +145,9 @@ Normal mode is the default mode when you launch helix. You can return to it from
 | `Alt-i`, `Alt-down`   | Shrink syntax tree object selection (**TS**)                      | `shrink_selection`                   |
 | `Alt-p`, `Alt-left`   | Select previous sibling node in syntax tree (**TS**)              | `select_prev_sibling`                |
 | `Alt-n`, `Alt-right`  | Select next sibling node in syntax tree (**TS**)                  | `select_next_sibling`                |
+| `Alt-a`               | Select all sibling nodes in syntax tree (**TS**)                  | `select_all_siblings`                |
+| `Alt-e`               | Move to end of parent node in syntax tree (**TS**)                | `move_parent_node_end`               |
+| `Alt-b`               | Move to start of parent node in syntax tree (**TS**)              | `move_parent_node_start`             |
 
 ### Search
 
@@ -230,8 +236,7 @@ Jumps to various locations.
 
 Accessed by typing `m` in [normal mode](#normal-mode).
 
-See the relevant section in [Usage](./usage.md) for an explanation about
-[surround](./usage.md#surround) and [textobject](./usage.md#navigating-using-tree-sitter-textobjects) usage.
+Please refer to the relevant sections for detailed explanations about [surround](./surround.md) and [textobjects](./textobjects.md).
 
 | Key              | Description                                     | Command                    |
 | -----            | -----------                                     | -------                    |
@@ -307,12 +312,34 @@ This layer is a kludge of mappings, mostly pickers.
 
 ##### Popup
 
-Displays documentation for item under cursor.
+Displays documentation for item under cursor. Remapping currently not supported.
 
 | Key      | Description |
 | ----     | ----------- |
 | `Ctrl-u` | Scroll up   |
 | `Ctrl-d` | Scroll down |
+
+##### Completion Menu
+
+Displays documentation for the selected completion item. Remapping currently not supported.
+
+| Key                         | Description                      |
+| ----                        | -----------                      |
+| `Shift-Tab`, `Ctrl-p`, `Up` | Previous entry                   |
+| `Tab`, `Ctrl-n`, `Down`     | Next entry                       |
+| `Enter`                     | Close menu and accept completion |
+| `Ctrl-c`                    | Close menu and reject completion |
+
+Any other keypresses result in the completion being accepted.
+
+##### Signature-help Popup
+
+Displays the signature of the selected completion item. Remapping currently not supported.
+
+| Key     | Description        |
+| ----    | -----------        |
+| `Alt-p` | Previous signature |
+| `Alt-n` | Next signature     |
 
 #### Unimpaired
 
@@ -416,6 +443,8 @@ you to selectively add search terms to your selections.
 ## Picker
 
 Keys to use within picker. Remapping currently not supported.
+See the documentation page on [pickers](./pickers.md) for more info.
+[Prompt](#prompt) keybinds also work in pickers, except where they conflict with picker keybinds.
 
 | Key                          | Description                                                |
 | -----                        | -------------                                              |

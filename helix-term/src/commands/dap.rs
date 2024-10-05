@@ -8,11 +8,11 @@ use dap::{StackFrame, Thread, ThreadStates};
 use helix_core::syntax::{DebugArgumentValue, DebugConfigCompletion, DebugTemplate};
 use helix_dap::{self as dap, Client};
 use helix_lsp::block_on;
-use helix_view::{editor::Breakpoint, graphics::Margin};
+use helix_view::editor::Breakpoint;
 
 use serde_json::{to_value, Value};
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use tui::{text::Spans, widgets::Row};
+use tui::text::Spans;
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -21,38 +21,6 @@ use std::path::PathBuf;
 use anyhow::{anyhow, bail};
 
 use helix_view::handlers::dap::{breakpoints_changed, jump_to_stack_frame, select_thread_id};
-
-impl ui::menu::Item for StackFrame {
-    type Data = ();
-
-    fn format(&self, _data: &Self::Data) -> Row {
-        self.name.as_str().into() // TODO: include thread_states in the label
-    }
-}
-
-impl ui::menu::Item for DebugTemplate {
-    type Data = ();
-
-    fn format(&self, _data: &Self::Data) -> Row {
-        self.name.as_str().into()
-    }
-}
-
-impl ui::menu::Item for Thread {
-    type Data = ThreadStates;
-
-    fn format(&self, thread_states: &Self::Data) -> Row {
-        format!(
-            "{} ({})",
-            self.name,
-            thread_states
-                .get(&self.id)
-                .map(|state| state.as_str())
-                .unwrap_or("unknown")
-        )
-        .into()
-    }
-}
 
 fn thread_picker(
     cx: &mut Context,
@@ -73,13 +41,27 @@ fn thread_picker(
             let debugger = debugger!(editor);
 
             let thread_states = debugger.thread_states.clone();
-            let picker = Picker::new(threads, thread_states, move |cx, thread, _action| {
-                callback_fn(cx.editor, thread)
-            })
+            let columns = [
+                ui::PickerColumn::new("name", |item: &Thread, _| item.name.as_str().into()),
+                ui::PickerColumn::new("state", |item: &Thread, thread_states: &ThreadStates| {
+                    thread_states
+                        .get(&item.id)
+                        .map(|state| state.as_str())
+                        .unwrap_or("unknown")
+                        .into()
+                }),
+            ];
+            let picker = Picker::new(
+                columns,
+                0,
+                threads,
+                thread_states,
+                move |cx, thread, _action| callback_fn(cx.editor, thread),
+            )
             .with_preview(move |editor, thread| {
                 let frames = editor.debugger.as_ref()?.stack_frames.get(&thread.id)?;
                 let frame = frames.first()?;
-                let path = frame.source.as_ref()?.path.clone()?;
+                let path = frame.source.as_ref()?.path.as_ref()?.as_path();
                 let pos = Some((
                     frame.line.saturating_sub(1),
                     frame.end_line.unwrap_or(frame.line).saturating_sub(1),
@@ -172,9 +154,9 @@ pub fn dap_start_impl(
 
     let mut args: HashMap<&str, Value> = HashMap::new();
 
-    if let Some(params) = params {
-        for (k, t) in &template.args {
-            let mut value = t.clone();
+    for (k, t) in &template.args {
+        let mut value = t.clone();
+        if let Some(ref params) = params {
             for (i, x) in params.iter().enumerate() {
                 let mut param = x.to_string();
                 if let Some(DebugConfigCompletion::Advanced(cfg)) = template.completion.get(i) {
@@ -198,21 +180,21 @@ pub fn dap_start_impl(
                     DebugArgumentValue::Boolean(_) => value,
                 };
             }
+        }
 
-            match value {
-                DebugArgumentValue::String(string) => {
-                    if let Ok(integer) = string.parse::<usize>() {
-                        args.insert(k, to_value(integer).unwrap());
-                    } else {
-                        args.insert(k, to_value(string).unwrap());
-                    }
+        match value {
+            DebugArgumentValue::String(string) => {
+                if let Ok(integer) = string.parse::<usize>() {
+                    args.insert(k, to_value(integer).unwrap());
+                } else {
+                    args.insert(k, to_value(string).unwrap());
                 }
-                DebugArgumentValue::Array(arr) => {
-                    args.insert(k, to_value(arr).unwrap());
-                }
-                DebugArgumentValue::Boolean(bool) => {
-                    args.insert(k, to_value(bool).unwrap());
-                }
+            }
+            DebugArgumentValue::Array(arr) => {
+                args.insert(k, to_value(arr).unwrap());
+            }
+            DebugArgumentValue::Boolean(bool) => {
+                args.insert(k, to_value(bool).unwrap());
             }
         }
     }
@@ -268,21 +250,34 @@ pub fn dap_launch(cx: &mut Context) {
 
     let templates = config.templates.clone();
 
+    let columns = [ui::PickerColumn::new(
+        "template",
+        |item: &DebugTemplate, _| item.name.as_str().into(),
+    )];
+
     cx.push_layer(Box::new(overlaid(Picker::new(
+        columns,
+        0,
         templates,
         (),
         |cx, template, _action| {
-            let completions = template.completion.clone();
-            let name = template.name.clone();
-            let callback = Box::pin(async move {
-                let call: Callback =
-                    Callback::EditorCompositor(Box::new(move |_editor, compositor| {
-                        let prompt = debug_parameter_prompt(completions, name, Vec::new());
-                        compositor.push(Box::new(prompt));
-                    }));
-                Ok(call)
-            });
-            cx.jobs.callback(callback);
+            if template.completion.is_empty() {
+                if let Err(err) = dap_start_impl(cx, Some(&template.name), None, None) {
+                    cx.editor.set_error(err.to_string());
+                }
+            } else {
+                let completions = template.completion.clone();
+                let name = template.name.clone();
+                let callback = Box::pin(async move {
+                    let call: Callback =
+                        Callback::EditorCompositor(Box::new(move |_editor, compositor| {
+                            let prompt = debug_parameter_prompt(completions, name, Vec::new());
+                            compositor.push(Box::new(prompt));
+                        }));
+                    Ok(call)
+                });
+                cx.jobs.callback(callback);
+            }
         },
     ))));
 }
@@ -581,12 +576,7 @@ pub fn dap_variables(cx: &mut Context) {
     }
 
     let contents = Text::from(tui::text::Text::from(variables));
-    let margin = if cx.editor.popup_border() {
-        Margin::all(1)
-    } else {
-        Margin::none()
-    };
-    let popup = Popup::new("dap-variables", contents).margin(margin);
+    let popup = Popup::new("dap-variables", contents);
     cx.replace_or_push_layer("dap-variables", popup);
 }
 
@@ -735,7 +725,10 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
 
     let frames = debugger.stack_frames[&thread_id].clone();
 
-    let picker = Picker::new(frames, (), move |cx, frame, _action| {
+    let columns = [ui::PickerColumn::new("frame", |item: &StackFrame, _| {
+        item.name.as_str().into() // TODO: include thread_states in the label
+    })];
+    let picker = Picker::new(columns, 0, frames, (), move |cx, frame, _action| {
         let debugger = debugger!(cx.editor);
         // TODO: this should be simpler to find
         let pos = debugger.stack_frames[&thread_id]
@@ -754,10 +747,10 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
         frame
             .source
             .as_ref()
-            .and_then(|source| source.path.clone())
+            .and_then(|source| source.path.as_ref())
             .map(|path| {
                 (
-                    path.into(),
+                    path.as_path().into(),
                     Some((
                         frame.line.saturating_sub(1),
                         frame.end_line.unwrap_or(frame.line).saturating_sub(1),

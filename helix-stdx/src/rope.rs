@@ -51,7 +51,7 @@ impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
         if len < text.len() {
             return false;
         }
-        self.get_byte_slice(..len - text.len())
+        self.get_byte_slice(..text.len())
             .map_or(false, |start| start == text)
     }
 
@@ -136,5 +136,15 @@ mod tests {
                 );
             }
         }
+    }
+
+    #[test]
+    fn starts_with() {
+        assert!(RopeSlice::from("asdf").starts_with("a"));
+    }
+
+    #[test]
+    fn ends_with() {
+        assert!(RopeSlice::from("asdf").ends_with("f"));
     }
 }
