@@ -3391,7 +3391,6 @@ fn open(cx: &mut Context, open: Open) {
     enter_insert_mode(cx);
     let (view, doc) = current!(cx.editor);
 
-    let config = doc.config.load();
     let text = doc.text().slice(..);
     let contents = doc.text();
     let selection = doc.selection(view.id);
@@ -3432,7 +3431,7 @@ fn open(cx: &mut Context, open: Open) {
 
             get_comment_token(doc.text(), tokens, cursor_line)
         };
-        let new_line_will_be_comment = config.continue_comments && comment_token.is_some();
+        let new_line_will_be_comment = comment_token.is_some();
 
         let indent = {
             let line = text.line(cursor_line);
@@ -3457,11 +3456,9 @@ fn open(cx: &mut Context, open: Open) {
         text.push_str(doc.line_ending.as_str());
         text.push_str(&indent);
 
-        if config.continue_comments {
-            if let Some(token) = comment_token {
-                text.push_str(token);
-                text.push(' ');
-            }
+        if let Some(token) = comment_token {
+            text.push_str(token);
+            text.push(' ');
         }
 
         let text = text.repeat(count);
@@ -3886,7 +3883,6 @@ pub mod insert {
 
     pub fn insert_newline(cx: &mut Context) {
         let (view, doc) = current_ref!(cx.editor);
-        let config = doc.config.load();
         let text = doc.text().slice(..);
 
         let contents = doc.text();
@@ -3931,7 +3927,7 @@ pub mod insert {
 
                 (line_start, line_start, new_text.chars().count())
             } else {
-                let new_line_will_be_comment = config.continue_comments && comment_token.is_some();
+                let new_line_will_be_comment = comment_token.is_some();
                 let line = text.line(current_line);
 
                 let indent = match line.first_non_whitespace_char() {
@@ -3975,11 +3971,9 @@ pub mod insert {
                     new_text.push_str(doc.line_ending.as_str());
                     new_text.push_str(&indent);
 
-                    if config.continue_comments {
-                        if let Some(token) = comment_token {
-                            new_text.push_str(token);
-                            new_text.push(' ');
-                        }
+                    if let Some(token) = comment_token {
+                        new_text.push_str(token);
+                        new_text.push(' ');
                     }
 
                     new_text.chars().count()

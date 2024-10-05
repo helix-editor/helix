@@ -215,10 +215,6 @@ impl Default for FilePickerConfig {
     }
 }
 
-fn default_continue_comments() -> bool {
-    true
-}
-
 fn serialize_alphabet<S>(alphabet: &[char], serializer: S) -> Result<S::Ok, S::Error>
 where
     S: Serializer,
@@ -346,9 +342,6 @@ pub struct Config {
         deserialize_with = "deserialize_alphabet"
     )]
     pub jump_label_alphabet: Vec<char>,
-    /// Whether to prepend a comment token onto a new line that follows a commented line. (default: false)
-    #[serde(default = "default_continue_comments")]
-    pub continue_comments: bool,
     /// Display diagnostic below the line they occur.
     pub inline_diagnostics: InlineDiagnosticsConfig,
     pub end_of_line_diagnostics: DiagnosticFilter,
@@ -984,7 +977,6 @@ impl Default for Config {
             popup_border: PopupBorderConfig::None,
             indent_heuristic: IndentationHeuristic::default(),
             jump_label_alphabet: ('a'..='z').collect(),
-            continue_comments: true,
             inline_diagnostics: InlineDiagnosticsConfig::default(),
             end_of_line_diagnostics: DiagnosticFilter::Disable,
         }
