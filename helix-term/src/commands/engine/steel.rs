@@ -2,7 +2,7 @@ use arc_swap::ArcSwapAny;
 use helix_core::{
     diagnostic::Severity,
     extensions::steel_implementations::{rope_module, SteelRopeSlice},
-    graphemes,
+    find_workspace, graphemes,
     shellwords::Shellwords,
     syntax::{AutoPairConfig, SoftWrap},
     Range, Selection, Tendril,
@@ -1198,12 +1198,25 @@ pub fn is_keymap(keymap: SteelVal) -> bool {
     }
 }
 
+fn local_config_exists() -> bool {
+    let local_helix = find_workspace().0.join(".helix");
+    local_helix.join("helix.scm").exists() && local_helix.join("init.scm").exists()
+}
+
+fn preferred_config_path(file_name: &str) -> PathBuf {
+    if local_config_exists() {
+        find_workspace().0.join(".helix").join(file_name)
+    } else {
+        helix_loader::config_dir().join(file_name)
+    }
+}
+
 pub fn helix_module_file() -> PathBuf {
-    helix_loader::config_dir().join("helix.scm")
+    preferred_config_path("helix.scm")
 }
 
 pub fn steel_init_file() -> PathBuf {
-    helix_loader::config_dir().join("init.scm")
+    preferred_config_path("init.scm")
 }
 
 #[derive(Clone)]
