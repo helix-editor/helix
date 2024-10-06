@@ -34,7 +34,7 @@ use crate::{
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, HashSet},
-    fmt::{Display, Write},
+    fmt::Display,
     future::Future,
     path::Path,
 };
@@ -61,10 +61,31 @@ macro_rules! language_server_with_feature {
     }};
 }
 
+/// A wrapper around `lsp::Location` that swaps out the LSP URI for `helix_core::Uri`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Location {
+    uri: Uri,
+    range: lsp::Range,
+}
+
+fn lsp_location_to_location(location: lsp::Location) -> Option<Location> {
+    let uri = match location.uri.try_into() {
+        Ok(uri) => uri,
+        Err(err) => {
+            log::warn!("discarding invalid or unsupported URI: {err}");
+            return None;
+        }
+    };
+    Some(Location {
+        uri,
+        range: location.range,
+    })
+}
+
 struct SymbolInformationItem {
+    location: Location,
     symbol: lsp::SymbolInformation,
     offset_encoding: OffsetEncoding,
-    uri: Uri,
 }
 
 struct DiagnosticStyles {
@@ -75,35 +96,35 @@ struct DiagnosticStyles {
 }
 
 struct PickerDiagnostic {
-    uri: Uri,
+    location: Location,
     diag: lsp::Diagnostic,
     offset_encoding: OffsetEncoding,
 }
 
-fn uri_to_file_location<'a>(uri: &'a Uri, range: &lsp::Range) -> Option<FileLocation<'a>> {
-    let path = uri.as_path()?;
-    let line = Some((range.start.line as usize, range.end.line as usize));
+fn location_to_file_location(location: &Location) -> Option<FileLocation> {
+    let path = location.uri.as_path()?;
+    let line = Some((
+        location.range.start.line as usize,
+        location.range.end.line as usize,
+    ));
     Some((path.into(), line))
 }
 
 fn jump_to_location(
     editor: &mut Editor,
-    location: &lsp::Location,
+    location: &Location,
     offset_encoding: OffsetEncoding,
     action: Action,
 ) {
     let (view, doc) = current!(editor);
     push_jump(view, doc);
 
-    let path = match location.uri.to_file_path() {
-        Ok(path) => path,
-        Err(_) => {
-            let err = format!("unable to convert URI to filepath: {}", location.uri);
-            editor.set_error(err);
-            return;
-        }
+    let Some(path) = location.uri.as_path() else {
+        let err = format!("unable to convert URI to filepath: {:?}", location.uri);
+        editor.set_error(err);
+        return;
     };
-    jump_to_position(editor, &path, location.range, offset_encoding, action);
+    jump_to_position(editor, path, location.range, offset_encoding, action);
 }
 
 fn jump_to_position(
@@ -196,7 +217,10 @@ fn diag_picker(
         for (diag, ls) in diags {
             if let Some(ls) = cx.editor.language_server_by_id(ls) {
                 flat_diag.push(PickerDiagnostic {
-                    uri: uri.clone(),
+                    location: Location {
+                        uri: uri.clone(),
+                        range: diag.range,
+                    },
                     diag,
                     offset_encoding: ls.offset_encoding(),
                 });
@@ -243,7 +267,7 @@ fn diag_picker(
             // between message code and message
             2,
             ui::PickerColumn::new("path", |item: &PickerDiagnostic, _| {
-                if let Some(path) = item.uri.as_path() {
+                if let Some(path) = item.location.uri.as_path() {
                     path::get_truncated_path(path)
                         .to_string_lossy()
                         .to_string()
@@ -261,26 +285,14 @@ fn diag_picker(
         primary_column,
         flat_diag,
         styles,
-        move |cx,
-              PickerDiagnostic {
-                  uri,
-                  diag,
-                  offset_encoding,
-              },
-              action| {
-            let Some(path) = uri.as_path() else {
-                return;
-            };
-            jump_to_position(cx.editor, path, diag.range, *offset_encoding, action);
+        move |cx, diag, action| {
+            jump_to_location(cx.editor, &diag.location, diag.offset_encoding, action);
             let (view, doc) = current!(cx.editor);
             view.diagnostics_handler
                 .immediately_show_diagnostic(doc, view.id);
         },
     )
-    .with_preview(move |_editor, PickerDiagnostic { uri, diag, .. }| {
-        let line = Some((diag.range.start.line as usize, diag.range.end.line as usize));
-        Some((uri.as_path()?.into(), line))
-    })
+    .with_preview(move |_editor, diag| location_to_file_location(&diag.location))
     .truncate_start(false)
 }
 
@@ -303,7 +315,10 @@ pub fn symbol_picker(cx: &mut Context) {
                 container_name: None,
             },
             offset_encoding,
-            uri: uri.clone(),
+            location: Location {
+                uri: uri.clone(),
+                range: symbol.selection_range,
+            },
         });
         for child in symbol.children.into_iter().flatten() {
             nested_to_flat(list, file, uri, child, offset_encoding);
@@ -337,7 +352,10 @@ pub fn symbol_picker(cx: &mut Context) {
                     lsp::DocumentSymbolResponse::Flat(symbols) => symbols
                         .into_iter()
                         .map(|symbol| SymbolInformationItem {
-                            uri: doc_uri.clone(),
+                            location: Location {
+                                uri: doc_uri.clone(),
+                                range: symbol.location.range,
+                            },
                             symbol,
                             offset_encoding,
                         })
@@ -392,17 +410,10 @@ pub fn symbol_picker(cx: &mut Context) {
                 symbols,
                 (),
                 move |cx, item, action| {
-                    jump_to_location(
-                        cx.editor,
-                        &item.symbol.location,
-                        item.offset_encoding,
-                        action,
-                    );
+                    jump_to_location(cx.editor, &item.location, item.offset_encoding, action);
                 },
             )
-            .with_preview(move |_editor, item| {
-                uri_to_file_location(&item.uri, &item.symbol.location.range)
-            })
+            .with_preview(move |_editor, item| location_to_file_location(&item.location))
             .truncate_start(false);
 
             compositor.push(Box::new(overlaid(picker)))
@@ -453,8 +464,11 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
                                     }
                                 };
                                 Some(SymbolInformationItem {
+                                    location: Location {
+                                        uri,
+                                        range: symbol.location.range,
+                                    },
                                     symbol,
-                                    uri,
                                     offset_encoding,
                                 })
                             })
@@ -490,7 +504,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
         })
         .without_filtering(),
         ui::PickerColumn::new("path", |item: &SymbolInformationItem, _| {
-            if let Some(path) = item.uri.as_path() {
+            if let Some(path) = item.location.uri.as_path() {
                 path::get_relative_path(path)
                     .to_string_lossy()
                     .to_string()
@@ -507,15 +521,10 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
         [],
         (),
         move |cx, item, action| {
-            jump_to_location(
-                cx.editor,
-                &item.symbol.location,
-                item.offset_encoding,
-                action,
-            );
+            jump_to_location(cx.editor, &item.location, item.offset_encoding, action);
         },
     )
-    .with_preview(|_editor, item| uri_to_file_location(&item.uri, &item.symbol.location.range))
+    .with_preview(|_editor, item| location_to_file_location(&item.location))
     .with_dynamic_query(get_symbols, None)
     .truncate_start(false);
 
@@ -847,7 +856,7 @@ impl Display for ApplyEditErrorKind {
 fn goto_impl(
     editor: &mut Editor,
     compositor: &mut Compositor,
-    locations: Vec<lsp::Location>,
+    locations: Vec<Location>,
     offset_encoding: OffsetEncoding,
 ) {
     let cwdir = helix_stdx::env::current_working_dir();
@@ -860,80 +869,41 @@ fn goto_impl(
         _locations => {
             let columns = [ui::PickerColumn::new(
                 "location",
-                |item: &lsp::Location, cwdir: &std::path::PathBuf| {
-                    // The preallocation here will overallocate a few characters since it will account for the
-                    // URL's scheme, which is not used most of the time since that scheme will be "file://".
-                    // Those extra chars will be used to avoid allocating when writing the line number (in the
-                    // common case where it has 5 digits or less, which should be enough for a cast majority
-                    // of usages).
-                    let mut res = String::with_capacity(item.uri.as_str().len());
-
-                    if item.uri.scheme() == "file" {
-                        // With the preallocation above and UTF-8 paths already, this closure will do one (1)
-                        // allocation, for `to_file_path`, else there will be two (2), with `to_string_lossy`.
-                        if let Ok(path) = item.uri.to_file_path() {
-                            // We don't convert to a `helix_core::Uri` here because we've already checked the scheme.
-                            // This path won't be normalized but it's only used for display.
-                            res.push_str(
-                                &path.strip_prefix(cwdir).unwrap_or(&path).to_string_lossy(),
-                            );
-                        }
+                |item: &Location, cwdir: &std::path::PathBuf| {
+                    let path = if let Some(path) = item.uri.as_path() {
+                        path.strip_prefix(cwdir).unwrap_or(path).to_string_lossy()
                     } else {
-                        // Never allocates since we declared the string with this capacity already.
-                        res.push_str(item.uri.as_str());
-                    }
+                        item.uri.to_string().into()
+                    };
 
-                    // Most commonly, this will not allocate, especially on Unix systems where the root prefix
-                    // is a simple `/` and not `C:\` (with whatever drive letter)
-                    write!(&mut res, ":{}", item.range.start.line + 1)
-                        .expect("Will only failed if allocating fail");
-                    res.into()
+                    format!("{path}:{}", item.range.start.line + 1).into()
                 },
             )];
 
             let picker = Picker::new(columns, 0, locations, cwdir, move |cx, location, action| {
                 jump_to_location(cx.editor, location, offset_encoding, action)
             })
-            .with_preview(move |_editor, location| {
-                use crate::ui::picker::PathOrId;
-
-                let lines = Some((
-                    location.range.start.line as usize,
-                    location.range.end.line as usize,
-                ));
-
-                // TODO: we should avoid allocating by doing the Uri conversion ahead of time.
-                //
-                // To do this, introduce a `Location` type in `helix-core` that reuses the core
-                // `Uri` type instead of the LSP `Url` type and replaces the LSP `Range` type.
-                // Refactor the callers of `goto_impl` to pass iterators that translate the
-                // LSP location type to the custom one in core, or have them collect and pass
-                // `Vec<Location>`s. Replace the `uri_to_file_location` function with
-                // `location_to_file_location` that takes only `&helix_core::Location` as
-                // parameters.
-                //
-                // By doing this we can also eliminate the duplicated URI info in the
-                // `SymbolInformationItem` type and introduce a custom Symbol type in `helix-core`
-                // which will be reused in the future for tree-sitter based symbol pickers.
-                let path = Uri::try_from(&location.uri).ok()?.as_path_buf()?;
-                #[allow(deprecated)]
-                Some((PathOrId::from_path_buf(path), lines))
-            });
+            .with_preview(move |_editor, location| location_to_file_location(location));
             compositor.push(Box::new(overlaid(picker)));
         }
     }
 }
 
-fn to_locations(definitions: Option<lsp::GotoDefinitionResponse>) -> Vec<lsp::Location> {
+fn to_locations(definitions: Option<lsp::GotoDefinitionResponse>) -> Vec<Location> {
     match definitions {
-        Some(lsp::GotoDefinitionResponse::Scalar(location)) => vec![location],
-        Some(lsp::GotoDefinitionResponse::Array(locations)) => locations,
+        Some(lsp::GotoDefinitionResponse::Scalar(location)) => {
+            lsp_location_to_location(location).into_iter().collect()
+        }
+        Some(lsp::GotoDefinitionResponse::Array(locations)) => locations
+            .into_iter()
+            .flat_map(lsp_location_to_location)
+            .collect(),
         Some(lsp::GotoDefinitionResponse::Link(locations)) => locations
             .into_iter()
-            .map(|location_link| lsp::Location {
-                uri: location_link.target_uri,
-                range: location_link.target_range,
+            .map(|location_link| {
+                lsp::Location::new(location_link.target_uri, location_link.target_range)
             })
+            .flat_map(lsp_location_to_location)
             .collect(),
         None => Vec::new(),
     }
@@ -1018,7 +988,11 @@ pub fn goto_reference(cx: &mut Context) {
     cx.callback(
         future,
         move |editor, compositor, response: Option<Vec<lsp::Location>>| {
-            let items = response.unwrap_or_default();
+            let items: Vec<Location> = response
+                .into_iter()
+                .flatten()
+                .flat_map(lsp_location_to_location)
+                .collect();
             if items.is_empty() {
                 editor.set_error("No references found.");
             } else {

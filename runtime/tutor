@@ -1462,7 +1462,7 @@ letters! that is not good grammar. you can fix this.
 
  Still from hello2, press Ctrl-w H to swap with the split on the
  left: now hello2 is on the left and the tutor is on the top
- right. After Ctrl-w you can use HJKL to split with the buffer
+ right. After Ctrl-w you can use HJKL to swap with the buffer
  on the left / below / above / on the right.
 
  Move back to the tutor split, and press Ctrl-w o to only keep

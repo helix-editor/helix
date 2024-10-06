@@ -25,7 +25,8 @@
 "ui.statusline.normal" = { fg = "sumiInk0", bg = "crystalBlue", modifiers = ["bold"] }
 "ui.statusline.insert" = { fg = "sumiInk0", bg = "autumnGreen", modifiers = ["bold"] }
 "ui.statusline.select" = { fg = "sumiInk0", bg = "oniViolet", modifiers = ["bold"] }
-"ui.statusline.separator" = { fg = "", bg = "" }
+# Malformed ANSI: "". See 'https://github.com/helix-editor/helix/issues/5709'
+# "ui.statusline.separator" = { fg = "", bg = "" }
 
 "ui.bufferline" = { fg = "fujiGray", bg = "sumiInk0" }
 "ui.bufferline.active" = { fg = "oldWhite", bg = "sumiInk0" }

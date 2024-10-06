@@ -98,7 +98,7 @@ impl Renderer<'_, '_> {
     fn draw_eol_diagnostic(&mut self, diag: &Diagnostic, row: u16, col: usize) -> u16 {
         let style = self.styles.severity_style(diag.severity());
         let width = self.renderer.viewport.width;
-        if !self.renderer.column_in_bounds(col + 1) {
+        if !self.renderer.column_in_bounds(col + 1, 1) {
             return 0;
         }
         let col = (col - self.renderer.offset.col) as u16;

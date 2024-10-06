@@ -32,7 +32,7 @@ use std::{
     borrow::Cow,
     collections::HashMap,
     io::Read,
-    path::{Path, PathBuf},
+    path::Path,
     sync::{
         atomic::{self, AtomicUsize},
         Arc,
@@ -63,26 +63,12 @@ pub const MAX_FILE_SIZE_FOR_PREVIEW: u64 = 10 * 1024 * 1024;
 #[derive(PartialEq, Eq, Hash)]
 pub enum PathOrId<'a> {
     Id(DocumentId),
-    // See [PathOrId::from_path_buf]: this will eventually become `Path(&Path)`.
-    Path(Cow<'a, Path>),
-}
-
-impl<'a> PathOrId<'a> {
-    /// Creates a [PathOrId] from a PathBuf
-    ///
-    /// # Deprecated
-    /// The owned version of PathOrId will be removed in a future refactor
-    /// and replaced with `&'a Path`. See the caller of this function for
-    /// more details on its removal.
-    #[deprecated]
-    pub fn from_path_buf(path_buf: PathBuf) -> Self {
-        Self::Path(Cow::Owned(path_buf))
-    }
+    Path(&'a Path),
 }
 
 impl<'a> From<&'a Path> for PathOrId<'a> {
     fn from(path: &'a Path) -> Self {
-        Self::Path(Cow::Borrowed(path))
+        Self::Path(path)
     }
 }
 
@@ -581,7 +567,6 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
 
         match path_or_id {
             PathOrId::Path(path) => {
-                let path = path.as_ref();
                 if let Some(doc) = editor.document_by_path(path) {
                     return Some((Preview::EditorDocument(doc), range));
                 }

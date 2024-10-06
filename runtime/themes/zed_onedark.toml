@@ -61,7 +61,8 @@
 "ui.cursor" = { fg = "white", modifiers = ["reversed"] }
 "ui.cursor.primary" = { fg = "white", modifiers = ["reversed"] }
 "ui.cursor.match" = { fg = "blue", modifiers = ["underlined"] }
-"ui.cursor.insert" = { fg = "dark-blue" }
+# Malformed ANSI: dark-blue. See 'https://github.com/helix-editor/helix/issues/5709'
+# "ui.cursor.insert" = { fg = "dark-blue" }
 
 "ui.selection" = { bg = "faint-gray" }
 "ui.selection.primary" = { bg = "#293b5bff" }

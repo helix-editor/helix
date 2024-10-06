@@ -33,7 +33,7 @@ tag = "red"
 "ui.selection" = { bg = "selection" }
 "ui.virtual.indent-guide" = { fg = "gray" }
 "ui.virtual.whitespace" = { fg = "light-gray" }
-"ui.virtual.ruler" = { bg ="dark-bg" }
+"ui.virtual.ruler" = { bg = "dark-bg" }
 "ui.statusline" = { bg = "dark-bg", fg = "light-gray" }
 "ui.popup" = { bg = "dark-bg", fg = "orange" }
 "ui.help" = { bg = "dark-bg", fg = "orange" }
@@ -43,6 +43,8 @@ tag = "red"
 "ui.bufferline" = { bg = "dark-bg", fg = "light-gray" }
 "ui.bufferline.active" = { bg = "dark-bg", fg = "orange" }
 "ui.virtual.jump-label" = { fg = "pink", modifiers = ["bold"] }
+"ui.picker.header.column" = { fg = "orange", underline.style = "line" }
+"ui.picker.header.column.active" = { fg = "purple", modifiers = ["bold"], underline.style = "line" }
 
 # Diagnostics
 "diagnostic" = { underline = { style = "curl" } }

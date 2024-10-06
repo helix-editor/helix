@@ -633,6 +633,41 @@ async fn test_join_selections_space() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn test_join_selections_comment() -> anyhow::Result<()> {
+    test((
+        indoc! {"\
+            /// #[a|]#bc
+            /// def
+        "},
+        ":lang rust<ret>J",
+        indoc! {"\
+            /// #[a|]#bc def
+        "},
+    ))
+    .await?;
+
+    // Only join if the comment token matches the previous line.
+    test((
+        indoc! {"\
+            #[| // a
+            // b
+            /// c
+            /// d
+            e
+            /// f
+            // g]#
+        "},
+        ":lang rust<ret>J",
+        indoc! {"\
+            #[| // a b /// c d e f // g]#
+        "},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_read_file() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new()?;
     let contents_to_read = "some contents";
