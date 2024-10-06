@@ -3424,21 +3424,15 @@ fn open(cx: &mut Context, open: Open) {
             )
         };
 
-        let comment_token = if let Some(tokens) = doc
+        let continue_comment_token = doc
             .language_config()
             .and_then(|config| config.comment_tokens.as_ref())
-        {
-            get_comment_token(doc.text().slice(..), tokens, cursor_line)
-        } else {
-            None
-        };
-
-        let new_line_will_be_comment = comment_token.is_some();
+            .and_then(|tokens| comment::get_comment_token(text, tokens, cursor_line));
 
         let indent = {
             let line = text.line(cursor_line);
             match line.first_non_whitespace_char() {
-                Some(pos) if new_line_will_be_comment => line.slice(..pos).to_string(),
+                Some(pos) if continue_comment_token.is_some() => line.slice(..pos).to_string(),
                 _ => indent::indent_for_newline(
                     doc.language_config(),
                     doc.syntax(),
@@ -3458,7 +3452,7 @@ fn open(cx: &mut Context, open: Open) {
         text.push_str(doc.line_ending.as_str());
         text.push_str(&indent);
 
-        if let Some(token) = comment_token {
+        if let Some(token) = continue_comment_token {
             text.push_str(token);
             text.push(' ');
         }
@@ -3912,14 +3906,10 @@ pub mod insert {
 
             let mut new_text = String::new();
 
-            let comment_token = if let Some(tokens) = doc
+            let continue_comment_token = doc
                 .language_config()
                 .and_then(|config| config.comment_tokens.as_ref())
-            {
-                get_comment_token(doc.text().slice(..), tokens, current_line)
-            } else {
-                None
-            };
+                .and_then(|tokens| comment::get_comment_token(text, tokens, current_line));
 
             // If the current line is all whitespace, insert a line ending at the beginning of
             // the current line. This makes the current line empty and the new line contain the
@@ -3930,11 +3920,10 @@ pub mod insert {
 
                 (line_start, line_start, new_text.chars().count())
             } else {
-                let new_line_will_be_comment = comment_token.is_some();
                 let line = text.line(current_line);
 
                 let indent = match line.first_non_whitespace_char() {
-                    Some(pos) if new_line_will_be_comment => line.slice(..pos).to_string(),
+                    Some(pos) if continue_comment_token.is_some() => line.slice(..pos).to_string(),
                     _ => indent::indent_for_newline(
                         doc.language_config(),
                         doc.syntax(),
@@ -3974,7 +3963,7 @@ pub mod insert {
                     new_text.push_str(doc.line_ending.as_str());
                     new_text.push_str(&indent);
 
-                    if let Some(token) = comment_token {
+                    if let Some(token) = continue_comment_token {
                         new_text.push_str(token);
                         new_text.push(' ');
                     }
