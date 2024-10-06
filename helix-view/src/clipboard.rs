@@ -16,6 +16,9 @@ pub enum ClipboardError {
     IoError(#[from] std::io::Error),
     #[error("could not convert terminal output to UTF-8: {0}")]
     FromUtf8Error(#[from] std::string::FromUtf8Error),
+    #[cfg(windows)]
+    #[error("Windows API error: {0}")]
+    WinAPI(#[from] clipboard_win::ErrorCode),
     #[error("clipboard provider command failed")]
     CommandFailed,
     #[error("failed to write to clipboard provider's stdin")]
@@ -101,6 +104,8 @@ mod external {
     impl Default for ClipboardConfig {
         #[cfg(windows)]
         fn default() -> Self {
+            use helix_stdx::env::binary_exists;
+
             if binary_exists("win32yank.exe") {
                 Self::Win32Yank
             } else {
@@ -280,9 +285,10 @@ mod external {
                 #[cfg(target_os = "windows")]
                 Self::Windows => match clipboard_type {
                     ClipboardType::Clipboard => {
-                        clipboard_win::set_clipboard(clipboard_win::formats::Unicode, contents)?;
+                        clipboard_win::set_clipboard(clipboard_win::formats::Unicode, content)?;
+                        Ok(())
                     }
-                    ClipboardType::Selection => (),
+                    ClipboardType::Selection => Ok(()),
                 },
                 #[cfg(feature = "term")]
                 Self::Termcode => {
@@ -442,6 +448,13 @@ mod external {
                 // Send an OSC 52 set command: https://terminalguide.namepad.de/seq/osc-52/
                 write!(f, "\x1b]52;{};{}\x1b\\", kind, &self.encoded_content)
             }
+            #[cfg(windows)]
+            fn execute_winapi(&self) -> std::result::Result<(), std::io::Error> { 
+                Err(std::io::Error::new(
+                    std::io::ErrorKind::Other,
+                    "OSC clipboard codes not supported by winapi.",
+                ))
+            }
         }
     }
 
@@ -458,6 +471,7 @@ mod external {
 
         let mut command: Command = Command::new(cmd.command.clone());
 
+        #[allow(unused_mut)]
         let mut command_mut: &mut Command = command
             .args(cmd.args.iter())
             .stdin(stdin)
@@ -465,7 +479,8 @@ mod external {
             .stderr(Stdio::null());
 
         // Fix for https://github.com/helix-editor/helix/issues/5424
-        if cfg!(unix) {
+        #[cfg(unix)]
+        {
             use std::os::unix::process::CommandExt;
 
             unsafe {
