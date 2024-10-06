@@ -1,9 +1,11 @@
+use std::borrow::Cow;
 use std::collections::HashSet;
-use std::ffi::OsString;
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
+use ::url::Url;
 use arc_swap::ArcSwap;
 use futures_util::future::BoxFuture;
 use futures_util::stream::FuturesUnordered;
@@ -16,12 +18,11 @@ use helix_event::{
 };
 use helix_lsp::lsp;
 use helix_lsp::util::pos_to_lsp_pos;
-use helix_stdx::path::{canonicalize, fold_home_dir};
-use helix_stdx::rope::{self, RopeSliceExt};
+use helix_stdx::path::{self, canonicalize, fold_home_dir, get_path_suffix};
+use helix_stdx::rope::RopeSliceExt;
 use helix_view::document::{Mode, SavePoint};
 use helix_view::handlers::lsp::CompletionEvent;
 use helix_view::{DocumentId, Editor, ViewId};
-use once_cell::sync::Lazy;
 use tokio::sync::mpsc::Sender;
 use tokio::time::Instant;
 use tokio_stream::StreamExt;
@@ -311,75 +312,42 @@ fn path_completion(
         return None;
     }
 
-    // TODO find a good regex for most use cases (especially Windows, which is not yet covered...)
-    // currently only one path match per line is possible in unix
-    static PATH_REGEX: Lazy<rope::Regex> =
-        Lazy::new(|| rope::Regex::new(r"((?:~|\$HOME|\$\{HOME\})?(?:\.{0,2}/)+.*)$").unwrap());
-
     let cur_line = text.char_to_line(cursor);
     let start = text.line_to_char(cur_line).max(cursor.saturating_sub(1000));
-    let line_until_cursor = text.slice(start..cursor).regex_input_at(..);
+    let line_until_cursor = text.slice(start..cursor);
 
-    let (dir_path, typed_file_name) = PATH_REGEX.search(line_until_cursor).and_then(|m| {
-        let start_byte = text.char_to_byte(start);
-        let matched_path = &text
-            .byte_slice((start_byte + m.start())..(start_byte + m.end()))
-            .to_string();
-
-        // resolve home dir (~/, $HOME/, ${HOME}/) on unix
-        #[cfg(unix)]
-        let mut path = {
-            static HOME_DIR: Lazy<Option<OsString>> = Lazy::new(|| std::env::var_os("HOME"));
-
-            let home_resolved_path = if let Some(home) = &*HOME_DIR {
-                let first_separator_after_home = if matched_path.starts_with("~/") {
-                    Some(1)
-                } else if matched_path.starts_with("$HOME") {
-                    Some(5)
-                } else if matched_path.starts_with("${HOME}") {
-                    Some(7)
-                } else {
-                    None
-                };
-                if let Some(start_char) = first_separator_after_home {
-                    let mut path = home.to_owned();
-                    path.push(&matched_path[start_char..]);
-                    path
-                } else {
-                    matched_path.into()
-                }
+    let (dir_path, typed_file_name) =
+        get_path_suffix(line_until_cursor, false).and_then(|matched_path| {
+            let matched_path = Cow::from(matched_path);
+            let path: Cow<_> = if matched_path.starts_with("file://") {
+                Url::from_str(&matched_path)
+                    .ok()
+                    .and_then(|url| url.to_file_path().ok())?
+                    .into()
             } else {
-                matched_path.into()
+                Path::new(&*matched_path).into()
             };
-            PathBuf::from(home_resolved_path)
-        };
-        #[cfg(not(unix))]
-        let mut path = PathBuf::from(matched_path);
-
-        if path.is_relative() {
-            if let Some(doc_path) = doc.path().and_then(|dp| dp.parent()) {
-                path = doc_path.join(path);
-            } else if let Ok(work_dir) = std::env::current_dir() {
-                path = work_dir.join(path);
+            let path = path::expand(&path);
+            let parent_dir = doc.path().and_then(|dp| dp.parent());
+            let path = match parent_dir {
+                Some(parent_dir) if path.is_absolute() => parent_dir.join(&path),
+                _ => path.into_owned(),
+            };
+            let ends_with_slash = matches!(matched_path.as_bytes().last(), Some(b'/' | b'\\'));
+            // check if there are chars after the last slash, and if these chars represent a directory
+            match std::fs::metadata(path.clone()).ok() {
+                Some(m) if m.is_dir() && ends_with_slash => {
+                    Some((PathBuf::from(path.as_path()), None))
+                }
+                _ if !ends_with_slash => path.parent().map(|parent_path| {
+                    (
+                        PathBuf::from(parent_path),
+                        path.file_name().and_then(|f| f.to_str().map(String::from)),
+                    )
+                }),
+                _ => None,
             }
-        }
-        let ends_with_slash = match matched_path.chars().last() {
-            Some(std::path::MAIN_SEPARATOR) => true,
-            None => return None,
-            _ => false,
-        };
-        // check if there are chars after the last slash, and if these chars represent a directory
-        match std::fs::metadata(path.clone()).ok() {
-            Some(m) if m.is_dir() && ends_with_slash => Some((PathBuf::from(path.as_path()), None)),
-            _ if !ends_with_slash => path.parent().map(|parent_path| {
-                (
-                    PathBuf::from(parent_path),
-                    path.file_name().and_then(|f| f.to_str().map(String::from)),
-                )
-            }),
-            _ => None,
-        }
-    })?;
+        })?;
 
     // The async file accessor functions of tokio were considered, but they were a bit slower
     // and less ergonomic than just using the std functions in a separate "thread"
