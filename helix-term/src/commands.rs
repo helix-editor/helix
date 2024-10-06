@@ -3429,22 +3429,20 @@ fn open(cx: &mut Context, open: Open) {
             .and_then(|config| config.comment_tokens.as_ref())
             .and_then(|tokens| comment::get_comment_token(text, tokens, cursor_line));
 
-        let indent = {
-            let line = text.line(cursor_line);
-            match line.first_non_whitespace_char() {
-                Some(pos) if continue_comment_token.is_some() => line.slice(..pos).to_string(),
-                _ => indent::indent_for_newline(
-                    doc.language_config(),
-                    doc.syntax(),
-                    &doc.config.load().indent_heuristic,
-                    &doc.indent_style,
-                    doc.tab_width(),
-                    text,
-                    line_num,
-                    line_end_index,
-                    cursor_line,
-                ),
-            }
+        let line = text.line(cursor_line);
+        let indent = match line.first_non_whitespace_char() {
+            Some(pos) if continue_comment_token.is_some() => line.slice(..pos).to_string(),
+            _ => indent::indent_for_newline(
+                doc.language_config(),
+                doc.syntax(),
+                &doc.config.load().indent_heuristic,
+                &doc.indent_style,
+                doc.tab_width(),
+                text,
+                line_num,
+                line_end_index,
+                cursor_line,
+            ),
         };
 
         let indent_len = indent.len();
