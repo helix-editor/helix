@@ -3945,10 +3945,16 @@ pub mod insert {
                     .and_then(|pairs| pairs.get(prev))
                     .map_or(false, |pair| pair.open == prev && pair.close == curr);
 
-                let local_offs = if on_auto_pair {
+                let local_offs = if let Some(token) = continue_comment_token {
+                    new_text.push_str(doc.line_ending.as_str());
+                    new_text.push_str(&indent);
+                    new_text.push_str(token);
+                    new_text.push(' ');
+                    new_text.chars().count()
+                } else if on_auto_pair {
                     // line where the cursor will be
                     let inner_indent = indent.clone() + doc.indent_style.as_str();
-                    new_text.reserve_exact(4 + indent.len() + inner_indent.len());
+                    new_text.reserve_exact(2 + indent.len() + inner_indent.len());
                     new_text.push_str(doc.line_ending.as_str());
                     new_text.push_str(&inner_indent);
 
@@ -3959,14 +3965,9 @@ pub mod insert {
 
                     local_offs
                 } else {
-                    new_text.reserve_exact(3 + indent.len());
+                    new_text.reserve_exact(1 + indent.len());
                     new_text.push_str(doc.line_ending.as_str());
                     new_text.push_str(&indent);
-
-                    if let Some(token) = continue_comment_token {
-                        new_text.push_str(token);
-                        new_text.push(' ');
-                    }
 
                     new_text.chars().count()
                 };
