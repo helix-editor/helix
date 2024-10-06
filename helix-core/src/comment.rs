@@ -11,38 +11,26 @@ use std::borrow::Cow;
 
 pub const DEFAULT_COMMENT_TOKEN: &str = "//";
 
-/// Returns the matching comment token of the given line (if it exists).
+/// Returns the longest matching comment token of the given line (if it exists).
 pub fn get_comment_token<'a>(
     text: RopeSlice,
-    tokens: &'a Vec<String>,
+    tokens: &'a [String],
     line_num: usize,
 ) -> Option<&'a str> {
-    let mut token_found = false;
+    let mut used_token: Option<&'a str> = None;
 
-    let mut final_token = tokens
-        .first()
-        .map(|token| token.as_str())
-        .unwrap_or(DEFAULT_COMMENT_TOKEN);
+    let line = text.line(line_num);
+    let start = line.char_to_byte(line.first_non_whitespace_char()?);
 
     for token in tokens {
-        let (is_commented, _, _, _) = find_line_comment(token, text, [line_num]);
-
-        if is_commented {
-            token_found = true;
-
-            // in rust for example, there's `//` and `///`.
-            // We need to find the longest matching comment token so we can't immediately return the first matching token.
-            if token.len() > final_token.len() {
-                final_token = token;
-            }
+        let end = std::cmp::min(start + token.len(), line.len_bytes());
+        let fragment = Cow::from(line.byte_slice(start..end));
+        if fragment == *token {
+            used_token = Some(token.as_str());
         }
     }
 
-    if token_found {
-        return Some(final_token);
-    }
-
-    None
+    used_token
 }
 
 /// Given text, a comment token, and a set of line indices, returns the following:
