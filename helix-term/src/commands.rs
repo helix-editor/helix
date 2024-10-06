@@ -3459,11 +3459,16 @@ fn open(cx: &mut Context, open: Open) {
 
         // calculate new selection ranges
         let pos = offs + line_end_index + line_end_offset_width;
+        let comment_len = continue_comment_token
+            .map(|token| token.len() + 1) // `+ 1` for the extra space added
+            .unwrap_or_default();
         for i in 0..count {
             // pos                    -> beginning of reference line,
-            // + (i * (1+indent_len)) -> beginning of i'th line from pos
-            // + indent_len ->        -> indent for i'th line
-            ranges.push(Range::point(pos + (i * (1 + indent_len)) + indent_len));
+            // + (i * (1+indent_len + comment_len)) -> beginning of i'th line from pos (possibly including comment token)
+            // + indent_len + comment_len ->        -> indent for i'th line
+            ranges.push(Range::point(
+                pos + (i * (1 + indent_len + comment_len)) + indent_len + comment_len,
+            ));
         }
 
         offs += text.chars().count();
@@ -3474,9 +3479,6 @@ fn open(cx: &mut Context, open: Open) {
     transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
 
     doc.apply(&transaction, view.id);
-
-    // Since we might have added a comment token, move to the end of the line.
-    goto_line_end_newline(cx);
 }
 
 // o inserts a new line after each line with a selection
