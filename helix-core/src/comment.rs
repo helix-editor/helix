@@ -13,41 +13,33 @@ pub const DEFAULT_COMMENT_TOKEN: &str = "//";
 
 /// Returns the matching comment token of the given line (if it exists).
 pub fn get_comment_token<'a>(
-    text: &Rope,
-    tokens: Option<&'a Vec<String>>,
+    text: RopeSlice,
+    tokens: &'a Vec<String>,
     line_num: usize,
 ) -> Option<&'a str> {
-    let text = text.slice(..);
     let mut token_found = false;
 
-    if let Some(tokens) = tokens {
-        let mut final_token = tokens
-            .first()
-            .map(|token| token.as_str())
-            .unwrap_or(DEFAULT_COMMENT_TOKEN);
+    let mut final_token = tokens
+        .first()
+        .map(|token| token.as_str())
+        .unwrap_or(DEFAULT_COMMENT_TOKEN);
 
-        for token in tokens {
-            let (is_commented, _, _, _) = find_line_comment(token, text, [line_num]);
+    for token in tokens {
+        let (is_commented, _, _, _) = find_line_comment(token, text, [line_num]);
 
-            if is_commented {
-                token_found = true;
+        if is_commented {
+            token_found = true;
 
-                // in rust for example, there's `//` and `///`.
-                // We need to find the longest matching comment token so we can't immediately return the first matching token.
-                if token.len() > final_token.len() {
-                    final_token = token;
-                }
+            // in rust for example, there's `//` and `///`.
+            // We need to find the longest matching comment token so we can't immediately return the first matching token.
+            if token.len() > final_token.len() {
+                final_token = token;
             }
         }
+    }
 
-        if token_found {
-            return Some(final_token);
-        }
-    } else {
-        let (is_commented, _, _, _) = find_line_comment(DEFAULT_COMMENT_TOKEN, text, [line_num]);
-        if is_commented {
-            return Some(DEFAULT_COMMENT_TOKEN);
-        }
+    if token_found {
+        return Some(final_token);
     }
 
     None

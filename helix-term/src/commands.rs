@@ -3424,13 +3424,15 @@ fn open(cx: &mut Context, open: Open) {
             )
         };
 
-        let comment_token = {
-            let tokens = doc
-                .language_config()
-                .and_then(|config| config.comment_tokens.as_ref());
-
-            get_comment_token(doc.text(), tokens, cursor_line)
+        let comment_token = if let Some(tokens) = doc
+            .language_config()
+            .and_then(|config| config.comment_tokens.as_ref())
+        {
+            get_comment_token(doc.text().slice(..), tokens, cursor_line)
+        } else {
+            None
         };
+
         let new_line_will_be_comment = comment_token.is_some();
 
         let indent = {
@@ -3910,12 +3912,13 @@ pub mod insert {
 
             let mut new_text = String::new();
 
-            let comment_token = {
-                let tokens = doc
-                    .language_config()
-                    .and_then(|config| config.comment_tokens.as_ref());
-
-                get_comment_token(doc.text(), tokens, current_line)
+            let comment_token = if let Some(tokens) = doc
+                .language_config()
+                .and_then(|config| config.comment_tokens.as_ref())
+            {
+                get_comment_token(doc.text().slice(..), tokens, current_line)
+            } else {
+                None
             };
 
             // If the current line is all whitespace, insert a line ending at the beginning of
