@@ -1,16 +1,24 @@
+use std::borrow::Cow;
 use std::collections::HashSet;
+use std::path::{Path, PathBuf};
+use std::str::FromStr;
 use std::sync::Arc;
 use std::time::Duration;
 
+use ::url::Url;
 use arc_swap::ArcSwap;
+use futures_util::future::BoxFuture;
 use futures_util::stream::FuturesUnordered;
+use futures_util::FutureExt;
 use helix_core::chars::char_is_word;
 use helix_core::syntax::LanguageServerFeature;
+use helix_core::Transaction;
 use helix_event::{
     cancelable_future, cancelation, register_hook, send_blocking, CancelRx, CancelTx,
 };
 use helix_lsp::lsp;
 use helix_lsp::util::pos_to_lsp_pos;
+use helix_stdx::path::{self, canonicalize, fold_home_dir, get_path_suffix};
 use helix_stdx::rope::RopeSliceExt;
 use helix_view::document::{Mode, SavePoint};
 use helix_view::handlers::lsp::CompletionEvent;
@@ -27,7 +35,7 @@ use crate::job::{dispatch, dispatch_blocking, RequireRender};
 use crate::keymap::MappableCommand;
 use crate::ui::editor::InsertEvent;
 use crate::ui::lsp::SignatureHelp;
-use crate::ui::{self, CompletionItem, Popup};
+use crate::ui::{self, CompletionItem, LspCompletionItem, PathCompletionItem, PathKind, Popup};
 
 use super::Handlers;
 pub use resolve::ResolveHandler;
@@ -252,15 +260,19 @@ fn request_completion(
                     None => Vec::new(),
                 }
                 .into_iter()
-                .map(|item| CompletionItem {
-                    item,
-                    provider: language_server_id,
-                    resolved: false,
+                .map(|item| {
+                    CompletionItem::Lsp(LspCompletionItem {
+                        item,
+                        provider: language_server_id,
+                        resolved: false,
+                    })
                 })
                 .collect();
                 anyhow::Ok(items)
             }
+            .boxed()
         })
+        .chain(path_completion(cursor, text.clone(), doc))
         .collect();
 
     let future = async move {
@@ -290,6 +302,167 @@ fn request_completion(
         })
         .await
     });
+}
+
+fn path_completion(
+    cursor: usize,
+    text: helix_core::Rope,
+    doc: &helix_view::Document,
+) -> Option<BoxFuture<'static, anyhow::Result<Vec<CompletionItem>>>> {
+    if !doc.supports_path_completion() {
+        return None;
+    }
+
+    let cur_line = text.char_to_line(cursor);
+    let start = text.line_to_char(cur_line).max(cursor.saturating_sub(1000));
+    let line_until_cursor = text.slice(start..cursor);
+
+    let (dir_path, typed_file_name) =
+        get_path_suffix(line_until_cursor, false).and_then(|matched_path| {
+            let matched_path = Cow::from(matched_path);
+            let path: Cow<_> = if matched_path.starts_with("file://") {
+                Url::from_str(&matched_path)
+                    .ok()
+                    .and_then(|url| url.to_file_path().ok())?
+                    .into()
+            } else {
+                Path::new(&*matched_path).into()
+            };
+            let path = path::expand(&path);
+            let parent_dir = doc.path().and_then(|dp| dp.parent());
+            let path = match parent_dir {
+                Some(parent_dir) if path.is_absolute() => parent_dir.join(&path),
+                _ => path.into_owned(),
+            };
+            let ends_with_slash = matches!(matched_path.as_bytes().last(), Some(b'/' | b'\\'));
+            // check if there are chars after the last slash, and if these chars represent a directory
+            match std::fs::metadata(path.clone()).ok() {
+                Some(m) if m.is_dir() && ends_with_slash => {
+                    Some((PathBuf::from(path.as_path()), None))
+                }
+                _ if !ends_with_slash => path.parent().map(|parent_path| {
+                    (
+                        PathBuf::from(parent_path),
+                        path.file_name().and_then(|f| f.to_str().map(String::from)),
+                    )
+                }),
+                _ => None,
+            }
+        })?;
+
+    // The async file accessor functions of tokio were considered, but they were a bit slower
+    // and less ergonomic than just using the std functions in a separate "thread"
+    let future = tokio::task::spawn_blocking(move || {
+        let Ok(read_dir) = std::fs::read_dir(&dir_path) else {
+            return Vec::new();
+        };
+
+        read_dir
+            .filter_map(Result::ok)
+            .filter_map(|dir_entry| dir_entry.metadata().ok().map(|md| (dir_entry.path(), md)))
+            .map(|(path, md)| {
+                let file_name = path
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .to_string();
+
+                let full_path = fold_home_dir(canonicalize(path));
+                let full_path_name = full_path.to_string_lossy();
+
+                let kind = if md.is_symlink() {
+                    PathKind::Link
+                } else if md.is_dir() {
+                    PathKind::Folder
+                } else {
+                    #[cfg(unix)]
+                    {
+                        use std::os::unix::fs::FileTypeExt;
+                        if md.file_type().is_block_device() {
+                            PathKind::Block
+                        } else if md.file_type().is_socket() {
+                            PathKind::Socket
+                        } else if md.file_type().is_char_device() {
+                            PathKind::CharacterDevice
+                        } else if md.file_type().is_fifo() {
+                            PathKind::Fifo
+                        } else {
+                            PathKind::File
+                        }
+                    }
+                    #[cfg(not(unix))]
+                    PathKind::File
+                };
+
+                let documentation = {
+                    #[cfg(unix)]
+                    {
+                        use std::os::unix::prelude::PermissionsExt;
+                        let mode = md.permissions().mode();
+
+                        let perms = [
+                            (libc::S_IRUSR, 'r'),
+                            (libc::S_IWUSR, 'w'),
+                            (libc::S_IXUSR, 'x'),
+                            (libc::S_IRGRP, 'r'),
+                            (libc::S_IWGRP, 'w'),
+                            (libc::S_IXGRP, 'x'),
+                            (libc::S_IROTH, 'r'),
+                            (libc::S_IWOTH, 'w'),
+                            (libc::S_IXOTH, 'x'),
+                        ]
+                        .into_iter()
+                        .fold(
+                            String::with_capacity(9),
+                            |mut acc, (p, s)| {
+                                // This cast is necessary on some platforms such as macos as `mode_t` is u16 there
+                                #[allow(clippy::unnecessary_cast)]
+                                acc.push(if mode & (p as u32) > 0 { s } else { '-' });
+                                acc
+                            },
+                        );
+
+                        // TODO it would be great to be able to individually color the documentation,
+                        // but this will likely require a custom doc implementation (i.e. not `lsp::Documentation`)
+                        // and/or different rendering in completion.rs
+                        format!(
+                            "type: `{kind}`\n\
+                             permissions: `[{perms}]`\n\
+                             full path: `{full_path_name}`",
+                        )
+                    }
+                    #[cfg(not(unix))]
+                    {
+                        format!(
+                            "type: `{kind}`\n\
+                             full path: `{full_path_name}`",
+                        )
+                    }
+                };
+
+                let edit_diff = typed_file_name
+                    .as_ref()
+                    .map(|f| f.len())
+                    .unwrap_or_default();
+
+                let transaction = Transaction::change(
+                    &text,
+                    std::iter::once((cursor - edit_diff, cursor, Some(file_name.as_str().into()))),
+                );
+
+                CompletionItem::Path(PathCompletionItem {
+                    kind,
+                    item: helix_core::CompletionItem {
+                        transaction,
+                        label: file_name,
+                        documentation,
+                    },
+                })
+            })
+            .collect::<Vec<_>>()
+    });
+
+    Some(async move { Ok(future.await?) }.boxed())
 }
 
 fn show_completion(
@@ -348,7 +521,11 @@ pub fn trigger_auto_completion(
                         ..
                     }) if triggers.iter().any(|trigger| text.ends_with(trigger)))
         });
-    if is_trigger_char {
+
+    let trigger_path_completion =
+        text.ends_with(std::path::MAIN_SEPARATOR_STR) && doc.supports_path_completion();
+
+    if is_trigger_char || trigger_path_completion {
         send_blocking(
             tx,
             CompletionEvent::TriggerChar {

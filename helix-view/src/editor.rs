@@ -269,6 +269,11 @@ pub struct Config {
     pub auto_pairs: AutoPairConfig,
     /// Automatic auto-completion, automatically pop up without user trigger. Defaults to true.
     pub auto_completion: bool,
+    /// Enable filepath completion.
+    /// Show files and directories if an existing path at the cursor was recognized,
+    /// either absolute or relative to the current opened document or current working directory (if the buffer is not yet saved).
+    /// Defaults to true.
+    pub path_completion: bool,
     /// Automatic formatting on save. Defaults to true.
     pub auto_format: bool,
     /// Automatic save on focus lost and/or after delay.
@@ -951,6 +956,7 @@ impl Default for Config {
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
+            path_completion: true,
             auto_format: true,
             auto_save: AutoSave::default(),
             idle_timeout: Duration::from_millis(250),
