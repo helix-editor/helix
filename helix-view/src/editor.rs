@@ -352,6 +352,7 @@ pub struct Config {
 pub struct SmartTabConfig {
     pub enable: bool,
     pub supersede_menu: bool,
+    pub mode: SmartTabMode,
 }
 
 impl Default for SmartTabConfig {
@@ -359,8 +360,16 @@ impl Default for SmartTabConfig {
         SmartTabConfig {
             enable: true,
             supersede_menu: false,
+            mode: SmartTabMode::MoveParentNodeEnd,
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
+#[serde(rename_all = "kebab-case")]
+pub enum SmartTabMode {
+    MoveParentNodeEnd,
+    Completion,
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
