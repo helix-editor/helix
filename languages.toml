@@ -1576,7 +1576,7 @@ injection-regex = "tablegen"
 
 [[grammar]]
 name = "tablegen"
-source = { git = "https://github.com/Flakebi/tree-sitter-tablegen", rev = "568dd8a937347175fd58db83d4c4cdaeb6069bd2" }
+source = { git = "https://github.com/Flakebi/tree-sitter-tablegen", rev = "3e9c4822ab5cdcccf4f8aa9dcd42117f736d51d9" }
 
 [[language]]
 name = "markdown"
