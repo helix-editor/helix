@@ -85,6 +85,25 @@ fn xit(
     quit(cx, &[], event)
 }
 
+fn force_xit(
+    cx: &mut compositor::Context, 
+    args: &[Cow<str>], 
+    event: PromptEvent,
+)-> anyhow::Result<()> {
+
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (_view, doc) = current!(cx.editor);
+    
+    if doc.is_modified() {
+        write_impl(cx, args.first(), true)?;
+    }
+    cx.block_try_flush_writes()?;
+    quit(cx, &[], event)
+}
+                                            
 fn quit(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
     log::debug!("quitting...");
 
@@ -2545,6 +2564,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["x"],
         doc: "Write changes to disk if any are made. Otherwise just close. Doesn't require a path if buffer is not modified.",
         fun: xit,
+        signature: CommandSignature::positional(&[completers::filename]),
+    },
+    TypableCommand {
+        name: "xit!",
+        aliases: &["x!"],
+        doc: "Write changes to disk if any are made. Otherwise just close. Doesn't require a path if buffer is not modified. Force write.",
+        fun: force_xit,
         signature: CommandSignature::positional(&[completers::filename]),
     },
     TypableCommand {
