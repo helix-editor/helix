@@ -1,6 +1,7 @@
 use std::fmt::Display;
 
 use ropey::RopeSlice;
+use streaming_iterator::StreamingIterator;
 use tree_sitter::{Node, QueryCursor};
 
 use crate::chars::{categorize_char, char_is_whitespace, CharCategory};
@@ -273,11 +274,12 @@ pub fn textobject_treesitter(
             .textobject_query()?
             .capture_nodes(&capture_name, slice_tree, slice, &mut cursor)?
             .filter(|node| node.byte_range().contains(&byte_pos))
-            .min_by_key(|node| node.byte_range().len())?;
+            .map_deref(|n| n.byte_range())
+            .min_by_key(|node_range| node_range.len())?;
 
         let len = slice.len_bytes();
-        let start_byte = node.start_byte();
-        let end_byte = node.end_byte();
+        let start_byte = node.start;
+        let end_byte = node.end;
         if start_byte >= len || end_byte >= len {
             return None;
         }

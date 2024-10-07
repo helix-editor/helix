@@ -16,6 +16,7 @@ use globset::GlobSet;
 use hashbrown::raw::RawTable;
 use helix_stdx::rope::{self, RopeSliceExt};
 use slotmap::{DefaultKey as LayerId, HopSlotMap};
+use streaming_iterator::StreamingIterator;
 
 use std::{
     borrow::Cow,
@@ -679,7 +680,7 @@ impl TextObjectQuery {
         node: Node<'a>,
         slice: RopeSlice<'a>,
         cursor: &'a mut QueryCursor,
-    ) -> Option<impl Iterator<Item = CapturedNode<'a>>> {
+    ) -> Option<impl StreamingIterator<Item = CapturedNode<'a>>> {
         self.capture_nodes_any(&[capture_name], node, slice, cursor)
     }
 
@@ -691,7 +692,7 @@ impl TextObjectQuery {
         node: Node<'a>,
         slice: RopeSlice<'a>,
         cursor: &'a mut QueryCursor,
-    ) -> Option<impl Iterator<Item = CapturedNode<'a>>> {
+    ) -> Option<impl StreamingIterator<Item = CapturedNode<'a>>> {
         let capture_idx = capture_names
             .iter()
             .find_map(|cap| self.query.capture_index_for_name(cap))?;
@@ -1288,7 +1289,7 @@ impl Syntax {
                 let layer = &self.layers[layer_id];
 
                 // Process injections.
-                let matches = cursor.matches(
+                let mut matches = cursor.matches(
                     &layer.config.injections_query,
                     layer.tree().root_node(),
                     RopeProvider(source_slice),
@@ -1299,10 +1300,10 @@ impl Syntax {
                 ];
                 let mut injections = Vec::new();
                 let mut last_injection_end = 0;
-                for mat in matches {
+                while let Some(mat) = matches.next() {
                     let (injection_capture, content_node, included_children) = layer
                         .config
-                        .injection_for_match(&layer.config.injections_query, &mat, source_slice);
+                        .injection_for_match(&layer.config.injections_query, mat, source_slice);
 
                     // in case this is a combined injection save it for more processing later
                     if let Some(combined_injection_idx) = layer
@@ -1441,16 +1442,15 @@ impl Syntax {
                 cursor_ref.set_byte_range(range.clone().unwrap_or(0..usize::MAX));
                 cursor_ref.set_match_limit(TREE_SITTER_MATCH_LIMIT);
 
-                let mut captures = cursor_ref
-                    .captures(
-                        &layer.config.query,
-                        layer.tree().root_node(),
-                        RopeProvider(source),
-                    )
-                    .peekable();
+                let mut captures = cursor_ref.captures(
+                    &layer.config.query,
+                    layer.tree().root_node(),
+                    RopeProvider(source),
+                );
 
                 // If there's no captures, skip the layer
-                captures.peek()?;
+                captures.advance();
+                captures.get()?;
 
                 Some(HighlightIterLayer {
                     highlight_end_stack: Vec::new(),
@@ -1740,7 +1740,7 @@ pub(crate) fn generate_edits(
 }
 
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::{iter, mem, ops, str};
+use std::{mem, ops, str};
 use tree_sitter::{
     Language as Grammar, Node, Parser, Point, Query, QueryCaptures, QueryCursor, QueryError,
     QueryMatch, Range, TextProvider, Tree,
@@ -1842,7 +1842,7 @@ impl<'a> TextProvider<&'a [u8]> for RopeProvider<'a> {
 struct HighlightIterLayer<'a> {
     _tree: Option<Tree>,
     cursor: QueryCursor,
-    captures: RefCell<iter::Peekable<QueryCaptures<'a, 'a, RopeProvider<'a>, &'a [u8]>>>,
+    captures: RefCell<QueryCaptures<'a, 'a, RopeProvider<'a>, &'a [u8]>>,
     config: &'a HighlightConfiguration,
     highlight_end_stack: Vec<usize>,
     scope_stack: Vec<LocalScope<'a>>,
@@ -2115,7 +2115,7 @@ impl<'a> HighlightIterLayer<'a> {
         let next_start = self
             .captures
             .borrow_mut()
-            .peek()
+            .get()
             .map(|(m, i)| m.captures[*i].node.start_byte());
         let next_end = self.highlight_end_stack.last().cloned();
         match (next_start, next_end) {
@@ -2340,7 +2340,7 @@ impl<'a> Iterator for HighlightIter<'a> {
             let range;
             let layer = &mut self.layers[0];
             let captures = layer.captures.get_mut();
-            if let Some((next_match, capture_index)) = captures.peek() {
+            if let Some((next_match, capture_index)) = captures.get() {
                 let next_capture = next_match.captures[*capture_index];
                 range = next_capture.node.byte_range();
 
@@ -2363,7 +2363,7 @@ impl<'a> Iterator for HighlightIter<'a> {
                 return self.emit_event(self.source.len_bytes(), None);
             };
 
-            let (mut match_, capture_index) = captures.next().unwrap();
+            let (mut match_, capture_index) = captures.get().map(|m| (&m.0, m.1)).unwrap();
             let mut capture = match_.captures[capture_index];
 
             // Remove from the local scope stack any local scopes that have already ended.
@@ -2439,11 +2439,11 @@ impl<'a> Iterator for HighlightIter<'a> {
                 }
 
                 // Continue processing any additional matches for the same node.
-                if let Some((next_match, next_capture_index)) = captures.peek() {
+                if let Some((next_match, next_capture_index)) = captures.get() {
                     let next_capture = next_match.captures[*next_capture_index];
                     if next_capture.node == capture.node {
                         capture = next_capture;
-                        match_ = captures.next().unwrap().0;
+                        match_ = &captures.next().unwrap().0;
                         continue;
                     }
                 }
@@ -2467,11 +2467,11 @@ impl<'a> Iterator for HighlightIter<'a> {
             if definition_highlight.is_some() || reference_highlight.is_some() {
                 while layer.config.non_local_variable_patterns[match_.pattern_index] {
                     match_.remove();
-                    if let Some((next_match, next_capture_index)) = captures.peek() {
+                    if let Some((next_match, next_capture_index)) = captures.get() {
                         let next_capture = next_match.captures[*next_capture_index];
                         if next_capture.node == capture.node {
                             capture = next_capture;
-                            match_ = captures.next().unwrap().0;
+                            match_ = &captures.next().unwrap().0;
                             continue;
                         }
                     }
@@ -2486,10 +2486,10 @@ impl<'a> Iterator for HighlightIter<'a> {
             // for a given node are ordered by pattern index, so these subsequent
             // captures are guaranteed to be for highlighting, not injections or
             // local variables.
-            while let Some((next_match, next_capture_index)) = captures.peek() {
+            while let Some((next_match, next_capture_index)) = captures.get() {
                 let next_capture = next_match.captures[*next_capture_index];
                 if next_capture.node == capture.node {
-                    captures.next();
+                    captures.advance();
                 } else {
                     break;
                 }
@@ -2763,18 +2763,12 @@ mod test {
 
         let root = syntax.tree().root_node();
         let mut test = |capture, range| {
-            let matches: Vec<_> = textobject
+            let captures = textobject
                 .capture_nodes(capture, root, source.slice(..), &mut cursor)
-                .unwrap()
-                .collect();
+                .unwrap();
+            let matches: Vec<_> = captures.map_deref(|c| c.byte_range()).collect();
 
-            assert_eq!(
-                matches[0].byte_range(),
-                range,
-                "@{} expected {:?}",
-                capture,
-                range
-            )
+            assert_eq!(matches[0], range, "@{} expected {:?}", capture, range)
         };
 
         test("quantified_nodes", 1..37);
