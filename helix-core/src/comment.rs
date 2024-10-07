@@ -17,24 +17,14 @@ pub fn get_comment_token<'a, S: AsRef<str>>(
     tokens: &'a [S],
     line_num: usize,
 ) -> Option<&'a str> {
-    let mut used_token: Option<&'a str> = None;
-
     let line = text.line(line_num);
     let start = line.first_non_whitespace_char()?;
 
-    let mut max_token_len = 0;
-    for token in tokens {
-        let token_str = token.as_ref();
-        let end = std::cmp::min(start + token_str.len(), line.len_chars());
-
-        let matches_token = line.slice(start..end).starts_with(token_str);
-        if matches_token && token_str.len() >= max_token_len {
-            used_token = Some(token_str);
-            max_token_len = token_str.len();
-        }
-    }
-
-    used_token
+    tokens
+        .iter()
+        .map(AsRef::as_ref)
+        .filter(|token| line.slice(start..).starts_with(token))
+        .max_by_key(|token| token.len())
 }
 
 /// Given text, a comment token, and a set of line indices, returns the following:
