@@ -313,6 +313,7 @@ where
 #[serde(rename_all = "kebab-case")]
 pub enum LanguageServerFeature {
     Format,
+    FormatSelection,
     GotoDeclaration,
     GotoDefinition,
     GotoTypeDefinition,
@@ -338,6 +339,7 @@ impl Display for LanguageServerFeature {
         use LanguageServerFeature::*;
         let feature = match self {
             Format => "format",
+            FormatSelection => "format-selection",
             GotoDeclaration => "goto-declaration",
             GotoDefinition => "goto-definition",
             GotoTypeDefinition => "goto-type-definition",

@@ -286,6 +286,10 @@ impl Client {
                 capabilities.document_formatting_provider,
                 Some(OneOf::Left(true) | OneOf::Right(_))
             ),
+            LanguageServerFeature::FormatSelection => matches!(
+                capabilities.document_range_formatting_provider,
+                Some(OneOf::Left(true) | OneOf::Right(_))
+            ),
             LanguageServerFeature::GotoDeclaration => matches!(
                 capabilities.declaration_provider,
                 Some(
@@ -660,6 +664,9 @@ impl Client {
                     inlay_hint: Some(lsp::InlayHintClientCapabilities {
                         dynamic_registration: Some(false),
                         resolve_support: None,
+                    }),
+                    range_formatting: Some(lsp::DocumentFormattingClientCapabilities {
+                        dynamic_registration: Some(false),
                     }),
                     ..Default::default()
                 }),
