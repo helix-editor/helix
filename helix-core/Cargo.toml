@@ -28,7 +28,7 @@ unicode-segmentation = "1.12"
 # width definitions in terminals, we need to replace it.
 # For now lets lock the version to avoid rendering glitches
 # when installing without `--locked`
-unicode-width = "=0.2.0"
+unicode-width = "=0.1.12"
 unicode-general-category = "0.6"
 slotmap.workspace = true
 tree-sitter.workspace = true
