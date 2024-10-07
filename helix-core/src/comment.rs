@@ -12,20 +12,25 @@ use std::borrow::Cow;
 pub const DEFAULT_COMMENT_TOKEN: &str = "//";
 
 /// Returns the longest matching comment token of the given line (if it exists).
-pub fn get_comment_token<'a>(
+pub fn get_comment_token<'a, S: AsRef<str>>(
     text: RopeSlice,
-    tokens: &'a [String],
+    tokens: &'a [S],
     line_num: usize,
 ) -> Option<&'a str> {
     let mut used_token: Option<&'a str> = None;
 
     let line = text.line(line_num);
-    let start = line.char_to_byte(line.first_non_whitespace_char()?);
+    let start = line.first_non_whitespace_char()?;
 
+    let mut max_token_len = 0;
     for token in tokens {
-        let end = std::cmp::min(start + token.len(), line.len_bytes());
-        if line.byte_slice(start..end) == *token {
-            used_token = Some(token.as_str());
+        let token_str = token.as_ref();
+        let end = std::cmp::min(start + token_str.len(), line.len_chars());
+
+        let matches_token = line.slice(start..end).starts_with(token_str);
+        if matches_token && token_str.len() >= max_token_len {
+            used_token = Some(token_str);
+            max_token_len = token_str.len();
         }
     }
 
@@ -480,5 +485,18 @@ mod test {
         let transaction = toggle_block_comments(&doc, &selection, &[BlockCommentToken::default()]);
         transaction.apply(&mut doc);
         assert_eq!(doc, "");
+    }
+
+    // Test, if `get_comment_tokens` works, even if the content of the file includes chars, whose
+    // byte size unequal the amount of chars
+    #[test]
+    fn test_get_comment_with_char_boundaries() {
+        let rope = Rope::from("··");
+        let tokens = ["//", "///"];
+
+        assert_eq!(
+            super::get_comment_token(rope.slice(..), tokens.as_slice(), 0),
+            None
+        );
     }
 }
