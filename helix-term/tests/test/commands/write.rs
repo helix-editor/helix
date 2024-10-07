@@ -144,7 +144,7 @@ async fn test_overwrite_protection() -> anyhow::Result<()> {
     file.as_file_mut().flush()?;
     file.as_file_mut().sync_all()?;
 
-    test_key_sequence(&mut app, Some(":x<ret>"), None, false).await?;
+    test_key_sequence(&mut app, Some("iOverwriteData<esc>:x<ret>"), None, false).await?;
 
     reload_file(&mut file).unwrap();
     let mut file_content = String::new();
