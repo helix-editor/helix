@@ -2482,6 +2482,12 @@ injection-regex = "sml"
 file-types = ["sml"]
 block-comment-tokens = { start = "(*", end = "*)" }
 
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+
 [[grammar]]
 name = "sml"
 source = { git = "https://github.com/Giorbo/tree-sitter-sml", rev = "bd4055d5554614520d4a0706b34dc0c317c6b608" }
