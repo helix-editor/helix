@@ -24,8 +24,7 @@ pub fn get_comment_token<'a>(
 
     for token in tokens {
         let end = std::cmp::min(start + token.len(), line.len_bytes());
-        let fragment = Cow::from(line.byte_slice(start..end));
-        if fragment == *token {
+        if line.byte_slice(start..end) == *token {
             used_token = Some(token.as_str());
         }
     }
