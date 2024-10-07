@@ -1553,7 +1553,7 @@ injection-regex = "mir"
 
 [[grammar]]
 name = "llvm-mir"
-source = { git = "https://github.com/Flakebi/tree-sitter-llvm-mir", rev = "06fabca19454b2dc00c1b211a7cb7ad0bc2585f1" }
+source = { git = "https://github.com/Flakebi/tree-sitter-llvm-mir", rev = "d166ff8c5950f80b0a476956e7a0ad2f27c12505" }
 
 [[language]]
 name = "llvm-mir-yaml"
