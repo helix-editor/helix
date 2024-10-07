@@ -487,8 +487,8 @@ mod test {
         assert_eq!(doc, "");
     }
 
-    // Test, if `get_comment_tokens` works, even if the content of the file includes chars, whose
-    // byte size unequal the amount of chars
+    /// Test, if `get_comment_tokens` works, even if the content of the file includes chars, whose
+    /// byte size unequal the amount of chars
     #[test]
     fn test_get_comment_with_char_boundaries() {
         let rope = Rope::from("··");
@@ -497,6 +497,21 @@ mod test {
         assert_eq!(
             super::get_comment_token(rope.slice(..), tokens.as_slice(), 0),
             None
+        );
+    }
+
+    /// Test for `get_comment_token`.
+    ///
+    /// Assuming the comment tokens are stored as `["///", "//"]`, `get_comment_token` should still
+    /// return `///` instead of `//` if the user is in a doc-comment section.
+    #[test]
+    fn test_use_longest_comment() {
+        let text = Rope::from("    /// amogus");
+        let tokens = ["///", "//"];
+
+        assert_eq!(
+            super::get_comment_token(text.slice(..), tokens.as_slice(), 0),
+            Some("///")
         );
     }
 }
