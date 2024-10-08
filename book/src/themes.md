@@ -307,6 +307,7 @@ These scopes are used for theming the editor interface:
 | `ui.text.inactive`                | Same as `ui.text` but when the text is inactive (e.g. suggestions)                             |
 | `ui.text.info`                    | The key: command text in `ui.popup.info` boxes                                                 |
 | `ui.virtual.ruler`                | Ruler columns (see the [`editor.rulers` config][editor-section])                               |
+| `ui.virtual.ruler.char`           | Ruler columns, ([only if `editor.ruler-char` is set][editor-section]                           |
 | `ui.virtual.whitespace`           | Visible whitespace characters                                                                  |
 | `ui.virtual.indent-guide`         | Vertical indent width guides                                                                   |
 | `ui.virtual.inlay-hint`           | Default style for inlay hints of all kinds                                                     |
