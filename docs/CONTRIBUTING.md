@@ -57,6 +57,14 @@ Contributors using MacOS might encounter `Too many open files (os error 24)`
 failures while running integration tests. This can be resolved by increasing
 the default value (e.g. to `10240` from `256`) by running `ulimit -n 10240`.
 
+### Language Server tests
+
+There are integration tests specific for language server integration that can be
+run with `cargo integration-test-lsp` and have additional dependencies.
+
+* [go](https://go.dev)
+* [gopls](https://pkg.go.dev/golang.org/x/tools/gopls)
+
 ## Minimum Stable Rust Version (MSRV) Policy
 
 Helix follows the MSRV of Firefox.
