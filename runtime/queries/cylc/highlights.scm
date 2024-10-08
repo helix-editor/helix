@@ -21,24 +21,24 @@
     (task_name) @namespace))
 
 (top_section
-  brackets_open: _ @ponctuation.bracket
+  brackets_open: _ @punctuation.bracket
   name: _? @label
-  brackets_close: _ @ponctuation.bracket)
+  brackets_close: _ @punctuation.bracket)
 
 (sub_section_1
-  brackets_open: _ @ponctuation.bracket
+  brackets_open: _ @punctuation.bracket
   name: _? @label
-  brackets_close: _ @ponctuation.bracket)
+  brackets_close: _ @punctuation.bracket)
 
 (sub_section_2
-  brackets_open: _ @ponctuation.bracket
+  brackets_open: _ @punctuation.bracket
   name: _? @label
-  brackets_close: _ @ponctuation.bracket)
+  brackets_close: _ @punctuation.bracket)
 
 (runtime_section
-  brackets_open: _ @ponctuation.bracket
+  brackets_open: _ @punctuation.bracket
   name: _? @label
-  brackets_close: _ @ponctuation.bracket)
+  brackets_close: _ @punctuation.bracket)
 
 (graph_setting
   key: (_) @constant.numeric.integer
