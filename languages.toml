@@ -4,7 +4,6 @@
 use-grammars = { except = [ "hare", "wren", "gemini" ] }
 
 [language-server]
-
 als = { command = "als" }
 ada-language-server = { command = "ada_language_server" }
 ada-gpr-language-server = {command = "ada_language_server", args = ["--language-gpr"]}
@@ -93,6 +92,7 @@ slint-lsp = { command = "slint-lsp", args = [] }
 solargraph = { command = "solargraph", args = ["stdio"] }
 solc = { command = "solc", args = ["--lsp"] }
 sourcekit-lsp = { command = "sourcekit-lsp" }
+starlark-lsp = {command = "starlark-lsp"}
 svlangserver = { command = "svlangserver", args = [] }
 swipl = { command = "swipl", args = [ "-g", "use_module(library(lsp_server))", "-g", "lsp_server:main", "-t", "halt", "--", "stdio" ] }
 superhtml = {  command = "superhtml", args = ["lsp"]}
@@ -120,6 +120,10 @@ pkgbuild-language-server = { command = "pkgbuild-language-server" }
 helm_ls = { command = "helm_ls", args = ["serve"] }
 ember-language-server = { command = "ember-language-server", args = ["--stdio"] }
 
+[language-server.buck2]
+command = "buck2"
+args = ["lsp"]
+
 [language-server.ansible-language-server]
 command = "ansible-language-server"
 args = ["--stdio"]
@@ -134,7 +138,6 @@ setType = true
 paramName = "All"
 paramType = true
 await = true
-
 
 [language-server.gopls]
 command = "gopls"
@@ -2329,6 +2332,20 @@ file-types = ["bzl", "bazel", "star", { glob = "BUILD" }, { glob = "BUILD.*" }, 
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
 grammar = "python"
+language-servers = ['starlark-lsp']
+
+
+[[language]]
+name = "buck2"
+scope = "source.buck2"
+injection-regex = "(bxl|bazel)"
+file-types = [{glob = "BUCK"}, "bxl", "bzl", "TARGETS"]
+comment-token = "#"
+roots = [".buckconfig"]
+indent = { tab-width = 4, unit = "    " }
+grammar = "startlark"
+language-servers = ['buck2']
+
 
 [[language]]
 name = "elvish"
