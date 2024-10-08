@@ -13,6 +13,8 @@ pub mod handlers;
 pub mod info;
 pub mod input;
 pub mod keyboard;
+pub mod persistence;
+pub mod regex;
 pub mod register;
 pub mod theme;
 pub mod tree;
