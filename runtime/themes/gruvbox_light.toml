@@ -6,6 +6,7 @@ inherits = "gruvbox"
 
 "ui.cursor.primary" = { modifiers = ["reversed"] }
 "ui.cursor.match" = { bg = "bg2" }
+"ui.cursorline" = { bg = "bg1" }
 
 [palette]
 bg0 = "#fbf1c7" # main background

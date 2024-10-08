@@ -1,13 +1,14 @@
 
-| Crate        | Description                                                      |
-| -----------  | -----------                                                      |
-| helix-core   | Core editing primitives, functional.                             |
-| helix-lsp    | Language server client                                           |
-| helix-dap    | Debug Adapter Protocol (DAP) client                              |
-| helix-loader | Functions for building, fetching, and loading external resources |
-| helix-view   | UI abstractions for use in backends, imperative shell.           |
-| helix-term   | Terminal UI                                                      |
-| helix-tui    | TUI primitives, forked from tui-rs, inspired by Cursive          |
+| Crate           | Description                                                      |
+| -----------     | -----------                                                      |
+| helix-core      | Core editing primitives, functional.                             |
+| helix-lsp       | Language server client                                           |
+| helix-lsp-types | Language Server Protocol type definitions                        |
+| helix-dap       | Debug Adapter Protocol (DAP) client                              |
+| helix-loader    | Functions for building, fetching, and loading external resources |
+| helix-view      | UI abstractions for use in backends, imperative shell.           |
+| helix-term      | Terminal UI                                                      |
+| helix-tui       | TUI primitives, forked from tui-rs, inspired by Cursive          |
 
 
 This document contains a high-level overview of Helix internals.

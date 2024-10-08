@@ -115,4 +115,10 @@
   (#not-same-line? @expr-start @pattern-guard)
 ) @indent
 
-  
+(for_expression
+  "in" @in
+  .
+  (_) @indent
+  (#not-same-line? @in @indent)
+  (#set! "scope" "all")
+)  

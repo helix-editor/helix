@@ -12,7 +12,7 @@ use helix_view::editor::Breakpoint;
 
 use serde_json::{to_value, Value};
 use tokio_stream::wrappers::UnboundedReceiverStream;
-use tui::{text::Spans, widgets::Row};
+use tui::text::Spans;
 
 use std::collections::HashMap;
 use std::future::Future;
@@ -21,38 +21,6 @@ use std::path::PathBuf;
 use anyhow::{anyhow, bail};
 
 use helix_view::handlers::dap::{breakpoints_changed, jump_to_stack_frame, select_thread_id};
-
-impl ui::menu::Item for StackFrame {
-    type Data = ();
-
-    fn format(&self, _data: &Self::Data) -> Row {
-        self.name.as_str().into() // TODO: include thread_states in the label
-    }
-}
-
-impl ui::menu::Item for DebugTemplate {
-    type Data = ();
-
-    fn format(&self, _data: &Self::Data) -> Row {
-        self.name.as_str().into()
-    }
-}
-
-impl ui::menu::Item for Thread {
-    type Data = ThreadStates;
-
-    fn format(&self, thread_states: &Self::Data) -> Row {
-        format!(
-            "{} ({})",
-            self.name,
-            thread_states
-                .get(&self.id)
-                .map(|state| state.as_str())
-                .unwrap_or("unknown")
-        )
-        .into()
-    }
-}
 
 fn thread_picker(
     cx: &mut Context,
@@ -73,13 +41,27 @@ fn thread_picker(
             let debugger = debugger!(editor);
 
             let thread_states = debugger.thread_states.clone();
-            let picker = Picker::new(threads, thread_states, move |cx, thread, _action| {
-                callback_fn(cx.editor, thread)
-            })
+            let columns = [
+                ui::PickerColumn::new("name", |item: &Thread, _| item.name.as_str().into()),
+                ui::PickerColumn::new("state", |item: &Thread, thread_states: &ThreadStates| {
+                    thread_states
+                        .get(&item.id)
+                        .map(|state| state.as_str())
+                        .unwrap_or("unknown")
+                        .into()
+                }),
+            ];
+            let picker = Picker::new(
+                columns,
+                0,
+                threads,
+                thread_states,
+                move |cx, thread, _action| callback_fn(cx.editor, thread),
+            )
             .with_preview(move |editor, thread| {
                 let frames = editor.debugger.as_ref()?.stack_frames.get(&thread.id)?;
                 let frame = frames.first()?;
-                let path = frame.source.as_ref()?.path.clone()?;
+                let path = frame.source.as_ref()?.path.as_ref()?.as_path();
                 let pos = Some((
                     frame.line.saturating_sub(1),
                     frame.end_line.unwrap_or(frame.line).saturating_sub(1),
@@ -268,7 +250,14 @@ pub fn dap_launch(cx: &mut Context) {
 
     let templates = config.templates.clone();
 
+    let columns = [ui::PickerColumn::new(
+        "template",
+        |item: &DebugTemplate, _| item.name.as_str().into(),
+    )];
+
     cx.push_layer(Box::new(overlaid(Picker::new(
+        columns,
+        0,
         templates,
         (),
         |cx, template, _action| {
@@ -736,7 +725,10 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
 
     let frames = debugger.stack_frames[&thread_id].clone();
 
-    let picker = Picker::new(frames, (), move |cx, frame, _action| {
+    let columns = [ui::PickerColumn::new("frame", |item: &StackFrame, _| {
+        item.name.as_str().into() // TODO: include thread_states in the label
+    })];
+    let picker = Picker::new(columns, 0, frames, (), move |cx, frame, _action| {
         let debugger = debugger!(cx.editor);
         // TODO: this should be simpler to find
         let pos = debugger.stack_frames[&thread_id]
@@ -755,10 +747,10 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
         frame
             .source
             .as_ref()
-            .and_then(|source| source.path.clone())
+            .and_then(|source| source.path.as_ref())
             .map(|path| {
                 (
-                    path.into(),
+                    path.as_path().into(),
                     Some((
                         frame.line.saturating_sub(1),
                         frame.end_line.unwrap_or(frame.line).saturating_sub(1),

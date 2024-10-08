@@ -126,6 +126,7 @@
         # disable fetching and building of tree-sitter grammars in the helix-term build.rs
         HELIX_DISABLE_AUTO_GRAMMAR_BUILD = "1";
         buildInputs = [stdenv.cc.cc.lib];
+        nativeBuildInputs = [pkgs.installShellFiles];
         # disable tests
         doCheck = false;
         meta.mainProgram = "hx";
@@ -141,6 +142,7 @@
               cp contrib/Helix.desktop $out/share/applications
               cp logo.svg $out/share/icons/hicolor/scalable/apps/helix.svg
               cp contrib/helix.png $out/share/icons/hicolor/256x256/apps
+              installShellCompletion contrib/completion/hx.{bash,fish,zsh}
             '';
           });
         helix = makeOverridableHelix self.packages.${system}.helix-unwrapped {};

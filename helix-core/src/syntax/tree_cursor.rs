@@ -204,7 +204,7 @@ impl<'a> TreeCursor<'a> {
 
         self.injection_ranges[start_idx..]
             .iter()
-            .take_while(|range| range.start < end)
+            .take_while(|range| range.start < end || range.depth > 1)
             .find_map(|range| (range.start <= start).then_some(range.layer_id))
             .unwrap_or(self.root)
     }

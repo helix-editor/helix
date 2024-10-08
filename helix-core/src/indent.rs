@@ -265,7 +265,7 @@ fn is_first_in_line(node: Node, text: RopeSlice, new_line_byte_pos: Option<usize
 /// This is usually constructed in one of 2 ways:
 /// - Successively add indent captures to get the (added) indent from a single line
 /// - Successively add the indent results for each line
-/// The string that this indentation defines starts with the string contained in the align field (unless it is None), followed by:
+///   The string that this indentation defines starts with the string contained in the align field (unless it is None), followed by:
 /// - max(0, indent - outdent) tabs, if tabs are used for indentation
 /// - max(0, indent - outdent)*indent_width spaces, if spaces are used for indentation
 #[derive(Default, Debug, PartialEq, Eq, Clone)]
@@ -457,7 +457,7 @@ fn query_indents<'a>(
         // Skip matches where not all custom predicates are fulfilled
         if !query.general_predicates(m.pattern_index).iter().all(|pred| {
             match pred.operator.as_ref() {
-                "not-kind-eq?" => match (pred.args.get(0), pred.args.get(1)) {
+                "not-kind-eq?" => match (pred.args.first(), pred.args.get(1)) {
                     (
                         Some(QueryPredicateArg::Capture(capture_idx)),
                         Some(QueryPredicateArg::String(kind)),
@@ -473,7 +473,7 @@ fn query_indents<'a>(
                     }
                 },
                 "same-line?" | "not-same-line?" => {
-                    match (pred.args.get(0), pred.args.get(1)) {
+                    match (pred.args.first(), pred.args.get(1)) {
                         (
                             Some(QueryPredicateArg::Capture(capt1)),
                             Some(QueryPredicateArg::Capture(capt2))
@@ -495,7 +495,7 @@ fn query_indents<'a>(
                         }
                     }
                 }
-                "one-line?" | "not-one-line?" => match pred.args.get(0) {
+                "one-line?" | "not-one-line?" => match pred.args.first() {
                     Some(QueryPredicateArg::Capture(capture_idx)) => {
                         let node = m.nodes_for_capture_index(*capture_idx).next();
 
@@ -786,6 +786,7 @@ fn init_indent_query<'a, 'b>(
 /// - The line after the node. This is defined by:
 ///   - The scope `tail`.
 ///   - The scope `all` if this node is not the first node on its line.
+///
 /// Intuitively, `all` applies to everything contained in this node while `tail` applies to everything except for the first line of the node.
 /// The indents from different nodes for the same line are then combined.
 /// The result [Indentation] is simply the sum of the [Indentation] for all lines.

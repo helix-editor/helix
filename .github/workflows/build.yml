@@ -6,7 +6,7 @@ on:
       - master
   merge_group:
   schedule:
-    - cron: '00 01 * * *'
+    - cron: "00 01 * * *"
 
 jobs:
   check:
@@ -16,11 +16,9 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v4
+
       - name: Install stable toolchain
-        uses: helix-editor/rust-toolchain@v1
-        with:
-          profile: minimal
-          override: true
+        uses: dtolnay/rust-toolchain@1.70
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -110,6 +108,9 @@ jobs:
       - name: Validate queries
         run: cargo xtask query-check
 
+      - name: Validate themes
+        run: cargo xtask theme-check
+
       - name: Generate docs
         run: cargo xtask docgen
 
@@ -119,4 +120,3 @@ jobs:
           git diff-files --quiet \
             || (echo "Run 'cargo xtask docgen', commit the changes and push again" \
             && exit 1)
-

@@ -8,9 +8,9 @@ mod transport;
 use arc_swap::ArcSwap;
 pub use client::Client;
 pub use futures_executor::block_on;
+pub use helix_lsp_types as lsp;
 pub use jsonrpc::Call;
 pub use lsp::{Position, Url};
-pub use lsp_types as lsp;
 
 use futures_util::stream::select_all::SelectAll;
 use helix_core::syntax::{
@@ -284,10 +284,8 @@ pub mod util {
         if replace_mode {
             end += text
                 .chars_at(cursor)
-                .skip(1)
                 .take_while(|ch| chars::char_is_word(*ch))
-                .count()
-                + 1;
+                .count();
         }
         (start, end)
     }
@@ -505,7 +503,7 @@ pub mod util {
     ) -> Transaction {
         // Sort edits by start range, since some LSPs (Omnisharp) send them
         // in reverse order.
-        edits.sort_unstable_by_key(|edit| edit.range.start);
+        edits.sort_by_key(|edit| edit.range.start);
 
         // Generate a diff if the edit is a full document replacement.
         #[allow(clippy::collapsible_if)]
@@ -677,7 +675,7 @@ impl Registry {
 
     pub fn remove_by_id(&mut self, id: LanguageServerId) {
         let Some(client) = self.inner.remove(id) else {
-            log::error!("client was already removed");
+            log::debug!("client was already removed");
             return;
         };
         self.file_event_handler.remove_client(id);
@@ -737,6 +735,11 @@ impl Registry {
             .iter()
             .filter_map(|LanguageServerFeatures { name, .. }| {
                 if let Some(old_clients) = self.inner_by_name.remove(name) {
+                    if old_clients.is_empty() {
+                        log::info!("restarting client for '{name}' which was manually stopped");
+                    } else {
+                        log::info!("stopping existing clients for '{name}'");
+                    }
                     for old_client in old_clients {
                         self.file_event_handler.remove_client(old_client.id());
                         self.inner.remove(old_client.id());
@@ -765,8 +768,13 @@ impl Registry {
     }
 
     pub fn stop(&mut self, name: &str) {
-        if let Some(clients) = self.inner_by_name.remove(name) {
-            for client in clients {
+        if let Some(clients) = self.inner_by_name.get_mut(name) {
+            // Drain the clients vec so that the entry in `inner_by_name` remains
+            // empty. We use the empty vec as a "tombstone" to mean that a server
+            // has been manually stopped with :lsp-stop and shouldn't be automatically
+            // restarted by `get`. :lsp-restart can be used to restart the server
+            // manually.
+            for client in clients.drain(..) {
                 self.file_event_handler.remove_client(client.id());
                 self.inner.remove(client.id());
                 tokio::spawn(async move {
@@ -786,6 +794,14 @@ impl Registry {
         language_config.language_servers.iter().filter_map(
             move |LanguageServerFeatures { name, .. }| {
                 if let Some(clients) = self.inner_by_name.get(name) {
+                    // If the clients vec is empty, do not automatically start a client
+                    // for this server. The empty vec is a tombstone left to mean that a
+                    // server has been manually stopped and shouldn't be started automatically.
+                    // See `stop`.
+                    if clients.is_empty() {
+                        return None;
+                    }
+
                     if let Some((_, client)) = clients.iter().enumerate().find(|(i, client)| {
                         client.try_add_doc(&language_config.roots, root_dirs, doc_path, *i == 0)
                     }) {
@@ -1097,7 +1113,7 @@ mod tests {
 
     #[test]
     fn emoji_format_gh_4791() {
-        use lsp_types::{Position, Range, TextEdit};
+        use lsp::{Position, Range, TextEdit};
 
         let edits = vec![
             TextEdit {

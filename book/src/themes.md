@@ -1,4 +1,4 @@
-# Themes
+## Themes
 
 To use a theme add `theme = "<name>"` to the top of your [`config.toml`](./configuration.md) file, or select it during runtime using `:theme <name>`.
 
@@ -298,6 +298,9 @@ These scopes are used for theming the editor interface:
 | `ui.bufferline.marker`            | Style for bufferline underflow and overflow markers                                            |
 | `ui.popup`                        | Documentation popups (e.g. Space + k)                                                          |
 | `ui.popup.info`                   | Prompt for multiple key options                                                                |
+| `ui.picker.header`                | Header row area in pickers with multiple columns                                              |
+| `ui.picker.header.column`         | Column names in pickers with multiple columns                                                  |
+| `ui.picker.header.column.active`  | The column name in pickers with multiple columns where the cursor is entering into.            |
 | `ui.window`                       | Borderlines separating splits                                                                  |
 | `ui.help`                         | Description box for commands                                                                   |
 | `ui.text`                         | Default text style, command prompts, popup text, etc.                                          |

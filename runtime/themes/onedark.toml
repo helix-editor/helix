@@ -15,6 +15,7 @@
 "keyword.control" = { fg = "purple" }
 "keyword.control.import" = { fg = "red" }
 "keyword.directive" = { fg = "purple" }
+"keyword.storage" = { fg = "purple" }
 "label" = { fg = "purple" }
 "namespace" = { fg = "blue" }
 "operator" = { fg = "purple" }

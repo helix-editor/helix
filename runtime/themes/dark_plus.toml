@@ -1,7 +1,7 @@
 # Author: David Else <12832280+David-Else@users.noreply.github.com>
 
 # SYNTAX
-"attribute"                 = "fn_declaration"
+"attribute"                 = "variable"
 "comment"                   = "dark_green"
 "constant"                  = "constant"
 "constant.builtin"          = "blue2"
@@ -39,10 +39,10 @@
 # MARKUP
 "markup.heading"       = { fg = "blue2", modifiers = ["bold"] }
 "markup.list"          = "blue3"
-"markup.bold"          = { fg = "blue2", modifiers = ["bold"] }
+"markup.bold"          = { modifiers = ["bold"] }
 "markup.italic"        = { modifiers = ["italic"] }
 "markup.strikethrough" = { modifiers = ["crossed_out"] }
-"markup.link.url"      = { modifiers = ["underlined"] }
+"markup.link.url"      = { underline.style= "line" }
 "markup.link.text"     = "orange"
 "markup.quote"         = "dark_green"
 "markup.raw"           = "orange"
@@ -57,7 +57,7 @@
 # TODO: Alternate bg colour for `ui.cursor.match` and `ui.selection`.
 "ui.cursor"                  = { fg = "cursor", modifiers = ["reversed"] }
 "ui.cursor.primary"          = { fg = "cursor", modifiers = ["reversed"] }
-"ui.cursor.match"            = { bg = "#3a3d41", modifiers = ["underlined"] }
+"ui.cursor.match"            = { bg = "#3a3d41", underline.style = "line" }
 "ui.selection"               = { bg = "#3a3d41" }
 "ui.selection.primary"       = { bg = "dark_blue" }
 "ui.linenr"                  = { fg = "dark_gray" }
@@ -80,6 +80,8 @@
 "ui.highlight.frameline"     = { bg = "#4b4b18" }
 "ui.debug.active"            = { fg = "#ffcc00" }
 "ui.debug.breakpoint"        = { fg = "#e51400" }
+"ui.picker.header.column"    = { underline.style = "line" }
+"ui.picker.header.column.active" = { fg ="white", underline.style = "line" }
 "warning"                    = { fg = "gold2" }
 "error"                      = { fg = "red" }
 "info"                       = { fg = "light_blue" }

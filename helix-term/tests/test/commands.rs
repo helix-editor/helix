@@ -209,13 +209,10 @@ async fn test_multi_selection_shell_commands() -> anyhow::Result<()> {
             "},
         "|echo foo<ret>",
         indoc! {"\
-            #[|foo\n]#
-            
-            #(|foo\n)#
-            
-            #(|foo\n)#
-            
-            "},
+            #[|foo]#
+            #(|foo)#
+            #(|foo)#"
+        },
     ))
     .await?;
 
@@ -228,12 +225,9 @@ async fn test_multi_selection_shell_commands() -> anyhow::Result<()> {
             "},
         "!echo foo<ret>",
         indoc! {"\
-            #[|foo\n]#
-            lorem
-            #(|foo\n)#
-            ipsum
-            #(|foo\n)#
-            dolor
+            #[|foo]#lorem
+            #(|foo)#ipsum
+            #(|foo)#dolor
             "},
     ))
     .await?;
@@ -247,12 +241,9 @@ async fn test_multi_selection_shell_commands() -> anyhow::Result<()> {
             "},
         "<A-!>echo foo<ret>",
         indoc! {"\
-            lorem#[|foo\n]#
-            
-            ipsum#(|foo\n)#
-            
-            dolor#(|foo\n)#
-            
+            lorem#[|foo]#
+            ipsum#(|foo)#
+            dolor#(|foo)#
             "},
     ))
     .await?;
@@ -634,6 +625,41 @@ async fn test_join_selections_space() -> anyhow::Result<()> {
         "<A-J>",
         indoc! {"\
             aaa   #[ |]#bb  #( |)#c 
+        "},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_join_selections_comment() -> anyhow::Result<()> {
+    test((
+        indoc! {"\
+            /// #[a|]#bc
+            /// def
+        "},
+        ":lang rust<ret>J",
+        indoc! {"\
+            /// #[a|]#bc def
+        "},
+    ))
+    .await?;
+
+    // Only join if the comment token matches the previous line.
+    test((
+        indoc! {"\
+            #[| // a
+            // b
+            /// c
+            /// d
+            e
+            /// f
+            // g]#
+        "},
+        ":lang rust<ret>J",
+        indoc! {"\
+            #[| // a b /// c d e f // g]#
         "},
     ))
     .await?;

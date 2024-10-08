@@ -22,18 +22,24 @@ use crate::FileChange;
 #[cfg(test)]
 mod test;
 
+#[inline]
+fn get_repo_dir(file: &Path) -> Result<&Path> {
+    file.parent().context("file has no parent directory")
+}
+
 pub fn get_diff_base(file: &Path) -> Result<Vec<u8>> {
     debug_assert!(!file.exists() || file.is_file());
     debug_assert!(file.is_absolute());
+    let file = gix::path::realpath(file).context("resolve symlinks")?;
 
     // TODO cache repository lookup
 
-    let repo_dir = file.parent().context("file has no parent directory")?;
+    let repo_dir = get_repo_dir(&file)?;
     let repo = open_repo(repo_dir)
         .context("failed to open git repo")?
         .to_thread_local();
     let head = repo.head_commit()?;
-    let file_oid = find_file_in_commit(&repo, &head, file)?;
+    let file_oid = find_file_in_commit(&repo, &head, &file)?;
 
     let file_object = repo.find_object(file_oid)?;
     let data = file_object.detach().data;
@@ -56,7 +62,9 @@ pub fn get_diff_base(file: &Path) -> Result<Vec<u8>> {
 pub fn get_current_head_name(file: &Path) -> Result<Arc<ArcSwap<Box<str>>>> {
     debug_assert!(!file.exists() || file.is_file());
     debug_assert!(file.is_absolute());
-    let repo_dir = file.parent().context("file has no parent directory")?;
+    let file = gix::path::realpath(file).context("resolve symlinks")?;
+
+    let repo_dir = get_repo_dir(&file)?;
     let repo = open_repo(repo_dir)
         .context("failed to open git repo")?
         .to_thread_local();
