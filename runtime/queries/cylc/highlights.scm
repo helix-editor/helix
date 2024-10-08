@@ -9,7 +9,7 @@
 
 (include_statement
   directive: _ @keyword.directive
-  path: _ @string.path)
+  path: _ @string.special.path)
 
 (comment) @comment.line
 
