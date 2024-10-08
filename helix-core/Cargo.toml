@@ -58,6 +58,7 @@ textwrap = "0.16.1"
 nucleo.workspace = true
 parking_lot = "0.12"
 globset = "0.4.15"
+streaming-iterator = "0.1.9"
 
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }

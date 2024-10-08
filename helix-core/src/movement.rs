@@ -1,6 +1,7 @@
 use std::{cmp::Reverse, iter};
 
 use ropey::iter::Chars;
+use streaming_iterator::StreamingIterator;
 use tree_sitter::{Node, QueryCursor};
 
 use crate::{
@@ -588,15 +589,17 @@ pub fn goto_treesitter_object(
         let node = match dir {
             Direction::Forward => nodes
                 .filter(|n| n.start_byte() > byte_pos)
-                .min_by_key(|n| (n.start_byte(), Reverse(n.end_byte())))?,
+                .map_deref(|c| c.byte_range())
+                .min_by_key(|n| (n.start, Reverse(n.end)))?,
             Direction::Backward => nodes
                 .filter(|n| n.end_byte() < byte_pos)
-                .max_by_key(|n| (n.end_byte(), Reverse(n.start_byte())))?,
+                .map_deref(|c| c.byte_range())
+                .max_by_key(|n| (n.end, Reverse(n.start)))?,
         };
 
         let len = slice.len_bytes();
-        let start_byte = node.start_byte();
-        let end_byte = node.end_byte();
+        let start_byte = node.start;
+        let end_byte = node.end;
         if start_byte >= len || end_byte >= len {
             return None;
         }

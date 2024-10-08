@@ -1,6 +1,7 @@
 use std::{borrow::Cow, collections::HashMap};
 
 use helix_stdx::rope::RopeSliceExt;
+use streaming_iterator::StreamingIterator;
 use tree_sitter::{Query, QueryCursor, QueryPredicateArg};
 
 use crate::{
@@ -452,8 +453,9 @@ fn query_indents<'a>(
     let mut extend_captures: HashMap<usize, Vec<ExtendCapture>> = HashMap::new();
     cursor.set_byte_range(range);
 
+    let mut captures = cursor.matches(query, syntax.tree().root_node(), RopeProvider(text));
     // Iterate over all captures from the query
-    for m in cursor.matches(query, syntax.tree().root_node(), RopeProvider(text)) {
+    while let Some(m) = captures.next() {
         // Skip matches where not all custom predicates are fulfilled
         if !query.general_predicates(m.pattern_index).iter().all(|pred| {
             match pred.operator.as_ref() {
