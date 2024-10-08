@@ -1366,6 +1366,7 @@ dependencies = [
  "nucleo",
  "once_cell",
  "open",
+ "pathdiff",
  "pulldown-cmark",
  "same-file",
  "serde",
