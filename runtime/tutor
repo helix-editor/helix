@@ -480,7 +480,7 @@
  Note: Whenever you delete or change text, Helix will copy the
        altered text. Use Alt-d / Alt-c instead to avoid this.
  Note: Helix doesn't share the system clipboard by default. Type
-       Space + y / p to yank / paste on the system's clipboard.
+       Space + y to yank / p to paste on the system's clipboard.
 
 =================================================================
 =                     4.3 SEARCHING IN FILE                     =
