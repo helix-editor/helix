@@ -194,10 +194,7 @@ impl Registers {
     }
 
     fn clear_clipboard(&mut self, clipboard_type: ClipboardType) {
-        if let Err(err) = self
-            .clipboard_provider
-            .set_contents("", clipboard_type)
-        {
+        if let Err(err) = self.clipboard_provider.set_contents("", clipboard_type) {
             log::error!(
                 "Failed to clear {} clipboard: {err}",
                 match clipboard_type {

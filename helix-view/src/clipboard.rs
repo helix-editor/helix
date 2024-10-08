@@ -449,7 +449,7 @@ mod external {
                 write!(f, "\x1b]52;{};{}\x1b\\", kind, &self.encoded_content)
             }
             #[cfg(windows)]
-            fn execute_winapi(&self) -> std::result::Result<(), std::io::Error> { 
+            fn execute_winapi(&self) -> std::result::Result<(), std::io::Error> {
                 Err(std::io::Error::new(
                     std::io::ErrorKind::Other,
                     "OSC clipboard codes not supported by winapi.",
