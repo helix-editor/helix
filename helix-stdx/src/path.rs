@@ -51,7 +51,7 @@ where
 
 /// Normalize a path without resolving symlinks.
 // Strategy: start from the first component and move up. Cannonicalize previous path,
-// join component, cannonicalize new path, strip prefix and join to the final result.
+// join component, canonicalize new path, strip prefix and join to the final result.
 pub fn normalize(path: impl AsRef<Path>) -> PathBuf {
     let mut components = path.as_ref().components().peekable();
     let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {

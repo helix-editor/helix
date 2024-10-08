@@ -9,6 +9,7 @@ use helix_view::Editor;
 
 use crate::handlers::completion::CompletionItem;
 use crate::job;
+use crate::ui::LspCompletionItem;
 
 /// A hook for resolving incomplete completion items.
 ///
@@ -22,7 +23,7 @@ use crate::job;
 /// > 'completionItem/resolve' request is sent with the selected completion item as a parameter.
 /// > The returned completion item should have the documentation property filled in.
 pub struct ResolveHandler {
-    last_request: Option<Arc<CompletionItem>>,
+    last_request: Option<Arc<LspCompletionItem>>,
     resolver: Sender<ResolveRequest>,
 }
 
@@ -38,7 +39,7 @@ impl ResolveHandler {
         }
     }
 
-    pub fn ensure_item_resolved(&mut self, editor: &mut Editor, item: &mut CompletionItem) {
+    pub fn ensure_item_resolved(&mut self, editor: &mut Editor, item: &mut LspCompletionItem) {
         if item.resolved {
             return;
         }
@@ -93,14 +94,14 @@ impl ResolveHandler {
 }
 
 struct ResolveRequest {
-    item: Arc<CompletionItem>,
+    item: Arc<LspCompletionItem>,
     ls: Arc<helix_lsp::Client>,
 }
 
 #[derive(Default)]
 struct ResolveTimeout {
     next_request: Option<ResolveRequest>,
-    in_flight: Option<(helix_event::CancelTx, Arc<CompletionItem>)>,
+    in_flight: Option<(helix_event::CancelTx, Arc<LspCompletionItem>)>,
 }
 
 impl AsyncHook for ResolveTimeout {
@@ -152,8 +153,8 @@ impl ResolveRequest {
                 .unwrap()
                 .completion
             {
-                let resolved_item = match resolved_item {
-                    Ok(item) => CompletionItem {
+                let resolved_item = CompletionItem::Lsp(match resolved_item {
+                    Ok(item) => LspCompletionItem {
                         item,
                         resolved: true,
                         ..*self.item
@@ -166,8 +167,8 @@ impl ResolveRequest {
                         item.resolved = true;
                         item
                     }
-                };
-                completion.replace_item(&self.item, resolved_item);
+                });
+                completion.replace_item(&*self.item, resolved_item);
             };
         })
         .await
