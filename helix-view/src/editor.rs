@@ -469,6 +469,7 @@ pub struct StatusLineConfig {
     pub right: Vec<StatusLineElement>,
     pub separator: String,
     pub mode: ModeConfig,
+    pub version_control_prefix: String,
 }
 
 impl Default for StatusLineConfig {
@@ -493,6 +494,7 @@ impl Default for StatusLineConfig {
             ],
             separator: String::from("│"),
             mode: ModeConfig::default(),
+            version_control_prefix: String::from("vcs: "),
         }
     }
 }
