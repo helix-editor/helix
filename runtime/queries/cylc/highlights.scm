@@ -53,7 +53,7 @@
   quotes_close: _ @string)
 
 [
-  (graph_logical) 
+  (graph_logical)
   (graph_arrow)
   (graph_parenthesis)
 ] @operator
@@ -80,11 +80,11 @@
   "]" @tag)
 
 (task_output
-    ":" @tag
-    (nametag) @variable.other)
+  ":" @tag
+  (nametag) @variable.other)
 
 (task_output
-    "?"? @tag)
+  "?"? @tag)
 
 (setting
   key: (key) @variable
@@ -98,4 +98,3 @@
   ]?)
 
 (datetime) @constant.numeric.float
-
