@@ -143,6 +143,8 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
             paste => "tmux", "save-buffer", "-";
             copy => "tmux", "load-buffer", "-w", "-";
         }
+    } else if env_var_is_set("STY") && binary_exists("screen") {
+        Box::new(provider::ScreenProvider {})
     } else {
         Box::new(provider::FallbackProvider::new())
     }
@@ -151,8 +153,9 @@ pub fn get_clipboard_provider() -> Box<dyn ClipboardProvider> {
 #[cfg(not(target_os = "windows"))]
 pub mod provider {
     use super::{ClipboardProvider, ClipboardType};
-    use anyhow::Result;
+    use anyhow::{bail, Result};
     use std::borrow::Cow;
+    use std::io::{Read, Write};
 
     #[cfg(feature = "term")]
     mod osc52 {
@@ -275,7 +278,6 @@ pub mod provider {
 
         impl Config {
             fn execute(&self, input: Option<&str>, pipe_output: bool) -> Result<Option<String>> {
-                use std::io::Write;
                 use std::process::{Command, Stdio};
 
                 let stdin = input.map(|_| Stdio::piped()).unwrap_or_else(Stdio::null);
@@ -371,6 +373,49 @@ pub mod provider {
                 };
                 cmd.execute(Some(&value), false).map(|_| ())
             }
+        }
+    }
+
+    #[derive(Debug)]
+    pub struct ScreenProvider {}
+
+    impl ClipboardProvider for ScreenProvider {
+        fn name(&self) -> Cow<str> {
+            Cow::Borrowed("screen")
+        }
+
+        fn get_contents(&self, clipboard_type: ClipboardType) -> Result<String> {
+            let ClipboardType::Clipboard = clipboard_type else {
+                return Ok(String::new());
+            };
+            let mut temp = tempfile::NamedTempFile::new()?;
+            let mut screen_command = std::process::Command::new("screen");
+            let command = screen_command
+                .args(["-X", "writebuf", "-e", "utf8"])
+                .arg(temp.path());
+            if !command.spawn()?.wait()?.success() {
+                bail!("screen -X writebuf failed");
+            }
+            let mut contents = String::new();
+            temp.read_to_string(&mut contents)?;
+            Ok(contents)
+        }
+
+        fn set_contents(&mut self, contents: String, clipboard_type: ClipboardType) -> Result<()> {
+            let ClipboardType::Clipboard = clipboard_type else {
+                return Ok(());
+            };
+            let mut temp = tempfile::NamedTempFile::new()?;
+            write!(temp, "{}", contents)?;
+            temp.as_file().sync_all()?;
+            let mut screen_command = std::process::Command::new("screen");
+            let command = screen_command
+                .args(["-X", "readbuf", "-e", "utf8"])
+                .arg(temp.path());
+            if !command.spawn()?.wait()?.success() {
+                bail!("screen -X readbuf failed");
+            }
+            Ok(())
         }
     }
 }
