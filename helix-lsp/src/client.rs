@@ -5,15 +5,14 @@ use crate::{
     Call, Error, LanguageServerId, OffsetEncoding, Result,
 };
 
-use helix_core::{find_workspace, syntax::LanguageServerFeature, ChangeSet, Rope};
-use helix_loader::VERSION_AND_GIT_HASH;
-use helix_stdx::path;
-use lsp::{
-    notification::DidChangeWorkspaceFolders, CodeActionCapabilityResolveSupport,
+use crate::lsp::{
+    self, notification::DidChangeWorkspaceFolders, CodeActionCapabilityResolveSupport,
     DidChangeWorkspaceFoldersParams, OneOf, PositionEncodingKind, SignatureHelp, Url,
     WorkspaceFolder, WorkspaceFoldersChangeEvent,
 };
-use lsp_types as lsp;
+use helix_core::{find_workspace, syntax::LanguageServerFeature, ChangeSet, Rope};
+use helix_loader::VERSION_AND_GIT_HASH;
+use helix_stdx::path;
 use parking_lot::Mutex;
 use serde::Deserialize;
 use serde_json::Value;
@@ -994,7 +993,7 @@ impl Client {
                 ..
             }) => match options.as_ref()? {
                 lsp::TextDocumentSyncSaveOptions::Supported(true) => false,
-                lsp::TextDocumentSyncSaveOptions::SaveOptions(lsp_types::SaveOptions {
+                lsp::TextDocumentSyncSaveOptions::SaveOptions(lsp::SaveOptions {
                     include_text,
                 }) => include_text.unwrap_or(false),
                 lsp::TextDocumentSyncSaveOptions::Supported(false) => return None,

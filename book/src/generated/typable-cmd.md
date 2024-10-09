@@ -2,7 +2,7 @@
 | --- | --- |
 | `:quit`, `:q` | Close the current view. |
 | `:quit!`, `:q!` | Force close the current view, ignoring unsaved changes. |
-| `:open`, `:o` | Open a file from disk into the current view. |
+| `:open`, `:o`, `:edit`, `:e` | Open a file from disk into the current view. |
 | `:buffer-close`, `:bc`, `:bclose` | Close the current buffer. |
 | `:buffer-close!`, `:bc!`, `:bclose!` | Close the current buffer forcefully, ignoring unsaved changes. |
 | `:buffer-close-others`, `:bco`, `:bcloseother` | Close all buffers but the currently focused one. |
@@ -72,7 +72,7 @@
 | `:sort` | Sort ranges in selection. |
 | `:rsort` | Sort ranges in selection in reverse order. |
 | `:reflow` | Hard-wrap the current selection of lines to a given width. |
-| `:tree-sitter-subtree`, `:ts-subtree` | Display tree sitter subtree under cursor, primarily for debugging queries. |
+| `:tree-sitter-subtree`, `:ts-subtree` | Display the smallest tree-sitter subtree that spans the primary selection, primarily for debugging queries. |
 | `:config-reload` | Refresh user config. |
 | `:config-open` | Open the user config.toml file. |
 | `:config-open-workspace` | Open the workspace config.toml file. |
@@ -85,6 +85,6 @@
 | `:reset-diff-change`, `:diffget`, `:diffg` | Reset the diff change at the cursor position. |
 | `:clear-register` | Clear given register. If no argument is provided, clear all registers. |
 | `:redraw` | Clear and re-render the whole UI |
-| `:move` | Move the current buffer and its corresponding file to a different path |
+| `:move`, `:mv` | Move the current buffer and its corresponding file to a different path |
 | `:yank-diagnostic` | Yank diagnostic(s) under primary cursor to register, or clipboard by default |
 | `:read`, `:r` | Load a file into buffer |

@@ -96,7 +96,10 @@ impl Component for SignatureHelp {
     fn render(&mut self, area: Rect, surface: &mut Buffer, cx: &mut Context) {
         let margin = Margin::horizontal(1);
 
-        let signature = &self.signatures[self.active_signature];
+        let signature = self
+            .signatures
+            .get(self.active_signature)
+            .unwrap_or_else(|| &self.signatures[0]);
 
         let active_param_span = signature.active_param_range.map(|(start, end)| {
             vec![(
@@ -108,9 +111,13 @@ impl Component for SignatureHelp {
             )]
         });
 
-        let sig = &self.signatures[self.active_signature];
+        let signature = self
+            .signatures
+            .get(self.active_signature)
+            .unwrap_or_else(|| &self.signatures[0]);
+
         let sig_text = crate::ui::markdown::highlighted_code_block(
-            sig.signature.as_str(),
+            signature.signature.as_str(),
             &self.language,
             Some(&cx.editor.theme),
             Arc::clone(&self.config_loader),
@@ -130,7 +137,7 @@ impl Component for SignatureHelp {
         let sig_text_para = Paragraph::new(&sig_text).wrap(Wrap { trim: false });
         sig_text_para.render(sig_text_area, surface);
 
-        if sig.signature_doc.is_none() {
+        if signature.signature_doc.is_none() {
             return;
         }
 
@@ -142,7 +149,7 @@ impl Component for SignatureHelp {
             }
         }
 
-        let sig_doc = match &sig.signature_doc {
+        let sig_doc = match &signature.signature_doc {
             None => return,
             Some(doc) => Markdown::new(doc.clone(), Arc::clone(&self.config_loader)),
         };
@@ -160,12 +167,15 @@ impl Component for SignatureHelp {
         const PADDING: u16 = 2;
         const SEPARATOR_HEIGHT: u16 = 1;
 
-        let sig = &self.signatures[self.active_signature];
+        let signature = self
+            .signatures
+            .get(self.active_signature)
+            .unwrap_or_else(|| &self.signatures[0]);
 
         let max_text_width = viewport.0.saturating_sub(PADDING).clamp(10, 120);
 
         let signature_text = crate::ui::markdown::highlighted_code_block(
-            sig.signature.as_str(),
+            signature.signature.as_str(),
             &self.language,
             None,
             Arc::clone(&self.config_loader),
@@ -174,7 +184,7 @@ impl Component for SignatureHelp {
         let (sig_width, sig_height) =
             crate::ui::text::required_size(&signature_text, max_text_width);
 
-        let (width, height) = match sig.signature_doc {
+        let (width, height) = match signature.signature_doc {
             Some(ref doc) => {
                 let doc_md = Markdown::new(doc.clone(), Arc::clone(&self.config_loader));
                 let doc_text = doc_md.parse(None);

@@ -435,7 +435,7 @@ impl<'a> TextRenderer<'a> {
             Grapheme::Newline => &self.newline,
         };
 
-        let in_bounds = self.column_in_bounds(position.col + width - 1);
+        let in_bounds = self.column_in_bounds(position.col, width);
 
         if in_bounds {
             self.surface.set_string(
@@ -454,7 +454,6 @@ impl<'a> TextRenderer<'a> {
             );
             self.surface.set_style(rect, style);
         }
-
         if *is_in_indent_area && !is_whitespace {
             *last_indent_level = position.col;
             *is_in_indent_area = false;
@@ -463,8 +462,8 @@ impl<'a> TextRenderer<'a> {
         width
     }
 
-    pub fn column_in_bounds(&self, colum: usize) -> bool {
-        self.offset.col <= colum && colum < self.viewport.width as usize + self.offset.col
+    pub fn column_in_bounds(&self, colum: usize, width: usize) -> bool {
+        self.offset.col <= colum && colum + width <= self.offset.col + self.viewport.width as usize
     }
 
     /// Overlay indentation guides ontop of a rendered line

@@ -145,6 +145,9 @@ Normal mode is the default mode when you launch helix. You can return to it from
 | `Alt-i`, `Alt-down`   | Shrink syntax tree object selection (**TS**)                      | `shrink_selection`                   |
 | `Alt-p`, `Alt-left`   | Select previous sibling node in syntax tree (**TS**)              | `select_prev_sibling`                |
 | `Alt-n`, `Alt-right`  | Select next sibling node in syntax tree (**TS**)                  | `select_next_sibling`                |
+| `Alt-a`               | Select all sibling nodes in syntax tree (**TS**)                  | `select_all_siblings`                |
+| `Alt-e`               | Move to end of parent node in syntax tree (**TS**)                | `move_parent_node_end`               |
+| `Alt-b`               | Move to start of parent node in syntax tree (**TS**)              | `move_parent_node_start`             |
 
 ### Search
 
@@ -320,10 +323,14 @@ Displays documentation for item under cursor. Remapping currently not supported.
 
 Displays documentation for the selected completion item. Remapping currently not supported.
 
-| Key                         | Description    |
-| ----                        | -----------    |
-| `Shift-Tab`, `Ctrl-p`, `Up` | Previous entry |
-| `Tab`, `Ctrl-n`, `Down`     | Next entry     |
+| Key                         | Description                      |
+| ----                        | -----------                      |
+| `Shift-Tab`, `Ctrl-p`, `Up` | Previous entry                   |
+| `Tab`, `Ctrl-n`, `Down`     | Next entry                       |
+| `Enter`                     | Close menu and accept completion |
+| `Ctrl-c`                    | Close menu and reject completion |
+
+Any other keypresses result in the completion being accepted.
 
 ##### Signature-help Popup
 
@@ -436,6 +443,8 @@ you to selectively add search terms to your selections.
 ## Picker
 
 Keys to use within picker. Remapping currently not supported.
+See the documentation page on [pickers](./pickers.md) for more info.
+[Prompt](#prompt) keybinds also work in pickers, except where they conflict with picker keybinds.
 
 | Key                          | Description                                                |
 | -----                        | -------------                                              |
