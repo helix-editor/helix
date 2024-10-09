@@ -22,7 +22,8 @@ use unicode_segmentation::{Graphemes, UnicodeSegmentation};
 use crate::graphemes::{Grapheme, GraphemeStr};
 use crate::syntax::Highlight;
 use crate::text_annotations::TextAnnotations;
-use crate::{Position, RopeGraphemes, RopeSlice};
+use crate::{movement, Change, LineEnding, Position, Rope, RopeGraphemes, RopeSlice, Tendril};
+use helix_stdx::rope::RopeSliceExt;
 
 /// TODO make Highlight a u32 to reduce the size of this enum to a single word.
 #[derive(Debug, Clone, Copy)]
@@ -150,6 +151,7 @@ pub struct TextFormat {
     pub wrap_indicator_highlight: Option<Highlight>,
     pub viewport_width: u16,
     pub soft_wrap_at_text_width: bool,
+    pub continue_comments: Vec<String>,
 }
 
 // test implementation is basically only used for testing or when softwrap is always disabled
@@ -164,6 +166,7 @@ impl Default for TextFormat {
             viewport_width: 17,
             wrap_indicator_highlight: None,
             soft_wrap_at_text_width: false,
+            continue_comments: Vec::new(),
         }
     }
 }
@@ -424,6 +427,51 @@ impl<'t> DocumentFormatter<'t> {
     /// returns the visual position at the end of the last yielded grapheme
     pub fn next_visual_pos(&self) -> Position {
         self.visual_pos
+    }
+
+    fn find_indent<'a>(&self, line: usize, doc: RopeSlice<'a>) -> RopeSlice<'a> {
+        let line_start = doc.line_to_char(line);
+        let mut indent_end = movement::skip_while(doc, line_start, |ch| matches!(ch, ' ' | '\t'))
+            .unwrap_or(line_start);
+        let slice = doc.slice(indent_end..);
+        if let Some(token) = self
+            .text_fmt
+            .continue_comments
+            .iter()
+            .filter(|token| slice.starts_with(token))
+            .max_by_key(|x| x.len())
+        {
+            indent_end += token.chars().count();
+        }
+        let indent_end = movement::skip_while(doc, indent_end, |ch| matches!(ch, ' ' | '\t'))
+            .unwrap_or(indent_end);
+        return doc.slice(line_start..indent_end);
+    }
+
+    /// consumes the iterator and hard-wraps the input where soft wraps would
+    /// have been applied. It probably only makes sense to call this method if
+    /// soft_wrap is true.
+    pub fn reflow(&mut self, doc: &Rope, line_ending: LineEnding) -> Vec<Change> {
+        let slice = doc.slice(..);
+        let mut last_char_start = self.char_pos;
+        let mut current_line = self.visual_pos.row;
+        let mut changes = Vec::new();
+        while let Some(grapheme) = self.next() {
+            if grapheme.visual_pos.row != current_line {
+                let indent = Tendril::from(format!(
+                    "{}{}",
+                    line_ending.as_str(),
+                    self.find_indent(doc.char_to_line(last_char_start), slice)
+                ));
+                changes.push((last_char_start, grapheme.char_idx, Some(indent)));
+                current_line = grapheme.visual_pos.row;
+            }
+            if grapheme.raw == Grapheme::Newline {
+                current_line += 1;
+            }
+            last_char_start = grapheme.char_idx;
+        }
+        changes
     }
 }
 
