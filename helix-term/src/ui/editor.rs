@@ -1251,8 +1251,10 @@ impl EditorView {
                 };
 
                 if should_yank {
-                    commands::MappableCommand::yank_main_selection_to_primary_clipboard
-                        .execute(cxt);
+                    commands::yank_main_selection_to_register(
+                        cxt.editor,
+                        config.mouse_yank_register,
+                    );
                     EventResult::Consumed(None)
                 } else {
                     EventResult::Ignored(None)
@@ -1292,8 +1294,11 @@ impl EditorView {
                 }
 
                 if modifiers == KeyModifiers::ALT {
-                    commands::MappableCommand::replace_selections_with_primary_clipboard
-                        .execute(cxt);
+                    commands::replace_selections_with_register(
+                        cxt.editor,
+                        config.mouse_yank_register,
+                        cxt.count(),
+                    );
 
                     return EventResult::Consumed(None);
                 }
@@ -1302,7 +1307,13 @@ impl EditorView {
                     let doc = doc_mut!(editor, &view!(editor, view_id).doc);
                     doc.set_selection(view_id, Selection::point(pos));
                     cxt.editor.focus(view_id);
-                    commands::MappableCommand::paste_primary_clipboard_before.execute(cxt);
+
+                    commands::paste(
+                        cxt.editor,
+                        config.mouse_yank_register,
+                        commands::Paste::Before,
+                        cxt.count(),
+                    );
 
                     return EventResult::Consumed(None);
                 }
