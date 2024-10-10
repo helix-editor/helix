@@ -13,10 +13,14 @@ repository.workspace = true
 homepage.workspace = true
 
 [features]
-default = ["git"]
+default = ["vcs"]
 unicode-lines = ["helix-core/unicode-lines", "helix-view/unicode-lines"]
 integration = ["helix-event/integration_test"]
+
+# All VCSes available for diffs in Helix
+vcs = ["git", "jujutsu"]
 git = ["helix-vcs/git"]
+jujutsu = ["helix-vcs/jujutsu"]
 
 [[bin]]
 name = "hx"
