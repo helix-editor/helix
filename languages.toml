@@ -3841,7 +3841,6 @@ roots = ["Snakefile", "config.yaml", "environment.yaml", "workflow/"]
 file-types = ["smk", "Snakefile"]
 comment-tokens = ["#", "##"]
 indent = { tab-width = 2, unit = "  " }
-grammar = "snakemake"
 language-servers = ["pylsp" ]
 
 
