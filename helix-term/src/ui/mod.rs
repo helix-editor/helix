@@ -422,6 +422,37 @@ pub mod completers {
         Accept,
     }
 
+    fn best_match(opt1: &str, opt2: &str, input: &str) -> std::cmp::Ordering {
+        let min_len = std::cmp::min(std::cmp::min(opt1.len(), opt2.len()), input.len());
+
+        let (opt1match, opt2match) = (0..min_len)
+            .fold(((false, false), (0, 0)), |acc, i| match acc {
+                ((false, b), (n, m)) => {
+                    if opt1[..=i] == input[..=i] {
+                        ((false, b), (n + 1, m))
+                    } else {
+                        ((true, b), (n, m))
+                    }
+                }
+
+                ((b, false), (n, m)) => {
+                    if opt2[..=i] == input[..=i] {
+                        ((b, false), (n, m + 1))
+                    } else {
+                        ((b, true), (n, m))
+                    }
+                }
+
+                v => v,
+            })
+            .1;
+
+        match opt2match.cmp(&opt1match) {
+            std::cmp::Ordering::Equal => opt1.len().cmp(&opt2.len()),
+            ord => ord,
+        }
+    }
+
     // TODO: we could return an iter/lazy thing so it can fetch as many as it needs.
     fn filename_impl<F>(
         _editor: &Editor,
@@ -437,6 +468,10 @@ pub mod completers {
         use ignore::WalkBuilder;
         use std::path::Path;
 
+        let input_filename = input
+            .split(std::path::MAIN_SEPARATOR)
+            .last()
+            .unwrap_or_default();
         let is_tilde = input == "~";
         let path = helix_stdx::path::expand_tilde(Path::new(input));
 
@@ -509,12 +544,15 @@ pub mod completers {
         // if empty, return a list of dirs and files in current dir
         if let Some(file_name) = file_name {
             let range = (input.len().saturating_sub(file_name.len()))..;
-            fuzzy_match(&file_name, files, true)
+            let mut files: Vec<_> = fuzzy_match(&file_name, files, true)
                 .into_iter()
                 .map(|(name, _)| (range.clone(), name))
-                .collect()
+                .collect();
 
-            // TODO: complete to longest common match
+            files.sort_unstable_by(|(_, path1), (_, path2)| {
+                best_match(path1, path2, input_filename)
+            });
+            files
         } else {
             let mut files: Vec<_> = files.map(|file| (end.clone(), file)).collect();
             files.sort_unstable_by(|(_, path1), (_, path2)| path1.cmp(path2));
