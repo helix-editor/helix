@@ -1,0 +1,140 @@
+# Author: ChiefMateStarbuck <septimusguy@gmail.com>
+
+"annotation"                      = { fg = "foreground" }
+
+"attribute"                       = { fg = "foreground", modifiers = ["italic"] }
+
+"comment"                         = { fg = "foreground" }
+"comment.block"                   = { fg = "foreground" }
+"comment.block.documentation"     = { fg = "foreground" }
+"comment.line"                    = { fg = "foreground" }
+
+"constant"                        = { fg = "foreground" }
+"constant.builtin"                = { fg = "foreground" }
+"constant.builtin.boolean"        = { fg = "foreground" }
+"constant.character"              = { fg = "foreground" }
+"constant.character.escape"       = { fg = "foreground" }
+"constant.macro"                  = { fg = "foreground" }
+"constant.numeric"                = { fg = "foreground" }
+"constructor"                     = { fg = "foreground" }
+
+"definition"                      = { underline = { color = "foreground" } }
+"diagnostic"                      = { underline = { color = "foreground", style = "curl" } }
+"diagnostic.hint"                 = { underline = { color = "foreground", style = "curl" } }
+"diagnostic.warning"              = { underline = { color = "foreground", style = "curl" } }
+"diagnostic.error"                = { underline = { color = "foreground", style = "curl" } }
+"diagnostic.info"                 = { underline = { color = "foreground", style = "curl" } }
+"diagnostic.unnecessary"          = { modifiers = ["dim"] }
+"diagnostic.deprecated"           = { modifiers = ["crossed_out"] }
+
+"error"                           = { fg = "foreground" }
+"hint"                            = { fg = "foreground" }
+"info"                            = { fg = "foreground" }
+"warning"                         = { fg = "foreground" }
+
+"diff.delta"                      = { fg = "foreground" }
+"diff.minus"                      = { fg = "foreground" }
+"diff.plus"                       = { fg = "foreground" }
+
+"function"                        = { fg = "foreground" }
+"function.builtin"                = { fg = "foreground" }
+"function.call"                   = { fg = "foreground" }
+"function.macro"                  = { fg = "foreground" }
+"function.method"                 = { fg = "foreground" }
+
+"keyword"                         = { fg = "foreground" }
+"keyword.control.conditional"     = { fg = "foreground" }
+"keyword.control.exception"       = { fg = "foreground" }
+"keyword.control.import"          = { fg = "foreground" }
+"keyword.control.repeat"          = { fg = "foreground" }
+"keyword.directive"               = { fg = "foreground" }
+"keyword.function"                = { fg = "foreground" }
+"keyword.operator"                = { fg = "foreground" }
+"keyword.return"                  = { fg = "foreground" }
+"keyword.storage"                 = { fg = "foreground" }
+"keyword.storage.modifier"        = { fg = "foreground" }
+"keyword.storage.type"            = { fg = "foreground", modifiers = ["italic"] }
+
+"label"                           = { fg = "foreground" }
+
+"markup.bold"                     = { fg = "foreground", modifiers = ["bold"] }
+"markup.heading"                  = { fg = "foreground", modifiers = ["bold"] }
+"markup.italic"                   = { fg = "foreground", modifiers = ["italic"] }
+"markup.link.text"                = { fg = "foreground" }
+"markup.link.url"                 = { fg = "foreground" }
+"markup.list"                     = { fg = "foreground" }
+"markup.quote"                    = { fg = "foreground", modifiers = ["italic"] }
+"markup.raw"                      = { fg = "foreground" }
+"markup.strikethrough"            = { modifiers = ["crossed_out"] }
+
+"punctuation"                     = { fg = "foreground" }
+"punctuation.bracket"             = { fg = "foreground" }
+"punctuation.delimiter"           = { fg = "foreground" }
+"punctuation.special"             = { fg = "foreground" }
+
+"special"                         = { fg = "foreground" }
+
+"string"                          = { fg = "foreground" }
+"string.regexp"                   = { fg = "foreground" }
+"string.special"                  = { fg = "foreground" }
+"string.symbol"                   = { fg = "foreground" }
+
+"tag"                             = { fg = "foreground" }
+"tag.attribute"                   = { fg = "foreground" }
+"tag.delimiter"                   = { fg = "foreground" }
+
+"type"                            = { fg = "foreground", modifiers = ["italic"] }
+"type.builtin"                    = { fg = "foreground" }
+"type.enum.variant"               = { fg = "foreground", modifiers = ["italic"] }
+
+"ui.background"                   = { fg = "foreground", bg = "background" }
+"ui.cursor"                       = { fg = "background", bg = "primary", modifiers = ["dim"] }
+"ui.cursor.insert"                = { fg = "foreground", bg = "primary", modifiers = ["dim"] }
+"ui.cursor.match"                 = { fg = "foreground", bg = "primary" }
+"ui.cursor.normal"                = { fg = "foreground", bg = "primary", modifiers = ["dim"] }
+"ui.cursor.select"                = { fg = "foreground", bg = "primary", modifiers = ["dim"] }
+"ui.cursor.primary.insert"        = { fg = "foreground", bg = "primary" }
+"ui.cursor.primary.normal"        = { fg = "foreground", bg = "primary" }
+"ui.cursor.primary.select"        = { fg = "foreground", bg = "primary" }
+"ui.cursorline.primary"           = { bg = "primary" }
+"ui.debug"                        = { fg = "foreground" }
+"ui.help"                         = { fg = "foreground", bg = "background" }
+"ui.highlight.frameline"          = { fg = "foreground", bg = "background" }
+"ui.linenr"                       = { fg = "foreground" }
+"ui.linenr.selected"              = { fg = "foreground" }
+"ui.menu"                         = { fg = "foreground", bg = "background" }
+"ui.menu.scroll"                  = { fg = "foreground", bg = "background" }
+"ui.menu.selected"                = { fg = "foreground", bg = "background", modifiers = ["dim"] }
+"ui.popup"                        = { fg = "foreground", bg = "background" }
+"ui.selection"                    = { bg = "gray", underline = { style = "curl" } }
+"ui.selection.primary"            = { bg = "secondary", underline = { style = "curl" }, modifiers = ["dim"] }
+"ui.statusline"                   = { fg = "background", bg = "foreground" }
+"ui.statusline.inactive"          = { fg = "foreground", bg = "background" }
+"ui.statusline.insert"            = { fg = "foreground", bg = "background", modifiers = ["bold"] }
+"ui.statusline.normal"            = { fg = "foreground", bg = "background", modifiers = ["bold"] }
+"ui.statusline.select"            = { fg = "foreground", bg = "background", modifiers = ["bold"] }
+"ui.bufferline"                   = { fg = "background", bg = "foreground"}
+"ui.bufferline.active"            = { fg = "foreground", bg = "background"}
+"ui.text"                         = { fg = "foreground" }
+"ui.text.focus"                   = { fg = "foreground" }
+"ui.virtual.indent-guide"         = { fg = "foreground" }
+"ui.virtual.inlay-hint"           = { fg = "foreground" }
+"ui.virtual.inlay-hint.parameter" = { fg = "foreground", modifiers = ["italic", "dim"] }
+"ui.virtual.inlay-hint.type"      = { fg = "foreground", modifiers = ["italic", "dim"] }
+"ui.virtual.jump-label"           = { fg = "foreground", modifiers = ["bold"] }
+"ui.virtual.ruler"                = { bg = "foreground" }
+"ui.virtual.backgroundspace"      = { fg = "foreground" }
+"ui.virtual.wrap"                 = { fg = "foreground" }
+"ui.window"                       = { fg = "foreground" }
+
+"variable"                        = { fg = "foreground" }
+"variable.builtin"                = { fg = "foreground", modifiers = ["bold"] }
+"variable.other"                  = { fg = "foreground" }
+"variable.other.member"           = { fg = "foreground" }
+"variable.parameter"              = { fg = "foreground", modifiers = ["bold"] }
+
+[palette]
+foreground = "#ffffff"
+background = "#000000"
+primary    = "#bababa"
+secondary  = "#959595"
