@@ -88,12 +88,12 @@
 "type.enum.variant"               = { fg = "foreground", modifiers = ["italic"] }
 
 "ui.background"                   = { fg = "foreground", bg = "background" }
-"ui.cursor"                       = { fg = "background", bg = "primary", modifiers = ["dim"] }
-"ui.cursor.insert"                = { fg = "foreground", bg = "primary", modifiers = ["dim"] }
-"ui.cursor.match"                 = { fg = "foreground", bg = "primary" }
-"ui.cursor.normal"                = { fg = "foreground", bg = "primary", modifiers = ["dim"] }
-"ui.cursor.select"                = { fg = "foreground", bg = "primary", modifiers = ["dim"] }
-"ui.cursor.primary.insert"        = { fg = "foreground", bg = "primary" }
+"ui.cursor"                       = { fg = "foreground", bg = "primary", modifiers = ["dim"] }
+"ui.cursor.insert"                = { fg = "secondary", bg  = "primary", modifiers  = ["dim"] }
+"ui.cursor.match"                 = { fg = "secondary", bg  = "primary" }
+"ui.cursor.normal"                = { fg = "secondary", bg  = "primary", modifiers = ["dim"] }
+"ui.cursor.select"                = { fg = "secondary", bg  = "primary", modifiers = ["dim"] }
+"ui.cursor.primary.insert"        = { fg = "foceground", bg = "primary" }
 "ui.cursor.primary.normal"        = { fg = "foreground", bg = "primary" }
 "ui.cursor.primary.select"        = { fg = "foreground", bg = "primary" }
 "ui.cursorline.primary"           = { bg = "primary" }
@@ -106,7 +106,7 @@
 "ui.menu.scroll"                  = { fg = "foreground", bg = "background" }
 "ui.menu.selected"                = { fg = "foreground", bg = "background", modifiers = ["dim"] }
 "ui.popup"                        = { fg = "foreground", bg = "background" }
-"ui.selection"                    = { bg = "gray", underline = { style = "curl" } }
+"ui.selection"                    = { bg = "foreground", underline = { style = "curl" } }
 "ui.selection.primary"            = { bg = "secondary", underline = { style = "curl" }, modifiers = ["dim"] }
 "ui.statusline"                   = { fg = "background", bg = "foreground" }
 "ui.statusline.inactive"          = { fg = "foreground", bg = "background" }
