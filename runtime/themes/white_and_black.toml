@@ -89,13 +89,13 @@
 
 "ui.background"                   = { fg = "foreground", bg = "background" }
 "ui.cursor"                       = { fg = "foreground", bg = "primary", modifiers = ["dim"] }
-"ui.cursor.insert"                = { fg = "secondary", bg  = "primary", modifiers  = ["dim"] }
-"ui.cursor.match"                 = { fg = "secondary", bg  = "primary" }
-"ui.cursor.normal"                = { fg = "secondary", bg  = "primary", modifiers = ["dim"] }
-"ui.cursor.select"                = { fg = "secondary", bg  = "primary", modifiers = ["dim"] }
-"ui.cursor.primary.insert"        = { fg = "foceground", bg = "primary" }
-"ui.cursor.primary.normal"        = { fg = "foreground", bg = "primary" }
-"ui.cursor.primary.select"        = { fg = "foreground", bg = "primary" }
+"ui.cursor.insert"                = { fg = "primary", bg  = "secondary", modifiers  = ["dim"] }
+"ui.cursor.match"                 = { fg = "primary", bg  = "secondary" }
+"ui.cursor.normal"                = { fg = "primary", bg  = "secondary", modifiers = ["dim"] }
+"ui.cursor.select"                = { fg = "primary", bg  = "secondary", modifiers = ["dim"] }
+"ui.cursor.primary.insert"        = { fg = "background", bg = "foreground" }
+"ui.cursor.primary.normal"        = { fg = "background", bg = "foreground" }
+"ui.cursor.primary.select"        = { fg = "background", bg = "foreground" }
 "ui.cursorline.primary"           = { bg = "primary" }
 "ui.debug"                        = { fg = "foreground" }
 "ui.help"                         = { fg = "foreground", bg = "background" }
@@ -106,8 +106,8 @@
 "ui.menu.scroll"                  = { fg = "foreground", bg = "background" }
 "ui.menu.selected"                = { fg = "foreground", bg = "background", modifiers = ["dim"] }
 "ui.popup"                        = { fg = "foreground", bg = "background" }
-"ui.selection"                    = { bg = "foreground", underline = { style = "curl" } }
-"ui.selection.primary"            = { bg = "secondary", underline = { style = "curl" }, modifiers = ["dim"] }
+"ui.selection"                    = { bg = "secondary", underline = { style = "curl" } }
+"ui.selection.primary"            = { bg = "primary", underline = { style = "curl" }, modifiers = ["dim"] }
 "ui.statusline"                   = { fg = "background", bg = "foreground" }
 "ui.statusline.inactive"          = { fg = "foreground", bg = "background" }
 "ui.statusline.insert"            = { fg = "foreground", bg = "background", modifiers = ["bold"] }
@@ -136,5 +136,5 @@
 [palette]
 foreground = "#000000"
 background = "#ffffff"
-primary    = "#cccccc"
-secondary  = "#d5dbdb"
+primary    = "#c9c9c9"
+secondary  = "#e3e1e1"
