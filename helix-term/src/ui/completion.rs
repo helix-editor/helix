@@ -55,7 +55,7 @@ impl menu::Item for CompletionItem {
 
         let label = match self {
             CompletionItem::Lsp(LspCompletionItem { item, .. }) => item.label.as_str(),
-            CompletionItem::Other(core::CompletionItem { label, .. }) => &label,
+            CompletionItem::Other(core::CompletionItem { label, .. }) => label,
         };
 
         let kind = match self {
