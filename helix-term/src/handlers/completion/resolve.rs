@@ -7,9 +7,9 @@ use tokio::time::{Duration, Instant};
 use helix_event::{send_blocking, AsyncHook, CancelRx};
 use helix_view::Editor;
 
+use super::LspCompletionItem;
 use crate::handlers::completion::CompletionItem;
 use crate::job;
-use super::LspCompletionItem;
 
 /// A hook for resolving incomplete completion items.
 ///

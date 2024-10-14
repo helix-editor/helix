@@ -39,5 +39,3 @@ impl CompletionItem {
         }
     }
 }
-
-
