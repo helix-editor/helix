@@ -9,7 +9,7 @@ use helix_view::Editor;
 
 use crate::handlers::completion::CompletionItem;
 use crate::job;
-use crate::ui::LspCompletionItem;
+use super::LspCompletionItem;
 
 /// A hook for resolving incomplete completion items.
 ///

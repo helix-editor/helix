@@ -1,6 +1,9 @@
 use crate::{
     compositor::{Component, Context, Event, EventResult},
-    handlers::{completion::ResolveHandler, trigger_auto_completion},
+    handlers::{
+        completion::{CompletionItem, LspCompletionItem, ResolveHandler},
+        trigger_auto_completion,
+    },
 };
 use helix_view::{
     document::SavePoint,
@@ -13,12 +16,12 @@ use tui::{buffer::Buffer as Surface, text::Span};
 
 use std::{borrow::Cow, sync::Arc};
 
-use helix_core::{chars, Change, Transaction};
+use helix_core::{self as core, chars, Change, Transaction};
 use helix_view::{graphics::Rect, Document, Editor};
 
 use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
 
-use helix_lsp::{lsp, util, LanguageServerId, OffsetEncoding};
+use helix_lsp::{lsp, util, OffsetEncoding};
 
 impl menu::Item for CompletionItem {
     type Data = ();
@@ -35,7 +38,7 @@ impl menu::Item for CompletionItem {
                 .unwrap_or(&item.label)
                 .as_str()
                 .into(),
-            CompletionItem::Path(PathCompletionItem { item, .. }) => Cow::from(&item.label),
+            CompletionItem::Other(core::CompletionItem { label, .. }) => label.clone(),
         }
     }
 
@@ -47,12 +50,12 @@ impl menu::Item for CompletionItem {
                         tags.contains(&lsp::CompletionItemTag::DEPRECATED)
                     })
             }
-            CompletionItem::Path(_) => false,
+            CompletionItem::Other(_) => false,
         };
 
         let label = match self {
-            CompletionItem::Lsp(LspCompletionItem { item, .. }) => &item.label,
-            CompletionItem::Path(PathCompletionItem { item, .. }) => &item.label,
+            CompletionItem::Lsp(LspCompletionItem { item, .. }) => item.label.as_str(),
+            CompletionItem::Other(core::CompletionItem { label, .. }) => &label,
         };
 
         let kind = match self {
@@ -88,7 +91,7 @@ impl menu::Item for CompletionItem {
                 }
                 None => "",
             },
-            CompletionItem::Path(PathCompletionItem { kind, .. }) => kind.as_str(),
+            CompletionItem::Other(core::CompletionItem { kind, .. }) => kind,
         };
 
         menu::Row::new([
@@ -102,83 +105,6 @@ impl menu::Item for CompletionItem {
             )),
             menu::Cell::from(kind),
         ])
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum PathKind {
-    Folder,
-    File,
-    Link,
-    Block,
-    Socket,
-    CharacterDevice,
-    Fifo,
-}
-
-impl PathKind {
-    fn as_str(&self) -> &'static str {
-        match self {
-            PathKind::Folder => "folder",
-            PathKind::File => "file",
-            PathKind::Link => "link",
-            PathKind::Block => "block",
-            PathKind::Socket => "socket",
-            PathKind::CharacterDevice => "char_device",
-            PathKind::Fifo => "fifo",
-        }
-    }
-}
-
-impl std::fmt::Display for PathKind {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.as_str())
-    }
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct LspCompletionItem {
-    pub item: lsp::CompletionItem,
-    pub provider: LanguageServerId,
-    pub resolved: bool,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub struct PathCompletionItem {
-    pub kind: PathKind,
-    pub item: helix_core::CompletionItem,
-}
-
-#[derive(Debug, PartialEq, Clone)]
-pub enum CompletionItem {
-    Lsp(LspCompletionItem),
-    Path(PathCompletionItem),
-}
-
-impl PartialEq<CompletionItem> for LspCompletionItem {
-    fn eq(&self, other: &CompletionItem) -> bool {
-        match other {
-            CompletionItem::Lsp(other) => self == other,
-            _ => false,
-        }
-    }
-}
-
-impl PartialEq<CompletionItem> for PathCompletionItem {
-    fn eq(&self, other: &CompletionItem) -> bool {
-        match other {
-            CompletionItem::Path(other) => self == other,
-            _ => false,
-        }
-    }
-}
-
-impl CompletionItem {
-    pub fn preselect(&self) -> bool {
-        match self {
-            CompletionItem::Lsp(LspCompletionItem { item, .. }) => item.preselect.unwrap_or(false),
-            CompletionItem::Path(_) => false,
-        }
     }
 }
 
@@ -358,8 +284,8 @@ impl Completion {
                             ),
                             view.id,
                         ),
-                        CompletionItem::Path(PathCompletionItem { item, .. }) => {
-                            doc.apply_temporary(&item.transaction, view.id)
+                        CompletionItem::Other(core::CompletionItem { transaction, .. }) => {
+                            doc.apply_temporary(transaction, view.id)
                         }
                     };
                 }
@@ -405,8 +331,8 @@ impl Completion {
 
                             (transaction, add_edits.map(|edits| (edits, encoding)))
                         }
-                        CompletionItem::Path(PathCompletionItem { item, .. }) => {
-                            (item.transaction, None)
+                        CompletionItem::Other(core::CompletionItem { transaction, .. }) => {
+                            (transaction, None)
                         }
                     };
 
@@ -601,8 +527,8 @@ impl Component for Completion {
                 }
                 None => return,
             },
-            CompletionItem::Path(option) => {
-                markdowned(language, None, Some(&option.item.documentation))
+            CompletionItem::Other(option) => {
+                markdowned(language, None, Some(&option.documentation))
             }
         };
 
