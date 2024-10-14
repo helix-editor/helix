@@ -73,6 +73,4 @@
 
 ; directive labels in block context (eg. within 'run:')
 ((identifier) @label
-  (#any-of? @label "input" "log" "output" "params" "resources" "threads" "wildcards")
-  (#has-ancestor? @label "directive")
-  (#has-ancestor? @label "block"))
+  (#any-of? @label "input" "log" "output" "params" "resources" "threads" "wildcards"))
