@@ -1,8 +1,12 @@
 use std::{
     borrow::Cow,
+    fs,
     path::{Path, PathBuf},
     str::FromStr as _,
-    sync::{atomic::AtomicBool, Arc},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
 };
 
 use futures_util::{future::BoxFuture, FutureExt as _};
@@ -58,18 +62,16 @@ pub(crate) fn path_completion(
             }
         })?;
 
-    if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+    if cancel.load(Ordering::Relaxed) {
         return None;
     }
 
-    // The async file accessor functions of tokio were considered, but they were a bit slower
-    // and less ergonomic than just using the std functions in a separate "thread"
     let future = tokio::task::spawn_blocking(move || {
         let Ok(read_dir) = std::fs::read_dir(&dir_path) else {
             return Vec::new();
         };
 
-        if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+        if cancel.load(Ordering::Relaxed) {
             return Vec::new();
         }
 
@@ -82,85 +84,14 @@ pub(crate) fn path_completion(
                     .map(|md| (dir_entry.file_name(), md))
             })
             .map_while(|(file_name, md)| {
-                if cancel.load(std::sync::atomic::Ordering::Relaxed) {
+                if cancel.load(Ordering::Relaxed) {
                     return None;
                 }
 
                 let file_name_str = file_name.to_string_lossy().to_string();
 
-                let full_path = fold_home_dir(canonicalize(dir_path.join(file_name)));
-                let full_path_name = full_path.to_string_lossy();
-
-                let kind = if md.is_symlink() {
-                    "link"
-                } else if md.is_dir() {
-                    "folder"
-                } else {
-                    #[cfg(unix)]
-                    {
-                        use std::os::unix::fs::FileTypeExt;
-                        if md.file_type().is_block_device() {
-                            "block"
-                        } else if md.file_type().is_socket() {
-                            "socket"
-                        } else if md.file_type().is_char_device() {
-                            "char_device"
-                        } else if md.file_type().is_fifo() {
-                            "fifo"
-                        } else {
-                            "file"
-                        }
-                    }
-                    #[cfg(not(unix))]
-                    "file"
-                };
-                let kind = Cow::Borrowed(kind);
-
-                let documentation = {
-                    #[cfg(unix)]
-                    {
-                        use std::os::unix::prelude::PermissionsExt;
-                        let mode = md.permissions().mode();
-
-                        let perms = [
-                            (libc::S_IRUSR, 'r'),
-                            (libc::S_IWUSR, 'w'),
-                            (libc::S_IXUSR, 'x'),
-                            (libc::S_IRGRP, 'r'),
-                            (libc::S_IWGRP, 'w'),
-                            (libc::S_IXGRP, 'x'),
-                            (libc::S_IROTH, 'r'),
-                            (libc::S_IWOTH, 'w'),
-                            (libc::S_IXOTH, 'x'),
-                        ]
-                        .into_iter()
-                        .fold(
-                            String::with_capacity(9),
-                            |mut acc, (p, s)| {
-                                // This cast is necessary on some platforms such as macos as `mode_t` is u16 there
-                                #[allow(clippy::unnecessary_cast)]
-                                acc.push(if mode & (p as u32) > 0 { s } else { '-' });
-                                acc
-                            },
-                        );
-
-                        // TODO it would be great to be able to individually color the documentation,
-                        // but this will likely require a custom doc implementation (i.e. not `lsp::Documentation`)
-                        // and/or different rendering in completion.rs
-                        format!(
-                            "type: `{kind}`\n\
-                             permissions: `[{perms}]`\n\
-                             full path: `{full_path_name}`",
-                        )
-                    }
-                    #[cfg(not(unix))]
-                    {
-                        format!(
-                            "type: `{kind}`\n\
-                             full path: `{full_path_name}`",
-                        )
-                    }
-                };
+                let kind = path_kind(&md);
+                let documentation = path_documentation(&md, &dir_path.join(file_name), kind);
 
                 let edit_diff = typed_file_name
                     .as_ref()
@@ -173,9 +104,9 @@ pub(crate) fn path_completion(
                 );
 
                 Some(CompletionItem::Other(core::CompletionItem {
-                    kind,
-                    transaction,
+                    kind: Cow::Borrowed(kind),
                     label: file_name_str.into(),
+                    transaction,
                     documentation,
                 }))
             })
@@ -183,4 +114,81 @@ pub(crate) fn path_completion(
     });
 
     Some(async move { Ok(future.await?) }.boxed())
+}
+
+#[cfg(unix)]
+fn path_documentation(md: &fs::Metadata, full_path: &Path, kind: &str) -> String {
+    let full_path = fold_home_dir(canonicalize(full_path));
+    let full_path_name = full_path.to_string_lossy();
+
+    use std::os::unix::prelude::PermissionsExt;
+    let mode = md.permissions().mode();
+
+    let perms = [
+        (libc::S_IRUSR, 'r'),
+        (libc::S_IWUSR, 'w'),
+        (libc::S_IXUSR, 'x'),
+        (libc::S_IRGRP, 'r'),
+        (libc::S_IWGRP, 'w'),
+        (libc::S_IXGRP, 'x'),
+        (libc::S_IROTH, 'r'),
+        (libc::S_IWOTH, 'w'),
+        (libc::S_IXOTH, 'x'),
+    ]
+    .into_iter()
+    .fold(String::with_capacity(9), |mut acc, (p, s)| {
+        // This cast is necessary on some platforms such as macos as `mode_t` is u16 there
+        #[allow(clippy::unnecessary_cast)]
+        acc.push(if mode & (p as u32) > 0 { s } else { '-' });
+        acc
+    });
+
+    // TODO it would be great to be able to individually color the documentation,
+    // but this will likely require a custom doc implementation (i.e. not `lsp::Documentation`)
+    // and/or different rendering in completion.rs
+    format!(
+        "type: `{kind}`\n\
+         permissions: `[{perms}]`\n\
+         full path: `{full_path_name}`",
+    )
+}
+
+#[cfg(not(unix))]
+fn path_documentation(md: &fs::Metadata, full_path: &Path, kind: &str) -> String {
+    let full_path = fold_home_dir(canonicalize(full_path));
+    let full_path_name = full_path.to_string_lossy();
+    format!("type: `{kind}`\nfull path: `{full_path_name}`",)
+}
+
+#[cfg(unix)]
+fn path_kind(md: &fs::Metadata) -> &'static str {
+    if md.is_symlink() {
+        "link"
+    } else if md.is_dir() {
+        "folder"
+    } else {
+        use std::os::unix::fs::FileTypeExt;
+        if md.file_type().is_block_device() {
+            "block"
+        } else if md.file_type().is_socket() {
+            "socket"
+        } else if md.file_type().is_char_device() {
+            "char_device"
+        } else if md.file_type().is_fifo() {
+            "fifo"
+        } else {
+            "file"
+        }
+    }
+}
+
+#[cfg(not(unix))]
+fn path_kind(md: &fs::Metadata) -> &'static str {
+    if md.is_symlink() {
+        "link"
+    } else if md.is_dir() {
+        "folder"
+    } else {
+        "file"
+    }
 }
