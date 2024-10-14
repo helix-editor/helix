@@ -205,7 +205,7 @@ pub fn get_truncated_path(path: impl AsRef<Path>) -> PathBuf {
     ret
 }
 
-fn path_comonent_regex(windows: bool) -> String {
+fn path_component_regex(windows: bool) -> String {
     // TODO: support backslash path escape on windows (when using git bash for example)
     let space_escape = if windows { r"[\^`]\s" } else { r"[\\]\s" };
     // partially baesd on what's allowed in an url but with some care to avoid
@@ -213,10 +213,9 @@ fn path_comonent_regex(windows: bool) -> String {
     r"[\w@.\-+#$%?!,;~&]|".to_owned() + space_escape
 }
 
-/// regex for delimeted enviorment captures like `${HOME}`
+/// Regex for delimited environment captures like `${HOME}`.
 fn braced_env_regex(windows: bool) -> String {
-    // use
-    r"\$\{(?:".to_owned() + &path_comonent_regex(windows) + r"|[/:=])+\}"
+    r"\$\{(?:".to_owned() + &path_component_regex(windows) + r"|[/:=])+\}"
 }
 
 fn compile_path_regex(
@@ -228,18 +227,18 @@ fn compile_path_regex(
     let first_component = format!(
         "(?:{}|(?:{}))",
         braced_env_regex(windows),
-        path_comonent_regex(windows)
+        path_component_regex(windows)
     );
-    // for all components except the first we allow an equals so that `foo=/
-    // bar/baz` does not include foo this is primarily inteded for url queries
+    // For all components except the first we allow an equals so that `foo=/
+    // bar/baz` does not include foo. This is primarily intended for url queries
     // (where an equals is never in the first component)
     let component = format!("(?:{first_component}|=)");
     let sep = if windows { r"[/\\]" } else { "/" };
     let url_prefix = r"[\w+\-.]+://??";
     let path_prefix = if windows {
         // single slash handles most windows prefixes (like\\server\...) but `\
-        // \?\C:\..` (and C:\) needs a specical since we don't allow : in path
-        // components (so that colon seperted paths and <path>:<line> work)
+        // \?\C:\..` (and C:\) needs special handling, since we don't allow : in path
+        // components (so that colon separated paths and <path>:<line> work)
         r"\\\\\?\\\w:|\w:|\\|"
     } else {
         ""
@@ -256,7 +255,7 @@ fn compile_path_regex(
     Regex::new(&path_regex).unwrap()
 }
 
-/// if `src` ends with a path then this function returns the part of the slice
+/// If `src` ends with a path then this function returns the part of the slice.
 pub fn get_path_suffix(src: RopeSlice<'_>, match_single_file: bool) -> Option<RopeSlice<'_>> {
     let regex = if match_single_file {
         static REGEX: Lazy<Regex> = Lazy::new(|| compile_path_regex("", "$", true, cfg!(windows)));
@@ -271,7 +270,7 @@ pub fn get_path_suffix(src: RopeSlice<'_>, match_single_file: bool) -> Option<Ro
         .map(|mat| src.byte_slice(mat.range()))
 }
 
-/// returns an iterator of the **byte** ranges in src that contain a path
+/// Returns an iterator of the **byte** ranges in src that contain a path.
 pub fn find_paths(
     src: RopeSlice<'_>,
     match_single_file: bool,
@@ -286,7 +285,7 @@ pub fn find_paths(
     regex.find_iter(Input::new(src)).map(|mat| mat.range())
 }
 
-/// performs substitution of `~` and enviorment variables, see [`env::expand`](crate::env::expand) and [`expand_tilde`]
+/// Performs substitution of `~` and environment variables, see [`env::expand`](crate::env::expand) and [`expand_tilde`]
 pub fn expand<T: AsRef<Path> + ?Sized>(path: &T) -> Cow<'_, Path> {
     let path = path.as_ref();
     let path = expand_tilde(path);
@@ -359,16 +358,16 @@ mod tests {
         };
     }
 
-    /// linux-only path
+    /// Linux-only path
     #[test]
     fn path_regex_unix() {
-        // due to ambigueity with the \ path seperator we can't support space escapes `\ ` on windows
+        // due to ambiguity with the `\` path separator we can't support space escapes `\ ` on windows
         let regex = compile_path_regex("^", "$", false, false);
         assert_match!(regex, "${FOO}/hello\\ world");
         assert_match!(regex, "${FOO}/\\ ");
     }
 
-    /// windows-only paths
+    /// Windows-only paths
     #[test]
     fn path_regex_windows() {
         let regex = compile_path_regex("^", "$", false, true);
@@ -385,7 +384,7 @@ mod tests {
         assert_match!(regex, r"\\server\foo");
     }
 
-    /// paths that should work on all platforms
+    /// Paths that should work on all platforms
     #[test]
     fn path_regex() {
         for windows in [false, true] {
