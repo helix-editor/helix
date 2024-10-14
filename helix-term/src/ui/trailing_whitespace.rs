@@ -18,7 +18,7 @@ impl WhitespaceKind {
             WhitespaceKind::NonBreakingSpace => &palette.nbsp,
             WhitespaceKind::NarrowNonBreakingSpace => &palette.nnbsp,
             WhitespaceKind::Tab => {
-                let grapheme_tab_width = char_to_byte_idx(&palette.tab, 1);
+                let grapheme_tab_width = char_to_byte_idx(&palette.tab, palette.tab.len());
                 &palette.tab[..grapheme_tab_width]
             }
             WhitespaceKind::Newline | WhitespaceKind::None => "",
@@ -97,7 +97,7 @@ mod tests {
             space: "S".into(),
             nbsp: "N".into(),
             nnbsp: "M".into(),
-            tab: "T".into(),
+            tab: "<TAB>".into(),
             virtual_tab: "V".into(),
             newline: "L".into(),
         }
@@ -134,7 +134,7 @@ mod tests {
 
         assert_eq!(5, from);
         assert_eq!(8, to);
-        assert_eq!("SNMT", content);
+        assert_eq!("SNM<TAB>", content);
 
         // Now we break the sequence
         sut.track(6, WhitespaceKind::None);
@@ -152,7 +152,7 @@ mod tests {
         let (content, from, to) = capture(&mut sut);
         assert_eq!(10, from);
         assert_eq!(13, to);
-        assert_eq!("TNMS", content);
+        assert_eq!("<TAB>NMS", content);
 
         // Verify compression works
         sut.track(20, WhitespaceKind::Space);
@@ -168,6 +168,6 @@ mod tests {
         let (content, from, to) = capture(&mut sut);
         assert_eq!(20, from);
         assert_eq!(26, to); // Compression means last tracked token is on 26 instead of 28
-        assert_eq!("SSNNMMTTT", content);
+        assert_eq!("SSNNMM<TAB><TAB><TAB>", content);
     }
 }
