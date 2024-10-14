@@ -234,7 +234,7 @@ where
     let unique_chars: HashSet<_> = chars.iter().copied().collect();
     if unique_chars.len() != chars.len() {
         return Err(<D::Error as Error>::custom(
-            "jump-label-alphabet must contain unique characters",
+            "jump-label-alphabets must contain unique characters",
         ));
     }
     Ok(chars)
@@ -341,7 +341,12 @@ pub struct Config {
         serialize_with = "serialize_alphabet",
         deserialize_with = "deserialize_alphabet"
     )]
-    pub jump_label_alphabet: Vec<char>,
+    pub jump_label_first_alphabet: Vec<char>,
+    #[serde(
+        serialize_with = "serialize_alphabet",
+        deserialize_with = "deserialize_alphabet"
+    )]
+    pub jump_label_second_alphabet: Vec<char>,
     /// Display diagnostic below the line they occur.
     pub inline_diagnostics: InlineDiagnosticsConfig,
     pub end_of_line_diagnostics: DiagnosticFilter,
@@ -979,7 +984,8 @@ impl Default for Config {
             smart_tab: Some(SmartTabConfig::default()),
             popup_border: PopupBorderConfig::None,
             indent_heuristic: IndentationHeuristic::default(),
-            jump_label_alphabet: ('a'..='z').collect(),
+            jump_label_first_alphabet: ('a'..='z').collect(),
+            jump_label_second_alphabet: ('a'..='z').collect(),
             inline_diagnostics: InlineDiagnosticsConfig::default(),
             end_of_line_diagnostics: DiagnosticFilter::Disable,
         }

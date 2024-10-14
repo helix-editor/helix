@@ -6153,11 +6153,15 @@ fn extend_to_word(cx: &mut Context) {
 
 fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
     let doc = doc!(cx.editor);
-    let alphabet = &cx.editor.config().jump_label_alphabet;
+    let first_alphabet = &cx.editor.config().jump_label_first_alphabet;
+    let second_alphabet = &cx.editor.config().jump_label_second_alphabet;
+
+    let second_alph_len = second_alphabet.len();
+
     if labels.is_empty() {
         return;
     }
-    let alphabet_char = |i| {
+    let alphabet_char = |alphabet: &Vec<char>, i| {
         let mut res = Tendril::new();
         res.push(alphabet[i]);
         res
@@ -6170,10 +6174,13 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
         .enumerate()
         .flat_map(|(i, range)| {
             [
-                Overlay::new(range.from(), alphabet_char(i / alphabet.len())),
+                Overlay::new(
+                    range.from(),
+                    alphabet_char(first_alphabet, i / second_alph_len),
+                ),
                 Overlay::new(
                     graphemes::next_grapheme_boundary(text, range.from()),
-                    alphabet_char(i % alphabet.len()),
+                    alphabet_char(second_alphabet, i % second_alph_len),
                 ),
             ]
         })
@@ -6188,15 +6195,15 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
     let view = view.id;
     let doc = doc.id();
     cx.on_next_key(move |cx, event| {
-        let alphabet = &cx.editor.config().jump_label_alphabet;
+        let first_alphabet = &cx.editor.config().jump_label_first_alphabet;
         let Some(i) = event
             .char()
-            .and_then(|ch| alphabet.iter().position(|&it| it == ch))
+            .and_then(|ch| first_alphabet.iter().position(|&it| it == ch))
         else {
             doc_mut!(cx.editor, &doc).remove_jump_labels(view);
             return;
         };
-        let outer = i * alphabet.len();
+        let outer = i * second_alph_len;
         // Bail if the given character cannot be a jump label.
         if outer > labels.len() {
             doc_mut!(cx.editor, &doc).remove_jump_labels(view);
@@ -6204,10 +6211,10 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
         }
         cx.on_next_key(move |cx, event| {
             doc_mut!(cx.editor, &doc).remove_jump_labels(view);
-            let alphabet = &cx.editor.config().jump_label_alphabet;
+            let second_alphabet = &cx.editor.config().jump_label_second_alphabet;
             let Some(inner) = event
                 .char()
-                .and_then(|ch| alphabet.iter().position(|&it| it == ch))
+                .and_then(|ch| second_alphabet.iter().position(|&it| it == ch))
             else {
                 return;
             };
@@ -6241,8 +6248,9 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
 fn jump_to_word(cx: &mut Context, behaviour: Movement) {
     // Calculate the jump candidates: ranges for any visible words with two or
     // more characters.
-    let alphabet = &cx.editor.config().jump_label_alphabet;
-    let jump_label_limit = alphabet.len() * alphabet.len();
+    let first_alphabet = &cx.editor.config().jump_label_first_alphabet;
+    let second_alphabet = &cx.editor.config().jump_label_second_alphabet;
+    let jump_label_limit = first_alphabet.len() * second_alphabet.len();
     let mut words = Vec::with_capacity(jump_label_limit);
     let (view, doc) = current_ref!(cx.editor);
     let text = doc.text().slice(..);
