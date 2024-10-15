@@ -1,10 +1,37 @@
-(assignment (NAME) @local.definition)
-(alias left:(NAME) @local.definition)
-(alias right:(NAME) @local.reference)
-(value (NAME) @local.reference)
-(parameter (NAME) @local.definition)
+; This file tells us about the scope of variables so e.g. local
+; variables override global functions with the same name
 
-(call (NAME) @local.reference)
-(dependency (NAME) @local.reference)
-(depcall (NAME) @local.reference)
-(recipeheader (NAME) @local.definition)
+; Scope
+
+(recipe) @local.scope
+
+; Definitions
+
+(alias
+  name: (identifier) @local.definition)
+
+(assignment
+  name: (identifier) @local.definition)
+
+(mod
+  name: (identifier) @local.definition)
+
+(recipe_parameter
+  name: (identifier) @local.definition)
+
+(recipe
+  name: (identifier) @local.definition)
+
+; References
+
+(alias
+  name: (identifier) @local.reference)
+
+(function_call
+  name: (identifier) @local.reference)
+
+(recipe_dependency
+  name: (identifier) @local.reference)
+
+(value
+  (identifier) @local.reference)

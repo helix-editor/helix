@@ -74,13 +74,18 @@ mod imp {
 
         Ok(())
     }
+
+    pub fn hardlink_count(p: &Path) -> std::io::Result<u64> {
+        let metadata = p.metadata()?;
+        Ok(metadata.nlink())
+    }
 }
 
 // Licensed under MIT from faccess except for `chown`, `copy_metadata` and `is_acl_inherited`
 #[cfg(windows)]
 mod imp {
 
-    use windows_sys::Win32::Foundation::{CloseHandle, LocalFree, ERROR_SUCCESS, HANDLE, PSID};
+    use windows_sys::Win32::Foundation::{CloseHandle, LocalFree, ERROR_SUCCESS, HANDLE};
     use windows_sys::Win32::Security::Authorization::{
         GetNamedSecurityInfoW, SetNamedSecurityInfoW, SE_FILE_OBJECT,
     };
@@ -90,12 +95,12 @@ mod imp {
         SecurityImpersonation, ACCESS_ALLOWED_CALLBACK_ACE, ACL, ACL_SIZE_INFORMATION,
         DACL_SECURITY_INFORMATION, GENERIC_MAPPING, GROUP_SECURITY_INFORMATION, INHERITED_ACE,
         LABEL_SECURITY_INFORMATION, OBJECT_SECURITY_INFORMATION, OWNER_SECURITY_INFORMATION,
-        PRIVILEGE_SET, PROTECTED_DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR,
+        PRIVILEGE_SET, PROTECTED_DACL_SECURITY_INFORMATION, PSECURITY_DESCRIPTOR, PSID,
         SID_IDENTIFIER_AUTHORITY, TOKEN_DUPLICATE, TOKEN_QUERY,
     };
     use windows_sys::Win32::Storage::FileSystem::{
-        FILE_ACCESS_RIGHTS, FILE_ALL_ACCESS, FILE_GENERIC_EXECUTE, FILE_GENERIC_READ,
-        FILE_GENERIC_WRITE,
+        GetFileInformationByHandle, BY_HANDLE_FILE_INFORMATION, FILE_ACCESS_RIGHTS,
+        FILE_ALL_ACCESS, FILE_GENERIC_EXECUTE, FILE_GENERIC_READ, FILE_GENERIC_WRITE,
     };
     use windows_sys::Win32::System::Threading::{GetCurrentThread, OpenThreadToken};
 
@@ -103,7 +108,7 @@ mod imp {
 
     use std::ffi::c_void;
 
-    use std::os::windows::{ffi::OsStrExt, fs::OpenOptionsExt};
+    use std::os::windows::{ffi::OsStrExt, fs::OpenOptionsExt, io::AsRawHandle};
 
     struct SecurityDescriptor {
         sd: PSECURITY_DESCRIPTOR,
@@ -290,21 +295,21 @@ mod imp {
         let mut privileges_length = std::mem::size_of::<PRIVILEGE_SET>() as u32;
         let mut result = 0;
 
-        let mut mapping = GENERIC_MAPPING {
+        let mapping = GENERIC_MAPPING {
             GenericRead: FILE_GENERIC_READ,
             GenericWrite: FILE_GENERIC_WRITE,
             GenericExecute: FILE_GENERIC_EXECUTE,
             GenericAll: FILE_ALL_ACCESS,
         };
 
-        unsafe { MapGenericMask(&mut mode, &mut mapping) };
+        unsafe { MapGenericMask(&mut mode, &mapping) };
 
         if unsafe {
             AccessCheck(
                 *sd.descriptor(),
                 *token.as_handle(),
                 mode,
-                &mut mapping,
+                &mapping,
                 &mut privileges,
                 &mut privileges_length,
                 &mut granted_access,
@@ -411,6 +416,18 @@ mod imp {
 
         Ok(())
     }
+
+    pub fn hardlink_count(p: &Path) -> std::io::Result<u64> {
+        let file = std::fs::File::open(p)?;
+        let handle = file.as_raw_handle();
+        let mut info: BY_HANDLE_FILE_INFORMATION = unsafe { std::mem::zeroed() };
+
+        if unsafe { GetFileInformationByHandle(handle, &mut info) } == 0 {
+            Err(std::io::Error::last_os_error())
+        } else {
+            Ok(info.nNumberOfLinks as u64)
+        }
+    }
 }
 
 // Licensed under MIT from faccess except for `copy_metadata`
@@ -456,4 +473,8 @@ pub fn readonly(p: &Path) -> bool {
 
 pub fn copy_metadata(from: &Path, to: &Path) -> io::Result<()> {
     imp::copy_metadata(from, to)
+}
+
+pub fn hardlink_count(p: &Path) -> io::Result<u64> {
+    imp::hardlink_count(p)
 }

@@ -1,4 +1,4 @@
-# Languages
+## Languages
 
 Language-specific settings and settings for language servers are configured
 in `languages.toml` files.

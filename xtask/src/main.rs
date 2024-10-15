@@ -3,6 +3,7 @@ mod docgen;
 mod helpers;
 mod path;
 mod querycheck;
+mod theme_check;
 
 use std::{env, error::Error};
 
@@ -13,6 +14,7 @@ pub mod tasks {
     use crate::docgen::{lang_features, typable_commands, write};
     use crate::docgen::{LANG_SUPPORT_MD_OUTPUT, TYPABLE_COMMANDS_MD_OUTPUT};
     use crate::querycheck::query_check;
+    use crate::theme_check::theme_check;
     use crate::DynError;
 
     use std::path::{Path, PathBuf};
@@ -94,6 +96,10 @@ pub mod tasks {
             .unwrap();
     }
 
+    pub fn themecheck() -> Result<(), DynError> {
+        theme_check()
+    }
+
     pub fn print_help() {
         println!(
             "
@@ -118,6 +124,7 @@ fn main() -> Result<(), DynError> {
             "query-check" => tasks::querycheck()?,
             "code-gen" => tasks::codegen(),
             "steel" => tasks::install_steel(),
+            "theme-check" => tasks::themecheck()?,
             invalid => return Err(format!("Invalid task name: {}", invalid).into()),
         },
     };

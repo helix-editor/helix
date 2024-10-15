@@ -2164,7 +2164,7 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
                 cx.editor.set_error(err);
             }
         })
-        .with_preview(|_editor, path| Some((PathOrId::Path(path.clone().into()), None)));
+        .with_preview(|_editor, path| Some((PathOrId::Path(path), None)));
 
         let injector = picker.injector();
 
