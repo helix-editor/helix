@@ -21,7 +21,7 @@ use helix_lsp::{Call, LanguageServerId};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
-    borrow::{Borrow, Cow},
+    borrow::Cow,
     cell::Cell,
     collections::{BTreeMap, HashMap, HashSet},
     fs,
@@ -354,8 +354,8 @@ pub struct JumpLabelFollowBlacklist(HashMap<char, Vec<char>>);
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct JumpLabelLookup {
-    pub alphabet: Vec<char>,
-    pub follow_whitelist: HashMap<char, Vec<char>>,
+    pub start_alphabet: Vec<char>,
+    pub allowed_jump_labels: Vec<(char, char)>,
 }
 
 impl JumpLabelFollowBlacklist {
@@ -364,44 +364,32 @@ impl JumpLabelFollowBlacklist {
     }
 
     pub fn get_allow_list(&self, alphabet: &Vec<char>) -> JumpLabelLookup {
-        let follow_whitelist: HashMap<_, _> = alphabet
-            .iter()
-            .filter_map(|c| {
-                let unique_chars: HashSet<_> = alphabet.iter().copied().collect();
-                let blacklist_chars: Option<HashSet<_>> =
-                    self.get(*c).and_then(|v| Some(v.iter().copied().collect()));
+        let mut start_alphabet = vec![];
 
-                let whitelist_chars = if let Some(blacklist_chars) = blacklist_chars {
+        let allowed_jump_labels: Vec<_> = alphabet
+            .iter()
+            .flat_map(|first_c| {
+                let unique_chars: HashSet<_> = alphabet.iter().copied().collect();
+                let blacklist_chars: Option<HashSet<_>> = self
+                    .get(*first_c)
+                    .and_then(|v| Some(v.iter().copied().collect()));
+
+                if let Some(blacklist_chars) = blacklist_chars {
+                    start_alphabet.push(*first_c);
+
                     unique_chars
                         .symmetric_difference(&blacklist_chars)
-                        .map(|c| *c)
-                        .collect()
+                        .map(|c| (*first_c, *c))
+                        .collect::<Vec<_>>()
                 } else {
-                    alphabet.clone()
-                };
-
-                if whitelist_chars.len() > 0 {
-                    Some((*c, whitelist_chars))
-                } else {
-                    None
-                }
-            })
-            .collect();
-
-        let alphabet = alphabet
-            .iter()
-            .filter_map(|c| {
-                if follow_whitelist.contains_key(c) {
-                    Some(*c)
-                } else {
-                    None
+                    alphabet.iter().map(|c| (*first_c, *c)).collect()
                 }
             })
             .collect();
 
         JumpLabelLookup {
-            alphabet,
-            follow_whitelist,
+            start_alphabet,
+            allowed_jump_labels,
         }
     }
 }
