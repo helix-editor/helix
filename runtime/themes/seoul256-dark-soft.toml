@@ -1,0 +1,15 @@
+# Seoul256 Dark Soft
+# Author : EricHenry
+# Original Creator: https://github.com/junegunn/seoul256.vim
+
+inherits = "seoul256-dark"
+
+"ui.background" = { bg = "gray8" }
+"ui.gutter" = { bg = "gray6" }
+"ui.cursorline.primary" = { bg = "gray5" }
+"ui.gutter.selected" = { bg = "gray5" }
+"ui.linenr.selected" = { bg = "gray5", fg = "magenta", modifiers = ["bold"] }
+
+"ui.help" = { bg = "gray5" }
+"ui.popup" = { bg = "gray5" }
+"ui.menu" = { bg = "gray5" }

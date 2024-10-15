@@ -1,0 +1,16 @@
+# Seoul256 Dark Hard
+# Author : EricHenry
+# Original Creator: https://github.com/junegunn/seoul256.vim
+
+inherits = "seoul256-dark"
+
+"ui.background" = { bg = "gray1" }
+"ui.gutter" = { bg = "gray2" }
+"ui.cursorline.primary" = { bg = "gray" }
+"ui.gutter.selected" = { bg = "gray" }
+"ui.linenr.selected" = { bg = "gray", fg = "magenta", modifiers = ["bold"] }
+"ui.virtual.inlay-hint" = { fg = "gray4", modifiers = ["bold"] }
+
+"ui.help" = { bg = "gray" }
+"ui.popup" = { bg = "gray" }
+"ui.menu" = { bg = "gray" }
