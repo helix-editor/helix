@@ -296,7 +296,7 @@ These scopes are used for theming the editor interface:
 | `ui.bufferline.background`        | Style for bufferline background                                                                |
 | `ui.popup`                        | Documentation popups (e.g. Space + k)                                                          |
 | `ui.popup.info`                   | Prompt for multiple key options                                                                |
-| `ui.picker.header`                | Header row area in pickers with multiple columns                                              |
+| `ui.picker.header`                | Header row area in pickers with multiple columns                                               |
 | `ui.picker.header.column`         | Column names in pickers with multiple columns                                                  |
 | `ui.picker.header.column.active`  | The column name in pickers with multiple columns where the cursor is entering into.            |
 | `ui.window`                       | Borderlines separating splits                                                                  |
