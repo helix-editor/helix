@@ -1,9 +1,11 @@
 use std::collections::HashSet;
+use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::time::Duration;
 
 use arc_swap::ArcSwap;
 use futures_util::stream::FuturesUnordered;
+use futures_util::FutureExt;
 use helix_core::chars::char_is_word;
 use helix_core::syntax::LanguageServerFeature;
 use helix_event::{
@@ -15,9 +17,10 @@ use helix_stdx::rope::RopeSliceExt;
 use helix_view::document::{Mode, SavePoint};
 use helix_view::handlers::lsp::CompletionEvent;
 use helix_view::{DocumentId, Editor, ViewId};
+use path::path_completion;
 use tokio::sync::mpsc::Sender;
 use tokio::time::Instant;
-use tokio_stream::StreamExt;
+use tokio_stream::StreamExt as _;
 
 use crate::commands;
 use crate::compositor::Compositor;
@@ -27,10 +30,13 @@ use crate::job::{dispatch, dispatch_blocking};
 use crate::keymap::MappableCommand;
 use crate::ui::editor::InsertEvent;
 use crate::ui::lsp::SignatureHelp;
-use crate::ui::{self, CompletionItem, Popup};
+use crate::ui::{self, Popup};
 
 use super::Handlers;
+pub use item::{CompletionItem, LspCompletionItem};
 pub use resolve::ResolveHandler;
+mod item;
+mod path;
 mod resolve;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -196,6 +202,7 @@ fn request_completion(
     // necessary from our side too.
     trigger.pos = cursor;
     let trigger_text = text.slice(..cursor);
+    let cancel_completion = Arc::new(AtomicBool::new(false));
 
     let mut seen_language_servers = HashSet::new();
     let mut futures: FuturesUnordered<_> = doc
@@ -251,15 +258,24 @@ fn request_completion(
                     None => Vec::new(),
                 }
                 .into_iter()
-                .map(|item| CompletionItem {
-                    item,
-                    provider: language_server_id,
-                    resolved: false,
+                .map(|item| {
+                    CompletionItem::Lsp(LspCompletionItem {
+                        item,
+                        provider: language_server_id,
+                        resolved: false,
+                    })
                 })
                 .collect();
                 anyhow::Ok(items)
             }
+            .boxed()
         })
+        .chain(path_completion(
+            cursor,
+            text.clone(),
+            doc,
+            cancel_completion.clone(),
+        ))
         .collect();
 
     let future = async move {
@@ -280,7 +296,13 @@ fn request_completion(
     let ui = compositor.find::<ui::EditorView>().unwrap();
     ui.last_insert.1.push(InsertEvent::RequestCompletion);
     tokio::spawn(async move {
-        let items = cancelable_future(future, cancel).await.unwrap_or_default();
+        let items = match cancelable_future(future, cancel).await {
+            Some(v) => v,
+            None => {
+                cancel_completion.store(true, std::sync::atomic::Ordering::Relaxed);
+                Vec::new()
+            }
+        };
         if items.is_empty() {
             return;
         }
@@ -346,7 +368,14 @@ pub fn trigger_auto_completion(
                         ..
                     }) if triggers.iter().any(|trigger| text.ends_with(trigger)))
         });
-    if is_trigger_char {
+
+    let trigger_path_completion = matches!(
+        text.get_bytes_at(text.len_bytes())
+            .and_then(|t| t.reversed().next()),
+        Some(b'/' | b'\\')
+    ) && doc.path_completion_enabled();
+
+    if is_trigger_char || trigger_path_completion {
         send_blocking(
             tx,
             CompletionEvent::TriggerChar {
