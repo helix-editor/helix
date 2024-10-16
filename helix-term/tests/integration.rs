@@ -20,6 +20,7 @@ mod test {
     mod commands;
     mod languages;
     mod movement;
+    mod persistence;
     mod prompt;
     mod splits;
 }

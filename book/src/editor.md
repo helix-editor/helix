@@ -433,3 +433,20 @@ end-of-line-diagnostics = "hint"
 [editor.inline-diagnostics]
 cursor-line = "warning" # show warnings and errors on the cursorline inline
 ```
+
+### `[editor.persistence]` Section
+
+Options for persisting editor state between sessions.
+
+The state is formatted with bincode, and stored in files in the state directory (`~/.local/state/helix` on Unix, `~\Local Settings\Application Data\helix\state` on Windows). You can reset your persisted state (and recover from any corruption) by deleting these files.
+
+| Key | Description | Default |
+| --- | ----------- | ------- |
+| `old-files` | whether to persist file locations between sessions ( when you reopen the a file, it will open at the place you last closed it) | `false` |
+| `commands` | whether to persist command history between sessions | `false` |
+| `search` | whether to persist search history between sessions | `false` |
+| `clipboard` | whether to persist helix's internal clipboard between sessions | `false` |
+| `old-files-exclusions` | a list of regexes defining file paths to exclude from persistence | `[".*/\.git/.*", ".*/COMMIT_EDITMSG"]` |
+| `old-files-trim` | number of old-files entries to keep when helix trims the state files at startup | `100` |
+| `commands-trim` | number of command history entries to keep when helix trims the state files at startup | `100` |
+| `search-trim` | number of search history entries to keep when helix trims the state files at startup | `100` |
