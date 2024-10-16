@@ -17,6 +17,7 @@ mod text_decorations;
 use crate::compositor::Compositor;
 use crate::filter_picker_entry;
 use crate::job::{self, Callback};
+use crate::ui::completers::CompletionResult;
 pub use completion::{Completion, CompletionItem};
 pub use editor::EditorView;
 use helix_stdx::rope;
@@ -36,7 +37,7 @@ pub fn prompt(
     cx: &mut crate::commands::Context,
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
-    completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
+    completion_fn: impl FnMut(&Editor, &str) -> CompletionResult + 'static,
     callback_fn: impl FnMut(&mut crate::compositor::Context, &str, PromptEvent) + 'static,
 ) {
     let mut prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn);
@@ -45,24 +46,11 @@ pub fn prompt(
     cx.push_layer(Box::new(prompt));
 }
 
-pub fn prompt_with_input(
-    cx: &mut crate::commands::Context,
-    prompt: std::borrow::Cow<'static, str>,
-    input: String,
-    history_register: Option<char>,
-    completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
-    callback_fn: impl FnMut(&mut crate::compositor::Context, &str, PromptEvent) + 'static,
-) {
-    let prompt = Prompt::new(prompt, history_register, completion_fn, callback_fn)
-        .with_line(input, cx.editor);
-    cx.push_layer(Box::new(prompt));
-}
-
 pub fn regex_prompt(
     cx: &mut crate::commands::Context,
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
-    completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
+    completion_fn: impl FnMut(&Editor, &str) -> CompletionResult + 'static,
     fun: impl Fn(&mut crate::compositor::Context, rope::Regex, PromptEvent) + 'static,
 ) {
     raw_regex_prompt(
@@ -77,7 +65,7 @@ pub fn raw_regex_prompt(
     cx: &mut crate::commands::Context,
     prompt: std::borrow::Cow<'static, str>,
     history_register: Option<char>,
-    completion_fn: impl FnMut(&Editor, &str) -> Vec<prompt::Completion> + 'static,
+    completion_fn: impl FnMut(&Editor, &str) -> CompletionResult + 'static,
     fun: impl Fn(&mut crate::compositor::Context, rope::Regex, &str, PromptEvent) + 'static,
 ) {
     let (view, doc) = current!(cx.editor);
@@ -275,13 +263,40 @@ pub mod completers {
     use once_cell::sync::Lazy;
     use std::borrow::Cow;
 
-    pub type Completer = fn(&Editor, &str) -> Vec<Completion>;
-
-    pub fn none(_editor: &Editor, _input: &str) -> Vec<Completion> {
-        Vec::new()
+    pub enum CompletionResult {
+        Immediate(Vec<Completion>),
+        Callback(Box<dyn FnOnce() -> Vec<Completion> + Send + Sync>),
     }
 
-    pub fn buffer(editor: &Editor, input: &str) -> Vec<Completion> {
+    fn callback(f: impl FnOnce() -> Vec<Completion> + Send + Sync + 'static) -> CompletionResult {
+        CompletionResult::Callback(Box::new(f))
+    }
+
+    impl CompletionResult {
+        pub fn map(
+            self,
+            f: impl FnOnce(Vec<Completion>) -> Vec<Completion> + Send + Sync + 'static,
+        ) -> CompletionResult {
+            match self {
+                CompletionResult::Immediate(v) => CompletionResult::Immediate(f(v)),
+                CompletionResult::Callback(v) => callback(move || f(v())),
+            }
+        }
+    }
+
+    impl FromIterator<Completion> for CompletionResult {
+        fn from_iter<T: IntoIterator<Item = Completion>>(items: T) -> Self {
+            Self::Immediate(items.into_iter().collect())
+        }
+    }
+
+    pub type Completer = fn(&Editor, &str) -> CompletionResult;
+
+    pub fn none(_editor: &Editor, _input: &str) -> CompletionResult {
+        CompletionResult::Immediate(Vec::new())
+    }
+
+    pub fn buffer(editor: &Editor, input: &str) -> CompletionResult {
         let names = editor.documents.values().map(|doc| {
             doc.relative_path()
                 .map(|p| p.display().to_string().into())
@@ -294,20 +309,23 @@ pub mod completers {
             .collect()
     }
 
-    pub fn theme(_editor: &Editor, input: &str) -> Vec<Completion> {
-        let mut names = theme::Loader::read_names(&helix_loader::config_dir().join("themes"));
-        for rt_dir in helix_loader::runtime_dirs() {
-            names.extend(theme::Loader::read_names(&rt_dir.join("themes")));
-        }
-        names.push("default".into());
-        names.push("base16_default".into());
-        names.sort();
-        names.dedup();
+    pub fn theme(_editor: &Editor, input: &str) -> CompletionResult {
+        let input = String::from(input);
+        callback(move || {
+            let mut names = theme::Loader::read_names(&helix_loader::config_dir().join("themes"));
+            for rt_dir in helix_loader::runtime_dirs() {
+                names.extend(theme::Loader::read_names(&rt_dir.join("themes")));
+            }
+            names.push("default".into());
+            names.push("base16_default".into());
+            names.sort();
+            names.dedup();
 
-        fuzzy_match(input, names, false)
-            .into_iter()
-            .map(|(name, _)| ((0..), name.into()))
-            .collect()
+            fuzzy_match(&input, names, false)
+                .into_iter()
+                .map(|(name, _)| ((0..), name.into()))
+                .collect()
+        })
     }
 
     /// Recursive function to get all keys from this value and add them to vec
@@ -326,7 +344,7 @@ pub mod completers {
         }
     }
 
-    pub fn setting(_editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn setting(_editor: &Editor, input: &str) -> CompletionResult {
         static KEYS: Lazy<Vec<String>> = Lazy::new(|| {
             let mut keys = Vec::new();
             let json = serde_json::json!(Config::default());
@@ -340,27 +358,30 @@ pub mod completers {
             .collect()
     }
 
-    pub fn filename(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn filename(editor: &Editor, input: &str) -> CompletionResult {
         filename_with_git_ignore(editor, input, true)
     }
 
     pub fn filename_with_git_ignore(
-        editor: &Editor,
+        _editor: &Editor,
         input: &str,
         git_ignore: bool,
-    ) -> Vec<Completion> {
-        filename_impl(editor, input, git_ignore, |entry| {
-            let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
+    ) -> CompletionResult {
+        let input = String::from(input);
+        callback(move || {
+            filename_impl(&input, git_ignore, |entry| {
+                let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
 
-            if is_dir {
-                FileMatch::AcceptIncomplete
-            } else {
-                FileMatch::Accept
-            }
+                if is_dir {
+                    FileMatch::AcceptIncomplete
+                } else {
+                    FileMatch::Accept
+                }
+            })
         })
     }
 
-    pub fn language(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn language(editor: &Editor, input: &str) -> CompletionResult {
         let text: String = "text".into();
 
         let loader = editor.syn_loader.load();
@@ -375,7 +396,7 @@ pub mod completers {
             .collect()
     }
 
-    pub fn lsp_workspace_command(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn lsp_workspace_command(editor: &Editor, input: &str) -> CompletionResult {
         let commands = doc!(editor)
             .language_servers_with_feature(LanguageServerFeature::WorkspaceCommand)
             .flat_map(|ls| {
@@ -391,23 +412,26 @@ pub mod completers {
             .collect()
     }
 
-    pub fn directory(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn directory(editor: &Editor, input: &str) -> CompletionResult {
         directory_with_git_ignore(editor, input, true)
     }
 
     pub fn directory_with_git_ignore(
-        editor: &Editor,
+        _editor: &Editor,
         input: &str,
         git_ignore: bool,
-    ) -> Vec<Completion> {
-        filename_impl(editor, input, git_ignore, |entry| {
-            let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
+    ) -> CompletionResult {
+        let input = String::from(input);
+        callback(move || {
+            filename_impl(&input, git_ignore, |entry| {
+                let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
 
-            if is_dir {
-                FileMatch::Accept
-            } else {
-                FileMatch::Reject
-            }
+                if is_dir {
+                    FileMatch::Accept
+                } else {
+                    FileMatch::Reject
+                }
+            })
         })
     }
 
@@ -423,12 +447,7 @@ pub mod completers {
     }
 
     // TODO: we could return an iter/lazy thing so it can fetch as many as it needs.
-    fn filename_impl<F>(
-        _editor: &Editor,
-        input: &str,
-        git_ignore: bool,
-        filter_fn: F,
-    ) -> Vec<Completion>
+    fn filename_impl<F>(input: &str, git_ignore: bool, filter_fn: F) -> Vec<Completion>
     where
         F: Fn(&ignore::DirEntry) -> FileMatch,
     {
@@ -522,7 +541,7 @@ pub mod completers {
         }
     }
 
-    pub fn register(editor: &Editor, input: &str) -> Vec<Completion> {
+    pub fn register(editor: &Editor, input: &str) -> CompletionResult {
         let iter = editor
             .registers
             .iter_preview()
