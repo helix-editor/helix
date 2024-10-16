@@ -248,7 +248,7 @@ impl Application {
         ])
         .context("build signal handler")?;
 
-        let app = Self {
+        let mut app = Self {
             compositor,
             terminal,
             editor,
@@ -262,6 +262,22 @@ impl Application {
             jobs: Jobs::new(),
             lsp_progress: LspProgressMap::new(),
         };
+
+        {
+            let mut cx = crate::commands::Context {
+                register: None,
+                count: std::num::NonZeroUsize::new(1),
+                editor: &mut app.editor,
+                callback: Vec::new(),
+                on_next_key_callback: None,
+                jobs: &mut app.jobs,
+            };
+
+            crate::commands::ScriptingEngine::run_initialization_script(
+                &mut cx,
+                app.config.clone(),
+            );
+        }
 
         Ok(app)
     }
@@ -353,6 +369,10 @@ impl Application {
                     self.jobs.handle_callback(&mut self.editor, &mut self.compositor, callback);
                     self.render().await;
                 }
+                Some(callback) = self.jobs.local_futures.next() => {
+                    self.jobs.handle_local_callback(&mut self.editor, &mut self.compositor, callback);
+                    self.render().await;
+                }
                 event = self.editor.wait_event() => {
                     let _idle_handled = self.handle_editor_event(event).await;
 
@@ -389,6 +409,7 @@ impl Application {
                 };
                 self.config.store(Arc::new(app_config));
             }
+            ConfigEvent::Change => {}
         }
 
         // Update all the relevant members in the editor after updating

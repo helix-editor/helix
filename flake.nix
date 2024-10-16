@@ -178,7 +178,8 @@
           [lld_13 cargo-flamegraph rust-analyzer]
           ++ (lib.optional (stdenv.isx86_64 && stdenv.isLinux) pkgs.cargo-tarpaulin)
           ++ (lib.optional stdenv.isLinux pkgs.lldb)
-          ++ (lib.optional stdenv.isDarwin pkgs.darwin.apple_sdk.frameworks.CoreFoundation);
+          ++ (lib.optional stdenv.isDarwin (with pkgs.darwin.apple_sdk.frameworks;
+            [CoreFoundation Security]));
         shellHook = ''
           export HELIX_RUNTIME="$PWD/runtime"
           export RUST_BACKTRACE="1"
