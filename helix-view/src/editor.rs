@@ -21,7 +21,7 @@ use helix_lsp::{Call, LanguageServerId};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
-    borrow::Cow,
+    borrow::{Borrow, Cow},
     cell::Cell,
     collections::{BTreeMap, HashMap, HashSet},
     fs,
@@ -342,9 +342,115 @@ pub struct Config {
         deserialize_with = "deserialize_alphabet"
     )]
     pub jump_label_alphabet: Vec<char>,
+    // characters not allowed to follow each starting character
+    pub jump_label_follow_blacklist: JumpLabelFollowBlacklist,
     /// Display diagnostic below the line they occur.
     pub inline_diagnostics: InlineDiagnosticsConfig,
     pub end_of_line_diagnostics: DiagnosticFilter,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct JumpLabelFollowBlacklist(HashMap<char, Vec<char>>);
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct JumpLabelLookup {
+    pub alphabet: Vec<char>,
+    pub follow_whitelist: HashMap<char, Vec<char>>,
+}
+
+impl JumpLabelFollowBlacklist {
+    pub fn get(&self, c: char) -> Option<&Vec<char>> {
+        self.0.get(&c)
+    }
+
+    pub fn get_allow_list(&self, alphabet: &Vec<char>) -> JumpLabelLookup {
+        let follow_whitelist: HashMap<_, _> = alphabet
+            .iter()
+            .filter_map(|c| {
+                let unique_chars: HashSet<_> = alphabet.iter().copied().collect();
+                let blacklist_chars: Option<HashSet<_>> =
+                    self.get(*c).and_then(|v| Some(v.iter().copied().collect()));
+
+                let whitelist_chars = if let Some(blacklist_chars) = blacklist_chars {
+                    unique_chars
+                        .symmetric_difference(&blacklist_chars)
+                        .map(|c| *c)
+                        .collect()
+                } else {
+                    alphabet.clone()
+                };
+
+                if whitelist_chars.len() > 0 {
+                    Some((*c, whitelist_chars))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        let alphabet = alphabet
+            .iter()
+            .filter_map(|c| {
+                if follow_whitelist.contains_key(c) {
+                    Some(*c)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        JumpLabelLookup {
+            alphabet,
+            follow_whitelist,
+        }
+    }
+}
+
+impl Serialize for JumpLabelFollowBlacklist {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        self.0
+            .iter()
+            .map(|(k, v)| (*k, v.iter().collect::<String>()))
+            .collect::<HashMap<_, _>>()
+            .serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for JumpLabelFollowBlacklist {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        use serde::de::Error;
+
+        let map = HashMap::<char, String>::deserialize(deserializer)?;
+
+        let map = map
+            .into_iter()
+            .map(|(k, v)| {
+                let chars: Vec<_> = v.chars().collect();
+                let unique_chars: HashSet<_> = chars.iter().copied().collect();
+                if unique_chars.len() != chars.len() {
+                    return Err(<D::Error as Error>::custom(
+                        "jump-label-follow-blacklist lists must contain unique characters",
+                    ));
+                }
+
+                Ok((k, chars))
+            })
+            .collect::<Result<HashMap<_, _>, _>>()?;
+
+        Ok(Self(map))
+    }
+}
+
+impl Default for JumpLabelFollowBlacklist {
+    fn default() -> Self {
+        Self(HashMap::new())
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -980,6 +1086,7 @@ impl Default for Config {
             popup_border: PopupBorderConfig::None,
             indent_heuristic: IndentationHeuristic::default(),
             jump_label_alphabet: ('a'..='z').collect(),
+            jump_label_follow_blacklist: JumpLabelFollowBlacklist::default(),
             inline_diagnostics: InlineDiagnosticsConfig::default(),
             end_of_line_diagnostics: DiagnosticFilter::Disable,
         }
