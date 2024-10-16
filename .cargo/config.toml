@@ -7,9 +7,18 @@
 # This still gets overwritten by RUST_FLAGS though, luckily it shouldn't be necessary
 # to set those most of the time. If downstream does overwrite this its not a huge
 # deal since it will only break tests anyway
-[target."cfg(all())"]
-rustflags = ["--cfg", "tokio_unstable", "-C", "target-feature=-crt-static"]
+# [target."cfg(all())"]
+# rustflags = ["--cfg", "tokio_unstable", "-C", "target-feature=-crt-static"]
 
+# Build for 32-bit armv6l (Raspberry Pi Zero Wireless) on x86-64 systems.
+# Specify the correct target and linker for ARMv6.
+[target.arm-unknown-linux-gnueabi]
+linker = "arm-linux-gnueabi-gcc"
+rustflags = [
+    "--cfg", "tokio_unstable",
+    "-C", "target-feature=+crt-static",
+    "-C", "link-arg=-static"
+    ]
 
 [alias]
 xtask = "run --package xtask --"
