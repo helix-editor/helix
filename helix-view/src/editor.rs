@@ -325,6 +325,8 @@ pub struct Config {
     pub soft_wrap: SoftWrap,
     /// Workspace specific lsp ceiling dirs
     pub workspace_lsp_roots: Vec<PathBuf>,
+    /// Contextual information on top of the viewport
+    pub sticky_context: StickyContextConfig,
     /// Which line ending to choose for new documents. Defaults to `native`. i.e. `crlf` on Windows, otherwise `lf`.
     pub default_line_ending: LineEndingConfig,
     /// Whether to automatically insert a trailing line-ending on write if missing. Defaults to `true`.
@@ -359,6 +361,41 @@ impl Default for SmartTabConfig {
         SmartTabConfig {
             enable: true,
             supersede_menu: false,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
+pub struct StickyContextConfig {
+    /// Display context of current top view if it is outside the view. Default to off
+    pub enable: bool,
+
+    /// Display an indicator whether to indicate if the sticky context is active
+    /// Eventually making this a string so that it is configurable.
+    /// Default to off
+    pub indicator: bool,
+
+    /// The max amount of lines to be displayed. (including indicator!)
+    /// The viewport is taken into account when changing this value.
+    /// So if the configured amount is more than the viewport height, it will be capped to a max
+    /// of the complete viewport height.
+    ///
+    /// Default: 10, which means that it is a fixed size based on the viewport
+    pub max_lines: u8,
+
+    /// Whether or not the Sticky context shall also depend on the cursor position
+    /// Default to off
+    pub follow_cursor: bool,
+}
+
+impl Default for StickyContextConfig {
+    fn default() -> Self {
+        StickyContextConfig {
+            enable: false,
+            indicator: false,
+            max_lines: 10,
+            follow_cursor: false,
         }
     }
 }
@@ -974,6 +1011,7 @@ impl Default for Config {
             text_width: 80,
             completion_replace: false,
             workspace_lsp_roots: Vec::new(),
+            sticky_context: StickyContextConfig::default(),
             default_line_ending: LineEndingConfig::default(),
             insert_final_newline: true,
             smart_tab: Some(SmartTabConfig::default()),
