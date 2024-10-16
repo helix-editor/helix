@@ -49,6 +49,45 @@ Note: Only certain languages have indentation definitions at the moment. Check
 
 [![Packaging status](https://repology.org/badge/vertical-allrepos/helix-editor.svg?exclude_unsupported=1)](https://repology.org/project/helix-editor/versions)
 
+# `ARMv6l` Support
+
+This fork is my (@NeilPandya) attempt to get Helix working on my Raspberry Pi Zero Wireless. I'm not sure if there're pre-existing branches dedicated towards legacy 32-bit ARM support, but I'm not aware of any. After some [poking around](https://github.com/helix-editor/helix/discussions/5841#discussioncomment-4876888), I'm not sure if this will ever be merged upstream, but I'm documenting my progress here.
+
+## Building for 32-bit ARM
+
+I'm using a Raspberry Pi Zero Wireless, which is a 32-bit `ARMv6l` device. I'm not sure if this will work on other devices; this is fork is solely meant for Raspberry Pi Zero Wireless devices.
+
+### Prerequisites
+
+I'm using `buildx` to build the container. I've included the `Dockerfile` and some convenience bash scripts to help with the build process. They will install the necessary packages and 32-bit libraries to build Helix.
+
+### Building
+
+
+```bash
+# Clone the repo
+git clone https://github.com/NeilPandya/helix-armv6l.git
+
+# Change into the directory
+cd helix-armv6l
+
+# Change the -t argument to whatever you want to name the image; I have helix here, but you can use nano or any editor of your choice to change it.
+hx ./build-image.sh
+
+# Build the image
+./build-image.sh
+
+# Alter the ./run-container.sh script to use the image you just built.
+hx ./run-container.sh
+
+# Run the container
+./run-container.sh
+```
+```bash
+# Once inside the container, build Helix
+./build-helix.sh
+```
+
 # Contributing
 
 Contributing guidelines can be found [here](./docs/CONTRIBUTING.md).
