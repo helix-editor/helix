@@ -1,0 +1,104 @@
+# Author : Luna <rinnray@gliroid.com>
+#
+# This was made based on
+# https://github.com/doomemacs/themes/blob/master/themes/doom-acario-dark-theme.el
+# I've done my best to make it look like the Emacs theme, there are still things that looks different from the original.
+# But I've decided to keep it like that as I found it to be easier to read when there's a lot going on i.e lots of variables, strings and functions close to each other.
+
+'attribute' = { fg = 'blue' }
+'comment' = { fg = 'gray', modifiers = ['italic'] }
+'comment.block' = { fg = 'green', modifiers = ['italic'] }
+'comment.block.documentation' = { fg = 'green', modifiers = ['italic'] }
+'constant' = { fg = 'magenta' }
+'constant.numeric' = { fg = 'orange' }
+'constructor' = { fg = 'red' }
+'function' = { fg = 'yellow' }
+'function.builtin' = { fg = 'blue' }
+'function.method' = { fg = 'white' }
+'keyword' = { fg = 'red' }
+'label' = { fg = 'green' }
+'namespace' = { fg = 'white' }
+'operator' = { fg = 'blue' }
+'punctuation.bracket' = { fg = 'blue' }
+'punctuation.delimiter' = { fg = 'white', modifiers = ['bold'] }
+'string' = { fg = 'green' }
+'tag' = { fg = 'cyan' }
+'type' = { fg = 'blue' }
+'variable' = { fg = 'cyan' }
+'variable.parameter' = { fg = 'white' }
+
+'markup.bold' = { fg = 'orange', modifiers = ['bold'] }
+'markup.italic' = { fg = 'magenta', modifiers = ['italic'] }
+'markup.strikethrough' = { modifiers = ['crossed_out'] }
+'markup.heading' = { fg = 'red' }
+'markup.link' = { fg = 'orange' }
+'markup.link.url' = { fg = 'magenta' }
+'markup.link.text' = { fg = 'orange' }
+'markup.link.label' = { fg = 'green' }
+'markup.list' = { fg = 'red' }
+'markup.quote' = { fg = 'green', modifiers = ['italic'] }
+'markup.raw.block' = { fg = 'green', bg = 'base4' }
+'markup.raw.inline' = { fg = 'green', bg = 'base4' }
+
+'diff.plus' = { fg = 'green' }
+'diff.minus' = { fg = 'red' }
+'diff.delta' = { fg = 'blue' }
+
+'ui.background'= { bg = 'bg' }
+'ui.cursor' = { bg = 'orange', fg = 'bg-alt' }
+'ui.cursor.match' = { fg = 'red', modifiers = ['bold'] }
+'ui.cursorline' = { bg = 'bg-alt' }
+'ui.linenr' = { fg = 'base4' }
+'ui.linenr.selected' = { fg = 'orange', bg = 'bg-alt', modifiers = ['bold'] }
+'ui.statusline' = { fg = 'fg', bg = 'base3' }
+'ui.statusline.normal' = { bg = 'base3' }
+'ui.statusline.insert' = { bg = 'base3' }
+'ui.statusline.select' = { bg = 'base3' }
+'ui.bufferline' = { fg = 'gray', bg = 'base2' }
+'ui.bufferline.active' = { fg = 'white', bg = 'base4' }
+'ui.bufferline.background' = { bg = 'bg' }
+'ui.popup' = { bg = 'bg-alt' }
+'ui.window' = { fg = 'gray' }
+'ui.help' = { fg = 'fg', bg = 'base2' }
+'ui.text' = { fg = 'fg' }
+'ui.text.focus' = { bg = 'bg-alt', fg = 'fg' }
+'ui.text.info' = { fg = 'fg' }
+'ui.virtual.whitespace' = { fg = 'base2' }
+'ui.virtual.ruler' = { bg = 'black' }
+'ui.menu' = { fg = 'fg', bg = 'bg-alt' }
+'ui.menu.selected' = { bg = 'base3', fg = 'fg' }
+'ui.selection' = { bg = 'base2' }
+
+'warning' = { fg = 'orange' }
+'error' = { fg = 'red', modifiers = ['bold'] }
+'info' = { fg = 'blue', modifiers = ['bold'] }
+'hint' = { fg = 'blue', modifiers = ['bold'] }
+
+'diagnostic.hint'= { underline = { color = 'red', style = "curl"} }
+'diagnostic.error'= { underline = { color = 'red', style = "curl"} }
+'diagnostic.info'= { underline = { color = 'blue', style = "curl"} }
+'diagnostic.warning'= { underline = { color = 'yellow', style = "curl"} }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+'special' = { fg = 'orange' }
+
+[palette]
+white = '#ffffff'
+black = '#000000'
+red = '#D83441'
+green = '#79D836'
+blue = '#3679D8'
+yellow = '#D8B941'
+magenta = '#8041D8'
+cyan = '#36D8BD'
+gray = '#767676'
+orange = '#D85F00'
+
+# Custom to doom
+bg = '#0D0E16'
+bg-alt = '#040408'
+fg = '#C3DBE5'
+base2 = '#1E1E33'
+base3 = '#464A56'
+base4 = '#585C6C'

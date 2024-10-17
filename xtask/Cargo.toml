@@ -1,0 +1,19 @@
+[package]
+name = "xtask"
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+categories.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+helix-term = { path = "../helix-term" }
+helix-core = { path = "../helix-core" }
+helix-view = { path = "../helix-view" }
+helix-loader = { path = "../helix-loader" }
+toml = "0.8"

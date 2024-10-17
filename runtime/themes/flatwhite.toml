@@ -1,0 +1,127 @@
+# Author: Alexander Brevig <alexanderbrevig@gmail.com>, krfl <kr.fl@outlook.com>
+# Adopted from https://github.com/biletskyy/flatwhite-syntax
+
+"attribute" = { fg = "blue_text", bg = "blue_bg" }
+"comment" = { fg = "base3", modifiers = ["italic"] }
+"comment.line" = {}
+"comment.block" = {}
+"comment.block.documentation" = { fg = "base2" }
+"constant" = { fg = "blue_text", bg = "blue_bg" }
+"constructor" = { fg = "base1" }
+"function" = { fg = "base1", modifiers = ["bold"] }
+"keyword" = { fg = "purple_text", bg = "purple_bg" }
+"label" = { modifiers = ["bold"] }
+"namespace" = { fg = "teal_text", bg = "teal_bg" }
+"operator" = { fg = "base1" }
+"punctuation.bracket" = { modifiers = ["bold"] }
+"special" = { fg = "blue_text", bg = "blue_bg" }
+"string" = { fg = "green_text", bg = "green_bg" }
+"type" = { fg = "base1" }
+"variable" = { fg = "base1" }
+"variable.parameter" = { fg = "blue_text", bg = "blue_bg" }
+
+"diagnostic" = { modifiers = ["underlined"] }
+
+"diagnostic.info" = { underline = { color = "orange_text", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "orange_text", style = "curl" } }
+"diagnostic.error" = { underline = { color = "diff_delete", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+"info" = { fg = "orange_text", bg = "orange_bg" }
+"hint" = { modifiers = ["bold"] }
+"warning" = { fg = "orange_text", bg = "orange_bg" }
+"error" = { fg = "diff_delete" }
+
+"markup.heading" = { fg = "purple_text", bg = "purple_bg", modifiers = [
+  "bold",
+] }
+"markup.raw" = { fg = "orange_text", bg = "orange_bg" }
+"markup.raw.inline" = { fg = "orange_text", bg = "orange_bg" }
+"markup.raw.block" = { fg = "orange_text", bg = "orange_bg" }
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "blue_text", bg = "blue_bg", modifiers = [
+  "underlined",
+] }
+"markup.link.label" = { fg = "blue_text", bg = "blue_bg" }
+"markup.link.text" = { fg = "blue_text", bg = "blue_bg" }
+"markup.quote" = { fg = "teal_text", bg = "teal_bg" }
+"markup.list" = { fg = "purple_text", bg = "purple_bg" }
+
+"ui.background" = { fg = "base1", bg = "base7" }
+"ui.cursorline" = { bg = "base6" }
+"ui.cursor" = { fg = "base1", bg = "base7", modifiers = ["reversed"] }
+"ui.cursor.primary" = { fg = "base1", bg = "base7", modifiers = ["reversed"] }
+"ui.cursor.match" = { fg = "base5", bg = "base3", modifiers = ["reversed"] }
+"ui.selection" = { bg = "base4" }
+"ui.selection.primary" = { fg = "base6", bg = "base2" }
+
+"ui.virtual" = { fg = "base5", bg = "base6" }
+"ui.virtual.whitespace" = { fg = "base5" }
+"ui.virtual.ruler" = { bg = "base6" }
+# Invalid modifier: "normal". See 'https://github.com/helix-editor/helix/issues/5709'
+# "ui.virtual.inlay-hint" = { fg = "base4", modifiers = ["normal"] }
+# "ui.virtual.inlay-hint.parameter" = { fg = "base3", modifiers = ["normal"] }
+"ui.virtual.inlay-hint" = "base4"
+"ui.virtual.inlay-hint.parameter" = "base3"
+"ui.virtual.inlay-hint.type" = { fg = "base3", modifiers = ["italic"] }
+
+"ui.linenr" = { bg = "base6" }
+"ui.linenr.selected" = { bg = "base6", modifiers = ["reversed"] }
+
+"ui.statusline" = { fg = "base7", bg = "base1", modifiers = ["bold"] }
+"ui.statusline.inactive" = { fg = "base7", bg = "base3" }
+"ui.statusline.normal" = { fg = "base7", bg = "base1", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "purple_text", bg = "purple_bg", modifiers = [
+  "bold",
+] }
+"ui.statusline.select" = { fg = "teal_text", bg = "teal_bg", modifiers = [
+  "bold",
+] }
+
+"ui.text" = { fg = "base1" }
+"ui.text.focus" = { fg = "base1", modifiers = ["bold"] }
+
+"ui.menu" = { fg = "base1", bg = "base6" }
+"ui.menu.selected" = { fg = "base1", bg = "base6", modifiers = ["reversed"] }
+"ui.menu.scroll" = { fg = "base1", bg = "base6" }
+"ui.help" = { fg = "base1", bg = "base6" }
+"ui.popup" = { fg = "base1", bg = "base6" }
+"ui.window" = { fg = "base1", bg = "base6" }
+
+"diff.plus" = { fg = "diff_add" }
+"diff.delta" = { fg = "diff_change" }
+"diff.minus" = { fg = "diff_delete" }
+
+[palette]
+base1 = "#605a52"
+base2 = "#93836c"
+base3 = "#b9a992"
+base4 = "#dcd3c6"
+base5 = "#e4ddd2"
+base6 = "#f1ece4"
+base7 = "#f7f3ee"
+accent = "#6a4cff"
+orange_text = "#5b5143"
+orange_text_sec = "#957f5f"
+orange_bg = "#f7e0c3"
+green_text = "#525643"
+green_text_sec = "#81895d"
+green_bg = "#e2e9c1"
+teal_text = "#465953"
+teal_text_sec = "#5f8c7d"
+teal_bg = "#d2ebe3"
+blue_text = "#4c5361"
+blue_text_sec = "#7382a0"
+blue_bg = "#dde4f2"
+purple_text = "#614c61"
+purple_text_sec = "#9c739c"
+purple_bg = "#f1ddf1"
+diff_add = "#2db448"
+diff_change = "#f2a60d"
+diff_change_dark = "#795306"
+diff_delete = "#ff1414"
+diff_renamed = "#52aeff"
+white = "#ffffff"

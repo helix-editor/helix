@@ -1,0 +1,90 @@
+# Author: Two-Six<twopsix@duck.com>
+
+"ui.background" = {bg="nord6"}
+"ui.text" = "nord0"
+"ui.selection" = {bg="nord7", fg="nord6"}
+"ui.cursorline" = {bg="nord4"}
+"ui.statusline" = {bg="nord4", fg="nord0"}
+"ui.statusline.inactive" = {bg="nord5", fg="nord0"}
+"ui.cursor.match" = {bg="nord8"}
+"ui.cursor" = {bg="nord10", fg="nord6"}
+"ui.cursorline.primary" = {bg="nord5"}
+"ui.linenr" = {fg="nord7"}
+"ui.linenr.selected" = {fg="nord0", bg="nord5"}
+"ui.menu" = {bg="nord4",fg="nord0"}
+"ui.menu.selected" = {bg="nord5"}
+"ui.popup" = {bg="nord4"}
+"ui.popup.info" = {bg="nord4",fg="nord0"}
+"ui.help" = {bg="nord4",fg="nord0"}
+"ui.window" = {bg="nord4"}
+
+
+"ui.statusline.normal" = { fg = "nord0", bg = "nord8" }
+"ui.statusline.insert" = { fg = "nord0", bg = "nord13" }
+"ui.statusline.select" = { fg = "nord0", bg = "nord15" }
+
+# Virtual/invisible text
+"ui.virtual" = "nord8"
+"ui.virtual.ruler" = {bg="nord4"}
+"ui.virtual.inlay-hint" = { fg = "nord3", modifiers = ["italic"] }
+"ui.virtual.jump-label" = { fg = "nord11", modifiers = ["bold"] }
+
+
+
+"diagnostic.error" = { underline = { color = "nord11", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "nord13", style = "curl" } }
+"diagnostic.info" = { underline = { color = "nord13", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "nord13", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+"constant.numeric" = {fg="nord15"}
+"constant.builtin" = {fg="nord15"}
+
+"keyword" = {fg="nord2"}
+"keyword.control" = {fg="nord2"}
+"keyword.function" = {fg="nord2"}
+
+"function" = {fg="nord3"}
+"function.macro" = {fg="nord10", modifiers=["bold"]}
+"function.method" = {fg="nord0"}
+"function.builtin" = {fg="nord10"}
+
+"variable.builtin" = {fg="nord3"}
+"variable.other" = {fg="nord3"}
+"variable" = {fg="nord0"}
+
+"string" = "nord14"
+"comment" = "nord7"
+"namespace" = {fg="nord10"}
+"attribute" = {fg="nord10"}
+"type" = {fg="nord10"}
+
+"markup.heading" = {fg="nord0", modifiers=["bold"]}
+"markup.raw" = {fg="nord10"}
+"markup.link.url" = {fg="nord3"}
+"markup.link.text" = {fg="nord12"}
+"markup.quote" = {fg="nord3", modifiers=["italic"]}
+
+"diff.plus" = {fg = "nord14"}
+"diff.delta" = {fg = "nord13"}
+"diff.minus" = {fg = "nord11"}
+
+
+[palette]
+nord0 = "#2E3440"
+nord1 = "#3B4252"
+nord2 = "#434C5E"
+nord3 = "#4C566A"
+nord4 = "#D8DEE9"
+nord5 = "#E5E9F0"
+nord6 = "#ECEFF4"
+nord7 = "#8FBCBB"
+nord8 = "#88C0D0"
+nord9 = "#81A1C1"
+nord10 = "#5E81AC"
+nord11 = "#BF616A"
+nord12 = "#D08770"
+nord13 = "#EBCB8B"
+nord14 = "#A3BE8C"
+nord15 = "#B48EAD"

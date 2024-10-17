@@ -1,0 +1,119 @@
+### Sublime Text Sonokai Theme
+## Original Author: sainnhe
+# URL: https://github.com/sainnhe/sonokai
+## Modified by p4ymak
+# URL: https://github.com/p4ymak
+# License: MIT License
+
+"type" = "blue"
+"constant" = "fg"
+"constant.numeric" = "purple"
+"constant.character.escape" = "orange"
+"string" = "yellow"
+"comment" = "grey"
+"variable" = "fg"
+"variable.builtin" = "purple"
+"variable.parameter" = "fg"
+"variable.other.member" = "orange"
+"label" = "red"
+"punctuation" = "grey"
+"punctuation.special" = "yellow"
+"keyword" = "red"
+"operator" = "red"
+"function" = "green"
+"function.builtin" = "green"
+"function.macro" = "green"
+"tag" = "yellow"
+"namespace" = "blue"
+"attribute" = "purple"
+"constructor" = "blue"
+"module" = "blue"
+"special" = "orange"
+
+"markup.heading.marker" = "grey"
+"markup.heading.1" = { fg = "red", modifiers = ["bold"] }
+"markup.heading.2" = { fg = "orange", modifiers = ["bold"] }
+"markup.heading.3" = { fg = "yellow", modifiers = ["bold"] }
+"markup.heading.4" = { fg = "green", modifiers = ["bold"] }
+"markup.heading.5" = { fg = "blue", modifiers = ["bold"] }
+"markup.heading.6" = { fg = "fg", modifiers = ["bold"] }
+"markup.list" = "red"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "blue", modifiers = ["underlined"] }
+"markup.link.text" = "purple"
+"markup.quote" = "grey"
+"markup.raw" = "green"
+
+"diff.plus" = "green"
+"diff.delta" = "blue"
+"diff.minus" = "red"
+
+"ui.background" = { bg = "bg0" }
+"ui.cursor" = { modifiers = ['reversed'] }
+"ui.cursor.match" = { bg = "bg4" }
+"ui.cursor.insert" = { fg = "black", bg = "grey" }
+"ui.cursor.select" = { fg = "bg0", bg = "blue" }
+"ui.selection" = { bg = "bg5" }
+"ui.selection.primary" = { bg = "bg4" }
+"ui.linenr" = "grey"
+"ui.linenr.selected" = "fg"
+"ui.cursorline.primary" = { bg = "bg1" }
+"ui.statusline" = { fg = "fg", bg = "bg3" }
+"ui.statusline.inactive" = { fg = "grey", bg = "bg1" }
+"ui.statusline.normal" = { fg = "bg0", bg = "blue", modifiers = ["bold"] }
+"ui.statusline.insert" = { fg = "bg0", bg = "green", modifiers = ["bold"] }
+"ui.statusline.select" = { fg = "bg0", bg = "purple", modifiers = ["bold"] }
+"ui.popup" = { fg = "grey", bg = "bg2" }
+"ui.window" = { fg = "grey", bg = "bg0" }
+"ui.help" = { fg = "fg", bg = "bg1" }
+"ui.text" = "fg"
+"ui.text.focus" = "green"
+"ui.menu" = { fg = "fg", bg = "bg2" }
+"ui.menu.selected" = { fg = "bg0", bg = "green" }
+"ui.virtual.whitespace" = "bg4" 
+"ui.virtual.ruler" = { bg = "bg3" }
+"ui.virtual.inlay-hint" = { fg = "grey_dim" }
+
+info = { fg = 'green', bg = 'bg2' }
+hint = { fg = 'blue', bg = 'bg2', modifiers = ['bold'] }
+warning = { fg = 'yellow', bg = 'bg2', modifiers = ['bold'] }
+error = { fg = 'red', bg = 'bg2', modifiers = ['bold'] }
+
+"diagnostic.info" = { underline = { style = "curl", color = "green" } }
+"diagnostic.hint" = { underline = { style = "curl", color = "blue" } }
+"diagnostic.warning" = { underline = { style = "curl", color = "yellow" } }
+"diagnostic.error" = { underline = { style = "curl", color = "red" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+
+
+[palette]
+
+black = "#181819"
+bg_dim = "#222327"
+bg0 = "#2c2e34"
+bg1 = "#33353f"
+bg2 = "#363944"
+bg3 = "#3b3e48"
+bg4 = "#414550"
+bg5 = "#444852"
+bg_red = "#ff6077"
+diff_red = "#55393d"
+bg_green = "#a7df78"
+diff_green = "#394634"
+bg_blue = "#85d3f2"
+diff_blue = "#354157"
+diff_yellow = "#4e432f"
+fg = "#e2e2e3"
+red = "#fc5d7c"
+orange = "#f39660"
+yellow = "#e7c664"
+green = "#9ed072"
+cyan = "#8dd0b6" # added for compatibility with `edge` scheme
+blue = "#76cce0"
+purple = "#b39df3"
+grey = "#7f8490"
+grey_dim = "#595f6f"

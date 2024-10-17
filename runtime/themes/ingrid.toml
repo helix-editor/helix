@@ -1,0 +1,77 @@
+# Author : Ingrid Rebecca Abraham <git@ingrids.email>
+
+"attribute" = "#839A53"
+"keyword" = { fg = "#D74E50", modifiers = ["bold"] }
+"keyword.directive" = "#6F873E"
+"namespace" = "#839A53"
+"punctuation" = "#C97270"
+"punctuation.delimiter" = "#C97270"
+"operator" = { fg = "#D74E50", modifiers = ["bold"] }
+"special" = "#D68482"
+"variable.other.member" = "#89BEB7"
+"variable" = "#A6B6CE"
+"variable.parameter" = "#89BEB7"
+"type" = { fg = "#A6B6CE", modifiers = ["bold"] }
+"type.builtin" = "#839A53"
+"constructor" = { fg = "#839A53", modifiers = ["bold"] }
+"function" = { fg = "#89BEB7", modifiers = ["bold"] }
+"function.macro" = { fg = "#D4A520", modifiers = ["bold"] }
+"function.builtin" = "#89BEB7"
+"comment" = "#A6B6CE"
+"variable.builtin" = "#D4A520"
+"constant" = "#D4A520"
+"constant.builtin" = "#D4A520"
+"string" = "#D74E50"
+"constant.numeric" = "#D74E50"
+"constant.character.escape" = { fg = "#D74E50", modifiers = ["bold"] }
+"label" = "#D68482"
+
+"module" = "#839A53"
+
+# TODO
+"markup.heading" = "blue"
+"markup.list" = "red"
+"markup.bold" = { fg = "yellow", modifiers = ["bold"] }
+"markup.italic" = { fg = "magenta", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "yellow", modifiers = ["underlined"] }
+"markup.link.text" = "red"
+"markup.quote" = "cyan"
+"markup.raw" = "green"
+
+"diff.plus" = "#839A53"
+"diff.delta" = "#D4A520"
+"diff.minus" = "#D74E50"
+
+"ui.background" = { bg = "#FFFCFD" }
+"ui.linenr" = { fg = "#bbbbbb" }
+"ui.linenr.selected" = { fg = "#ED5466", modifiers = ["bold"] }
+"ui.cursorline" = { bg = "#F3EAE9" }
+"ui.statusline" = { fg = "#250E07", bg = "#F3EAE9" }
+"ui.statusline.inactive" = { fg = "#7b91b3", bg = "#F3EAE9" }
+"ui.popup" = { fg = "#7B91b3", bg = "#F3E8E9" }
+"ui.window" = { bg = "#D8B8B3" }
+"ui.help" = { bg = "#D8B8B3", fg = "#250E07" }
+
+"ui.text" = { fg = "#7B91B3" }
+"ui.text.focus" = { fg = "#250E07", modifiers= ["bold"] }
+"ui.virtual.whitespace" = "#A6B6CE"
+"ui.virtual.ruler" = { bg = "#F3EAE9" }
+
+"ui.selection" = { bg = "#F3EAE9" }
+"ui.cursor.primary" = { bg = "#ED5466", fg = "#FFFCFD", modifiers = ["bold"] }
+"ui.cursor.match" = { bg = "#F3EAE9", fg = "#ED5466", modifiers = ["bold"] }
+"ui.menu" = { fg = "#7B91B3", bg = "#F3EAE9" }
+"ui.menu.selected" = { fg = "#D74E50", bg = "#F3EAE9" }
+
+"warning" = "#D4A520"
+"error" = "#D74E50"
+"info" = "#839A53"
+"hint" = "#A6B6CE"
+
+"diagnostic.warning" = { underline = { color = "#D4A520", style = "curl" } }
+"diagnostic.error" = { underline = { color = "#D74E50", style = "curl" } }
+"diagnostic.info" = { underline = { color = "#839A53", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "#A6B6CE", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }

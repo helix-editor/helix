@@ -1,0 +1,193 @@
+# Nord (Dark Ambiance) port for Helix (https://helix-editor.com/)
+# https://docs.helix-editor.com/themes.html
+# https://www.nordtheme.com/docs/colors-and-palettes
+
+## SYNTAX HIGHLIGHTING
+
+# Constants
+"constant" = "nord4" 
+"constant.builtin" = "nord9"
+"constant.builtin.boolean" = "nord9"
+"constant.builtin.character" = "nord15"
+"constant.character.escape" = "nord13"
+"constant.macro" = "nord9"
+"constant.numeric" = "nord15"
+"constructor" = "nord8"
+
+# Diagnostics
+"diagnostic" = { underline = { color = "nord13", style = "curl" } }
+"diagnostic.error" = { underline = { color = "nord11", style = "curl" } }
+"error" = "nord11"
+"diagnostic.hint" = { underline = { color = "nord10", style = "curl" } }
+"hint" = "nord10"
+"diagnostic.info" = { underline = { color = "nord8", style = "curl" } }
+"info" = "nord8"
+"diagnostic.warning" = { underline = { color = "nord13", style = "curl" } }
+"warning" = "nord13"
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+# Diffs
+"diff.delta" = "nord13"
+"diff.minus" = "nord11"
+"diff.plus" = "nord14"
+
+# Functions
+"function" = "nord8"
+"function.builtin" = "nord7"
+"function.method" = "nord8"
+"function.macro" = "nord9"
+"function.special" = "nord9"
+
+# Git
+"git.delta.moved" = "nord12"
+
+# Keywords
+"keyword" = "nord9"
+"keyword.control.conditional" = "nord9"
+"keyword.control.exception" = "nord9"
+"keyword.control.repeat" = "nord9"
+"keyword.directive" = "nord9"
+"keyword.function" = "nord9"
+"keyword.operator" = "nord9"
+"keyword.return" = "nord9"
+"keyword.storage.modifier" = "nord9"
+"keyword.storage.type" = "nord9"
+
+# Punctuation
+"punctuation" = "nord6"
+"punctuation.bracket" = "nord6"
+"punctuation.delimiter" = "nord6"
+"punctuation.special" = "nord9"
+
+# Strings
+"string" = "nord14"
+"string.escape" = "nord13"
+"string.regex" = "nord13"
+"string.special" = "nord13"
+
+# Types
+"type" = "nord7"
+"type.builtin" = "nord7"
+
+# Variables
+"variable" = "nord4"
+"variable.builtin" = "nord9"
+"variable.other.member" = "nord4"
+"variable.parameter" = "nord8"
+"attribute" = "nord9"
+
+# Misc.
+"label" = "nord7"
+"namespace" = "nord4"
+"operator" = "nord9"
+"special" = "nord9"
+"tag" = "nord7"
+"comment" = { fg = "nord3_bright", modifiers = ["italic"] }
+
+## EDITOR UI COLORS
+
+"ui.background" = { bg = "nord0" }
+"ui.text" = "nord4"
+"ui.window" = "nord1"
+
+# Debug
+"ui.debug.active" = "nord13"
+"ui.debug.breakpoint" = "nord11"
+
+# Popus and menus
+"ui.menu" = { bg = "nord1" }
+"ui.menu.scroll" = { fg = "nord4", bg = "nord3" }
+"ui.menu.selected" = { fg = "nord8", bg = "nord2" }
+"ui.popup" = { bg = "nord1" }
+"ui.popup.info" = { bg = "nord1" }
+"ui.help" = { bg = "nord1" }
+"ui.text.focus" = { fg = "nord8", bg = "nord2" }
+
+# Gutter
+"ui.gutter" = "nord5"
+"ui.linenr" = "nord3"
+"ui.linenr.selected" = "nord5"
+
+# Cursor
+"ui.cursor" = { fg = "nord4", modifiers = [ "reversed" ] }
+"ui.cursorcolumn.primary" = { bg = "nord1" }
+"ui.cursorline.primary" = { bg = "nord1" }
+
+"ui.selection" = { bg = "nord3" }
+"ui.highlight" = { fg = "nord8", bg = "nord2" }
+
+# Statusline
+"ui.statusline" = {  bg = "nord1" }
+"ui.statusline.inactive" = { fg = "nord8", bg = "nord1" }
+"ui.statusline.insert" = { fg = "nord1", bg = "nord6" }
+"ui.statusline.normal" = { fg = "nord1", bg = "nord8" }
+"ui.statusline.select" = { fg = "nord1", bg = "nord7" }
+"ui.statusline.separator" = "nord3"
+
+# Virtual/invisible text
+"ui.virtual.indent-guide" = "nord3"
+"ui.virtual.inlay-hint" = { fg = "nord3", modifiers = ["italic"] }
+"ui.virtual.jump-label" = { fg = "nord11", modifiers = ["bold"] }
+"ui.virtual.ruler" = { bg = "nord1" }
+"ui.virtual.whitespace" = "nord3"
+"ui.virtual.wrap" = "nord3"
+
+# Bufferline
+"ui.bufferline" = { fg = "nord5", bg = "nord1" }
+"ui.bufferline.active" = { fg = "nord6", bg = "nord2", underline = { color = "nord8", style = "line" }, modifiers = [ "italic" ] }
+
+# Markup
+"markup.heading" = "nord8"
+"markup.list" = "nord9"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.text" = "nord8"
+"markup.raw" = "nord7"
+
+[palette]
+# Polar Night is made up of four darker colors that are commonly used for base elements like backgrounds or text color in bright ambiance designs.
+#
+# The origin color or the Polar Night palette
+nord0 = "#2e3440" 
+# A brighter shade color based on nord0
+nord1 = "#3B4252" 
+# An even more brighter shade color of nord0
+nord2 = "#434C5E" 
+# The brightest shade color based on nord0
+nord3 = "#4C566A" 
+# 10% brighter for comments, see https://github.com/nordtheme/nord/issues/94
+nord3_bright = "#616e88" 
+
+# Snow Storm is made up of three bright colors that are commonly used for text colors or base UI elements in bright ambiance designs.
+# The origin color or the Snow Storm palette
+nord4 = "#D8DEE9" 
+# A brighter shade color of nord4
+nord5 = "#E5E9F0" 
+# The brightest shade color based on nord4
+nord6 = "#ECEFF4" 
+
+# Frost can be described as the heart palette of Nord, a group of four bluish colors that are commonly used for primary UI component and text highlighting and essential code syntax elements.
+#
+# A calm and highly contrasted color reminiscent of frozen polar water
+nord7 = "#8FBCBB" 
+# The bright and shiny primary accent color reminiscent of pure and clear ice
+nord8 = "#88C0D0" 
+# A more darkened and less saturated color reminiscent of arctic waters
+nord9 = "#81A1C1" 
+# A dark and intensive color reminiscent of the deep arctic ocean
+nord10 = "#5E81AC" 
+
+# Aurora consists of five colorful components reminiscent of the "Aurora borealis", sometimes referred to as polar lights or northern lights.
+#
+# Red
+nord11 = "#BF616A" 
+# Orange
+nord12 = "#D08770" 
+# Yellow
+nord13 = "#EBCB8B" 
+# Green
+nord14 = "#A3BE8C" 
+# Purple
+nord15 = "#B48EAD" 

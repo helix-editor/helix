@@ -1,0 +1,124 @@
+# Author : Timothy DeHerrera <tim@nrdxp.dev>
+"comment".fg = "comment"
+
+"constant.builtin".fg          = "olive"
+"constant.character.escape".fg = "magenta"
+"constant.character".fg        = "carnation"
+"constant".fg                  = "purple"
+"constant.numeric".fg          = "cyan"
+"constant.numeric.float".fg    = "red"
+
+"function.builtin".fg = "sand"
+"function".fg         = "green"
+"function.macro".fg   = "blue"
+"function.method".fg  = "opal"
+
+"keyword"                   = { fg = "magenta", modifiers = ["bold"] }
+"keyword.control"           = { fg = "carnation", modifiers = ["bold"] }
+"keyword.control.exception" = { fg = "red", modifiers = ["bold"] }
+"keyword.function"          = { fg = "lilac", modifiers = ["bold"] }
+"keyword.operator"          = { fg = "coral", modifiers = ["bold"] }
+"keyword.storage"           = { fg = "coral", modifiers = ["bold"] }
+
+"operator".fg = "coral"
+
+"punctuation.bracket".fg   = "foreground"
+"punctuation.delimiter".fg = "coral"
+"punctuation".fg           = "magenta"
+
+"attribute".fg      = "opal"
+"string".fg         = "yellow"
+"string.regexp".fg  = "red"
+"string.special".fg = "blue"
+"tag".fg            = "carnation"
+
+"type.builtin".fg      = "yellow"
+"type.enum.variant".fg = "sand"
+"type".fg              = "opal"
+"type.variant".fg      = "sand"
+
+"variable.builtin".fg      = "olive"
+"variable".fg              = "cyan"
+"variable.other.member".fg = "lilac"
+"variable.parameter"       = { fg = "blue", modifiers = ["italic"] }
+
+"constructor".fg = "sand"
+"label".fg       = "magenta"
+"namespace".fg   = "olive"
+"special".fg     = "magenta"
+
+"diff.delta".fg = "blue"
+"diff.minus".fg = "red"
+"diff.plus".fg  = "green"
+
+"ui.background"           = { fg = "foreground", bg = "background" }
+"ui.cursor"               = { fg = "background", bg = "blue", modifiers = ["dim"] }
+"ui.cursor.match"         = { fg = "green", modifiers = ["underlined"] }
+"ui.cursor.primary"       = { fg = "background", bg = "cyan", modifiers = ["dim"] }
+"ui.cursorline"           = { bg = "background_dark" }
+"ui.help"                 = { fg = "foreground", bg = "background_dark" }
+"ui.linenr"               = { fg = "comment" }
+"ui.linenr.selected"      = { fg = "foreground" }
+"ui.menu"                 = { fg = "foreground", bg = "background_dark" }
+"ui.menu.selected"        = { fg = "cyan", bg = "background_dark" }
+"ui.popup"                = { fg = "foreground", bg = "background_dark" }
+"ui.selection"            = { bg = "secondary_highlight" }
+"ui.selection.primary"    = { bg = "primary_highlight" }
+"ui.statusline"           = { fg = "foreground", bg = "background_dark" }
+"ui.statusline.inactive"  = { fg = "comment", bg = "background_dark" }
+"ui.statusline.insert"    = { fg = "olive", bg = "background_dark" }
+"ui.statusline.normal"    = { fg = "opal", bg = "background_dark" }
+"ui.statusline.select"    = { fg = "carnation", bg = "background_dark" }
+"ui.text"                 = { fg = "foreground" }
+"ui.text.focus"           = { fg = "cyan" }
+"ui.virtual.indent-guide" = { fg = "opal" }
+"ui.virtual.ruler"        = { bg = "background_dark" }
+"ui.virtual.whitespace"   = { fg = "comment" }
+"ui.window"               = { fg = "foreground" }
+
+"error"   = { fg = "red" }
+"warning" = { fg = "cyan" }
+
+"diagnostic"             = { underline = { style = "line", color = "coral" }, bg = "cyan" }
+"diagnostic.deprecated"  = { modifiers = ["crossed_out"] }
+"diagnostic.error"       = { underline = { style = "curl", color = "red" } }
+"diagnostic.hint"        = { underline = { style = "line", color = "cyan" } }
+"diagnostic.info"        = { underline = { style = "line" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.warning"     = { underline = { style = "curl", color = "yellow" } }
+
+"markup.bold"          = { fg = "blue", modifiers = ["bold"] }
+"markup.heading"       = { fg = "purple", modifiers = ["bold"] }
+"markup.italic"        = { fg = "yellow", modifiers = ["italic"] }
+"markup.link.label"    = { fg = "blue", modifiers = ["italic"] }
+"markup.link.text"     = "magenta"
+"markup.link.url"      = "cyan"
+"markup.list"          = "cyan"
+"markup.quote"         = { fg = "yellow", modifiers = ["italic"] }
+"markup.raw"           = { fg = "foreground" }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+
+[palette]
+background          = "#282a36"
+background_dark     = "#21222c"
+comment             = "#a39e9b"
+foreground          = "#eff0eb"
+primary_highlight   = "#800049"
+secondary_highlight = "#4d4f66"
+
+# main colors
+blue    = "#57c7ff"
+cyan    = "#9aedfe"
+green   = "#5af78e"
+magenta = "#ff6ac1"
+purple  = "#bd93f9"
+red     = "#ff5c57"
+yellow  = "#f3f99d"
+
+# aux colors
+carnation = "#f99fc6"
+coral     = "#f97c7c"
+lilac     = "#c9c5fb"
+olive     = "#b6d37c"
+opal      = "#b1d7c7"
+sand      = "#ffab6f"

@@ -1,0 +1,83 @@
+# made by bootra
+
+"comment" = { fg = "berry_desaturated" }
+"constant" = { fg = "gold" }
+"function" = { fg = "mint" }
+"function.macro" = { fg = "bubblegum" }
+"keyword" = { fg = "bubblegum" }
+"operator" = { fg = "bubblegum" }
+"punctuation" = { fg = "lilac" }
+"string" = { fg = "gold" }
+"type" = { fg = "violet" }
+"variable" = { fg = "lilac" }
+"variable.builtin" = { fg = "violet" }
+"tag" = { fg = "gold" }
+"label" = { fg = "gold" }
+"attribute" = { fg = "lilac" }
+"namespace" = { fg = "lilac" }
+"module" = { fg = "lilac" }
+
+"markup.heading" = { fg = "gold", modifiers = ["bold"] }
+"markup.heading.marker" = { fg = "berry_desaturated" }
+"markup.list" = { fg = "bubblegum" }
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "violet", modifiers = ["underlined"] }
+"markup.link.text" = { fg = "violet" }
+"markup.quote" = { fg = "berry_desaturated" }
+"markup.raw" = { fg = "mint" }
+
+"ui.background" = { bg = "berry" }
+"ui.cursor" =  { fg = "berry", bg = "lilac" }
+"ui.cursor.match" = { fg = "berry", bg = "berry_desaturated" }
+"ui.cursor.select" = { fg = "berry", bg = "violet" }
+"ui.cursor.insert" = { fg = "berry", bg = "mint" }
+"ui.linenr" = { fg = "berry_desaturated" }
+"ui.linenr.selected" = { fg = "lilac" }
+"ui.cursorline" = { fg = "lilac", bg = "berry_dim" }
+"ui.statusline" = { fg = "lilac", bg = "berry_saturated" }
+"ui.statusline.inactive" = { fg = "berry_desaturated", bg = "berry_saturated" }
+"ui.statusline.normal" = { fg = "berry_saturated", bg = "lilac" }
+"ui.statusline.insert" = { fg = "berry_saturated", bg = "mint" }
+"ui.statusline.select" = { fg = "berry_saturated", bg = "violet" }
+"ui.popup" = { fg = "lilac", bg = "berry_saturated" }
+"ui.window" = { fg = "berry_desaturated", bg = "berry" }
+"ui.help" = { fg = "lilac", bg = "berry_saturated" }
+"ui.text" = { fg = "lilac" }
+"ui.text.focus" = { fg = "mint" }
+"ui.menu" = { fg = "lilac", bg = "berry_saturated" }
+"ui.menu.selected" = { fg = "mint", bg = "berry_saturated" }
+"ui.selection" = { bg = "berry_saturated" }
+"ui.virtual.whitespace" = { fg = "berry_desaturated" }
+"ui.virtual.ruler" = { bg = "berry_dim" }
+"ui.virtual.indent-guide" = { fg = "berry_fade" }
+"ui.virtual.inlay-hint" = { fg = "berry_desaturated" }
+
+"diff.plus" = { fg = "mint" }
+"diff.delta" = { fg = "gold" }
+"diff.minus" = { fg = "bubblegum" }
+
+"error" = { fg = "bubblegum" }
+"warning" = { fg = "gold" }
+"info" = { fg = "lilac" }
+"hint" = { fg = "lilac" }
+
+"diagnostic.warning" = { underline = { color = "bubblegum", style = "curl"} }
+"diagnostic.error" = { underline = { color = "gold", style = "curl"} }
+"diagnostic.info" = { underline = { color = "lilac", style = "curl"} }
+"diagnostic.hint" = { underline = { color = "lilac", style = "curl"} }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+[palette]
+berry = "#3A2A4D"
+berry_fade = "#5A3D6E"
+berry_dim = "#47345E"
+berry_saturated = "#2B1C3D"
+berry_desaturated = "#886C9C"
+bubblegum = "#D678B5"
+gold = "#E3C0A8"
+lilac = "#C7B8E0"
+mint = "#7FC9AB"
+violet = "#C78DFC"
