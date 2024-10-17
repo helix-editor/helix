@@ -82,6 +82,7 @@ pyright = { command = "pyright-langserver", args = ["--stdio"], config = {} }
 basedpyright = { command = "basedpyright-langserver", args = ["--stdio"], config = {} }
 pylyzer = { command = "pylyzer", args = ["--server"] }
 qmlls = { command = "qmlls" }
+quint-language-server = { command = "quint-language-server", args = ["--stdio"] }
 r = { command = "R", args = ["--no-echo", "-e", "languageserver::run()"] }
 racket = { command = "racket", args = ["-l", "racket-langserver"] }
 regols = { command = "regols" }
@@ -3833,3 +3834,16 @@ language-servers = ["circom-lsp"]
 [[grammar]]
 name   = "circom"
 source = { git = "https://github.com/Decurity/tree-sitter-circom", rev = "02150524228b1e6afef96949f2d6b7cc0aaf999e" }
+
+[[language]]
+name = "quint"
+scope = "source.quint"
+file-types = ["qnt"]
+language-servers = ["quint-language-server"]
+comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "quint"
+source = { git = "https://github.com/gruhn/tree-sitter-quint", rev = "eebbd01edfeff6404778c92efe5554e42e506a18" }
