@@ -118,6 +118,8 @@ pub struct LanguageConfiguration {
     pub block_comment_tokens: Option<Vec<BlockCommentToken>>,
     pub text_width: Option<usize>,
     pub soft_wrap: Option<SoftWrap>,
+    #[serde(default)]
+    pub code_actions_on_save: Option<Vec<CodeActionsOnSave>>, // List of LSP code actions to be run in order upon saving
 
     #[serde(default)]
     pub auto_format: bool,
@@ -488,6 +490,13 @@ pub struct AdvancedCompletion {
     pub name: Option<String>,
     pub completion: Option<String>,
     pub default: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct CodeActionsOnSave {
+    pub code_action: String,
+    pub enabled: bool,
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
