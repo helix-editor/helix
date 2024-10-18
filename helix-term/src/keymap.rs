@@ -597,18 +597,14 @@ mod tests {
         let expectation = KeyTrie::Node(KeyTrieNode::new(
             "",
             hashmap! {
-                key => KeyTrie::Sequence(vec!{
+                key => KeyTrie::Sequence(vec![
                     MappableCommand::select_all,
                     MappableCommand::Typable {
                         name: "pipe".to_string(),
-                        args: vec!{
-                            "sed".to_string(),
-                            "-E".to_string(),
-                            "'s/\\s+$//g'".to_string()
-                        },
-                        doc: "".to_string(),
+                        args: String::from("sed -E 's/\\s+$//g'"),
+                        doc: String::new(),
                     },
-                })
+                ])
             },
             vec![key],
         ));
