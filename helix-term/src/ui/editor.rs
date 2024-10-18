@@ -1,5 +1,5 @@
 use crate::{
-    commands::{self, OnKeyCallback},
+    commands::{self, engine::ScriptingEngine, OnKeyCallback},
     compositor::{Component, Context, Event, EventResult},
     events::{OnModeSwitch, PostCommand},
     key,
@@ -870,7 +870,11 @@ impl EditorView {
     ) -> Option<KeymapResult> {
         let mut last_mode = mode;
         self.pseudo_pending.extend(self.keymaps.pending());
-        let key_result = self.keymaps.get(mode, event);
+
+        // Check the engine for any buffer specific keybindings first
+        let key_result = ScriptingEngine::handle_keymap_event(self, mode, cxt, event)
+            .unwrap_or_else(|| self.keymaps.get(mode, event));
+
         cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
 
         let mut execute_command = |command: &commands::MappableCommand| {

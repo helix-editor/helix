@@ -64,6 +64,7 @@ impl Config {
             global.and_then(|file| toml::from_str(&file).map_err(ConfigLoadError::BadConfig));
         let local_config: Result<ConfigRaw, ConfigLoadError> =
             local.and_then(|file| toml::from_str(&file).map_err(ConfigLoadError::BadConfig));
+
         let res = match (global_config, local_config) {
             (Ok(global), Ok(local)) => {
                 let mut keys = keymap::default();
@@ -100,6 +101,7 @@ impl Config {
                 if let Some(keymap) = config.keys {
                     merge_keys(&mut keys, keymap);
                 }
+
                 Config {
                     theme: config.theme,
                     keys,
@@ -122,6 +124,7 @@ impl Config {
             fs::read_to_string(helix_loader::config_file()).map_err(ConfigLoadError::Error);
         let local_config = fs::read_to_string(helix_loader::workspace_config_file())
             .map_err(ConfigLoadError::Error);
+
         Config::load(global_config, local_config)
     }
 }

@@ -191,6 +191,8 @@ pub struct Document {
     // when document was used for most-recent-used buffer picker
     pub focused_at: std::time::Instant,
 
+    // A name separate from the file name
+    pub name: Option<String>,
     pub readonly: bool,
 }
 
@@ -682,6 +684,7 @@ impl Document {
             config,
             version_control_head: None,
             focused_at: std::time::Instant::now(),
+            name: None,
             readonly: false,
             jump_labels: HashMap::new(),
         }
@@ -1865,6 +1868,7 @@ impl Document {
     pub fn display_name(&self) -> Cow<'static, str> {
         self.relative_path()
             .map(|path| path.to_string_lossy().to_string().into())
+            .or_else(|| self.name.as_ref().map(|x| Cow::Owned(x.clone())))
             .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into())
     }
 
