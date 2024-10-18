@@ -12,7 +12,7 @@ use helix_core::{line_ending, shellwords::Shellwords};
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
 use serde_json::Value;
-use ui::completers::{self, Completer};
+use ui::completers::{self, Completer, CompletionResult};
 
 #[derive(Clone)]
 pub struct TypableCommand {
@@ -3187,19 +3187,22 @@ pub(super) fn command_mode(cx: &mut Context) {
                     .get(&words[0] as &str)
                     .map(|tc| tc.completer_for_argument_number(argument_number))
                 {
-                    completer(editor, word)
-                        .into_iter()
-                        .map(|(range, file)| {
-                            let file = shellwords::escape(file);
+                    let input = String::from(input);
+                    completer(editor, word).map(move |completion| {
+                        completion
+                            .into_iter()
+                            .map(|(range, file)| {
+                                let file = shellwords::escape(file);
 
-                            // offset ranges to input
-                            let offset = input.len() - word_len;
-                            let range = (range.start + offset)..;
-                            (range, file)
-                        })
-                        .collect()
+                                // offset ranges to input
+                                let offset = input.len() - word_len;
+                                let range = (range.start + offset)..;
+                                (range, file)
+                            })
+                            .collect()
+                    })
                 } else {
-                    Vec::new()
+                    CompletionResult::Immediate(Vec::new())
                 }
             }
         }, // completion
