@@ -7,6 +7,7 @@ bitflags! {
         const SHIFT = 0b0000_0001;
         const CONTROL = 0b0000_0010;
         const ALT = 0b0000_0100;
+        const SUPER = 0b0000_1000;
         const NONE = 0b0000_0000;
     }
 }
@@ -26,6 +27,9 @@ impl From<KeyModifiers> for crossterm::event::KeyModifiers {
         }
         if key_modifiers.contains(KeyModifiers::ALT) {
             result.insert(CKeyModifiers::ALT);
+        }
+        if key_modifiers.contains(KeyModifiers::SUPER) {
+            result.insert(CKeyModifiers::SUPER);
         }
 
         result
@@ -47,6 +51,9 @@ impl From<crossterm::event::KeyModifiers> for KeyModifiers {
         }
         if val.contains(CKeyModifiers::ALT) {
             result.insert(KeyModifiers::ALT);
+        }
+        if val.contains(CKeyModifiers::SUPER) {
+            result.insert(KeyModifiers::SUPER);
         }
 
         result
