@@ -4,9 +4,7 @@ use serde::{Deserialize, Serialize};
 
 use serde_json::Value;
 
-use url::Url;
-
-use crate::Range;
+use crate::{Range, Url};
 
 #[derive(Eq, PartialEq, Clone, Copy, Deserialize, Serialize)]
 #[serde(transparent)]

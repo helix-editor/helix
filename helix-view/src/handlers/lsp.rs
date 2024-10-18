@@ -57,7 +57,7 @@ pub struct ApplyEditError {
 pub enum ApplyEditErrorKind {
     DocumentChanged,
     FileNotFound,
-    InvalidUrl(helix_core::uri::UrlConversionError),
+    InvalidUrl(helix_core::uri::UriParseError),
     IoError(std::io::Error),
     // TODO: check edits before applying and propagate failure
     // InvalidEdit,
@@ -69,8 +69,8 @@ impl From<std::io::Error> for ApplyEditErrorKind {
     }
 }
 
-impl From<helix_core::uri::UrlConversionError> for ApplyEditErrorKind {
-    fn from(err: helix_core::uri::UrlConversionError) -> Self {
+impl From<helix_core::uri::UriParseError> for ApplyEditErrorKind {
+    fn from(err: helix_core::uri::UriParseError) -> Self {
         ApplyEditErrorKind::InvalidUrl(err)
     }
 }
@@ -94,7 +94,7 @@ impl Editor {
         text_edits: Vec<lsp::TextEdit>,
         offset_encoding: OffsetEncoding,
     ) -> Result<(), ApplyEditErrorKind> {
-        let uri = match Uri::try_from(url) {
+        let uri = match Uri::try_from(url.as_str()) {
             Ok(uri) => uri,
             Err(err) => {
                 log::error!("{err}");
@@ -242,7 +242,7 @@ impl Editor {
         // may no longer be valid.
         match op {
             ResourceOp::Create(op) => {
-                let uri = Uri::try_from(&op.uri)?;
+                let uri = Uri::try_from(op.uri.as_str())?;
                 let path = uri.as_path().expect("URIs are valid paths");
                 let ignore_if_exists = op.options.as_ref().map_or(false, |options| {
                     !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
@@ -262,7 +262,7 @@ impl Editor {
                 }
             }
             ResourceOp::Delete(op) => {
-                let uri = Uri::try_from(&op.uri)?;
+                let uri = Uri::try_from(op.uri.as_str())?;
                 let path = uri.as_path().expect("URIs are valid paths");
                 if path.is_dir() {
                     let recursive = op
@@ -284,9 +284,9 @@ impl Editor {
                 }
             }
             ResourceOp::Rename(op) => {
-                let from_uri = Uri::try_from(&op.old_uri)?;
+                let from_uri = Uri::try_from(op.old_uri.as_str())?;
                 let from = from_uri.as_path().expect("URIs are valid paths");
-                let to_uri = Uri::try_from(&op.new_uri)?;
+                let to_uri = Uri::try_from(op.new_uri.as_str())?;
                 let to = to_uri.as_path().expect("URIs are valid paths");
                 let ignore_if_exists = op.options.as_ref().map_or(false, |options| {
                     !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)

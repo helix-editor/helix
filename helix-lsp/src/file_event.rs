@@ -106,16 +106,13 @@ impl Handler {
                             log::warn!("LSP client was dropped: {id}");
                             return false;
                         };
-                        let Ok(uri) = lsp::Url::from_file_path(&path) else {
-                            return true;
-                        };
                         log::debug!(
                             "Sending didChangeWatchedFiles notification to client '{}'",
                             client.name()
                         );
                         if let Err(err) = crate::block_on(client
                             .did_change_watched_files(vec![lsp::FileEvent {
-                                uri,
+                                uri: lsp::Url::from_file_path(&path),
                                 // We currently always send the CHANGED state
                                 // since we don't actually have more context at
                                 // the moment.
