@@ -83,10 +83,11 @@ There are three kinds of commands that can be used in keymaps:
   keys and used for movement and editing. A list of static commands is
   available in the [Keymap](./keymap.html) documentation and in the source code
   in [`helix-term/src/commands.rs`](https://github.com/helix-editor/helix/blob/master/helix-term/src/commands.rs)
-  at the invocation of `static_commands!` macro and the `TypableCommandList`.
+  at the invocation of `static_commands!` macro.
 * Typable commands: commands that can be executed from command mode (`:`), for
   example `:write!`. See the [Commands](./commands.html) documentation for a
-  list of available typeable commands.
+  list of available typeable commands or the `TypableCommandList` declaration in
+  the source code at [`helix-term/src/commands/typed.rs`](https://github.com/helix-editor/helix/blob/master/helix-term/src/commands/typed.rs).
 * Macros: sequences of keys that are executed in order. These keybindings
   start with `@` and then list any number of keys to be executed. For example
   `@miw` can be used to select the surrounding word. For now, macro keybindings
