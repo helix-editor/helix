@@ -1,0 +1,51 @@
+# Seoul256 Light
+# Author : EricHenry
+# Original Creator: https://github.com/junegunn/seoul256.vim
+
+inherits = "seoul256-dark"
+
+"constructor" = { fg = "brown1" }
+"constant.numeric" = { fg = "magenta2" }
+"constant.builtin.boolean" = { fg = "mauve" }
+"constant.character.escape" = { fg = "salmon3" }
+"function" = { fg = "green4" }
+"function.builtin" = { fg = "blue1" }
+"function.method" = { fg = "salmon" }
+"function.macro" = { fg = "green4" }
+"namespace" = { fg = "blue4" }
+"operator" = { fg = "brown1" }
+"punctuation" = { fg = "brown1" }
+"special" = { fg = "green4" } 
+"string" = { fg = "blue6" }
+"type" = { fg = "brown1" }
+"type.builtin" = { fg = "salmon3" }
+"variable" = { fg = "black1" }
+"variable.builtin" = { fg = "salmon3" }
+"variable.parameter" = { fg = "black1" }
+"variable.other.member" = { fg = "black1" }
+
+"diagnostic.info".underline = { color = "green1", style = "curl" }
+"info" = { fg = "green1", modifiers = ["bold"] }
+"hint" = { fg = "blue", modifiers = ["bold"] }
+"warning" = { fg = "yellow5", modifiers = ["bold"] }
+
+"ui.background" = { bg = "white1" }
+"ui.cursor" = { fg = "gray4", modifiers = ["reversed"] }
+"ui.cursor.primary" = { fg = "gray4", modifiers = ["reversed"] }
+"ui.cursor.match" = { bg = "gray13", modifiers = ["underlined"] }
+"ui.cursor.insert" = { fg = "blue1" }
+"ui.cursorline.primary" = { bg = "white" }
+"ui.gutter" = { bg = "gray10" }
+"ui.gutter.selected" = { bg = "white" }
+"ui.linenr.selected" = { bg = "white", fg = "magenta", modifiers = ["bold"] }
+"ui.virtual.inlay-hint" = { fg = "gray6", modifiers = ["bold"] }
+
+"ui.selection" = { bg = "yellow2" }
+"ui.selection.primary" = { bg = "cyan1" }
+
+"ui.text" = { fg = "black1" }
+
+"ui.help" = { fg = "black1", bg = "white" }
+"ui.popup" = { fg = "black1", bg = "white" }
+"ui.menu" = { fg = "black1", bg = "white" }
+
