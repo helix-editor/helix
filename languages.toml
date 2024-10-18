@@ -3835,3 +3835,17 @@ language-servers = ["circom-lsp"]
 [[grammar]]
 name   = "circom"
 source = { git = "https://github.com/Decurity/tree-sitter-circom", rev = "02150524228b1e6afef96949f2d6b7cc0aaf999e" }
+
+[[language]]
+name = "snakemake"
+scope = "source.snakemake"
+roots = ["Snakefile", "config.yaml", "environment.yaml", "workflow/"]
+file-types = ["smk", "Snakefile"]
+comment-tokens = ["#", "##"]
+indent = { tab-width = 2, unit = "  " }
+language-servers = ["pylsp" ]
+
+
+[[grammar]]
+name = "snakemake"
+source = { git = "https://github.com/osthomas/tree-sitter-snakemake", rev = "e909815acdbe37e69440261ebb1091ed52e1dec6" }
