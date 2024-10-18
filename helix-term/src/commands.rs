@@ -1266,10 +1266,6 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
     let text = doc.text();
     let selections = doc.selection(view.id);
     let primary = selections.primary();
-    let rel_path = doc
-        .relative_path()
-        .map(|path| path.parent().unwrap().to_path_buf())
-        .unwrap_or_default();
 
     let paths: Vec<_> = if selections.len() == 1 && primary.len() == 1 {
         // Secial case: if there is only one one-width selection, try to detect the
@@ -1323,14 +1319,35 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
             .collect()
     };
 
+    let doc_path = doc
+        .relative_path()
+        .map(|path| path.parent().unwrap().to_path_buf())
+        .unwrap_or_default();
+
+    let mut search_paths = vec![doc_path];
+
+    let cwd = helix_stdx::env::current_working_dir();
+    if cwd.exists() {
+        search_paths.push(cwd);
+    }
+    // FIXME: Also include project root? Or just use project root, not cwd?
+
     for sel in paths {
         if let Ok(url) = Url::parse(&sel) {
             open_url(cx, url, action);
             continue;
         }
 
-        let path = expand_tilde(Cow::from(PathBuf::from(sel)));
-        let path = &rel_path.join(path);
+        let selpath = expand_tilde(Cow::from(PathBuf::from(sel)));
+        let paths: Vec<_> = search_paths.iter().map(|sp| sp.join(&selpath)).collect();
+        let existing: Vec<_> = paths.iter().filter(|p| p.exists()).collect();
+
+        let path = if !existing.is_empty() {
+            existing.first().unwrap()
+        } else {
+            paths.first().unwrap()
+        };
+
         if path.is_dir() {
             let picker = ui::file_picker(path.into(), &cx.editor.config());
             cx.push_layer(Box::new(overlaid(picker)));
