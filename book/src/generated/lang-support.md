@@ -70,7 +70,7 @@
 | gjs | ✓ | ✓ | ✓ | `typescript-language-server`, `vscode-eslint-language-server`, `ember-language-server` |
 | gleam | ✓ | ✓ |  | `gleam` |
 | glimmer | ✓ |  |  | `ember-language-server` |
-| glsl | ✓ | ✓ | ✓ |  |
+| glsl | ✓ | ✓ | ✓ | `glsl_analyzer` |
 | gn | ✓ |  |  |  |
 | go | ✓ | ✓ | ✓ | `gopls`, `golangci-lint-langserver` |
 | godot-resource | ✓ | ✓ |  |  |
@@ -187,6 +187,7 @@
 | smali | ✓ |  | ✓ |  |
 | smithy | ✓ |  |  | `cs` |
 | sml | ✓ |  |  |  |
+| snakemake | ✓ |  | ✓ | `pylsp` |
 | solidity | ✓ | ✓ |  | `solc` |
 | spicedb | ✓ |  |  |  |
 | sql | ✓ | ✓ |  |  |
