@@ -42,7 +42,6 @@ fn find_line_comment(
     lines: impl IntoIterator<Item = usize>,
 ) -> (bool, Vec<usize>, usize, usize) {
     let mut commented = true;
-    let mut text_is_empty = true;
     let mut to_change = Vec::new();
     let mut min = usize::MAX; // minimum col for first_non_whitespace_char
     let mut margin = 1;
@@ -51,7 +50,6 @@ fn find_line_comment(
     for line in lines {
         let line_slice = text.line(line);
         if let Some(pos) = line_slice.first_non_whitespace_char() {
-            text_is_empty = false;
             let len = line_slice.len_chars();
 
             min = std::cmp::min(min, pos);
@@ -74,10 +72,6 @@ fn find_line_comment(
             // blank lines don't get pushed.
             to_change.push(line);
         }
-    }
-
-    if text_is_empty {
-        commented = false;
     }
 
     (commented, to_change, min, margin)
@@ -343,14 +337,6 @@ mod test {
 
     mod find_line_comment {
         use super::*;
-
-        #[test]
-        fn empty_line() {
-            let doc = Rope::from("");
-
-            let (is_commented, _, _, _) = find_line_comment("//", doc.slice(..), [0]);
-            assert!(!is_commented);
-        }
 
         #[test]
         fn not_commented() {
