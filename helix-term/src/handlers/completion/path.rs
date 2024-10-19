@@ -49,7 +49,11 @@ pub(crate) fn path_completion(
                 Some(parent_dir) if path.is_relative() => parent_dir.join(&path),
                 _ => path.into_owned(),
             };
+            #[cfg(windows)]
             let ends_with_slash = matches!(matched_path.as_bytes().last(), Some(b'/' | b'\\'));
+            #[cfg(not(windows))]
+            let ends_with_slash = matches!(matched_path.as_bytes().last(), Some(b'/'));
+
             if ends_with_slash {
                 Some((PathBuf::from(path.as_path()), None))
             } else {
@@ -81,17 +85,15 @@ pub(crate) fn path_completion(
                 dir_entry
                     .metadata()
                     .ok()
-                    .map(|md| (dir_entry.file_name(), md))
+                    .and_then(|md| Some((dir_entry.file_name().into_string().ok()?, md)))
             })
             .map_while(|(file_name, md)| {
                 if cancel.load(Ordering::Relaxed) {
                     return None;
                 }
 
-                let file_name_str = file_name.to_string_lossy().to_string();
-
                 let kind = path_kind(&md);
-                let documentation = path_documentation(&md, &dir_path.join(file_name), kind);
+                let documentation = path_documentation(&md, &dir_path.join(&file_name), kind);
 
                 let edit_diff = typed_file_name
                     .as_ref()
@@ -100,12 +102,12 @@ pub(crate) fn path_completion(
 
                 let transaction = Transaction::change(
                     &text,
-                    std::iter::once((cursor - edit_diff, cursor, Some((&file_name_str).into()))),
+                    std::iter::once((cursor - edit_diff, cursor, Some((&file_name).into()))),
                 );
 
                 Some(CompletionItem::Other(core::CompletionItem {
                     kind: Cow::Borrowed(kind),
-                    label: file_name_str.into(),
+                    label: file_name.into(),
                     transaction,
                     documentation,
                 }))

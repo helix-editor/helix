@@ -369,13 +369,16 @@ pub fn trigger_auto_completion(
                     }) if triggers.iter().any(|trigger| text.ends_with(trigger)))
         });
 
-    let trigger_path_completion = matches!(
-        text.get_bytes_at(text.len_bytes())
-            .and_then(|t| t.reversed().next()),
-        Some(b'/' | b'\\')
-    ) && doc.path_completion_enabled();
+    let cursor_char = text
+        .get_bytes_at(text.len_bytes())
+        .and_then(|t| t.reversed().next());
 
-    if is_trigger_char || trigger_path_completion {
+    #[cfg(windows)]
+    let is_path_completion_trigger = matches!(cursor_char, Some(b'/' | b'\\'));
+    #[cfg(not(windows))]
+    let is_path_completion_trigger = matches!(cursor_char, Some(b'/'));
+
+    if is_trigger_char || (is_path_completion_trigger && doc.path_completion_enabled()) {
         send_blocking(
             tx,
             CompletionEvent::TriggerChar {
