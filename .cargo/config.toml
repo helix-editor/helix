@@ -1,3 +1,7 @@
+# https://github.com/flamegraph-rs/flamegraph
+[target.x86_64-unknown-linux-gnu]
+rustflags = ["-C", "link-arg=-fuse-ld=lld", "-C", "link-arg=-Wl,--no-rosegment", "-C", "target-cpu=native"]
+
 # we use tokio_unstable to enable runtime::Handle::id so we can separate
 # globals from multiple parallel tests. If that function ever does get removed
 # its possible to replace (with some additional overhead and effort)
