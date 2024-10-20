@@ -1,12 +1,18 @@
-use std::path::{Path, PathBuf};
+use std::{
+    fmt,
+    path::{Path, PathBuf},
+    sync::Arc,
+};
 
 /// A generic pointer to a file location.
 ///
 /// Currently this type only supports paths to local files.
+///
+/// Cloning this type is cheap: the internal representation uses an Arc.
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[non_exhaustive]
 pub enum Uri {
-    File(PathBuf),
+    File(Arc<Path>),
 }
 
 impl Uri {
@@ -23,26 +29,18 @@ impl Uri {
             Self::File(path) => Some(path),
         }
     }
-
-    pub fn as_path_buf(self) -> Option<PathBuf> {
-        match self {
-            Self::File(path) => Some(path),
-        }
-    }
 }
 
 impl From<PathBuf> for Uri {
     fn from(path: PathBuf) -> Self {
-        Self::File(path)
+        Self::File(path.into())
     }
 }
 
-impl TryFrom<Uri> for PathBuf {
-    type Error = ();
-
-    fn try_from(uri: Uri) -> Result<Self, Self::Error> {
-        match uri {
-            Uri::File(path) => Ok(path),
+impl fmt::Display for Uri {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::File(path) => write!(f, "{}", path.display()),
         }
     }
 }
@@ -59,11 +57,16 @@ pub enum UrlConversionErrorKind {
     UnableToConvert,
 }
 
-impl std::fmt::Display for UrlConversionError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+impl fmt::Display for UrlConversionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self.kind {
             UrlConversionErrorKind::UnsupportedScheme => {
-                write!(f, "unsupported scheme in URL: {}", self.source.scheme())
+                write!(
+                    f,
+                    "unsupported scheme '{}' in URL {}",
+                    self.source.scheme(),
+                    self.source
+                )
             }
             UrlConversionErrorKind::UnableToConvert => {
                 write!(f, "unable to convert URL to file path: {}", self.source)
@@ -77,7 +80,7 @@ impl std::error::Error for UrlConversionError {}
 fn convert_url_to_uri(url: &url::Url) -> Result<Uri, UrlConversionErrorKind> {
     if url.scheme() == "file" {
         url.to_file_path()
-            .map(|path| Uri::File(helix_stdx::path::normalize(path)))
+            .map(|path| Uri::File(helix_stdx::path::normalize(path).into()))
             .map_err(|_| UrlConversionErrorKind::UnableToConvert)
     } else {
         Err(UrlConversionErrorKind::UnsupportedScheme)

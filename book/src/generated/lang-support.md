@@ -19,6 +19,7 @@
 | cairo | ✓ | ✓ | ✓ | `cairo-language-server` |
 | capnp | ✓ |  | ✓ |  |
 | cel | ✓ |  |  |  |
+| circom | ✓ |  |  | `circom-lsp` |
 | clojure | ✓ |  |  | `clojure-lsp` |
 | cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
 | comment | ✓ |  |  |  |
@@ -38,6 +39,7 @@
 | dockerfile | ✓ | ✓ |  | `docker-langserver` |
 | dot | ✓ |  |  | `dot-language-server` |
 | dtd | ✓ |  |  |  |
+| dune | ✓ |  |  |  |
 | earthfile | ✓ | ✓ | ✓ | `earthlyls` |
 | edoc | ✓ |  |  |  |
 | eex | ✓ |  |  |  |
@@ -48,7 +50,7 @@
 | elvish | ✓ |  |  | `elvish` |
 | env | ✓ | ✓ |  |  |
 | erb | ✓ |  |  |  |
-| erlang | ✓ | ✓ |  | `erlang_ls` |
+| erlang | ✓ | ✓ |  | `erlang_ls`, `elp` |
 | esdl | ✓ |  |  |  |
 | fidl | ✓ |  |  |  |
 | fish | ✓ | ✓ | ✓ |  |
@@ -86,7 +88,7 @@
 | hocon | ✓ | ✓ | ✓ |  |
 | hoon | ✓ |  |  |  |
 | hosts | ✓ |  |  |  |
-| html | ✓ |  |  | `vscode-html-language-server` |
+| html | ✓ |  |  | `vscode-html-language-server`, `superhtml` |
 | hurl | ✓ | ✓ | ✓ |  |
 | hyprlang | ✓ |  | ✓ |  |
 | idris |  |  |  | `idris2-lsp` |
@@ -163,7 +165,7 @@
 | protobuf | ✓ | ✓ | ✓ | `bufls`, `pb` |
 | prql | ✓ |  |  |  |
 | purescript | ✓ | ✓ |  | `purescript-language-server` |
-| python | ✓ | ✓ | ✓ | `pylsp` |
+| python | ✓ | ✓ | ✓ | `ruff`, `jedi-language-server`, `pylsp` |
 | qml | ✓ |  | ✓ | `qmlls` |
 | r | ✓ |  |  | `R` |
 | racket | ✓ |  | ✓ | `racket` |
