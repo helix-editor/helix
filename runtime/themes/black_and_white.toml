@@ -40,9 +40,9 @@
 "ui.selection"                    = { bg = "secondary", underline = { style = "curl" } }
 "ui.selection.primary"            = { bg = "primary", underline = { style = "curl" }}
 "ui.statusline"                   = { fg = "background", bg = "foreground" }
-"ui.statusline.insert"            = {  modifiers = ["bold"] }
-"ui.statusline.normal"            = {  modifiers = ["bold"] }
-"ui.statusline.select"            = {  modifiers = ["bold"] }
+"ui.statusline.insert"            = { modifiers = ["bold"] }
+"ui.statusline.normal"            = { modifiers = ["bold"] }
+"ui.statusline.select"            = { modifiers = ["bold"] }
 "ui.text"                         = { fg = "foreground" }
 "ui.text.focus"                   = { fg = "foreground" }
 "ui.virtual.inlay-hint.parameter" = { modifiers = ["italic", "dim"] }
