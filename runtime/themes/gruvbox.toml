@@ -102,6 +102,7 @@
 "ui.statusline" = { fg = "fg1", bg = "bg2" }
 "ui.statusline.inactive" = { fg = "fg4", bg = "bg2" }
 "ui.statusline.insert" = { fg = "bg1", bg = "blue1", modifiers = ["bold"] }
+"ui.statusline.overtype" = { fg = "bg1", bg = "red1", modifiers = ["bold"] }
 "ui.statusline.normal" = { fg = "bg1", bg = "fg3", modifiers = ["bold"] }
 "ui.statusline.select" = { fg = "bg1", bg = "orange1", modifiers = ["bold"] }
 
