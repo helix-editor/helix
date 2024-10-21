@@ -1262,6 +1262,11 @@ fn goto_file_vsplit(cx: &mut Context) {
 
 /// Goto files in selection.
 fn goto_file_impl(cx: &mut Context, action: Action) {
+    struct OpenOption {
+        path: PathBuf,
+        location: Option<(usize, usize)>,
+    }
+
     let (view, doc) = current_ref!(cx.editor);
     let text = doc.text();
     let selections = doc.selection(view.id);
@@ -1323,19 +1328,88 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
             .collect()
     };
 
+    // Most compilers/linters print in this format
+    static REGEX_FILE_ROW_COL: Lazy<Regex> =
+        Lazy::new(|| Regex::new("^(?P<path>.[^:]+):(?P<row>\\d+)(:(?P<col>\\d+))?$").unwrap());
+
     for sel in paths {
         if let Ok(url) = Url::parse(&sel) {
             open_url(cx, url, action);
             continue;
         }
 
+        let p = sel.trim().to_owned();
+
         let path = expand_tilde(Cow::from(PathBuf::from(sel)));
         let path = &rel_path.join(path);
         if path.is_dir() {
             let picker = ui::file_picker(path.into(), &cx.editor.config());
             cx.push_layer(Box::new(overlaid(picker)));
-        } else if let Err(e) = cx.editor.open(path, action) {
-            cx.editor.set_error(format!("Open file failed: {:?}", e));
+        } else {
+            let open_option = match REGEX_FILE_ROW_COL.captures(&p) {
+                Some(file_row_col) => {
+                    let path = file_row_col.name("path").unwrap().as_str();
+                    let loc = match file_row_col
+                        .name("row")
+                        .unwrap()
+                        .as_str()
+                        .parse::<NonZeroUsize>()
+                    {
+                        Ok(row) => match file_row_col.name("col") {
+                            Some(col) => match col.as_str().parse::<NonZeroUsize>() {
+                                Ok(col) => Some((row.get(), col.get())),
+                                Err(_) => None,
+                            },
+                            None => Some((row.get(), 1)),
+                        },
+                        Err(_) => None,
+                    };
+
+                    OpenOption {
+                        path: PathBuf::from(path),
+                        location: loc,
+                    }
+                }
+                None => OpenOption {
+                    path: PathBuf::from(p),
+                    location: None,
+                },
+            };
+
+            match cx.editor.open(&open_option.path, action) {
+                Ok(_) => {
+                    if let Some((row, col)) = open_option.location {
+                        let (view, doc) = current!(cx.editor);
+
+                        let doc_text = doc.text();
+
+                        // Number of lines is always positive even for empty buffers
+                        let doc_lines = doc_text.len_lines();
+
+                        // Zero-based line index
+                        let ind_adjusted_line = usize::min(row, doc_lines) - 1;
+
+                        let ind_dest = if row > doc_lines {
+                            // Discard designated col and simply set to end of doc
+                            doc_text.len_chars().saturating_sub(1)
+                        } else {
+                            let line_len = doc_text.line(ind_adjusted_line).len_chars();
+
+                            let adjusted_ind_col = if line_len == 0 {
+                                0
+                            } else {
+                                usize::min(col, line_len) - 1
+                            };
+
+                            doc_text.line_to_char(ind_adjusted_line) + adjusted_ind_col
+                        };
+
+                        doc.set_selection(view.id, Selection::point(ind_dest));
+                        align_view(doc, view, Align::Center);
+                    }
+                }
+                Err(e) => cx.editor.set_error(format!("Open file failed: {:?}", e)),
+            }
         }
     }
 }
