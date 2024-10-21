@@ -2,9 +2,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use helix_core::syntax::LanguageServerFeature;
-use helix_event::{
-    cancelable_future, cancelation, register_hook, send_blocking, CancelRx, CancelTx,
-};
+use helix_event::{cancelable_future, register_hook, send_blocking, TaskController, TaskHandle};
 use helix_lsp::lsp::{self, SignatureInformation};
 use helix_stdx::rope::RopeSliceExt;
 use helix_view::document::Mode;
@@ -22,11 +20,11 @@ use crate::ui::lsp::{Signature, SignatureHelp};
 use crate::ui::Popup;
 use crate::{job, ui};
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 enum State {
     Open,
     Closed,
-    Pending { request: CancelTx },
+    Pending,
 }
 
 /// debounce timeout in ms, value taken from VSCode
@@ -37,6 +35,7 @@ const TIMEOUT: u64 = 120;
 pub(super) struct SignatureHelpHandler {
     trigger: Option<SignatureHelpInvoked>,
     state: State,
+    task_controller: TaskController,
 }
 
 impl SignatureHelpHandler {
@@ -44,6 +43,7 @@ impl SignatureHelpHandler {
         SignatureHelpHandler {
             trigger: None,
             state: State::Closed,
+            task_controller: TaskController::new(),
         }
     }
 }
@@ -76,12 +76,11 @@ impl helix_event::AsyncHook for SignatureHelpHandler {
             }
             SignatureHelpEvent::RequestComplete { open } => {
                 // don't cancel rerequest that was already triggered
-                if let State::Pending { request } = &self.state {
-                    if !request.is_closed() {
-                        return timeout;
-                    }
+                if self.state == State::Pending && self.task_controller.is_running() {
+                    return timeout;
                 }
                 self.state = if open { State::Open } else { State::Closed };
+                self.task_controller.cancel();
 
                 return timeout;
             }
@@ -94,16 +93,16 @@ impl helix_event::AsyncHook for SignatureHelpHandler {
 
     fn finish_debounce(&mut self) {
         let invocation = self.trigger.take().unwrap();
-        let (tx, rx) = cancelation();
-        self.state = State::Pending { request: tx };
-        job::dispatch_blocking(move |editor, _| request_signature_help(editor, invocation, rx))
+        self.state = State::Pending;
+        let handle = self.task_controller.restart();
+        job::dispatch_blocking(move |editor, _| request_signature_help(editor, invocation, handle))
     }
 }
 
 pub fn request_signature_help(
     editor: &mut Editor,
     invoked: SignatureHelpInvoked,
-    cancel: CancelRx,
+    cancel: TaskHandle,
 ) {
     let (view, doc) = current!(editor);
 

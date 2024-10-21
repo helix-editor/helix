@@ -1,5 +1,4 @@
 use std::collections::HashSet;
-use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -8,9 +7,7 @@ use futures_util::stream::FuturesUnordered;
 use futures_util::FutureExt;
 use helix_core::chars::char_is_word;
 use helix_core::syntax::LanguageServerFeature;
-use helix_event::{
-    cancelable_future, cancelation, register_hook, send_blocking, CancelRx, CancelTx,
-};
+use helix_event::{cancelable_future, register_hook, send_blocking, TaskController, TaskHandle};
 use helix_lsp::lsp;
 use helix_lsp::util::pos_to_lsp_pos;
 use helix_stdx::rope::RopeSliceExt;
@@ -59,12 +56,8 @@ pub(super) struct CompletionHandler {
     /// currently active trigger which will cause a
     /// completion request after the timeout
     trigger: Option<Trigger>,
-    /// A handle for currently active completion request.
-    /// This can be used to determine whether the current
-    /// request is still active (and new triggers should be
-    /// ignored) and can also be used to abort the current
-    /// request (by dropping the handle)
-    request: Option<CancelTx>,
+    in_flight: Option<Trigger>,
+    task_controller: TaskController,
     config: Arc<ArcSwap<Config>>,
 }
 
@@ -72,8 +65,9 @@ impl CompletionHandler {
     pub fn new(config: Arc<ArcSwap<Config>>) -> CompletionHandler {
         Self {
             config,
-            request: None,
+            task_controller: TaskController::new(),
             trigger: None,
+            in_flight: None,
         }
     }
 }
@@ -86,6 +80,9 @@ impl helix_event::AsyncHook for CompletionHandler {
         event: Self::Event,
         _old_timeout: Option<Instant>,
     ) -> Option<Instant> {
+        if self.in_flight.is_some() && !self.task_controller.is_running() {
+            self.in_flight = None;
+        }
         match event {
             CompletionEvent::AutoTrigger {
                 cursor: trigger_pos,
@@ -96,7 +93,7 @@ impl helix_event::AsyncHook for CompletionHandler {
                 // but people may create weird keymaps/use the mouse so lets be extra careful
                 if self
                     .trigger
-                    .as_ref()
+                    .or(self.in_flight)
                     .map_or(true, |trigger| trigger.doc != doc || trigger.view != view)
                 {
                     self.trigger = Some(Trigger {
@@ -109,7 +106,7 @@ impl helix_event::AsyncHook for CompletionHandler {
             }
             CompletionEvent::TriggerChar { cursor, doc, view } => {
                 // immediately request completions and drop all auto completion requests
-                self.request = None;
+                self.task_controller.cancel();
                 self.trigger = Some(Trigger {
                     pos: cursor,
                     view,
@@ -119,7 +116,6 @@ impl helix_event::AsyncHook for CompletionHandler {
             }
             CompletionEvent::ManualTrigger { cursor, doc, view } => {
                 // immediately request completions and drop all auto completion requests
-                self.request = None;
                 self.trigger = Some(Trigger {
                     pos: cursor,
                     view,
@@ -132,21 +128,21 @@ impl helix_event::AsyncHook for CompletionHandler {
             }
             CompletionEvent::Cancel => {
                 self.trigger = None;
-                self.request = None;
+                self.task_controller.cancel();
             }
             CompletionEvent::DeleteText { cursor } => {
                 // if we deleted the original trigger, abort the completion
-                if matches!(self.trigger, Some(Trigger{ pos, .. }) if cursor < pos) {
+                if matches!(self.trigger.or(self.in_flight), Some(Trigger{ pos, .. }) if cursor < pos)
+                {
                     self.trigger = None;
-                    self.request = None;
+                    self.task_controller.cancel();
                 }
             }
         }
         self.trigger.map(|trigger| {
             // if the current request was closed forget about it
             // otherwise immediately restart the completion request
-            let cancel = self.request.take().map_or(false, |req| !req.is_closed());
-            let timeout = if trigger.kind == TriggerKind::Auto && !cancel {
+            let timeout = if trigger.kind == TriggerKind::Auto {
                 self.config.load().editor.completion_timeout
             } else {
                 // we want almost instant completions for trigger chars
@@ -161,17 +157,17 @@ impl helix_event::AsyncHook for CompletionHandler {
 
     fn finish_debounce(&mut self) {
         let trigger = self.trigger.take().expect("debounce always has a trigger");
-        let (tx, rx) = cancelation();
-        self.request = Some(tx);
+        self.in_flight = Some(trigger);
+        let handle = self.task_controller.restart();
         dispatch_blocking(move |editor, compositor| {
-            request_completion(trigger, rx, editor, compositor)
+            request_completion(trigger, handle, editor, compositor)
         });
     }
 }
 
 fn request_completion(
     mut trigger: Trigger,
-    cancel: CancelRx,
+    handle: TaskHandle,
     editor: &mut Editor,
     compositor: &mut Compositor,
 ) {
@@ -202,7 +198,6 @@ fn request_completion(
     // necessary from our side too.
     trigger.pos = cursor;
     let trigger_text = text.slice(..cursor);
-    let cancel_completion = Arc::new(AtomicBool::new(false));
 
     let mut seen_language_servers = HashSet::new();
     let mut futures: FuturesUnordered<_> = doc
@@ -270,12 +265,7 @@ fn request_completion(
             }
             .boxed()
         })
-        .chain(path_completion(
-            cursor,
-            text.clone(),
-            doc,
-            cancel_completion.clone(),
-        ))
+        .chain(path_completion(cursor, text.clone(), doc, handle.clone()))
         .collect();
 
     let future = async move {
@@ -296,18 +286,13 @@ fn request_completion(
     let ui = compositor.find::<ui::EditorView>().unwrap();
     ui.last_insert.1.push(InsertEvent::RequestCompletion);
     tokio::spawn(async move {
-        let items = match cancelable_future(future, cancel).await {
-            Some(v) => v,
-            None => {
-                cancel_completion.store(true, std::sync::atomic::Ordering::Relaxed);
-                Vec::new()
-            }
-        };
-        if items.is_empty() {
+        let items = cancelable_future(future, &handle).await;
+        let Some(items) = items.filter(|items| !items.is_empty()) else {
             return;
-        }
+        };
         dispatch(move |editor, compositor| {
-            show_completion(editor, compositor, items, trigger, savepoint)
+            show_completion(editor, compositor, items, trigger, savepoint);
+            drop(handle)
         })
         .await
     });

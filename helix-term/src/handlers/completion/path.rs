@@ -3,15 +3,12 @@ use std::{
     fs,
     path::{Path, PathBuf},
     str::FromStr as _,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
 };
 
 use futures_util::{future::BoxFuture, FutureExt as _};
 use helix_core as core;
 use helix_core::Transaction;
+use helix_event::TaskHandle;
 use helix_stdx::path::{self, canonicalize, fold_home_dir, get_path_suffix};
 use helix_view::Document;
 use url::Url;
@@ -22,7 +19,7 @@ pub(crate) fn path_completion(
     cursor: usize,
     text: core::Rope,
     doc: &Document,
-    cancel: Arc<AtomicBool>,
+    handle: TaskHandle,
 ) -> Option<BoxFuture<'static, anyhow::Result<Vec<CompletionItem>>>> {
     if !doc.path_completion_enabled() {
         return None;
@@ -66,7 +63,7 @@ pub(crate) fn path_completion(
             }
         })?;
 
-    if cancel.load(Ordering::Relaxed) {
+    if handle.is_canceled() {
         return None;
     }
 
@@ -74,10 +71,6 @@ pub(crate) fn path_completion(
         let Ok(read_dir) = std::fs::read_dir(&dir_path) else {
             return Vec::new();
         };
-
-        if cancel.load(Ordering::Relaxed) {
-            return Vec::new();
-        }
 
         read_dir
             .filter_map(Result::ok)
@@ -88,7 +81,7 @@ pub(crate) fn path_completion(
                     .and_then(|md| Some((dir_entry.file_name().into_string().ok()?, md)))
             })
             .map_while(|(file_name, md)| {
-                if cancel.load(Ordering::Relaxed) {
+                if handle.is_canceled() {
                     return None;
                 }
 

@@ -4,7 +4,7 @@ use helix_lsp::lsp;
 use tokio::sync::mpsc::Sender;
 use tokio::time::{Duration, Instant};
 
-use helix_event::{send_blocking, AsyncHook, CancelRx};
+use helix_event::{send_blocking, AsyncHook, TaskController, TaskHandle};
 use helix_view::Editor;
 
 use super::LspCompletionItem;
@@ -31,11 +31,7 @@ impl ResolveHandler {
     pub fn new() -> ResolveHandler {
         ResolveHandler {
             last_request: None,
-            resolver: ResolveTimeout {
-                next_request: None,
-                in_flight: None,
-            }
-            .spawn(),
+            resolver: ResolveTimeout::default().spawn(),
         }
     }
 
@@ -101,7 +97,8 @@ struct ResolveRequest {
 #[derive(Default)]
 struct ResolveTimeout {
     next_request: Option<ResolveRequest>,
-    in_flight: Option<(helix_event::CancelTx, Arc<LspCompletionItem>)>,
+    in_flight: Option<Arc<LspCompletionItem>>,
+    task_controller: TaskController,
 }
 
 impl AsyncHook for ResolveTimeout {
@@ -121,7 +118,7 @@ impl AsyncHook for ResolveTimeout {
         } else if self
             .in_flight
             .as_ref()
-            .is_some_and(|(_, old_request)| old_request.item == request.item.item)
+            .is_some_and(|old_request| old_request.item == request.item.item)
         {
             self.next_request = None;
             None
@@ -135,14 +132,14 @@ impl AsyncHook for ResolveTimeout {
         let Some(request) = self.next_request.take() else {
             return;
         };
-        let (tx, rx) = helix_event::cancelation();
-        self.in_flight = Some((tx, request.item.clone()));
-        tokio::spawn(request.execute(rx));
+        let token = self.task_controller.restart();
+        self.in_flight = Some(request.item.clone());
+        tokio::spawn(request.execute(token));
     }
 }
 
 impl ResolveRequest {
-    async fn execute(self, cancel: CancelRx) {
+    async fn execute(self, cancel: TaskHandle) {
         let future = self.ls.resolve_completion_item(&self.item.item);
         let Some(resolved_item) = helix_event::cancelable_future(future, cancel).await else {
             return;
