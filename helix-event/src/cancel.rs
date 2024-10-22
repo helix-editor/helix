@@ -24,8 +24,8 @@ pub async fn cancelable_future<T>(
 #[derive(Default, Debug)]
 struct Shared {
     state: AtomicU64,
-    // notify has some features that we don't really need here because it
-    // supports waking single tasks (notify_one) and does it's own (more
+    // `Notify` has some features that we don't really need here because it
+    // supports waking single tasks (`notify_one`) and does its own (more
     // complicated) state tracking, we could reimplement the waiter linked list
     // with modest effort and reduce memory consumption by one word/8 bytes and
     // reduce code complexity/number of atomic operations.
@@ -48,16 +48,16 @@ impl Shared {
         (self.state.load(Relaxed) >> 32) as u32
     }
 
-    /// increments the generation count and sets num_running
+    /// Increments the generation count and sets `num_running`
     /// to the provided value, this operation is not with
-    /// regard to the generation counter (doesn't use fetch_add)
+    /// regard to the generation counter (doesn't use `fetch_add`)
     /// so the calling code must ensure it cannot execute concurrently
     /// to maintain correctness (but not safety)
     fn inc_generation(&self, num_running: u32) -> (u32, u32) {
         let state = self.state.load(Relaxed);
         let generation = state as u32;
         let prev_running = (state >> 32) as u32;
-        // no need to create a new generation if the refcount is zero (fastaph)
+        // no need to create a new generation if the refcount is zero (fastpath)
         if prev_running == 0 && num_running == 0 {
             return (generation, 0);
         }
@@ -99,7 +99,7 @@ impl Shared {
                 break;
             }
             let num_running = (state >> 32) as u32;
-            // running can't be zero here, that would mean we misscounted somewhere
+            // running can't be zero here, that would mean we miscounted somewhere
             assert_ne!(num_running, 0);
             let off = 1 << 32;
             let res = self
@@ -113,15 +113,16 @@ impl Shared {
     }
 }
 
-// this intentionally doesn't implement clone and requires amutable reference
-// for cancelation to avoid races (in inc_generation)
+// This intentionally doesn't implement `Clone` and requires a mutable reference
+// for cancelation to avoid races (in inc_generation).
 
-/// A task controller allows managing a single subtask enabling the contorller
-/// to cancel the subtask and to check wether it is still running. For efficency
-/// reasons the controller can be reused/restarted, in that case the previous
-/// task is automatically cancelled.
+/// A task controller allows managing a single subtask enabling the controller
+/// to cancel the subtask and to check whether it is still running.
 ///
-/// If the controller is dropped the subtasks are automatically canceled.
+/// For efficiency reasons the controller can be reused/restarted,
+/// in that case the previous task is automatically canceled.
+///
+/// If the controller is dropped, the subtasks are automatically canceled.
 #[derive(Default, Debug)]
 pub struct TaskController {
     shared: Arc<Shared>,
@@ -131,20 +132,20 @@ impl TaskController {
     pub fn new() -> Self {
         TaskController::default()
     }
-    /// Cancels the active task (handle)
+    /// Cancels the active task (handle).
     ///
-    /// returns wether any tasks were still running before the canellation
+    /// Returns whether any tasks were still running before the cancelation.
     pub fn cancel(&mut self) -> bool {
         self.shared.inc_generation(0).1 != 0
     }
 
-    /// checks wether there are any task handles
-    /// that haven't been dropped (or canceled) yet
+    /// Checks whether there are any task handles
+    /// that haven't been dropped (or canceled) yet.
     pub fn is_running(&self) -> bool {
         self.shared.num_running() != 0
     }
 
-    /// Starts a new task and cancels the previous task (handles)
+    /// Starts a new task and cancels the previous task (handles).
     pub fn restart(&mut self) -> TaskHandle {
         TaskHandle {
             generation: self.shared.inc_generation(1).0,
@@ -159,15 +160,16 @@ impl Drop for TaskController {
     }
 }
 
-/// A handle that is used to link a task with a task controller, it can be
-/// used to cancel async futures very efficently but can also be checked for
-/// cancaellation very quickly (single atomic read) in blocking code. The
-/// handle can be cheaply cloned (referenced counted).
+/// A handle that is used to link a task with a task controller.
 ///
-/// The TaskController can check wether a task is "running" by inspecting the
-/// refcount of the (current) tasks handeles. Therefore, if that information
-/// is important ensure that the handle is not dropped until the task fully
-/// completes
+/// It can be used to cancel async futures very efficiently but can also be checked for
+/// cancelation very quickly (single atomic read) in blocking code.
+/// The handle can be cheaply cloned (reference counted).
+///
+/// The TaskController can check whether a task is "running" by inspecting the
+/// refcount of the (current) tasks handles. Therefore, if that information
+/// is important, ensure that the handle is not dropped until the task fully
+/// completes.
 pub struct TaskHandle {
     shared: Arc<Shared>,
     generation: u32,
@@ -190,8 +192,8 @@ impl Drop for TaskHandle {
 }
 
 impl TaskHandle {
-    /// waits until [`TaskController::cancel`] is called for the corresponding
-    /// [`TaskController`]. Immidietly returns if `cancel` was already called since
+    /// Waits until [`TaskController::cancel`] is called for the corresponding
+    /// [`TaskController`]. Immediately returns if `cancel` was already called since
     pub async fn canceled(&self) {
         let notified = self.shared.notify.notified();
         if !self.is_canceled() {
@@ -214,7 +216,7 @@ mod tests {
     use crate::{cancelable_future, TaskController};
 
     #[test]
-    fn immidiate_cancel() {
+    fn immediate_cancel() {
         let mut controller = TaskController::new();
         let handle = controller.restart();
         controller.cancel();
