@@ -9,7 +9,7 @@ use helix_view::{
     theme::{Modifier, Style},
     ViewId,
 };
-use tui::{buffer::Buffer as Surface, text::Span};
+use tui::{buffer::Buffer as Surface, text::Span, widgets::BorderType};
 
 use std::{borrow::Cow, sync::Arc};
 
@@ -531,7 +531,12 @@ impl Component for Completion {
 
         if cx.editor.popup_border() {
             use tui::widgets::{Block, Widget};
-            Widget::render(Block::bordered(), doc_area, surface);
+            let border_type = BorderType::new(cx.editor.config().rounded_corners);
+            Widget::render(
+                Block::bordered().border_type(border_type),
+                doc_area,
+                surface,
+            );
         }
 
         markdown_doc.render(doc_area, surface, cx);
