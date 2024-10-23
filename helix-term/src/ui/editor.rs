@@ -615,7 +615,7 @@ impl EditorView {
         let mut x = viewport.x;
         let current_doc = view!(editor).doc;
 
-        for doc in editor.documents() {
+        for (idx, doc) in editor.documents().enumerate() {
             let fname = doc
                 .path()
                 .unwrap_or(&scratch)
@@ -629,6 +629,16 @@ impl EditorView {
             } else {
                 bufferline_inactive
             };
+
+            // Render the separator before the text if the current document is not first.
+            if idx > 0 {
+                let used_width = viewport.x.saturating_sub(x);
+                let rem_width = surface.area.width.saturating_sub(used_width);
+                let sep = &editor.config().bufferline.separator;
+                x = surface
+                    .set_stringn(x, viewport.y, sep, rem_width as usize, bufferline_inactive)
+                    .0;
+            }
 
             let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
             let used_width = viewport.x.saturating_sub(x);
@@ -1479,10 +1489,10 @@ impl Component for EditorView {
         let config = cx.editor.config();
 
         // check if bufferline should be rendered
-        use helix_view::editor::BufferLine;
-        let use_bufferline = match config.bufferline {
-            BufferLine::Always => true,
-            BufferLine::Multiple if cx.editor.documents.len() > 1 => true,
+        use helix_view::editor::BufferLineRenderMode;
+        let use_bufferline = match config.bufferline.render_mode {
+            BufferLineRenderMode::Always => true,
+            BufferLineRenderMode::Multiple if cx.editor.documents.len() > 1 => true,
             _ => false,
         };
 
