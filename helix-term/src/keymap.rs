@@ -388,14 +388,17 @@ impl Default for Keymaps {
 }
 
 /// Merge default config keys with user overwritten keys for custom user config.
-pub fn merge_keys(dst: &mut HashMap<Mode, KeyTrie>, mut delta: HashMap<Mode, KeyTrie>) {
-    for (mode, keys) in dst {
+pub fn merge_keys(
+    mut left: HashMap<Mode, KeyTrie>, mut right: HashMap<Mode, KeyTrie>,
+) -> HashMap<Mode, KeyTrie> {
+    for (mode, keys) in &mut left {
         keys.merge_nodes(
-            delta
+            right
                 .remove(mode)
                 .unwrap_or_else(|| KeyTrie::Node(KeyTrieNode::default())),
         )
     }
+    left
 }
 
 #[cfg(test)]
@@ -433,11 +436,10 @@ mod tests {
                 },
             })
         };
-        let mut merged_keyamp = default();
-        merge_keys(&mut merged_keyamp, keymap.clone());
-        assert_ne!(keymap, merged_keyamp);
+        let mut merged_keymap = merge_keys(default(), keymap.clone());
+        assert_ne!(keymap, merged_keymap);
 
-        let mut keymap = Keymaps::new(Box::new(Constant(merged_keyamp.clone())));
+        let mut keymap = Keymaps::new(Box::new(Constant(merged_keymap.clone())));
         assert_eq!(
             keymap.get(Mode::Normal, key!('i')),
             KeymapResult::Matched(MappableCommand::normal_mode),
@@ -455,7 +457,7 @@ mod tests {
             "Leaf should replace node"
         );
 
-        let keymap = merged_keyamp.get_mut(&Mode::Normal).unwrap();
+        let keymap = merged_keymap.get_mut(&Mode::Normal).unwrap();
         // Assumes that `g` is a node in default keymap
         assert_eq!(
             keymap.search(&[key!('g'), key!('$')]).unwrap(),
@@ -476,7 +478,7 @@ mod tests {
         );
 
         assert!(
-            merged_keyamp
+            merged_keymap
                 .get(&Mode::Normal)
                 .and_then(|key_trie| key_trie.node())
                 .unwrap()
@@ -484,7 +486,7 @@ mod tests {
                 > 1
         );
         assert!(
-            merged_keyamp
+            merged_keymap
                 .get(&Mode::Insert)
                 .and_then(|key_trie| key_trie.node())
                 .unwrap()
@@ -505,10 +507,9 @@ mod tests {
                 },
             })
         };
-        let mut merged_keyamp = default();
-        merge_keys(&mut merged_keyamp, keymap.clone());
-        assert_ne!(keymap, merged_keyamp);
-        let keymap = merged_keyamp.get_mut(&Mode::Normal).unwrap();
+        let mut merged_keymap = merge_keys(default(), keymap.clone());
+        assert_ne!(keymap, merged_keymap);
+        let keymap = merged_keymap.get_mut(&Mode::Normal).unwrap();
         // Make sure mapping works
         assert_eq!(
             keymap.search(&[key!(' '), key!('s'), key!('v')]).unwrap(),
