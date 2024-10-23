@@ -1,33 +1,17 @@
 ; ----------------------------------------------------------------------------
-; Record fields would need to come before literal strings in order to be captured correctly
-
- (record_accessor
-    field: [ (variable)
-             (string)
-             (triple_quote_string)
-           ] @variable.other.member)
-
- (exp_record_access
-    field: [ (variable)
-             (string)
-             (triple_quote_string)
-           ] @variable.other.member)
-
-
-; ----------------------------------------------------------------------------
 ; Literals and comments
 
  (integer) @constant.numeric.integer
  (exp_negation) @constant.numeric.integer
  (exp_literal (number)) @constant.numeric.float
  (char) @constant.character
+
  [
    (string)
    (triple_quote_string)
  ] @string
 
  (comment) @comment
-
 
 ; ----------------------------------------------------------------------------
 ; Punctuation
@@ -41,18 +25,19 @@
    "]"
  ] @punctuation.bracket
 
- [
- (comma)
- ";"
- ] @punctuation.delimiter
+ (comma) @punctuation.delimiter
 
+; ----------------------------------------------------------------------------
+; Types
+
+ (type) @type
+
+ (constructor) @constructor
 
 ; ----------------------------------------------------------------------------
 ; Keywords, operators, includes
 
- ; This needs to come before the other "else" in
- ; order to be highlighted correctly
- (class_instance "else" @keyword)
+ (module) @namespace
 
  [
    "if"
@@ -95,7 +80,6 @@
  ] @operator
 
  (qualified_module (module) @constructor)
- (module) @namespace
  (qualified_type (module) @namespace)
  (qualified_variable (module) @namespace)
  (import (module) @namespace)
@@ -122,6 +106,11 @@
    "infixr"
  ] @keyword
 
+ ; NOTE
+ ; Needs to come after the other `else` in
+ ; order to be highlighted correctly
+ (class_instance "else" @keyword)
+
  (type_role_declaration
    "role" @keyword
    role: (type_role) @keyword)
@@ -131,9 +120,26 @@
 ; ----------------------------------------------------------------------------
 ; Functions and variables
 
+ (variable) @variable
+
  (row_field (field_name) @variable.other.member)
  (record_field (field_name) @variable.other.member)
  (record_field (field_pun) @variable.other.member)
+
+ ; NOTE
+ ; Record fields must come after literal strings and
+ ; plain variables in order to be highlighted correctly
+ (record_accessor
+    field: [ (variable)
+             (string)
+             (triple_quote_string)
+           ] @variable.other.member)
+
+ (exp_record_access
+    field: [ (variable)
+             (string)
+             (triple_quote_string)
+           ] @variable.other.member)
 
  (signature name: (variable) @type)
  (function name: (variable) @function)
@@ -151,14 +157,5 @@
  (exp_ticked (exp_name (variable) @operator))
  (exp_ticked (exp_name (qualified_variable (variable) @operator)))
 
- (variable) @variable
-
- ("@" @namespace)  ; "as" pattern operator, e.g. x@Constructor
-
-; ----------------------------------------------------------------------------
-; Types
-
- (type) @type
-
- (constructor) @constructor
+ (patterns (pat_as "@" @namespace))
 
