@@ -37,20 +37,32 @@ impl Info {
             .unwrap();
         let mut text = String::new();
 
+        let mut height = 0;
+
         for (item, desc) in body {
-            let _ = writeln!(
-                text,
-                "{:width$}  {}",
-                item.as_ref(),
-                desc.as_ref(),
-                width = item_width
-            );
+            let mut line_iter = desc.as_ref().lines();
+
+            if let Some(first_line) = line_iter.next() {
+                let _ = writeln!(
+                    text,
+                    "{:width$}  {}",
+                    item.as_ref(),
+                    first_line,
+                    width = item_width
+                );
+                height += 1;
+            }
+
+            for line in line_iter {
+                let _ = writeln!(text, "{:width$}  {}", "", line, width = item_width);
+                height += 1;
+            }
         }
 
         Self {
             title: title.to_string(),
-            width: text.lines().map(|l| l.width()).max().unwrap() as u16,
-            height: body.len() as u16,
+            width: text.lines().map(|l| l.width()).max().unwrap_or(body.len()) as u16,
+            height,
             text,
         }
     }

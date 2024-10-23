@@ -22,7 +22,7 @@ default-members = [
 
 [profile.release]
 lto = "thin"
-# debug = true
+debug = true
 
 [profile.opt]
 inherits = "release"
@@ -42,6 +42,9 @@ tree-sitter = { version = "0.22" }
 nucleo = "0.5.0"
 slotmap = "1.0.7"
 thiserror = "1.0"
+# If working locally, use the local path dependency
+# steel-core = { path = "/home/matt/code/scratch/steel/crates/steel-core", version = "0.6.0", features = ["anyhow", "dylibs"] }
+steel-core = { git = "https://github.com/mattwparas/steel.git", version = "0.6.0", features = ["anyhow", "dylibs"] }
 
 [workspace.package]
 version = "24.7.0"
