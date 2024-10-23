@@ -3798,7 +3798,6 @@ grammar = "typescript"
 "{" = "}"
 "(" = ")"
 '"' = '"'
-<<<<<<< HEAD
 
 [[language]]
 name = "gherkin"
@@ -3875,5 +3874,4 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "spade"
-source = {git = "https://gitlab.com/spade-lang/tree-sitter-spade/", rev = "9e0dfb320aaaf7c47a1d309a5de96c60826d71ff"}
-
+source = { git = "https://gitlab.com/spade-lang/tree-sitter-spade/", rev = "fb59c466c61577eca4637de3d63722b0b75e51ea" }
