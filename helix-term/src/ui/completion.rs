@@ -253,7 +253,7 @@ impl Completion {
                         })
                     }
                     // if more text was entered, remove it
-                    doc.restore(view, &savepoint, false);
+                    doc.restore(view, &savepoint, None);
                     // always present here
                     let item = item.unwrap();
 
@@ -273,7 +273,7 @@ impl Completion {
                     if let Some(CompleteAction::Selected { savepoint }) =
                         editor.last_completion.take()
                     {
-                        doc.restore(view, &savepoint, false);
+                        doc.restore(view, &savepoint, None);
                     }
                     // always present here
                     let mut item = item.unwrap().clone();
@@ -289,7 +289,11 @@ impl Completion {
                         }
                     };
                     // if more text was entered, remove it
-                    doc.restore(view, &savepoint, true);
+                    doc.restore(
+                        view,
+                        &savepoint,
+                        Some(helix_view::document::EmitLspNotification::Async),
+                    );
                     // save an undo checkpoint before the completion
                     doc.append_changes_to_history(view);
                     let transaction = item_to_transaction(
