@@ -34,6 +34,8 @@ use std::{mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc, sync::Arc};
 
 use tui::{buffer::Buffer as Surface, text::Span};
 
+use super::context::{self, StickyNode};
+
 pub struct EditorView {
     pub keymaps: Keymaps,
     on_next_key: Option<OnKeyCallback>,
@@ -41,6 +43,7 @@ pub struct EditorView {
     pub(crate) last_insert: (commands::MappableCommand, Vec<InsertEvent>),
     pub(crate) completion: Option<Completion>,
     spinners: ProgressSpinners,
+    sticky_nodes: Option<Vec<StickyNode>>,
     /// Tracks if the terminal window is focused by reaction to terminal focus events
     terminal_focused: bool,
 }
@@ -71,6 +74,7 @@ impl EditorView {
             last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
             completion: None,
             spinners: ProgressSpinners::default(),
+            sticky_nodes: None,
             terminal_focused: true,
         }
     }
@@ -80,7 +84,7 @@ impl EditorView {
     }
 
     pub fn render_view(
-        &self,
+        &mut self,
         editor: &Editor,
         doc: &Document,
         view: &View,
@@ -165,29 +169,31 @@ impl EditorView {
             }
         }
 
-        let gutter_overflow = view.gutter_offset(doc) == 0;
-        if !gutter_overflow {
-            Self::render_gutter(
-                editor,
-                doc,
-                view,
-                view.area,
-                theme,
-                is_focused & self.terminal_focused,
-                &mut decorations,
-            );
-        }
-
         let primary_cursor = doc
             .selection(view.id)
             .primary()
             .cursor(doc.text().slice(..));
+
         if is_focused {
             decorations.add_decoration(text_decorations::Cursor {
                 cache: &editor.cursor_cache,
                 primary_cursor,
             });
         }
+
+        let gutter_overflow = view.gutter_offset(doc) == 0;
+        if !gutter_overflow {
+            Self::render_gutter(
+                editor,
+                doc,
+                self.sticky_nodes.clone(),
+                view,
+                theme,
+                is_focused & self.terminal_focused,
+                &mut decorations,
+            );
+        }
+
         let width = view.inner_width(doc);
         let config = doc.config.load();
         let enable_cursor_line = view
@@ -201,6 +207,7 @@ impl EditorView {
             inline_diagnostic_config,
             config.end_of_line_diagnostics,
         ));
+
         render_document(
             surface,
             inner,
@@ -212,6 +219,20 @@ impl EditorView {
             theme,
             decorations,
         );
+
+        if config.sticky_context.enable {
+            let nodes = self.sticky_nodes.to_owned();
+            self.sticky_nodes = context::calculate_sticky_nodes(
+                nodes,
+                doc,
+                view,
+                &config,
+                editor.cursor_cache.get(view, doc).as_ref(),
+            );
+
+            context::render_sticky_context(doc, view, surface, self.sticky_nodes.as_ref(), theme);
+        }
+
         Self::render_rulers(editor, doc, view, inner, surface, theme);
 
         // if we're not at the edge of the screen, draw a right border
@@ -489,7 +510,6 @@ impl EditorView {
         let base_primary_cursor_scope = theme
             .find_scope_index("ui.cursor.primary")
             .unwrap_or(base_cursor_scope);
-
         let cursor_scope = match mode {
             Mode::Insert => theme.find_scope_index_exact("ui.cursor.insert"),
             Mode::Select => theme.find_scope_index_exact("ui.cursor.select"),
@@ -647,8 +667,8 @@ impl EditorView {
     pub fn render_gutter<'d>(
         editor: &'d Editor,
         doc: &'d Document,
+        context: Option<Vec<StickyNode>>,
         view: &View,
-        viewport: Rect,
         theme: &Theme,
         is_focused: bool,
         decoration_manager: &mut DecorationManager<'d>,
@@ -661,18 +681,24 @@ impl EditorView {
             .collect();
 
         let mut offset = 0;
+        let viewport = view.area;
 
         let gutter_style = theme.get("ui.gutter");
         let gutter_selected_style = theme.get("ui.gutter.selected");
         let gutter_style_virtual = theme.get("ui.gutter.virtual");
         let gutter_selected_style_virtual = theme.get("ui.gutter.selected.virtual");
 
+        let context_rc = Rc::new(context);
+
         for gutter_type in view.gutters() {
             let mut gutter = gutter_type.style(editor, doc, view, theme, is_focused);
             let width = gutter_type.width(view, doc);
             // avoid lots of small allocations by reusing a text buffer for each line
-            let mut text = String::with_capacity(width);
+            let mut text_to_draw = String::with_capacity(width);
             let cursors = cursors.clone();
+
+            let context_instance = context_rc.clone();
+
             let gutter_decoration = move |renderer: &mut TextRenderer, pos: LinePos| {
                 // TODO handle softwrap in gutters
                 let selected = cursors.contains(&pos.doc_line);
@@ -686,10 +712,22 @@ impl EditorView {
                     (true, false) => gutter_selected_style_virtual,
                 };
 
-                if let Some(style) =
-                    gutter(pos.doc_line, selected, pos.first_visual_line, &mut text)
+                let mut doc_line = pos.doc_line;
+                if let Some(current_context) = context_instance
+                    .as_ref()
+                    .as_ref()
+                    .and_then(|c| c.iter().find(|n| n.visual_line == pos.visual_line))
                 {
-                    renderer.set_stringn(x, y, &text, width, gutter_style.patch(style));
+                    doc_line = match current_context.indicator {
+                        Some(_) => return,
+                        None => current_context.line,
+                    };
+                }
+
+                if let Some(style) =
+                    gutter(doc_line, selected, pos.first_visual_line, &mut text_to_draw)
+                {
+                    renderer.set_stringn(x, y, &text_to_draw, width, gutter_style.patch(style));
                 } else {
                     renderer.set_style(
                         Rect {
@@ -701,7 +739,7 @@ impl EditorView {
                         gutter_style,
                     );
                 }
-                text.clear();
+                text_to_draw.clear();
             };
             decoration_manager.add_decoration(gutter_decoration);
 
