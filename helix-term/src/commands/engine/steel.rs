@@ -871,7 +871,10 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
         let mut target_directory = helix_runtime_search_path();
 
         if !target_directory.exists() {
-            std::fs::create_dir(&target_directory).unwrap();
+            std::fs::create_dir_all(&target_directory).unwrap_or_else(|err| {
+                panic!("Failed to create directory {:?}: {}", target_directory, err)
+            });
+            eprintln!("Created directory: {:?}", target_directory);
         }
 
         target_directory.push("editor.scm");
