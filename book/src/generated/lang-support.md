@@ -203,6 +203,7 @@
 | task | ✓ |  |  |  |
 | tcl | ✓ |  | ✓ |  |
 | templ | ✓ |  |  | `templ` |
+| textproto | ✓ | ✓ | ✓ |  |
 | tfvars | ✓ |  | ✓ | `terraform-ls` |
 | thrift | ✓ |  |  |  |
 | todotxt | ✓ |  |  |  |
