@@ -131,6 +131,10 @@ impl Prompt {
         self
     }
 
+    pub(crate) fn history_register(&self) -> Option<char> {
+        self.history_register
+    }
+
     pub(crate) fn first_history_completion<'a>(
         &'a self,
         editor: &'a Editor,

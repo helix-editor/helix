@@ -1,3 +1,5 @@
+use std::fmt::Display;
+
 use crate::editor::Action;
 use crate::Editor;
 use crate::{DocumentId, ViewId};
@@ -73,13 +75,13 @@ impl From<helix_core::uri::UrlConversionError> for ApplyEditErrorKind {
     }
 }
 
-impl ToString for ApplyEditErrorKind {
-    fn to_string(&self) -> String {
+impl Display for ApplyEditErrorKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ApplyEditErrorKind::DocumentChanged => "document has changed".to_string(),
-            ApplyEditErrorKind::FileNotFound => "file not found".to_string(),
-            ApplyEditErrorKind::InvalidUrl(err) => err.to_string(),
-            ApplyEditErrorKind::IoError(err) => err.to_string(),
+            ApplyEditErrorKind::DocumentChanged => f.write_str("document has changed"),
+            ApplyEditErrorKind::FileNotFound => f.write_str("file not found"),
+            ApplyEditErrorKind::InvalidUrl(err) => f.write_str(&format!("{err}")),
+            ApplyEditErrorKind::IoError(err) => f.write_str(&format!("{err}")),
         }
     }
 }
@@ -241,7 +243,7 @@ impl Editor {
         match op {
             ResourceOp::Create(op) => {
                 let uri = Uri::try_from(&op.uri)?;
-                let path = uri.as_path_buf().expect("URIs are valid paths");
+                let path = uri.as_path().expect("URIs are valid paths");
                 let ignore_if_exists = op.options.as_ref().map_or(false, |options| {
                     !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
                 });
@@ -253,13 +255,15 @@ impl Editor {
                         }
                     }
 
-                    fs::write(&path, [])?;
-                    self.language_servers.file_event_handler.file_changed(path);
+                    fs::write(path, [])?;
+                    self.language_servers
+                        .file_event_handler
+                        .file_changed(path.to_path_buf());
                 }
             }
             ResourceOp::Delete(op) => {
                 let uri = Uri::try_from(&op.uri)?;
-                let path = uri.as_path_buf().expect("URIs are valid paths");
+                let path = uri.as_path().expect("URIs are valid paths");
                 if path.is_dir() {
                     let recursive = op
                         .options
@@ -268,11 +272,13 @@ impl Editor {
                         .unwrap_or(false);
 
                     if recursive {
-                        fs::remove_dir_all(&path)?
+                        fs::remove_dir_all(path)?
                     } else {
-                        fs::remove_dir(&path)?
+                        fs::remove_dir(path)?
                     }
-                    self.language_servers.file_event_handler.file_changed(path);
+                    self.language_servers
+                        .file_event_handler
+                        .file_changed(path.to_path_buf());
                 } else if path.is_file() {
                     fs::remove_file(path)?;
                 }

@@ -93,6 +93,8 @@ impl EditorView {
         let theme = &editor.theme;
         let config = editor.config();
 
+        let view_offset = doc.view_offset(view.id);
+
         let text_annotations = view.text_annotations(doc, Some(theme));
         let mut decorations = DecorationManager::default();
 
@@ -119,13 +121,13 @@ impl EditorView {
         }
 
         let syntax_highlights =
-            Self::doc_syntax_highlights(doc, view.offset.anchor, inner.height, theme);
+            Self::doc_syntax_highlights(doc, view_offset.anchor, inner.height, theme);
 
         let mut overlay_highlights =
-            Self::empty_highlight_iter(doc, view.offset.anchor, inner.height);
+            Self::empty_highlight_iter(doc, view_offset.anchor, inner.height);
         let overlay_syntax_highlights = Self::overlay_syntax_highlights(
             doc,
-            view.offset.anchor,
+            view_offset.anchor,
             inner.height,
             &text_annotations,
         );
@@ -203,7 +205,7 @@ impl EditorView {
             surface,
             inner,
             doc,
-            view.offset,
+            view_offset,
             &text_annotations,
             syntax_highlights,
             overlay_highlights,
@@ -259,11 +261,13 @@ impl EditorView {
             .and_then(|config| config.rulers.as_ref())
             .unwrap_or(editor_rulers);
 
+        let view_offset = doc.view_offset(view.id);
+
         rulers
             .iter()
             // View might be horizontally scrolled, convert from absolute distance
             // from the 1st column to relative distance from left of viewport
-            .filter_map(|ruler| ruler.checked_sub(1 + view.offset.horizontal_offset as u16))
+            .filter_map(|ruler| ruler.checked_sub(1 + view_offset.horizontal_offset as u16))
             .filter(|ruler| ruler < &viewport.width)
             .map(|ruler| viewport.clip_left(ruler).with_width(1))
             .for_each(|area| surface.set_style(area, ruler_theme))
@@ -825,6 +829,7 @@ impl EditorView {
         let inner_area = view.inner_area(doc);
 
         let selection = doc.selection(view.id);
+        let view_offset = doc.view_offset(view.id);
         let primary = selection.primary();
         let text_format = doc.text_format(viewport.width, None);
         for range in selection.iter() {
@@ -835,11 +840,11 @@ impl EditorView {
                 visual_offset_from_block(text, cursor, cursor, &text_format, text_annotations).0;
 
             // if the cursor is horizontally in the view
-            if col >= view.offset.horizontal_offset
-                && inner_area.width > (col - view.offset.horizontal_offset) as u16
+            if col >= view_offset.horizontal_offset
+                && inner_area.width > (col - view_offset.horizontal_offset) as u16
             {
                 let area = Rect::new(
-                    inner_area.x + (col - view.offset.horizontal_offset) as u16,
+                    inner_area.x + (col - view_offset.horizontal_offset) as u16,
                     view.area.y,
                     1,
                     view.area.height,

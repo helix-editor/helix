@@ -98,9 +98,13 @@ fn directory() {
     assert!(git::get_diff_base(&dir).is_err());
 }
 
-/// Test that `get_file_head` does not return content for a symlink.
-/// This is important to correctly cover cases where a symlink is removed and replaced by a file.
-/// If the contents of the symlink object were returned a diff between a path and the actual file would be produced (bad ui).
+/// Test that `get_diff_base` resolves symlinks so that the same diff base is
+/// used as the target file.
+///
+/// This is important to correctly cover cases where a symlink is removed and
+/// replaced by a file. If the contents of the symlink object were returned
+/// a diff between a literal file path and the actual file content would be
+/// produced (bad ui).
 #[cfg(any(unix, windows))]
 #[test]
 fn symlink() {
@@ -108,14 +112,41 @@ fn symlink() {
     use std::os::unix::fs::symlink;
     #[cfg(not(unix))]
     use std::os::windows::fs::symlink_file as symlink;
+
     let temp_git = empty_git_repo();
     let file = temp_git.path().join("file.txt");
-    let contents = b"foo".as_slice();
-    File::create(&file).unwrap().write_all(contents).unwrap();
+    let contents = Vec::from(b"foo");
+    File::create(&file).unwrap().write_all(&contents).unwrap();
     let file_link = temp_git.path().join("file_link.txt");
-    symlink("file.txt", &file_link).unwrap();
 
+    symlink("file.txt", &file_link).unwrap();
     create_commit(temp_git.path(), true);
-    assert!(git::get_diff_base(&file_link).is_err());
-    assert_eq!(git::get_diff_base(&file).unwrap(), Vec::from(contents));
+
+    assert_eq!(git::get_diff_base(&file_link).unwrap(), contents);
+    assert_eq!(git::get_diff_base(&file).unwrap(), contents);
+}
+
+/// Test that `get_diff_base` returns content when the file is a symlink to
+/// another file that is in a git repo, but the symlink itself is not.
+#[cfg(any(unix, windows))]
+#[test]
+fn symlink_to_git_repo() {
+    #[cfg(unix)]
+    use std::os::unix::fs::symlink;
+    #[cfg(not(unix))]
+    use std::os::windows::fs::symlink_file as symlink;
+
+    let temp_dir = tempfile::tempdir().expect("create temp dir");
+    let temp_git = empty_git_repo();
+
+    let file = temp_git.path().join("file.txt");
+    let contents = Vec::from(b"foo");
+    File::create(&file).unwrap().write_all(&contents).unwrap();
+    create_commit(temp_git.path(), true);
+
+    let file_link = temp_dir.path().join("file_link.txt");
+    symlink(&file, &file_link).unwrap();
+
+    assert_eq!(git::get_diff_base(&file_link).unwrap(), contents);
+    assert_eq!(git::get_diff_base(&file).unwrap(), contents);
 }

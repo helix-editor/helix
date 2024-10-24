@@ -74,6 +74,25 @@
           # filter out unnecessary paths
           filter = ignorePaths;
         };
+
+      helix-cogs = craneLibStable.buildPackage (commonArgs // {
+        pname = "helix-cogs";
+        version = "0.1.0";
+        cargoArtifacts = craneLibStable.buildDepsOnly commonArgs;
+
+        buildPhase = ''
+          export HOME=$PWD/build_home  # code-gen will write files relative to $HOME
+          cargoBuildLog=$(mktemp cargoBuildLogXXXX.json)
+          cargo run --package xtask -- code-gen --message-format json-render-diagnostics >"$cargoBuildLog"
+        '';
+
+        postInstall = ''
+          mkdir -p $out/cogs
+          cp -r build_home/.config/helix/* "$out/cogs"
+        '';
+
+      });
+
       makeOverridableHelix = old: config: let
         grammars = pkgs.callPackage ./grammars.nix config;
         runtimeDir = pkgs.runCommand "helix-runtime" {} ''
@@ -126,6 +145,7 @@
         # disable fetching and building of tree-sitter grammars in the helix-term build.rs
         HELIX_DISABLE_AUTO_GRAMMAR_BUILD = "1";
         buildInputs = [stdenv.cc.cc.lib];
+        nativeBuildInputs = [pkgs.installShellFiles];
         # disable tests
         doCheck = false;
         meta.mainProgram = "hx";
@@ -141,9 +161,11 @@
               cp contrib/Helix.desktop $out/share/applications
               cp logo.svg $out/share/icons/hicolor/scalable/apps/helix.svg
               cp contrib/helix.png $out/share/icons/hicolor/256x256/apps
+              installShellCompletion contrib/completion/hx.{bash,fish,zsh}
             '';
           });
         helix = makeOverridableHelix self.packages.${system}.helix-unwrapped {};
+        helix-cogs = helix-cogs;
         default = self.packages.${system}.helix;
       };
 

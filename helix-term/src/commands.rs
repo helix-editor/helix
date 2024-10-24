@@ -186,9 +186,16 @@ where
 
 use helix_view::{align_view, Align};
 
-/// A MappableCommand is either a static command like "jump_view_up" or a Typable command like
-/// :format. It causes a side-effect on the state (usually by creating and applying a transaction).
-/// Both of these types of commands can be mapped with keybindings in the config.toml.
+/// MappableCommands are commands that can be bound to keys, executable in
+/// normal, insert or select mode.
+///
+/// There are three kinds:
+///
+/// * Static: commands usually bound to keys and used for editing, movement,
+///   etc., for example `move_char_left`.
+/// * Typable: commands executable from command mode, prefixed with a `:`,
+///   for example `:write!`.
+/// * Macro: a sequence of keys to execute, for example `@miw`.
 #[derive(Clone)]
 pub enum MappableCommand {
     Typable {
@@ -200,6 +207,10 @@ pub enum MappableCommand {
         name: &'static str,
         fun: fn(cx: &mut Context),
         doc: &'static str,
+    },
+    Macro {
+        name: String,
+        keys: Vec<KeyEvent>,
     },
 }
 
@@ -240,6 +251,23 @@ impl MappableCommand {
                 }
             }
             Self::Static { fun, .. } => (fun)(cx),
+            Self::Macro { keys, .. } => {
+                // Protect against recursive macros.
+                if cx.editor.macro_replaying.contains(&'@') {
+                    cx.editor.set_error(
+                        "Cannot execute macro because the [@] register is already playing a macro",
+                    );
+                    return;
+                }
+                cx.editor.macro_replaying.push('@');
+                let keys = keys.clone();
+                cx.callback.push(Box::new(move |compositor, cx| {
+                    for key in keys.into_iter() {
+                        compositor.handle_event(&compositor::Event::Key(key), cx);
+                    }
+                    cx.editor.macro_replaying.pop();
+                }));
+            }
         }
     }
 
@@ -247,6 +275,7 @@ impl MappableCommand {
         match &self {
             Self::Typable { name, .. } => name,
             Self::Static { name, .. } => name,
+            Self::Macro { name, .. } => name,
         }
     }
 
@@ -254,6 +283,7 @@ impl MappableCommand {
         match &self {
             Self::Typable { doc, .. } => doc,
             Self::Static { doc, .. } => doc,
+            Self::Macro { name, .. } => name,
         }
     }
 
@@ -282,6 +312,10 @@ impl MappableCommand {
         move_prev_long_word_start, "Move to start of previous long word",
         move_next_long_word_end, "Move to end of next long word",
         move_prev_long_word_end, "Move to end of previous long word",
+        move_next_sub_word_start, "Move to start of next sub word",
+        move_prev_sub_word_start, "Move to start of previous sub word",
+        move_next_sub_word_end, "Move to end of next sub word",
+        move_prev_sub_word_end, "Move to end of previous sub word",
         move_parent_node_end, "Move to end of the parent node",
         move_parent_node_start, "Move to beginning of the parent node",
         extend_next_word_start, "Extend to start of next word",
@@ -292,6 +326,10 @@ impl MappableCommand {
         extend_prev_long_word_start, "Extend to start of previous long word",
         extend_next_long_word_end, "Extend to end of next long word",
         extend_prev_long_word_end, "Extend to end of prev long word",
+        extend_next_sub_word_start, "Extend to start of next sub word",
+        extend_prev_sub_word_start, "Extend to start of previous sub word",
+        extend_next_sub_word_end, "Extend to end of next sub word",
+        extend_prev_sub_word_end, "Extend to end of prev sub word",
         extend_parent_node_end, "Extend to end of the parent node",
         extend_parent_node_start, "Extend to beginning of the parent node",
         find_till_char, "Move till next occurrence of char",
@@ -556,6 +594,11 @@ impl fmt::Debug for MappableCommand {
                 .field(name)
                 .field(args)
                 .finish(),
+            MappableCommand::Macro { name, keys, .. } => f
+                .debug_tuple("MappableCommand")
+                .field(name)
+                .field(keys)
+                .finish(),
         }
     }
 }
@@ -604,6 +647,11 @@ impl std::str::FromStr for MappableCommand {
                 //     }
                 // })
                 .ok_or_else(|| anyhow!("No TypableCommand named '{}'", s))
+        } else if let Some(suffix) = s.strip_prefix('@') {
+            helix_view::input::parse_macro(suffix).map(|keys| Self::Macro {
+                name: s.to_string(),
+                keys,
+            })
         } else {
             MappableCommand::STATIC_COMMAND_LIST
                 .iter()
@@ -1063,6 +1111,7 @@ fn goto_window(cx: &mut Context, align: Align) {
     let count = cx.count() - 1;
     let config = cx.editor.config();
     let (view, doc) = current!(cx.editor);
+    let view_offset = doc.view_offset(view.id);
 
     let height = view.inner_height();
 
@@ -1075,15 +1124,15 @@ fn goto_window(cx: &mut Context, align: Align) {
     let last_visual_line = view.last_visual_line(doc);
 
     let visual_line = match align {
-        Align::Top => view.offset.vertical_offset + scrolloff + count,
-        Align::Center => view.offset.vertical_offset + (last_visual_line / 2),
+        Align::Top => view_offset.vertical_offset + scrolloff + count,
+        Align::Center => view_offset.vertical_offset + (last_visual_line / 2),
         Align::Bottom => {
-            view.offset.vertical_offset + last_visual_line.saturating_sub(scrolloff + count)
+            view_offset.vertical_offset + last_visual_line.saturating_sub(scrolloff + count)
         }
     };
     let visual_line = visual_line
-        .max(view.offset.vertical_offset + scrolloff)
-        .min(view.offset.vertical_offset + last_visual_line.saturating_sub(scrolloff));
+        .max(view_offset.vertical_offset + scrolloff)
+        .min(view_offset.vertical_offset + last_visual_line.saturating_sub(scrolloff));
 
     let pos = view
         .pos_at_visual_coords(doc, visual_line as u16, 0, false)
@@ -1154,6 +1203,22 @@ fn move_prev_long_word_end(cx: &mut Context) {
 
 fn move_next_long_word_end(cx: &mut Context) {
     move_word_impl(cx, movement::move_next_long_word_end)
+}
+
+fn move_next_sub_word_start(cx: &mut Context) {
+    move_word_impl(cx, movement::move_next_sub_word_start)
+}
+
+fn move_prev_sub_word_start(cx: &mut Context) {
+    move_word_impl(cx, movement::move_prev_sub_word_start)
+}
+
+fn move_prev_sub_word_end(cx: &mut Context) {
+    move_word_impl(cx, movement::move_prev_sub_word_end)
+}
+
+fn move_next_sub_word_end(cx: &mut Context) {
+    move_word_impl(cx, movement::move_next_sub_word_end)
 }
 
 fn goto_para_impl<F>(cx: &mut Context, move_fn: F)
@@ -1390,6 +1455,22 @@ fn extend_prev_long_word_end(cx: &mut Context) {
 
 fn extend_next_long_word_end(cx: &mut Context) {
     extend_word_impl(cx, movement::move_next_long_word_end)
+}
+
+fn extend_next_sub_word_start(cx: &mut Context) {
+    extend_word_impl(cx, movement::move_next_sub_word_start)
+}
+
+fn extend_prev_sub_word_start(cx: &mut Context) {
+    extend_word_impl(cx, movement::move_prev_sub_word_start)
+}
+
+fn extend_prev_sub_word_end(cx: &mut Context) {
+    extend_word_impl(cx, movement::move_prev_sub_word_end)
+}
+
+fn extend_next_sub_word_end(cx: &mut Context) {
+    extend_word_impl(cx, movement::move_next_sub_word_end)
 }
 
 /// Separate branch to find_char designed only for `<ret>` char.
@@ -1696,6 +1777,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
     use Direction::*;
     let config = cx.editor.config();
     let (view, doc) = current!(cx.editor);
+    let mut view_offset = doc.view_offset(view.id);
 
     let range = doc.selection(view.id).primary();
     let text = doc.text().slice(..);
@@ -1712,15 +1794,19 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
     let doc_text = doc.text().slice(..);
     let viewport = view.inner_area(doc);
     let text_fmt = doc.text_format(viewport.width, None);
-    let mut annotations = view.text_annotations(&*doc, None);
-    (view.offset.anchor, view.offset.vertical_offset) = char_idx_at_visual_offset(
+    (view_offset.anchor, view_offset.vertical_offset) = char_idx_at_visual_offset(
         doc_text,
-        view.offset.anchor,
-        view.offset.vertical_offset as isize + offset,
+        view_offset.anchor,
+        view_offset.vertical_offset as isize + offset,
         0,
         &text_fmt,
-        &annotations,
+        // &annotations,
+        &view.text_annotations(&*doc, None),
     );
+    doc.set_view_offset(view.id, view_offset);
+
+    let doc_text = doc.text().slice(..);
+    let mut annotations = view.text_annotations(&*doc, None);
 
     if sync_cursor {
         let movement = match cx.editor.mode {
@@ -1747,14 +1833,16 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
         return;
     }
 
+    let view_offset = doc.view_offset(view.id);
+
     let mut head;
     match direction {
         Forward => {
             let off;
             (head, off) = char_idx_at_visual_offset(
                 doc_text,
-                view.offset.anchor,
-                (view.offset.vertical_offset + scrolloff) as isize,
+                view_offset.anchor,
+                (view_offset.vertical_offset + scrolloff) as isize,
                 0,
                 &text_fmt,
                 &annotations,
@@ -1767,8 +1855,8 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
         Backward => {
             head = char_idx_at_visual_offset(
                 doc_text,
-                view.offset.anchor,
-                (view.offset.vertical_offset + height - scrolloff - 1) as isize,
+                view_offset.anchor,
+                (view_offset.vertical_offset + height - scrolloff - 1) as isize,
                 0,
                 &text_fmt,
                 &annotations,
@@ -1962,6 +2050,8 @@ fn select_regex(cx: &mut Context) {
                 selection::select_on_matches(text, doc.selection(view.id), &regex)
             {
                 doc.set_selection(view.id, selection);
+            } else {
+                cx.editor.set_error("nothing selected");
             }
         },
     );
@@ -3168,6 +3258,9 @@ pub fn command_palette(cx: &mut Context) {
                 ui::PickerColumn::new("name", |item, _| match item {
                     MappableCommand::Typable { name, .. } => format!(":{name}").into(),
                     MappableCommand::Static { name, .. } => (*name).into(),
+                    MappableCommand::Macro { .. } => {
+                        unreachable!("macros aren't included in the command palette")
+                    }
                 }),
                 ui::PickerColumn::new(
                     "bindings",
@@ -4578,6 +4671,14 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
     let text = doc.text();
     let slice = text.slice(..);
 
+    let comment_tokens = doc
+        .language_config()
+        .and_then(|config| config.comment_tokens.as_deref())
+        .unwrap_or(&[]);
+    // Sort by length to handle Rust's /// vs //
+    let mut comment_tokens: Vec<&str> = comment_tokens.iter().map(|x| x.as_str()).collect();
+    comment_tokens.sort_unstable_by_key(|x| std::cmp::Reverse(x.len()));
+
     let mut changes = Vec::new();
 
     for selection in doc.selection(view.id) {
@@ -4589,10 +4690,31 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
 
         changes.reserve(lines.len());
 
+        let first_line_idx = slice.line_to_char(start);
+        let first_line_idx = skip_while(slice, first_line_idx, |ch| matches!(ch, ' ' | 't'))
+            .unwrap_or(first_line_idx);
+        let first_line = slice.slice(first_line_idx..);
+        let mut current_comment_token = comment_tokens
+            .iter()
+            .find(|token| first_line.starts_with(token));
+
         for line in lines {
             let start = line_end_char_index(&slice, line);
             let mut end = text.line_to_char(line + 1);
             end = skip_while(slice, end, |ch| matches!(ch, ' ' | '\t')).unwrap_or(end);
+            let slice_from_end = slice.slice(end..);
+            if let Some(token) = comment_tokens
+                .iter()
+                .find(|token| slice_from_end.starts_with(token))
+            {
+                if Some(token) == current_comment_token {
+                    end += token.chars().count();
+                    end = skip_while(slice, end, |ch| matches!(ch, ' ' | '\t')).unwrap_or(end);
+                } else {
+                    // update current token, but don't delete this one.
+                    current_comment_token = Some(token);
+                }
+            }
 
             let separator = if end == line_end_char_index(&slice, line + 1) {
                 // the joining line contains only space-characters => don't include a whitespace when joining
@@ -4661,6 +4783,8 @@ fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
                 selection::keep_or_remove_matches(text, doc.selection(view.id), &regex, remove)
             {
                 doc.set_selection(view.id, selection);
+            } else {
+                cx.editor.set_error("no selections remaining");
             }
         },
     )
@@ -5088,6 +5212,8 @@ fn jump_forward(cx: &mut Context) {
         }
 
         doc.set_selection(view.id, selection);
+        // Document we switch to might not have been opened in the view before
+        doc.ensure_view_init(view.id);
         view.ensure_cursor_in_view_center(doc, config.scrolloff);
     };
 }
@@ -5108,6 +5234,8 @@ fn jump_backward(cx: &mut Context) {
         }
 
         doc.set_selection(view.id, selection);
+        // Document we switch to might not have been opened in the view before
+        doc.ensure_view_init(view.id);
         view.ensure_cursor_in_view_center(doc, config.scrolloff);
     };
 }
@@ -5169,7 +5297,7 @@ fn split(editor: &mut Editor, action: Action) {
     let (view, doc) = current!(editor);
     let id = doc.id();
     let selection = doc.selection(view.id).clone();
-    let offset = view.offset;
+    let offset = doc.view_offset(view.id);
 
     editor.switch(id, action);
 
@@ -5178,7 +5306,7 @@ fn split(editor: &mut Editor, action: Action) {
     doc.set_selection(view.id, selection);
     // match the view scroll offset (switch doesn't handle this fully
     // since the selection is only matched after the split)
-    view.offset = offset;
+    doc.set_view_offset(view.id, offset);
 }
 
 fn hsplit(cx: &mut Context) {
@@ -5273,14 +5401,21 @@ fn align_view_middle(cx: &mut Context) {
         return;
     }
     let doc_text = doc.text().slice(..);
-    let annotations = view.text_annotations(doc, None);
     let pos = doc.selection(view.id).primary().cursor(doc_text);
-    let pos =
-        visual_offset_from_block(doc_text, view.offset.anchor, pos, &text_fmt, &annotations).0;
+    let pos = visual_offset_from_block(
+        doc_text,
+        doc.view_offset(view.id).anchor,
+        pos,
+        &text_fmt,
+        &view.text_annotations(doc, None),
+    )
+    .0;
 
-    view.offset.horizontal_offset = pos
+    let mut offset = doc.view_offset(view.id);
+    offset.horizontal_offset = pos
         .col
         .saturating_sub((view.inner_area(doc).width as usize) / 2);
+    doc.set_view_offset(view.id, offset);
 }
 
 fn scroll_up(cx: &mut Context) {
@@ -5746,27 +5881,24 @@ async fn shell_impl_async(
         process.wait_with_output().await?
     };
 
-    if !output.status.success() {
-        if !output.stderr.is_empty() {
-            let err = String::from_utf8_lossy(&output.stderr).to_string();
-            log::error!("Shell error: {}", err);
-            bail!("Shell error: {}", err);
+    let output = if !output.status.success() {
+        if output.stderr.is_empty() {
+            match output.status.code() {
+                Some(exit_code) => bail!("Shell command failed: status {}", exit_code),
+                None => bail!("Shell command failed"),
+            }
         }
-        match output.status.code() {
-            Some(exit_code) => bail!("Shell command failed: status {}", exit_code),
-            None => bail!("Shell command failed"),
-        }
+        String::from_utf8_lossy(&output.stderr)
+        // Prioritize `stderr` output over `stdout`
     } else if !output.stderr.is_empty() {
-        log::debug!(
-            "Command printed to stderr: {}",
-            String::from_utf8_lossy(&output.stderr).to_string()
-        );
-    }
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        log::debug!("Command printed to stderr: {stderr}");
+        stderr
+    } else {
+        String::from_utf8_lossy(&output.stdout)
+    };
 
-    let str = std::str::from_utf8(&output.stdout)
-        .map_err(|_| anyhow!("Process did not output valid UTF-8"))?;
-    let tendril = Tendril::from(str);
-    Ok(tendril)
+    Ok(Tendril::from(output))
 }
 
 fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
@@ -5790,14 +5922,20 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
         let output = if let Some(output) = shell_output.as_ref() {
             output.clone()
         } else {
-            let fragment = range.slice(text);
-            match shell_impl(shell, cmd, pipe.then(|| fragment.into())) {
-                Ok(result) => {
-                    let result = Tendril::from(result.trim_end());
-                    if !pipe {
-                        shell_output = Some(result.clone());
+            let input = range.slice(text);
+            match shell_impl(shell, cmd, pipe.then(|| input.into())) {
+                Ok(mut output) => {
+                    if !input.ends_with("\n") && !output.is_empty() && output.ends_with('\n') {
+                        output.pop();
+                        if output.ends_with('\r') {
+                            output.pop();
+                        }
                     }
-                    result
+
+                    if !pipe {
+                        shell_output = Some(output.clone());
+                    }
+                    output
                 }
                 Err(err) => {
                     cx.editor.set_error(err.to_string());
@@ -6156,7 +6294,7 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
 
     // This is not necessarily exact if there is virtual text like soft wrap.
     // It's ok though because the extra jump labels will not be rendered.
-    let start = text.line_to_char(text.char_to_line(view.offset.anchor));
+    let start = text.line_to_char(text.char_to_line(doc.view_offset(view.id).anchor));
     let end = text.line_to_char(view.estimate_last_doc_line(doc) + 1);
 
     let primary_selection = doc.selection(view.id).primary();
