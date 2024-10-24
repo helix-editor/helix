@@ -18,7 +18,6 @@ use futures_util::Future;
 mod handlers;
 
 use ignore::DirEntry;
-use url::Url;
 
 #[cfg(windows)]
 fn true_color() -> bool {
@@ -70,10 +69,10 @@ fn filter_picker_entry(entry: &DirEntry, root: &Path, dedup_symlinks: bool) -> b
 }
 
 /// Opens URL in external program.
-fn open_external_url_callback(
-    url: Url,
+fn open_external_url_callback<U: AsRef<std::ffi::OsStr>>(
+    url: U,
 ) -> impl Future<Output = Result<job::Callback, anyhow::Error>> + Send + 'static {
-    let commands = open::commands(url.as_str());
+    let commands = open::commands(url);
     async {
         for cmd in commands {
             let mut command = tokio::process::Command::new(cmd.get_program());
