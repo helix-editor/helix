@@ -15,6 +15,9 @@ pub struct Overlay<T> {
     pub calc_child_size: Box<dyn Fn(Rect) -> Rect>,
 }
 
+// TODO: For this to be sound, all of the various functions
+// have to now be marked as send + sync + 'static. Annoying,
+// and something I'll look into with steel.
 unsafe impl<T> Send for Overlay<T> {}
 unsafe impl<T> Sync for Overlay<T> {}
 
