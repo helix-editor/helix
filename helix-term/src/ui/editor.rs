@@ -1485,6 +1485,22 @@ impl Component for EditorView {
             _ => false,
         };
 
+        let mut area = area;
+
+        // TODO: This may need to get looked at!
+        if let Some(top) = cx.editor.editor_clipping.top {
+            area = area.clip_top(top);
+        }
+        if let Some(bottom) = cx.editor.editor_clipping.bottom {
+            area = area.clip_bottom(bottom);
+        }
+        if let Some(left) = cx.editor.editor_clipping.left {
+            area = area.clip_left(left);
+        }
+        if let Some(right) = cx.editor.editor_clipping.right {
+            area = area.clip_right(right);
+        }
+
         // -1 for commandline and -1 for bufferline
         let mut editor_area = area.clip_bottom(1);
         if use_bufferline {

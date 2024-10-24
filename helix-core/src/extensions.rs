@@ -4,6 +4,7 @@ pub mod steel_implementations {
     use std::borrow::Cow;
 
     use steel::{
+        gc::ShareableMut,
         rvals::{as_underlying_type, Custom, SteelString},
         steel_vm::{builtin::BuiltInModule, register_fn::RegisterFn},
         SteelVal,
@@ -55,7 +56,7 @@ pub mod steel_implementations {
         fn equality_hint_general(&self, other: &steel::SteelVal) -> bool {
             match other {
                 SteelVal::StringV(s) => self.to_slice() == s.as_str(),
-                SteelVal::Custom(c) => Self::equality_hint(&self, c.borrow().as_ref()),
+                SteelVal::Custom(c) => Self::equality_hint(&self, c.read().as_ref()),
 
                 _ => false,
             }
@@ -99,7 +100,10 @@ pub mod steel_implementations {
                     // Move the start range, to wherever this lines up
                     let index = slice.try_line_to_char(cursor)?;
 
+                    let line = slice.line(cursor);
+
                     self.start += index;
+                    self.end = self.start + line.len_chars();
 
                     Ok(self)
                 }
@@ -113,8 +117,10 @@ pub mod steel_implementations {
 
                     // Move the start range, to wherever this lines up
                     let index = slice.try_line_to_byte(cursor)?;
+                    let line = slice.line(cursor);
 
                     self.start += index;
+                    self.end = self.start + line.len_bytes();
 
                     Ok(self)
                 }

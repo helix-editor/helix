@@ -15,6 +15,9 @@ pub struct Overlay<T> {
     pub calc_child_size: Box<dyn Fn(Rect) -> Rect>,
 }
 
+unsafe impl<T> Send for Overlay<T> {}
+unsafe impl<T> Sync for Overlay<T> {}
+
 /// Surrounds the component with a margin of 5% on each side, and an additional 2 rows at the bottom
 pub fn overlaid<T>(content: T) -> Overlay<T> {
     Overlay {

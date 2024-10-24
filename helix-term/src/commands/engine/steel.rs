@@ -1,4 +1,5 @@
 use arc_swap::ArcSwapAny;
+use crossterm::event::{Event, KeyCode, KeyModifiers};
 use helix_core::{
     diagnostic::Severity,
     extensions::steel_implementations::{rope_module, SteelRopeSlice},
@@ -18,28 +19,26 @@ use helix_view::{
     },
     extension::document_id_to_usize,
     input::KeyEvent,
-    Document, DocumentId, Editor, ViewId,
+    DocumentId, Editor, ViewId,
 };
-use once_cell::sync::Lazy;
+use once_cell::sync::{Lazy, OnceCell};
 use steel::{
-    gc::unsafe_erased_pointers::CustomReference,
-    rerrs::ErrorKind,
+    gc::{unsafe_erased_pointers::CustomReference, ShareableMut},
     rvals::{as_underlying_type, IntoSteelVal, SteelString},
-    steel_vm::{engine::Engine, register_fn::RegisterFn},
+    steel_vm::{
+        engine::Engine, mutex_lock, mutex_unlock, register_fn::RegisterFn, ThreadStateController,
+    },
     steelerr, SteelErr, SteelVal,
 };
 
+use std::sync::Arc;
 use std::{
     borrow::Cow,
     collections::HashMap,
     error::Error,
     path::PathBuf,
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::{atomic::AtomicBool, Mutex, MutexGuard},
     time::Duration,
-};
-use std::{
-    collections::HashSet,
-    sync::{Arc, RwLock},
 };
 
 use steel::{rvals::Custom, steel_vm::builtin::BuiltInModule};
@@ -62,31 +61,108 @@ use super::{
 };
 use insert::{insert_char, insert_string};
 
-static ENGINE_COUNT: AtomicUsize = AtomicUsize::new(0);
+pub static INTERRUPT_HANDLER: OnceCell<InterruptHandler> = OnceCell::new();
+
+// TODO: Use this for the available commands.
+// We just have to look at functions that have been defined at
+// the top level, _after_ they
+pub static GLOBAL_OFFSET: OnceCell<usize> = OnceCell::new();
+// pub static AVAILABLE_FUNCTIONS: Lazy<RwLock<Vec<String>>> = Lazy::new(|| RwLock::new(Vec::new()));
 
 // The Steel scripting engine instance. This is what drives the whole integration.
-// Since the engine is not thread safe, we instead (more or less) pin the engine
-// to a single thread by panicking if it is access on another thread. The only way
-// this can really happen is if a callback is made that touches this variable.
-//
-// As long as the `local_callback` queue is used for any callbacks, all accesses
-// to this variable will stay on the main thread. If you make a mistake, it will be
-// obvious since the editor will immediately crash when running anything that
-// violates this constraint.
-//
-// It isn't explicitly an issue if another thread spins up another instance of
-// the engine, the overhead here is relatively minimal. However the assumption
-// based on the way the integration works is that only one instance of the engine
-// exists at any point in time. Since this is the case, we want to minimize the chance
-// that that isn't true. This assumption could also be revisited at some point in
-// the future.
-thread_local! {
-    pub static ENGINE: std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine::Engine>> = {
-        if ENGINE_COUNT.fetch_add(1, Ordering::SeqCst) != 0 {
-            panic!("More than one instance of the steel runtime is not allowed!");
+pub static GLOBAL_ENGINE: Lazy<Mutex<steel::steel_vm::engine::Engine>> = Lazy::new(|| {
+    let engine = steel::steel_vm::engine::Engine::new();
+
+    // Any function after this point can be used for looking at "new" functions
+    GLOBAL_OFFSET.set(engine.readable_globals(0).len()).unwrap();
+
+    let controller = engine.get_thread_state_controller();
+    let running = Arc::new(AtomicBool::new(false));
+
+    fn is_event_available() -> std::io::Result<bool> {
+        crossterm::event::poll(Duration::from_millis(10))
+    }
+
+    let controller_clone = controller.clone();
+    let running_clone = running.clone();
+
+    // TODO: Only allow interrupt after a certain amount of time...
+    // perhaps something like, 500 ms? That way interleaving calls to
+    // steel functions don't accidentally cause an interrupt.
+    let thread_handle = std::thread::spawn(move || {
+        let controller = controller_clone;
+        let running = running_clone;
+
+        loop {
+            std::thread::park();
+
+            while running.load(std::sync::atomic::Ordering::Relaxed) {
+                if is_event_available().unwrap_or(false) {
+                    let event = crossterm::event::read();
+
+                    if let Ok(Event::Key(crossterm::event::KeyEvent {
+                        code: KeyCode::Char('c'),
+                        modifiers: KeyModifiers::CONTROL,
+                        ..
+                    })) = event
+                    {
+                        controller.interrupt();
+                        break;
+                    }
+                }
+            }
         }
-        configure_engine()
-    };
+    });
+
+    INTERRUPT_HANDLER
+        .set(InterruptHandler {
+            controller: controller.clone(),
+            running: running.clone(),
+            handle: thread_handle,
+        })
+        .ok();
+
+    Mutex::new(configure_engine_impl(engine))
+});
+
+fn acquire_engine_lock() -> MutexGuard<'static, Engine> {
+    GLOBAL_ENGINE.lock().unwrap()
+}
+
+/// Run a function with exclusive access to the engine. This only
+/// locks the engine that is running on the main thread.
+pub fn enter_engine<F, R>(f: F) -> R
+where
+    F: FnOnce(&mut Engine) -> R,
+{
+    (f)(&mut acquire_engine_lock())
+}
+
+pub struct InterruptHandler {
+    controller: ThreadStateController,
+    running: Arc<AtomicBool>,
+    handle: std::thread::JoinHandle<()>,
+}
+
+pub fn with_interrupt_handler<F, R>(f: F) -> R
+where
+    F: FnOnce() -> R,
+{
+    let handler = INTERRUPT_HANDLER.get().unwrap();
+    handler.handle.thread().unpark();
+
+    handler
+        .running
+        .store(true, std::sync::atomic::Ordering::Relaxed);
+
+    let res = (f)();
+
+    handler.controller.resume();
+    handler
+        .running
+        .store(false, std::sync::atomic::Ordering::Relaxed);
+
+    res
 }
 
 pub struct KeyMapApi {
@@ -112,14 +188,11 @@ impl KeyMapApi {
 }
 
 // Handle buffer and extension specific keybindings in userspace.
-thread_local! {
-    pub static BUFFER_OR_EXTENSION_KEYBINDING_MAP: SteelVal =
-        SteelVal::boxed(SteelVal::empty_hashmap());
+pub static BUFFER_OR_EXTENSION_KEYBINDING_MAP: Lazy<SteelVal> =
+    Lazy::new(|| SteelVal::boxed(SteelVal::empty_hashmap()));
 
-    pub static REVERSE_BUFFER_MAP: SteelVal =
-        SteelVal::boxed(SteelVal::empty_hashmap());
-
-}
+pub static REVERSE_BUFFER_MAP: Lazy<SteelVal> =
+    Lazy::new(|| SteelVal::boxed(SteelVal::empty_hashmap()));
 
 fn load_component_api(engine: &mut Engine) {
     let module = helix_component_module();
@@ -140,12 +213,9 @@ fn load_keymap_api(engine: &mut Engine, api: KeyMapApi) {
     // This should be associated with a corresponding scheme module to wrap this up
     module.register_value(
         "*buffer-or-extension-keybindings*",
-        BUFFER_OR_EXTENSION_KEYBINDING_MAP.with(|x| x.clone()),
+        BUFFER_OR_EXTENSION_KEYBINDING_MAP.clone(),
     );
-    module.register_value(
-        "*reverse-buffer-map*",
-        REVERSE_BUFFER_MAP.with(|x| x.clone()),
-    );
+    module.register_value("*reverse-buffer-map*", REVERSE_BUFFER_MAP.clone());
 
     engine.register_module(module);
 }
@@ -233,42 +303,55 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
         }
     };
 
+    macro_rules! function1 {
+        ($name:expr, $function:expr, $doc:expr) => {{
+            module.register_fn($name, $function);
+            template_function_arity_1($name, $doc);
+        }};
+    }
+
     // Adhoc static commands that probably needs evaluating
     // Arity 1
-    module.register_fn("insert_char", insert_char);
-    template_function_arity_1(
+    function1!(
         "insert_char",
-        "Insert a given character at the cursor cursor position",
+        insert_char,
+        "Insert a given character at the cursor cursor position"
     );
-    module.register_fn("insert_string", insert_string);
-    template_function_arity_1(
+    function1!(
         "insert_string",
-        "Insert a given string at the current cursor position",
+        insert_string,
+        "Insert a given string at the current cursor position"
     );
-    module.register_fn("set-current-selection-object!", set_selection);
-    template_function_arity_1(
+
+    function1!(
         "set-current-selection-object!",
-        "Update the selection object to the current selection within the editor",
+        set_selection,
+        "Update the selection object to the current selection within the editor"
     );
 
-    module.register_fn("regex-selection", regex_selection);
-    template_function_arity_1(
+    function1!(
         "regex-selection",
-        "Run the given regex within the existing buffer",
+        regex_selection,
+        "Run the given regex within the existing buffer"
     );
-    module.register_fn("replace-selection-with", replace_selection);
-    template_function_arity_1(
-        "replace-selection-with",
-        "Replace the existing selection with the given string",
-    );
-    module.register_fn("cx->current-file", current_path);
-    template_function_arity_1("cx->current-file", "Get the currently focused file path");
 
-    module.register_fn("enqueue-expression-in-engine", run_expression_in_engine);
-    template_function_arity_1(
+    function1!(
+        "replace-selection-with",
+        replace_selection,
+        "Replace the existing selection with the given string"
+    );
+
+    function1!(
+        "cx->current-file",
+        current_path,
+        "Get the currently focused file path"
+    );
+
+    function1!(
         "enqueue-expression-in-engine",
+        run_expression_in_engine,
         "Enqueue an expression to run at the top level context, 
-        after the existing function context has exited.",
+        after the existing function context has exited."
     );
 
     let mut template_function_arity_0 = |name: &str| {
@@ -284,31 +367,21 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
         }
     };
 
-    // Arity 0
-    module.register_fn("current_selection", get_selection);
-    template_function_arity_0("current_selection");
+    macro_rules! function0 {
+        ($name:expr, $function:expr) => {{
+            module.register_fn($name, $function);
+            template_function_arity_0($name);
+        }};
+    }
 
-    // Execute a whole buffer to change configurations.
-    module.register_fn("load-buffer!", load_buffer);
-    template_function_arity_0("load-buffer!");
-
-    module.register_fn("current-highlighted-text!", get_highlighted_text);
-    template_function_arity_0("current-highlighted-text!");
-
-    module.register_fn("get-current-line-number", current_line_number);
-    template_function_arity_0("get-current-line-number");
-
-    module.register_fn("current-selection-object", current_selection);
-    template_function_arity_0("current-selection-object");
-
-    module.register_fn("get-helix-cwd", get_helix_cwd);
-    template_function_arity_0("get-helix-cwd");
-
-    module.register_fn("move-window-far-left", move_window_to_the_left);
-    template_function_arity_0("move-window-far-left");
-
-    module.register_fn("move-window-far-right", move_window_to_the_right);
-    template_function_arity_0("move-window-far-right");
+    function0!("current_selection", get_selection);
+    function0!("load-buffer!", load_buffer);
+    function0!("current-highlighted-text!", get_highlighted_text);
+    function0!("get-current-line-number", current_line_number);
+    function0!("current-selection-object", current_selection);
+    function0!("get-helix-cwd", get_helix_cwd);
+    function0!("move-window-far-left", move_window_to_the_left);
+    function0!("move-window-far-right", move_window_to_the_right);
 
     let mut template_function_no_context = |name: &str| {
         if generate_sources {
@@ -786,17 +859,24 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
     module.register_fn("editor-switch-action!", cx_switch_action);
 
     // Arity 1
-    RegisterFn::<
-        _,
-        steel::steel_vm::register_fn::MarkerWrapper8<(
-            Context,
-            DocumentId,
-            Document,
-            Document,
-            Context,
-        )>,
-        Document,
-    >::register_fn(&mut module, "editor->get-document", cx_get_document); // I do not like this
+    module.register_fn("editor->text", document_id_to_text);
+    module.register_fn("editor-document->path", document_path);
+
+    module.register_fn("set-editor-clip-right!", |cx: &mut Context, right: u16| {
+        cx.editor.editor_clipping.right = Some(right);
+    });
+    module.register_fn("set-editor-clip-left!", |cx: &mut Context, left: u16| {
+        cx.editor.editor_clipping.left = Some(left);
+    });
+    module.register_fn("set-editor-clip-top!", |cx: &mut Context, top: u16| {
+        cx.editor.editor_clipping.top = Some(top);
+    });
+    module.register_fn(
+        "set-editor-clip-bottom!",
+        |cx: &mut Context, bottom: u16| {
+            cx.editor.editor_clipping.bottom = Some(bottom);
+        },
+    );
 
     if generate_sources {
         let mut builtin_editor_command_module =
@@ -853,7 +933,13 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
         template_function_arity_1("editor-doc-in-view?");
         template_function_arity_1("set-scratch-buffer-name!");
         template_function_arity_1("editor-doc-exists?");
-        template_function_arity_1("editor->get-document");
+        template_function_arity_1("editor->text");
+        template_function_arity_1("editor-document->path");
+
+        template_function_arity_1("set-editor-clip-top!");
+        template_function_arity_1("set-editor-clip-right!");
+        template_function_arity_1("set-editor-clip-left!");
+        template_function_arity_1("set-editor-clip-bottom!");
 
         let mut template_function_arity_2 = |name: &str| {
             builtin_editor_command_module.push_str(&format!(
@@ -911,7 +997,7 @@ impl super::PluginSystem for SteelScriptingEngine {
         SteelScriptingEngine::get_keymap_for_extension(cxt).and_then(|map| {
             if let steel::SteelVal::Custom(inner) = map {
                 if let Some(underlying) =
-                    steel::rvals::as_underlying_type::<EmbeddedKeyMap>(inner.borrow().as_ref())
+                    steel::rvals::as_underlying_type::<EmbeddedKeyMap>(inner.read().as_ref())
                 {
                     return Some(editor.keymaps.get_with_map(&underlying.0, mode, event));
                 }
@@ -922,16 +1008,17 @@ impl super::PluginSystem for SteelScriptingEngine {
     }
 
     fn call_function_by_name(&self, cx: &mut Context, name: &str, args: &[Cow<str>]) -> bool {
-        if ENGINE.with(|x| x.borrow().global_exists(name)) {
+        if enter_engine(|x| x.global_exists(name)) {
             let args = args
                 .iter()
                 .map(|x| x.clone().into_steelval().unwrap())
                 .collect::<Vec<_>>();
 
-            if let Err(e) = ENGINE.with(|x| {
-                let mut guard = x.borrow_mut();
-
+            if let Err(e) = enter_engine(|guard| {
                 {
+                    // Install the interrupt handler, in the event this thing
+                    // is blocking for too long.
+                    // with_interrupt_handler(|| {
                     guard.with_mut_reference::<Context, Context>(cx).consume(
                         move |engine, arguments| {
                             let context = arguments[0].clone();
@@ -941,6 +1028,7 @@ impl super::PluginSystem for SteelScriptingEngine {
                             engine.call_function_by_name_with_args(name, args.clone())
                         },
                     )
+                    // })
                 }
             }) {
                 cx.editor.set_error(format!("{}", e));
@@ -958,22 +1046,20 @@ impl super::PluginSystem for SteelScriptingEngine {
         parts: &'a [&'a str],
         event: PromptEvent,
     ) -> bool {
-        if ENGINE.with(|x| x.borrow().global_exists(parts[0])) {
+        if enter_engine(|x| x.global_exists(parts[0])) {
             let shellwords = Shellwords::from(input);
             let args = shellwords.words();
 
             // We're finalizing the event - we actually want to call the function
             if event == PromptEvent::Validate {
-                if let Err(e) = ENGINE.with(|x| {
+                if let Err(e) = enter_engine(|guard| {
                     let args = args[1..]
                         .iter()
                         .map(|x| x.clone().into_steelval().unwrap())
                         .collect::<Vec<_>>();
 
-                    let mut guard = x.borrow_mut();
-
                     let res = {
-                        let mut cx = Context {
+                        let mut ctx = Context {
                             register: None,
                             count: std::num::NonZeroUsize::new(1),
                             editor: cx.editor,
@@ -982,14 +1068,24 @@ impl super::PluginSystem for SteelScriptingEngine {
                             jobs: cx.jobs,
                         };
 
-                        guard
-                            .with_mut_reference(&mut cx)
-                            .consume(move |engine, arguments| {
-                                let context = arguments[0].clone();
-                                engine.update_value("*helix.cx*", context);
-                                // TODO: Fix this clone
-                                engine.call_function_by_name_with_args(&parts[0], args.clone())
-                            })
+                        // Install interrupt handler here during the duration
+                        // of the function call
+                        match with_interrupt_handler(|| {
+                            guard
+                                .with_mut_reference(&mut ctx)
+                                .consume(move |engine, arguments| {
+                                    let context = arguments[0].clone();
+                                    engine.update_value("*helix.cx*", context);
+                                    // TODO: Fix this clone
+                                    engine.call_function_by_name_with_args(&parts[0], args.clone())
+                                })
+                        }) {
+                            Ok(res) => {
+                                cx.editor.set_status(res.to_string());
+                                Ok(res)
+                            }
+                            Err(e) => Err(e),
+                        }
                     };
 
                     res
@@ -1003,9 +1099,7 @@ impl super::PluginSystem for SteelScriptingEngine {
                         jobs: &mut cx.jobs,
                     };
 
-                    ENGINE.with(|x| {
-                        present_error_inside_engine_context(&mut ctx, &mut x.borrow_mut(), e)
-                    });
+                    enter_engine(|x| present_error_inside_engine_context(&mut ctx, x, e));
                 };
             }
 
@@ -1018,25 +1112,18 @@ impl super::PluginSystem for SteelScriptingEngine {
     }
 
     fn get_doc_for_identifier(&self, ident: &str) -> Option<String> {
-        ExportedIdentifiers::engine_get_doc(ident)
-            .map(|v| v.into())
-            .or_else(|| {
-                if Self::is_exported(self, ident) {
-                    Some("Run this plugin command!".into())
-                } else {
-                    None
-                }
-            })
+        enter_engine(|engine| get_doc_for_global(engine, ident))
     }
 
+    // Just dump docs for all top level values?
     fn available_commands<'a>(&self) -> Vec<Cow<'a, str>> {
-        EXPORTED_IDENTIFIERS
-            .identifiers
-            .read()
-            .unwrap()
-            .iter()
-            .map(|x| x.clone().into())
-            .collect::<Vec<_>>()
+        enter_engine(|engine| {
+            engine
+                .readable_globals(*GLOBAL_OFFSET.get().unwrap())
+                .iter()
+                .map(|x| x.resolve().to_string().into())
+                .collect()
+        })
     }
 
     fn generate_sources(&self) {
@@ -1054,14 +1141,6 @@ impl super::PluginSystem for SteelScriptingEngine {
 }
 
 impl SteelScriptingEngine {
-    fn is_exported(&self, ident: &str) -> bool {
-        EXPORTED_IDENTIFIERS
-            .identifiers
-            .read()
-            .unwrap()
-            .contains(ident)
-    }
-
     // Attempt to fetch the keymap for the extension
     fn get_keymap_for_extension<'a>(cx: &'a mut Context) -> Option<SteelVal> {
         // Get the currently activated extension, also need to check the
@@ -1087,14 +1166,12 @@ impl SteelScriptingEngine {
         };
 
         if let Some(extension) = extension {
-            if let SteelVal::Boxed(boxed_map) =
-                BUFFER_OR_EXTENSION_KEYBINDING_MAP.with(|x| x.clone())
-            {
-                if let SteelVal::HashMapV(map) = boxed_map.borrow().clone() {
+            if let SteelVal::Boxed(boxed_map) = BUFFER_OR_EXTENSION_KEYBINDING_MAP.clone() {
+                if let SteelVal::HashMapV(map) = boxed_map.read().clone() {
                     if let Some(value) = map.get(&SteelVal::StringV(extension.into())) {
                         if let SteelVal::Custom(inner) = value {
                             if let Some(_) = steel::rvals::as_underlying_type::<EmbeddedKeyMap>(
-                                inner.borrow().as_ref(),
+                                inner.read().as_ref(),
                             ) {
                                 return Some(value.clone());
                             }
@@ -1104,19 +1181,17 @@ impl SteelScriptingEngine {
             }
         }
 
-        if let SteelVal::Boxed(boxed_map) = REVERSE_BUFFER_MAP.with(|x| x.clone()) {
-            if let SteelVal::HashMapV(map) = boxed_map.borrow().clone() {
+        if let SteelVal::Boxed(boxed_map) = REVERSE_BUFFER_MAP.clone() {
+            if let SteelVal::HashMapV(map) = boxed_map.read().clone() {
                 if let Some(label) = map.get(&SteelVal::IntV(document_id_to_usize(doc_id) as isize))
                 {
-                    if let SteelVal::Boxed(boxed_map) =
-                        BUFFER_OR_EXTENSION_KEYBINDING_MAP.with(|x| x.clone())
-                    {
-                        if let SteelVal::HashMapV(map) = boxed_map.borrow().clone() {
+                    if let SteelVal::Boxed(boxed_map) = BUFFER_OR_EXTENSION_KEYBINDING_MAP.clone() {
+                        if let SteelVal::HashMapV(map) = boxed_map.read().clone() {
                             if let Some(value) = map.get(label) {
                                 if let SteelVal::Custom(inner) = value {
                                     if let Some(_) =
                                         steel::rvals::as_underlying_type::<EmbeddedKeyMap>(
-                                            inner.borrow().as_ref(),
+                                            inner.read().as_ref(),
                                         )
                                     {
                                         return Some(value.clone());
@@ -1134,7 +1209,7 @@ impl SteelScriptingEngine {
 }
 
 pub fn initialize_engine() {
-    ENGINE.with(|x| x.borrow().globals().first().copied());
+    enter_engine(|x| x.globals().first().copied());
 }
 
 pub fn present_error_inside_engine_context(cx: &mut Context, engine: &mut Engine, e: SteelErr) {
@@ -1192,7 +1267,7 @@ pub fn merge_keybindings(left: &mut EmbeddedKeyMap, right: EmbeddedKeyMap) {
 
 pub fn is_keymap(keymap: SteelVal) -> bool {
     if let SteelVal::Custom(underlying) = keymap {
-        as_underlying_type::<EmbeddedKeyMap>(underlying.borrow().as_ref()).is_some()
+        as_underlying_type::<EmbeddedKeyMap>(underlying.read().as_ref()).is_some()
     } else {
         false
     }
@@ -1512,6 +1587,23 @@ impl HelixConfiguration {
     }
 }
 
+// Get doc from function ptr table, hack
+fn get_doc_for_global(engine: &mut Engine, ident: &str) -> Option<String> {
+    if engine.global_exists(ident) {
+        let expr = format!("(#%function-ptr-table-get #%function-ptr-table {})", ident);
+        Some(
+            engine
+                .run(expr)
+                .ok()
+                .and_then(|x| x.first().cloned())
+                .and_then(|x| x.as_string().map(|x| x.as_str().to_string()))
+                .unwrap_or_else(|| "Undocumented plugin command".to_string()),
+        )
+    } else {
+        None
+    }
+}
+
 /// Run the initialization script located at `$helix_config/init.scm`
 /// This runs the script in the global environment, and does _not_ load it as a module directly
 fn run_initialization_script(cx: &mut Context, configuration: Arc<ArcSwapAny<Arc<Config>>>) {
@@ -1520,9 +1612,7 @@ fn run_initialization_script(cx: &mut Context, configuration: Arc<ArcSwapAny<Arc
     let helix_module_path = helix_module_file();
 
     // TODO: Report the error from requiring the file!
-    ENGINE.with(|engine| {
-        let mut guard = engine.borrow_mut();
-
+    enter_engine(|guard| {
         // Embed the configuration so we don't have to communicate over the refresh
         // channel. The state is still stored within the `Application` struct, but
         // now we can just access it and signal a refresh of the config when we need to.
@@ -1541,56 +1631,8 @@ fn run_initialization_script(cx: &mut Context, configuration: Arc<ArcSwapAny<Arc
 
         // Present the error in the helix.scm loading
         if let Err(e) = res {
-            present_error_inside_engine_context(cx, &mut guard, e);
+            present_error_inside_engine_context(cx, guard, e);
             return;
-        }
-
-        if let Ok(module) = guard.get_module(helix_module_path) {
-            if let steel::rvals::SteelVal::HashMapV(m) = module {
-                let exported = m
-                    .iter()
-                    .filter(|(_, v)| v.is_function())
-                    .map(|(k, _)| {
-                        if let steel::rvals::SteelVal::SymbolV(s) = k {
-                            s.to_string()
-                        } else {
-                            panic!("Found a non symbol!")
-                        }
-                    })
-                    .collect::<HashSet<_>>();
-
-                let docs = exported
-                    .iter()
-                    .filter_map(|x| {
-                        if let Ok(value) = guard.compile_and_run_raw_program(format!(
-                            "(#%function-ptr-table-get #%function-ptr-table {})",
-                            x
-                        )) {
-                            if let Some(SteelVal::StringV(doc)) = value.first() {
-                                Some((x.to_string(), doc.to_string()))
-                            } else {
-                                None
-                            }
-                        } else {
-                            None
-                        }
-                    })
-                    .collect::<HashMap<_, _>>();
-
-                *EXPORTED_IDENTIFIERS.identifiers.write().unwrap() = exported;
-                *EXPORTED_IDENTIFIERS.docs.write().unwrap() = docs;
-            } else {
-                present_error_inside_engine_context(
-                    cx,
-                    &mut guard,
-                    SteelErr::new(
-                        ErrorKind::Generic,
-                        "Unable to parse exported identifiers from helix module!".to_string(),
-                    ),
-                );
-
-                return;
-            }
         }
 
         let helix_module_path = steel_init_file();
@@ -1606,7 +1648,7 @@ fn run_initialization_script(cx: &mut Context, configuration: Arc<ArcSwapAny<Arc
 
             match res {
                 Ok(_) => {}
-                Err(e) => present_error_inside_engine_context(cx, &mut guard, e),
+                Err(e) => present_error_inside_engine_context(cx, guard, e),
             }
 
             log::info!("Finished loading init.scm!")
@@ -1615,9 +1657,6 @@ fn run_initialization_script(cx: &mut Context, configuration: Arc<ArcSwapAny<Arc
         }
     });
 }
-
-pub static EXPORTED_IDENTIFIERS: Lazy<ExportedIdentifiers> =
-    Lazy::new(|| ExportedIdentifiers::default());
 
 impl Custom for PromptEvent {}
 
@@ -1636,7 +1675,7 @@ fn get_themes(cx: &mut Context) -> Vec<String> {
 impl Custom for compositor::EventResult {}
 
 pub struct WrappedDynComponent {
-    pub(crate) inner: Option<Box<dyn Component>>,
+    pub(crate) inner: Option<Box<dyn Component + Send + Sync + 'static>>,
 }
 
 impl Custom for WrappedDynComponent {}
@@ -1707,6 +1746,16 @@ struct OnModeSwitchEvent {
     new_mode: Mode,
 }
 
+impl OnModeSwitchEvent {
+    pub fn get_old_mode(&self) -> Mode {
+        self.old_mode
+    }
+
+    pub fn get_new_mode(&self) -> Mode {
+        self.new_mode
+    }
+}
+
 impl Custom for OnModeSwitchEvent {}
 impl Custom for MappableCommand {}
 
@@ -1714,10 +1763,8 @@ fn register_hook(event_kind: String, function_name: String) -> steel::UnRecovera
     match event_kind.as_str() {
         "on-mode-switch" => {
             register_hook!(move |event: &mut OnModeSwitch<'_, '_>| {
-                if ENGINE.with(|x| x.borrow().global_exists(&function_name)) {
-                    if let Err(e) = ENGINE.with(|x| {
-                        let mut guard = x.borrow_mut();
-
+                if enter_engine(|x| x.global_exists(&function_name)) {
+                    if let Err(e) = enter_engine(|guard| {
                         let minimized_event = OnModeSwitchEvent {
                             old_mode: event.old_mode,
                             new_mode: event.new_mode,
@@ -1742,10 +1789,8 @@ fn register_hook(event_kind: String, function_name: String) -> steel::UnRecovera
         }
         "post-insert-char" => {
             register_hook!(move |event: &mut PostInsertChar<'_, '_>| {
-                if ENGINE.with(|x| x.borrow().global_exists(&function_name)) {
-                    if let Err(e) = ENGINE.with(|x| {
-                        let mut guard = x.borrow_mut();
-
+                if enter_engine(|x| x.global_exists(&function_name)) {
+                    if let Err(e) = enter_engine(|guard| {
                         guard.with_mut_reference(event.cx).consume(|engine, args| {
                             let context = args[0].clone();
                             engine.update_value("*helix.cx*", context);
@@ -1768,10 +1813,8 @@ fn register_hook(event_kind: String, function_name: String) -> steel::UnRecovera
         }
         "post-command" => {
             register_hook!(move |event: &mut PostCommand<'_, '_>| {
-                if ENGINE.with(|x| x.borrow().global_exists(&function_name)) {
-                    if let Err(e) = ENGINE.with(|x| {
-                        let mut guard = x.borrow_mut();
-
+                if enter_engine(|x| x.global_exists(&function_name)) {
+                    if let Err(e) = enter_engine(|guard| {
                         guard.with_mut_reference(event.cx).consume(|engine, args| {
                             let context = args[0].clone();
                             engine.update_value("*helix.cx*", context);
@@ -1805,86 +1848,85 @@ fn register_hook(event_kind: String, function_name: String) -> steel::UnRecovera
 }
 
 fn load_rope_api(engine: &mut Engine) {
-    let mut rope_slice_module = rope_module();
-
-    rope_slice_module.register_fn("document->slice", document_to_text);
+    // Wrap the rope module?
+    let rope_slice_module = rope_module();
 
     engine.register_module(rope_slice_module);
 }
 
-struct SteelEngine(Engine);
+// struct SteelEngine(Engine);
 
-impl SteelEngine {
-    pub fn call_function_by_name(
-        &mut self,
-        function_name: SteelString,
-        args: Vec<SteelVal>,
-    ) -> steel::rvals::Result<SteelVal> {
-        self.0
-            .call_function_by_name_with_args(function_name.as_str(), args.into_iter().collect())
-    }
+// impl SteelEngine {
+//     pub fn call_function_by_name(
+//         &mut self,
+//         function_name: SteelString,
+//         args: Vec<SteelVal>,
+//     ) -> steel::rvals::Result<SteelVal> {
+//         self.0
+//             .call_function_by_name_with_args(function_name.as_str(), args.into_iter().collect())
+//     }
 
-    /// Calling a function that was not defined in the runtime it was created in could
-    /// result in panics. You have been warned.
-    pub fn call_function(
-        &mut self,
-        function: SteelVal,
-        args: Vec<SteelVal>,
-    ) -> steel::rvals::Result<SteelVal> {
-        self.0
-            .call_function_with_args(function, args.into_iter().collect())
-    }
+//     /// Calling a function that was not defined in the runtime it was created in could
+//     /// result in panics. You have been warned.
+//     pub fn call_function(
+//         &mut self,
+//         function: SteelVal,
+//         args: Vec<SteelVal>,
+//     ) -> steel::rvals::Result<SteelVal> {
+//         self.0
+//             .call_function_with_args(function, args.into_iter().collect())
+//     }
 
-    pub fn require_module(&mut self, module: SteelString) -> steel::rvals::Result<()> {
-        self.0.run(format!("(require \"{}\")", module)).map(|_| ())
-    }
-}
+//     pub fn require_module(&mut self, module: SteelString) -> steel::rvals::Result<()> {
+//         self.0.run(format!("(require \"{}\")", module)).map(|_| ())
+//     }
+// }
 
-impl Custom for SteelEngine {}
+// impl Custom for SteelEngine {}
 
-static ENGINE_ID: AtomicUsize = AtomicUsize::new(0);
+// static ENGINE_ID: AtomicUsize = AtomicUsize::new(0);
 
-thread_local! {
-    pub static ENGINE_MAP: SteelVal =
-        SteelVal::boxed(SteelVal::empty_hashmap());
-}
+// thread_local! {
+//     pub static ENGINE_MAP: SteelVal =
+//         SteelVal::boxed(SteelVal::empty_hashmap());
+// }
 
 // Low level API work, these need to be loaded into the global environment in a predictable
 // location, otherwise callbacks from plugin engines will not be handled properly!
-fn load_engine_api(engine: &mut Engine) {
-    fn id_to_engine(value: SteelVal) -> Option<SteelVal> {
-        if let SteelVal::Boxed(b) = ENGINE_MAP.with(|x| x.clone()) {
-            if let SteelVal::HashMapV(h) = b.borrow().clone() {
-                return h.get(&value).cloned();
-            }
-        }
+// fn load_engine_api(engine: &mut Engine) {
+//     fn id_to_engine(value: SteelVal) -> Option<SteelVal> {
+//         if let SteelVal::Boxed(b) = ENGINE_MAP.with(|x| x.clone()) {
+//             if let SteelVal::HashMapV(h) = b.read().clone() {
+//                 return h.get(&value).cloned();
+//             }
+//         }
 
-        None
-    }
+//         None
+//     }
 
-    // module
-    engine
-        .register_fn("helix.controller.create-engine", || {
-            SteelEngine(configure_engine_impl(Engine::new()))
-        })
-        .register_fn("helix.controller.fresh-engine-id", || {
-            ENGINE_ID.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
-        })
-        .register_fn(
-            "helix.controller.call-function-by-name",
-            SteelEngine::call_function_by_name,
-        )
-        .register_fn("helix.controller.call-function", SteelEngine::call_function)
-        .register_fn(
-            "helix.controller.require-module",
-            SteelEngine::require_module,
-        )
-        .register_value(
-            "helix.controller.engine-map",
-            ENGINE_MAP.with(|x| x.clone()),
-        )
-        .register_fn("helix.controller.id->engine", id_to_engine);
-}
+//     // module
+//     engine
+//         .register_fn("helix.controller.create-engine", || {
+//             SteelEngine(configure_engine_impl(Engine::new()))
+//         })
+//         .register_fn("helix.controller.fresh-engine-id", || {
+//             ENGINE_ID.fetch_add(1, std::sync::atomic::Ordering::SeqCst)
+//         })
+//         .register_fn(
+//             "helix.controller.call-function-by-name",
+//             SteelEngine::call_function_by_name,
+//         )
+//         .register_fn("helix.controller.call-function", SteelEngine::call_function)
+//         .register_fn(
+//             "helix.controller.require-module",
+//             SteelEngine::require_module,
+//         )
+//         .register_value(
+//             "helix.controller.engine-map",
+//             ENGINE_MAP.with(|x| x.clone()),
+//         )
+//         .register_fn("helix.controller.id->engine", id_to_engine);
+// }
 
 fn load_misc_api(engine: &mut Engine, generate_sources: bool) {
     let mut module = BuiltInModule::new("helix/core/misc");
@@ -1910,6 +1952,8 @@ fn load_misc_api(engine: &mut Engine, generate_sources: bool) {
 
     // Arity 0
     module.register_fn("hx.cx->pos", cx_pos_within_text);
+    module.register_fn("mode-switch-old", OnModeSwitchEvent::get_old_mode);
+    module.register_fn("mode-switch-new", OnModeSwitchEvent::get_new_mode);
 
     template_function_arity_0("hx.cx->pos");
 
@@ -1931,11 +1975,13 @@ fn load_misc_api(engine: &mut Engine, generate_sources: bool) {
     module.register_fn("push-component!", push_component);
     module.register_fn("pop-last-component!", pop_last_component_by_name);
     module.register_fn("enqueue-thread-local-callback", enqueue_command);
+    module.register_fn("set-status!", set_status);
 
     template_function_arity_1("pop-last-component!");
     template_function_arity_1("hx.custom-insert-newline");
     template_function_arity_1("push-component!");
     template_function_arity_1("enqueue-thread-local-callback");
+    template_function_arity_1("set-status!");
 
     module.register_fn("send-lsp-command", send_arbitrary_lsp_command);
     if generate_sources {
@@ -2031,6 +2077,10 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
 
     engine.register_value("*helix.cx*", SteelVal::Void);
     engine.register_value("*helix.config*", SteelVal::Void);
+    engine.register_value(
+        "*helix.id*",
+        SteelVal::IntV(engine.engine_id().as_usize() as _),
+    );
 
     // Don't generate source directories here
     configure_builtin_sources(&mut engine, false);
@@ -2039,20 +2089,113 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
     engine.register_fn("register-hook!", register_hook);
     engine.register_fn("log::info!", |message: String| log::info!("{}", message));
 
+    engine.register_fn("fuzzy-match", |pattern: SteelString, items: SteelVal| {
+        // Match against how they would be rendered?
+
+        if let SteelVal::ListV(l) = items {
+            let res = helix_core::fuzzy::fuzzy_match(
+                pattern.as_str(),
+                l.iter().filter_map(|x| x.as_string().map(|x| x.as_str())),
+                false,
+            );
+
+            return res
+                .into_iter()
+                .map(|x| x.0.to_string().into())
+                .collect::<Vec<SteelVal>>();
+        }
+
+        return Vec::new();
+    });
+
     // Find the workspace
     engine.register_fn("helix-find-workspace", || {
         helix_core::find_workspace().0.to_str().unwrap().to_string()
     });
 
-    engine.register_fn("Document-path", document_path);
     engine.register_fn("doc-id->usize", document_id_to_usize);
 
-    // Get the current OS
     engine.register_fn("new-component!", SteelDynamicComponent::new_dyn);
+
+    engine.register_fn(
+        "acquire-context-lock",
+        |callback_fn: SteelVal, place: Option<SteelVal>| {
+            match (&callback_fn, &place) {
+                (SteelVal::Closure(_), Some(SteelVal::CustomStruct(_))) => {}
+                _ => {
+                    steel::stop!(TypeMismatch => "acquire-context-lock expected a 
+                        callback function and a task object")
+                }
+            }
+
+            let rooted = callback_fn.as_rooted();
+            let rooted_place = place.map(|x| x.as_rooted());
+
+            let callback =
+                move |editor: &mut Editor, _compositor: &mut Compositor, jobs: &mut job::Jobs| {
+                    let mut ctx = Context {
+                        register: None,
+                        count: None,
+                        editor,
+                        callback: Vec::new(),
+                        on_next_key_callback: None,
+                        jobs,
+                    };
+
+                    let cloned_func = rooted.value();
+                    let cloned_place = rooted_place.as_ref().map(|x| x.value());
+
+                    enter_engine(|guard| {
+                        if let Err(e) = guard
+                            .with_mut_reference::<Context, Context>(&mut ctx)
+                            // Block until the other thread is finished in its critical
+                            // section...
+                            .consume(move |engine, args| {
+                                let context = args[0].clone();
+                                engine.update_value("*helix.cx*", context);
+
+                                if let Some(SteelVal::CustomStruct(s)) = cloned_place {
+                                    let mutex = s.get_mut_index(0).unwrap();
+                                    mutex_lock(&mutex).unwrap();
+                                }
+
+                                // Acquire lock, wait until its done
+                                let result =
+                                    engine.call_function_with_args(cloned_func.clone(), Vec::new());
+
+                                if let Some(SteelVal::CustomStruct(s)) = cloned_place {
+                                    match result {
+                                        Ok(result) => {
+                                            // Store the result of the callback so that the
+                                            // next downstream user can handle it.
+                                            s.set_index(2, result);
+                                            s.set_index(1, SteelVal::BoolV(true));
+                                            let mutex = s.get_mut_index(0).unwrap();
+                                            mutex_unlock(&mutex).unwrap();
+                                        }
+
+                                        Err(e) => {
+                                            return Err(e);
+                                        }
+                                    }
+                                }
+
+                                Ok(())
+                            })
+                        {
+                            present_error_inside_engine_context(&mut ctx, guard, e);
+                        }
+                    })
+                };
+            job::dispatch_blocking_jobs(callback);
+
+            Ok(())
+        },
+    );
 
     engine.register_fn("SteelDynamicComponent?", |object: SteelVal| {
         if let SteelVal::Custom(v) = object {
-            if let Some(wrapped) = v.borrow().as_any_ref().downcast_ref::<BoxDynComponent>() {
+            if let Some(wrapped) = v.read().as_any_ref().downcast_ref::<BoxDynComponent>() {
                 return wrapped.inner.as_any().is::<SteelDynamicComponent>();
             } else {
                 false
@@ -2061,31 +2204,6 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
             false
         }
     });
-
-    engine.register_fn(
-        "SteelDynamicComponent-state",
-        SteelDynamicComponent::get_state,
-    );
-    engine.register_fn(
-        "SteelDynamicComponent-render",
-        SteelDynamicComponent::get_render,
-    );
-    engine.register_fn(
-        "SteelDynamicComponent-handle-event",
-        SteelDynamicComponent::get_handle_event,
-    );
-    engine.register_fn(
-        "SteelDynamicComponent-should-update",
-        SteelDynamicComponent::should_update,
-    );
-    engine.register_fn(
-        "SteelDynamicComponent-cursor",
-        SteelDynamicComponent::cursor,
-    );
-    engine.register_fn(
-        "SteelDynamicComponent-required-size",
-        SteelDynamicComponent::get_required_size,
-    );
 
     engine.register_fn(
         "prompt",
@@ -2114,24 +2232,24 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
 
                     let cloned_func = callback_fn_guard.value();
 
-                    ENGINE.with(|x| {
-                        let mut guard = x.borrow_mut();
+                    with_interrupt_handler(|| {
+                        enter_engine(|guard| {
+                            if let Err(e) = guard
+                                .with_mut_reference::<Context, Context>(&mut ctx)
+                                .consume(move |engine, args| {
+                                    let context = args[0].clone();
 
-                        if let Err(e) = guard
-                            .with_mut_reference::<Context, Context>(&mut ctx)
-                            .consume(move |engine, args| {
-                                let context = args[0].clone();
+                                    engine.update_value("*helix.cx*", context);
 
-                                engine.update_value("*helix.cx*", context);
-
-                                engine.call_function_with_args(
-                                    cloned_func.clone(),
-                                    vec![input.into_steelval().unwrap()],
-                                )
-                            })
-                        {
-                            present_error_inside_engine_context(&mut ctx, &mut guard, e);
-                        }
+                                    engine.call_function_with_args(
+                                        cloned_func.clone(),
+                                        vec![input.into_steelval().unwrap()],
+                                    )
+                                })
+                            {
+                                present_error_inside_engine_context(&mut ctx, guard, e);
+                            }
+                        })
                     })
                 },
             );
@@ -2183,85 +2301,10 @@ fn configure_engine_impl(mut engine: Engine) -> Engine {
         inner: Some(Box::new(crate::ui::Text::new(contents))),
     });
 
-    // Separate this out into its own component module - This just lets us call the underlying
-    // component, not sure if we can go from trait object -> trait object easily but we'll see!
-    engine.register_fn(
-        "Component::render",
-        |t: &mut WrappedDynComponent,
-         area: helix_view::graphics::Rect,
-         frame: &mut tui::buffer::Buffer,
-         ctx: &mut Context| {
-            t.inner.as_mut().unwrap().render(
-                area,
-                frame,
-                &mut compositor::Context {
-                    jobs: ctx.jobs,
-                    editor: ctx.editor,
-                    scroll: None,
-                },
-            )
-        },
-    );
-
-    engine.register_fn(
-        "Component::handle-event",
-        |s: &mut WrappedDynComponent, event: &helix_view::input::Event, ctx: &mut Context| {
-            s.inner.as_mut().unwrap().handle_event(
-                event,
-                &mut compositor::Context {
-                    jobs: ctx.jobs,
-                    editor: ctx.editor,
-                    scroll: None,
-                },
-            )
-        },
-    );
-
-    engine.register_fn("Component::should-update", |s: &mut WrappedDynComponent| {
-        s.inner.as_mut().unwrap().should_update()
-    });
-
-    engine.register_fn(
-        "Component::cursor",
-        |s: &WrappedDynComponent, area: helix_view::graphics::Rect, ctx: &Editor| {
-            s.inner.as_ref().unwrap().cursor(area, ctx)
-        },
-    );
-
-    engine.register_fn(
-        "Component::required-size",
-        |s: &mut WrappedDynComponent, viewport: (u16, u16)| {
-            s.inner.as_mut().unwrap().required_size(viewport)
-        },
-    );
-
     // Create directory since we can't do that in the current state
     engine.register_fn("hx.create-directory", create_directory);
 
     engine
-}
-
-pub fn configure_engine() -> std::rc::Rc<std::cell::RefCell<steel::steel_vm::engine::Engine>> {
-    let engine = configure_engine_impl(steel::steel_vm::engine::Engine::new());
-
-    std::rc::Rc::new(std::cell::RefCell::new(engine))
-}
-
-#[derive(Default, Debug)]
-pub struct ExportedIdentifiers {
-    identifiers: Arc<RwLock<HashSet<String>>>,
-    docs: Arc<RwLock<HashMap<String, String>>>,
-}
-
-impl ExportedIdentifiers {
-    pub(crate) fn engine_get_doc(ident: &str) -> Option<String> {
-        EXPORTED_IDENTIFIERS
-            .docs
-            .read()
-            .unwrap()
-            .get(ident)
-            .cloned()
-    }
 }
 
 fn get_highlighted_text(cx: &mut Context) -> String {
@@ -2319,6 +2362,7 @@ fn get_selection(cx: &mut Context) -> String {
     printable
 }
 
+// TODO: Replace with eval-string
 pub fn run_expression_in_engine(cx: &mut Context, text: String) -> anyhow::Result<()> {
     let callback = async move {
         let call: Box<dyn FnOnce(&mut Editor, &mut Compositor, &mut job::Jobs)> = Box::new(
@@ -2332,9 +2376,7 @@ pub fn run_expression_in_engine(cx: &mut Context, text: String) -> anyhow::Resul
                     jobs,
                 };
 
-                let output = ENGINE.with(|x| {
-                    let mut guard = x.borrow_mut();
-
+                let output = enter_engine(|guard| {
                     guard
                         .with_mut_reference::<Context, Context>(&mut ctx)
                         .consume(move |engine, args| {
@@ -2358,9 +2400,7 @@ pub fn run_expression_in_engine(cx: &mut Context, text: String) -> anyhow::Resul
                         ));
                         compositor.replace_or_push("engine", popup);
                     }
-                    Err(e) => ENGINE.with(|x| {
-                        present_error_inside_engine_context(&mut ctx, &mut x.borrow_mut(), e)
-                    }),
+                    Err(e) => enter_engine(|x| present_error_inside_engine_context(&mut ctx, x, e)),
                 }
             },
         );
@@ -2393,9 +2433,7 @@ pub fn load_buffer(cx: &mut Context) -> anyhow::Result<()> {
                     jobs,
                 };
 
-                let output = ENGINE.with(|x| {
-                    let mut guard = x.borrow_mut();
-
+                let output = enter_engine(|guard| {
                     guard
                         .with_mut_reference::<Context, Context>(&mut ctx)
                         .consume(move |engine, args| {
@@ -2426,9 +2464,7 @@ pub fn load_buffer(cx: &mut Context) -> anyhow::Result<()> {
                         ));
                         compositor.replace_or_push("engine", popup);
                     }
-                    Err(e) => ENGINE.with(|x| {
-                        present_error_inside_engine_context(&mut ctx, &mut x.borrow_mut(), e)
-                    }),
+                    Err(e) => enter_engine(|x| present_error_inside_engine_context(&mut ctx, x, e)),
                 }
             },
         );
@@ -2478,12 +2514,11 @@ fn cx_get_document_id(cx: &mut Context, view_id: helix_view::ViewId) -> Document
     cx.editor.tree.get(view_id).doc
 }
 
-fn cx_get_document<'a>(cx: &'a mut Context, doc_id: DocumentId) -> &'a Document {
-    cx.editor.documents.get(&doc_id).unwrap()
-}
-
-fn document_to_text(doc: &Document) -> SteelRopeSlice {
-    SteelRopeSlice::new(doc.text().clone())
+fn document_id_to_text(cx: &mut Context, doc_id: DocumentId) -> Option<SteelRopeSlice> {
+    cx.editor
+        .documents
+        .get(&doc_id)
+        .map(|x| SteelRopeSlice::new(x.text().clone()))
 }
 
 fn cx_is_document_in_view(cx: &mut Context, doc_id: DocumentId) -> Option<helix_view::ViewId> {
@@ -2498,8 +2533,11 @@ fn cx_document_exists(cx: &mut Context, doc_id: DocumentId) -> bool {
     cx.editor.documents.get(&doc_id).is_some()
 }
 
-fn document_path(doc: &Document) -> Option<String> {
-    doc.path().and_then(|x| x.to_str()).map(|x| x.to_string())
+fn document_path(cx: &mut Context, doc_id: DocumentId) -> Option<String> {
+    cx.editor
+        .documents
+        .get(&doc_id)
+        .and_then(|doc| doc.path().and_then(|x| x.to_str()).map(|x| x.to_string()))
 }
 
 fn cx_editor_all_documents(cx: &mut Context) -> Vec<DocumentId> {
@@ -2551,6 +2589,10 @@ fn pop_last_component_by_name(cx: &mut Context, name: SteelString) {
     cx.jobs.local_callback(callback);
 }
 
+fn set_status(cx: &mut Context, value: SteelVal) {
+    cx.editor.set_status(value.to_string())
+}
+
 fn enqueue_command(cx: &mut Context, callback_fn: SteelVal) {
     let rooted = callback_fn.as_rooted();
 
@@ -2568,9 +2610,7 @@ fn enqueue_command(cx: &mut Context, callback_fn: SteelVal) {
 
                 let cloned_func = rooted.value();
 
-                ENGINE.with(|x| {
-                    let mut guard = x.borrow_mut();
-
+                enter_engine(|guard| {
                     if let Err(e) = guard
                         .with_mut_reference::<Context, Context>(&mut ctx)
                         .consume(move |engine, args| {
@@ -2580,7 +2620,7 @@ fn enqueue_command(cx: &mut Context, callback_fn: SteelVal) {
                             engine.call_function_with_args(cloned_func.clone(), Vec::new())
                         })
                     {
-                        present_error_inside_engine_context(&mut ctx, &mut guard, e);
+                        present_error_inside_engine_context(&mut ctx, guard, e);
                     }
                 })
             },
@@ -2612,9 +2652,7 @@ fn enqueue_command_with_delay(cx: &mut Context, delay: SteelVal, callback_fn: St
 
                 let cloned_func = rooted.value();
 
-                ENGINE.with(|x| {
-                    let mut guard = x.borrow_mut();
-
+                enter_engine(|guard| {
                     if let Err(e) = guard
                         .with_mut_reference::<Context, Context>(&mut ctx)
                         .consume(move |engine, args| {
@@ -2624,7 +2662,7 @@ fn enqueue_command_with_delay(cx: &mut Context, delay: SteelVal, callback_fn: St
                             engine.call_function_with_args(cloned_func.clone(), Vec::new())
                         })
                     {
-                        present_error_inside_engine_context(&mut ctx, &mut guard, e);
+                        present_error_inside_engine_context(&mut ctx, guard, e);
                     }
                 })
             },
@@ -2668,20 +2706,16 @@ fn await_value(cx: &mut Context, value: SteelVal, callback_fn: SteelVal) {
                             engine.call_function_with_args(cloned_func.clone(), vec![inner])
                         };
 
-                        ENGINE.with(|x| {
-                            let mut guard = x.borrow_mut();
-
+                        enter_engine(|guard| {
                             if let Err(e) = guard
                                 .with_mut_reference::<Context, Context>(&mut ctx)
                                 .consume_once(callback)
                             {
-                                present_error_inside_engine_context(&mut ctx, &mut guard, e);
+                                present_error_inside_engine_context(&mut ctx, guard, e);
                             }
                         })
                     }
-                    Err(e) => ENGINE.with(|x| {
-                        present_error_inside_engine_context(&mut ctx, &mut x.borrow_mut(), e)
-                    }),
+                    Err(e) => enter_engine(|x| present_error_inside_engine_context(&mut ctx, x, e)),
                 }
             },
         );
@@ -2875,8 +2909,6 @@ fn move_window_to_the_right(cx: &mut Context) {
     {}
 }
 
-// TODO: Get LSP id correctly, and then format a json blob (or something)
-// that can be serialized by serde
 fn send_arbitrary_lsp_command(
     cx: &mut Context,
     name: SteelString,
@@ -2915,6 +2947,16 @@ fn send_arbitrary_lsp_command(
 
     let rooted = callback_fn.as_rooted();
 
+    create_callback(cx, future, rooted)?;
+
+    Ok(())
+}
+
+fn create_callback<T: TryInto<SteelVal, Error = SteelErr> + 'static>(
+    cx: &mut Context,
+    future: impl std::future::Future<Output = Result<T, helix_lsp::Error>> + 'static,
+    rooted: steel::RootedSteelVal,
+) -> Result<(), anyhow::Error> {
     let callback = async move {
         // Result of the future - this will be whatever we get back
         // from the lsp call
@@ -2933,29 +2975,25 @@ fn send_arbitrary_lsp_command(
 
                 let cloned_func = rooted.value();
 
-                ENGINE.with(move |x| {
-                    let mut guard = x.borrow_mut();
+                enter_engine(move |guard| match TryInto::<SteelVal>::try_into(res) {
+                    Ok(result) => {
+                        if let Err(e) = guard
+                            .with_mut_reference::<Context, Context>(&mut ctx)
+                            .consume(move |engine, args| {
+                                let context = args[0].clone();
+                                engine.update_value("*helix.cx*", context);
 
-                    match SteelVal::try_from(res) {
-                        Ok(result) => {
-                            if let Err(e) = guard
-                                .with_mut_reference::<Context, Context>(&mut ctx)
-                                .consume(move |engine, args| {
-                                    let context = args[0].clone();
-                                    engine.update_value("*helix.cx*", context);
-
-                                    engine.call_function_with_args(
-                                        cloned_func.clone(),
-                                        vec![result.clone()],
-                                    )
-                                })
-                            {
-                                present_error_inside_engine_context(&mut ctx, &mut guard, e);
-                            }
+                                engine.call_function_with_args(
+                                    cloned_func.clone(),
+                                    vec![result.clone()],
+                                )
+                            })
+                        {
+                            present_error_inside_engine_context(&mut ctx, guard, e);
                         }
-                        Err(e) => {
-                            present_error_inside_engine_context(&mut ctx, &mut guard, e);
-                        }
+                    }
+                    Err(e) => {
+                        present_error_inside_engine_context(&mut ctx, guard, e);
                     }
                 })
             },
@@ -2963,6 +3001,5 @@ fn send_arbitrary_lsp_command(
         Ok(call)
     };
     cx.jobs.local_callback(callback);
-
     Ok(())
 }

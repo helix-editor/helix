@@ -21,15 +21,12 @@ use tui::{
 };
 
 use crate::{
-    commands::{
-        engine::steel::{BoxDynComponent, ENGINE},
-        Context,
-    },
+    commands::{engine::steel::BoxDynComponent, Context},
     compositor::{self, Component},
     ui::overlay::overlaid,
 };
 
-use super::steel::{present_error_inside_engine_context, WrappedDynComponent};
+use super::steel::{enter_engine, present_error_inside_engine_context, WrappedDynComponent};
 
 #[derive(Clone)]
 struct AsyncReader {
@@ -130,6 +127,12 @@ pub fn helix_component_module() -> BuiltInModule {
                 todo!()
             },
         )
+        .register_fn("theme->bg", |ctx: &mut Context| {
+            ctx.editor.theme.get("ui.background")
+        })
+        .register_fn("theme->fg", |ctx: &mut Context| {
+            ctx.editor.theme.get("ui.text")
+        })
         .register_fn("buffer-area", |buffer: &mut Buffer| buffer.area)
         .register_fn("frame-set-string!", buffer_set_string)
         .register_fn("new-component!", SteelDynamicComponent::new_dyn)
@@ -156,10 +159,11 @@ pub fn helix_component_module() -> BuiltInModule {
             area.height
         })
         .register_fn("overlaid", |component: &mut WrappedDynComponent| {
-            let inner: Option<Box<dyn Component>> = component
-                .inner
-                .take()
-                .map(|x| Box::new(overlaid(BoxDynComponent::new(x))) as Box<dyn Component>);
+            let inner: Option<Box<dyn Component + Send + Sync + 'static>> =
+                component.inner.take().map(|x| {
+                    Box::new(overlaid(BoxDynComponent::new(x)))
+                        as Box<dyn Component + Send + Sync + 'static>
+                });
 
             component.inner = inner;
         })
@@ -183,6 +187,34 @@ pub fn helix_component_module() -> BuiltInModule {
                 .border_type(BorderType::Rounded)
                 .style(Style::default().bg(Color::Black))
         })
+        // TODO: Expose these accordingly
+        .register_fn(
+            "make-block",
+            |style: Style, border_style: Style, borders: SteelString, border_type: SteelString| {
+                let border_type = match border_type.as_str() {
+                    "plain" => BorderType::Plain,
+                    "rounded" => BorderType::Rounded,
+                    "double" => BorderType::Double,
+                    "thick" => BorderType::Thick,
+                    _ => BorderType::Plain,
+                };
+
+                let borders = match borders.as_str() {
+                    "top" => Borders::TOP,
+                    "left" => Borders::LEFT,
+                    "right" => Borders::RIGHT,
+                    "bottom" => Borders::BOTTOM,
+                    "all" => Borders::ALL,
+                    _ => Borders::empty(),
+                };
+
+                Block::default()
+                    .borders(borders)
+                    .border_style(border_style)
+                    .border_type(border_type)
+                    .style(style)
+            },
+        )
         .register_fn(
             "block/render",
             |buf: &mut Buffer, area: Rect, block: Block| block.render(area, buf),
@@ -232,6 +264,8 @@ pub fn helix_component_module() -> BuiltInModule {
         })
         .register_fn("style-fg", Style::fg)
         .register_fn("style-bg", Style::bg)
+        .register_fn("style->fg", |style: &Style| style.fg)
+        .register_fn("style->bg", |style: &Style| style.bg)
         .register_fn("set-style-bg!", |style: &mut Style, color: Color| {
             style.bg = Some(color);
         })
@@ -435,7 +469,7 @@ fn buffer_set_string(
         }
         SteelVal::Custom(c) => {
             if let Some(string) =
-                as_underlying_type::<steel::steel_vm::ffi::MutableString>(c.borrow().as_ref())
+                as_underlying_type::<steel::steel_vm::ffi::MutableString>(c.read().as_ref())
             {
                 buffer.set_string(x, y, string.string.as_str(), style);
                 Ok(())
@@ -574,9 +608,7 @@ impl Component for SteelDynamicComponent {
             )
         };
 
-        ENGINE.with(|x| {
-            let mut guard = x.borrow_mut();
-
+        enter_engine(|guard| {
             if let Err(e) = guard
                 .with_mut_reference::<tui::buffer::Buffer, tui::buffer::Buffer>(frame)
                 .with_mut_reference::<Context, Context>(&mut ctx)
@@ -591,7 +623,7 @@ impl Component for SteelDynamicComponent {
                     (thunk)(engine, buffer)
                 })
             {
-                present_error_inside_engine_context(&mut ctx, &mut guard, e)
+                present_error_inside_engine_context(&mut ctx, guard, e)
             }
         })
     }
@@ -617,9 +649,9 @@ impl Component for SteelDynamicComponent {
             match self.key_event.as_mut() {
                 Some(SteelVal::Custom(key_event)) => {
                     // Save the headache, reuse the allocation
-                    if let Some(inner) = steel::rvals::as_underlying_type_mut::<Event>(
-                        key_event.borrow_mut().as_mut(),
-                    ) {
+                    if let Some(inner) =
+                        steel::rvals::as_underlying_type_mut::<Event>(key_event.write().as_mut())
+                    {
                         *inner = event.clone();
                     }
                 }
@@ -653,8 +685,8 @@ impl Component for SteelDynamicComponent {
             //     _ => return compositor::EventResult::Ignored(None),
             // };
 
-            match ENGINE.with(|x| {
-                x.borrow_mut()
+            match enter_engine(|guard| {
+                guard
                     .with_mut_reference::<Context, Context>(&mut ctx)
                     .consume(move |engine, arguments| {
                         let context = arguments[0].clone();
@@ -681,9 +713,7 @@ impl Component for SteelDynamicComponent {
                 }
                 Err(e) => {
                     // Present the error
-                    ENGINE.with(|x| {
-                        present_error_inside_engine_context(&mut ctx, &mut x.borrow_mut(), e)
-                    });
+                    enter_engine(|x| present_error_inside_engine_context(&mut ctx, x, e));
 
                     compositor::EventResult::Ignored(None)
                 }
@@ -731,9 +761,8 @@ impl Component for SteelDynamicComponent {
                 )
             };
 
-            let result = Option::<helix_core::Position>::from_steelval(
-                &ENGINE.with(|x| thunk(&mut (x.borrow_mut())).unwrap()),
-            );
+            let result =
+                Option::<helix_core::Position>::from_steelval(&enter_engine(|x| thunk(x).unwrap()));
 
             match result {
                 Ok(v) => (v, CursorKind::Block),
@@ -764,14 +793,13 @@ impl Component for SteelDynamicComponent {
             // re-entrant attempting to grab the ENGINE instead mutably, since we have to break the recursion
             // somehow. By putting it at the edge, we then say - hey for these functions on this interface,
             // call the engine instance. Otherwise, all computation happens inside the engine.
-            match ENGINE
-                .with(|x| {
-                    x.borrow_mut().call_function_with_args_from_mut_slice(
-                        required_size.clone(),
-                        &mut [self.state.clone(), viewport.into_steelval().unwrap()],
-                    )
-                })
-                .and_then(|x| Option::<(u16, u16)>::from_steelval(&x))
+            match enter_engine(|x| {
+                x.call_function_with_args_from_mut_slice(
+                    required_size.clone(),
+                    &mut [self.state.clone(), viewport.into_steelval().unwrap()],
+                )
+            })
+            .and_then(|x| Option::<(u16, u16)>::from_steelval(&x))
             {
                 Ok(v) => v,
                 // TODO: Figure out how to present an error

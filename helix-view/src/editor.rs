@@ -1080,6 +1080,16 @@ pub struct Editor {
 
     pub mouse_down_range: Option<Range>,
     pub cursor_cache: CursorCache,
+
+    pub editor_clipping: ClippingConfiguration,
+}
+
+#[derive(Default)]
+pub struct ClippingConfiguration {
+    pub top: Option<u16>,
+    pub bottom: Option<u16>,
+    pub left: Option<u16>,
+    pub right: Option<u16>,
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
@@ -1198,6 +1208,7 @@ impl Editor {
             handlers,
             mouse_down_range: None,
             cursor_cache: CursorCache::default(),
+            editor_clipping: ClippingConfiguration::default(),
         }
     }
 
