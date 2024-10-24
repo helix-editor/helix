@@ -1021,17 +1021,17 @@ impl super::PluginSystem for SteelScriptingEngine {
                 {
                     // Install the interrupt handler, in the event this thing
                     // is blocking for too long.
-                    // with_interrupt_handler(|| {
-                    guard.with_mut_reference::<Context, Context>(cx).consume(
-                        move |engine, arguments| {
-                            let context = arguments[0].clone();
-                            engine.update_value("*helix.cx*", context);
+                    with_interrupt_handler(|| {
+                        guard.with_mut_reference::<Context, Context>(cx).consume(
+                            move |engine, arguments| {
+                                let context = arguments[0].clone();
+                                engine.update_value("*helix.cx*", context);
 
-                            // TODO: Get rid of this clone
-                            engine.call_function_by_name_with_args(name, args.clone())
-                        },
-                    )
-                    // })
+                                // TODO: Get rid of this clone
+                                engine.call_function_by_name_with_args(name, args.clone())
+                            },
+                        )
+                    })
                 }
             }) {
                 cx.editor.set_error(format!("{}", e));
