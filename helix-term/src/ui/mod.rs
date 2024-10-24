@@ -193,21 +193,55 @@ pub struct FilePickerData {
 type FilePicker = Picker<PathBuf, FilePickerData>;
 
 pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
+    let roots = vec![root];
+    file_picker_multiple_roots(editor, roots)
+}
+
+fn longest_common_prefix(paths: &[PathBuf]) -> PathBuf {
+    if paths.is_empty() {
+        panic!("Got empty paths list")
+    }
+    // Optimize common case.
+    if paths.len() == 1 {
+        return paths[0].clone();
+    }
+    let mut num_common_components = 0;
+    let first_path_components = paths[0].components();
+    // Store path component references in a Vec so we can iterate it multiple times.
+    let mut all_paths_components: Vec<_> = paths[1..].iter().map(|p| p.components()).collect();
+    'components: for first_path_component in first_path_components {
+        for components in &mut all_paths_components {
+            let component = components.next();
+            if component.is_none() || component.is_some_and(|c| c != first_path_component) {
+                break 'components;
+            }
+        }
+        // All paths matched in this component.
+        num_common_components += 1;
+    }
+
+    paths[0].components().take(num_common_components).collect()
+}
+
+pub fn file_picker_multiple_roots(editor: &Editor, roots: Vec<PathBuf>) -> FilePicker {
+    if roots.is_empty() {
+        panic!("Expected non-empty argument roots.")
+    }
     use ignore::{types::TypesBuilder, WalkBuilder};
     use std::time::Instant;
 
     let config = editor.config();
-    let data = FilePickerData {
-        root: root.clone(),
-        directory_style: editor.theme.get("ui.text.directory"),
-    };
 
     let now = Instant::now();
 
-    let dedup_symlinks = config.file_picker.deduplicate_links;
-    let absolute_root = root.canonicalize().unwrap_or_else(|_| root.clone());
+    let common_root: PathBuf = longest_common_prefix(&roots);
 
-    let mut walk_builder = WalkBuilder::new(&root);
+    let mut walk_builder = WalkBuilder::new(&roots[0]);
+    let dedup_symlinks = config.file_picker.deduplicate_links;
+    let absolute_root = common_root
+        .canonicalize()
+        .unwrap_or_else(|_| roots[0].clone());
+
     walk_builder
         .hidden(config.file_picker.hidden)
         .parents(config.file_picker.parents)
@@ -219,6 +253,10 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
         .sort_by_file_name(|name1, name2| name1.cmp(name2))
         .max_depth(config.file_picker.max_depth)
         .filter_entry(move |entry| filter_picker_entry(entry, &absolute_root, dedup_symlinks));
+
+    for additional_root in &roots[1..] {
+        walk_builder.add(additional_root);
+    }
 
     walk_builder.add_custom_ignore_filename(helix_loader::config_dir().join("ignore"));
     walk_builder.add_custom_ignore_filename(".helix/ignore");
@@ -264,6 +302,11 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
             Spans::from(spans).into()
         },
     )];
+
+    let data = FilePickerData {
+        root: common_root,
+        directory_style: editor.theme.get("ui.text.directory"),
+    };
     let picker = Picker::new(columns, 0, [], data, move |cx, path: &PathBuf, action| {
         if let Err(e) = cx.editor.open(path, action) {
             let err = if let Some(err) = e.source() {
