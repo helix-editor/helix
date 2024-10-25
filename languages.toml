@@ -3845,6 +3845,9 @@ comment-tokens = ["#", "##"]
 indent = { tab-width = 2, unit = "  " }
 language-servers = ["pylsp" ]
 
+[language.formatter]
+command = "snakefmt"
+args = ["-"]
 
 [[grammar]]
 name = "snakemake"
