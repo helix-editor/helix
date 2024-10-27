@@ -1,4 +1,4 @@
-## Commands
+# Commands
 
 - [Typable commands](#typable-commands)
 - [Static commands](#static-commands)

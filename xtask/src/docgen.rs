@@ -76,17 +76,19 @@ pub fn static_commands() -> Result<String, DynError> {
                 let bindings = keymap
                     .get(cmd.name())
                     .map(|bindings| {
-                        bindings.iter().fold(String::new(), |mut acc, bind| {
-                            if !acc.is_empty() {
-                                acc.push_str(", ");
-                            }
-                            acc.push_str("`` ");
-                            for key in bind {
-                                acc.push_str(&key.key_sequence_format());
-                            }
-                            acc.push_str(" ``");
-                            acc
-                        })
+                        let mut bind_strings: Vec<_> = bindings
+                            .iter()
+                            .map(|bind| {
+                                let keys = &bind
+                                    .iter()
+                                    .map(|key| key.key_sequence_format())
+                                    .collect::<String>();
+                                format!("`` {} ``", keys)
+                            })
+                            .collect();
+                        // sort for stable output. sort simple letters-only binds first, then lexicographic
+                        bind_strings.sort_by_key(|s| (s.contains('<'), s.to_owned()));
+                        bind_strings.join(", ")
                     })
                     .unwrap_or_default();
 
