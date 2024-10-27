@@ -243,7 +243,7 @@ impl Editor {
         match op {
             ResourceOp::Create(op) => {
                 let uri = Uri::try_from(&op.uri)?;
-                let path = uri.as_path_buf().expect("URIs are valid paths");
+                let path = uri.as_path().expect("URIs are valid paths");
                 let ignore_if_exists = op.options.as_ref().map_or(false, |options| {
                     !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
                 });
@@ -255,13 +255,15 @@ impl Editor {
                         }
                     }
 
-                    fs::write(&path, [])?;
-                    self.language_servers.file_event_handler.file_changed(path);
+                    fs::write(path, [])?;
+                    self.language_servers
+                        .file_event_handler
+                        .file_changed(path.to_path_buf());
                 }
             }
             ResourceOp::Delete(op) => {
                 let uri = Uri::try_from(&op.uri)?;
-                let path = uri.as_path_buf().expect("URIs are valid paths");
+                let path = uri.as_path().expect("URIs are valid paths");
                 if path.is_dir() {
                     let recursive = op
                         .options
@@ -270,11 +272,13 @@ impl Editor {
                         .unwrap_or(false);
 
                     if recursive {
-                        fs::remove_dir_all(&path)?
+                        fs::remove_dir_all(path)?
                     } else {
-                        fs::remove_dir(&path)?
+                        fs::remove_dir(path)?
                     }
-                    self.language_servers.file_event_handler.file_changed(path);
+                    self.language_servers
+                        .file_event_handler
+                        .file_changed(path.to_path_buf());
                 } else if path.is_file() {
                     fs::remove_file(path)?;
                 }

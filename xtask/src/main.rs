@@ -2,6 +2,7 @@ mod docgen;
 mod helpers;
 mod path;
 mod querycheck;
+mod theme_check;
 
 use std::{env, error::Error};
 
@@ -13,6 +14,7 @@ pub mod tasks {
         LANG_SUPPORT_MD_OUTPUT, STATIC_COMMANDS_MD_OUTPUT, TYPABLE_COMMANDS_MD_OUTPUT,
     };
     use crate::querycheck::query_check;
+    use crate::theme_check::theme_check;
     use crate::DynError;
 
     pub fn docgen() -> Result<(), DynError> {
@@ -24,6 +26,10 @@ pub mod tasks {
 
     pub fn querycheck() -> Result<(), DynError> {
         query_check()
+    }
+
+    pub fn themecheck() -> Result<(), DynError> {
+        theme_check()
     }
 
     pub fn print_help() {
@@ -46,6 +52,7 @@ fn main() -> Result<(), DynError> {
         Some(t) => match t.as_str() {
             "docgen" => tasks::docgen()?,
             "query-check" => tasks::querycheck()?,
+            "theme-check" => tasks::themecheck()?,
             invalid => return Err(format!("Invalid task name: {}", invalid).into()),
         },
     };
