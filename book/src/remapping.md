@@ -24,6 +24,9 @@ To remap keys, create a `config.toml` file in your `helix` configuration
 directory (default `~/.config/helix` on Linux systems) with a structure like
 this:
 
+> 💡 To set a modifier + key as a keymap, type `A-X = ...` or  `C-X = ...` for Alt + X or Ctrl + X. Combine with Shift using a dash, e.g. `C-S-esc`. 
+> Within macros, wrap them in `<>`, e.g. `<A-X>` and `<C-X>` to distinguish from the `A` or `C` keys.
+
 ```toml
 # At most one section each of 'keys.normal', 'keys.insert' and 'keys.select'
 [keys.normal]
