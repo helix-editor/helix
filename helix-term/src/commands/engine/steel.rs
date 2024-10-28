@@ -1762,28 +1762,35 @@ impl OnModeSwitchEvent {
 impl Custom for OnModeSwitchEvent {}
 impl Custom for MappableCommand {}
 
-fn register_hook(event_kind: String, function_name: String) -> steel::UnRecoverableResult {
+// Don't take the function name, just take the function itself?
+fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecoverableResult {
+    let rooted = callback_fn.as_rooted();
+
     match event_kind.as_str() {
         "on-mode-switch" => {
             register_hook!(move |event: &mut OnModeSwitch<'_, '_>| {
-                if enter_engine(|x| x.global_exists(&function_name)) {
-                    if let Err(e) = enter_engine(|guard| {
-                        let minimized_event = OnModeSwitchEvent {
-                            old_mode: event.old_mode,
-                            new_mode: event.new_mode,
-                        };
+                // if enter_engine(|x| x.global_exists(&function_name)) {
+                if let Err(e) = enter_engine(|guard| {
+                    let minimized_event = OnModeSwitchEvent {
+                        old_mode: event.old_mode,
+                        new_mode: event.new_mode,
+                    };
 
-                        guard.with_mut_reference(event.cx).consume(|engine, args| {
-                            let context = args[0].clone();
-                            engine.update_value("*helix.cx*", context);
+                    guard.with_mut_reference(event.cx).consume(|engine, args| {
+                        let context = args[0].clone();
+                        engine.update_value("*helix.cx*", context);
 
-                            let args = vec![minimized_event.into_steelval().unwrap()];
-                            engine.call_function_by_name_with_args(&function_name, args)
-                        })
-                    }) {
-                        event.cx.editor.set_error(e.to_string());
-                    }
+                        let mut args = vec![minimized_event.into_steelval().unwrap()];
+                        // engine.call_function_by_name_with_args(&function_name, args)
+                        engine.call_function_with_args_from_mut_slice(
+                            rooted.value().clone(),
+                            &mut args,
+                        )
+                    })
+                }) {
+                    event.cx.editor.set_error(e.to_string());
                 }
+                // }
 
                 Ok(())
             });
@@ -1792,46 +1799,59 @@ fn register_hook(event_kind: String, function_name: String) -> steel::UnRecovera
         }
         "post-insert-char" => {
             register_hook!(move |event: &mut PostInsertChar<'_, '_>| {
-                if enter_engine(|x| x.global_exists(&function_name)) {
-                    if let Err(e) = enter_engine(|guard| {
-                        guard.with_mut_reference(event.cx).consume(|engine, args| {
-                            let context = args[0].clone();
-                            engine.update_value("*helix.cx*", context);
+                // if enter_engine(|x| x.global_exists(&function_name)) {
+                if let Err(e) = enter_engine(|guard| {
+                    guard.with_mut_reference(event.cx).consume(|engine, args| {
+                        let context = args[0].clone();
+                        engine.update_value("*helix.cx*", context);
 
-                            // args.push(event.c.into());
-                            engine.call_function_by_name_with_args(
-                                &function_name,
-                                vec![event.c.into()],
-                            )
-                        })
-                    }) {
-                        event.cx.editor.set_error(e.to_string());
-                    }
+                        // args.push(event.c.into());
+                        // engine.call_function_by_name_with_args(&function_name, vec![event.c.into()])
+
+                        let mut args = vec![event.c.into()];
+
+                        engine.call_function_with_args_from_mut_slice(
+                            rooted.value().clone(),
+                            &mut args,
+                        )
+                    })
+                }) {
+                    event.cx.editor.set_error(e.to_string());
                 }
+                // }
 
                 Ok(())
             });
 
             Ok(SteelVal::Void).into()
         }
+        // Register hook - on save?
         "post-command" => {
             register_hook!(move |event: &mut PostCommand<'_, '_>| {
-                if enter_engine(|x| x.global_exists(&function_name)) {
-                    if let Err(e) = enter_engine(|guard| {
-                        guard.with_mut_reference(event.cx).consume(|engine, args| {
-                            let context = args[0].clone();
-                            engine.update_value("*helix.cx*", context);
+                // if enter_engine(|x| x.global_exists(&function_name)) {
+                if let Err(e) = enter_engine(|guard| {
+                    guard.with_mut_reference(event.cx).consume(|engine, args| {
+                        let context = args[0].clone();
+                        engine.update_value("*helix.cx*", context);
 
-                            // args.push(event.command.clone().into_steelval().unwrap());
-                            engine.call_function_by_name_with_args(
-                                &function_name,
-                                vec![event.command.clone().into_steelval().unwrap()],
-                            )
-                        })
-                    }) {
-                        event.cx.editor.set_error(e.to_string());
-                    }
+                        let mut args = vec![event.command.name().into_steelval().unwrap()];
+
+                        engine.call_function_with_args_from_mut_slice(
+                            rooted.value().clone(),
+                            &mut args,
+                        )
+
+                        // args.push(event.command.clone().into_steelval().unwrap());
+                        // engine.call_function_by_name_with_args(
+                        //     &function_name,
+                        //     // Name?
+                        //     vec![event.command.name().into_steelval().unwrap()],
+                        // )
+                    })
+                }) {
+                    event.cx.editor.set_error(e.to_string());
                 }
+                // }
 
                 Ok(())
             });
