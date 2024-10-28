@@ -10,6 +10,8 @@ use futures_util::future::{BoxFuture, Future, FutureExt};
 use futures_util::stream::{FuturesUnordered, StreamExt};
 use tokio::sync::mpsc::{channel, Receiver, Sender};
 
+pub type EditorCompositorJobsCallback =
+    Box<dyn FnOnce(&mut Editor, &mut Compositor, &mut Jobs) + Send>;
 pub type EditorCompositorCallback = Box<dyn FnOnce(&mut Editor, &mut Compositor) + Send>;
 pub type EditorCallback = Box<dyn FnOnce(&mut Editor) + Send>;
 
@@ -36,7 +38,15 @@ pub fn dispatch_blocking(job: impl FnOnce(&mut Editor, &mut Compositor) + Send +
     send_blocking(jobs, Callback::EditorCompositor(Box::new(job)))
 }
 
+pub fn dispatch_blocking_jobs(
+    job: impl FnOnce(&mut Editor, &mut Compositor, &mut Jobs) + Send + 'static,
+) {
+    let jobs = JOB_QUEUE.wait();
+    send_blocking(jobs, Callback::EditorCompositorJobs(Box::new(job)))
+}
+
 pub enum Callback {
+    EditorCompositorJobs(EditorCompositorJobsCallback),
     EditorCompositor(EditorCompositorCallback),
     Editor(EditorCallback),
 }
@@ -119,7 +129,7 @@ impl Jobs {
     }
 
     pub fn handle_callback(
-        &self,
+        &mut self,
         editor: &mut Editor,
         compositor: &mut Compositor,
         call: anyhow::Result<Option<Callback>>,
@@ -127,6 +137,7 @@ impl Jobs {
         match call {
             Ok(None) => {}
             Ok(Some(call)) => match call {
+                Callback::EditorCompositorJobs(call) => call(editor, compositor, self),
                 Callback::EditorCompositor(call) => call(editor, compositor),
                 Callback::Editor(call) => call(editor),
             },

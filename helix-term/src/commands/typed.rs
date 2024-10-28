@@ -3282,8 +3282,53 @@ pub(super) fn command_mode(cx: &mut Context) {
                 if let Err(e) = (cmd.fun)(cx, &args[1..], event) {
                     cx.editor.set_error(format!("{}", e));
                 }
+
+                if event == PromptEvent::Validate {
+                    let mappable_command = MappableCommand::Typable {
+                        name: cmd.name.to_string(),
+                        args: Vec::new(),
+                        doc: "".to_string(),
+                    };
+
+                    let mut ctx = Context {
+                        register: None,
+                        count: None,
+                        editor: cx.editor,
+                        callback: Vec::new(),
+                        on_next_key_callback: None,
+                        jobs: cx.jobs,
+                    };
+
+                    // // TODO: Figure this out?
+                    helix_event::dispatch(crate::events::PostCommand {
+                        command: &mappable_command,
+                        cx: &mut ctx,
+                    });
+                }
             } else if ScriptingEngine::call_typed_command(cx, input, &parts, event) {
                 // Engine handles the other cases
+                if event == PromptEvent::Validate {
+                    let mappable_command = MappableCommand::Typable {
+                        name: input.to_string(),
+                        args: Vec::new(),
+                        doc: "".to_string(),
+                    };
+
+                    let mut ctx = Context {
+                        register: None,
+                        count: None,
+                        editor: cx.editor,
+                        callback: Vec::new(),
+                        on_next_key_callback: None,
+                        jobs: cx.jobs,
+                    };
+
+                    // // TODO: Figure this out?
+                    helix_event::dispatch(crate::events::PostCommand {
+                        command: &mappable_command,
+                        cx: &mut ctx,
+                    });
+                }
             } else if event == PromptEvent::Validate {
                 cx.editor
                     .set_error(format!("no such command: '{}'", parts[0]));
