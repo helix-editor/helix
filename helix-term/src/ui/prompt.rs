@@ -501,6 +501,7 @@ impl Prompt {
         surface.set_string(area.x, area.y + line, &self.prompt, prompt_color);
 
         let line_area = area.clip_left(self.prompt.len() as u16).clip_top(line);
+
         if self.line.is_empty() {
             // Show the most recently entered value as a suggestion.
             if let Some(suggestion) = self.first_history_completion(cx.editor) {
@@ -517,7 +518,15 @@ impl Prompt {
             .into();
             text.render(line_area, surface, cx);
         } else {
-            surface.set_string(line_area.x, line_area.y, self.line.clone(), prompt_color);
+            surface.set_string_truncated(
+                line_area.x,
+                line_area.y,
+                self.line.as_str(),
+                line_area.width as usize,
+                |_| prompt_color,
+                true,
+                true,
+            );
         }
     }
 }
