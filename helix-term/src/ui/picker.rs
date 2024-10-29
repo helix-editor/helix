@@ -649,10 +649,6 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
 
         // -- Render the input bar:
 
-        let area = inner.clip_left(1).with_height(1);
-        // render the prompt first since it will clear its background
-        self.prompt.render(area, surface, cx);
-
         let count = format!(
             "{}{}/{}",
             if status.running || self.matcher.active_injectors() > 0 {
@@ -663,6 +659,13 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             snapshot.matched_item_count(),
             snapshot.item_count(),
         );
+
+        let area = inner.clip_left(1).with_height(1);
+        let line_area = area.clip_right(count.len() as u16 + 1);
+
+        // render the prompt first since it will clear its background
+        self.prompt.render(line_area, surface, cx);
+
         surface.set_stringn(
             (area.x + area.width).saturating_sub(count.len() as u16 + 1),
             area.y,
