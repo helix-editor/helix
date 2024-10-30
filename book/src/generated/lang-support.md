@@ -28,6 +28,7 @@
 | cpp | ✓ | ✓ | ✓ | `clangd` |
 | crystal | ✓ | ✓ |  | `crystalline` |
 | css | ✓ |  | ✓ | `vscode-css-language-server` |
+| csv | ✓ |  |  |  |
 | cue | ✓ |  |  | `cuelsp` |
 | cylc | ✓ | ✓ | ✓ |  |
 | d | ✓ | ✓ | ✓ | `serve-d` |
