@@ -3845,7 +3845,18 @@ comment-tokens = ["#", "##"]
 indent = { tab-width = 2, unit = "  " }
 language-servers = ["pylsp" ]
 
-
 [[grammar]]
 name = "snakemake"
 source = { git = "https://github.com/osthomas/tree-sitter-snakemake", rev = "e909815acdbe37e69440261ebb1091ed52e1dec6" }
+
+[[language]]
+name = "cylc"
+scope = "source.cylc"
+injection-regex = "cylc"
+file-types = ["cylc", { glob = "suite.rc" }]
+comment-tokens = "#"
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "cylc"
+source = { git = "https://github.com/elliotfontaine/tree-sitter-cylc", rev = "30dd40d9bf23912e4aefa93eeb4c7090bda3d0f6" }
