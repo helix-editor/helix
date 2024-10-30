@@ -55,17 +55,10 @@ to be used as typed commands. For example:
 (define (git-add cx)
   (shell cx "git" "add" "%"))
 
-
-;; Functions to assist with the above
-(define (editor-get-doc-if-exists doc-id)
-  (if (editor-doc-exists? doc-id) (editor->get-document doc-id) #f))
-
 (define (current-path)
   (let* ([focus (editor-focus)]
-         [focus-doc-id (editor->doc-id focus)]
-         [document (editor-get-doc-if-exists focus-doc-id)])
-
-    (if document (Document-path document) #f)))
+         [focus-doc-id (editor->doc-id focus)])
+    (editor-document->path focus-doc-id)))
 
 ;;@doc
 ;; Open the helix.scm file
