@@ -692,18 +692,26 @@ impl Component for Prompt {
     }
 
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        self.render_prompt(area, surface, cx)
+        self.render_prompt(area, surface, cx);
     }
 
     fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
+        let area = area
+            .clip_left(self.prompt.len() as u16)
+            .clip_right(if self.prompt.len() > 0 { 0 } else { 2 });
+
+        let line_size = UnicodeWidthStr::width(&self.line[..]);
+
+        let upbound: usize = if line_size > (area.width - area.x) as usize {
+            let cursor_relative_position = (line_size - self.cursor).min(area.width as usize);
+            (area.width as usize - cursor_relative_position).max(area.left() as usize + 1)
+        } else {
+            area.left() as usize + UnicodeWidthStr::width(&self.line[..self.cursor])
+        };
+
         let line = area.height as usize - 1;
         (
-            Some(Position::new(
-                area.y as usize + line,
-                area.x as usize
-                    + self.prompt.len()
-                    + UnicodeWidthStr::width(&self.line[..self.cursor]),
-            )),
+            Some(Position::new(area.y as usize + line, upbound)),
             editor.config().cursor_shape.from_mode(Mode::Insert),
         )
     }
