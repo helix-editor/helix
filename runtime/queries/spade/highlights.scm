@@ -37,6 +37,7 @@
     "fn"
     "reg"
     "reset"
+    "initial"
     "inst"
     "assert"
     "struct"
@@ -47,6 +48,7 @@
     "decl"
     "mod"
     "where"
+    "trait"
 ] @keyword
 
 [
@@ -108,7 +110,12 @@
 
 [
   (line_comment)
+  (block_comment)
 ] @comment
+
+[
+  (doc_comment)
+] @comment.block.documentation
 
 
 ((identifier) @type
