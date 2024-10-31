@@ -640,20 +640,9 @@ impl std::str::FromStr for MappableCommand {
                     Some(MappableCommand::Typable {
                         name: name.to_owned(),
                         args,
-                        doc: "uh oh, couldn't find the thing".to_string(),
+                        doc: "Undocumented plugin command".to_string(),
                     })
                 })
-                // .or_else(|| {
-                //     if let Some(doc) = self::engine::ScriptingEngine::get_doc_for_identifier(name) {
-                //         Some(MappableCommand::Typable {
-                //             name: name.to_owned(),
-                //             args,
-                //             doc,
-                //         })
-                //     } else {
-                //         None
-                //     }
-                // })
                 .ok_or_else(|| anyhow!("No TypableCommand named '{}'", s))
         } else if let Some(suffix) = s.strip_prefix('@') {
             helix_view::input::parse_macro(suffix).map(|keys| Self::Macro {
