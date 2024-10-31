@@ -287,6 +287,14 @@ impl MappableCommand {
         }
     }
 
+    pub(crate) fn doc_mut(&mut self) -> Option<&mut String> {
+        if let Self::Typable { doc, .. } = self {
+            Some(doc)
+        } else {
+            None
+        }
+    }
+
     #[rustfmt::skip]
     static_commands!(
         no_op, "Do nothing",

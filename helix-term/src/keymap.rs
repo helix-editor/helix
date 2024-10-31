@@ -235,6 +235,23 @@ impl KeyTrie {
         res
     }
 
+    pub fn apply(&mut self, func: &mut dyn FnMut(&mut MappableCommand)) {
+        match self {
+            KeyTrie::MappableCommand(MappableCommand::Macro { .. }) => {}
+            KeyTrie::MappableCommand(cmd) => (func)(cmd),
+            KeyTrie::Node(next) => {
+                for (_, trie) in &mut next.map {
+                    trie.apply(func);
+                }
+            }
+            KeyTrie::Sequence(seq) => {
+                for s in seq {
+                    (func)(s)
+                }
+            }
+        };
+    }
+
     pub fn node(&self) -> Option<&KeyTrieNode> {
         match *self {
             KeyTrie::Node(ref node) => Some(node),

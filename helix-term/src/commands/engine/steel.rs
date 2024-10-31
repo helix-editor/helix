@@ -216,6 +216,7 @@ fn load_keymap_api(engine: &mut Engine, api: KeyMapApi) {
         BUFFER_OR_EXTENSION_KEYBINDING_MAP.clone(),
     );
     module.register_value("*reverse-buffer-map*", REVERSE_BUFFER_MAP.clone());
+    module.register_fn("keymap-update-documentation!", update_documentation);
 
     engine.register_module(module);
 }
@@ -1244,6 +1245,20 @@ pub fn present_error_inside_engine_context(cx: &mut Context, engine: &mut Engine
 #[derive(Clone, Debug)]
 pub struct EmbeddedKeyMap(pub HashMap<Mode, KeyTrie>);
 impl Custom for EmbeddedKeyMap {}
+
+pub fn update_documentation(map: &mut EmbeddedKeyMap, docs: HashMap<String, String>) {
+    let mut func = move |command: &mut MappableCommand| {
+        if let Some(steel_doc) = docs.get(command.name()) {
+            if let Some(doc) = command.doc_mut() {
+                *doc = steel_doc.to_owned()
+            }
+        }
+    };
+
+    for trie in map.0.values_mut() {
+        trie.apply(&mut func)
+    }
+}
 
 // Will deep copy a value by default when using a value type
 pub fn deep_copy_keymap(copied: EmbeddedKeyMap) -> EmbeddedKeyMap {
