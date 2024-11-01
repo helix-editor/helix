@@ -1202,7 +1202,11 @@ impl Application {
             .backend_mut()
             .show_cursor(CursorKind::Block)
             .ok();
-        self.terminal.restore(terminal_config)
+
+        use std::io::Write;
+
+        self.terminal.restore(terminal_config)?;
+        write!(std::io::stdout(), "\x1B[0 q") // reset to cursor shape
     }
 
     pub async fn run<S>(&mut self, input_stream: &mut S) -> Result<i32, Error>
