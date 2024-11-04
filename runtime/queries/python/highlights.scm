@@ -111,6 +111,9 @@
 
 (integer) @constant.numeric.integer
 (float) @constant.numeric.float
+(expression_statement (string) @content
+	(#match? @content "^\"\"\"")
+) @comment.block.documentation
 (comment) @comment
 (string) @string
 (escape_sequence) @constant.character.escape
