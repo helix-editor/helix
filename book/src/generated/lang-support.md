@@ -29,6 +29,7 @@
 | crystal | ✓ | ✓ |  | `crystalline` |
 | css | ✓ |  | ✓ | `vscode-css-language-server` |
 | cue | ✓ |  |  | `cuelsp` |
+| cylc | ✓ | ✓ | ✓ |  |
 | d | ✓ | ✓ | ✓ | `serve-d` |
 | dart | ✓ | ✓ | ✓ | `dart` |
 | dbml | ✓ |  |  |  |
@@ -39,6 +40,7 @@
 | dockerfile | ✓ | ✓ |  | `docker-langserver` |
 | dot | ✓ |  |  | `dot-language-server` |
 | dtd | ✓ |  |  |  |
+| dune | ✓ |  |  |  |
 | earthfile | ✓ | ✓ | ✓ | `earthlyls` |
 | edoc | ✓ |  |  |  |
 | eex | ✓ |  |  |  |
@@ -68,7 +70,7 @@
 | gjs | ✓ | ✓ | ✓ | `typescript-language-server`, `vscode-eslint-language-server`, `ember-language-server` |
 | gleam | ✓ | ✓ |  | `gleam` |
 | glimmer | ✓ |  |  | `ember-language-server` |
-| glsl | ✓ | ✓ | ✓ |  |
+| glsl | ✓ | ✓ | ✓ | `glsl_analyzer` |
 | gn | ✓ |  |  |  |
 | go | ✓ | ✓ | ✓ | `gopls`, `golangci-lint-langserver` |
 | godot-resource | ✓ | ✓ |  |  |
@@ -185,6 +187,7 @@
 | smali | ✓ |  | ✓ |  |
 | smithy | ✓ |  |  | `cs` |
 | sml | ✓ |  |  |  |
+| snakemake | ✓ |  | ✓ | `pylsp` |
 | solidity | ✓ | ✓ |  | `solc` |
 | spicedb | ✓ |  |  |  |
 | sql | ✓ | ✓ |  |  |

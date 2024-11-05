@@ -41,6 +41,7 @@ forth-lsp = { command = "forth-lsp" }
 fortls = { command = "fortls", args = ["--lowercase_intrinsics"] }
 fsharp-ls = { command = "fsautocomplete", config = { AutomaticWorkspaceInit = true } }
 gleam = { command = "gleam", args = ["lsp"] }
+glsl_analyzer = { command = "glsl_analyzer" }
 graphql-language-service = { command = "graphql-lsp", args = ["server", "-m", "stream"] }
 haskell-language-server = { command = "haskell-language-server-wrapper", args = ["--lsp"] }
 idris2-lsp = { command = "idris2-lsp" }
@@ -448,7 +449,6 @@ file-types = [
   { glob = "composer.lock" },
   { glob = ".watchmanconfig" },
   "avsc",
-  { glob = ".prettierrc" },
   "ldtk",
   "ldtkl",
 ]
@@ -1244,6 +1244,23 @@ name = "ocaml-interface"
 source = { git = "https://github.com/tree-sitter/tree-sitter-ocaml", rev = "9965d208337d88bbf1a38ad0b0fe49e5f5ec9677", subpath = "interface" }
 
 [[language]]
+name = "dune"
+scope = "source.dune"
+roots = ["dune-project"]
+file-types = [{ glob = "dune-project" }, { glob = "dune" }]
+comment-token = ";"
+indent = { tab-width = 1, unit = " " }
+grammar = "scheme"
+auto-format = true
+formatter = { command = "dune", args = ["format-dune-file"] }
+
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+
+[[language]]
 name = "lua"
 injection-regex = "lua"
 scope = "source.lua"
@@ -1288,7 +1305,7 @@ source = { git = "https://github.com/ikatyang/tree-sitter-vue", rev = "91fe27547
 [[language]]
 name = "yaml"
 scope = "source.yaml"
-file-types = ["yml", "yaml"]
+file-types = ["yml", "yaml", { glob = ".prettierrc" }]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 language-servers = [ "yaml-language-server", "ansible-language-server" ]
@@ -1435,6 +1452,7 @@ file-types = ["glsl", "vert", "tesc", "tese", "geom", "frag", "comp" ]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 4, unit = "    " }
+language-servers = [ "glsl_analyzer" ]
 injection-regex = "glsl"
 
 [[grammar]]
@@ -2465,6 +2483,12 @@ injection-regex = "sml"
 file-types = ["sml"]
 block-comment-tokens = { start = "(*", end = "*)" }
 
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+
 [[grammar]]
 name = "sml"
 source = { git = "https://github.com/Giorbo/tree-sitter-sml", rev = "bd4055d5554614520d4a0706b34dc0c317c6b608" }
@@ -3115,7 +3139,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "just"
-source = { git = "https://github.com/poliorcetics/tree-sitter-just", rev = "f58a8fd869035ac4653081401e6c2030251240ab" }
+source = { git = "https://github.com/poliorcetics/tree-sitter-just", rev = "6e28fa6cba511c694247cd802d1c3b14f8d34dbb" }
 
 [[language]]
 name = "gn"
@@ -3247,7 +3271,7 @@ text-width = 72
 
 [[grammar]]
 name = "jjdescription"
-source = { git = "https://github.com/kareigu/tree-sitter-jjdescription", rev = "2ddec6cad07b366aee276a608e1daa2c29d3caf2" }
+source = { git = "https://github.com/kareigu/tree-sitter-jjdescription", rev = "23dd3dd18ee29bdd761642511aa314215801afd8" }
 
 [[language]]
 name = "jq"
@@ -3810,3 +3834,28 @@ language-servers = ["circom-lsp"]
 [[grammar]]
 name   = "circom"
 source = { git = "https://github.com/Decurity/tree-sitter-circom", rev = "02150524228b1e6afef96949f2d6b7cc0aaf999e" }
+
+[[language]]
+name = "snakemake"
+scope = "source.snakemake"
+roots = ["Snakefile", "config.yaml", "environment.yaml", "workflow/"]
+file-types = ["smk", "Snakefile"]
+comment-tokens = ["#", "##"]
+indent = { tab-width = 2, unit = "  " }
+language-servers = ["pylsp" ]
+
+[[grammar]]
+name = "snakemake"
+source = { git = "https://github.com/osthomas/tree-sitter-snakemake", rev = "e909815acdbe37e69440261ebb1091ed52e1dec6" }
+
+[[language]]
+name = "cylc"
+scope = "source.cylc"
+injection-regex = "cylc"
+file-types = ["cylc", { glob = "suite.rc" }]
+comment-tokens = "#"
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "cylc"
+source = { git = "https://github.com/elliotfontaine/tree-sitter-cylc", rev = "30dd40d9bf23912e4aefa93eeb4c7090bda3d0f6" }
