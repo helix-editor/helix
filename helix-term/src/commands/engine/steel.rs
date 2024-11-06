@@ -31,7 +31,6 @@ use steel::{
     steelerr, SteelErr, SteelVal,
 };
 
-use std::sync::Arc;
 use std::{
     borrow::Cow,
     collections::HashMap,
@@ -40,6 +39,7 @@ use std::{
     sync::{atomic::AtomicBool, Mutex, MutexGuard},
     time::Duration,
 };
+use std::{io::BufWriter, sync::Arc};
 
 use steel::{rvals::Custom, steel_vm::builtin::BuiltInModule};
 
@@ -194,12 +194,17 @@ pub static BUFFER_OR_EXTENSION_KEYBINDING_MAP: Lazy<SteelVal> =
 pub static REVERSE_BUFFER_MAP: Lazy<SteelVal> =
     Lazy::new(|| SteelVal::boxed(SteelVal::empty_hashmap()));
 
-fn load_component_api(engine: &mut Engine) {
+fn load_component_api(engine: &mut Engine, generate_sources: bool) {
     let module = helix_component_module();
+
+    if generate_sources {
+        configure_lsp_builtins("component", &module);
+    }
+
     engine.register_module(module);
 }
 
-fn load_keymap_api(engine: &mut Engine, api: KeyMapApi) {
+fn load_keymap_api(engine: &mut Engine, api: KeyMapApi, generate_sources: bool) {
     let mut module = BuiltInModule::new("helix/core/keymaps");
 
     module.register_fn("helix-empty-keymap", api.empty_keymap);
@@ -217,6 +222,10 @@ fn load_keymap_api(engine: &mut Engine, api: KeyMapApi) {
     );
     module.register_value("*reverse-buffer-map*", REVERSE_BUFFER_MAP.clone());
     module.register_fn("keymap-update-documentation!", update_documentation);
+
+    if generate_sources {
+        configure_lsp_builtins("keymap", &module)
+    }
 
     engine.register_module(module);
 }
@@ -414,6 +423,10 @@ fn load_static_commands(engine: &mut Engine, generate_sources: bool) {
         std::fs::write(target_directory, builtin_static_command_module).unwrap();
     }
 
+    if generate_sources {
+        configure_lsp_builtins("static", &module);
+    }
+
     engine.register_module(module);
 }
 
@@ -486,6 +499,10 @@ fn load_typed_commands(engine: &mut Engine, generate_sources: bool) {
         target_directory.push("commands.scm");
 
         std::fs::write(target_directory, builtin_typable_command_module).unwrap();
+    }
+
+    if generate_sources {
+        configure_lsp_builtins("typed", &module);
     }
 
     engine.register_module(module);
@@ -826,6 +843,10 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
         std::fs::write(target_directory, builtin_configuration_module).unwrap();
     }
 
+    if generate_sources {
+        configure_lsp_builtins("configuration", &module);
+    }
+
     engine.register_module(module);
 }
 
@@ -967,6 +988,11 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
         target_directory.push("editor.scm");
 
         std::fs::write(target_directory, builtin_editor_command_module).unwrap();
+    }
+
+    // Generate the lsp configuration
+    if generate_sources {
+        configure_lsp_builtins("editor", &module);
     }
 
     engine.register_module(module);
@@ -1885,9 +1911,77 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
     }
 }
 
-fn load_rope_api(engine: &mut Engine) {
+fn configure_lsp_globals() {
+    if let Ok(steel_lsp_home) = std::env::var("STEEL_LSP_HOME") {
+        let mut path = PathBuf::from(steel_lsp_home);
+        path.push("_helix-global-builtins.scm");
+
+        let mut output = String::new();
+
+        let names = &[
+            "*helix.cx*",
+            "*helix.config*",
+            "*helix.id*",
+            "register-hook!",
+            "log::info!",
+            "fuzzy-match",
+            "helix-find-workspace",
+            "doc-id->usize",
+            "new-component!",
+            "acquire-context-lock",
+            "SteelDynamicComponent?",
+            "prompt",
+            "picker",
+            "Component::Text",
+            "hx.create-directory",
+        ];
+
+        for value in names {
+            use std::fmt::Write;
+            writeln!(&mut output, "(#%register-global '{})", value).unwrap();
+        }
+
+        std::fs::write(path, output).unwrap();
+    }
+}
+
+fn configure_lsp_builtins(name: &str, module: &BuiltInModule) {
+    if let Ok(steel_lsp_home) = std::env::var("STEEL_LSP_HOME") {
+        let mut path = PathBuf::from(steel_lsp_home);
+        path.push(&format!("_helix-{}-builtins.scm", name));
+
+        let mut output = String::new();
+
+        output.push_str(&format!(
+            r#"(define #%helix-{}-module (#%module "{}"))
+
+(define (register-values module values)
+  (map (lambda (ident) (#%module-add module (symbol->string ident) void)) values))
+"#,
+            name,
+            module.name()
+        ));
+
+        output.push_str(&format!(r#"(register-values #%helix-{}-module '("#, name));
+
+        for value in module.names() {
+            use std::fmt::Write;
+            writeln!(&mut output, "{}", value).unwrap();
+        }
+
+        output.push_str("))");
+
+        std::fs::write(path, output).unwrap();
+    }
+}
+
+fn load_rope_api(engine: &mut Engine, generate_sources: bool) {
     // Wrap the rope module?
     let rope_slice_module = rope_module();
+
+    if generate_sources {
+        configure_lsp_builtins("rope", &rope_slice_module);
+    }
 
     engine.register_module(rope_slice_module);
 }
@@ -2085,6 +2179,10 @@ fn load_misc_api(engine: &mut Engine, generate_sources: bool) {
         std::fs::write(target_directory, builtin_misc_module).unwrap();
     }
 
+    if generate_sources {
+        configure_lsp_builtins("rope", &module);
+    }
+
     engine.register_module(module);
 }
 
@@ -2097,14 +2195,18 @@ pub fn configure_builtin_sources(engine: &mut Engine, generate_sources: bool) {
     load_configuration_api(engine, generate_sources);
     load_typed_commands(engine, generate_sources);
     load_static_commands(engine, generate_sources);
-    if !generate_sources {
-        // Note: This is going to be completely revamped soon.
-        load_keymap_api(engine, KeyMapApi::new());
-    }
-    load_rope_api(engine);
+    // Note: This is going to be completely revamped soon.
+    load_keymap_api(engine, KeyMapApi::new(), generate_sources);
+    load_rope_api(engine, generate_sources);
     load_misc_api(engine, generate_sources);
-    if !generate_sources {
-        load_component_api(engine);
+    load_component_api(engine, generate_sources);
+
+    // TODO: Remove this once all of the globals have been moved into their own modules
+    if generate_sources {
+        if std::env::var("STEEL_LSP_HOME").is_err() {
+            eprintln!("Warning: STEEL_LSP_HOME is not set, so the steel lsp will not be configured with helix primitives");
+        }
+        configure_lsp_globals()
     }
 }
 
