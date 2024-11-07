@@ -14,17 +14,20 @@ use crate::{surround, Syntax};
 /// # Arguments
 ///
 /// * `pos` - index of the character
-/// * `is_long` - whether it's a word or a WORD
+/// * `long` - whether it's a word or a WORD
 fn find_word_boundary(
     slice: RopeSlice,
     mut pos: usize,
     direction: Direction,
-    is_long: bool,
+    long: bool,
+    is_subword: bool,
 ) -> usize {
     use CharCategory::{Eol, Whitespace};
 
     let iter = match direction {
+        // create forward iterator
         Direction::Forward => slice.chars_at(pos),
+        // create reverse iterator, if we iterate over it we will be advancing in the opposite direction
         Direction::Backward => {
             let mut iter = slice.chars_at(pos);
             iter.reverse();
@@ -32,46 +35,52 @@ fn find_word_boundary(
         }
     };
 
-    // first/last relative to the entire document
-    let is_first_char = pos == 0;
-    let is_last_char = pos == slice.len_chars();
-
-    // the previous character relative to the direction we are going
-    let prev_char_forward = slice.char(pos - 1);
-    let prev_char_backward = slice.char(pos);
-
-    // this needs to be updated to account for the fact that wordly characters are not _ or -
-    let mut prev_char_category = match direction {
-        Direction::Forward if is_first_char => Whitespace,
-        Direction::Backward if is_last_char => Whitespace,
-        Direction::Forward => categorize_char(prev_char_forward),
-        Direction::Backward => categorize_char(prev_char_backward),
+    let mut prev_category = match direction {
+        // if we are at the beginning or end of the document
+        Direction::Forward if pos == 0 => Whitespace,
+        Direction::Backward if pos == slice.len_chars() => Whitespace,
+        Direction::Forward => categorize_char(slice.char(pos - 1)),
+        Direction::Backward => categorize_char(slice.char(pos)),
     };
 
-    let is_subword = true;
+    let mut prev_ch = match direction {
+        // if we are at the beginning or end of the document
+        Direction::Forward if pos == 0 => ' ',
+        Direction::Backward if pos == slice.len_chars() => ' ',
+        Direction::Forward => slice.char(pos - 1),
+        Direction::Backward => slice.char(pos),
+    };
 
     for ch in iter {
         match categorize_char(ch) {
-            // when we hit whitespace, stop iterating
+            // When we find the first whitespace, that's going to be our position that we jump to
             Eol | Whitespace => return pos,
-            char_category => {
-                // compare current char to the previous char, if we are
-                // iterating forwards e.g.:
-                // a_ => true, a and _ are Word chars
-                // a+ => false, a is Word char, + is a MathSymbol
-                let did_category_change = char_category != prev_char_category;
+            // every character other than a whitespace
+            category => {
+                let matches_short_word = !long
+                    && !is_subword
+                    && category != prev_category
+                    && pos != 0
+                    && pos != slice.len_chars();
 
-                if !is_long && !is_subword && did_category_change && !is_first_char && !is_last_char
-                {
+                let matches_subword = is_subword
+                    && ((prev_ch == '_' || ch == '_')
+                        || match direction {
+                            Direction::Forward => prev_ch.is_lowercase() && ch.is_uppercase(),
+                            Direction::Backward => prev_ch.is_uppercase() && ch.is_lowercase(),
+                        });
+
+                if matches_subword {
                     return pos;
-                } else if is_subword && ch == '_' {
+                } else if matches_short_word {
                     return pos;
                 } else {
                     match direction {
                         Direction::Forward => pos += 1,
                         Direction::Backward => pos = pos.saturating_sub(1),
                     }
-                    prev_char_category = char_category;
+                    prev_category = category;
+                    prev_ch = ch;
                 }
             }
         }
@@ -105,13 +114,14 @@ pub fn textobject_word(
     textobject: TextObject,
     _count: usize,
     long: bool,
+    is_subword: bool,
 ) -> Range {
     let pos = range.cursor(slice);
 
-    let word_start = find_word_boundary(slice, pos, Direction::Backward, long);
+    let word_start = find_word_boundary(slice, pos, Direction::Backward, long, is_subword);
     let word_end = match slice.get_char(pos).map(categorize_char) {
         None | Some(CharCategory::Whitespace | CharCategory::Eol) => pos,
-        _ => find_word_boundary(slice, pos + 1, Direction::Forward, long),
+        _ => find_word_boundary(slice, pos + 1, Direction::Forward, long, is_subword),
     };
 
     // Special case.
@@ -431,7 +441,7 @@ mod test {
                 let (pos, objtype, expected_range) = case;
                 // cursor is a single width selection
                 let range = Range::new(pos, pos + 1);
-                let result = textobject_word(slice, range, objtype, 1, false);
+                let result = textobject_word(slice, range, objtype, 1, false, false);
                 assert_eq!(
                     result,
                     expected_range.into(),
