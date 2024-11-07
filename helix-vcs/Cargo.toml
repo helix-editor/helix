@@ -21,9 +21,12 @@ gix = { version = "0.77.0", features = ["attributes", "parallel", "status"], def
 imara-diff =  "0.2.0"
 anyhow = "1"
 log = "0.4"
+memchr = { version = "2.7", optional = true }
+tempfile = { version = "3.13", optional = true }
 
 [features]
 git = ["gix"]
+jj = ["memchr", "tempfile"]
 
 [dev-dependencies]
 tempfile.workspace = true
