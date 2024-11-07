@@ -6,7 +6,7 @@ use tree_sitter::{Node, QueryCursor};
 use crate::chars::{categorize_char, char_is_subword_delimiter, char_is_whitespace, CharCategory};
 use crate::graphemes::{next_grapheme_boundary, prev_grapheme_boundary};
 use crate::line_ending::rope_is_line_ending;
-use crate::movement::Direction;
+use crate::movement::{is_sub_word_boundary, Direction};
 use crate::syntax::LanguageConfiguration;
 use crate::Range;
 use crate::{surround, Syntax};
@@ -64,11 +64,12 @@ fn find_word_boundary(
                     && pos != slice.len_chars();
 
                 let matches_subword = is_subword
-                    && ((char_is_subword_delimiter(prev_ch) || char_is_subword_delimiter(ch))
-                        || match direction {
-                            Direction::Forward => prev_ch.is_lowercase() && ch.is_uppercase(),
-                            Direction::Backward => prev_ch.is_uppercase() && ch.is_lowercase(),
-                        });
+                    && match direction {
+                        Direction::Forward => is_sub_word_boundary(prev_ch, ch, Direction::Forward),
+                        Direction::Backward => {
+                            is_sub_word_boundary(prev_ch, ch, Direction::Backward)
+                        }
+                    };
 
                 if matches_subword {
                     return pos;
