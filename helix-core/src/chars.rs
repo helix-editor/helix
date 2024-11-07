@@ -36,7 +36,7 @@ pub fn char_is_line_ending(ch: char) -> bool {
 /// Determine whether a character is a subword delimiter.
 #[inline]
 pub fn char_is_subword_delimiter(ch: char) -> bool {
-    ch == '_' || ch == '-'
+    ch == '_' || ch == '-' || ch == '/'
 }
 
 /// Determine whether a character qualifies as (non-line-break)
