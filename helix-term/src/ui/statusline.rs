@@ -56,9 +56,17 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
         context.editor.theme.get("ui.statusline.inactive")
     };
 
-    if !unobtrusive_statusline {
-        surface.set_style(viewport.with_height(1), base_style);
-    }
+    let surface_style = if unobtrusive_statusline {
+        let surface_bg = match base_style.bg {
+            Some(color) => color,
+            None => helix_view::theme::Color::Reset
+        };
+        Style::default().bg(surface_bg)
+    } else {
+        base_style
+    };
+
+    surface.set_style(viewport.with_height(1), surface_style);
 
     let write_left = |context: &mut RenderContext, text, style| {
         append(&mut context.parts.left, text, &base_style, style)
