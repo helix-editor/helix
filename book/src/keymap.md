@@ -41,8 +41,10 @@ other modes by pressing the `Escape` key.
 > NOTE: Unlike Vim, `f`, `F`, `t` and `T` are not confined to the current line.
 
 - `WORD`s are delimited by whitespace only.
-- `word`s are delimited by non-keyword characters such as `(` and `-`, but not `_`.
-- `subword`s are like `word`s but also delimited by `_` and transitions from lowercase to uppercase.
+- `word`s are delimited by non-keyword characters such as `(` and `-`, but not
+  `_`.
+- `subword`s are like `word`s but also delimited by `_` and transitions from
+  lowercase to uppercase.
 
 | Key                  | Description                                    | Command                     |
 | -------------------- | ---------------------------------------------- | --------------------------- |
