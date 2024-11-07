@@ -1,7 +1,7 @@
 ; Comments
 
 ((comment) @comment.block.documentation
-  (#lua-match? @comment.block.documentation "^//!"))
+  (#match? @comment.block.documentation "^//!"))
 
 (comment) @comment.line
 
@@ -31,11 +31,10 @@
 
 (character) @constant.character
 
-([
+[
   (string)
   (multiline_string)
 ] @string
-  (#set! "priority" 95))
 
 (integer) @constant.numeric.integer
 
@@ -246,7 +245,7 @@
 ; Constants
 
 ((identifier) @constant
-  (#lua-match? @constant "^[A-Z][A-Z_0-9]+$"))
+  (#match? @constant "^[A-Z][A-Z_0-9]+$"))
 
 [
   "null"
