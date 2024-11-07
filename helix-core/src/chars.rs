@@ -11,6 +11,7 @@ pub enum CharCategory {
     Unknown,
 }
 
+/// Determine whether a character is a line ending, whitespace, a "word" character, a punctuation or unknown
 #[inline]
 pub fn categorize_char(ch: char) -> CharCategory {
     if char_is_line_ending(ch) {
