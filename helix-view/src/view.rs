@@ -207,7 +207,7 @@ impl View {
             self.area.clip_bottom(1).height.into() // -1 for statusline
         }
     }
-    
+
     /// Does not account for height of statusline
     pub fn inner_area_raw(&self, doc: &Document) -> Rect {
         self.area.clip_left(self.gutter_offset(doc))
@@ -355,22 +355,42 @@ impl View {
         Some(offset)
     }
 
-    pub fn ensure_cursor_in_view(&self, doc: &mut Document, scrolloff: usize, unobtrusive_statusline: bool) {
-        if let Some(offset) = self.offset_coords_to_in_view_center::<false>(doc, scrolloff, unobtrusive_statusline) {
+    pub fn ensure_cursor_in_view(
+        &self,
+        doc: &mut Document,
+        scrolloff: usize,
+        unobtrusive_statusline: bool,
+    ) {
+        if let Some(offset) =
+            self.offset_coords_to_in_view_center::<false>(doc, scrolloff, unobtrusive_statusline)
+        {
             doc.set_view_offset(self.id, offset);
         }
     }
 
-    pub fn ensure_cursor_in_view_center(&self, doc: &mut Document, scrolloff: usize, unobtrusive_statusline: bool) {
-        if let Some(offset) = self.offset_coords_to_in_view_center::<true>(doc, scrolloff, unobtrusive_statusline) {
+    pub fn ensure_cursor_in_view_center(
+        &self,
+        doc: &mut Document,
+        scrolloff: usize,
+        unobtrusive_statusline: bool,
+    ) {
+        if let Some(offset) =
+            self.offset_coords_to_in_view_center::<true>(doc, scrolloff, unobtrusive_statusline)
+        {
             doc.set_view_offset(self.id, offset);
         } else {
             align_view(doc, self, Align::Center, unobtrusive_statusline);
         }
     }
 
-    pub fn is_cursor_in_view(&mut self, doc: &Document, scrolloff: usize, unobtrusive_statusline: bool) -> bool {
-        self.offset_coords_to_in_view(doc, scrolloff, unobtrusive_statusline).is_none()
+    pub fn is_cursor_in_view(
+        &mut self,
+        doc: &Document,
+        scrolloff: usize,
+        unobtrusive_statusline: bool,
+    ) -> bool {
+        self.offset_coords_to_in_view(doc, scrolloff, unobtrusive_statusline)
+            .is_none()
     }
 
     /// Estimates the last visible document line on screen.

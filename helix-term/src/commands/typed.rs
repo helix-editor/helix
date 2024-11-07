@@ -1803,7 +1803,7 @@ fn tutor(
 fn abort_goto_line_number_preview(cx: &mut compositor::Context) {
     if let Some(last_selection) = cx.editor.last_selection.take() {
         let config = cx.editor.config();
-        
+
         let scrolloff = config.scrolloff;
         let unobtrusive_statusline = config.statusline.unobtrusive;
 

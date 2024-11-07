@@ -104,7 +104,15 @@ impl EditorView {
         }
 
         if is_focused && config.cursorcolumn {
-            Self::highlight_cursorcolumn(doc, view, surface, theme, inner, &text_annotations, config.statusline.unobtrusive);
+            Self::highlight_cursorcolumn(
+                doc,
+                view,
+                surface,
+                theme,
+                inner,
+                &text_annotations,
+                config.statusline.unobtrusive,
+            );
         }
 
         // Set DAP highlights, if needed.
@@ -241,7 +249,12 @@ impl EditorView {
         let mut context =
             statusline::RenderContext::new(editor, doc, view, is_focused, &self.spinners);
 
-        statusline::render(&mut context, statusline_area, surface, unobtrusive_statusline);
+        statusline::render(
+            &mut context,
+            statusline_area,
+            surface,
+            unobtrusive_statusline,
+        );
     }
 
     pub fn render_rulers(
@@ -1196,7 +1209,13 @@ impl EditorView {
             MouseEventKind::Drag(MouseButton::Left) => {
                 let (view, doc) = current!(cxt.editor);
 
-                let pos = match view.pos_at_screen_coords(doc, row, column, true, config.statusline.unobtrusive) {
+                let pos = match view.pos_at_screen_coords(
+                    doc,
+                    row,
+                    column,
+                    true,
+                    config.statusline.unobtrusive,
+                ) {
                     Some(pos) => pos,
                     None => return EventResult::Ignored(None),
                 };

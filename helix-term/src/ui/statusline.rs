@@ -49,7 +49,12 @@ pub struct RenderBuffer<'a> {
     pub right: Spans<'a>,
 }
 
-pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface, unobtrusive_statusline: bool) {
+pub fn render(
+    context: &mut RenderContext,
+    viewport: Rect,
+    surface: &mut Surface,
+    unobtrusive_statusline: bool,
+) {
     let base_style = if context.focused {
         context.editor.theme.get("ui.statusline")
     } else {
@@ -59,7 +64,7 @@ pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface
     let surface_style = if unobtrusive_statusline {
         let surface_bg = match base_style.bg {
             Some(color) => color,
-            None => helix_view::theme::Color::Reset
+            None => helix_view::theme::Color::Reset,
         };
         Style::default().bg(surface_bg)
     } else {

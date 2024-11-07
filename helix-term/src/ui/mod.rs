@@ -131,7 +131,11 @@ pub fn raw_regex_prompt(
                             fun(cx, regex, input, event);
 
                             let (view, doc) = current!(cx.editor);
-                            view.ensure_cursor_in_view(doc, config.scrolloff, config.statusline.unobtrusive);
+                            view.ensure_cursor_in_view(
+                                doc,
+                                config.scrolloff,
+                                config.statusline.unobtrusive,
+                            );
                         }
                         Err(err) => {
                             let (view, doc) = current!(cx.editor);

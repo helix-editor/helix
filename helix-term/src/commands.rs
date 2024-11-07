@@ -679,7 +679,7 @@ fn move_impl(cx: &mut Context, move_fn: MoveFn, dir: Direction, behaviour: Movem
     let config = cx.editor.config();
     let (view, doc) = current!(cx.editor);
     let unobtrusive_statusline = config.statusline.unobtrusive;
-    
+
     let text = doc.text().slice(..);
     let text_fmt = doc.text_format(view.inner_area(doc, unobtrusive_statusline).width, None);
     let mut annotations = view.text_annotations(doc, None);
@@ -3106,7 +3106,11 @@ fn jumplist_picker(cx: &mut Context) {
             let (view, doc) = (view_mut!(cx.editor), doc_mut!(cx.editor, &meta.id));
             doc.set_selection(view.id, meta.selection.clone());
             if action.align_view(view, doc.id()) {
-                view.ensure_cursor_in_view_center(doc, config.scrolloff, config.statusline.unobtrusive);
+                view.ensure_cursor_in_view_center(
+                    doc,
+                    config.scrolloff,
+                    config.statusline.unobtrusive,
+                );
             }
         },
     )
@@ -3282,7 +3286,11 @@ pub fn command_palette(cx: &mut Context) {
                     let view = view_mut!(ctx.editor, focus);
                     let doc = doc_mut!(ctx.editor, &view.doc);
 
-                    view.ensure_cursor_in_view(doc, config.scrolloff, config.statusline.unobtrusive);
+                    view.ensure_cursor_in_view(
+                        doc,
+                        config.scrolloff,
+                        config.statusline.unobtrusive,
+                    );
 
                     if mode != Mode::Insert {
                         doc.append_changes_to_history(view);

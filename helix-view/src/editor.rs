@@ -2210,7 +2210,12 @@ fn try_restore_indent(doc: &mut Document, view: &mut View) {
 pub struct CursorCache(Cell<Option<Option<Position>>>);
 
 impl CursorCache {
-    pub fn get(&self, view: &View, doc: &Document, unobtrusive_statusline: bool) -> Option<Position> {
+    pub fn get(
+        &self,
+        view: &View,
+        doc: &Document,
+        unobtrusive_statusline: bool,
+    ) -> Option<Position> {
         if let Some(pos) = self.0.get() {
             return pos;
         }
