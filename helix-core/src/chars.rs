@@ -33,9 +33,9 @@ pub fn char_is_line_ending(ch: char) -> bool {
     LineEnding::from_char(ch).is_some()
 }
 
-/// Determine whether a character is a subword delimiter.
+/// Determine whether a character is a subword text object delimiter.
 #[inline]
-pub fn char_is_subword_delimiter(ch: char) -> bool {
+pub fn char_is_subword_textobj_delimiter(ch: char) -> bool {
     ch == '_' || ch == '-' || ch == '/'
 }
 
