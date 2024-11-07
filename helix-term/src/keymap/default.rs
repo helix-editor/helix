@@ -11,6 +11,9 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "k" | "up" => move_visual_line_up,
         "l" | "right" => move_char_right,
 
+        "H" => move_prev_sub_word_start,
+        "L" => move_next_sub_word_end,
+
         "t" => find_till_char,
         "f" => find_next_char,
         "T" => till_prev_char,
@@ -339,6 +342,9 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "j" | "down" => extend_visual_line_down,
         "k" | "up" => extend_visual_line_up,
         "l" | "right" => extend_char_right,
+
+        "H" => extend_prev_sub_word_start,
+        "L" => extend_next_sub_word_end,
 
         "w" => extend_next_word_start,
         "b" => extend_prev_word_start,
