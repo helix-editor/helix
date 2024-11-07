@@ -24,9 +24,11 @@ imara-diff = "0.1.7"
 anyhow = "1"
 
 log = "0.4"
+tempfile = { version = "3.13", optional = true }
 
 [features]
 git = ["gix"]
+jj = ["tempfile"]
 
 [dev-dependencies]
 tempfile.workspace = true
