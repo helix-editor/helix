@@ -84,6 +84,7 @@ The `[editor.statusline]` key takes the following sub-keys:
 | `mode.normal` | The text shown in the `mode` element for normal mode | `"NOR"` |
 | `mode.insert` | The text shown in the `mode` element for insert mode | `"INS"` |
 | `mode.select` | The text shown in the `mode` element for select mode | `"SEL"` |
+| `unobtrusive` | If set, the background of the statusline won't block the last line text in the buffer | `false` |
 
 The following statusline elements can be configured:
 
