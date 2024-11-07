@@ -11,7 +11,16 @@ use crate::syntax::LanguageConfiguration;
 use crate::Range;
 use crate::{surround, Syntax};
 
-fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction, long: bool) -> usize {
+/// # Arguments
+///
+/// * `pos` - index of the character
+/// * `is_long` - whether it's a word or a WORD
+fn find_word_boundary(
+    slice: RopeSlice,
+    mut pos: usize,
+    direction: Direction,
+    is_long: bool,
+) -> usize {
     use CharCategory::{Eol, Whitespace};
 
     let iter = match direction {
@@ -23,25 +32,46 @@ fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction, lo
         }
     };
 
-    let mut prev_category = match direction {
-        Direction::Forward if pos == 0 => Whitespace,
-        Direction::Forward => categorize_char(slice.char(pos - 1)),
-        Direction::Backward if pos == slice.len_chars() => Whitespace,
-        Direction::Backward => categorize_char(slice.char(pos)),
+    // first/last relative to the entire document
+    let is_first_char = pos == 0;
+    let is_last_char = pos == slice.len_chars();
+
+    // the previous character relative to the direction we are going
+    let prev_char_forward = slice.char(pos - 1);
+    let prev_char_backward = slice.char(pos);
+
+    // this needs to be updated to account for the fact that wordly characters are not _ or -
+    let mut prev_char_category = match direction {
+        Direction::Forward if is_first_char => Whitespace,
+        Direction::Backward if is_last_char => Whitespace,
+        Direction::Forward => categorize_char(prev_char_forward),
+        Direction::Backward => categorize_char(prev_char_backward),
     };
+
+    let is_subword = true;
 
     for ch in iter {
         match categorize_char(ch) {
+            // when we hit whitespace, stop iterating
             Eol | Whitespace => return pos,
-            category => {
-                if !long && category != prev_category && pos != 0 && pos != slice.len_chars() {
+            char_category => {
+                // compare current char to the previous char, if we are
+                // iterating forwards e.g.:
+                // a_ => true, a and _ are Word chars
+                // a+ => false, a is Word char, + is a MathSymbol
+                let did_category_change = char_category != prev_char_category;
+
+                if !is_long && !is_subword && did_category_change && !is_first_char && !is_last_char
+                {
+                    return pos;
+                } else if is_subword && ch == '_' {
                     return pos;
                 } else {
                     match direction {
                         Direction::Forward => pos += 1,
                         Direction::Backward => pos = pos.saturating_sub(1),
                     }
-                    prev_category = category;
+                    prev_char_category = char_category;
                 }
             }
         }
