@@ -464,6 +464,7 @@ pub struct SearchConfig {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct StatusLineConfig {
+    pub unobtrusive: bool,
     pub left: Vec<StatusLineElement>,
     pub center: Vec<StatusLineElement>,
     pub right: Vec<StatusLineElement>,
@@ -476,6 +477,7 @@ impl Default for StatusLineConfig {
         use StatusLineElement as E;
 
         Self {
+            unobtrusive: false,
             left: vec![
                 E::Mode,
                 E::Spinner,
@@ -1538,12 +1540,14 @@ impl Editor {
             let doc = doc_mut!(self, &view.doc);
             view.sync_changes(doc);
             view.gutters = config.gutters.clone();
-            view.ensure_cursor_in_view(doc, config.scrolloff)
+            view.ensure_cursor_in_view(doc, config.scrolloff, config.statusline.unobtrusive)
         }
     }
 
     fn replace_document_in_view(&mut self, current_view: ViewId, doc_id: DocumentId) {
-        let scrolloff = self.config().scrolloff;
+        let config = self.config();
+        let scrolloff = config.scrolloff;
+        let unobtrusive_statusline = config.statusline.unobtrusive;
         let view = self.tree.get_mut(current_view);
 
         view.doc = doc_id;
@@ -1553,7 +1557,7 @@ impl Editor {
         view.sync_changes(doc);
         doc.mark_as_focused();
 
-        view.ensure_cursor_in_view(doc, scrolloff)
+        view.ensure_cursor_in_view(doc, scrolloff, unobtrusive_statusline)
     }
 
     pub fn switch(&mut self, id: DocumentId, action: Action) {
@@ -1915,7 +1919,7 @@ impl Editor {
         let config = self.config();
         let view = self.tree.get(id);
         let doc = doc_mut!(self, &view.doc);
-        view.ensure_cursor_in_view(doc, config.scrolloff)
+        view.ensure_cursor_in_view(doc, config.scrolloff, config.statusline.unobtrusive)
     }
 
     #[inline]
@@ -2005,8 +2009,9 @@ impl Editor {
     pub fn cursor(&self) -> (Option<Position>, CursorKind) {
         let config = self.config();
         let (view, doc) = current_ref!(self);
-        if let Some(mut pos) = self.cursor_cache.get(view, doc) {
-            let inner = view.inner_area(doc);
+        let unobtrusive_statusline = config.statusline.unobtrusive;
+        if let Some(mut pos) = self.cursor_cache.get(view, doc, unobtrusive_statusline) {
+            let inner = view.inner_area(doc, unobtrusive_statusline);
             pos.col += inner.x as usize;
             pos.row += inner.y as usize;
             let cursorkind = config.cursor_shape.from_mode(self.mode);
@@ -2205,14 +2210,14 @@ fn try_restore_indent(doc: &mut Document, view: &mut View) {
 pub struct CursorCache(Cell<Option<Option<Position>>>);
 
 impl CursorCache {
-    pub fn get(&self, view: &View, doc: &Document) -> Option<Position> {
+    pub fn get(&self, view: &View, doc: &Document, unobtrusive_statusline: bool) -> Option<Position> {
         if let Some(pos) = self.0.get() {
             return pos;
         }
 
         let text = doc.text().slice(..);
         let cursor = doc.selection(view.id).primary().cursor(text);
-        let res = view.screen_coords_at_pos(doc, text, cursor);
+        let res = view.screen_coords_at_pos(doc, text, cursor, unobtrusive_statusline);
         self.set(res);
         res
     }

@@ -676,9 +676,12 @@ type MoveFn =
 
 fn move_impl(cx: &mut Context, move_fn: MoveFn, dir: Direction, behaviour: Movement) {
     let count = cx.count();
+    let config = cx.editor.config();
     let (view, doc) = current!(cx.editor);
+    let unobtrusive_statusline = config.statusline.unobtrusive;
+    
     let text = doc.text().slice(..);
-    let text_fmt = doc.text_format(view.inner_area(doc).width, None);
+    let text_fmt = doc.text_format(view.inner_area(doc, unobtrusive_statusline).width, None);
     let mut annotations = view.text_annotations(doc, None);
 
     let selection = doc.selection(view.id).clone().transform(|range| {
@@ -1079,10 +1082,11 @@ fn align_selections(cx: &mut Context) {
 fn goto_window(cx: &mut Context, align: Align) {
     let count = cx.count() - 1;
     let config = cx.editor.config();
+    let unobtrusive_statusline = config.statusline.unobtrusive;
     let (view, doc) = current!(cx.editor);
     let view_offset = doc.view_offset(view.id);
 
-    let height = view.inner_height();
+    let height = view.inner_height(unobtrusive_statusline);
 
     // respect user given count if any
     // - 1 so we have at least one gap in the middle.
@@ -1090,7 +1094,7 @@ fn goto_window(cx: &mut Context, align: Align) {
     // as we type
     let scrolloff = config.scrolloff.min(height.saturating_sub(1) / 2);
 
-    let last_visual_line = view.last_visual_line(doc);
+    let last_visual_line = view.last_visual_line(doc, unobtrusive_statusline);
 
     let visual_line = match align {
         Align::Top => view_offset.vertical_offset + scrolloff + count,
@@ -1752,7 +1756,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
     let text = doc.text().slice(..);
 
     let cursor = range.cursor(text);
-    let height = view.inner_height();
+    let height = view.inner_height(config.statusline.unobtrusive);
 
     let scrolloff = config.scrolloff.min(height.saturating_sub(1) / 2);
     let offset = match direction {
@@ -1761,7 +1765,7 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
     };
 
     let doc_text = doc.text().slice(..);
-    let viewport = view.inner_area(doc);
+    let viewport = view.inner_area(doc, config.statusline.unobtrusive);
     let text_fmt = doc.text_format(viewport.width, None);
     (view_offset.anchor, view_offset.vertical_offset) = char_idx_at_visual_offset(
         doc_text,
@@ -1854,49 +1858,49 @@ pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor
 
 fn page_up(cx: &mut Context) {
     let view = view!(cx.editor);
-    let offset = view.inner_height();
+    let offset = view.inner_height(cx.editor.config().statusline.unobtrusive);
     scroll(cx, offset, Direction::Backward, false);
 }
 
 fn page_down(cx: &mut Context) {
     let view = view!(cx.editor);
-    let offset = view.inner_height();
+    let offset = view.inner_height(cx.editor.config().statusline.unobtrusive);
     scroll(cx, offset, Direction::Forward, false);
 }
 
 fn half_page_up(cx: &mut Context) {
     let view = view!(cx.editor);
-    let offset = view.inner_height() / 2;
+    let offset = view.inner_height(cx.editor.config().statusline.unobtrusive) / 2;
     scroll(cx, offset, Direction::Backward, false);
 }
 
 fn half_page_down(cx: &mut Context) {
     let view = view!(cx.editor);
-    let offset = view.inner_height() / 2;
+    let offset = view.inner_height(cx.editor.config().statusline.unobtrusive) / 2;
     scroll(cx, offset, Direction::Forward, false);
 }
 
 fn page_cursor_up(cx: &mut Context) {
     let view = view!(cx.editor);
-    let offset = view.inner_height();
+    let offset = view.inner_height(cx.editor.config().statusline.unobtrusive);
     scroll(cx, offset, Direction::Backward, true);
 }
 
 fn page_cursor_down(cx: &mut Context) {
     let view = view!(cx.editor);
-    let offset = view.inner_height();
+    let offset = view.inner_height(cx.editor.config().statusline.unobtrusive);
     scroll(cx, offset, Direction::Forward, true);
 }
 
 fn page_cursor_half_up(cx: &mut Context) {
     let view = view!(cx.editor);
-    let offset = view.inner_height() / 2;
+    let offset = view.inner_height(cx.editor.config().statusline.unobtrusive) / 2;
     scroll(cx, offset, Direction::Backward, true);
 }
 
 fn page_cursor_half_down(cx: &mut Context) {
     let view = view!(cx.editor);
-    let offset = view.inner_height() / 2;
+    let offset = view.inner_height(cx.editor.config().statusline.unobtrusive) / 2;
     scroll(cx, offset, Direction::Forward, true);
 }
 
@@ -2073,6 +2077,7 @@ fn search_impl(
     scrolloff: usize,
     wrap_around: bool,
     show_warnings: bool,
+    unobtrusive_statusline: bool,
 ) {
     let (view, doc) = current!(editor);
     let text = doc.text().slice(..);
@@ -2143,7 +2148,7 @@ fn search_impl(
         };
 
         doc.set_selection(view.id, selection);
-        view.ensure_cursor_in_view_center(doc, scrolloff);
+        view.ensure_cursor_in_view_center(doc, scrolloff, unobtrusive_statusline);
     };
 }
 
@@ -2168,6 +2173,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
     let reg = cx.register.unwrap_or('/');
     let config = cx.editor.config();
     let scrolloff = config.scrolloff;
+    let unobtrusive_statusline = config.statusline.unobtrusive;
     let wrap_around = config.search.wrap_around;
     let movement = if cx.editor.mode() == Mode::Select {
         Movement::Extend
@@ -2203,6 +2209,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
                 scrolloff,
                 wrap_around,
                 false,
+                unobtrusive_statusline,
             );
         },
     );
@@ -2215,6 +2222,7 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
         .unwrap_or(cx.editor.registers.last_search_register);
     let config = cx.editor.config();
     let scrolloff = config.scrolloff;
+    let unobtrusive_statusline = config.statusline.unobtrusive;
     if let Some(query) = cx.editor.registers.first(register, cx.editor) {
         let search_config = &config.search;
         let case_insensitive = if search_config.smart_case {
@@ -2240,6 +2248,7 @@ fn search_next_or_prev_impl(cx: &mut Context, movement: Movement, direction: Dir
                     scrolloff,
                     wrap_around,
                     true,
+                    unobtrusive_statusline,
                 );
             }
         } else {
@@ -2498,6 +2507,7 @@ fn global_search(cx: &mut Context) {
         [],
         config,
         move |cx, FileResult { path, line_num, .. }, action| {
+            let config = cx.editor.config();
             let doc = match cx.editor.open(path, action) {
                 Ok(id) => doc_mut!(cx.editor, &id),
                 Err(e) => {
@@ -2508,6 +2518,7 @@ fn global_search(cx: &mut Context) {
             };
 
             let line_num = *line_num;
+            let unobtrusive_statusline = config.statusline.unobtrusive;
             let view = view_mut!(cx.editor);
             let text = doc.text();
             if line_num >= text.len_lines() {
@@ -2521,7 +2532,7 @@ fn global_search(cx: &mut Context) {
 
             doc.set_selection(view.id, Selection::single(start, end));
             if action.align_view(view, doc.id()) {
-                align_view(doc, view, Align::Center);
+                align_view(doc, view, Align::Center, unobtrusive_statusline);
             }
         },
     )
@@ -3095,7 +3106,7 @@ fn jumplist_picker(cx: &mut Context) {
             let (view, doc) = (view_mut!(cx.editor), doc_mut!(cx.editor, &meta.id));
             doc.set_selection(view.id, meta.selection.clone());
             if action.align_view(view, doc.id()) {
-                view.ensure_cursor_in_view_center(doc, config.scrolloff);
+                view.ensure_cursor_in_view_center(doc, config.scrolloff, config.statusline.unobtrusive);
             }
         },
     )
@@ -3271,7 +3282,7 @@ pub fn command_palette(cx: &mut Context) {
                     let view = view_mut!(ctx.editor, focus);
                     let doc = doc_mut!(ctx.editor, &view.doc);
 
-                    view.ensure_cursor_in_view(doc, config.scrolloff);
+                    view.ensure_cursor_in_view(doc, config.scrolloff, config.statusline.unobtrusive);
 
                     if mode != Mode::Insert {
                         doc.append_changes_to_history(view);
@@ -3397,7 +3408,9 @@ async fn make_format_callback(
             return;
         }
 
-        let scrolloff = editor.config().scrolloff;
+        let config = editor.config();
+        let scrolloff = config.scrolloff;
+        let unobtrusive_statusline = config.statusline.unobtrusive;
         let doc = doc_mut!(editor, &doc_id);
         let view = view_mut!(editor, view_id);
 
@@ -3406,7 +3419,7 @@ async fn make_format_callback(
                 doc.apply(&format, view.id);
                 doc.append_changes_to_history(view);
                 doc.detect_indent_and_line_ending();
-                view.ensure_cursor_in_view(doc, scrolloff);
+                view.ensure_cursor_in_view(doc, scrolloff, unobtrusive_statusline);
             } else {
                 log::info!("discarded formatting changes because the document changed");
             }
@@ -4451,7 +4464,10 @@ fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
         return;
     };
     let values: Vec<_> = values.map(|value| value.to_string()).collect();
-    let scrolloff = editor.config().scrolloff;
+
+    let config = editor.config();
+    let scrolloff = config.scrolloff;
+    let unobtrusive_statusline = config.statusline.unobtrusive;
 
     let (view, doc) = current!(editor);
     let repeat = std::iter::repeat(
@@ -4475,7 +4491,7 @@ fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
 
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view);
-    view.ensure_cursor_in_view(doc, scrolloff);
+    view.ensure_cursor_in_view(doc, scrolloff, unobtrusive_statusline);
 }
 
 fn replace_selections_with_clipboard(cx: &mut Context) {
@@ -5210,7 +5226,7 @@ fn jump_forward(cx: &mut Context) {
         doc.set_selection(view.id, selection);
         // Document we switch to might not have been opened in the view before
         doc.ensure_view_init(view.id);
-        view.ensure_cursor_in_view_center(doc, config.scrolloff);
+        view.ensure_cursor_in_view_center(doc, config.scrolloff, config.statusline.unobtrusive);
     };
 }
 
@@ -5232,7 +5248,7 @@ fn jump_backward(cx: &mut Context) {
         doc.set_selection(view.id, selection);
         // Document we switch to might not have been opened in the view before
         doc.ensure_view_init(view.id);
-        view.ensure_cursor_in_view_center(doc, config.scrolloff);
+        view.ensure_cursor_in_view_center(doc, config.scrolloff, config.statusline.unobtrusive);
     };
 }
 
@@ -5374,21 +5390,25 @@ fn insert_register(cx: &mut Context) {
 }
 
 fn align_view_top(cx: &mut Context) {
+    let unobtrusive_statusline = cx.editor.config().statusline.unobtrusive;
     let (view, doc) = current!(cx.editor);
-    align_view(doc, view, Align::Top);
+    align_view(doc, view, Align::Top, unobtrusive_statusline);
 }
 
 fn align_view_center(cx: &mut Context) {
+    let unobtrusive_statusline = cx.editor.config().statusline.unobtrusive;
     let (view, doc) = current!(cx.editor);
-    align_view(doc, view, Align::Center);
+    align_view(doc, view, Align::Center, unobtrusive_statusline);
 }
 
 fn align_view_bottom(cx: &mut Context) {
+    let unobtrusive_statusline = cx.editor.config().statusline.unobtrusive;
     let (view, doc) = current!(cx.editor);
-    align_view(doc, view, Align::Bottom);
+    align_view(doc, view, Align::Bottom, unobtrusive_statusline);
 }
 
 fn align_view_middle(cx: &mut Context) {
+    let config = cx.editor.config();
     let (view, doc) = current!(cx.editor);
     let inner_width = view.inner_width(doc);
     let text_fmt = doc.text_format(inner_width, None);
@@ -5408,9 +5428,10 @@ fn align_view_middle(cx: &mut Context) {
     .0;
 
     let mut offset = doc.view_offset(view.id);
+    let unobtrusive_statusline = config.statusline.unobtrusive;
     offset.horizontal_offset = pos
         .col
-        .saturating_sub((view.inner_area(doc).width as usize) / 2);
+        .saturating_sub((view.inner_area(doc, unobtrusive_statusline).width as usize) / 2);
     doc.set_view_offset(view.id, offset);
 }
 
@@ -5975,7 +5996,7 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
 
     // after replace cursor may be out of bounds, do this to
     // make sure cursor is in view and update scroll as well
-    view.ensure_cursor_in_view(doc, config.scrolloff);
+    view.ensure_cursor_in_view(doc, config.scrolloff, config.statusline.unobtrusive);
 }
 
 fn shell_prompt(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBehavior) {
@@ -6282,7 +6303,9 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
 fn jump_to_word(cx: &mut Context, behaviour: Movement) {
     // Calculate the jump candidates: ranges for any visible words with two or
     // more characters.
-    let alphabet = &cx.editor.config().jump_label_alphabet;
+    let config = cx.editor.config();
+    let alphabet = &config.jump_label_alphabet;
+    let unobtrusive_statusline = config.statusline.unobtrusive;
     let jump_label_limit = alphabet.len() * alphabet.len();
     let mut words = Vec::with_capacity(jump_label_limit);
     let (view, doc) = current_ref!(cx.editor);
@@ -6291,7 +6314,7 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
     // This is not necessarily exact if there is virtual text like soft wrap.
     // It's ok though because the extra jump labels will not be rendered.
     let start = text.line_to_char(text.char_to_line(doc.view_offset(view.id).anchor));
-    let end = text.line_to_char(view.estimate_last_doc_line(doc) + 1);
+    let end = text.line_to_char(view.estimate_last_doc_line(doc, unobtrusive_statusline) + 1);
 
     let primary_selection = doc.selection(view.id).primary();
     let cursor = primary_selection.cursor(text);

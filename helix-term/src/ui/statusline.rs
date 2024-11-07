@@ -49,14 +49,16 @@ pub struct RenderBuffer<'a> {
     pub right: Spans<'a>,
 }
 
-pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface) {
+pub fn render(context: &mut RenderContext, viewport: Rect, surface: &mut Surface, unobtrusive_statusline: bool) {
     let base_style = if context.focused {
         context.editor.theme.get("ui.statusline")
     } else {
         context.editor.theme.get("ui.statusline.inactive")
     };
 
-    surface.set_style(viewport.with_height(1), base_style);
+    if !unobtrusive_statusline {
+        surface.set_style(viewport.with_height(1), base_style);
+    }
 
     let write_left = |context: &mut RenderContext, text, style| {
         append(&mut context.parts.left, text, &base_style, style)

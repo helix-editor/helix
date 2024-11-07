@@ -105,6 +105,7 @@ impl Application {
 
         use helix_view::editor::Action;
 
+        let unobtrusive_statusline = config.editor.statusline.unobtrusive;
         let mut theme_parent_dirs = vec![helix_loader::config_dir()];
         theme_parent_dirs.extend(helix_loader::runtime_dirs().iter().cloned());
         let theme_loader = std::sync::Arc::new(theme::Loader::new(&theme_parent_dirs));
@@ -221,7 +222,7 @@ impl Application {
                     // align the view to center after all files are loaded,
                     // does not affect views without pos since it is at the top
                     let (view, doc) = current!(editor);
-                    align_view(doc, view, Align::Center);
+                    align_view(doc, view, Align::Center, unobtrusive_statusline);
                 }
             } else {
                 editor.new_file(Action::VerticalSplit);
@@ -396,10 +397,12 @@ impl Application {
         self.editor.refresh_config();
 
         // reset view position in case softwrap was enabled/disabled
-        let scrolloff = self.editor.config().scrolloff;
+        let config = self.editor.config();
+        let scrolloff = config.scrolloff;
+        let unobtrusive_statusline = config.statusline.unobtrusive;
         for (view, _) in self.editor.tree.views() {
             let doc = doc_mut!(self.editor, &view.doc);
-            view.ensure_cursor_in_view(doc, scrolloff);
+            view.ensure_cursor_in_view(doc, scrolloff, unobtrusive_statusline);
         }
     }
 
@@ -1171,6 +1174,8 @@ impl Application {
             }
         };
 
+        let config = &self.editor.config();
+        let unobtrusive_statusline = config.statusline.unobtrusive;
         let doc = doc_mut!(self.editor, &doc_id);
         if let Some(range) = selection {
             // TODO: convert inside server
@@ -1181,7 +1186,7 @@ impl Application {
                 // (for example start of the function).
                 doc.set_selection(view.id, Selection::single(new_range.head, new_range.anchor));
                 if action.align_view(view, doc.id()) {
-                    align_view(doc, view, Align::Center);
+                    align_view(doc, view, Align::Center, unobtrusive_statusline);
                 }
             } else {
                 log::warn!("lsp position out of bounds - {:?}", range);

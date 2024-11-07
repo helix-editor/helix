@@ -88,10 +88,11 @@ impl EditorView {
         surface: &mut Surface,
         is_focused: bool,
     ) {
-        let inner = view.inner_area(doc);
         let area = view.area;
         let theme = &editor.theme;
         let config = editor.config();
+        let unobtrusive_statusline = config.statusline.unobtrusive;
+        let inner = view.inner_area(doc, unobtrusive_statusline);
 
         let view_offset = doc.view_offset(view.id);
 
@@ -103,7 +104,7 @@ impl EditorView {
         }
 
         if is_focused && config.cursorcolumn {
-            Self::highlight_cursorcolumn(doc, view, surface, theme, inner, &text_annotations);
+            Self::highlight_cursorcolumn(doc, view, surface, theme, inner, &text_annotations, config.statusline.unobtrusive);
         }
 
         // Set DAP highlights, if needed.
@@ -240,7 +241,7 @@ impl EditorView {
         let mut context =
             statusline::RenderContext::new(editor, doc, view, is_focused, &self.spinners);
 
-        statusline::render(&mut context, statusline_area, surface);
+        statusline::render(&mut context, statusline_area, surface, unobtrusive_statusline);
     }
 
     pub fn render_rulers(
@@ -812,6 +813,7 @@ impl EditorView {
         theme: &Theme,
         viewport: Rect,
         text_annotations: &TextAnnotations,
+        unobtrusive_statusline: bool,
     ) {
         let text = doc.text().slice(..);
 
@@ -826,7 +828,7 @@ impl EditorView {
             .or_else(|| theme.try_get_exact("ui.cursorcolumn"))
             .unwrap_or_else(|| theme.get("ui.cursorline.secondary"));
 
-        let inner_area = view.inner_area(doc);
+        let inner_area = view.inner_area(doc, unobtrusive_statusline);
 
         let selection = doc.selection(view.id);
         let view_offset = doc.view_offset(view.id);
@@ -1122,6 +1124,7 @@ impl EditorView {
                     row,
                     column,
                     ignore_virtual_text,
+                    editor.config().statusline.unobtrusive,
                 )
                 .map(|pos| (pos, view.id))
             })
@@ -1193,7 +1196,7 @@ impl EditorView {
             MouseEventKind::Drag(MouseButton::Left) => {
                 let (view, doc) = current!(cxt.editor);
 
-                let pos = match view.pos_at_screen_coords(doc, row, column, true) {
+                let pos = match view.pos_at_screen_coords(doc, row, column, true, config.statusline.unobtrusive) {
                     Some(pos) => pos,
                     None => return EventResult::Ignored(None),
                 };
@@ -1340,7 +1343,7 @@ impl Component for EditorView {
                 let config = cx.editor.config();
                 let mode = cx.editor.mode();
                 let (view, doc) = current!(cx.editor);
-                view.ensure_cursor_in_view(doc, config.scrolloff);
+                view.ensure_cursor_in_view(doc, config.scrolloff, config.statusline.unobtrusive);
 
                 // Store a history state if not in insert mode. Otherwise wait till we exit insert
                 // to include any edits to the paste in the history state.
@@ -1434,7 +1437,7 @@ impl Component for EditorView {
                 let mode = cx.editor.mode();
                 let (view, doc) = current!(cx.editor);
 
-                view.ensure_cursor_in_view(doc, config.scrolloff);
+                view.ensure_cursor_in_view(doc, config.scrolloff, config.statusline.unobtrusive);
 
                 // Store a history state if not in insert mode. This also takes care of
                 // committing changes when leaving insert mode.

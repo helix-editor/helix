@@ -68,6 +68,7 @@ pub fn jump_to_stack_frame(editor: &mut Editor, frame: &helix_dap::StackFrame) {
         return;
     }
 
+    let unobtrusive_statusline = editor.config().statusline.unobtrusive;
     let (view, doc) = current!(editor);
 
     let text_end = doc.text().len_chars().saturating_sub(1);
@@ -79,7 +80,7 @@ pub fn jump_to_stack_frame(editor: &mut Editor, frame: &helix_dap::StackFrame) {
 
     let selection = Selection::single(start.min(text_end), end.min(text_end));
     doc.set_selection(view.id, selection);
-    align_view(doc, view, Align::Center);
+    align_view(doc, view, Align::Center, unobtrusive_statusline);
 }
 
 pub fn breakpoints_changed(

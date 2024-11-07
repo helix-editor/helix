@@ -190,12 +190,32 @@ impl View {
         self.docs_access_history.push(id);
     }
 
-    pub fn inner_area(&self, doc: &Document) -> Rect {
-        self.area.clip_left(self.gutter_offset(doc)).clip_bottom(1) // -1 for statusline
+    /// Accounts for height of statusline
+    pub fn inner_area(&self, doc: &Document, unobtrusive_statusline: bool) -> Rect {
+        if unobtrusive_statusline {
+            self.area.clip_left(self.gutter_offset(doc))
+        } else {
+            self.area.clip_left(self.gutter_offset(doc)).clip_bottom(1) // -1 for statusline
+        }
     }
 
-    pub fn inner_height(&self) -> usize {
-        self.area.clip_bottom(1).height.into() // -1 for statusline
+    /// Accounts for height of statusline
+    pub fn inner_height(&self, unobtrusive_statusline: bool) -> usize {
+        if unobtrusive_statusline {
+            self.area.height.into()
+        } else {
+            self.area.clip_bottom(1).height.into() // -1 for statusline
+        }
+    }
+    
+    /// Does not account for height of statusline
+    pub fn inner_area_raw(&self, doc: &Document) -> Rect {
+        self.area.clip_left(self.gutter_offset(doc))
+    }
+
+    /// Does not account for height of statusline
+    pub fn inner_height_raw(&self) -> usize {
+        self.area.height.into()
     }
 
     pub fn inner_width(&self, doc: &Document) -> u16 {
@@ -225,18 +245,20 @@ impl View {
         &self,
         doc: &Document,
         scrolloff: usize,
+        unobtrusive_statusline: bool,
     ) -> Option<ViewPosition> {
-        self.offset_coords_to_in_view_center::<false>(doc, scrolloff)
+        self.offset_coords_to_in_view_center::<false>(doc, scrolloff, unobtrusive_statusline)
     }
 
     pub fn offset_coords_to_in_view_center<const CENTERING: bool>(
         &self,
         doc: &Document,
         scrolloff: usize,
+        unobtrusive_statusline: bool,
     ) -> Option<ViewPosition> {
         let view_offset = doc.get_view_offset(self.id)?;
         let doc_text = doc.text().slice(..);
-        let viewport = self.inner_area(doc);
+        let viewport = self.inner_area(doc, unobtrusive_statusline);
         let vertical_viewport_end = view_offset.vertical_offset + viewport.height as usize;
         let text_fmt = doc.text_format(viewport.width, None);
         let annotations = self.text_annotations(doc, None);
@@ -333,22 +355,22 @@ impl View {
         Some(offset)
     }
 
-    pub fn ensure_cursor_in_view(&self, doc: &mut Document, scrolloff: usize) {
-        if let Some(offset) = self.offset_coords_to_in_view_center::<false>(doc, scrolloff) {
+    pub fn ensure_cursor_in_view(&self, doc: &mut Document, scrolloff: usize, unobtrusive_statusline: bool) {
+        if let Some(offset) = self.offset_coords_to_in_view_center::<false>(doc, scrolloff, unobtrusive_statusline) {
             doc.set_view_offset(self.id, offset);
         }
     }
 
-    pub fn ensure_cursor_in_view_center(&self, doc: &mut Document, scrolloff: usize) {
-        if let Some(offset) = self.offset_coords_to_in_view_center::<true>(doc, scrolloff) {
+    pub fn ensure_cursor_in_view_center(&self, doc: &mut Document, scrolloff: usize, unobtrusive_statusline: bool) {
+        if let Some(offset) = self.offset_coords_to_in_view_center::<true>(doc, scrolloff, unobtrusive_statusline) {
             doc.set_view_offset(self.id, offset);
         } else {
-            align_view(doc, self, Align::Center);
+            align_view(doc, self, Align::Center, unobtrusive_statusline);
         }
     }
 
-    pub fn is_cursor_in_view(&mut self, doc: &Document, scrolloff: usize) -> bool {
-        self.offset_coords_to_in_view(doc, scrolloff).is_none()
+    pub fn is_cursor_in_view(&mut self, doc: &Document, scrolloff: usize, unobtrusive_statusline: bool) -> bool {
+        self.offset_coords_to_in_view(doc, scrolloff, unobtrusive_statusline).is_none()
     }
 
     /// Estimates the last visible document line on screen.
@@ -357,20 +379,20 @@ impl View {
     /// The actual last visible line may be smaller if softwrapping occurs
     /// or virtual text lines are visible
     #[inline]
-    pub fn estimate_last_doc_line(&self, doc: &Document) -> usize {
+    pub fn estimate_last_doc_line(&self, doc: &Document, unobtrusive_statusline: bool) -> usize {
         let doc_text = doc.text().slice(..);
         let line = doc_text.char_to_line(doc.view_offset(self.id).anchor.min(doc_text.len_chars()));
         // Saturating subs to make it inclusive zero indexing.
-        (line + self.inner_height())
+        (line + self.inner_height(unobtrusive_statusline))
             .min(doc_text.len_lines())
             .saturating_sub(1)
     }
 
     /// Calculates the last non-empty visual line on screen
     #[inline]
-    pub fn last_visual_line(&self, doc: &Document) -> usize {
+    pub fn last_visual_line(&self, doc: &Document, unobtrusive_statusline: bool) -> usize {
         let doc_text = doc.text().slice(..);
-        let viewport = self.inner_area(doc);
+        let viewport = self.inner_area(doc, unobtrusive_statusline);
         let text_fmt = doc.text_format(viewport.width, None);
         let annotations = self.text_annotations(doc, None);
         let view_offset = doc.view_offset(self.id);
@@ -379,7 +401,7 @@ impl View {
         let visual_height = doc.view_offset(self.id).vertical_offset + viewport.height as usize;
 
         // fast path when the EOF is not visible on the screen,
-        if self.estimate_last_doc_line(doc) < doc_text.len_lines() - 1 {
+        if self.estimate_last_doc_line(doc, unobtrusive_statusline) < doc_text.len_lines() - 1 {
             return visual_height.saturating_sub(1);
         }
 
@@ -408,10 +430,11 @@ impl View {
         doc: &Document,
         text: RopeSlice,
         pos: usize,
+        unobtrusive_statusline: bool,
     ) -> Option<Position> {
         let view_offset = doc.view_offset(self.id);
 
-        let viewport = self.inner_area(doc);
+        let viewport = self.inner_area(doc, unobtrusive_statusline);
         let text_fmt = doc.text_format(viewport.width, None);
         let annotations = self.text_annotations(doc, None);
 
@@ -512,8 +535,9 @@ impl View {
         fmt: TextFormat,
         annotations: &TextAnnotations,
         ignore_virtual_text: bool,
+        unobtrusive_statusline: bool,
     ) -> Option<usize> {
-        let inner = self.inner_area(doc);
+        let inner = self.inner_area(doc, unobtrusive_statusline);
         // 1 for status
         if row < inner.top() || row >= inner.bottom() {
             return None;
@@ -572,6 +596,7 @@ impl View {
         row: u16,
         column: u16,
         ignore_virtual_text: bool,
+        unobtrusive_statusline: bool,
     ) -> Option<usize> {
         self.text_pos_at_screen_coords(
             doc,
@@ -580,6 +605,7 @@ impl View {
             doc.text_format(self.inner_width(doc), None),
             &self.text_annotations(doc, None),
             ignore_virtual_text,
+            unobtrusive_statusline,
         )
     }
 
@@ -712,7 +738,8 @@ mod tests {
                 2,
                 TextFormat::default(),
                 &TextAnnotations::default(),
-                true
+                true,
+                false
             ),
             None
         );
@@ -725,6 +752,7 @@ mod tests {
                 TextFormat::default(),
                 &TextAnnotations::default(),
                 true
+                false,
             ),
             None
         );
@@ -736,7 +764,8 @@ mod tests {
                 2,
                 TextFormat::default(),
                 &TextAnnotations::default(),
-                true
+                true,
+                false,
             ),
             None
         );
@@ -748,7 +777,8 @@ mod tests {
                 49,
                 TextFormat::default(),
                 &TextAnnotations::default(),
-                true
+                true,
+                false,
             ),
             None
         );
@@ -760,7 +790,8 @@ mod tests {
                 41,
                 TextFormat::default(),
                 &TextAnnotations::default(),
-                true
+                true,
+                false
             ),
             None
         );
@@ -772,7 +803,8 @@ mod tests {
                 81,
                 TextFormat::default(),
                 &TextAnnotations::default(),
-                true
+                true,
+                false,
             ),
             None
         );
@@ -784,7 +816,8 @@ mod tests {
                 41,
                 TextFormat::default(),
                 &TextAnnotations::default(),
-                true
+                true,
+                false
             ),
             None
         );
@@ -796,7 +829,8 @@ mod tests {
                 40 + DEFAULT_GUTTER_OFFSET + 3,
                 TextFormat::default(),
                 &TextAnnotations::default(),
-                true
+                true,
+                false,
             ),
             Some(3)
         );
@@ -808,7 +842,8 @@ mod tests {
                 80,
                 TextFormat::default(),
                 &TextAnnotations::default(),
-                true
+                true,
+                false,
             ),
             Some(3)
         );
@@ -820,7 +855,8 @@ mod tests {
                 40 + DEFAULT_GUTTER_OFFSET + 1,
                 TextFormat::default(),
                 &TextAnnotations::default(),
-                true
+                true,
+                false,
             ),
             Some(4)
         );
@@ -832,7 +868,8 @@ mod tests {
                 40 + DEFAULT_GUTTER_OFFSET + 4,
                 TextFormat::default(),
                 &TextAnnotations::default(),
-                true
+                true,
+                false,
             ),
             Some(5)
         );
@@ -844,7 +881,8 @@ mod tests {
                 40 + DEFAULT_GUTTER_OFFSET + 7,
                 TextFormat::default(),
                 &TextAnnotations::default(),
-                true
+                true,
+                false,
             ),
             Some(8)
         );
@@ -856,7 +894,8 @@ mod tests {
                 80,
                 TextFormat::default(),
                 &TextAnnotations::default(),
-                true
+                true,
+                false,
             ),
             Some(8)
         );
@@ -886,7 +925,8 @@ mod tests {
                 40 + DEFAULT_GUTTER_OFFSET_ONLY_DIAGNOSTICS + 1,
                 TextFormat::default(),
                 &TextAnnotations::default(),
-                true
+                true,
+                false,
             ),
             Some(4)
         );
@@ -916,7 +956,8 @@ mod tests {
                 40 + 1,
                 TextFormat::default(),
                 &TextAnnotations::default(),
-                true
+                true,
+                false
             ),
             Some(4)
         );
@@ -941,7 +982,8 @@ mod tests {
                 40 + DEFAULT_GUTTER_OFFSET,
                 TextFormat::default(),
                 &TextAnnotations::default(),
-                true
+                true,
+                false
             ),
             Some(0)
         );
@@ -953,7 +995,8 @@ mod tests {
                 40 + DEFAULT_GUTTER_OFFSET + 4,
                 TextFormat::default(),
                 &TextAnnotations::default(),
-                true
+                true,
+                false
             ),
             Some(4)
         );
@@ -964,7 +1007,8 @@ mod tests {
                 40 + DEFAULT_GUTTER_OFFSET + 5,
                 TextFormat::default(),
                 &TextAnnotations::default(),
-                true
+                true,
+                false
             ),
             Some(4)
         );
@@ -976,7 +1020,8 @@ mod tests {
                 40 + DEFAULT_GUTTER_OFFSET + 6,
                 TextFormat::default(),
                 &TextAnnotations::default(),
-                true
+                true,
+                false
             ),
             Some(5)
         );
@@ -988,7 +1033,8 @@ mod tests {
                 40 + DEFAULT_GUTTER_OFFSET + 7,
                 TextFormat::default(),
                 &TextAnnotations::default(),
-                true
+                true,
+                false
             ),
             Some(5)
         );
@@ -1000,7 +1046,8 @@ mod tests {
                 40 + DEFAULT_GUTTER_OFFSET + 8,
                 TextFormat::default(),
                 &TextAnnotations::default(),
-                true
+                true,
+                false
             ),
             Some(6)
         );
@@ -1025,7 +1072,8 @@ mod tests {
                 40 + DEFAULT_GUTTER_OFFSET,
                 TextFormat::default(),
                 &TextAnnotations::default(),
-                true
+                true,
+                false
             ),
             Some(0)
         );
@@ -1037,7 +1085,8 @@ mod tests {
                 40 + DEFAULT_GUTTER_OFFSET + 1,
                 TextFormat::default(),
                 &TextAnnotations::default(),
-                true
+                true,
+                false
             ),
             Some(1)
         );
@@ -1049,7 +1098,8 @@ mod tests {
                 40 + DEFAULT_GUTTER_OFFSET + 2,
                 TextFormat::default(),
                 &TextAnnotations::default(),
-                true
+                true,
+                false
             ),
             Some(3)
         );
@@ -1061,7 +1111,8 @@ mod tests {
                 40 + DEFAULT_GUTTER_OFFSET + 3,
                 TextFormat::default(),
                 &TextAnnotations::default(),
-                true
+                true,
+                false
             ),
             Some(5)
         );
@@ -1073,7 +1124,8 @@ mod tests {
                 40 + DEFAULT_GUTTER_OFFSET + 4,
                 TextFormat::default(),
                 &TextAnnotations::default(),
-                true
+                true,
+                false,
             ),
             Some(7)
         );

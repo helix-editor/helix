@@ -147,8 +147,10 @@ pub fn line_numbers<'doc>(
 ) -> GutterFn<'doc> {
     let text = doc.text().slice(..);
     let width = line_numbers_width(view, doc);
+    let config = editor.config();
+    let unobtrusive_statusline = config.statusline.unobtrusive;
 
-    let last_line_in_view = view.estimate_last_doc_line(doc);
+    let last_line_in_view = view.estimate_last_doc_line(doc, unobtrusive_statusline);
 
     // Whether to draw the line number for the last line of the
     // document or not.  We only draw it if it's not an empty line.
@@ -161,7 +163,7 @@ pub fn line_numbers<'doc>(
         .text()
         .char_to_line(doc.selection(view.id).primary().cursor(text));
 
-    let line_number = editor.config().line_number;
+    let line_number = config.line_number;
     let mode = editor.mode;
 
     Box::new(

@@ -134,6 +134,7 @@ fn jump_to_position(
     offset_encoding: OffsetEncoding,
     action: Action,
 ) {
+    let config = &editor.config();
     let doc = match editor.open(path, action) {
         Ok(id) => doc_mut!(editor, &id),
         Err(err) => {
@@ -154,8 +155,9 @@ fn jump_to_position(
     // we flip the range so that the cursor sits on the start of the symbol
     // (for example start of the function).
     doc.set_selection(view.id, Selection::single(new_range.head, new_range.anchor));
+    let unobtrusive_statusline = config.statusline.unobtrusive;
     if action.align_view(view, doc.id()) {
-        align_view(doc, view, Align::Center);
+        align_view(doc, view, Align::Center, unobtrusive_statusline);
     }
 }
 
@@ -1239,7 +1241,9 @@ pub fn select_references_to_symbol_under_cursor(cx: &mut Context) {
 }
 
 pub fn compute_inlay_hints_for_all_views(editor: &mut Editor, jobs: &mut crate::job::Jobs) {
-    if !editor.config().lsp.display_inlay_hints {
+    let config = editor.config();
+    let unobtrusive_statusline = config.statusline.unobtrusive;
+    if !config.lsp.display_inlay_hints {
         return;
     }
 
@@ -1248,7 +1252,7 @@ pub fn compute_inlay_hints_for_all_views(editor: &mut Editor, jobs: &mut crate::
             Some(doc) => doc,
             None => continue,
         };
-        if let Some(callback) = compute_inlay_hints_for_view(view, doc) {
+        if let Some(callback) = compute_inlay_hints_for_view(view, doc, unobtrusive_statusline) {
             jobs.callback(callback);
         }
     }
@@ -1257,6 +1261,7 @@ pub fn compute_inlay_hints_for_all_views(editor: &mut Editor, jobs: &mut crate::
 fn compute_inlay_hints_for_view(
     view: &View,
     doc: &Document,
+    unobtrusive_statusline: bool,
 ) -> Option<std::pin::Pin<Box<impl Future<Output = Result<crate::job::Callback, anyhow::Error>>>>> {
     let view_id = view.id;
     let doc_id = view.doc;
@@ -1272,7 +1277,7 @@ fn compute_inlay_hints_for_view(
     // will not show half the view with hints and half without while still being faster
     // than computing all the hints for the full file (which could be dozens of time
     // longer than the view is).
-    let view_height = view.inner_height();
+    let view_height = view.inner_height(unobtrusive_statusline);
     let first_visible_line =
         doc_text.char_to_line(doc.view_offset(view_id).anchor.min(doc_text.len_chars()));
     let first_line = first_visible_line.saturating_sub(view_height);

@@ -127,12 +127,13 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
             cx.jobs.callback(callback);
         } else {
             // Otherwise, just open the file
+            let unobtrusive_statusline = cx.editor.config().statusline.unobtrusive;
             let _ = cx.editor.open(&path, Action::Replace)?;
             let (view, doc) = current!(cx.editor);
             let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
             doc.set_selection(view.id, pos);
             // does not affect opening a buffer without pos
-            align_view(doc, view, Align::Center);
+            align_view(doc, view, Align::Center, unobtrusive_statusline);
         }
     }
     Ok(())
@@ -1277,10 +1278,12 @@ fn reload(
         return Ok(());
     }
 
-    let scrolloff = cx.editor.config().scrolloff;
+    let config = cx.editor.config();
+    let scrolloff = config.scrolloff;
+    let unobtrusive_statusline = config.statusline.unobtrusive;
     let (view, doc) = current!(cx.editor);
     doc.reload(view, &cx.editor.diff_providers).map(|_| {
-        view.ensure_cursor_in_view(doc, scrolloff);
+        view.ensure_cursor_in_view(doc, scrolloff, unobtrusive_statusline);
     })?;
     if let Some(path) = doc.path() {
         cx.editor
@@ -1300,7 +1303,9 @@ fn reload_all(
         return Ok(());
     }
 
-    let scrolloff = cx.editor.config().scrolloff;
+    let config = cx.editor.config();
+    let scrolloff = config.scrolloff;
+    let unobtrusive_statusline = config.statusline.unobtrusive;
     let view_id = view!(cx.editor).id;
 
     let docs_view_ids: Vec<(DocumentId, Vec<ViewId>)> = cx
@@ -1342,7 +1347,7 @@ fn reload_all(
         for view_id in view_ids {
             let view = view_mut!(cx.editor, view_id);
             if view.doc.eq(&doc_id) {
-                view.ensure_cursor_in_view(doc, scrolloff);
+                view.ensure_cursor_in_view(doc, scrolloff, unobtrusive_statusline);
             }
         }
     }
@@ -1578,6 +1583,8 @@ fn tree_sitter_highlight_name(
     ) -> Option<helix_core::syntax::Highlight> {
         use helix_core::syntax::HighlightEvent;
 
+        let config = &cx.editor.config();
+        let unobtrusive_statusline = config.statusline.unobtrusive;
         let (view, doc) = current!(cx.editor);
         let syntax = doc.syntax()?;
         let text = doc.text().slice(..);
@@ -1590,7 +1597,7 @@ fn tree_sitter_highlight_name(
             let row = text.char_to_line(doc.view_offset(view.id).anchor.min(text.len_chars()));
             // Saturating subs to make it inclusive zero indexing.
             let last_line = text.len_lines().saturating_sub(1);
-            let height = view.inner_area(doc).height;
+            let height = view.inner_area(doc, unobtrusive_statusline).height;
             let last_visible_line = (row + height as usize).saturating_sub(1).min(last_line);
             let start = text.line_to_byte(row.min(last_line));
             let end = text.line_to_byte(last_visible_line + 1);
@@ -1795,11 +1802,14 @@ fn tutor(
 
 fn abort_goto_line_number_preview(cx: &mut compositor::Context) {
     if let Some(last_selection) = cx.editor.last_selection.take() {
-        let scrolloff = cx.editor.config().scrolloff;
+        let config = cx.editor.config();
+        
+        let scrolloff = config.scrolloff;
+        let unobtrusive_statusline = config.statusline.unobtrusive;
 
         let (view, doc) = current!(cx.editor);
         doc.set_selection(view.id, last_selection);
-        view.ensure_cursor_in_view(doc, scrolloff);
+        view.ensure_cursor_in_view(doc, scrolloff, unobtrusive_statusline);
     }
 }
 
@@ -1812,12 +1822,14 @@ fn update_goto_line_number_preview(
         doc.selection(view.id).clone()
     });
 
-    let scrolloff = cx.editor.config().scrolloff;
+    let config = cx.editor.config();
+    let scrolloff = config.scrolloff;
+    let unobtrusive_statusline = config.statusline.unobtrusive;
     let line = args[0].parse::<usize>()?;
     goto_line_without_jumplist(cx.editor, NonZeroUsize::new(line));
 
     let (view, doc) = current!(cx.editor);
-    view.ensure_cursor_in_view(doc, scrolloff);
+    view.ensure_cursor_in_view(doc, scrolloff, unobtrusive_statusline);
 
     Ok(())
 }
@@ -2062,7 +2074,9 @@ fn sort_impl(
     _args: &[Cow<str>],
     reverse: bool,
 ) -> anyhow::Result<()> {
-    let scrolloff = cx.editor.config().scrolloff;
+    let config = cx.editor.config();
+    let scrolloff = config.scrolloff;
+    let unobtrusive_statusline = config.statusline.unobtrusive;
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
@@ -2088,7 +2102,7 @@ fn sort_impl(
 
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view);
-    view.ensure_cursor_in_view(doc, scrolloff);
+    view.ensure_cursor_in_view(doc, scrolloff, unobtrusive_statusline);
 
     Ok(())
 }
@@ -2102,7 +2116,9 @@ fn reflow(
         return Ok(());
     }
 
-    let scrolloff = cx.editor.config().scrolloff;
+    let config = cx.editor.config();
+    let scrolloff = config.scrolloff;
+    let unobtrusive_statusline = config.statusline.unobtrusive;
     let cfg_text_width: usize = cx.editor.config().text_width;
     let (view, doc) = current!(cx.editor);
 
@@ -2129,7 +2145,7 @@ fn reflow(
 
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view);
-    view.ensure_cursor_in_view(doc, scrolloff);
+    view.ensure_cursor_in_view(doc, scrolloff, unobtrusive_statusline);
 
     Ok(())
 }
@@ -2329,7 +2345,9 @@ fn reset_diff_change(
     ensure!(args.is_empty(), ":reset-diff-change takes no arguments");
 
     let editor = &mut cx.editor;
-    let scrolloff = editor.config().scrolloff;
+    let config = editor.config();
+    let scrolloff = config.scrolloff;
+    let unobtrusive_statusline = config.statusline.unobtrusive;
 
     let (view, doc) = current!(editor);
     let Some(handle) = doc.diff_handle() else {
@@ -2363,7 +2381,7 @@ fn reset_diff_change(
     drop(diff); // make borrow check happy
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view);
-    view.ensure_cursor_in_view(doc, scrolloff);
+    view.ensure_cursor_in_view(doc, scrolloff, unobtrusive_statusline);
     cx.editor.set_status(format!(
         "Reset {changes} change{}",
         if changes == 1 { "" } else { "s" }
@@ -2492,7 +2510,9 @@ fn read(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
         return Ok(());
     }
 
-    let scrolloff = cx.editor.config().scrolloff;
+    let config = cx.editor.config();
+    let scrolloff = config.scrolloff;
+    let unobtrusive_statusline = config.statusline.unobtrusive;
     let (view, doc) = current!(cx.editor);
 
     ensure!(!args.is_empty(), "file name is expected");
@@ -2515,7 +2535,7 @@ fn read(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     let transaction = Transaction::insert(doc.text(), selection, contents);
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view);
-    view.ensure_cursor_in_view(doc, scrolloff);
+    view.ensure_cursor_in_view(doc, scrolloff, unobtrusive_statusline);
 
     Ok(())
 }
