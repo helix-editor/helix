@@ -33,6 +33,12 @@ pub fn char_is_line_ending(ch: char) -> bool {
     LineEnding::from_char(ch).is_some()
 }
 
+/// Determine whether a character is a subword delimiter.
+#[inline]
+pub fn char_is_subword_delimiter(ch: char) -> bool {
+    ch == '_' || ch == '-'
+}
+
 /// Determine whether a character qualifies as (non-line-break)
 /// whitespace.
 #[inline]

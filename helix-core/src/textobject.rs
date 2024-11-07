@@ -3,7 +3,7 @@ use std::fmt::Display;
 use ropey::RopeSlice;
 use tree_sitter::{Node, QueryCursor};
 
-use crate::chars::{categorize_char, char_is_whitespace, CharCategory};
+use crate::chars::{categorize_char, char_is_subword_delimiter, char_is_whitespace, CharCategory};
 use crate::graphemes::{next_grapheme_boundary, prev_grapheme_boundary};
 use crate::line_ending::rope_is_line_ending;
 use crate::movement::Direction;
@@ -64,7 +64,7 @@ fn find_word_boundary(
                     && pos != slice.len_chars();
 
                 let matches_subword = is_subword
-                    && ((prev_ch == '_' || ch == '_')
+                    && ((char_is_subword_delimiter(prev_ch) || char_is_subword_delimiter(ch))
                         || match direction {
                             Direction::Forward => prev_ch.is_lowercase() && ch.is_uppercase(),
                             Direction::Backward => prev_ch.is_uppercase() && ch.is_lowercase(),
@@ -129,9 +129,27 @@ pub fn textobject_word(
         return Range::new(word_start, word_end);
     }
 
-    match textobject {
-        TextObject::Inside => Range::new(word_start, word_end),
-        TextObject::Around => {
+    match (textobject, is_subword) {
+        (TextObject::Inside, true) => Range::new(word_start, word_end),
+        (TextObject::Around, true) => {
+            let underscores_count_right = slice
+                .chars_at(word_end)
+                .take_while(|c| char_is_subword_delimiter(*c))
+                .count();
+
+            if underscores_count_right > 0 {
+                Range::new(word_start, word_end + underscores_count_right)
+            } else {
+                let underscore_count_left = {
+                    let mut iter = slice.chars_at(word_start);
+                    iter.reverse();
+                    iter.take_while(|c| char_is_subword_delimiter(*c)).count()
+                };
+                Range::new(word_start - underscore_count_left, word_end)
+            }
+        }
+        (TextObject::Inside, false) => Range::new(word_start, word_end),
+        (TextObject::Around, false) => {
             let whitespace_count_right = slice
                 .chars_at(word_end)
                 .take_while(|c| char_is_whitespace(*c))
@@ -148,7 +166,8 @@ pub fn textobject_word(
                 Range::new(word_start - whitespace_count_left, word_end)
             }
         }
-        TextObject::Movement => unreachable!(),
+        (TextObject::Movement, false) => unreachable!(),
+        (TextObject::Movement, true) => unreachable!(),
     }
 }
 
