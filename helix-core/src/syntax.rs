@@ -154,6 +154,8 @@ pub struct LanguageConfiguration {
     #[serde(skip)]
     pub(crate) indent_query: OnceCell<Option<Query>>,
     #[serde(skip)]
+    symbols_query: OnceCell<Option<Query>>,
+    #[serde(skip)]
     pub(crate) textobject_query: OnceCell<Option<TextObjectQuery>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub debugger: Option<DebugAdapterConfig>,
@@ -798,6 +800,12 @@ impl LanguageConfiguration {
             .as_ref()
     }
 
+    pub fn symbols_query(&self) -> Option<&Query> {
+        self.symbols_query
+            .get_or_init(|| self.load_query("symbols.scm"))
+            .as_ref()
+    }
+
     pub fn textobject_query(&self) -> Option<&TextObjectQuery> {
         self.textobject_query
             .get_or_init(|| {
@@ -1410,6 +1418,51 @@ impl Syntax {
 
     pub fn tree(&self) -> &Tree {
         self.layers[self.root].tree()
+    }
+
+    pub fn captures<'a>(
+        &'a self,
+        query: &'a Query,
+        source: RopeSlice<'a>,
+        range: Option<std::ops::Range<usize>>,
+    ) -> impl Iterator<Item = (QueryMatch<'a, 'a>, usize)> + 'a {
+        struct Captures<'a> {
+            // The query cursor must live as long as the captures iterator so
+            // we need to bind them together in this struct.
+            _cursor: QueryCursor,
+            captures: QueryCaptures<'a, 'a, RopeProvider<'a>, &'a [u8]>,
+        }
+
+        impl<'a> Iterator for Captures<'a> {
+            type Item = (QueryMatch<'a, 'a>, usize);
+
+            fn next(&mut self) -> Option<Self::Item> {
+                self.captures.next()
+            }
+        }
+
+        let mut cursor = PARSER.with(|ts_parser| {
+            let highlighter = &mut ts_parser.borrow_mut();
+            highlighter.cursors.pop().unwrap_or_default()
+        });
+
+        // The `captures` iterator borrows the `Tree` and the `QueryCursor`, which
+        // prevents them from being moved. But both of these values are really just
+        // pointers, so it's actually ok to move them.
+        let cursor_ref = unsafe {
+            mem::transmute::<&mut tree_sitter::QueryCursor, &mut tree_sitter::QueryCursor>(
+                &mut cursor,
+            )
+        };
+
+        cursor_ref.set_byte_range(range.clone().unwrap_or(0..usize::MAX));
+        cursor_ref.set_match_limit(TREE_SITTER_MATCH_LIMIT);
+
+        let captures = cursor_ref.captures(query, self.tree().root_node(), RopeProvider(source));
+        Captures {
+            _cursor: cursor,
+            captures,
+        }
     }
 
     /// Iterate over the highlighted regions for a given slice of source code.

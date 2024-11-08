@@ -1,5 +1,6 @@
 pub(crate) mod dap;
 pub(crate) mod lsp;
+pub(crate) mod syntax;
 pub(crate) mod typed;
 
 pub use dap::*;
@@ -11,6 +12,7 @@ use helix_stdx::{
 };
 use helix_vcs::{FileChange, Hunk};
 pub use lsp::*;
+pub use syntax::*;
 use tui::text::Span;
 pub use typed::*;
 
@@ -587,6 +589,8 @@ impl MappableCommand {
         extend_to_word, "Extend to a two-character label",
         goto_next_tabstop, "goto next snippet placeholder",
         goto_prev_tabstop, "goto next snippet placeholder",
+        syntax_symbol_picker, "Open a picker of symbols from the syntax tree",
+        lsp_or_syntax_symbol_picker, "Open an LSP symbol picker if available, or syntax otherwise",
     );
 }
 
@@ -6494,4 +6498,25 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
         }
     }
     jump_to_label(cx, words, behaviour)
+}
+
+fn lsp_or_syntax_symbol_picker(cx: &mut Context) {
+    let doc = doc!(cx.editor);
+
+    if doc
+        .language_servers_with_feature(LanguageServerFeature::DocumentSymbols)
+        .next()
+        .is_some()
+    {
+        lsp::symbol_picker(cx);
+    } else if doc.syntax().is_some()
+        && doc
+            .language_config()
+            .is_some_and(|config| config.symbols_query().is_some())
+    {
+        syntax_symbol_picker(cx);
+    } else {
+        cx.editor
+            .set_error("No language server supporting document symbols or syntax info available");
+    }
 }
