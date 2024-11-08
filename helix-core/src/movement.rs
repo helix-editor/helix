@@ -61,7 +61,7 @@ pub fn move_vertically_visual(
     text_fmt: &TextFormat,
     annotations: &mut TextAnnotations,
 ) -> Range {
-    if !text_fmt.soft_wrap {
+    if !text_fmt.soft_wrap || count != 1 {
         return move_vertically(slice, range, dir, count, behaviour, text_fmt, annotations);
     }
     annotations.clear_line_annotations();
@@ -75,8 +75,8 @@ pub fn move_vertically_visual(
 
     // Compute the new position.
     let mut row_off = match dir {
-        Direction::Forward => count as isize,
-        Direction::Backward => -(count as isize),
+        Direction::Forward => 1,
+        Direction::Backward => -1,
     };
 
     // Compute visual offset relative to block start to avoid trasversing the block twice
