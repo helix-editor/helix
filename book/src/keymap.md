@@ -284,6 +284,7 @@ This layer is a kludge of mappings, mostly pickers.
 | `f`     | Open file picker                                                        | `file_picker`                              |
 | `F`     | Open file picker at current working directory                           | `file_picker_in_current_directory`         |
 | `b`     | Open buffer picker                                                      | `buffer_picker`                            |
+| `B`     | Open buffer picker for modified buffers only                            | `modified_buffer_picker`                   |
 | `j`     | Open jumplist picker                                                    | `jumplist_picker`                          |
 | `g`     | Open changed file picker                                                | `changed_file_picker`                      |
 | `G`     | Debug (experimental)                                                    | N/A                                        |
