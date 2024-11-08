@@ -3,7 +3,9 @@ use std::fmt::Display;
 use ropey::RopeSlice;
 use tree_sitter::{Node, QueryCursor};
 
-use crate::chars::{categorize_char, char_is_subword_delimiter, char_is_whitespace, CharCategory};
+use crate::chars::{
+    categorize_char, char_is_subword_textobj_delimiter, char_is_whitespace, CharCategory,
+};
 use crate::graphemes::{next_grapheme_boundary, prev_grapheme_boundary};
 use crate::line_ending::rope_is_line_ending;
 use crate::movement::{is_sub_word_boundary, Direction};
@@ -135,7 +137,7 @@ pub fn textobject_word(
         (TextObject::Around, true) => {
             let underscores_count_right = slice
                 .chars_at(word_end)
-                .take_while(|c| char_is_subword_delimiter(*c))
+                .take_while(|c| char_is_subword_textobj_delimiter(*c))
                 .count();
 
             if underscores_count_right > 0 {
@@ -144,7 +146,8 @@ pub fn textobject_word(
                 let underscore_count_left = {
                     let mut iter = slice.chars_at(word_start);
                     iter.reverse();
-                    iter.take_while(|c| char_is_subword_delimiter(*c)).count()
+                    iter.take_while(|c| char_is_subword_textobj_delimiter(*c))
+                        .count()
                 };
                 Range::new(word_start - underscore_count_left, word_end)
             }
