@@ -42,11 +42,8 @@ pub fn select_next_sibling(syntax: &Syntax, text: RopeSlice, selection: Selectio
         text,
         selection,
         |cursor| {
-            while !cursor.goto_next_sibling() {
-                if !cursor.goto_parent() {
-                    break;
-                }
-            }
+            cursor.goto_parent_until_has_siblings();
+            cursor.goto_next_sibling_or_wrap();
         },
         Some(Direction::Forward),
     )
@@ -98,11 +95,8 @@ pub fn select_prev_sibling(syntax: &Syntax, text: RopeSlice, selection: Selectio
         text,
         selection,
         |cursor| {
-            while !cursor.goto_prev_sibling() {
-                if !cursor.goto_parent() {
-                    break;
-                }
-            }
+            cursor.goto_parent_until_has_siblings();
+            cursor.goto_prev_sibling_or_wrap();
         },
         Some(Direction::Backward),
     )
