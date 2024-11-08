@@ -377,6 +377,7 @@ impl MappableCommand {
         file_picker_in_current_directory, "Open file picker at current working directory",
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
+        modified_buffer_picker, "Open buffer picker for modified buffers",
         jumplist_picker, "Open jumplist picker",
         symbol_picker, "Open symbol picker",
         changed_file_picker, "Open changed file picker",
@@ -2948,7 +2949,7 @@ fn file_picker_in_current_directory(cx: &mut Context) {
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
-fn buffer_picker(cx: &mut Context) {
+fn buffer_picker_impl(cx: &mut Context, only_modified: bool) {
     let current = view!(cx.editor).doc;
 
     struct BufferMeta {
@@ -2972,7 +2973,13 @@ fn buffer_picker(cx: &mut Context) {
         .documents
         .values()
         .map(new_meta)
+        .filter(|buf| if only_modified { buf.is_modified } else { true })
         .collect::<Vec<BufferMeta>>();
+
+    if only_modified && items.len() == 0 {
+        cx.editor.set_status("No buffers modified");
+        return;
+    }
 
     // mru
     items.sort_unstable_by_key(|item| std::cmp::Reverse(item.focused_at));
@@ -3014,6 +3021,14 @@ fn buffer_picker(cx: &mut Context) {
         Some((meta.id.into(), Some((line, line))))
     });
     cx.push_layer(Box::new(overlaid(picker)));
+}
+
+fn buffer_picker(cx: &mut Context) {
+    buffer_picker_impl(cx, false)
+}
+
+fn modified_buffer_picker(cx: &mut Context) {
+    buffer_picker_impl(cx, true)
 }
 
 fn jumplist_picker(cx: &mut Context) {
