@@ -63,6 +63,18 @@ impl Registers {
                 let path = doc!(editor).display_name();
                 Some(RegisterValues::new(iter::once(path)))
             }
+            '/' => {
+                let relative_path = match doc!(editor).path() {
+                    Some(path) => path,
+                    None => return Some(RegisterValues::new(iter::empty())),
+                };
+                let parent = match relative_path.parent() {
+                    Some(path) => path,
+                    None => return Some(RegisterValues::new(iter::empty())),
+                };
+                let parent = parent.display().to_string();
+                Some(RegisterValues::new(iter::once(parent.into())))
+            }
             '*' | '+' => Some(read_from_clipboard(
                 self.clipboard_provider.as_ref(),
                 self.inner.get(&name),
@@ -82,7 +94,9 @@ impl Registers {
     pub fn write(&mut self, name: char, mut values: Vec<String>) -> Result<()> {
         match name {
             '_' => Ok(()),
-            '#' | '.' | '%' => Err(anyhow::anyhow!("Register {name} does not support writing")),
+            '#' | '.' | '%' | '/' => {
+                Err(anyhow::anyhow!("Register {name} does not support writing"))
+            }
             '*' | '+' => {
                 self.clipboard_provider.set_contents(
                     values.join(NATIVE_LINE_ENDING.as_str()),
@@ -107,7 +121,9 @@ impl Registers {
     pub fn push(&mut self, name: char, mut value: String) -> Result<()> {
         match name {
             '_' => Ok(()),
-            '#' | '.' | '%' => Err(anyhow::anyhow!("Register {name} does not support pushing")),
+            '#' | '.' | '%' | '/' => {
+                Err(anyhow::anyhow!("Register {name} does not support pushing"))
+            }
             '*' | '+' => {
                 let clipboard_type = match name {
                     '+' => ClipboardType::Clipboard,
@@ -164,6 +180,7 @@ impl Registers {
                     ('#', "<selection indices>"),
                     ('.', "<selection contents>"),
                     ('%', "<document path>"),
+                    ('/', "<parent of document path>"),
                     ('+', "<system clipboard>"),
                     ('*', "<primary clipboard>"),
                 ]
