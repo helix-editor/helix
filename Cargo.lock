@@ -1469,6 +1469,7 @@ dependencies = [
  "futures-util",
  "grep-regex",
  "grep-searcher",
+ "heck",
  "helix-core",
  "helix-dap",
  "helix-event",

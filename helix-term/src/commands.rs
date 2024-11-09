@@ -54,6 +54,7 @@ use helix_view::{
 };
 
 use anyhow::{anyhow, bail, ensure, Context as _};
+use heck::{ToKebabCase, ToLowerCamelCase, ToSnakeCase, ToTitleCase, ToUpperCamelCase};
 use insert::*;
 use movement::Movement;
 
@@ -352,9 +353,14 @@ impl MappableCommand {
         extend_prev_char, "Extend to previous occurrence of char",
         repeat_last_motion, "Repeat last motion",
         replace, "Replace with new char",
-        switch_case, "Switch (toggle) case",
-        switch_to_uppercase, "Switch to uppercase",
+        switch_to_alternate_case, "Switch to aLTERNATE cASE",
+        switch_to_uppercase, "Switch to UPPERCASE",
         switch_to_lowercase, "Switch to lowercase",
+        switch_to_pascal_case, "Switch to PascalCase",
+        switch_to_camel_case, "Switch to camelCase",
+        switch_to_title_case, "Switch to Title Case",
+        switch_to_snake_case, "Switch to snake_case",
+        switch_to_kebab_case, "Switch to kebab-case",
         page_up, "Move page up",
         page_down, "Move page down",
         half_page_up, "Move half page up",
@@ -1771,6 +1777,26 @@ fn switch_case(cx: &mut Context) {
             })
             .collect()
     });
+}
+
+fn switch_to_pascal_case(cx: &mut Context) {
+    switch_heck_case_impl(cx, |str| str.to_upper_camel_case())
+}
+
+fn switch_to_camel_case(cx: &mut Context) {
+    switch_heck_case_impl(cx, |str| str.to_lower_camel_case())
+}
+
+fn switch_to_title_case(cx: &mut Context) {
+    switch_heck_case_impl(cx, |str| str.to_title_case())
+}
+
+fn switch_to_snake_case(cx: &mut Context) {
+    switch_heck_case_impl(cx, |str| str.to_snake_case())
+}
+
+fn switch_to_kebab_case(cx: &mut Context) {
+    switch_heck_case_impl(cx, |str| str.to_kebab_case())
 }
 
 fn switch_to_uppercase(cx: &mut Context) {
