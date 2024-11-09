@@ -1,4 +1,3 @@
-use std::borrow::Borrow;
 use std::fmt::Write;
 use std::io::BufReader;
 use std::ops::Deref;
