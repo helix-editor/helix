@@ -918,7 +918,7 @@ fn yank_main_selection_to_clipboard(
         return Ok(());
     }
 
-    yank_primary_selection_impl(cx.editor, '+');
+    yank_main_selection_to_register(cx.editor, '+');
     Ok(())
 }
 
@@ -966,7 +966,7 @@ fn yank_main_selection_to_primary_clipboard(
         return Ok(());
     }
 
-    yank_primary_selection_impl(cx.editor, '*');
+    yank_main_selection_to_register(cx.editor, '*');
     Ok(())
 }
 
@@ -1047,7 +1047,7 @@ fn replace_selections_with_clipboard(
         return Ok(());
     }
 
-    replace_with_yanked_impl(cx.editor, '+', 1);
+    replace_selections_with_register(cx.editor, '+', 1);
     Ok(())
 }
 
@@ -1060,7 +1060,7 @@ fn replace_selections_with_primary_clipboard(
         return Ok(());
     }
 
-    replace_with_yanked_impl(cx.editor, '*', 1);
+    replace_selections_with_register(cx.editor, '*', 1);
     Ok(())
 }
 

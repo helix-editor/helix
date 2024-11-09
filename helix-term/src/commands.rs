@@ -4298,7 +4298,7 @@ fn yank_joined_to_primary_clipboard(cx: &mut Context) {
     exit_select_mode(cx);
 }
 
-fn yank_primary_selection_impl(editor: &mut Editor, register: char) {
+pub(crate) fn yank_main_selection_to_register(editor: &mut Editor, register: char) {
     let (view, doc) = current!(editor);
     let text = doc.text().slice(..);
 
@@ -4311,17 +4311,17 @@ fn yank_primary_selection_impl(editor: &mut Editor, register: char) {
 }
 
 fn yank_main_selection_to_clipboard(cx: &mut Context) {
-    yank_primary_selection_impl(cx.editor, '+');
+    yank_main_selection_to_register(cx.editor, '+');
     exit_select_mode(cx);
 }
 
 fn yank_main_selection_to_primary_clipboard(cx: &mut Context) {
-    yank_primary_selection_impl(cx.editor, '*');
+    yank_main_selection_to_register(cx.editor, '*');
     exit_select_mode(cx);
 }
 
 #[derive(Copy, Clone)]
-enum Paste {
+pub(crate) enum Paste {
     Before,
     After,
     Cursor,
@@ -4438,11 +4438,11 @@ fn paste_primary_clipboard_before(cx: &mut Context) {
 }
 
 fn replace_with_yanked(cx: &mut Context) {
-    replace_with_yanked_impl(cx.editor, cx.register.unwrap_or('"'), cx.count());
+    replace_selections_with_register(cx.editor, cx.register.unwrap_or('"'), cx.count());
     exit_select_mode(cx);
 }
 
-fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
+pub(crate) fn replace_selections_with_register(editor: &mut Editor, register: char, count: usize) {
     let Some(values) = editor
         .registers
         .read(register, editor)
@@ -4479,16 +4479,16 @@ fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
 }
 
 fn replace_selections_with_clipboard(cx: &mut Context) {
-    replace_with_yanked_impl(cx.editor, '+', cx.count());
+    replace_selections_with_register(cx.editor, '+', cx.count());
     exit_select_mode(cx);
 }
 
 fn replace_selections_with_primary_clipboard(cx: &mut Context) {
-    replace_with_yanked_impl(cx.editor, '*', cx.count());
+    replace_selections_with_register(cx.editor, '*', cx.count());
     exit_select_mode(cx);
 }
 
-fn paste(editor: &mut Editor, register: char, pos: Paste, count: usize) {
+pub(crate) fn paste(editor: &mut Editor, register: char, pos: Paste, count: usize) {
     let Some(values) = editor.registers.read(register, editor) else {
         return;
     };
