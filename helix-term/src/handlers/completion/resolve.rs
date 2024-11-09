@@ -42,10 +42,30 @@ impl ResolveHandler {
         if item.resolved {
             return;
         }
-        let needs_resolve = item.item.documentation.is_none()
-            || item.item.detail.is_none()
-            || item.item.additional_text_edits.is_none();
-        if !needs_resolve {
+        // We consider an item to be fully resolved if it has non-empty, none-`None` details,
+        // docs and additional text-edits. Ideally we could use `is_some` instead of this
+        // check but some language servers send values like `Some([])` for additional text
+        // edits although the items need to be resolved. This is probably a consequence of
+        // how `null` works in the JavaScript world.
+        let is_resolved = item
+            .item
+            .documentation
+            .as_ref()
+            .is_some_and(|docs| match docs {
+                lsp::Documentation::String(text) => !text.is_empty(),
+                lsp::Documentation::MarkupContent(markup) => !markup.value.is_empty(),
+            })
+            && item
+                .item
+                .detail
+                .as_ref()
+                .is_some_and(|detail| !detail.is_empty())
+            && item
+                .item
+                .additional_text_edits
+                .as_ref()
+                .is_some_and(|edits| !edits.is_empty());
+        if is_resolved {
             item.resolved = true;
             return;
         }

@@ -448,14 +448,12 @@ impl Component for Completion {
         // ---
         // option.documentation
 
-        let (view, doc) = current!(cx.editor);
-        let language = doc.language_name().unwrap_or("");
-        let text = doc.text().slice(..);
-        let cursor_pos = doc.selection(view.id).primary().cursor(text);
-        let coords = view
-            .screen_coords_at_pos(doc, text, cursor_pos)
-            .expect("cursor must be in view");
+        let Some(coords) = cx.editor.cursor().0 else {
+            return;
+        };
         let cursor_pos = coords.row as u16;
+        let doc = doc!(cx.editor);
+        let language = doc.language_name().unwrap_or("");
 
         let markdowned = |lang: &str, detail: Option<&str>, doc: Option<&str>| {
             let md = match (detail, doc) {
@@ -532,8 +530,8 @@ impl Component for Completion {
         surface.clear_with(doc_area, background);
 
         if cx.editor.popup_border() {
-            use tui::widgets::{Block, Borders, Widget};
-            Widget::render(Block::default().borders(Borders::ALL), doc_area, surface);
+            use tui::widgets::{Block, Widget};
+            Widget::render(Block::bordered(), doc_area, surface);
         }
 
         markdown_doc.render(doc_area, surface, cx);

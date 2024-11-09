@@ -13,7 +13,7 @@ use crate::{
 };
 use helix_stdx::rope::{self, RopeSliceExt};
 use smallvec::{smallvec, SmallVec};
-use std::borrow::Cow;
+use std::{borrow::Cow, iter, slice};
 use tree_sitter::Node;
 
 /// A single selection range.
@@ -175,7 +175,7 @@ impl Range {
     /// function runs in O(N) (N is number of changes) and can therefore
     /// cause performance problems if run for a large number of ranges as the
     /// complexity is then O(MN) (for multicuror M=N usually). Instead use
-    /// [Selection::map] or [ChangeSet::update_positions] instead
+    /// [Selection::map] or [ChangeSet::update_positions].
     pub fn map(mut self, changes: &ChangeSet) -> Self {
         use std::cmp::Ordering;
         if changes.is_empty() {
@@ -184,16 +184,16 @@ impl Range {
 
         let positions_to_map = match self.anchor.cmp(&self.head) {
             Ordering::Equal => [
-                (&mut self.anchor, Assoc::After),
-                (&mut self.head, Assoc::After),
+                (&mut self.anchor, Assoc::AfterSticky),
+                (&mut self.head, Assoc::AfterSticky),
             ],
             Ordering::Less => [
-                (&mut self.anchor, Assoc::After),
-                (&mut self.head, Assoc::Before),
+                (&mut self.anchor, Assoc::AfterSticky),
+                (&mut self.head, Assoc::BeforeSticky),
             ],
             Ordering::Greater => [
-                (&mut self.head, Assoc::After),
-                (&mut self.anchor, Assoc::Before),
+                (&mut self.head, Assoc::AfterSticky),
+                (&mut self.anchor, Assoc::BeforeSticky),
             ],
         };
         changes.update_positions(positions_to_map.into_iter());
@@ -482,16 +482,16 @@ impl Selection {
             range.old_visual_position = None;
             match range.anchor.cmp(&range.head) {
                 Ordering::Equal => [
-                    (&mut range.anchor, Assoc::After),
-                    (&mut range.head, Assoc::After),
+                    (&mut range.anchor, Assoc::AfterSticky),
+                    (&mut range.head, Assoc::AfterSticky),
                 ],
                 Ordering::Less => [
-                    (&mut range.anchor, Assoc::After),
-                    (&mut range.head, Assoc::Before),
+                    (&mut range.anchor, Assoc::AfterSticky),
+                    (&mut range.head, Assoc::BeforeSticky),
                 ],
                 Ordering::Greater => [
-                    (&mut range.head, Assoc::After),
-                    (&mut range.anchor, Assoc::Before),
+                    (&mut range.head, Assoc::AfterSticky),
+                    (&mut range.anchor, Assoc::BeforeSticky),
                 ],
             }
         });
@@ -501,6 +501,16 @@ impl Selection {
 
     pub fn ranges(&self) -> &[Range] {
         &self.ranges
+    }
+
+    /// Returns an iterator over the line ranges of each range in the selection.
+    ///
+    /// Adjacent and overlapping line ranges of the [Range]s in the selection are merged.
+    pub fn line_ranges<'a>(&'a self, text: RopeSlice<'a>) -> LineRangeIter<'a> {
+        LineRangeIter {
+            ranges: self.ranges.iter().peekable(),
+            text,
+        }
     }
 
     pub fn primary_index(&self) -> usize {
@@ -531,6 +541,8 @@ impl Selection {
     }
 
     /// Normalizes a `Selection`.
+    ///
+    /// Ranges are sorted by [Range::from], with overlapping ranges merged.
     fn normalize(mut self) -> Self {
         if self.len() < 2 {
             return self;
@@ -724,6 +736,33 @@ impl From<Range> for Selection {
             ranges: smallvec![range],
             primary_index: 0,
         }
+    }
+}
+
+pub struct LineRangeIter<'a> {
+    ranges: iter::Peekable<slice::Iter<'a, Range>>,
+    text: RopeSlice<'a>,
+}
+
+impl<'a> Iterator for LineRangeIter<'a> {
+    type Item = (usize, usize);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (start, mut end) = self.ranges.next()?.line_range(self.text);
+        while let Some((next_start, next_end)) =
+            self.ranges.peek().map(|range| range.line_range(self.text))
+        {
+            // Merge overlapping and adjacent ranges.
+            // This subtraction cannot underflow because the ranges are sorted.
+            if next_start - end <= 1 {
+                end = next_end;
+                self.ranges.next();
+            } else {
+                break;
+            }
+        }
+
+        Some((start, end))
     }
 }
 
@@ -1163,6 +1202,32 @@ mod test {
         assert_eq!(Range::new(3, 2).line_range(s), (1, 1));
         assert_eq!(Range::new(8, 3).line_range(s), (1, 2));
         assert_eq!(Range::new(12, 0).line_range(s), (0, 2));
+    }
+
+    #[test]
+    fn selection_line_ranges() {
+        let (text, selection) = crate::test::print(
+            r#"                                           L0
+            #[|these]# line #(|ranges)# are #(|merged)#   L1
+                                                          L2
+            single one-line #(|range)#                    L3
+                                                          L4
+            single #(|multiline                           L5
+            range)#                                       L6
+                                                          L7
+            these #(|multiline                            L8
+            ranges)# are #(|also                          L9
+            merged)#                                      L10
+                                                          L11
+            adjacent #(|ranges)#                          L12
+            are merged #(|the same way)#                  L13
+            "#,
+        );
+        let rope = Rope::from_str(&text);
+        assert_eq!(
+            vec![(1, 1), (3, 3), (5, 6), (8, 10), (12, 13)],
+            selection.line_ranges(rope.slice(..)).collect::<Vec<_>>(),
+        );
     }
 
     #[test]

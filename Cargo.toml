@@ -5,6 +5,7 @@ members = [
   "helix-view",
   "helix-term",
   "helix-tui",
+  "helix-lsp-types",
   "helix-lsp",
   "helix-event",
   "helix-dap",
@@ -38,11 +39,12 @@ package.helix-term.opt-level = 2
 
 [workspace.dependencies]
 tree-sitter = { version = "0.22" }
-nucleo = "0.2.0"
+nucleo = "0.5.0"
 slotmap = "1.0.7"
+thiserror = "1.0"
 
 [workspace.package]
-version = "24.3.0"
+version = "24.7.0"
 edition = "2021"
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
 categories = ["editor"]

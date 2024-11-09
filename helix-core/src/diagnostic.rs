@@ -4,7 +4,8 @@ use std::fmt;
 use serde::{Deserialize, Serialize};
 
 /// Describes the severity level of a [`Diagnostic`].
-#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Deserialize, Serialize)]
+#[derive(Debug, Clone, Copy, Eq, PartialEq, PartialOrd, Ord, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum Severity {
     Hint,
     Info,
@@ -23,6 +24,12 @@ impl Default for Severity {
 pub struct Range {
     pub start: usize,
     pub end: usize,
+}
+
+impl Range {
+    pub fn contains(self, pos: usize) -> bool {
+        (self.start..self.end).contains(&pos)
+    }
 }
 
 #[derive(Debug, Eq, Hash, PartialEq, Clone, Deserialize, Serialize)]
@@ -69,5 +76,12 @@ slotmap::new_key_type! {
 impl fmt::Display for LanguageServerId {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:?}", self.0)
+    }
+}
+
+impl Diagnostic {
+    #[inline]
+    pub fn severity(&self) -> Severity {
+        self.severity.unwrap_or(Severity::Warning)
     }
 }
