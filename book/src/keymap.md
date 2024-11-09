@@ -240,14 +240,6 @@ Accessed by typing ` ` ` in [normal mode](#normal-mode).
 
 Various functions for changing case of text in different ways.
 
-            "a" => switch_to_alternate_case,
-            "l" => switch_to_lowercase,
-            "u" => switch_to_uppercase,
-            "p" => switch_to_pascal_case,
-            "c" => switch_to_camel_case,
-            "t" => switch_to_title_case,
-            "s" => switch_to_snake_case,
-            "k" => switch_to_kebab_case,
 | Key              | Description                                      | Command                    |
 | -----            | -----------                                      | -------                    |
 | `l`              | Switch all text to lowercase                     | `switch_to_lowercase`      |
