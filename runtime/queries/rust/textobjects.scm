@@ -34,6 +34,9 @@
 (arguments
   ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
 
+(field_initializer_list  
+  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
+
 [
   (line_comment)
   (block_comment)
@@ -56,3 +59,27 @@
  (function_item
    body: (_) @test.inside) @test.around
  (#eq? @_test_attribute "test"))
+
+(array_expression
+  (_) @entry.around)
+
+(tuple_expression
+  (_) @entry.around)
+
+(tuple_pattern
+  (_) @entry.around)
+
+; Commonly used vec macro intializer is special cased
+(macro_invocation
+  (identifier) @_id (token_tree (_) @entry.around)
+  (#eq? @_id "vec"))
+
+(enum_variant) @entry.around
+
+(field_declaration
+  (_) @entry.inside) @entry.around
+
+(field_initializer
+  (_) @entry.inside) @entry.around
+
+(shorthand_field_initializer) @entry.around

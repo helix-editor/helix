@@ -1,4 +1,4 @@
-# Adding indent queries
+## Adding indent queries
 
 Helix uses tree-sitter to correctly indent new lines. This requires a tree-
 sitter grammar and an `indent.scm` query file placed in `runtime/queries/
@@ -314,6 +314,10 @@ The first argument (a capture) must/must not be equal to the second argument
 - `#match?`/`#not-match?`:
 The first argument (a capture) must/must not match the regex given in the
 second argument (a string).
+
+- `#any-of?`/`#not-any-of?`:
+The first argument (a capture) must/must not be one of the other arguments
+(strings).
 
 Additionally, we support some custom predicates for indent queries:
 

@@ -3,11 +3,14 @@
 # Interface
 "ui.background" = { bg = "black" }
 "ui.window" = { fg = "aqua" }
-"special" = "orange" # file picker fuzzy match
+"special" = "orange"                           # file picker fuzzy match
 "ui.background.separator" = { fg = "white" }
 "ui.text" = "white"
 "ui.text.focus" = { modifiers = ["reversed"] } # file picker selected
 
+"ui.virtual.jump-label" = { fg = "deep_red", modifiers = [
+    "bold",
+], underline = { color = "deep_red", style = "line" } }
 "ui.virtual" = "gray"
 "ui.virtual.whitespace" = "gray"
 "ui.virtual.ruler" = { fg = "white", bg = "gray" }
@@ -54,14 +57,16 @@
 "diagnostic.hint" = { underline = { color = "yellow", style = "dashed" } }
 "diagnostic.warning" = { underline = { color = "orange", style = "curl" } }
 "diagnostic.error" = { underline = { color = "red", style = "curl" } }
-"info" = "white" 
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+"info" = "white"
 "hint" = "yellow"
 "warning" = "orange"
 "error" = "red"
 "debug" = "red"
 
 "diff.plus" = "green"
-"diff.delta" ="blue"
+"diff.delta" = "blue"
 "diff.minus" = "pink"
 
 # Syntax high light
@@ -83,9 +88,13 @@
 "keyword.control" = "purple"
 "function" = "yellow"
 "label" = "blue"
+"tag" = "aqua"
+"attribute" = "blue"
 
 # Markup 
-"markup.heading" = { fg = "yellow", modifiers = ["bold"], underline = { color = "yellow", style = "double_line"} }
+"markup.heading" = { fg = "yellow", modifiers = [
+    "bold",
+], underline = { color = "yellow", style = "double_line" } }
 "markup.list" = "pink"
 "markup.bold" = { fg = "emerald_green", modifiers = ["bold"] }
 "markup.italic" = { fg = "blue", modifiers = ["italic"] }
@@ -105,6 +114,7 @@ dark_blue = "#0d1a2d"
 aqua = "#6fc3df"
 purple = "#c586c0"
 red = "#b65f5f"
+deep_red = "#fd0004"
 pink = "#ff5c8d"
 orange = "#f38518"
 brown = "#ce9178"

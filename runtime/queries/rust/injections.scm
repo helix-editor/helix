@@ -2,9 +2,27 @@
  (#set! injection.language "comment"))
 
 ((macro_invocation
-   macro: (identifier) @_html (#eq? @_html "html")
+   macro:
+     [
+       (scoped_identifier
+         name: (_) @_macro_name)
+       (identifier) @_macro_name
+     ]
    (token_tree) @injection.content)
+ (#eq? @_macro_name "html")
  (#set! injection.language "html")
+ (#set! injection.include-children))
+
+((macro_invocation
+   macro:
+     [
+       (scoped_identifier
+         name: (_) @_macro_name)
+       (identifier) @_macro_name
+     ]
+   (token_tree) @injection.content)
+ (#eq? @_macro_name "slint")
+ (#set! injection.language "slint")
  (#set! injection.include-children))
 
 ((macro_invocation

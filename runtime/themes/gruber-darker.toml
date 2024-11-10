@@ -67,11 +67,14 @@
 "ui.virtual.ruler" = { bg = "bg1" }
 "ui.virtual.inlay-hint" = { fg = "bg7" }
 "ui.virtual.wrap" = { fg = "bg2" }
+"ui.virtual.jump-label" = { fg = "red3", modifiers = ["bold"] }
 
 "diagnostic.warning" = { underline = { color = "orange1", style = "dashed" } }
 "diagnostic.error" = { underline = { color = "red3", style = "dashed" } }
 "diagnostic.info" = { underline = { color = "aqua1", style = "dashed" } }
 "diagnostic.hint" = { underline = { color = "blue0", style = "dashed" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 "markup.heading" = { fg = "aqua1", modifiers = ["bold"] }
 "markup.bold" = { modifiers = ["bold"] }

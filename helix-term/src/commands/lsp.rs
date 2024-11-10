@@ -1,4 +1,4 @@
-use futures_util::{future::BoxFuture, stream::FuturesUnordered, FutureExt};
+use futures_util::{stream::FuturesOrdered, FutureExt};
 use helix_lsp::{
     block_on,
     lsp::{
@@ -6,24 +6,21 @@ use helix_lsp::{
         NumberOrString,
     },
     util::{diagnostic_to_lsp_diagnostic, lsp_range_to_range, range_to_lsp_range},
-    Client, OffsetEncoding,
+    Client, LanguageServerId, OffsetEncoding,
 };
-use serde_json::Value;
 use tokio_stream::StreamExt;
-use tui::{
-    text::{Span, Spans},
-    widgets::Row,
-};
+use tui::{text::Span, widgets::Row};
 
-use super::{align_view, push_jump, Align, Context, Editor, Open};
+use super::{align_view, push_jump, Align, Context, Editor};
 
 use helix_core::{
-    path, syntax::LanguageServerFeature, text_annotations::InlineAnnotation, Selection,
+    syntax::LanguageServerFeature, text_annotations::InlineAnnotation, Selection, Uri,
 };
+use helix_stdx::path;
 use helix_view::{
-    document::{DocumentInlayHints, DocumentInlayHintsId, Mode},
+    document::{DocumentInlayHints, DocumentInlayHintsId},
     editor::Action,
-    graphics::Margin,
+    handlers::lsp::SignatureHelpInvoked,
     theme::Style,
     Document, View,
 };
@@ -31,19 +28,15 @@ use helix_view::{
 use crate::{
     compositor::{self, Compositor},
     job::Callback,
-    ui::{
-        self, lsp::SignatureHelp, overlay::overlaid, DynamicPicker, FileLocation, Picker, Popup,
-        PromptEvent,
-    },
+    ui::{self, overlay::overlaid, FileLocation, Picker, Popup, PromptEvent},
 };
 
 use std::{
     cmp::Ordering,
     collections::{BTreeMap, HashSet},
-    fmt::Write,
+    fmt::Display,
     future::Future,
-    path::PathBuf,
-    sync::Arc,
+    path::Path,
 };
 
 /// Gets the first language server that is attached to a document which supports a specific feature.
@@ -68,67 +61,31 @@ macro_rules! language_server_with_feature {
     }};
 }
 
-impl ui::menu::Item for lsp::Location {
-    /// Current working directory.
-    type Data = PathBuf;
+/// A wrapper around `lsp::Location` that swaps out the LSP URI for `helix_core::Uri`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct Location {
+    uri: Uri,
+    range: lsp::Range,
+}
 
-    fn format(&self, cwdir: &Self::Data) -> Row {
-        // The preallocation here will overallocate a few characters since it will account for the
-        // URL's scheme, which is not used most of the time since that scheme will be "file://".
-        // Those extra chars will be used to avoid allocating when writing the line number (in the
-        // common case where it has 5 digits or less, which should be enough for a cast majority
-        // of usages).
-        let mut res = String::with_capacity(self.uri.as_str().len());
-
-        if self.uri.scheme() == "file" {
-            // With the preallocation above and UTF-8 paths already, this closure will do one (1)
-            // allocation, for `to_file_path`, else there will be two (2), with `to_string_lossy`.
-            let mut write_path_to_res = || -> Option<()> {
-                let path = self.uri.to_file_path().ok()?;
-                res.push_str(&path.strip_prefix(cwdir).unwrap_or(&path).to_string_lossy());
-                Some(())
-            };
-            write_path_to_res();
-        } else {
-            // Never allocates since we declared the string with this capacity already.
-            res.push_str(self.uri.as_str());
+fn lsp_location_to_location(location: lsp::Location) -> Option<Location> {
+    let uri = match location.uri.try_into() {
+        Ok(uri) => uri,
+        Err(err) => {
+            log::warn!("discarding invalid or unsupported URI: {err}");
+            return None;
         }
-
-        // Most commonly, this will not allocate, especially on Unix systems where the root prefix
-        // is a simple `/` and not `C:\` (with whatever drive letter)
-        write!(&mut res, ":{}", self.range.start.line + 1)
-            .expect("Will only failed if allocating fail");
-        res.into()
-    }
+    };
+    Some(Location {
+        uri,
+        range: location.range,
+    })
 }
 
 struct SymbolInformationItem {
+    location: Location,
     symbol: lsp::SymbolInformation,
     offset_encoding: OffsetEncoding,
-}
-
-impl ui::menu::Item for SymbolInformationItem {
-    /// Path to currently focussed document
-    type Data = Option<lsp::Url>;
-
-    fn format(&self, current_doc_path: &Self::Data) -> Row {
-        if current_doc_path.as_ref() == Some(&self.symbol.location.uri) {
-            self.symbol.name.as_str().into()
-        } else {
-            match self.symbol.location.uri.to_file_path() {
-                Ok(path) => {
-                    let get_relative_path = path::get_relative_path(path.as_path());
-                    format!(
-                        "{} ({})",
-                        &self.symbol.name,
-                        get_relative_path.to_string_lossy()
-                    )
-                    .into()
-                }
-                Err(_) => format!("{} ({})", &self.symbol.name, &self.symbol.location.uri).into(),
-            }
-        }
-    }
 }
 
 struct DiagnosticStyles {
@@ -139,98 +96,61 @@ struct DiagnosticStyles {
 }
 
 struct PickerDiagnostic {
-    url: lsp::Url,
+    location: Location,
     diag: lsp::Diagnostic,
     offset_encoding: OffsetEncoding,
 }
 
-impl ui::menu::Item for PickerDiagnostic {
-    type Data = (DiagnosticStyles, DiagnosticsFormat);
-
-    fn format(&self, (styles, format): &Self::Data) -> Row {
-        let mut style = self
-            .diag
-            .severity
-            .map(|s| match s {
-                DiagnosticSeverity::HINT => styles.hint,
-                DiagnosticSeverity::INFORMATION => styles.info,
-                DiagnosticSeverity::WARNING => styles.warning,
-                DiagnosticSeverity::ERROR => styles.error,
-                _ => Style::default(),
-            })
-            .unwrap_or_default();
-
-        // remove background as it is distracting in the picker list
-        style.bg = None;
-
-        let code = match self.diag.code.as_ref() {
-            Some(NumberOrString::Number(n)) => format!(" ({n})"),
-            Some(NumberOrString::String(s)) => format!(" ({s})"),
-            None => String::new(),
-        };
-
-        let path = match format {
-            DiagnosticsFormat::HideSourcePath => String::new(),
-            DiagnosticsFormat::ShowSourcePath => {
-                let file_path = self.url.to_file_path().unwrap();
-                let path = path::get_truncated_path(file_path);
-                format!("{}: ", path.to_string_lossy())
-            }
-        };
-
-        Spans::from(vec![
-            Span::raw(path),
-            Span::styled(&self.diag.message, style),
-            Span::styled(code, style),
-        ])
-        .into()
-    }
-}
-
-fn location_to_file_location(location: &lsp::Location) -> FileLocation {
-    let path = location.uri.to_file_path().unwrap();
+fn location_to_file_location(location: &Location) -> Option<FileLocation> {
+    let path = location.uri.as_path()?;
     let line = Some((
         location.range.start.line as usize,
         location.range.end.line as usize,
     ));
-    (path.into(), line)
+    Some((path.into(), line))
 }
 
 fn jump_to_location(
     editor: &mut Editor,
-    location: &lsp::Location,
+    location: &Location,
     offset_encoding: OffsetEncoding,
     action: Action,
 ) {
     let (view, doc) = current!(editor);
     push_jump(view, doc);
 
-    let path = match location.uri.to_file_path() {
-        Ok(path) => path,
-        Err(_) => {
-            let err = format!("unable to convert URI to filepath: {}", location.uri);
-            editor.set_error(err);
-            return;
-        }
+    let Some(path) = location.uri.as_path() else {
+        let err = format!("unable to convert URI to filepath: {:?}", location.uri);
+        editor.set_error(err);
+        return;
     };
+    jump_to_position(editor, path, location.range, offset_encoding, action);
+}
 
-    let doc = match editor.open(&path, action) {
+fn jump_to_position(
+    editor: &mut Editor,
+    path: &Path,
+    range: lsp::Range,
+    offset_encoding: OffsetEncoding,
+    action: Action,
+) {
+    let doc = match editor.open(path, action) {
         Ok(id) => doc_mut!(editor, &id),
         Err(err) => {
-            let err = format!("failed to open path: {:?}: {:?}", location.uri, err);
+            let err = format!("failed to open path: {:?}: {:?}", path, err);
             editor.set_error(err);
             return;
         }
     };
     let view = view_mut!(editor);
     // TODO: convert inside server
-    let new_range =
-        if let Some(new_range) = lsp_range_to_range(doc.text(), location.range, offset_encoding) {
-            new_range
-        } else {
-            log::warn!("lsp position out of bounds - {:?}", location.range);
-            return;
-        };
+    let new_range = if let Some(new_range) = lsp_range_to_range(doc.text(), range, offset_encoding)
+    {
+        new_range
+    } else {
+        log::warn!("lsp position out of bounds - {:?}", range);
+        return;
+    };
     // we flip the range so that the cursor sits on the start of the symbol
     // (for example start of the function).
     doc.set_selection(view.id, Selection::single(new_range.head, new_range.anchor));
@@ -239,20 +159,39 @@ fn jump_to_location(
     }
 }
 
-type SymbolPicker = Picker<SymbolInformationItem>;
-
-fn sym_picker(symbols: Vec<SymbolInformationItem>, current_path: Option<lsp::Url>) -> SymbolPicker {
-    // TODO: drop current_path comparison and instead use workspace: bool flag?
-    Picker::new(symbols, current_path, move |cx, item, action| {
-        jump_to_location(
-            cx.editor,
-            &item.symbol.location,
-            item.offset_encoding,
-            action,
-        );
-    })
-    .with_preview(move |_editor, item| Some(location_to_file_location(&item.symbol.location)))
-    .truncate_start(false)
+fn display_symbol_kind(kind: lsp::SymbolKind) -> &'static str {
+    match kind {
+        lsp::SymbolKind::FILE => "file",
+        lsp::SymbolKind::MODULE => "module",
+        lsp::SymbolKind::NAMESPACE => "namespace",
+        lsp::SymbolKind::PACKAGE => "package",
+        lsp::SymbolKind::CLASS => "class",
+        lsp::SymbolKind::METHOD => "method",
+        lsp::SymbolKind::PROPERTY => "property",
+        lsp::SymbolKind::FIELD => "field",
+        lsp::SymbolKind::CONSTRUCTOR => "construct",
+        lsp::SymbolKind::ENUM => "enum",
+        lsp::SymbolKind::INTERFACE => "interface",
+        lsp::SymbolKind::FUNCTION => "function",
+        lsp::SymbolKind::VARIABLE => "variable",
+        lsp::SymbolKind::CONSTANT => "constant",
+        lsp::SymbolKind::STRING => "string",
+        lsp::SymbolKind::NUMBER => "number",
+        lsp::SymbolKind::BOOLEAN => "boolean",
+        lsp::SymbolKind::ARRAY => "array",
+        lsp::SymbolKind::OBJECT => "object",
+        lsp::SymbolKind::KEY => "key",
+        lsp::SymbolKind::NULL => "null",
+        lsp::SymbolKind::ENUM_MEMBER => "enummem",
+        lsp::SymbolKind::STRUCT => "struct",
+        lsp::SymbolKind::EVENT => "event",
+        lsp::SymbolKind::OPERATOR => "operator",
+        lsp::SymbolKind::TYPE_PARAMETER => "typeparam",
+        _ => {
+            log::warn!("Unknown symbol kind: {:?}", kind);
+            ""
+        }
+    }
 }
 
 #[derive(Copy, Clone, PartialEq)]
@@ -261,23 +200,27 @@ enum DiagnosticsFormat {
     HideSourcePath,
 }
 
+type DiagnosticsPicker = Picker<PickerDiagnostic, DiagnosticStyles>;
+
 fn diag_picker(
     cx: &Context,
-    diagnostics: BTreeMap<lsp::Url, Vec<(lsp::Diagnostic, usize)>>,
-    _current_path: Option<lsp::Url>,
+    diagnostics: BTreeMap<Uri, Vec<(lsp::Diagnostic, LanguageServerId)>>,
     format: DiagnosticsFormat,
-) -> Picker<PickerDiagnostic> {
+) -> DiagnosticsPicker {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
 
     // flatten the map to a vec of (url, diag) pairs
     let mut flat_diag = Vec::new();
-    for (url, diags) in diagnostics {
+    for (uri, diags) in diagnostics {
         flat_diag.reserve(diags.len());
 
         for (diag, ls) in diags {
             if let Some(ls) = cx.editor.language_server_by_id(ls) {
                 flat_diag.push(PickerDiagnostic {
-                    url: url.clone(),
+                    location: Location {
+                        uri: uri.clone(),
+                        range: diag.range,
+                    },
                     diag,
                     offset_encoding: ls.offset_encoding(),
                 });
@@ -292,28 +235,64 @@ fn diag_picker(
         error: cx.editor.theme.get("error"),
     };
 
+    let mut columns = vec![
+        ui::PickerColumn::new(
+            "severity",
+            |item: &PickerDiagnostic, styles: &DiagnosticStyles| {
+                match item.diag.severity {
+                    Some(DiagnosticSeverity::HINT) => Span::styled("HINT", styles.hint),
+                    Some(DiagnosticSeverity::INFORMATION) => Span::styled("INFO", styles.info),
+                    Some(DiagnosticSeverity::WARNING) => Span::styled("WARN", styles.warning),
+                    Some(DiagnosticSeverity::ERROR) => Span::styled("ERROR", styles.error),
+                    _ => Span::raw(""),
+                }
+                .into()
+            },
+        ),
+        ui::PickerColumn::new("code", |item: &PickerDiagnostic, _| {
+            match item.diag.code.as_ref() {
+                Some(NumberOrString::Number(n)) => n.to_string().into(),
+                Some(NumberOrString::String(s)) => s.as_str().into(),
+                None => "".into(),
+            }
+        }),
+        ui::PickerColumn::new("message", |item: &PickerDiagnostic, _| {
+            item.diag.message.as_str().into()
+        }),
+    ];
+    let mut primary_column = 2; // message
+
+    if format == DiagnosticsFormat::ShowSourcePath {
+        columns.insert(
+            // between message code and message
+            2,
+            ui::PickerColumn::new("path", |item: &PickerDiagnostic, _| {
+                if let Some(path) = item.location.uri.as_path() {
+                    path::get_truncated_path(path)
+                        .to_string_lossy()
+                        .to_string()
+                        .into()
+                } else {
+                    Default::default()
+                }
+            }),
+        );
+        primary_column += 1;
+    }
+
     Picker::new(
+        columns,
+        primary_column,
         flat_diag,
-        (styles, format),
-        move |cx,
-              PickerDiagnostic {
-                  url,
-                  diag,
-                  offset_encoding,
-              },
-              action| {
-            jump_to_location(
-                cx.editor,
-                &lsp::Location::new(url.clone(), diag.range),
-                *offset_encoding,
-                action,
-            )
+        styles,
+        move |cx, diag, action| {
+            jump_to_location(cx.editor, &diag.location, diag.offset_encoding, action);
+            let (view, doc) = current!(cx.editor);
+            view.diagnostics_handler
+                .immediately_show_diagnostic(doc, view.id);
         },
     )
-    .with_preview(move |_editor, PickerDiagnostic { url, diag, .. }| {
-        let location = lsp::Location::new(url.clone(), diag.range);
-        Some(location_to_file_location(&location))
-    })
+    .with_preview(move |_editor, diag| location_to_file_location(&diag.location))
     .truncate_start(false)
 }
 
@@ -321,6 +300,7 @@ pub fn symbol_picker(cx: &mut Context) {
     fn nested_to_flat(
         list: &mut Vec<SymbolInformationItem>,
         file: &lsp::TextDocumentIdentifier,
+        uri: &Uri,
         symbol: lsp::DocumentSymbol,
         offset_encoding: OffsetEncoding,
     ) {
@@ -335,22 +315,29 @@ pub fn symbol_picker(cx: &mut Context) {
                 container_name: None,
             },
             offset_encoding,
+            location: Location {
+                uri: uri.clone(),
+                range: symbol.selection_range,
+            },
         });
         for child in symbol.children.into_iter().flatten() {
-            nested_to_flat(list, file, child, offset_encoding);
+            nested_to_flat(list, file, uri, child, offset_encoding);
         }
     }
     let doc = doc!(cx.editor);
 
     let mut seen_language_servers = HashSet::new();
 
-    let mut futures: FuturesUnordered<_> = doc
+    let mut futures: FuturesOrdered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::DocumentSymbols)
         .filter(|ls| seen_language_servers.insert(ls.id()))
         .map(|language_server| {
             let request = language_server.document_symbols(doc.identifier()).unwrap();
             let offset_encoding = language_server.offset_encoding();
             let doc_id = doc.identifier();
+            let doc_uri = doc
+                .uri()
+                .expect("docs with active language servers must be backed by paths");
 
             async move {
                 let json = request.await?;
@@ -365,6 +352,10 @@ pub fn symbol_picker(cx: &mut Context) {
                     lsp::DocumentSymbolResponse::Flat(symbols) => symbols
                         .into_iter()
                         .map(|symbol| SymbolInformationItem {
+                            location: Location {
+                                uri: doc_uri.clone(),
+                                range: symbol.location.range,
+                            },
                             symbol,
                             offset_encoding,
                         })
@@ -372,7 +363,13 @@ pub fn symbol_picker(cx: &mut Context) {
                     lsp::DocumentSymbolResponse::Nested(symbols) => {
                         let mut flat_symbols = Vec::new();
                         for symbol in symbols {
-                            nested_to_flat(&mut flat_symbols, &doc_id, symbol, offset_encoding)
+                            nested_to_flat(
+                                &mut flat_symbols,
+                                &doc_id,
+                                &doc_uri,
+                                symbol,
+                                offset_encoding,
+                            )
                         }
                         flat_symbols
                     }
@@ -381,7 +378,6 @@ pub fn symbol_picker(cx: &mut Context) {
             }
         })
         .collect();
-    let current_url = doc.url();
 
     if futures.is_empty() {
         cx.editor
@@ -396,7 +392,30 @@ pub fn symbol_picker(cx: &mut Context) {
             symbols.append(&mut lsp_items);
         }
         let call = move |_editor: &mut Editor, compositor: &mut Compositor| {
-            let picker = sym_picker(symbols, current_url);
+            let columns = [
+                ui::PickerColumn::new("kind", |item: &SymbolInformationItem, _| {
+                    display_symbol_kind(item.symbol.kind).into()
+                }),
+                // Some symbols in the document symbol picker may have a URI that isn't
+                // the current file. It should be rare though, so we concatenate that
+                // URI in with the symbol name in this picker.
+                ui::PickerColumn::new("name", |item: &SymbolInformationItem, _| {
+                    item.symbol.name.as_str().into()
+                }),
+            ];
+
+            let picker = Picker::new(
+                columns,
+                1, // name column
+                symbols,
+                (),
+                move |cx, item, action| {
+                    jump_to_location(cx.editor, &item.location, item.offset_encoding, action);
+                },
+            )
+            .with_preview(move |_editor, item| location_to_file_location(&item.location))
+            .truncate_start(false);
+
             compositor.push(Box::new(overlaid(picker)))
         };
 
@@ -405,6 +424,8 @@ pub fn symbol_picker(cx: &mut Context) {
 }
 
 pub fn workspace_symbol_picker(cx: &mut Context) {
+    use crate::ui::picker::Injector;
+
     let doc = doc!(cx.editor);
     if doc
         .language_servers_with_feature(LanguageServerFeature::WorkspaceSymbols)
@@ -416,25 +437,40 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
         return;
     }
 
-    let get_symbols = move |pattern: String, editor: &mut Editor| {
+    let get_symbols = |pattern: &str, editor: &mut Editor, _data, injector: &Injector<_, _>| {
         let doc = doc!(editor);
         let mut seen_language_servers = HashSet::new();
-        let mut futures: FuturesUnordered<_> = doc
+        let mut futures: FuturesOrdered<_> = doc
             .language_servers_with_feature(LanguageServerFeature::WorkspaceSymbols)
             .filter(|ls| seen_language_servers.insert(ls.id()))
             .map(|language_server| {
-                let request = language_server.workspace_symbols(pattern.clone()).unwrap();
+                let request = language_server
+                    .workspace_symbols(pattern.to_string())
+                    .unwrap();
                 let offset_encoding = language_server.offset_encoding();
                 async move {
                     let json = request.await?;
 
-                    let response =
+                    let response: Vec<_> =
                         serde_json::from_value::<Option<Vec<lsp::SymbolInformation>>>(json)?
                             .unwrap_or_default()
                             .into_iter()
-                            .map(|symbol| SymbolInformationItem {
-                                symbol,
-                                offset_encoding,
+                            .filter_map(|symbol| {
+                                let uri = match Uri::try_from(&symbol.location.uri) {
+                                    Ok(uri) => uri,
+                                    Err(err) => {
+                                        log::warn!("discarding symbol with invalid URI: {err}");
+                                        return None;
+                                    }
+                                };
+                                Some(SymbolInformationItem {
+                                    location: Location {
+                                        uri,
+                                        range: symbol.location.range,
+                                    },
+                                    symbol,
+                                    offset_encoding,
+                                })
                             })
                             .collect();
 
@@ -447,45 +483,61 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
             editor.set_error("No configured language server supports workspace symbols");
         }
 
+        let injector = injector.clone();
         async move {
-            let mut symbols = Vec::new();
             // TODO if one symbol request errors, all other requests are discarded (even if they're valid)
-            while let Some(mut lsp_items) = futures.try_next().await? {
-                symbols.append(&mut lsp_items);
+            while let Some(lsp_items) = futures.try_next().await? {
+                for item in lsp_items {
+                    injector.push(item)?;
+                }
             }
-            anyhow::Ok(symbols)
+            Ok(())
         }
         .boxed()
     };
+    let columns = [
+        ui::PickerColumn::new("kind", |item: &SymbolInformationItem, _| {
+            display_symbol_kind(item.symbol.kind).into()
+        }),
+        ui::PickerColumn::new("name", |item: &SymbolInformationItem, _| {
+            item.symbol.name.as_str().into()
+        })
+        .without_filtering(),
+        ui::PickerColumn::new("path", |item: &SymbolInformationItem, _| {
+            if let Some(path) = item.location.uri.as_path() {
+                path::get_relative_path(path)
+                    .to_string_lossy()
+                    .to_string()
+                    .into()
+            } else {
+                item.symbol.location.uri.to_string().into()
+            }
+        }),
+    ];
 
-    let current_url = doc.url();
-    let initial_symbols = get_symbols("".to_owned(), cx.editor);
+    let picker = Picker::new(
+        columns,
+        1, // name column
+        [],
+        (),
+        move |cx, item, action| {
+            jump_to_location(cx.editor, &item.location, item.offset_encoding, action);
+        },
+    )
+    .with_preview(|_editor, item| location_to_file_location(&item.location))
+    .with_dynamic_query(get_symbols, None)
+    .truncate_start(false);
 
-    cx.jobs.callback(async move {
-        let symbols = initial_symbols.await?;
-        let call = move |_editor: &mut Editor, compositor: &mut Compositor| {
-            let picker = sym_picker(symbols, current_url);
-            let dyn_picker = DynamicPicker::new(picker, Box::new(get_symbols));
-            compositor.push(Box::new(overlaid(dyn_picker)))
-        };
-
-        Ok(Callback::EditorCompositor(Box::new(call)))
-    });
+    cx.push_layer(Box::new(overlaid(picker)));
 }
 
 pub fn diagnostics_picker(cx: &mut Context) {
     let doc = doc!(cx.editor);
-    if let Some(current_url) = doc.url() {
-        let diagnostics = cx
-            .editor
-            .diagnostics
-            .get(&current_url)
-            .cloned()
-            .unwrap_or_default();
+    if let Some(uri) = doc.uri() {
+        let diagnostics = cx.editor.diagnostics.get(&uri).cloned().unwrap_or_default();
         let picker = diag_picker(
             cx,
-            [(current_url.clone(), diagnostics)].into(),
-            Some(current_url),
+            [(uri, diagnostics)].into(),
             DiagnosticsFormat::HideSourcePath,
         );
         cx.push_layer(Box::new(overlaid(picker)));
@@ -493,22 +545,15 @@ pub fn diagnostics_picker(cx: &mut Context) {
 }
 
 pub fn workspace_diagnostics_picker(cx: &mut Context) {
-    let doc = doc!(cx.editor);
-    let current_url = doc.url();
     // TODO not yet filtered by LanguageServerFeature, need to do something similar as Document::shown_diagnostics here for all open documents
     let diagnostics = cx.editor.diagnostics.clone();
-    let picker = diag_picker(
-        cx,
-        diagnostics,
-        current_url,
-        DiagnosticsFormat::ShowSourcePath,
-    );
+    let picker = diag_picker(cx, diagnostics, DiagnosticsFormat::ShowSourcePath);
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
 struct CodeActionOrCommandItem {
     lsp_item: lsp::CodeActionOrCommand,
-    language_server_id: usize,
+    language_server_id: LanguageServerId,
 }
 
 impl ui::menu::Item for CodeActionOrCommandItem {
@@ -585,7 +630,7 @@ pub fn code_action(cx: &mut Context) {
 
     let mut seen_language_servers = HashSet::new();
 
-    let mut futures: FuturesUnordered<_> = doc
+    let mut futures: FuturesOrdered<_> = doc
         .language_servers_with_feature(LanguageServerFeature::CodeAction)
         .filter(|ls| seen_language_servers.insert(ls.id()))
         // TODO this should probably already been filtered in something like "language_servers_with_feature"
@@ -731,8 +776,7 @@ pub fn code_action(cx: &mut Context) {
                             resolved_code_action.as_ref().unwrap_or(code_action);
 
                         if let Some(ref workspace_edit) = resolved_code_action.edit {
-                            log::debug!("edit: {:?}", workspace_edit);
-                            let _ = apply_workspace_edit(editor, offset_encoding, workspace_edit);
+                            let _ = editor.apply_workspace_edit(offset_encoding, workspace_edit);
                         }
 
                         // if code action provides both edit and command first the edit
@@ -745,15 +789,7 @@ pub fn code_action(cx: &mut Context) {
             });
             picker.move_down(); // pre-select the first item
 
-            let margin = if editor.menu_border() {
-                Margin::vertical(1)
-            } else {
-                Margin::none()
-            };
-
-            let popup = Popup::new("code-action", picker)
-                .with_scrollbar(false)
-                .margin(margin);
+            let popup = Popup::new("code-action", picker).with_scrollbar(false);
 
             compositor.replace_or_push("code-action", popup);
         };
@@ -762,14 +798,11 @@ pub fn code_action(cx: &mut Context) {
     });
 }
 
-impl ui::menu::Item for lsp::Command {
-    type Data = ();
-    fn format(&self, _data: &Self::Data) -> Row {
-        self.title.as_str().into()
-    }
-}
-
-pub fn execute_lsp_command(editor: &mut Editor, language_server_id: usize, cmd: lsp::Command) {
+pub fn execute_lsp_command(
+    editor: &mut Editor,
+    language_server_id: LanguageServerId,
+    cmd: lsp::Command,
+) {
     // the command is executed on the server and communicated back
     // to the client asynchronously using workspace edits
     let future = match editor
@@ -792,63 +825,6 @@ pub fn execute_lsp_command(editor: &mut Editor, language_server_id: usize, cmd: 
     });
 }
 
-pub fn apply_document_resource_op(op: &lsp::ResourceOp) -> std::io::Result<()> {
-    use lsp::ResourceOp;
-    use std::fs;
-    match op {
-        ResourceOp::Create(op) => {
-            let path = op.uri.to_file_path().unwrap();
-            let ignore_if_exists = op.options.as_ref().map_or(false, |options| {
-                !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
-            });
-            if ignore_if_exists && path.exists() {
-                Ok(())
-            } else {
-                // Create directory if it does not exist
-                if let Some(dir) = path.parent() {
-                    if !dir.is_dir() {
-                        fs::create_dir_all(dir)?;
-                    }
-                }
-
-                fs::write(&path, [])
-            }
-        }
-        ResourceOp::Delete(op) => {
-            let path = op.uri.to_file_path().unwrap();
-            if path.is_dir() {
-                let recursive = op
-                    .options
-                    .as_ref()
-                    .and_then(|options| options.recursive)
-                    .unwrap_or(false);
-
-                if recursive {
-                    fs::remove_dir_all(&path)
-                } else {
-                    fs::remove_dir(&path)
-                }
-            } else if path.is_file() {
-                fs::remove_file(&path)
-            } else {
-                Ok(())
-            }
-        }
-        ResourceOp::Rename(op) => {
-            let from = op.old_uri.to_file_path().unwrap();
-            let to = op.new_uri.to_file_path().unwrap();
-            let ignore_if_exists = op.options.as_ref().map_or(false, |options| {
-                !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
-            });
-            if ignore_if_exists && to.exists() {
-                Ok(())
-            } else {
-                fs::rename(from, &to)
-            }
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct ApplyEditError {
     pub kind: ApplyEditErrorKind,
@@ -865,199 +841,69 @@ pub enum ApplyEditErrorKind {
     // InvalidEdit,
 }
 
-impl ToString for ApplyEditErrorKind {
-    fn to_string(&self) -> String {
+impl Display for ApplyEditErrorKind {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ApplyEditErrorKind::DocumentChanged => "document has changed".to_string(),
-            ApplyEditErrorKind::FileNotFound => "file not found".to_string(),
-            ApplyEditErrorKind::UnknownURISchema => "URI schema not supported".to_string(),
-            ApplyEditErrorKind::IoError(err) => err.to_string(),
+            ApplyEditErrorKind::DocumentChanged => f.write_str("document has changed"),
+            ApplyEditErrorKind::FileNotFound => f.write_str("file not found"),
+            ApplyEditErrorKind::UnknownURISchema => f.write_str("URI schema not supported"),
+            ApplyEditErrorKind::IoError(err) => f.write_str(&format!("{err}")),
         }
     }
 }
 
-///TODO make this transactional (and set failureMode to transactional)
-pub fn apply_workspace_edit(
-    editor: &mut Editor,
-    offset_encoding: OffsetEncoding,
-    workspace_edit: &lsp::WorkspaceEdit,
-) -> Result<(), ApplyEditError> {
-    let mut apply_edits = |uri: &helix_lsp::Url,
-                           version: Option<i32>,
-                           text_edits: Vec<lsp::TextEdit>|
-     -> Result<(), ApplyEditErrorKind> {
-        let path = match uri.to_file_path() {
-            Ok(path) => path,
-            Err(_) => {
-                let err = format!("unable to convert URI to filepath: {}", uri);
-                log::error!("{}", err);
-                editor.set_error(err);
-                return Err(ApplyEditErrorKind::UnknownURISchema);
-            }
-        };
-
-        let current_view_id = view!(editor).id;
-        let doc_id = match editor.open(&path, Action::Load) {
-            Ok(doc_id) => doc_id,
-            Err(err) => {
-                let err = format!("failed to open document: {}: {}", uri, err);
-                log::error!("{}", err);
-                editor.set_error(err);
-                return Err(ApplyEditErrorKind::FileNotFound);
-            }
-        };
-
-        let doc = doc_mut!(editor, &doc_id);
-        if let Some(version) = version {
-            if version != doc.version() {
-                let err = format!("outdated workspace edit for {path:?}");
-                log::error!("{err}, expected {} but got {version}", doc.version());
-                editor.set_error(err);
-                return Err(ApplyEditErrorKind::DocumentChanged);
-            }
-        }
-
-        // Need to determine a view for apply/append_changes_to_history
-        let selections = doc.selections();
-        let view_id = if selections.contains_key(&current_view_id) {
-            // use current if possible
-            current_view_id
-        } else {
-            // Hack: we take the first available view_id
-            selections
-                .keys()
-                .next()
-                .copied()
-                .expect("No view_id available")
-        };
-
-        let transaction = helix_lsp::util::generate_transaction_from_edits(
-            doc.text(),
-            text_edits,
-            offset_encoding,
-        );
-        let view = view_mut!(editor, view_id);
-        doc.apply(&transaction, view.id);
-        doc.append_changes_to_history(view);
-        Ok(())
-    };
-
-    if let Some(ref document_changes) = workspace_edit.document_changes {
-        match document_changes {
-            lsp::DocumentChanges::Edits(document_edits) => {
-                for (i, document_edit) in document_edits.iter().enumerate() {
-                    let edits = document_edit
-                        .edits
-                        .iter()
-                        .map(|edit| match edit {
-                            lsp::OneOf::Left(text_edit) => text_edit,
-                            lsp::OneOf::Right(annotated_text_edit) => {
-                                &annotated_text_edit.text_edit
-                            }
-                        })
-                        .cloned()
-                        .collect();
-                    apply_edits(
-                        &document_edit.text_document.uri,
-                        document_edit.text_document.version,
-                        edits,
-                    )
-                    .map_err(|kind| ApplyEditError {
-                        kind,
-                        failed_change_idx: i,
-                    })?;
-                }
-            }
-            lsp::DocumentChanges::Operations(operations) => {
-                log::debug!("document changes - operations: {:?}", operations);
-                for (i, operation) in operations.iter().enumerate() {
-                    match operation {
-                        lsp::DocumentChangeOperation::Op(op) => {
-                            apply_document_resource_op(op).map_err(|io| ApplyEditError {
-                                kind: ApplyEditErrorKind::IoError(io),
-                                failed_change_idx: i,
-                            })?;
-                        }
-
-                        lsp::DocumentChangeOperation::Edit(document_edit) => {
-                            let edits = document_edit
-                                .edits
-                                .iter()
-                                .map(|edit| match edit {
-                                    lsp::OneOf::Left(text_edit) => text_edit,
-                                    lsp::OneOf::Right(annotated_text_edit) => {
-                                        &annotated_text_edit.text_edit
-                                    }
-                                })
-                                .cloned()
-                                .collect();
-                            apply_edits(
-                                &document_edit.text_document.uri,
-                                document_edit.text_document.version,
-                                edits,
-                            )
-                            .map_err(|kind| ApplyEditError {
-                                kind,
-                                failed_change_idx: i,
-                            })?;
-                        }
-                    }
-                }
-            }
-        }
-
-        return Ok(());
-    }
-
-    if let Some(ref changes) = workspace_edit.changes {
-        log::debug!("workspace changes: {:?}", changes);
-        for (i, (uri, text_edits)) in changes.iter().enumerate() {
-            let text_edits = text_edits.to_vec();
-            apply_edits(uri, None, text_edits).map_err(|kind| ApplyEditError {
-                kind,
-                failed_change_idx: i,
-            })?;
-        }
-    }
-
-    Ok(())
-}
-
+/// Precondition: `locations` should be non-empty.
 fn goto_impl(
     editor: &mut Editor,
     compositor: &mut Compositor,
-    locations: Vec<lsp::Location>,
+    locations: Vec<Location>,
     offset_encoding: OffsetEncoding,
 ) {
-    let cwdir = helix_loader::current_working_dir();
+    let cwdir = helix_stdx::env::current_working_dir();
 
     match locations.as_slice() {
         [location] => {
             jump_to_location(editor, location, offset_encoding, Action::Replace);
         }
-        [] => {
-            editor.set_error("No definition found.");
-        }
+        [] => unreachable!("`locations` should be non-empty for `goto_impl`"),
         _locations => {
-            let picker = Picker::new(locations, cwdir, move |cx, location, action| {
+            let columns = [ui::PickerColumn::new(
+                "location",
+                |item: &Location, cwdir: &std::path::PathBuf| {
+                    let path = if let Some(path) = item.uri.as_path() {
+                        path.strip_prefix(cwdir).unwrap_or(path).to_string_lossy()
+                    } else {
+                        item.uri.to_string().into()
+                    };
+
+                    format!("{path}:{}", item.range.start.line + 1).into()
+                },
+            )];
+
+            let picker = Picker::new(columns, 0, locations, cwdir, move |cx, location, action| {
                 jump_to_location(cx.editor, location, offset_encoding, action)
             })
-            .with_preview(move |_editor, location| Some(location_to_file_location(location)));
+            .with_preview(move |_editor, location| location_to_file_location(location));
             compositor.push(Box::new(overlaid(picker)));
         }
     }
 }
 
-fn to_locations(definitions: Option<lsp::GotoDefinitionResponse>) -> Vec<lsp::Location> {
+fn to_locations(definitions: Option<lsp::GotoDefinitionResponse>) -> Vec<Location> {
     match definitions {
-        Some(lsp::GotoDefinitionResponse::Scalar(location)) => vec![location],
-        Some(lsp::GotoDefinitionResponse::Array(locations)) => locations,
+        Some(lsp::GotoDefinitionResponse::Scalar(location)) => {
+            lsp_location_to_location(location).into_iter().collect()
+        }
+        Some(lsp::GotoDefinitionResponse::Array(locations)) => locations
+            .into_iter()
+            .flat_map(lsp_location_to_location)
+            .collect(),
         Some(lsp::GotoDefinitionResponse::Link(locations)) => locations
             .into_iter()
-            .map(|location_link| lsp::Location {
-                uri: location_link.target_uri,
-                range: location_link.target_range,
+            .map(|location_link| {
+                lsp::Location::new(location_link.target_uri, location_link.target_range)
             })
+            .flat_map(lsp_location_to_location)
             .collect(),
         None => Vec::new(),
     }
@@ -1079,7 +925,11 @@ where
         future,
         move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
             let items = to_locations(response);
-            goto_impl(editor, compositor, items, offset_encoding);
+            if items.is_empty() {
+                editor.set_error("No definition found.");
+            } else {
+                goto_impl(editor, compositor, items, offset_encoding);
+            }
         },
     );
 }
@@ -1138,152 +988,24 @@ pub fn goto_reference(cx: &mut Context) {
     cx.callback(
         future,
         move |editor, compositor, response: Option<Vec<lsp::Location>>| {
-            let items = response.unwrap_or_default();
-            goto_impl(editor, compositor, items, offset_encoding);
+            let items: Vec<Location> = response
+                .into_iter()
+                .flatten()
+                .flat_map(lsp_location_to_location)
+                .collect();
+            if items.is_empty() {
+                editor.set_error("No references found.");
+            } else {
+                goto_impl(editor, compositor, items, offset_encoding);
+            }
         },
     );
-}
-
-#[derive(PartialEq, Eq, Clone, Copy)]
-pub enum SignatureHelpInvoked {
-    Manual,
-    Automatic,
 }
 
 pub fn signature_help(cx: &mut Context) {
-    signature_help_impl(cx, SignatureHelpInvoked::Manual)
-}
-
-pub fn signature_help_impl(cx: &mut Context, invoked: SignatureHelpInvoked) {
-    let (view, doc) = current!(cx.editor);
-
-    // TODO merge multiple language server signature help into one instead of just taking the first language server that supports it
-    let future = doc
-        .language_servers_with_feature(LanguageServerFeature::SignatureHelp)
-        .find_map(|language_server| {
-            let pos = doc.position(view.id, language_server.offset_encoding());
-            language_server.text_document_signature_help(doc.identifier(), pos, None)
-        });
-
-    let Some(future) = future else {
-        // Do not show the message if signature help was invoked
-        // automatically on backspace, trigger characters, etc.
-        if invoked == SignatureHelpInvoked::Manual {
-            cx.editor
-                .set_error("No configured language server supports signature-help");
-        }
-        return;
-    };
-    signature_help_impl_with_future(cx, future.boxed(), invoked);
-}
-
-pub fn signature_help_impl_with_future(
-    cx: &mut Context,
-    future: BoxFuture<'static, helix_lsp::Result<Value>>,
-    invoked: SignatureHelpInvoked,
-) {
-    cx.callback(
-        future,
-        move |editor, compositor, response: Option<lsp::SignatureHelp>| {
-            let config = &editor.config();
-
-            if !(config.lsp.auto_signature_help
-                || SignatureHelp::visible_popup(compositor).is_some()
-                || invoked == SignatureHelpInvoked::Manual)
-            {
-                return;
-            }
-
-            // If the signature help invocation is automatic, don't show it outside of Insert Mode:
-            // it very probably means the server was a little slow to respond and the user has
-            // already moved on to something else, making a signature help popup will just be an
-            // annoyance, see https://github.com/helix-editor/helix/issues/3112
-            if invoked == SignatureHelpInvoked::Automatic && editor.mode != Mode::Insert {
-                return;
-            }
-
-            let response = match response {
-                // According to the spec the response should be None if there
-                // are no signatures, but some servers don't follow this.
-                Some(s) if !s.signatures.is_empty() => s,
-                _ => {
-                    compositor.remove(SignatureHelp::ID);
-                    return;
-                }
-            };
-            let doc = doc!(editor);
-            let language = doc.language_name().unwrap_or("");
-
-            let signature = match response
-                .signatures
-                .get(response.active_signature.unwrap_or(0) as usize)
-            {
-                Some(s) => s,
-                None => return,
-            };
-            let mut contents = SignatureHelp::new(
-                signature.label.clone(),
-                language.to_string(),
-                Arc::clone(&editor.syn_loader),
-            );
-
-            let signature_doc = if config.lsp.display_signature_help_docs {
-                signature.documentation.as_ref().map(|doc| match doc {
-                    lsp::Documentation::String(s) => s.clone(),
-                    lsp::Documentation::MarkupContent(markup) => markup.value.clone(),
-                })
-            } else {
-                None
-            };
-
-            contents.set_signature_doc(signature_doc);
-
-            let active_param_range = || -> Option<(usize, usize)> {
-                let param_idx = signature
-                    .active_parameter
-                    .or(response.active_parameter)
-                    .unwrap_or(0) as usize;
-                let param = signature.parameters.as_ref()?.get(param_idx)?;
-                match &param.label {
-                    lsp::ParameterLabel::Simple(string) => {
-                        let start = signature.label.find(string.as_str())?;
-                        Some((start, start + string.len()))
-                    }
-                    lsp::ParameterLabel::LabelOffsets([start, end]) => {
-                        // LS sends offsets based on utf-16 based string representation
-                        // but highlighting in helix is done using byte offset.
-                        use helix_core::str_utils::char_to_byte_idx;
-                        let from = char_to_byte_idx(&signature.label, *start as usize);
-                        let to = char_to_byte_idx(&signature.label, *end as usize);
-                        Some((from, to))
-                    }
-                }
-            };
-            contents.set_active_param_range(active_param_range());
-
-            let old_popup = compositor.find_id::<Popup<SignatureHelp>>(SignatureHelp::ID);
-            let mut popup = Popup::new(SignatureHelp::ID, contents)
-                .position(old_popup.and_then(|p| p.get_position()))
-                .position_bias(Open::Above)
-                .ignore_escape_key(true);
-
-            // Don't create a popup if it intersects the auto-complete menu.
-            let size = compositor.size();
-            if compositor
-                .find::<ui::EditorView>()
-                .unwrap()
-                .completion
-                .as_mut()
-                .map(|completion| completion.area(size, editor))
-                .filter(|area| area.intersects(popup.area(size, editor)))
-                .is_some()
-            {
-                return;
-            }
-
-            compositor.replace_or_push(SignatureHelp::ID, popup);
-        },
-    );
+    cx.editor
+        .handlers
+        .trigger_signature_help(SignatureHelpInvoked::Manual, cx.editor)
 }
 
 pub fn hover(cx: &mut Context) {
@@ -1379,11 +1101,12 @@ pub fn rename_symbol(cx: &mut Context) {
     fn create_rename_prompt(
         editor: &Editor,
         prefill: String,
-        language_server_id: Option<usize>,
+        history_register: Option<char>,
+        language_server_id: Option<LanguageServerId>,
     ) -> Box<ui::Prompt> {
         let prompt = ui::Prompt::new(
             "rename-to:".into(),
-            None,
+            history_register,
             ui::completers::none,
             move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
                 if event != PromptEvent::Validate {
@@ -1408,7 +1131,7 @@ pub fn rename_symbol(cx: &mut Context) {
 
                 match block_on(future) {
                     Ok(edits) => {
-                        let _ = apply_workspace_edit(cx.editor, offset_encoding, &edits);
+                        let _ = cx.editor.apply_workspace_edit(offset_encoding, &edits);
                     }
                     Err(err) => cx.editor.set_error(err.to_string()),
                 }
@@ -1420,6 +1143,17 @@ pub fn rename_symbol(cx: &mut Context) {
     }
 
     let (view, doc) = current_ref!(cx.editor);
+    let history_register = cx.register;
+
+    if doc
+        .language_servers_with_feature(LanguageServerFeature::RenameSymbol)
+        .next()
+        .is_none()
+    {
+        cx.editor
+            .set_error("No configured language server supports symbol renaming");
+        return;
+    }
 
     let language_server_with_prepare_rename_support = doc
         .language_servers_with_feature(LanguageServerFeature::RenameSymbol)
@@ -1452,14 +1186,14 @@ pub fn rename_symbol(cx: &mut Context) {
                     }
                 };
 
-                let prompt = create_rename_prompt(editor, prefill, Some(ls_id));
+                let prompt = create_rename_prompt(editor, prefill, history_register, Some(ls_id));
 
                 compositor.push(prompt);
             },
         );
     } else {
         let prefill = get_prefill_from_word_boundary(cx.editor);
-        let prompt = create_rename_prompt(cx.editor, prefill, None);
+        let prompt = create_rename_prompt(cx.editor, prefill, history_register, None);
         cx.push_layer(prompt);
     }
 }
@@ -1539,7 +1273,8 @@ fn compute_inlay_hints_for_view(
     // than computing all the hints for the full file (which could be dozens of time
     // longer than the view is).
     let view_height = view.inner_height();
-    let first_visible_line = doc_text.char_to_line(view.offset.anchor.min(doc_text.len_chars()));
+    let first_visible_line =
+        doc_text.char_to_line(doc.view_offset(view_id).anchor.min(doc_text.len_chars()));
     let first_line = first_visible_line.saturating_sub(view_height);
     let last_line = first_visible_line
         .saturating_add(view_height.saturating_mul(2))
@@ -1599,7 +1334,7 @@ fn compute_inlay_hints_for_view(
 
             // Most language servers will already send them sorted but ensure this is the case to
             // avoid errors on our end.
-            hints.sort_unstable_by_key(|inlay_hint| inlay_hint.position);
+            hints.sort_by_key(|inlay_hint| inlay_hint.position);
 
             let mut padding_before_inlay_hints = Vec::new();
             let mut type_inlay_hints = Vec::new();
@@ -1650,11 +1385,11 @@ fn compute_inlay_hints_for_view(
                 view_id,
                 DocumentInlayHints {
                     id: new_doc_inlay_hints_id,
-                    type_inlay_hints: type_inlay_hints.into(),
-                    parameter_inlay_hints: parameter_inlay_hints.into(),
-                    other_inlay_hints: other_inlay_hints.into(),
-                    padding_before_inlay_hints: padding_before_inlay_hints.into(),
-                    padding_after_inlay_hints: padding_after_inlay_hints.into(),
+                    type_inlay_hints,
+                    parameter_inlay_hints,
+                    other_inlay_hints,
+                    padding_before_inlay_hints,
+                    padding_after_inlay_hints,
                 },
             );
             doc.inlay_hints_oudated = false;

@@ -4,3 +4,7 @@
 (raw_blck
 	lang: (ident) @injection.language
   (blob) @injection.content)
+
+((comment)
+	@injection.content
+	(#set! injection.language "comment"))

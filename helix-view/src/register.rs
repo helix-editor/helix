@@ -5,7 +5,6 @@ use helix_core::NATIVE_LINE_ENDING;
 
 use crate::{
     clipboard::{get_clipboard_provider, ClipboardProvider, ClipboardType},
-    document::SCRATCH_BUFFER_NAME,
     Editor,
 };
 
@@ -61,14 +60,7 @@ impl Registers {
                 Some(RegisterValues::new(doc.selection(view.id).fragments(text)))
             }
             '%' => {
-                let doc = doc!(editor);
-
-                let path = doc
-                    .path()
-                    .as_ref()
-                    .map(|p| p.to_string_lossy())
-                    .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into());
-
+                let path = doc!(editor).display_name();
                 Some(RegisterValues::new(iter::once(path)))
             }
             '*' | '+' => Some(read_from_clipboard(
@@ -123,7 +115,7 @@ impl Registers {
                     _ => unreachable!(),
                 };
                 let contents = self.clipboard_provider.get_contents(clipboard_type)?;
-                let saved_values = self.inner.entry(name).or_insert_with(Vec::new);
+                let saved_values = self.inner.entry(name).or_default();
 
                 if !contents_are_saved(saved_values, &contents) {
                     anyhow::bail!("Failed to push to register {name}: clipboard does not match register contents");
@@ -140,7 +132,7 @@ impl Registers {
                 Ok(())
             }
             _ => {
-                self.inner.entry(name).or_insert_with(Vec::new).push(value);
+                self.inner.entry(name).or_default().push(value);
                 Ok(())
             }
         }
@@ -233,7 +225,9 @@ fn read_from_clipboard<'a>(
             // If we're pasting the same values that we just yanked, re-use
             // the saved values. This allows pasting multiple selections
             // even when yanked to a clipboard.
-            let Some(values) = saved_values else { return RegisterValues::new(iter::once(contents.into())) };
+            let Some(values) = saved_values else {
+                return RegisterValues::new(iter::once(contents.into()));
+            };
 
             if contents_are_saved(values, &contents) {
                 RegisterValues::new(values.iter().map(Cow::from).rev())

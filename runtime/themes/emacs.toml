@@ -68,7 +68,8 @@
 "ui.menu.selected" = { fg = "dark_red", bg = "light_blue" }
 "ui.selection" = { bg = "lightgoldenrod1" }
 "ui.selection.primary" = { bg = "lightgoldenrod2" }
-"ui.virtual.whitespace" = "highlight"
+# Malformed ANSI: highlight. See 'https://github.com/helix-editor/helix/issues/5709'
+# "ui.virtual.whitespace" = "highlight"
 "ui.virtual.ruler" = { bg = "gray95" }
 "ui.virtual.inlay-hint" = { fg = "gray75" }
 "ui.cursorline.primary" = { bg = "darkseagreen2" }
@@ -87,6 +88,8 @@
 "diagnostic.warning" = { underline = { color = "dark_orange", style = "curl" } }
 "diagnostic.info" = { underline = { color = "forest_green", style = "curl" } }
 "diagnostic.hint" = { underline = { color = "dark_cyan", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 [palette]
 black = "#000000"

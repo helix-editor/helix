@@ -86,10 +86,8 @@ pub fn get_language(name: &str) -> Result<Language> {
 }
 
 fn ensure_git_is_available() -> Result<()> {
-    match which::which("git") {
-        Ok(_cmd) => Ok(()),
-        Err(err) => Err(anyhow::anyhow!("'git' could not be found ({err})")),
-    }
+    helix_stdx::env::which("git")?;
+    Ok(())
 }
 
 pub fn fetch_grammars() -> Result<()> {
@@ -424,7 +422,7 @@ fn build_tree_sitter_library(
         }
     }
 
-    let recompile = needs_recompile(&library_path, &parser_path, &scanner_path)
+    let recompile = needs_recompile(&library_path, &parser_path, scanner_path.as_ref())
         .context("Failed to compare source and binary timestamps")?;
 
     if !recompile {
@@ -570,7 +568,7 @@ fn build_tree_sitter_library(
 fn needs_recompile(
     lib_path: &Path,
     parser_c_path: &Path,
-    scanner_path: &Option<PathBuf>,
+    scanner_path: Option<&PathBuf>,
 ) -> Result<bool> {
     if !lib_path.exists() {
         return Ok(true);

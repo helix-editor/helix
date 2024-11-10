@@ -19,6 +19,8 @@
 "diagnostic.info" = { underline = { style = "line" } }
 "diagnostic" = { underline = { style = "line", color = "my_gray5" }, bg = "my_black"}
 "diagnostic.warning" = { underline = { style = "curl", color = "my_yellow2" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 "diff.delta" = "my_gray5"
 "diff.minus" = "my_red"
 "diff.plus" = "my_green"
@@ -61,14 +63,17 @@
 "ui.selection" = { bg = "my_gray3" }
 "ui.statusline" = { fg = "my_gray7", bg = "my_gray2" }
 "ui.statusline.inactive" = { fg = 'my_gray5', bg = 'my_gray2' }
-"ui.statusline.insert" = {fg = "my_black", bg = "my_gray6", modifiers = ["bold"]}
-"ui.statusline.normal" = {fg = "my_gray7", bg = "my_gray2"}
-"ui.statusline.select" = {fg = "my_gray7", bg = "my_black", modifiers = ["bold"]}
+"ui.statusline.insert" = { fg = "my_black", bg = "my_gray6", modifiers = ["bold"] }
+"ui.statusline.normal" = { fg = "my_gray7", bg = "my_gray2" }
+"ui.statusline.select" = { fg = "my_gray7", bg = "my_black", modifiers = ["bold"] }
 "ui.text.focus" = "my_white1"
 "ui.text" = "my_white1"
-"ui.virtual.inlay-hint" = { fg = "my_gray4", bg="my_black", modifiers = ["normal"] }
-"ui.virtual.inlay-hint.parameter" = { fg = "my_gray4", modifiers = ["normal"] }
+# Invalid modifier: "normal". See 'https://github.com/helix-editor/helix/issues/5709'
+"ui.virtual.inlay-hint" = { fg = "my_gray4", bg="my_black" } #, modifiers = ["normal"] }
+# "ui.virtual.inlay-hint.parameter" = { fg = "my_gray4", modifiers = ["normal"] }
+"ui.virtual.inlay-hint.parameter" = "my_gray4"
 "ui.virtual.inlay-hint.type" = { fg = "my_gray4", modifiers = ["italic"] }
+"ui.virtual.jump-label" = { fg = "my_yellow2", modifiers = ["bold"] }
 "ui.virtual.ruler" = { bg = "my_gray1" }
 "ui.virtual.whitespace" = { fg = "my_gray6" }
 "ui.virtual.wrap" = "my_gray4"

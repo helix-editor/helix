@@ -43,6 +43,7 @@
 
 "ui.virtual.whitespace" = { fg = "base01" }
 "ui.virtual.inlay-hint" = { fg = "base01", modifiers = ["italic"] }
+"ui.virtual.jump-label" = { fg = "red", modifiers = ["bold"] }
 
 # 行号栏
 # line number column
@@ -90,9 +91,6 @@
 # 影响 picker列表选中, 快捷键帮助窗口文本
 # Affects picker list selection, shortcut key help window text
 "ui.text.focus" = { fg = "blue", modifiers = ["bold"]}
-# file picker中， 预览的当前选中项
-# In file picker, the currently selected item of the preview
-"ui.highlight" = { fg = "red", modifiers = ["bold", "italic", "underlined"] }
 
 # 主光标/selection
 # main cursor/selection
@@ -106,7 +104,7 @@
 "ui.selection.primary" = { bg = "base015" }
 
 "ui.virtual.indent-guide" = { fg = "base02" }
-"ui.virtual.ruler" = { fg = "red" }
+"ui.virtual.ruler" = { bg = "base02" }
 
 # normal模式的光标
 # normal mode cursor
@@ -125,6 +123,8 @@
 "diagnostic.error" = { underline = { style = "curl", color = "red" } }
 "diagnostic.info" = { underline = { style = "curl", color = "blue" } }
 "diagnostic.hint" = { underline = { style = "curl", color = "base01" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 
 [palette]

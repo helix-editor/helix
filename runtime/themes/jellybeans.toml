@@ -99,6 +99,8 @@
 "diagnostic.info" = { underline = { color = "blue_accent", style = "line" } }
 "diagnostic.warning" = { underline = { color = "yellow_accent", style = "line" } }
 "diagnostic.error" = { underline = { color = "red_error", style = "line" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 [palette]
 background = "#151515"
