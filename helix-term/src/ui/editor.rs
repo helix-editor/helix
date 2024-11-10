@@ -771,8 +771,24 @@ impl EditorView {
         let info = theme.get("info");
         let hint = theme.get("hint");
 
+        let width = 50.min(viewport.width);
+
+        // place it in the nullspace if we have room, and on the same
+        // line as the cursor to make it easier to read
+        //
+        let gutter_size = view.gutter_offset(doc);
+        let left_nullspace = viewport.left() - view.area.left() - gutter_size;
+        let use_nullspace = left_nullspace > width;
+
+        let background_style = if use_nullspace {
+            theme
+                .try_get("ui.nullspace")
+                .unwrap_or(theme.get("ui.background"))
+        } else {
+            theme.get("ui.background")
+        };
+
         let mut lines = Vec::new();
-        let background_style = theme.get("ui.background");
         for diagnostic in diagnostics {
             let style = Style::reset()
                 .patch(background_style)
@@ -798,12 +814,26 @@ impl EditorView {
         let paragraph = Paragraph::new(&text)
             .alignment(Alignment::Right)
             .wrap(Wrap { trim: true });
-        let width = 100.min(viewport.width);
-        let height = 15.min(viewport.height);
-        paragraph.render(
-            Rect::new(viewport.right() - width, viewport.y + 1, width, height),
-            surface,
-        );
+        let height = 15.min(viewport.height).min(text.lines.len() as u16);
+
+        // decide where this diagnostic is gonna get rendered
+        //
+        let mut diag_x = viewport.right() - width;
+        let mut diag_y = viewport.top() + 1;
+
+        if use_nullspace {
+            if let Some(pos) = view.screen_coords_at_pos(doc, doc.text().slice(..), cursor) {
+                diag_x = viewport.left() - width - gutter_size - 2;
+                diag_y = pos.row as u16 + viewport.top();
+
+                // correct for OOB
+                if diag_y + height > viewport.bottom() {
+                    diag_y -= (diag_y + height) - viewport.bottom();
+                }
+            }
+        }
+
+        paragraph.render(Rect::new(diag_x, diag_y, width, height), surface);
     }
 
     /// Apply the highlighting on the lines where a cursor is active
@@ -826,7 +856,7 @@ impl EditorView {
 
         let primary_style = theme.get("ui.cursorline.primary");
         let secondary_style = theme.get("ui.cursorline.secondary");
-        let viewport = view.area;
+        let viewport = view.inner_area(doc);
 
         move |renderer: &mut TextRenderer, pos: LinePos| {
             let area = Rect::new(viewport.x, pos.visual_line, viewport.width, 1);
