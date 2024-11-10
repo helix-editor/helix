@@ -49,7 +49,8 @@ label = "yellow"
 "ui.background.separator" = { fg = "sglow" }
 "ui.linenr" = { fg = "light-grey", modifiers = ["italic"] }
 "ui.linenr.selected" = { fg = "bpink", modifiers = ["bold"] }
-"ui.statusline" = { fg = "black", bg = "light-grey", modifiers = ["bold", "dim"] }
+
+"ui.statusline" = { fg = "black", bg = "light-grey", modifiers = ["bold"] }
 "ui.statusline.inactive" = { fg = "black", bg = "bgrey-two" }
 "ui.popup" = { fg = "bgrey", bg = "#25262B" }
 "ui.window" = { fg = "white" }
@@ -62,6 +63,7 @@ label = "yellow"
 "ui.virtual.ruler" = { bg = "bgrey-two" }
 "ui.virtual.indent-guide" = { fg = "gray" }
 
+
 "ui.selection" = { bg = "maize" }
 "ui.selection.primary" = { fg = "white", bg = "bgrey" }
 "ui.cursor.select" = { bg = "white" }
@@ -69,6 +71,7 @@ label = "yellow"
 "ui.cursor.match" = { fg = "#212121", bg = "#6C6999" }
 "ui.cursor" = { bg = "bgrey-two", modifiers = ["reversed"] }
 "ui.cursorline.primary" = { bg = "#44414c" }
+
 "ui.highlight" = { bg = "white" }
 "ui.highlight.frameline" = { bg = "#634450" }
 "ui.debug" = { fg = "#634450" }

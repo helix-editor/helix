@@ -59,8 +59,10 @@
 "ui.text.focus" = { fg = "bogster-fg1", modifiers= ["bold"] }
 "ui.virtual.whitespace" = "bogster-base5"
 "ui.virtual.ruler" = { bg = "bogster-base0" }
+"ui.virtual.jump-label" = { fg = "bogster-base0", bg = "bogster-yellow", modifiers = [ "bold" ] }
 
-"ui.selection" = { bg = "bogster-base3" }
+"ui.selection" = { bg = "bogster-base2" }
+"ui.selection.primary" = { bg = "bogster-base3" }
 "ui.cursor.match" = { fg = "bogster-base3", bg = "bogster-orange" }
 "ui.cursor" = { fg = "bogster-base5", modifiers = ["reversed"] }
 
@@ -77,6 +79,8 @@
 "diagnostic.error" = { underline = { color = "bogster-lred", style = "curl"} }
 "diagnostic.info" = { underline = { color = "bogster-teal", style = "curl"} }
 "diagnostic.hint" = { underline = { color = "bogster-blue", style = "curl"} }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 [palette]
 bogster-yellow = "#dcb659"

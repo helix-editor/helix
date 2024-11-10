@@ -1,0 +1,29 @@
+[package]
+name = "helix-stdx"
+description = "Standard library extensions"
+include = ["src/**/*", "README.md"]
+version.workspace = true
+authors.workspace = true
+edition.workspace = true
+license.workspace = true
+rust-version.workspace = true
+categories.workspace = true
+repository.workspace = true
+homepage.workspace = true
+
+[dependencies]
+dunce = "1.0"
+etcetera = "0.8"
+ropey = { version = "1.6.1", default-features = false }
+which = "6.0"
+regex-cursor = "0.1.4"
+bitflags = "2.6"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_Storage_FileSystem", "Win32_System_Threading"] }
+
+[target.'cfg(unix)'.dependencies]
+rustix = { version = "0.38", features = ["fs"] }
+
+[dev-dependencies]
+tempfile = "3.13"

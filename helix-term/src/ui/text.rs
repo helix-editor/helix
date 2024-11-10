@@ -33,7 +33,7 @@ impl Component for Text {
     fn render(&mut self, area: Rect, surface: &mut Surface, _cx: &mut Context) {
         use tui::widgets::{Paragraph, Widget, Wrap};
 
-        let par = Paragraph::new(self.contents.clone()).wrap(Wrap { trim: false });
+        let par = Paragraph::new(&self.contents).wrap(Wrap { trim: false });
         // .scroll(x, y) offsets
 
         par.render(area, surface);

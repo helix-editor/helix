@@ -58,6 +58,7 @@ string = { fg = "brightMint" }
 "ui.text.inactive" = "darkerGray"
 "ui.virtual" = { fg = "darkerGray.b0" }
 "ui.virtual.indent-guide" = "#303442"
+"ui.virtual.ruler" = { bg ="selection" }
 
 "ui.selection" = { bg = "focus" }
 "ui.selection.primary" = { bg = "selection" }
@@ -76,6 +77,8 @@ string = { fg = "brightMint" }
 "diagnostic.info" = { underline = { color = "lightBlue", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "brightYellow", style = "curl" } }
 "diagnostic.error" = { underline = { color = "hotRed", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 hint = "lowerMint"
 info = "lightBlue"

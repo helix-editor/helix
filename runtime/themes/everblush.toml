@@ -61,7 +61,7 @@
 "ui.statusline.inactive" = { fg = "foreground", bg = "background" }
 "ui.statusline.normal" = { fg = "white", bg = "background" }
 "ui.statusline.insert" = { fg = "blue", bg = "background" }
-"ui.statusline.select" = { fg = "cyan", bg = "magenta" }
+"ui.statusline.select" = { fg = "magenta", bg = "background" }
 "ui.text" = { fg = "foreground" }
 "ui.text.focus" = { fg = "blue" }
 "ui.virtual.ruler" = { bg = "cursorline" }
@@ -79,6 +79,8 @@
 "diagnostic.warning" = { underline = { style = "curl", color = "yellow" } }
 "diagnostic.info" = { underline = { style = "curl", color = "blue" } }
 "diagnostic.hint" = { underline = { style = "curl", color = "green" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 "special" = { fg = "red-light" }
 
 "markup.heading" = { fg = "blue", modifiers = ["bold"] }

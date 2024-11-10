@@ -1,10 +1,3 @@
-[
- "("
- ")"
-] @punctuation.bracket
-
-":" @punctuation.delimiter
-
 ; Hint level tags
 ((tag (name) @hint)
  (#match? @hint "^(HINT|MARK|PASSED|STUB|MOCK)$"))
@@ -44,3 +37,5 @@
 ; User mention (@user)
 ("text" @tag
  (#match? @tag "^[@][a-zA-Z0-9_-]+$"))
+
+(uri) @markup.link.url

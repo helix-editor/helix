@@ -17,6 +17,8 @@
 "diagnostic.error" = { underline = { color = "red", style = "curl" } }
 "diagnostic.info" = { underline = { color = "mid-blue", style = "curl" } }
 "diagnostic.hint" = { underline = { color = "light-green", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 # UI ==============================
 # For styling helix itself.
@@ -43,10 +45,13 @@
 'ui.linenr' = {  fg = "gray"  } # Line numbers.
 'ui.linenr.selected' = { fg = "light-green", modifiers = [ "bold" ] } # Current line number.
 
-'ui.virtual' = { fg = "mid-green" } # Namespace for additions to the editing area.
+'ui.virtual' = { fg = "autocomp-green" } # Namespace for additions to the editing area.
 'ui.virtual.ruler' = { bg = "mid-green" } # Vertical rulers (colored columns in editing area).
-'ui.virtual.whitespace' = { fg = "light-gray"} # Whitespace markers in editing area.
-'ui.virtual.indent-guide' = { fg = "light-gray" } # Indentation guides.
+'ui.virtual.whitespace' = { fg = "mid-green"} # Whitespace markers in editing area.
+'ui.virtual.inlay-hint' = { fg = "autocomp-green" } # LSP inlay hints
+'ui.virtual.indent-guide' = { fg = "mid-green" } # Indentation guides.
+'ui.virtual.wrap' = { fg = "mid-green"} # Soft-wrap indicators
+'ui.virtual.jump-label' = { fg = "autocomp-green", modifiers = [ "bold" ] } # Word-jump labels
 
 'ui.statusline' = { fg = "light-green", bg = "autocomp-green"} # Status line.
 'ui.statusline.inactive' = { fg = "white", bg = "mid-green"} # Status line in unfocused windows.

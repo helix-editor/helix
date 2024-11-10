@@ -8,8 +8,8 @@ use crossterm::{
     },
     execute, queue,
     style::{
-        Attribute as CAttribute, Color as CColor, Print, SetAttribute, SetBackgroundColor,
-        SetForegroundColor,
+        Attribute as CAttribute, Color as CColor, Colors, Print, SetAttribute, SetBackgroundColor,
+        SetColors, SetForegroundColor,
     },
     terminal::{self, Clear, ClearType},
     Command,
@@ -23,12 +23,32 @@ use std::{
     fmt,
     io::{self, Write},
 };
+use termini::TermInfo;
 
 fn term_program() -> Option<String> {
-    std::env::var("TERM_PROGRAM").ok()
+    // Some terminals don't set $TERM_PROGRAM
+    match std::env::var("TERM_PROGRAM") {
+        Err(_) => std::env::var("TERM").ok(),
+        Ok(term_program) => Some(term_program),
+    }
 }
 fn vte_version() -> Option<usize> {
     std::env::var("VTE_VERSION").ok()?.parse().ok()
+}
+fn reset_cursor_approach(terminfo: TermInfo) -> String {
+    let mut reset_str = "\x1B[0 q".to_string();
+
+    if let Some(termini::Value::Utf8String(se_str)) = terminfo.extended_cap("Se") {
+        reset_str.push_str(se_str);
+    };
+
+    reset_str.push_str(
+        terminfo
+            .utf8_string_cap(termini::StringCapability::CursorNormal)
+            .unwrap_or(""),
+    );
+
+    reset_str
 }
 
 /// Describes terminal capabilities like extended underline, truecolor, etc.
@@ -52,23 +72,24 @@ impl Default for Capabilities {
 impl Capabilities {
     /// Detect capabilities from the terminfo database located based
     /// on the $TERM environment variable. If detection fails, returns
-    /// a default value where no capability is supported.
+    /// a default value where no capability is supported, or just undercurl
+    /// if config.undercurl is set.
     pub fn from_env_or_default(config: &EditorConfig) -> Self {
         match termini::TermInfo::from_env() {
-            Err(_) => Capabilities::default(),
+            Err(_) => Capabilities {
+                has_extended_underlines: config.undercurl,
+                ..Capabilities::default()
+            },
             Ok(t) => Capabilities {
                 // Smulx, VTE: https://unix.stackexchange.com/a/696253/246284
                 // Su (used by kitty): https://sw.kovidgoyal.net/kitty/underlines
-                // WezTerm supports underlines but a lot of distros don't properly install it's terminfo
+                // WezTerm supports underlines but a lot of distros don't properly install its terminfo
                 has_extended_underlines: config.undercurl
                     || t.extended_cap("Smulx").is_some()
                     || t.extended_cap("Su").is_some()
                     || vte_version() >= Some(5102)
                     || matches!(term_program().as_deref(), Some("WezTerm")),
-                reset_cursor_command: t
-                    .utf8_string_cap(termini::StringCapability::CursorNormal)
-                    .unwrap_or("\x1B[0 q")
-                    .to_string(),
+                reset_cursor_command: reset_cursor_approach(t),
             },
         }
     }
@@ -79,6 +100,7 @@ pub struct CrosstermBackend<W: Write> {
     capabilities: Capabilities,
     supports_keyboard_enhancement_protocol: OnceCell<bool>,
     mouse_capture_enabled: bool,
+    supports_bracketed_paste: bool,
 }
 
 impl<W> CrosstermBackend<W>
@@ -86,11 +108,16 @@ where
     W: Write,
 {
     pub fn new(buffer: W, config: &EditorConfig) -> CrosstermBackend<W> {
+        // helix is not usable without colors, but crossterm will disable
+        // them by default if NO_COLOR is set in the environment. Override
+        // this behaviour.
+        crossterm::style::force_color_output(true);
         CrosstermBackend {
             buffer,
             capabilities: Capabilities::from_env_or_default(config),
             supports_keyboard_enhancement_protocol: OnceCell::new(),
             mouse_capture_enabled: false,
+            supports_bracketed_paste: true,
         }
     }
 
@@ -134,9 +161,16 @@ where
         execute!(
             self.buffer,
             terminal::EnterAlternateScreen,
-            EnableBracketedPaste,
             EnableFocusChange
         )?;
+        match execute!(self.buffer, EnableBracketedPaste,) {
+            Err(err) if err.kind() == io::ErrorKind::Unsupported => {
+                log::warn!("Bracketed paste is not supported on this terminal.");
+                self.supports_bracketed_paste = false;
+            }
+            Err(err) => return Err(err),
+            Ok(_) => (),
+        };
         execute!(self.buffer, terminal::Clear(terminal::ClearType::All))?;
         if config.enable_mouse_capture {
             execute!(self.buffer, EnableMouseCapture)?;
@@ -177,9 +211,11 @@ where
         if self.supports_keyboard_enhancement_protocol() {
             execute!(self.buffer, PopKeyboardEnhancementFlags)?;
         }
+        if self.supports_bracketed_paste {
+            execute!(self.buffer, DisableBracketedPaste,)?;
+        }
         execute!(
             self.buffer,
-            DisableBracketedPaste,
             DisableFocusChange,
             terminal::LeaveAlternateScreen
         )?;
@@ -195,12 +231,8 @@ where
         // disable without calling enable previously
         let _ = execute!(stdout, DisableMouseCapture);
         let _ = execute!(stdout, PopKeyboardEnhancementFlags);
-        execute!(
-            stdout,
-            DisableBracketedPaste,
-            DisableFocusChange,
-            terminal::LeaveAlternateScreen
-        )?;
+        let _ = execute!(stdout, DisableBracketedPaste);
+        execute!(stdout, DisableFocusChange, terminal::LeaveAlternateScreen)?;
         terminal::disable_raw_mode()
     }
 
@@ -228,14 +260,12 @@ where
                 diff.queue(&mut self.buffer)?;
                 modifier = cell.modifier;
             }
-            if cell.fg != fg {
-                let color = CColor::from(cell.fg);
-                queue!(self.buffer, SetForegroundColor(color))?;
+            if cell.fg != fg || cell.bg != bg {
+                queue!(
+                    self.buffer,
+                    SetColors(Colors::new(cell.fg.into(), cell.bg.into()))
+                )?;
                 fg = cell.fg;
-            }
-            if cell.bg != bg {
-                let color = CColor::from(cell.bg);
-                queue!(self.buffer, SetBackgroundColor(color))?;
                 bg = cell.bg;
             }
 

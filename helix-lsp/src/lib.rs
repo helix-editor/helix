@@ -1,20 +1,23 @@
 mod client;
 pub mod file_event;
+mod file_operations;
 pub mod jsonrpc;
 pub mod snippet;
 mod transport;
 
+use arc_swap::ArcSwap;
 pub use client::Client;
 pub use futures_executor::block_on;
+pub use helix_lsp_types as lsp;
 pub use jsonrpc::Call;
 pub use lsp::{Position, Url};
-pub use lsp_types as lsp;
 
 use futures_util::stream::select_all::SelectAll;
-use helix_core::{
-    path,
-    syntax::{LanguageConfiguration, LanguageServerConfiguration, LanguageServerFeatures},
+use helix_core::syntax::{
+    LanguageConfiguration, LanguageServerConfiguration, LanguageServerFeatures,
 };
+use helix_stdx::path;
+use slotmap::SlotMap;
 use tokio::sync::mpsc::UnboundedReceiver;
 
 use std::{
@@ -26,8 +29,9 @@ use std::{
 use thiserror::Error;
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
-pub type Result<T> = core::result::Result<T, Error>;
+pub type Result<T, E = Error> = core::result::Result<T, E>;
 pub type LanguageServerName = String;
+pub use helix_core::diagnostic::LanguageServerId;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -43,6 +47,8 @@ pub enum Error {
     StreamClosed,
     #[error("Unhandled")]
     Unhandled,
+    #[error(transparent)]
+    ExecutableNotFound(#[from] helix_stdx::env::ExecutableNotFoundError),
     #[error(transparent)]
     Other(#[from] anyhow::Error),
 }
@@ -278,7 +284,6 @@ pub mod util {
         if replace_mode {
             end += text
                 .chars_at(cursor)
-                .skip(1)
                 .take_while(|ch| chars::char_is_word(*ch))
                 .count();
         }
@@ -498,7 +503,7 @@ pub mod util {
     ) -> Transaction {
         // Sort edits by start range, since some LSPs (Omnisharp) send them
         // in reverse order.
-        edits.sort_unstable_by_key(|edit| edit.range.start);
+        edits.sort_by_key(|edit| edit.range.start);
 
         // Generate a diff if the edit is a full document replacement.
         #[allow(clippy::collapsible_if)]
@@ -535,6 +540,16 @@ pub mod util {
                 } else {
                     return (0, 0, None);
                 };
+
+                if start > end {
+                    log::error!(
+                        "Invalid LSP text edit start {:?} > end {:?}, discarding",
+                        start,
+                        end
+                    );
+                    return (0, 0, None);
+                }
+
                 (start, end, replacement)
             }),
         )
@@ -549,6 +564,7 @@ pub enum MethodCall {
     WorkspaceConfiguration(lsp::ConfigurationParams),
     RegisterCapability(lsp::RegistrationParams),
     UnregisterCapability(lsp::UnregistrationParams),
+    ShowDocument(lsp::ShowDocumentParams),
 }
 
 impl MethodCall {
@@ -575,6 +591,10 @@ impl MethodCall {
             lsp::request::UnregisterCapability::METHOD => {
                 let params: lsp::UnregistrationParams = params.parse()?;
                 Self::UnregisterCapability(params)
+            }
+            lsp::request::ShowDocument::METHOD => {
+                let params: lsp::ShowDocumentParams = params.parse()?;
+                Self::ShowDocument(params)
             }
             _ => {
                 return Err(Error::Unhandled);
@@ -631,38 +651,42 @@ impl Notification {
 
 #[derive(Debug)]
 pub struct Registry {
-    inner: HashMap<LanguageServerName, Vec<Arc<Client>>>,
-    syn_loader: Arc<helix_core::syntax::Loader>,
-    counter: usize,
-    pub incoming: SelectAll<UnboundedReceiverStream<(usize, Call)>>,
+    inner: SlotMap<LanguageServerId, Arc<Client>>,
+    inner_by_name: HashMap<LanguageServerName, Vec<Arc<Client>>>,
+    syn_loader: Arc<ArcSwap<helix_core::syntax::Loader>>,
+    pub incoming: SelectAll<UnboundedReceiverStream<(LanguageServerId, Call)>>,
     pub file_event_handler: file_event::Handler,
 }
 
 impl Registry {
-    pub fn new(syn_loader: Arc<helix_core::syntax::Loader>) -> Self {
+    pub fn new(syn_loader: Arc<ArcSwap<helix_core::syntax::Loader>>) -> Self {
         Self {
-            inner: HashMap::new(),
+            inner: SlotMap::with_key(),
+            inner_by_name: HashMap::new(),
             syn_loader,
-            counter: 0,
             incoming: SelectAll::new(),
             file_event_handler: file_event::Handler::new(),
         }
     }
 
-    pub fn get_by_id(&self, id: usize) -> Option<&Client> {
-        self.inner
-            .values()
-            .flatten()
-            .find(|client| client.id() == id)
-            .map(|client| &**client)
+    pub fn get_by_id(&self, id: LanguageServerId) -> Option<&Arc<Client>> {
+        self.inner.get(id)
     }
 
-    pub fn remove_by_id(&mut self, id: usize) {
+    pub fn remove_by_id(&mut self, id: LanguageServerId) {
+        let Some(client) = self.inner.remove(id) else {
+            log::debug!("client was already removed");
+            return;
+        };
         self.file_event_handler.remove_client(id);
-        self.inner.retain(|_, language_servers| {
-            language_servers.retain(|ls| id != ls.id());
-            !language_servers.is_empty()
-        });
+        let instances = self
+            .inner_by_name
+            .get_mut(client.name())
+            .expect("inner and inner_by_name must be synced");
+        instances.retain(|ls| id != ls.id());
+        if instances.is_empty() {
+            self.inner_by_name.remove(client.name());
+        }
     }
 
     fn start_client(
@@ -672,25 +696,28 @@ impl Registry {
         doc_path: Option<&std::path::PathBuf>,
         root_dirs: &[PathBuf],
         enable_snippets: bool,
-    ) -> Result<Arc<Client>> {
-        let config = self
-            .syn_loader
+    ) -> Result<Arc<Client>, StartupError> {
+        let syn_loader = self.syn_loader.load();
+        let config = syn_loader
             .language_server_configs()
             .get(&name)
             .ok_or_else(|| anyhow::anyhow!("Language server '{name}' not defined"))?;
-        let id = self.counter;
-        self.counter += 1;
-        let NewClient(client, incoming) = start_client(
-            id,
-            name,
-            ls_config,
-            config,
-            doc_path,
-            root_dirs,
-            enable_snippets,
-        )?;
-        self.incoming.push(UnboundedReceiverStream::new(incoming));
-        Ok(client)
+        let id = self.inner.try_insert_with_key(|id| {
+            start_client(
+                id,
+                name,
+                ls_config,
+                config,
+                doc_path,
+                root_dirs,
+                enable_snippets,
+            )
+            .map(|client| {
+                self.incoming.push(UnboundedReceiverStream::new(client.1));
+                client.0
+            })
+        })?;
+        Ok(self.inner[id].clone())
     }
 
     /// If this method is called, all documents that have a reference to language servers used by the language config have to refresh their language servers,
@@ -707,41 +734,49 @@ impl Registry {
             .language_servers
             .iter()
             .filter_map(|LanguageServerFeatures { name, .. }| {
-                if self.inner.contains_key(name) {
-                    let client = match self.start_client(
-                        name.clone(),
-                        language_config,
-                        doc_path,
-                        root_dirs,
-                        enable_snippets,
-                    ) {
-                        Ok(client) => client,
-                        error => return Some(error),
-                    };
-                    let old_clients = self
-                        .inner
-                        .insert(name.clone(), vec![client.clone()])
-                        .unwrap();
-
+                if let Some(old_clients) = self.inner_by_name.remove(name) {
+                    if old_clients.is_empty() {
+                        log::info!("restarting client for '{name}' which was manually stopped");
+                    } else {
+                        log::info!("stopping existing clients for '{name}'");
+                    }
                     for old_client in old_clients {
                         self.file_event_handler.remove_client(old_client.id());
+                        self.inner.remove(old_client.id());
                         tokio::spawn(async move {
                             let _ = old_client.force_shutdown().await;
                         });
                     }
-
-                    Some(Ok(client))
-                } else {
-                    None
                 }
+                let client = match self.start_client(
+                    name.clone(),
+                    language_config,
+                    doc_path,
+                    root_dirs,
+                    enable_snippets,
+                ) {
+                    Ok(client) => client,
+                    Err(StartupError::NoRequiredRootFound) => return None,
+                    Err(StartupError::Error(err)) => return Some(Err(err)),
+                };
+                self.inner_by_name
+                    .insert(name.to_owned(), vec![client.clone()]);
+
+                Some(Ok(client))
             })
             .collect()
     }
 
     pub fn stop(&mut self, name: &str) {
-        if let Some(clients) = self.inner.remove(name) {
-            for client in clients {
+        if let Some(clients) = self.inner_by_name.get_mut(name) {
+            // Drain the clients vec so that the entry in `inner_by_name` remains
+            // empty. We use the empty vec as a "tombstone" to mean that a server
+            // has been manually stopped with :lsp-stop and shouldn't be automatically
+            // restarted by `get`. :lsp-restart can be used to restart the server
+            // manually.
+            for client in clients.drain(..) {
                 self.file_event_handler.remove_client(client.id());
+                self.inner.remove(client.id());
                 tokio::spawn(async move {
                     let _ = client.force_shutdown().await;
                 });
@@ -756,13 +791,21 @@ impl Registry {
         root_dirs: &'a [PathBuf],
         enable_snippets: bool,
     ) -> impl Iterator<Item = (LanguageServerName, Result<Arc<Client>>)> + 'a {
-        language_config.language_servers.iter().map(
+        language_config.language_servers.iter().filter_map(
             move |LanguageServerFeatures { name, .. }| {
-                if let Some(clients) = self.inner.get(name) {
+                if let Some(clients) = self.inner_by_name.get(name) {
+                    // If the clients vec is empty, do not automatically start a client
+                    // for this server. The empty vec is a tombstone left to mean that a
+                    // server has been manually stopped and shouldn't be started automatically.
+                    // See `stop`.
+                    if clients.is_empty() {
+                        return None;
+                    }
+
                     if let Some((_, client)) = clients.iter().enumerate().find(|(i, client)| {
                         client.try_add_doc(&language_config.roots, root_dirs, doc_path, *i == 0)
                     }) {
-                        return (name.to_owned(), Ok(client.clone()));
+                        return Some((name.to_owned(), Ok(client.clone())));
                     }
                 }
                 match self.start_client(
@@ -773,20 +816,21 @@ impl Registry {
                     enable_snippets,
                 ) {
                     Ok(client) => {
-                        self.inner
+                        self.inner_by_name
                             .entry(name.to_owned())
                             .or_default()
                             .push(client.clone());
-                        (name.clone(), Ok(client))
+                        Some((name.clone(), Ok(client)))
                     }
-                    Err(err) => (name.to_owned(), Err(err)),
+                    Err(StartupError::NoRequiredRootFound) => None,
+                    Err(StartupError::Error(err)) => Some((name.to_owned(), Err(err))),
                 }
             },
         )
     }
 
     pub fn iter_clients(&self) -> impl Iterator<Item = &Arc<Client>> {
-        self.inner.values().flatten()
+        self.inner.values()
     }
 }
 
@@ -809,7 +853,7 @@ impl ProgressStatus {
 /// Acts as a container for progress reported by language servers. Each server
 /// has a unique id assigned at creation through [`Registry`]. This id is then used
 /// to store the progress in this map.
-pub struct LspProgressMap(HashMap<usize, HashMap<lsp::ProgressToken, ProgressStatus>>);
+pub struct LspProgressMap(HashMap<LanguageServerId, HashMap<lsp::ProgressToken, ProgressStatus>>);
 
 impl LspProgressMap {
     pub fn new() -> Self {
@@ -817,28 +861,35 @@ impl LspProgressMap {
     }
 
     /// Returns a map of all tokens corresponding to the language server with `id`.
-    pub fn progress_map(&self, id: usize) -> Option<&HashMap<lsp::ProgressToken, ProgressStatus>> {
+    pub fn progress_map(
+        &self,
+        id: LanguageServerId,
+    ) -> Option<&HashMap<lsp::ProgressToken, ProgressStatus>> {
         self.0.get(&id)
     }
 
-    pub fn is_progressing(&self, id: usize) -> bool {
+    pub fn is_progressing(&self, id: LanguageServerId) -> bool {
         self.0.get(&id).map(|it| !it.is_empty()).unwrap_or_default()
     }
 
     /// Returns last progress status for a given server with `id` and `token`.
-    pub fn progress(&self, id: usize, token: &lsp::ProgressToken) -> Option<&ProgressStatus> {
+    pub fn progress(
+        &self,
+        id: LanguageServerId,
+        token: &lsp::ProgressToken,
+    ) -> Option<&ProgressStatus> {
         self.0.get(&id).and_then(|values| values.get(token))
     }
 
     /// Checks if progress `token` for server with `id` is created.
-    pub fn is_created(&mut self, id: usize, token: &lsp::ProgressToken) -> bool {
+    pub fn is_created(&mut self, id: LanguageServerId, token: &lsp::ProgressToken) -> bool {
         self.0
             .get(&id)
             .map(|values| values.get(token).is_some())
             .unwrap_or_default()
     }
 
-    pub fn create(&mut self, id: usize, token: lsp::ProgressToken) {
+    pub fn create(&mut self, id: LanguageServerId, token: lsp::ProgressToken) {
         self.0
             .entry(id)
             .or_default()
@@ -848,7 +899,7 @@ impl LspProgressMap {
     /// Ends the progress by removing the `token` from server with `id`, if removed returns the value.
     pub fn end_progress(
         &mut self,
-        id: usize,
+        id: LanguageServerId,
         token: &lsp::ProgressToken,
     ) -> Option<ProgressStatus> {
         self.0.get_mut(&id).and_then(|vals| vals.remove(token))
@@ -857,7 +908,7 @@ impl LspProgressMap {
     /// Updates the progress of `token` for server with `id` to `status`, returns the value replaced or `None`.
     pub fn update(
         &mut self,
-        id: usize,
+        id: LanguageServerId,
         token: lsp::ProgressToken,
         status: lsp::WorkDoneProgress,
     ) -> Option<ProgressStatus> {
@@ -868,30 +919,68 @@ impl LspProgressMap {
     }
 }
 
-struct NewClient(Arc<Client>, UnboundedReceiver<(usize, Call)>);
+struct NewClient(Arc<Client>, UnboundedReceiver<(LanguageServerId, Call)>);
+
+enum StartupError {
+    NoRequiredRootFound,
+    Error(Error),
+}
+
+impl<T: Into<Error>> From<T> for StartupError {
+    fn from(value: T) -> Self {
+        StartupError::Error(value.into())
+    }
+}
 
 /// start_client takes both a LanguageConfiguration and a LanguageServerConfiguration to ensure that
 /// it is only called when it makes sense.
 fn start_client(
-    id: usize,
+    id: LanguageServerId,
     name: String,
     config: &LanguageConfiguration,
     ls_config: &LanguageServerConfiguration,
     doc_path: Option<&std::path::PathBuf>,
     root_dirs: &[PathBuf],
     enable_snippets: bool,
-) -> Result<NewClient> {
+) -> Result<NewClient, StartupError> {
+    let (workspace, workspace_is_cwd) = helix_loader::find_workspace();
+    let workspace = path::normalize(workspace);
+    let root = find_lsp_workspace(
+        doc_path
+            .and_then(|x| x.parent().and_then(|x| x.to_str()))
+            .unwrap_or("."),
+        &config.roots,
+        config.workspace_lsp_roots.as_deref().unwrap_or(root_dirs),
+        &workspace,
+        workspace_is_cwd,
+    );
+
+    // `root_uri` and `workspace_folder` can be empty in case there is no workspace
+    // `root_url` can not, use `workspace` as a fallback
+    let root_path = root.clone().unwrap_or_else(|| workspace.clone());
+    let root_uri = root.and_then(|root| lsp::Url::from_file_path(root).ok());
+
+    if let Some(globset) = &ls_config.required_root_patterns {
+        if !root_path
+            .read_dir()?
+            .flatten()
+            .map(|entry| entry.file_name())
+            .any(|entry| globset.is_match(entry))
+        {
+            return Err(StartupError::NoRequiredRootFound);
+        }
+    }
+
     let (client, incoming, initialize_notify) = Client::start(
         &ls_config.command,
         &ls_config.args,
         ls_config.config.clone(),
         ls_config.environment.clone(),
-        &config.roots,
-        config.workspace_lsp_roots.as_deref().unwrap_or(root_dirs),
+        root_path,
+        root_uri,
         id,
         name,
         ls_config.timeout,
-        doc_path,
     )?;
 
     let client = Arc::new(client);
@@ -915,10 +1004,17 @@ fn start_client(
         }
 
         // next up, notify<initialized>
-        _client
+        let notification_result = _client
             .notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
-            .await
-            .unwrap();
+            .await;
+
+        if let Err(e) = notification_result {
+            log::error!(
+                "failed to notify language server of its initialization: {}",
+                e
+            );
+            return;
+        }
 
         initialize_notify.notify_one();
     });
@@ -946,10 +1042,10 @@ pub fn find_lsp_workspace(
     let mut file = if file.is_absolute() {
         file.to_path_buf()
     } else {
-        let current_dir = helix_loader::current_working_dir();
+        let current_dir = helix_stdx::env::current_working_dir();
         current_dir.join(file)
     };
-    file = path::get_normalized_path(&file);
+    file = path::normalize(&file);
 
     if !file.starts_with(workspace) {
         return None;
@@ -966,7 +1062,7 @@ pub fn find_lsp_workspace(
 
         if root_dirs
             .iter()
-            .any(|root_dir| path::get_normalized_path(&workspace.join(root_dir)) == ancestor)
+            .any(|root_dir| path::normalize(workspace.join(root_dir)) == ancestor)
         {
             // if the worskapce is the cwd do not search any higher for workspaces
             // but specify
@@ -1017,7 +1113,7 @@ mod tests {
 
     #[test]
     fn emoji_format_gh_4791() {
-        use lsp_types::{Position, Range, TextEdit};
+        use lsp::{Position, Range, TextEdit};
 
         let edits = vec![
             TextEdit {

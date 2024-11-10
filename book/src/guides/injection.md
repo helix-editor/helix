@@ -1,4 +1,4 @@
-# Adding Injection Queries
+## Adding Injection Queries
 
 Writing language injection queries allows one to highlight a specific node as a different language.
 In addition to the [standard][upstream-docs] language injection options used by tree-sitter, there
@@ -53,5 +53,8 @@ The first argument (a capture) must be equal to the second argument
 - `#match?` (standard):
 The first argument (a capture) must match the regex given in the
 second argument (a string).
+
+- `#any-of?` (standard):
+The first argument (a capture) must be one of the other arguments (strings).
 
 [upstream-docs]: http://tree-sitter.github.io/tree-sitter/syntax-highlighting#language-injection

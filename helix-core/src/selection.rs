@@ -7,11 +7,14 @@ use crate::{
         ensure_grapheme_boundary_next, ensure_grapheme_boundary_prev, next_grapheme_boundary,
         prev_grapheme_boundary,
     },
+    line_ending::get_line_ending,
     movement::Direction,
     Assoc, ChangeSet, RopeGraphemes, RopeSlice,
 };
+use helix_stdx::rope::{self, RopeSliceExt};
 use smallvec::{smallvec, SmallVec};
-use std::borrow::Cow;
+use std::{borrow::Cow, iter, slice};
+use tree_sitter::Node;
 
 /// A single selection range.
 ///
@@ -71,6 +74,12 @@ impl Range {
         Self::new(head, head)
     }
 
+    pub fn from_node(node: Node, text: RopeSlice, direction: Direction) -> Self {
+        let from = text.byte_to_char(node.start_byte());
+        let to = text.byte_to_char(node.end_byte());
+        Range::new(from, to).with_direction(direction)
+    }
+
     /// Start of the range.
     #[inline]
     #[must_use]
@@ -113,7 +122,7 @@ impl Range {
     }
 
     /// `Direction::Backward` when head < anchor.
-    /// `Direction::Backward` otherwise.
+    /// `Direction::Forward` otherwise.
     #[inline]
     #[must_use]
     pub fn direction(&self) -> Direction {
@@ -166,7 +175,7 @@ impl Range {
     /// function runs in O(N) (N is number of changes) and can therefore
     /// cause performance problems if run for a large number of ranges as the
     /// complexity is then O(MN) (for multicuror M=N usually). Instead use
-    /// [Selection::map] or [ChangeSet::update_positions] instead
+    /// [Selection::map] or [ChangeSet::update_positions].
     pub fn map(mut self, changes: &ChangeSet) -> Self {
         use std::cmp::Ordering;
         if changes.is_empty() {
@@ -175,16 +184,16 @@ impl Range {
 
         let positions_to_map = match self.anchor.cmp(&self.head) {
             Ordering::Equal => [
-                (&mut self.anchor, Assoc::After),
-                (&mut self.head, Assoc::After),
+                (&mut self.anchor, Assoc::AfterSticky),
+                (&mut self.head, Assoc::AfterSticky),
             ],
             Ordering::Less => [
-                (&mut self.anchor, Assoc::After),
-                (&mut self.head, Assoc::Before),
+                (&mut self.anchor, Assoc::AfterSticky),
+                (&mut self.head, Assoc::BeforeSticky),
             ],
             Ordering::Greater => [
-                (&mut self.head, Assoc::After),
-                (&mut self.anchor, Assoc::Before),
+                (&mut self.head, Assoc::AfterSticky),
+                (&mut self.anchor, Assoc::BeforeSticky),
             ],
         };
         changes.update_positions(positions_to_map.into_iter());
@@ -374,6 +383,12 @@ impl Range {
         let second = graphemes.next();
         first.is_some() && second.is_none()
     }
+
+    /// Converts this char range into an in order byte range, discarding
+    /// direction.
+    pub fn into_byte_range(&self, text: RopeSlice) -> (usize, usize) {
+        (text.char_to_byte(self.from()), text.char_to_byte(self.to()))
+    }
 }
 
 impl From<(usize, usize)> for Range {
@@ -467,16 +482,16 @@ impl Selection {
             range.old_visual_position = None;
             match range.anchor.cmp(&range.head) {
                 Ordering::Equal => [
-                    (&mut range.anchor, Assoc::After),
-                    (&mut range.head, Assoc::After),
+                    (&mut range.anchor, Assoc::AfterSticky),
+                    (&mut range.head, Assoc::AfterSticky),
                 ],
                 Ordering::Less => [
-                    (&mut range.anchor, Assoc::After),
-                    (&mut range.head, Assoc::Before),
+                    (&mut range.anchor, Assoc::AfterSticky),
+                    (&mut range.head, Assoc::BeforeSticky),
                 ],
                 Ordering::Greater => [
-                    (&mut range.head, Assoc::After),
-                    (&mut range.anchor, Assoc::Before),
+                    (&mut range.head, Assoc::AfterSticky),
+                    (&mut range.anchor, Assoc::BeforeSticky),
                 ],
             }
         });
@@ -486,6 +501,16 @@ impl Selection {
 
     pub fn ranges(&self) -> &[Range] {
         &self.ranges
+    }
+
+    /// Returns an iterator over the line ranges of each range in the selection.
+    ///
+    /// Adjacent and overlapping line ranges of the [Range]s in the selection are merged.
+    pub fn line_ranges<'a>(&'a self, text: RopeSlice<'a>) -> LineRangeIter<'a> {
+        LineRangeIter {
+            ranges: self.ranges.iter().peekable(),
+            text,
+        }
     }
 
     pub fn primary_index(&self) -> usize {
@@ -516,6 +541,8 @@ impl Selection {
     }
 
     /// Normalizes a `Selection`.
+    ///
+    /// Ranges are sorted by [Range::from], with overlapping ranges merged.
     fn normalize(mut self) -> Self {
         if self.len() < 2 {
             return self;
@@ -703,17 +730,53 @@ impl IntoIterator for Selection {
     }
 }
 
+impl From<Range> for Selection {
+    fn from(range: Range) -> Self {
+        Self {
+            ranges: smallvec![range],
+            primary_index: 0,
+        }
+    }
+}
+
+pub struct LineRangeIter<'a> {
+    ranges: iter::Peekable<slice::Iter<'a, Range>>,
+    text: RopeSlice<'a>,
+}
+
+impl<'a> Iterator for LineRangeIter<'a> {
+    type Item = (usize, usize);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let (start, mut end) = self.ranges.next()?.line_range(self.text);
+        while let Some((next_start, next_end)) =
+            self.ranges.peek().map(|range| range.line_range(self.text))
+        {
+            // Merge overlapping and adjacent ranges.
+            // This subtraction cannot underflow because the ranges are sorted.
+            if next_start - end <= 1 {
+                end = next_end;
+                self.ranges.next();
+            } else {
+                break;
+            }
+        }
+
+        Some((start, end))
+    }
+}
+
 // TODO: checkSelection -> check if valid for doc length && sorted
 
 pub fn keep_or_remove_matches(
     text: RopeSlice,
     selection: &Selection,
-    regex: &crate::regex::Regex,
+    regex: &rope::Regex,
     remove: bool,
 ) -> Option<Selection> {
     let result: SmallVec<_> = selection
         .iter()
-        .filter(|range| regex.is_match(&range.fragment(text)) ^ remove)
+        .filter(|range| regex.is_match(text.regex_input_at(range.from()..range.to())) ^ remove)
         .copied()
         .collect();
 
@@ -724,25 +787,20 @@ pub fn keep_or_remove_matches(
     None
 }
 
+// TODO: support to split on capture #N instead of whole match
 pub fn select_on_matches(
     text: RopeSlice,
     selection: &Selection,
-    regex: &crate::regex::Regex,
+    regex: &rope::Regex,
 ) -> Option<Selection> {
     let mut result = SmallVec::with_capacity(selection.len());
 
     for sel in selection {
-        // TODO: can't avoid occasional allocations since Regex can't operate on chunks yet
-        let fragment = sel.fragment(text);
-
-        let sel_start = sel.from();
-        let start_byte = text.char_to_byte(sel_start);
-
-        for mat in regex.find_iter(&fragment) {
+        for mat in regex.find_iter(text.regex_input_at(sel.from()..sel.to())) {
             // TODO: retain range direction
 
-            let start = text.byte_to_char(start_byte + mat.start());
-            let end = text.byte_to_char(start_byte + mat.end());
+            let start = text.byte_to_char(mat.start());
+            let end = text.byte_to_char(mat.end());
 
             let range = Range::new(start, end);
             // Make sure the match is not right outside of the selection.
@@ -761,12 +819,7 @@ pub fn select_on_matches(
     None
 }
 
-// TODO: support to split on capture #N instead of whole match
-pub fn split_on_matches(
-    text: RopeSlice,
-    selection: &Selection,
-    regex: &crate::regex::Regex,
-) -> Selection {
+pub fn split_on_newline(text: RopeSlice, selection: &Selection) -> Selection {
     let mut result = SmallVec::with_capacity(selection.len());
 
     for sel in selection {
@@ -776,21 +829,49 @@ pub fn split_on_matches(
             continue;
         }
 
-        // TODO: can't avoid occasional allocations since Regex can't operate on chunks yet
-        let fragment = sel.fragment(text);
-
         let sel_start = sel.from();
         let sel_end = sel.to();
 
-        let start_byte = text.char_to_byte(sel_start);
-
         let mut start = sel_start;
 
-        for mat in regex.find_iter(&fragment) {
+        for line in sel.slice(text).lines() {
+            let Some(line_ending) = get_line_ending(&line) else {
+                break;
+            };
+            let line_end = start + line.len_chars();
             // TODO: retain range direction
-            let end = text.byte_to_char(start_byte + mat.start());
+            result.push(Range::new(start, line_end - line_ending.len_chars()));
+            start = line_end;
+        }
+
+        if start < sel_end {
+            result.push(Range::new(start, sel_end));
+        }
+    }
+
+    // TODO: figure out a new primary index
+    Selection::new(result, 0)
+}
+
+pub fn split_on_matches(text: RopeSlice, selection: &Selection, regex: &rope::Regex) -> Selection {
+    let mut result = SmallVec::with_capacity(selection.len());
+
+    for sel in selection {
+        // Special case: zero-width selection.
+        if sel.from() == sel.to() {
+            result.push(*sel);
+            continue;
+        }
+
+        let sel_start = sel.from();
+        let sel_end = sel.to();
+        let mut start = sel_start;
+
+        for mat in regex.find_iter(text.regex_input_at(sel_start..sel_end)) {
+            // TODO: retain range direction
+            let end = text.byte_to_char(mat.start());
             result.push(Range::new(start, end));
-            start = text.byte_to_char(start_byte + mat.end());
+            start = text.byte_to_char(mat.end());
         }
 
         if start < sel_end {
@@ -1021,14 +1102,12 @@ mod test {
 
     #[test]
     fn test_select_on_matches() {
-        use crate::regex::{Regex, RegexBuilder};
-
         let r = Rope::from_str("Nobody expects the Spanish inquisition");
         let s = r.slice(..);
 
         let selection = Selection::single(0, r.len_chars());
         assert_eq!(
-            select_on_matches(s, &selection, &Regex::new(r"[A-Z][a-z]*").unwrap()),
+            select_on_matches(s, &selection, &rope::Regex::new(r"[A-Z][a-z]*").unwrap()),
             Some(Selection::new(
                 smallvec![Range::new(0, 6), Range::new(19, 26)],
                 0
@@ -1038,8 +1117,14 @@ mod test {
         let r = Rope::from_str("This\nString\n\ncontains multiple\nlines");
         let s = r.slice(..);
 
-        let start_of_line = RegexBuilder::new(r"^").multi_line(true).build().unwrap();
-        let end_of_line = RegexBuilder::new(r"$").multi_line(true).build().unwrap();
+        let start_of_line = rope::RegexBuilder::new()
+            .syntax(rope::Config::new().multi_line(true))
+            .build(r"^")
+            .unwrap();
+        let end_of_line = rope::RegexBuilder::new()
+            .syntax(rope::Config::new().multi_line(true))
+            .build(r"$")
+            .unwrap();
 
         // line without ending
         assert_eq!(
@@ -1077,9 +1162,9 @@ mod test {
             select_on_matches(
                 s,
                 &Selection::single(0, s.len_chars()),
-                &RegexBuilder::new(r"^[a-z ]*$")
-                    .multi_line(true)
-                    .build()
+                &rope::RegexBuilder::new()
+                    .syntax(rope::Config::new().multi_line(true))
+                    .build(r"^[a-z ]*$")
                     .unwrap()
             ),
             Some(Selection::new(
@@ -1117,6 +1202,32 @@ mod test {
         assert_eq!(Range::new(3, 2).line_range(s), (1, 1));
         assert_eq!(Range::new(8, 3).line_range(s), (1, 2));
         assert_eq!(Range::new(12, 0).line_range(s), (0, 2));
+    }
+
+    #[test]
+    fn selection_line_ranges() {
+        let (text, selection) = crate::test::print(
+            r#"                                           L0
+            #[|these]# line #(|ranges)# are #(|merged)#   L1
+                                                          L2
+            single one-line #(|range)#                    L3
+                                                          L4
+            single #(|multiline                           L5
+            range)#                                       L6
+                                                          L7
+            these #(|multiline                            L8
+            ranges)# are #(|also                          L9
+            merged)#                                      L10
+                                                          L11
+            adjacent #(|ranges)#                          L12
+            are merged #(|the same way)#                  L13
+            "#,
+        );
+        let rope = Rope::from_str(&text);
+        assert_eq!(
+            vec![(1, 1), (3, 3), (5, 6), (8, 10), (12, 13)],
+            selection.line_ranges(rope.slice(..)).collect::<Vec<_>>(),
+        );
     }
 
     #[test]
@@ -1171,13 +1282,15 @@ mod test {
 
     #[test]
     fn test_split_on_matches() {
-        use crate::regex::Regex;
-
         let text = Rope::from(" abcd efg wrs   xyz 123 456");
 
         let selection = Selection::new(smallvec![Range::new(0, 9), Range::new(11, 20),], 0);
 
-        let result = split_on_matches(text.slice(..), &selection, &Regex::new(r"\s+").unwrap());
+        let result = split_on_matches(
+            text.slice(..),
+            &selection,
+            &rope::Regex::new(r"\s+").unwrap(),
+        );
 
         assert_eq!(
             result.ranges(),

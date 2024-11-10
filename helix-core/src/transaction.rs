@@ -1,7 +1,7 @@
 use ropey::RopeSlice;
 use smallvec::SmallVec;
 
-use crate::{Range, Rope, Selection, Tendril};
+use crate::{chars::char_is_word, Range, Rope, Selection, Tendril};
 use std::{borrow::Cow, iter::once};
 
 /// (from, to, replacement)
@@ -23,6 +23,40 @@ pub enum Operation {
 pub enum Assoc {
     Before,
     After,
+    /// Acts like `After` if a word character is inserted
+    /// after the position, otherwise acts like `Before`
+    AfterWord,
+    /// Acts like `Before` if a word character is inserted
+    /// before the position, otherwise acts like `After`
+    BeforeWord,
+    /// Acts like `Before` but if the position is within an exact replacement
+    /// (exact size) the offset to the start of the replacement is kept
+    BeforeSticky,
+    /// Acts like `After` but if the position is within an exact replacement
+    /// (exact size) the offset to the start of the replacement is kept
+    AfterSticky,
+}
+
+impl Assoc {
+    /// Whether to stick to gaps
+    fn stay_at_gaps(self) -> bool {
+        !matches!(self, Self::BeforeWord | Self::AfterWord)
+    }
+
+    fn insert_offset(self, s: &str) -> usize {
+        let chars = s.chars().count();
+        match self {
+            Assoc::After | Assoc::AfterSticky => chars,
+            Assoc::AfterWord => s.chars().take_while(|&c| char_is_word(c)).count(),
+            // return position before inserted text
+            Assoc::Before | Assoc::BeforeSticky => 0,
+            Assoc::BeforeWord => chars - s.chars().rev().take_while(|&c| char_is_word(c)).count(),
+        }
+    }
+
+    pub fn sticky(self) -> bool {
+        matches!(self, Assoc::BeforeSticky | Assoc::AfterSticky)
+    }
 }
 
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
@@ -354,7 +388,9 @@ impl ChangeSet {
             macro_rules! map {
                 ($map: expr, $i: expr) => {
                     loop {
-                        let Some((pos, assoc)) = positions.peek_mut() else { return; };
+                        let Some((pos, assoc)) = positions.peek_mut() else {
+                            return;
+                        };
                         if **pos < old_pos {
                             // Positions are not sorted, revert to the last Operation that
                             // contains this position and continue iterating from there.
@@ -381,7 +417,10 @@ impl ChangeSet {
                             debug_assert!(old_pos <= **pos, "Reverse Iter across changeset works");
                             continue 'outer;
                         }
-                        let Some(new_pos) = $map(**pos, *assoc) else { break; };
+                        #[allow(clippy::redundant_closure_call)]
+                        let Some(new_pos) = $map(**pos, *assoc) else {
+                            break;
+                        };
                         **pos = new_pos;
                         positions.next();
                     }
@@ -415,8 +454,6 @@ impl ChangeSet {
                     map!(|pos, _| (old_end > pos).then_some(new_pos), i);
                 }
                 Insert(s) => {
-                    let ins = s.chars().count();
-
                     // a subsequent delete means a replace, consume it
                     if let Some((_, Delete(len))) = iter.peek() {
                         iter.next();
@@ -424,13 +461,19 @@ impl ChangeSet {
                         old_end = old_pos + len;
                         // in range of replaced text
                         map!(
-                            |pos, assoc| (old_end > pos).then(|| {
+                            |pos, assoc: Assoc| (old_end > pos).then(|| {
                                 // at point or tracking before
-                                if pos == old_pos || assoc == Assoc::Before {
+                                if pos == old_pos && assoc.stay_at_gaps() {
                                     new_pos
                                 } else {
-                                    // place to end of insert
-                                    new_pos + ins
+                                    let ins = assoc.insert_offset(s);
+                                    // if the deleted and inserted text have the exact same size
+                                    // keep the relative offset into the new text
+                                    if *len == ins && assoc.sticky() {
+                                        new_pos + (pos - old_pos)
+                                    } else {
+                                        new_pos + assoc.insert_offset(s)
+                                    }
                                 }
                             }),
                             i
@@ -438,20 +481,15 @@ impl ChangeSet {
                     } else {
                         // at insert point
                         map!(
-                            |pos, assoc| (old_pos == pos).then(|| {
+                            |pos, assoc: Assoc| (old_pos == pos).then(|| {
                                 // return position before inserted text
-                                if assoc == Assoc::Before {
-                                    new_pos
-                                } else {
-                                    // after text
-                                    new_pos + ins
-                                }
+                                new_pos + assoc.insert_offset(s)
                             }),
                             i
                         );
                     }
 
-                    new_pos += ins;
+                    new_pos += s.chars().count();
                 }
             }
             old_pos = old_end;
@@ -884,6 +922,48 @@ mod test {
         let mut positions = [4, 2];
         cs.update_positions(positions.iter_mut().map(|pos| (pos, Assoc::After)));
         assert_eq!(positions, [4, 2]);
+        // stays at word boundary
+        let cs = ChangeSet {
+            changes: vec![
+                Retain(2), // <space><space>
+                Insert(" ab".into()),
+                Retain(2), // cd
+                Insert("de ".into()),
+            ],
+            len: 4,
+            len_after: 10,
+        };
+        assert_eq!(cs.map_pos(2, Assoc::BeforeWord), 3);
+        assert_eq!(cs.map_pos(4, Assoc::AfterWord), 9);
+        let cs = ChangeSet {
+            changes: vec![
+                Retain(1), // <space>
+                Insert(" b".into()),
+                Delete(1), // c
+                Retain(1), // d
+                Insert("e ".into()),
+                Delete(1), // <space>
+            ],
+            len: 5,
+            len_after: 7,
+        };
+        assert_eq!(cs.map_pos(1, Assoc::BeforeWord), 2);
+        assert_eq!(cs.map_pos(3, Assoc::AfterWord), 5);
+        let cs = ChangeSet {
+            changes: vec![
+                Retain(1), // <space>
+                Insert("a".into()),
+                Delete(2), // <space>b
+                Retain(1), // d
+                Insert("e".into()),
+                Delete(1), // f
+                Retain(1), // <space>
+            ],
+            len: 5,
+            len_after: 7,
+        };
+        assert_eq!(cs.map_pos(2, Assoc::BeforeWord), 1);
+        assert_eq!(cs.map_pos(4, Assoc::AfterWord), 4);
     }
 
     #[test]

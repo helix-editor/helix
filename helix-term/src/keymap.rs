@@ -177,6 +177,19 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
                     .map_err(serde::de::Error::custom)?,
             )
         }
+
+        // Prevent macro keybindings from being used in command sequences.
+        // This is meant to be a temporary restriction pending a larger
+        // refactor of how command sequences are executed.
+        if commands
+            .iter()
+            .any(|cmd| matches!(cmd, MappableCommand::Macro { .. }))
+        {
+            return Err(serde::de::Error::custom(
+                "macro keybindings may not be used in command sequences",
+            ));
+        }
+
         Ok(KeyTrie::Sequence(commands))
     }
 
@@ -199,6 +212,7 @@ impl KeyTrie {
         // recursively visit all nodes in keymap
         fn map_node(cmd_map: &mut ReverseKeymap, node: &KeyTrie, keys: &mut Vec<KeyEvent>) {
             match node {
+                KeyTrie::MappableCommand(MappableCommand::Macro { .. }) => {}
                 KeyTrie::MappableCommand(cmd) => {
                     let name = cmd.name();
                     if name != "no_op" {
@@ -303,6 +317,15 @@ impl Keymaps {
         self.sticky.as_ref()
     }
 
+    pub fn contains_key(&self, mode: Mode, key: KeyEvent) -> bool {
+        let keymaps = &*self.map();
+        let keymap = &keymaps[&mode];
+        keymap
+            .search(self.pending())
+            .and_then(KeyTrie::node)
+            .is_some_and(|node| node.contains_key(&key))
+    }
+
     /// Lookup `key` in the keymap to try and find a command to execute. Escape
     /// key cancels pending keystrokes. If there are no pending keystrokes but a
     /// sticky node is in use, it will be cleared.
@@ -319,7 +342,7 @@ impl Keymaps {
             self.sticky = None;
         }
 
-        let first = self.state.get(0).unwrap_or(&key);
+        let first = self.state.first().unwrap_or(&key);
         let trie_node = match self.sticky {
             Some(ref trie) => Cow::Owned(KeyTrie::Node(trie.clone())),
             None => Cow::Borrowed(keymap),

@@ -8,9 +8,14 @@ inherits = "monokai"
 
 "type" = { fg = "type", modifiers = ["bold"] }
 
-"ui.statusline.normal" = { fg = "light-black", bg = "cyan" }
-"ui.statusline.insert" = { fg = "light-black", bg = "green" }
-"ui.statusline.select" = { fg = "light-black", bg = "purple" }
+# Malformed ANSI: light-black, purple. See 'https://github.com/helix-editor/helix/issues/5709'
+# "ui.statusline.normal" = { fg = "light-black", bg = "cyan" }
+"ui.statusline.normal" = { bg = "cyan" }
+# "ui.statusline.insert" = { fg = "light-black", bg = "green" }
+"ui.statusline.insert" = { bg = "green" }
+# "ui.statusline.select" = { fg = "light-black", bg = "purple" }
+
+"ui.virtual.jump-label" = { fg = "cyan", modifiers = ["bold"] }
 
 [palette]
 cyan = "#66D9EF"

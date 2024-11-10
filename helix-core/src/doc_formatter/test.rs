@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::doc_formatter::{DocumentFormatter, TextFormat};
 use crate::text_annotations::{InlineAnnotation, Overlay, TextAnnotations};
 
@@ -14,6 +12,7 @@ impl TextFormat {
             wrap_indicator_highlight: None,
             // use a prime number to allow lining up too often with repeat
             viewport_width: 17,
+            soft_wrap_at_text_width: false,
         }
     }
 }
@@ -23,20 +22,23 @@ impl<'t> DocumentFormatter<'t> {
         use std::fmt::Write;
         let mut res = String::new();
         let viewport_width = self.text_fmt.viewport_width;
+        let soft_wrap_at_text_width = self.text_fmt.soft_wrap_at_text_width;
         let mut line = 0;
 
-        for (grapheme, pos) in self {
-            if pos.row != line {
+        for grapheme in self {
+            if grapheme.visual_pos.row != line {
                 line += 1;
-                assert_eq!(pos.row, line);
-                write!(res, "\n{}", ".".repeat(pos.col)).unwrap();
+                assert_eq!(grapheme.visual_pos.row, line);
+                write!(res, "\n{}", ".".repeat(grapheme.visual_pos.col)).unwrap();
+            }
+            if !soft_wrap_at_text_width {
                 assert!(
-                    pos.col <= viewport_width as usize,
+                    grapheme.visual_pos.col <= viewport_width as usize,
                     "softwrapped failed {}<={viewport_width}",
-                    pos.col
+                    grapheme.visual_pos.col
                 );
             }
-            write!(res, "{}", grapheme.grapheme).unwrap();
+            write!(res, "{}", grapheme.raw).unwrap();
         }
 
         res
@@ -50,7 +52,6 @@ fn softwrap_text(text: &str) -> String {
         &TextAnnotations::default(),
         0,
     )
-    .0
     .collect_to_str()
 }
 
@@ -101,14 +102,29 @@ fn long_word_softwrap() {
     );
 }
 
+fn softwrap_text_at_text_width(text: &str) -> String {
+    let mut text_fmt = TextFormat::new_test(true);
+    text_fmt.soft_wrap_at_text_width = true;
+    let annotations = TextAnnotations::default();
+    let mut formatter =
+        DocumentFormatter::new_at_prev_checkpoint(text.into(), &text_fmt, &annotations, 0);
+    formatter.collect_to_str()
+}
+#[test]
+fn long_word_softwrap_text_width() {
+    assert_eq!(
+        softwrap_text_at_text_width("xxxxxxxx1xxxx2xxx\nxxxxxxxx1xxxx2xxx"),
+        "xxxxxxxx1xxxx2xxx \nxxxxxxxx1xxxx2xxx "
+    );
+}
+
 fn overlay_text(text: &str, char_pos: usize, softwrap: bool, overlays: &[Overlay]) -> String {
     DocumentFormatter::new_at_prev_checkpoint(
         text.into(),
         &TextFormat::new_test(softwrap),
-        TextAnnotations::default().add_overlay(overlays.into(), None),
+        TextAnnotations::default().add_overlay(overlays, None),
         char_pos,
     )
-    .0
     .collect_to_str()
 }
 
@@ -142,10 +158,9 @@ fn annotate_text(text: &str, softwrap: bool, annotations: &[InlineAnnotation]) -
     DocumentFormatter::new_at_prev_checkpoint(
         text.into(),
         &TextFormat::new_test(softwrap),
-        TextAnnotations::default().add_inline_annotations(annotations.into(), None),
+        TextAnnotations::default().add_inline_annotations(annotations, None),
         0,
     )
-    .0
     .collect_to_str()
 }
 
@@ -164,18 +179,26 @@ fn annotation() {
         "foo foo foo foo \n.foo foo foo foo \n.foo foo foo  "
     );
 }
+
 #[test]
 fn annotation_and_overlay() {
+    let annotations = [InlineAnnotation {
+        char_idx: 0,
+        text: "fooo".into(),
+    }];
+    let overlay = [Overlay {
+        char_idx: 0,
+        grapheme: "\t".into(),
+    }];
     assert_eq!(
         DocumentFormatter::new_at_prev_checkpoint(
             "bbar".into(),
             &TextFormat::new_test(false),
             TextAnnotations::default()
-                .add_inline_annotations(Rc::new([InlineAnnotation::new(0, "fooo")]), None)
-                .add_overlay(Rc::new([Overlay::new(0, "\t")]), None),
+                .add_inline_annotations(annotations.as_slice(), None)
+                .add_overlay(overlay.as_slice(), None),
             0,
         )
-        .0
         .collect_to_str(),
         "fooo  bar "
     );

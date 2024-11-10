@@ -25,6 +25,8 @@
 "diagnostic.info" = { underline = { color = "orange_text", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "orange_text", style = "curl" } }
 "diagnostic.error" = { underline = { color = "diff_delete", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 "info" = { fg = "orange_text", bg = "orange_bg" }
 "hint" = { modifiers = ["bold"] }
@@ -59,8 +61,11 @@
 "ui.virtual" = { fg = "base5", bg = "base6" }
 "ui.virtual.whitespace" = { fg = "base5" }
 "ui.virtual.ruler" = { bg = "base6" }
-"ui.virtual.inlay-hint" = { fg = "base4", modifiers = ["normal"] }
-"ui.virtual.inlay-hint.parameter" = { fg = "base3", modifiers = ["normal"] }
+# Invalid modifier: "normal". See 'https://github.com/helix-editor/helix/issues/5709'
+# "ui.virtual.inlay-hint" = { fg = "base4", modifiers = ["normal"] }
+# "ui.virtual.inlay-hint.parameter" = { fg = "base3", modifiers = ["normal"] }
+"ui.virtual.inlay-hint" = "base4"
+"ui.virtual.inlay-hint.parameter" = "base3"
 "ui.virtual.inlay-hint.type" = { fg = "base3", modifiers = ["italic"] }
 
 "ui.linenr" = { bg = "base6" }

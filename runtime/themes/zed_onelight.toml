@@ -1,4 +1,5 @@
-# Author : Eric Correia <correia.eh@gmail.com>
+# Zed OneLight
+# Author : EricHenry
 
 inherits = "zed_onedark"
 
@@ -16,8 +17,12 @@ inherits = "zed_onedark"
 
 "ui.cursor" = { fg = "dark-blue", modifiers = ["reversed"] }
 "ui.cursor.primary" = { fg = "dark-blue", modifiers = ["reversed"] }
+"ui.cursor.insert" = { fg = "dark-blue" }
 
+"ui.selection.primary" = { bg = "blue-gray" }
 "ui.cursorline.primary" = { bg = "faint-gray" }
+
+"ui.virtual.inlay-hint" = { fg = "violet", modifiers = ["bold"] }
 
 "ui.statusline" = { fg = "black", bg = "gray" }
 "ui.statusline.inactive" = { fg = "white", bg = "light-black" }
@@ -32,24 +37,26 @@ inherits = "zed_onedark"
 "ui.window" = { fg = "dark-gray" }
 
 [palette]
-
-yellow = "#dac18c"
-blue = "#5185b5"
-red = "#bd7476"
-dark-blue = "#607bdb"
-orange = "#ca7667"
-purple = "#a160ac"
-green = "#739d60"
-gold = "#a8763c"
-cyan = "#4b80b2"
+yellow = "#dabb7e"
+red = "#d36151ff"
+orange = "#d3604fff"
+blue = "#5b79e3ff"
+dark-blue = "#4a62db"
+purple = "#a449abff"
+violet = "#9294beff"
+green = "#649f57ff"
+gold = "#ad6e25ff"
+cyan = "#3882b7ff"
 light-black = "#2e323a"
-gray = "#dcdcdd"
+# gray = "#dcdcdd"
+gray = "#eaeaed"
 dark-gray = "#ebebec"
-light-gray = "#a6a6aa"
+light-gray = "#a2a3a7ff"
+blue-gray = "#d9dcea"
 faint-gray = "#efefef"
-linenr = "#4B5263"
+linenr = "#b0b1b3"
 
-black = "#404248"
-white = "#fafafa"
-ui-text = "#404248"
-ui-text-reversed = "#fafafa"
+black = "#383a41ff"
+white = "#fafafaff"
+ui-text = "#383a41ff"
+ui-text-reversed = "#fafafaff"

@@ -63,6 +63,8 @@
 "diagnostic.hint" = { underline = { color = "white0", style = "double_line" } }
 "diagnostic.info" = { underline = { color = "blue0", style = "double_line" } }
 "diagnostic.warning" = { underline = { color = "green1", style = "double_line" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 "markup.bold" = { modifiers = ["bold"] }
 "markup.heading" = { fg = "orange1", modifiers = ["bold"] }

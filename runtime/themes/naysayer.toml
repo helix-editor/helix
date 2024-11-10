@@ -14,7 +14,8 @@
 "ui.virtual" = "indent"
 "ui.virtual.ruler" = { bg = "line-fg" }
 "ui.cursor.match" = { bg = "cyan" }
-"ui.cursor" = { bg = "white" }
+"ui.cursor" = { bg = "#777777" }
+"ui.cursor.primary" = { bg = "white" }
 "ui.debug" = { fg = "orange" }
 "ui.highlight.frameline" = { bg = "#da8581" }
 "ui.help" = { fg = "text", bg = "bg" }
@@ -25,6 +26,8 @@
 "diagnostic.error" = { bg = "error", fg = "text", modifiers = ["bold"] }
 "diagnostic.warning" = { bg = "warning", fg = "text", modifiers = ["bold"] }
 "diagnostic.hint" = { bg = "cyan", modifiers = ["bold"] }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 "ui.bufferline" = { fg = "text", bg = "bg" }
 "ui.bufferline.active" = { fg = "text", bg = "bg", modifiers = ['underlined'] }
 "ui.gutter.selected" = { bg = "highlight-line", modifiers = ["bold"] }

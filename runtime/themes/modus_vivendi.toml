@@ -1,7 +1,7 @@
 # Author: Matous Dzivjak <matousdzivjak@gmail.com>
 # Adapted from https://protesilaos.com/emacs/modus-themes, by Protesilaos Stavrou
 # Source: https://github.com/protesilaos/modus-themes/blob/main/modus-vivendi-theme.el
-# Version 4.3.0
+# Version 4.4.0
 
 # Syntax highlighting
 # -------------------
@@ -83,13 +83,14 @@ punctuation = "fg-dim"
 "ui.virtual" = "bg-active"
 "ui.virtual.ruler" = { bg = "bg-dim" }
 "ui.virtual.inlay-hint" = { fg = "fg-dim", modifiers = ["italic"] }
+"ui.virtual.jump-label" = { fg = "yellow-cooler", modifiers = ["bold"] }
 
 "ui.selection" = { fg = "fg-main", bg = "bg-inactive" }
 "ui.selection.primary" = { fg = "fg-main", bg = "bg-active" }
 
 "ui.cursor" = { fg = "bg-main", bg = "fg-main" }
 "ui.cursor.primary" = { fg = "bg-main", bg = "fg-dim" }
-"ui.cursor.match" = { bg = "bg-paren-match" }
+"ui.cursor.match" = { bg = "bg-paren-match", fg = "fg-main" }
 "ui.cursorline.primary" = { bg = "bg-hl-line" }
 
 "ui.highlight" = { bg = "bg-hl-line" }
@@ -102,6 +103,8 @@ punctuation = "fg-dim"
 "diagnostic.warning" = { underline = { color = "yellow-intense", style = "curl" } }
 "diagnostic.info" = { underline = { color = "cyan-intense", style = "curl" } }
 "diagnostic.hint" = { underline = { color = "blue-intense", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 error = "red"
 warning = "yellow-warmer"
@@ -174,12 +177,12 @@ bg-blue-subtle = "#242679"
 bg-magenta-subtle = "#552f5f"
 bg-cyan-subtle = "#004065"
 
-bg-red-nuanced = "#2c0614"
-bg-green-nuanced = "#001904"
-bg-yellow-nuanced = "#221000"
-bg-blue-nuanced = "#0f0e39"
-bg-magenta-nuanced = "#230631"
-bg-cyan-nuanced = "#041529"
+bg-red-nuanced = "#3a0c14"
+bg-green-nuanced = "#092f1f"
+bg-yellow-nuanced = "#381d0f"
+bg-blue-nuanced = "#12154a"
+bg-magenta-nuanced = "#2f0c3f"
+bg-cyan-nuanced = "#042837"
 
 # Uncommon accent backgrounds
 bg-ochre = "#442c2f"

@@ -1,7 +1,6 @@
 inherits = "catppuccin_mocha"
 
 [palette]
-# catppuccin palette colors
 rosewater = "#f4dbd6"
 flamingo = "#f0c6c6"
 pink = "#f5bde6"
@@ -16,7 +15,6 @@ sky = "#91d7e3"
 sapphire = "#7dc4e4"
 blue = "#8aadf4"
 lavender = "#b7bdf8"
-
 text = "#cad3f5"
 subtext1 = "#b8c0e0"
 subtext0 = "#a5adcb"
@@ -26,13 +24,11 @@ overlay0 = "#6e738d"
 surface2 = "#5b6078"
 surface1 = "#494d64"
 surface0 = "#363a4f"
-
 base = "#24273a"
 mantle = "#1e2030"
 crust = "#181926"
 
-# derived colors by blending existing palette colors
 cursorline = "#303347"
-secondary_cursor = "#b6a5a7"
-secondary_cursor_normal = "#8b90bf"
-secondary_cursor_insert = "#7fa47a"
+secondary_cursor = "#b6a6a7"
+secondary_cursor_normal = "#8b91bf"
+secondary_cursor_insert = "#80a57a"
