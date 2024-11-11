@@ -60,7 +60,7 @@ thiserror = "1.0"
 
 # opening URLs
 open = "5.3.0"
-url = "2.5.2"
+url = "2.5.3"
 
 # config
 toml = "0.8"
@@ -74,7 +74,7 @@ grep-searcher = "0.1.14"
 
 [target.'cfg(not(windows))'.dependencies]  # https://github.com/vorner/signal-hook/issues/100
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
-libc = "0.2.161"
+libc = "0.2.162"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 crossterm = { version = "0.28", features = ["event-stream", "use-dev-tty", "libc"] }
@@ -85,5 +85,5 @@ helix-loader = { path = "../helix-loader" }
 [dev-dependencies]
 smallvec = "1.13"
 indoc = "2.0.5"
-tempfile = "3.13.0"
+tempfile = "3.14.0"
 same-file = "1.0.1"
