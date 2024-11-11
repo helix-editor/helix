@@ -36,7 +36,7 @@ use helix_core::{
     textobject,
     unicode::width::UnicodeWidthChar,
     visual_offset_from_block, Deletion, LineEnding, Position, Range, Rope, RopeGraphemes,
-    RopeReader, RopeSlice, Selection, SmallVec, SmartString, Syntax, Tendril, Transaction,
+    RopeReader, RopeSlice, Selection, SmallVec, Syntax, Tendril, Transaction,
 };
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
@@ -5684,10 +5684,25 @@ fn surround_add(cx: &mut Context) {
                         "tag name:".into(),
                         Some('z'),
                         ui::completers::none,
-                        move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {},
-                    )
-                    .with_line("temp".into(), cx.editor);
-                    cx.push_layer(prompt);
+                        move |context: &mut compositor::Context,
+                              input: &str,
+                              event: PromptEvent| {
+                            let (view, doc) = current!(context.editor);
+
+                            if event != PromptEvent::Validate {
+                                return;
+                            }
+
+                            let open = Tendril::from(format!("<{}>", input.to_string()));
+                            let close = Tendril::from(format!("</{}>", input.to_string()));
+                            let length = open.len() + close.len();
+
+                            surround_add_impl(doc, view, length, open, close);
+                            context.editor.mode = Mode::Normal;
+                        },
+                    );
+                    // .with_line(String::from("temp"), cx.editor);
+                    cx.push_layer(Box::new(prompt));
                 } else {
                     let (open, close) = match_brackets::get_pair(ch);
                     let open = Tendril::from(open.to_string());
@@ -5706,28 +5721,6 @@ fn surround_add(cx: &mut Context) {
             }
             None => return,
         };
-
-        // let selection = doc.selection(view.id);
-        // let mut changes = Vec::with_capacity(selection.len() * 2);
-        // let mut ranges = SmallVec::with_capacity(selection.len());
-        // let mut offs = 0;
-
-        // for range in selection.iter() {
-        //     changes.push((range.from(), range.from(), Some(open.clone())));
-        //     changes.push((range.to(), range.to(), Some(close.clone())));
-
-        //     ranges.push(
-        //         Range::new(offs + range.from(), offs + range.to() + surround_len)
-        //             .with_direction(range.direction()),
-        //     );
-
-        //     offs += surround_len;
-        // }
-
-        // let transaction = Transaction::change(doc.text(), changes.into_iter())
-        //     .with_selection(Selection::new(ranges, selection.primary_index()));
-        // doc.apply(&transaction, view.id);
-        // exit_select_mode(cx);
     })
 }
 
