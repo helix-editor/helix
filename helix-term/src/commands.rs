@@ -5626,26 +5626,26 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
     cx.editor.autoinfo = Some(Info::new(title, &help_text));
 }
 
-fn create_surround_prompt(
-    editor: &Editor,
-    prefill: String,
-    history_register: Option<char>,
-) -> Box<Prompt> {
-    let prompt = Prompt::new(
-        "tag name:".into(),
-        // TODO: change this to actually be history_register
-        Some('z'),
-        ui::completers::none,
-        move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {},
-    )
-    .with_line("temp".into(), editor);
+// fn create_surround_prompt(
+//     editor: &Editor,
+//     prefill: String,
+//     history_register: Option<char>,
+//     callback_fn: impl FnMut(&mut compositor::Context<'_>, &str, PromptEvent) + 'static,
+// ) -> Box<Prompt> {
+//     let prompt = Prompt::new(
+//         "tag name:".into(),
+//         // TODO: change this to actually be history_register
+//         Some('z'),
+//         ui::completers::none,
+//         callback_fn,
+//     )
+//     .with_line("temp".into(), editor);
 
-    Box::new(prompt)
-}
+//     Box::new(prompt)
+// }
 
 fn surround_add_impl(
     doc: &mut Document,
-    // cx: &mut Context<'_>,
     view: &mut View,
     surround_len: usize,
     open: Tendril,
@@ -5671,7 +5671,6 @@ fn surround_add_impl(
     let transaction = Transaction::change(doc.text(), changes.into_iter())
         .with_selection(Selection::new(ranges, selection.primary_index()));
     doc.apply(&transaction, view.id);
-    // exit_select_mode(cx);
 }
 
 fn surround_add(cx: &mut Context) {
@@ -5680,31 +5679,23 @@ fn surround_add(cx: &mut Context) {
         // surround_len is the number of new characters being added.
         match event.char() {
             Some(ch) => {
-                // let mut open = Tendril::new();
-                // let mut close = Tendril::new();
-                // let length = if ch == 'x' {
-                //     let prompt = create_surround_prompt(cx.editor, "none".into(), Some('z'));
-                //     cx.push_layer(prompt);
+                if ch == 'x' {
+                    let prompt = Prompt::new(
+                        "tag name:".into(),
+                        Some('z'),
+                        ui::completers::none,
+                        move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {},
+                    )
+                    .with_line("temp".into(), cx.editor);
+                    cx.push_layer(prompt);
+                } else {
+                    let (open, close) = match_brackets::get_pair(ch);
+                    let open = Tendril::from(open.to_string());
+                    let close = Tendril::from(close.to_string());
 
-                //     let (o, c) = match_brackets::get_pair(ch);
-                //     open.push(o);
-                //     close.push(c);
-                //     // Any character other than "x" will cause 2 chars to get added
-                //     2
-                // } else {
-                let (open, close) = match_brackets::get_pair(ch);
-                // open.push(o);
-                // close.push(c);
-                // Any character other than "x" will cause 2 chars to get added
-                // 2
-                //
-                let open = Tendril::from(open.to_string());
-                let close = Tendril::from(close.to_string());
-
-                surround_add_impl(doc, view, 2, open, close);
-                exit_select_mode(cx);
-                // };
-                // (open, close, 2)
+                    surround_add_impl(doc, view, 2, open, close);
+                    exit_select_mode(cx);
+                };
             }
             None if event.code == KeyCode::Enter => {
                 let open = doc.line_ending.as_str().into();
