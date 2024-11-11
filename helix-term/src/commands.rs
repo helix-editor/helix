@@ -5678,10 +5678,10 @@ fn surround_add(cx: &mut Context) {
     cx.on_next_key(move |cx, event| {
         let (view, doc) = current!(cx.editor);
         // surround_len is the number of new characters being added.
-        let (open, close, surround_len) = match event.char() {
+        match event.char() {
             Some(ch) => {
-                let mut open = Tendril::new();
-                let mut close = Tendril::new();
+                // let mut open = Tendril::new();
+                // let mut close = Tendril::new();
                 // let length = if ch == 'x' {
                 //     let prompt = create_surround_prompt(cx.editor, "none".into(), Some('z'));
                 //     cx.push_layer(prompt);
@@ -5692,24 +5692,29 @@ fn surround_add(cx: &mut Context) {
                 //     // Any character other than "x" will cause 2 chars to get added
                 //     2
                 // } else {
-                let (o, c) = match_brackets::get_pair(ch);
-                open.push(o);
-                close.push(c);
+                let (open, close) = match_brackets::get_pair(ch);
+                // open.push(o);
+                // close.push(c);
                 // Any character other than "x" will cause 2 chars to get added
                 // 2
+                //
+                let open = Tendril::from(open.to_string());
+                let close = Tendril::from(close.to_string());
+
+                surround_add_impl(doc, view, 2, open, close);
+                exit_select_mode(cx);
                 // };
-                (open, close, 2)
+                // (open, close, 2)
             }
-            None if event.code == KeyCode::Enter => (
-                doc.line_ending.as_str().into(),
-                doc.line_ending.as_str().into(),
-                2 * doc.line_ending.len_chars(),
-            ),
+            None if event.code == KeyCode::Enter => {
+                let open = doc.line_ending.as_str().into();
+                let close = doc.line_ending.as_str().into();
+                let length = 2 * doc.line_ending.len_chars();
+                surround_add_impl(doc, view, length, open, close);
+                exit_select_mode(cx);
+            }
             None => return,
         };
-
-        surround_add_impl(doc, view, surround_len, open, close);
-        exit_select_mode(cx);
 
         // let selection = doc.selection(view.id);
         // let mut changes = Vec::with_capacity(selection.len() * 2);
