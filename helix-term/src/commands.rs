@@ -5754,6 +5754,8 @@ fn surround_replace(cx: &mut Context) {
             let transaction = Transaction::change(
                 doc.text(),
                 sorted_pos.iter().map(|&pos| {
+                    // "pos" is the idx of the character we are replacing
+                    // "t" is the replacement character
                     let mut t = Tendril::new();
                     t.push(pos.1);
                     log::error!("{:?}, {:?}", pos.0, Some(&t));
