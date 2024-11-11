@@ -24,6 +24,20 @@ use std::{
 
 const JUMP_LIST_CAPACITY: usize = 30;
 
+#[derive(Debug, Clone, Default)]
+pub struct ViewAreas {
+    pub left: Rect,
+    pub right: Rect,
+    pub gutter: Rect,
+    pub text: Rect,
+}
+
+impl ViewAreas {
+    pub fn has_nullspace(&self) -> bool {
+        self.left.width > 0 || self.right.width > 0
+    }
+}
+
 type Jump = (DocumentId, Selection);
 
 #[derive(Debug, Clone)]
@@ -128,6 +142,7 @@ pub struct ViewPosition {
 pub struct View {
     pub id: ViewId,
     pub area: Rect,
+    pub container_area: Rect,
     pub doc: DocumentId,
     pub jumps: JumpList,
     // documents accessed from this view from the oldest one to last viewed one
@@ -172,6 +187,7 @@ impl View {
             id: ViewId::default(),
             doc,
             area: Rect::default(), // will get calculated upon inserting into tree
+            container_area: Rect::default(), // will get calculated upon inserting into tree
             jumps: JumpList::new((doc, Selection::point(0))), // TODO: use actual sel
             docs_access_history: Vec::new(),
             last_modified_docs: [None, None],
@@ -189,26 +205,68 @@ impl View {
         self.docs_access_history.push(id);
     }
 
-    pub fn inner_area(&self, doc: &Document) -> Rect {
+    pub fn get_view_areas(&self, doc: &Document) -> ViewAreas {
         let config = doc.config.load();
-        let gutter_width = self.gutter_offset(doc);
 
-        if config.nullspace.enable {
-            let text_width = config.text_width as u16;
-            let view_width = gutter_width + text_width;
+        let gutter = self.gutter_offset(doc);
+        let area = self.area.clip_bottom(1); // -1 for status line
 
-            if self.area.width > view_width {
-                let null_width = (self.area.width - view_width) / 2;
-
-                return self
-                    .area
-                    .clip_left(gutter_width + null_width)
-                    .clip_bottom(1)
-                    .with_width(text_width.min(self.area.width - gutter_width));
-            }
+        // if we are not using nullspace, then we use the whole
+        // area (without nullspace)
+        //
+        if config.nullspace.enable == false {
+            let (gutter, text) = self.area.split_left(gutter);
+            return ViewAreas {
+                gutter,
+                text,
+                ..Default::default()
+            };
         }
 
-        self.area.clip_left(gutter_width).clip_bottom(1) // -1 for statusline
+        // midpoint (with tolerances)
+        //
+        let mid_lo = (self.container_area.width / 2) - 2;
+        let mid_hi = (self.container_area.width / 2) + 2;
+
+        let width = config.text_width as u16 + gutter;
+
+        if area.right() < mid_hi {
+            // align: right
+            let (left, text) = area.split_right(width);
+            let (gutter, text) = text.split_left(gutter);
+            ViewAreas {
+                left,
+                right: Rect::default(),
+                gutter,
+                text,
+            }
+        } else if area.left() > mid_lo {
+            // align: left
+            let (text, right) = area.split_left(width);
+            let (gutter, text) = text.split_left(gutter);
+            ViewAreas {
+                left: Rect::default(),
+                right,
+                gutter,
+                text,
+            }
+        } else {
+            // align: center
+            let (left, text, right) = area.split_centre_vertical(width);
+            let (gutter, text) = text.split_left(gutter);
+            ViewAreas {
+                left,
+                right,
+                gutter,
+                text,
+            }
+        }
+    }
+
+    /// Returns the 'inner area' (the text renderable area) of the view.
+    ///
+    pub fn inner_area(&self, doc: &Document) -> Rect {
+        self.get_view_areas(doc).text
     }
 
     pub fn inner_height(&self) -> usize {
