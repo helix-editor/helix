@@ -26,7 +26,9 @@ const JUMP_LIST_CAPACITY: usize = 30;
 
 #[derive(Debug, Clone, Default)]
 pub struct ViewAreas {
+    /// left-hand nullspace area
     pub left: Rect,
+    /// right-hand nullspace area
     pub right: Rect,
     pub gutter: Rect,
     pub text: Rect,
