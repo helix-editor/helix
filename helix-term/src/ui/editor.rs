@@ -83,7 +83,7 @@ impl EditorView {
         surface: &mut Surface,
         is_focused: bool,
     ) {
-        let areas = view.get_view_areas(doc);
+        let areas = view.get_areas(doc);
 
         // TODO: use the 'areas' struct for these!
         let inner = areas.text;
@@ -766,7 +766,7 @@ impl EditorView {
         let info = theme.get("info");
         let hint = theme.get("hint");
 
-        let areas = view.get_view_areas(doc);
+        let areas = view.get_areas(doc);
         let width = 50.min(areas.text.width);
 
         let height = 15.min(areas.text.height); // .min(text.lines.len() as u16);

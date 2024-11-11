@@ -207,7 +207,7 @@ impl View {
         self.docs_access_history.push(id);
     }
 
-    pub fn get_view_areas(&self, doc: &Document) -> ViewAreas {
+    pub fn get_areas(&self, doc: &Document) -> ViewAreas {
         let config = doc.config.load();
 
         let gutter = self.gutter_offset(doc);
@@ -268,7 +268,7 @@ impl View {
     /// Returns the 'inner area' (the text renderable area) of the view.
     ///
     pub fn inner_area(&self, doc: &Document) -> Rect {
-        self.get_view_areas(doc).text
+        self.get_areas(doc).text
     }
 
     pub fn inner_height(&self) -> usize {
