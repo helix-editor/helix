@@ -205,6 +205,50 @@ pub fn find_matching_bracket_plaintext(doc: RopeSlice, cursor_pos: usize) -> Opt
     None
 }
 
+// fn create_rename_prompt(
+//     editor: &Editor,
+//     prefill: String,
+//     history_register: Option<char>,
+//     language_server_id: Option<LanguageServerId>,
+// ) -> Box<ui::Prompt> {
+//     let prompt = ui::Prompt::new(
+//         "rename-to:".into(),
+//         history_register,
+//         ui::completers::none,
+//         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+//             if event != PromptEvent::Validate {
+//                 return;
+//             }
+//             let (view, doc) = current!(cx.editor);
+
+//             let Some(language_server) = doc
+//                 .language_servers_with_feature(LanguageServerFeature::RenameSymbol)
+//                 .find(|ls| language_server_id.map_or(true, |id| id == ls.id()))
+//             else {
+//                 cx.editor
+//                     .set_error("No configured language server supports symbol renaming");
+//                 return;
+//             };
+
+//             let offset_encoding = language_server.offset_encoding();
+//             let pos = doc.position(view.id, offset_encoding);
+//             let future = language_server
+//                 .rename_symbol(doc.identifier(), pos, input.to_string())
+//                 .unwrap();
+
+//             match block_on(future) {
+//                 Ok(edits) => {
+//                     let _ = cx.editor.apply_workspace_edit(offset_encoding, &edits);
+//                 }
+//                 Err(err) => cx.editor.set_error(err.to_string()),
+//             }
+//         },
+//     )
+//     .with_line(prefill, editor);
+
+//     Box::new(prompt)
+// }
+
 /// Returns the open and closing chars pair. If not found in
 /// [`BRACKETS`] returns (ch, ch).
 ///
