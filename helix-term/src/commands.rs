@@ -5657,7 +5657,6 @@ fn surround_add_impl(
 fn surround_add(cx: &mut Context) {
     cx.on_next_key(move |cx, event| {
         let (view, doc) = current!(cx.editor);
-        // surround_len is the number of new characters being added.
         match event.char() {
             Some(ch) => {
                 if ch == 'x' {
@@ -5705,7 +5704,7 @@ fn surround_add(cx: &mut Context) {
 }
 
 fn surround_replace(cx: &mut Context) {
-    let count = cx.count();
+    let layer = cx.count();
     cx.on_next_key(move |cx, event| {
         let surround_ch = match event.char() {
             Some('m') => None, // m selects the closest surround pair
@@ -5716,8 +5715,11 @@ fn surround_replace(cx: &mut Context) {
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id);
 
+        // the first character represents the index of the first change
+        // the second character represents the index of the second change
         let change_pos =
-            match surround::get_surround_pos(doc.syntax(), text, selection, surround_ch, count) {
+            // also interested in changing this
+            match surround::get_surround_pos(doc.syntax(), text, selection, surround_ch, layer) {
                 Ok(c) => c,
                 Err(err) => {
                     cx.editor.set_error(err.to_string());
@@ -5738,6 +5740,7 @@ fn surround_replace(cx: &mut Context) {
                 Some(to) => to,
                 None => return doc.set_selection(view.id, selection),
             };
+            // we are interested in changing this specifically
             let (open, close) = match_brackets::get_pair(to);
 
             // the changeset has to be sorted to allow nested surrounds
@@ -5753,6 +5756,7 @@ fn surround_replace(cx: &mut Context) {
                 sorted_pos.iter().map(|&pos| {
                     let mut t = Tendril::new();
                     t.push(pos.1);
+                    log::error!("{:?}, {:?}", pos.0, Some(&t));
                     (pos.0, pos.0 + 1, Some(t))
                 }),
             );
