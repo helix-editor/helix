@@ -5631,12 +5631,22 @@ fn surround_add(cx: &mut Context) {
         // surround_len is the number of new characters being added.
         let (open, close, surround_len) = match event.char() {
             Some(ch) => {
-                let (o, c) = match_brackets::get_pair(ch);
                 let mut open = Tendril::new();
-                open.push(o);
                 let mut close = Tendril::new();
-                close.push(c);
-                (open, close, 2)
+                let length = if ch == 'x' {
+                    let (o, c) = match_brackets::get_pair(ch);
+                    open.push(o);
+                    close.push(c);
+                    // Any character other than "x" will cause 2 chars to get added
+                    2
+                } else {
+                    let (o, c) = match_brackets::get_pair(ch);
+                    open.push(o);
+                    close.push(c);
+                    // Any character other than "x" will cause 2 chars to get added
+                    2
+                };
+                (open, close, length)
             }
             None if event.code == KeyCode::Enter => (
                 doc.line_ending.as_str().into(),
