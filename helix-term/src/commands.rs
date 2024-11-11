@@ -5616,7 +5616,6 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
         ("a", "Argument/parameter (tree-sitter)"),
         ("c", "Comment (tree-sitter)"),
         ("T", "Test (tree-sitter)"),
-        ("x", "Tag (XML/HTML/JSX)"),
         ("e", "Data structure entry (tree-sitter)"),
         ("m", "Closest surrounding pair (tree-sitter)"),
         ("g", "Change"),
@@ -5625,24 +5624,6 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
 
     cx.editor.autoinfo = Some(Info::new(title, &help_text));
 }
-
-// fn create_surround_prompt(
-//     editor: &Editor,
-//     prefill: String,
-//     history_register: Option<char>,
-//     callback_fn: impl FnMut(&mut compositor::Context<'_>, &str, PromptEvent) + 'static,
-// ) -> Box<Prompt> {
-//     let prompt = Prompt::new(
-//         "tag name:".into(),
-//         // TODO: change this to actually be history_register
-//         Some('z'),
-//         ui::completers::none,
-//         callback_fn,
-//     )
-//     .with_line("temp".into(), editor);
-
-//     Box::new(prompt)
-// }
 
 fn surround_add_impl(
     doc: &mut Document,
@@ -5701,7 +5682,6 @@ fn surround_add(cx: &mut Context) {
                             context.editor.mode = Mode::Normal;
                         },
                     );
-                    // .with_line(String::from("temp"), cx.editor);
                     cx.push_layer(Box::new(prompt));
                 } else {
                     let (open, close) = match_brackets::get_pair(ch);
