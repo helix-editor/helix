@@ -103,7 +103,6 @@ impl Prompt {
         self
     }
 
-    /// Sets the line of the prompt as if the user has typed that text manually
     pub fn set_line(&mut self, line: String, editor: &Editor) {
         let cursor = line.len();
         self.line = line;
