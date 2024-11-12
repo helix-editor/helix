@@ -154,29 +154,6 @@ fn find_nth_closest_pairs_plain(
     Err(Error::PairNotFound)
 }
 
-/// Find the position of surrounding tags around cursor
-/// `n` will skip n - 1 tags (e.g. n=2 will discard only the first tag found)
-/// and keep looking
-// pub fn find_nth_tag_pos(
-//     text: RopeSlice,
-//     range: Range,
-//     n: usize,
-// ) -> Result<((usize, usize), (usize, usize))> {
-//     // 7 is the minimum possible length for a tag, e.g. <a></a>.
-//     if text.len_chars() < 7 {
-//         return Err(Error::PairNotFound);
-//     }
-
-//     if range.to() >= text.len_chars() {
-//         return Err(Error::RangeExceedsText);
-//     }
-
-//     let cursor_position = range.cursor(text);
-
-//     let open = ();
-//     let close = ();
-// }
-
 /// Find the position of surround pairs of `ch` which can be either a closing
 /// or opening pair. `n` will skip n - 1 pairs (eg. n=2 will discard (only)
 /// the first pair found and keep looking)
