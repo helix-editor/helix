@@ -343,7 +343,7 @@ pub fn get_surround_pos(
 pub fn get_surround_pos_tag(
     text: RopeSlice,
     selection: &Selection,
-    skip: usize,
+    _skip: usize,
 ) -> Result<Vec<(usize, usize)>> {
     let mut change_pos = Vec::new();
 
@@ -365,7 +365,12 @@ pub fn is_valid_tagname_char(ch: char) -> bool {
     ch.is_alphanumeric() || ch == '_' || ch == '-' || ch == '.'
 }
 
-pub fn find_nearest_tag(text: RopeSlice, cursor_pos: usize, skip: usize) -> Result<(Range, Range)> {
+pub fn find_nearest_tag(
+    _text: RopeSlice,
+    _cursor_pos: usize,
+    _skip: usize,
+) -> Result<(Range, Range)> {
+    Ok((Range::point(1), Range::point(1)))
 }
 
 /// Find the opening <tag> starting from "pos" and iterating until the beginning of the text.
@@ -373,41 +378,38 @@ pub fn find_nearest_tag(text: RopeSlice, cursor_pos: usize, skip: usize) -> Resu
 /// As well as the actual name of the tag
 pub fn find_prev_tag(
     text: RopeSlice,
-    mut pos: usize,
-    n: usize,
-) -> Option<((usize, usize), String)> {
-    if pos == 0 || n == 0 {
+    mut cursor_pos: usize,
+    skip: usize,
+) -> Option<(Range, String)> {
+    if cursor_pos == 0 || skip == 0 {
         return None;
     }
 
-    let mut chars = text.chars_at(pos);
-    let mut possible_tag = String::new();
+    let mut chars = text.chars_at(cursor_pos);
 
-    'outer: loop {
+    loop {
         let prev_char = chars.prev()?;
-        pos -= 1;
+        cursor_pos -= 1;
 
         if prev_char == '>' {
             let mut possible_tag_name = String::new();
             loop {
                 let current_char = chars.prev()?;
-                pos -= 1;
+                cursor_pos -= 1;
                 if current_char == '<' {
-                    possible_tag.push_str(
-                        &possible_tag_name
-                            .chars()
-                            .rev()
-                            .take_while(|&ch| is_valid_tagname_char(ch))
-                            .collect::<String>()[..],
-                    );
-                    break 'outer;
+                    let tag_name = possible_tag_name
+                        .chars()
+                        .rev()
+                        .take_while(|&ch| is_valid_tagname_char(ch))
+                        .collect::<String>();
+
+                    let range = Range::new(cursor_pos + 1, cursor_pos + tag_name.len());
+                    return Some((range, tag_name));
                 }
                 possible_tag_name.push(current_char);
             }
         }
     }
-
-    Some(((pos + 1, pos + possible_tag.len()), possible_tag))
 }
 
 /// Find the closing </tag> starting from "pos" and iterating the end of the text.
@@ -415,35 +417,36 @@ pub fn find_prev_tag(
 /// As well as the actual name of the tag
 pub fn find_next_tag(
     text: RopeSlice,
-    mut pos: usize,
-    n: usize,
-) -> Option<((usize, usize), String)> {
-    if pos >= text.len_chars() || n == 0 {
+    mut cursor_pos: usize,
+    skip: usize,
+) -> Option<(Range, String)> {
+    if cursor_pos >= text.len_chars() || skip == 0 {
         return None;
     }
 
-    let mut chars = text.chars_at(pos);
-    let mut possible_tag = String::new();
+    let mut chars = text.chars_at(cursor_pos);
 
-    'outer: loop {
+    loop {
         // look forward, try to find something that looks like a closing tag e.g. </html>
         // extract the name so e.g. "html".
         // set current_tag_name to this "html" string, then break.
         let next_char = chars.next()?;
-        pos += 1;
+        cursor_pos += 1;
         if next_char == '<' {
             let char_after_that = chars.next()?;
-            pos += 1;
+            cursor_pos += 1;
             if char_after_that == '/' {
                 let mut possible_tag_name = String::new();
                 loop {
                     let current_char = chars.next()?;
-                    pos += 1;
+                    cursor_pos += 1;
                     if is_valid_tagname_char(current_char) {
                         possible_tag_name.push(current_char);
                     } else if current_char == '>' && possible_tag_name.len() != 0 {
-                        possible_tag.push_str(&possible_tag_name[..]);
-                        break 'outer;
+                        let range =
+                            Range::new(cursor_pos - possible_tag_name.len() - 1, cursor_pos - 2);
+
+                        return Some((range, possible_tag_name));
                     } else {
                         break;
                     }
@@ -451,8 +454,6 @@ pub fn find_next_tag(
             }
         }
     }
-
-    return Some(((pos - possible_tag.len() - 1, pos - 2), possible_tag));
 }
 
 #[cfg(test)]
@@ -484,7 +485,7 @@ mod test {
 
         assert_eq!(
             find_next_tag(doc.slice(..), 7, 1).unwrap(),
-            ((12, 14), String::from("tag"))
+            (Range::new(12, 14), String::from("tag"))
         );
     }
 
@@ -494,7 +495,7 @@ mod test {
 
         assert_eq!(
             find_next_tag(doc.slice(..), 7, 1).unwrap(),
-            ((18, 28), String::from("Hello.World"))
+            (Range::new(18, 28), String::from("Hello.World"))
         );
     }
 
@@ -504,7 +505,7 @@ mod test {
 
         assert_eq!(
             find_prev_tag(doc.slice(..), 7, 1).unwrap(),
-            ((1, 3), String::from("tag"))
+            (Range::new(1, 3), String::from("tag"))
         );
     }
 
@@ -514,7 +515,7 @@ mod test {
 
         assert_eq!(
             find_prev_tag(doc.slice(..), 32, 1).unwrap(),
-            ((1, 11), String::from("Hello.World"))
+            (Range::new(1, 11), String::from("Hello.World"))
         );
     }
 
