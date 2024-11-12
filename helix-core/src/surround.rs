@@ -337,7 +337,9 @@ pub fn get_surround_pos(
     Ok(change_pos)
 }
 
-/// like get_surround_pos, but for Tags
+/// Find position of surrounding <tag>s around every cursor. Returns None
+/// if any positions overlap. Note that the positions are in a flat Vec.
+/// Use get_surround_pos().chunks(2) to get matching pairs of surround positions.
 pub fn get_surround_pos_tag(
     text: RopeSlice,
     selection: &Selection,
@@ -355,6 +357,10 @@ pub fn get_surround_pos_tag(
     Ok(change_pos)
 }
 
+/// Test whether a character would be considered a valid character if it was used for either JSX, HTML or XML tags
+/// JSX tags may have "." in them for scoping
+/// HTML tags may have "-" in them if it's a custom element
+/// Both JSX and HTML tags may have "_"
 pub fn is_valid_tagname_char(ch: char) -> bool {
     ch.is_alphanumeric() || ch == '_' || ch == '-' || ch == '.'
 }
@@ -362,6 +368,9 @@ pub fn is_valid_tagname_char(ch: char) -> bool {
 pub fn find_nearest_tag(text: RopeSlice, cursor_pos: usize, skip: usize) -> Result<(Range, Range)> {
 }
 
+/// Find the opening <tag> starting from "pos" and iterating until the beginning of the text.
+/// Returns the Range of the tag's name (excluding the "<" and ">" characters.)
+/// As well as the actual name of the tag
 pub fn find_prev_tag(
     text: RopeSlice,
     mut pos: usize,
@@ -401,6 +410,9 @@ pub fn find_prev_tag(
     Some(((pos + 1, pos + possible_tag.len()), possible_tag))
 }
 
+/// Find the closing </tag> starting from "pos" and iterating the end of the text.
+/// Returns the Range of the tag's name (excluding the "</" and ">" characters.)
+/// As well as the actual name of the tag
 pub fn find_next_tag(
     text: RopeSlice,
     mut pos: usize,
