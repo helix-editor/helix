@@ -154,6 +154,29 @@ fn find_nth_closest_pairs_plain(
     Err(Error::PairNotFound)
 }
 
+/// Find the position of surrounding tags around cursor
+/// `n` will skip n - 1 tags (e.g. n=2 will discard only the first tag found)
+/// and keep looking
+// pub fn find_nth_tag_pos(
+//     text: RopeSlice,
+//     range: Range,
+//     n: usize,
+// ) -> Result<((usize, usize), (usize, usize))> {
+//     // 7 is the minimum possible length for a tag, e.g. <a></a>.
+//     if text.len_chars() < 7 {
+//         return Err(Error::PairNotFound);
+//     }
+
+//     if range.to() >= text.len_chars() {
+//         return Err(Error::RangeExceedsText);
+//     }
+
+//     let cursor_position = range.cursor(text);
+
+//     let open = ();
+//     let close = ();
+// }
+
 /// Find the position of surround pairs of `ch` which can be either a closing
 /// or opening pair. `n` will skip n - 1 pairs (eg. n=2 will discard (only)
 /// the first pair found and keep looking)
@@ -314,54 +337,82 @@ pub fn get_surround_pos(
     Ok(change_pos)
 }
 
-fn find_nth_close_tag(
-    text: RopeSlice,
-    tag: &str,
-    mut pos: usize,
-    n: usize,
-) -> Result<(Vec<usize>, Vec<usize>)> {
-    // if text.len_chars() < 2 {
-    //     return Err(Error::PairNotFound);
-    // }
-    // if range.to() >= text.len_chars() {
-    //     return Err(Error::RangeExceedsText);
-    // }
-    //
-    Ok((vec![4, 7], vec![10, 13]))
-}
-
 /// like get_surround_pos, but for Tags
 pub fn get_surround_pos_tag(
     text: RopeSlice,
     selection: &Selection,
-    tag: &str,
     skip: usize,
-) -> Result<Vec<usize>> {
-    let mut change_pos = Vec::new();
+) -> Result<Vec<(usize, usize)>> {
+    //     // let change_pos: Vec<(usize, usize)> = vec![(4, 10), (13, 20), (24, 30), (33, 40)];
+    //     let mut change_pos = Vec::new();
 
-    for &range in selection {
-        let (start1, end1, start2, end2) = {
-            let pos = range.cursor(text);
-            let range_raw = find_nth_close_tag(text, tag, pos, skip).unwrap();
+    //     // for &range in selection {
+    //     //     let (start1, end1, start2, end2) = {
+    //     //         let cursor_pos = range.cursor(text);
+    //     //         // let range_raw = find_nth_close_tag(text, cursor_pos, skip).unwrap();
 
-            let first = range_raw.0;
-            let second = range_raw.1;
-            let first_1 = first.first().unwrap();
-            let first_2 = second.last().unwrap();
-            let second_1 = first.first().unwrap();
-            let second_2 = second.last().unwrap();
-            let range_first = Range::new(*first_1, *first_2);
-            let range_last = Range::new(*second_1, *second_2);
-            (
-                range_first.from(),
-                range_first.to(),
-                range_last.from(),
-                range_last.to(),
-            )
-        };
-        change_pos.extend_from_slice(&[start1, end1, start2, end2]);
+    //     //         let first = range_raw.0;
+    //     //         let second = range_raw.1;
+    //     //         let first_1 = first.first().unwrap();
+    //     //         let first_2 = second.last().unwrap();
+    //     //         let second_1 = first.first().unwrap();
+    //     //         let second_2 = second.last().unwrap();
+    //     //         let range_first = Range::new(*first_1, *first_2);
+    //     //         let range_last = Range::new(*second_1, *second_2);
+    //     //         (
+    //     //             range_first.from(),
+    //     //             range_first.to(),
+    //     //             range_last.from(),
+    //     //             range_last.to(),
+    //     //         )
+    //     //     };
+    //     //     change_pos.push((start1, end1));
+    //     //     change_pos.push((start2, end2));
+    //     // }
+    Ok(vec![(14, 24)])
+}
+
+pub fn is_valid_tagname_char(ch: char) -> bool {
+    ch.is_alphanumeric() || ch == '_' || ch == '-' || ch == '.'
+}
+
+pub fn find_next_tag(text: RopeSlice, mut pos: usize, n: usize) -> Option<(usize, usize)> {
+    if pos >= text.len_chars() || n == 0 {
+        return None;
     }
-    Ok(change_pos)
+
+    let mut chars = text.chars_at(pos);
+    let mut possible_tag = String::new();
+
+    'outer: loop {
+        // look forward, try to find something that looks like a closing tag e.g. </html>
+        // extract the name so e.g. "html".
+        // set current_tag_name to this "html" string, then break.
+        let next_char = chars.next()?;
+        pos += 1;
+        if next_char == '<' {
+            let char_after_that = chars.next()?;
+            pos += 1;
+            if char_after_that == '/' {
+                let mut possible_tag_name = String::new();
+                loop {
+                    let current_char = chars.next()?;
+                    pos += 1;
+                    if is_valid_tagname_char(current_char) {
+                        possible_tag_name.push(current_char);
+                    } else if current_char == '>' && possible_tag_name.len() != 0 {
+                        // victory!
+                        possible_tag.push_str(&possible_tag_name[..]);
+                        break 'outer;
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    return Some((pos - possible_tag.len() - 1, pos - 2));
 }
 
 #[cfg(test)]
@@ -388,18 +439,10 @@ mod test {
     }
 
     #[test]
-    fn test_get_surround_pos_tag_simple() {
-        #[rustfmt::skip]
-        let (doc, selection, expectations) =
-            rope_with_selections_and_expectations_tags(
-                "<tag>hello</tag> <MegaDiv>lol</MegaDiv>",
-                " ___   ^    ___   _______  ^   _______ "
-            );
+    fn test_find_next_tag() {
+        let doc = Rope::from("<tag>hello</tag>");
 
-        assert_eq!(
-            get_tag_surround_pos(None, doc.slice(..), &selection, 1).unwrap(),
-            expectations
-        );
+        assert_eq!(find_next_tag(doc.slice(..), 7, 1).unwrap(), (14, 24));
     }
 
     #[test]

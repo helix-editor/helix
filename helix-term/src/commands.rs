@@ -5716,7 +5716,7 @@ fn surround_replace(cx: &mut Context) {
         let selection = doc.selection(view.id);
 
         if false {
-            let change_pos = match surround::get_surround_pos_tag(text, selection, "lol", layer) {
+            let change_pos = match surround::get_surround_pos_tag(text, selection, layer) {
                 Ok(c) => c,
                 Err(err) => {
                     cx.editor.set_error(err.to_string());
@@ -5726,7 +5726,14 @@ fn surround_replace(cx: &mut Context) {
             // TODO: add back the logic for other surround changes
         } else {
             // TODO: obtain these values from a function
-            let change_pos: Vec<(usize, usize)> = vec![(4, 10), (13, 20), (24, 30), (33, 40)];
+            // let change_pos: Vec<(usize, usize)> = vec![(4, 10), (13, 20), (24, 30), (33, 40)];
+            let change_pos = match surround::get_surround_pos_tag(text, selection, layer) {
+                Ok(c) => c,
+                Err(err) => {
+                    cx.editor.set_error(err.to_string());
+                    return;
+                }
+            };
 
             let selection = selection.clone();
             let ranges: SmallVec<[Range; 1]> =
