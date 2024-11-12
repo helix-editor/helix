@@ -356,8 +356,16 @@ pub fn find_nearest_tag(
         let (next_tag_range, next_tag) = find_next_tag(forward_text, forward_cursor_pos, skip)?;
         next_tag_counter += 1;
         if next_tag_counter == skip {
+            let mut backward_search_idx = cursor_pos;
+
             loop {
-                let (prev_tag_range, prev_tag) = find_prev_tag(text, cursor_pos, skip)?;
+                let (prev_tag_range, prev_tag, last_search_idx) =
+                    find_prev_tag(text, backward_search_idx, skip)?;
+
+                backward_search_idx = last_search_idx;
+
+                dbg!(&prev_tag_range, &prev_tag);
+
                 if prev_tag == next_tag {
                     return Ok(((prev_tag_range, next_tag_range), prev_tag));
                 }
@@ -369,11 +377,12 @@ pub fn find_nearest_tag(
 /// Find the opening `<tag>` starting from `cursor_pos` and iterating until the beginning of the text.
 /// Returns the Range of the tag's name (excluding the `<` and `>` characters.)
 /// As well as the actual name of the tag
+/// Additionally, it returns the last position where it stopped searching.
 pub fn find_prev_tag(
     text: RopeSlice,
     mut cursor_pos: usize,
     skip: usize,
-) -> Result<(Range, String)> {
+) -> Result<(Range, String, usize)> {
     if cursor_pos == 0 || skip == 0 {
         return Err(Error::RangeExceedsText);
     }
@@ -403,7 +412,7 @@ pub fn find_prev_tag(
                         .collect::<String>();
 
                     let range = Range::new(cursor_pos + 1, cursor_pos + tag_name.len());
-                    return Ok((range, tag_name));
+                    return Ok((range, tag_name, cursor_pos));
                 }
                 possible_tag_name.push(current_char);
             }
@@ -511,7 +520,7 @@ mod test {
 
         assert_eq!(
             find_prev_tag(doc.slice(..), 7, 1).unwrap(),
-            (Range::new(1, 3), String::from("tag"))
+            (Range::new(1, 3), String::from("tag"), 0)
         );
     }
 
@@ -521,17 +530,32 @@ mod test {
 
         assert_eq!(
             find_prev_tag(doc.slice(..), 32, 1).unwrap(),
-            (Range::new(1, 11), String::from("Hello.World"))
+            (Range::new(1, 11), String::from("Hello.World"), 0)
         );
     }
 
     #[test]
-    fn test_find_surrounding_tag() {
+    fn test_find_surrounding_tag_simple() {
         #[rustfmt::skip]
         let (doc, selection, expectations) =
             rope_with_selections_and_expectations_tags(
                 "<html> simple example </html>",
                 " ____     ^             ____ "
+            );
+
+        assert_eq!(
+            get_surround_pos_tag(doc.slice(..), &selection, 1),
+            Ok(expectations)
+        );
+    }
+
+    #[test]
+    fn test_find_surrounding_tag_with_imposter() {
+        #[rustfmt::skip]
+        let (doc, selection, expectations) =
+            rope_with_selections_and_expectations_tags(
+                "<div> simple example </html> </div>",
+                " ___      ^                    ___ "
             );
 
         assert_eq!(
