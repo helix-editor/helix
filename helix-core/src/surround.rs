@@ -343,44 +343,24 @@ pub fn get_surround_pos_tag(
     selection: &Selection,
     skip: usize,
 ) -> Result<Vec<(usize, usize)>> {
-    //     // let change_pos: Vec<(usize, usize)> = vec![(4, 10), (13, 20), (24, 30), (33, 40)];
-    //     let mut change_pos = Vec::new();
+    let mut change_pos = Vec::new();
 
-    //     // for &range in selection {
-    //     //     let (start1, end1, start2, end2) = {
-    //     //         let cursor_pos = range.cursor(text);
-    //     //         // let range_raw = find_nth_close_tag(text, cursor_pos, skip).unwrap();
+    for &range in selection {
+        let cursor_pos = range.cursor(text);
+        let (next_tag, prev_tag) = find_nearest_tag(text, cursor_pos, 1)?;
+        change_pos.push((prev_tag.from(), prev_tag.to()));
+        change_pos.push((next_tag.from(), next_tag.to()));
+    }
 
-    //     //         let first = range_raw.0;
-    //     //         let second = range_raw.1;
-    //     //         let first_1 = first.first().unwrap();
-    //     //         let first_2 = second.last().unwrap();
-    //     //         let second_1 = first.first().unwrap();
-    //     //         let second_2 = second.last().unwrap();
-    //     //         let range_first = Range::new(*first_1, *first_2);
-    //     //         let range_last = Range::new(*second_1, *second_2);
-    //     //         (
-    //     //             range_first.from(),
-    //     //             range_first.to(),
-    //     //             range_last.from(),
-    //     //             range_last.to(),
-    //     //         )
-    //     //     };
-    //     //     change_pos.push((start1, end1));
-    //     //     change_pos.push((start2, end2));
-    //     // }
-    Ok(vec![(14, 24)])
+    Ok(change_pos)
 }
 
 pub fn is_valid_tagname_char(ch: char) -> bool {
     ch.is_alphanumeric() || ch == '_' || ch == '-' || ch == '.'
 }
 
-// pub fn find_surrounding_tag
-// Look in the forward direction and store the tag that we find e.g. "div"
-// Look in the backward direction and store the tag that we find e.g. "span"
-// If they are the same, success. If they're different, continue looking forward until we find the same
-// Alternate between looking forward and backward
+pub fn find_nearest_tag(text: RopeSlice, cursor_pos: usize, skip: usize) -> Result<(Range, Range)> {
+}
 
 pub fn find_prev_tag(
     text: RopeSlice,
