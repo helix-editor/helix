@@ -1966,7 +1966,7 @@ file-types = ["swift", "swiftinterface"]
 roots = [ "Package.swift" ]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
-formatter = { command = "swift-format", args = [ "--configuration", ".swift-format"] }
+formatter = { command = "swift-format" }
 auto-format = true
 language-servers = [ "sourcekit-lsp" ]
 
