@@ -5715,57 +5715,64 @@ fn surround_replace(cx: &mut Context) {
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id);
 
-        // the first character represents the index of the first change
-        // the second character represents the index of the second change
-        let change_pos =
-            // also interested in changing this
-            match surround::get_surround_pos(doc.syntax(), text, selection, surround_ch, layer) {
+        if false {
+            let change_pos = match surround::get_surround_pos_tag(text, selection, "lol", layer) {
                 Ok(c) => c,
                 Err(err) => {
                     cx.editor.set_error(err.to_string());
                     return;
                 }
             };
+            // TODO: add back the logic for other surround changes
+        } else {
+            // TODO: obtain these values from a function
+            let change_pos: Vec<(usize, usize)> = vec![(4, 10), (13, 20), (24, 30), (33, 40)];
 
-        let selection = selection.clone();
-        let ranges: SmallVec<[Range; 1]> = change_pos.iter().map(|&p| Range::point(p)).collect();
-        doc.set_selection(
-            view.id,
-            Selection::new(ranges, selection.primary_index() * 2),
-        );
+            let selection = selection.clone();
+            let ranges: SmallVec<[Range; 1]> =
+                change_pos.iter().map(|&p| Range::new(p.0, p.1)).collect();
 
-        cx.on_next_key(move |cx, event| {
-            let (view, doc) = current!(cx.editor);
-            let to = match event.char() {
-                Some(to) => to,
-                None => return doc.set_selection(view.id, selection),
-            };
-            // we are interested in changing this specifically
-            let (open, close) = match_brackets::get_pair(to);
-
-            // the changeset has to be sorted to allow nested surrounds
-            let mut sorted_pos: Vec<(usize, char)> = Vec::new();
-            for p in change_pos.chunks(2) {
-                sorted_pos.push((p[0], open));
-                sorted_pos.push((p[1], close));
-            }
-            sorted_pos.sort_unstable();
-
-            let transaction = Transaction::change(
-                doc.text(),
-                sorted_pos.iter().map(|&pos| {
-                    // "pos" is the idx of the character we are replacing
-                    // "t" is the replacement character
-                    let mut t = Tendril::new();
-                    t.push(pos.1);
-                    log::error!("{:?}, {:?}", pos.0, Some(&t));
-                    (pos.0, pos.0 + 1, Some(t))
-                }),
+            doc.set_selection(
+                view.id,
+                Selection::new(ranges, selection.primary_index() * 2),
             );
-            doc.set_selection(view.id, selection);
-            doc.apply(&transaction, view.id);
-            exit_select_mode(cx);
-        });
+
+            cx.on_next_key(move |cx, event| {
+                let (view, doc) = current!(cx.editor);
+
+                // TODO: obtain this value from the input
+                let open = "<help>";
+                let close = "</help>";
+
+                // the changeset has to be sorted to allow nested surrounds
+                let mut sorted_pos: Vec<((usize, usize), &str)> = Vec::new();
+
+                // taking chunks of two at once to replace with <help> </help>
+                for p in change_pos.chunks(2) {
+                    let line_opening = p[0];
+                    let line_closing = p[1];
+                    sorted_pos.push((line_opening, open));
+                    sorted_pos.push((line_closing, close));
+                }
+                sorted_pos.sort_unstable();
+
+                let transaction = Transaction::change(
+                    doc.text(),
+                    sorted_pos.iter().map(|&(pos, change_tag)| {
+                        let mut tag = Tendril::new();
+                        tag.push_str(change_tag);
+
+                        // replace from pos.0 to pos.1 with t
+                        (pos.0, pos.1, Some(tag))
+                    }),
+                );
+
+                // we don't need to touch this
+                doc.set_selection(view.id, selection);
+                doc.apply(&transaction, view.id);
+                exit_select_mode(cx);
+            });
+        }
     })
 }
 

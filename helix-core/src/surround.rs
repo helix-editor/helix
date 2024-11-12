@@ -308,7 +308,58 @@ pub fn get_surround_pos(
             return Err(Error::CursorOverlap);
         }
         // ensure the positions are always paired in the forward direction
+        // e.g. [41, 214]
         change_pos.extend_from_slice(&[open_pos.min(close_pos), close_pos.max(open_pos)]);
+    }
+    Ok(change_pos)
+}
+
+fn find_nth_close_tag(
+    text: RopeSlice,
+    tag: &str,
+    mut pos: usize,
+    n: usize,
+) -> Result<(Vec<usize>, Vec<usize>)> {
+    // if text.len_chars() < 2 {
+    //     return Err(Error::PairNotFound);
+    // }
+    // if range.to() >= text.len_chars() {
+    //     return Err(Error::RangeExceedsText);
+    // }
+    //
+    Ok((vec![4, 7], vec![10, 13]))
+}
+
+/// like get_surround_pos, but for Tags
+pub fn get_surround_pos_tag(
+    text: RopeSlice,
+    selection: &Selection,
+    tag: &str,
+    skip: usize,
+) -> Result<Vec<usize>> {
+    let mut change_pos = Vec::new();
+
+    for &range in selection {
+        let (start1, end1, start2, end2) = {
+            let pos = range.cursor(text);
+            let range_raw = find_nth_close_tag(text, tag, pos, skip).unwrap();
+
+            let first = range_raw.0;
+            let second = range_raw.1;
+            let first_1 = first.first().unwrap();
+            let first_2 = second.last().unwrap();
+            let second_1 = first.first().unwrap();
+            let second_2 = second.last().unwrap();
+            let range_first = Range::new(*first_1, *first_2);
+            let range_last = Range::new(*second_1, *second_2);
+            (
+                range_first.from(),
+                range_first.to(),
+                range_last.from(),
+                range_last.to(),
+            )
+        };
+        change_pos.extend_from_slice(&[start1, end1, start2, end2]);
     }
     Ok(change_pos)
 }
@@ -332,6 +383,21 @@ mod test {
 
         assert_eq!(
             get_surround_pos(None, doc.slice(..), &selection, Some('('), 1).unwrap(),
+            expectations
+        );
+    }
+
+    #[test]
+    fn test_get_surround_pos_tag_simple() {
+        #[rustfmt::skip]
+        let (doc, selection, expectations) =
+            rope_with_selections_and_expectations_tags(
+                "<tag>hello</tag> <MegaDiv>lol</MegaDiv>",
+                " ___   ^    ___   _______  ^   _______ "
+            );
+
+        assert_eq!(
+            get_tag_surround_pos(None, doc.slice(..), &selection, 1).unwrap(),
             expectations
         );
     }
@@ -445,9 +511,9 @@ mod test {
         )
     }
 
-    // Create a Rope and a matching Selection using a specification language.
-    // ^ is a single-point selection.
-    // _ is an expected index. These are returned as a Vec<usize> for use in assertions.
+    /// Create a Rope and a matching Selection using a specification language.
+    /// ^ is a single-point selection.
+    /// _ is an expected index. These are returned as a Vec<usize> for use in assertions.
     fn rope_with_selections_and_expectations(
         text: &str,
         spec: &str,
@@ -464,6 +530,44 @@ mod test {
             .collect();
 
         let expectations: Vec<usize> = spec.match_indices('_').map(|(i, _)| i).collect();
+
+        (rope, Selection::new(selections, 0), expectations)
+    }
+
+    fn rope_with_selections_and_expectations_tags(
+        text: &str,
+        spec: &str,
+    ) -> (Rope, Selection, Vec<Vec<usize>>) {
+        if text.len() != spec.len() {
+            panic!("specification must match text length -- are newlines aligned?");
+        }
+
+        let rope = Rope::from(text);
+
+        let selections: SmallVec<[Range; 1]> = spec
+            .match_indices('^')
+            .map(|(i, _)| Range::point(i))
+            .collect();
+
+        let expectations: Vec<Vec<usize>> = spec
+            .char_indices()
+            .filter(|&(_, c)| c == '_')
+            .map(|(i, _)| i)
+            .fold(Vec::new(), |mut groups, idx| {
+                if let Some(last_group) = groups.last_mut() {
+                    if last_group
+                        .last()
+                        .map_or(false, |&last_idx| last_idx + 1 == idx)
+                    {
+                        last_group.push(idx);
+                    } else {
+                        groups.push(vec![idx]);
+                    }
+                } else {
+                    groups.push(vec![idx]);
+                }
+                groups
+            });
 
         (rope, Selection::new(selections, 0), expectations)
     }
