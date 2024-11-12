@@ -376,7 +376,17 @@ pub fn is_valid_tagname_char(ch: char) -> bool {
     ch.is_alphanumeric() || ch == '_' || ch == '-' || ch == '.'
 }
 
-pub fn find_next_tag(text: RopeSlice, mut pos: usize, n: usize) -> Option<(usize, usize)> {
+// pub fn find_surrounding_tag
+// Look in the forward direction and store the tag that we find e.g. "div"
+// Look in the backward direction and store the tag that we find e.g. "span"
+// If they are the same, success. If they're different, continue looking forward until we find the same
+// Alternate between looking forward and backward
+
+pub fn find_next_tag(
+    text: RopeSlice,
+    mut pos: usize,
+    n: usize,
+) -> Option<((usize, usize), String)> {
     if pos >= text.len_chars() || n == 0 {
         return None;
     }
@@ -401,7 +411,6 @@ pub fn find_next_tag(text: RopeSlice, mut pos: usize, n: usize) -> Option<(usize
                     if is_valid_tagname_char(current_char) {
                         possible_tag_name.push(current_char);
                     } else if current_char == '>' && possible_tag_name.len() != 0 {
-                        // victory!
                         possible_tag.push_str(&possible_tag_name[..]);
                         break 'outer;
                     } else {
@@ -412,7 +421,7 @@ pub fn find_next_tag(text: RopeSlice, mut pos: usize, n: usize) -> Option<(usize
         }
     }
 
-    return Some((pos - possible_tag.len() - 1, pos - 2));
+    return Some(((pos - possible_tag.len() - 1, pos - 2), possible_tag));
 }
 
 #[cfg(test)]
@@ -442,7 +451,40 @@ mod test {
     fn test_find_next_tag() {
         let doc = Rope::from("<tag>hello</tag>");
 
-        assert_eq!(find_next_tag(doc.slice(..), 7, 1).unwrap(), (14, 24));
+        assert_eq!(
+            find_next_tag(doc.slice(..), 7, 1).unwrap(),
+            ((12, 14), String::from("tag"))
+        );
+    }
+
+    #[test]
+    fn test_find_next_tag_broken() {
+        let doc = Rope::from("<tag>hello</tag </Hello.World>");
+
+        assert_eq!(
+            find_next_tag(doc.slice(..), 7, 1).unwrap(),
+            ((18, 28), String::from("Hello.World"))
+        );
+    }
+
+    #[test]
+    fn test_find_prev_tag() {
+        let doc = Rope::from("<tag>hello</tag>");
+
+        assert_eq!(
+            find_next_tag(doc.slice(..), 7, 1).unwrap(),
+            ((1, 3), String::from("tag"))
+        );
+    }
+
+    #[test]
+    fn test_find_prev_tag_broken() {
+        let doc = Rope::from("<Hello.World div={true}> <tag hello</tag>");
+
+        assert_eq!(
+            find_next_tag(doc.slice(..), 32, 1).unwrap(),
+            ((1, 11), String::from("Hello.World"))
+        );
     }
 
     #[test]
@@ -580,17 +622,19 @@ mod test {
     fn rope_with_selections_and_expectations_tags(
         text: &str,
         spec: &str,
-    ) -> (Rope, Selection, Vec<Vec<usize>>) {
+    ) -> (Rope, usize, Vec<Vec<usize>>) {
         if text.len() != spec.len() {
             panic!("specification must match text length -- are newlines aligned?");
         }
 
         let rope = Rope::from(text);
 
-        let selections: SmallVec<[Range; 1]> = spec
-            .match_indices('^')
-            .map(|(i, _)| Range::point(i))
-            .collect();
+        // let selections: SmallVec<[Range; 1]> = spec
+        //     .match_indices('^')
+        //     .map(|(i, _)| Range::point(i))
+        //     .collect();
+
+        let cursor_idx = spec.find("^").unwrap();
 
         let expectations: Vec<Vec<usize>> = spec
             .char_indices()
@@ -612,6 +656,6 @@ mod test {
                 groups
             });
 
-        (rope, Selection::new(selections, 0), expectations)
+        (rope, cursor_idx, expectations)
     }
 }
