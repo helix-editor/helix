@@ -308,7 +308,6 @@ pub fn get_surround_pos(
             return Err(Error::CursorOverlap);
         }
         // ensure the positions are always paired in the forward direction
-        // e.g. [41, 214]
         change_pos.extend_from_slice(&[open_pos.min(close_pos), close_pos.max(open_pos)]);
     }
     Ok(change_pos)
@@ -320,13 +319,13 @@ pub fn get_surround_pos(
 pub fn get_surround_pos_tag(
     text: RopeSlice,
     selection: &Selection,
-    _skip: usize,
+    skip: usize,
 ) -> Result<Vec<(usize, usize)>> {
     let mut change_pos = Vec::new();
 
     for &range in selection {
         let cursor_pos = range.cursor(text);
-        let (next_tag, prev_tag) = find_nearest_tag(text, cursor_pos, 1)?;
+        let ((prev_tag, next_tag), _) = find_nearest_tag(text, cursor_pos, skip)?;
         change_pos.push((prev_tag.from(), prev_tag.to()));
         change_pos.push((next_tag.from(), next_tag.to()));
     }
@@ -335,43 +334,66 @@ pub fn get_surround_pos_tag(
 }
 
 /// Test whether a character would be considered a valid character if it was used for either JSX, HTML or XML tags
-/// JSX tags may have "." in them for scoping
-/// HTML tags may have "-" in them if it's a custom element
-/// Both JSX and HTML tags may have "_"
+/// JSX tags may have `.` in them for scoping
+/// HTML tags may have `-` in them if it's a custom element
+/// Both JSX and HTML tags may have `_`
 pub fn is_valid_tagname_char(ch: char) -> bool {
     ch.is_alphanumeric() || ch == '_' || ch == '-' || ch == '.'
 }
 
+/// Get the two `Range`s corresponding to matching tags surrounding the cursor, as well as the name of the tags.
 pub fn find_nearest_tag(
-    _text: RopeSlice,
-    _cursor_pos: usize,
-    _skip: usize,
-) -> Result<(Range, Range)> {
-    Ok((Range::point(1), Range::point(1)))
+    text: RopeSlice,
+    cursor_pos: usize,
+    skip: usize,
+) -> Result<((Range, Range), String)> {
+    let mut next_tag_counter = 0;
+
+    let forward_cursor_pos = cursor_pos.clone();
+    let forward_text = text.clone();
+
+    loop {
+        let (next_tag_range, next_tag) = find_next_tag(forward_text, forward_cursor_pos, skip)?;
+        next_tag_counter += 1;
+        if next_tag_counter == skip {
+            loop {
+                let (prev_tag_range, prev_tag) = find_prev_tag(text, cursor_pos, skip)?;
+                if prev_tag == next_tag {
+                    return Ok(((prev_tag_range, next_tag_range), prev_tag));
+                }
+            }
+        }
+    }
 }
 
-/// Find the opening <tag> starting from "pos" and iterating until the beginning of the text.
-/// Returns the Range of the tag's name (excluding the "<" and ">" characters.)
+/// Find the opening `<tag>` starting from `cursor_pos` and iterating until the beginning of the text.
+/// Returns the Range of the tag's name (excluding the `<` and `>` characters.)
 /// As well as the actual name of the tag
 pub fn find_prev_tag(
     text: RopeSlice,
     mut cursor_pos: usize,
     skip: usize,
-) -> Option<(Range, String)> {
+) -> Result<(Range, String)> {
     if cursor_pos == 0 || skip == 0 {
-        return None;
+        return Err(Error::RangeExceedsText);
     }
 
     let mut chars = text.chars_at(cursor_pos);
 
     loop {
-        let prev_char = chars.prev()?;
+        let prev_char = match chars.prev() {
+            Some(ch) => ch,
+            None => return Err(Error::RangeExceedsText),
+        };
         cursor_pos -= 1;
 
         if prev_char == '>' {
             let mut possible_tag_name = String::new();
             loop {
-                let current_char = chars.prev()?;
+                let current_char = match chars.prev() {
+                    Some(ch) => ch,
+                    None => return Err(Error::RangeExceedsText),
+                };
                 cursor_pos -= 1;
                 if current_char == '<' {
                     let tag_name = possible_tag_name
@@ -381,7 +403,7 @@ pub fn find_prev_tag(
                         .collect::<String>();
 
                     let range = Range::new(cursor_pos + 1, cursor_pos + tag_name.len());
-                    return Some((range, tag_name));
+                    return Ok((range, tag_name));
                 }
                 possible_tag_name.push(current_char);
             }
@@ -389,33 +411,40 @@ pub fn find_prev_tag(
     }
 }
 
-/// Find the closing </tag> starting from "pos" and iterating the end of the text.
-/// Returns the Range of the tag's name (excluding the "</" and ">" characters.)
+/// Find the closing `</tag>` starting from `pos` and iterating the end of the text.
+/// Returns the Range of the tag's name (excluding the `</` and `>` characters.)
 /// As well as the actual name of the tag
 pub fn find_next_tag(
     text: RopeSlice,
     mut cursor_pos: usize,
     skip: usize,
-) -> Option<(Range, String)> {
+) -> Result<(Range, String)> {
     if cursor_pos >= text.len_chars() || skip == 0 {
-        return None;
+        return Err(Error::RangeExceedsText);
     }
 
     let mut chars = text.chars_at(cursor_pos);
 
+    // look forward and find something that looks like a closing tag, e.g. <html> and extract it's name so we get "html"
     loop {
-        // look forward, try to find something that looks like a closing tag e.g. </html>
-        // extract the name so e.g. "html".
-        // set current_tag_name to this "html" string, then break.
-        let next_char = chars.next()?;
+        let next_char = match chars.next() {
+            Some(ch) => ch,
+            None => return Err(Error::RangeExceedsText),
+        };
         cursor_pos += 1;
         if next_char == '<' {
-            let char_after_that = chars.next()?;
+            let char_after_that = match chars.next() {
+                Some(ch) => ch,
+                None => return Err(Error::RangeExceedsText),
+            };
             cursor_pos += 1;
             if char_after_that == '/' {
                 let mut possible_tag_name = String::new();
                 loop {
-                    let current_char = chars.next()?;
+                    let current_char = match chars.next() {
+                        Some(ch) => ch,
+                        None => return Err(Error::RangeExceedsText),
+                    };
                     cursor_pos += 1;
                     if is_valid_tagname_char(current_char) {
                         possible_tag_name.push(current_char);
@@ -423,7 +452,7 @@ pub fn find_next_tag(
                         let range =
                             Range::new(cursor_pos - possible_tag_name.len() - 1, cursor_pos - 2);
 
-                        return Some((range, possible_tag_name));
+                        return Ok((range, possible_tag_name));
                     } else {
                         break;
                     }
@@ -493,6 +522,21 @@ mod test {
         assert_eq!(
             find_prev_tag(doc.slice(..), 32, 1).unwrap(),
             (Range::new(1, 11), String::from("Hello.World"))
+        );
+    }
+
+    #[test]
+    fn test_find_surrounding_tag() {
+        #[rustfmt::skip]
+        let (doc, selection, expectations) =
+            rope_with_selections_and_expectations_tags(
+                "<html> simple example </html>",
+                " ____     ^             ____ "
+            );
+
+        assert_eq!(
+            get_surround_pos_tag(doc.slice(..), &selection, 1),
+            Ok(expectations)
         );
     }
 
@@ -631,40 +675,40 @@ mod test {
     fn rope_with_selections_and_expectations_tags(
         text: &str,
         spec: &str,
-    ) -> (Rope, usize, Vec<Vec<usize>>) {
+    ) -> (Rope, Selection, Vec<(usize, usize)>) {
         if text.len() != spec.len() {
             panic!("specification must match text length -- are newlines aligned?");
         }
 
         let rope = Rope::from(text);
 
-        // let selections: SmallVec<[Range; 1]> = spec
-        //     .match_indices('^')
-        //     .map(|(i, _)| Range::point(i))
-        //     .collect();
+        let selections: SmallVec<[Range; 1]> = spec
+            .match_indices('^')
+            .map(|(i, _)| Range::point(i))
+            .collect();
 
-        let cursor_idx = spec.find("^").unwrap();
-
-        let expectations: Vec<Vec<usize>> = spec
+        let expectations: Vec<(usize, usize)> = spec
             .char_indices()
-            .filter(|&(_, c)| c == '_')
-            .map(|(i, _)| i)
-            .fold(Vec::new(), |mut groups, idx| {
-                if let Some(last_group) = groups.last_mut() {
-                    if last_group
-                        .last()
-                        .map_or(false, |&last_idx| last_idx + 1 == idx)
-                    {
-                        last_group.push(idx);
-                    } else {
-                        groups.push(vec![idx]);
+            .chain(std::iter::once((spec.len(), ' '))) // Add sentinel to capture trailing groups
+            .fold(Vec::new(), |mut groups, (i, c)| {
+                match (groups.last_mut(), c) {
+                    // Current character is an underscore, and the previous index is one lower than the current index, so extend the current group.
+                    (Some((_start, end)), '_') if *end + 1 == i => {
+                        *end = i;
                     }
-                } else {
-                    groups.push(vec![idx]);
+                    // There is a gap of more than 1 between the current underscore's index and the previous underscore's index
+                    (Some((_start, end)), '_') if *end < i => {
+                        groups.push((i, i));
+                    }
+                    // There hasn't been a group yet, so we are going to start it.
+                    (None, '_') => {
+                        groups.push((i, i));
+                    }
+                    _non_underscore => {}
                 }
                 groups
             });
 
-        (rope, cursor_idx, expectations)
+        (rope, Selection::new(selections, 0), expectations)
     }
 }
