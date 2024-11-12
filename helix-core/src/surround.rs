@@ -382,6 +382,45 @@ pub fn is_valid_tagname_char(ch: char) -> bool {
 // If they are the same, success. If they're different, continue looking forward until we find the same
 // Alternate between looking forward and backward
 
+pub fn find_prev_tag(
+    text: RopeSlice,
+    mut pos: usize,
+    n: usize,
+) -> Option<((usize, usize), String)> {
+    if pos == 0 || n == 0 {
+        return None;
+    }
+
+    let mut chars = text.chars_at(pos);
+    let mut possible_tag = String::new();
+
+    'outer: loop {
+        let prev_char = chars.prev()?;
+        pos -= 1;
+
+        if prev_char == '>' {
+            let mut possible_tag_name = String::new();
+            loop {
+                let current_char = chars.prev()?;
+                pos -= 1;
+                if current_char == '<' {
+                    possible_tag.push_str(
+                        &possible_tag_name
+                            .chars()
+                            .rev()
+                            .take_while(|&ch| is_valid_tagname_char(ch))
+                            .collect::<String>()[..],
+                    );
+                    break 'outer;
+                }
+                possible_tag_name.push(current_char);
+            }
+        }
+    }
+
+    Some(((pos + 1, pos + possible_tag.len()), possible_tag))
+}
+
 pub fn find_next_tag(
     text: RopeSlice,
     mut pos: usize,
@@ -472,7 +511,7 @@ mod test {
         let doc = Rope::from("<tag>hello</tag>");
 
         assert_eq!(
-            find_next_tag(doc.slice(..), 7, 1).unwrap(),
+            find_prev_tag(doc.slice(..), 7, 1).unwrap(),
             ((1, 3), String::from("tag"))
         );
     }
@@ -482,7 +521,7 @@ mod test {
         let doc = Rope::from("<Hello.World div={true}> <tag hello</tag>");
 
         assert_eq!(
-            find_next_tag(doc.slice(..), 32, 1).unwrap(),
+            find_prev_tag(doc.slice(..), 32, 1).unwrap(),
             ((1, 11), String::from("Hello.World"))
         );
     }
