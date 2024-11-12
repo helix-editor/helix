@@ -22,8 +22,8 @@ use helix_core::{
     encoding, find_workspace,
     graphemes::{self, next_grapheme_boundary, RevRopeGraphemes},
     history::UndoKind,
-    increment, indent,
-    indent::IndentStyle,
+    increment,
+    indent::{self, IndentStyle},
     line_ending::{get_line_ending_of_str, line_end_char_index},
     match_brackets,
     movement::{self, move_vertically_visual, Direction},
@@ -3467,31 +3467,51 @@ fn open(cx: &mut Context, open: Open) {
             )
         };
 
-        let indent = indent::indent_for_newline(
-            doc.language_config(),
-            doc.syntax(),
-            &doc.config.load().indent_heuristic,
-            &doc.indent_style,
-            doc.tab_width(),
-            text,
-            line_num,
-            line_end_index,
-            cursor_line,
-        );
+        let continue_comment_token = doc
+            .language_config()
+            .and_then(|config| config.comment_tokens.as_ref())
+            .and_then(|tokens| comment::get_comment_token(text, tokens, cursor_line));
+
+        let line = text.line(cursor_line);
+        let indent = match line.first_non_whitespace_char() {
+            Some(pos) if continue_comment_token.is_some() => line.slice(..pos).to_string(),
+            _ => indent::indent_for_newline(
+                doc.language_config(),
+                doc.syntax(),
+                &doc.config.load().indent_heuristic,
+                &doc.indent_style,
+                doc.tab_width(),
+                text,
+                line_num,
+                line_end_index,
+                cursor_line,
+            ),
+        };
 
         let indent_len = indent.len();
         let mut text = String::with_capacity(1 + indent_len);
         text.push_str(doc.line_ending.as_str());
         text.push_str(&indent);
+
+        if let Some(token) = continue_comment_token {
+            text.push_str(token);
+            text.push(' ');
+        }
+
         let text = text.repeat(count);
 
         // calculate new selection ranges
         let pos = offs + line_end_index + line_end_offset_width;
+        let comment_len = continue_comment_token
+            .map(|token| token.len() + 1) // `+ 1` for the extra space added
+            .unwrap_or_default();
         for i in 0..count {
             // pos                    -> beginning of reference line,
-            // + (i * (1+indent_len)) -> beginning of i'th line from pos
-            // + indent_len ->        -> indent for i'th line
-            ranges.push(Range::point(pos + (i * (1 + indent_len)) + indent_len));
+            // + (i * (1+indent_len + comment_len)) -> beginning of i'th line from pos (possibly including comment token)
+            // + indent_len + comment_len ->        -> indent for i'th line
+            ranges.push(Range::point(
+                pos + (i * (1 + indent_len + comment_len)) + indent_len + comment_len,
+            ));
         }
 
         offs += text.chars().count();
@@ -3929,6 +3949,11 @@ pub mod insert {
 
             let mut new_text = String::new();
 
+            let continue_comment_token = doc
+                .language_config()
+                .and_then(|config| config.comment_tokens.as_ref())
+                .and_then(|tokens| comment::get_comment_token(text, tokens, current_line));
+
             // If the current line is all whitespace, insert a line ending at the beginning of
             // the current line. This makes the current line empty and the new line contain the
             // indentation of the old line.
@@ -3938,17 +3963,22 @@ pub mod insert {
 
                 (line_start, line_start, new_text.chars().count())
             } else {
-                let indent = indent::indent_for_newline(
-                    doc.language_config(),
-                    doc.syntax(),
-                    &doc.config.load().indent_heuristic,
-                    &doc.indent_style,
-                    doc.tab_width(),
-                    text,
-                    current_line,
-                    pos,
-                    current_line,
-                );
+                let line = text.line(current_line);
+
+                let indent = match line.first_non_whitespace_char() {
+                    Some(pos) if continue_comment_token.is_some() => line.slice(..pos).to_string(),
+                    _ => indent::indent_for_newline(
+                        doc.language_config(),
+                        doc.syntax(),
+                        &doc.config.load().indent_heuristic,
+                        &doc.indent_style,
+                        doc.tab_width(),
+                        text,
+                        current_line,
+                        pos,
+                        current_line,
+                    ),
+                };
 
                 // If we are between pairs (such as brackets), we want to
                 // insert an additional line which is indented one level
@@ -3958,19 +3988,30 @@ pub mod insert {
                     .and_then(|pairs| pairs.get(prev))
                     .map_or(false, |pair| pair.open == prev && pair.close == curr);
 
-                let local_offs = if on_auto_pair {
+                let local_offs = if let Some(token) = continue_comment_token {
+                    new_text.push_str(doc.line_ending.as_str());
+                    new_text.push_str(&indent);
+                    new_text.push_str(token);
+                    new_text.push(' ');
+                    new_text.chars().count()
+                } else if on_auto_pair {
+                    // line where the cursor will be
                     let inner_indent = indent.clone() + doc.indent_style.as_str();
                     new_text.reserve_exact(2 + indent.len() + inner_indent.len());
                     new_text.push_str(doc.line_ending.as_str());
                     new_text.push_str(&inner_indent);
+
+                    // line where the matching pair will be
                     let local_offs = new_text.chars().count();
                     new_text.push_str(doc.line_ending.as_str());
                     new_text.push_str(&indent);
+
                     local_offs
                 } else {
                     new_text.reserve_exact(1 + indent.len());
                     new_text.push_str(doc.line_ending.as_str());
                     new_text.push_str(&indent);
+
                     new_text.chars().count()
                 };
 

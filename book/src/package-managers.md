@@ -17,7 +17,7 @@
   - [Chocolatey](#chocolatey)
   - [MSYS2](#msys2)
 
-[![Packaging status](https://repology.org/badge/vertical-allrepos/helix.svg)](https://repology.org/project/helix/versions)
+[![Packaging status](https://repology.org/badge/vertical-allrepos/helix-editor.svg)](https://repology.org/project/helix-editor/versions)
 
 ## Linux
 

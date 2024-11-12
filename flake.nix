@@ -6,15 +6,9 @@
     flake-utils.url = "github:numtide/flake-utils";
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
-      inputs = {
-        nixpkgs.follows = "nixpkgs";
-        flake-utils.follows = "flake-utils";
-      };
-    };
-    crane = {
-      url = "github:ipetkov/crane";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    crane.url = "github:ipetkov/crane";
   };
 
   outputs = {
@@ -114,7 +108,7 @@
         if pkgs.stdenv.isLinux
         then pkgs.stdenv
         else pkgs.clangStdenv;
-      rustFlagsEnv = pkgs.lib.optionalString stdenv.isLinux "-C link-arg=-fuse-ld=lld -C target-cpu=native -Clink-arg=-Wl,--no-rosegment";
+      rustFlagsEnv = pkgs.lib.optionalString stdenv.isLinux "-C link-arg=-fuse-ld=lld -C target-cpu=native -Clink-arg=-Wl,--no-rosegment --cfg tokio_unstable";
       rustToolchain = pkgs.pkgsBuildHost.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
       craneLibMSRV = (crane.mkLib pkgs).overrideToolchain rustToolchain;
       craneLibStable = (crane.mkLib pkgs).overrideToolchain pkgs.pkgsBuildHost.rust-bin.stable.latest.default;
