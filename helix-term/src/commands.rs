@@ -5768,8 +5768,6 @@ fn surround_replace(cx: &mut Context) {
                         }),
                     );
 
-                    // we don't need to touch this
-                    // document.set_selection(view.id, *copy_selection);
                     document.apply(&transaction, view.id);
                     context.editor.mode = Mode::Normal;
                 },
@@ -5846,19 +5844,45 @@ fn surround_delete(cx: &mut Context) {
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id);
 
-        let mut change_pos =
-            match surround::get_surround_pos(doc.syntax(), text, selection, surround_ch, count) {
+        if surround_ch.is_some_and(|ch| ch == 'x') {
+            let change_pos = match surround::get_surround_pos_tag(text, &selection, count) {
                 Ok(c) => c,
                 Err(err) => {
                     cx.editor.set_error(err.to_string());
                     return;
                 }
             };
-        change_pos.sort_unstable(); // the changeset has to be sorted to allow nested surrounds
-        let transaction =
-            Transaction::change(doc.text(), change_pos.into_iter().map(|p| (p, p + 1, None)));
-        doc.apply(&transaction, view.id);
-        exit_select_mode(cx);
+            let transaction = Transaction::change(
+                doc.text(),
+                change_pos.iter().flat_map(|(pos, _)| {
+                    let opening_range = pos.0;
+                    let closing_range = pos.1;
+
+                    vec![
+                        // add extra numbers to account for "<", ">" and "/" characters
+                        (opening_range.from() - 1, opening_range.to() + 1, None),
+                        (closing_range.from() - 2, closing_range.to() + 1, None),
+                    ]
+                }),
+            );
+            doc.apply(&transaction, view.id);
+            exit_select_mode(cx);
+        } else {
+            let mut change_pos =
+                match surround::get_surround_pos(doc.syntax(), text, selection, surround_ch, count)
+                {
+                    Ok(c) => c,
+                    Err(err) => {
+                        cx.editor.set_error(err.to_string());
+                        return;
+                    }
+                };
+            change_pos.sort_unstable(); // the changeset has to be sorted to allow nested surrounds
+            let transaction =
+                Transaction::change(doc.text(), change_pos.into_iter().map(|p| (p, p + 1, None)));
+            doc.apply(&transaction, view.id);
+            exit_select_mode(cx);
+        }
     })
 }
 
