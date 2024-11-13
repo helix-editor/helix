@@ -2242,7 +2242,7 @@ fn load_misc_api(engine: &mut Engine, generate_sources: bool) {
     }
 
     if generate_sources {
-        configure_lsp_builtins("rope", &module);
+        configure_lsp_builtins("misc", &module);
     }
 
     engine.register_module(module);
