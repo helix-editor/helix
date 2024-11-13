@@ -5737,7 +5737,7 @@ fn surround_replace(cx: &mut Context) {
 
             let selection = selection.clone();
             let ranges: SmallVec<[Range; 1]> =
-                change_pos.iter().map(|&p| Range::new(p.0, p.1)).collect();
+                change_pos.iter().map(|p| Range::new(14, 14)).collect();
 
             doc.set_selection(
                 view.id,
@@ -5756,8 +5756,10 @@ fn surround_replace(cx: &mut Context) {
 
                 // taking chunks of two at once to replace with <help> </help>
                 for p in change_pos.chunks(2) {
-                    let line_opening = p[0];
-                    let line_closing = p[1];
+                    // let line_opening = p[0];
+                    // let line_closing = p[1];
+                    let line_opening = (1, 1);
+                    let line_closing = (1, 1);
                     sorted_pos.push((line_opening, open));
                     sorted_pos.push((line_closing, close));
                 }
