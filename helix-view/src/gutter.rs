@@ -46,16 +46,19 @@ impl GutterType {
 }
 
 pub fn diagnostic<'doc>(
-    _editor: &'doc Editor,
+    editor: &'doc Editor,
     doc: &'doc Document,
     _view: &View,
     theme: &Theme,
     _is_focused: bool,
 ) -> GutterFn<'doc> {
-    let warning = theme.get("warning");
-    let error = theme.get("error");
-    let info = theme.get("info");
-    let hint = theme.get("hint");
+    let icons = &editor.config().diagnostic_icons;
+
+    let warning = (theme.get("warning"), icons.warning);
+    let error = (theme.get("error"), icons.error);
+    let info = (theme.get("info"), icons.info);
+    let hint = (theme.get("hint"), icons.hint);
+
     let diagnostics = &doc.diagnostics;
 
     Box::new(
@@ -75,13 +78,14 @@ pub fn diagnostic<'doc>(
                         })
                 });
             diagnostics_on_line.max_by_key(|d| d.severity).map(|d| {
-                write!(out, "●").ok();
-                match d.severity {
+                let (style, indicator) = match d.severity {
                     Some(Severity::Error) => error,
                     Some(Severity::Warning) | None => warning,
                     Some(Severity::Info) => info,
                     Some(Severity::Hint) => hint,
-                }
+                };
+                out.push(indicator);
+                style
             })
         },
     )

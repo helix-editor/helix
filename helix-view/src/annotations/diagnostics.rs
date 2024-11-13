@@ -13,6 +13,27 @@ pub enum DiagnosticFilter {
     Enable(Severity),
 }
 
+/// The icon (character) to use for each [`Diagnostic`] level.
+#[derive(Debug, Serialize, Deserialize, Copy, Clone, Eq, PartialEq, PartialOrd, Ord)]
+#[serde(default, deny_unknown_fields)]
+pub struct DiagnosticIcons {
+    pub error: char,
+    pub warning: char,
+    pub info: char,
+    pub hint: char,
+}
+
+impl Default for DiagnosticIcons {
+    fn default() -> Self {
+        Self {
+            error: '●',
+            warning: '●',
+            info: '●',
+            hint: '●',
+        }
+    }
+}
+
 impl<'de> Deserialize<'de> for DiagnosticFilter {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
