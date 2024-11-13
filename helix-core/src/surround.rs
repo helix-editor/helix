@@ -360,9 +360,7 @@ fn find_nth_nearest_tag(
     while (previous_forward_pos - cursor_pos) < SEARCH_CHARS
         && previous_forward_pos < forward_text.len_chars()
     {
-        let next_tag_maybe = find_next_tag(forward_text, previous_forward_pos, skip);
-
-        match next_tag_maybe {
+        match find_next_tag(forward_text, previous_forward_pos, skip) {
             Ok((forward_tag_range, forward_tag_name, forward_search_idx)) => {
                 forward_tags.push((forward_tag_range, forward_tag_name));
                 previous_forward_pos = forward_search_idx;
@@ -372,7 +370,6 @@ fn find_nth_nearest_tag(
                     break;
                 }
                 other_error => {
-                    // Handle other errors
                     return Err(other_error);
                 }
             },
@@ -383,11 +380,20 @@ fn find_nth_nearest_tag(
     let mut previous_backward_pos = cursor_pos;
 
     while (cursor_pos - previous_backward_pos) < SEARCH_CHARS && previous_backward_pos > 0 {
-        let (backward_tag_range, backward_tag_name, backward_search_idx) =
-            find_prev_tag(backward_text, previous_backward_pos, skip)?;
-
-        backward_tags.push((backward_tag_range, backward_tag_name));
-        previous_backward_pos = backward_search_idx;
+        match find_prev_tag(backward_text, previous_backward_pos, skip) {
+            Ok((backward_tag_range, backward_tag_name, backward_search_idx)) => {
+                backward_tags.push((backward_tag_range, backward_tag_name));
+                previous_backward_pos = backward_search_idx;
+            }
+            Err(err) => match err {
+                Error::PairNotFound => {
+                    break;
+                }
+                other_error => {
+                    return Err(other_error);
+                }
+            },
+        }
     }
 
     // only consider the tags which are common in both vectors
@@ -470,7 +476,7 @@ fn find_prev_tag(
                         .take_while(|&ch| is_valid_tagname_char(ch))
                         .collect::<String>();
 
-                    let range = Range::new(cursor_pos + 1, cursor_pos + tag_name.len());
+                    let range = Range::new(cursor_pos + 1, cursor_pos + tag_name.len() + 1);
                     return Ok((range, tag_name, cursor_pos));
                 }
                 possible_tag_name.push(current_char);
@@ -518,7 +524,7 @@ fn find_next_tag(
                         possible_tag_name.push(current_char);
                     } else if current_char == '>' && possible_tag_name.len() != 0 {
                         let range =
-                            Range::new(cursor_pos - possible_tag_name.len() - 1, cursor_pos - 2);
+                            Range::new(cursor_pos - possible_tag_name.len() - 1, cursor_pos - 1);
 
                         return Ok((range, possible_tag_name, cursor_pos));
                     } else {
@@ -875,8 +881,8 @@ mod test {
 
         let range_and_tags = std::iter::from_fn(|| Some((raw_ranges.next()?, raw_ranges.next()?)))
             .map(|((anchor1, head1), (anchor2, head2))| {
-                let range1 = Range::new(anchor1, head1);
-                let range2 = Range::new(anchor2, head2);
+                let range1 = Range::new(anchor1, head1 + 1);
+                let range2 = Range::new(anchor2, head2 + 1);
                 let next_tag_name = tag_names.next().unwrap();
                 ((range1, range2), String::from(next_tag_name))
             })
