@@ -130,6 +130,17 @@ inherits = "boo_berry"
 berry = "#2A2A4D"
 ```
 
+### Rainbow
+
+The `rainbow` key is used for rainbow highlight for matching brackets.
+The key is a list of styles.
+
+```toml
+rainbow = ["#ff0000", "#ffa500", "#fff000", { fg = "#00ff00", modifiers = ["bold"] }]
+```
+
+Colors from the palette and modifiers may be used.
+
 ### Scopes
 
 The following is a list of scopes available to use for styling:

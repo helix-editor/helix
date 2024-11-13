@@ -316,6 +316,8 @@ pub struct Config {
     pub rulers: Vec<u16>,
     #[serde(default)]
     pub whitespace: WhitespaceConfig,
+    /// Whether to render rainbow highlights. Defaults to `false`.
+    pub rainbow_brackets: bool,
     /// Persistently display open buffers along the top
     pub bufferline: BufferLine,
     /// Vertical indent width guides.
@@ -964,6 +966,7 @@ impl Default for Config {
             terminal: get_terminal_provider(),
             rulers: Vec::new(),
             whitespace: WhitespaceConfig::default(),
+            rainbow_brackets: false,
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
             color_modes: false,

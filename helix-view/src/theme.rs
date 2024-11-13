@@ -227,6 +227,7 @@ pub struct Theme {
     // tree-sitter highlight styles are stored in a Vec to optimize lookups
     scopes: Vec<String>,
     highlights: Vec<Style>,
+    rainbow_length: usize,
 }
 
 impl From<Value> for Theme {
@@ -251,45 +252,6 @@ impl<'de> Deserialize<'de> for Theme {
         }
         Ok(theme)
     }
-}
-
-fn build_theme_values(
-    mut values: Map<String, Value>,
-) -> (HashMap<String, Style>, Vec<String>, Vec<Style>, Vec<String>) {
-    let mut styles = HashMap::new();
-    let mut scopes = Vec::new();
-    let mut highlights = Vec::new();
-
-    let mut warnings = Vec::new();
-
-    // TODO: alert user of parsing failures in editor
-    let palette = values
-        .remove("palette")
-        .map(|value| {
-            ThemePalette::try_from(value).unwrap_or_else(|err| {
-                warnings.push(err);
-                ThemePalette::default()
-            })
-        })
-        .unwrap_or_default();
-    // remove inherits from value to prevent errors
-    let _ = values.remove("inherits");
-    styles.reserve(values.len());
-    scopes.reserve(values.len());
-    highlights.reserve(values.len());
-    for (name, style_value) in values {
-        let mut style = Style::default();
-        if let Err(err) = palette.parse_style(&mut style, style_value) {
-            warnings.push(err);
-        }
-
-        // these are used both as UI and as highlights
-        styles.insert(name.clone(), style);
-        scopes.push(name);
-        highlights.push(style);
-    }
-
-    (styles, scopes, highlights, warnings)
 }
 
 impl Theme {
@@ -365,17 +327,87 @@ impl Theme {
         }
     }
 
-    fn from_keys(toml_keys: Map<String, Value>) -> (Self, Vec<String>) {
-        let (styles, scopes, highlights, load_errors) = build_theme_values(toml_keys);
+    fn from_keys(mut values: Map<String, Value>) -> (Self, Vec<String>) {
+        let mut styles = HashMap::new();
+        let mut scopes = Vec::new();
+        let mut highlights = Vec::new();
+        let mut rainbow_length = 0;
+
+        let mut warnings = Vec::new();
+
+        // TODO: alert user of parsing failures in editor
+        let palette = values
+            .remove("palette")
+            .map(|value| {
+                ThemePalette::try_from(value).unwrap_or_else(|err| {
+                    warnings.push(err);
+                    ThemePalette::default()
+                })
+            })
+            .unwrap_or_default();
+        // remove inherits from value to prevent errors
+        let _ = values.remove("inherits");
+        styles.reserve(values.len());
+        scopes.reserve(values.len());
+        highlights.reserve(values.len());
+
+        for (i, style) in values
+            .remove("rainbow")
+            .and_then(|value| match palette.parse_style_array(value) {
+                Ok(styles) => Some(styles),
+                Err(err) => {
+                    warn!("{}", err);
+                    None
+                }
+            })
+            .unwrap_or_else(default_rainbow)
+            .iter()
+            .enumerate()
+        {
+            let name = format!("rainbow.{}", i);
+            styles.insert(name.clone(), *style);
+            scopes.push(name);
+            highlights.push(*style);
+            rainbow_length += 1;
+        }
+
+        for (name, style_value) in values {
+            let mut style = Style::default();
+            if let Err(err) = palette.parse_style(&mut style, style_value) {
+                warnings.push(err);
+            }
+
+            // these are used both as UI and as highlights
+            styles.insert(name.clone(), style);
+            scopes.push(name);
+            highlights.push(style);
+        }
 
         let theme = Self {
             styles,
             scopes,
             highlights,
+            rainbow_length,
             ..Default::default()
         };
-        (theme, load_errors)
+
+        (theme, warnings)
     }
+
+    pub fn rainbow_length(&self) -> usize {
+        self.rainbow_length
+    }
+}
+
+fn default_rainbow() -> Vec<Style> {
+    vec![
+        Style::default().fg(Color::Red),
+        Style::default().fg(Color::Yellow),
+        Style::default().fg(Color::Green),
+        Style::default().fg(Color::Blue),
+        Style::default().fg(Color::Cyan),
+        Style::default().fg(Color::Magenta),
+    ]
 }
 
 struct ThemePalette {
@@ -518,6 +550,24 @@ impl ThemePalette {
         }
         Ok(())
     }
+
+    /// Parses a TOML array into a [`Vec`] of [`Style`]. If the value cannot be
+    /// parsed as an array or if any style in the array cannot be parsed then an
+    /// error is returned.
+    pub fn parse_style_array(&self, value: Value) -> Result<Vec<Style>, String> {
+        let mut styles = Vec::new();
+
+        for v in value
+            .as_array()
+            .ok_or_else(|| format!("Theme: could not parse value as an array: '{}'", value))?
+        {
+            let mut style = Style::default();
+            self.parse_style(&mut style, v.clone())?;
+            styles.push(style);
+        }
+
+        Ok(styles)
+    }
 }
 
 impl TryFrom<Value> for ThemePalette {
@@ -591,5 +641,49 @@ mod tests {
                 .bg(Color::Rgb(0, 0, 0))
                 .add_modifier(Modifier::BOLD)
         );
+    }
+
+    #[test]
+    fn test_parse_valid_style_array() {
+        let theme = toml::toml! {
+            rainbow = ["#ff0000", "#ffa500", "#fff000", { fg = "#00ff00", modifiers = ["bold"] }]
+        };
+
+        let palette = ThemePalette::default();
+
+        let rainbow = theme.get("rainbow").unwrap();
+        let parse_result = palette.parse_style_array(rainbow.clone());
+
+        assert_eq!(
+            Ok(vec![
+                Style::default().fg(Color::Rgb(255, 0, 0)),
+                Style::default().fg(Color::Rgb(255, 165, 0)),
+                Style::default().fg(Color::Rgb(255, 240, 0)),
+                Style::default()
+                    .fg(Color::Rgb(0, 255, 0))
+                    .add_modifier(Modifier::BOLD),
+            ]),
+            parse_result
+        )
+    }
+
+    #[test]
+    fn test_parse_invalid_style_array() {
+        let palette = ThemePalette::default();
+
+        let theme = toml::toml! { invalid_hex_code = ["#f00"] };
+        let invalid_hex_code = theme.get("invalid_hex_code").unwrap();
+        let parse_result = palette.parse_style_array(invalid_hex_code.clone());
+
+        assert_eq!(Err("Malformed hexcode: #f00".to_string()), parse_result);
+
+        let theme = toml::toml! { not_an_array = { red = "#ff0000" } };
+        let not_an_array = theme.get("not_an_array").unwrap();
+        let parse_result = palette.parse_style_array(not_an_array.clone());
+
+        assert_eq!(
+            Err("Theme: could not parse value as an array: '{ red = \"#ff0000\" }'".to_string()),
+            parse_result
+        )
     }
 }
