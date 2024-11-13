@@ -439,7 +439,7 @@ pub fn find_prev_tag(
     loop {
         let prev_char = match chars.prev() {
             Some(ch) => ch,
-            None => return Err(Error::RangeExceedsText),
+            None => return Err(Error::PairNotFound),
         };
         cursor_pos -= 1;
 
@@ -448,7 +448,7 @@ pub fn find_prev_tag(
             loop {
                 let current_char = match chars.prev() {
                     Some(ch) => ch,
-                    None => return Err(Error::RangeExceedsText),
+                    None => return Err(Error::PairNotFound),
                 };
                 cursor_pos -= 1;
                 if current_char == '<' {
@@ -485,13 +485,13 @@ pub fn find_next_tag(
     loop {
         let next_char = match chars.next() {
             Some(ch) => ch,
-            None => return Err(Error::RangeExceedsText),
+            None => return Err(Error::PairNotFound),
         };
         cursor_pos += 1;
         if next_char == '<' {
             let char_after_that = match chars.next() {
                 Some(ch) => ch,
-                None => return Err(Error::RangeExceedsText),
+                None => return Err(Error::PairNotFound),
             };
             cursor_pos += 1;
             if char_after_that == '/' {
@@ -499,7 +499,7 @@ pub fn find_next_tag(
                 loop {
                     let current_char = match chars.next() {
                         Some(ch) => ch,
-                        None => return Err(Error::RangeExceedsText),
+                        None => return Err(Error::PairNotFound),
                     };
                     cursor_pos += 1;
                     if is_valid_tagname_char(current_char) {
@@ -665,7 +665,7 @@ mod test {
     }
 
     #[test]
-    fn test_find_surrounding_tag_with_imposter() {
+    fn test_find_surrounding_tag_with_extra_closing_tag() {
         let (doc, selection, expectations) = rope_with_selections_and_expectations_tags(
             "<div> test </html> </div>",
             " ___    ^            ___ ",
@@ -679,11 +679,11 @@ mod test {
     }
 
     #[test]
-    fn test_find_surrounding_tag_with_many_tags() {
+    fn test_find_surrounding_tag_with_broken_tags() {
         let (doc, selection, _) = rope_with_selections_and_expectations_tags(
             "<span> <div> simple example </span> </html> </div>",
             "                    ^                             ",
-            vec!["span"],
+            vec![],
         );
 
         assert_eq!(
@@ -693,7 +693,7 @@ mod test {
     }
 
     #[test]
-    fn test_find_surrounding_tag_with_many_many_tags() {
+    fn test_find_surrounding_tag_with_many_tags() {
         let (doc, selection, expectations) = rope_with_selections_and_expectations_tags(
             "<span> <div><html>  simple example </div> </html> </span>",
             " ____                      ^                        ____ ",
@@ -707,10 +707,10 @@ mod test {
     }
 
     #[test]
-    fn test_find_surrounding_tag_with_nth_tag() {
+    fn test_find_surrounding_tag_with_nth_tag_newline() {
         let (doc, selection, expectations) = rope_with_selections_and_expectations_tags(
-            "<span> <div> test </div> </span>",
-            " ____         ^            ____ ",
+            "<span> <div> test\n\n </div> </span>",
+            " ____         ^  \n\n          ____ ",
             vec!["span"],
         );
 
@@ -730,6 +730,90 @@ mod test {
 
         assert_eq!(
             get_surround_pos_tag(doc.slice(..), &selection, 2),
+            expectations
+        );
+    }
+
+    #[test]
+    fn test_find_surrounding_tag_empty_document() {
+        let (doc, selection, _) = rope_with_selections_and_expectations_tags(
+            " hello world, wonderful world! ",
+            "               ^               ",
+            vec![],
+        );
+
+        assert_eq!(
+            get_surround_pos_tag(doc.slice(..), &selection, 1),
+            Err(Error::PairNotFound)
+        );
+    }
+
+    #[test]
+    fn test_find_surrounding_tag_unclosed_tag() {
+        let (doc, selection, _) = rope_with_selections_and_expectations_tags(
+            "this is an <div> Unclosed tag",
+            " ^                           ",
+            vec![],
+        );
+
+        assert_eq!(
+            get_surround_pos_tag(doc.slice(..), &selection, 1),
+            Err(Error::PairNotFound)
+        );
+    }
+
+    #[test]
+    fn test_find_surrounding_tag_nested_with_partial_overlap() {
+        let (doc, selection, expectations) = rope_with_selections_and_expectations_tags(
+            "<div> <span> <p> Text </span> </p> </div>",
+            "       ____  ^          ____             ",
+            vec!["span"],
+        );
+
+        assert_eq!(
+            get_surround_pos_tag(doc.slice(..), &selection, 1),
+            expectations
+        );
+    }
+
+    #[test]
+    fn test_find_surrounding_tag_nested_same_tag_multiple_levels() {
+        let (doc, selection, _) = rope_with_selections_and_expectations_tags(
+            "<div> <div> <div> Nested </div> </div> </div>",
+            " ___      ^                              ___ ",
+            vec!["div"],
+        );
+
+        assert_eq!(
+            get_surround_pos_tag(doc.slice(..), &selection, 2),
+            Err(Error::PairNotFound)
+        );
+    }
+
+    #[test]
+    fn test_find_surrounding_tag_self_closing_tags_ignored() {
+        let (doc, selection, expectations) = rope_with_selections_and_expectations_tags(
+            "<div> <img /> <span> Text </span> </div>",
+            " ___             ^                  ___ ",
+            vec!["div"],
+        );
+
+        assert_eq!(
+            get_surround_pos_tag(doc.slice(..), &selection, 1),
+            expectations
+        );
+    }
+
+    #[test]
+    fn test_find_surrounding_tag_adjacent_tags() {
+        let (doc, selection, expectations) = rope_with_selections_and_expectations_tags(
+            "<div></div><span></span>",
+            " ___ ^ ___              ",
+            vec!["div"],
+        );
+
+        assert_eq!(
+            get_surround_pos_tag(doc.slice(..), &selection, 1),
             expectations
         );
     }
