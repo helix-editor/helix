@@ -325,7 +325,9 @@ pub fn get_surround_pos_tag(
 
     for &range in selection {
         let cursor_pos = range.cursor(text);
-        let ((prev_tag, next_tag), _) = find_nearest_tag(text, cursor_pos, skip)?;
+
+        let ((prev_tag, next_tag), tag_name) = find_nth_nearest_tag(text, cursor_pos, skip)?;
+
         change_pos.push((prev_tag.from(), prev_tag.to()));
         change_pos.push((next_tag.from(), next_tag.to()));
     }
@@ -341,36 +343,81 @@ pub fn is_valid_tagname_char(ch: char) -> bool {
     ch.is_alphanumeric() || ch == '_' || ch == '-' || ch == '.'
 }
 
-/// Get the two `Range`s corresponding to matching tags surrounding the cursor, as well as the name of the tags.
-pub fn find_nearest_tag(
-    text: RopeSlice,
+/// Get the two sorted `Range`s corresponding to nth matching tags surrounding the cursor, as well as the name of the tags.
+pub fn find_nth_nearest_tag(
+    forward_text: RopeSlice,
     cursor_pos: usize,
     skip: usize,
 ) -> Result<((Range, Range), String)> {
-    let mut next_tag_counter = 0;
+    let backward_text = forward_text.clone();
 
-    let forward_cursor_pos = cursor_pos.clone();
-    let forward_text = text.clone();
+    let mut forward_tags = vec![];
+    let mut previous_forward_pos = cursor_pos;
 
-    loop {
-        let (next_tag_range, next_tag) = find_next_tag(forward_text, forward_cursor_pos, skip)?;
-        next_tag_counter += 1;
-        if next_tag_counter == skip {
-            let mut backward_search_idx = cursor_pos;
+    /// the maximum length of chars we will search forward and backward to find the tags, provided we don't hit the end or the beginning of the document
+    const SEARCH_CHARS: usize = 2000;
 
-            loop {
-                let (prev_tag_range, prev_tag, last_search_idx) =
-                    find_prev_tag(text, backward_search_idx, skip)?;
+    while (previous_forward_pos - cursor_pos) < SEARCH_CHARS
+        && previous_forward_pos < forward_text.len_chars()
+    {
+        let (forward_tag_range, forward_tag_name, forward_search_idx) =
+            find_next_tag(forward_text, previous_forward_pos, skip)?;
 
-                backward_search_idx = last_search_idx;
+        forward_tags.push((forward_tag_range, forward_tag_name));
+        previous_forward_pos = forward_search_idx;
+    }
 
-                dbg!(&prev_tag_range, &prev_tag);
+    let mut backward_tags = vec![];
+    let mut previous_backward_pos = cursor_pos;
 
-                if prev_tag == next_tag {
-                    return Ok(((prev_tag_range, next_tag_range), prev_tag));
-                }
-            }
-        }
+    while (cursor_pos - previous_backward_pos) < SEARCH_CHARS && previous_backward_pos > 0 {
+        let (backward_tag_range, backward_tag_name, backward_search_idx) =
+            find_prev_tag(backward_text, previous_backward_pos, skip)?;
+
+        backward_tags.push((backward_tag_range, backward_tag_name));
+        previous_backward_pos = backward_search_idx;
+    }
+
+    // only consider the tags which are common in both vectors
+    let backward_tags: Vec<(Range, String)> = backward_tags
+        .into_iter()
+        .filter(|(_, backward_tag_name)| {
+            forward_tags
+                .iter()
+                .any(|(_, forward_tag_name)| backward_tag_name == forward_tag_name)
+        })
+        .collect();
+    let forward_tags: Vec<(Range, String)> = forward_tags
+        .into_iter()
+        .filter(|(_, forward_tag_name)| {
+            backward_tags
+                .iter()
+                .any(|(_, backward_tag_name)| forward_tag_name == backward_tag_name)
+        })
+        .collect();
+
+    // improperly ordered tags such as <div> <span> </div> </span> are ignored completely
+    let matching_tags: Vec<((Range, String), (Range, String))> = forward_tags
+        .into_iter()
+        .zip(backward_tags)
+        .filter(|((_, forward_tag_name), (_, backward_tag_name))| {
+            forward_tag_name == backward_tag_name
+        })
+        .collect();
+
+    // If the count overflows past the highest available outer tag, e.g. user types 100 but we can only select up to 4 nestings of tags -- simply select the last one available
+    let access_index = if skip - 1 <= matching_tags.len() {
+        skip - 1
+    } else {
+        matching_tags.len() - 1
+    };
+
+    if let Some(nth_matching_tags) = matching_tags.into_iter().nth(access_index) {
+        let ((range_forward, tag_name), (range_backward, _tag_name)) = nth_matching_tags;
+
+        Ok(((range_backward, range_forward), tag_name))
+    } else {
+        Err(Error::PairNotFound)
     }
 }
 
@@ -422,12 +469,12 @@ pub fn find_prev_tag(
 
 /// Find the closing `</tag>` starting from `pos` and iterating the end of the text.
 /// Returns the Range of the tag's name (excluding the `</` and `>` characters.)
-/// As well as the actual name of the tag
+/// As well as the actual name of the tag and where it last stopped searching.
 pub fn find_next_tag(
     text: RopeSlice,
     mut cursor_pos: usize,
     skip: usize,
-) -> Result<(Range, String)> {
+) -> Result<(Range, String, usize)> {
     if cursor_pos >= text.len_chars() || skip == 0 {
         return Err(Error::RangeExceedsText);
     }
@@ -461,7 +508,7 @@ pub fn find_next_tag(
                         let range =
                             Range::new(cursor_pos - possible_tag_name.len() - 1, cursor_pos - 2);
 
-                        return Ok((range, possible_tag_name));
+                        return Ok((range, possible_tag_name, cursor_pos));
                     } else {
                         break;
                     }
@@ -500,7 +547,11 @@ mod test {
 
         assert_eq!(
             find_next_tag(doc.slice(..), 7, 1).unwrap(),
-            (Range::new(12, 14), String::from("tag"))
+            (
+                Range::new(12, 14),
+                String::from("tag"),
+                doc.to_string().len()
+            )
         );
     }
 
@@ -510,7 +561,11 @@ mod test {
 
         assert_eq!(
             find_next_tag(doc.slice(..), 7, 1).unwrap(),
-            (Range::new(18, 28), String::from("Hello.World"))
+            (
+                Range::new(18, 28),
+                String::from("Hello.World"),
+                doc.to_string().len()
+            )
         );
     }
 
@@ -556,6 +611,35 @@ mod test {
             rope_with_selections_and_expectations_tags(
                 "<div> simple example </html> </div>",
                 " ___      ^                    ___ "
+            );
+
+        assert_eq!(
+            get_surround_pos_tag(doc.slice(..), &selection, 1),
+            Ok(expectations)
+        );
+    }
+
+    #[test]
+    fn test_find_surrounding_tag_with_many_tags() {
+        #[rustfmt::skip]
+        let (doc, selection, expectations) =
+            rope_with_selections_and_expectations_tags(
+                "<span> <div> simple example </span> </html> </div>",
+                " ___                     ^                    ___ "
+            );
+
+        assert_eq!(
+            get_surround_pos_tag(doc.slice(..), &selection, 1),
+            Ok(expectations)
+        );
+    }
+    #[test]
+    fn test_find_surrounding_tag_with_many_many_tags() {
+        #[rustfmt::skip]
+        let (doc, selection, expectations) =
+            rope_with_selections_and_expectations_tags(
+                "<span> <div><html>  simple example </div> </html> </span>",
+                " ____                   ^                           ____ "
             );
 
         assert_eq!(
