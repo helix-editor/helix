@@ -360,11 +360,23 @@ fn find_nth_nearest_tag(
     while (previous_forward_pos - cursor_pos) < SEARCH_CHARS
         && previous_forward_pos < forward_text.len_chars()
     {
-        let (forward_tag_range, forward_tag_name, forward_search_idx) =
-            find_next_tag(forward_text, previous_forward_pos, skip)?;
+        let next_tag_maybe = find_next_tag(forward_text, previous_forward_pos, skip);
 
-        forward_tags.push((forward_tag_range, forward_tag_name));
-        previous_forward_pos = forward_search_idx;
+        match next_tag_maybe {
+            Ok((forward_tag_range, forward_tag_name, forward_search_idx)) => {
+                forward_tags.push((forward_tag_range, forward_tag_name));
+                previous_forward_pos = forward_search_idx;
+            }
+            Err(err) => match err {
+                Error::PairNotFound => {
+                    break;
+                }
+                other_error => {
+                    // Handle other errors
+                    return Err(other_error);
+                }
+            },
+        }
     }
 
     let mut backward_tags = vec![];
@@ -510,6 +522,7 @@ fn find_next_tag(
 
                         return Ok((range, possible_tag_name, cursor_pos));
                     } else {
+                        log::error!("BREAKING!");
                         break;
                     }
                 }

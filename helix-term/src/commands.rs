@@ -5716,13 +5716,13 @@ fn surround_replace(cx: &mut Context) {
         let selection = doc.selection(view.id);
 
         if false {
-            let change_pos = match surround::get_surround_pos_tag(text, selection, layer) {
-                Ok(c) => c,
-                Err(err) => {
-                    cx.editor.set_error(err.to_string());
-                    return;
-                }
-            };
+            // let change_pos = match surround::get_surround_pos_tag(text, selection, layer) {
+            //     Ok(c) => c,
+            //     Err(err) => {
+            //         cx.editor.set_error(err.to_string());
+            //         return;
+            //     }
+            // };
             // TODO: add back the logic for other surround changes
         } else {
             let change_pos = match surround::get_surround_pos_tag(text, selection, layer) {
