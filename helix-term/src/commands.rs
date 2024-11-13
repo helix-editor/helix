@@ -5742,12 +5742,25 @@ fn surround_replace(cx: &mut Context) {
                         return;
                     }
 
-                    let ranges: SmallVec<[Range; 1]> = change_pos
+                    let mut ranges: SmallVec<[Range; 1]> = change_pos
                         .iter()
                         .flat_map(|&((opening_tag_range, closing_tag_range), _)| {
                             vec![opening_tag_range, closing_tag_range]
                         })
                         .collect();
+
+                    ranges.sort_by(|a, b| a.from().cmp(&b.from()));
+
+                    let has_overlaps = ranges
+                        .windows(2)
+                        .any(|window| window[0].to() > window[1].from());
+
+                    if has_overlaps {
+                        context
+                            .editor
+                            .set_error("Cursors overlap for a single surround pair range");
+                        return;
+                    }
 
                     document.set_selection(
                         view.id,
