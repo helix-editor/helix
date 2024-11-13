@@ -542,147 +542,6 @@ mod test {
     }
 
     #[test]
-    fn test_find_next_tag() {
-        let doc = Rope::from("<tag>hello</tag>");
-
-        assert_eq!(
-            find_next_tag(doc.slice(..), 7, 1).unwrap(),
-            (
-                Range::new(12, 14),
-                String::from("tag"),
-                doc.to_string().len()
-            )
-        );
-    }
-
-    #[test]
-    fn test_find_next_tag_broken() {
-        let doc = Rope::from("<tag>hello</tag </Hello.World>");
-
-        assert_eq!(
-            find_next_tag(doc.slice(..), 7, 1).unwrap(),
-            (
-                Range::new(18, 28),
-                String::from("Hello.World"),
-                doc.to_string().len()
-            )
-        );
-    }
-
-    #[test]
-    fn test_find_prev_tag() {
-        let doc = Rope::from("<tag>hello</tag>");
-
-        assert_eq!(
-            find_prev_tag(doc.slice(..), 7, 1).unwrap(),
-            (Range::new(1, 3), String::from("tag"), 0)
-        );
-    }
-
-    #[test]
-    fn test_find_prev_tag_broken() {
-        let doc = Rope::from("<Hello.World div={true}> <tag hello</tag>");
-
-        assert_eq!(
-            find_prev_tag(doc.slice(..), 32, 1).unwrap(),
-            (Range::new(1, 11), String::from("Hello.World"), 0)
-        );
-    }
-
-    #[test]
-    fn test_find_surrounding_tag_simple() {
-        #[rustfmt::skip]
-        let (doc, selection, _expectations) =
-            rope_with_selections_and_expectations_tags(
-                "<html> simple example </html>",
-                " ____     ^             ____ "
-            );
-
-        assert_eq!(
-            get_surround_pos_tag(doc.slice(..), &selection, 1),
-            Ok(vec![(
-                (Range::new(1, 4), Range::new(24, 27)),
-                String::from("html")
-            )])
-        );
-    }
-
-    // #[test]
-    // fn test_find_surrounding_tag_with_imposter() {
-    //     #[rustfmt::skip]
-    //     let (doc, selection, expectations) =
-    //         rope_with_selections_and_expectations_tags(
-    //             "<div> simple example </html> </div>",
-    //             " ___      ^                    ___ "
-    //         );
-
-    //     assert_eq!(
-    //         get_surround_pos_tag(doc.slice(..), &selection, 1),
-    //         Ok(expectations)
-    //     );
-    // }
-
-    // #[test]
-    // fn test_find_surrounding_tag_with_many_tags() {
-    //     #[rustfmt::skip]
-    //     let (doc, selection, _expectations) =
-    //         rope_with_selections_and_expectations_tags(
-    //             "<span> <div> simple example </span> </html> </div>",
-    //             " ___                     ^    ____                "
-    //         );
-
-    //     assert_eq!(
-    //         get_surround_pos_tag(doc.slice(..), &selection, 1),
-    //         Err(Error::PairNotFound)
-    //     );
-    // }
-
-    // #[test]
-    // fn test_find_surrounding_tag_with_many_many_tags() {
-    //     #[rustfmt::skip]
-    //     let (doc, selection, expectations) =
-    //         rope_with_selections_and_expectations_tags(
-    //             "<span> <div><html>  simple example </div> </html> </span>",
-    //             " ____                   ^                           ____ "
-    //         );
-
-    //     assert_eq!(
-    //         get_surround_pos_tag(doc.slice(..), &selection, 1),
-    //         Ok(expectations)
-    //     );
-    // }
-
-    // #[test]
-    // fn test_find_surrounding_tag_with_nth_tag() {
-    //     #[rustfmt::skip]
-    //     let (doc, selection, expectations) =
-    //         rope_with_selections_and_expectations_tags(
-    //             "<span> <div> </div> </span>",
-    //             " ____       ^         ____ "
-    //         );
-
-    //     assert_eq!(
-    //         get_surround_pos_tag(doc.slice(..), &selection, 2),
-    //         Ok(expectations)
-    //     );
-    // }
-
-    // #[test]
-    // fn test_find_surrounding_tag_multiple_cursor() {
-    //     #[rustfmt::skip]
-    //     let (doc, selection, expectations) =
-    //         rope_with_selections_and_expectations_tags(
-    //             "<span> <div> </div> </span>\n\n <b> <a>     </a> </b>",
-    //             " ____       ^         ____ \n\n  _      ^^^        _ "
-    //         );
-
-    //     assert_eq!(
-    //         get_surround_pos_tag(doc.slice(..), &selection, 2),
-    //         Ok(expectations)
-    //     );
-    // }
-
-    #[test]
     fn test_get_surround_pos_bail_different_surround_chars() {
         #[rustfmt::skip]
         let (doc, selection, _) =
@@ -791,6 +650,148 @@ mod test {
         )
     }
 
+    #[test]
+    fn test_find_surrounding_tag_simple() {
+        let (doc, selection, expectations) = rope_with_selections_and_expectations_tags(
+            "<html> test </html>",
+            " ____   ^     ____ ",
+            vec!["html"],
+        );
+
+        assert_eq!(
+            get_surround_pos_tag(doc.slice(..), &selection, 1),
+            expectations
+        );
+    }
+
+    #[test]
+    fn test_find_surrounding_tag_with_imposter() {
+        let (doc, selection, expectations) = rope_with_selections_and_expectations_tags(
+            "<div> test </html> </div>",
+            " ___    ^            ___ ",
+            vec!["div"],
+        );
+
+        assert_eq!(
+            get_surround_pos_tag(doc.slice(..), &selection, 1),
+            expectations
+        );
+    }
+
+    #[test]
+    fn test_find_surrounding_tag_with_many_tags() {
+        let (doc, selection, _) = rope_with_selections_and_expectations_tags(
+            "<span> <div> simple example </span> </html> </div>",
+            "                    ^                             ",
+            vec!["span"],
+        );
+
+        assert_eq!(
+            get_surround_pos_tag(doc.slice(..), &selection, 1),
+            Err(Error::PairNotFound)
+        );
+    }
+
+    #[test]
+    fn test_find_surrounding_tag_with_many_many_tags() {
+        let (doc, selection, expectations) = rope_with_selections_and_expectations_tags(
+            "<span> <div><html>  simple example </div> </html> </span>",
+            " ____                      ^                        ____ ",
+            vec!["span"],
+        );
+
+        assert_eq!(
+            get_surround_pos_tag(doc.slice(..), &selection, 1),
+            expectations
+        );
+    }
+
+    #[test]
+    fn test_find_surrounding_tag_with_nth_tag() {
+        let (doc, selection, expectations) = rope_with_selections_and_expectations_tags(
+            "<span> <div> test </div> </span>",
+            " ____         ^            ____ ",
+            vec!["span"],
+        );
+
+        assert_eq!(
+            get_surround_pos_tag(doc.slice(..), &selection, 2),
+            expectations
+        );
+    }
+
+    #[test]
+    fn test_find_surrounding_tag_multiple_cursor() {
+        let (doc, selection, expectations) = rope_with_selections_and_expectations_tags(
+            "<span> <div> </div> </span>\n\n <b> <a>     </a> </b>",
+            " ____       ^         ____ \n\n  _       ^         _ ",
+            vec!["span", "b"],
+        );
+
+        assert_eq!(
+            get_surround_pos_tag(doc.slice(..), &selection, 2),
+            expectations
+        );
+    }
+
+    /// Create a Rope and a matching Selection using a specification language.
+    /// ^ is a cursor position.
+    /// Continuous _ denote start and end of ranges. These are returned as (Range, Range)
+    /// for use within assertions.
+    fn rope_with_selections_and_expectations_tags(
+        text: &str,
+        spec: &str,
+        tag_names: Vec<&str>,
+    ) -> (Rope, Selection, Result<Vec<((Range, Range), String)>>) {
+        if text.len() != spec.len() {
+            panic!("specification must match text length -- are newlines aligned?");
+        }
+        let selections: SmallVec<[Range; 1]> = spec
+            .match_indices('^')
+            .map(|(i, _)| Range::point(i))
+            .collect();
+
+        let mut tag_names = tag_names.into_iter();
+
+        let mut raw_ranges = spec
+            .char_indices()
+            .chain(std::iter::once((spec.len(), ' ')))
+            .fold(Vec::new(), |mut groups, (i, c)| {
+                match (groups.last_mut(), c) {
+                    (Some((_start, end)), '_') if *end + 1 == i => {
+                        // Extend current group
+                        *end = i;
+                    }
+                    (Some((_start, end)), '_') if *end < i => {
+                        // Start a new group after a gap
+                        groups.push((i, i));
+                    }
+                    (None, '_') => {
+                        // Start the first group
+                        groups.push((i, i));
+                    }
+                    _ => {} // Ignore non-underscore characters
+                }
+                groups
+            })
+            .into_iter();
+
+        let range_and_tags = std::iter::from_fn(|| Some((raw_ranges.next()?, raw_ranges.next()?)))
+            .map(|((anchor1, head1), (anchor2, head2))| {
+                let range1 = Range::new(anchor1, head1);
+                let range2 = Range::new(anchor2, head2);
+                let next_tag_name = tag_names.next().unwrap();
+                ((range1, range2), String::from(next_tag_name))
+            })
+            .collect();
+
+        (
+            Rope::from(text),
+            Selection::new(selections, 0),
+            Ok(range_and_tags),
+        )
+    }
+
     /// Create a Rope and a matching Selection using a specification language.
     /// ^ is a single-point selection.
     /// _ is an expected index. These are returned as a Vec<usize> for use in assertions.
@@ -810,46 +811,6 @@ mod test {
             .collect();
 
         let expectations: Vec<usize> = spec.match_indices('_').map(|(i, _)| i).collect();
-
-        (rope, Selection::new(selections, 0), expectations)
-    }
-
-    fn rope_with_selections_and_expectations_tags(
-        text: &str,
-        spec: &str,
-    ) -> (Rope, Selection, Vec<(usize, usize)>) {
-        if text.len() != spec.len() {
-            panic!("specification must match text length -- are newlines aligned?");
-        }
-
-        let rope = Rope::from(text);
-
-        let selections: SmallVec<[Range; 1]> = spec
-            .match_indices('^')
-            .map(|(i, _)| Range::point(i))
-            .collect();
-
-        let expectations: Vec<(usize, usize)> = spec
-            .char_indices()
-            .chain(std::iter::once((spec.len(), ' '))) // Add sentinel to capture trailing groups
-            .fold(Vec::new(), |mut groups, (i, c)| {
-                match (groups.last_mut(), c) {
-                    // Current character is an underscore, and the previous index is one lower than the current index, so extend the current group.
-                    (Some((_start, end)), '_') if *end + 1 == i => {
-                        *end = i;
-                    }
-                    // There is a gap of more than 1 between the current underscore's index and the previous underscore's index
-                    (Some((_start, end)), '_') if *end < i => {
-                        groups.push((i, i));
-                    }
-                    // There hasn't been a group yet, so we are going to start it.
-                    (None, '_') => {
-                        groups.push((i, i));
-                    }
-                    _non_underscore => {}
-                }
-                groups
-            });
 
         (rope, Selection::new(selections, 0), expectations)
     }
