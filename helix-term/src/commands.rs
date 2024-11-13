@@ -5704,7 +5704,7 @@ fn surround_add(cx: &mut Context) {
 }
 
 fn surround_replace(cx: &mut Context) {
-    let layer = cx.count();
+    let count = cx.count();
     cx.on_next_key(move |cx, event| {
         let surround_ch = match event.char() {
             Some('m') => None, // m selects the closest surround pair
@@ -5715,17 +5715,8 @@ fn surround_replace(cx: &mut Context) {
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id);
 
-        if false {
-            // let change_pos = match surround::get_surround_pos_tag(text, selection, layer) {
-            //     Ok(c) => c,
-            //     Err(err) => {
-            //         cx.editor.set_error(err.to_string());
-            //         return;
-            //     }
-            // };
-            // TODO: add back the logic for other surround changes
-        } else {
-            let change_pos = match surround::get_surround_pos_tag(text, selection, layer) {
+        if surround_ch.is_some_and(|ch| ch == 'x') {
+            let change_pos = match surround::get_surround_pos_tag(text, &selection, count) {
                 Ok(c) => c,
                 Err(err) => {
                     cx.editor.set_error(err.to_string());
@@ -5733,42 +5724,108 @@ fn surround_replace(cx: &mut Context) {
                 }
             };
 
-            let selection = selection.clone();
-            let ranges: SmallVec<[Range; 1]> = change_pos
+            // change_pos is guaranteed to have at least one value, because if not, then we would have returned earlier
+            let tag_name = change_pos.first().unwrap().1.clone();
+            let all_same = change_pos
                 .iter()
-                .flat_map(|&((opening_tag_range, closing_tag_range), _)| {
-                    vec![opening_tag_range, closing_tag_range]
-                })
-                .collect();
+                .all(|(_, tag_name_other)| tag_name_other == &tag_name);
 
+            let prompt = Prompt::new(
+                "tag name:".into(),
+                Some('z'),
+                ui::completers::none,
+                move |context: &mut compositor::Context, input: &str, event: PromptEvent| {
+                    let (view, document) = current!(context.editor);
+                    let copy_selection = document.selection(view.id);
+
+                    if event != PromptEvent::Validate {
+                        return;
+                    }
+
+                    let ranges: SmallVec<[Range; 1]> = change_pos
+                        .iter()
+                        .flat_map(|&((opening_tag_range, closing_tag_range), _)| {
+                            vec![opening_tag_range, closing_tag_range]
+                        })
+                        .collect();
+
+                    document.set_selection(
+                        view.id,
+                        Selection::new(ranges, copy_selection.primary_index() * 2),
+                    );
+                    let tag = Tendril::from(input);
+
+                    let transaction = Transaction::change(
+                        document.text(),
+                        change_pos.iter().flat_map(|(pos, _)| {
+                            let opening_range = pos.0;
+                            let closing_range = pos.1;
+
+                            vec![
+                                (opening_range.from(), opening_range.to(), Some(tag.clone())),
+                                (closing_range.from(), closing_range.to(), Some(tag.clone())),
+                            ]
+                        }),
+                    );
+
+                    // we don't need to touch this
+                    // document.set_selection(view.id, *copy_selection);
+                    document.apply(&transaction, view.id);
+                    context.editor.mode = Mode::Normal;
+                },
+            );
+
+            let prompt = if all_same {
+                // prefill with tag name because all tags have the same name
+                prompt.with_line(tag_name, &cx.editor)
+            } else {
+                prompt
+            };
+
+            cx.push_layer(Box::new(prompt));
+        } else {
+            let change_pos =
+                match surround::get_surround_pos(doc.syntax(), text, selection, surround_ch, count)
+                {
+                    Ok(c) => c,
+                    Err(err) => {
+                        cx.editor.set_error(err.to_string());
+                        return;
+                    }
+                };
+
+            let selection = selection.clone();
+            let ranges: SmallVec<[Range; 1]> =
+                change_pos.iter().map(|&p| Range::point(p)).collect();
             doc.set_selection(
                 view.id,
                 Selection::new(ranges, selection.primary_index() * 2),
             );
 
-            cx.on_next_key(move |cx, _event| {
+            cx.on_next_key(move |cx, event| {
                 let (view, doc) = current!(cx.editor);
+                let to = match event.char() {
+                    Some(to) => to,
+                    None => return doc.set_selection(view.id, selection),
+                };
+                let (open, close) = match_brackets::get_pair(to);
 
-                // TODO: obtain this value from the input
-                let user_input = "help";
+                // the changeset has to be sorted to allow nested surrounds
+                let mut sorted_pos: Vec<(usize, char)> = Vec::new();
+                for p in change_pos.chunks(2) {
+                    sorted_pos.push((p[0], open));
+                    sorted_pos.push((p[1], close));
+                }
+                sorted_pos.sort_unstable();
 
                 let transaction = Transaction::change(
                     doc.text(),
-                    change_pos.iter().flat_map(|(pos, _)| {
-                        let mut tag = Tendril::new();
-                        tag.push_str(user_input);
-
-                        let opening_range = pos.0;
-                        let closing_range = pos.1;
-
-                        vec![
-                            (opening_range.from(), opening_range.to(), Some(tag.clone())),
-                            (closing_range.from(), closing_range.to(), Some(tag.clone())),
-                        ]
+                    sorted_pos.iter().map(|&pos| {
+                        let mut t = Tendril::new();
+                        t.push(pos.1);
+                        (pos.0, pos.0 + 1, Some(t))
                     }),
                 );
-
-                // we don't need to touch this
                 doc.set_selection(view.id, selection);
                 doc.apply(&transaction, view.id);
                 exit_select_mode(cx);
