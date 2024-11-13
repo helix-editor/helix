@@ -5725,8 +5725,6 @@ fn surround_replace(cx: &mut Context) {
             };
             // TODO: add back the logic for other surround changes
         } else {
-            // TODO: obtain these values from a function
-            // let change_pos: Vec<(usize, usize)> = vec![(4, 10), (13, 20), (24, 30), (33, 40)];
             let change_pos = match surround::get_surround_pos_tag(text, selection, layer) {
                 Ok(c) => c,
                 Err(err) => {
@@ -5736,43 +5734,37 @@ fn surround_replace(cx: &mut Context) {
             };
 
             let selection = selection.clone();
-            let ranges: SmallVec<[Range; 1]> =
-                change_pos.iter().map(|p| Range::new(14, 14)).collect();
+            let ranges: SmallVec<[Range; 1]> = change_pos
+                .iter()
+                .flat_map(|&((opening_tag_range, closing_tag_range), _)| {
+                    vec![opening_tag_range, closing_tag_range]
+                })
+                .collect();
 
             doc.set_selection(
                 view.id,
                 Selection::new(ranges, selection.primary_index() * 2),
             );
 
-            cx.on_next_key(move |cx, event| {
+            cx.on_next_key(move |cx, _event| {
                 let (view, doc) = current!(cx.editor);
 
                 // TODO: obtain this value from the input
-                let open = "<help>";
-                let close = "</help>";
-
-                // the changeset has to be sorted to allow nested surrounds
-                let mut sorted_pos: Vec<((usize, usize), &str)> = Vec::new();
-
-                // taking chunks of two at once to replace with <help> </help>
-                for p in change_pos.chunks(2) {
-                    // let line_opening = p[0];
-                    // let line_closing = p[1];
-                    let line_opening = (1, 1);
-                    let line_closing = (1, 1);
-                    sorted_pos.push((line_opening, open));
-                    sorted_pos.push((line_closing, close));
-                }
-                sorted_pos.sort_unstable();
+                let user_input = "help";
 
                 let transaction = Transaction::change(
                     doc.text(),
-                    sorted_pos.iter().map(|&(pos, change_tag)| {
+                    change_pos.iter().flat_map(|(pos, _)| {
                         let mut tag = Tendril::new();
-                        tag.push_str(change_tag);
+                        tag.push_str(user_input);
 
-                        // replace from pos.0 to pos.1 with t
-                        (pos.0, pos.1, Some(tag))
+                        let opening_range = pos.0;
+                        let closing_range = pos.1;
+
+                        vec![
+                            (opening_range.from(), opening_range.to(), Some(tag.clone())),
+                            (closing_range.from(), closing_range.to(), Some(tag.clone())),
+                        ]
                     }),
                 );
 
