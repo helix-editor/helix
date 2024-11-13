@@ -317,12 +317,15 @@ impl Theme {
     }
 
     pub fn set(&mut self, scope: String, style: Style) {
-        self.styles.insert(scope.to_string(), style);
-
-        for (name, highlights) in self.scopes.iter().zip(self.highlights.iter_mut()) {
-            if *name == scope {
-                *highlights = style;
+        if self.styles.insert(scope.to_string(), style).is_some() {
+            for (name, highlights) in self.scopes.iter().zip(self.highlights.iter_mut()) {
+                if *name == scope {
+                    *highlights = style;
+                }
             }
+        } else {
+            self.scopes.push(scope);
+            self.highlights.push(style);
         }
     }
 
