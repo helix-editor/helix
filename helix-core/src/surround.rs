@@ -339,12 +339,12 @@ pub fn get_surround_pos_tag(
 /// JSX tags may have `.` in them for scoping
 /// HTML tags may have `-` in them if it's a custom element
 /// Both JSX and HTML tags may have `_`
-pub fn is_valid_tagname_char(ch: char) -> bool {
+fn is_valid_tagname_char(ch: char) -> bool {
     ch.is_alphanumeric() || ch == '_' || ch == '-' || ch == '.'
 }
 
 /// Get the two sorted `Range`s corresponding to nth matching tags surrounding the cursor, as well as the name of the tags.
-pub fn find_nth_nearest_tag(
+fn find_nth_nearest_tag(
     forward_text: RopeSlice,
     cursor_pos: usize,
     skip: usize,
@@ -425,7 +425,7 @@ pub fn find_nth_nearest_tag(
 /// Returns the Range of the tag's name (excluding the `<` and `>` characters.)
 /// As well as the actual name of the tag
 /// Additionally, it returns the last position where it stopped searching.
-pub fn find_prev_tag(
+fn find_prev_tag(
     text: RopeSlice,
     mut cursor_pos: usize,
     skip: usize,
@@ -470,7 +470,7 @@ pub fn find_prev_tag(
 /// Find the closing `</tag>` starting from `pos` and iterating the end of the text.
 /// Returns the Range of the tag's name (excluding the `</` and `>` characters.)
 /// As well as the actual name of the tag and where it last stopped searching.
-pub fn find_next_tag(
+fn find_next_tag(
     text: RopeSlice,
     mut cursor_pos: usize,
     skip: usize,
