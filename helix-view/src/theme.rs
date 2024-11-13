@@ -9,6 +9,7 @@ use helix_core::hashmap;
 use helix_loader::merge_toml_values;
 use log::warn;
 use once_cell::sync::Lazy;
+use rustix::path::Arg;
 use serde::{Deserialize, Deserializer};
 use toml::{map::Map, Value};
 
@@ -307,8 +308,22 @@ impl Theme {
         &self.name
     }
 
+    pub fn set_name(&mut self, name: String) {
+        self.name = name;
+    }
+
     pub fn get(&self, scope: &str) -> Style {
         self.try_get(scope).unwrap_or_default()
+    }
+
+    pub fn set(&mut self, scope: String, style: Style) {
+        self.styles.insert(scope.to_string(), style);
+
+        for (name, highlights) in self.scopes.iter().zip(self.highlights.iter_mut()) {
+            if *name == scope {
+                *highlights = style;
+            }
+        }
     }
 
     /// Get the style of a scope, falling back to dot separated broader
@@ -356,7 +371,7 @@ impl Theme {
         })
     }
 
-    fn from_toml(value: Value) -> (Self, Vec<String>) {
+    pub fn from_toml(value: Value) -> (Self, Vec<String>) {
         if let Value::Table(table) = value {
             Theme::from_keys(table)
         } else {
@@ -378,7 +393,7 @@ impl Theme {
     }
 }
 
-struct ThemePalette {
+pub struct ThemePalette {
     palette: HashMap<String, Color>,
 }
 

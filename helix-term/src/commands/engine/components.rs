@@ -5,7 +5,7 @@ use helix_view::{
     graphics::{Color, CursorKind, Rect, UnderlineStyle},
     input::{Event, KeyEvent, MouseButton, MouseEvent},
     keyboard::{KeyCode, KeyModifiers},
-    theme::Style,
+    theme::{Modifier, Style},
     Editor,
 };
 use steel::{
@@ -258,12 +258,47 @@ pub fn helix_component_module() -> BuiltInModule {
         .register_value("Color/LightCyan", Color::LightCyan.into_steelval().unwrap())
         .register_value("Color/LightGray", Color::LightGray.into_steelval().unwrap())
         .register_fn("Color/rgb", Color::Rgb)
+        .register_fn("Color-red", Color::red)
+        .register_fn("Color-green", Color::green)
+        .register_fn("Color-blue", Color::blue)
         .register_fn("Color/Indexed", Color::Indexed)
         .register_fn("set-style-fg!", |style: &mut Style, color: Color| {
             style.fg = Some(color);
         })
         .register_fn("style-fg", Style::fg)
         .register_fn("style-bg", Style::bg)
+        .register_fn("style-with-italics", |style: &Style| {
+            let patch = Style::default().add_modifier(Modifier::ITALIC);
+            style.patch(patch)
+        })
+        .register_fn("style-with-bold", |style: Style| {
+            let patch = Style::default().add_modifier(Modifier::BOLD);
+            style.patch(patch)
+        })
+        .register_fn("style-with-dim", |style: &Style| {
+            let patch = Style::default().add_modifier(Modifier::DIM);
+            style.patch(patch)
+        })
+        .register_fn("style-with-slow-blink", |style: Style| {
+            let patch = Style::default().add_modifier(Modifier::SLOW_BLINK);
+            style.patch(patch)
+        })
+        .register_fn("style-with-rapid-blink", |style: Style| {
+            let patch = Style::default().add_modifier(Modifier::RAPID_BLINK);
+            style.patch(patch)
+        })
+        .register_fn("style-with-reversed", |style: Style| {
+            let patch = Style::default().add_modifier(Modifier::REVERSED);
+            style.patch(patch)
+        })
+        .register_fn("style-with-hidden", |style: Style| {
+            let patch = Style::default().add_modifier(Modifier::HIDDEN);
+            style.patch(patch)
+        })
+        .register_fn("style-with-crossed-out", |style: Style| {
+            let patch = Style::default().add_modifier(Modifier::CROSSED_OUT);
+            style.patch(patch)
+        })
         .register_fn("style->fg", |style: &Style| style.fg)
         .register_fn("style->bg", |style: &Style| style.bg)
         .register_fn("set-style-bg!", |style: &mut Style, color: Color| {

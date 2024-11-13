@@ -1083,6 +1083,7 @@ pub struct Editor {
     pub cursor_cache: CursorCache,
 
     pub editor_clipping: ClippingConfiguration,
+    pub user_defined_themes: HashMap<String, Theme>,
 }
 
 #[derive(Default)]
@@ -1210,6 +1211,7 @@ impl Editor {
             mouse_down_range: None,
             cursor_cache: CursorCache::default(),
             editor_clipping: ClippingConfiguration::default(),
+            user_defined_themes: Default::default(),
         }
     }
 

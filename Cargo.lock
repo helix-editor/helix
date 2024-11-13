@@ -247,6 +247,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "df8670b8c7b9dae1793364eafadf7239c40d669904660c5960d74cfd80b46a53"
 
 [[package]]
+name = "castaway"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0abae9be0aaf9ea96a3b1b8b1b55c602ca751eba1b1500220cea4ecbafe7c0d5"
+dependencies = [
+ "rustversion",
+]
+
+[[package]]
 name = "cc"
 version = "1.1.31"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -316,6 +325,21 @@ checksum = "3538270d33cc669650c4b093848450d380def10c331d38c768e34cac80576e6e"
 dependencies = [
  "termcolor",
  "unicode-width",
+]
+
+[[package]]
+name = "compact_str"
+version = "0.8.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6050c3a16ddab2e412160b31f2c871015704239bca62f72f6e5f0be631d3f644"
+dependencies = [
+ "castaway",
+ "cfg-if",
+ "itoa",
+ "rustversion",
+ "ryu",
+ "serde",
+ "static_assertions",
 ]
 
 [[package]]
@@ -2571,6 +2595,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "rustversion"
+version = "1.0.18"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0e819f2bc632f285be6d7cd36e25940d45b2391dd6d9b939e79de557f7014248"
+
+[[package]]
 name = "ryu"
 version = "1.0.18"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2793,7 +2823,7 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 [[package]]
 name = "steel-core"
 version = "0.6.0"
-source = "git+https://github.com/mattwparas/steel.git#cf7a3df2c1cf0b0e1df53e127512f9fbde48476a"
+source = "git+https://github.com/mattwparas/steel.git#c89f53b6336c8eb3592328946149b8ebbd43b05a"
 dependencies = [
  "abi_stable",
  "anyhow",
@@ -2802,6 +2832,7 @@ dependencies = [
  "bincode",
  "chrono",
  "codespan-reporting",
+ "compact_str",
  "crossbeam",
  "dirs",
  "futures-executor",
@@ -2842,7 +2873,7 @@ dependencies = [
 [[package]]
 name = "steel-derive"
 version = "0.5.0"
-source = "git+https://github.com/mattwparas/steel.git#cf7a3df2c1cf0b0e1df53e127512f9fbde48476a"
+source = "git+https://github.com/mattwparas/steel.git#c89f53b6336c8eb3592328946149b8ebbd43b05a"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -2852,7 +2883,7 @@ dependencies = [
 [[package]]
 name = "steel-doc"
 version = "0.6.0"
-source = "git+https://github.com/mattwparas/steel.git#cf7a3df2c1cf0b0e1df53e127512f9fbde48476a"
+source = "git+https://github.com/mattwparas/steel.git#c89f53b6336c8eb3592328946149b8ebbd43b05a"
 dependencies = [
  "steel-core",
 ]
@@ -2860,7 +2891,7 @@ dependencies = [
 [[package]]
 name = "steel-gen"
 version = "0.2.0"
-source = "git+https://github.com/mattwparas/steel.git#cf7a3df2c1cf0b0e1df53e127512f9fbde48476a"
+source = "git+https://github.com/mattwparas/steel.git#c89f53b6336c8eb3592328946149b8ebbd43b05a"
 dependencies = [
  "codegen",
  "serde",
@@ -2870,8 +2901,9 @@ dependencies = [
 [[package]]
 name = "steel-parser"
 version = "0.6.0"
-source = "git+https://github.com/mattwparas/steel.git#cf7a3df2c1cf0b0e1df53e127512f9fbde48476a"
+source = "git+https://github.com/mattwparas/steel.git#c89f53b6336c8eb3592328946149b8ebbd43b05a"
 dependencies = [
+ "compact_str",
  "fxhash",
  "lasso",
  "num",

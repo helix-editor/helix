@@ -19,7 +19,8 @@ use helix_view::{
     },
     extension::document_id_to_usize,
     input::KeyEvent,
-    DocumentId, Editor, ViewId,
+    theme::Color,
+    DocumentId, Editor, Theme, ViewId,
 };
 use once_cell::sync::{Lazy, OnceCell};
 use steel::{
@@ -31,6 +32,7 @@ use steel::{
     steelerr, SteelErr, SteelVal,
 };
 
+use std::sync::Arc;
 use std::{
     borrow::Cow,
     collections::HashMap,
@@ -39,7 +41,6 @@ use std::{
     sync::{atomic::AtomicBool, Mutex, MutexGuard},
     time::Duration,
 };
-use std::{io::BufWriter, sync::Arc};
 
 use steel::{rvals::Custom, steel_vm::builtin::BuiltInModule};
 
@@ -848,6 +849,67 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
     }
 
     engine.register_module(module);
+}
+
+fn languages_api(engine: &mut Engine, generate_sources: bool) {
+    // TODO: Just look at the `cx.editor.syn_loader` for how to
+    // manipulate the languages bindings
+    todo!()
+}
+
+// TODO:
+// This isn't the best API since it pretty much requires deserializing
+// the whole theme model each time. While its not _horrible_, it is
+// certainly not as efficient as it could be. If we could just edit
+// the loaded theme in memory already, then it would be a bit nicer.
+fn load_theme_api(engine: &mut Engine, generate_sources: bool) {
+    let mut module = BuiltInModule::new("helix/core/themes");
+    module
+        .register_fn("hashmap->theme", theme_from_json_string)
+        .register_fn("add-theme!", add_theme)
+        .register_fn("theme-style", get_style)
+        .register_fn("theme-set-style!", set_style)
+        .register_fn("string->color", string_to_color);
+
+    if generate_sources {
+        configure_lsp_builtins("themes", &module);
+    }
+
+    engine.register_module(module);
+}
+
+#[derive(Clone)]
+struct SteelTheme(Theme);
+impl Custom for SteelTheme {}
+
+fn theme_from_json_string(name: String, value: SteelVal) -> Result<SteelTheme, anyhow::Error> {
+    // TODO: Really don't love this at all. The deserialization should be a bit more elegant
+    let json_value = serde_json::Value::try_from(value)?;
+    let value: toml::Value = serde_json::from_str(&serde_json::to_string(&json_value)?)?;
+
+    let (mut theme, _) = Theme::from_toml(value);
+    theme.set_name(name);
+    Ok(SteelTheme(theme))
+}
+
+// Mutate the theme?
+fn add_theme(cx: &mut Context, theme: SteelTheme) {
+    cx.editor
+        .user_defined_themes
+        .insert(theme.0.name().to_owned(), theme.0);
+}
+
+fn get_style(theme: &SteelTheme, name: SteelString) -> helix_view::theme::Style {
+    theme.0.get(name.as_str()).clone()
+}
+
+fn set_style(theme: &mut SteelTheme, name: String, style: helix_view::theme::Style) {
+    theme.0.set(name, style)
+}
+
+fn string_to_color(string: SteelString) -> Result<Color, anyhow::Error> {
+    // TODO: Don't expose this directly
+    helix_view::theme::ThemePalette::string_to_rgb(string.as_str()).map_err(anyhow::Error::msg)
 }
 
 fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
@@ -2192,6 +2254,7 @@ pub fn helix_runtime_search_path() -> PathBuf {
 
 pub fn configure_builtin_sources(engine: &mut Engine, generate_sources: bool) {
     load_editor_api(engine, generate_sources);
+    load_theme_api(engine, generate_sources);
     load_configuration_api(engine, generate_sources);
     load_typed_commands(engine, generate_sources);
     load_static_commands(engine, generate_sources);
