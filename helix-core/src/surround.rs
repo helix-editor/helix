@@ -432,9 +432,12 @@ fn find_nth_nearest_tag(
     /// the maximum length of chars we will search forward and backward to find the tags, provided we don't hit the end or the beginning of the document
     const SEARCH_CHARS: usize = 2000;
 
-    while (previous_forward_pos - cursor_pos) < SEARCH_CHARS
-        && previous_forward_pos < forward_text.len_chars()
-    {
+    while {
+        let is_within_offset = previous_forward_pos - cursor_pos < SEARCH_CHARS;
+        let is_within_bounds = previous_forward_pos < forward_text.len_chars();
+
+        is_within_offset && is_within_bounds
+    } {
         match find_next_tag(forward_text, previous_forward_pos, skip) {
             Ok((forward_tag_range, forward_tag_name, forward_search_idx)) => {
                 forward_tags.push((forward_tag_range, forward_tag_name));
@@ -454,7 +457,12 @@ fn find_nth_nearest_tag(
     let mut backward_tags = vec![];
     let mut previous_backward_pos = cursor_pos;
 
-    while (cursor_pos - previous_backward_pos) < SEARCH_CHARS && previous_backward_pos > 0 {
+    while {
+        let is_within_offset = cursor_pos - previous_backward_pos < SEARCH_CHARS;
+        let is_within_bounds = previous_backward_pos > 0;
+
+        is_within_offset && is_within_bounds
+    } {
         match find_prev_tag(backward_text, previous_backward_pos, skip) {
             Ok((backward_tag_range, backward_tag_name, backward_search_idx)) => {
                 backward_tags.push((backward_tag_range, backward_tag_name));
@@ -480,6 +488,7 @@ fn find_nth_nearest_tag(
                 .any(|(_, forward_tag_name)| backward_tag_name == forward_tag_name)
         })
         .collect();
+
     let forward_tags: Vec<(Range, String)> = forward_tags
         .into_iter()
         .filter(|(_, forward_tag_name)| {
@@ -516,7 +525,7 @@ fn find_nth_nearest_tag(
 
 /// Find position of surrounding <tag>s around every cursor as well as the tag's names.
 /// Returns Err if any positions overlap. Note that the positions are in a flat Vec.
-/// Use get_surround_pos().chunks(2) to get matching pairs of surround positions.
+/// Use get_surround_pos_tag().chunks(2) to get matching pairs of surround positions.
 pub fn get_surround_pos_tag(
     text: RopeSlice,
     selection: &Selection,
@@ -533,9 +542,10 @@ pub fn get_surround_pos_tag(
         change_pos.push((next_tag, tag_name));
     }
 
-    // sort all ranges by the first key
+    // sort all ranges by their beginning
     change_pos.sort_by(|&(a, _), (b, _)| a.from().cmp(&b.from()));
 
+    // if the end of any range exceeds beginning of the next range, there is an overlap
     let has_overlaps = change_pos
         .windows(2)
         .any(|window| window[0].0.to() > window[1].0.from());
