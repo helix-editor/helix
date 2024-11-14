@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{collections::HashSet, fmt::Display};
 
 use crate::{
     graphemes::next_grapheme_boundary,
@@ -479,23 +479,22 @@ fn find_nth_nearest_tag(
         }
     }
 
-    // only consider the tags which are common in both vectors
-    let backward_tags: Vec<(Range, String)> = backward_tags
-        .into_iter()
-        .filter(|(_, backward_tag_name)| {
-            forward_tags
-                .iter()
-                .any(|(_, forward_tag_name)| backward_tag_name == forward_tag_name)
-        })
+    // only consider the tags which are in both collections.
+    let backward_tag_names: HashSet<_> = backward_tags.iter().map(|(_, tag)| tag.clone()).collect();
+    let forward_tag_names: HashSet<_> = forward_tags.iter().map(|(_, tag)| tag.clone()).collect();
+
+    let common_tags: HashSet<_> = backward_tag_names
+        .intersection(&forward_tag_names)
         .collect();
 
-    let forward_tags: Vec<(Range, String)> = forward_tags
+    let backward_tags: Vec<_> = backward_tags
         .into_iter()
-        .filter(|(_, forward_tag_name)| {
-            backward_tags
-                .iter()
-                .any(|(_, backward_tag_name)| forward_tag_name == backward_tag_name)
-        })
+        .filter(|(_, tag)| common_tags.contains(tag))
+        .collect();
+
+    let forward_tags: Vec<_> = forward_tags
+        .into_iter()
+        .filter(|(_, tag)| common_tags.contains(tag))
         .collect();
 
     // improperly ordered tags such as <div> <span> </div> </span> are ignored completely
