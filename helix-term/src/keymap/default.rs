@@ -35,7 +35,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "E" => move_next_long_word_end,
 
         "v" => select_mode,
-        "G" => goto_line,
+        "G" => goto_last_line,
         "g" => { "Goto"
             "g" => goto_file_start,
             "e" => goto_last_line,
@@ -327,7 +327,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "A-|" => shell_pipe_to,
         "!" => shell_insert_output,
         "A-!" => shell_append_output,
-        "$" => shell_keep_pipe,
+        "$" => goto_line_end,
+        "^" => goto_line_start,
         "C-z" => suspend,
 
         "C-a" => increment,

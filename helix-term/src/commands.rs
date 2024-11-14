@@ -1138,7 +1138,14 @@ where
     let selection = doc
         .selection(view.id)
         .clone()
-        .transform(|range| move_fn(text, range, count));
+        .transform(|range| {
+            let mut r = move_fn(text, range, count);
+            r.anchor = r.head;
+            log::info!("anchor: {:?}", r.anchor);
+            log::info!("head: {:?}", r.head);
+            r
+        });
+    log::info!("selection: {:?}", selection);
     doc.set_selection(view.id, selection);
 }
 
