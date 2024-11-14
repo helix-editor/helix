@@ -106,7 +106,7 @@
 | `symbol_picker` | Open symbol picker |  |
 | `changed_file_picker` | Open changed file picker | normal: `` <space>g ``, select: `` <space>g `` |
 | `select_references_to_symbol_under_cursor` | Select symbol references | normal: `` <space>h ``, select: `` <space>h `` |
-| `workspace_symbol_picker` | Open workspace symbol picker | normal: `` <space>S ``, select: `` <space>S `` |
+| `workspace_symbol_picker` | Open workspace symbol picker |  |
 | `diagnostics_picker` | Open diagnostic picker | normal: `` <space>d ``, select: `` <space>d `` |
 | `workspace_diagnostics_picker` | Open workspace diagnostic picker | normal: `` <space>D ``, select: `` <space>D `` |
 | `last_picker` | Open last picker | normal: `` <space>' ``, select: `` <space>' `` |
@@ -295,4 +295,6 @@
 | `goto_next_tabstop` | goto next snippet placeholder |  |
 | `goto_prev_tabstop` | goto next snippet placeholder |  |
 | `syntax_symbol_picker` | Open a picker of symbols from the syntax tree |  |
+| `syntax_workspace_symbol_picker` | Open a picker of symbols for the workspace based on syntax trees |  |
 | `lsp_or_syntax_symbol_picker` | Open an LSP symbol picker if available, or syntax otherwise | normal: `` <space>s ``, select: `` <space>s `` |
+| `lsp_or_syntax_workspace_symbol_picker` | Open a workspace LSP symbol picker if available, or syntax workspace symbol picker otherwise | normal: `` <space>S ``, select: `` <space>S `` |

@@ -590,7 +590,9 @@ impl MappableCommand {
         goto_next_tabstop, "goto next snippet placeholder",
         goto_prev_tabstop, "goto next snippet placeholder",
         syntax_symbol_picker, "Open a picker of symbols from the syntax tree",
+        syntax_workspace_symbol_picker, "Open a picker of symbols for the workspace based on syntax trees",
         lsp_or_syntax_symbol_picker, "Open an LSP symbol picker if available, or syntax otherwise",
+        lsp_or_syntax_workspace_symbol_picker, "Open a workspace LSP symbol picker if available, or syntax workspace symbol picker otherwise",
     );
 }
 
@@ -6518,5 +6520,19 @@ fn lsp_or_syntax_symbol_picker(cx: &mut Context) {
     } else {
         cx.editor
             .set_error("No language server supporting document symbols or syntax info available");
+    }
+}
+
+fn lsp_or_syntax_workspace_symbol_picker(cx: &mut Context) {
+    let doc = doc!(cx.editor);
+
+    if doc
+        .language_servers_with_feature(LanguageServerFeature::WorkspaceSymbols)
+        .next()
+        .is_some()
+    {
+        lsp::workspace_symbol_picker(cx);
+    } else {
+        syntax_workspace_symbol_picker(cx);
     }
 }

@@ -225,7 +225,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "b" => buffer_picker,
             "j" => jumplist_picker,
             "s" => lsp_or_syntax_symbol_picker,
-            "S" => workspace_symbol_picker,
+            "S" => lsp_or_syntax_workspace_symbol_picker,
             "d" => diagnostics_picker,
             "D" => workspace_diagnostics_picker,
             "g" => changed_file_picker,
