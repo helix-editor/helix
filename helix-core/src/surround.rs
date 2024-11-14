@@ -855,18 +855,21 @@ mod test {
         text: &str,
         spec: &str,
         tag_names: Vec<&str>,
-    ) -> (Rope, Selection, Result<Vec<((Range, Range), String)>>) {
+    ) -> (Rope, Selection, Result<Vec<(Range, String)>>) {
         if text.len() != spec.len() {
             panic!("specification must match text length -- are newlines aligned?");
         }
+
         let selections: SmallVec<[Range; 1]> = spec
             .match_indices('^')
             .map(|(i, _)| Range::point(i))
             .collect();
 
-        let mut tag_names = tag_names.into_iter();
+        let mut tag_names = tag_names
+            .into_iter()
+            .flat_map(|tag_name| vec![tag_name, tag_name]);
 
-        let mut raw_ranges = spec
+        let raw_ranges = spec
             .char_indices()
             .chain(std::iter::once((spec.len(), ' ')))
             .fold(Vec::new(), |mut groups, (i, c)| {
@@ -889,12 +892,12 @@ mod test {
             })
             .into_iter();
 
-        let range_and_tags = std::iter::from_fn(|| Some((raw_ranges.next()?, raw_ranges.next()?)))
-            .map(|((anchor1, head1), (anchor2, head2))| {
-                let range1 = Range::new(anchor1, head1 + 1);
-                let range2 = Range::new(anchor2, head2 + 1);
-                let next_tag_name = tag_names.next().unwrap();
-                ((range1, range2), String::from(next_tag_name))
+        let range_and_tags = raw_ranges
+            .map(|(anchor, head)| {
+                (
+                    Range::new(anchor, head + 1),
+                    String::from(tag_names.next().unwrap()),
+                )
             })
             .collect();
 
