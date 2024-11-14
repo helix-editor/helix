@@ -313,34 +313,109 @@ pub fn get_surround_pos(
     Ok(change_pos)
 }
 
-/// Find position of surrounding <tag>s around every cursor. Returns None
-/// if any positions overlap. Note that the positions are in a flat Vec.
-/// Use get_surround_pos().chunks(2) to get matching pairs of surround positions.
-pub fn get_surround_pos_tag(
-    text: RopeSlice,
-    selection: &Selection,
-    skip: usize,
-) -> Result<Vec<((Range, Range), String)>> {
-    let mut change_pos = vec![];
-
-    for &range in selection {
-        let cursor_pos = range.cursor(text);
-
-        let ((prev_tag, next_tag), tag_name) = find_nth_nearest_tag(text, cursor_pos, skip)?;
-
-        let tag_change = ((prev_tag, next_tag), tag_name);
-        change_pos.push(tag_change);
-    }
-
-    Ok(change_pos)
-}
-
 /// Test whether a character would be considered a valid character if it was used for either JSX, HTML or XML tags
 /// JSX tags may have `.` in them for scoping
 /// HTML tags may have `-` in them if it's a custom element
 /// Both JSX and HTML tags may have `_`
 fn is_valid_tagname_char(ch: char) -> bool {
     ch.is_alphanumeric() || ch == '_' || ch == '-' || ch == '.'
+}
+
+/// Find the opening `<tag>` starting from `cursor_pos` and iterating until the beginning of the text.
+/// Returns the Range of the tag's name (excluding the `<` and `>` characters.)
+/// As well as the actual name of the tag
+/// Additionally, it returns the last position where it stopped searching.
+fn find_prev_tag(
+    text: RopeSlice,
+    mut cursor_pos: usize,
+    skip: usize,
+) -> Result<(Range, String, usize)> {
+    if cursor_pos == 0 || skip == 0 {
+        return Err(Error::RangeExceedsText);
+    }
+
+    let mut chars = text.chars_at(cursor_pos);
+
+    loop {
+        let prev_char = match chars.prev() {
+            Some(ch) => ch,
+            None => return Err(Error::PairNotFound),
+        };
+        cursor_pos -= 1;
+
+        if prev_char == '>' {
+            let mut possible_tag_name = String::new();
+            loop {
+                let current_char = match chars.prev() {
+                    Some(ch) => ch,
+                    None => return Err(Error::PairNotFound),
+                };
+                cursor_pos -= 1;
+                if current_char == '<' {
+                    let tag_name = possible_tag_name
+                        .chars()
+                        .rev()
+                        .take_while(|&ch| is_valid_tagname_char(ch))
+                        .collect::<String>();
+
+                    let range = Range::new(cursor_pos + 1, cursor_pos + tag_name.len() + 1);
+                    return Ok((range, tag_name, cursor_pos));
+                }
+                possible_tag_name.push(current_char);
+            }
+        }
+    }
+}
+
+/// Find the closing `</tag>` starting from `pos` and iterating the end of the text.
+/// Returns the Range of the tag's name (excluding the `</` and `>` characters.)
+/// As well as the actual name of the tag and where it last stopped searching.
+fn find_next_tag(
+    text: RopeSlice,
+    mut cursor_pos: usize,
+    skip: usize,
+) -> Result<(Range, String, usize)> {
+    if cursor_pos >= text.len_chars() || skip == 0 {
+        return Err(Error::RangeExceedsText);
+    }
+
+    let mut chars = text.chars_at(cursor_pos);
+
+    // look forward and find something that looks like a closing tag, e.g. <html> and extract it's name so we get "html"
+    loop {
+        let next_char = match chars.next() {
+            Some(ch) => ch,
+            None => return Err(Error::PairNotFound),
+        };
+        cursor_pos += 1;
+        if next_char == '<' {
+            let char_after_that = match chars.next() {
+                Some(ch) => ch,
+                None => return Err(Error::PairNotFound),
+            };
+            cursor_pos += 1;
+            if char_after_that == '/' {
+                let mut possible_tag_name = String::new();
+                loop {
+                    let current_char = match chars.next() {
+                        Some(ch) => ch,
+                        None => return Err(Error::PairNotFound),
+                    };
+                    cursor_pos += 1;
+                    if is_valid_tagname_char(current_char) {
+                        possible_tag_name.push(current_char);
+                    } else if current_char == '>' && possible_tag_name.len() != 0 {
+                        let range =
+                            Range::new(cursor_pos - possible_tag_name.len() - 1, cursor_pos - 1);
+
+                        return Ok((range, possible_tag_name, cursor_pos));
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+    }
 }
 
 /// Get the two sorted `Range`s corresponding to nth matching tags surrounding the cursor, as well as the name of the tags.
@@ -439,101 +514,36 @@ fn find_nth_nearest_tag(
     }
 }
 
-/// Find the opening `<tag>` starting from `cursor_pos` and iterating until the beginning of the text.
-/// Returns the Range of the tag's name (excluding the `<` and `>` characters.)
-/// As well as the actual name of the tag
-/// Additionally, it returns the last position where it stopped searching.
-fn find_prev_tag(
+/// Find position of surrounding <tag>s around every cursor as well as the tag's names.
+/// Returns Err if any positions overlap. Note that the positions are in a flat Vec.
+/// Use get_surround_pos().chunks(2) to get matching pairs of surround positions.
+pub fn get_surround_pos_tag(
     text: RopeSlice,
-    mut cursor_pos: usize,
+    selection: &Selection,
     skip: usize,
-) -> Result<(Range, String, usize)> {
-    if cursor_pos == 0 || skip == 0 {
-        return Err(Error::RangeExceedsText);
+) -> Result<Vec<(Range, String)>> {
+    let mut change_pos = vec![];
+
+    for &range in selection {
+        let cursor_pos = range.cursor(text);
+
+        let ((prev_tag, next_tag), tag_name) = find_nth_nearest_tag(text, cursor_pos, skip)?;
+
+        change_pos.push((prev_tag, tag_name.clone()));
+        change_pos.push((next_tag, tag_name));
     }
 
-    let mut chars = text.chars_at(cursor_pos);
+    // sort all ranges by the first key
+    change_pos.sort_by(|&(a, _), (b, _)| a.from().cmp(&b.from()));
 
-    loop {
-        let prev_char = match chars.prev() {
-            Some(ch) => ch,
-            None => return Err(Error::PairNotFound),
-        };
-        cursor_pos -= 1;
+    let has_overlaps = change_pos
+        .windows(2)
+        .any(|window| window[0].0.to() > window[1].0.from());
 
-        if prev_char == '>' {
-            let mut possible_tag_name = String::new();
-            loop {
-                let current_char = match chars.prev() {
-                    Some(ch) => ch,
-                    None => return Err(Error::PairNotFound),
-                };
-                cursor_pos -= 1;
-                if current_char == '<' {
-                    let tag_name = possible_tag_name
-                        .chars()
-                        .rev()
-                        .take_while(|&ch| is_valid_tagname_char(ch))
-                        .collect::<String>();
-
-                    let range = Range::new(cursor_pos + 1, cursor_pos + tag_name.len() + 1);
-                    return Ok((range, tag_name, cursor_pos));
-                }
-                possible_tag_name.push(current_char);
-            }
-        }
-    }
-}
-
-/// Find the closing `</tag>` starting from `pos` and iterating the end of the text.
-/// Returns the Range of the tag's name (excluding the `</` and `>` characters.)
-/// As well as the actual name of the tag and where it last stopped searching.
-fn find_next_tag(
-    text: RopeSlice,
-    mut cursor_pos: usize,
-    skip: usize,
-) -> Result<(Range, String, usize)> {
-    if cursor_pos >= text.len_chars() || skip == 0 {
-        return Err(Error::RangeExceedsText);
-    }
-
-    let mut chars = text.chars_at(cursor_pos);
-
-    // look forward and find something that looks like a closing tag, e.g. <html> and extract it's name so we get "html"
-    loop {
-        let next_char = match chars.next() {
-            Some(ch) => ch,
-            None => return Err(Error::PairNotFound),
-        };
-        cursor_pos += 1;
-        if next_char == '<' {
-            let char_after_that = match chars.next() {
-                Some(ch) => ch,
-                None => return Err(Error::PairNotFound),
-            };
-            cursor_pos += 1;
-            if char_after_that == '/' {
-                let mut possible_tag_name = String::new();
-                loop {
-                    let current_char = match chars.next() {
-                        Some(ch) => ch,
-                        None => return Err(Error::PairNotFound),
-                    };
-                    cursor_pos += 1;
-                    if is_valid_tagname_char(current_char) {
-                        possible_tag_name.push(current_char);
-                    } else if current_char == '>' && possible_tag_name.len() != 0 {
-                        let range =
-                            Range::new(cursor_pos - possible_tag_name.len() - 1, cursor_pos - 1);
-
-                        return Ok((range, possible_tag_name, cursor_pos));
-                    } else {
-                        log::error!("BREAKING!");
-                        break;
-                    }
-                }
-            }
-        }
+    if has_overlaps {
+        Err(Error::CursorOverlap)
+    } else {
+        Ok(change_pos)
     }
 }
 

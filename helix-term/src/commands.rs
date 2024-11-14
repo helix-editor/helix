@@ -5742,25 +5742,8 @@ fn surround_replace(cx: &mut Context) {
                         return;
                     }
 
-                    let mut ranges: SmallVec<[Range; 1]> = change_pos
-                        .iter()
-                        .flat_map(|&((opening_tag_range, closing_tag_range), _)| {
-                            vec![opening_tag_range, closing_tag_range]
-                        })
-                        .collect();
-
-                    ranges.sort_by(|a, b| a.from().cmp(&b.from()));
-
-                    let has_overlaps = ranges
-                        .windows(2)
-                        .any(|window| window[0].to() > window[1].from());
-
-                    if has_overlaps {
-                        context
-                            .editor
-                            .set_error("Cursors overlap for a single surround pair range");
-                        return;
-                    }
+                    let ranges: SmallVec<[Range; 1]> =
+                        change_pos.iter().map(|&(range, _)| range).collect();
 
                     document.set_selection(
                         view.id,
@@ -5770,15 +5753,9 @@ fn surround_replace(cx: &mut Context) {
 
                     let transaction = Transaction::change(
                         document.text(),
-                        change_pos.iter().flat_map(|(pos, _)| {
-                            let opening_range = pos.0;
-                            let closing_range = pos.1;
-
-                            vec![
-                                (opening_range.from(), opening_range.to(), Some(tag.clone())),
-                                (closing_range.from(), closing_range.to(), Some(tag.clone())),
-                            ]
-                        }),
+                        change_pos
+                            .iter()
+                            .map(|(range, _)| (range.from(), range.to(), Some(tag.clone()))),
                     );
 
                     document.apply(&transaction, view.id);
@@ -5865,32 +5842,15 @@ fn surround_delete(cx: &mut Context) {
                     return;
                 }
             };
-            let mut ranges: SmallVec<[Range; 1]> = change_pos
-                .iter()
-                .flat_map(|&((opening_tag_range, closing_tag_range), _)| {
-                    vec![opening_tag_range, closing_tag_range]
-                })
-                .collect();
 
-            ranges.sort_by(|a, b| a.from().cmp(&b.from()));
-
-            let has_overlaps = ranges
-                .windows(2)
-                .any(|window| window[0].to() > window[1].from());
-
-            if has_overlaps {
-                cx.editor
-                    .set_error("Cursors overlap for a single surround pair range");
-                return;
-            }
             let transaction = Transaction::change(
                 doc.text(),
-                change_pos.iter().flat_map(|(pos, _)| {
-                    let opening_range = pos.0;
-                    let closing_range = pos.1;
+                change_pos.chunks_exact(2).flat_map(|chunk| {
+                    let opening_range = chunk[0].0;
+                    let closing_range = chunk[1].0;
 
                     vec![
-                        // add extra numbers to account for "<", ">" and "/" characters
+                        // account for "<", ">" and "/" characters
                         (opening_range.from() - 1, opening_range.to() + 1, None),
                         (closing_range.from() - 2, closing_range.to() + 1, None),
                     ]
