@@ -37,7 +37,11 @@
 # Interface
 "ui.background"= { bg = "background" }
 "ui.cursor" = { fg = "dark_gray", bg = "yellow" }
+"ui.cursor.normal" = { fg = "dark_gray", bg = "light-blue" }
+"ui.cursor.insert" = { fg = "dark_gray", bg = "yellow" }
 "ui.cursor.primary" = { fg = "dark_gray", bg = "orange" }
+"ui.cursor.primary.normal" = { fg = "dark_gray", bg = "blue" }
+"ui.cursor.primary.insert" = { fg = "dark_gray", bg = "orange" }
 "ui.cursor.match" = "orange"
 "ui.linenr" = "dark_gray"
 "ui.linenr.selected" = "gray"
