@@ -391,6 +391,7 @@ impl MappableCommand {
         open_above, "Open new line above selection",
         normal_mode, "Enter normal mode",
         select_mode, "Enter selection extend mode",
+        line_select_mode, "Enter line selection extend mode",
         exit_select_mode, "Exit selection mode",
         goto_definition, "Goto definition",
         goto_declaration, "Goto declaration",
@@ -1139,10 +1140,10 @@ where
         .selection(view.id)
         .clone()
         .transform(|range| {
-            let mut r = move_fn(text, range, count);
+            let r = move_fn(text, range, count);
             // r.anchor = r.head;
-            log::info!("anchor: {:?}", r.anchor);
-            log::info!("head: {:?}", r.head);
+            // log::info!("anchor: {:?}", r.anchor);
+            // log::info!("head: {:?}", r.head);
             r
         });
     doc.set_selection(view.id, selection);
@@ -3663,6 +3664,29 @@ fn select_mode(cx: &mut Context) {
     cx.editor.mode = Mode::Select;
 }
 
+fn line_select_mode(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+
+    // Make sure end-of-document selections are also 1-width.
+    // (With the exception of being in an empty document, of course.)
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        if range.is_empty() && range.head == text.len_chars() {
+            Range::new(
+                graphemes::prev_grapheme_boundary(text, range.anchor),
+                range.head,
+            )
+        } else {
+            range
+        }
+    });
+    doc.set_selection(view.id, selection);
+
+    extend_to_line_bounds(cx);
+
+    cx.editor.mode = Mode::SelectLine;
+}
+
 fn exit_select_mode(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
@@ -3673,7 +3697,7 @@ fn exit_select_mode(cx: &mut Context) {
 
     doc.set_selection(view.id, selection);
 
-    if cx.editor.mode == Mode::Select {
+    if cx.editor.mode == Mode::Select || cx.editor.mode == Mode::SelectLine {
         cx.editor.mode = Mode::Normal;
     }
 }
@@ -4431,7 +4455,7 @@ fn paste_impl(
 pub(crate) fn paste_bracketed_value(cx: &mut Context, contents: String) {
     let count = cx.count();
     let paste = match cx.editor.mode {
-        Mode::Insert | Mode::Select => Paste::Cursor,
+        Mode::Insert | Mode::Select | Mode::SelectLine => Paste::Cursor,
         Mode::Normal => Paste::Before,
     };
     let (view, doc) = current!(cx.editor);

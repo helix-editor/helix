@@ -503,14 +503,16 @@ pub struct ModeConfig {
     pub normal: String,
     pub insert: String,
     pub select: String,
+    pub line_select: String,
 }
 
 impl Default for ModeConfig {
     fn default() -> Self {
         Self {
-            normal: String::from("NOR"),
-            insert: String::from("INS"),
-            select: String::from("SEL"),
+            normal: String::from("NORMAL"),
+            insert: String::from("INSERT"),
+            select: String::from("VISUAL"),
+            line_select: String::from("V-LINE"),
         }
     }
 }

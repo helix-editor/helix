@@ -493,6 +493,7 @@ impl EditorView {
         let cursor_scope = match mode {
             Mode::Insert => theme.find_scope_index_exact("ui.cursor.insert"),
             Mode::Select => theme.find_scope_index_exact("ui.cursor.select"),
+            Mode::SelectLine => theme.find_scope_index_exact("ui.cursor.select"),
             Mode::Normal => theme.find_scope_index_exact("ui.cursor.normal"),
         }
         .unwrap_or(base_cursor_scope);
@@ -500,6 +501,7 @@ impl EditorView {
         let primary_cursor_scope = match mode {
             Mode::Insert => theme.find_scope_index_exact("ui.cursor.primary.insert"),
             Mode::Select => theme.find_scope_index_exact("ui.cursor.primary.select"),
+            Mode::SelectLine => theme.find_scope_index_exact("ui.cursor.select"),
             Mode::Normal => theme.find_scope_index_exact("ui.cursor.primary.normal"),
         }
         .unwrap_or(base_primary_cursor_scope);
