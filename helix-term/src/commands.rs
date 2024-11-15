@@ -1140,7 +1140,7 @@ where
         .clone()
         .transform(|range| {
             let mut r = move_fn(text, range, count);
-            r.anchor = r.head;
+            // r.anchor = r.head;
             log::info!("anchor: {:?}", r.anchor);
             log::info!("head: {:?}", r.head);
             r
@@ -1395,7 +1395,14 @@ where
 
     let selection = doc.selection(view.id).clone().transform(|range| {
         let word = extend_fn(text, range, count);
+        log::info!("extend range: {:?}", word);
         let pos = word.cursor(text);
+        log::info!("extend pos: {:?}", pos);
+        // if matches!(extend_fn, movement::move_next_word_start) {
+        //     range.put_cursor(text, pos + 1, true)
+        // } else {
+        //     range.put_cursor(text, pos, true)
+        // }
         range.put_cursor(text, pos, true)
     });
     doc.set_selection(view.id, selection);

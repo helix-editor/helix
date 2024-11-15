@@ -235,6 +235,8 @@ fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTar
     //   1. Block-cursor semantics.
     //   2. The anchor position being irrelevant to the output result.
     #[allow(clippy::collapsible_else_if)] // Makes the structure clearer in this case.
+    log::info!("range anchor: {} with motion: {:?}", range.anchor, target);
+    log::info!("range head: {} with motion: {:?}", range.head, target);
     let start_range = if is_prev {
         if range.anchor < range.head {
             Range::new(range.head, prev_grapheme_boundary(slice, range.head))
@@ -248,19 +250,29 @@ fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTar
             Range::new(range.head, next_grapheme_boundary(slice, range.head))
         }
     };
-    log::info!("starting range: {:?}", start_range);
+    log::info!("starting range: {:?} with motion: {:?}", start_range, target);
 
     // Do the main work.
     let mut range = start_range;
     for _ in 0..count {
         let next_range = slice.chars_at(range.head).range_to_target(target, range);
-        log::info!("next range: {:?}", next_range);
         if range == next_range {
             break;
         }
         range = next_range;
     }
 
+    log::info!("ending range before adjust: {:?} with motion: {:?}", range, target);
+    if is_prev {
+        // if range.head > 0 {
+        //     range.head -= 1;
+        // }
+        range.anchor = range.head + 1;
+    } else {
+        range.head += 1;
+        range.anchor = range.head - 1;
+    }
+    log::info!("ending range after adjust: {:?} with motion: {:?}", range, target);
     range
 }
 
@@ -464,9 +476,9 @@ impl CharHelpers for Chars<'_> {
         //         break;
         //     }
         // }
-        if prev_ch.map(char_is_line_ending).unwrap_or(false) {
-            anchor = head;
-        }
+        // if prev_ch.map(char_is_line_ending).unwrap_or(false) {
+        //     anchor = head;
+        // }
 
         // Find our target position(s).
         let head_start = head;
@@ -476,6 +488,7 @@ impl CharHelpers for Chars<'_> {
             log::info!("next char: {}", next_ch);
             if prev_ch.is_none() || reached_target(target, prev_ch.unwrap(), next_ch) {
                 if head == head_start && !matches!(target, WordMotionTarget::NextWordStart | WordMotionTarget::NextLongWordStart) {
+                // if head == head_start {
                     anchor = head;
                 } else {
                     if matches!(target, WordMotionTarget::NextWordEnd | WordMotionTarget::NextLongWordEnd) {
