@@ -464,6 +464,7 @@ file-types = [
   "avsc",
   "ldtk",
   "ldtkl",
+  { glob = ".swift-format" },
 ]
 language-servers = [ "vscode-json-language-server" ]
 auto-format = true
@@ -1984,7 +1985,6 @@ roots = [ "Package.swift" ]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 formatter = { command = "swift-format" }
-auto-format = true
 language-servers = [ "sourcekit-lsp" ]
 
 [[grammar]]
