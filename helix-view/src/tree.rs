@@ -669,6 +669,13 @@ impl Tree {
     pub fn area(&self) -> Rect {
         self.area
     }
+
+    pub fn view_id_area(&self, id: ViewId) -> Option<Rect> {
+        self.nodes.get(id).map(|node| match &node.content {
+            Content::View(v) => v.area,
+            Content::Container(c) => c.area,
+        })
+    }
 }
 
 #[derive(Debug)]

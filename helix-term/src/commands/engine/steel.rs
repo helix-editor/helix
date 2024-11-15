@@ -857,6 +857,10 @@ fn languages_api(engine: &mut Engine, generate_sources: bool) {
     todo!()
 }
 
+// fn test(ctx: &mut Context) {
+//     ctx.editor.syn_loader.load()
+// }
+
 // TODO:
 // This isn't the best API since it pretty much requires deserializing
 // the whole theme model each time. While its not _horrible_, it is
@@ -912,6 +916,11 @@ fn string_to_color(string: SteelString) -> Result<Color, anyhow::Error> {
     helix_view::theme::ThemePalette::string_to_rgb(string.as_str()).map_err(anyhow::Error::msg)
 }
 
+fn current_buffer_area(cx: &mut Context) -> Option<helix_view::graphics::Rect> {
+    let focus = cx.editor.tree.focus;
+    cx.editor.tree.view_id_area(focus)
+}
+
 fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
     let mut module = BuiltInModule::new("helix/core/editor");
 
@@ -962,6 +971,8 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
         },
     );
 
+    module.register_fn("editor-focused-buffer-area", current_buffer_area);
+
     if generate_sources {
         let mut builtin_editor_command_module =
             "(require-builtin helix/core/editor as helix.)".to_string();
@@ -998,6 +1009,7 @@ fn load_editor_api(engine: &mut Engine, generate_sources: bool) {
         template_function_arity_0("cx->themes");
         template_function_arity_0("editor-all-documents");
         template_function_arity_0("cx->cursor");
+        template_function_arity_0("editor-focused-buffer-area");
 
         let mut template_function_arity_1 = |name: &str| {
             builtin_editor_command_module.push_str(&format!(
