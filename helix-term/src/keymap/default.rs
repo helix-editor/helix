@@ -75,7 +75,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "A-c" => change_selection_noyank,
 
         "C" => copy_selection_on_next_line,
-        "A-C" => copy_selection_on_prev_line,
+        "D" => copy_selection_on_prev_line,
 
 
         "s" => select_regex,
