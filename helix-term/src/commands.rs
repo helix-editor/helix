@@ -1145,7 +1145,6 @@ where
             log::info!("head: {:?}", r.head);
             r
         });
-    log::info!("selection: {:?}", selection);
     doc.set_selection(view.id, selection);
 }
 
@@ -3665,6 +3664,15 @@ fn select_mode(cx: &mut Context) {
 }
 
 fn exit_select_mode(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+
+    let selection = doc.selection(view.id).clone().transform(|mut range| {
+        range.anchor = range.head - 1;
+        range
+    });
+
+    doc.set_selection(view.id, selection);
+
     if cx.editor.mode == Mode::Select {
         cx.editor.mode = Mode::Normal;
     }
