@@ -34,8 +34,25 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "B" => move_prev_long_word_start,
         "E" => move_next_long_word_end,
 
-        "v" => select_mode,
-        "G" => goto_line,
+        // "v" => select_mode,
+        "v" => { "Select"
+            "w" => select_to_start_of_word,
+            "W" => select_to_start_of_long_word,
+            "e" => select_to_end_of_word,
+            "E" => select_to_end_of_long_word,
+            "t" => extend_till_char,
+            "T" => extend_till_prev_char,
+            "f" => extend_next_char,
+            "F" => extend_prev_char,
+            "b" => select_to_beginning_of_word,
+            "B" => select_to_beginning_of_long_word,
+            "i" => select_textobject_inner,
+            "a" => select_textobject_around,
+            "v" => select_mode,
+            "y" => yank,
+        },
+        "V" => line_select_mode,
+        "G" => goto_last_line,
         "g" => { "Goto"
             "g" => goto_file_start,
             "e" => goto_last_line,
@@ -69,9 +86,37 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "o" => open_below,
         "O" => open_above,
 
-        "d" => delete_selection,
-        "A-d" => delete_selection_noyank,
-        "c" => change_selection,
+        // "d" => delete_selection,
+        // "A-d" => delete_selection_noyank,
+        "d" => { "Delete"
+            "i" => delete_textobject_inner,
+            "a" => delete_textobject_around,
+            "w" => delete_to_end_of_word,
+            "W" => delete_to_end_of_long_word,
+            "e" => delete_to_end_of_word,
+            "E" => delete_to_end_of_long_word,
+            "t" => delete_till_char,
+            "T" => delete_till_prev_char,
+            "f" => delete_to_next_char,
+            "F" => delete_to_prev_char,
+            "b" => delete_to_beginning_of_word,
+            "B" => delete_to_beginning_of_long_word,
+        },
+
+        "c" => { "Change"
+            "i" => change_textobject_inner,
+            "a" => change_textobject_around,
+            "w" => change_to_end_of_word,
+            "W" => change_to_end_of_long_word,
+            "e" => change_to_end_of_word,
+            "E" => change_to_end_of_long_word,
+            "t" => change_till_char,
+            "T" => change_till_prev_char,
+            "f" => change_to_next_char,
+            "F" => change_to_prev_char,
+            "b" => change_to_beginning_of_word,
+            "B" => change_to_beginning_of_long_word,
+        },
         "A-c" => change_selection_noyank,
 
         "C" => copy_selection_on_next_line,
@@ -99,14 +144,17 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "X" => extend_to_line_bounds,
         "A-x" => shrink_to_line_bounds,
 
-        "m" => { "Match"
-            "m" => match_brackets,
-            "s" => surround_add,
-            "r" => surround_replace,
-            "d" => surround_delete,
-            "a" => select_textobject_around,
-            "i" => select_textobject_inner,
-        },
+        "m" => copy_selection_on_next_line,
+        "A-m" => copy_selection_on_prev_line,
+
+        // "m" => { "Match"
+        //     "m" => match_brackets,
+        //     "s" => surround_add,
+        //     "r" => surround_replace,
+        //     "d" => surround_delete,
+        //     "a" => select_textobject_around,
+        //     "i" => select_textobject_inner,
+        // },
         "[" => { "Left bracket"
             "d" => goto_prev_diag,
             "D" => goto_first_diag,
@@ -147,7 +195,21 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "A-u" => earlier,
         "A-U" => later,
 
-        "y" => yank,
+        // "y" => yank,
+        "y" => { "Yank"
+            "i" => yank_textobject_inner,
+            "a" => yank_textobject_around,
+            "w" => yank_to_end_of_word,
+            "W" => yank_to_end_of_long_word,
+            "e" => yank_to_end_of_word,
+            "E" => yank_to_end_of_long_word,
+            "t" => yank_till_char,
+            "T" => yank_till_prev_char,
+            "f" => yank_to_next_char,
+            "F" => yank_to_prev_char,
+            "b" => yank_to_beginning_of_word,
+            "B" => yank_to_beginning_of_long_word,
+        },
         // yank_all
         "p" => paste_after,
         // paste_all
@@ -327,7 +389,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "A-|" => shell_pipe_to,
         "!" => shell_insert_output,
         "A-!" => shell_append_output,
-        "$" => shell_keep_pipe,
+        "$" => goto_line_end,
+        "^" => goto_line_start,
         "C-z" => suspend,
 
         "C-a" => increment,
@@ -339,6 +402,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "j" | "down" => extend_visual_line_down,
         "k" | "up" => extend_visual_line_up,
         "l" | "right" => extend_char_right,
+
+        "c" => change_selection,
 
         "w" => extend_next_word_start,
         "b" => extend_prev_word_start,
@@ -369,6 +434,15 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "w" => extend_to_word,
         },
     }));
+    let mut line_select = normal.clone();
+    line_select.merge_nodes(keymap!({ "Line Select mode"
+        "esc" => exit_select_mode,
+
+        "h" | "left" => no_op,
+        "j" | "down" => select_line_below,
+        "k" | "up" => select_line_above,
+        "l" | "right" => no_op,
+    }));
     let insert = keymap!({ "Insert mode"
         "esc" => normal_mode,
 
@@ -398,6 +472,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
     hashmap!(
         Mode::Normal => normal,
         Mode::Select => select,
+        Mode::SelectLine => line_select,
         Mode::Insert => insert,
     )
 }

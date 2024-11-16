@@ -57,7 +57,8 @@ pub const SCRATCH_BUFFER_NAME: &str = "[scratch]";
 pub enum Mode {
     Normal = 0,
     Select = 1,
-    Insert = 2,
+    SelectLine = 2,
+    Insert = 3,
 }
 
 impl Display for Mode {
@@ -65,6 +66,7 @@ impl Display for Mode {
         match self {
             Mode::Normal => f.write_str("normal"),
             Mode::Select => f.write_str("select"),
+            Mode::SelectLine => f.write_str("line-select"),
             Mode::Insert => f.write_str("insert"),
         }
     }
@@ -77,6 +79,7 @@ impl FromStr for Mode {
         match s {
             "normal" => Ok(Mode::Normal),
             "select" => Ok(Mode::Select),
+            "line-select" => Ok(Mode::SelectLine),
             "insert" => Ok(Mode::Insert),
             _ => bail!("Invalid mode '{}'", s),
         }
