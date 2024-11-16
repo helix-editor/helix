@@ -1,10 +1,6 @@
 use helix_core::movement::{self};
-use helix_view::{
-    input::KeyEvent,
-    keyboard::KeyCode,
-};
 
-use crate::commands::{Context, extend_word_impl, change_selection, change_textobject_inner, select_textobject_inner, select_mode};
+use crate::commands::{Context, extend_word_impl, change_selection, select_mode, delete_selection, yank};
 
 pub(crate) fn change_to_end_of_word(cx: &mut Context) {
     extend_word_impl(cx, movement::move_next_word_end);
@@ -24,6 +20,27 @@ pub(crate) fn change_to_beginning_of_word(cx: &mut Context) {
 pub(crate) fn change_to_beginning_of_long_word(cx: &mut Context) {
     extend_word_impl(cx, movement::move_prev_long_word_start);
     change_selection(cx);
+}
+
+
+pub(crate) fn delete_to_end_of_word(cx: &mut Context) {
+    extend_word_impl(cx, movement::move_next_word_end);
+    delete_selection(cx);
+}
+
+pub(crate) fn delete_to_end_of_long_word(cx: &mut Context) {
+    extend_word_impl(cx, movement::move_next_long_word_end);
+    delete_selection(cx);
+}
+
+pub(crate) fn delete_to_beginning_of_word(cx: &mut Context) {
+    extend_word_impl(cx, movement::move_prev_word_start);
+    delete_selection(cx);
+}
+
+pub(crate) fn delete_to_beginning_of_long_word(cx: &mut Context) {
+    extend_word_impl(cx, movement::move_prev_long_word_start);
+    delete_selection(cx);
 }
 
 pub(crate) fn select_to_start_of_word(cx: &mut Context) {
@@ -56,6 +73,25 @@ pub(crate) fn select_to_beginning_of_long_word(cx: &mut Context) {
     select_mode(cx);
 }
 
+pub(crate) fn yank_to_end_of_word(cx: &mut Context) {
+    extend_word_impl(cx, movement::move_next_word_end);
+    yank(cx);
+}
+
+pub(crate) fn yank_to_end_of_long_word(cx: &mut Context) {
+    extend_word_impl(cx, movement::move_next_long_word_end);
+    yank(cx);
+}
+
+pub(crate) fn yank_to_beginning_of_word(cx: &mut Context) {
+    extend_word_impl(cx, movement::move_prev_word_start);
+    yank(cx);
+}
+
+pub(crate) fn yank_to_beginning_of_long_word(cx: &mut Context) {
+    extend_word_impl(cx, movement::move_prev_long_word_start);
+    yank(cx);
+}
 // pub(crate) fn change_inner_textobject(cx: &mut Context) {
 //     change_textobject_inner(cx);
 //     // change_selection(cx);

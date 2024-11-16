@@ -30,7 +30,8 @@ use helix_core::{
     object, pos_at_coords,
     regex::{self, Regex},
     search::{self, CharMatcher},
-    selection, shellwords, surround::{self, find_nth_pairs_pos},
+    selection, shellwords,
+    surround::{self},
     syntax::{BlockCommentToken, LanguageServerFeature},
     text_annotations::{Overlay, TextAnnotations},
     textobject,
@@ -57,10 +58,10 @@ use movement::Movement;
 use crate::{
     args,
     compositor::{self, Component, Compositor},
+    evil::*,
     filter_picker_entry,
     job::Callback,
     ui::{self, overlay::overlaid, Picker, PickerColumn, Popup, Prompt, PromptEvent},
-    evil::*,
 };
 
 use crate::job::{self, Jobs};
@@ -372,12 +373,37 @@ impl MappableCommand {
         change_to_beginning_of_word, "Change to beginning of word",
         change_to_beginning_of_long_word, "Change to beginning of long word",
         change_textobject_inner, "Change inside textobject",
+        change_textobject_around, "Change around textobject",
+        change_to_next_char, "Change to next char",
+        change_till_char, "Change until char",
+        change_to_prev_char, "Change to prev char",
+        change_till_prev_char, "Change until prev char",
+        delete_to_end_of_word, "Delete to end of word",
+        delete_to_end_of_long_word, "Delete to end of long word",
+        delete_to_beginning_of_word, "Delete to beginning of word",
+        delete_to_beginning_of_long_word, "Delete to beginning of long word",
+        delete_textobject_inner, "Delete inside textobject",
+        delete_textobject_around, "Delete around textobject",
+        delete_to_next_char, "Change to next char",
+        delete_till_char, "Change until char",
+        delete_to_prev_char, "Change to prev char",
+        delete_till_prev_char, "Change until prev char",
         select_to_start_of_word, "Select to start of word",
         select_to_start_of_long_word, "Select to start of long word",
         select_to_end_of_word, "Select to end of word",
         select_to_end_of_long_word, "Select to end of long word",
         select_to_beginning_of_word, "Select to beginning of word",
         select_to_beginning_of_long_word, "Select to beginning of long word",
+        yank_to_end_of_word, "Change to end of word",
+        yank_to_end_of_long_word, "Change to end of long word",
+        yank_to_beginning_of_word, "Change to beginning of word",
+        yank_to_beginning_of_long_word, "Change to beginning of long word",
+        yank_textobject_inner, "Change inside textobject",
+        yank_textobject_around, "Change around textobject",
+        yank_to_next_char, "Change to next char",
+        yank_till_char, "Change until char",
+        yank_to_prev_char, "Change to prev char",
+        yank_till_prev_char, "Change until prev char",
         change_selection, "Change selection",
         change_selection_noyank, "Change selection without yanking",
         collapse_selection, "Collapse selection into single cursor",
@@ -1150,16 +1176,13 @@ where
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
 
-    let selection = doc
-        .selection(view.id)
-        .clone()
-        .transform(|range| {
-            let r = move_fn(text, range, count);
-            // r.anchor = r.head;
-            // log::info!("anchor: {:?}", r.anchor);
-            // log::info!("head: {:?}", r.head);
-            r
-        });
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        let r = move_fn(text, range, count);
+        // r.anchor = r.head;
+        // log::info!("anchor: {:?}", r.anchor);
+        // log::info!("head: {:?}", r.head);
+        r
+    });
     doc.set_selection(view.id, selection);
 }
 
@@ -1552,23 +1575,198 @@ fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bo
         };
         let motion = move |editor: &mut Editor| {
             match direction {
-                Direction::Forward => {
-                    find_char_impl_forward(editor, &find_next_char_impl, inclusive, extend, ch, count)
-                }
-                Direction::Backward => {
-                    find_char_impl_backward(editor, &find_prev_char_impl, inclusive, extend, ch, count)
-                }
+                Direction::Forward => find_char_impl_forward(
+                    editor,
+                    &find_next_char_impl,
+                    inclusive,
+                    extend,
+                    ch,
+                    count,
+                ),
+                Direction::Backward => find_char_impl_backward(
+                    editor,
+                    &find_prev_char_impl,
+                    inclusive,
+                    extend,
+                    ch,
+                    count,
+                ),
             };
         };
 
         cx.editor.apply_motion(motion);
+        if cx.editor.mode != Mode::Select {
+            select_mode(cx);
+        }
+    })
+}
+
+fn find_char_and_change(cx: &mut Context, direction: Direction, inclusive: bool, extend: bool) {
+    // TODO: count is reset to 1 before next key so we move it into the closure here.
+    // Would be nice to carry over.
+    let count = cx.count();
+
+    // need to wait for next key
+    // TODO: should this be done by grapheme rather than char?  For example,
+    // we can't properly handle the line-ending CRLF case here in terms of char.
+    cx.on_next_key(move |cx, event| {
+        let ch = match event {
+            KeyEvent {
+                code: KeyCode::Enter,
+                ..
+            } => {
+                find_char_line_ending(cx, count, direction, inclusive, extend);
+                return;
+            }
+
+            KeyEvent {
+                code: KeyCode::Tab, ..
+            } => '\t',
+
+            KeyEvent {
+                code: KeyCode::Char(ch),
+                ..
+            } => ch,
+            _ => return,
+        };
+        let motion = move |editor: &mut Editor| {
+            match direction {
+                Direction::Forward => find_char_impl_forward(
+                    editor,
+                    &find_next_char_impl,
+                    inclusive,
+                    extend,
+                    ch,
+                    count,
+                ),
+                Direction::Backward => find_char_impl_backward(
+                    editor,
+                    &find_prev_char_impl,
+                    inclusive,
+                    extend,
+                    ch,
+                    count,
+                ),
+            };
+        };
+
+        cx.editor.apply_motion(motion);
+        change_selection(cx);
+    })
+}
+
+fn find_char_and_delete(cx: &mut Context, direction: Direction, inclusive: bool, extend: bool) {
+    // TODO: count is reset to 1 before next key so we move it into the closure here.
+    // Would be nice to carry over.
+    let count = cx.count();
+
+    // need to wait for next key
+    // TODO: should this be done by grapheme rather than char?  For example,
+    // we can't properly handle the line-ending CRLF case here in terms of char.
+    cx.on_next_key(move |cx, event| {
+        let ch = match event {
+            KeyEvent {
+                code: KeyCode::Enter,
+                ..
+            } => {
+                find_char_line_ending(cx, count, direction, inclusive, extend);
+                return;
+            }
+
+            KeyEvent {
+                code: KeyCode::Tab, ..
+            } => '\t',
+
+            KeyEvent {
+                code: KeyCode::Char(ch),
+                ..
+            } => ch,
+            _ => return,
+        };
+        let motion = move |editor: &mut Editor| {
+            match direction {
+                Direction::Forward => find_char_impl_forward(
+                    editor,
+                    &find_next_char_impl,
+                    inclusive,
+                    extend,
+                    ch,
+                    count,
+                ),
+                Direction::Backward => find_char_impl_backward(
+                    editor,
+                    &find_prev_char_impl,
+                    inclusive,
+                    extend,
+                    ch,
+                    count,
+                ),
+            };
+        };
+
+        cx.editor.apply_motion(motion);
+        delete_selection(cx);
+    })
+}
+
+fn find_char_and_yank(cx: &mut Context, direction: Direction, inclusive: bool, extend: bool) {
+    // TODO: count is reset to 1 before next key so we move it into the closure here.
+    // Would be nice to carry over.
+    let count = cx.count();
+
+    // need to wait for next key
+    // TODO: should this be done by grapheme rather than char?  For example,
+    // we can't properly handle the line-ending CRLF case here in terms of char.
+    cx.on_next_key(move |cx, event| {
+        let ch = match event {
+            KeyEvent {
+                code: KeyCode::Enter,
+                ..
+            } => {
+                find_char_line_ending(cx, count, direction, inclusive, extend);
+                return;
+            }
+
+            KeyEvent {
+                code: KeyCode::Tab, ..
+            } => '\t',
+
+            KeyEvent {
+                code: KeyCode::Char(ch),
+                ..
+            } => ch,
+            _ => return,
+        };
+        let motion = move |editor: &mut Editor| {
+            match direction {
+                Direction::Forward => find_char_impl_forward(
+                    editor,
+                    &find_next_char_impl,
+                    inclusive,
+                    extend,
+                    ch,
+                    count,
+                ),
+                Direction::Backward => find_char_impl_backward(
+                    editor,
+                    &find_prev_char_impl,
+                    inclusive,
+                    extend,
+                    ch,
+                    count,
+                ),
+            };
+        };
+
+        cx.editor.apply_motion(motion);
+        yank(cx);
     })
 }
 
 //
 
 #[inline]
-fn find_char_impl_forward<F, M: CharMatcher + Clone + Copy>(
+pub(crate) fn find_char_impl_forward<F, M: CharMatcher + Clone + Copy>(
     editor: &mut Editor,
     search_fn: &F,
     inclusive: bool,
@@ -1641,7 +1839,7 @@ fn find_char_impl_backward<F, M: CharMatcher + Clone + Copy>(
     doc.set_selection(view.id, selection);
 }
 
-fn find_next_char_impl(
+pub(crate) fn find_next_char_impl(
     text: RopeSlice,
     ch: char,
     pos: usize,
@@ -1686,12 +1884,36 @@ fn find_next_char(cx: &mut Context) {
     find_char(cx, Direction::Forward, true, false)
 }
 
-fn extend_till_char(cx: &mut Context) {
+pub(crate) fn extend_till_char(cx: &mut Context) {
     find_char(cx, Direction::Forward, false, true)
 }
 
-fn extend_next_char(cx: &mut Context) {
+pub(crate) fn extend_next_char(cx: &mut Context) {
     find_char(cx, Direction::Forward, true, true)
+}
+
+pub(crate) fn change_till_char(cx: &mut Context) {
+    find_char_and_change(cx, Direction::Forward, false, true)
+}
+
+pub(crate) fn change_to_next_char(cx: &mut Context) {
+    find_char_and_change(cx, Direction::Forward, true, true)
+}
+
+pub(crate) fn delete_till_char(cx: &mut Context) {
+    find_char_and_delete(cx, Direction::Forward, false, true)
+}
+
+pub(crate) fn delete_to_next_char(cx: &mut Context) {
+    find_char_and_delete(cx, Direction::Forward, true, true)
+}
+
+pub(crate) fn yank_till_char(cx: &mut Context) {
+    find_char_and_yank(cx, Direction::Forward, false, true)
+}
+
+pub(crate) fn yank_to_next_char(cx: &mut Context) {
+    find_char_and_yank(cx, Direction::Forward, true, true)
 }
 
 fn till_prev_char(cx: &mut Context) {
@@ -1702,12 +1924,36 @@ fn find_prev_char(cx: &mut Context) {
     find_char(cx, Direction::Backward, true, false)
 }
 
-fn extend_till_prev_char(cx: &mut Context) {
+pub(crate) fn extend_till_prev_char(cx: &mut Context) {
     find_char(cx, Direction::Backward, false, true)
 }
 
-fn extend_prev_char(cx: &mut Context) {
+pub(crate) fn extend_prev_char(cx: &mut Context) {
     find_char(cx, Direction::Backward, true, true)
+}
+
+pub(crate) fn change_till_prev_char(cx: &mut Context) {
+    find_char_and_change(cx, Direction::Backward, false, true)
+}
+
+pub(crate) fn change_to_prev_char(cx: &mut Context) {
+    find_char_and_change(cx, Direction::Backward, true, true)
+}
+
+pub(crate) fn delete_till_prev_char(cx: &mut Context) {
+    find_char_and_delete(cx, Direction::Backward, false, true)
+}
+
+pub(crate) fn delete_to_prev_char(cx: &mut Context) {
+    find_char_and_delete(cx, Direction::Backward, true, true)
+}
+
+pub(crate) fn yank_till_prev_char(cx: &mut Context) {
+    find_char_and_yank(cx, Direction::Backward, false, true)
+}
+
+pub(crate) fn yank_to_prev_char(cx: &mut Context) {
+    find_char_and_yank(cx, Direction::Backward, true, true)
 }
 
 fn repeat_last_motion(cx: &mut Context) {
@@ -2867,7 +3113,7 @@ fn delete_by_selection_insert_mode(
     doc.apply(&transaction, view.id);
 }
 
-fn delete_selection(cx: &mut Context) {
+pub(crate) fn delete_selection(cx: &mut Context) {
     delete_selection_impl(cx, Operation::Delete, YankAction::Yank);
 }
 
@@ -3647,7 +3893,7 @@ fn goto_last_line(cx: &mut Context) {
     let selection = doc
         .selection(view.id)
         .clone()
-        .transform(|range| range.put_cursor(text, pos, cx.editor.mode == Mode::Select));
+        .transform(|range| range.put_cursor(text, pos, cx.editor.mode == Mode::Select || cx.editor.mode == Mode::SelectLine));
 
     push_jump(view, doc);
     doc.set_selection(view.id, selection);
@@ -4261,24 +4507,42 @@ pub mod insert {
 
 fn undo(cx: &mut Context) {
     let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    for _ in 0..count {
-        if !doc.undo(view) {
-            cx.editor.set_status("Already at oldest change");
-            break;
+    {
+        let (view, doc) = current!(cx.editor);
+        for _ in 0..count {
+            if !doc.undo(view) {
+                cx.editor.set_status("Already at oldest change");
+                break;
+            }
         }
     }
+
+    let (view, doc) = current!(cx.editor);
+    let selection = doc.selection(view.id).clone().transform(|mut range| {
+        range.anchor = range.head - 1;
+        range
+    });
+    doc.set_selection(view.id, selection);
 }
 
 fn redo(cx: &mut Context) {
     let count = cx.count();
-    let (view, doc) = current!(cx.editor);
-    for _ in 0..count {
-        if !doc.redo(view) {
-            cx.editor.set_status("Already at newest change");
-            break;
+    {
+        let (view, doc) = current!(cx.editor);
+        for _ in 0..count {
+            if !doc.redo(view) {
+                cx.editor.set_status("Already at newest change");
+                break;
+            }
         }
     }
+
+    let (view, doc) = current!(cx.editor);
+    let selection = doc.selection(view.id).clone().transform(|mut range| {
+        range.anchor = range.head - 1;
+        range
+    });
+    doc.set_selection(view.id, selection);
 }
 
 fn earlier(cx: &mut Context) {
@@ -4312,7 +4576,7 @@ fn commit_undo_checkpoint(cx: &mut Context) {
 
 // Yank / Paste
 
-fn yank(cx: &mut Context) {
+pub(crate) fn yank(cx: &mut Context) {
     yank_impl(cx.editor, cx.register.unwrap_or('"'));
     exit_select_mode(cx);
 }
@@ -5618,6 +5882,22 @@ pub(crate) fn change_textobject_inner(cx: &mut Context) {
     change_textobject(cx, textobject::TextObject::Inside);
 }
 
+pub(crate) fn delete_textobject_around(cx: &mut Context) {
+    delete_textobject(cx, textobject::TextObject::Around);
+}
+
+pub(crate) fn delete_textobject_inner(cx: &mut Context) {
+    delete_textobject(cx, textobject::TextObject::Inside);
+}
+
+pub(crate) fn yank_textobject_around(cx: &mut Context) {
+    yank_textobject(cx, textobject::TextObject::Around);
+}
+
+pub(crate) fn yank_textobject_inner(cx: &mut Context) {
+    yank_textobject(cx, textobject::TextObject::Inside);
+}
+
 fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
     let count = cx.count();
 
@@ -5669,9 +5949,9 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                     match ch {
                         'w' => {
                             let r = textobject::textobject_word(text, range, objtype, count, false);
-                                log::info!("textobj range: {:?}", r);
+                            log::info!("textobj range: {:?}", r);
                             r.put_cursor(text, r.head, true)
-                        },
+                        }
                         'W' => textobject::textobject_word(text, range, objtype, count, true),
                         't' => textobject_treesitter("class", range),
                         'f' => textobject_treesitter("function", range),
@@ -5702,8 +5982,45 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                 });
                 doc.set_selection(view.id, selection);
             };
+            // Calculate if motion created new range
+            let mut old_range = Range::new(0, 0);
+            {
+                let (view, doc) = current!(cx.editor);
+                doc.selection(view.id).clone().transform(|range| {
+                    old_range = range;
+                    range
+                });
+            }
+
             cx.editor.apply_motion(textobject);
-            select_mode(cx);
+
+            let mut new_range = Range::new(0, 0);
+            let (view, doc) = current!(cx.editor);
+            doc.selection(view.id).clone().transform(|range| {
+                new_range = range;
+                range
+            });
+
+            log::info!("old_range: {:?}, new_range: {:?}", old_range, new_range);
+            if old_range != new_range {
+                select_mode(cx);
+            } else if !ch.is_ascii_alphanumeric() {
+                find_char_impl_forward(cx.editor, &find_next_char_impl, true, false, ch, 1);
+                let (view, doc) = current!(cx.editor);
+                let text = doc.text().slice(..);
+                let selection = doc.selection(view.id).clone().transform(|range| {
+                    textobject::textobject_pair_surround(
+                        doc.syntax(),
+                        text,
+                        range,
+                        objtype,
+                        ch,
+                        count,
+                    )
+                });
+                doc.set_selection(view.id, selection);
+                select_mode(cx);
+            }
         }
     });
 
@@ -5814,7 +6131,6 @@ fn change_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                     r
                 });
                 doc.set_selection(view.id, selection);
-                
             };
 
             // Calculate if motion created new range
@@ -5845,16 +6161,318 @@ fn change_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                 let text = doc.text().slice(..);
                 let selection = doc.selection(view.id).clone().transform(|range| {
                     textobject::textobject_pair_surround(
+                        doc.syntax(),
+                        text,
+                        range,
+                        objtype,
+                        ch,
+                        count,
+                    )
+                });
+                doc.set_selection(view.id, selection);
+                change_selection(cx);
+            }
+        }
+    });
+
+    let title = match objtype {
+        textobject::TextObject::Inside => "Match inside",
+        textobject::TextObject::Around => "Match around",
+        _ => return,
+    };
+    let help_text = [
+        ("w", "Word"),
+        ("W", "WORD"),
+        ("p", "Paragraph"),
+        ("t", "Type definition (tree-sitter)"),
+        ("f", "Function (tree-sitter)"),
+        ("a", "Argument/parameter (tree-sitter)"),
+        ("c", "Comment (tree-sitter)"),
+        ("T", "Test (tree-sitter)"),
+        ("e", "Data structure entry (tree-sitter)"),
+        ("m", "Closest surrounding pair (tree-sitter)"),
+        ("g", "Change"),
+        (" ", "... or any character acting as a pair"),
+    ];
+
+    cx.editor.autoinfo = Some(Info::new(title, &help_text));
+}
+
+fn delete_textobject(cx: &mut Context, objtype: textobject::TextObject) {
+    let count = cx.count();
+
+    cx.on_next_key(move |cx, event| {
+        cx.editor.autoinfo = None;
+        if let Some(ch) = event.char() {
+            let textobject = move |editor: &mut Editor| {
+                let (view, doc) = current!(editor);
+                let text = doc.text().slice(..);
+
+                let textobject_treesitter = |obj_name: &str, range: Range| -> Range {
+                    let (lang_config, syntax) = match doc.language_config().zip(doc.syntax()) {
+                        Some(t) => t,
+                        None => return range,
+                    };
+                    textobject::textobject_treesitter(
+                        text,
+                        range,
+                        objtype,
+                        obj_name,
+                        syntax.tree().root_node(),
+                        lang_config,
+                        count,
+                    )
+                };
+
+                if ch == 'g' && doc.diff_handle().is_none() {
+                    editor.set_status("Diff is not available in current buffer");
+                    return;
+                }
+
+                let textobject_change = |range: Range| -> Range {
+                    let diff_handle = doc.diff_handle().unwrap();
+                    let diff = diff_handle.load();
+                    let line = range.cursor_line(text);
+                    let hunk_idx = if let Some(hunk_idx) = diff.hunk_at(line as u32, false) {
+                        hunk_idx
+                    } else {
+                        return range;
+                    };
+                    let hunk = diff.nth_hunk(hunk_idx).after;
+
+                    let start = text.line_to_char(hunk.start as usize);
+                    let end = text.line_to_char(hunk.end as usize);
+                    Range::new(start, end).with_direction(range.direction())
+                };
+
+                let selection = doc.selection(view.id).clone().transform(|range| {
+                    let r = match ch {
+                        'w' => textobject::textobject_word(text, range, objtype, count, false),
+                        'W' => textobject::textobject_word(text, range, objtype, count, true),
+                        't' => textobject_treesitter("class", range),
+                        'f' => textobject_treesitter("function", range),
+                        'a' => textobject_treesitter("parameter", range),
+                        'c' => textobject_treesitter("comment", range),
+                        'T' => textobject_treesitter("test", range),
+                        'e' => textobject_treesitter("entry", range),
+                        'p' => textobject::textobject_paragraph(text, range, objtype, count),
+                        'm' => textobject::textobject_pair_surround_closest(
+                            doc.syntax(),
+                            text,
+                            range,
+                            objtype,
+                            count,
+                        ),
+                        'g' => textobject_change(range),
+                        // TODO: cancel new ranges if inconsistent surround matches across lines
+                        ch if !ch.is_ascii_alphanumeric() => textobject::textobject_pair_surround(
                             doc.syntax(),
                             text,
                             range,
                             objtype,
                             ch,
                             count,
+                        ),
+                        _ => range,
+                    };
+
+                    log::info!("r: {:?}", r);
+                    log::info!("range: {:?}", range);
+                    // r.put_cursor(text, range.head, true)
+                    r
+                });
+                doc.set_selection(view.id, selection);
+            };
+
+            // Calculate if motion created new range
+            let mut old_range = Range::new(0, 0);
+            {
+                let (view, doc) = current!(cx.editor);
+                doc.selection(view.id).clone().transform(|range| {
+                    old_range = range;
+                    range
+                });
+            }
+
+            cx.editor.apply_motion(textobject);
+
+            let mut new_range = Range::new(0, 0);
+            let (view, doc) = current!(cx.editor);
+            doc.selection(view.id).clone().transform(|range| {
+                new_range = range;
+                range
+            });
+
+            log::info!("old_range: {:?}, new_range: {:?}", old_range, new_range);
+            if old_range != new_range {
+                delete_selection(cx);
+            } else if !ch.is_ascii_alphanumeric() {
+                find_char_impl_forward(cx.editor, &find_next_char_impl, true, false, ch, 1);
+                let (view, doc) = current!(cx.editor);
+                let text = doc.text().slice(..);
+                let selection = doc.selection(view.id).clone().transform(|range| {
+                    textobject::textobject_pair_surround(
+                        doc.syntax(),
+                        text,
+                        range,
+                        objtype,
+                        ch,
+                        count,
                     )
                 });
                 doc.set_selection(view.id, selection);
-                change_selection(cx);
+                delete_selection(cx);
+            }
+        }
+    });
+
+    let title = match objtype {
+        textobject::TextObject::Inside => "Match inside",
+        textobject::TextObject::Around => "Match around",
+        _ => return,
+    };
+    let help_text = [
+        ("w", "Word"),
+        ("W", "WORD"),
+        ("p", "Paragraph"),
+        ("t", "Type definition (tree-sitter)"),
+        ("f", "Function (tree-sitter)"),
+        ("a", "Argument/parameter (tree-sitter)"),
+        ("c", "Comment (tree-sitter)"),
+        ("T", "Test (tree-sitter)"),
+        ("e", "Data structure entry (tree-sitter)"),
+        ("m", "Closest surrounding pair (tree-sitter)"),
+        ("g", "Change"),
+        (" ", "... or any character acting as a pair"),
+    ];
+
+    cx.editor.autoinfo = Some(Info::new(title, &help_text));
+}
+
+fn yank_textobject(cx: &mut Context, objtype: textobject::TextObject) {
+    let count = cx.count();
+
+    cx.on_next_key(move |cx, event| {
+        cx.editor.autoinfo = None;
+        if let Some(ch) = event.char() {
+            let textobject = move |editor: &mut Editor| {
+                let (view, doc) = current!(editor);
+                let text = doc.text().slice(..);
+
+                let textobject_treesitter = |obj_name: &str, range: Range| -> Range {
+                    let (lang_config, syntax) = match doc.language_config().zip(doc.syntax()) {
+                        Some(t) => t,
+                        None => return range,
+                    };
+                    textobject::textobject_treesitter(
+                        text,
+                        range,
+                        objtype,
+                        obj_name,
+                        syntax.tree().root_node(),
+                        lang_config,
+                        count,
+                    )
+                };
+
+                if ch == 'g' && doc.diff_handle().is_none() {
+                    editor.set_status("Diff is not available in current buffer");
+                    return;
+                }
+
+                let textobject_change = |range: Range| -> Range {
+                    let diff_handle = doc.diff_handle().unwrap();
+                    let diff = diff_handle.load();
+                    let line = range.cursor_line(text);
+                    let hunk_idx = if let Some(hunk_idx) = diff.hunk_at(line as u32, false) {
+                        hunk_idx
+                    } else {
+                        return range;
+                    };
+                    let hunk = diff.nth_hunk(hunk_idx).after;
+
+                    let start = text.line_to_char(hunk.start as usize);
+                    let end = text.line_to_char(hunk.end as usize);
+                    Range::new(start, end).with_direction(range.direction())
+                };
+
+                let selection = doc.selection(view.id).clone().transform(|range| {
+                    let r = match ch {
+                        'w' => textobject::textobject_word(text, range, objtype, count, false),
+                        'W' => textobject::textobject_word(text, range, objtype, count, true),
+                        't' => textobject_treesitter("class", range),
+                        'f' => textobject_treesitter("function", range),
+                        'a' => textobject_treesitter("parameter", range),
+                        'c' => textobject_treesitter("comment", range),
+                        'T' => textobject_treesitter("test", range),
+                        'e' => textobject_treesitter("entry", range),
+                        'p' => textobject::textobject_paragraph(text, range, objtype, count),
+                        'm' => textobject::textobject_pair_surround_closest(
+                            doc.syntax(),
+                            text,
+                            range,
+                            objtype,
+                            count,
+                        ),
+                        'g' => textobject_change(range),
+                        // TODO: cancel new ranges if inconsistent surround matches across lines
+                        ch if !ch.is_ascii_alphanumeric() => textobject::textobject_pair_surround(
+                            doc.syntax(),
+                            text,
+                            range,
+                            objtype,
+                            ch,
+                            count,
+                        ),
+                        _ => range,
+                    };
+
+                    log::info!("r: {:?}", r);
+                    log::info!("range: {:?}", range);
+                    // r.put_cursor(text, range.head, true)
+                    r
+                });
+                doc.set_selection(view.id, selection);
+            };
+
+            // Calculate if motion created new range
+            let mut old_range = Range::new(0, 0);
+            {
+                let (view, doc) = current!(cx.editor);
+                doc.selection(view.id).clone().transform(|range| {
+                    old_range = range;
+                    range
+                });
+            }
+
+            cx.editor.apply_motion(textobject);
+
+            let mut new_range = Range::new(0, 0);
+            let (view, doc) = current!(cx.editor);
+            doc.selection(view.id).clone().transform(|range| {
+                new_range = range;
+                range
+            });
+
+            log::info!("old_range: {:?}, new_range: {:?}", old_range, new_range);
+            if old_range != new_range {
+                yank(cx);
+            } else if !ch.is_ascii_alphanumeric() {
+                find_char_impl_forward(cx.editor, &find_next_char_impl, true, false, ch, 1);
+                let (view, doc) = current!(cx.editor);
+                let text = doc.text().slice(..);
+                let selection = doc.selection(view.id).clone().transform(|range| {
+                    textobject::textobject_pair_surround(
+                        doc.syntax(),
+                        text,
+                        range,
+                        objtype,
+                        ch,
+                        count,
+                    )
+                });
+                doc.set_selection(view.id, selection);
+                yank(cx);
             }
         }
     });
