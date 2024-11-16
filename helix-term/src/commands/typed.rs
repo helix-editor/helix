@@ -1426,19 +1426,28 @@ fn lsp_workspace_command(
         };
         cx.jobs.callback(callback);
     } else {
-        let command = args.join(" ");
+        let command = args.first().unwrap().to_string();
+
         let matches: Vec<_> = ls_id_commands
             .filter(|(_ls_id, c)| *c == &command)
             .collect();
 
         match matches.as_slice() {
             [(ls_id, _command)] => {
+                let lsp_command_args: Vec<Value> = args[1..]
+                    .iter()
+                    .map(|s| Value::String(s.to_string()))
+                    .collect();
                 execute_lsp_command(
                     cx.editor,
                     *ls_id,
                     helix_lsp::lsp::Command {
                         title: command.clone(),
-                        arguments: None,
+                        arguments: if lsp_command_args.is_empty() {
+                            None
+                        } else {
+                            Some(lsp_command_args)
+                        },
                         command,
                     },
                 );
