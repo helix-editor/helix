@@ -1,26 +1,17 @@
 ---
-title: Welcome to Starlight
-description: Get started building your docs site with Starlight.
+title: Helix Editor
+description: A post-modern text editor.
 template: splash
 hero:
-  title: |
-    Welcome to Starlight with
-    <span
-      class="font-black text-transparent
-        bg-clip-text bg-gradient-to-b
-        from-accent-700 to-accent-400
-        dark:from-accent-500 dark:to-accent-200"
-    >
-      Tailwind
-    </span>
-  tagline: Congrats on setting up a new Starlight project!
+  title: Helix
+  tagline: A post-modern text editor.
   image:
-    file: ../../assets/houston.webp
+    html: <img src="/public/favicon.svg" style="width:100px;margin:auto;" />
   actions:
-    - text: Example Guide
+    - text: Get Started
       link: /guides/example/
       icon: right-arrow
-    - text: Read the Starlight docs
+    - text: Reference
       link: https://starlight.astro.build
       icon: external
       variant: minimal
@@ -28,19 +19,29 @@ hero:
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-## Next steps
-
 <CardGrid stagger>
-	<Card title="Update content" icon="pencil">
-		Edit `src/content/docs/index.mdx` to see this page change.
-	</Card>
-	<Card title="Add new content" icon="add-document">
-		Add Markdown or MDX files to `src/content/docs` to create new pages.
-	</Card>
-	<Card title="Configure your site" icon="setting">
-		Edit your `sidebar` and other config in `astro.config.mjs`.
-	</Card>
-	<Card title="Read the docs" icon="open-book">
-		Learn more in [the Starlight Docs](https://starlight.astro.build/).
-	</Card>
+
+<Card title="Multiple Selections" icon="pencil">
+Multiple cursors as a core editing primitive, inspired by Kakoune. Commands manipulate selections which allows concurrent code editing.
+</Card>
+
+<Card title="Language Server Support" icon="open-book">
+Language specific auto completion, goto definition, documentation, diagnostics and other IDE features with no additional configuration.
+</Card>
+
+<Card title="Built in Rust, for the terminal" icon="seti:rust">
+No Electron. No VimScript. No JavaScript. Use it over ssh, tmux, or a plain terminal. Your laptop battery life will thank you.
+</Card>
+
+<Card title="Tree-sitter Integration" icon="pencil">
+Tree-sitter produces error tolerant and robust syntax trees, which enables better syntax highlighting, indent calculation and code navigation.
+</Card>
+
+<Card title="Powerful Code Manipulation" icon="pencil">
+Navigate and select functions, classes, comments, etc and select syntax tree nodes instead of plain text. 
+</Card>
+
+<Card title="Modern builtin features" icon="setting">
+Fuzzy finder to jump to files and symbols, project wide search, beautiful themes, auto closing bracket pairs, surround integration and more.
+</Card>
 </CardGrid>

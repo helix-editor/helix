@@ -9,7 +9,8 @@ export default defineConfig({
     starlight({
       title: "Helix Editor",
       social: {
-        github: "https://github.com/withastro/starlight",
+        github: "https://github.com/helix-editor/helix",
+        matrix: "https://matrix.to/#/#helix-community:matrix.org",
       },
       components: {
         // HACK: override default components so user cannot use light theme
