@@ -34,7 +34,16 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "B" => move_prev_long_word_start,
         "E" => move_next_long_word_end,
 
-        "v" => select_mode,
+        // "v" => select_mode,
+        "v" => { "Select"
+            "w" => select_to_start_of_word,
+            "W" => select_to_start_of_long_word,
+            "e" => select_to_end_of_word,
+            "E" => select_to_end_of_long_word,
+            "b" => select_to_beginning_of_word,
+            "B" => select_to_beginning_of_long_word,
+            "i" => select_textobject_inner,
+        },
         "V" => line_select_mode,
         "G" => goto_last_line,
         "g" => { "Goto"
@@ -72,7 +81,16 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
         "d" => delete_selection,
         "A-d" => delete_selection_noyank,
-        "c" => change_selection,
+        // "c" => c_motion,
+        "c" => { "Change"
+            "w" => change_to_end_of_word,
+            "W" => change_to_end_of_long_word,
+            "e" => change_to_end_of_word,
+            "E" => change_to_end_of_long_word,
+            "b" => change_to_beginning_of_word,
+            "B" => change_to_beginning_of_long_word,
+            "i" => change_textobject_inner,
+        },
         "A-c" => change_selection_noyank,
 
         "C" => copy_selection_on_next_line,
@@ -341,6 +359,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "j" | "down" => extend_visual_line_down,
         "k" | "up" => extend_visual_line_up,
         "l" | "right" => extend_char_right,
+
+        "c" => change_selection,
 
         "w" => extend_next_word_start,
         "b" => extend_prev_word_start,

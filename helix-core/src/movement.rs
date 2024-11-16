@@ -235,8 +235,6 @@ fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTar
     //   1. Block-cursor semantics.
     //   2. The anchor position being irrelevant to the output result.
     #[allow(clippy::collapsible_else_if)] // Makes the structure clearer in this case.
-    log::info!("range anchor: {} with motion: {:?}", range.anchor, target);
-    log::info!("range head: {} with motion: {:?}", range.head, target);
     let start_range = if is_prev {
         if range.anchor < range.head {
             Range::new(range.head, prev_grapheme_boundary(slice, range.head))
@@ -250,7 +248,6 @@ fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTar
             Range::new(range.head, next_grapheme_boundary(slice, range.head))
         }
     };
-    log::info!("starting range: {:?} with motion: {:?}", start_range, target);
 
     // Do the main work.
     let mut range = start_range;
@@ -262,17 +259,12 @@ fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTar
         range = next_range;
     }
 
-    log::info!("ending range before adjust: {:?} with motion: {:?}", range, target);
     if is_prev {
-        // if range.head > 0 {
-        //     range.head -= 1;
-        // }
         range.anchor = range.head + 1;
     } else {
         range.head += 1;
         range.anchor = range.head - 1;
     }
-    log::info!("ending range after adjust: {:?} with motion: {:?}", range, target);
     range
 }
 
@@ -487,11 +479,19 @@ impl CharHelpers for Chars<'_> {
             log::info!("prev char: {}", prev_ch.unwrap());
             log::info!("next char: {}", next_ch);
             if prev_ch.is_none() || reached_target(target, prev_ch.unwrap(), next_ch) {
-                if head == head_start && !matches!(target, WordMotionTarget::NextWordStart | WordMotionTarget::NextLongWordStart) {
-                // if head == head_start {
+                if head == head_start
+                    && !matches!(
+                        target,
+                        WordMotionTarget::NextWordStart | WordMotionTarget::NextLongWordStart
+                    )
+                {
+                    // if head == head_start {
                     anchor = head;
                 } else {
-                    if matches!(target, WordMotionTarget::NextWordEnd | WordMotionTarget::NextLongWordEnd) {
+                    if matches!(
+                        target,
+                        WordMotionTarget::NextWordEnd | WordMotionTarget::NextLongWordEnd
+                    ) {
                         if anchor > 0 {
                             anchor -= 1;
                         }
@@ -551,28 +551,26 @@ fn is_sub_word_boundary(a: char, b: char, dir: Direction) -> bool {
 fn reached_target(target: WordMotionTarget, prev_ch: char, next_ch: char) -> bool {
     match target {
         WordMotionTarget::NextWordStart | WordMotionTarget::PrevWordEnd => {
-            (is_word_boundary(prev_ch, next_ch)
-                && !next_ch.is_whitespace()) || (char_is_line_ending(prev_ch) && char_is_line_ending(next_ch))
+            (is_word_boundary(prev_ch, next_ch) && !next_ch.is_whitespace())
+                || (char_is_line_ending(prev_ch) && char_is_line_ending(next_ch))
         }
         WordMotionTarget::NextWordEnd => {
-            is_word_boundary(prev_ch, next_ch)
-                && !prev_ch.is_whitespace()
+            is_word_boundary(prev_ch, next_ch) && !prev_ch.is_whitespace()
         }
         WordMotionTarget::PrevWordStart => {
-            (is_word_boundary(prev_ch, next_ch)
-                && !prev_ch.is_whitespace()) || (char_is_line_ending(prev_ch) && char_is_line_ending(next_ch))
+            (is_word_boundary(prev_ch, next_ch) && !prev_ch.is_whitespace())
+                || (char_is_line_ending(prev_ch) && char_is_line_ending(next_ch))
         }
         WordMotionTarget::NextLongWordStart | WordMotionTarget::PrevLongWordEnd => {
-            (is_long_word_boundary(prev_ch, next_ch)
-                && !next_ch.is_whitespace()) || (char_is_line_ending(prev_ch) && char_is_line_ending(next_ch))
+            (is_long_word_boundary(prev_ch, next_ch) && !next_ch.is_whitespace())
+                || (char_is_line_ending(prev_ch) && char_is_line_ending(next_ch))
         }
         WordMotionTarget::NextLongWordEnd => {
-            is_long_word_boundary(prev_ch, next_ch)
-                && !prev_ch.is_whitespace()
+            is_long_word_boundary(prev_ch, next_ch) && !prev_ch.is_whitespace()
         }
         WordMotionTarget::PrevLongWordStart => {
-            (is_long_word_boundary(prev_ch, next_ch)
-                && !prev_ch.is_whitespace()) || (char_is_line_ending(prev_ch) && char_is_line_ending(next_ch))
+            (is_long_word_boundary(prev_ch, next_ch) && !prev_ch.is_whitespace())
+                || (char_is_line_ending(prev_ch) && char_is_line_ending(next_ch))
         }
         WordMotionTarget::NextSubWordStart => {
             is_sub_word_boundary(prev_ch, next_ch, Direction::Forward)
