@@ -1,0 +1,174 @@
+---
+title: Installation
+description: A guide in my new Starlight docs site.
+---
+
+import { Steps, Tabs, TabItem } from "@astrojs/starlight/components";
+
+To install Helix, follow the instructions specific to your operating system and package manager. Note that:
+
+- To get the latest nightly version of Helix, you need to build from source.
+- To take full advantage of Helix, install the language servers for your preferred programming languages.
+
+## Package Managers
+
+<Tabs>
+
+<TabItem label="Linux" icon="linux">
+
+<Tabs>
+<TabItem label="Ubuntu">
+
+Add the `PPA` for Helix:
+
+```sh
+sudo add-apt-repository ppa:maveonair/helix-editor
+sudo apt update
+sudo apt install helix
+```
+
+</TabItem>
+<TabItem label="Fedora">
+
+```sh
+sudo dnf install helix
+```
+
+</TabItem>
+<TabItem label="Arch">
+
+Releases are available in the `extra` repository:
+
+```sh
+sudo pacman -S helix
+```
+
+:::note
+
+When installed from the `extra` repository, run Helix with `helix` instead of `hx`.
+
+For example, to check the health:
+
+```sh
+helix --health
+```
+
+:::
+
+Additionally, a [helix-git](https://aur.archlinux.org/packages/helix-git) package is available in the AUR, which builds the latest master branch.
+
+</TabItem>
+<TabItem label="Nix">
+
+Helix is available in [nixpkgs](https://github.com/nixos/nixpkgs) through the `helix` attribute, the unstable channel usually carries the latest release.
+
+Helix is also available as a [flake](https://wiki.nixos.org/wiki/Flakes) in the project root. Use `nix develop` to spin up a reproducible development shell. Outputs are cached for each push to master using [Cachix](https://www.cachix.org/). The flake is configured to automatically make use of this cache assuming the user accepts the new settings on first use.
+
+If you are using a version of Nix without flakes enabled, install [Cachix CLI](https://docs.cachix.org/installation) and use `cachix use helix` to configure Nix to use cached outputs when possible.
+
+</TabItem>
+<TabItem label="Flatpak">
+
+Helix is available on [Flathub](https://flathub.org/en-GB/apps/com.helix_editor.Helix):
+
+```sh
+flatpak install flathub com.helix_editor.Helix
+flatpak run com.helix_editor.Helix
+```
+
+</TabItem>
+<TabItem label="Snap">
+
+Helix is available on [Snapcraft](https://snapcraft.io/helix):
+
+```sh
+snap install --classic helix
+```
+
+This will install Helix as both `/snap/bin/helix` and `/snap/bin/hx`, so make sure `/snap/bin` is in your `$PATH`!
+
+</TabItem>
+<TabItem label="AppImage">
+
+Install Helix using the Linux [AppImage](https://appimage.org/) format. Download the official Helix AppImage from the [latest releases](https://github.com/helix-editor/helix/releases/latest) page.
+
+```sh
+chmod +x helix-*.AppImage # change permission for executable mode
+./helix-*.AppImage # run helix
+```
+
+</TabItem>
+
+</Tabs>
+
+</TabItem>
+
+<TabItem label="MacOS" icon="apple">
+
+<Tabs>
+
+<TabItem label="Homebrew">
+
+```sh
+brew install helix
+```
+
+</TabItem>
+<TabItem label="MacPorts">
+
+```sh
+port install helix
+```
+
+</TabItem>
+
+</Tabs>
+
+</TabItem>
+<TabItem label="Windows" icon="seti:windows">
+
+<Tabs>
+
+<TabItem label="Winget">
+
+Windows Package Manager `winget` command-line tool is by default available on Windows 11 and modern versions of Windows 10 as a part of the App Installer.
+
+You can get App Installer from the [Microsoft Store](https://apps.microsoft.com/detail/9nblggh4nns1?rtc=1&hl=en-gb&gl=GB#activetab=pivot:overviewtab). If it's already installed, make sure it is updated with the latest version.
+
+```sh
+winget install Helix.Helix
+```
+
+</TabItem>
+
+<TabItem label="Scoop">
+
+```sh
+scoop install helix
+```
+
+</TabItem>
+<TabItem label="Chocolatey">
+
+```sh
+choco install helix
+```
+
+</TabItem>
+<TabItem label="MSYS2">
+
+```sh
+pacman -S mingw-w64-ucrt-x86_64-helix
+```
+
+</TabItem>
+
+</Tabs>
+
+</TabItem>
+
+</Tabs>
+
+## Pre-built binaries
+
+Download pre-built binaries from the [GitHub Releases page](https://github.com/helix-editor/helix/releases). Add the `hx` binary to your system's `$PATH` to use it from the command line, and copy the `runtime` directory into the config directory (for example `~/.config/helix/runtime` on Linux and macOS). The runtime location can be overriden via the HELIX_RUNTIME environment variable.

@@ -35,7 +35,6 @@ const gray = {
   300: colors.haze, // main text
   400: colors.lavender,
   400: colors.purleLavender,
-  400: "#ff00ff",
   500: "#ff00ff",
   700: colors.bossanova, // border
   800: colors.midnight, // sidebar and navbar
