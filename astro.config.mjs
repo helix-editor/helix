@@ -8,6 +8,9 @@ export default defineConfig({
   integrations: [
     starlight({
       title: "Helix Editor",
+      logo: {
+        src: "./public/favicon.svg",
+      },
       social: {
         github: "https://github.com/helix-editor/helix",
         matrix: "https://matrix.to/#/#helix-community:matrix.org",
