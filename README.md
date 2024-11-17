@@ -25,9 +25,6 @@ Evil Helix
     - `w/W`
     - `b/B`
     - `e/E`
-
-> NOTE: The pairs matching first looks for any surrounding pair and if not found, will search for the next one forward
-
 - `vi` (select inside textobject) and `va` (select around textobject)
     - `w/W`
     - `p`
@@ -38,10 +35,14 @@ Evil Helix
         - `c` for comment
         - `T` for test
     - pairs
+
+    > NOTE: The pairs matching first looks for any surrounding pair and if not found, will search for the next one forward
+
         - `{`
         - `(`
         - `[`
         - etc
+
 - `vt` and `vf`
     - i.e. `vt"` or `vT"` to select until `"` forward or backwards
     - i.e. `vf"` or `vF"` to select to `"` forward or backwards
