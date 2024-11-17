@@ -16,8 +16,8 @@ Evil Helix
 # Project Goals
 - Implement VIM motions as closely as possible
 - Reuse Helix's already implemented functions as much as possible
-- Integrate [lazyvim]() into Helix somehow (very long term goal)
-- Integrate an [oil.nvim]() style file browser (very long term goal)
+- Integrate [lazygit](https://github.com/jesseduffield/lazygit) into Helix somehow (very long term goal)
+- Integrate an [oil.nvim](https://github.com/stevearc/oil.nvim) style file browser (very long term goal)
 
 # What works
 ## V-motions
