@@ -35,13 +35,12 @@ Evil Helix
         - `c` for comment
         - `T` for test
     - pairs
-
-    > NOTE: The pairs matching first looks for any surrounding pair and if not found, will search for the next one forward
-
         - `{`
         - `(`
         - `[`
         - etc
+
+    > NOTE: The pairs matching first looks for any surrounding pair and if not found, will search for the next one forward
 
 - `vt` and `vf`
     - i.e. `vt"` or `vT"` to select until `"` forward or backwards
