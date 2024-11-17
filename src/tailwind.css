@@ -2,11 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-/*
-Add additional Tailwind styles to this file, for example with @layer:
-https://tailwindcss.com/docs/adding-custom-styles#using-css-and-layer
-*/
-
 .starlight-aside--caution {
   .starlight-aside__title {
     @apply text-[#ffcd1c];
@@ -35,6 +30,7 @@ https://tailwindcss.com/docs/adding-custom-styles#using-css-and-layer
   @apply bg-[#a4a0e8]/15 border-[#a4a0e8];
 }
 
+/* change style for the "copied" button text */
 .copy .feedback {
   @apply bg-[#5a5977] !important;
 }

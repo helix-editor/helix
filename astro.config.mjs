@@ -35,11 +35,23 @@ export default defineConfig({
       sidebar: [
         {
           label: "Getting Started",
-          items: [{ label: "Installation", slug: "guides/installation" }],
+          autogenerate: { directory: "getting-started" },
+        },
+        {
+          label: "Usage",
+          autogenerate: { directory: "usage" },
+        },
+        {
+          label: "Configuration",
+          autogenerate: { directory: "configuration" },
         },
         {
           label: "Reference",
           autogenerate: { directory: "reference" },
+        },
+        {
+          label: "Contributing",
+          autogenerate: { directory: "contributing" },
         },
       ],
       customCss: ["./src/tailwind.css"],
