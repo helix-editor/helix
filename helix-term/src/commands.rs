@@ -3215,10 +3215,8 @@ fn append_mode(cx: &mut Context) {
     }
 
     let selection = doc.selection(view.id).clone().transform(|range| {
-        Range::new(
-            range.from(),
-            graphemes::next_grapheme_boundary(doc.text().slice(..), range.to()),
-        )
+        let to = graphemes::next_grapheme_boundary(doc.text().slice(..), range.to());
+        Range::new(to - 1, to)
     });
     doc.set_selection(view.id, selection);
 }
