@@ -57,7 +57,6 @@ Evil Helix
     - `b/B`
     - `e/E`
 - `di` (select inside textobject) and `da` (select around textobject)
-> NOTE: The pairs matching first looks for any surrounding pair and if not found, will search for the next one forward
     - `w/W`
     - `p`
     - treesitter objects 
@@ -71,6 +70,9 @@ Evil Helix
         - `(`
         - `[`
         - etc
+
+        > NOTE: The pairs matching first looks for any surrounding pair and if not found, will search for the next one forward
+
 - `dt` and `df`
     - i.e. `dt"` or `dT"` to delete until `"` forward or backwards
     - i.e. `df"` or `dF"` to delete to `"` forward or backwards
@@ -83,7 +85,6 @@ Evil Helix
     - `b/B`
     - `e/E`
 - `ci` (select inside textobject) and `ca` (select around textobject)
-> NOTE: The pairs matching first looks for any surrounding pair and if not found, will search for the next one forward
     - `w/W`
     - `p`
     - treesitter objects 
@@ -97,6 +98,9 @@ Evil Helix
         - `(`
         - `[`
         - etc
+
+        > NOTE: The pairs matching first looks for any surrounding pair and if not found, will search for the next one forward
+
 - `ct` and `cf`
     - i.e. `ct"` or `cT"` to change until `"` forward or backwards
     - i.e. `cf"` or `cF"` to change to `"` forward or backwards
@@ -110,7 +114,6 @@ Evil Helix
     - `b/B`
     - `e/E`
 - `yi` (select inside textobject) and `ya` (select around textobject)
-> NOTE: The pairs matching first looks for any surrounding pair and if not found, will search for the next one forward
     - `w/W`
     - `p`
     - treesitter objects 
@@ -124,6 +127,9 @@ Evil Helix
         - `(`
         - `[`
         - etc
+
+        > NOTE: The pairs matching first looks for any surrounding pair and if not found, will search for the next one forward
+
 - `yt` and `yf`
     - i.e. `yt"` or `yT"` to yank until `"` forward or backwards
     - i.e. `yf"` or `yF"` to yank to `"` forward or backwards
