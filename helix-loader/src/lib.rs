@@ -136,7 +136,7 @@ pub fn state_dir() -> PathBuf {
     #[cfg(unix)]
     {
         let strategy = choose_base_strategy().expect("Unable to find the state directory!");
-        let mut path = strategy.state_dir();
+        let mut path = strategy.state_dir().unwrap();
         path.push("helix");
         path
     }

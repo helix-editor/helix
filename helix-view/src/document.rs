@@ -23,6 +23,7 @@ use std::collections::HashMap;
 use std::fmt::Display;
 use std::future::Future;
 use std::io;
+use std::os::unix::fs::MetadataExt;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 use std::sync::{Arc, Weak};
@@ -169,6 +170,27 @@ impl Backup {
                 // builder.permissions()
                 if let Ok(f) = builder.tempfile() {
                     // Check if we have perms to set perms
+                    #[cfg(unix)]
+                    {
+                        use std::os::{fd::AsFd, unix::fs::MetadataExt};
+
+                        let from_meta = tokio::fs::metadata(&p).await?;
+                        let to_meta = tokio::fs::metadata(&f.path()).await?;
+                        let _ = fchown(
+                            f.as_file().as_fd(),
+                            Some(from_meta.uid()),
+                            Some(from_meta.gid()),
+                        );
+
+                        if from_meta.uid() != to_meta.uid()
+                            || from_meta.gid() != to_meta.gid()
+                            || from_meta.permissions() != to_meta.permissions()
+                        {
+                            copy = true;
+                        }
+                    }
+
+                    #[cfg(not(unix))]
                     if copy_metadata(&p, f.path()).is_err() {
                         copy = true;
                     }
@@ -209,23 +231,26 @@ impl Backup {
 
                 #[cfg(unix)]
                 {
-                    let mut meta = tokio::fs::metadata(&p).await?;
-                    let mut perms = meta.permissions();
+                    use std::os::unix::fs::{MetadataExt, PermissionsExt};
+
+                    let mut from_meta = tokio::fs::metadata(&p).await?;
+                    let mut perms = from_meta.permissions();
 
                     // Strip s-bit
                     perms.set_mode(perms.mode() & 0o0777);
 
+                    let to_meta = tokio::fs::metadata(&backup).await?;
                     let from_gid = from_meta.gid();
                     let to_gid = to_meta.gid();
 
                     // If chown fails, se the protection bits for the roup the same as the perm bits for others
-                    if from_gid != to_gid && chown(to, None, Some(from_gid)).is_err() {
+                    if from_gid != to_gid && chown(&backup, None, Some(from_gid)).is_err() {
                         let new_perms = (perms.mode() & 0o0707) | ((perms.mode() & 0o07) << 3);
                         perms.set_mode(new_perms);
                     }
                     std::fs::set_permissions(&backup, perms)?;
                     // TODO: Set time
-                    // TODO: set xattr via rustix
+                    copy_xattr(&p, &backup)?;
                 }
 
                 #[cfg(windows)]
@@ -1080,6 +1105,7 @@ impl Document {
 
                     #[cfg(unix)]
                     {
+                        use std::os::unix::fs::PermissionsExt;
                         let mode = from_meta.permissions().mode();
                         open_opt.mode(mode);
                     }

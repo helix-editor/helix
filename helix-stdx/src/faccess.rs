@@ -54,20 +54,6 @@ mod imp {
         Ok(())
     }
 
-    pub fn chown(p: &Path, uid: Option<u32>, gid: Option<u32>) -> io::Result<()> {
-        let uid = uid.map(|n| unsafe { rustix::fs::Uid::from_raw(n) });
-        let gid = gid.map(|n| unsafe { rustix::fs::Gid::from_raw(n) });
-        rustix::fs::chown(p, uid, gid)?;
-        Ok(())
-    }
-
-    pub fn fchown(fd: impl AsFd, uid: Option<u32>, gid: Option<u32>) -> io::Result<()> {
-        let uid = uid.map(|n| unsafe { rustix::fs::Uid::from_raw(n) });
-        let gid = gid.map(|n| unsafe { rustix::fs::Gid::from_raw(n) });
-        rustix::fs::fchown(fd, uid, gid)?;
-        Ok(())
-    }
-
     pub fn copy_metadata(from: &Path, to: &Path) -> io::Result<()> {
         let from_meta = std::fs::metadata(from)?;
         let to_meta = std::fs::metadata(to)?;
@@ -545,6 +531,73 @@ pub fn copy_metadata(from: &Path, to: &Path) -> io::Result<()> {
 #[cfg(windows)]
 pub fn copy_ownership(from: &Path, to: &Path) -> io::Result<()> {
     imp::copy_ownership(from, to)
+}
+
+#[cfg(unix)]
+pub fn chown(p: &Path, uid: Option<u32>, gid: Option<u32>) -> io::Result<()> {
+    let uid = uid.map(|n| unsafe { rustix::fs::Uid::from_raw(n) });
+    let gid = gid.map(|n| unsafe { rustix::fs::Gid::from_raw(n) });
+    rustix::fs::chown(p, uid, gid)?;
+    Ok(())
+}
+
+#[cfg(unix)]
+pub fn fchown(fd: impl std::os::fd::AsFd, uid: Option<u32>, gid: Option<u32>) -> io::Result<()> {
+    let uid = uid.map(|n| unsafe { rustix::fs::Uid::from_raw(n) });
+    let gid = gid.map(|n| unsafe { rustix::fs::Gid::from_raw(n) });
+    rustix::fs::fchown(fd, uid, gid)?;
+    Ok(())
+}
+
+#[cfg(unix)]
+pub fn copy_xattr(from: &Path, to: &Path) -> io::Result<()> {
+    let size = match rustix::fs::listxattr(from, &mut [])? {
+        0 => return Ok(()), // No attributes
+        len => len,
+    };
+
+    let mut buf = vec![0i8; size];
+    let read = rustix::fs::listxattr(from, &mut buf)?;
+
+    fn i8_to_u8_slice(input: &[i8]) -> &[u8] {
+        // SAFETY: Simply reinterprets bytes
+        unsafe { std::slice::from_raw_parts(input.as_ptr() as *const u8, input.len()) }
+    }
+
+    // Iterate over null-terminated C-style strings
+    // Two loops to avoid multiple allocations
+    // Find max-size for attributes
+    let mut max_attr_len = 0;
+    for attr_byte in buf.split(|&b| b == 0) {
+        let name = std::str::from_utf8(i8_to_u8_slice(attr_byte))
+            .map_err(|_| std::io::Error::from(std::io::ErrorKind::InvalidData))?;
+        let attr_len = rustix::fs::getxattr(from, name, &mut [])?;
+        max_attr_len = max_attr_len.max(attr_len);
+    }
+
+    let mut attr_buf = vec![0u8; max_attr_len];
+    for attr_byte in buf.split(|&b| b == 0) {
+        let name = std::str::from_utf8(i8_to_u8_slice(attr_byte))
+            .map_err(|_| std::io::Error::from(std::io::ErrorKind::InvalidData))?;
+        let read = rustix::fs::getxattr(from, name, &mut attr_buf)?;
+
+        // If we can't set xattr because it already exists, try to replace it
+        if read != 0 {
+            match rustix::fs::setxattr(to, name, &attr_buf[..read], rustix::fs::XattrFlags::CREATE)
+            {
+                Err(rustix::io::Errno::EXIST) => rustix::fs::setxattr(
+                    to,
+                    name,
+                    &attr_buf[..read],
+                    rustix::fs::XattrFlags::REPLACE,
+                )?,
+                Err(e) => return Err(e.into()),
+                _ => {}
+            }
+        }
+    }
+
+    Ok(())
 }
 
 /*
