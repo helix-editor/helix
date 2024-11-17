@@ -9,7 +9,7 @@ use crate::{
 use helix_stdx::rope::RopeSliceExt;
 use std::borrow::Cow;
 
-pub const DEFAULT_COMMENT_TOKEN: &str = "//";
+pub const DEFAULT_COMMENT_TOKEN: &str = "#";
 
 /// Returns the longest matching comment token of the given line (if it exists).
 pub fn get_comment_token<'a, S: AsRef<str>>(
