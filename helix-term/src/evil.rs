@@ -1,6 +1,6 @@
-use helix_core::movement::{self};
+use helix_core::movement::{self, Movement};
 
-use crate::commands::{Context, extend_word_impl, change_selection, select_mode, delete_selection, yank};
+use crate::commands::{Context, extend_word_impl, change_selection, select_mode, delete_selection, yank, extend_to_line_bounds, goto_line_end_impl};
 
 pub(crate) fn change_to_end_of_word(cx: &mut Context) {
     extend_word_impl(cx, movement::move_next_word_end);
@@ -92,6 +92,34 @@ pub(crate) fn yank_to_beginning_of_long_word(cx: &mut Context) {
     extend_word_impl(cx, movement::move_prev_long_word_start);
     yank(cx);
 }
+
+pub(crate) fn change_line(cx: &mut Context) {
+    extend_to_line_bounds(cx);
+    change_selection(cx);
+} 
+
+pub(crate) fn delete_line(cx: &mut Context) {
+    extend_to_line_bounds(cx);
+    delete_selection(cx);
+} 
+
+pub(crate) fn yank_line(cx: &mut Context) {
+    extend_to_line_bounds(cx);
+    yank(cx);
+} 
+
+pub(crate) fn change_to_end_of_line(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    goto_line_end_impl(view, doc, Movement::Extend);
+    change_selection(cx);
+} 
+
+pub(crate) fn delete_to_end_of_line(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    goto_line_end_impl(view, doc, Movement::Extend);
+    delete_selection(cx);
+} 
+
 // pub(crate) fn change_inner_textobject(cx: &mut Context) {
 //     change_textobject_inner(cx);
 //     // change_selection(cx);

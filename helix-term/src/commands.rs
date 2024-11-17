@@ -378,6 +378,8 @@ impl MappableCommand {
         change_till_char, "Change until char",
         change_to_prev_char, "Change to prev char",
         change_till_prev_char, "Change until prev char",
+        change_line, "Change entire line",
+        change_to_end_of_line, "Change to end of line",
         delete_to_end_of_word, "Delete to end of word",
         delete_to_end_of_long_word, "Delete to end of long word",
         delete_to_beginning_of_word, "Delete to beginning of word",
@@ -388,6 +390,8 @@ impl MappableCommand {
         delete_till_char, "Change until char",
         delete_to_prev_char, "Change to prev char",
         delete_till_prev_char, "Change until prev char",
+        delete_to_end_of_line, "Delete to end of line",
+        delete_line, "Delete entire line",
         select_to_start_of_word, "Select to start of word",
         select_to_start_of_long_word, "Select to start of long word",
         select_to_end_of_word, "Select to end of word",
@@ -404,6 +408,7 @@ impl MappableCommand {
         yank_till_char, "Change until char",
         yank_to_prev_char, "Change to prev char",
         yank_till_prev_char, "Change until prev char",
+        yank_line, "Yank entire line",
         change_selection, "Change selection",
         change_selection_noyank, "Change selection without yanking",
         collapse_selection, "Collapse selection into single cursor",
@@ -807,7 +812,7 @@ fn extend_visual_line_down(cx: &mut Context) {
     )
 }
 
-fn goto_line_end_impl(view: &mut View, doc: &mut Document, movement: Movement) {
+pub(crate) fn goto_line_end_impl(view: &mut View, doc: &mut Document, movement: Movement) {
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).clone().transform(|range| {
@@ -2953,7 +2958,7 @@ fn select_line_impl(cx: &mut Context, extend: Extend) {
     doc.set_selection(view.id, selection);
 }
 
-fn extend_to_line_bounds(cx: &mut Context) {
+pub(crate) fn extend_to_line_bounds(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
     doc.set_selection(
@@ -3983,7 +3988,7 @@ fn exit_select_mode(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
 
     let selection = doc.selection(view.id).clone().transform(|mut range| {
-        range.anchor = range.head - 1;
+        range.head = range.anchor + 1;
         range
     });
 
