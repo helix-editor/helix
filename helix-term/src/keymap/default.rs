@@ -141,8 +141,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "A-b" => move_parent_node_start,
         "A-a" => select_all_siblings,
 
-        "%" => select_all,
-        "x" => extend_line_below,
+        "%" => goto_matching_pair,
+        "x" => delete_selection,
         "X" => extend_to_line_bounds,
         "A-x" => shrink_to_line_bounds,
 
@@ -408,6 +408,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
         "c" => change_selection,
         "d" => delete_selection,
+        "y" => yank,
+        "p" => replace_with_yanked,
 
         "w" => extend_next_word_start,
         "b" => extend_prev_word_start,
@@ -449,6 +451,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
         "c" => change_selection,
         "d" => delete_selection,
+        "y" => yank,
+        "p" => replace_with_yanked,
     }));
     let insert = keymap!({ "Insert mode"
         "esc" => normal_mode,

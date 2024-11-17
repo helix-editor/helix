@@ -1,6 +1,11 @@
+use helix_core::match_brackets::find_matching_bracket;
 use helix_core::movement::{self, Movement};
+use helix_view::document::Mode;
 
-use crate::commands::{Context, extend_word_impl, change_selection, select_mode, delete_selection, yank, extend_to_line_bounds, goto_line_end_impl};
+use crate::commands::{
+    change_selection, delete_selection, extend_to_line_bounds, extend_word_impl,
+    goto_line_end_impl, select_mode, yank, Context,
+};
 
 pub(crate) fn change_to_end_of_word(cx: &mut Context) {
     extend_word_impl(cx, movement::move_next_word_end);
@@ -21,7 +26,6 @@ pub(crate) fn change_to_beginning_of_long_word(cx: &mut Context) {
     extend_word_impl(cx, movement::move_prev_long_word_start);
     change_selection(cx);
 }
-
 
 pub(crate) fn delete_to_end_of_word(cx: &mut Context) {
     extend_word_impl(cx, movement::move_next_word_end);
@@ -96,76 +100,53 @@ pub(crate) fn yank_to_beginning_of_long_word(cx: &mut Context) {
 pub(crate) fn change_line(cx: &mut Context) {
     extend_to_line_bounds(cx);
     change_selection(cx);
-} 
+}
 
 pub(crate) fn delete_line(cx: &mut Context) {
     extend_to_line_bounds(cx);
     delete_selection(cx);
-} 
+}
 
 pub(crate) fn yank_line(cx: &mut Context) {
     extend_to_line_bounds(cx);
     yank(cx);
-} 
+}
 
 pub(crate) fn change_to_end_of_line(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     goto_line_end_impl(view, doc, Movement::Extend);
     change_selection(cx);
-} 
+}
 
 pub(crate) fn delete_to_end_of_line(cx: &mut Context) {
     let (view, doc) = current!(cx.editor);
     goto_line_end_impl(view, doc, Movement::Extend);
     delete_selection(cx);
-} 
+}
 
-// pub(crate) fn change_inner_textobject(cx: &mut Context) {
-//     change_textobject_inner(cx);
-//     // change_selection(cx);
-// }
-
-// pub(crate) fn c_motion(cx: &mut Context) {
-//     // TODO: count is reset to 1 before next key so we move it into the closure here.
-//     // Would be nice to carry over.
-//     // let count = cx.count();
-//
-//     // need to wait for next key
-//     // TODO: should this be done by grapheme rather than char?  For example,
-//     // we can't properly handle the line-ending CRLF case here in terms of char.
-//     cx.on_next_key(move |cx, event| {
-//         let ch = match event {
-//             KeyEvent {
-//                 code: KeyCode::Tab, ..
-//             } => '\t',
-//
-//             KeyEvent {
-//                 code: KeyCode::Char(ch),
-//                 ..
-//             } => ch,
-//             _ => {
-//                 return
-//             },
-//         };
-//         // let motion = move |editor: &mut Editor| {
-//             match ch {
-//                 'w' => {
-//                     extend_word_impl(cx, movement::move_next_word_end);
-//                     change_selection(cx);
-//                 },
-//                 'W' => {
-//                     extend_word_impl(cx, movement::move_next_long_word_end);
-//                     change_selection(cx);
-//                 },
-//                 'i' => {
-//                     change_textobject_inner(cx);
-//                     change_selection(cx);
-//                 },
-//                 _ => return,
-//             }
-//         // };
-//
-//         // cx.editor.apply_motion(motion);
-//     })
-// }
-
+pub(crate) fn goto_matching_pair(cx: &mut Context) {
+    let mode = cx.editor.mode();
+    let (view, doc) = current!(cx.editor);
+    if let Some(syntax) = doc.syntax() {
+        let text = doc.text().slice(..);
+        let original_pos = doc.selection(view.id).primary().cursor(text);
+        if let Some(pos) = find_matching_bracket(syntax, text, original_pos) {
+            let selection = doc.selection(view.id).clone().transform(|mut range| {
+                if mode == Mode::Select {
+                    if pos > original_pos {
+                        range.anchor = original_pos;
+                        range.head = pos + 1;
+                    } else {
+                        range.anchor = original_pos + 1;
+                        range.head = pos;
+                    }
+                } else {
+                    range.anchor = pos;
+                    range.head = pos + 1;
+                }
+                range
+            });
+            doc.set_selection(view.id, selection);
+        }
+    }
+}

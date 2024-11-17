@@ -368,6 +368,7 @@ impl MappableCommand {
         delete_selection_noyank, "Delete selection without yanking",
         // Evil!!!
         // c_motion, "C motions",
+        goto_matching_pair, "Goto matching pair",
         change_to_end_of_word, "Change to end of word",
         change_to_end_of_long_word, "Change to end of long word",
         change_to_beginning_of_word, "Change to beginning of word",
@@ -3895,10 +3896,13 @@ fn goto_last_line(cx: &mut Context) {
         text.len_lines() - 1
     };
     let pos = text.line_to_char(line_idx);
-    let selection = doc
-        .selection(view.id)
-        .clone()
-        .transform(|range| range.put_cursor(text, pos, cx.editor.mode == Mode::Select || cx.editor.mode == Mode::SelectLine));
+    let selection = doc.selection(view.id).clone().transform(|range| {
+        range.put_cursor(
+            text,
+            pos,
+            cx.editor.mode == Mode::Select || cx.editor.mode == Mode::SelectLine,
+        )
+    });
 
     push_jump(view, doc);
     doc.set_selection(view.id, selection);
