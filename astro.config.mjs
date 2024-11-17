@@ -10,7 +10,7 @@ const jsoncString = fs.readFileSync(
   new URL(`./theme.json`, import.meta.url),
   "utf-8"
 );
-const myTheme = ExpressiveCodeTheme.fromJSONString(jsoncString);
+const theme = ExpressiveCodeTheme.fromJSONString(jsoncString);
 
 // https://astro.build/config
 export default defineConfig({
@@ -25,7 +25,7 @@ export default defineConfig({
         matrix: "https://matrix.to/#/#helix-community:matrix.org",
       },
       expressiveCode: {
-        themes: [myTheme],
+        themes: [theme],
       },
       components: {
         // HACK: override default components so user cannot use light theme
