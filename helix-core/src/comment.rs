@@ -345,7 +345,7 @@ mod test {
 
             let text = doc.slice(..);
 
-            let res = find_line_comment("//", text, 0..3);
+            let res = find_line_comment("#", text, 0..3);
             // (commented = false, to_change = [line 0, line 2], min = col 2, margin = 0)
             assert_eq!(res, (false, vec![0, 2], 2, 0));
         }
@@ -353,9 +353,9 @@ mod test {
         #[test]
         fn is_commented() {
             // three lines where the second line is empty.
-            let doc = Rope::from("// hello\n\n// there");
+            let doc = Rope::from("# hello\n\n# there");
 
-            let res = find_line_comment("//", doc.slice(..), 0..3);
+            let res = find_line_comment("#", doc.slice(..), 0..3);
 
             // (commented = true, to_change = [line 0, line 2], min = col 0, margin = 1)
             assert_eq!(res, (true, vec![0, 2], 0, 1));
@@ -376,12 +376,12 @@ mod test {
             let transaction = toggle_line_comments(&doc, &selection, None);
             transaction.apply(&mut doc);
 
-            assert_eq!(doc, "  // 1\n\n  // 2\n  // 3");
+            assert_eq!(doc, "  # 1\n\n  # 2\n  # 3");
         }
 
         #[test]
         fn uncomment() {
-            let mut doc = Rope::from("  // 1\n\n  // 2\n  // 3");
+            let mut doc = Rope::from("  # 1\n\n  # 2\n  # 3");
             let mut selection = Selection::single(0, doc.len_chars() - 1);
 
             let transaction = toggle_line_comments(&doc, &selection, None);
@@ -394,7 +394,7 @@ mod test {
 
         #[test]
         fn uncomment_0_margin_comments() {
-            let mut doc = Rope::from("  //1\n\n  //2\n  //3");
+            let mut doc = Rope::from("  #1\n\n  #2\n  #3");
             let mut selection = Selection::single(0, doc.len_chars() - 1);
 
             let transaction = toggle_line_comments(&doc, &selection, None);
@@ -407,7 +407,7 @@ mod test {
 
         #[test]
         fn uncomment_0_margin_comments_with_no_space() {
-            let mut doc = Rope::from("//");
+            let mut doc = Rope::from("#");
             let mut selection = Selection::single(0, doc.len_chars() - 1);
 
             let transaction = toggle_line_comments(&doc, &selection, None);
