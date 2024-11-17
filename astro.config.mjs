@@ -3,6 +3,15 @@ import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import tailwind from "@astrojs/tailwind";
 
+import { ExpressiveCodeTheme } from "@astrojs/starlight/expressive-code";
+import fs from "node:fs";
+
+const jsoncString = fs.readFileSync(
+  new URL(`./theme.json`, import.meta.url),
+  "utf-8"
+);
+const myTheme = ExpressiveCodeTheme.fromJSONString(jsoncString);
+
 // https://astro.build/config
 export default defineConfig({
   integrations: [
@@ -14,6 +23,9 @@ export default defineConfig({
       social: {
         github: "https://github.com/helix-editor/helix",
         matrix: "https://matrix.to/#/#helix-community:matrix.org",
+      },
+      expressiveCode: {
+        themes: [myTheme],
       },
       components: {
         // HACK: override default components so user cannot use light theme
