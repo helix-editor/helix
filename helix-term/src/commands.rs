@@ -2906,7 +2906,7 @@ fn extend_line_impl(cx: &mut Context, extend: Extend) {
 
     doc.set_selection(view.id, selection);
 }
-fn select_line_below(cx: &mut Context) {
+pub(crate) fn select_line_below(cx: &mut Context) {
     select_line_impl(cx, Extend::Below);
 }
 fn select_line_above(cx: &mut Context) {

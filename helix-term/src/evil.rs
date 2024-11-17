@@ -5,7 +5,7 @@ use helix_core::movement::{self, Movement};
 use helix_view::document::Mode;
 
 use crate::commands::{
-    change_selection, delete_selection, extend_to_line_bounds, extend_visual_line_down,
+    change_selection, delete_selection, extend_to_line_bounds,
     extend_word_impl, goto_line_end_impl, select_line_below, select_mode, yank, Context,
 };
 
