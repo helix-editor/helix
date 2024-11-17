@@ -101,7 +101,9 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "F" => delete_to_prev_char,
             "b" => delete_to_beginning_of_word,
             "B" => delete_to_beginning_of_long_word,
+            "d" => delete_line,
         },
+        "D" => delete_to_end_of_line,
 
         "c" => { "Change"
             "i" => change_textobject_inner,
@@ -119,7 +121,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         },
         "A-c" => change_selection_noyank,
 
-        "C" => copy_selection_on_next_line,
+        "C" => change_to_end_of_line,
         "A-C" => copy_selection_on_prev_line,
 
 
@@ -127,7 +129,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "A-s" => split_selection_on_newline,
         "A-minus" => merge_selections,
         "A-_" => merge_consecutive_selections,
-        "S" => split_selection,
+        "S" => change_line,
         ";" => collapse_selection,
         "A-;" => flip_selections,
         "A-o" | "A-up" => expand_selection,
@@ -139,8 +141,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "A-b" => move_parent_node_start,
         "A-a" => select_all_siblings,
 
-        "%" => select_all,
-        "x" => extend_line_below,
+        "%" => goto_matching_pair,
+        "x" => delete_selection,
         "X" => extend_to_line_bounds,
         "A-x" => shrink_to_line_bounds,
 
@@ -209,6 +211,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "F" => yank_to_prev_char,
             "b" => yank_to_beginning_of_word,
             "B" => yank_to_beginning_of_long_word,
+            "y" => yank_line,
         },
         // yank_all
         "p" => paste_after,
@@ -404,6 +407,9 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "l" | "right" => extend_char_right,
 
         "c" => change_selection,
+        "d" => delete_selection,
+        "y" => yank,
+        "p" => replace_with_yanked,
 
         "w" => extend_next_word_start,
         "b" => extend_prev_word_start,
@@ -442,6 +448,11 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "j" | "down" => select_line_below,
         "k" | "up" => select_line_above,
         "l" | "right" => no_op,
+
+        "c" => change_selection,
+        "d" => delete_selection,
+        "y" => yank,
+        "p" => replace_with_yanked,
     }));
     let insert = keymap!({ "Insert mode"
         "esc" => normal_mode,
