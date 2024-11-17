@@ -102,6 +102,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "b" => delete_to_beginning_of_word,
             "B" => delete_to_beginning_of_long_word,
             "d" => delete_line,
+            "G" => goto_last_line_and_delete,
         },
         "D" => delete_to_end_of_line,
 
@@ -393,7 +394,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "!" => shell_insert_output,
         "A-!" => shell_append_output,
         "$" => goto_line_end,
-        "^" => goto_line_start,
+        "0" => goto_line_start,
+        "^" => goto_first_nonwhitespace,
         "C-z" => suspend,
 
         "C-a" => increment,
