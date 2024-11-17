@@ -1,64 +1,170 @@
 <div align="center">
 
 <h1>
-<picture>
-  <source media="(prefers-color-scheme: dark)" srcset="logo_dark.svg">
-  <source media="(prefers-color-scheme: light)" srcset="logo_light.svg">
-  <img alt="Helix" height="128" src="logo_light.svg">
-</picture>
+Evil Helix
+<!-- <picture> -->
+<!--   <source media="(prefers-color-scheme: dark)" srcset="logo_dark.svg"> -->
+<!--   <source media="(prefers-color-scheme: light)" srcset="logo_light.svg"> -->
+<!--   <img alt="Helix" height="128" src="logo_light.svg"> -->
+<!-- </picture> -->
 </h1>
-
-[![Build status](https://github.com/helix-editor/helix/actions/workflows/build.yml/badge.svg)](https://github.com/helix-editor/helix/actions)
-[![GitHub Release](https://img.shields.io/github/v/release/helix-editor/helix)](https://github.com/helix-editor/helix/releases/latest)
-[![Documentation](https://shields.io/badge/-documentation-452859)](https://docs.helix-editor.com/)
-[![GitHub contributors](https://img.shields.io/github/contributors/helix-editor/helix)](https://github.com/helix-editor/helix/graphs/contributors)
-[![Matrix Space](https://img.shields.io/matrix/helix-community:matrix.org)](https://matrix.to/#/#helix-community:matrix.org)
 
 </div>
 
 ![Screenshot](./screenshot.png)
 
-A [Kakoune](https://github.com/mawww/kakoune) / [Neovim](https://github.com/neovim/neovim) inspired editor, written in Rust.
+# Project Goals
+- Implement VIM motions as closely as possible
+- Reuse Helix's already implemented functions as much as possible
+- Integrate [lazyvim]() into Helix somehow (very long term goal)
+- Integrate an [oil.nvim]() style file browser (very long term goal)
 
-The editing model is very heavily based on Kakoune; during development I found
-myself agreeing with most of Kakoune's design decisions.
+# What works
+## V-motions
+- `v`
+    - `w/W`
+    - `b/B`
+    - `e/E`
+- `vi` (select inside textobject) and `va` (select around textobject)
+> NOTE: The pairs matching first looks for any surrounding pair and if not found, will search for the next one forward
+    - `w/W`
+    - `p`
+    - treesitter objects 
+        - `f` for function
+        - `t` for type
+        - `a` for argument
+        - `c` for comment
+        - `T` for test
+    - pairs
+        - `{`
+        - `(`
+        - `[`
+        - etc
+- `vt` and `vf`
+    - i.e. `vt"` or `vT"` to select until `"` forward or backwards
+    - i.e. `vf"` or `vF"` to select to `"` forward or backwards
+    - using a count like `3vf"`
+- `V` enters visual line mode
 
-For more information, see the [website](https://helix-editor.com) or
-[documentation](https://docs.helix-editor.com/).
+## D-motions
+- `dd` deletes entire line
+    - accepts counts like `3dd` to delete 3 lines
+- `D` to delete from cursor to end of line
+- `d`
+    - `w/W`
+    - `b/B`
+    - `e/E`
+- `di` (select inside textobject) and `da` (select around textobject)
+> NOTE: The pairs matching first looks for any surrounding pair and if not found, will search for the next one forward
+    - `w/W`
+    - `p`
+    - treesitter objects 
+        - `f` for function
+        - `t` for type
+        - `a` for argument
+        - `c` for comment
+        - `T` for test
+    - pairs
+        - `{`
+        - `(`
+        - `[`
+        - etc
+- `dt` and `df`
+    - i.e. `dt"` or `dT"` to delete until `"` forward or backwards
+    - i.e. `df"` or `dF"` to delete to `"` forward or backwards
+    - using a count like `3df"`
 
-All shortcuts/keymaps can be found [in the documentation on the website](https://docs.helix-editor.com/keymap.html).
+## C-motions
+- `C` to change from cursor to end of line
+- `c`
+    - `w/W`
+    - `b/B`
+    - `e/E`
+- `ci` (select inside textobject) and `ca` (select around textobject)
+> NOTE: The pairs matching first looks for any surrounding pair and if not found, will search for the next one forward
+    - `w/W`
+    - `p`
+    - treesitter objects 
+        - `f` for function
+        - `t` for type
+        - `a` for argument
+        - `c` for comment
+        - `T` for test
+    - pairs
+        - `{`
+        - `(`
+        - `[`
+        - etc
+- `ct` and `cf`
+    - i.e. `ct"` or `cT"` to change until `"` forward or backwards
+    - i.e. `cf"` or `cF"` to change to `"` forward or backwards
+    - using a count like `3cf"`
 
-[Troubleshooting](https://github.com/helix-editor/helix/wiki/Troubleshooting)
+## Y-motions
+- `yy` yanks entire line
+    - accepts counts like `3yy` to yank 3 lines
+- `y`
+    - `w/W`
+    - `b/B`
+    - `e/E`
+- `yi` (select inside textobject) and `ya` (select around textobject)
+> NOTE: The pairs matching first looks for any surrounding pair and if not found, will search for the next one forward
+    - `w/W`
+    - `p`
+    - treesitter objects 
+        - `f` for function
+        - `t` for type
+        - `a` for argument
+        - `c` for comment
+        - `T` for test
+    - pairs
+        - `{`
+        - `(`
+        - `[`
+        - etc
+- `yt` and `yf`
+    - i.e. `yt"` or `yT"` to yank until `"` forward or backwards
+    - i.e. `yf"` or `yF"` to yank to `"` forward or backwards
+    - using a count like `3yf"`
 
-# Features
+## Misc
+- Normal and Insert modes no longer selects as you go (removes Helix default behavior)
+- Helix shows available options for keys as you press them
+- `w/W`, `e/E`, and `b/B` all go to the correct spot of word
+- `t` and `f`
+    - i.e. `t"` or `T"` to move until `"` forward or backwards
+    - i.e. `f"` or `F"` to move to `"` forward or backwards
+    - using a count like `3f"`
+- `S` to change entire line
+- `$` to go to end of line
+- `^` to go to first non-whitespace of line
+- `0` to go to beginning of line
+- `%` to go to matching pair beneath cursor
 
-- Vim-like modal editing
-- Multiple selections
-- Built-in language server support
-- Smart, incremental syntax highlighting and code editing via tree-sitter
+# What doesn't work/TODO
+- Enter Visual mode by pressing `vv` because I haven't figured out how to set a timer to default to Visual mode if nothing is pressed immediately after `v`
+- Currently there is no Visual Block mode because I think Visual mode combined with multicursor does the same thing
+- Helix seems to add an additional block that the cursor can be moved to at the end of every line
+- When using `dd` or `yy` commands, the cursor position is not kept
+- Motions like `cip` or `cif` do not search for next occurence of paragraph or function
+- Motions with pairs like `ci{` do not work with a count
+- Comments
+    - Implement `gcc` to comment in Normal mode
+    - Implement `gc` to comment in Visual mode
+    - Implement `gb` to block comment in Visual mode
+- Probably lots of motions with counts that don't work
+- Refactor evil functions to match Helix architecture (i.e. `_impl` functions)
+- Refactor tests for new motions and behavior (very long term goal)
 
-Although it's primarily a terminal-based editor, I am interested in exploring
-a custom renderer (similar to Emacs) using wgpu or skulpin.
-
-Note: Only certain languages have indentation definitions at the moment. Check
-`runtime/queries/<lang>/` for `indents.scm`.
 
 # Installation
 
 [Installation documentation](https://docs.helix-editor.com/install.html).
 
-[![Packaging status](https://repology.org/badge/vertical-allrepos/helix-editor.svg?exclude_unsupported=1)](https://repology.org/project/helix-editor/versions)
+<!-- [![Packaging status](https://repology.org/badge/vertical-allrepos/helix-editor.svg?exclude_unsupported=1)](https://repology.org/project/helix-editor/versions) -->
 
 # Contributing
 
 Contributing guidelines can be found [here](./docs/CONTRIBUTING.md).
 
-# Getting help
-
-Your question might already be answered on the [FAQ](https://github.com/helix-editor/helix/wiki/FAQ).
-
-Discuss the project on the community [Matrix Space](https://matrix.to/#/#helix-community:matrix.org) (make sure to join `#helix-editor:matrix.org` if you're on a client that doesn't support Matrix Spaces yet).
-
-# Credits
-
-Thanks to [@jakenvac](https://github.com/jakenvac) for designing the logo!
+I reserve the right to reject any suggestions or PRs for this fork.
