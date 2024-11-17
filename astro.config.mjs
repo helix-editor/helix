@@ -35,7 +35,12 @@ export default defineConfig({
       sidebar: [
         {
           label: "Getting Started",
-          autogenerate: { directory: "getting-started" },
+          items: [
+            "getting-started/introduction",
+            "getting-started/installation",
+            "getting-started/basics",
+            "getting-started/becoming-comfortable",
+          ],
         },
         {
           label: "Usage",

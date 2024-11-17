@@ -1,0 +1,131 @@
+---
+title: The Basics
+---
+
+Create a new text file and open it with Helix by running `hx file.txt`. This is what you'll see:
+
+[TODO: add screenshot]
+
+Notice the `NOR` in the bottom-right corner, this indicates that you are currently in Normal mode. In this mode, typing letters like `e` and `n` won't insert them into the text, but rather have specific _commands_ which we will explore later.
+
+To actually insert some text, press `i`. `i` is the command to get into Insert mode, indicated by the `INS` in the bottom-right corner. In this mode, the letters you type will be inserted directly into the document. Try it out by writing `Hello helix!`.
+
+[TODO: add screenshot]
+
+To get back into Normal mode press `<esc>` (Escape). This will change the color of your cursor and you will see `NOR` again.
+
+To move your cursor you could use arrow keys both in normal and insert modes. However, this isn't encouraged because your hand will be doing a lot of back-and-forth movement between the arrow keys and the keyboard.
+
+Instead, it is recommended to hold your hands in the following position:
+
+[TODO: add screenshot]
+
+This way, your fingers will always rest on the "home row", which is comprised of the row of keys `a s d f g h j k l`. Instead of stretching to reach the arrow keys, use `h`, `j`, `k` and `l` to move your cursor.
+
+- `h`: moves cursor 1 character to the left.
+- `j`: moves cursor 1 line above.
+- `k`: moves cursor 1 line below.
+- `l`: moves cursor 1 character to the right.
+
+Try holding down `h` and `l` to move horizontally across the text you just wrote!
+
+[TODO: add gif of moving h and l]
+
+We only have one line of text, so let's duplicate it several times. Type:
+
+- `x`, which will select the entire line.
+- `y`, which will _**y**ank_ (copy) the selection to _a clipboard_.
+- `p`, which will paste the contents of the selection after the cursor.
+
+Spam `p` a few times to create several lines.
+
+[TODO: add screenshot]
+
+Now you can try using the `h`, `j`, `k` and `l` motions traverse the text!
+
+## More Advanced
+
+Let's say we want to replace one of the `helix` words with `world`. To do this, place your cursor on one of the `h` letters:
+
+[TODO: add screenshot]
+
+`e` is a motion which moves to the _**e**nd_ of the current word. Type `e` and it will move your cursor to the end of the `helix`.
+
+It doesn't just move your cursor there, though. The entire `helix` word becomes highlighted:
+
+[TODO: add screenshot]
+
+If we now press `b`, which moves to the _**b**eginning_ of the current word, it'll move us back to where we just were.
+
+Try this out a few times, press `e` and then `b` to select various sections of the text. If you want to remove your selection press `;`.
+
+Let's highlight our `helix` word again:
+
+[TODO: add screenshot]
+
+## Selection-first Approach
+
+Helix's philosophy is that each **action** will act on a selection.
+
+Every time text is modified (an **action**), you will fully anticipate the result -- because you can clearly see the area of text which is highlighted, and thus will be modified.
+
+For example, we currently have the word `helix` selected. To change it to `hello`, press `c`. `c` is a command which acts on a selection.
+
+`c` removes the contents of the current selection and places us in Insert mode, where you can then write your new word. Exit back to Normal mode by pressing `<esc>`.
+
+---
+
+The `d` command deletes the current selection and copies what has been deleted into a clipboard.
+
+Let's test it out by doing the following:
+
+- Select the line we just changed with `x`.
+- `d` to delete this line.
+- Spam `p` a few times to create some duplicates.
+
+[TODO: add screenshot]
+
+Now let's remove all of our previous `Hello helix!` by doing the following for each `Hello helix!` line:
+
+- Select the line with `x`.
+- `d` to delete it.
+
+Now we have something like this:
+
+[TODO: add screenshot]
+
+What if we made a mistake, and want to go back? The `u` command will _**u**ndo_ our most recent action. It's similar to `Ctrl-z` in other editors.
+
+Try pressing down `u` a few times to get to our previous state, before we made all those modifications:
+
+[TODO: add screenshot]
+
+`U` is similar to `Ctrl-Shift-z` in other editors. It will _undo the last undo_. It's the inverse of `u`.
+
+Press `U` until we get back to our most recent state:
+
+[TODO: add screenshot]
+
+Feel free to make modifications to your file using the commands we have learned so far:
+
+- `h`, `j`, `k` and `l` moves 1 character left, down, up and right.
+- `i` enters Insert mode.
+- `<esc>` enters Normal mode.
+- `x` selects the entire line.
+- `y` yanks the selection.
+- `p` pastes the recently copied selection.
+- `e` moves to the end of the current word.
+- `b` moves to the beginning of the current word.
+- `;` removes the extra selection.
+- `d` deletes the current selection, without exiting Normal mode.
+- `c` changes the current selection, by deleting it and entering Insert mode.
+- `u` will undo the most recent change.
+- `U` will undo the most recent undo.
+
+Once you are happy with your modifications, enter Normal mode and type `:`.
+
+`:` enters _command mode_, which has commands you type out.
+
+- `:w` will _**w**rite_ the current file.
+- `:q` will _**q**uit_ the current file.
+- `:wq` will both write and quit.
