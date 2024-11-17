@@ -25,9 +25,10 @@ Evil Helix
     - `w/W`
     - `b/B`
     - `e/E`
-- `vi` (select inside textobject) and `va` (select around textobject)
+
 > NOTE: The pairs matching first looks for any surrounding pair and if not found, will search for the next one forward
 
+- `vi` (select inside textobject) and `va` (select around textobject)
     - `w/W`
     - `p`
     - treesitter objects 
