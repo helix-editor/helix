@@ -308,12 +308,12 @@ fn os_str_as_bytes<P: AsRef<std::ffi::OsStr>>(path: P) -> Vec<u8> {
 
 fn path_from_bytes(slice: &[u8]) -> Result<PathBuf, Utf8Error> {
     #[cfg(windows)]
-    return Ok(PathBuf::from(std::str::from_utf8(slice)?));
+    let res = PathBuf::from(std::str::from_utf8(slice)?);
 
     #[cfg(unix)]
-    return Ok(PathBuf::from(
-        <std::ffi::OsStr as std::os::unix::ffi::OsStrExt>::from_bytes(slice),
-    ));
+    let res = PathBuf::from(<std::ffi::OsStr as std::os::unix::ffi::OsStrExt>::from_bytes(slice));
+
+    Ok(res)
 }
 
 fn is_sep_byte(b: u8) -> bool {
@@ -334,6 +334,20 @@ pub fn escape_path(path: &Path) -> PathBuf {
         }
     }
     path_from_bytes(&bytes).unwrap()
+}
+
+pub fn add_extension<'a, S: AsRef<std::ffi::OsStr>>(p: &'a Path, extension: S) -> Cow<'a, Path> {
+    let new = extension.as_ref();
+    if new.is_empty() {
+        Cow::Borrowed(p)
+    } else {
+        let Some(mut ext) = p.extension().map(std::ffi::OsStr::to_owned) else {
+            return Cow::Borrowed(p);
+        };
+        ext.push(".");
+        ext.push(new);
+        Cow::Owned(p.with_extension(ext))
+    }
 }
 
 #[cfg(test)]
