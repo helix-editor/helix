@@ -459,6 +459,7 @@ impl MappableCommand {
         goto_last_modification, "Goto last modification",
         goto_line, "Goto line",
         goto_last_line, "Goto last line",
+        goto_last_line_and_delete, "Goto last line and delete",
         goto_first_diag, "Goto first diagnostic",
         goto_last_diag, "Goto last diagnostic",
         goto_next_diag, "Goto next diagnostic",
@@ -3906,6 +3907,26 @@ fn goto_last_line(cx: &mut Context) {
 
     push_jump(view, doc);
     doc.set_selection(view.id, selection);
+}
+
+fn goto_last_line_and_delete(cx: &mut Context) {
+    let (view, doc) = current!(cx.editor);
+    let text = doc.text().slice(..);
+    let line_idx = if text.line(text.len_lines() - 1).len_chars() == 0 {
+        // If the last line is blank, don't jump to it.
+        text.len_lines().saturating_sub(2)
+    } else {
+        text.len_lines() - 1
+    };
+    let pos = text.line_to_char(line_idx);
+    let selection = doc
+        .selection(view.id)
+        .clone()
+        .transform(|range| range.put_cursor(text, pos, true));
+
+    push_jump(view, doc);
+    doc.set_selection(view.id, selection);
+    delete_selection(cx);
 }
 
 fn goto_last_accessed_file(cx: &mut Context) {
