@@ -771,7 +771,7 @@ fn move_visual_line_up(cx: &mut Context) {
     )
 }
 
-fn move_visual_line_down(cx: &mut Context) {
+pub(crate) fn move_visual_line_down(cx: &mut Context) {
     move_impl(
         cx,
         move_vertically_visual,
@@ -805,7 +805,7 @@ fn extend_visual_line_up(cx: &mut Context) {
     )
 }
 
-fn extend_visual_line_down(cx: &mut Context) {
+pub(crate) fn extend_visual_line_down(cx: &mut Context) {
     move_impl(
         cx,
         move_vertically_visual,

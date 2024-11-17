@@ -1,10 +1,12 @@
+use std::num::NonZeroUsize;
+
 use helix_core::match_brackets::find_matching_bracket;
 use helix_core::movement::{self, Movement};
 use helix_view::document::Mode;
 
 use crate::commands::{
-    change_selection, delete_selection, extend_to_line_bounds, extend_word_impl,
-    goto_line_end_impl, select_mode, yank, Context,
+    change_selection, delete_selection, extend_to_line_bounds, extend_visual_line_down,
+    extend_word_impl, goto_line_end_impl, select_line_below, select_mode, yank, Context,
 };
 
 pub(crate) fn change_to_end_of_word(cx: &mut Context) {
@@ -98,17 +100,36 @@ pub(crate) fn yank_to_beginning_of_long_word(cx: &mut Context) {
 }
 
 pub(crate) fn change_line(cx: &mut Context) {
+    let count = cx.count();
     extend_to_line_bounds(cx);
+    if cx.count() > 1 {
+        cx.count = NonZeroUsize::new(1);
+        for _ in 0..count - 1 {
+            select_line_below(cx);
+            extend_to_line_bounds(cx);
+        }
+    }
     change_selection(cx);
 }
 
 pub(crate) fn delete_line(cx: &mut Context) {
-    extend_to_line_bounds(cx);
-    delete_selection(cx);
+    let count = cx.count();
+    for _ in 0..count {
+        extend_to_line_bounds(cx);
+        delete_selection(cx);
+    }
 }
 
 pub(crate) fn yank_line(cx: &mut Context) {
+    let count = cx.count();
     extend_to_line_bounds(cx);
+    if cx.count() > 1 {
+        cx.count = NonZeroUsize::new(1);
+        for _ in 0..count - 1 {
+            select_line_below(cx);
+            extend_to_line_bounds(cx);
+        }
+    }
     yank(cx);
 }
 
