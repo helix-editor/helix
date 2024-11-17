@@ -1,6 +1,5 @@
 //! From <https://github.com/Freaky/faccess>
 
-use std::fs::File;
 use std::io;
 use std::path::Path;
 
@@ -25,10 +24,7 @@ bitflags! {
 mod imp {
     use super::*;
 
-    use rustix::{
-        fd::AsFd,
-        fs::{Access, OpenOptionsExt},
-    };
+    use rustix::fs::Access;
     use std::os::unix::fs::{MetadataExt, PermissionsExt};
 
     pub fn access(p: &Path, mode: AccessMode) -> io::Result<()> {
@@ -76,24 +72,6 @@ mod imp {
         let metadata = p.metadata()?;
         Ok(metadata.nlink())
     }
-
-    pub fn create_copy_mode(from: &Path, to: &Path) -> io::Result<File> {
-        let from_meta = std::fs::metadata(from)?;
-        let mode = from_meta.permissions().mode();
-        let file = std::fs::OpenOptions::new()
-            .mode(mode)
-            .read(true)
-            .write(true)
-            .create_new(true)
-            .open(to)?;
-
-        // Change ownership
-        let from_meta = std::fs::metadata(from)?;
-        let uid = from_meta.uid();
-        let gid = from_meta.gid();
-        fchown(file.as_fd(), Some(uid), Some(gid))?;
-        Ok(file)
-    }
 }
 
 #[cfg(windows)]
@@ -125,6 +103,7 @@ mod imp {
 
     use std::ffi::c_void;
 
+    use std::fs::File;
     use std::os::windows::{ffi::OsStrExt, fs::OpenOptionsExt, io::AsRawHandle};
 
     // Licensed under MIT from faccess
@@ -460,26 +439,6 @@ mod imp {
         let n = file_info(p)?.nNumberOfLinks as u64;
         Ok(n)
     }
-
-    pub fn create_copy_mode(from: &Path, to: &Path) -> io::Result<File> {
-        let sd = SecurityDescriptor::for_path(from)?;
-
-        // read/write still need to be set to true or `create_new` returns an error
-        let to_file = std::fs::OpenOptions::new()
-            .read(true)
-            .write(true)
-            .access_mode(GENERIC_READ | GENERIC_WRITE | WRITE_OWNER | WRITE_DAC)
-            .create_new(true)
-            .open(to)?;
-
-        // Necessary because `security_attributes` is not exposed: https://github.com/rust-lang/libs-team/issues/314
-        chown(to_file.as_raw_handle(), sd)?;
-
-        let meta = std::fs::metadata(from)?;
-        let perms = meta.permissions();
-        std::fs::set_permissions(to, perms)?;
-        Ok(to_file)
-    }
 }
 
 // Licensed under MIT from faccess except for `copy_metadata`
@@ -523,11 +482,6 @@ pub fn copy_metadata(from: &Path, to: &Path) -> io::Result<()> {
     imp::copy_metadata(from, to)
 }
 
-// /// Create a file copying permissions, uid, and gid of `from` at the the target destination `to`
-// pub fn create_copy_mode(from: &Path, to: &Path) -> io::Result<File> {
-//     imp::create_copy_mode(from, to)
-// }
-
 #[cfg(windows)]
 pub fn copy_ownership(from: &Path, to: &Path) -> io::Result<()> {
     imp::copy_ownership(from, to)
@@ -556,30 +510,33 @@ pub fn copy_xattr(from: &Path, to: &Path) -> io::Result<()> {
         len => len,
     };
 
-    let mut buf = vec![0i8; size];
-    let read = rustix::fs::listxattr(from, &mut buf)?;
-
-    fn i8_to_u8_slice(input: &[i8]) -> &[u8] {
-        // SAFETY: Simply reinterprets bytes
-        unsafe { std::slice::from_raw_parts(input.as_ptr() as *const u8, input.len()) }
-    }
+    let mut buf = vec![0; size];
+    let read = rustix::fs::listxattr(from, buf.as_mut_slice())?;
 
     // Iterate over null-terminated C-style strings
     // Two loops to avoid multiple allocations
     // Find max-size for attributes
     let mut max_attr_len = 0;
-    for attr_byte in buf.split(|&b| b == 0) {
-        let name = std::str::from_utf8(i8_to_u8_slice(attr_byte))
+    for attr_byte in buf[..read].split(|&b| b == 0) {
+        // handle platforms where c_char is i8
+        #[allow(clippy::unnecessary_cast)]
+        let conv =
+            unsafe { std::slice::from_raw_parts(attr_byte.as_ptr() as *const u8, attr_byte.len()) };
+        let name = std::str::from_utf8(conv)
             .map_err(|_| std::io::Error::from(std::io::ErrorKind::InvalidData))?;
         let attr_len = rustix::fs::getxattr(from, name, &mut [])?;
         max_attr_len = max_attr_len.max(attr_len);
     }
 
     let mut attr_buf = vec![0u8; max_attr_len];
-    for attr_byte in buf.split(|&b| b == 0) {
-        let name = std::str::from_utf8(i8_to_u8_slice(attr_byte))
+    for attr_byte in buf[..read].split(|&b| b == 0) {
+        // handle platforms where c_char is i8
+        #[allow(clippy::unnecessary_cast)]
+        let conv =
+            unsafe { std::slice::from_raw_parts(attr_byte.as_ptr() as *const u8, attr_byte.len()) };
+        let name = std::str::from_utf8(conv)
             .map_err(|_| std::io::Error::from(std::io::ErrorKind::InvalidData))?;
-        let read = rustix::fs::getxattr(from, name, &mut attr_buf)?;
+        let read = rustix::fs::getxattr(from, name, attr_buf.as_mut_slice())?;
 
         // If we can't set xattr because it already exists, try to replace it
         if read != 0 {
@@ -599,69 +556,3 @@ pub fn copy_xattr(from: &Path, to: &Path) -> io::Result<()> {
 
     Ok(())
 }
-
-/*
-Neovim backup path function:
-- If a backup is desired (would be disabled by a user if using a file watcher):
-    - Checks if user explicitly requested a copy
-    - Or automatically choose whether to copy or rename
-    - Offers options for:
-        - Breaking symlinks or hardlinks (not offered in Helix)
-    - Offers the ability to have a list of directories where the backup file is written:
-        - Default is: ".,$XDG_STATE_HOME/nvim/backup//"
-    - Offers ability to set backup extension
-- For copy backup:
-    - If the file is a link, then the backup will have the name of the link
-- Auto backup:
-    - Immediately set copy if:
-        - Is hardlink or symlink
-    - Then, tries to:
-        - Create a temporary file with the same permissions as the file to test if its ok to rename later
-            - If it fails, then set copy
-        - fchown created file
-            - If it fails or perms weren't copied, then set copy
-        - Delete test file
-    - Otherwise, will rename
-- Break symlink/hardlink if requested
-- Copy backup:
-    - If there is an error while creating the file, it will be propogated unless force write is true
-    - Try to create backup path in bdir:
-        - Tries first directory where this is possible
-        - If no directory exists, the last directory is created
-        - Filename is escaped and extension applied
-    - Check if backup already exists:
-        - Check if pre-existing file is a symlink to the original file (and don't attempt to create one)
-        - Dunno what p_bk is, but if false, it tries to create a different backup file path where each character before the extension is changed (if all attempts fail, then error)
-    - Copies file with UV_FS_COPYFILE_FICLONE
-    - Sets perm as os_setperm(*backupp, perm & 0777);
-    - On Unix:
-        - Attempts to set gid via chown:
-            - os_setperm(*backupp, (perm & 0707) | ((perm & 07) << 3) if fails
-        - Sets file time:
-            os_file_settime(*backupp,
-                        (double)file_info_old->stat.st_atim.tv_sec,
-                        (double)file_info_old->stat.st_mtim.tv_sec);
-    - On Windows, sets ACL
-    - Attempts to copy xattr if exists
-- Rename backup:
-    - Backup is created by renaming original file:
-        - Don't if file is read-only and cpoptions has "W" flag
-    - Tries to find backup file name w/ bdir (similar to copy)
-    - Checks if a file with that name already exists:
-        - Attempts same method as copy backup to create a different filename
-
-Neovim write:
-- On Unix:
-    - If using :w! and file was read-only, make it writable (if process uid is same as file):
-- Reset read-only flag if overwriting
-- Executes fsync (will not propogate error if storage does not support op)
-- Copies xattr for non-copy backups
-- If a rename backup is being performed:
-    - Check if uid and gid are same as original file, and set if they aren't
-    - Set perms
-- Either way, copy perms from old file to new file
-- Either way, if not a backup copy, also set ACL (method seems to not do anything?)
-- On failure:
-    - If a copy, copy contents from copy to original file
-    - Otherwise, rename backup back to original path
-*/

@@ -318,7 +318,7 @@ fn path_from_bytes(slice: &[u8]) -> Result<PathBuf, Utf8Error> {
 
 fn is_sep_byte(b: u8) -> bool {
     if cfg!(windows) {
-        b == b'/' || b == b'\\'
+        b == b'/' || b == b'\\' || b == b':'
     } else {
         b == b'/'
     }
@@ -327,7 +327,7 @@ fn is_sep_byte(b: u8) -> bool {
 /// Replaces all path separators in a path with %
 pub fn escape_path(path: &Path) -> PathBuf {
     let s = path.as_os_str().to_os_string();
-    let mut bytes = os_str_as_bytes(&s);
+    let mut bytes = os_str_as_bytes(s);
     for b in bytes.iter_mut() {
         if is_sep_byte(*b) {
             *b = b'%';
