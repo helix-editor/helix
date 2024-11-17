@@ -11,26 +11,33 @@ https://tailwindcss.com/docs/adding-custom-styles#using-css-and-layer
   .starlight-aside__title {
     @apply text-[#ffcd1c];
   }
-  @apply bg-[#ffcd1c]/20 border-[#ffcd1c];
+  @apply bg-[#ffcd1c]/15 border-[#ffcd1c];
 }
 
-.starlight-aside--tip {
+.starlight-aside--note {
   .starlight-aside__title {
     @apply text-[#cccccc];
   }
-  @apply bg-[#cccccc]/20 border-[#cccccc];
+  @apply bg-[#cccccc]/15 border-[#cccccc];
 }
 
 .starlight-aside--danger {
   .starlight-aside__title {
     @apply text-[#f47868];
   }
-  @apply bg-[#f47868]/20 border-[#f47868];
+  @apply bg-[#f47868]/15 border-[#f47868];
 }
 
-.starlight-aside--note {
+.starlight-aside--tip {
   .starlight-aside__title {
     @apply text-[#a4a0e8];
   }
-  @apply bg-[#a4a0e8]/20 border-[#a4a0e8];
+  @apply bg-[#a4a0e8]/15 border-[#a4a0e8];
+}
+
+.copy .feedback {
+  @apply bg-[#5a5977] !important;
+}
+.copy .feedback::after {
+  border-inline-start-color: #5a5977 !important;
 }
