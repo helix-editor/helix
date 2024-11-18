@@ -9,7 +9,9 @@ Helix can use external formatting programs available in the system `$PATH`.
 - Specifying an external formatter will replace any formatting supplied by the language server
 - Windows users [_may_ need to specify the full path to the executable](https://github.com/helix-editor/helix/discussions/3198#discussioncomment-3325065)
 
-# AWK
+## List of Formatters
+
+### AWK
 
 GNU AWK can pretty-print scripts, which can be used as a formatter.
 
@@ -21,7 +23,7 @@ formatter = { command = "awk", timeout = 5, args = [ "--file=/dev/stdin", "--pre
 
 On macOS, GNU AWK installed via Homebrew is named `gawk` to not conflict with the system `awk`. Adjust the configuration accordingly.
 
-# Black
+### Black
 
 - `black` is an opinionated formatter for Python
 
@@ -32,7 +34,7 @@ formatter = { command = "black", args = ["--quiet", "-"] }
 auto-format = true
 ```
 
-# Blade
+### Blade
 
 [Blade Formatter](https://github.com/shufo/blade-formatter)
 
@@ -46,7 +48,7 @@ formatter = { command = "blade-formatter", args = ["--write", "--stdin", "--wrap
 auto-format = true
 ```
 
-# Ruff
+### Ruff
 
 - The [Ruff](https://docs.astral.sh/ruff/formatter) formatter is an extremely fast Python code formatter designed as a drop-in replacement for [Black](https://pypi.org/project/black/).
 
@@ -57,7 +59,7 @@ formatter = { command = "ruff", args = ["format", "--line-length", "88", "-"] }
 auto-format = true
 ```
 
-# Deno
+### Deno
 
 https://deno.land/
 
@@ -103,7 +105,7 @@ formatter = { command = 'deno', args = ["fmt", "-", "--ext", "tsx" ] }
 auto-format = true
 ```
 
-# fish_indent
+### fish_indent
 
 `fish_indent` is built into fish!
 
@@ -116,7 +118,7 @@ formatter = { command = "fish_indent" }
 auto-format = true
 ```
 
-# fourmolu
+### fourmolu
 
 https://github.com/fourmolu/fourmolu
 
@@ -129,7 +131,7 @@ auto-format = true
 formatter = { command = "zsh", args = ["-c", "fourmolu --stdin-input-file $(pwd)" ] }
 ```
 
-# fprettify
+### fprettify
 
 https://github.com/pseewald/fprettify
 
@@ -142,7 +144,7 @@ formatter = { command = "fprettify" , args = ["--stdout"] }
 auto-format = true
 ```
 
-# gdformat
+### gdformat
 
 https://github.com/Scony/godot-gdscript-toolkit
 
@@ -155,7 +157,7 @@ formatter = { command = "gdformat", args = ["-"] }
 auto-format = true
 ```
 
-# ocamlformat
+### ocamlformat
 
 https://github.com/ocaml-ppx/ocamlformat
 
@@ -168,7 +170,7 @@ auto-format = true
 
 The `--name` argument is required by ocamlformat when reading from stdin. `foo.ml` is a dummy value, the file does not have to exist for the formatter to work.
 
-# Prettier
+### Prettier
 
 https://prettier.io/
 
@@ -225,7 +227,7 @@ If you've installed it locally only, it won't be in `PATH`, so replace all `comm
 > command = 'prettier.cmd'
 > ```
 
-# RuboCop
+### RuboCop
 
 A Ruby static code analyzer and formatter, based on the community Ruby style guide.
 
@@ -251,7 +253,7 @@ If not using RuboCop via Bundler, you can modify the `formatter` command accordi
 formatter = { command = "rubocop", args = ["--stdin", "foo.rb", "-a", "--stderr", "--fail-level", "fatal"] }
 ```
 
-# shfmt
+### shfmt
 
 > Since [Bash Language Server 5.3.0](https://github.com/bash-lsp/bash-language-server/blob/main/server/CHANGELOG.md#530) shfmt formatting is built into the language server, so you don't need this config if you have the shfmt binary installed
 
@@ -282,7 +284,7 @@ formatter = { command = "shfmt" }
 auto-format = true
 ```
 
-# StandardRB
+### StandardRB
 
 A Ruby formatter that supports very little configuration so we can stop arguing about format and get on with our jobs. It's a wrapper around Rubocop so commands are basically identical.
 
@@ -293,7 +295,7 @@ formatter = { command = "bundle", args = ["exec", "standardrb", "--stdin", "foo.
 auto-format = true
 ```
 
-# stylish-haskell
+### stylish-haskell
 
 https://github.com/haskell/stylish-haskell
 
@@ -306,7 +308,7 @@ auto-format = true
 formatter = { command = "stylish-haskell", args = [] }
 ```
 
-# sqlformat
+### sqlformat
 
 https://github.com/andialbrecht/sqlparse
 
@@ -318,7 +320,7 @@ name = "sql"
 formatter = { command = "sqlformat", args = ["--reindent", "--indent_width", "2", "--keywords", "upper", "--identifiers", "lower", "-"] }
 ```
 
-# swift-format
+### swift-format
 
 https://github.com/apple/swift-format
 
@@ -333,7 +335,7 @@ auto-format = true
 
 _note:_ older version of swift-format does not seem to work with helix (e.g. v0.50500.0). v509.0.0 verified as working.
 
-# SyntaxTree
+### SyntaxTree
 
 Another formatting option for Ruby is [SyntaxTree](https://github.com/ruby-syntax-tree/syntax_tree), which is used "under the hood" by [Prettier for Ruby](https://github.com/prettier/plugin-ruby). It provides a few [configuration](https://github.com/ruby-syntax-tree/syntax_tree#configuration) options, either passed in as arguments or with a local `.streerc` file.
 
@@ -344,7 +346,7 @@ formatter = { command = "bundle", args = ["exec", "stree", "format"] }
 auto-format = true
 ```
 
-# Taplo
+### Taplo
 
 https://github.com/tamasfe/taplo
 
@@ -357,7 +359,7 @@ formatter = { command = "taplo", args = ["format", "-"] }
 auto-format = true
 ```
 
-# typstfmt
+### typstfmt
 
 https://github.com/astrale-sharp/typstfmt
 
@@ -370,7 +372,7 @@ formatter = { command = "typstfmt", args = ["--output", "-"] }
 auto-format = true
 ```
 
-# google-java-format
+### google-java-format
 
 https://github.com/google/google-java-format
 
@@ -379,7 +381,7 @@ Java code formatter. Reformats Java source code to comply with [Google Java Styl
 Create a shell script with the content below with execution permission, include it in the PATH to use four spaces instead of tabs.
 
 ```bash
-#!/usr/bin/env bash
+###!/usr/bin/env bash
 
 $JAVA_HOME/bin/java -jar <path-to-jar-file>/google-java-format-1.21.0-all-deps.jar -a $1
 ```
@@ -394,7 +396,7 @@ formatter = { command = "google-java-format", args = ["-"] }
 auto-format = true
 ```
 
-# XML
+### XML
 
 Format XML files using [GNOME XML library](http://xmlsoft.org/) (libxml2)
 
@@ -413,7 +415,7 @@ name = "xml"
 formatter = { command = "tidy", args = ["-q", "-xml", "--show-errors", "0", "--show-warnings", "0", "--force-output", "--indent", "auto",  "--vertical-space", "yes", "--tidy-mark", "no", "-wrap", "120"] }
 ```
 
-# StyLua
+### StyLua
 
 Format lua files using [StyLua](https://github.com/JohnnyMorganz/StyLua)
 

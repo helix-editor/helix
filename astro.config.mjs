@@ -60,11 +60,27 @@ export default defineConfig({
             "reference/formatters",
             "reference/keymap",
             "reference/commands",
+            "reference/debuggers",
           ],
         },
         {
           label: "Help",
-          items: ["help/terminal-support", "help/faq"],
+          items: [
+            "help/terminal-support",
+            "help/faq",
+            "help/from-vim",
+            "help/troubleshooting",
+          ],
+        },
+
+        {
+          label: "Contributing",
+          items: [
+            "contributing/languages",
+            "contributing/textobject-queries",
+            "contributing/indent-queries",
+            "contributing/injection-queries",
+          ],
         },
       ],
       customCss: ["./src/tailwind.css"],

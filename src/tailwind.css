@@ -39,5 +39,5 @@
 }
 
 .termshot {
-  @apply leading-4 border-none px-0 !important;
+  @apply leading-4 max-[340px]:p-0 max-[340px]:border-none max-w-max overflow-x-auto !important;
 }
