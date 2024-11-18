@@ -4,11 +4,13 @@ I've completely rebuilt the Helix documentation site and landing page with the i
 
 - I picked out Helix's best bits and placed it on the main landing page to get users hooked. It should be obvious from the get-go the features that Helix has.
 - I placed the scattered documentation from the GitHub Wiki and the Docs site into a single documentation site.
+- The idea with the Visualizations is to make it look exactly how people will see it in the terminal, which is more user-friendly. More on them later!
 
 Now, there's a clear structure that is followed and easy to parse for newcomers who want to learn about Helix. I've specifically spent a lot of time creating:
 
 - `The Basics` is now a completely interactive tutorial of the Helix editor, showcasing useful keymappings intended for people not familiar with modal editors.
 - The entire `Usage` section is split into various topics of interest such as how to add Language Servers, how to use Multiple Cursors, how to configure Helix. The way it is written is not a reference, but rather a how-to with useful tips.
+- I've created a custom `Theme` image for all possible themes to make it easier to discover new ones. The result is, exactly how you will see it in-editor!
 - `Reference` has been taken from the docs site, and includes thorough information on each setting, language, formatter etc. It hasn't been edited by me, but I plan to improve this section aswell.
 - `Contributing` section has been taken 1:1 from the docs site, with plans to improve their documentation aswell. For example, I want to add screenshots to what each feature does.
 - `Help` section takens items from the Wiki and places them here. It includes tutorials on how to extend the editor.
