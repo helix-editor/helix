@@ -213,7 +213,7 @@ impl Backup {
             let bck_base_path = &dir.join(&escaped_p);
 
             // NOTE: `escaped_p` will make dot files appear to be extensions, so we need to append
-            let mut backup = helix_stdx::path::add_extension(&bck_base_path, ext).into_owned();
+            let mut backup = helix_stdx::path::add_extension(bck_base_path, ext).into_owned();
 
             // NOTE: Should we just overwrite regardless?
             // If the backup file already exists, we'll try to add a number before the extension
@@ -221,7 +221,7 @@ impl Backup {
             // NOTE: u8 since if we need more than 256, there might be an issue
             let mut n: u8 = 1;
             while backup.exists() {
-                backup = helix_stdx::path::add_extension(&bck_base_path, format!("{n}.{ext}"))
+                backup = helix_stdx::path::add_extension(bck_base_path, format!("{n}.{ext}"))
                     .into_owned();
                 if n == u8::MAX {
                     continue 'outer;
@@ -1155,12 +1155,9 @@ impl Document {
             };
 
             if let Some(bck) = bck {
-                /*
-                    - If original file no longer exists, then backup is renamed to original file
-                    - And the timestamp is preserved by setting timestmaps to prior to write
-                    - Then backup is deleted
-                */
                 let mut delete_bck = true;
+
+                // Attempt to restore backup
                 if write_result.is_err() {
                     // If original file no longer exists, then backup is renamed to original file
                     if !path.exists() {
@@ -1174,8 +1171,8 @@ impl Document {
                         {
                             // Reset timestamps
                             let meta = meta.as_ref().unwrap();
-                            let atime = FileTime::from_last_access_time(&meta);
-                            let mtime = FileTime::from_last_modification_time(&meta);
+                            let atime = FileTime::from_last_access_time(meta);
+                            let mtime = FileTime::from_last_modification_time(meta);
                             filetime::set_file_times(&path, atime, mtime)?;
                         }
                     } else if bck.copy {

@@ -336,7 +336,7 @@ pub fn escape_path(path: &Path) -> PathBuf {
     path_from_bytes(&bytes).unwrap()
 }
 
-pub fn add_extension<'a, S: AsRef<std::ffi::OsStr>>(p: &'a Path, extension: S) -> Cow<'a, Path> {
+pub fn add_extension<S: AsRef<std::ffi::OsStr>>(p: &Path, extension: S) -> Cow<'_, Path> {
     let new = extension.as_ref();
     if new.is_empty() {
         Cow::Borrowed(p)
