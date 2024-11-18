@@ -2,4 +2,423 @@
 title: Formatters
 ---
 
-TODO
+Helix can use external formatting programs available in the system `$PATH`.
+
+- Add these settings to `languages.toml` inside your config directory
+- `auto-format = true` and other language settings are inherited from [languages.toml](https://github.com/helix-editor/helix/blob/master/languages.toml), there is no need to repeat them
+- Specifying an external formatter will replace any formatting supplied by the language server
+- Windows users [_may_ need to specify the full path to the executable](https://github.com/helix-editor/helix/discussions/3198#discussioncomment-3325065)
+
+# AWK
+
+GNU AWK can pretty-print scripts, which can be used as a formatter.
+
+```toml
+[[language]]
+name = "awk"
+formatter = { command = "awk", timeout = 5, args = [ "--file=/dev/stdin", "--pretty-print=/dev/stdout" ] }
+```
+
+On macOS, GNU AWK installed via Homebrew is named `gawk` to not conflict with the system `awk`. Adjust the configuration accordingly.
+
+# Black
+
+- `black` is an opinionated formatter for Python
+
+```toml
+[[language]]
+name = "python"
+formatter = { command = "black", args = ["--quiet", "-"] }
+auto-format = true
+```
+
+# Blade
+
+[Blade Formatter](https://github.com/shufo/blade-formatter)
+
+- An opinionated blade template formatter for Laravel that respects readability.
+
+```toml
+[[language]]
+name = "blade"
+roots = ["composer.json", "index.php"]
+formatter = { command = "blade-formatter", args = ["--write", "--stdin", "--wrap-line-length", "9999", "--wrap-attributes", "preserve-aligned"] }
+auto-format = true
+```
+
+# Ruff
+
+- The [Ruff](https://docs.astral.sh/ruff/formatter) formatter is an extremely fast Python code formatter designed as a drop-in replacement for [Black](https://pypi.org/project/black/).
+
+```toml
+[[language]]
+name = "python"
+formatter = { command = "ruff", args = ["format", "--line-length", "88", "-"] }
+auto-format = true
+```
+
+# Deno
+
+https://deno.land/
+
+As of `v1.25.0` these languages are supported:
+
+`ts, tsx, js, jsx, md, json, jsonc`
+
+Deno's formatter is written in Rust and is _very_ fast in comparison to Prettier. The formatting options are mostly copied from Prettier, but there are some differences.
+
+- To see available formatting options: `deno fmt --help`
+- `markdown` does not support formatting as many languages in fenced code blocks as Prettier
+
+The following have been tested:
+
+```toml
+[[language]]
+name = "javascript"
+formatter = { command = 'deno', args = ["fmt", "-", "--ext", "js" ] }
+auto-format = true
+
+[[language]]
+name = "json"
+formatter = { command = 'deno', args = ["fmt", "-", "--ext", "json" ] }
+
+[[language]]
+name = "markdown"
+formatter = { command = 'deno', args = ["fmt", "-", "--ext", "md" ] }
+auto-format = true
+
+[[language]]
+name = "typescript"
+formatter = { command = 'deno', args = ["fmt", "-", "--ext", "ts" ] }
+auto-format = true
+
+[[language]]
+name = "jsx"
+formatter = { command = 'deno', args = ["fmt", "-", "--ext", "jsx" ] }
+auto-format = true
+
+[[language]]
+name = "tsx"
+formatter = { command = 'deno', args = ["fmt", "-", "--ext", "tsx" ] }
+auto-format = true
+```
+
+# fish_indent
+
+`fish_indent` is built into fish!
+
+The following has been tested:
+
+```toml
+[[language]]
+name = "fish"
+formatter = { command = "fish_indent" }
+auto-format = true
+```
+
+# fourmolu
+
+https://github.com/fourmolu/fourmolu
+
+Fourmolu is a formatter for Haskell source code. It is a fork of Ormolu, with the intention to continue to merge upstream improvements.
+
+```toml
+[[language]]
+name = "haskell"
+auto-format = true
+formatter = { command = "zsh", args = ["-c", "fourmolu --stdin-input-file $(pwd)" ] }
+```
+
+# fprettify
+
+https://github.com/pseewald/fprettify
+
+A formatter for modern Fortran code.
+
+```toml
+[[language]]
+name = "fortran"
+formatter = { command = "fprettify" , args = ["--stdout"] }
+auto-format = true
+```
+
+# gdformat
+
+https://github.com/Scony/godot-gdscript-toolkit
+
+A formatter for GDScript.
+
+```toml
+[[language]]
+name = "gdscript"
+formatter = { command = "gdformat", args = ["-"] }
+auto-format = true
+```
+
+# ocamlformat
+
+https://github.com/ocaml-ppx/ocamlformat
+
+```toml
+[[language]]
+name = "ocaml"
+formatter = { command = "ocamlformat", args = ["-q", "--name=foo.ml", "-"] }
+auto-format = true
+```
+
+The `--name` argument is required by ocamlformat when reading from stdin. `foo.ml` is a dummy value, the file does not have to exist for the formatter to work.
+
+# Prettier
+
+https://prettier.io/
+
+As of `v2.8.4` these languages are supported:
+
+`flow|babel|babel-flow|babel-ts|typescript|acorn|espree|meriyah|css|less|scss|json|json5|json-stringify|graphql|markdown|mdx|vue|yaml|glimmer|html|angular|lwc`
+
+The following have been tested (assuming `prettier` is in your `PATH` env-var):
+
+```toml
+[[language]]
+name = "markdown"
+formatter = { command = 'prettier', args = ["--parser", "markdown"] }
+
+[[language]]
+name = "html"
+formatter = { command = 'prettier', args = ["--parser", "html"] }
+
+[[language]]
+name = "json"
+formatter = { command = 'prettier', args = ["--parser", "json"] }
+
+[[language]]
+name = "css"
+formatter = { command = 'prettier', args = ["--parser", "css"] }
+
+[[language]]
+name = "javascript"
+formatter = { command = 'prettier', args = ["--parser", "typescript"] }
+auto-format = true
+
+[[language]]
+name = "typescript"
+formatter = { command = 'prettier', args = ["--parser", "typescript"] }
+auto-format = true
+
+[[language]]
+name = "tsx"
+formatter = { command = 'prettier', args = ["--parser", "typescript"] }
+auto-format = true
+
+[[language]]
+name = "yaml"
+formatter = { command = 'prettier', args = ["--parser", "yaml"] }
+auto-format = true
+```
+
+If you've installed it locally only, it won't be in `PATH`, so replace all `command = 'prettier'` by `command = 'npx'` and add `"prettier"` as the 1st element of `args`.
+
+> [!note]
+> For **Windows** you may need to add `.cmd` to the command, example:
+>
+> ```
+> command = 'prettier.cmd'
+> ```
+
+# RuboCop
+
+A Ruby static code analyzer and formatter, based on the community Ruby style guide.
+
+```toml
+[[language]]
+name = "ruby"
+config = { solargraph = { diagnostics = true, formatting = false } }
+formatter = { command = "bundle", args = ["exec", "rubocop", "--stdin", "foo.rb", "-a", "--stderr", "--fail-level", "fatal"] }
+auto-format = true
+```
+
+Argument explanations:
+
+- `--stdin foo.rb`: RuboCop requires a filename for its reports, this is a dummy value to fulfill this. Call it whatever. Make it your own. Have fun with it.
+- `--stderr`: RuboCop absolutely ALWAYS prints any errors it identifies. This sends them to stderr, otherwise they'd show up in your editor.
+- `--fail-level`: Any error in the RuboCop formatter will fail with error code "1." This can prevent your files from saving. Raising the `fail-level` to "fatal" will leave it on just for cases were RuboCop is not working at all.
+
+The "config" block will prevent diagnostics from also breaking if formatting fails.
+
+If not using RuboCop via Bundler, you can modify the `formatter` command accordingly (omitting the `bundle exec` prepend):
+
+```ruby
+formatter = { command = "rubocop", args = ["--stdin", "foo.rb", "-a", "--stderr", "--fail-level", "fatal"] }
+```
+
+# shfmt
+
+> Since [Bash Language Server 5.3.0](https://github.com/bash-lsp/bash-language-server/blob/main/server/CHANGELOG.md#530) shfmt formatting is built into the language server, so you don't need this config if you have the shfmt binary installed
+
+https://github.com/mvdan/sh#shfmt or https://github.com/patrickvane/shfmt
+
+- `shfmt` formats shell programs
+- To see available formatting options: `shfmt -h`
+
+The following have been tested:
+
+4 spaces:
+
+```toml
+[[language]]
+name = "bash"
+indent = { tab-width = 4, unit = "    " }
+formatter = { command = 'shfmt', args = ["-i", "4"] }
+auto-format = true
+```
+
+tabs:
+
+```toml
+[[language]]
+name = "bash"
+indent = { tab-width = 4, unit = "\t" }
+formatter = { command = "shfmt" }
+auto-format = true
+```
+
+# StandardRB
+
+A Ruby formatter that supports very little configuration so we can stop arguing about format and get on with our jobs. It's a wrapper around Rubocop so commands are basically identical.
+
+```toml
+[[language]]
+name = "ruby"
+formatter = { command = "bundle", args = ["exec", "standardrb", "--stdin", "foo.rb", "--fix", "--stderr"] }
+auto-format = true
+```
+
+# stylish-haskell
+
+https://github.com/haskell/stylish-haskell
+
+A simple Haskell code prettifier. This tool tries to help where necessary without getting in the way.
+
+```toml
+[[language]]
+name = "haskell"
+auto-format = true
+formatter = { command = "stylish-haskell", args = [] }
+```
+
+# sqlformat
+
+https://github.com/andialbrecht/sqlparse
+
+You can install sqlparse with pip to make the sqlformat command available.
+
+```toml
+[[language]]
+name = "sql"
+formatter = { command = "sqlformat", args = ["--reindent", "--indent_width", "2", "--keywords", "upper", "--identifiers", "lower", "-"] }
+```
+
+# swift-format
+
+https://github.com/apple/swift-format
+
+`swift-format` provides the formatting technology for [SourceKit-LSP](https://github.com/apple/sourcekit-lsp) and the building blocks for doing code formatting transformations.
+
+```toml
+[[language]]
+name = "swift"
+formatter = { command = "swift-format", args = ["format"] }
+auto-format = true
+```
+
+_note:_ older version of swift-format does not seem to work with helix (e.g. v0.50500.0). v509.0.0 verified as working.
+
+# SyntaxTree
+
+Another formatting option for Ruby is [SyntaxTree](https://github.com/ruby-syntax-tree/syntax_tree), which is used "under the hood" by [Prettier for Ruby](https://github.com/prettier/plugin-ruby). It provides a few [configuration](https://github.com/ruby-syntax-tree/syntax_tree#configuration) options, either passed in as arguments or with a local `.streerc` file.
+
+```toml
+[[language]]
+name = "ruby"
+formatter = { command = "bundle", args = ["exec", "stree", "format"] }
+auto-format = true
+```
+
+# Taplo
+
+https://github.com/tamasfe/taplo
+
+A versatile, feature-rich TOML toolkit.
+
+```toml
+[[language]]
+name = "toml"
+formatter = { command = "taplo", args = ["format", "-"] }
+auto-format = true
+```
+
+# typstfmt
+
+https://github.com/astrale-sharp/typstfmt
+
+Basic formatter for the Typst language with a future.
+
+```toml
+[[language]]
+name = "typst"
+formatter = { command = "typstfmt", args = ["--output", "-"] }
+auto-format = true
+```
+
+# google-java-format
+
+https://github.com/google/google-java-format
+
+Java code formatter. Reformats Java source code to comply with [Google Java Style](https://google.github.io/styleguide/javaguide.html).
+
+Create a shell script with the content below with execution permission, include it in the PATH to use four spaces instead of tabs.
+
+```bash
+#!/usr/bin/env bash
+
+$JAVA_HOME/bin/java -jar <path-to-jar-file>/google-java-format-1.21.0-all-deps.jar -a $1
+```
+
+In languages.toml file:
+
+```toml
+[[language]]
+name = "java"
+indent = { tab-width = 4, unit = "    " }
+formatter = { command = "google-java-format", args = ["-"] }
+auto-format = true
+```
+
+# XML
+
+Format XML files using [GNOME XML library](http://xmlsoft.org/) (libxml2)
+
+```toml
+[[language]]
+name = "xml"
+auto-format = true
+formatter = { command = "xmllint", args = ["--format", "-"] }
+```
+
+Or using [tidy](https://www.html-tidy.org/)
+
+```toml
+[[language]]
+name = "xml"
+formatter = { command = "tidy", args = ["-q", "-xml", "--show-errors", "0", "--show-warnings", "0", "--force-output", "--indent", "auto",  "--vertical-space", "yes", "--tidy-mark", "no", "-wrap", "120"] }
+```
+
+# StyLua
+
+Format lua files using [StyLua](https://github.com/JohnnyMorganz/StyLua)
+
+```toml
+[[language]]
+name = "lua"
+formatter = { command = "stylua", args = [ "-" ] }
+```

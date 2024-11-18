@@ -62,6 +62,10 @@ export default defineConfig({
             "reference/commands",
           ],
         },
+        {
+          label: "Help",
+          items: ["help/terminal-support", "help/faq"],
+        },
       ],
       customCss: ["./src/tailwind.css"],
     }),
