@@ -1,3 +1,6 @@
+> [!NOTE]
+> This is a work-in-progress!
+
 # Helix Better Docs
 
 I've completely rebuilt the Helix documentation site and landing page with the idea that Helix should have a lot better documentation and be more approachable to newcomers who have never used a modal editor before.
