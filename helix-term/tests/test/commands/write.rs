@@ -690,10 +690,17 @@ async fn test_hardlink_write() -> anyhow::Result<()> {
 #[tokio::test(flavor = "multi_thread")]
 #[cfg(unix)]
 async fn test_write_ownership() -> anyhow::Result<()> {
+    use std::os::unix::fs::MetadataExt;
+
     let mut file = tempfile::NamedTempFile::new()?;
     let mut app = helpers::AppBuilder::new()
         .with_file(file.path(), None)
         .build()?;
+
+    let nobody_uid = 65534;
+    let nogroup_gid = 65534;
+
+    helix_stdx::faccess::fchown(&file.as_file_mut(), Some(nobody_uid), Some(nogroup_gid))?;
 
     let old_meta = file.as_file().metadata()?;
 
