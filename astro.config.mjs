@@ -39,24 +39,28 @@ export default defineConfig({
             "getting-started/introduction",
             "getting-started/installation",
             "getting-started/basics",
-            "getting-started/becoming-comfortable",
           ],
         },
         {
           label: "Usage",
-          autogenerate: { directory: "usage" },
-        },
-        {
-          label: "Configuration",
-          autogenerate: { directory: "configuration" },
+          items: [
+            "usage/overview",
+            "usage/multiple-cursors",
+            "usage/select-mode",
+            "usage/recipes",
+            "usage/languages",
+            "usage/configuration", // mention themes and config
+            "usage/text-manipulation", // surround + textobjects
+          ],
         },
         {
           label: "Reference",
-          autogenerate: { directory: "reference" },
-        },
-        {
-          label: "Contributing",
-          autogenerate: { directory: "contributing" },
+          items: [
+            "reference/themes",
+            "reference/formatters",
+            "reference/keymap",
+            "reference/commands",
+          ],
         },
       ],
       customCss: ["./src/tailwind.css"],

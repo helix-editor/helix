@@ -1,0 +1,293 @@
+---
+title: The Basics
+---
+
+Create a new text file and open it with Helix by running `hx file.txt`. This is what you'll see:
+
+[TODO: add screenshot]
+
+Notice the `NOR` in the bottom-right corner, this indicates that you are currently in Normal mode. In this mode, typing letters like `e` and `n` won't insert them into the text, but rather have specific _commands_ which we will explore later.
+
+To actually insert some text, press `i`. `i` is the command to get into Insert mode, indicated by the `INS` in the bottom-right corner. In this mode, the letters you type will be inserted directly into the document. Try it out by writing `Hello helix!`.
+
+[TODO: add screenshot]
+
+To get back into Normal mode press `<esc>` (Escape). This will change the color of your cursor and you will see `NOR` again.
+
+### Movement
+
+To move your cursor you could use arrow keys both in normal and insert modes. However, this isn't encouraged because your hand will be doing a lot of back-and-forth movement between the arrow keys and the keyboard.
+
+Instead, it is recommended to hold your hands in the following position:
+
+[TODO: add image]
+
+This way, your fingers will always rest on the "home row", which is comprised of the row of keys `a s d f g h j k l`. Instead of stretching to reach the arrow keys, use `h`, `j`, `k` and `l` to move your cursor.
+
+- `h`: moves cursor 1 character to the left.
+- `j`: moves cursor 1 line above.
+- `k`: moves cursor 1 line below.
+- `l`: moves cursor 1 character to the right.
+
+Try holding down `h` and `l` to move horizontally across the text you just wrote!
+
+[TODO: add gif of moving h and l]
+
+### Paste
+
+We only have one line of text, so let's duplicate it several times. Type:
+
+- `x`, which will select the entire line.
+- `y`, which will _**y**ank_ (copy) the selection to _a clipboard_.
+- `p`, which will paste the contents of the selection after the cursor.
+
+Spam `p` a few times to create several lines.
+
+[TODO: add screenshot]
+
+Now you can try using the `h`, `j`, `k` and `l` motions traverse the text!
+
+### Word-based Movement
+
+Let's say we want to replace one of the `helix` words with `world`. To do this, place your cursor on one of the `h` letters:
+
+[TODO: add screenshot]
+
+`e` is a motion which moves to the _**e**nd_ of the current word. Type `e` and it will move your cursor to the end of the `helix`.
+
+It doesn't just move your cursor there, though. The entire `helix` word becomes highlighted:
+
+[TODO: add screenshot]
+
+If we now press `b`, which moves to the _**b**eginning_ of the current word, it'll move us back to where we just were.
+
+Try this out a few times, press `e` and then `b` to select various sections of the text. If you want to remove your selection press `;`.
+
+Let's highlight our `helix` word again:
+
+[TODO: add screenshot]
+
+### Selection-first Approach
+
+Helix's philosophy is that each **action** will act on a selection.
+
+Every time text is modified (an **action**), you will fully anticipate the result -- because you can clearly see the area of text which is highlighted, and thus will be modified.
+
+For example, we currently have the word `helix` selected. To change it to `hello`, press `c`. `c` is a command which acts on a selection.
+
+`c` removes the contents of the current selection and places us in Insert mode, where you can then write your new word. Exit back to Normal mode by pressing `<esc>`.
+
+### Delete
+
+The `d` command deletes the current selection and copies what has been deleted into a clipboard.
+
+Let's test it out by doing the following:
+
+- Select the line we just changed with `x`.
+- `d` to delete this line.
+- Spam `p` a few times to create some duplicates.
+
+[TODO: add screenshot]
+
+Now let's remove all of our previous `Hello helix!` by doing the following for each `Hello helix!` line:
+
+- Select the line with `x`.
+- `d` to delete it.
+
+Now we have something like this:
+
+[TODO: add screenshot]
+
+### Undo and Redo
+
+What if we made a mistake, and want to go back? The `u` command will _**u**ndo_ our most recent action. It's similar to `Ctrl-z` in other editors.
+
+Try pressing down `u` a few times to get to our previous state, before we made all those modifications:
+
+[TODO: add screenshot]
+
+`U` is similar to `Ctrl-Shift-z` in other editors. It will _undo the last undo_. It's the inverse of `u`.
+
+Press `U` until we get back to our most recent state:
+
+[TODO: add screenshot]
+
+### Checkpoint
+
+Feel free to make modifications to your file using the commands we have learned so far:
+
+- `h`, `j`, `k` and `l` moves 1 character left, down, up and right.
+- `i` enters Insert mode.
+- `<esc>` enters Normal mode.
+- `x` selects the entire line.
+- `y` yanks the selection.
+- `p` pastes the recently copied selection.
+- `e` moves to the end of the current word.
+- `b` moves to the beginning of the current word.
+- `;` removes the extra selection.
+- `d` deletes the current selection, without exiting Normal mode.
+- `c` changes the current selection, by deleting it and entering Insert mode.
+- `u` will undo the most recent change.
+- `U` will undo the most recent undo.
+
+Once you are happy with your modifications, enter Normal mode and type `:`.
+
+`:` enters _command mode_, which has commands you type out.
+
+- `:w` will _**w**rite_ the current file.
+- `:q` will _**q**uit_ the current file.
+- `:q!` will quit without saving.
+- `:wq` will both write and quit.
+
+## More Commands
+
+Let's try out more Helix commands! Open the file again with `hx file.txt`. Select the entire file by pressing `%` and then delete the selection with `d`.
+
+### Registers
+
+Helix has a concept called _registers_, which is like having many clipboards at once (hence the _"a clipboard"_). To interact with them, prefix yank and delete commands with a `"` and then the name of the register.
+
+For example, the contents of the system clipboard are stored inside the `+` register.
+
+:::note
+
+You may need a clipboard provider like [xclip](https://github.com/astrand/xclip) to use the system clipboard.
+
+:::
+
+Paste the following content into the file with `"+p`:
+
+```
+The plates will still shift
+and the clouds will still spew.
+The sun will slowly rise
+and the moon will follow too.
+```
+
+1. Navigate to the last line by using `ge` for _**g**oto end_.
+1. Select the last line with `x` and then yank it with `y`.
+1. Navigate to the second line by using `2gg`.
+1. Select the second line by using `x` and then yank into into the `e` register with `"ey`. `"` selects the register, `e` is the register's name and `y` is the yank command.
+
+Now:
+
+1. Navigate to the third line by using `3gg`.
+1. Paste what we copied previously by using `p`.
+
+Notice how we haven't pasted the 2nd line's contents, but rather the last lines'? Because we yanked the 2nd line's contents into the `e` register. To paste from it, use `"ep`.
+
+- `"` signals to the editor that we are going to use a register.
+- `e` uses the `e` register.
+- `p` pastes contents of the `e` register.
+
+[TODO: add image]
+
+Take note of the fact that when we press `p`, it pastes the contents of the register _after_ the line. To paste _before_, use `P`.
+
+That's great! We learned how to use registers and the system clipboard.
+
+### Goto Word
+
+Using `b` to go to the beginning of the word and `e` to go to the end is useful if you are already at the word you want. But if you are far away, a very powerful command is _**g**oto **w**ord_ -- `gw`.
+
+`gw` will create two letters at the start of every word in sight. When you type those two letters, you instantly jump to the specified word.
+
+[TODO: add video]
+
+### More ways to enter Insert Mode
+
+Select the `clouds` word using `gw`. If you press `i`, you will go into insert mode at the beginning of the selection. There are also 3 more ways to enter Insert mode:
+
+- `a` for _**append**_ go into insert mode at the end of the selection
+- `I` go into insert mode at the beginning of the current line
+- `A` go into insert mode at the end of the current line
+- `o` add a newline below and go into insert mode
+- `O` add a newline above and go into insert mode
+
+Try all of them out!
+
+### Replace
+
+You can also replace a selection with contents of a register.
+
+1. Select the `moon` word by using `gw` and yank it with `y`.
+2. Select the `sun` word and replace it with `moon` with `R`.
+
+### Search
+
+Go to the first line by using `gg`.
+
+:::tip
+
+You can also use just `gg` to go to the first line, which has the same effect as `1gg`.
+
+:::
+
+To search for a word, use `/` command. Type `will` which is going to highlight the next `will` keyword, and then `Enter` to select it.
+
+Since there are several `will`s in the text, you can cycle between them:
+
+- `n` cycles to the next search.
+- `N` cycles to the previous search.
+
+### Move to characters
+
+You can also search for individual characters by using `t`, which stands for _**to**_.
+
+1. Copy the text below
+
+   ```
+   Twilight fades; stars—whispering, bold—
+   "Hope," they hum; yet shadows unfold...
+   Life? A riddle—endless! Who'll dare,
+   to seek; to dream: to wander—where?
+   ```
+
+1. Select the entire file with `%`
+1. Override the selection by using `Space` + `R`.
+
+:::tip
+
+Instead of writing `"+` to interact with the system clipboard everytime, you can also prefix paste and delete motion with `Space`. For example, `Space` + `p` has the same effect as `"+p`.
+
+:::
+
+Go to the first line with `gg` and use `t;` to go to the next semicolon. Repeat this several several times.
+
+To move in the opposite direction, use `T;` to the previous semicolon.
+
+Using `t` and `T` motions will move your cursor _to just before_ the next or the previous occurence of the character.
+
+For example, `te` to go to the next e. `T"` to go to just before the previous double-quote.
+
+The `f` for _**f**ind_ is similar to `t`, but instead it places your cursor _at_ the occurence of the character. Try using `f;` several times. `F` goes the opposite way.
+
+:::tip
+
+By using `Alt` + `.`, you can repeat the last `t`, `T`, `f` or `F` motion.
+
+:::
+
+### Counts
+
+Each motion also accepts an optional _count_, which defaults to 1 if you don't provide it.
+
+- For example, use `2f;` which would be the same as `f;f;`.
+- Or `7b` which would be the same as `bbbbbbb`.
+
+### Page Navigation
+
+Currently the text is fairly short, but we can fix that. Select everything with `%`, yank `y` and then paste it 100 times with `100p`. This will create a very big file.
+
+We can use these commands to scroll large chunks of text at once:
+
+- `Ctrl-d` to scroll down half a page
+- `Ctrl-u` to scroll up half a page
+
+[TODO: add gif of scrolling]
+
+---
+
+## Conclusion
+
+Now you know the basics of movement in Helix, it's time to learn about the more advanced features Helix provides.
