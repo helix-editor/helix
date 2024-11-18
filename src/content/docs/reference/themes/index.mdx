@@ -554,7 +554,15 @@ The names "default" and "base16_default" are reserved for built-in themes and ca
 Each line in the theme file is specified as below:
 
 ```toml
-key = { fg = "#ffffff", bg = "#000000", underline = { color = "#ff0000", style = "curl"}, modifiers = ["bold", "italic"] }
+key = {
+  fg = "#ffffff",
+  bg = "#000000",
+  underline = {
+    color = "#ff0000",
+    style = "curl"
+  },
+  modifiers = ["bold", "italic"]
+}
 ```
 
 Where `key` represents what you want to style, `fg` specifies the foreground color, `bg` the background color, `underline` the underline `style`/`color`, and `modifiers` is a list of style modifiers. `bg`, `underline` and `modifiers` can be omitted to defer to the defaults.
@@ -600,58 +608,55 @@ The default palette uses the terminal's default 16 colors, and the colors names
 are listed below. The `[palette]` section in the config file takes precedence
 over it and is merged into the default palette.
 
-| Color Name      |
-| --------------- |
-| `default`       |
-| `black`         |
-| `red`           |
-| `green`         |
-| `yellow`        |
-| `blue`          |
-| `magenta`       |
-| `cyan`          |
-| `gray`          |
-| `light-red`     |
-| `light-green`   |
-| `light-yellow`  |
-| `light-blue`    |
-| `light-magenta` |
-| `light-cyan`    |
-| `light-gray`    |
-| `white`         |
+- `default`
+- `black`
+- `red`
+- `green`
+- `yellow`
+- `blue`
+- `magenta`
+- `cyan`
+- `gray`
+- `light-red`
+- `light-green`
+- `light-yellow`
+- `light-blue`
+- `light-magenta`
+- `light-cyan`
+- `light-gray`
+- `white`
 
 #### Modifiers
 
 The following values may be used as modifier, provided they are supported by
 your terminal emulator.
 
-| Modifier      |
-| ------------- |
-| `bold`        |
-| `dim`         |
-| `italic`      |
-| `underlined`  |
-| `slow_blink`  |
-| `rapid_blink` |
-| `reversed`    |
-| `hidden`      |
-| `crossed_out` |
+- `bold`
+- `dim`
+- `italic`
+- `underlined`
+- `slow_blink`
+- `rapid_blink`
+- `reversed`
+- `hidden`
+- `crossed_out`
 
-> 💡 The `underlined` modifier is deprecated and only available for backwards compatibility.
-> Its behavior is equivalent to setting `underline.style="line"`.
+:::caution
+
+The `underlined` modifier is deprecated and only available for backwards compatibility. Its behavior is equivalent to setting `underline.style="line"`.
+
+:::
 
 #### Underline style
 
 One of the following values may be used as a value for `underline.style`, providing it is
 supported by your terminal emulator.
 
-| Modifier      |
-| ------------- |
-| `line`        |
-| `curl`        |
-| `dashed`      |
-| `dotted`      |
-| `double_line` |
+- `line`
+- `curl`
+- `dashed`
+- `dotted`
+- `double_line`
 
 #### Inheritance
 
