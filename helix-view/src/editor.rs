@@ -455,6 +455,8 @@ pub fn get_terminal_provider() -> Option<TerminalConfig> {
 pub struct LspConfig {
     /// Enables LSP
     pub enable: bool,
+    /// Autostart LSP on open file
+    pub autostart: bool,
     /// Display LSP messagess from $/progress below statusline
     pub display_progress_messages: bool,
     /// Display LSP messages from window/showMessage below statusline
@@ -480,6 +482,7 @@ impl Default for LspConfig {
     fn default() -> Self {
         Self {
             enable: true,
+            autostart: true,
             display_progress_messages: false,
             display_messages: true,
             auto_signature_help: true,
@@ -1547,7 +1550,7 @@ impl Editor {
         // store only successfully started language servers
         let language_servers = lang.as_ref().map_or_else(HashMap::default, |language| {
             self.language_servers
-                .get(language, path.as_ref(), root_dirs, config.lsp.snippets)
+                .get(language, path.as_ref(), root_dirs, config.lsp.snippets, config.lsp.autostart)
                 .filter_map(|(lang, client)| match client {
                     Ok(client) => Some((lang, client)),
                     Err(err) => {
