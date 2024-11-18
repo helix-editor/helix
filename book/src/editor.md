@@ -155,6 +155,7 @@ The following statusline elements can be configured:
 | Key                   | Description                                                 | Default |
 | ---                   | -----------                                                 | ------- |
 | `enable`              | Enables LSP integration. Setting to false will completely disable language servers regardless of language settings.| `true` |
+| `autostart`           | Enables LSP autostart on file opening. Setting to false will require running the `:lsp-restart` command to manually start the language server.| `true` |
 | `display-messages`    | Display LSP `window/showMessage` messages below statusline[^1] | `true` |
 | `display-progress-messages` | Display LSP progress messages below statusline[^1]    | `false` |
 | `auto-signature-help` | Enable automatic popup of signature help (parameter hints)  | `true`  |
