@@ -1349,6 +1349,7 @@ dependencies = [
  "regex-cursor",
  "ropey",
  "rustix",
+ "smartstring",
  "tempfile",
  "which",
  "windows-sys 0.59.0",
