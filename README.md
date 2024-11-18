@@ -21,10 +21,10 @@ All commands are run from the root of the project, from a terminal:
 2. run `gnome-terminal` with the following command:
 
 ```sh
-dbus-launch gnome-terminal --geometry=64x20
+dbus-launch gnome-terminal --geometry=32x20
 ```
 
-This will create a terminal window with a width of `64` characters and a height of `20` characters.
+This will create a terminal window with a width of `32` characters and a height of `20` characters.
 Feel free to change the height to what makes sense, but **do not change the width**.
 
 After you have your desired state:

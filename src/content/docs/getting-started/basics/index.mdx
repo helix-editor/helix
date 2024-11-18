@@ -2,15 +2,17 @@
 title: The Basics
 ---
 
-Create a new text file and open it with Helix by running `hx file.txt`. This is what you'll see:
+import OpeningFile from "1.astro";
+import InsertMode from "2.astro";
 
-[TODO: add screenshot]
+Create a new text file and open it with Helix by running `hx file.txt`. This is what you'll see:
+<OpeningFile />
 
 Notice the `NOR` in the bottom-right corner, this indicates that you are currently in Normal mode. In this mode, typing letters like `e` and `n` won't insert them into the text, but rather have specific _commands_ which we will explore later.
 
 To actually insert some text, press `i`. `i` is the command to get into Insert mode, indicated by the `INS` in the bottom-right corner. In this mode, the letters you type will be inserted directly into the document. Try it out by writing `Hello helix!`.
 
-[TODO: add screenshot]
+<InsertMode />
 
 To get back into Normal mode press `<esc>` (Escape). This will change the color of your cursor and you will see `NOR` again.
 

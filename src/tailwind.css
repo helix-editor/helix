@@ -37,3 +37,7 @@
 .copy .feedback::after {
   border-inline-start-color: #5a5977 !important;
 }
+
+.termshot {
+  @apply leading-4 border-none px-0 !important;
+}
