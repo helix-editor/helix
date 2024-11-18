@@ -272,6 +272,15 @@ impl<'de> serde::de::Visitor<'de> for KeyTrieVisitor {
                         doc: label,
                     }))
                 }
+
+                // To label/name macro commands from config
+                Some(MappableCommand::Macro { keys, .. }) if !label.is_empty() => {
+                    Ok(KeyTrie::MappableCommand(MappableCommand::Macro {
+                        keys,
+                        name: label
+                    }))
+                }
+
                 Some(command) => Ok(KeyTrie::MappableCommand(command)),
             }
             Some(commands) => {
