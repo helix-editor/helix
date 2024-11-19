@@ -14,6 +14,9 @@ const theme = ExpressiveCodeTheme.fromJSONString(jsoncString);
 
 // https://astro.build/config
 export default defineConfig({
+  vite: {
+    optimizeDeps: { include: ["asciinema-player"] },
+  },
   integrations: [
     starlight({
       title: "Helix Editor",

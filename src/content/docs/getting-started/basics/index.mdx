@@ -4,27 +4,25 @@ title: The Basics
 
 import OpeningFile from "1.astro";
 import InsertMode from "2.astro";
+import TerminalPlayer from "../../../../components/Asciinema.astro";
 
 Create a new text file and open it with Helix by running `hx file.txt`. This is what you'll see:
+
 <OpeningFile />
 
 Notice the `NOR` in the bottom-right corner, this indicates that you are currently in Normal mode. In this mode, typing letters like `e` and `n` won't insert them into the text, but rather have specific _commands_ which we will explore later.
 
-To actually insert some text, press `i`. `i` is the command to get into Insert mode, indicated by the `INS` in the bottom-right corner. In this mode, the letters you type will be inserted directly into the document. Try it out by writing `Hello helix!`.
+To actually insert some text, press `i`, which is the command to get into Insert mode, indicated by the `INS` in the bottom-right corner. In this mode, the letters you type will be inserted directly into the document. Try it out by writing `Hello helix!`.
 
 <InsertMode />
 
-To get back into Normal mode press `<esc>` (Escape). This will change the color of your cursor and you will see `NOR` again.
+To get back into Normal mode press Esc. This will change the color of your cursor and you will see `NOR` again.
 
 ### Movement
 
 To move your cursor you could use arrow keys both in normal and insert modes. However, this isn't encouraged because your hand will be doing a lot of back-and-forth movement between the arrow keys and the keyboard.
 
-Instead, it is recommended to hold your hands in the following position:
-
-[TODO: add image]
-
-This way, your fingers will always rest on the "home row", which is comprised of the row of keys `a s d f g h j k l`. Instead of stretching to reach the arrow keys, use `h`, `j`, `k` and `l` to move your cursor.
+Instead, it is recommended to rest your fingers on the "home row", which is comprised of the row of keys `a s d f g h j k l`. Instead of stretching to reach the arrow keys, use `h`, `j`, `k` and `l` to move your cursor..
 
 - `h`: moves cursor 1 character to the left.
 - `j`: moves cursor 1 line above.
@@ -32,6 +30,8 @@ This way, your fingers will always rest on the "home row", which is comprised of
 - `l`: moves cursor 1 character to the right.
 
 Try holding down `h` and `l` to move horizontally across the text you just wrote!
+
+<TerminalPlayer src="/h-and-l.cast" />
 
 [TODO: add gif of moving h and l]
 

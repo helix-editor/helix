@@ -1,0 +1,86 @@
+---
+import "asciinema-player/dist/bundle/asciinema-player.css";
+import { AsciinemaSettings } from "asciinema-player";
+
+interface Props {
+  src: string;
+  settings?: AsciinemaSettings;
+  class?: string;
+  title?: string;
+}
+
+const defaultSettings = {
+  cols: 32,
+  rows: 24,
+  autoPlay: false,
+  loop: true,
+  controls: true,
+  fit: "width",
+  terminalFontFamily: "JetBrainsMono",
+};
+
+const {
+  src,
+  settings = {},
+  class: extraClasses = "",
+  title = undefined,
+}: Props = Astro.props;
+
+const demoId = "asciinema-demo-" + src.split("/").pop().split(".")[0];
+---
+
+<>
+  {
+    title && (
+      <a href={`#${demoId}`} class="!no-underline" id={`${demoId}-link`}>
+        <h3 class="text-nix-blue text-xl font-heading font-bold">{title}</h3>
+      </a>
+    )
+  }
+  <asciinema-player
+    id={demoId}
+    class={extraClasses}
+    data-src={src}
+    data-title={title}
+    data-settings={JSON.stringify({ ...defaultSettings, ...settings })}
+  >
+  </asciinema-player>
+</>
+
+<script>
+  import * as AsciinemaPlayer from "asciinema-player";
+  class Asciinema extends HTMLElement {
+    constructor() {
+      super();
+      const src = this.dataset.src;
+      let settings = JSON.parse(this.dataset.settings);
+
+      if (window.location.hash === `#${this.id}`) {
+        settings.autoPlay = true;
+      }
+
+      document.fonts.load("1em " + settings.terminalFontFamily).then(() => {
+        const player = AsciinemaPlayer.create(src, this, settings);
+      });
+
+      if (this.dataset.title) {
+        document
+          .getElementById(`${this.id}-link`)
+          .addEventListener("click", (e) => {
+            player.play();
+          });
+      }
+    }
+  }
+
+  customElements.define("asciinema-player", Asciinema);
+</script>
+
+<style is:global>
+  .ap-play-button {
+    @apply !relative;
+  }
+  .ap-terminal {
+    @apply transform-gpu;
+  }
+</style>
