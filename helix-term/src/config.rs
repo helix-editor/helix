@@ -226,6 +226,7 @@ mod tests {
             c = ":buffer-close" 
             h = ["vsplit", "normal_mode", "swap_view_left"]
             j = {command = ["hsplit", "normal_mode", "swap_view_down"], label = "split down"}
+            n = { label = "Delete word", command = "@wd" }
         "#;
 
         let config = Config::load_test(sample_keymaps);
@@ -274,6 +275,20 @@ mod tests {
                         MappableCommand::hsplit,
                         MappableCommand::normal_mode,
                         MappableCommand::swap_view_down
+                    ]
+                );
+            }
+
+            let macro_keys = node.get(&KeyEvent::from_str("n").unwrap()).unwrap();
+            if let keymap::KeyTrie::MappableCommand(MappableCommand::Macro { name, keys }) =
+                macro_keys
+            {
+                assert_eq!(name, "Delete word");
+                assert_eq!(
+                    keys,
+                    &vec![
+                        KeyEvent::from_str("w").unwrap(),
+                        KeyEvent::from_str("d").unwrap()
                     ]
                 );
             }
