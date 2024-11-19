@@ -6142,20 +6142,34 @@ fn change_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                         ),
                         'g' => textobject_change(range),
                         // TODO: cancel new ranges if inconsistent surround matches across lines
-                        ch if !ch.is_ascii_alphanumeric() => textobject::textobject_pair_surround(
-                            doc.syntax(),
-                            text,
-                            range,
-                            objtype,
-                            ch,
-                            count,
-                        ),
+                        ch if !ch.is_ascii_alphanumeric() => {
+                            match ch {
+                                '\'' | '"' | '`' => {
+                                    let line = range.cursor_line(text);
+                                    let line_rs = text.get_line(line).unwrap();
+                                    textobject::textobject_pair_surround(
+                                        doc.syntax(),
+                                        line_rs,
+                                        range,
+                                        objtype,
+                                        ch,
+                                        count
+                                    )
+                                },
+                                _ => textobject::textobject_pair_surround(
+                                    doc.syntax(),
+                                    text,
+                                    range,
+                                    objtype,
+                                    ch,
+                                    count),
+                            }
+                        },
                         _ => range,
                     };
 
                     log::info!("r: {:?}", r);
                     log::info!("range: {:?}", range);
-                    // r.put_cursor(text, range.head, true)
                     r
                 });
                 doc.set_selection(view.id, selection);
@@ -6182,6 +6196,7 @@ fn change_textobject(cx: &mut Context, objtype: textobject::TextObject) {
 
             log::info!("old_range: {:?}, new_range: {:?}", old_range, new_range);
             if old_range != new_range {
+                log::info!("old range does not equal new range");
                 change_selection(cx);
             } else if !ch.is_ascii_alphanumeric() {
                 find_char_impl_forward(cx.editor, &find_next_char_impl, true, false, ch, 1);
@@ -6197,6 +6212,7 @@ fn change_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                         count,
                     )
                 });
+                log::info!("selection: {:?}", selection);
                 doc.set_selection(view.id, selection);
                 change_selection(cx);
             }
