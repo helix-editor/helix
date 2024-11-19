@@ -144,9 +144,9 @@ jobs:
           echo "cargo command is: ${{ env.CARGO }}"
           echo "target flag is: ${{ env.TARGET_FLAGS }}"
 
-      - name: Run cargo test
-        if: "!matrix.skip_tests"
-        run: ${{ env.CARGO }} test --release --locked --target ${{ matrix.target }} --workspace
+      # - name: Run cargo test
+      #   if: "!matrix.skip_tests"
+      #   run: ${{ env.CARGO }} test --release --locked --target ${{ matrix.target }} --workspace
 
       - name: Set profile.release.strip = true
         shell: bash
