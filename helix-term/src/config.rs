@@ -225,7 +225,7 @@ mod tests {
             o = { label = "Edit Config", command = ":open ~/.config" }
             c = ":buffer-close" 
             h = ["vsplit", "normal_mode", "swap_view_left"]
-            j = {command = ["hsplit", "normal_mode", {}], label = "split down"}
+            j = {command = ["hsplit", "normal_mode", "swap_view_down"], label = "split down"}
         "#;
 
         let config = Config::load_test(sample_keymaps);
