@@ -1384,7 +1384,7 @@ injection-regex = "zig"
 file-types = ["zig", "zon"]
 roots = ["build.zig"]
 auto-format = true
-comment-token = "//"
+comment-tokens = ["//", "///", "//!"]
 language-servers = [ "zls" ]
 indent = { tab-width = 4, unit = "    " }
 formatter = { command = "zig" , args = ["fmt", "--stdin"] }
