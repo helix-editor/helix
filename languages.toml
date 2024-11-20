@@ -1559,7 +1559,7 @@ injection-regex = "llvm"
 
 [[grammar]]
 name = "llvm"
-source = { git = "https://github.com/benwilliamgraham/tree-sitter-llvm", rev = "e9948edc41e9e5869af99dddb2b5ff5cc5581af6" }
+source = { git = "https://github.com/benwilliamgraham/tree-sitter-llvm", rev = "c14cb839003348692158b845db9edda201374548" }
 
 [[language]]
 name = "llvm-mir"
@@ -1571,7 +1571,7 @@ injection-regex = "mir"
 
 [[grammar]]
 name = "llvm-mir"
-source = { git = "https://github.com/Flakebi/tree-sitter-llvm-mir", rev = "06fabca19454b2dc00c1b211a7cb7ad0bc2585f1" }
+source = { git = "https://github.com/Flakebi/tree-sitter-llvm-mir", rev = "d166ff8c5950f80b0a476956e7a0ad2f27c12505" }
 
 [[language]]
 name = "llvm-mir-yaml"
@@ -1594,7 +1594,7 @@ injection-regex = "tablegen"
 
 [[grammar]]
 name = "tablegen"
-source = { git = "https://github.com/Flakebi/tree-sitter-tablegen", rev = "568dd8a937347175fd58db83d4c4cdaeb6069bd2" }
+source = { git = "https://github.com/Flakebi/tree-sitter-tablegen", rev = "3e9c4822ab5cdcccf4f8aa9dcd42117f736d51d9" }
 
 [[language]]
 name = "markdown"
