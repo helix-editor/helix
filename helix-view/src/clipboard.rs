@@ -190,9 +190,9 @@ mod external {
                 // These names should match the config option names from Serde
                 Self::Pasteboard => builtin_name("pasteboard", &PASTEBOARD),
                 Self::Wayland => builtin_name("wayland", &WL_CLIPBOARD),
-                Self::XClip => builtin_name("x-clip", &WL_CLIPBOARD),
-                Self::XSel => builtin_name("x-sel", &WL_CLIPBOARD),
-                Self::Win32Yank => builtin_name("win-32-yank", &WL_CLIPBOARD),
+                Self::XClip => builtin_name("x-clip", &XCLIP),
+                Self::XSel => builtin_name("x-sel", &XSEL),
+                Self::Win32Yank => builtin_name("win-32-yank", &WIN32),
                 Self::Tmux => builtin_name("tmux", &TMUX),
                 Self::Termux => builtin_name("termux", &TERMUX),
                 #[cfg(windows)]
