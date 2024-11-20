@@ -282,7 +282,7 @@ This layer is a kludge of mappings, mostly pickers.
 
 | Key     | Description                                                             | Command                                    |
 | -----   | -----------                                                             | -------                                    |
-| `f`     | Open file picker                                                        | `file_picker`                              |
+| `f`     | Open file picker at LSP workspace root                                  | `file_picker`                              |
 | `F`     | Open file picker at current working directory                           | `file_picker_in_current_directory`         |
 | `b`     | Open buffer picker                                                      | `buffer_picker`                            |
 | `j`     | Open jumplist picker                                                    | `jumplist_picker`                          |
