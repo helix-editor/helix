@@ -59,7 +59,7 @@ content_inspector = "0.2.4"
 thiserror.workspace = true
 
 # opening URLs
-open = "5.3.0"
+open = "5.3.1"
 url = "2.5.3"
 
 # config
@@ -74,7 +74,7 @@ grep-searcher = "0.1.14"
 
 [target.'cfg(not(windows))'.dependencies]  # https://github.com/vorner/signal-hook/issues/100
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
-libc = "0.2.162"
+libc = "0.2.164"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 crossterm = { version = "0.28", features = ["event-stream", "use-dev-tty", "libc"] }
