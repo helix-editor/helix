@@ -2219,7 +2219,7 @@ source = { git = "https://github.com/staysail/tree-sitter-meson", rev = "32a83e8
 [[language]]
 name = "sshclientconfig"
 scope = "source.sshclientconfig"
-file-types = [{ glob = ".ssh/config" }, { glob = "/etc/ssh/ssh_config" }]
+file-types = [{ glob = ".ssh/config" }, { glob = "/etc/ssh/ssh_config" }, { glob = "ssh_config.d/*.conf" } ]
 comment-token = "#"
 
 [[grammar]]
