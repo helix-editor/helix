@@ -2300,10 +2300,11 @@ t = ":run-shell-command cargo test"
 keys and used for movement and editing. A list of static commands is
 available in the <a href="./keymap.html">Keymap</a> documentation and in the source code
 in <a href="https://github.com/helix-editor/helix/blob/master/helix-term/src/commands.rs"><code>helix-term/src/commands.rs</code></a>
-at the invocation of <code>static_commands!</code> macro and the <code>TypableCommandList</code>.</li>
+at the invocation of <code>static_commands!</code> macro.</li>
 <li>Typable commands: commands that can be executed from command mode (<code>:</code>), for
 example <code>:write!</code>. See the <a href="./commands.html">Commands</a> documentation for a
-list of available typeable commands.</li>
+list of available typeable commands or the <code>TypableCommandList</code> declaration in
+the source code at <a href="https://github.com/helix-editor/helix/blob/master/helix-term/src/commands/typed.rs"><code>helix-term/src/commands/typed.rs</code></a>.</li>
 <li>Macros: sequences of keys that are executed in order. These keybindings
 start with <code>@</code> and then list any number of keys to be executed. For example
 <code>@miw</code> can be used to select the surrounding word. For now, macro keybindings
