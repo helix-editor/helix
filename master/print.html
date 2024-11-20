@@ -2249,9 +2249,31 @@ berry = "#2A2A4D"
 <p>Helix currently supports one-way key remapping through a simple TOML configuration
 file. (More powerful solutions such as rebinding via commands will be
 available in the future).</p>
+<p>There are three kinds of commands that can be used in keymaps:</p>
+<ul>
+<li>Static commands: commands like <code>move_char_right</code> which are usually bound to
+keys and used for movement and editing. A list of static commands is
+available in the <a href="./keymap.html">Keymap</a> documentation and in the source code
+in <a href="https://github.com/helix-editor/helix/blob/master/helix-term/src/commands.rs"><code>helix-term/src/commands.rs</code></a>
+at the invocation of <code>static_commands!</code> macro.</li>
+<li>Typable commands: commands that can be executed from command mode (<code>:</code>), for
+example <code>:write!</code>. See the <a href="./commands.html">Commands</a> documentation for a
+list of available typeable commands or the <code>TypableCommandList</code> declaration in
+the source code at <a href="https://github.com/helix-editor/helix/blob/master/helix-term/src/commands/typed.rs"><code>helix-term/src/commands/typed.rs</code></a>.</li>
+<li>Macros: sequences of keys that are executed in order. These keybindings
+start with <code>@</code> and then list any number of keys to be executed. For example
+<code>@miw</code> can be used to select the surrounding word. For now, macro keybindings
+are not allowed in keybinding sequences due to limitations in the way that
+command sequences are executed. Modifier keys (e.g. Alt+o) can be used
+like <code>"&lt;A-o&gt;"</code>, e.g. <code>"@miw&lt;A-o&gt;"</code></li>
+</ul>
 <p>To remap keys, create a <code>config.toml</code> file in your <code>helix</code> configuration
 directory (default <code>~/.config/helix</code> on Linux systems) with a structure like
 this:</p>
+<blockquote>
+<p>💡 To set a modifier + key as a keymap, type <code>A-X = ...</code> or  <code>C-X = ...</code> for Alt + X or Ctrl + X. Combine with Shift using a dash, e.g. <code>C-S-esc</code>.
+Within macros, wrap them in <code>&lt;&gt;</code>, e.g. <code>&lt;A-X&gt;</code> and <code>&lt;C-X&gt;</code> to distinguish from the <code>A</code> or <code>C</code> keys.</p>
+</blockquote>
 <pre><code class="language-toml"># At most one section each of 'keys.normal', 'keys.insert' and 'keys.select'
 [keys.normal]
 C-s = ":w" # Maps Ctrl-s to the typable command :w which is an alias for :write (save file)
@@ -2261,6 +2283,7 @@ w = "move_line_up" # Maps the 'w' key move_line_up
 "C-S-esc" = "extend_line" # Maps Ctrl-Shift-Escape to extend_line
 g = { a = "code_action" } # Maps `ga` to show possible code actions
 "ret" = ["open_below", "normal_mode"] # Maps the enter key to open_below then re-enter normal mode
+"A-x" = "@x&lt;A-d&gt;" # Maps Alt-x to a macro selecting the whole line and deleting it without yanking it
 
 [keys.insert]
 "A-x" = "normal_mode"     # Maps Alt-X to enter normal mode
@@ -2310,25 +2333,6 @@ t = ":run-shell-command cargo test"
 </tbody></table>
 </div>
 <p>Keys can be disabled by binding them to the <code>no_op</code> command.</p>
-<h2 id="commands-1"><a class="header" href="#commands-1">Commands</a></h2>
-<p>There are three kinds of commands that can be used in keymaps:</p>
-<ul>
-<li>Static commands: commands like <code>move_char_right</code> which are usually bound to
-keys and used for movement and editing. A list of static commands is
-available in the <a href="./keymap.html">Keymap</a> documentation and in the source code
-in <a href="https://github.com/helix-editor/helix/blob/master/helix-term/src/commands.rs"><code>helix-term/src/commands.rs</code></a>
-at the invocation of <code>static_commands!</code> macro.</li>
-<li>Typable commands: commands that can be executed from command mode (<code>:</code>), for
-example <code>:write!</code>. See the <a href="./commands.html">Commands</a> documentation for a
-list of available typeable commands or the <code>TypableCommandList</code> declaration in
-the source code at <a href="https://github.com/helix-editor/helix/blob/master/helix-term/src/commands/typed.rs"><code>helix-term/src/commands/typed.rs</code></a>.</li>
-<li>Macros: sequences of keys that are executed in order. These keybindings
-start with <code>@</code> and then list any number of keys to be executed. For example
-<code>@miw</code> can be used to select the surrounding word. For now, macro keybindings
-are not allowed in keybinding sequences due to limitations in the way that
-command sequences are executed. Modifier keys (e.g. Alt+o) can be used
-like <code>"&lt;A-o&gt;"</code>, e.g. <code>"@miw&lt;A-o&gt;"</code></li>
-</ul>
 <div style="break-before: page; page-break-before: always;"></div><h2 id="languages"><a class="header" href="#languages">Languages</a></h2>
 <p>Language-specific settings and settings for language servers are configured
 in <code>languages.toml</code> files.</p>
