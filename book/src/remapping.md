@@ -92,4 +92,5 @@ There are three kinds of commands that can be used in keymaps:
   start with `@` and then list any number of keys to be executed. For example
   `@miw` can be used to select the surrounding word. For now, macro keybindings
   are not allowed in keybinding sequences due to limitations in the way that
-  command sequences are executed.
+  command sequences are executed. Modifier keys (e.g. Alt+o) can be used
+  like `"<A-o>"`, e.g. `"@miw<A-o>"`
