@@ -1,10 +1,10 @@
+use crate::config::{Config, ConfigLoadError};
 use crossterm::{
     style::{Color, Print, Stylize},
     tty::IsTty,
 };
 use helix_core::config::{default_lang_config, user_lang_config};
 use helix_loader::grammar::load_runtime_file;
-use helix_view::clipboard::get_clipboard_provider;
 use std::io::Write;
 
 #[derive(Copy, Clone)]
@@ -53,7 +53,6 @@ pub fn general() -> std::io::Result<()> {
     let lang_file = helix_loader::lang_config_file();
     let log_file = helix_loader::log_file();
     let rt_dirs = helix_loader::runtime_dirs();
-    let clipboard_provider = get_clipboard_provider();
 
     if config_file.exists() {
         writeln!(stdout, "Config file: {}", config_file.display())?;
@@ -92,7 +91,6 @@ pub fn general() -> std::io::Result<()> {
             writeln!(stdout, "{}", msg.yellow())?;
         }
     }
-    writeln!(stdout, "Clipboard provider: {}", clipboard_provider.name())?;
 
     Ok(())
 }
@@ -101,8 +99,19 @@ pub fn clipboard() -> std::io::Result<()> {
     let stdout = std::io::stdout();
     let mut stdout = stdout.lock();
 
-    let board = get_clipboard_provider();
-    match board.name().as_ref() {
+    let config = match Config::load_default() {
+        Ok(config) => config,
+        Err(ConfigLoadError::Error(err)) if err.kind() == std::io::ErrorKind::NotFound => {
+            Config::default()
+        }
+        Err(err) => {
+            writeln!(stdout, "{}", "Configuration file malformed".red())?;
+            writeln!(stdout, "{}", err)?;
+            return Ok(());
+        }
+    };
+
+    match config.editor.clipboard_provider.name().as_ref() {
         "none" => {
             writeln!(
                 stdout,
