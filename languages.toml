@@ -84,6 +84,7 @@ pyright = { command = "pyright-langserver", args = ["--stdio"], config = {} }
 basedpyright = { command = "basedpyright-langserver", args = ["--stdio"], config = {} }
 pylyzer = { command = "pylyzer", args = ["--server"] }
 qmlls = { command = "qmlls" }
+quint-language-server = { command = "quint-language-server", args = ["--stdio"] }
 r = { command = "R", args = ["--no-echo", "-e", "languageserver::run()"] }
 racket = { command = "racket", args = ["-l", "racket-langserver"] }
 regols = { command = "regols" }
@@ -3892,6 +3893,19 @@ indent = { tab-width = 4, unit = "    " }
 [[grammar]]
 name = "cylc"
 source = { git = "https://github.com/elliotfontaine/tree-sitter-cylc", rev = "30dd40d9bf23912e4aefa93eeb4c7090bda3d0f6" }
+
+[[language]]
+name = "quint"
+scope = "source.quint"
+file-types = ["qnt"]
+language-servers = ["quint-language-server"]
+comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "quint"
+source = { git = "https://github.com/gruhn/tree-sitter-quint", rev = "eebbd01edfeff6404778c92efe5554e42e506a18" }
 
 [[language]]
 name = "spade"
