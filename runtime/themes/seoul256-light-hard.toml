@@ -1,0 +1,16 @@
+# Seoul256 Light Hard
+# Author : EricHenry
+# Original Creator: https://github.com/junegunn/seoul256.vim
+
+inherits = "seoul256-light"
+
+"ui.background" = { bg = "gray11" }
+"ui.cursor.match" = { bg = "gray10", modifiers = ["underlined"] }
+"ui.gutter" = { bg = "white1" }
+"ui.cursorline.primary" = { bg = "gray12" }
+"ui.gutter.selected" = { bg = "gray12" }
+"ui.linenr.selected" = { bg = "gray12", fg = "magenta", modifiers = ["bold"] }
+
+"ui.help" = { fg = "black1", bg = "gray12" }
+"ui.popup" = { fg = "black1", bg = "gray12" }
+"ui.menu" = { fg = "black1", bg = "gray12" }
