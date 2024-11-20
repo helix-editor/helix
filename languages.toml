@@ -345,6 +345,19 @@ name = "protobuf"
 source = { git = "https://github.com/yusdacra/tree-sitter-protobuf", rev = "19c211a01434d9f03efff99f85e19f967591b175"}
 
 [[language]]
+name = "textproto"
+file-types = ["txtpb", "textpb", "textproto"]
+comment-token = "#"
+scope = "source.textproto"
+indent = { tab-width = 2, unit = "  " }
+formatter = { command = "txtpbfmt" }
+auto-format = true
+
+[[grammar]]
+name = "textproto"
+source = { git = "https://github.com/PorterAtGoogle/tree-sitter-textproto", rev = "568471b80fd8793d37ed01865d8c2208a9fefd1b"}
+
+[[language]]
 name = "elixir"
 scope = "source.elixir"
 injection-regex = "(elixir|ex)"
