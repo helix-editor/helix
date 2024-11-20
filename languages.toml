@@ -44,6 +44,7 @@ gleam = { command = "gleam", args = ["lsp"] }
 glsl_analyzer = { command = "glsl_analyzer" }
 graphql-language-service = { command = "graphql-lsp", args = ["server", "-m", "stream"] }
 haskell-language-server = { command = "haskell-language-server-wrapper", args = ["--lsp"] }
+hyprls = { command = "hyprls" }
 idris2-lsp = { command = "idris2-lsp" }
 intelephense = { command = "intelephense", args = ["--stdio"] }
 jdtls = { command = "jdtls" }
@@ -3577,6 +3578,7 @@ roots = ["hyprland.conf"]
 file-types = [ { glob = "hyprland.conf" }, { glob = "hyprpaper.conf" }, { glob = "hypridle.conf" }, { glob = "hyprlock.conf" } ]
 comment-token = "#"
 grammar = "hyprlang"
+language-servers = ["hyprls"]
 
 [[grammar]]
 name = "hyprlang"
