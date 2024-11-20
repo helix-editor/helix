@@ -478,7 +478,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-json", rev = "73076
 name = "jsonc"
 scope = "source.json"
 injection-regex = "jsonc"
-file-types = ["jsonc"]
+file-types = ["jsonc", { glob = "tsconfig.json" }]
 grammar = "json"
 language-servers = [ "vscode-json-language-server" ]
 auto-format = true
