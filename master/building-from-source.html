@@ -283,7 +283,7 @@ to package the runtime into <code>/usr/lib/helix/runtime</code>. The rough steps
 script could follow are:</p>
 <ol>
 <li><code>export HELIX_DEFAULT_RUNTIME=/usr/lib/helix/runtime</code></li>
-<li><code>cargo build --profile opt --locked --path helix-term</code></li>
+<li><code>cargo build --profile opt --locked</code></li>
 <li><code>cp -r runtime $BUILD_DIR/usr/lib/helix/</code></li>
 <li><code>cp target/opt/hx $BUILD_DIR/usr/bin/hx</code></li>
 </ol>
