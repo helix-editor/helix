@@ -3000,7 +3000,7 @@ indent = { tab-width = 8, unit = "        " }
 
 [[grammar]]
 name = "nasm"
-source = { git = "https://github.com/naclsn/tree-sitter-nasm", rev = "a0db15db6fcfb1bf2cc8702500e55e558825c48b" }
+source = { git = "https://github.com/naclsn/tree-sitter-nasm", rev = "570f3d7be01fffc751237f4cfcf52d04e20532d1" }
 
 [[language]]
 name = "gas"
