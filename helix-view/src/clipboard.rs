@@ -359,44 +359,44 @@ mod external {
 
     command_provider! {
         TMUX,
-        yank => "tmux", "load-buffer", "-w", "-";
-        paste => "tmux", "save-buffer", "-";
+        yank => "tmux", "save-buffer", "-";
+        paste => "tmux", "load-buffer", "-w", "-";
     }
     command_provider! {
         PASTEBOARD,
-        yank => "pbcopy";
-        paste => "pbpaste";
+        yank => "pbpaste";
+        paste => "pbcopy";
     }
     command_provider! {
         WL_CLIPBOARD,
-        yank => "wl-copy", "--type", "text/plain";
-        paste => "wl-paste", "--no-newline";
-        yank_primary => "wl-copy", "-p", "--type", "text/plain";
-        paste_primary => "wl-paste", "-p", "--no-newline";
+        yank => "wl-paste", "--no-newline";
+        paste => "wl-copy", "--type", "text/plain";
+        yank_primary => "wl-paste", "-p", "--no-newline";
+        paste_primary => "wl-copy", "-p", "--type", "text/plain";
     }
     command_provider! {
         XCLIP,
-        yank => "xclip", "-i", "-selection", "clipboard";
-        paste => "xclip", "-o", "-selection", "clipboard";
-        yank_primary => "xclip", "-i";
-        paste_primary => "xclip", "-o";
+        yank => "xclip", "-o", "-selection", "clipboard";
+        paste => "xclip", "-i", "-selection", "clipboard";
+        yank_primary => "xclip", "-o";
+        paste_primary => "xclip", "-i";
     }
     command_provider! {
         XSEL,
-        yank => "xsel", "-i", "-b";
-        paste => "xsel", "-o", "-b";
-        yank_primary => "xsel", "-i";
-        paste_primary => "xsel", "-o";
+        yank => "xsel", "-o", "-b";
+        paste => "xsel", "-i", "-b";
+        yank_primary => "xsel", "-o";
+        paste_primary => "xsel", "-i";
     }
     command_provider! {
         WIN32,
-        yank => "win32yank.exe", "-i", "--crlf";
-        paste => "win32yank.exe", "-o", "--lf";
+        yank => "win32yank.exe", "-o", "--lf";
+        paste => "win32yank.exe", "-i", "--crlf";
     }
     command_provider! {
         TERMUX,
-        yank => "termux-clipboard-set";
-        paste => "termux-clipboard-get";
+        yank => "termux-clipboard-get";
+        paste => "termux-clipboard-set";
     }
 
     #[cfg(feature = "term")]
