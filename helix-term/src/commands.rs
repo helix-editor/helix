@@ -6199,22 +6199,49 @@ fn change_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                 log::info!("old range does not equal new range");
                 change_selection(cx);
             } else if !ch.is_ascii_alphanumeric() {
-                find_char_impl_forward(cx.editor, &find_next_char_impl, true, false, ch, 1);
-                let (view, doc) = current!(cx.editor);
-                let text = doc.text().slice(..);
-                let selection = doc.selection(view.id).clone().transform(|range| {
-                    textobject::textobject_pair_surround(
-                        doc.syntax(),
-                        text,
-                        range,
-                        objtype,
-                        ch,
-                        count,
-                    )
-                });
-                log::info!("selection: {:?}", selection);
-                doc.set_selection(view.id, selection);
-                change_selection(cx);
+                let mut cont = true;
+                {
+                    let (view, doc) = current!(cx.editor);
+                    let text = doc.text().slice(..);
+                    if ch == '\'' || ch == '"' || ch == '`' {
+                        doc.selection(view.id).clone().transform(|range| {
+                            let line = range.cursor_line(text);
+                            let line_rs = text.get_line(line).unwrap();
+                            let count = line_rs.chars_at(0).into_iter().filter(|c| c == &ch).count();
+                            log::info!("number of {ch} on line: {count}");
+                            if count < 2 {
+                                cont = false;
+                                return range
+                            }
+                            range
+                        });
+                        if cont {
+                            find_char_impl_forward(cx.editor, &find_next_char_impl, true, false, ch, 1);
+                        }
+                    } else {
+                        find_char_impl_forward(cx.editor, &find_next_char_impl, true, false, ch, 1);
+                    }
+                }
+                if cont {
+                    let (view, doc) = current!(cx.editor);
+                    let text = doc.text().slice(..);
+                    let selection = doc.selection(view.id).clone().transform(|mut range| {
+                        if ch == '\'' || ch == '"' || ch == '`' {
+                            range.anchor += 1;
+                            range.head += 1;
+                        }
+                        textobject::textobject_pair_surround(
+                            doc.syntax(),
+                            text,
+                            range,
+                            objtype,
+                            ch,
+                            count,
+                        )
+                    });
+                    doc.set_selection(view.id, selection);
+                    change_selection(cx);
+                }
             }
         }
     });
