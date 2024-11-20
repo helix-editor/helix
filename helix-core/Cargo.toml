@@ -29,7 +29,7 @@ unicode-segmentation = "1.12"
 # For now lets lock the version to avoid rendering glitches
 # when installing without `--locked`
 unicode-width = "=0.1.12"
-unicode-general-category = "0.6"
+unicode-general-category = "1.0"
 slotmap.workspace = true
 tree-sitter.workspace = true
 once_cell = "1.20"
