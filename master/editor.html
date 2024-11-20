@@ -542,7 +542,8 @@ S-tab = "extend_parent_node_start"
 }
 </code></pre>
 <p>The new diagnostic rendering is not yet enabled by default. As soon as end of line or inline diagnostics are enabled the old diagnostics rendering is automatically disabled. The recommended default setting are:</p>
-<pre><code>end-of-line-diagnostics = "hint"
+<pre><code class="language-toml">[editor]
+end-of-line-diagnostics = "hint"
 [editor.inline-diagnostics]
 cursor-line = "warning" # show warnings and errors on the cursorline inline
 </code></pre>
