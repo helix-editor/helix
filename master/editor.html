@@ -234,8 +234,24 @@
 <tr><td><code>indent-heuristic</code></td><td>How the indentation for a newly inserted line is computed: <code>simple</code> just copies the indentation level from the previous line, <code>tree-sitter</code> computes the indentation based on the syntax tree and <code>hybrid</code> combines both approaches. If the chosen heuristic is not available, a different one will be used as a fallback (the fallback order being <code>hybrid</code> -&gt; <code>tree-sitter</code> -&gt; <code>simple</code>).</td><td><code>hybrid</code></td></tr>
 <tr><td><code>jump-label-alphabet</code></td><td>The characters that are used to generate two character jump labels. Characters at the start of the alphabet are used first.</td><td><code>"abcdefghijklmnopqrstuvwxyz"</code></td></tr>
 <tr><td><code>end-of-line-diagnostics</code></td><td>Minimum severity of diagnostics to render at the end of the line. Set to <code>disable</code> to disable entirely. Refer to the setting about <code>inline-diagnostics</code> for more details</td><td>"disable"</td></tr>
+<tr><td><code>clipboard-provider</code></td><td>Which API to use for clipboard interaction. One of <code>pasteboard</code> (MacOS), <code>wayland</code>, <code>x-clip</code>, <code>x-sel</code>, <code>win-32-yank</code>, <code>termux</code>, <code>tmux</code>, <code>windows</code>, <code>termcode</code>, <code>none</code>, or a custom command set.</td><td>Platform and environment specific.</td></tr>
 </tbody></table>
 </div>
+<h3 id="editorclipboard-provider-section"><a class="header" href="#editorclipboard-provider-section"><code>[editor.clipboard-provider]</code> Section</a></h3>
+<p>Helix can be configured wither to use a builtin clipboard configuration or to use
+a provided command.</p>
+<p>For instance, setting it to use OSC 52 termcodes, the configuration would be:</p>
+<pre><code class="language-toml">[editor]
+clipboard-provider = "termcode"
+</code></pre>
+<p>Alternatively, Helix can be configured to use arbitary commands for clipboard integration:</p>
+<pre><code class="language-toml">[editor.clipboard-provider.custom]
+yank = { command = "cat",  args = ["test.txt"] }
+paste = { command = "tee",  args = ["test.txt"] }
+primary-yank = { command = "cat",  args = ["test-primary.txt"] } # optional
+primary-paste = { command = "tee",  args = ["test-primary.txt"] } # optional
+</code></pre>
+<p>For custom commands the contents of the yank/paste is communicated over stdin/stdout.</p>
 <h3 id="editorstatusline-section"><a class="header" href="#editorstatusline-section"><code>[editor.statusline]</code> Section</a></h3>
 <p>Allows configuring the statusline at the bottom of the editor.</p>
 <p>The configuration distinguishes between three areas of the status line:</p>
