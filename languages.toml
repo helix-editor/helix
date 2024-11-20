@@ -3333,7 +3333,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "unison"
-source = { git = "https://github.com/kylegoetz/tree-sitter-unison", rev = "1f505e2447fa876a87aee47ff3d70b9e141c744f" }
+source = { git = "https://github.com/kylegoetz/tree-sitter-unison", rev = "3c97db76d3cdbd002dfba493620c2d5df2fd6fa9" }
 
 [[language]]
 name = "todotxt"
