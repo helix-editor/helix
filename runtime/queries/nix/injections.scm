@@ -127,6 +127,16 @@
   (#set! injection.language "haskell")
   (#set! injection.combined))
 
+; pkgs.writers.writeNim[Bin] name attrs content
+(apply_expression
+  (apply_expression
+    function: (apply_expression
+      function: ((_) @_func)))
+    argument: (indented_string_expression (string_fragment) @injection.content)
+  (#match? @_func "(^|\\.)writeNim(Bin)?$")
+  (#set! injection.language "nim")
+  (#set! injection.combined))
+
 ; pkgs.writers.writeJS[Bin] name attrs content
 (apply_expression
   (apply_expression
