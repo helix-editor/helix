@@ -240,10 +240,12 @@ where
             counts
         });
 
+    let icons = context.editor.config().diagnostic_icons;
+
     if warnings > 0 {
         write(
             context,
-            "●".to_string(),
+            icons.warning.to_string(),
             Some(context.editor.theme.get("warning")),
         );
         write(context, format!(" {} ", warnings), None);
@@ -252,7 +254,7 @@ where
     if errors > 0 {
         write(
             context,
-            "●".to_string(),
+            icons.error.to_string(),
             Some(context.editor.theme.get("error")),
         );
         write(context, format!(" {} ", errors), None);

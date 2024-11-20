@@ -1,5 +1,5 @@
 use crate::{
-    annotations::diagnostics::{DiagnosticFilter, InlineDiagnosticsConfig},
+    annotations::diagnostics::{DiagnosticFilter, DiagnosticIcons, InlineDiagnosticsConfig},
     document::{
         DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
     },
@@ -345,6 +345,7 @@ pub struct Config {
     /// Display diagnostic below the line they occur.
     pub inline_diagnostics: InlineDiagnosticsConfig,
     pub end_of_line_diagnostics: DiagnosticFilter,
+    pub diagnostic_icons: DiagnosticIcons,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -982,6 +983,7 @@ impl Default for Config {
             jump_label_alphabet: ('a'..='z').collect(),
             inline_diagnostics: InlineDiagnosticsConfig::default(),
             end_of_line_diagnostics: DiagnosticFilter::Disable,
+            diagnostic_icons: DiagnosticIcons::default(),
         }
     }
 }
