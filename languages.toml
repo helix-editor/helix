@@ -2811,7 +2811,7 @@ source = { git = "https://github.com/inko-lang/tree-sitter-inko", rev = "7860637
 [[language]]
 name = "bicep"
 scope = "source.bicep"
-file-types = ["bicep"]
+file-types = ["bicep","bicepparam"]
 auto-format = true
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
@@ -2820,7 +2820,7 @@ language-servers = [ "bicep-langserver" ]
 
 [[grammar]]
 name = "bicep"
-source = { git = "https://github.com/the-mikedavis/tree-sitter-bicep", rev = "d8e097fcfa143854861ef737161163a09cc2916b" }
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-bicep", rev = "0092c7d1bd6bb22ce0a6f78497d50ea2b87f19c0" }
 
 [[language]]
 name = "qml"
