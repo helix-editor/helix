@@ -91,7 +91,7 @@
 | hosts | ✓ |  |  |  |
 | html | ✓ |  |  | `vscode-html-language-server`, `superhtml` |
 | hurl | ✓ | ✓ | ✓ |  |
-| hyprlang | ✓ |  | ✓ |  |
+| hyprlang | ✓ |  | ✓ | `hyprls` |
 | idris |  |  |  | `idris2-lsp` |
 | iex | ✓ |  |  |  |
 | ini | ✓ |  |  |  |
