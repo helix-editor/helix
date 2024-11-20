@@ -3868,10 +3868,14 @@ source = { git = "https://github.com/Decurity/tree-sitter-circom", rev = "021505
 name = "snakemake"
 scope = "source.snakemake"
 roots = ["Snakefile", "config.yaml", "environment.yaml", "workflow/"]
-file-types = ["smk", "Snakefile"]
+file-types = ["smk", { glob = "Snakefile" } ]
 comment-tokens = ["#", "##"]
 indent = { tab-width = 2, unit = "  " }
 language-servers = ["pylsp" ]
+
+[language.formatter]
+command = "snakefmt"
+args = ["-"]
 
 [[grammar]]
 name = "snakemake"
