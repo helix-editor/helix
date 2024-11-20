@@ -1459,6 +1459,7 @@ dependencies = [
  "serde_json",
  "slotmap",
  "tempfile",
+ "terminal-colorsaurus",
  "thiserror 2.0.3",
  "tokio",
  "tokio-stream",
@@ -2373,6 +2374,31 @@ dependencies = [
  "fastrand",
  "once_cell",
  "rustix",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "terminal-colorsaurus"
+version = "0.4.5"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7778d24b27585f6f92ec5d2705e7cf1710fd0ffa43262c807dfb49fa53471e95"
+dependencies = [
+ "cfg-if",
+ "libc",
+ "memchr",
+ "mio",
+ "terminal-trx",
+ "windows-sys 0.59.0",
+]
+
+[[package]]
+name = "terminal-trx"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57a5b836e7f4f81afe61b5cd399eee774f25edcfd47009a76e29f53bb6487833"
+dependencies = [
+ "cfg-if",
+ "libc",
  "windows-sys 0.59.0",
 ]
 

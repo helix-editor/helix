@@ -11,6 +11,8 @@ Example config:
 
 ```toml
 theme = "onedark"
+# Adaptive Theme
+# theme = { light = "onelight", dark = "onedark" }
 
 [editor]
 line-number = "relative"
