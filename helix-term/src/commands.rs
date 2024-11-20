@@ -4339,6 +4339,10 @@ fn paste_impl(
         return;
     }
 
+    if mode == Mode::Insert {
+        doc.append_changes_to_history(view);
+    }
+
     let repeat = std::iter::repeat(
         // `values` is asserted to have at least one entry above.
         values

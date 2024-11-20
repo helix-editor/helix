@@ -136,6 +136,7 @@
 | move | ✓ |  |  |  |
 | msbuild | ✓ |  | ✓ |  |
 | nasm | ✓ | ✓ |  |  |
+| nestedtext | ✓ | ✓ | ✓ |  |
 | nickel | ✓ |  | ✓ | `nls` |
 | nim | ✓ | ✓ | ✓ | `nimlangserver` |
 | nix | ✓ | ✓ |  | `nil`, `nixd` |
@@ -190,6 +191,7 @@
 | sml | ✓ |  |  |  |
 | snakemake | ✓ |  | ✓ | `pylsp` |
 | solidity | ✓ | ✓ |  | `solc` |
+| spade | ✓ |  | ✓ | `spade-language-server` |
 | spicedb | ✓ |  |  |  |
 | sql | ✓ | ✓ |  |  |
 | sshclientconfig | ✓ |  |  |  |
@@ -205,6 +207,7 @@
 | task | ✓ |  |  |  |
 | tcl | ✓ |  | ✓ |  |
 | templ | ✓ |  |  | `templ` |
+| textproto | ✓ | ✓ | ✓ |  |
 | tfvars | ✓ |  | ✓ | `terraform-ls` |
 | thrift | ✓ |  |  |  |
 | todotxt | ✓ |  |  |  |
@@ -216,7 +219,7 @@
 | typespec | ✓ | ✓ | ✓ | `tsp-server` |
 | typst | ✓ |  |  | `tinymist`, `typst-lsp` |
 | ungrammar | ✓ |  |  |  |
-| unison | ✓ |  | ✓ |  |
+| unison | ✓ | ✓ | ✓ |  |
 | uxntal | ✓ |  |  |  |
 | v | ✓ | ✓ | ✓ | `v-analyzer` |
 | vala | ✓ | ✓ |  | `vala-language-server` |
