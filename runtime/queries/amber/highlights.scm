@@ -42,11 +42,11 @@
 (handler) @keyword
 (block) @punctuation.delimiter
 (variable_init) @keyword
-(variable_assignment) @delimiter
+(variable_assignment) @punctuation.delimiter
 (variable) @variable
 (escape_sequence) @constant.character.escape
 (type_name_symbol) @type
-(interpolation) @delimiter
+(interpolation) @punctuation.delimiter
 (reference) @keyword
 (preprocessor_directive) @comment
 (shebang) @comment
