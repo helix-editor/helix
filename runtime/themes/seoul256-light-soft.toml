@@ -1,0 +1,16 @@
+# Seoul256 Light Soft
+# Author : EricHenry
+# Original Creator: https://github.com/junegunn/seoul256.vim
+
+inherits = "seoul256-light"
+
+"ui.background" = { bg = "white" }
+"ui.cursor.match" = { bg = "gray13", modifiers = ["underlined"] }
+"ui.gutter" = { bg = "gray13" }
+"ui.cursorline.primary" = { bg = "gray10" }
+"ui.gutter.selected" = { bg = "gray10" }
+"ui.linenr.selected" = { bg = "gray10", fg = "magenta", modifiers = ["bold"] }
+
+"ui.help" = { fg = "black1", bg = "gray10" }
+"ui.popup" = { fg = "black1", bg = "gray10" }
+"ui.menu" = { fg = "black1", bg = "gray10" }

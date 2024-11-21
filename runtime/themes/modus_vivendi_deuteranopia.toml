@@ -1,7 +1,7 @@
 # Author: Matous Dzivjak <matousdzivjak@gmail.com>
 # Adapted from https://protesilaos.com/emacs/modus-themes, by Protesilaos Stavrou
 # Source: https://github.com/protesilaos/modus-themes/blob/main/modus-vivendi-deuteranopia-theme.el
-# Version 4.3.0
+# Version 4.6.0
 
 inherits = "modus_vivendi"
 
@@ -37,7 +37,7 @@ border = "#646464"
 # Common accent foregrounds
 red = "#ff5f59"
 red-warmer = "#ff6b55"
-red-cooler = "#ff7f9f"
+red-cooler = "#ff7f86"
 red-faint = "#ff9580"
 red-intense = "#ff5f5f"
 green = "#44bc44"

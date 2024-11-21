@@ -53,6 +53,7 @@
 "ui.virtual.whitespace" = "bg2"
 "ui.virtual.ruler" = { bg = "grey2" } 
 "ui.virtual.inlay-hint" = { fg = "grey2", modifiers = ["italic"] }
+"ui.virtual.jump-label" = { fg = "nasty-red", modifiers = ["bold"] }
 
 "hint" = "blue"
 "info" = "aqua"
