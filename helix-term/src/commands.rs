@@ -1265,15 +1265,14 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
     let (view, doc) = current_ref!(cx.editor);
     let text = doc.text();
     let selections = doc.selection(view.id);
-    let primary = selections.primary();
     let rel_path = doc
         .relative_path()
         .map(|path| path.parent().unwrap().to_path_buf())
         .unwrap_or_default();
 
-    let paths: Vec<_> = if selections.len() == 1 && primary.len() == 1 {
-        // Secial case: if there is only one one-width selection, try to detect the
-        // path under the cursor.
+    let paths: Vec<_> = if selections.iter().all(|r| r.len() == 1) {
+        // Secial case: if all selections are only one-wide, try to detect the path under the
+        // cursor.
         let is_valid_path_char = |c: &char| {
             #[cfg(target_os = "windows")]
             let valid_chars = &[
@@ -1286,34 +1285,39 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
             valid_chars.contains(c) || c.is_alphabetic() || c.is_numeric()
         };
 
-        let cursor_pos = primary.cursor(text.slice(..));
-        let pre_cursor_pos = cursor_pos.saturating_sub(1);
-        let post_cursor_pos = cursor_pos + 1;
-        let start_pos = if is_valid_path_char(&text.char(cursor_pos)) {
-            cursor_pos
-        } else if is_valid_path_char(&text.char(pre_cursor_pos)) {
-            pre_cursor_pos
-        } else {
-            post_cursor_pos
-        };
+        selections
+            .iter()
+            .map(|sel| {
+                let cursor_pos = sel.cursor(text.slice(..));
+                let pre_cursor_pos = cursor_pos.saturating_sub(1);
+                let post_cursor_pos = cursor_pos + 1;
+                let start_pos = if is_valid_path_char(&text.char(cursor_pos)) {
+                    cursor_pos
+                } else if is_valid_path_char(&text.char(pre_cursor_pos)) {
+                    pre_cursor_pos
+                } else {
+                    post_cursor_pos
+                };
 
-        let prefix_len = text
-            .chars_at(start_pos)
-            .reversed()
-            .take_while(is_valid_path_char)
-            .count();
+                let prefix_len = text
+                    .chars_at(start_pos)
+                    .reversed()
+                    .take_while(is_valid_path_char)
+                    .count();
 
-        let postfix_len = text
-            .chars_at(start_pos)
-            .take_while(is_valid_path_char)
-            .count();
+                let postfix_len = text
+                    .chars_at(start_pos)
+                    .take_while(is_valid_path_char)
+                    .count();
 
-        let path: String = text
-            .slice((start_pos - prefix_len)..(start_pos + postfix_len))
-            .into();
-        log::debug!("goto_file auto-detected path: {}", path);
+                let path: String = text
+                    .slice((start_pos - prefix_len)..(start_pos + postfix_len))
+                    .into();
 
-        vec![path]
+                log::debug!("goto_file auto-detected path: {}", path);
+                path
+            })
+            .collect()
     } else {
         // Otherwise use each selection, trimmed.
         selections
