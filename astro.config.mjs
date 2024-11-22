@@ -10,7 +10,7 @@ export default defineConfig({
   },
   integrations: [
     starlight({
-      title: "Helix Editor",
+      title: "Helix",
       logo: {
         src: "./public/favicon.svg",
       },
