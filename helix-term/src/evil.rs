@@ -1,15 +1,16 @@
 use std::num::NonZeroUsize;
 
 use helix_core::match_brackets::find_matching_bracket;
-use helix_core::{textobject, Range};
 use helix_core::movement::{self, Movement};
+use helix_core::{textobject, Range};
 use helix_view::document::Mode;
 use helix_view::info::Info;
 use helix_view::Editor;
 
 use crate::commands::{
-    change_selection, delete_selection, extend_to_line_bounds,
-    extend_word_impl, goto_line_end_impl, select_line_below, select_mode, yank, Context, Operation, find_char_impl_forward, find_next_char_impl
+    change_selection, delete_selection, extend_to_line_bounds, extend_word_impl,
+    find_char_impl_forward, find_next_char_impl, goto_line_end_impl, select_line_below,
+    select_mode, yank, Context, Operation,
 };
 
 pub(crate) fn change_to_end_of_word(cx: &mut Context) {
@@ -328,7 +329,12 @@ fn textobject_impl(cx: &mut Context, objtype: textobject::TextObject, op: Operat
             log::info!("old_range: {:?}, new_range: {:?}", old_range, new_range);
             if old_range != new_range {
                 log::info!("old range does not equal new range");
-                change_selection(cx);
+                match op {
+                    Operation::Change => change_selection(cx),
+                    Operation::Delete => delete_selection(cx),
+                    Operation::Yank => yank(cx),
+                    Operation::Select => select_mode(cx),
+                }
             } else if !ch.is_ascii_alphanumeric() {
                 let mut cont = true;
                 {
@@ -383,7 +389,7 @@ fn textobject_impl(cx: &mut Context, objtype: textobject::TextObject, op: Operat
                         Operation::Change => change_selection(cx),
                         Operation::Delete => delete_selection(cx),
                         Operation::Yank => yank(cx),
-                        Operation::Select => {},
+                        Operation::Select => select_mode(cx),
                     }
                 }
             }
@@ -412,4 +418,3 @@ fn textobject_impl(cx: &mut Context, objtype: textobject::TextObject, op: Operat
 
     cx.editor.autoinfo = Some(Info::new(title, &help_text));
 }
-
