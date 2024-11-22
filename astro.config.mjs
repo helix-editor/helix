@@ -23,6 +23,10 @@ export default defineConfig({
         ThemeProvider: "./src/components/ThemeProvider.astro",
         ThemeSelect: "./src/components/ThemeSelect.astro",
       },
+      editLink: {
+        baseUrl:
+          "https://github.com/nikitarevenco/helix-better-docs/edit/main/",
+      },
       sidebar: [
         {
           label: "Getting Started",
@@ -65,12 +69,14 @@ export default defineConfig({
         },
 
         {
-          label: "Contributing",
+          label: "Contributing to Helix",
           items: [
             "contributing/languages",
             "contributing/textobject-queries",
             "contributing/indent-queries",
             "contributing/injection-queries",
+            "contributing/architecture",
+            "contributing/releases",
           ],
         },
       ],
