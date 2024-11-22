@@ -345,7 +345,7 @@ mod test {
 
             let text = doc.slice(..);
 
-            let res = find_line_comment("#", text, 0..3);
+            let res = find_line_comment("//", text, 0..3);
             // (commented = false, to_change = [line 0, line 2], min = col 2, margin = 0)
             assert_eq!(res, (false, vec![0, 2], 2, 0));
         }
@@ -353,9 +353,9 @@ mod test {
         #[test]
         fn is_commented() {
             // three lines where the second line is empty.
-            let doc = Rope::from("# hello\n\n# there");
+            let doc = Rope::from("// hello\n\n// there");
 
-            let res = find_line_comment("#", doc.slice(..), 0..3);
+            let res = find_line_comment("//", doc.slice(..), 0..3);
 
             // (commented = true, to_change = [line 0, line 2], min = col 0, margin = 1)
             assert_eq!(res, (true, vec![0, 2], 0, 1));
