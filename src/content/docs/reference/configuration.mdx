@@ -5,6 +5,18 @@ title: Configuration
 import ConfigOption from '@components/ConfigOption.astro';
 import Master from "@components/Master.astro";
 
+In Helix you can have a custom configuration file to store your settings, to get started first check out [configuration basic usage](/usage/configuration).
+
+Additionally, there are two more ways you can override the config file:
+
+- By specifying it with the `-c` or `--config` command line argument, for example `hx -c path/to/custom-config.toml`
+- By having a `config.toml` local to a project by putting it under a `.helix` directory in your repository. Its settings will be merged with the configuration directory `config.toml` and the built-in configuration.
+
+There are also two ways of reloading the config without existing helix:
+
+- Run `:config-reload` in normal mode.
+- (Advanced) Send the USR1 signal to the Helix process on Unix operating systems, such as by using the command `pkill -USR1 hx`.
+
 ## `[editor]` Section
 
 <ConfigOption name="scrolloff">

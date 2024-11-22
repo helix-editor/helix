@@ -11,6 +11,17 @@ Helix can use external formatting programs available in the system `$PATH`.
 
 A list of languages and how to configure their respective formatters.
 
+## Go
+
+### Gofumpt
+
+Gofumpt support is built-in into gopls, which is Go's language server.
+
+```toml
+[language-server.gopls.config]
+gofumpt = true
+```
+
 ## Bash
 
 ### AWK
