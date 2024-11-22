@@ -17,9 +17,11 @@
 
 [
   "to"
+  "nneg"
   "nuw"
   "nsw"
   "exact"
+  "disjoint"
   "unwind"
   "from"
   "cleanup"

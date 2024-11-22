@@ -117,7 +117,7 @@ to package the runtime into `/usr/lib/helix/runtime`. The rough steps a build
 script could follow are:
 
 1. `export HELIX_DEFAULT_RUNTIME=/usr/lib/helix/runtime`
-1. `cargo build --profile opt --locked --path helix-term`
+1. `cargo build --profile opt --locked`
 1. `cp -r runtime $BUILD_DIR/usr/lib/helix/`
 1. `cp target/opt/hx $BUILD_DIR/usr/bin/hx`
 
