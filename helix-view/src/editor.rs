@@ -2109,7 +2109,7 @@ impl Editor {
 
     /// Switches the editor into normal mode.
     pub fn enter_normal_mode(&mut self) {
-        use helix_core::graphemes;
+        // use helix_core::graphemes;
 
         if self.mode == Mode::Normal {
             return;
@@ -2122,21 +2122,27 @@ impl Editor {
 
         // if leaving append mode, move cursor back by 1
         if doc.restore_cursor {
-            let text = doc.text().slice(..);
-            let selection = doc.selection(view.id).clone().transform(|range| {
-                let mut head = range.to();
-                if range.head > range.anchor {
-                    head = graphemes::prev_grapheme_boundary(text, head);
+            // let text = doc.text().slice(..);
+            let selection = doc.selection(view.id).clone().transform(|mut range| {
+                // let mut head = range.to();
+                // if range.head > range.anchor {
+                //     head = graphemes::prev_grapheme_boundary(text, head);
+                // }
+
+                if range.anchor > 0 && range.head > 0 {
+                    range.anchor -= 1;
+                    range.head -= 1;
                 }
 
-                Range::new(range.from(), head)
+                range
+                // Range::new(range.from(), head)
             });
 
             doc.set_selection(view.id, selection);
             doc.restore_cursor = false;
         }
     }
-
+//
     pub fn current_stack_frame(&self) -> Option<&StackFrame> {
         self.debugger
             .as_ref()
