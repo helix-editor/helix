@@ -11,6 +11,20 @@
   font-display: swap;
 }
 
+kbd {
+  margin-top: 0 !important;
+  display: inline;
+  border: 2px solid var(--sl-color-gray-6);
+  border-radius: 0.25rem;
+  background-color: var(--sl-color-gray-5);
+  box-shadow: 0 2px 1px var(--sl-color-gray-6),
+    0 2px 0 0 var(--sl-color-gray-5) inset;
+  font-size: var(--sl-text-xs);
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 6px;
+}
+
 .starlight-aside--caution {
   .starlight-aside__title {
     @apply text-[#ffcd1c];

@@ -2,4 +2,161 @@
 title: Overview
 ---
 
-TODO
+## Surrounds
+
+You can surround selections with specific characters. For example, with the following state:
+
+[TODO: add image]
+
+Pressing <kbd>ms(</kbd> for _**m**ake **s**urrounding (_, you surround the selection with `(`:
+
+[TODO: add image]
+
+You can also:
+
+- Delete surrounding character
+- Change surrounding character
+
+Learn more at [surrounds](/usage/text-manipulation#surrounds).
+
+## Text Objects
+
+Text Objects are a way to manipulate a piece of text in a structured way. They allow you to refer to blocks of text based on their purpose.
+
+For example, with the following Python file:
+
+[TODO: add image]
+
+Press <kbd>mif</kbd> for _**m**anipulate **i**nside **f**unction_ to select the entire method:
+
+[TODO: add image]
+
+Additionally, you can move between text objects. For instance, with the following state:
+
+[TODO: add image]
+
+Pressing <kbd>]f</kbd> will go to the previous function.
+
+There are many other text objects and text object motions, learn more at [text objects](/usage/text-manipulation#text-objects)
+
+## Select Mode
+
+From what we've currently seen, each motion in Helix will replace the entire selection.
+
+But if you don't want to replace the selection, and instead want to shrink or extend it, then you may use [/usage/select-mode].
+
+## Multiple Cursors
+
+Helix treats multiple cursor as a first-class citizen. For instance, let's say we had the following object in JavaScript:
+
+[TODO: add image -- AS BELOW]
+
+```js
+const palette = {
+  apricot: "#f47868",
+  lightning: "#ffcd1c",
+  delta: "#6F44F0",
+};
+```
+
+Now, we want to transform this object into an array of tuples where, the first element of each tuple is the key of the object and the second element is the value:
+
+[TODO: add image -- AS BELOW]
+
+```js
+const palette = [
+  ["apricot", "#f47868"],
+  ["lightning", "#ffcd1c"],
+  ["delta", "#6F44F0"],
+];
+```
+
+We could make extensive usage of Helix's multiple cursor functionality by following these steps:
+
+1. <kbd>mr\{[</kbd> to replace the surrounding `{` with `[`:
+
+[TODO: add image]
+
+2. <kbd>mi[</kbd> to select inside the entire array:
+
+[TODO: add image]
+
+3. <kbd>s</kbd> to enter select mode.
+
+[TODO: add image]
+
+4. <kbd>:</kbd> + <kbd>Enter</kbd> will place a cursor on every `:`.
+
+[TODO: add image]
+
+5. <kbd>r,</kbd> replaces each selection with a `,`. A cursor is line a single-width selection, and we have multiple cursors, so it will replace each `:` with `,`.
+
+[TODO: add image]
+
+6. <kbd>t,</kbd> moves the cursor on each line to the ending comma.
+
+[TODO: add image]
+
+7. <kbd>;</kbd> the selection around each cursor into a single selection.
+
+[TODO: add image]
+
+8. <kbd>vgs</kbd> selects each line excluding the final comma.
+
+[TODO: add image]
+
+9. <kbd>ms[</kbd> surrounds each individual selection with `[` to turn it into an array.
+
+[TODO: add image]
+
+10. <kbd>l</kbd> moves 1 character forward.
+
+[TODO: add image]
+
+11. <kbd>e</kbd> selects until the end of each word.
+
+[TODO: add image]
+
+12. <kbd>ms"</kbd> surrounds the items with double quotes to make strings.
+
+[TODO: add image]
+
+The final command to achieve all of that is `mr{[mi[s:<enter>r,t,;vgsms[lems"`.
+
+As we just saw, the multiple cursor feature is extremely powerful in Helix as it allows for complex transformations of text. It's also the main way to do searh-and-replace.
+
+To learn more, check out [multiple cursors](/usage/multiple-cursors).
+
+## Recipes
+
+Includes common solutions to some problems, such as:
+
+- Git integration
+- Remapping all the `Alt` keys
+- Popular key bindings
+
+Learn more at [recipes](/usage/recipes).
+
+## Languages
+
+Helix has built-in zero-config support for syntax highlighting and language servers which provides functionality such as:
+
+- Goto definition
+- Hover
+- Goto references
+- Search symbol in workspace
+- Diagnostics
+
+Learn how to [activate language servers](/usage/languages#language-servers) and setup [formatting on save](/usage/languages#formatters).
+
+## Configuration
+
+Helix makes it a priority to have a solid out-of-the-box experience, with minimal configuration required to start using the editor.
+
+However, there are many things one may wish to customize such as:
+
+- Creating custom keybindings and macros
+- Using custom theme
+- Configure stuff like auto pairs, statusline, etc.
+
+To learn more, check out [configuration](/usage/configuration).

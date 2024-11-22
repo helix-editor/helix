@@ -29,23 +29,14 @@ const {
 const demoId = "asciinema-demo-" + src.split("/").pop().split(".")[0];
 ---
 
-<>
-  {
-    title && (
-      <a href={`#${demoId}`} class="!no-underline" id={`${demoId}-link`}>
-        <h3 class="text-nix-blue text-xl font-heading font-bold">{title}</h3>
-      </a>
-    )
-  }
-  <asciinema-player
-    id={demoId}
-    class={extraClasses}
-    data-src={src}
-    data-title={title}
-    data-settings={JSON.stringify({ ...defaultSettings, ...settings })}
-  >
-  </asciinema-player>
-</>
+<asciinema-player
+  id={demoId}
+  class={extraClasses}
+  data-src={src}
+  data-title={title}
+  data-settings={JSON.stringify({ ...defaultSettings, ...settings })}
+>
+</asciinema-player>
 
 <script>
   import * as AsciinemaPlayer from "asciinema-player";
