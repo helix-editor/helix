@@ -54,8 +54,6 @@ Or using <kbd>mro\{</kbd> will replace the nearest pairs of `o` character with `
 Hell{ _w}rld_!
 ```
 
-In the future, _may_ also add support for [acting on a surrounding pair of tags](https://github.com/helix-editor/helix/pull/12055).
-
 ## Text Objects
 
 ### Example
@@ -83,25 +81,29 @@ Or <kbd>mif</kbd> for _**m**anipulate **i**nside **f**unction_ to select the bod
 
 [TODO: add image]
 
-Additionally, you can move between text objects. For instance, <kbd>]f</kbd> with go to the previous function.
+Additionally, you can move between most text objects. For instance, <kbd>]f</kbd> with go to the previous function.
 
 [TODO: add image]
 
-### Syntax
+The full syntax is:
 
-- <kbd>ma</kbd> + `<textobject>` to _**m**anipulate **a**round_ a textobject. Highlight the entire text object, for example the entire function.
 - <kbd>mi</kbd> + `<textobject>` to _**m**anipulate **i**nside_ a textobject. Highlight a smaller region of the text object, for example the body of a function.
+- <kbd>ma</kbd> + `<textobject>` to _**m**anipulate **a**round_ a textobject. Selects the entire text object, including surrounding whitespace.
+- <kbd>]</kbd> + `<textobject>` to go to the next instance of the textobject.
+- <kbd>[</kbd> + `<textobject>` to go to the previous instance of the textobject.
 
-### Basic Text Objects
+### List of Text Objects
 
-These are available everywhere.
+- `p`, `w` and `W`: [primitive text objects](#primitive)
+- `(`, `)`, `{`, `}`, `[`, `]`, `<`, `>`, `'`, `"` and `` ` ``: [pair text objects](#pair)
+- `g`: [git hunk](#git)
+- `f`, `t`, `a`, `c`, `T`, `g`: [tree-sitter text objects](#tree-sitter)
 
-#### word and WORD
+#### Primitive
 
-word and WORD textobjects allow you to act on various types of consecutive characters. For example:
+##### word
 
-- A word is consists only of alphanumeric characters and underscores (`a-Z`, `0-9`, `_`).
-- A WORD is always delimited by whitespace (e.g. newlines, tabs, spaces).
+A word is consists only of alphanumeric characters and underscores, so `a-Z`, `0-9` and `_`.
 
 For instance, take the following file, with two cursors:
 
@@ -111,21 +113,57 @@ For instance, take the following file, with two cursors:
 pri*ntln!("Hello, wo*rld");
 ```
 
-Selecting inside word with <kbd>miw</kbd>:
+- Selecting inside word with <kbd>miw</kbd>:
 
-Selecting inside WORD with <kbd>miW</kbd>:
+[TODO: add img]
 
----
+- Selecting around word with <kbd>maw</kbd>:
 
-The "around" versions are similar, except they also include the surrounding whitespace. For instance:
+[TODO: add img]
 
-Selecting around word with <kbd>maw</kbd>:
+##### WORD
 
-Selecting around WORD with <kbd>maW</kbd>:
+A WORD is always delimited by whitespace such as newlines, tabs and spaces.
 
-#### W - WORD
+Consider this file again:
 
-#### p - Paragraph
+[TODO: add below. each cursor is at *]
+
+```rs
+pri*ntln!("Hello, wo*rld");
+```
+
+- Selecting inside WORD with <kbd>miW</kbd>:
+
+[TODO: add img]
+
+- Selecting around WORD with <kbd>maW</kbd>:
+
+[TODO: add img]
+
+##### Paragraph
+
+A paragraph is delimited by two newlines, as well as start and end of files. For example in the following file with 3 cursors:
+
+[TODO: add below, with cursors at *]
+
+````md
+```md
+One two thr\*ee four.
+
+Five six sev\*en eight.
+
+Nine ten \*eleven.
+```
+````
+
+- Select inside paragarph with <kbd>mip</kbd>:
+
+[TODO: add image]
+
+- Select around paragraph with <kbd>map</kbd>:
+
+[TODO: add image]
 
 #### Surround Pairs
 
@@ -150,7 +188,7 @@ While <kbd>mi)</kbd> will select:
 
 [TODO: add image]
 
-All of the available pairs:
+List of available pairs:
 
 - `(` and `)`
 - `[` and `]`
@@ -159,3 +197,35 @@ All of the available pairs:
 - `'` and `'`
 - `"` and `"`
 - `` ` `` and `` ` ``
+
+#### Git Hunk
+
+If you are in a repository, then you will also have the `g` for _**g**it hunk_ textobject.
+
+It will select the entire change.
+
+For instance, if we have the following file, with the added lines visible by the green bar indicator on the gutter:
+
+[TODO: add img]
+
+Then <kbd>mig</kbd> will select the git hunk.
+
+[TODO: add img]
+
+#### Tree-sitter Text Objects
+
+Available for most languages.
+
+To find out for your language, run `hx --health <language>`. For example if haskell queries are available, running `hx --health haskell` will show:
+
+```ansi
+Textobject queries: [32m✓
+```
+
+Available text objects:
+
+- `f` for _**f**unction_
+- `t` for _**t**ype_
+- `a` for _**a**rgument_
+- `c` for _**c**omment_
+- `T` for _**T**est_
