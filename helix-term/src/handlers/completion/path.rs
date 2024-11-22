@@ -149,7 +149,7 @@ fn path_documentation(md: &fs::Metadata, full_path: &Path, kind: &str) -> String
 }
 
 #[cfg(not(unix))]
-fn path_documentation(md: &fs::Metadata, full_path: &Path, kind: &str) -> String {
+fn path_documentation(_md: &fs::Metadata, full_path: &Path, kind: &str) -> String {
     let full_path = fold_home_dir(canonicalize(full_path));
     let full_path_name = full_path.to_string_lossy();
     format!("type: `{kind}`\nfull path: `{full_path_name}`",)
