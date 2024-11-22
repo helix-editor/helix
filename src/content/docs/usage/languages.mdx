@@ -4,56 +4,83 @@ title: Language Support
 
 Language Servers support is a priority for Helix, and we provide out of the box configurations for basically every language you would want.
 
-In this guide we'll explore how to setup language server for Python, as well as formatting on save. The process will be similar for other languages.
+In this guide we'll explore how to setup language server for Go, as well as formatting on save. The process will be similar for other languages. We just chose Go at random.
 
 ## Language Servers
 
-First, let's check what we need to add Python support. Run:
+First, let's check what we need to add Go support. Run:
 
 ```sh
-hx --health python
+hx --health go
 ```
 
 ```ansi
 Configured language servers:
- [31m✘[0m ruff: [31m'ruff' not found in $PATH[0m
- [31m✘[0m jedi-language-server: [31m'jedi-language-server' not found in $PATH[0m
- [31m✘[0m pylsp:[31m 'pylsp' not found in $PATH[0m
-Configured debug adapter: [33mNone[0m
+ [31m✘[0m gopls: [31m'gopls' not found in $PATH[0m
+ [31m✘[0m jedi-language-server: [31m'golangci-lint-langserver' not found in $PATH[0m
+Configured debug adapter: [32mdlv[0m
+Binary for debug adapter: [31m'dlv' not found in $PATH[0m
 Configured formatter: [33mNone[0m
 Highlight queries: [32m✓[0m
 Textobject queries: [32m✓[0m
 Indent queries: [32m✓[0m
 ```
 
-There are 3 available language servers that Helix configures for us, we can use any of them. We're going to go with _ruff_.
+### Language Server
 
-The message `'ruff' not found in $PATH` indicates that we haven't installed the software on our computer. To fix it, we are going to install
+Helix tells us that `gopls` is already configured, even though we haven't installed it. Install it using your operating system's package manager!
 
-For Helix to use a language server, it must first be installed onto your
-computer. If it is one of the default language servers, it will be used
-automatically with no further setup needed once it is installed.
+---
 
-You can see the configuration of the default language servers for each language
-in the
-[helix repo `languages.toml` file](https://github.com/helix-editor/helix/blob/master/languages.toml).
-By adding the configurations below, you can supplement or replace the default
-configurations.
+Now that you've installed it, check `hx --health` again:
 
-Check if your operating system repository has them available, or install them
-manually, following the instructions below.
-
-If your language server does not support stdio, you can use `netcat` as a
-drop-in proxy, just add this to your `languages.toml`:
-
-```toml
-[language-server.example-language-server]
-command = "nc"
-args = ["127.0.0.1", "6008"]
-
-[[language]]
-name = "example-language"
-language-servers = [ "example-language-server" ]
+```ansi
+Configured language servers:
+ [32m✓[0m gopls: [32m/path/to/gopls[0m
+ [31m✘[0m jedi-language-server: [31m'golangci-lint-langserver' not found in $PATH[0m
+Configured debug adapter: [32mdlv[0m
+Binary for debug adapter: [31m'dlv' not found in $PATH[0m
+Configured formatter: [33mNone[0m
+Highlight queries: [32m✓[0m
+Textobject queries: [32m✓[0m
+Indent queries: [32m✓[0m
 ```
 
-## Formatting
+Perfect, now the language server will be configured for you. What was that, 1 command..?
+
+### Formatter
+
+Now we want to configure formatting on save for Go. There are many different formatters, and we'll go with [`gofumpt`](https://github.com/mvdan/gofumpt).
+
+Go ahead and install `gofumpt` with your package manager...
+
+---
+
+Now that it's installed, we'll configure `gopls` to use `gofumpt`.
+
+If you haven't already, create a `languages.toml` file in your helix config directory, which will vary by operating system:
+
+- Linux and Mac: `~/.config/helix/languages.toml`
+- Windows: `%AppData%\helix\languages.toml`
+
+Then add the following to the file:
+
+```toml
+# languages.toml
+[language-server.gopls.config]
+gofumpt = true
+```
+
+Now go into your Go file and check, formatting and LSP will both work!
+
+## Stuck?
+
+:::tip
+
+If you want to install a language server / formatter which Helix doesn't configure, you've looked at [formatters reference](/reference/formatters) and [language servers reference](/reference/language-servers) but found nothing that helps you, a decent next step is to use GitHub's search feature.
+
+In all likelyhood, _someone_ has probably created the same setup that you want to have in Helix. A [quick search](https://github.com/search?q=path%3Ahelix%2Flanguages.toml&type=code) on GitHub with the query of `path:helix/languages.toml` yields thousands of results.
+
+If you want to install a formatter like `<whatever>` and feel like you're stuck, then we recommend searching for e.g. `path:helix/languages.toml <whatever>` and looking at the results to find out if any of the code samples you find will help you. In all likelihood, you'll succeed!
+
+:::
