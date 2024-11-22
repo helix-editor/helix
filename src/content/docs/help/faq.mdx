@@ -12,6 +12,8 @@ hx
 
 #### How to Learn Helix
 
+Check out [The Basics](http://localhost:4321/getting-started/basics) section and [Overview](http://localhost:4321/usage/overview) of the editor.
+
 Start Helix tutorial:
 
 ```shell
@@ -20,11 +22,11 @@ hx --tutor
 
 #### Collapse to single cursor after using multiple cursors / Keep only primary cursor
 
-- Use the default keybind `,` bound to the `keep_primary_selection` command.
+Use the default keybind `,` bound to the `keep_primary_selection` command.
 
 #### Change cursor shape on mode change (bar cursor on insert mode, block on normal mode, etc)
 
-- Add this to your config:
+Add this to your config:
 
 ```toml
 [editor.cursor-shape]
@@ -35,7 +37,7 @@ select = "underline"
 
 #### Map `jk` or `jj` to exit insert mode
 
-- Add this to your config:
+Add this to your config:
 
 ```toml
 [keys.insert]
@@ -44,7 +46,7 @@ j = { k = "normal_mode" }
 
 #### Map unicode characters like `ö` to keybinding
 
-- The TOML standard requires that these characters are quoted:
+The TOML standard requires that these characters are quoted:
 
 ```toml del={2} ins={3}
 [keys.normal]
@@ -54,7 +56,7 @@ j = { k = "normal_mode" }
 
 #### Use my terminal's 16 color palette as a theme
 
-- Add this to your config:
+Add this to your config:
 
 ```toml
 # to see more "adaptive" themes,

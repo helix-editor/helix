@@ -2,11 +2,21 @@
 title: Debuggers
 ---
 
+:::caution
+
+Debugger and the debug adapter protocol (DAP) is still experimental. These docs may be missing in content as it is a work in progress.
+
+:::
+
 This page provides additional debugger configurations beyond the default ones included with Helix, which can be found in [languages.toml](https://github.com/helix-editor/helix/blob/master/languages.toml).
 
 # lldb-vscode
 
-> 💡`lldb-vscode` has recently changed its name to `lldb-dap`. You can find the source code [here](https://github.com/llvm/llvm-project/tree/main/lldb/tools/lldb-dap). If you are using the Helix master branch, since [#10091](https://github.com/helix-editor/helix/commit/b24c465a086b60096d7e95852d4d2db84f5ccbd3) `lldb-dap` is used
+:::note
+
+`lldb-vscode` has recently changed its name to `lldb-dap`. You can find the source code [here](https://github.com/llvm/llvm-project/tree/main/lldb/tools/lldb-dap). If you are using the Helix master branch, since [#10091](https://github.com/helix-editor/helix/commit/b24c465a086b60096d7e95852d4d2db84f5ccbd3) `lldb-dap` is used
+
+:::
 
 Helix natively supports debugging Rust, Zig, C, and C++ with `lldb-vscode`, which is part of `llvm/lldb`.
 

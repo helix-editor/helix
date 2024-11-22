@@ -22,43 +22,37 @@ Some terminals' default key mappings conflict with Helix's. If any of the mappin
 
 ## Normal mode
 
-Normal mode is the default mode when you launch helix. You can return to it from other modes by pressing the `Escape` key.
+Normal mode is the default mode when you launch helix. You can return to it from other modes by pressing the <kbd>Escape</kbd> key.
 
 ### Movement
 
-:::note
-
-Unlike Vim, `f`, `F`, `t` and `T` are not confined to the current line.
-
-:::
-
-| Key                                                   | Description                                    | Command                     |
-| ----------------------------------------------------- | ---------------------------------------------- | --------------------------- |
-| <kbd>h</kbd>, <kbd>Left</kbd>                         | Move left                                      | `move_char_left`            |
-| <kbd>j</kbd>, <kbd>Down</kbd>                         | Move down                                      | `move_visual_line_down`     |
-| <kbd>k</kbd>, <kbd>Up</kbd>                           | Move up                                        | `move_visual_line_up`       |
-| <kbd>l</kbd>, <kbd>Right</kbd>                        | Move right                                     | `move_char_right`           |
-| <kbd>w</kbd>                                          | Move next word start                           | `move_next_word_start`      |
-| <kbd>b</kbd>                                          | Move previous word start                       | `move_prev_word_start`      |
-| <kbd>e</kbd>                                          | Move next word end                             | `move_next_word_end`        |
-| <kbd>W</kbd>                                          | Move next WORD start                           | `move_next_long_word_start` |
-| <kbd>B</kbd>                                          | Move previous WORD start                       | `move_prev_long_word_start` |
-| <kbd>E</kbd>                                          | Move next WORD end                             | `move_next_long_word_end`   |
-| <kbd>t</kbd>                                          | Find 'till next char                           | `find_till_char`            |
-| <kbd>f</kbd>                                          | Find next char                                 | `find_next_char`            |
-| <kbd>T</kbd>                                          | Find 'till previous char                       | `till_prev_char`            |
-| <kbd>F</kbd>                                          | Find previous char                             | `find_prev_char`            |
-| <kbd>G</kbd>                                          | Go to line number `<n>`                        | `goto_line`                 |
-| <kbd>Alt</kbd> + <kbd>.</kbd>                         | Repeat last motion (`f`, `t`, `m`, `[` or `]`) | `repeat_last_motion`        |
-| <kbd>Home</kbd>                                       | Move to the start of the line                  | `goto_line_start`           |
-| <kbd>End</kbd>                                        | Move to the end of the line                    | `goto_line_end`             |
-| <kbd>Ctrl</kbd> + <kbd>b</kbd> or <kbd>PageUp</kbd>   | Move page up                                   | `page_up`                   |
-| <kbd>Ctrl</kbd> + <kbd>f</kbd> or <kbd>PageDown</kbd> | Move page down                                 | `page_down`                 |
-| <kbd>Ctrl</kbd> + <kbd>u</kbd>                        | Move cursor and page half page up              | `page_cursor_half_up`       |
-| <kbd>Ctrl</kbd> + <kbd>d</kbd>                        | Move cursor and page half page down            | `page_cursor_half_down`     |
-| <kbd>Ctrl</kbd> + <kbd>i</kbd>                        | Jump forward on the jumplist                   | `jump_forward`              |
-| <kbd>Ctrl</kbd> + <kbd>o</kbd>                        | Jump backward on the jumplist                  | `jump_backward`             |
-| <kbd>Ctrl</kbd> + <kbd>s</kbd>                        | Save the current selection to the jumplist     | `save_selection`            |
+| Key                                                   | Description                                                                                 | Command                     |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------- | --------------------------- |
+| <kbd>h</kbd>, <kbd>Left</kbd>                         | Move left                                                                                   | `move_char_left`            |
+| <kbd>j</kbd>, <kbd>Down</kbd>                         | Move down                                                                                   | `move_visual_line_down`     |
+| <kbd>k</kbd>, <kbd>Up</kbd>                           | Move up                                                                                     | `move_visual_line_up`       |
+| <kbd>l</kbd>, <kbd>Right</kbd>                        | Move right                                                                                  | `move_char_right`           |
+| <kbd>w</kbd>                                          | Move next word start                                                                        | `move_next_word_start`      |
+| <kbd>b</kbd>                                          | Move previous word start                                                                    | `move_prev_word_start`      |
+| <kbd>e</kbd>                                          | Move next word end                                                                          | `move_next_word_end`        |
+| <kbd>W</kbd>                                          | Move next WORD start                                                                        | `move_next_long_word_start` |
+| <kbd>B</kbd>                                          | Move previous WORD start                                                                    | `move_prev_long_word_start` |
+| <kbd>E</kbd>                                          | Move next WORD end                                                                          | `move_next_long_word_end`   |
+| <kbd>t</kbd>                                          | Find 'till next char                                                                        | `find_till_char`            |
+| <kbd>f</kbd>                                          | Find next char                                                                              | `find_next_char`            |
+| <kbd>T</kbd>                                          | Find 'till previous char                                                                    | `till_prev_char`            |
+| <kbd>F</kbd>                                          | Find previous char                                                                          | `find_prev_char`            |
+| <kbd>G</kbd>                                          | Go to line number `<n>`                                                                     | `goto_line`                 |
+| <kbd>Alt</kbd> + <kbd>.</kbd>                         | Repeat last motion (<kbd>f</kbd>, <kbd>t</kbd>, <kbd>m</kbd>, <kbd>[</kbd> or <kbd>]</kbd>) | `repeat_last_motion`        |
+| <kbd>Home</kbd>                                       | Move to the start of the line                                                               | `goto_line_start`           |
+| <kbd>End</kbd>                                        | Move to the end of the line                                                                 | `goto_line_end`             |
+| <kbd>Ctrl</kbd> + <kbd>b</kbd> or <kbd>PageUp</kbd>   | Move page up                                                                                | `page_up`                   |
+| <kbd>Ctrl</kbd> + <kbd>f</kbd> or <kbd>PageDown</kbd> | Move page down                                                                              | `page_down`                 |
+| <kbd>Ctrl</kbd> + <kbd>u</kbd>                        | Move cursor and page half page up                                                           | `page_cursor_half_up`       |
+| <kbd>Ctrl</kbd> + <kbd>d</kbd>                        | Move cursor and page half page down                                                         | `page_cursor_half_down`     |
+| <kbd>Ctrl</kbd> + <kbd>i</kbd>                        | Jump forward on the jumplist                                                                | `jump_forward`              |
+| <kbd>Ctrl</kbd> + <kbd>o</kbd>                        | Jump backward on the jumplist                                                               | `jump_backward`             |
+| <kbd>Ctrl</kbd> + <kbd>s</kbd>                        | Save the current selection to the jumplist                                                  | `save_selection`            |
 
 ### Changes
 
@@ -148,7 +142,7 @@ Unlike Vim, `f`, `F`, `t` and `T` are not confined to the current line.
 
 ### Search
 
-Search commands all operate on the `/` register by default. To use a different register, use `"<char>`.
+Search commands all operate on the <kbd>/</kbd> register by default. To use a different register, use <kbd>"</kbd> + `<char>`.
 
 | Key           | Description                                 | Command            |
 | ------------- | ------------------------------------------- | ------------------ |
@@ -178,10 +172,10 @@ These modes (except command mode) can be configured by
 
 #### View mode
 
-Accessed by typing `z` in [normal mode](#normal-mode).
+Accessed by typing <kbd>z</kbd> in [normal mode](#normal-mode).
 
 View mode is intended for scrolling and manipulating the view without changing
-the selection. The "sticky" variant of this mode (accessed by typing `Z` in
+the selection. The "sticky" variant of this mode (accessed by typing <kbd>Z</kbd> in
 normal mode) is persistent and can be exited using the escape key. This is
 useful when you're simply looking over text and not actively editing it.
 
@@ -200,7 +194,7 @@ useful when you're simply looking over text and not actively editing it.
 
 #### Goto mode
 
-Accessed by typing `g` in [normal mode](#normal-mode).
+Accessed by typing <kbd>g</kbd> in [normal mode](#normal-mode).
 
 Jumps to various locations.
 
@@ -230,7 +224,7 @@ Jumps to various locations.
 
 #### Match mode
 
-Accessed by typing `m` in [normal mode](#normal-mode).
+Accessed by typing <kbd>m</kbd> in [normal mode](#normal-mode).
 
 Please refer to the relevant sections for detailed explanations about [surround](./surround.md) and [textobjects](./textobjects.md).
 
@@ -243,11 +237,11 @@ Please refer to the relevant sections for detailed explanations about [surround]
 | <kbd>a\<textobject\></kbd> | Select around textobject                        | `select_textobject_around` |
 | <kbd>i\<textobject\></kbd> | Select inside textobject                        | `select_textobject_inner`  |
 
-TODO: Mappings for selecting syntax nodes (a superset of `[`).
+TODO: Mappings for selecting syntax nodes (a superset of <kbd>[</kbd>).
 
 #### Window mode
 
-Accessed by typing `Ctrl-w` in [normal mode](#normal-mode).
+Accessed by typing <kbd>Ctrl</kbd> + <kbd>w</kbd> in [normal mode](#normal-mode).
 
 This layer is similar to Vim keybindings as Kakoune does not support windows.
 
@@ -271,7 +265,7 @@ This layer is similar to Vim keybindings as Kakoune does not support windows.
 
 #### Space mode
 
-Accessed by typing `Space` in [normal mode](#normal-mode).
+Accessed by typing <kbd>Space</kbd> in [normal mode](#normal-mode).
 
 This layer is a kludge of mappings, mostly pickers.
 
@@ -304,7 +298,11 @@ This layer is a kludge of mappings, mostly pickers.
 | <kbd>/</kbd>                  | Global search in workspace folder                                       | `global_search`                            |
 | <kbd>?</kbd>                  | Open command palette                                                    | `command_palette`                          |
 
-> 💡 Global search displays results in a fuzzy picker, use `Space + '` to bring it back up after opening a file.
+:::tip
+
+Global search displays results in a fuzzy picker, use <kbd>Space</kbd> + <kbd>'</kbd> to bring it back up after opening a file.
+
+:::
 
 ##### Popup
 
@@ -368,15 +366,18 @@ These mappings are in the style of [vim-unimpaired](https://github.com/tpope/vim
 
 ## Insert mode
 
-Accessed by typing `i` in [normal mode](#normal-mode).
+Accessed by typing <kbd>i</kbd> in [normal mode](#normal-mode).
 
 Insert mode bindings are minimal by default. Helix is designed to
 be a modal editor, and this is reflected in the user experience and internal
 mechanics. Changes to the text are only saved for undos when
 escaping from insert mode to normal mode.
 
-> 💡 New users are strongly encouraged to learn the modal editing paradigm
-> to get the smoothest experience.
+:::tip
+
+New users are strongly encouraged to learn the modal editing paradigm to get the smoothest experience.
+
+:::
 
 | Key                                                                                           | Description               | Command                  |
 | --------------------------------------------------------------------------------------------- | ------------------------- | ------------------------ |
@@ -423,16 +424,16 @@ end = "no_op"
 
 ## Select / extend mode
 
-Accessed by typing `v` in [normal mode](#normal-mode).
+Accessed by typing <kbd>v</kbd> in [normal mode](#normal-mode).
 
 Select mode echoes Normal mode, but changes any movements to extend
 selections rather than replace them. Goto motions are also changed to
-extend, so that `vgl`, for example, extends the selection to the end of
+extend, so that <kbd>vgl</kbd>, for example, extends the selection to the end of
 the line.
 
-Search is also affected. By default, `n` and `N` will remove the current
+Search is also affected. By default, <kbd>n</kbd> and <kbd>N</kbd> will remove the current
 selection and select the next instance of the search term. Toggling this
-mode before pressing `n` or `N` makes it possible to keep the current
+mode before pressing <kbd>n</kbd> or <kbd>N</kbd> makes it possible to keep the current
 selection. Toggling it on and off during your iterative searching allows
 you to selectively add search terms to your selections.
 
