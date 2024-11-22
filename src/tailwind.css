@@ -53,6 +53,36 @@
   @apply bg-[#a4a0e8]/15 border-[#a4a0e8];
 }
 
+::selection {
+  @apply bg-accent-200/40;
+}
+
+.starlight-aside--latest {
+  .starlight-aside__title {
+    @apply text-mint;
+  }
+  @apply border-mint border-4;
+}
+
+.starlight-aside--master {
+  .starlight-aside__title {
+    @apply text-honey;
+  }
+  @apply border-honey border-4;
+}
+
+.success {
+  @apply border-mint bg-mint/10;
+}
+
+.tip {
+  @apply border-honey bg-honey/10;
+}
+
+td code {
+  white-space: nowrap;
+}
+
 /* change style for the "copied" button text */
 .copy .feedback {
   @apply bg-[#5a5977] !important;

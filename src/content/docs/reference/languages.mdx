@@ -1,0 +1,2116 @@
+---
+title: Language Servers
+---
+
+## Language Server Configurations
+
+### Ansible
+
+If your OS package manager hasn't packaged
+[`ansible-language-server`](https://ansible.readthedocs.io/projects/vscode-ansible/als/),
+you can install it from NPM:
+
+```sh
+npm i -g @ansible/ansible-language-server
+```
+
+In turn, this binary will check if `ansible-lint` and `yamllint` are installed
+on your system and use them if found.
+
+In addition to highlighting and linting your code, the Ansible language server
+can also be used to look up docs for Ansible keywords. With your cursor on a
+keyword, use "\<space\>k".
+
+### Astro
+
+https://github.com/withastro/language-tools/tree/main/packages/language-server
+
+```sh
+npm i -g @astrojs/language-server
+```
+
+Sample settings in `languages.toml`
+
+```toml
+[language-server.astro-ls]
+command = "astro-ls"
+args = ["--stdio"]
+config = {typescript = {tsdk = "/Users/user/.bun/install/global/node_modules/typescript/lib"}, environment = "node"}
+
+[[language]]
+name = "astro"
+auto-format = true
+language-servers = [ "astro-ls" ]
+```
+
+Please note that a valid `config.typescript.tsdk` path must be passed to the LSP
+config. You will need `typescript` installed. If you have `typescript` installed
+globally you can find where by running `npm list -g | head -1`.
+
+### AWK
+
+https://github.com/Beaglefoot/awk-language-server
+
+```sh
+npm i -g "awk-language-server@>=0.5.2"
+```
+
+### Bash
+
+Language server for Bash, written using tree-sitter in TypeScript.
+
+https://github.com/mads-hartmann/bash-language-server
+
+`bash-language-server` can be installed via `NPM`:
+
+```sh
+npm i -g bash-language-server
+```
+
+### Bass
+
+https://github.com/vito/bass/releases/latest
+
+Bass's language server is built in to the `bass` command as `bass --lsp`. See
+the [Guide](https://bass-lang.org/guide.html#getting-started) for more info.
+
+### Bicep
+
+https://github.com/Azure/bicep/releases/latest
+
+The Bicep language server is published separately as a Windows package. Download
+the bicep-langserver.zip from the releases page.
+
+To run this under Linux/WSL you will need to install the `dotnet` runtime
+[for your OS](https://learn.microsoft.com/en-nz/dotnet/core/install/linux?WT.mc_id=dotnet-35129-website).
+
+Unzip this in a directory of your choosing for example, `/home/myUser/.cache/`.
+Create the following bash script somewhere in your `$PATH`:
+
+`/usr/local/bin/bicep-langserver`
+
+```shell
+##!/usr/bin/env bash
+
+exec dotnet /home/myUser/.cache/bicep-langserver/Bicep.LangServer.dll
+```
+
+### BQN
+
+bqnlsp: https://git.sr.ht/~detegr/bqnlsp, which depends on:
+
+[cbqn-sys](https://github.com/Detegr/cbqn-sys) and
+[cbqn-rs](https://github.com/Detegr/cbqn-rs)
+
+Sample settings in `languages.toml`
+
+```toml
+[language-server.bqnlsp]
+command = "bqnlsp"
+
+[[language]]
+name = "bqn"
+file-types = ["bqn"]
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+shebangs = ["bqn", "cbqn"]
+roots = []
+injection-regex = "bqn"
+scope = "scope.bqn"
+language-servers = ["bqnlsp"]
+language-id = "bqn"
+```
+
+Note: you can input the glyphs by
+[key remapping](https://docs.helix-editor.com/remapping.html) in `config.toml`
+like:
+
+```toml
+[keys.insert."\\"]
+"=" = [ ":insert-output /bin/echo -n ×", "move_char_right" ]
+minus = [ ":insert-output /bin/echo -n ÷", "move_char_right" ]
+"+" = [ ":insert-output /bin/echo -n ⋆", "move_char_right" ]
+## ...
+```
+
+### C/C++
+
+https://clangd.llvm.org/installation.html
+
+**NOTE:** Clang >= 9 is recommended!
+
+clangd relies on a
+[JSON compilation database](https://clang.llvm.org/docs/JSONCompilationDatabase.html)
+specified as `compile_commands.json` or, for simpler projects, a
+`compile_flags.txt`. For details on how to automatically generate one using
+CMake look
+[here](https://cmake.org/cmake/help/latest/variable/CMAKE_EXPORT_COMPILE_COMMANDS.html).
+Alternatively, you can use [Bear](https://github.com/rizsotto/Bear).
+
+### Clojure
+
+Please go to the installation page. https://clojure-lsp.io/installation/
+
+An example for MacOs/Linux (copied from the installation page)
+
+```shell
+brew remove clojure-lsp # if you have old clojure-lsp installed via brew
+brew install clojure-lsp/brew/clojure-lsp-native
+```
+
+### CMake
+
+CMake LSP Implementation.
+
+https://github.com/regen100/cmake-language-server
+
+### Crystal
+
+Core `languages.toml` contains configuration options, view at the top level of
+this repo.\
+Install the unofficial LSP server
+[Crystalline](https://github.com/elbywan/crystalline). Below is copied from the
+LSP repo.
+
+###### Linux (x86_64)
+
+```sh
+wget https://github.com/elbywan/crystalline/releases/latest/download/crystalline_x86_64-unknown-linux-musl.gz -O crystalline.gz &&\
+gzip -d crystalline.gz &&\
+chmod u+x crystalline
+```
+
+####### ArchLinux
+
+```sh
+yay -S crystalline
+```
+
+###### MacOS
+
+Install using [homebrew](https://brew.sh):
+
+```sh
+brew install crystalline
+```
+
+### CSS
+
+https://github.com/hrsh7th/vscode-langservers-extracted
+
+`vscode-css-language-server` can be installed via `npm`:
+
+```sh
+npm i -g vscode-langservers-extracted
+```
+
+### C#
+
+https://github.com/omnisharp/omnisharp-roslyn OmniSharp server based on Roslyn
+workspaces
+
+`omnisharp-roslyn` can be installed by downloading and extracting a release for
+your platform from
+[here](https://github.com/OmniSharp/omnisharp-roslyn/releases). Omnisharp can
+also be built from source by following the instructions
+[here](https://github.com/omnisharp/omnisharp-roslyn#downloading-omnisharp).
+
+Omnisharp requires the [dotnet-sdk](https://dotnet.microsoft.com/download) to be
+installed.
+
+#### Usage
+
+##### Linux and Windows
+
+To use Omnisharp, you only need to have the `OmniSharp` binary in your
+environment path. The default `languages.toml` configuration should work fine.
+
+##### macOS
+
+Download the `-netX.0` build. Because OmniSharp is not shipped as a binary file,
+instead as `OmniSharp.dll`, it needs to be run using `dotnet`. As such the
+`languages.toml` config should be changed to this:
+
+```toml
+[language-server.omnisharp]
+command = "dotnet"
+args = [ "path/to/OmniSharp.dll", "--languageserver" ]
+```
+
+If the language server immediately exits or otherwise doesn't appear to work,
+try running `dotnet restore` and/or `dotnet build` in the current project
+directory.
+
+### D
+
+Serve-D.
+
+https://github.com/Pure-D/serve-d
+
+Install using `dub fetch serve-d`
+
+### Dart
+
+Language server for dart.
+
+https://github.com/dart-lang/sdk/tree/master/pkg/analysis_server/tool/lsp_spec
+
+### Deno
+
+Install Deno from https://docs.deno.com/runtime/getting_started/installation/
+
+Deno requires custom configuration in `languages.toml` see
+https://github.com/denoland/deno/issues/14455
+
+```toml
+[[language]]
+name = "javascript"
+shebangs = ["deno"]
+roots = ["deno.json", "deno.jsonc"]
+file-types = ["js"]
+language-servers = ["deno-lsp"]
+auto-format = true
+[[language]]
+name = "typescript"
+shebangs = ["deno"]
+roots = ["deno.json", "deno.jsonc"]
+file-types = ["ts"]
+language-servers = ["deno-lsp"]
+auto-format = true
+[[language]]
+name = "jsx"
+shebangs = ["deno"]
+roots = ["deno.json", "deno.jsonc"]
+file-types = ["jsx"]
+language-servers = ["deno-lsp"]
+auto-format = true
+[[language]]
+name = "tsx"
+shebangs = ["deno"]
+roots = ["deno.json", "deno.jsonc"]
+file-types = ["tsx"]
+language-servers = ["deno-lsp"]
+auto-format = true
+
+
+
+[language-server.deno-lsp]
+command = "deno"
+args = ["lsp"]
+environment = { NO_COLOR = "1" }
+
+[language-server.deno-lsp.config.deno]
+enable = true
+## Uncomment to enable completion of unstable features of Deno
+## unstable = true
+## Uncomment to cache dependencies on save
+## cacheOnSave = true
+## Enable completion of importing from registries
+## Enable completion of function calls
+suggest = { completeFunctionCalls = false, imports = { hosts = { "https://deno.land" = true } } }
+## suggest = { imports = { hosts = { "https://deno.land" = true, "https://crux.land" = true, "https://x.nest.land" = true } } }
+## Uncomment to enable inlay hints
+## inlayHints.parameterNames.enabled = "all"
+## inlayHints.parameterTypes.enabled = true
+## inlayHints.variableTypes.enabled = true
+## inlayHints.propertyDeclarationTypes.enabled  = true
+## inlayHints.functionLikeReturnTypes.enabled = true
+## inlayHints.enumMemberValues.enabled = true
+```
+
+Note that some lsp commands are not currently supported, in particular
+`go_to_definition` because it requires a Deno lsp extension
+https://deno.land/manual/language_server/overview.
+
+### Docker
+
+https://github.com/rcjsuen/dockerfile-language-server-nodejs
+
+`docker-langserver` can be installed via `npm`:
+
+```sh
+npm install -g dockerfile-language-server-nodejs
+```
+
+### Docker Compose
+
+https://github.com/microsoft/compose-language-service
+
+`docker-compose-langserver` can be installed via `npm`:
+
+```sh
+npm install -g @microsoft/compose-language-service
+```
+
+### dot Graphviz
+
+https://github.com/nikeee/dot-language-server
+
+```sh
+npm i -g dot-language-server
+```
+
+### Elixir
+
+https://github.com/elixir-lsp/elixir-ls
+
+`elixir-ls` can be installed by following the instructions
+[here](https://github.com/elixir-lsp/elixir-ls#building-and-running).
+
+```bash
+curl -fLO https://github.com/elixir-lsp/elixir-ls/releases/latest/download/elixir-ls.zip
+unzip elixir-ls.zip -d /path/to/elixir-ls
+## Unix
+chmod +x /path/to/elixir-ls/language_server.sh
+```
+
+Rename `language_server.sh` to `elixir-ls` and add it to your `$PATH` as this is
+how `helix` expects to find it.
+
+###### MacOS
+
+Install using [homebrew](https://brew.sh):
+
+```sh
+brew install elixir-ls
+```
+
+### Elm
+
+https://github.com/elm-tooling/elm-language-server#installation
+
+```sh
+npm install -g elm elm-test elm-format @elm-tooling/elm-language-server
+```
+
+### Forth
+
+https://github.com/alexanderbrevig/forth-lsp#install
+
+```sh
+cargo install forth-lsp
+```
+
+### FSharp/F#
+
+https://github.com/fsharp/FsAutoComplete
+
+```sh
+dotnet tool install --global fsautocomplete
+```
+
+### GDScript
+
+We need to install `nc` or `netcat`. Port 6005 is used in Godot 4.0 beta6. You
+will find the right value in the editor configuration panel.
+
+```toml
+[language-server.godot]
+command = "nc"
+args = [ "127.0.0.1", "6005"]
+
+[[language]]
+name = "gdscript"
+language-servers = [ "godot" ]
+```
+
+**For Windows 10/11**
+
+Use `winget` to install `nmap`. This will install `ncat`.
+
+```powershell
+winget install nmap
+```
+
+Once installed, make sure the folder that `nmap` is now located at is added to
+your PATH, as `winget` fails to do this automatically for some people.
+
+In Godot 3.5.1 port used is `6008`. You have to change the command used also.
+Instead of `nc` type `ncat` and modify the port. You can find the port when you
+open the Godot editor and navigate here:
+`Editor -> Editor Settings -> Network -> Language Server -> Remote Port`.
+
+```toml
+[language-server.godot]
+command = "ncat"
+args = [ "127.0.0.1", "6008"]
+
+[[language]]
+name = "gdscript"
+language-servers = [ "godot" ]
+```
+
+### Gleam
+
+Starting with version `0.21.0`, the Gleam language server is built-in to the
+`gleam` command-line interface.
+[See the official announcement for more information.](https://gleam.run/news/v0.21-introducing-the-gleam-language-server/)
+
+```sh
+gleam lsp
+```
+
+### Go
+
+The folder for go packages (typically $HOME/go/bin) will need to be added to
+your PATH for any of the below to work.
+
+#### Install tools
+
+```
+go install golang.org/x/tools/gopls@latest                            # LSP
+go install github.com/go-delve/delve/cmd/dlv@latest                   # Debugger
+go install golang.org/x/tools/cmd/goimports@latest                    # Formatter
+go install github.com/nametake/golangci-lint-langserver@latest        # Linter
+go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest # Linter cli
+```
+
+#### Autoformatting
+
+The LSP formatter (`gofmt`) does not fix imports, `goimports` should be used
+instead.
+
+`languages.toml`
+
+```toml
+[[language]]
+name = "go"
+auto-format = true
+formatter = { command = "goimports" }
+```
+
+### GraphQL
+
+https://github.com/graphql/graphiql/blob/main/packages/graphql-language-service-cli/
+
+```sh
+npm i -g graphql-language-service-cli
+```
+
+### Haskell
+
+Haskell Language Server.
+
+https://github.com/haskell/haskell-language-server
+
+### Helm
+
+The Helm-ls installation guide can be found under the "Getting Started" section
+in the readme.
+
+https://github.com/mrjosh/helm-ls#getting-started
+
+### HTML
+
+#### vscode-html-language-server
+
+https://github.com/hrsh7th/vscode-langservers-extracted
+
+`vscode-html-language-server` can be installed via `npm`:
+
+```sh
+npm i -g vscode-langservers-extracted
+```
+
+#### superhtml
+
+https://github.com/kristoff-it/superhtml
+
+### Java
+
+https://github.com/eclipse/eclipse.jdt.ls
+
+Installation instructions can be found on the
+[projects README](https://github.com/eclipse/eclipse.jdt.ls).
+
+On macOS installation can also be done via `brew install jdtls`.
+
+On debian based distros try a fantastic install script made by
+[eruizc-dev](https://github.com/eruizc-dev):
+[jdtls-launcher](https://github.com/eruizc-dev/jdtls-launcher).
+
+For the Arch Linux: `yay -Sy jdtls`
+[AUR jdtls source](https://aur.archlinux.org/packages/jdtls).
+
+After installing, test to see if the `jdtls` works out of the box (it should
+work for the debian script). For versions older than `1.16.0`: the `-data`
+parameter must be passed to `jdtls` and it must be different for each project.
+This can be achieved by adding a `.helix/languages.toml` configuration to the
+project root:
+
+```toml
+[language-server]
+jdtls = { command = "jdtls" }
+language-server = { command = "jdtls", args = [
+  "-data", "/home/<USER>/.cache/jdtls/workspace"
+  ]}
+
+[[language]]
+name = "java"
+scope = "source.java"
+injection-regex = "java"
+file-types = ["java"]
+roots = ["pom.xml", "build.gradle", ]
+indent = { tab-width = 4, unit = "    " }
+language-servers = [ "jdtls" ]
+```
+
+Note: the `-data` parameter must be up one directory from the project directory.
+
+### JavaScript
+
+See
+[tsserver](https://github.com/helix-editor/helix/wiki/Language-Server-Configurations#typescript).
+
+### JSON
+
+https://github.com/hrsh7th/vscode-langservers-extracted
+
+vscode-json-language-server, a language server for JSON and JSON schema
+
+`vscode-json-language-server` can be installed via `npm`:
+
+```sh
+npm i -g vscode-langservers-extracted
+```
+
+Available settings can be found here:
+https://github.com/microsoft/vscode/blob/4f69cdf95a12cef48d405b38bf7812a7f297c310/extensions/json-language-features/server/src/jsonServer.ts#L183
+
+Usage
+
+```toml
+config = { "provideFormatter" = true, "json" = { "keepLines" = { "enable" = true } } }
+```
+
+### Jsonnet
+
+https://github.com/grafana/jsonnet-language-server
+
+A [Language Server Protocol (LSP)](https://langserver.org/) server for
+[Jsonnet](https://jsonnet.org/).
+
+Can be installed either via the
+[latest release binary](https://github.com/grafana/jsonnet-language-server/releases)
+or if you have golang installed, you can use:
+
+```sh
+go install github.com/grafana/jsonnet-language-server@latest
+```
+
+### Julia
+
+https://github.com/julia-vscode/LanguageServer.jl
+
+LanguageServer.jl can be installed with `julia` and `Pkg`:
+
+```sh
+julia -e 'using Pkg; Pkg.add("LanguageServer")'
+```
+
+To update an existing install, use the following command:
+
+```sh
+julia -e 'using Pkg; Pkg.update()'
+```
+
+### Kotlin
+
+A Kotlin language server which was developed for internal usage and released
+afterward. Maintaining is not done by the original author, but by fwcd.
+
+It is built via gradle and developed on GitHub. Source and additional
+description: https://github.com/fwcd/kotlin-language-server
+
+### LaTex
+
+[TexLab](https://github.com/latex-lsp/texlab): A cross-platform implementation
+of the
+[Language Server Protocol](https://microsoft.github.io/language-server-protocol)
+providing rich cross-editing support for the
+[LaTeX](https://www.latex-project.org/) typesetting system.
+
+Add the following to your languages.toml to enable build on save:
+
+```toml
+[language-server.texlab.config.texlab.build]
+onSave = true
+```
+
+TexLab can be further configured to jump to your current location in the pdf
+following the build, among other useful things. For all available options, see
+the [TexLab wiki](https://github.com/latex-lsp/texlab/wiki/Configuration).
+Everything under the `texlab` key goes under
+`language-server.texlab.config.texlab` (or possibly `language.config.texlab` on
+older releases). For instance, setting the `texlab.build.onSave` property to
+`true` (as per the
+[TexLab wiki](https://github.com/latex-lsp/texlab/wiki/Configuration#texlabbuildonsave))
+is achieved with the above `languages.toml`.
+
+### Lean 3
+
+https://github.com/leanprover/lean-client-js/tree/master/lean-language-server
+
+Lean installation instructions can be found
+[here](https://leanprover-community.github.io/get_started.html#regular-install).
+
+Once Lean is installed, you can install the Lean 3 language server by running
+
+```sh
+npm install -g lean-language-server
+```
+
+### Lua
+
+Binaries are available from:
+https://github.com/LuaLS/lua-language-server/releases
+
+`mac`
+
+```sh
+brew install lua-language-server
+```
+
+### Markdoc
+
+[@markdoc/language-server](https://www.npmjs.com/package/@markdoc/language-server) -
+an experimental language server for markdoc. `markdoc-ls` should be available
+after installation.
+
+Install using
+
+```sh
+npm install -g @markdoc/language-server
+```
+
+### Markdown
+
+#### Marksman
+
+The default language server is Marksman:
+https://github.com/artempyanykh/marksman
+
+Binaries are available from: https://github.com/artempyanykh/marksman/releases
+
+`macOS and Linux`
+
+```sh
+brew install marksman or yay -S marksman-bin
+```
+
+`Windows`
+
+```pwsh
+scoop install marksman
+```
+
+#### ltex-ls
+
+As an alternative you can use `ltex-ls` which provides grammar and spelling
+errors in markup documents: https://valentjn.github.io/ltex/
+
+```toml
+[[language]]
+name = "markdown"
+language-servers = [ "marksman", "ltex-ls" ]
+```
+
+Additional configuration settings can be added, for example to disable the
+profanity rules and add the word `builtin` to two dictionaries:
+
+```toml
+[language-server.ltex-ls.config]
+ltex.disabledRules = { "en-US" = ["PROFANITY"], "en-GB" = ["PROFANITY"] }
+ltex.dictionary = { "en-US" = ["builtin"], "en-GB" = ["builtin"] }
+```
+
+Currently,
+[the ability to add to your user dictionary while running Helix is not supported](https://github.com/valentjn/ltex-ls/issues/231),
+so adding words to the config is the best workaround.
+
+#### `markdown-oxide`
+
+An alternative to `marksman` that provides support for advanced markdown PKM
+systems in your favorite text editor. It features complete compatibility with
+Obsidian.md markdown syntax and bases its features on the features of the
+Obsidian.md editor. For a list of all features, check out the
+[README](https://github.com/Feel-ix-343/markdown-oxide?tab=readme-ov-file#features)
+
+- It can be installed for Arch from the AUR under the name `markdown-oxide-git`
+
+```sh
+paru -S markdown-oxide-git
+```
+
+- Or it can be installed by `cargo`
+
+```sh
+cargo install --git https://github.com/Feel-ix-343/markdown-oxide.git markdown-oxide
+```
+
+- Or manually by following
+  [these directions](https://github.com/Feel-ix-343/markdown-oxide?tab=readme-ov-file#manual-for-macos-windows-and-other-linux-distributions)
+
+### MATLAB
+
+[matlab-language-server](https://github.com/mathworks/MATLAB-language-server)
+
+Note: as per the README, "MATLAB language server requires MATLAB version R2021a
+or later."
+
+```toml
+[language-server.matlab-ls]
+command = "matlab-language-server"
+args = ["--stdio"]
+
+[language-server.matlab-ls.config.MATLAB]
+indexWorkspace = false
+installPath = "/PATH/TO/MATLAB/INSTALLATION"
+matlabConnectionTiming = "onStart"
+telemetry = false
+
+[[language]]
+name = "matlab"
+scope = "source.m"
+file-types = ["m"]
+language-servers = ["matlab-ls"]
+comment-token = "%"
+shebangs = ["octave-cli", "matlab"]
+indent = { tab-width = 2, unit = "  " }
+```
+
+### Mint
+
+https://www.mint-lang.com
+
+Install Mint using the [instructions](https://www.mint-lang.com/install). The
+language server is included since version 0.12.0.
+
+### Mojo
+
+https://www.modular.com/mojo
+
+- Install the Modular CLI
+- Install the Mojo SDK
+
+See this PR: https://github.com/helix-editor/helix/pull/8583
+
+### Nim
+
+https://github.com/nim-lang/langserver
+
+```sh
+## May require choosenim
+nimble install nimlangserver
+```
+
+### Nix
+
+The default language server is `nil` since the 2022-12 release.
+
+https://github.com/oxalica/nil
+
+This program is available in [NixOS/nixpkgs](https://github.com/NixOS/nixpkgs)
+under attribute `nil`, and is regularly updated.
+
+- If you use `nix-env`, run `nix-env -iA nixpkgs.nil`
+- If you use `nix profile`, run `nix profile install nixpkgs#nil`
+- Check out the GitHub repository for additional options
+
+The formatter `nixpkgs-fmt` is not included and can be installed with
+`nix-env -iA nixpkgs.nixpkgs-fmt`
+
+To set up the formatter, set the following in your `languages.toml` :
+
+```toml
+[[language]]
+name = "nix"
+formatter = { command = "nixpkgs-fmt" }
+```
+
+To use the previous default language server, check out
+https://github.com/nix-community/rnix-lsp
+
+### OCaml
+
+https://github.com/ocaml/ocaml-lsp
+
+The OCaml language server `ocamllsp` can be installed via OPAM:
+
+```sh
+opam install ocaml-lsp-server
+```
+
+### Odin
+
+[ols](https://github.com/DanielGavin/ols) - https://github.com/DanielGavin/ols
+
+Provides syntax highlighting, auto-complete, code formatting and more for Odin.
+
+### OpenPolicyAgent
+
+An implementation of the language server protocol for OpenPolicyAgent's rego.
+
+You can download it from its
+[releases page](https://github.com/kitagry/regols/releases), or
+
+```sh
+$ go install github.com/kitagry/regols@latest
+```
+
+### Perl
+
+https://github.com/bscan/PerlNavigator
+
+Provides syntax checking, autocompletion, perlcritic, code navigation, hover for
+Perl.
+
+Implemented as a Language Server using the Microsoft LSP libraries along with
+Perl doing the syntax checking and parsing.
+
+Perl Navigator can be installed by downloading the latest release for your
+platform at
+[the project's releases page](https://github.com/bscan/PerlNavigator/releases)
+and putting the perlnavigator executable somewhere in your PATH.
+
+### Pest
+
+https://github.com/pest-parser/pest-ide-tools
+
+This repository contains an implementation of the Language Server Protocol in
+Rust, for the Pest parser generator.
+
+### PHP
+
+#### Phpactor
+
+https://phpactor.readthedocs.io/en/master/index.html
+
+Phpactor requires PHP 8.1.
+
+You can download `phpactor.phar` as follows:
+
+```sh
+curl -Lo phpactor.phar https://github.com/phpactor/phpactor/releases/latest/download/phpactor.phar
+```
+
+Then make it executable and symlink it somewhere in your
+[PATH](<https://en.wikipedia.org/wiki/PATH_(variable)>):
+
+```sh
+chmod a+x phpactor.phar
+mv phpactor.phar ~/.local/bin/phpactor
+```
+
+Check support using the status command:
+
+```sh
+phpactor status
+✔ Composer detected - faster class location and more features!
+✔ Git detected - enables faster refactorings in your repository scope!
+```
+
+Then, to enable this LSP you have to create a file `languages.toml` in your
+project directory `.helix/languages.toml` and place the following code inside
+(or if you want you could do this to helix languages.toml file globally):
+
+```toml
+[language-server.phpactor]
+command = "phpactor"
+args = [ "language-server" ]
+[[language]]
+name = "php"
+language-servers = [ "phpactor" ]
+```
+
+#### Intelephense
+
+> [!WARNING]
+> Intelephense is proprietary, so be sure to review its licensing terms.
+
+https://intelephense.com
+
+`intelephense` can be installed via `npm`:
+
+```sh
+npm install -g intelephense
+```
+
+##### Premium version
+
+To enable the premium features you have to provide a license key for which you
+have a few options:
+
+1. Adding the license key directly to your languages.toml file:
+
+```toml
+[language-server.intelephense.config]
+licenceKey = "MY_LICENSE_KEY"
+```
+
+2. Adding the path to your license file
+
+```toml
+[language-server.intelephense.config]
+licenceKey = "/home/username/.config/intelephense/license.txt"
+```
+
+3. Adding the license file to your home directory under
+   `$HOME/intelephense/licence.txt`
+
+**Note**: Keep in mind how the word is written licen**c**eKey and not
+licen**s**eKey, also for step 3) it has to be licen**c**e.txt.
+
+### PKGBUILD
+
+https://github.com/termux/termux-language-server
+
+#### Archlinux
+
+```bash
+yay -S termux-language-server
+```
+
+### PowerShell
+
+Syntax highlighting is not currently possible as there is no PowerShell
+treesitter. But auto-completion can be achieved by the following configuration.
+Download the latest
+[PowerShellEditorServices](https://github.com/PowerShell/PowerShellEditorServices/releases)
+zip and extract it. In this example, I extracted it to C:\projects\powershell.
+
+```toml
+[[language]]
+name = "powershell"
+scope = "source.ps1"
+file-types = ["ps1", "psm1"]
+roots = [".git"]
+comment-token = "#"
+indent = { tab-width = 4, unit = "    " }
+language-servers = [ "powershell-editor-services" ]
+
+[language-server.powershell-editor-services]
+command = "pwsh"
+args = ["-NoLogo", "-NoProfile", "-Command", "C:\\projects\\powershell\\PowerShellEditorServices\\PowerShellEditorServices\\Start-EditorServices.ps1 -BundledModulesPath C:\\projects\\
+powershell\\PowerShellEditorServices -SessionDetailsPath C:\\projects\\powershell\\PowerShellEditorServices\\PowerShellEditorServices.sessions.json -LogPath C:\\projects\\powershell\\
+PowerShellEditorServices\\PowerShellEditorServices.log -FeatureFlags @() -AdditionalModules @() -HostName helix -HostProfileId 0 -HostVersion 1.0.0 -Stdio -LogLevel Normal"]
+```
+
+### Prisma
+
+https://github.com/prisma/language-tools/tree/main/packages/language-server
+
+`prisma-language-server` can be installed via npm:
+
+```sh
+npm install -g @prisma/language-server
+```
+
+### Prolog
+
+An implementation of the language server protocol for SWI-Prolog
+
+https://github.com/jamesnvc/lsp_server
+
+Install the `swi-prolog` package and run `swipl`:
+
+```
+?- pack_install(lsp_server).
+```
+
+### Python
+
+#### pylsp
+
+[python-lsp/python-lsp-server](https://github.com/python-lsp/python-lsp-server)
+(`pylsp`) is a fork of the python-language-server project (`pyls`), maintained
+by the Spyder IDE team and the community. It is a Python 3.7+ implementation of
+the
+
+[Language Server Protocol](https://github.com/Microsoft/language-server-protocol)
+(versions \<1.4 should still work with Python 3.6).
+
+Installation instructions can be found in the
+[project's README](https://github.com/python-lsp/python-lsp-server#installation),
+but it consists of installing a package using `pip` (or
+[`pipx`](https://github.com/pypa/pipx)):
+
+```console
+pip install -U 'python-lsp-server[all]'
+```
+
+The `[all]` above refers to the optional providers supported. You can fine-tune
+what to install following the instructions
+[here](https://github.com/python-lsp/python-lsp-server#installation).
+
+#### pylsp-mypy
+
+[python-lsp/pylsp-mypy](https://github.com/python-lsp/pylsp-mypy) (`pylsp-mypy`)
+is a Mypy (type checker) plugin for Pylsp. First do the steps in Pylsp section
+and then install pylsp-mypy:
+
+```console
+pip install pylsp-mypy
+```
+
+`languages.toml`
+
+```toml
+[[language]]
+name = "python"
+language-servers = ["pylsp"]
+
+[language-server.pylsp.config.pylsp]
+plugins.pylsp_mypy.enabled = true
+plugins.pylsp_mypy.live_mode = true
+```
+
+#### python-lsp-ruff
+
+[python-lsp/python-lsp-ruff](https://github.com/python-lsp/python-lsp-ruff) is a
+plugin for pylsp that provides support for [ruff (see below)](#python---ruff).
+See
+[installation instructions](https://github.com/python-lsp/python-lsp-ruff#install).
+
+The plugin supports
+[some configuration](https://github.com/python-lsp/python-lsp-ruff#configuration),
+but it should work out of the box after installing.
+
+#### pyright
+
+Pyright is a fast type checker and language server from Microsoft, meant for
+large Python source bases. It is the LSP part of pylance (the VS Code python
+daemon).
+
+https://github.com/microsoft/pyright
+
+The language server can be installed by running
+`npm install --location=global pyright`
+
+`languages.toml`
+
+```toml
+[[language]]
+name = "python"
+language-servers = [ "pyright" ]
+```
+
+#### basedpyright
+
+Basedpyright is a fork of pyright with various type checking improvements,
+improved vscode support and pylance features built into the language server.
+
+https://docs.basedpyright.com
+
+The language server can be installed by running `pip install basedpyright`
+
+`languages.toml`
+
+```toml
+[[language]]
+name = "python"
+language-servers = [ "basedpyright" ]
+```
+
+#### ruff
+
+[charliermarsh/ruff](https://github.com/charliermarsh/ruff) is an extremely fast
+Python linter, written in Rust (see
+[installation instructions](https://github.com/charliermarsh/ruff#installation-and-usage)).
+
+An LSP for it is available through
+[ruff-lsp](https://github.com/astral-sh/ruff-lsp) (see
+[installation instructions](https://github.com/astral-sh/ruff-lsp?tab=readme-ov-file#installation))
+or [ruff](https://github.com/astral-sh/ruff) with arg `server`. Also check out
+the
+[ruff docs for integration with helix](https://docs.astral.sh/ruff/editors/setup/#helix).
+
+A suggested Helix configuration using ruff as lsp is given below:
+
+```toml
+[language-server.ruff-lsp]
+command = "ruff-lsp"
+[[language]]
+name = "python"
+language-servers = [ "ruff-lsp" ]
+```
+
+or
+
+```toml
+[[language]]
+name = "python"
+language-servers = [ "ruff" ]
+auto-format = true
+[language-server.ruff]
+command = "ruff"
+args = ["server"]
+```
+
+**Note** that ruff lacks basic features and is meant to be used alongside
+another LSP
+([helix-editor/helix#5399 (comment)](https://github.com/helix-editor/helix/issues/5399#issuecomment-1373470899),
+[charliermarsh/ruff-lsp#23](https://github.com/charliermarsh/ruff-lsp/issues/23),
+[charliermarsh/ruff-lsp#23 (comment)](https://github.com/charliermarsh/ruff-lsp/issues/23#issuecomment-1367903296)).
+
+As an alternative, [pylsp](#pylsp) has support for ruff via a plugin.
+[See instructions for Helix here](#python-lsp-ruff)
+
+#### pyright + ruff
+
+[pyright](https://github.com/microsoft/pyright) - `npm install pyright -g`
+
+[ruff-lsp](https://github.com/astral-sh/ruff-lsp) - `pip install ruff-lsp` or
+[ruff](https://github.com/astral-sh/ruff) - `pip install ruff` (ruff-lsp is A
+[Language Server Protocol](https://microsoft.github.io/language-server-protocol/)
+implementation for ruff, you can choose one)
+
+```toml
+[[language]]
+name = "python"
+language-servers = [ "pyright", "ruff" ]
+
+[language-server.pyright.config.python.analysis]
+typeCheckingMode = "basic"
+
+## if you choose `ruff-lsp`
+[language-server.ruff]
+command = "ruff-lsp"
+[language-server.ruff.config.settings]
+args = ["--ignore", "E501"]
+## if you choose `ruff` itself
+[language-server.ruff]
+command = "ruff"
+args = ["server"]
+```
+
+#### ruff + pyright + pylyzer
+
+- [ruff](https://github.com/astral-sh/ruff)
+
+- [pyright](https://github.com/microsoft/pyright)
+
+- [pylyzer](https://github.com/mtshiba/pylyzer)
+
+```toml
+## in languages.toml
+[[language]]
+name = "python"
+language-servers = ["pyright", "ruff", "pylyzer"]
+[language-server.pyright.config.python.analysis]
+typeCheckingMode = "basic"
+[language-server.ruff]
+command = "ruff"
+args = ["server"]
+[language-server.pylyzer]
+command = "pylyzer"
+args = ["--server"]
+```
+
+### R
+
+An implementation of the Language Server Protocol for R.
+
+https://github.com/REditorSupport/languageserver
+
+The language server can be installed by running
+`R -e 'install.packages("languageserver")'`.
+
+### Racket
+
+[https://github.com/jeapostrophe/racket-langserver](https://github.com/jeapostrophe/racket-langserver)
+
+The Racket language server. This project seeks to use
+[DrRacket](https://github.com/racket/drracket)'s public API to provide
+functionality that mimics DrRacket's code tools as closely as possible.
+
+Install via `raco`: `raco pkg install racket-langserver`
+
+### ReScript
+
+https://github.com/rescript-lang/rescript-vscode
+
+// ReScript language server.
+
+### Rust
+
+[rust-analyzer](https://github.com/rust-analyzer/rust-analyzer), a language
+server for Rust.
+
+You can install rust-analyzer using `rustup` starting from Rust 1.64, and it
+will be added to your system's `$PATH`
+[starting from Rustup 1.26.0](https://blog.rust-lang.org/2023/04/25/Rustup-1.26.0.html#whats-new-in-rustup-1260):
+
+```sh
+rustup component add rust-analyzer
+```
+
+Add the following to your `languages.toml` to enable
+[clippy](https://github.com/rust-lang/rust-clippy) on save:
+
+```toml
+[language-server.rust-analyzer.config.check]
+command = "clippy"
+```
+
+See [docs](https://rust-analyzer.github.io/manual.html) for extra settings.
+Everything under the rust-analyzer key goes under
+`language-server.rust-analyzer.config` key in helix (for example,
+`rust-analyzer.check.command = "clippy"` is translated into the `language.toml`
+as above.)
+
+### Scala
+
+Scala language server with rich IDE features.
+
+https://scalameta.org/metals/
+
+1. Install [Coursier](https://get-coursier.io/)
+2. Run `coursier install metals`
+
+### Scheme
+
+#### Steel Dialect
+
+Steel's language server is available at
+[github.com/mattwparas/crates/steel-language-server](https://github.com/mattwparas/steel/tree/master/crates/steel-language-server).
+
+Recommended installation for LSP + interpreter
+([link](https://github.com/mattwparas/steel?tab=readme-ov-file#full-install)):
+
+```sh
+git clone git@github.com:mattwparas/steel.git
+cd steel
+cargo xtask install
+```
+
+Then follow the
+[configuration](https://github.com/mattwparas/steel/tree/master/crates/steel-language-server#configuration)
+instructions.
+
+Finally, add the following to your language configuration file:
+
+```toml
+[[language]]
+name = "scheme"
+language-servers = ["steel-language-server"]
+
+[language-server.steel-language-server]
+command = "steel-language-server"
+args = []
+```
+
+### SCSS
+
+SCSS's language server is available from the vscode-langservers-extracted
+collection:
+
+https://github.com/hrsh7th/vscode-langservers-extracted
+
+You may install it by running:
+
+```sh
+npm i -g vscode-langservers-extracted
+```
+
+### Slint
+
+[LSP](https://github.com/slint-ui/slint/tree/HEAD/tools/lsp)
+
+[slint](https://slint-ui.com/)
+
+```sh
+cargo install slint-lsp
+```
+
+### Smithy
+
+For Smithy projects the following LSP is used:
+https://github.com/awslabs/smithy-language-server
+
+[coursier](https://get-coursier.io/) must be installed so that the language
+server can be launched. To install coursier please see their
+[installation instructions](https://get-coursier.io/docs/cli-installation#native-launcher).
+Since coursier will take care of everything else, no other steps are necessary!
+
+### Solargraph
+
+https://solargraph.org/
+
+Solargraph, a language server for Ruby
+
+You can install Solargraph via gem install.
+
+```sh
+gem install --user-install solargraph
+```
+
+### solc
+
+solc is the native language server for the Solidity language.
+
+https://docs.soliditylang.org/en/latest/installing-solidity.html
+
+### Svelte
+
+https://github.com/sveltejs/language-tools/tree/master/packages/language-server
+
+`svelte-language-server` can be installed via `npm`:
+
+```sh
+npm i -g svelte-language-server
+```
+
+For integration with `.js` and `.ts` files install `typescript-svelte-plugin`
+via `npm`:
+
+```sh
+npm i -g typescript-svelte-plugin
+```
+
+Then for each svelte project update your `tsconfig.json`/`jsconfig.json` to add
+the `typescript-svelte-plugin`
+
+```json
+{
+    "compilerOptions": {
+        ...
+        "plugins": [{
+            "name": "typescript-svelte-plugin"
+        }]
+    }
+}
+```
+
+Further information on `js` and `ts` integration for svelte can be found
+[here](https://github.com/sveltejs/language-tools/tree/master/packages/typescript-plugin).
+
+### Swift
+
+A language server for Swift, formatting provided via swift-format
+
+https://github.com/apple/sourcekit-lsp
+
+https://github.com/apple/swift-format
+
+Follow the
+[Getting Started](https://github.com/apple/sourcekit-lsp#getting-started) guide
+to get sourcekit-lsp installed correctly for your OS. No additional
+configuration is needed, though note to use the same toolchain for both your
+installed LSP, and that you use to build.
+
+### Sql
+
+https://github.com/joe-re/sql-language-server
+
+```sh
+npm i -g sql-language-server
+```
+
+`languages.toml` setting
+
+```toml
+[language-server.sql-language-server]
+command = "sql-language-server"
+args = ["up", "--method", "stdio"]
+
+[[language]]
+name = "sql"
+language-servers = [ "sql-language-server" ]
+```
+
+- Note: There is also https://github.com/sqls-server/sqls written in Go
+
+### TailwindCSS
+
+https://github.com/tailwindlabs/tailwindcss-intellisense
+
+`tailwindcss-language-server` can be installed via `npm`:
+
+```sh
+npm i -g @tailwindcss/language-server
+```
+
+Add this to your local `languages.toml` file to enable it
+
+`languages.toml`:
+
+```toml
+[[language]]
+name = "html"
+language-servers = [ "vscode-html-language-server", "tailwindcss-ls" ]
+
+[[language]]
+name = "css"
+language-servers = [ "vscode-css-language-server", "tailwindcss-ls" ]
+
+[[language]]
+name = "jsx"
+language-servers = [ "typescript-language-server", "tailwindcss-ls" ]
+
+[[language]]
+name = "tsx"
+language-servers = [ "typescript-language-server", "tailwindcss-ls" ]
+
+[[language]]
+name = "svelte"
+language-servers = [ "svelteserver", "tailwindcss-ls" ]
+```
+
+If you want to use TailwindCSS language server with other languages, configure
+like example below. The example is with rust.
+
+```toml
+[[language]]
+name = "rust"
+language-servers = ["rust-analyzer", "tailwindcss-ls"]
+
+[language-server.tailwindcss-ls]
+config = { userLanguages = { rust = "html", "*.rs" = "html" } }
+```
+
+### Terraform
+
+You'll need `terraform-ls` installed; the instructions are
+[here](https://github.com/hashicorp/terraform-ls/blob/main/docs/installation.md).
+
+Add this to your local languages.toml file to enable it
+
+`languages.toml`:
+
+```toml
+[[language]]
+name = "hcl"
+language-servers = [ "terraform-ls" ]
+language-id = "terraform"
+
+[[language]]
+name = "tfvars"
+language-servers = [ "terraform-ls" ]
+language-id = "terraform-vars"
+
+[language-server.terraform-ls]
+command = "terraform-ls"
+args = ["serve"]
+```
+
+### TOML
+
+https://taplo.tamasfe.dev/
+
+The NPM versions of taplo does not contain the language server at this time The
+`full` version (with the language server) can be downloaded from:
+
+`binaries`: [taplo releases](https://github.com/tamasfe/taplo/releases)
+
+or installed with:
+
+`cargo`:
+
+```sh
+cargo install taplo-cli --locked --features lsp
+```
+
+`languages.toml`:
+
+```toml
+[[language]]
+name = "toml"
+formatter = { command = "taplo", args = ["fmt", "-"] }
+```
+
+Run `taplo lsp --help` for more info.
+
+### TypeScript
+
+#### typescript-language-server
+
+https://github.com/typescript-language-server/typescript-language-server
+
+`typescript-language-server` depends on `typescript`. Both packages can be
+installed via `npm`:
+
+```sh
+npm install -g typescript typescript-language-server
+```
+
+To configure type language server, add a
+[`tsconfig.json`](https://www.typescriptlang.org/docs/handbook/tsconfig-json.html)
+or [`jsconfig.json`](https://code.visualstudio.com/docs/languages/jsconfig) to
+the root of your project.
+
+Here's an example that disables type checking in JavaScript files.
+
+```json
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "target": "es6",
+    "checkJs": false
+  },
+  "exclude": ["node_modules"]
+}
+```
+
+#### Biome
+
+Biome is a fast and efficient toolchain for web development that formats and
+lints code, supporting JavaScript, TypeScript, JSX, and JSON, with over 190
+rules and high compatibility with existing tools like Prettier.
+
+```sh
+npm install --save-dev --save-exact @biomejs/biome
+```
+
+Follow the official instructions on
+[how to configure Biome for Helix](https://biomejs.dev/guides/editors/third-party-extensions/#helix).
+
+#### ESLint
+
+> [!important] `@4.10` is broken for `hx`. You can:
+>
+> - [downgrade to v`4.8`](https://github.com/hrsh7th/vscode-langservers-extracted/commit/859ca87fd778a862ee2c9f4c03017775208d033a#commitcomment-142613101)
+> - Await
+>   [this PR](https://github.com/hrsh7th/vscode-langservers-extracted/pull/11)
+> - Await [this feature](https://github.com/helix-editor/helix/pull/11315)
+
+1. Install the LSP:
+
+```sh
+npm i -g vscode-langservers-extracted@4.8
+## `npm update -g` will install the latest non-major version,
+## only do that after the issue has been fixed!
+## Unfortunately, there's no known way to pin/lock
+## global packs
+```
+
+2. Add this to your `languages.toml`:
+
+```toml
+## You might want to read this:
+## https://github.com/helix-editor/helix/discussions/8452
+
+[[language]]
+name = "javascript"
+language-servers = [
+  "typescript-language-server", # optional
+  "vscode-eslint-language-server",
+]
+
+[[language]]
+name = "typescript"
+language-servers = [
+  "typescript-language-server",
+  "vscode-eslint-language-server",
+]
+```
+
+3. [Install ESL](https://eslint.org/docs/latest/use/getting-started)
+
+### TypeSpec
+
+[typespec](https://github.com/microsoft/typespec)
+
+The language server is installed along with the compiler using `npm`:
+
+```sh
+npm install -g @typespec/compiler
+```
+
+### Typst
+
+[typst](https://github.com/uben0/tree-sitter-typst)
+
+```sh
+cargo install --git https://github.com/nvarner/typst-lsp typst-lsp
+```
+
+### Uiua
+
+- language: https://www.uiua.org
+- lsp: https://github.com/uiua-lang/uiua?tab=readme-ov-file#language-server
+- tree-sitter: https://github.com/shnarazk/tree-sitter-uiua
+
+```toml
+[language-server.uiua-lsp]
+command = "uiua"
+args = ["lsp"]
+
+[[language]]
+name = "uiua"
+scope = "source.uiua"
+injection-regex = "uiua"
+file-types = ["ua"]
+roots = []
+auto-format = true
+comment-token = "#"
+language-servers = [ "uiua-lsp" ]
+indent = { tab-width = 2, unit = "  " }
+shebangs = ["uiua"]
+auto-pairs = {'(' = ')', '{' = '}', '[' = ']', '"' = '"'}
+```
+
+### Unison
+
+Unison language server.
+
+More info:
+https://github.com/unisonweb/unison/blob/trunk/docs/language-server.markdown
+
+Requirements:
+
+- `ucm` started
+- `ncat`, `nc` or `netcat`
+
+To `~/.config/helix/languages.toml` append this code:
+
+```toml
+[language-server.ucm]
+command = "ncat"
+args = ["localhost", "5757"]
+
+[[language]]
+name = "unison"
+language-servers = [ "ucm" ]
+```
+
+### V
+
+https://github.com/vlang/v-analyzer
+
+Clone, install and build:
+
+```sh
+git clone --filter=blob:none --recursive --shallow-submodules https://github.com/vlang/v-analyzer
+cd v-analyzer
+v build.vsh release
+```
+
+or use the installer, and follow the instructions that it will print:
+`v -e "$(curl -fsSL https://raw.githubusercontent.com/vlang/v-analyzer/main/install.vsh)"`
+
+config path:
+
+set the v-analyzer to environment variable:
+
+```shell
+PATH=your/path/v-analyzer/bin:$PATH
+```
+
+### Vue
+
+https://github.com/vuejs/language-tools/tree/master/packages/language-server
+
+The Vue language server `vue-language-server` can be installed via `npm`:
+
+```sh
+npm i -g @vue/language-server
+```
+
+To autoformat your `.vue` files upon save, you can first install `prettier` via
+`npm`:
+
+```sh
+npm i -g prettier
+```
+
+And then add this to your `languages.toml` file in your Helix configuration
+directory:
+
+```toml
+[[language]]
+name = "vue"
+auto-format = true
+formatter = { command = "prettier", args = ["--parser", "vue"] }
+language-servers = ["typescript-language-server"]
+
+[[language-server.typescript-language-server.config.plugins]]
+name = "@vue/typescript-plugin"
+location = <path to "node_modules/@vue/language-server/">
+languages = ["vue"]
+```
+
+### WGSL
+
+https://github.com/wgsl-analyzer/wgsl-analyzer
+
+`wgsl_analyzer` can be installed via `cargo`:
+
+```sh
+cargo install --git https://github.com/wgsl-analyzer/wgsl-analyzer wgsl_analyzer
+```
+
+### XML
+
+https://github.com/redhat-developer/vscode-xml
+
+wget
+https://github.com/redhat-developer/vscode-xml/releases/download/0.27.1/lemminx-linux.zip
+
+1. Download lemminx-linux.zip
+2. Extract and copy lemminx-linux binary to location in $PATH
+3. Install xmllint via package manger yay, dnf, pacman apt-get etc (rpm: dnf
+   install libxml2)
+
+Configuration:
+
+```
+[[language]]
+name = "xml"
+file-types = [ "xml", "svg", "xsd", "xslt", "xsl" ]
+auto-format = true
+formatter = { command = "xmllint", args = ["--format", "-"] }
+language-servers = [ "xml" ]
+
+[language-server.xml]
+command = "lemminx-linux"
+```
+
+### YAML
+
+https://github.com/redhat-developer/yaml-language-server
+
+`yaml-language-server` can be installed via `brew` on Mac:
+
+```sh
+brew install yaml-language-server
+```
+
+or via `npm`:
+
+```sh
+npm i -g yaml-language-server@next
+```
+
+Example configuration using json schemas.
+
+```toml
+[language-server.yaml-language-server.config.yaml]
+format = { enable = true }
+validation = true
+
+[language-server.yaml-language-server.config.yaml.schemas]
+"https://json.schemastore.org/github-workflow.json" = ".github/workflows/*.{yml,yaml}"
+"https://raw.githubusercontent.com/ansible-community/schemas/main/f/ansible-tasks.json" = "roles/{tasks,handlers}/*.{yml,yaml}"
+```
+
+### Zig
+
+Zig LSP implementation + Zig Language Server.
+
+https://github.com/zigtools/zls
+
+## Other Language Server Protocol Types
+
+Non language-specific Language Server Protocols, non-coding LSPs, and others.
+
+### Harper-ls
+
+[Harper](https://github.com/elijah-potter/harper/) is an English grammer and
+spelling checker for comments and text.\
+Installing:
+
+```sh
+cargo install harper-ls --locked
+```
+
+Harper will need to be manually added to each language you'd like check's
+language server list.\
+Usage:
+
+```TOML
+[language-server.harper-ls]
+command = "harper-ls"
+args = ["--stdio"]
+```
+
+Disabling specific
+[linters](https://github.com/elijah-potter/harper/blob/master/harper-ls/README.md#configuration).
+
+```TOML
+[language-server.harper-ls.config.harper-ls.linters]
+spaces = false
+```
+
+### Vale-ls
+
+Vale is a markup-aware linter for prose built with speed and extensibility in
+mind.
+
+https://github.com/errata-ai/vale
+
+| Tool | Extensible     | Checks          | Supports Markup                                            | Built With | License |
+| ---- | -------------- | --------------- | ---------------------------------------------------------- | ---------- | ------- |
+| Vale | Yes (via YAML) | spelling, style | Yes (Markdown, AsciiDoc, reStructuredText, HTML, XML, Org) | Go         | MIT     |
+
+The Vale Language Server is an implementation of the Language Server Protocol
+for Vale.
+
+https://github.com/errata-ai/vale-ls
+
+Vale supports
+[linting source code comments in a number of languages](https://vale.sh/docs/topics/scoping/#code-1)
+
+You must install both `vale` and `vale-ls` into your `$PATH` and add it to each
+language you wish to lint, for example:
+
+Since https://github.com/helix-editor/helix/pull/11636/ you only need to add:
+
+```toml
+[[language]]
+name = "html"
+language-servers = [ "vscode-html-language-server", "vale-ls" ]
+```
+
+Before that PR:
+
+`languages.toml`
+
+```toml
+[language-server.vale-ls]
+command = "vale-ls"
+
+[[language]]
+name = "html"
+language-servers = [ "vscode-html-language-server", "vale-ls" ]
+```
+
+## Language Support
+
+| Language           | Syntax Highlighting | Treesitter Textobjects | Auto Indent | Default LSP                                                                            |
+| ------------------ | ------------------- | ---------------------- | ----------- | -------------------------------------------------------------------------------------- |
+| ada                | ✓                   | ✓                      |             | `ada_language_server`                                                                  |
+| adl                | ✓                   | ✓                      | ✓           |                                                                                        |
+| agda               | ✓                   |                        |             |                                                                                        |
+| astro              | ✓                   |                        |             |                                                                                        |
+| awk                | ✓                   | ✓                      |             | `awk-language-server`                                                                  |
+| bash               | ✓                   | ✓                      | ✓           | `bash-language-server`                                                                 |
+| bass               | ✓                   |                        |             | `bass`                                                                                 |
+| beancount          | ✓                   |                        |             |                                                                                        |
+| bibtex             | ✓                   |                        |             | `texlab`                                                                               |
+| bicep              | ✓                   |                        |             | `bicep-langserver`                                                                     |
+| bitbake            | ✓                   |                        |             | `bitbake-language-server`                                                              |
+| blade              | ✓                   |                        |             |                                                                                        |
+| blueprint          | ✓                   |                        |             | `blueprint-compiler`                                                                   |
+| c                  | ✓                   | ✓                      | ✓           | `clangd`                                                                               |
+| c-sharp            | ✓                   | ✓                      |             | `OmniSharp`                                                                            |
+| cabal              |                     |                        |             | `haskell-language-server-wrapper`                                                      |
+| cairo              | ✓                   | ✓                      | ✓           | `cairo-language-server`                                                                |
+| capnp              | ✓                   |                        | ✓           |                                                                                        |
+| cel                | ✓                   |                        |             |                                                                                        |
+| circom             | ✓                   |                        |             | `circom-lsp`                                                                           |
+| clojure            | ✓                   |                        |             | `clojure-lsp`                                                                          |
+| cmake              | ✓                   | ✓                      | ✓           | `cmake-language-server`                                                                |
+| comment            | ✓                   |                        |             |                                                                                        |
+| common-lisp        | ✓                   |                        | ✓           | `cl-lsp`                                                                               |
+| cpon               | ✓                   |                        | ✓           |                                                                                        |
+| cpp                | ✓                   | ✓                      | ✓           | `clangd`                                                                               |
+| crystal            | ✓                   | ✓                      |             | `crystalline`                                                                          |
+| css                | ✓                   |                        | ✓           | `vscode-css-language-server`                                                           |
+| cue                | ✓                   |                        |             | `cuelsp`                                                                               |
+| cylc               | ✓                   | ✓                      | ✓           |                                                                                        |
+| d                  | ✓                   | ✓                      | ✓           | `serve-d`                                                                              |
+| dart               | ✓                   | ✓                      | ✓           | `dart`                                                                                 |
+| dbml               | ✓                   |                        |             |                                                                                        |
+| devicetree         | ✓                   |                        |             |                                                                                        |
+| dhall              | ✓                   | ✓                      |             | `dhall-lsp-server`                                                                     |
+| diff               | ✓                   |                        |             |                                                                                        |
+| docker-compose     | ✓                   | ✓                      | ✓           | `docker-compose-langserver`, `yaml-language-server`                                    |
+| dockerfile         | ✓                   | ✓                      |             | `docker-langserver`                                                                    |
+| dot                | ✓                   |                        |             | `dot-language-server`                                                                  |
+| dtd                | ✓                   |                        |             |                                                                                        |
+| dune               | ✓                   |                        |             |                                                                                        |
+| earthfile          | ✓                   | ✓                      | ✓           | `earthlyls`                                                                            |
+| edoc               | ✓                   |                        |             |                                                                                        |
+| eex                | ✓                   |                        |             |                                                                                        |
+| ejs                | ✓                   |                        |             |                                                                                        |
+| elisp              | ✓                   |                        |             |                                                                                        |
+| elixir             | ✓                   | ✓                      | ✓           | `elixir-ls`                                                                            |
+| elm                | ✓                   | ✓                      |             | `elm-language-server`                                                                  |
+| elvish             | ✓                   |                        |             | `elvish`                                                                               |
+| env                | ✓                   | ✓                      |             |                                                                                        |
+| erb                | ✓                   |                        |             |                                                                                        |
+| erlang             | ✓                   | ✓                      |             | `erlang_ls`, `elp`                                                                     |
+| esdl               | ✓                   |                        |             |                                                                                        |
+| fidl               | ✓                   |                        |             |                                                                                        |
+| fish               | ✓                   | ✓                      | ✓           |                                                                                        |
+| forth              | ✓                   |                        |             | `forth-lsp`                                                                            |
+| fortran            | ✓                   |                        | ✓           | `fortls`                                                                               |
+| fsharp             | ✓                   |                        |             | `fsautocomplete`                                                                       |
+| gas                | ✓                   | ✓                      |             |                                                                                        |
+| gdscript           | ✓                   | ✓                      | ✓           |                                                                                        |
+| gemini             | ✓                   |                        |             |                                                                                        |
+| gherkin            | ✓                   |                        |             |                                                                                        |
+| git-attributes     | ✓                   |                        |             |                                                                                        |
+| git-commit         | ✓                   | ✓                      |             |                                                                                        |
+| git-config         | ✓                   | ✓                      |             |                                                                                        |
+| git-ignore         | ✓                   |                        |             |                                                                                        |
+| git-rebase         | ✓                   |                        |             |                                                                                        |
+| gjs                | ✓                   | ✓                      | ✓           | `typescript-language-server`, `vscode-eslint-language-server`, `ember-language-server` |
+| gleam              | ✓                   | ✓                      |             | `gleam`                                                                                |
+| glimmer            | ✓                   |                        |             | `ember-language-server`                                                                |
+| glsl               | ✓                   | ✓                      | ✓           | `glsl_analyzer`                                                                        |
+| gn                 | ✓                   |                        |             |                                                                                        |
+| go                 | ✓                   | ✓                      | ✓           | `gopls`, `golangci-lint-langserver`                                                    |
+| godot-resource     | ✓                   | ✓                      |             |                                                                                        |
+| gomod              | ✓                   |                        |             | `gopls`                                                                                |
+| gotmpl             | ✓                   |                        |             | `gopls`                                                                                |
+| gowork             | ✓                   |                        |             | `gopls`                                                                                |
+| graphql            | ✓                   | ✓                      |             | `graphql-lsp`                                                                          |
+| groovy             | ✓                   |                        |             |                                                                                        |
+| gts                | ✓                   | ✓                      | ✓           | `typescript-language-server`, `vscode-eslint-language-server`, `ember-language-server` |
+| hare               | ✓                   |                        |             |                                                                                        |
+| haskell            | ✓                   | ✓                      |             | `haskell-language-server-wrapper`                                                      |
+| haskell-persistent | ✓                   |                        |             |                                                                                        |
+| hcl                | ✓                   | ✓                      | ✓           | `terraform-ls`                                                                         |
+| heex               | ✓                   | ✓                      |             | `elixir-ls`                                                                            |
+| helm               | ✓                   |                        |             | `helm_ls`                                                                              |
+| hocon              | ✓                   | ✓                      | ✓           |                                                                                        |
+| hoon               | ✓                   |                        |             |                                                                                        |
+| hosts              | ✓                   |                        |             |                                                                                        |
+| html               | ✓                   |                        |             | `vscode-html-language-server`, `superhtml`                                             |
+| hurl               | ✓                   | ✓                      | ✓           |                                                                                        |
+| hyprlang           | ✓                   |                        | ✓           |                                                                                        |
+| idris              |                     |                        |             | `idris2-lsp`                                                                           |
+| iex                | ✓                   |                        |             |                                                                                        |
+| ini                | ✓                   |                        |             |                                                                                        |
+| inko               | ✓                   | ✓                      | ✓           |                                                                                        |
+| janet              | ✓                   |                        |             |                                                                                        |
+| java               | ✓                   | ✓                      | ✓           | `jdtls`                                                                                |
+| javascript         | ✓                   | ✓                      | ✓           | `typescript-language-server`                                                           |
+| jinja              | ✓                   |                        |             |                                                                                        |
+| jjdescription      | ✓                   |                        |             |                                                                                        |
+| jq                 | ✓                   | ✓                      |             | `jq-lsp`                                                                               |
+| jsdoc              | ✓                   |                        |             |                                                                                        |
+| json               | ✓                   | ✓                      | ✓           | `vscode-json-language-server`                                                          |
+| json5              | ✓                   |                        |             |                                                                                        |
+| jsonc              | ✓                   |                        | ✓           | `vscode-json-language-server`                                                          |
+| jsonnet            | ✓                   |                        |             | `jsonnet-language-server`                                                              |
+| jsx                | ✓                   | ✓                      | ✓           | `typescript-language-server`                                                           |
+| julia              | ✓                   | ✓                      | ✓           | `julia`                                                                                |
+| just               | ✓                   | ✓                      | ✓           |                                                                                        |
+| kdl                | ✓                   | ✓                      | ✓           |                                                                                        |
+| koka               | ✓                   |                        | ✓           | `koka`                                                                                 |
+| kotlin             | ✓                   |                        |             | `kotlin-language-server`                                                               |
+| latex              | ✓                   | ✓                      |             | `texlab`                                                                               |
+| ld                 | ✓                   |                        | ✓           |                                                                                        |
+| ldif               | ✓                   |                        |             |                                                                                        |
+| lean               | ✓                   |                        |             | `lean`                                                                                 |
+| ledger             | ✓                   |                        |             |                                                                                        |
+| llvm               | ✓                   | ✓                      | ✓           |                                                                                        |
+| llvm-mir           | ✓                   | ✓                      | ✓           |                                                                                        |
+| llvm-mir-yaml      | ✓                   |                        | ✓           |                                                                                        |
+| log                | ✓                   |                        |             |                                                                                        |
+| lpf                | ✓                   |                        |             |                                                                                        |
+| lua                | ✓                   | ✓                      | ✓           | `lua-language-server`                                                                  |
+| make               | ✓                   |                        | ✓           |                                                                                        |
+| markdoc            | ✓                   |                        |             | `markdoc-ls`                                                                           |
+| markdown           | ✓                   |                        |             | `marksman`, `markdown-oxide`                                                           |
+| markdown.inline    | ✓                   |                        |             |                                                                                        |
+| matlab             | ✓                   | ✓                      | ✓           |                                                                                        |
+| mermaid            | ✓                   |                        |             |                                                                                        |
+| meson              | ✓                   |                        | ✓           | `mesonlsp`                                                                             |
+| mint               |                     |                        |             | `mint`                                                                                 |
+| mojo               | ✓                   | ✓                      | ✓           | `mojo-lsp-server`                                                                      |
+| move               | ✓                   |                        |             |                                                                                        |
+| msbuild            | ✓                   |                        | ✓           |                                                                                        |
+| nasm               | ✓                   | ✓                      |             |                                                                                        |
+| nickel             | ✓                   |                        | ✓           | `nls`                                                                                  |
+| nim                | ✓                   | ✓                      | ✓           | `nimlangserver`                                                                        |
+| nix                | ✓                   | ✓                      |             | `nil`, `nixd`                                                                          |
+| nu                 | ✓                   |                        |             | `nu`                                                                                   |
+| nunjucks           | ✓                   |                        |             |                                                                                        |
+| ocaml              | ✓                   |                        | ✓           | `ocamllsp`                                                                             |
+| ocaml-interface    | ✓                   |                        |             | `ocamllsp`                                                                             |
+| odin               | ✓                   |                        | ✓           | `ols`                                                                                  |
+| ohm                | ✓                   | ✓                      | ✓           |                                                                                        |
+| opencl             | ✓                   | ✓                      | ✓           | `clangd`                                                                               |
+| openscad           | ✓                   |                        |             | `openscad-lsp`                                                                         |
+| org                | ✓                   |                        |             |                                                                                        |
+| pascal             | ✓                   | ✓                      |             | `pasls`                                                                                |
+| passwd             | ✓                   |                        |             |                                                                                        |
+| pem                | ✓                   |                        |             |                                                                                        |
+| perl               | ✓                   | ✓                      | ✓           | `perlnavigator`                                                                        |
+| pest               | ✓                   | ✓                      | ✓           | `pest-language-server`                                                                 |
+| php                | ✓                   | ✓                      | ✓           | `intelephense`                                                                         |
+| php-only           | ✓                   |                        |             |                                                                                        |
+| pkgbuild           | ✓                   | ✓                      | ✓           | `pkgbuild-language-server`, `bash-language-server`                                     |
+| pkl                | ✓                   |                        | ✓           |                                                                                        |
+| po                 | ✓                   | ✓                      |             |                                                                                        |
+| pod                | ✓                   |                        |             |                                                                                        |
+| ponylang           | ✓                   | ✓                      | ✓           |                                                                                        |
+| powershell         | ✓                   |                        |             |                                                                                        |
+| prisma             | ✓                   | ✓                      |             | `prisma-language-server`                                                               |
+| prolog             |                     |                        |             | `swipl`                                                                                |
+| protobuf           | ✓                   | ✓                      | ✓           | `bufls`, `pb`                                                                          |
+| prql               | ✓                   |                        |             |                                                                                        |
+| purescript         | ✓                   | ✓                      |             | `purescript-language-server`                                                           |
+| python             | ✓                   | ✓                      | ✓           | `ruff`, `jedi-language-server`, `pylsp`                                                |
+| qml                | ✓                   |                        | ✓           | `qmlls`                                                                                |
+| r                  | ✓                   |                        |             | `R`                                                                                    |
+| racket             | ✓                   |                        | ✓           | `racket`                                                                               |
+| regex              | ✓                   |                        |             |                                                                                        |
+| rego               | ✓                   |                        |             | `regols`                                                                               |
+| rescript           | ✓                   | ✓                      |             | `rescript-language-server`                                                             |
+| rmarkdown          | ✓                   |                        | ✓           | `R`                                                                                    |
+| robot              | ✓                   |                        |             | `robotframework_ls`                                                                    |
+| ron                | ✓                   |                        | ✓           |                                                                                        |
+| rst                | ✓                   |                        |             |                                                                                        |
+| ruby               | ✓                   | ✓                      | ✓           | `solargraph`                                                                           |
+| rust               | ✓                   | ✓                      | ✓           | `rust-analyzer`                                                                        |
+| sage               | ✓                   | ✓                      |             |                                                                                        |
+| scala              | ✓                   | ✓                      | ✓           | `metals`                                                                               |
+| scheme             | ✓                   |                        | ✓           |                                                                                        |
+| scss               | ✓                   |                        |             | `vscode-css-language-server`                                                           |
+| slint              | ✓                   | ✓                      | ✓           | `slint-lsp`                                                                            |
+| smali              | ✓                   |                        | ✓           |                                                                                        |
+| smithy             | ✓                   |                        |             | `cs`                                                                                   |
+| sml                | ✓                   |                        |             |                                                                                        |
+| snakemake          | ✓                   |                        | ✓           | `pylsp`                                                                                |
+| solidity           | ✓                   | ✓                      |             | `solc`                                                                                 |
+| spicedb            | ✓                   |                        |             |                                                                                        |
+| sql                | ✓                   | ✓                      |             |                                                                                        |
+| sshclientconfig    | ✓                   |                        |             |                                                                                        |
+| starlark           | ✓                   | ✓                      |             |                                                                                        |
+| strace             | ✓                   |                        |             |                                                                                        |
+| supercollider      | ✓                   |                        |             |                                                                                        |
+| svelte             | ✓                   |                        | ✓           | `svelteserver`                                                                         |
+| sway               | ✓                   | ✓                      | ✓           | `forc`                                                                                 |
+| swift              | ✓                   | ✓                      |             | `sourcekit-lsp`                                                                        |
+| t32                | ✓                   |                        |             |                                                                                        |
+| tablegen           | ✓                   | ✓                      | ✓           |                                                                                        |
+| tact               | ✓                   | ✓                      | ✓           |                                                                                        |
+| task               | ✓                   |                        |             |                                                                                        |
+| tcl                | ✓                   |                        | ✓           |                                                                                        |
+| templ              | ✓                   |                        |             | `templ`                                                                                |
+| tfvars             | ✓                   |                        | ✓           | `terraform-ls`                                                                         |
+| thrift             | ✓                   |                        |             |                                                                                        |
+| todotxt            | ✓                   |                        |             |                                                                                        |
+| toml               | ✓                   | ✓                      |             | `taplo`                                                                                |
+| tsq                | ✓                   |                        |             |                                                                                        |
+| tsx                | ✓                   | ✓                      | ✓           | `typescript-language-server`                                                           |
+| twig               | ✓                   |                        |             |                                                                                        |
+| typescript         | ✓                   | ✓                      | ✓           | `typescript-language-server`                                                           |
+| typespec           | ✓                   | ✓                      | ✓           | `tsp-server`                                                                           |
+| typst              | ✓                   |                        |             | `tinymist`, `typst-lsp`                                                                |
+| ungrammar          | ✓                   |                        |             |                                                                                        |
+| unison             | ✓                   |                        | ✓           |                                                                                        |
+| uxntal             | ✓                   |                        |             |                                                                                        |
+| v                  | ✓                   | ✓                      | ✓           | `v-analyzer`                                                                           |
+| vala               | ✓                   | ✓                      |             | `vala-language-server`                                                                 |
+| verilog            | ✓                   | ✓                      |             | `svlangserver`                                                                         |
+| vhdl               | ✓                   |                        |             | `vhdl_ls`                                                                              |
+| vhs                | ✓                   |                        |             |                                                                                        |
+| vue                | ✓                   |                        |             | `vue-language-server`                                                                  |
+| wast               | ✓                   |                        |             |                                                                                        |
+| wat                | ✓                   |                        |             |                                                                                        |
+| webc               | ✓                   |                        |             |                                                                                        |
+| wgsl               | ✓                   |                        |             | `wgsl_analyzer`                                                                        |
+| wit                | ✓                   |                        | ✓           |                                                                                        |
+| wren               | ✓                   | ✓                      | ✓           |                                                                                        |
+| xit                | ✓                   |                        |             |                                                                                        |
+| xml                | ✓                   |                        | ✓           |                                                                                        |
+| xtc                | ✓                   |                        |             |                                                                                        |
+| yaml               | ✓                   | ✓                      | ✓           | `yaml-language-server`, `ansible-language-server`                                      |
+| yuck               | ✓                   |                        |             |                                                                                        |
+| zig                | ✓                   | ✓                      | ✓           | `zls`                                                                                  |

@@ -45,7 +45,11 @@ const gray = {
 export default {
   content: ["./src/**/*.{astro,html,js,jsx,md,mdx,svelte,ts,tsx,vue}"],
   theme: {
-    colors: { accent, gray, white: colors.white },
+    colors: {
+      accent,
+      gray,
+      ...colors,
+    },
   },
   plugins: [starlightPlugin()],
 };

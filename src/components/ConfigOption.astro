@@ -1,0 +1,15 @@
+---
+const { name } = Astro.props;
+import { Card } from '@astrojs/starlight/components';
+---
+
+  <div class="space-y-1 border-b border-bossanova pb-4">
+    <h3>
+      {name}
+    </h3>
+  </div>
+  <slot name="info" />
+  <div class="border-2 border-bossanova p-2">
+    <strong>Default</strong>
+    <slot name="default" />
+  </div>

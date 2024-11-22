@@ -35,6 +35,9 @@ importers:
       typescript:
         specifier: ^5.6.3
         version: 5.6.3
+      unist-util-visit:
+        specifier: ^5.0.0
+        version: 5.0.0
 
 packages:
 
