@@ -18,7 +18,7 @@ For instance, <kbd>mr(\{</kbd> replaces the surrounding `(` with a `{`:
 
 [TODO: add image]
 
-If we wanted to delete the surrounding character, we could also use <kbd>md</kbd> for _**make **d\*\*elete_. For example to delete the nearest surrounding pair of `{`, use <kbd>md\{</kbd>.
+If we wanted to delete the surrounding character, we could also use <kbd>md</kbd> for _**m**ake **d**elete_. For example to delete the nearest surrounding pair of `{`, use <kbd>md\{</kbd>.
 
 [TODO: add image]
 
@@ -46,7 +46,7 @@ Then pressing <kbd>md*</kbd> will delete the nearest `*`.
 Hello _world_!
 ```
 
-Or using <kbd>mro\{</kbd> will replace the nearest pairs of `o` character with `\{`:
+Or using <kbd>mro\{</kbd> will replace the nearest pairs of `o` character with `{`:
 
 [TODO: add image of BELOW]
 
@@ -55,8 +55,6 @@ Hell{ _w}rld_!
 ```
 
 ## Text Objects
-
-### Example
 
 Text Objects are a way to manipulate a piece of text in a structured way. They allow you to refer to blocks of text based on their purpose.
 
@@ -229,3 +227,37 @@ Available text objects:
 - `a` for _**a**rgument_
 - `c` for _**c**omment_
 - `T` for _**T**est_
+
+## Syntax-aware Motions
+
+Some commands allow you to move the selection according to its location in the syntax tree. For example, many languages have the following syntax for function calls:
+
+[TODO: add image of below]
+
+```
+fn([arg1], arg2, arg3);
+```
+
+If you have a selection that wraps `arg1`, and you use <kbd>Alt</kbd> + <kbd>n</kbd>, it will select the next sibling:
+
+[TODO: add image]
+
+```
+fn(arg1, [arg2], arg3);
+```
+
+Similarly, <kbd>Alt</kbd> + <kbd>p</kbd> selects the previous sibling:
+
+[TODO: add image]
+
+```
+fn([arg1], arg2, arg3);
+```
+
+<kbd>Alt</kbd> + <kbd>o</kbd> will expand selection to the parent node:
+
+[TODO: add image]
+
+```
+fn([arg1, arg2, arg3]);
+```

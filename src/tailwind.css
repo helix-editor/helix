@@ -11,7 +11,7 @@
   font-display: swap;
 }
 
-kbd {
+.sl-markdown-content kbd {
   margin-top: 0 !important;
   display: inline;
   border: 2px solid var(--sl-color-gray-6);
