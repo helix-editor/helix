@@ -14,11 +14,11 @@ Pressing <kbd>ms(</kbd>, you surround the selection with `(`:
 
 But what if we actually meant to surround it with `{` instead? That's fine! We can _**m**ake **r**eplace_ the surrounding character with <kbd>mr</kbd>
 
-For instance, <kbd>mr({</kbd> replaces the surrounding `(` with a `{`:
+For instance, <kbd>mr(\{</kbd> replaces the surrounding `(` with a `{`:
 
 [TODO: add image]
 
-If we wanted to delete the surrounding character, we could also use <kbd>md</kbd> for _**make **d\*\*elete_. For example to delete the nearest surrounding pair of `{`, use <kbd>md{</kbd>.
+If we wanted to delete the surrounding character, we could also use <kbd>md</kbd> for _**make **d\*\*elete_. For example to delete the nearest surrounding pair of `{`, use <kbd>md\{</kbd>.
 
 [TODO: add image]
 
@@ -32,12 +32,13 @@ Helix has support for the following pairs of surrounds:
 You can also use any other character which will act on the literal characters. For instance, if we have a markdown file like follows:
 
 [TODO: add image of BELOW]
+[NOTE: replace asterisks with __ __]
 
 ```md
 Hello **world**!
 ```
 
-Then pressing `md*` will delete the nearest `*`.
+Then pressing <kbd>md*</kbd> will delete the nearest `*`.
 
 [TODO: add image of BELOW]
 
@@ -45,7 +46,7 @@ Then pressing `md*` will delete the nearest `*`.
 Hello _world_!
 ```
 
-Or using `mro{` will replace the nearest pairs of `o` character with `{`:
+Or using <kbd>mro\{</kbd> will replace the nearest pairs of `o` character with `\{`:
 
 [TODO: add image of BELOW]
 
@@ -56,3 +57,105 @@ Hell{ _w}rld_!
 In the future, _may_ also add support for [acting on a surrounding pair of tags](https://github.com/helix-editor/helix/pull/12055).
 
 ## Text Objects
+
+### Example
+
+Text Objects are a way to manipulate a piece of text in a structured way. They allow you to refer to blocks of text based on their purpose.
+
+For example, with the following Python file:
+
+[TODO: add image, with below contents]
+
+```python
+class Thing:
+  def __init__(self):
+    self.thing = "Hello world"
+
+  def say_thing(self):
+    print(self.thing)
+```
+
+Press <kbd>maf</kbd> for _**m**anipulate **a**round **f**unction_ to select the entire method:
+
+[TODO: add image]
+
+Or <kbd>mif</kbd> for _**m**anipulate **i**nside **f**unction_ to select the body of the method:
+
+[TODO: add image]
+
+Additionally, you can move between text objects. For instance, <kbd>]f</kbd> with go to the previous function.
+
+[TODO: add image]
+
+### Syntax
+
+- <kbd>ma</kbd> + `<textobject>` to _**m**anipulate **a**round_ a textobject. Highlight the entire text object, for example the entire function.
+- <kbd>mi</kbd> + `<textobject>` to _**m**anipulate **i**nside_ a textobject. Highlight a smaller region of the text object, for example the body of a function.
+
+### Basic Text Objects
+
+These are available everywhere.
+
+#### word and WORD
+
+word and WORD textobjects allow you to act on various types of consecutive characters. For example:
+
+- A word is consists only of alphanumeric characters and underscores (`a-Z`, `0-9`, `_`).
+- A WORD is always delimited by whitespace (e.g. newlines, tabs, spaces).
+
+For instance, take the following file, with two cursors:
+
+[TODO: add below. each cursor is at *]
+
+```rs
+pri*ntln!("Hello, wo*rld");
+```
+
+Selecting inside word with <kbd>miw</kbd>:
+
+Selecting inside WORD with <kbd>miW</kbd>:
+
+---
+
+The "around" versions are similar, except they also include the surrounding whitespace. For instance:
+
+Selecting around word with <kbd>maw</kbd>:
+
+Selecting around WORD with <kbd>maW</kbd>:
+
+#### W - WORD
+
+#### p - Paragraph
+
+#### Surround Pairs
+
+These allow you to select:
+
+- Inside of the surrounding pair, excluding the surrounding characters
+- Inside of the surrounding pair, including the surrounding characters
+
+For example, with the following state:
+
+[TODO: add from below]
+
+```ts
+const say = (s: string) => console.log(s);
+```
+
+Pressing <kbd>mi(</kbd> will select:
+
+[TODO: add image]
+
+While <kbd>mi)</kbd> will select:
+
+[TODO: add image]
+
+All of the available pairs:
+
+- `(` and `)`
+- `[` and `]`
+- `{` and `}`
+- `<` and `>`
+- `'` and `'`
+- `"` and `"`
+- `` ` `` and `` ` ``
