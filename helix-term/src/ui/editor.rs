@@ -2,13 +2,14 @@ use crate::{
     commands::{self, OnKeyCallback},
     compositor::{Component, Context, Event, EventResult},
     events::{OnModeSwitch, PostCommand},
+    handlers::completion::CompletionItem,
     key,
     keymap::{KeymapResult, Keymaps},
     ui::{
         document::{render_document, LinePos, TextRenderer},
         statusline,
         text_decorations::{self, Decoration, DecorationManager, InlineDiagnostics},
-        Completion, CompletionItem, ProgressSpinners,
+        Completion, ProgressSpinners,
     },
 };
 

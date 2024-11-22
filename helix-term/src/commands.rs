@@ -6,7 +6,7 @@ pub use dap::*;
 use futures_util::FutureExt;
 use helix_event::status;
 use helix_stdx::{
-    path::expand_tilde,
+    path::{self, find_paths},
     rope::{self, RopeSliceExt},
 };
 use helix_vcs::{FileChange, Hunk};
@@ -1272,53 +1272,31 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         .unwrap_or_default();
 
     let paths: Vec<_> = if selections.len() == 1 && primary.len() == 1 {
-        // Secial case: if there is only one one-width selection, try to detect the
-        // path under the cursor.
-        let is_valid_path_char = |c: &char| {
-            #[cfg(target_os = "windows")]
-            let valid_chars = &[
-                '@', '/', '\\', '.', '-', '_', '+', '#', '$', '%', '{', '}', '[', ']', ':', '!',
-                '~', '=',
-            ];
-            #[cfg(not(target_os = "windows"))]
-            let valid_chars = &['@', '/', '.', '-', '_', '+', '#', '$', '%', '~', '=', ':'];
-
-            valid_chars.contains(c) || c.is_alphabetic() || c.is_numeric()
-        };
-
-        let cursor_pos = primary.cursor(text.slice(..));
-        let pre_cursor_pos = cursor_pos.saturating_sub(1);
-        let post_cursor_pos = cursor_pos + 1;
-        let start_pos = if is_valid_path_char(&text.char(cursor_pos)) {
-            cursor_pos
-        } else if is_valid_path_char(&text.char(pre_cursor_pos)) {
-            pre_cursor_pos
-        } else {
-            post_cursor_pos
-        };
-
-        let prefix_len = text
-            .chars_at(start_pos)
-            .reversed()
-            .take_while(is_valid_path_char)
-            .count();
-
-        let postfix_len = text
-            .chars_at(start_pos)
-            .take_while(is_valid_path_char)
-            .count();
-
-        let path: String = text
-            .slice((start_pos - prefix_len)..(start_pos + postfix_len))
-            .into();
-        log::debug!("goto_file auto-detected path: {}", path);
-
-        vec![path]
+        let mut pos = primary.cursor(text.slice(..));
+        pos = text.char_to_byte(pos);
+        let search_start = text
+            .line_to_byte(text.byte_to_line(pos))
+            .max(pos.saturating_sub(1000));
+        let search_end = text
+            .line_to_byte(text.byte_to_line(pos) + 1)
+            .min(pos + 1000);
+        let search_range = text.slice(search_start..search_end);
+        // we also allow paths that are next to the cursor (can be ambigous but
+        // rarely so in practice) so that gf on quoted/braced path works (not sure about this
+        // but apparently that is how gf has worked historically in helix)
+        let path = find_paths(search_range, true)
+            .inspect(|mat| println!("{mat:?} {:?}", pos - search_start))
+            .take_while(|range| search_start + range.start <= pos + 1)
+            .find(|range| pos <= search_start + range.end)
+            .map(|range| Cow::from(search_range.byte_slice(range)));
+        log::debug!("goto_file auto-detected path: {path:?}");
+        let path = path.unwrap_or_else(|| primary.fragment(text.slice(..)));
+        vec![path.into_owned()]
     } else {
         // Otherwise use each selection, trimmed.
         selections
             .fragments(text.slice(..))
-            .map(|sel| sel.trim().to_string())
+            .map(|sel| sel.trim().to_owned())
             .filter(|sel| !sel.is_empty())
             .collect()
     };
@@ -1329,7 +1307,7 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
             continue;
         }
 
-        let path = expand_tilde(Cow::from(PathBuf::from(sel)));
+        let path = path::expand(&sel);
         let path = &rel_path.join(path);
         if path.is_dir() {
             let picker = ui::file_picker(path.into(), &cx.editor.config());
