@@ -71,12 +71,13 @@ export default defineConfig({
         {
           label: "Contributing to Helix",
           items: [
+            "contributing/vision",
+            "contributing/releases",
+            "contributing/architecture",
             "contributing/languages",
             "contributing/textobject-queries",
             "contributing/indent-queries",
             "contributing/injection-queries",
-            "contributing/architecture",
-            "contributing/releases",
           ],
         },
       ],
