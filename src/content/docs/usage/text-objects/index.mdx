@@ -1,81 +1,15 @@
 ---
-title: Text Manipulation
+title: Text Objects
 ---
 
-Helix comes with built-in surround support, allowing you to perform actions such as:
+We'll explore both of these features on this page.
 
-- Surround selection with character
-- Delete surrounding character
-- Change surrounding character
-
-Next, Helix also includes Text Objects which are more efficient ways of manipulating text.
-
-Specifically Text Objects are a way to manipulate a piece of text in a structured way. They allow you to refer to blocks of text based on their purpose.
-
-For instance:
+Text Objects are a way to manipulate a piece of text in a structured way. They allow you to refer to blocks of text based on their purpose and perform powerful actions. For instance:
 
 - Select inside of a function.
 - Move to the next argument and seletc it.
 - Select the next changed text tracked by git.
 - Select the previous type.
-
-We'll explore both of these features on this page.
-
-## Surrounds
-
-You can surround selections with specific characters with <kbd>ms</kbd> for _**m**ake **s**urrounding_. For example, with the following state:
-
-[TODO: add image]
-
-Pressing <kbd>ms(</kbd>, you surround the selection with `(`:
-
-[TODO: add image]
-
-But what if we actually meant to surround it with `{` instead? That's fine! We can _**m**ake **r**eplace_ the surrounding character with <kbd>mr</kbd>
-
-For instance, <kbd>mr(\{</kbd> replaces the surrounding `(` with a `{`:
-
-[TODO: add image]
-
-If we wanted to delete the surrounding character, we could also use <kbd>md</kbd> for _**m**ake **d**elete_. For example to delete the nearest surrounding pair of `{`, use <kbd>md\{</kbd>.
-
-[TODO: add image]
-
-Helix has support for the following pairs of surrounds:
-
-- `{` and `}`
-- `(` and `)`
-- `[` and `]`
-- `<` and `>`
-
-You can also use any other character which will act on the literal characters. For instance, if we have a markdown file like follows:
-
-[TODO: add image of BELOW]
-[NOTE: replace asterisks with __ __]
-
-```md
-Hello **world**!
-```
-
-Then pressing <kbd>md*</kbd> will delete the nearest `*`.
-
-[TODO: add image of BELOW]
-
-```md
-Hello _world_!
-```
-
-Or using <kbd>mro\{</kbd> will replace the nearest pairs of `o` character with `{`:
-
-[TODO: add image of BELOW]
-
-```md
-Hell{ _w}rld_!
-```
-
-## Text Objects
-
-Text Objects are a way to manipulate a piece of text in a structured way. They allow you to refer to blocks of text based on their purpose.
 
 For example, with the following Python file:
 

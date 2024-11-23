@@ -1,5 +1,6 @@
 ---
 import "asciinema-player/dist/bundle/asciinema-player.css";
+// @ts-expect-error
 import { AsciinemaSettings } from "asciinema-player";
 
 interface Props {
@@ -26,7 +27,7 @@ const {
   title = undefined,
 }: Props = Astro.props;
 
-const demoId = "asciinema-demo-" + src.split("/").pop().split(".")[0];
+const demoId = "asciinema-demo-" + (src.split("/").pop() as string).split(".")[0];
 ---
 
 <asciinema-player
@@ -39,11 +40,15 @@ const demoId = "asciinema-demo-" + src.split("/").pop().split(".")[0];
 </asciinema-player>
 
 <script>
+  // @ts-expect-error
   import * as AsciinemaPlayer from "asciinema-player";
   class Asciinema extends HTMLElement {
     constructor() {
       super();
       const src = this.dataset.src;
+      if (!this.dataset.settings) {
+        throw new Error("Settings not found")
+      }
       let settings = JSON.parse(this.dataset.settings);
 
       if (window.location.hash === `#${this.id}`) {
@@ -52,15 +57,19 @@ const demoId = "asciinema-demo-" + src.split("/").pop().split(".")[0];
 
       document.fonts.load("1em " + settings.terminalFontFamily).then(() => {
         const player = AsciinemaPlayer.create(src, this, settings);
-      });
+          if (this.dataset.title) {
+            const element = document
+              .getElementById(`${this.id}-link`);
 
-      if (this.dataset.title) {
-        document
-          .getElementById(`${this.id}-link`)
-          .addEventListener("click", (e) => {
-            player.play();
-          });
-      }
+              if (!element) {
+                throw new Error("Asciinema player not found")
+              }
+        
+              element.addEventListener("click", () => {
+                player.play();
+              });
+          }
+      });
     }
   }
 

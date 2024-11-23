@@ -123,7 +123,7 @@ fn shout(things: Vec<Thing>) {
 // 3x @outdent
 ```
 
-```scm
+```scheme
 ((block) @indent)
 ["}" ")"] @outdent
 ```
@@ -139,7 +139,7 @@ line losing one indent level.
 For an example of where `@extend` can be useful, consider Python, which is
 whitespace-sensitive.
 
-```scm
+```scheme
 ]
   (parenthesized_expression)
   (function_definition)
@@ -178,7 +178,7 @@ To address this case, `@extend` tells helix to "extend" the captured node's span
 to the line feed and every consecutive line that has a greater indent level than
 the line of the node.
 
-```scm
+```scheme
 (parenthesized_expression) @indent
 
 ]
@@ -241,7 +241,7 @@ as well.
 To help, we need to signal an end to the extension. We can do this with
 `@extend.prevent-once`.
 
-```scm
+```scheme
 (parenthesized_expression) @indent
 
 ]
@@ -280,7 +280,7 @@ the list element and the map both start on the same line. But we really do want
 to start an indentation for each of these so that subsequent keys in the map
 hang over the list and align properly. This is where `@indent.always` helps.
 
-```scm
+```scheme
 ((block_sequence_item) @item @indent.always @extend
   (#not-one-line? @item))
 
@@ -298,7 +298,7 @@ In some cases, an S-expression cannot express exactly what pattern should be mat
 For that, tree-sitter allows for predicates to appear anywhere within a pattern,
 similar to how `#set!` declarations work:
 
-```scm
+```scheme
 (some_kind
   (child_kind) @indent
   (#predicate? arg1 arg2 ...)
@@ -360,7 +360,7 @@ fn aha() { // ←─────────────────────
 
 We can write the following query with the `#set!` declaration:
 
-```scm
+```scheme
 ((block) @indent
  (#set! "scope" "tail"))
 ("}" @outdent
