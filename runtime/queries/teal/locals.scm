@@ -1,26 +1,26 @@
 
 (var_declaration
   declarators: (var_declarators
-  (var (identifier)) @definition.var))
+  (var (identifier)) @local.definition.var))
 
 (var_assignment
   variables: (assignment_variables
-    (var (identifier) @definition.var) @definition.associated))
+    (var (identifier) @local.definition.var) @local.definition.associated))
 
-(arg name: (identifier) @definition.parameter)
+(arg name: (identifier) @local.definition.parameter)
 
-(anon_function) @scope
+(anon_function) @local.scope
 ((function_statement
-  (function_name) @definition.function) @scope
-  (#set! definition.function.scope "parent"))
+  (function_name) @local.definition.function) @local.scope
+  (#set! local.definition.function.local.scope "parent"))
 
-(program) @scope
-(if_statement) @scope
-(generic_for_statement (for_body) @scope)
-(numeric_for_statement (for_body) @scope)
-(repeat_statement) @scope
-(while_statement (while_body) @scope)
-(do_statement) @scope
+(program) @local.scope
+(if_statement) @local.scope
+(generic_for_statement (for_body) @local.scope)
+(numeric_for_statement (for_body) @local.scope)
+(repeat_statement) @local.scope
+(while_statement (while_body) @local.scope)
+(do_statement) @local.scope
 
-(identifier) @reference
+(identifier) @local.reference
 

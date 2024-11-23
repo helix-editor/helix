@@ -1,34 +1,38 @@
 
 ;; Primitives
-(boolean) @boolean
+(boolean) @constant.builtin.boolean
 (comment) @comment
 (shebang_comment) @comment
 (identifier) @variable
 ((identifier) @variable.builtin
   (#eq? @variable.builtin "self"))
 (nil) @constant.builtin
-(number) @number
+(number) @constant.numeric
 (string) @string
 (table_constructor ["{" "}"] @constructor)
 (varargs "..." @constant.builtin)
 [ "," "." ":" ";" ] @punctuation.delimiter
 
-(escape_sequence) @string.escape
-(format_specifier) @string.escape
+(escape_sequence) @constant.character.escape
+(format_specifier) @constant.character.escape
 
 ;; Basic statements/Keywords
-[ "if" "then" "elseif" "else" ] @conditional
-[ "for" "while" "repeat" "until" ] @repeat
-[ "in" "local" "return" (break) (goto) "do" "end" ] @keyword
+[ "if" "then" "elseif" "else" ] @keyword.control.conditional
+[ "for" "while" "repeat" "until" "do" ] @keyword.control.repeat
+[ "end" ] @keyword
+[ "in" ] @keyword.operator
+[ "local" ] @keyword.storage.type
+[ (break) (goto) ] @keyword.control
+[ "return" ] @keyword.control.return
 (label) @label
 
 ;; Global isn't a real keyword, but it gets special treatment in these places
-(var_declaration "global" @keyword)
-(type_declaration "global" @keyword)
-(function_statement "global" @keyword)
-(record_declaration "global" @keyword)
-(interface_declaration "global" @keyword)
-(enum_declaration "global" @keyword)
+(var_declaration "global" @keyword.storage.type)
+(type_declaration "global" @keyword.storage.type)
+(function_statement "global" @keyword.storage.type)
+(record_declaration "global" @keyword.storage.type)
+(interface_declaration "global" @keyword.storage.type)
+(enum_declaration "global" @keyword.storage.type)
 
 (macroexp_statement "macroexp" @keyword)
 
@@ -45,7 +49,7 @@
   "function" @keyword.function)
 (function_body "end" @keyword.function)
 
-(arg name: (identifier) @parameter)
+(arg name: (identifier) @variable.parameter)
 
 (function_signature
   (arguments
@@ -54,8 +58,8 @@
 
 (typeargs
   "<" @punctuation.bracket
-  . (_) @parameter
-  . ("," . (_) @parameter)*
+  . (_) @type.parameter
+  . ("," . (_) @type.parameter)*
   . ">" @punctuation.bracket)
 
 (function_call
@@ -69,63 +73,63 @@
 
 ; Contextual keywords in record bodies
 (record_declaration
-  . [ "record" ] @keyword
+  . [ "record" ] @keyword.storage.type
   name: (identifier) @type)
-(anon_record . "record" @keyword)
+(anon_record . "record" @keyword.storage.type)
 (record_body
   (record_declaration
-    . [ "record" ] @keyword
+    . [ "record" ] @keyword.storage.type
     . name: (identifier) @type))
 (record_body
   (enum_declaration
-    . [ "enum" ] @keyword
-    . name: (identifier) @type))
+    . [ "enum" ] @keyword.storage.type
+    . name: (identifier) @type.enum))
 (record_body
   (interface_declaration
-    . [ "interface" ] @keyword
+    . [ "interface" ] @keyword.storage.type
     . name: (identifier) @type))
 (record_body
   (typedef
-    . "type" @keyword
+    . "type" @keyword.storage.type
     . name: (identifier) @type . "="))
 (record_body
   (macroexp_declaration
-    . [ "macroexp" ] @keyword))
-(record_body (metamethod "metamethod" @keyword))
-(record_body (userdata) @keyword)
+    . [ "macroexp" ] @keyword.storage.type))
+(record_body (metamethod "metamethod" @keyword.storage.modifier))
+(record_body (userdata) @keyword.storage.modifier)
 
 ; Contextual keywords in interface bodies
 (interface_declaration
-  . [ "interface" ] @keyword
+  . [ "interface" ] @keyword.storage.type
   name: (identifier) @type)
-(anon_interface . "interface" @keyword)
+(anon_interface . "interface" @keyword.storage.type)
 (interface_body
   (record_declaration
-    . [ "record" ] @keyword
+    . [ "record" ] @keyword.storage.type
     . name: (identifier) @type))
 (interface_body
   (enum_declaration
-    . [ "enum" ] @keyword
-    . name: (identifier) @type))
+    . [ "enum" ] @keyword.storage.type
+    . name: (identifier) @type.enum))
 (interface_body
   (interface_declaration
-    . [ "interface" ] @keyword
+    . [ "interface" ] @keyword.storage.type
     . name: (identifier) @type))
 (interface_body
   (typedef
-    . "type" @keyword
+    . "type" @keyword.storage.type
     . name: (identifier) @type . "="))
 (interface_body
   (macroexp_declaration
-    . [ "macroexp" ] @keyword))
-(interface_body (metamethod "metamethod" @keyword))
-(interface_body (userdata) @keyword)
+    . [ "macroexp" ] @keyword.storage.type))
+(interface_body (metamethod "metamethod" @keyword.storage.modifier))
+(interface_body (userdata) @keyword.storage.modifier)
 
 (enum_declaration
-  "enum" @keyword
-  name: (identifier) @type)
+  "enum" @keyword.storage.type
+  name: (identifier) @type.enum)
 
-(type_declaration "type" @keyword)
+(type_declaration "type" @keyword.storage.type)
 (type_declaration (identifier) @type)
 (simple_type) @type
 (type_index) @type

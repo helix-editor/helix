@@ -1283,7 +1283,6 @@ source = { git = "https://github.com/euclidianAce/tree-sitter-teal", rev = "485f
 
 [[language]]
 name = "teal"
-auto-format = false
 scope = "source.tl"
 injection-regex = "teal"
 file-types = ["tl"]
@@ -1291,7 +1290,6 @@ comment-tokens = "--"
 block-comment-tokens = { start = "--[[", end = "--]]" }
 roots = [ "tlconfig.lua" ]
 language-servers = [ "teal-lsp" ]
-grammar = "teal"
 
 [[language]]
 name = "svelte"
