@@ -1,7 +1,8 @@
+@import "asciinema-player/dist/bundle/asciinema-player.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@import "asciinema-player/dist/bundle/asciinema-player.css";
 
 @font-face {
   font-family: "JetBrainsMono";
@@ -17,7 +18,8 @@
   border: 2px solid var(--sl-color-gray-6);
   border-radius: 0.25rem;
   background-color: var(--sl-color-gray-5);
-  box-shadow: 0 2px 1px var(--sl-color-gray-6),
+  box-shadow:
+    0 2px 1px var(--sl-color-gray-6),
     0 2px 0 0 var(--sl-color-gray-5) inset;
   font-size: var(--sl-text-xs);
   font-weight: 700;

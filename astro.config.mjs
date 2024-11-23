@@ -46,6 +46,7 @@ export default defineConfig({
             "usage/surround",
             "usage/language-support",
             "usage/pickers",
+            "usage/registers",
           ],
         },
         {
