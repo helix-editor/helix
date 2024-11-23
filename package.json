@@ -1,7 +1,7 @@
 {
   "name": "helix-docs",
   "type": "module",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "scripts": {
     "dev": "astro dev",
     "start": "astro dev",
@@ -17,12 +17,7 @@
     "asciinema-player": "^3.8.1",
     "astro": "^4.16.10",
     "sharp": "^0.32.5",
-    "starlight-links-validator": "^0.13.2",
     "tailwindcss": "^3.4.4",
     "typescript": "^5.6.3"
-  },
-  "devDependencies": {
-    "prettier": "^3.3.3",
-    "prettier-plugin-astro": "^0.14.1"
   }
 }
