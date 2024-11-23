@@ -42,29 +42,29 @@ export default defineConfig({
           items: [
             "usage/multiple-cursors",
             "usage/text-manipulation",
-            "usage/languages",
+            "usage/language-support",
           ],
         },
         {
           label: "Reference",
           items: [
-            "reference/themes",
-            "reference/formatters",
             "reference/keymap",
-            "reference/commands",
-            "reference/languages",
+            "reference/typed-commands",
             "reference/configuration",
+            "reference/themes",
+            "reference/language-servers",
+            "reference/formatters",
             "reference/debuggers",
           ],
         },
         {
           label: "Help",
           items: [
-            "help/terminal-support",
+            "help/recipes",
             "help/faq",
-            "help/from-vim",
             "help/troubleshooting",
-            "usage/recipes",
+            "help/terminal-support",
+            "help/from-vim",
           ],
         },
 
