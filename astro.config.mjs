@@ -3,6 +3,7 @@ import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import tailwind from "@astrojs/tailwind";
 import { visit } from "@astrojs/starlight/expressive-code/hast";
+import starlightLinksValidatorPlugin from "starlight-links-validator";
 
 // https://astro.build/config
 export default defineConfig({
@@ -11,6 +12,7 @@ export default defineConfig({
   },
   integrations: [
     starlight({
+      plugins: [starlightLinksValidatorPlugin()],
       title: "Helix",
       logo: {
         src: "./public/favicon.svg",

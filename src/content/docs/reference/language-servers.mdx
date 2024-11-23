@@ -35,17 +35,28 @@ Sample settings in `languages.toml`
 [language-server.astro-ls]
 command = "astro-ls"
 args = ["--stdio"]
-config = {typescript = {tsdk = "/Users/user/.bun/install/global/node_modules/typescript/lib"}, environment = "node"}
+config = {
+  typescript = {
+    tsdk = "/Users/user/.bun/install/global/node_modules/typescript/lib"
+  },
+  environment = "node"
+}
 
 [[language]]
 name = "astro"
-auto-format = true
+scope = "source.astro"
+injection-regex = "astro"
+file-types = ["astro"]
+roots = ["package.json", "astro.config.mjs"]
 language-servers = [ "astro-ls" ]
 ```
 
 Please note that a valid `config.typescript.tsdk` path must be passed to the LSP
-config. You will need `typescript` installed. If you have `typescript` installed
-globally you can find where by running `npm list -g | head -1`.
+config.
+
+You will need `typescript` installed. If you have `typescript` installed globally you can find where by running `npm list -g | head -1`.
+
+If you want to install typescript tsdk using your distribution's package manager and not npm, note that the language server will search for a `typescript.js` located in `...somewhere.../lib/node_modules/typescript/lib/typescript.js`file so you can find out where that is with e.g. `cd / && find typescript.js`.
 
 ### AWK
 
