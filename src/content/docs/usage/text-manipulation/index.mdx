@@ -2,6 +2,25 @@
 title: Text Manipulation
 ---
 
+Helix comes with built-in surround support, allowing you to perform actions such as:
+
+- Surround selection with character
+- Delete surrounding character
+- Change surrounding character
+
+Next, Helix also includes Text Objects which are more efficient ways of manipulating text.
+
+Specifically Text Objects are a way to manipulate a piece of text in a structured way. They allow you to refer to blocks of text based on their purpose.
+
+For instance:
+
+- Select inside of a function.
+- Move to the next argument and seletc it.
+- Select the next changed text tracked by git.
+- Select the previous type.
+
+We'll explore both of these features on this page.
+
 ## Surrounds
 
 You can surround selections with specific characters with <kbd>ms</kbd> for _**m**ake **s**urrounding_. For example, with the following state:

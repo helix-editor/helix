@@ -5,17 +5,48 @@ title: Configuration
 import ConfigOption from '@/components/ConfigOption.astro';
 import Master from "@/components/Master.astro";
 
-In Helix you can have a custom configuration file to store your settings, to get started first check out [configuration basic usage](/usage/configuration).
+Helix makes it a priority to have a solid out-of-the-box experience, with minimal configuration required to start using the editor.
 
-Additionally, there are two more ways you can override the config file:
+However, there are many things one may wish to customize such as:
 
-- By specifying it with the `-c` or `--config` command line argument, for example `hx -c path/to/custom-config.toml`
-- By having a `config.toml` local to a project by putting it under a `.helix` directory in your repository. Its settings will be merged with the configuration directory `config.toml` and the built-in configuration.
+- Creating custom keybindings and macros
+- Using custom theme
+- Configure stuff like auto pairs, statusline, etc.
 
-There are also two ways of reloading the config without existing helix:
+## Introduction
 
-- Run `:config-reload` in normal mode.
-- (Advanced) Send the USR1 signal to the Helix process on Unix operating systems, such as by using the command `pkill -USR1 hx`.
+### Setting config options
+
+In the editor, you can change various options without editing any config file. For example by using `:set cursorline false`. This will be reset when you leave the editor.
+
+To permanently store config options, create a `config.toml` file located in your config directory:
+
+- Linux and Mac: `~/.config/helix/config.toml`
+- Windows: `%AppData%\helix\config.toml`
+
+:::tip
+
+You also can open the config file by typing `:config-open` within Helix in normal mode, and reload it with `:config-reload`.
+
+:::
+
+### Sample config
+
+```toml
+# helix/config.toml
+theme = "catppuccin-mocha"
+
+[editor]
+line-number = "relative"
+mouse = false
+
+[editor.cursor-shape]
+insert = "bar"
+normal = "block"
+select = "underline"
+```
+
+For available themes, Helix comes with _a lot_ of bundled themes, so they are on a separate page. See the [full theme reference](/reference/themes)
 
 ## `[editor]` Section
 
@@ -1650,3 +1681,10 @@ cursor-line = "warning" # show warnings and errors on the cursorline inline
 ```
 
 </Master>
+
+## Overriding the Config File
+
+You can override the default config file by:
+
+- Specifying it with the `-c` or `--config` command line argument, for example `hx -c path/to/custom-config.toml`
+- Having a `config.toml` local to a project by putting it under a `.helix` directory in your repository. Its settings will be merged with the configuration directory `config.toml` and the built-in configuration.

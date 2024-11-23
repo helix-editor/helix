@@ -40,13 +40,9 @@ export default defineConfig({
         {
           label: "Usage",
           items: [
-            "usage/overview",
             "usage/multiple-cursors",
-            "usage/select-mode",
-            "usage/recipes",
+            "usage/text-manipulation",
             "usage/languages",
-            "usage/configuration", // mention themes and config
-            "usage/text-manipulation", // surround + textobjects
           ],
         },
         {
@@ -68,6 +64,7 @@ export default defineConfig({
             "help/faq",
             "help/from-vim",
             "help/troubleshooting",
+            "usage/recipes",
           ],
         },
 
