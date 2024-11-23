@@ -39,3 +39,28 @@ If you have `auto-format` turned on, but you want to save a file _without format
 - `:set-language text`
 - Write the file
 - Optionally, change it back with `:set-language`
+
+## More intuitive x and X motions
+
+Some people prefer to remap <kbd>x</kbd> and <kbd>X</kbd> motions from the defaults:
+
+```toml
+# helix/config.toml
+x = "extend_line_below"
+X = "extend_to_line_bounds"
+```
+
+To the following:
+
+```toml
+# helix/config.toml
+x = "select_line_below"
+X = "select_line_above"
+```
+
+Due to the fact that they may find it more natural to have <kbd>x</kbd> and <kbd>X</kbd> perform opposite motions, similar to other motions in Helix.
+
+Currently some people want this to become the default.
+
+- [Discussion](https://github.com/helix-editor/helix/discussions/11600)
+- [Pull request](https://github.com/helix-editor/helix/pull/12013)

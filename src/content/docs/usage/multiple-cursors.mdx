@@ -1,5 +1,502 @@
 ---
-title: Multiple Cursors
+title: Multiple Cursors and Macros
 ---
 
-TODO
+To add a cursor below, use . This will create an additional cursor.
+
+One of the most powerful ways to create a cursor is by using <kbd>s</kbd> for _**s**elect_. It'll operate on the contents of your selection
+
+The best way to learn is with examples, and we'll provide you with many examples in this page.
+
+## Introduction
+
+We have some HTML which has repeating classes, and we want to refactor it. From this:
+
+```html
+<a class="font-thin px-3" />
+<a class="font-thin px-3" />
+<a class="font-thin px-3" />
+<a class="font-thin px-3" />
+```
+
+To this:
+
+```html
+<a class="font-thin px-4" />
+<a class="font-thin px-4" />
+<a class="font-thin px-4" />
+<a class="font-thin px-4" />
+```
+
+### Basic Example
+
+First, place your cursor on the first `3`:
+
+[TODO: add image]
+
+Next, press <kbd>C</kbd> which creates a cursor below, until you have a cursor on each individual `3`:
+
+[TODO: add image]
+
+Now, just press `r` which will replace the character, and then `4` to replace each of the `3`s with a `4`.
+
+[TODO: add image]
+
+Our goal is to change the class `font-bold` to `font-thin`, which you can do by pressing <kbd>bbb</kbd> until `bold` is highlighted:
+
+[TODO: add image]
+
+Press <kbd>c</kbd> to change, and then type `thin` and <kbd>Esc</kbd> to return back to normal mode.
+
+[TODO: add image]
+
+### Another Example
+
+Press <kbd>gw</kbd> to show two letters at the start of each word:
+
+[TODO: add image]
+
+Navigate to the first instance of the `bold` word by pressing the 2-character key combination:
+
+[TODO: add image]
+
+The entire `bold` word is highlighted now. Press <kbd>C</kbd> again a few times until you select each instance of `bold`:
+
+[TODO: add image]
+
+As you see, the visual selection gets transferred over! Again, change the contents of each selection by using <kbd>c</kbd> to delete and enter insert mode -- then type your change and <kbd>Esc</kbd> to return back to normal mode.
+
+[TODO: add image]
+
+Press <kbd>f</kbd> + <kbd>3</kbd> to find the next 3:
+
+[TODO: add image]
+
+We could delete the entire class if we wanted, but instead we'll press <kbd>a</kbd> to append at the end of each selection, which puts us into insert mode.
+
+[TODO: add image]
+
+Delete the 3 by pressing backspace, then add a 4:
+
+[TODO: add image]
+
+### With macros
+
+Macros also allow you to repeat certain motions, and they can be used in combination with multiple cursor!
+
+Place your cursor on the first line, after the dash:
+
+[TODO: add image]
+
+Use <kbd>Q</kbd> to begin recording a macro, and then press <kbd>e</kbd> to select the full `thin` word:
+
+[TODO: add image]
+
+Change it to `bold` like we did before:
+
+[TODO: add image]
+
+Now <kbd>f</kbd> + <kbd>3</kbd> + <kbd>;</kbd> to select the `3`:
+
+[TODO: add image]
+
+And replace it with a `4`:
+
+[TODO: add image]
+
+Press <kbd>Q</kbd> to stop recording the macro.
+
+Okay, so the hard part is done! Now go back to the `-` you started from by using <kbd>F</kbd> + <kbd>-</kbd> which finds the previous `3`:
+
+[TODO: add image]
+
+Create 3 more cursors on each `-`:
+
+[TODO: add image]
+
+And just press <kbd>q</kbd> (note: lowercase q!) to repeat the motions you've recorded earlier.
+
+[TODO: add image]
+
+## Macros
+
+Macros are a way to record your keystrokes and then replay them whenever you want to. By default, when you press <kbd>Q</kbd> a macro will begin recording into the register `Q`.
+
+When you press <kbd>q</kbd>, it will replay the macro from register `Q`. But you can have a lot of macros at your disposal, ready to use whenever.
+
+For example, to record a macro into a specific registe, press <kbd>"</kbd> to select the register, then a character which will be the register where your macro is stored, and then <kbd>Q</kbd>. So for example:
+
+- <kbd>"</kbd> + <kbd>e</kbd> + <kbd>Q</kbd> to record a macro into the `e` register.
+
+To stop recording, just pressing `Q` again is enough.
+
+Replay the macro by using register + <kbd>q</kbd>. So continuing our previous example:
+
+- <kbd>"</kbd> + <kbd>e</kbd> + <kbd>q</kbd>
+
+## Search and Select
+
+We've just explored the very basics of how to use multiple cursors and macros, but in fact they're a lot more powerful than seems at first glance.
+
+Let's consider the following file, which includes some repetition:
+
+```py
+def calculate_area(length, width):
+  result = length * width
+  return result
+
+def calculate_perimeter(length, width):
+  result = 2 * (length + width)
+  return result
+
+def calculate_volume(length, width, height):
+  result = length * width * height
+  return result
+```
+
+And our boss wants every variable to be a maximum of 3 characters, as well as the functions have to be static methods on a class. So we are going to "refactor" it into the following:
+
+```py
+class Calculator:
+  @staticmethod
+  def get_area(len, wid):
+    return len * wid
+
+  @staticmethod
+  def get_perimeter(len, wid):
+    return 2 * (len + wid)
+
+  @staticmethod
+  def get_volume(len, wid, hei):
+    return len * wid * hei
+```
+
+### Search and Replace
+
+First, let's rename each of the functions from `calculate_whatever` to `get_whatever`. The easiest way to do search-and-replace in Helix is to first select the entire file with <kbd>%</kbd>.
+
+[TODO: add image]
+
+Next, we're going to use <kbd>s</kbd> which allows us to _**s**elect_ inside of our selection. Basically, it takes an input and will search for that input and create a cursor everywhere it finds it.
+
+[TODO: add image]
+
+Type the following: `calculate` and then <kbd>Enter</kbd>.
+
+[TODO: add image]
+
+As you see, it created a selection and a cursor on every single instance of the `calculate` word. Awesome, we can now just press <kbd>c</kbd> to delete the contents of each selection, which also places us into insert mode, and then type `get` and <kbd>Esc</kbd> to go back to normal more:
+
+[TODO: add image]
+
+```py
+def get_area(length, width):
+  result = length * width
+  return result
+
+def get_perimeter(length, width):
+  result = 2 * (length + width)
+  return result
+
+def get_volume(length, width, height):
+  result = length * width * height
+  return result
+```
+
+Now we have a cursor on each function definition, this is perfect and we shouldn't lose this opportunity (e.g. by instinctively using <kbd>,</kbd> to collapse each cursor into a single one)
+
+Instead, we're going to create an empty line above each cursor by pressing <kbd>O</kbd> and then writing `@staticmethod`, finally going back to normal mode with <kbd>Esc</kbd>:
+
+[TODO: add image]
+
+```py
+@staticmethod
+def get_area(length, width):
+  result = length * width
+  return result
+
+@staticmethod
+def get_perimeter(length, width):
+  result = 2 * (length + width)
+  return result
+
+@staticmethod
+def get_volume(length, width, height):
+  result = length * width * height
+  return result
+```
+
+Now our goal is to rename the parameters to be 3 letters instead. To do this, we're going to first select the function definition as well as the first line of the body of each function, by using <kbd>x</kbd> twice:
+
+[TODO: add image]
+
+Let's use <kbd>s</kbd> now which will ask us for a prompt. This time, we won't just enter a string but we'll enter a very small regex: `\w+`. This is going to select every word:
+
+[TODO: add image]
+
+This selected a few extra words than we wanted, but that's okay! As you may tell, one of the selections is the "primary" selection which is highlighted in a different color.
+
+We can make the next selection our primary selection by using <kbd>)</kbd>:
+
+[TODO: add image]:
+
+And then we can go back to the previous one with <kbd>(</kbd>:
+
+[TODO: add image]
+
+By pressing <kbd>Alt</kbd> + <kbd>,</kbd>, we can remove the primary selection, so that `def` is not selected:
+
+[TODO: add image]
+
+Removing that selection automatically made `get_area` the next selected region. We don't want this one either, so we'll remove it again with <kbd>Alt</kbd> + <kbd>,</kbd>:
+
+[TODO: add image]
+
+And now press <kbd>)</kbd> a few times until you reach the next selection you want to remove. If you go over by one, just press <kbd>(</kbd> to make the previous selection primary.
+
+[TODO: add image]
+
+Let's repeat this step until we _only_ have the words `length`, `width` and `height` selected:
+
+[TODO: add image]
+
+At this point, we can begin our removal process. Go to the beginning of each word by pressing <kbd>b</kbd>, and then press <kbd>l</kbd> a couple of times until you are on the 4th character of each word:
+
+[TODO: add image]
+
+Now, we're going to press <kbd>e</kbd> to go to the end of each word which will highlight it:
+
+[TODO: add image]
+
+And finally press <kbd>d</kbd> to delete it.
+
+[TODO: add image]
+
+```py
+@staticmethod
+def get_area(len, wid):
+  result = len * wid
+  return result
+
+@staticmethod
+def get_perimeter(len, wid):
+  result = 2 * (len + wid)
+  return result
+
+@staticmethod
+def get_volume(len, wid, hei):
+  result = len * wid * hei
+  return result
+```
+
+Great we're almost there! Let's actually undo this step so that we can look at an alternative way of accomplishing this thing. Press `u` just once which will undo our replacement:
+
+[TODO: add image]
+
+```py
+@staticmethod
+def get_area(length, width):
+  result = length * width
+  return result
+
+@staticmethod
+def get_perimeter(length, width):
+  result = 2 * (length + width)
+  return result
+
+@staticmethod
+def get_volume(length, width, height):
+  result = length * width * height
+  return result
+```
+
+An alternative way to accomplish the same is to simply select the entire file again with <kbd>%</kbd>:
+
+[TODO: add image]
+
+Now, with the power of <kbd>s</kbd> and Regex, we can select the `length`, `width` and `height` words by chaining them together with the "OR" operator. So for instance, type the following: `length|width|height`:
+
+[TODO: add image]
+
+This is certaintly simpler but it's good to know both approaches. Again, go to the beginning of each word with <kbd>b</kbd> and then move 3 characters to the right with <kbd>lll</kbd>, press <kbd>e</kbd> to go to the end of each word and delete it:
+
+[TODO: add image]
+
+```py
+@staticmethod
+def get_area(len, wid):
+  result = len * wid
+  return result
+
+@staticmethod
+def get_perimeter(len, wid):
+  result = 2 * (len + wid)
+  return result
+
+@staticmethod
+def get_volume(len, wid, hei):
+  result = len * wid * hei
+  return result
+```
+
+Now we're going to remove the variable declarations of `result` on each line, and instead directly return the calculation.
+
+Go ahead and select the entire file again with <kbd>%</kbd>. And then use the <kbd>s</kbd> to bring up the select prompt again. Type `result =` which will select all instances of `result =`:
+
+[TODO: add image]
+
+Press <kbd>C</kbd> to duplicate the selection on each line:
+
+[TODO: add image]
+
+By using <kbd>Alt</kbd> + <kbd>(</kbd>, we can rotate the _contents_ of the selection backward:
+
+[TODO: add image]
+
+Try using <kbd>Alt</kbd> + <kbd>)</kbd> to rotate the selection forward. You can keep on pressing the key but the difference between <kbd>Alt</kbd> + <kbd>)</kbd> and <kbd>Alt</kbd> + <kbd>(</kbd> won't be obvious in this example, since we basically have the same selections repeated.
+
+Regardless, press <kbd>Alt</kbd> + <kbd>)</kbd> at least once to get into the following state:
+
+[TODO: add image]
+
+```py
+@staticmethod
+def get_area(len, wid):
+  return r len * wid
+  result =esult
+
+@staticmethod
+def get_perimeter(len, wid):
+  return r 2 * (len + wid)
+  result =esult
+
+@staticmethod
+def get_volume(len, wid, hei):
+  return r len * wid * hei
+  result =esult
+```
+
+Collapse each cursor so that there is only a single selection with <kbd>;</kbd>:
+
+[TODO: add image]
+
+Now, just press <kbd>d</kbd> twice to delete two characters on each of the 6 lines:
+
+```py
+@staticmethod
+def get_area(len, wid):
+  return len * wid
+  result sult
+
+@staticmethod
+def get_perimeter(len, wid):
+  return 2 * (len + wid)
+  result sult
+
+@staticmethod
+def get_volume(len, wid, hei):
+  return len * wid * hei
+  result sult
+```
+
+Okay so at this point, we are _almost_ there. We just need to easily delete the `result sult` line.
+
+To do this, we won't do anything complicated. Simply use the magical <kbd>s</kbd> again and press `s`. This will select the `s` in each of your selections and place a cursor there:
+
+[TODO: add image]
+
+Now, just press <kbd>x</kbd> to select the entire line and <kbd>d</kbd> to delete it. Voila!
+
+[TODO: add image]
+
+We've got just a few steps left. Namely, select the entire file again with <kbd>%</kbd>:
+
+[TODO: add image]
+
+Press <kbd>\></kbd> which will indent everything by 1 level. We need this since we're going to nest it in a class, after all. You can also use <kbd>\<</kbd> to de-dent the selection by 1 level too.
+
+[TODO: add image]
+
+Now, press <kbd>i</kbd> to go into insert mode at the very beginning of the selection and then type `class Calculator:` and Enter. At last, we've succeeded 🥳!
+
+[TODO: add image]
+
+## More Examples
+
+Concrete examples showing how powerful multiple cursor functionality can be.
+
+### Object to Array of (key, value)
+
+[TODO: add image -- AS BELOW]
+
+```js
+const palette = {
+  apricot: "#f47868",
+  lightning: "#ffcd1c",
+  delta: "#6F44F0",
+};
+```
+
+We want to transform this object into an array of tuples where, the first element of each tuple is the key of the object and the second element is the value:
+
+[TODO: add image -- AS BELOW]
+
+```js
+const palette = [
+  ["apricot", "#f47868"],
+  ["lightning", "#ffcd1c"],
+  ["delta", "#6F44F0"],
+];
+```
+
+Steps:
+
+1. <kbd>mr\{[</kbd> to replace the surrounding `{` with `[`:
+
+[TODO: add image]
+
+2. <kbd>mi[</kbd> to select inside the entire array:
+
+[TODO: add image]
+
+3. <kbd>s</kbd> to enter select mode.
+
+[TODO: add image]
+
+4. <kbd>:</kbd> + <kbd>Enter</kbd> will place a cursor on every `:`.
+
+[TODO: add image]
+
+5. <kbd>r,</kbd> replaces each selection with a `,`. A cursor is line a single-width selection, and we have multiple cursors, so it will replace each `:` with `,`.
+
+[TODO: add image]
+
+6. <kbd>t,</kbd> moves the cursor on each line to the ending comma.
+
+[TODO: add image]
+
+7. <kbd>;</kbd> the selection around each cursor into a single selection.
+
+[TODO: add image]
+
+8. <kbd>vgs</kbd> selects each line excluding the final comma.
+
+[TODO: add image]
+
+9. <kbd>ms[</kbd> surrounds each individual selection with `[` to turn it into an array.
+
+[TODO: add image]
+
+10. <kbd>l</kbd> moves 1 character forward.
+
+[TODO: add image]
+
+11. <kbd>e</kbd> selects until the end of each word.
+
+[TODO: add image]
+
+12. <kbd>ms"</kbd> surrounds the items with double quotes to make strings.
+
+[TODO: add image]
+
+The final command to achieve all of that is `mr{[mi[s:<enter>r,t,;vgsms[lems"`.

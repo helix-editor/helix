@@ -16,100 +16,20 @@ Learn more at [surrounds](/usage/text-manipulation#surrounds).
 
 Text Objects are a way to manipulate a piece of text in a structured way. They allow you to refer to blocks of text based on their purpose.
 
-For example, there are keybindings for these actions:
+For instance:
 
-- Select inside of function definition.
+- Select inside of a function.
+- Move to the next argument and seletc it.
 - Select the next changed text tracked by git.
 - Select the previous type.
-- ...and many others
 
 Learn more at [text objects](/usage/text-manipulation#text-objects).
 
-## Select Mode
+## Multiple Cursors and Macros
 
-From what we've currently seen, each motion in Helix will replace the entire selection.
+One of the most powerful features Helix has is multiple cursor support in combination with macros.
 
-But if you don't want to replace the selection, and instead want to shrink or extend it, then you may use [/usage/select-mode].
-
-## Multiple Cursors
-
-Helix treats multiple cursor as a first-class citizen. For instance, let's say we had the following object in JavaScript:
-
-[TODO: add image -- AS BELOW]
-
-```js
-const palette = {
-  apricot: "#f47868",
-  lightning: "#ffcd1c",
-  delta: "#6F44F0",
-};
-```
-
-Now, we want to transform this object into an array of tuples where, the first element of each tuple is the key of the object and the second element is the value:
-
-[TODO: add image -- AS BELOW]
-
-```js
-const palette = [
-  ["apricot", "#f47868"],
-  ["lightning", "#ffcd1c"],
-  ["delta", "#6F44F0"],
-];
-```
-
-We could make extensive usage of Helix's multiple cursor functionality by following these steps:
-
-1. <kbd>mr\{[</kbd> to replace the surrounding `{` with `[`:
-
-[TODO: add image]
-
-2. <kbd>mi[</kbd> to select inside the entire array:
-
-[TODO: add image]
-
-3. <kbd>s</kbd> to enter select mode.
-
-[TODO: add image]
-
-4. <kbd>:</kbd> + <kbd>Enter</kbd> will place a cursor on every `:`.
-
-[TODO: add image]
-
-5. <kbd>r,</kbd> replaces each selection with a `,`. A cursor is line a single-width selection, and we have multiple cursors, so it will replace each `:` with `,`.
-
-[TODO: add image]
-
-6. <kbd>t,</kbd> moves the cursor on each line to the ending comma.
-
-[TODO: add image]
-
-7. <kbd>;</kbd> the selection around each cursor into a single selection.
-
-[TODO: add image]
-
-8. <kbd>vgs</kbd> selects each line excluding the final comma.
-
-[TODO: add image]
-
-9. <kbd>ms[</kbd> surrounds each individual selection with `[` to turn it into an array.
-
-[TODO: add image]
-
-10. <kbd>l</kbd> moves 1 character forward.
-
-[TODO: add image]
-
-11. <kbd>e</kbd> selects until the end of each word.
-
-[TODO: add image]
-
-12. <kbd>ms"</kbd> surrounds the items with double quotes to make strings.
-
-[TODO: add image]
-
-The final command to achieve all of that is `mr{[mi[s:<enter>r,t,;vgsms[lems"`.
-
-As we just saw, the multiple cursor feature is extremely powerful in Helix as it allows for complex transformations of text. It's also the main way to do searh-and-replace.
+It allows you to perform complex refactors which can be broken down to a series of steps, as well as seacrh-and-replace.
 
 To learn more, check out [multiple cursors](/usage/multiple-cursors).
 
@@ -125,7 +45,7 @@ Learn more at [recipes](/usage/recipes).
 
 ## Languages
 
-Helix has built-in zero-config support for syntax highlighting and language servers which provides functionality such as:
+Helix has built-in zero config support for syntax highlighting and language servers which provides functionality such as:
 
 - Goto definition
 - Hover
@@ -134,8 +54,6 @@ Helix has built-in zero-config support for syntax highlighting and language serv
 - Diagnostics
 
 Learn how to [activate language servers](/usage/languages#language-servers) and setup [formatting on save](/usage/languages#formatters).
-
-Currently, we are also experimenting with [debuggers](/usage/languages#debuggers).
 
 ## Configuration
 
