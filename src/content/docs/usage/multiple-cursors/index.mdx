@@ -148,251 +148,139 @@ And our boss wants every variable to be a maximum of 3 characters, as well as th
 
 First, let's rename each of the functions from `calculate_whatever` to `get_whatever`. The easiest way to do search-and-replace in Helix is to first select the entire file with <kbd>%</kbd>.
 
-[TODO: add image]
+<SelectedFullPythonFile />
 
 Next, we're going to use <kbd>s</kbd> which allows us to _**s**elect_ inside of our selection. Basically, it takes an input and will search for that input and create a cursor everywhere it finds it.
 
-[TODO: add image]
+<UsedSToSelectInsideSelection />
 
 Type the following: `calculate` and then <kbd>Enter</kbd>.
 
-[TODO: add image]
+<TypedCalculate />
 
-As you see, it created a selection and a cursor on every single instance of the `calculate` word. Awesome, we can now just press <kbd>c</kbd> to delete the contents of each selection, which also places us into insert mode, and then type `get` and <kbd>Esc</kbd> to go back to normal more:
+As you see, it created a selection and a cursor on every single instance of the `calculate` word.
 
-[TODO: add image]
+Awesome, we can now just press <kbd>c</kbd> to delete the contents of each selection, which also places us into insert mode, and then type `get` and <kbd>Esc</kbd> to go back to normal more:
 
-```py
-def get_area(length, width):
-  result = length * width
-  return result
-
-def get_perimeter(length, width):
-  result = 2 * (length + width)
-  return result
-
-def get_volume(length, width, height):
-  result = length * width * height
-  return result
-```
+<ReplacedEachCalculateWithGet />
 
 Now we have a cursor on each function definition, this is perfect and we shouldn't lose this opportunity (e.g. by instinctively using <kbd>,</kbd> to collapse each cursor into a single one)
 
 Instead, we're going to create an empty line above each cursor by pressing <kbd>O</kbd> and then writing `@staticmethod`, finally going back to normal mode with <kbd>Esc</kbd>:
 
-[TODO: add image]
+<AddedStaticMethodIndicator />
 
-```py
-@staticmethod
-def get_area(length, width):
-  result = length * width
-  return result
+Now our goal is to rename the parameters to be 3 letters instead. To do this, we're going to first select the function definition as well as the first line of the body of each function, with <kbd>j</kbd> and then by using <kbd>x</kbd> twice:
 
-@staticmethod
-def get_perimeter(length, width):
-  result = 2 * (length + width)
-  return result
-
-@staticmethod
-def get_volume(length, width, height):
-  result = length * width * height
-  return result
-```
-
-Now our goal is to rename the parameters to be 3 letters instead. To do this, we're going to first select the function definition as well as the first line of the body of each function, by using <kbd>x</kbd> twice:
-
-[TODO: add image]
+<SelectedFirstTwoLinesOfEachFunction />
 
 Let's use <kbd>s</kbd> now which will ask us for a prompt. This time, we won't just enter a string but we'll enter a very small regex: `\w+`. This is going to select every word:
 
-[TODO: add image]
+<SelectedEveryWord />
 
-This selected a few extra words than we wanted, but that's okay! As you may tell, one of the selections is the "primary" selection which is highlighted in a different color.
+This selected a few extra words than we wanted, but that's okay! One of the selections is the "primary" selection which we can tell by the `2:3` in the bottom right corner, which means that our primary selection is on line 2 character 3.
 
-We can make the next selection our primary selection by using <kbd>)</kbd>:
+We can make the next selection our primary selection by using <kbd>)</kbd>, which is seen by the `2:12` in the counter, meaning that our primary selection is at the `get_area` method:
 
-[TODO: add image]:
+<NextSelectionPrimary />
 
 And then we can go back to the previous one with <kbd>(</kbd>:
 
-[TODO: add image]
+<BackToPreviousSelection />
 
 By pressing <kbd>Alt</kbd> + <kbd>,</kbd>, we can remove the primary selection, so that `def` is not selected:
 
-[TODO: add image]
+<RemovedPrimarySelection />
 
 Removing that selection automatically made `get_area` the next selected region. We don't want this one either, so we'll remove it again with <kbd>Alt</kbd> + <kbd>,</kbd>:
 
-[TODO: add image]
+<RemovedPrimarySelectionAgain />
 
-And now press <kbd>)</kbd> a few times until you reach the next selection you want to remove. If you go over by one, just press <kbd>(</kbd> to make the previous selection primary.
-
-[TODO: add image]
+Press <kbd>)</kbd> a few times until you reach the next selection you want to remove. If you go over by one, just press <kbd>(</kbd> to make the previous selection primary.
 
 Let's repeat this step until we _only_ have the words `length`, `width` and `height` selected:
 
-[TODO: add image]
+<OnlyParamsSelected />
 
 At this point, we can begin our removal process. Go to the beginning of each word by pressing <kbd>b</kbd>, and then press <kbd>l</kbd> a couple of times until you are on the 4th character of each word:
 
-[TODO: add image]
+<OnFourthCharOfEachWord />
 
 Now, we're going to press <kbd>e</kbd> to go to the end of each word which will highlight it:
 
-[TODO: add image]
+<SelectEndOfEachParam />
 
 And finally press <kbd>d</kbd> to delete it.
 
-[TODO: add image]
-
-```py
-@staticmethod
-def get_area(len, wid):
-  result = len * wid
-  return result
-
-@staticmethod
-def get_perimeter(len, wid):
-  result = 2 * (len + wid)
-  return result
-
-@staticmethod
-def get_volume(len, wid, hei):
-  result = len * wid * hei
-  return result
-```
+<DeletedEndOfEachWord />
 
 Great we're almost there! Let's actually undo this step so that we can look at an alternative way of accomplishing this thing. Press `u` just once which will undo our replacement:
 
-[TODO: add image]
-
-```py
-@staticmethod
-def get_area(length, width):
-  result = length * width
-  return result
-
-@staticmethod
-def get_perimeter(length, width):
-  result = 2 * (length + width)
-  return result
-
-@staticmethod
-def get_volume(length, width, height):
-  result = length * width * height
-  return result
-```
+<UndidStep />
 
 An alternative way to accomplish the same is to simply select the entire file again with <kbd>%</kbd>:
 
-[TODO: add image]
+<SelectedEntireFileAgain />
 
 Now, with the power of <kbd>s</kbd> and Regex, we can select the `length`, `width` and `height` words by chaining them together with the "OR" operator. So for instance, type the following: `length|width|height`:
 
-[TODO: add image]
+<SelectedAllLengthWidthHeight />
 
-This is certaintly simpler but it's good to know both approaches. Again, go to the beginning of each word with <kbd>b</kbd> and then move 3 characters to the right with <kbd>lll</kbd>, press <kbd>e</kbd> to go to the end of each word and delete it:
+This is certaintly simpler but it's good to know both approaches. Hit <kbd>Enter</kbd> to select and yet again, go to the beginning of each word with <kbd>b</kbd> and then move 3 characters to the right with <kbd>lll</kbd>, press <kbd>e</kbd> to go to the end of each word and delete it:
 
-[TODO: add image]
-
-```py
-@staticmethod
-def get_area(len, wid):
-  result = len * wid
-  return result
-
-@staticmethod
-def get_perimeter(len, wid):
-  result = 2 * (len + wid)
-  return result
-
-@staticmethod
-def get_volume(len, wid, hei):
-  result = len * wid * hei
-  return result
-```
+<RemovedLastPartOfEachParam />
 
 Now we're going to remove the variable declarations of `result` on each line, and instead directly return the calculation.
 
 Go ahead and select the entire file again with <kbd>%</kbd>. And then use the <kbd>s</kbd> to bring up the select prompt again. Type `result =` which will select all instances of `result =`:
 
-[TODO: add image]
+<SelectedAllResultVars />
 
-Press <kbd>C</kbd> to duplicate the selection on each line:
+<kbd>Enter</kbd> to select, and then Press <kbd>C</kbd> to duplicate the selection on each line:
 
-[TODO: add image]
+<SelectedAllResultVarsAndC />
 
 By using <kbd>Alt</kbd> + <kbd>(</kbd>, we can rotate the _contents_ of the selection backward:
 
-[TODO: add image]
+<RotatedContentsOfSelections />
 
 Try using <kbd>Alt</kbd> + <kbd>)</kbd> to rotate the selection forward. You can keep on pressing the key but the difference between <kbd>Alt</kbd> + <kbd>)</kbd> and <kbd>Alt</kbd> + <kbd>(</kbd> won't be obvious in this example, since we basically have the same selections repeated.
 
 Regardless, press <kbd>Alt</kbd> + <kbd>)</kbd> at least once to get into the following state:
 
-[TODO: add image]
-
-```py
-@staticmethod
-def get_area(len, wid):
-  return r len * wid
-  result =esult
-
-@staticmethod
-def get_perimeter(len, wid):
-  return r 2 * (len + wid)
-  result =esult
-
-@staticmethod
-def get_volume(len, wid, hei):
-  return r len * wid * hei
-  result =esult
-```
+<RotatedContentsOfSelections />
 
 Collapse each cursor so that there is only a single selection with <kbd>;</kbd>:
 
-[TODO: add image]
+<EachSelectionCollapsed />
 
 Now, just press <kbd>d</kbd> twice to delete two characters on each of the 6 lines:
 
-```py
-@staticmethod
-def get_area(len, wid):
-  return len * wid
-  result sult
+<DeletedTwoChars />
 
-@staticmethod
-def get_perimeter(len, wid):
-  return 2 * (len + wid)
-  result sult
+Okay so at this point, we are _almost_ there. We just need to delete the `result sult` line.
 
-@staticmethod
-def get_volume(len, wid, hei):
-  return len * wid * hei
-  result sult
-```
+To do this, use the <kbd>s</kbd> again and type `s` in the prompt. This will select the `s` in each of your selections and place a cursor there:
 
-Okay so at this point, we are _almost_ there. We just need to easily delete the `result sult` line.
+<SelectedAllS />
 
-To do this, we won't do anything complicated. Simply use the magical <kbd>s</kbd> again and press `s`. This will select the `s` in each of your selections and place a cursor there:
+Press <kbd>Enter</kbd> to select, and then press <kbd>x</kbd> to select the entire line and <kbd>d</kbd> to delete it. Voila!
 
-[TODO: add image]
-
-Now, just press <kbd>x</kbd> to select the entire line and <kbd>d</kbd> to delete it. Voila!
-
-[TODO: add image]
+<Deleted3Lines />
 
 We've got just a few steps left. Namely, select the entire file again with <kbd>%</kbd>:
 
-[TODO: add image]
+<SelectedEntireFileAgain2 />
 
 Press <kbd>\></kbd> which will indent everything by 1 level. We need this since we're going to nest it in a class, after all. You can also use <kbd>\<</kbd> to de-dent the selection by 1 level too.
 
-[TODO: add image]
+<IndentAllBy1Level />
 
-Now, press <kbd>i</kbd> to go into insert mode at the very beginning of the selection and then type `class Calculator:` and Enter. At last, we've succeeded 🥳!
+Now, press <kbd>i</kbd> to go into insert mode at the very beginning of the selection, <kbd>Enter</kbd> to add a newline, <kbd>Esc</kbd> to enter normal mode, <kbd>k</kbd> to go to the line above, <kbd>I</kbd> to enter Insert mode and then type `class Calculator:` and <kbd>Esc</kbd> to go back to normal mode.
 
-[TODO: add image]
+<FinalStatePython />
+
+At last, we've succeeded 🥳!
 
 ## More Examples
 
@@ -400,7 +288,7 @@ Concrete examples showing how powerful multiple cursor functionality can be.
 
 ### Object to Array of (key, value)
 
-[TODO: add image -- AS BELOW]
+<InitialStateJs />
 
 ```js
 const palette = {
@@ -412,7 +300,7 @@ const palette = {
 
 We want to transform this object into an array of tuples where, the first element of each tuple is the key of the object and the second element is the value:
 
-[TODO: add image -- AS BELOW]
+<FinalStateJs />
 
 ```js
 const palette = [
@@ -424,52 +312,48 @@ const palette = [
 
 Steps:
 
-1. <kbd>mr\{[</kbd> to replace the surrounding `{` with `[`:
+1. Inside the object, use <kbd>mr\{[</kbd> to replace the surrounding `{` with `[`:
 
-[TODO: add image]
+<ReplacedCurliesWithSquare />
 
 2. <kbd>mi[</kbd> to select inside the entire array:
 
-[TODO: add image]
+<SelectedInsideArray />
 
-3. <kbd>s</kbd> to enter select mode.
+3. <kbd>s</kbd> to enter select mode, then <kbd>:</kbd> + <kbd>Enter</kbd> will place a cursor on every `:`.
 
-[TODO: add image]
+<CursorOnEachColon />
 
-4. <kbd>:</kbd> + <kbd>Enter</kbd> will place a cursor on every `:`.
+4. <kbd>r,</kbd> replaces each selection with a `,`. A cursor is line a single-width selection, and we have multiple cursors, so it will replace each `:` with `,`.
 
-[TODO: add image]
+<ReplacedColonsWithCommas />
 
-5. <kbd>r,</kbd> replaces each selection with a `,`. A cursor is line a single-width selection, and we have multiple cursors, so it will replace each `:` with `,`.
+5. <kbd>t,</kbd> moves the cursor on each line to the ending comma.
 
-[TODO: add image]
+<MovedCursorToEnd />
 
-6. <kbd>t,</kbd> moves the cursor on each line to the ending comma.
+6. <kbd>;</kbd> the selection around each cursor into a single selection.
 
-[TODO: add image]
+<CollapsedAllSelections />
 
-7. <kbd>;</kbd> the selection around each cursor into a single selection.
+7. <kbd>vgs</kbd> selects each line excluding the final comma.
 
-[TODO: add image]
+<SelectEachLine />
 
-8. <kbd>vgs</kbd> selects each line excluding the final comma.
+8. <kbd>ms[</kbd> surrounds each individual selection with `[` to turn it into an array.
 
-[TODO: add image]
+<SurroundEachWithArray />
 
-9. <kbd>ms[</kbd> surrounds each individual selection with `[` to turn it into an array.
+9. <kbd>l</kbd> moves 1 character forward, replacing the selection with just a 1-width selection:
 
-[TODO: add image]
+<MoveOneCharForward />
 
-10. <kbd>l</kbd> moves 1 character forward.
+10. <kbd>e</kbd> selects until the end of each word.
 
-[TODO: add image]
+<SelectUntilEndOfEachWord />
 
-11. <kbd>e</kbd> selects until the end of each word.
+11. <kbd>ms"</kbd> surrounds the items with double quotes to make strings.
 
-[TODO: add image]
-
-12. <kbd>ms"</kbd> surrounds the items with double quotes to make strings.
-
-[TODO: add image]
+<AddedSurroundingQuotations />
 
 The final command to achieve all of that is `mr{[mi[s:<enter>r,t,;vgsms[lems"`.
