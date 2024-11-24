@@ -9,7 +9,6 @@ use helix_core::hashmap;
 use helix_loader::merge_toml_values;
 use log::warn;
 use once_cell::sync::Lazy;
-use rustix::path::Arg;
 use serde::{Deserialize, Deserializer};
 use toml::{map::Map, Value};
 
