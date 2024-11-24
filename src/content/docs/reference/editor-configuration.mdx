@@ -80,6 +80,8 @@ Enable mouse mode
 
 </ConfigOption>
 
+<Master>
+
 <ConfigOption name="default-yank-register">
 
 ```toml
@@ -94,6 +96,8 @@ Default register used for yank/paste
 </div>
 
 </ConfigOption>
+
+</Master>
 
 <ConfigOption name="middle-click-paste">
 
@@ -237,6 +241,8 @@ Enable automatic pop up of auto-completion
 
 </ConfigOption>
 
+<Master>
+
 <ConfigOption name="path-completion">
 
 ```toml
@@ -253,6 +259,8 @@ Show files and directories if an existing path at the cursor was recognized, eit
 </div>
 
 </ConfigOption>
+
+</Master>
 
 <ConfigOption name="auto-format">
 
@@ -562,6 +570,8 @@ Refer to the setting about `inline-diagnostics` for more details
 
 </ConfigOption>
 
+<Master>
+
 <ConfigOption name="clipboard-provider">
 
 Platform and environment specific.
@@ -608,6 +618,8 @@ primary-paste = { command = "tee",  args = ["test-primary.txt"] } # optional
 ```
 
 For custom commands the contents of the yank/paste is communicated over stdin/stdout.
+
+</Master>
 
 ### `[editor.statusline]` Section
 

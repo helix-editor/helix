@@ -8,6 +8,8 @@ import GlobalSearch from "GlobalSearch.astro";
 import OpenLastPicker from "OpenLastPicker.astro";
 import BufferPicker from "BufferPicker.astro";
 
+import Master from "@/components/Master.astro";
+
 import { FileTree } from "@astrojs/starlight/components";
 
 Pickers are interactive windows used to select various kinds of items, and Helix has support for a variety of them.
@@ -109,6 +111,8 @@ Within a picker:
 
 For more keymaps that you can use in a picker, see the [picker keymap reference](/reference/keymap#picker).
 
+<Master>
+
 ### Filtering
 
 If a picker shows multiple columns, you may apply the filter to a specific column by prefixing the column name with `%`.
@@ -116,6 +120,8 @@ If a picker shows multiple columns, you may apply the filter to a specific colum
 Column names can be shortened to any prefix, so `%p`, `%pa` or `%pat` all mean the same as `%path`.
 
 For example, a query of `helix %p .toml !lang` in the global search picker searches for the term "helix" within files with paths ending in ".toml" but not including "lang".
+
+</Master>
 
 ### Using registers in pickers
 
