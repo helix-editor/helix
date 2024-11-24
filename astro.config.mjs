@@ -48,6 +48,7 @@ export default defineConfig({
           items: [
             "reference/keymap",
             "reference/typed-commands",
+            "reference/key-remapping",
             "reference/editor-configuration",
             "reference/language-configuration",
             "reference/list-of-themes",
