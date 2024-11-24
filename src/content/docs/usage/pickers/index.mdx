@@ -2,6 +2,12 @@
 title: Pickers
 ---
 
+import OpenedFilePicker from "OpenedFilePicker.astro";
+import OpenedFilePickerManually from "OpenedFilePickerManually.astro";
+import GlobalSearch from "GlobalSearch.astro";
+import OpenLastPicker from "OpenLastPicker.astro";
+import BufferPicker from "BufferPicker.astro";
+
 import { FileTree } from "@astrojs/starlight/components";
 
 Pickers are interactive windows used to select various kinds of items, and Helix has support for a variety of them.
@@ -30,9 +36,9 @@ If we open a specific file e.g. with `hx README.md`, then it'll just open normal
 
 But if we open the _directory_, then it'll actually open a file picker at that location. For instance, if we run `hx src`:
 
-[TODO: add image]
+<OpenedFilePicker />
 
-It opens a file picker in the `src` directory
+It opens a file picker in the `src` directory.
 
 ### File picker
 
@@ -42,15 +48,23 @@ The file picker allows you to search for files recursively.
 
 It's super handy when you know the name of a file but it's somewhere, buried very deep.
 
-[TODO: add image]
+<OpenedFilePickerManually />
+
+Note that this command opens a file picker at the git root directory, not our current working directory.
+
+So it shows each file under `my-project/` and not just `src/`, even though we opened helix in `src`. It searched to find the project directory, and searches files there.
+
+With <kbd>Space</kbd> + <kbd>F</kbd>, it opens a picker at our _current working directory_.
+
+<OpenedFilePickerManually />
 
 ### Global search
 
 <kbd>Space</kbd> + <kbd>/</kbd> opens a picker where you can search for any string in any of the files recursively from the current directory.
 
-For example, we _know_ that there is a string that says something like `aliased` somewhere but we forgot where. In this case we can just search for it:
+For example, to find strings with `className`:
 
-[TODO: add image]
+<GlobalSearch />
 
 By pressing <kbd>Enter</kbd> we can open the file.
 
@@ -60,7 +74,7 @@ Suppose we did a couple more navigations around files, and now we want to go bac
 
 We could just repeat the last steps, but there's a better way. <kbd>Space</kbd> + <kbd>'</kbd> opens the exact picker that you last used:
 
-[TODO: add image]
+<OpenLastPicker />
 
 ### Buffer picker
 
@@ -68,7 +82,7 @@ Now let's say we opened several files and we'd like to go work on one of the fil
 
 You can open a picker that shows your currently open buffers with <kbd>Space</kbd> + <kbd>b</kbd>:
 
-[TODO: add image]
+<BufferPicker />
 
 ## Usage
 
