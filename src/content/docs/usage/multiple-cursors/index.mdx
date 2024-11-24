@@ -12,73 +12,69 @@ The best way to learn is with examples, and we'll provide you with many examples
 
 We have some HTML which has repeating classes, and we want to refactor it. From this:
 
-```html
-<a class="font-thin px-3" />
-<a class="font-thin px-3" />
-<a class="font-thin px-3" />
-<a class="font-thin px-3" />
-```
+<HtmlBeginningState />
 
 To this:
 
-```html
-<a class="font-thin px-4" />
-<a class="font-thin px-4" />
-<a class="font-thin px-4" />
-<a class="font-thin px-4" />
-```
+<HtmlFinalState />
 
 ### Basic Example
 
 First, place your cursor on the first `3`:
 
-[TODO: add image]
+<CursorOnFirst3 />
 
 Next, press <kbd>C</kbd> which creates a cursor below, until you have a cursor on each individual `3`:
 
-[TODO: add image]
+<CursorOnEach3 />
 
 Now, just press `r` which will replace the character, and then `4` to replace each of the `3`s with a `4`.
 
-[TODO: add image]
+<Each3ReplacedWith4 />
 
-Our goal is to change the class `font-bold` to `font-thin`, which you can do by pressing <kbd>bbb</kbd> until `bold` is highlighted:
+Our goal is to change the class `font-bold` to `font-thin`, which you can do by pressing <kbd>bbb</kbd> until each `bold` is highlighted:
 
-[TODO: add image]
+<EachBoldIsHighlighted />
 
-Press <kbd>c</kbd> to change, and then type `thin` and <kbd>Esc</kbd> to return back to normal mode.
+Press <kbd>c</kbd> to change, and then type `thin ` and <kbd>Esc</kbd> to return back to normal mode.
 
-[TODO: add image]
+<EachBoldChangedToThin />
+
+Success! Let's see another way to do the same thing.
 
 ### Another Example
 
+From the following state:
+
+<HtmlBeginningState />
+
 Press <kbd>gw</kbd> to show two letters at the start of each word:
 
-[TODO: add image]
+<UsedGotoWord />
 
-Navigate to the first instance of the `bold` word by pressing the 2-character key combination:
+Navigate to the first instance of the `bold` word by pressing the 2-character key combination, which in our case that would be <kbd>ac</kbd>:
 
-[TODO: add image]
+<SelectedFirstBoldWithGw />
 
-The entire `bold` word is highlighted now. Press <kbd>C</kbd> again a few times until you select each instance of `bold`:
+The entire `bold` word is highlighted now. Press <kbd>C</kbd> again 3 times until you select each instance of `bold`:
 
-[TODO: add image]
+<EachBoldIsHighlightedAgain />
 
-As you see, the visual selection gets transferred over! Again, change the contents of each selection by using <kbd>c</kbd> to delete and enter insert mode -- then type your change and <kbd>Esc</kbd> to return back to normal mode.
+As you see, the visual selection gets transferred over! Again, change the contents of each selection by using <kbd>c</kbd> to delete and enter insert mode -- then type `thin` and <kbd>Esc</kbd> to return back to normal mode.
 
-[TODO: add image]
+<EachBoldChangedToThinAgain />
 
 Press <kbd>f</kbd> + <kbd>3</kbd> to find the next 3:
 
-[TODO: add image]
+<EntirePxClassHighlighted />
 
-We could delete the entire class if we wanted, but instead we'll press <kbd>a</kbd> to append at the end of each selection, which puts us into insert mode.
+We could delete the entire `px-3` class if we wanted, but instead we'll press <kbd>a</kbd> to append at the end of each selection, which puts us into insert mode.
 
-[TODO: add image]
+<InsertModeAfterEachPxClass />
 
-Delete the 3 by pressing backspace, then add a 4:
+Delete the 3 by pressing backspace, then add a 4, exiting back to insert mode with <kbd>Esc</kbd>:
 
-[TODO: add image]
+<FinalTransformationAgain />
 
 ### With macros
 
@@ -86,37 +82,39 @@ Macros also allow you to repeat certain motions, and they can be used in combina
 
 Place your cursor on the first line, after the dash:
 
-[TODO: add image]
+<CursorAfterDash />
 
 Use <kbd>Q</kbd> to begin recording a macro, and then press <kbd>e</kbd> to select the full `thin` word:
 
-[TODO: add image]
+<RecodingMacroBegins />
 
-Change it to `bold` like we did before:
+Change it to `bold` using <kbd>c</kbd> to delete and insert mode, then type `bold` and <kbd>Esc</kbd> to go back to normal mode:
 
-[TODO: add image]
+<ChangedThinToBoldMacro />
 
-Now <kbd>f</kbd> + <kbd>3</kbd> + <kbd>;</kbd> to select the `3`:
+Now <kbd>f</kbd> (find) + <kbd>3</kbd> (find to next 3) + <kbd>;</kbd> (collapse selection to a single cursor) to select the `3`:
 
-[TODO: add image]
+<SelectedFirst3 />
 
-And replace it with a `4`:
+And replace it with a `4` using <kbd>r</kbd> to enter replace mode which waits for the next character, and type `4`:
 
-[TODO: add image]
+<Replaced3With4 />
 
 Press <kbd>Q</kbd> to stop recording the macro.
 
-Okay, so the hard part is done! Now go back to the `-` you started from by using <kbd>F</kbd> + <kbd>-</kbd> which finds the previous `3`:
+<FinishedRecordingMacro />
 
-[TODO: add image]
+Okay, so the hard part is done! Now go back to the `-` you started from by using <kbd>F</kbd> + <kbd>-</kbd> which finds the previous `-`, repeat this motion by using <kbd>Alt</kbd> + <kbd>.</kbd> and then collapse selection with <kbd>;</kbd>:
 
-Create 3 more cursors on each `-`:
+<BackToTheBeginning />
 
-[TODO: add image]
+Hit <kbd>j</kbd> to go down a line and create 2 more cursors on each `-` by pressing <kbd>C</kbd> 2 more times:
 
-And just press <kbd>q</kbd> (note: lowercase q!) to repeat the motions you've recorded earlier.
+<Created3MoreCursors />
 
-[TODO: add image]
+And just press <kbd>q</kbd> (note the lowercase q) to repeat the motions you've recorded earlier.
+
+<FinalStateWithMacros />
 
 ## Macros
 
@@ -140,36 +138,11 @@ We've just explored the very basics of how to use multiple cursors and macros, b
 
 Let's consider the following file, which includes some repetition:
 
-```py
-def calculate_area(length, width):
-  result = length * width
-  return result
-
-def calculate_perimeter(length, width):
-  result = 2 * (length + width)
-  return result
-
-def calculate_volume(length, width, height):
-  result = length * width * height
-  return result
-```
+<PythonBeginningState />
 
 And our boss wants every variable to be a maximum of 3 characters, as well as the functions have to be static methods on a class. So we are going to "refactor" it into the following:
 
-```py
-class Calculator:
-  @staticmethod
-  def get_area(len, wid):
-    return len * wid
-
-  @staticmethod
-  def get_perimeter(len, wid):
-    return 2 * (len + wid)
-
-  @staticmethod
-  def get_volume(len, wid, hei):
-    return len * wid * hei
-```
+<PythonFinalState />
 
 ### Search and Replace
 
