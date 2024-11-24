@@ -17,8 +17,8 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.70
+      - name: Install MSRV toolchain
+        uses: dtolnay/rust-toolchain@1.76
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -38,8 +38,8 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.70
+      - name: Install MSRV toolchain
+        uses: dtolnay/rust-toolchain@1.76
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -70,8 +70,8 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.70
+      - name: Install MSRV toolchain
+        uses: dtolnay/rust-toolchain@1.76
         with:
           components: rustfmt, clippy
 
@@ -98,8 +98,8 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.70
+      - name: Install MSRV toolchain
+        uses: dtolnay/rust-toolchain@1.76
 
       - uses: Swatinem/rust-cache@v2
         with:
