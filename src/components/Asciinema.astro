@@ -11,10 +11,10 @@ interface Props {
 }
 
 const defaultSettings = {
-  cols: 32,
-  rows: 24,
   autoPlay: false,
   loop: true,
+  preload: true,
+  theme: 'helix',
   controls: true,
   fit: "width",
   terminalFontFamily: "JetBrainsMono",
@@ -82,5 +82,27 @@ const demoId = "asciinema-demo-" + (src.split("/").pop() as string).split(".")[0
   }
   .ap-terminal {
     @apply transform-gpu;
+  }
+
+  .asciinema-player-theme-helix {
+    --term-color-foreground: #dbbfef;
+    --term-color-background: #452859; 
+
+    --term-color-0: #a4a0e8;
+    --term-color-1: #a4a0e8;
+    --term-color-2: #a4a0e8;
+    --term-color-3: #a4a0e8;
+    --term-color-4: #a4a0e8;
+    --term-color-5: #a4a0e8;
+    --term-color-6: #a4a0e8;
+    --term-color-7: #a4a0e8;
+    --term-color-8: #a4a0e8;
+    --term-color-9: #a4a0e8;
+    --term-color-10: #a4a0e8;
+    --term-color-11: #a4a0e8;
+    --term-color-12: #a4a0e8;
+    --term-color-13: #a4a0e8;
+    --term-color-14: #a4a0e8;
+    --term-color-15: #a4a0e8;
   }
 </style>

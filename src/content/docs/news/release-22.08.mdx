@@ -1,0 +1,137 @@
+---
+title: Release 22.08 Highlights
+date: 2022-08-31T18:00:00Z
+description: Highlights of the 22.08 release.
+---
+
+import Asciinema from "@/components/Asciinema.astro"
+
+Helix is a modal text editor with built-in support for multiple selections,
+Language Server Protocol (LSP), tree-sitter, and experimental support for Debug
+Adapter Protocol (DAP).
+
+Today marks the 22.08 release, a release with plenty of fixes and new features.
+A big _thank you_ to our contributors! This release had 87 contributors. 🎉
+
+Let's check out the highlighted features for 22.08.
+
+## Indent guides
+
+<Asciinema src="/blog/indent-guides.cast" />
+
+Indent guides provide a visual representation for the current indentation
+level. Enable indent guides with the `editor.indent-guides.render` key.
+The character used as a guide is also customizable.
+
+## Cursorline
+
+<Asciinema src="/blog/cursorline.cast" />
+
+The cursorline is a horizontal highlighted bar that follows your cursor.
+Cursorlines may be themed for the primary and all secondary cursors and
+can be enabled or disabled separate from theming with the `editor.cursorline`
+option.
+
+## Mode colors
+
+<Asciinema src="/blog/color-modes.cast" />
+
+The mode indicator in the statusline may now be styled based on the current
+mode. This feature may be enabled with the `editor.color-modes` option and
+colors may be configured using `ui.statusline.{insert,normal,select}` keys
+in themes.
+
+## Configurable statusline
+
+<Asciinema src="/blog/configurable-statusline.cast "/>
+
+The statusline may now be configured in the `editor.statusline` section
+of the config. Elements may be placed on the left, center or right of
+the statusline with a configurable separator and spacers. Two new elements
+may now also be added to your statusline: `file-line-ending` and
+`position-percentage`.
+
+## LSP signature help
+
+<img src="/signature-help.gif" style="max-width: 80%; display: block; margin-left: auto; margin-right: auto"/>
+
+Signature help provides documentation as you type the arguments to a function
+call and tracks which function parameter is currently being entered. Signature
+help is enabled by default.
+
+## LSP document highlight
+
+<Asciinema src="/blog/document-highlight.cast" />
+
+The document highlight request (`Space-h`) creates a selection for all
+instances of the symbol under the primary cursor. Helix has robust support for
+multiple selections, so you may edit all selections simultaneously (for
+example with `c`) or cycle between selections (`(`/`)`).
+
+## LSP diagnostics pickers
+
+<Asciinema src="/blog/diagnostic-picker.cast" />
+
+The new buffer and workspace diagnostics pickers may be used to jump to
+Language Server diagnostics like warnings and errors. Use `Space-g` to
+open the picker with diagnostics for the current buffer and `Space-G`
+to view all diagnostics in a workspace.
+
+## Jumplist picker
+
+<Asciinema src="/blog/jumplist-picker.cast" />
+
+The jumplist saves a history of selections. Save selections with `C-s` and jump
+forward with `C-i` and backward with `C-o`. The jumplist is a powerful tool,
+especially when working with Language Server goto-definition or global search
+which both save to the jumplist automatically.
+
+22.08 adds a new picker that can be used to jump across entries in the jumplist.
+The preview pane shows the line of the saved primary selection. Bring up the
+jumplist picker with `Space-j`.
+
+## External formatters
+
+<Asciinema src="/blog/external-formatter.cast" />
+
+Many Language Servers provide format-on-save capabilities. For languages
+without Language Servers or for Language Servers that do not implement
+formatting, an external formatter binary may now be configured. The document
+is passed through the formatter's stdin and replaced with the formatted output
+from stdout.
+
+An external formatter may also be used when you prefer the formatting from an
+external tool over formatting provided by a Language Server. For example if you
+configure `black` for formatting Python, formatting will be accomplished with
+`black` rather than `pylsp`.
+
+## Bracketed paste
+
+<Asciinema src="/blog/bracketed-paste.cast" />
+
+Bracketed paste is terminal emulator feature that allows terminal programs to
+recognize paste sequences and handle the pasted text. Without bracketed paste
+support, text pasted with operating-system level paste (`C-v`) looked to Helix
+like text that was entered very quickly which lead to some odd side-effects
+like awkward indentation or mysteriously appearing auto-pair characters.
+
+22.08 adds support for bracketed paste, so now all pastes into Helix from
+terminal emulators that support bracketed paste work as if you had pressed
+`Space-p` in normal mode. In the above cast, the entire text of _Moby-Dick_
+is pasted with `C-v` in insert mode instantly.
+
+## Wrapping up
+
+These changes are just the highlights. Check out the full [changelog] to see
+all that's changed since 22.05. Release binaries can be found on the [release
+page].
+
+Be ready for more exciting changes in Helix 22.10 expected in October!
+Contribute and follow along with development in the
+[Helix GitHub repository][helix-git] and be sure to join in on discussions in
+the [Matrix channel][matrix].
+
+[changelog]: https://github.com/helix-editor/helix/blob/master/CHANGELOG.md#2208-2022-08-31
+[helix-git]: https://github.com/helix-editor/helix/
+[matrix]: https://matrix.to/#/#helix-community:matrix.org
+[release page]: https://github.com/helix-editor/helix/releases/tag/22.08
