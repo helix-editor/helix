@@ -1,0 +1,52 @@
+---
+title: Release 24.03 Highlights
+date: 2024-02-03
+---
+
+The Helix 24.03 release has arrived! First, a very big _thank you_ to everyone who made this release possible. This release saw changes from 125 contributors.
+
+New to Helix?
+
+Helix is a modal text editor with built-in support for multiple selections, Language Server Protocol (LSP), tree-sitter, and experimental support for Debug Adapter Protocol (DAP).
+
+Let's check out this release's highlights.
+
+## Amp-like jumping
+
+Jumping features are popular in the (Neo)Vim plugin space and there are even plugins to add the same functionality to other tools like browsers. They allow you to move your selection efficiently across even large parts of the view, like you could by clicking with a mouse, but by entering "labels" instead. 24.03 introduces jumping commands inspired by the [Amp editor]'s [jump mode]. Press `gw` to add the jump labels and then enter one of the labels to jump to the word under that label. Using `gw` in select mode (`v`) extends the selection.
+
+## Block comments
+
+In the past, Helix has only been able to toggle line comments like `//` and `#` and languages like OCaml have been left with workarounds like a "line" comment token of `(*`. In 24.03 Helix can now toggle block comments as well. Use `C-c` or `<space>c` to smartly add or remove line or block comments around the current selection based on the language's comment token configuration, `<space>c` to toggle block comments around the current selection, or `<space><A-c>` to toggle only line comments on the current line.
+
+## Improvements to tree-sitter injections
+
+Helix uses [`tree-sitter`] incremental parsing for syntax highlighting, textobjects, indentation and some motions and commands. 24.03 improves how we handle _[injections]_ - a powerful tree-sitter feature for parsing documents with multiple languages. For example you might have JavaScript, CSS or other languages within a `<script>` or `<style>` tag in HTML. The HTML parser doesn't need to know how to parse all of these languages. Instead it can _inject_ JavaScript or CSS parsers to handle the `<script>` or `<style>` tag contents.
+
+One of these improvements is to the `:tree-sitter-subtree` command that displays an S-expression of the syntax tree under the cursor. 24.03 shows the injection layer under the selection instead of only the root layer. For example in this asciicast we now show the syntax tree for the JavaScript parts of the document while in the past we only showed the HTML part of the tree.
+
+The other big improvement is to the tree-sitter motions. `A-o` (alt + o) expands the selection to the parent node of the syntax tree node covered by the current selection. `A-i` shrinks to the child node and `A-n` and `A-p` go to the <em>n</em>ext and <em>p</em>revious nodes, respectively. Previously these commands only worked on the root layer (for example HTML in the asciicast) but they now find the injection layer that contains the selection and move along that layer's syntax tree. Internally we organize injection layers into a tree-like structure so that these motions can switch layers when needed.
+
+Stay tuned for future changes that improve injections, like finding textobjects within injected content.
+
+## Internal improvements
+
+24.03 also saw major internal improvements. The first comes from a new "event system" - a system built around Tokio channels and tasks that allows different parts of the Helix codebase to communicate with one another. The event system also adds generic ways to debounce and run tasks in background threads so we can prevent locking up the UI. Some parts of the code base have already been migrated to the event system like LSP completion and signature-help. In 24.03 you'll notice that LSP completion doesn't automatically pop up after just navigating around in insert mode, for example with arrow keys. It's now hooked into document changes instead, so it can smartly pop up when you start changing a document rather than every time the editor goes idle.
+
+The other major improvement to be excited for is the general replacement of the `regex` crate with [`regex-cursor`], a streaming regex implementation compatible with [`ropey`], the rope crate we use to represent all documents. `regex-cursor` is capable of running on _discontiguous strings_ - input that may not be collocated in memory. In a rope, different parts of the document might be stored separately internally. To use the `regex` API we needed to convert slices of the document to a regular Rust `String`, duplicating the memory footprint of that slice of the document. `regex-cursor` operates on the chunks of the rope instead, which greatly improves efficiency.
+
+## Wrapping up
+
+As always, this is just the highlights from the 24.03 release. Check out the full [changelog] for the details.
+
+Come chat about usage and development questions in the [Matrix space][matrix] and follow along with Helix's development in the [GitHub repository][helix-git].
+
+[Amp editor]: https://github.com/jmacdonald/amp
+[jump mode]: https://amp.rs/docs/usage/#jump-mode
+[`tree-sitter`]: https://github.com/tree-sitter/tree-sitter
+[injections]: https://tree-sitter.github.io/tree-sitter/syntax-highlighting#language-injection
+[`regex-cursor`]: https://github.com/pascalkuthe/regex-cursor
+[`ropey`]: https://github.com/cessen/ropey
+[changelog]: https://github.com/helix-editor/helix/blob/master/CHANGELOG.md#2404-2024-03-30
+[helix-git]: https://github.com/helix-editor/helix/
+[matrix]: https://matrix.to/#/#helix-community:matrix.org

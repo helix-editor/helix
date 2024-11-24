@@ -7,58 +7,65 @@ hero:
   title: <span class="text-accent-200">Helix</span>
   tagline: A post-modern text editor.
   image:
-    html: <img src="/public/favicon.svg" style="width:100px;margin:auto;" />
+    html: <img src="/favicon.svg" style="width:100px;margin:auto;" />
   actions:
     - text: Get Started
       link: /getting-started/basics
       icon: right-arrow
-    - text: View on GitHub
+    - text: View Source
       link: https://starlight.astro.build
       icon: external
       variant: minimal
 ---
 
+import { ContributorList } from "starlight-contributor-list";
 import { Icon, Card, CardGrid } from '@astrojs/starlight/components';
 
 <CardGrid stagger>
 
-<Card title="Multiple Selections" icon="pencil">
-Multiple cursors as a core editing primitive, inspired by Kakoune. Commands manipulate selections which allows concurrent code editing.
+<Card title="Edit at the Speed of Thought" icon="rocket">
+With macros, surround, text objects, multiple selections and more -- become the 10X developer you deserve to be.
+
+[TODO: add video!]
+
 </Card>
 
-<Card title="Language Server Support" icon="open-book">
-Language specific auto completion, goto definition, documentation, diagnostics and other IDE features with no additional configuration.
+<Card title="Built-in Language Server Support" icon="open-book">
+
+Use your favorite features such as intellisense, hover, symbol search, diagnostics and more. Configured out of the box, for your own sanity.
+
+[TODO: add image of intellisense]
+
 </Card>
 
-<Card title="Built in Rust, for the terminal" icon="seti:rust">
+<Card title="Intuitive Editing Model" icon="pencil">
+
+Selections as a core editing primitive. Every action acts on a selection, no more surpsises. Own your editor.
+
+[TODO: add image of highlighted thing]
+
+</Card>
+
+<Card title="Blazingly Fast, written in Rust" icon="seti:rust">
+
 No Electron. No VimScript. No JavaScript. Use it over ssh, tmux, or a plain terminal. Your laptop battery life will thank you.
+
+</Card>
+
+<Card title="Modern Editor Features" icon="setting">
+
+Fuzzy finder to jump to files and symbols, project wide search, beautiful themes, auto closing bracket pairs, [beautiful themes](/reference/list-of-themes#list-of-themes) and more.
+
 </Card>
 
 <Card title="Tree-sitter Integration" icon="pencil">
 Tree-sitter produces error tolerant and robust syntax trees, which enables better syntax highlighting, indent calculation and code navigation.
 </Card>
 
-<Card title="Powerful Code Manipulation" icon="pencil">
-Navigate and select functions, classes, comments, etc and select syntax tree nodes instead of plain text. 
-</Card>
-
-<Card title="Modern builtin features" icon="setting">
-Fuzzy finder to jump to files and symbols, project wide search, beautiful themes, auto closing bracket pairs, surround integration and more.
-</Card>
 </CardGrid>
 
-<br />
-<br />
-<br />
-<br />
-<br />
+## Contributors
 
-:::tip[Not officially affiliated with Helix]
+---
 
-These docs have been rebuilt and large parts were rewritten by a Helix fan who wants to make Helix more approachable for beginners and improve the design and documentation of their website.
-
-- View the [source for this site](https://github.com/NikitaRevenco/helix-better-docs).
-- Logo by [@jakenvac](https://github.com/jakenvac).
-- Contribute financially to Helix on [opencollective](https://opencollective.com/helix-editor).
-
-:::
+<ContributorList githubRepo="helix-editor/helix" />

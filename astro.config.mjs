@@ -3,6 +3,7 @@ import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import tailwind from "@astrojs/tailwind";
 import starlightLinksValidator from "starlight-links-validator";
+import starlightBlog from "starlight-blog";
 
 // https://astro.build/config
 export default defineConfig({
@@ -11,7 +12,10 @@ export default defineConfig({
   },
   integrations: [
     starlight({
-      plugins: [starlightLinksValidator()],
+      plugins: [
+        starlightLinksValidator(),
+        starlightBlog({ title: "News", prefix: "news" }),
+      ],
       title: "Helix",
       logo: {
         src: "./public/favicon.svg",
@@ -21,7 +25,6 @@ export default defineConfig({
         matrix: "https://matrix.to/#/#helix-community:matrix.org",
       },
       components: {
-        // HACK: override default components so user cannot use light theme
         ThemeProvider: "./src/components/ThemeProvider.astro",
         ThemeSelect: "./src/components/ThemeSelect.astro",
       },

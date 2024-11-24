@@ -4,6 +4,11 @@
 @tailwind components;
 @tailwind utilities;
 
+/* hide trailing '|' */
+.social-icons::after {
+  display: none;
+}
+
 @font-face {
   font-family: "JetBrainsMono";
   src: url("/fonts/JetBrainsMono-Regular.woff2") format("woff2");
