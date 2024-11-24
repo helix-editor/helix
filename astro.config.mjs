@@ -44,13 +44,18 @@ export default defineConfig({
           ],
         },
         {
+          label: "Configuration",
+          items: [
+            "configuration/editor",
+            "configuration/language",
+            "configuration/remapping",
+          ],
+        },
+        {
           label: "Reference",
           items: [
             "reference/keymap",
             "reference/typed-commands",
-            "reference/key-remapping",
-            "reference/editor-configuration",
-            "reference/language-configuration",
             "reference/list-of-themes",
             "reference/custom-themes",
             "reference/language-servers",
