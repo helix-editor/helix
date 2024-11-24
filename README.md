@@ -1,7 +1,7 @@
-
-
 > [!NOTE]
 > This is a work-in-progress!
+
+[![Built with Starlight](https://astro.badg.es/v2/built-with-starlight/tiny.svg)](https://starlight.astro.build)
 
 # Helix Better Docs
 

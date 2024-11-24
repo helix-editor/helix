@@ -4,6 +4,178 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --overlay-blurple: hsla(276, 38%, 25%, 1);
+}
+
+.main {
+  transform: rotateZ(90deg);
+  position: relative;
+  z-index: -10;
+  position: absolute;
+  top: 750px;
+  right: -170px;
+  width: full;
+  height: 200px;
+  display: flex;
+  --s: 100px; /* size  */
+  --r: 1; /* ratio */
+
+  /* clip-path parameter */
+  --hc: 20px;
+  --vc: 30px;
+
+  --m: 4px; /* vertical margin */
+  --m-h: calc(
+    var(--m) + (var(--s) - 2 * var(--hc)) / 2
+  ); /* horizontal margin */
+  --f: calc(2 * var(--s) + 4 * var(--m) - 2 * var(--vc) - 2px);
+}
+.container {
+  font-size: 0; /* disable white space between inline block element */
+}
+.container div {
+  width: var(--s);
+  background-color: #3b224c20;
+  margin: var(--m) var(--m-h);
+  height: calc(var(--s) * var(--r));
+  display: inline-block;
+  font-size: initial;
+  clip-path: polygon(
+    var(--hc) 0,
+    calc(100% - var(--hc)) 0,
+    100% var(--vc),
+    100% calc(100% - var(--vc)),
+    calc(100% - var(--hc)) 100%,
+    var(--hc) 100%,
+    0 calc(100% - var(--vc)),
+    0 var(--vc)
+  );
+  margin-bottom: calc(var(--m) - var(--vc));
+}
+.container::before {
+  content: "";
+  width: calc(var(--s) / 2 + var(--m-h));
+  float: left;
+  height: 135%;
+  shape-outside: repeating-linear-gradient(
+    #0000 0 calc(var(--f) - 3px),
+    #000 0 var(--f)
+  );
+}
+
+.main2 {
+  transform: rotateZ(90deg);
+  position: relative;
+  z-index: -10;
+  position: absolute;
+  top: 700px;
+  left: -540px;
+  width: full;
+  height: 200px;
+  display: flex;
+  --s: 100px; /* size  */
+  --r: 1; /* ratio */
+
+  /* clip-path parameter */
+  --hc: 20px;
+  --vc: 30px;
+
+  --m: 4px; /* vertical margin */
+  --m-h: calc(
+    var(--m) + (var(--s) - 2 * var(--hc)) / 2
+  ); /* horizontal margin */
+  --f: calc(2 * var(--s) + 4 * var(--m) - 2 * var(--vc) - 2px);
+}
+.container2 {
+  font-size: 0; /* disable white space between inline block element */
+}
+.container2 div {
+  width: var(--s);
+  background-color: #3b224c20;
+  margin: var(--m) var(--m-h);
+  height: calc(var(--s) * var(--r));
+  display: inline-block;
+  font-size: initial;
+  clip-path: polygon(
+    var(--hc) 0,
+    calc(100% - var(--hc)) 0,
+    100% var(--vc),
+    100% calc(100% - var(--vc)),
+    calc(100% - var(--hc)) 100%,
+    var(--hc) 100%,
+    0 calc(100% - var(--vc)),
+    0 var(--vc)
+  );
+  margin-bottom: calc(var(--m) - var(--vc));
+}
+.container2::before {
+  content: "";
+  width: calc(var(--s) / 2 + var(--m-h));
+  float: left;
+  height: 135%;
+  shape-outside: repeating-linear-gradient(
+    #0000 0 calc(var(--f) - 3px),
+    #000 0 var(--f)
+  );
+}
+
+main {
+  position: relative;
+}
+
+/* .main { */
+/* z-index: -10; */
+/* position: absolute; */
+/* top: 150px; */
+/* right: 80px; */
+/* width: 50%; */
+/* height: 200px; */
+/* display: flex; */
+/* --s: 120px; /* size  */
+
+/* --m: 8px; /* margin */
+/* --mx: 12px; */
+/* --f: calc(var(--s) * 1.732 + 4 * var(--m) - 1px); */
+/* } */
+
+/* .container { */
+/* font-size: 0; /* disable white space between inline block element */
+
+/* } */
+
+/* .container div { */
+/* background-color: #3b224c40; */
+/* width: var(--s); */
+/* margin: var(--mx); */
+/* height: calc(var(--s) * 1.1547); */
+/* display: inline-block; */
+/* font-size: initial; */
+/* clip-path: polygon(0% 25%, 0% 75%, 50% 100%, 100% 75%, 100% 25%, 50% 0%); */
+/* margin-bottom: calc(var(--m) - var(--s) * 0.2885); */
+/* } */
+
+/* .container::before { */
+/* content: ""; */
+/* width: calc(var(--s) / 2 + var(--m)); */
+/* float: left; */
+/* height: 120%; */
+/* shape-outside: repeating-linear-gradient( */
+/* #0000 0 calc(var(--f) - 3px), */
+/* #000 0 var(--f) */
+/* ); */
+/* } */
+[data-has-hero] header {
+  border-bottom: 1px solid transparent;
+  background-color: transparent;
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+[data-has-hero] .hero > img {
+  filter: drop-shadow(0 0 3rem var(--overlay-blurple));
+}
+
 /* hide trailing '|' */
 .social-icons::after {
   display: none;
