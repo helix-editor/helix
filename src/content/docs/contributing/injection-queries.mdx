@@ -8,7 +8,7 @@ are a few Helix specific extensions that allow for more control.
 
 And example of a simple query that would highlight all strings as bash in Nix:
 
-```scm
+```scheme
 ((string_expression (string_fragment) @injection.content)
   (#set! injection.language "bash"))
 ```

@@ -2,6 +2,7 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import tailwind from "@astrojs/tailwind";
+import starlightLinksValidator from "starlight-links-validator";
 
 // https://astro.build/config
 export default defineConfig({
@@ -10,6 +11,7 @@ export default defineConfig({
   },
   integrations: [
     starlight({
+      plugins: [starlightLinksValidator()],
       title: "Helix",
       logo: {
         src: "./public/favicon.svg",
@@ -47,7 +49,7 @@ export default defineConfig({
           label: "Configuration",
           items: [
             "configuration/editor",
-            "configuration/language",
+            "configuration/languages",
             "configuration/remapping",
           ],
         },
@@ -74,7 +76,6 @@ export default defineConfig({
             "help/refactor-examples",
           ],
         },
-
         {
           label: "Contributing to Helix",
           items: [
