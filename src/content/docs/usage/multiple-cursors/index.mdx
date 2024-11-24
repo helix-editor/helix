@@ -2,6 +2,61 @@
 title: Multiple Cursors
 ---
 
+import SelectedAllResultVars from "SelectedAllResultVars.astro";
+import Deleted3Lines from "Deleted3Lines.astro";
+import SelectedEntireFileAgain2 from "SelectedEntireFileAgain2.astro";
+import IndentAllBy1Level from "IndentAllBy1Level.astro";
+import CursorOnFirst3 from "CursorOnFirst3.astro";
+import CursorOnEach3 from "CursorOnEach3.astro";
+import Each3ReplacedWith4 from "Each3ReplacedWith4.astro";
+import SelectedFirst3 from "SelectedFirst3.astro";
+import Replaced3With4 from "Replaced3With4.astro";
+import Created3MoreCursors from "Created3MoreCursors.astro";
+import HtmlBeginningState from "HtmlBeginningState.astro";
+import HtmlFinalState from "HtmlFinalState.astro";
+import EachBoldIsHighlighted from "EachBoldIsHighlighted.astro";
+import EachBoldChangedToThin from "EachBoldChangedToThin.astro";
+import UsedGotoWord from "UsedGotoWord.astro";
+import SelectedFirstBoldWithGw from "SelectedFirstBoldWithGw.astro";
+import EachBoldIsHighlightedAgain from "EachBoldIsHighlightedAgain.astro";
+import EachBoldChangedToThinAgain from "EachBoldChangedToThinAgain.astro";
+import EntirePxClassHighlighted from "EntirePxClassHighlighted.astro";
+import InsertModeAfterEachPxClass from "InsertModeAfterEachPxClass.astro";
+import FinalTransformationAgain from "FinalTransformationAgain.astro";
+import CursorAfterDash from "CursorAfterDash.astro";
+import RecordingMacroBegins from "RecordingMacroBegins.astro";
+import ChangedThinToBoldMacro from "ChangedThinToBoldMacro.astro";
+import FinishedRecordingMacro from "FinishedRecordingMacro.astro";
+import BackToTheBeginning from "BackToTheBeginning.astro";
+import FinalStateWithMacros from "FinalStateWithMacros.astro";
+import PythonBeginningState from "PythonBeginningState.astro";
+import PythonFinalState from "PythonFinalState.astro";
+import SelectedFullPythonFile from "SelectedFullPythonFile.astro";
+import UsedSToSelectInsideSelection from "UsedSToSelectInsideSelection.astro";
+import TypedCalculate from "TypedCalculate.astro";
+import ReplacedEachCalculateWithGet from "ReplacedEachCalculateWithGet.astro";
+import AddedStaticMethodIndicator from "AddedStaticMethodIndicator.astro";
+import SelectedFirstTwoLinesOfEachFunction from "SelectedFirstTwoLinesOfEachFunction.astro";
+import SelectedEveryWord from "SelectedEveryWord.astro";
+import NextSelectionPrimary from "NextSelectionPrimary.astro";
+import BackToPreviousSelection from "BackToPreviousSelection.astro";
+import RemovedPrimarySelection from "RemovedPrimarySelection.astro";
+import RemovedPrimarySelectionAgain from "RemovedPrimarySelectionAgain.astro";
+import OnlyParamsSelected from "OnlyParamsSelected.astro";
+import OnFourthCharOfEachWord from "OnFourthCharOfEachWord.astro";
+import SelectEndOfEachParam from "SelectEndOfEachParam.astro";
+import DeletedEndOfEachWord from "DeletedEndOfEachWord.astro";
+import UndidStep from "UndidStep.astro";
+import SelectedEntireFileAgain from "SelectedEntireFileAgain.astro";
+import SelectedAllLengthWidthHeight from "SelectedAllLengthWidthHeight.astro";
+import RemovedLastPartOfEachParam from "RemovedLastPartOfEachParam.astro";
+import SelectedAllResultVarsAndC from "SelectedAllResultVarsAndC.astro";
+import RotatedContentsOfSelections from "RotatedContentsOfSelections.astro";
+import EachSelectionCollapsed from "EachSelectionCollapsed.astro";
+import DeletedTwoChars from "DeletedTwoChars.astro";
+import SelectedAllS from "SelectedAllS.astro";
+import FinalStatePython from "FinalStatePython.astro";
+
 One of the most powerful features Helix has is multiple cursor support in combination with macros.
 
 It allows you to perform complex refactors which can be broken down to a series of steps, as well as seacrh-and-replace.
@@ -86,7 +141,7 @@ Place your cursor on the first line, after the dash:
 
 Use <kbd>Q</kbd> to begin recording a macro, and then press <kbd>e</kbd> to select the full `thin` word:
 
-<RecodingMacroBegins />
+<RecordingMacroBegins />
 
 Change it to `bold` using <kbd>c</kbd> to delete and insert mode, then type `bold` and <kbd>Esc</kbd> to go back to normal mode:
 
@@ -122,7 +177,7 @@ Macros are a way to record your keystrokes and then replay them whenever you wan
 
 When you press <kbd>q</kbd>, it will replay the macro from register `Q`. But you can have a lot of macros at your disposal, ready to use whenever.
 
-For example, to record a macro into a specific registe, press <kbd>"</kbd> to select the register, then a character which will be the register where your macro is stored, and then <kbd>Q</kbd>. So for example:
+For example, to record a macro into a specific register, press <kbd>"</kbd> to select the register, then a character which will be the register where your macro is stored, and then <kbd>Q</kbd>. So for example:
 
 - <kbd>"</kbd> + <kbd>e</kbd> + <kbd>Q</kbd> to record a macro into the `e` register.
 
@@ -140,7 +195,7 @@ Let's consider the following file, which includes some repetition:
 
 <PythonBeginningState />
 
-And our boss wants every variable to be a maximum of 3 characters, as well as the functions have to be static methods on a class. So we are going to "refactor" it into the following:
+And we want every variable to be a maximum of 3 characters, as well as the functions have to be static methods on a class.
 
 <PythonFinalState />
 
@@ -281,79 +336,3 @@ Now, press <kbd>i</kbd> to go into insert mode at the very beginning of the sele
 <FinalStatePython />
 
 At last, we've succeeded 🥳!
-
-## More Examples
-
-Concrete examples showing how powerful multiple cursor functionality can be.
-
-### Object to Array of (key, value)
-
-<InitialStateJs />
-
-```js
-const palette = {
-  apricot: "#f47868",
-  lightning: "#ffcd1c",
-  delta: "#6F44F0",
-};
-```
-
-We want to transform this object into an array of tuples where, the first element of each tuple is the key of the object and the second element is the value:
-
-<FinalStateJs />
-
-```js
-const palette = [
-  ["apricot", "#f47868"],
-  ["lightning", "#ffcd1c"],
-  ["delta", "#6F44F0"],
-];
-```
-
-Steps:
-
-1. Inside the object, use <kbd>mr\{[</kbd> to replace the surrounding `{` with `[`:
-
-<ReplacedCurliesWithSquare />
-
-2. <kbd>mi[</kbd> to select inside the entire array:
-
-<SelectedInsideArray />
-
-3. <kbd>s</kbd> to enter select mode, then <kbd>:</kbd> + <kbd>Enter</kbd> will place a cursor on every `:`.
-
-<CursorOnEachColon />
-
-4. <kbd>r,</kbd> replaces each selection with a `,`. A cursor is line a single-width selection, and we have multiple cursors, so it will replace each `:` with `,`.
-
-<ReplacedColonsWithCommas />
-
-5. <kbd>t,</kbd> moves the cursor on each line to the ending comma.
-
-<MovedCursorToEnd />
-
-6. <kbd>;</kbd> the selection around each cursor into a single selection.
-
-<CollapsedAllSelections />
-
-7. <kbd>vgs</kbd> selects each line excluding the final comma.
-
-<SelectEachLine />
-
-8. <kbd>ms[</kbd> surrounds each individual selection with `[` to turn it into an array.
-
-<SurroundEachWithArray />
-
-9. <kbd>l</kbd> moves 1 character forward, replacing the selection with just a 1-width selection:
-
-<MoveOneCharForward />
-
-10. <kbd>e</kbd> selects until the end of each word.
-
-<SelectUntilEndOfEachWord />
-
-11. <kbd>ms"</kbd> surrounds the items with double quotes to make strings.
-
-<AddedSurroundingQuotations />
-
-The final command to achieve all of that is `mr{[mi[s:<enter>r,t,;vgsms[lems"`.

@@ -30,11 +30,7 @@ export default defineConfig({
       sidebar: [
         {
           label: "Getting Started",
-          items: [
-            "getting-started/introduction",
-            "getting-started/installation",
-            "getting-started/basics",
-          ],
+          items: ["getting-started/installation", "getting-started/basics"],
         },
         {
           label: "Usage",
@@ -69,7 +65,7 @@ export default defineConfig({
             "help/troubleshooting",
             "help/terminal-support",
             "help/language-defaults",
-            "help/from-vim",
+            "help/refactor-examples",
           ],
         },
 

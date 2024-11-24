@@ -2,6 +2,28 @@
 title: Text Objects
 ---
 
+import InitialPythonFile from "InitialPythonFile.astro";
+import SelectedInitMethod from "SelectedInitMethod.astro";
+import SelectedInsideInitMethod from "SelectedInsideInitMethod.astro";
+import MoveToNextMethod from "MoveToNextMethod.astro";
+import RustInitialState from "RustInitialState.astro";
+import SelectedInsideWord from "SelectedInsideWord.astro";
+import SelectedAroundWord from "SelectedAroundWord.astro";
+import SelectedInsideWORD from "SelectedInsideWORD.astro";
+import SelectedAroundWORD from "SelectedAroundWORD.astro";
+import MarkdownFile from "MarkdownFile.astro";
+import MarkdownFileSelectParagraphs from "MarkdownFileSelectParagraphs.astro";
+import MarkdownFileSelectAroundParagraphs from "MarkdownFileSelectAroundParagraphs.astro";
+import TypescriptFile from "TypescriptFile.astro";
+import TypescriptFileInsideParentheses from "TypescriptFileInsideParentheses.astro";
+import TypescriptFileAroundParentheses from "TypescriptFileAroundParentheses.astro";
+import GitHunkExample from "GitHunkExample.astro";
+import GitHunkSelected from "GitHunkSelected.astro";
+import SyntaxAwareInit from "SyntaxAwareInit.astro";
+import NextSibling from "NextSibling.astro";
+import PrevSibling from "PrevSibling.astro";
+import ParentNode from "ParentNode.astro";
+
 We'll explore both of these features on this page.
 
 Text Objects are a way to manipulate a piece of text in a structured way. They allow you to refer to blocks of text based on their purpose and perform powerful actions. For instance:
@@ -13,28 +35,19 @@ Text Objects are a way to manipulate a piece of text in a structured way. They a
 
 For example, with the following Python file:
 
-[TODO: add image, with below contents]
+<InitialPythonFile />
 
-```python
-class Thing:
-  def __init__(self):
-    self.thing = "Hello world"
+Move your cursor in the `__init__` method, and press <kbd>maf</kbd> for _**m**anipulate **a**round **f**unction_ to select the entire method:
 
-  def say_thing(self):
-    print(self.thing)
-```
-
-Press <kbd>maf</kbd> for _**m**anipulate **a**round **f**unction_ to select the entire method:
-
-[TODO: add image]
+<SelectedInitMethod />
 
 Or <kbd>mif</kbd> for _**m**anipulate **i**nside **f**unction_ to select the body of the method:
 
-[TODO: add image]
+<SelectedInsideInitMethod />
 
 Additionally, you can move between most text objects. For instance, <kbd>]f</kbd> with go to the previous function.
 
-[TODO: add image]
+<MoveToNextMethod />
 
 The full syntax is:
 
@@ -58,7 +71,7 @@ A word is consists only of alphanumeric characters and underscores, so `a-Z`, `0
 
 For instance, take the following file, with two cursors:
 
-[TODO: add below. each cursor is at *]
+<RustInitialState />
 
 ```rs
 pri*ntln!("Hello, wo*rld");
@@ -66,11 +79,13 @@ pri*ntln!("Hello, wo*rld");
 
 - Selecting inside word with <kbd>miw</kbd>:
 
-[TODO: add img]
+<SelectedInsideWord />
 
 - Selecting around word with <kbd>maw</kbd>:
 
-[TODO: add img]
+<SelectedAroundWord />
+
+Note that we now also have the space before the `world` as our selection!
 
 ##### WORD
 
@@ -78,43 +93,31 @@ A WORD is always delimited by whitespace such as newlines, tabs and spaces.
 
 Consider this file again:
 
-[TODO: add below. each cursor is at *]
-
-```rs
-pri*ntln!("Hello, wo*rld");
-```
+<RustInitialState />
 
 - Selecting inside WORD with <kbd>miW</kbd>:
 
-[TODO: add img]
+<SelectedInsideWORD />
 
 - Selecting around WORD with <kbd>maW</kbd>:
 
-[TODO: add img]
+<SelectedAroundWORD />
+
+Note that the first selection was `println!("Hey, ` and the second selection is ` world!");`, since these selections share a common character (the space), they essentially merge.
 
 ##### Paragraph
 
 A paragraph is delimited by two newlines, as well as start and end of files. For example in the following file with 3 cursors:
 
-[TODO: add below, with cursors at *]
-
-````md
-```md
-One two thr\*ee four.
-
-Five six sev\*en eight.
-
-Nine ten \*eleven.
-```
-````
+<MarkdownFile />
 
 - Select inside paragarph with <kbd>mip</kbd>:
 
-[TODO: add image]
+<MarkdownFileSelectParagraphs />
 
 - Select around paragraph with <kbd>map</kbd>:
 
-[TODO: add image]
+<MarkdownFileSelectAroundParagraphs />
 
 #### Pair Text Objects
 
@@ -125,19 +128,15 @@ These allow you to select:
 
 For example, with the following state:
 
-[TODO: add from below]
-
-```ts
-const say = (s: string) => console.log(s);
-```
+<TypescriptFile />
 
 Pressing <kbd>mi(</kbd> will select:
 
-[TODO: add image]
+<TypescriptFileInsideParentheses />
 
 While <kbd>mi)</kbd> will select:
 
-[TODO: add image]
+<TypescriptFileAroundParentheses />
 
 List of available pairs:
 
@@ -157,11 +156,11 @@ It will select the entire change.
 
 For instance, if we have the following file, with the added lines visible by the green bar indicator on the gutter:
 
-[TODO: add img]
+<GitHunkExample />
 
 Then <kbd>mig</kbd> will select the git hunk.
 
-[TODO: add img]
+<GitHunkSelected />
 
 #### Tree-sitter Text Objects
 
@@ -185,32 +184,16 @@ Available text objects:
 
 Some commands allow you to move the selection according to its location in the syntax tree. For example, many languages have the following syntax for function calls:
 
-[TODO: add image of below]
+<SyntaxAwareInit />
 
-```
-fn([arg1], arg2, arg3);
-```
+If you use <kbd>Alt</kbd> + <kbd>n</kbd>, it will select the next sibling:
 
-If you have a selection that wraps `arg1`, and you use <kbd>Alt</kbd> + <kbd>n</kbd>, it will select the next sibling:
-
-[TODO: add image]
-
-```
-fn(arg1, [arg2], arg3);
-```
+<NextSibling />
 
 Similarly, <kbd>Alt</kbd> + <kbd>p</kbd> selects the previous sibling:
 
-[TODO: add image]
-
-```
-fn([arg1], arg2, arg3);
-```
+<PrevSibling />
 
 <kbd>Alt</kbd> + <kbd>o</kbd> will expand selection to the parent node:
 
-[TODO: add image]
-
-```
-fn([arg1, arg2, arg3]);
-```
+<ParentNode />
