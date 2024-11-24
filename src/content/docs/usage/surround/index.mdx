@@ -2,6 +2,14 @@
 title: Surround
 ---
 
+import SurroundSelectionInit from "SurroundSelectionInit.astro";
+import SurroundSelection from "SurroundSelection.astro";
+import ReplaceSurrounding from "ReplaceSurrounding.astro";
+import DeleteSurrounding from "DeleteSurrounding.astro";
+import MarkdownInit from "MarkdownInit.astro";
+import DeleteSurroundingAsterisk from "DeleteSurroundingAsterisk.astro";
+import ReplaceSurroundingO from "ReplaceSurroundingO.astro";
+
 Helix comes with built-in surround support, allowing you to perform actions such as:
 
 - Surround selection with character
@@ -12,11 +20,11 @@ Helix comes with built-in surround support, allowing you to perform actions such
 
 You can surround selections with specific characters with <kbd>ms</kbd> for _**m**ake **s**urrounding_. For example, with the following state:
 
-[TODO: add image]
+<SurroundSelectionInit />
 
 Pressing <kbd>ms(</kbd>, you surround the selection with `(`:
 
-[TODO: add image]
+<SurroundSelection />
 
 ## Replace surrounding character
 
@@ -24,13 +32,13 @@ But what if we actually meant to surround it with `{` instead? That's fine! We c
 
 For instance, <kbd>mr(\{</kbd> replaces the surrounding `(` with a `{`:
 
-[TODO: add image]
+<ReplaceSurrounding />
 
 ## Delete surrounding character
 
 If we wanted to delete the surrounding character, we could also use <kbd>md</kbd> for _**m**ake **d**elete_. For example to delete the nearest surrounding pair of `{`, use <kbd>md\{</kbd>.
 
-[TODO: add image]
+<DeleteSurrounding />
 
 ## List of surrounds
 
@@ -45,25 +53,12 @@ Helix has support for the following pairs of surrounds:
 
 You can also use any other character which will act on the literal characters. For instance, if we have a markdown file like follows:
 
-[TODO: add image of BELOW]
-[NOTE: replace asterisks with __ __]
-
-```md
-Hello **world**!
-```
+<MarkdownInit />
 
 Then pressing <kbd>md*</kbd> will delete the nearest `*`.
 
-[TODO: add image of BELOW]
-
-```md
-Hello _world_!
-```
+<DeleteSurroundingAsterisk />
 
 Or using <kbd>mro\{</kbd> will replace the nearest pairs of `o` character with `{`:
 
-[TODO: add image of BELOW]
-
-```md
-Hell{ _w}rld_!
-```
+<ReplaceSurroundingO />
