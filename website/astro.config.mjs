@@ -8,7 +8,7 @@ import sitemap from "@astrojs/sitemap";
 
 // https://astro.build/config
 export default defineConfig({
-  site: "https://helix-editor.vercel.app",
+  site: "https://helix.github.io",
   vite: {
     optimizeDeps: { include: ["asciinema-player"] },
   },
