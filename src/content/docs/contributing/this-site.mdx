@@ -1,0 +1,55 @@
+---
+title: This Site
+---
+
+import { FileTree } from "@astrojs/starlight/components";
+
+## Framework
+
+This site is built using [Starlight](https://starlight.astro.build/), which is built upon [Astro](https://astro.build/) framework which is considered by many to be the best static site generation framework.
+
+It also uses the following starlight plugins:
+
+| plugin                                                                       | description                                                |
+| ---------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| [`starlight-links-validator`](https://starlight-links-validator.vercel.app/) | Ensures all internal links are valid before building site  |
+| [`starlight-blog`](https://starlight-blog-docs.vercel.app/)                  | Makes it easy to have a news section for new helix updates |
+
+## Folder Structure
+
+All the documentation is stored under `src/content/docs`, news are under `src/content/docs/news`.
+
+Configuration for the sidebar including where each page is at `astro.config.mjs`.
+
+<FileTree>
+
+- astro.config.mjs configuration for Astro and Starlight, including links on the sidebar
+- tsconfig.json configuration for TypeScript
+- package.json list of dependencies and scripts
+- public/ static files, mostly .asciinema .cast files
+  - blog/ specifically for "News" section
+- scripts/
+  - termshots.js creates files in each directory under @/termshots that re-export every termshot
+- src/ main entry point for app, can be referenced absolutely with "@"
+  - globals.css
+  - components/ contains components such as \<Asciinema \/\> for rendering terminal videos
+  - content/
+    - docs/ **Docs are located here**, each sub-directory contains _.mdx_ files which represent a single page
+      - index.mdx landing page for the site
+      - getting-started/
+      - configuration/
+      - getting-started/
+      - news/ Specifically the "News" section of the site
+      - reference/
+      - ...
+  - termshots/ contains termshot components
+
+</FileTree>
+
+## Termshot
+
+Some pages on this site use **Termshot** which is like screenshot + terminal = Termshot.
+
+Since terminals are rendered in characters, it's very easy to read these characters and convert to HTML which can be displayed.
+
+This is similar to what [Asciinema](https://asciinema.org/) does, except Termshots are just static pictures and not videos.

@@ -3,7 +3,7 @@
   "type": "module",
   "version": "1.0.0",
   "scripts": {
-    "termshots": "node termshots.js",
+    "termshots": "node scripts/termshots.js",
     "predev": "pnpm termshots",
     "prebuild": "pnpm termshots",
     "prepreview": "pnpm termshots",

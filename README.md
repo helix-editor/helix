@@ -1,3 +1,82 @@
+
+.
+├── astro.config.mjs
+├── favicon.svg
+├── package.json
+├── pnpm-lock.yaml
+├── public
+│   ├── blog
+│   │   ├── 430253.cast
+│   │   ├── amp-jump.cast
+│   │   ├── auto-save.gif
+│   │   ├── bracketed-paste.cast
+│   │   ├── bufferline.cast
+│   │   ├── color-modes.cast
+│   │   ├── configurable-statusline.cast
+│   │   ├── cursorline.cast
+│   │   ├── dap.cast
+│   │   ├── diagnostic-picker.cast
+│   │   ├── document-highlight.cast
+│   │   ├── dynamic-workspace-symbol-picker.cast
+│   │   ├── external-formatter.cast
+│   │   ├── git-diff-gutter.cast
+│   │   ├── health-check.cast
+│   │   ├── indent-guides.cast
+│   │   ├── initial-lsp-didchangewatchedfiles.cast
+│   │   ├── inlay-hints.cast
+│   │   ├── insert-registers-in-prompts.cast
+│   │   ├── jumplist-picker.cast
+│   │   ├── logo.svg
+│   │   ├── logo-with-text.svg
+│   │   ├── multi-cursor-completion.cast
+│   │   ├── nucleo-nix-store.cast
+│   │   ├── reflow.cast
+│   │   ├── regex-prompt-highlighting.png
+│   │   ├── rulers.cast
+│   │   ├── set-language.cast
+│   │   ├── signature-help.gif
+│   │   ├── smart-tab.cast
+│   │   ├── snippets.cast
+│   │   ├── softwrap.cast
+│   │   ├── special-registers.cast
+│   │   ├── style.css
+│   │   ├── ts-subtree-and-motions-injection.cast
+│   │   ├── undercurl.png
+│   │   ├── use-grammars.cast
+│   │   ├── vcs-statusline-element.cast
+│   │   ├── visible-whitespace.cast
+│   │   └── window-swapping.cast
+│   ├── favicon.svg
+│   └── fonts
+│       └── JetBrainsMono-Regular.woff2
+├── README.md
+├── src
+│   ├── components
+│   │   ├── Asciinema.astro
+│   │   ├── ConfigOption.astro
+│   │   ├── GetStarted.astro
+│   │   ├── Hexagons.astro
+│   │   ├── Master.astro
+│   │   ├── ThemeProvider.astro
+│   │   └── ThemeSelect.astro
+│   ├── content
+│   │   ├── config.ts
+│   │   └── docs/
+│   │       ├── configuration/
+│   │       ├── contributing/
+│   │       ├── getting-started/
+│   │       ├── help/
+│   │       ├── index.mdx
+│   │       ├── news/
+│   │       ├── reference/
+│   │       └── usage/
+│   ├── env.d.ts
+│   ├── tailwind.css
+│   └── termshots/
+├── tailwind.config.mjs
+├── termshots.js
+└── tsconfig.json
+
 > [!NOTE]
 > This is a work-in-progress!
 

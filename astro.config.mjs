@@ -83,6 +83,7 @@ export default defineConfig({
           label: "Contributing to Helix",
           items: [
             "contributing/vision",
+            "contributing/this-site",
             "contributing/releases",
             "contributing/architecture",
             "contributing/languages",
