@@ -2,7 +2,43 @@
 title: This Site
 ---
 
-import { FileTree } from "@astrojs/starlight/components";
+import { FileTree, Steps } from "@astrojs/starlight/components";
+
+import Asciinema from "@/components/Asciinema.astro";
+
+First, clone the repository.
+
+---
+
+Install the dependencies:
+
+```sh
+pnpm install
+```
+
+:::note
+
+I personally use `pnpm` instead of `npm` because it is more disk space efficient, but you can use what you want
+
+:::
+
+- Start the development server:
+
+  ```sh
+  pnpm dev
+  ```
+
+- Create static output (html, css and js files):
+
+  ```sh
+  pnpm build
+  ```
+
+- Create build static output and preview:
+
+  ```sh
+  pnpm preview
+  ```
 
 ## Framework
 
@@ -30,9 +66,9 @@ Configuration for the sidebar including where each page is at `astro.config.mjs`
   - blog/ specifically for "News" section
 - scripts/
   - termshots.js creates files in each directory under @/termshots that re-export every termshot
-- termshots/ contains termshot components
 - src/ main entry point for app, can be referenced absolutely with "@"
   - globals.css
+  - termshots/ contains termshot components
   - components/
     - Asciinema.astro renders terminal videos
     - Master.astro labels a section in the site as only available if built from source
@@ -52,8 +88,117 @@ Configuration for the sidebar including where each page is at `astro.config.mjs`
 
 ## Termshot
 
-Some pages on this site use **Termshot** which is like screenshot + terminal = Termshot.
+Some pages on this site use **Termshot** which is like screenshot + terminal = Termshot:
 
-Since terminals are rendered in characters, it's very easy to read these characters and convert to HTML which can be displayed.
+import DefaultTheme from "@/termshots/list-of-themes/Default.astro";
+
+<DefaultTheme />
+
+Since terminals are rendered in characters, it's possible to read these characters and convert to HTML which can be displayed, without the need of using images.
 
 This is similar to what [Asciinema](https://asciinema.org/) does, except Termshots are just static pictures and not videos.
+
+If you are creating a termshot for a `.mdx` file that's called `this-side.mdx`, you would create a new directory in `src/termshots/`.
+
+### Create termshots
+
+To actually create the termshot, the easiest way is to use Gnome terminal for that. (gnome desktop not needed):
+
+<Steps>
+
+1. Install `dbus` and `gnome-terminal`.
+
+2. Open the terminal, for example with a 32 pixel wide by 20 pixel tall terminal:
+
+   ```sh
+   dbus-launch gnome-terminal --geometry=32x20
+   ```
+
+3. Put your terminal into the state that you want
+
+4. Click on `Edit` in the top right corner and then `Select All`, this will highlight every cell in the terminal
+
+5. Click on `Edit` again and then `Copy as HTML`, which transforms the terminal's ansi escape codes into HTML that can easily be displayed. on a website.
+
+6. Create a folder _with the same name_ as the markdown document that you are editing. For example, this document is called `this-site.mdx`. If I were creating a termshot for it, I would create the following file:
+
+   <FileTree>
+
+   - src
+     - termshots/
+       - this-site/
+
+   </FileTree>
+
+7. Create a file in `PascalCase` with a `.astro` file extension with a name of your choosing, and copy that HTML markup into this file:
+
+   <FileTree>
+
+   - src
+     - termshots/
+       - this-site/
+         - YourRecording.astro
+
+   </FileTree>
+
+8. To use it, import all recordings under `src/termshots/this-site/index.astro` (which will be automatically generated) as follows in a `.mdx` document, and then use it:
+
+   ```mdx
+   // this-site.mdx
+   import { T } from "@/termshots/this-site/index.astro";
+
+   <T.YourRecording />;
+   ```
+
+9. If the `index.astro` file doesn't automatically appear (it will appear when you run `pnpm dev` for example), then create it with this command:
+
+   ```sh
+   pnpm termshots
+   ```
+
+</Steps>
+
+Of course there are other ways, but this is the simplest one that I've found.
+
+:::note
+
+On mobile devices, any termshot that uses more than 32 horizontall cells will have a scrollbar added, which negatively impacts user experience.
+
+:::
+
+## Asciinema
+
+[Asciinema](https://asciinema.org/) allows you to create videos from terminal sequences and render them as HTML. It's like termshot, but it allows playback and is a full-featured video:
+
+<Asciinema src="/blog/softwrap.cast" />
+
+### Create asciinema videos
+
+<Steps>
+
+1. To create Asciinema videos, [follow their instructions for creating a `.cast` file](https://asciinema.org/).
+
+2. Place the `.cast` file into the `/public` folder:
+
+   <FileTree>
+
+   - public
+     - my-video.cast
+
+   </FileTree>
+
+3. Use the `Asciinema` component, the contents from the `/public` folder are served at the root domain:
+
+   ```mdx
+   import Asciinema from "@/components/Asciinema.astro";
+
+   <Asciinema src="/my-video.cast" />
+   ```
+
+</Steps>
+
+:::note
+
+When creating Asciinema videos or Termshot pictures, use `:theme default` to better reflect Helix's branding
+
+:::
