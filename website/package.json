@@ -1,7 +1,7 @@
 {
   "name": "helix-docs",
   "type": "module",
-  "packageManager": "pnpm",
+  "packageManager": "pnpm@latest",
   "version": "1.0.0",
   "scripts": {
     "termshots": "node scripts/termshots.js",
