@@ -10,7 +10,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
-const termshotsDirectory = path.join(scriptDirectory, "src", "termshots");
+const termshotsDirectory = path.join(scriptDirectory, "..", "src", "termshots");
 const termshotFolders = fs.readdirSync(termshotsDirectory);
 
 function generateFileContents(files, contentGenerator) {
