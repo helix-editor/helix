@@ -1,7 +1,6 @@
 // @ts-check
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
-import tailwind from "@astrojs/tailwind";
 import starlightLinksValidator from "starlight-links-validator";
 import starlightBlog from "starlight-blog";
 
@@ -93,8 +92,7 @@ export default defineConfig({
           ],
         },
       ],
-      customCss: ["./src/tailwind.css"],
+      customCss: ["./src/globals.css"],
     }),
-    tailwind({ applyBaseStyles: false }),
   ],
 });

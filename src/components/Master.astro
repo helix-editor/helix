@@ -2,12 +2,12 @@
 import { Badge } from "@astrojs/starlight/components";
 ---
 
-<aside aria-label="Available since the latest release (24.07)" class="starlight-aside starlight-aside--master">
-  <div class="space-y-1">
+<aside aria-label="Available since the latest release (24.07)" class="starlight-aside">
+  <div>
 		<p class="starlight-aside__title" aria-hidden="true">
 			Since master <Badge text="New" variant="tip" />
 		</p>
-		<p class="text-sm italic text-haze/80">
+		<p class="starlight-aside__description">
 			To use this feature, you need to 
 			<a href="http://localhost:4321/getting-started/installation#building-from-source">
 			  build from source</a>.
@@ -17,3 +17,25 @@ import { Badge } from "@astrojs/starlight/components";
 		<slot />
 	</div>
 </aside>
+
+<style>
+	.starlight-aside {
+		--sl-color-asides-border: var(--sl-color-orange);
+	}
+	.starlight-aside__title {
+		color: var(--sl-color-orange);
+		span {
+			border: 1px solid var(--sl-color-orange);
+			background-color: var(--sl-color-orange-low);
+		}
+	}
+	.starlight-aside__description {
+		font-size: 0.875rem;
+		line-height: 1.25rem;
+		font-style: italic;
+		margin-top: 0.25rem !important;
+		border-bottom: 1px solid var(--sl-color-gray-5);
+		padding-bottom: 1.25rem;
+		color: hsla(var(--haze), 0.8);
+	}
+</style>

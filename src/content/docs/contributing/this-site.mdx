@@ -30,10 +30,15 @@ Configuration for the sidebar including where each page is at `astro.config.mjs`
   - blog/ specifically for "News" section
 - scripts/
   - termshots.js creates files in each directory under @/termshots that re-export every termshot
+- termshots/ contains termshot components
 - src/ main entry point for app, can be referenced absolutely with "@"
   - globals.css
-  - components/ contains components such as \<Asciinema \/\> for rendering terminal videos
+  - components/
+    - Asciinema.astro renders terminal videos
+    - Master.astro labels a section in the site as only available if built from source
+    - ...
   - content/
+    - config.ts
     - docs/ **Docs are located here**, each sub-directory contains _.mdx_ files which represent a single page
       - index.mdx landing page for the site
       - getting-started/
@@ -42,7 +47,6 @@ Configuration for the sidebar including where each page is at `astro.config.mjs`
       - news/ Specifically the "News" section of the site
       - reference/
       - ...
-  - termshots/ contains termshot components
 
 </FileTree>
 

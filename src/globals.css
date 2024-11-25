@@ -1,0 +1,181 @@
+@import "asciinema-player/dist/bundle/asciinema-player.css";
+
+@font-face {
+  font-family: "JetBrainsMono";
+  src: url("/fonts/JetBrainsMono-Regular.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+:root {
+  --white: 0, 0%, 100%;
+  --lilac: 275, 60%, 84%;
+  --comet: 242, 14%, 41%;
+  --lavender: 243, 61%, 77%;
+  --purple-hue: 276;
+  --bossanova: 276, 38%, 25%;
+  --midnight: 276, 38%, 22%;
+  --revolver: 276, 38%, 15%;
+  --silver: 0, 0%, 80%;
+  --sirocco: 192, 10%, 46%;
+  --mint-hue: 110;
+  --mint: var(--mint-hue), 79%, 75%;
+  --almond: 23, 57%, 83%;
+  --chamois-hue: 50;
+  --chamois: var(--chamois-hue), 61%, 77%;
+  --honey-hue: 38;
+  --honey: var(--honey-hue), 82%, 65%;
+  --apricot-hue: 7;
+  --apricot: var(--apricot-hue), 86%, 68%;
+  --lightning-hue: 47;
+  --lightning: var(--lightning-hue), 100%, 55%;
+  --delta-hue: 255;
+  --delta: var(--delta-hue), 85%, 60%;
+  --haze-hue: 265;
+  --haze: var(--haze-hue), 22%, 79%;
+  --purple-lavender: 267, 22%, 59%;
+
+  --overlay-blurple: hsla(276, 38%, 25%, 1);
+
+  --sl-color-white: hsl(var(--white));
+  --sl-color-black: hsl(var(--revolver));
+
+  --sl-color-orange-low: hsl(var(--honey-hue), 39%, 22%);
+  --sl-color-orange: hsl(var(--honey-hue), 82%, 63%);
+  --sl-color-orange-high: hsl(var(--honey-hue), 82%, 87%);
+
+  --sl-color-green-low: hsl(var(--mint-hue), 39%, 22%);
+  --sl-color-green: hsl(var(--mint-hue), 82%, 63%);
+  --sl-color-green-high: hsl(var(--mint-hue), 82%, 80%);
+
+  --sl-color-blue-low: hsl(var(--delta-hue), 54%, 20%);
+  --sl-color-blue: hsl(var(--delta-hue), 100%, 60%);
+  --sl-color-blue-high: hsl(var(--delta-hue), 100%, 87%);
+
+  --sl-color-purple-low: hsl(var(--purple-hue), 39%, 22%);
+  --sl-color-purple: hsl(var(--purple-hue), 82%, 63%);
+  --sl-color-purple-high: hsl(var(--purple-hue), 82%, 89%);
+
+  --sl-color-red-low: hsl(var(--apricot-hue), 39%, 22%);
+  --sl-color-red: hsl(var(--apricot-hue), 82%, 63%);
+  --sl-color-red-high: hsl(var(--apricot-hue), 82%, 87%);
+
+  --sl-color-accent-low: hsl(var(--midnight));
+  --sl-color-accent: hsl(var(--delta));
+  --sl-color-accent-high: hsl(var(--lilac));
+
+  --sl-color-gray-1: hsl(var(--almond));
+  --sl-color-gray-2: hsl(var(--haze));
+  --sl-color-gray-3: hsl(var(--purple-lavender));
+  --sl-color-gray-4: hsl(var(--purple-lavender));
+  --sl-color-gray-5: hsl(var(--bossanova));
+  --sl-color-gray-6: hsl(var(--midnight));
+}
+
+main .sl-container {
+  position: relative;
+}
+
+.hero h1 {
+  color: hsl(var(--lilac));
+}
+
+[data-has-hero] header {
+  border-bottom: 1px solid transparent;
+  background-color: transparent;
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+[data-has-hero] .hero > img {
+  filter: drop-shadow(0 0 3rem var(--overlay-blurple));
+}
+
+/* hide trailing '|' */
+.social-icons::after {
+  display: none;
+}
+
+/* keyboard custom  */
+.sl-markdown-content kbd {
+  margin-top: 0 !important;
+  display: inline;
+  border: 2px solid var(--sl-color-gray-6);
+  border-radius: 0.25rem;
+  background-color: var(--sl-color-gray-5);
+  box-shadow:
+    0 2px 1px var(--sl-color-gray-6),
+    0 2px 0 0 var(--sl-color-gray-5) inset;
+  font-size: var(--sl-text-xs);
+  font-weight: 700;
+  line-height: 1;
+  padding: 2px 6px;
+}
+
+/* asides */
+.starlight-aside--caution {
+  background-color: hsla(var(--lightning), 0.15);
+  border-color: hsl(var(--lightning));
+
+  .starlight-aside__title {
+    color: hsl(var(--lightning));
+  }
+}
+
+.starlight-aside--note {
+  background-color: hsla(var(--silver), 0.15);
+  border-color: hsl(var(--silver));
+
+  .starlight-aside__title {
+    color: hsl(var(--silver));
+  }
+}
+
+.starlight-aside--danger {
+  background-color: hsla(var(--apricot), 0.15);
+  border-color: hsl(var(--apricot));
+
+  .starlight-aside__title {
+    color: hsl(var(--apricot));
+  }
+}
+
+.starlight-aside--tip {
+  background-color: hsla(var(--lavender), 0.15);
+  border-color: hsl(var(--lavender));
+
+  .starlight-aside__title {
+    color: hsl(var(--lavender));
+  }
+}
+
+::selection {
+  background-color: hsla(var(--lavender), 0.4);
+}
+
+/* inline code wrapping in tables makes it difficult to read */
+td code {
+  white-space: nowrap;
+}
+
+/* the "copied" button text */
+.copy .feedback {
+  background-color: hsl(var(--comet)) !important;
+}
+.copy .feedback::after {
+  border-inline-start-color: hsl(var(--comet)) !important;
+}
+
+.termshot {
+  line-height: 1rem;
+  max-width: max-content;
+  overflow-x: auto;
+}
+
+@media (max-width: 340px) {
+  .termshot {
+    padding: 0;
+    border: none;
+  }
+}
