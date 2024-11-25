@@ -2,42 +2,19 @@
 title: Basics
 ---
 
-import EntireHelixWordHighlighted from "EntireHelixWordHighlighted.astro";
-import HelixChangedToHello from "HelixChangedToHello.astro";
-import HelixChangedToWorld from "HelixChangedToWorld.astro";
-import SelectedLineWeJustChanged from "SelectedLineWeJustChanged.astro";
-import SelectedLineDeleted from "SelectedLineDeleted.astro";
-import SelectedLineDuplicated from "SelectedLineDuplicated.astro";
-import HelloHelixLinesRemoved from "HelloHelixLinesRemoved.astro";
-import PressedUAFewTimes from "PressedUAFewTimes.astro";
-import BackToMostRecentState from "BackToMostRecentState.astro";
-import WriteQuitAll from "WriteQuitAll.astro";
-import FullFileSelected from "FullFileSelected.astro";
-import FullFileDeleted from "FullFileDeleted.astro";
-import GotoLastLine from "GotoLastLine.astro";
-import CopiedLastLine from "CopiedLastLine.astro";
-import CopiedSecondLineIntoERegister from "CopiedSecondLineIntoERegister.astro";
-import PastedPreviouslyCopied from "PastedPreviouslyCopied.astro";
-import PastedFromERegister from "PastedFromERegister.astro";
-import PastedFromERegisterBefore from "PastedFromERegisterBefore.astro";
-import GotoWordShowcase from "GotoWordShowcase.astro";
-import HighlightedPlatesWordWithGotoWord from "HighlightedPlatesWordWithGotoWord.astro";
-import OpeningFile from "1.astro";
-import InsertMode from "2.astro";
-import SeveralLines from "SeveralLines.astro";
-import OneOfTheHLetters from "OneOfTheHLetters.astro";
+import { T } from "@/termshots/basics/index.astro";
 
 First, [install helix](/getting-started/installation).
 
 Once you have create a new text file and open it with Helix by running `hx file.txt`. This is what you'll see:
 
-<OpeningFile />
+<T.OpeningFile />
 
 Notice the `NOR` in the bottom-right corner, this indicates that you are currently in Normal mode. In this mode, typing letters like <kbd>e</kbd> and <kbd>n</kbd> won't insert them into the text, but rather have specific _commands_ which we will explore later.
 
 To actually insert some text, press <kbd>i</kbd>, which is the command to get into Insert mode, indicated by the `INS` in the bottom-right corner. In this mode, the letters you type will be inserted directly into the document. Try it out by writing `Hello helix!`.
 
-<InsertMode />
+<T.InsertMode />
 
 To get back into Normal mode press Esc. This will change the color of your cursor and you will see `NOR` again.
 
@@ -64,7 +41,7 @@ We only have one line of text, so let's duplicate it several times. Type:
 
 Spam <kbd>p</kbd> a few times to create several lines.
 
-<SeveralLines />
+<T.SeveralLines />
 
 Now you can try using the <kbd>h</kbd>, <kbd>j</kbd>, <kbd>k</kbd> and <kbd>l</kbd> motions traverse the text!
 
@@ -72,13 +49,13 @@ Now you can try using the <kbd>h</kbd>, <kbd>j</kbd>, <kbd>k</kbd> and <kbd>l</k
 
 Let's say we want to replace one of the `helix` words with `world`. To do this, place your cursor on one of the <kbd>h</kbd> letters:
 
-<OneOfTheHLetters />
+<T.OneOfTheHLetters />
 
 <kbd>e</kbd> is a motion which moves to the _**e**nd_ of the current word. Type <kbd>e</kbd> and it will move your cursor to the end of the `helix`.
 
 It doesn't just move your cursor there, though. The entire `helix` word becomes highlighted:
 
-<EntireHelixWordHighlighted />
+<T.EntireHelixWordHighlighted />
 
 If we now press <kbd>b</kbd>, which moves to the _**b**eginning_ of the current word, it'll move us back to where we just were.
 
@@ -86,7 +63,7 @@ Try this out a few times, press <kbd>e</kbd> and then <kbd>b</kbd> to select var
 
 Let's highlight our `helix` word again:
 
-<EntireHelixWordHighlighted />
+<T.EntireHelixWordHighlighted />
 
 ### Selection-first Approach
 
@@ -96,11 +73,11 @@ Every time text is modified (an **action**), you will fully anticipate the resul
 
 For example, we currently have the word `helix` selected. To change it to `world`, press <kbd>c</kbd>,
 
-<HelixChangedToHello />
+<T.HelixChangedToHello />
 
 <kbd>c</kbd> removes the contents of the current selection and places us in Insert mode, where you can then write your new word. Exit back to Normal mode by pressing <kbd>esc</kbd>.
 
-<HelixChangedToWorld />
+<T.HelixChangedToWorld />
 
 ### Delete
 
@@ -110,15 +87,15 @@ Let's test it out by doing the following:
 
 - Select the line we just changed with <kbd>x</kbd>.
 
-<SelectedLineWeJustChanged />
+<T.SelectedLineWeJustChanged />
 
 - <kbd>d</kbd> to delete this line.
 
-<SelectedLineDeleted />
+<T.SelectedLineDeleted />
 
 - Spam <kbd>p</kbd> a few times to create some duplicates.
 
-<SelectedLineDuplicated />
+<T.SelectedLineDuplicated />
 
 Now let's remove all of our previous `Hello helix!` by doing the following for each `Hello helix!` line:
 
@@ -127,7 +104,7 @@ Now let's remove all of our previous `Hello helix!` by doing the following for e
 
 Now we have something like this:
 
-<HelloHelixLinesRemoved />
+<T.HelloHelixLinesRemoved />
 
 ### Undo and Redo
 
@@ -135,13 +112,13 @@ What if we made a mistake, and want to go back? The <kbd>u</kbd> command will _*
 
 Try pressing down <kbd>u</kbd> a few times to get to our previous state, before we made all those modifications:
 
-<PressedUAFewTimes />
+<T.PressedUAFewTimes />
 
 <kbd>U</kbd> is similar to <kbd>Ctrl</kbd> + <kbd>Z</kbd> in other editors. It will _undo the last undo_. It's the inverse of <kbd>u</kbd>.
 
 Press <kbd>U</kbd> until we get back to our most recent state:
 
-<BackToMostRecentState />
+<T.BackToMostRecentState />
 
 ### Checkpoint
 
@@ -170,17 +147,17 @@ Once you are happy with your modifications, enter Normal mode and type <kbd>:</k
 - `:q!` will quit without saving.
 - `:wq` will both write and quit.
 
-<WriteQuitAll />
+<T.WriteQuitAll />
 
 ## More Commands
 
 Let's try out more Helix commands! Open the file again with `hx file.txt`. Select the entire file by pressing <kbd>%</kbd>
 
-<FullFileSelected />
+<T.FullFileSelected />
 
 Now, delete the selection with <kbd>d</kbd>.
 
-<FullFileDeleted />
+<T.FullFileDeleted />
 
 ### Registers
 
@@ -205,23 +182,23 @@ and the moon will
 
 1. Navigate to the last line by using <kbd>ge</kbd> for _**g**oto end_.
 
-<GotoLastLine />
+<T.GotoLastLine />
 
 1. Select the last line with <kbd>x</kbd> and then yank it with <kbd>y</kbd>.
 
-<CopiedLastLine />
+<T.CopiedLastLine />
 
 1. Navigate to the second line by using <kbd>2gg</kbd>.
 1. Select the second line by using <kbd>x</kbd> and then yank into into the <kbd>e</kbd> register with <kbd>"ey</kbd>.
 
-<CopiedSecondLineIntoERegister />
+<T.CopiedSecondLineIntoERegister />
 
 Now:
 
 1. Navigate to the third line by using <kbd>3gg</kbd>.
 1. Paste what we copied previously by using <kbd>p</kbd>.
 
-<PastedPreviouslyCopied />
+<T.PastedPreviouslyCopied />
 
 Notice how we haven't pasted the 2nd line's contents, but rather the last lines'? Because we yanked the 2nd line's contents into the <kbd>e</kbd> register. To paste from it, use <kbd>"ep</kbd>.
 
@@ -229,11 +206,11 @@ Notice how we haven't pasted the 2nd line's contents, but rather the last lines'
 - <kbd>e</kbd> uses the <kbd>e</kbd> register.
 - <kbd>p</kbd> pastes contents of the <kbd>e</kbd> register.
 
-<PastedFromERegister />
+<T.PastedFromERegister />
 
 Take note of the fact that when we press <kbd>p</kbd>, it pastes the contents of the register _after_ the line. To paste _before_, we undo with <kbd>u</kbd> and use <kbd>P</kbd> to paste before.
 
-<PastedFromERegisterBefore />
+<T.PastedFromERegisterBefore />
 
 That's great! We learned how to use registers and the system clipboard.
 
@@ -241,13 +218,13 @@ That's great! We learned how to use registers and the system clipboard.
 
 Using <kbd>b</kbd> to go to the beginning of the word and <kbd>e</kbd> to go to the end is useful if you are already at the word you want. But if you are far away, a very powerful command is _**g**oto **w**ord_ -- <kbd>gw</kbd>.
 
-<GotoWordShowcase />
+<T.GotoWordShowcase />
 
 <kbd>gw</kbd> will create two letters at the start of every word in sight. When you type those two letters, you instantly jump to the specified word.
 
 Let's say we want to jump to the `plates` word. The first two characters have been replaced by `at` and highlighted. If we write `at`, we will highlight that word!
 
-<HighlightedPlatesWordWithGotoWord />
+<T.HighlightedPlatesWordWithGotoWord />
 
 ### More ways to enter Insert Mode
 

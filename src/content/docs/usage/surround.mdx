@@ -2,13 +2,7 @@
 title: Surround
 ---
 
-import SurroundSelectionInit from "SurroundSelectionInit.astro";
-import SurroundSelection from "SurroundSelection.astro";
-import ReplaceSurrounding from "ReplaceSurrounding.astro";
-import DeleteSurrounding from "DeleteSurrounding.astro";
-import MarkdownInit from "MarkdownInit.astro";
-import DeleteSurroundingAsterisk from "DeleteSurroundingAsterisk.astro";
-import ReplaceSurroundingO from "ReplaceSurroundingO.astro";
+import { T } from "@/termshots/surround/index.astro";
 
 Helix comes with built-in surround support, allowing you to perform actions such as:
 
@@ -20,11 +14,11 @@ Helix comes with built-in surround support, allowing you to perform actions such
 
 You can surround selections with specific characters with <kbd>ms</kbd> for _**m**ake **s**urrounding_. For example, with the following state:
 
-<SurroundSelectionInit />
+<T.SurroundSelectionInit />
 
 Pressing <kbd>ms(</kbd>, you surround the selection with `(`:
 
-<SurroundSelection />
+<T.SurroundSelection />
 
 ## Replace surrounding character
 
@@ -32,13 +26,13 @@ But what if we actually meant to surround it with `{` instead? That's fine! We c
 
 For instance, <kbd>mr(\{</kbd> replaces the surrounding `(` with a `{`:
 
-<ReplaceSurrounding />
+<T.ReplaceSurrounding />
 
 ## Delete surrounding character
 
 If we wanted to delete the surrounding character, we could also use <kbd>md</kbd> for _**m**ake **d**elete_. For example to delete the nearest surrounding pair of `{`, use <kbd>md\{</kbd>.
 
-<DeleteSurrounding />
+<T.DeleteSurrounding />
 
 ## List of surrounds
 
@@ -53,12 +47,12 @@ Helix has support for the following pairs of surrounds:
 
 You can also use any other character which will act on the literal characters. For instance, if we have a markdown file like follows:
 
-<MarkdownInit />
+<T.MarkdownInit />
 
 Then pressing <kbd>md*</kbd> will delete the nearest `*`.
 
-<DeleteSurroundingAsterisk />
+<T.DeleteSurroundingAsterisk />
 
 Or using <kbd>mro\{</kbd> will replace the nearest pairs of `o` character with `{`:
 
-<ReplaceSurroundingO />
+<T.ReplaceSurroundingO />

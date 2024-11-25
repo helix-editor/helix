@@ -2,74 +2,62 @@
 title: Refactor Examples
 ---
 
-import InitialStateJs from "InitialStateJs.astro";
-import FinalStateJs from "FinalStateJs.astro";
-import ReplacedCurliesWithSquare from "ReplacedCurliesWithSquare.astro";
-import SelectedInsideArray from "SelectedInsideArray.astro";
-import CursorOnEachColon from "CursorOnEachColon.astro";
-import ReplacedColonsWithCommas from "ReplacedColonsWithCommas.astro";
-import MovedCursorToEnd from "MovedCursorToEnd.astro";
-import CollapsedAllSelections from "CollapsedAllSelections.astro";
-import SelectEachLine from "SelectEachLine.astro";
-import SurroundEachWithArray from "SurroundEachWithArray.astro";
-import MoveOneCharForward from "MoveOneCharForward.astro";
-import SelectUntilEndOfEachWord from "SelectUntilEndOfEachWord.astro";
-import AddedSurroundingQuotations from "AddedSurroundingQuotations.astro";
+import { T } from "@/termshots/refactor-examples/index.astro";
 
 Concrete examples showing how powerful multiple cursor functionality can be.
 
 ## Object to Array of (key, value)
 
-<InitialStateJs />
+<T.InitialStateJs />
 
 We want to transform this object into an array of tuples where, the first element of each tuple is the key of the object and the second element is the value:
 
-<FinalStateJs />
+<T.FinalStateJs />
 
 Steps:
 
 1. Inside the object, use <kbd>mr\{[</kbd> to replace the surrounding `{` with `[`:
 
-<ReplacedCurliesWithSquare />
+<T.ReplacedCurliesWithSquare />
 
 2. <kbd>mi[</kbd> to select inside the entire array:
 
-<SelectedInsideArray />
+<T.SelectedInsideArray />
 
 3. <kbd>s</kbd> to enter select mode, then <kbd>:</kbd> + <kbd>Enter</kbd> will place a cursor on every `:`.
 
-<CursorOnEachColon />
+<T.CursorOnEachColon />
 
 4. <kbd>r,</kbd> replaces each selection with a `,`. A cursor is line a single-width selection, and we have multiple cursors, so it will replace each `:` with `,`.
 
-<ReplacedColonsWithCommas />
+<T.ReplacedColonsWithCommas />
 
 5. <kbd>t,</kbd> moves the cursor on each line to the ending comma.
 
-<MovedCursorToEnd />
+<T.MovedCursorToEnd />
 
 6. <kbd>;</kbd> the selection around each cursor into a single selection.
 
-<CollapsedAllSelections />
+<T.CollapsedAllSelections />
 
 7. <kbd>vgs</kbd> selects each line excluding the final comma.
 
-<SelectEachLine />
+<T.SelectEachLine />
 
 8. <kbd>ms[</kbd> surrounds each individual selection with `[` to turn it into an array.
 
-<SurroundEachWithArray />
+<T.SurroundEachWithArray />
 
 9. <kbd>l</kbd> moves 1 character forward, replacing the selection with just a 1-width selection:
 
-<MoveOneCharForward />
+<T.MoveOneCharForward />
 
 10. <kbd>e</kbd> selects until the end of each word.
 
-<SelectUntilEndOfEachWord />
+<T.SelectUntilEndOfEachWord />
 
 11. <kbd>ms"</kbd> surrounds the items with double quotes to make strings.
 
-<AddedSurroundingQuotations />
+<T.AddedSurroundingQuotations />
 
 The final command to achieve all of that is `mr{[mi[s:<enter>r,t,;vgsms[lems"`.

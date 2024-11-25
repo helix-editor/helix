@@ -2,27 +2,7 @@
 title: Text Objects
 ---
 
-import InitialPythonFile from "InitialPythonFile.astro";
-import SelectedInitMethod from "SelectedInitMethod.astro";
-import SelectedInsideInitMethod from "SelectedInsideInitMethod.astro";
-import MoveToNextMethod from "MoveToNextMethod.astro";
-import RustInitialState from "RustInitialState.astro";
-import SelectedInsideWord from "SelectedInsideWord.astro";
-import SelectedAroundWord from "SelectedAroundWord.astro";
-import SelectedInsideWORD from "SelectedInsideWORD.astro";
-import SelectedAroundWORD from "SelectedAroundWORD.astro";
-import MarkdownFile from "MarkdownFile.astro";
-import MarkdownFileSelectParagraphs from "MarkdownFileSelectParagraphs.astro";
-import MarkdownFileSelectAroundParagraphs from "MarkdownFileSelectAroundParagraphs.astro";
-import TypescriptFile from "TypescriptFile.astro";
-import TypescriptFileInsideParentheses from "TypescriptFileInsideParentheses.astro";
-import TypescriptFileAroundParentheses from "TypescriptFileAroundParentheses.astro";
-import GitHunkExample from "GitHunkExample.astro";
-import GitHunkSelected from "GitHunkSelected.astro";
-import SyntaxAwareInit from "SyntaxAwareInit.astro";
-import NextSibling from "NextSibling.astro";
-import PrevSibling from "PrevSibling.astro";
-import ParentNode from "ParentNode.astro";
+import { T } from "@/termshots/text-objects/index.astro";
 
 We'll explore both of these features on this page.
 
@@ -35,19 +15,19 @@ Text Objects are a way to manipulate a piece of text in a structured way. They a
 
 For example, with the following Python file:
 
-<InitialPythonFile />
+<T.InitialPythonFile />
 
 Move your cursor in the `__init__` method, and press <kbd>maf</kbd> for _**m**anipulate **a**round **f**unction_ to select the entire method:
 
-<SelectedInitMethod />
+<T.SelectedInitMethod />
 
 Or <kbd>mif</kbd> for _**m**anipulate **i**nside **f**unction_ to select the body of the method:
 
-<SelectedInsideInitMethod />
+<T.SelectedInsideInitMethod />
 
 Additionally, you can move between most text objects. For instance, <kbd>]f</kbd> with go to the previous function.
 
-<MoveToNextMethod />
+<T.MoveToNextMethod />
 
 The full syntax is:
 
@@ -71,7 +51,7 @@ A word is consists only of alphanumeric characters and underscores, so `a-Z`, `0
 
 For instance, take the following file, with two cursors:
 
-<RustInitialState />
+<T.RustInitialState />
 
 ```rs
 pri*ntln!("Hello, wo*rld");
@@ -79,11 +59,11 @@ pri*ntln!("Hello, wo*rld");
 
 - Selecting inside word with <kbd>miw</kbd>:
 
-<SelectedInsideWord />
+<T.SelectedInsideWord />
 
 - Selecting around word with <kbd>maw</kbd>:
 
-<SelectedAroundWord />
+<T.SelectedAroundWord />
 
 Note that we now also have the space before the `world` as our selection!
 
@@ -93,15 +73,15 @@ A WORD is always delimited by whitespace such as newlines, tabs and spaces.
 
 Consider this file again:
 
-<RustInitialState />
+<T.RustInitialState />
 
 - Selecting inside WORD with <kbd>miW</kbd>:
 
-<SelectedInsideWORD />
+<T.SelectedInsideWORD />
 
 - Selecting around WORD with <kbd>maW</kbd>:
 
-<SelectedAroundWORD />
+<T.SelectedAroundWORD />
 
 Note that the first selection was `println!("Hey, ` and the second selection is ` world!");`, since these selections share a common character (the space), they essentially merge.
 
@@ -109,15 +89,15 @@ Note that the first selection was `println!("Hey, ` and the second selection is 
 
 A paragraph is delimited by two newlines, as well as start and end of files. For example in the following file with 3 cursors:
 
-<MarkdownFile />
+<T.MarkdownFile />
 
 - Select inside paragarph with <kbd>mip</kbd>:
 
-<MarkdownFileSelectParagraphs />
+<T.MarkdownFileSelectParagraphs />
 
 - Select around paragraph with <kbd>map</kbd>:
 
-<MarkdownFileSelectAroundParagraphs />
+<T.MarkdownFileSelectAroundParagraphs />
 
 #### Pair Text Objects
 
@@ -128,15 +108,15 @@ These allow you to select:
 
 For example, with the following state:
 
-<TypescriptFile />
+<T.TypescriptFile />
 
 Pressing <kbd>mi(</kbd> will select:
 
-<TypescriptFileInsideParentheses />
+<T.TypescriptFileInsideParentheses />
 
 While <kbd>mi)</kbd> will select:
 
-<TypescriptFileAroundParentheses />
+<T.TypescriptFileAroundParentheses />
 
 List of available pairs:
 
@@ -156,11 +136,11 @@ It will select the entire change.
 
 For instance, if we have the following file, with the added lines visible by the green bar indicator on the gutter:
 
-<GitHunkExample />
+<T.GitHunkExample />
 
 Then <kbd>mig</kbd> will select the git hunk.
 
-<GitHunkSelected />
+<T.GitHunkSelected />
 
 #### Tree-sitter Text Objects
 
@@ -184,16 +164,16 @@ Available text objects:
 
 Some commands allow you to move the selection according to its location in the syntax tree. For example, many languages have the following syntax for function calls:
 
-<SyntaxAwareInit />
+<T.SyntaxAwareInit />
 
 If you use <kbd>Alt</kbd> + <kbd>n</kbd>, it will select the next sibling:
 
-<NextSibling />
+<T.NextSibling />
 
 Similarly, <kbd>Alt</kbd> + <kbd>p</kbd> selects the previous sibling:
 
-<PrevSibling />
+<T.PrevSibling />
 
 <kbd>Alt</kbd> + <kbd>o</kbd> will expand selection to the parent node:
 
-<ParentNode />
+<T.ParentNode />

@@ -2,11 +2,7 @@
 title: Pickers
 ---
 
-import OpenedFilePicker from "OpenedFilePicker.astro";
-import OpenedFilePickerManually from "OpenedFilePickerManually.astro";
-import GlobalSearch from "GlobalSearch.astro";
-import OpenLastPicker from "OpenLastPicker.astro";
-import BufferPicker from "BufferPicker.astro";
+import { T } from "@/termshots/pickers/index.astro";
 
 import Master from "@/components/Master.astro";
 
@@ -38,7 +34,7 @@ If we open a specific file e.g. with `hx README.md`, then it'll just open normal
 
 But if we open the _directory_, then it'll actually open a file picker at that location. For instance, if we run `hx src`:
 
-<OpenedFilePicker />
+<T.OpenedFilePicker />
 
 It opens a file picker in the `src` directory.
 
@@ -50,7 +46,7 @@ The file picker allows you to search for files recursively.
 
 It's super handy when you know the name of a file but it's somewhere, buried very deep.
 
-<OpenedFilePickerManually />
+<T.OpenedFilePickerManually />
 
 Note that this command opens a file picker at the git root directory, not our current working directory.
 
@@ -58,7 +54,7 @@ So it shows each file under `my-project/` and not just `src/`, even though we op
 
 With <kbd>Space</kbd> + <kbd>F</kbd>, it opens a picker at our _current working directory_.
 
-<OpenedFilePickerManually />
+<T.OpenedFilePickerManually />
 
 ### Global search
 
@@ -66,7 +62,7 @@ With <kbd>Space</kbd> + <kbd>F</kbd>, it opens a picker at our _current working 
 
 For example, to find strings with `className`:
 
-<GlobalSearch />
+<T.GlobalSearch />
 
 By pressing <kbd>Enter</kbd> we can open the file.
 
@@ -76,7 +72,7 @@ Suppose we did a couple more navigations around files, and now we want to go bac
 
 We could just repeat the last steps, but there's a better way. <kbd>Space</kbd> + <kbd>'</kbd> opens the exact picker that you last used:
 
-<OpenLastPicker />
+<T.OpenLastPicker />
 
 ### Buffer picker
 
@@ -84,7 +80,7 @@ Now let's say we opened several files and we'd like to go work on one of the fil
 
 You can open a picker that shows your currently open buffers with <kbd>Space</kbd> + <kbd>b</kbd>:
 
-<BufferPicker />
+<T.BufferPicker />
 
 ## Usage
 

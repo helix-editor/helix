@@ -2,108 +2,7 @@
 title: List of Themes
 ---
 
-import Acme from "acme.astro";
-import AdwaitaDark from "adwaita-dark.astro";
-import Amberwood from "amberwood.astro";
-import Ao from "ao.astro";
-import Autumn from "autumn.astro";
-import AutumnNight from "autumn_night.astro";
-import AyuDark from "ayu_dark.astro";
-import AyuEvolve from "ayu_evolve.astro";
-import AyuLight from "ayu_light.astro";
-import AyuMirage from "ayu_mirage.astro";
-import Bogster from "bogster.astro";
-import BogsterLight from "bogster_light.astro";
-import BooBerry from "boo_berry.astro";
-import CatppuccinFrappe from "catppuccin_frappe.astro";
-import CatppuccinLatte from "catppuccin_latte.astro";
-import CatppuccinMacchiato from "catppuccin_macchiato.astro";
-import CatppuccinMocha from "catppuccin_mocha.astro";
-import Curzon from "curzon.astro";
-import CyanLight from "cyan_light.astro";
-import DarkHighContrast from "dark_high_contrast.astro";
-import DarkPlus from "dark_plus.astro";
-import Default from "default.astro";
-import Darcula from "darcula.astro";
-import DarculaSolid from "darcula-solid.astro";
-import DarculaAtNight from "dracula_at_night.astro";
-import Dracula from "dracula.astro";
-import DrJellybeans from "jellybeans.astro";
-import Everblush from "everblush.astro";
-import EverforestDark from "everforest_dark.astro";
-import EverforestLight from "everforest_light.astro";
-import Emacs from "emacs.astro";
-import GruberDarker from "gruber_darker.astro";
-import Gruvbox from "gruvbox.astro";
-import GruvboxDarkHard from "gruvbox_dark_hard.astro";
-import GruvboxDarkSoft from "gruvbox_dark_soft.astro";
-import GruvboxLight from "gruvbox_light.astro";
-import GruvboxLightHard from "gruvbox_light_hard.astro";
-import GruvboxLightSoft from "gruvbox_light_soft.astro";
-import Heisenberg from "heisenberg.astro";
-import HexLavender from "hex_lavender.astro";
-import HexSteel from "hex_steel.astro";
-import HexToxic from "hex_toxic.astro";
-import Ingrid from "ingrid.astro";
-import Iroaseta from "iroaseta.astro";
-import IcebergLight from "iceberg_light.astro";
-import IcebergDark from "iceberg_dark.astro";
-import KaolinDark from "kaolin-dark.astro";
-import KaolinLight from "kaolin-light.astro";
-import Kanagawa from "kanagawa.astro";
-import KanagawaDragon from "kanagawa_dragon.astro";
-import JetBrainsDark from "jetbrains_dark.astro";
-import MaterialOceanic from "material_oceanic.astro";
-import MaterialPalenight from "material_palenight.astro";
-import MaterialDeepOcean from "material_deep_ocean.astro";
-import MaterialDarker from "material_darker.astro";
-import Merionette from "merionette.astro";
-import Monokai from "monokai.astro";
-import MonokaiAqua from "monokai_aqua.astro";
-import MonokaiPro from "monokai_pro.astro";
-import MonokaiProMachine from "monokai_pro_machine.astro";
-import MonokaiProOctagon from "monokai_pro_octagon.astro";
-import MonokaiProRistretto from "monokai_pro_ristretto.astro";
-import MonokaiProSpectrum from "monokai_pro_spectrum.astro";
-import MonokaiSoda from "monokai_soda.astro";
-import Nightfox from "nightfox.astro";
-import NightOwl from "night_owl.astro";
-import Noctis from "noctis.astro";
-import NoctisBordo from "noctis_bordo.astro";
-import North from "nord.astro";
-import NorthLight from "nord_light.astro";
-import Naysayer from "naysayer.astro";
-import NewMoon from "new_moon.astro";
-import NordNight from "nord-night.astro";
-import Onedark from "onedark.astro";
-import Onedarker from "onedarker.astro";
-import OneLight from "onelight.astro";
-import PapercolorDark from "papercolor_dark.astro";
-import PapercolorLight from "papercolor_light.astro";
-import Penumbra from "penumbra+.astro";
-import Poimandres from "poimandres.astro";
-import PoimandresStorm from "poimandres_storm.astro";
-import RosePine from "rose_pine.astro";
-import RosePineDawn from "rose_pine_dawn.astro";
-import RosePineMoon from "rose_pine_moon.astro";
-import Rasmus from "rasmus.astro";
-import SerikaLight from "serika-light.astro";
-import SerikaDark from "serika-dark.astro";
-import SolarizedDark from "solarized_dark.astro";
-import SolarizedLight from "solarized_light.astro";
-import Snazzy from "snazzy.astro";
-import SpacebonesLight from "spacebones_light.astro";
-import Starlight from "starlight.astro";
-import Sonokai from "sonokai.astro";
-import TokyoNight from "tokyonight.astro";
-import TokyoNightDay from "tokyonight_day.astro";
-import TokyoNightMoon from "tokyonight_moon.astro";
-import TokyoNightStorm from "tokyonight_storm.astro";
-import VimDarkHighContrast from "vim_dark_high_contrast.astro";
-import Vexed from "voxed.astro";
-import Yellowed from "yellowed.astro";
-import ZedOnedark from "zed_onedark.astro";
-import ZedOnelight from "zed_onelight.astro";
+import { T } from "@/termshots/list-of-themes/index.astro";
 
 Helix supports a lot of different themes. To use a theme in your editor, e.g. `catppuccin_mocha`:
 
@@ -132,411 +31,396 @@ All themes that come with the editor.
 
 ### acme
 
-<Acme />
+<T.Acme />
 
 ### adwaita_dark
 
-<AdwaitaDark />
+<T.AdwaitaDark />
 
 ### amberwood
 
-<Amberwood />
+<T.Amberwood />
 
 ### ao
 
-<Ao />
+<T.Ao />
 
 ### autumn
 
-<Autumn />
+<T.Autumn />
 
 ### autumn_night
 
-<AutumnNight />
+<T.AutumnNight />
 
 ### ayu_dark
 
-<AyuDark />
+<T.AyuDark />
 
 ### ayu_evolve
 
-<AyuEvolve />
+<T.AyuEvolve />
 
 ### ayu_light
 
-<AyuLight />
+<T.AyuLight />
 
 ### ayu_mirage
 
-<AyuMirage />
+<T.AyuMirage />
 
 ### bogster
 
-<Bogster />
+<T.Bogster />
 
 ### bogster_light
 
-<BogsterLight />
+<T.BogsterLight />
 
 ### boo_berry
 
-<BooBerry />
+<T.BooBerry />
 
 ### catppuccin_frappe
 
-<CatppuccinFrappe />
+<T.CatppuccinFrappe />
 
 ### catppuccin_latte
 
-<CatppuccinLatte />
+<T.CatppuccinLatte />
 
 ### catppuccin_macchiato
 
-<CatppuccinMacchiato />
+<T.CatppuccinMacchiato />
 
 ### catppuccin_mocha
 
-<CatppuccinMocha />
+<T.CatppuccinMocha />
 
 ### curzon
 
-<Curzon />
+<T.Curzon />
 
 ### cyan_light
 
-<CyanLight />
+<T.CyanLight />
 
 ### dark_high_contrast
 
-<DarkHighContrast />
+<T.DarkHighContrast />
 
 ### dark_plus
 
-<DarkPlus />
+<T.DarkPlus />
 
 ### default 💜
 
-<Default />
+<T.Default />
 
 ### darcula
 
-<Darcula />
+<T.Darcula />
 
 ### darcula_solid
 
-<DarculaSolid />
-
-### darcula_at_night
-
-<DarculaAtNight />
+<T.DarculaSolid />
 
 ### dracula
 
-<Dracula />
+<T.Dracula />
 
 ### jellybeans
 
-<DrJellybeans />
+<T.Jellybeans />
 
 ### everblush
 
-<Everblush />
+<T.Everblush />
 
 ### everforest_dark
 
-<EverforestDark />
+<T.EverforestDark />
 
 ### everforest_light
 
-<EverforestLight />
+<T.EverforestLight />
 
 ### emacs
 
-<Emacs />
+<T.Emacs />
 
 ### gruber_darker
 
-<GruberDarker />
+<T.GruberDarker />
 
 ### gruvbox
 
-<Gruvbox />
+<T.Gruvbox />
 
 ### gruvbox_dark_hard
 
-<GruvboxDarkHard />
+<T.GruvboxDarkHard />
 
 ### gruvbox_dark_soft
 
-<GruvboxDarkSoft />
+<T.GruvboxDarkSoft />
 
 ### gruvbox_light
 
-<GruvboxLight />
+<T.GruvboxLight />
 
 ### gruvbox_light_hard
 
-<GruvboxLightHard />
+<T.GruvboxLightHard />
 
 ### gruvbox_light_soft
 
-<GruvboxLightSoft />
+<T.GruvboxLightSoft />
 
 ### heisenberg
 
-<Heisenberg />
+<T.Heisenberg />
 
 ### hex_lavender
 
-<HexLavender />
+<T.HexLavender />
 
 ### hex_steel
 
-<HexSteel />
+<T.HexSteel />
 
 ### hex_toxic
 
-<HexToxic />
+<T.HexToxic />
 
 ### ingrid
 
-<Ingrid />
+<T.Ingrid />
 
 ### iroaseta
 
-<Iroaseta />
+<T.Iroaseta />
 
 ### iceberg_light
 
-<IcebergLight />
+<T.IcebergLight />
 
 ### iceberg_dark
 
-<IcebergDark />
+<T.IcebergDark />
 
 ### kaolin_dark
 
-<KaolinDark />
+<T.KaolinDark />
 
 ### kaolin_light
 
-<KaolinLight />
+<T.KaolinLight />
 
 ### kanagawa
 
-<Kanagawa />
+<T.Kanagawa />
 
 ### kanagawa_dragon
 
-<KanagawaDragon />
+<T.KanagawaDragon />
 
 ### jetbrains_dark
 
-<JetBrainsDark />
+<T.JetbrainsDark />
 
 ### material_oceanic
 
-<MaterialOceanic />
+<T.MaterialOceanic />
 
 ### material_palenight
 
-<MaterialPalenight />
+<T.MaterialPalenight />
 
 ### material_deep_ocean
 
-<MaterialDeepOcean />
+<T.MaterialDeepOcean />
 
 ### material_Darker
 
-<MaterialDarker />
+<T.MaterialDarker />
 
 ### merionette
 
-<Merionette />
+<T.Merionette />
 
 ### monokai
 
-<Monokai />
+<T.Monokai />
 
 ### monokai_aqua
 
-<MonokaiAqua />
+<T.MonokaiAqua />
 
 ### monokai_pro
 
-<MonokaiPro />
+<T.MonokaiPro />
 
 ### monokai_pro_machine
 
-<MonokaiProMachine />
+<T.MonokaiProMachine />
 
 ### monokai_pro_octagon
 
-<MonokaiProOctagon />
+<T.MonokaiProOctagon />
 
 ### monokai_pro_ristretto
 
-<MonokaiProRistretto />
+<T.MonokaiProRistretto />
 
 ### monokai_pro_spectrum
 
-<MonokaiProSpectrum />
+<T.MonokaiProSpectrum />
 
 ### monokai_soda
 
-<MonokaiSoda />
+<T.MonokaiSoda />
 
 ### nightfox
 
-<Nightfox />
+<T.Nightfox />
 
 ### night_owl
 
-<NightOwl />
+<T.NightOwl />
 
 ### noctis
 
-<Noctis />
+<T.Noctis />
 
 ### noctis_bordo
 
-<NoctisBordo />
-
-### north
-
-<North />
-
-### north_light
-
-<NorthLight />
+<T.NoctisBordo />
 
 ### naysayer
 
-<Naysayer />
+<T.Naysayer />
 
 ### new_moon
 
-<NewMoon />
+<T.NewMoon />
 
 ### nord_night
 
-<NordNight />
+<T.NordNight />
 
 ### onedark
 
-<Onedark />
+<T.Onedark />
 
 ### onedarker
 
-<Onedarker />
+<T.Onedarker />
 
 ### one_light
 
-<OneLight />
+<T.Onelight />
 
 ### papercolor_dark
 
-<PapercolorDark />
+<T.PapercolorDark />
 
 ### papercolor_light
 
-<PapercolorLight />
+<T.PapercolorLight />
 
 ### penumbra
 
-<Penumbra />
+<T.PenumbraPlus />
 
 ### poimandres
 
-<Poimandres />
+<T.Poimandres />
 
 ### poimandres_storm
 
-<PoimandresStorm />
+<T.PoimandresStorm />
 
 ### rose_pine
 
-<RosePine />
+<T.RosePine />
 
 ### rose_pine_dawn
 
-<RosePineDawn />
+<T.RosePineDawn />
 
 ### rose_pine_moon
 
-<RosePineMoon />
+<T.RosePineMoon />
 
 ### rasmus
 
-<Rasmus />
+<T.Rasmus />
 
 ### serika_light
 
-<SerikaLight />
+<T.SerikaLight />
 
 ### serika_dark
 
-<SerikaDark />
+<T.SerikaDark />
 
 ### solarized_dark
 
-<SolarizedDark />
+<T.SolarizedDark />
 
 ### solarized_light
 
-<SolarizedLight />
+<T.SolarizedLight />
 
 ### snazzy
 
-<Snazzy />
+<T.Snazzy />
 
 ### spacebones_light
 
-<SpacebonesLight />
+<T.SpacebonesLight />
 
 ### starlight
 
-<Starlight />
+<T.Starlight />
 
 ### sonokai
 
-<Sonokai />
+<T.Sonokai />
 
 ### tokyonight
 
-<TokyoNight />
+<T.Tokyonight />
 
 ### tokyo_night_day
 
-<TokyoNightDay />
+<T.TokyonightDay />
 
 ### tokyo_night_moon
 
-<TokyoNightMoon />
+<T.TokyonightMoon />
 
 ### tokyo_night_storm
 
-<TokyoNightStorm />
+<T.TokyonightStorm />
 
 ### vim_dark_high_contrast
 
-<VimDarkHighContrast />
-
-### vexed
-
-<Vexed />
+<T.VimDarkHighContrast />
 
 ### yellowed
 
-<Yellowed />
+<T.Yellowed />
 
 ### zed_onedark
 
-<ZedOnedark />
+<T.ZedOnedark />
 
 ### zed_onelight
 
-<ZedOnelight />
+<T.ZedOnelight />
+
 </div>
 
 ## Custom Themes
