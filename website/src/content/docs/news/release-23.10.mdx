@@ -1,0 +1,150 @@
+---
+title: Release 23.10 Highlights
+date: 2023-10-25T00:00:00Z
+description: Highlights of the 23.10 release.
+---
+
+import Asciinema from "@/components/Asciinema.astro";
+
+The Helix 23.10 release is finally here! 23.10 introduces some very large
+internal changes that enable some powerful features. A very big _thank you_ to
+everyone who made this release possible.
+
+New to Helix?
+Helix is a modal text editor with built-in support for multiple selections,
+Language Server Protocol (LSP), tree-sitter, and experimental support for Debug
+Adapter Protocol (DAP).
+
+Let's check out this release's highlights.
+
+## Multiple language servers
+
+23.10 brings a big change to the way we handle language servers.
+Previously each language could only support one language server at a time but
+now you can configure multiple to work in tandem. For example you might use
+the TypeScript language server for JavaScript/TypeScript development and also
+configure [efm-langserver](https://github.com/mattn/efm-langserver) for
+Prettier formatting and ESLint diagnostics. With the new support for multiple
+language servers, you can specify which features to use from each language
+server.
+
+This brings a big change to the way language servers are configured in your
+language configuration (`languages.toml`). All language servers are now
+specified separately from languages and then each language selects which
+language server(s) to use. From the example above, you might configure efm-
+langserver and typescript-language-server like so:
+
+```toml
+[language-server.efm]
+command = "efm-langserver"
+config.documentFormatting = true
+
+[language-server.typescript-language-server]
+command = "typescript-language-server"
+args = ["--stdio"]
+config.hostInfo = "helix"
+
+[[language]]
+name = "typescript"
+auto-format = true
+language-servers = [
+  { name = "efm", only-features = ["format", "diagnostics"] },
+  { name = "typescript-language-server", except-features = ["format", "diagnostics"] },
+]
+```
+
+See more details in the [language configuration docs](https://docs.helix-editor.com/languages.html).
+
+## Fuzzy matching with Nucleo
+
+<Asciinema src="/blog/nucleo-nix-store.cast" />
+
+Helix uses "fuzzy" matching to filter as-you-type in components like the file
+picker. Previously we used the popular `skim`/`fuzzy-matcher` crates but in the
+23.10 release we've switched to the new
+[`nucleo`](https://github.com/helix-editor/nucleo) crate. Nucleo is
+significantly faster than skim and fzf, handles Unicode correctly, and uses a
+bonus system that feels more intuitive.
+
+Nucleo also enables us to lazily stream in new items, which is a big boost for
+the user experience for pickers. In the asciicast above I'm scanning through
+my computer's `/nix/store`, a huge directory containing more than twenty
+million files. The file picker now works gradually as we scan through the
+directory and matches files as we find them.
+
+Nucleo also paves the way for future picker upgrades. Stay tuned to the
+upcoming release notes to see where we'll take the picker.
+
+## Smart tab
+
+Smart tab is a new feature bound to the tab key in the default keymap. When
+you press tab and the line to the left of the cursor isn't all whitespace,
+the cursor will jump to the end of the syntax tree's parent node. For example:
+
+```nix
+{
+  key = "value";
+  nested = {
+    key2 = "value2"; # When the cursor is at the end of the line here, <tab>
+                     # jumps right after the closing brace on the next line.
+  };
+}
+```
+
+This is useful in languages like Nix for adding semicolons at the end of an
+attribute set or jumping to the end of a block in a C-like language:
+
+<Asciinema src="/blog/smart-tab.cast" />
+
+## Expanded support for registers
+
+<Asciinema src="/blog/special-registers.cast" />
+
+Registers allow you to save and paste values. For example you might select
+a paragraph, use `"ay` to yank it into the `a` register, and later use `"ap`
+to paste that paragraph. Some registers have special effects when read or
+written to though like the `_` "blackhole" register: any values written are
+discarded and nothing can be read. Special registers have been expanded to
+include some useful ones from Kakoune and clipboard registers:
+
+- `%`: the current buffer name
+- `#`: the number of each selection, 1-indexed
+- `.`: the contents of each selection
+- `*` and `+`: system and primary clipboards
+
+Also check out the new register statusline element. It appears when you select
+a register with `"`. Notice the `reg=#` in the bottom-right corner of the
+statusline in the asciicast when we select the `#` register and how it goes
+away when we paste that register (`p`) or increment the selections (`C-a`).
+
+## Initial support for LSP DidChangeWatchedFiles
+
+<Asciinema src="/blog/initial-lsp-didchangewatchedfiles.cast" />
+
+Some language servers use the DidChangeWatchedFiles notification to discover
+changes to related files in other languages. For example, `rust-analyzer` will
+fetch and index new dependencies when you add them to your `Cargo.toml`.
+Helix will now send file change notifications when the file is changed by
+Helix itself. Full support for DidChangeWatchedFiles will require a file
+watcher but for now we're able to support the most common use-case for
+DidChangeWatchedFiles.
+
+## Syntax highlight regex prompts
+
+<img src="/regex-prompt-highlighting.png" style="max-width: 80%; display: block; margin-left: auto; margin-right: auto"/>
+
+Regex prompts like those created with `s`, `S` or `|` are now syntax highlighted
+via tree-sitter-regex. The highlighting makes special characters more obvious
+and can catch syntax errors like trailing backslashes.
+
+## Wrapping up
+
+As always, this is just the tip of the iceberg for the 23.10 release. Check out
+the [changelog] for the full details.
+
+Come chat about usage and development questions in the [Matrix space][matrix]
+and follow along with Helix's development in the [GitHub repository][helix-git].
+
+[changelog]: https://github.com/helix-editor/helix/blob/master/CHANGELOG.md#2310-2023-10-24
+[helix-git]: https://github.com/helix-editor/helix/
+[matrix]: https://matrix.to/#/#helix-community:matrix.org

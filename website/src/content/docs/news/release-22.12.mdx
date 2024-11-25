@@ -1,0 +1,125 @@
+---
+title: Release 22.12 Highlights
+date: 2022-12-06T22:00:00Z
+description: Highlights of the 22.12 release.
+---
+
+import Asciinema from "@/components/Asciinema.astro"
+
+Helix is a modal text editor with built-in support for multiple selections,
+Language Server Protocol (LSP), tree-sitter, and experimental support for Debug
+Adapter Protocol (DAP).
+
+Today we cut the 22.12 release. This release is big and featureful and saw
+contributions from 99 contributors. Thank you all! 🎊
+
+Helix now has a logo! Thank you [`@jakehl`](https://github.com/jakehl) for your
+contribution!
+
+<img src="/favicon.svg" style="max-width: 75%; display: block; margin-left: auto; margin-right: auto" />
+
+Looking for an introduction to Helix or to see Helix out in the wild? Check out
+these new videos on Helix.
+
+- [https://www.youtube.com/watch?v=xHebvTGOdH8](https://www.youtube.com/watch?v=xHebvTGOdH8)
+- [https://www.youtube.com/watch?v=7mTi278jUS8](https://www.youtube.com/watch?v=7mTi278jUS8)
+
+Now let's jump into the highlights.
+
+## Git diff gutter
+
+<Asciinema src="/blog/git-diff-gutter.cast" />
+
+The new git diff gutter tracks the changes in the current buffer compared to
+the the git index. The markers in the gutter indicate additions, modifications,
+and removals compared to the file checked in to git. The git diff gutter is
+enabled by default.
+
+Also be sure to try out the new hunk textobject: `]g` jumps to the next changed
+hunk and `[g` jumps to the previous.
+
+## Underline styles and colors
+
+<img src="/blog/undercurl.png" style="max-width: 80%; display: block; margin-left: auto; margin-right: auto"/>
+
+Terminals with support for extended underlines can render underlines with
+styles like curls or dots as well as colors. Extended underlines can be used to
+improve the display of LSP diagnostics. These can be configured in themes with
+the new `underline` key:
+
+```toml
+"diagnostic.error" = { underline = { style = "curl", color = "red" } }
+```
+
+The existing `underline` modifier is now an alias for the `"line"` style.
+
+If you're looking to use this in a theme that hasn't configured it yet, you
+can use the new [theme inheritance] feature to modify just the scopes you would
+like to change:
+
+```toml
+# ~/.config/helix/themes/my-onedark.toml
+inherits = "onedark"
+
+"diagnostic.error" = { fg = "errorfg", bg = "errorbg", underline = { color = "red" } }
+```
+
+[theme inheritance]: https://docs.helix-editor.com/master/themes.html#inheritance
+
+## Autosave when the terminal loses focus
+
+<img src="/auto-save.gif" style="max-width: 80%; display: block; margin-left: auto; margin-right: auto"/>
+
+Terminals with support for focus events can now automatically save the current
+file when you focus on a new window. Enable this behavior by setting the
+`editor.auto-save` configuration key to `true`.
+
+## Multi-cursor completion
+
+<Asciinema src="/blog/multi-cursor-completion.cast" />
+
+Editing with multiple selections is a central feature within helix. LSP
+auto-completion now applies to all cursors when editing with multiple
+selections, making it easy to replace multiple instances of a symbol with
+auto-complete's help.
+
+## Bufferline
+
+<Asciinema src="/blog/bufferline.astro" />
+
+The bufferline is a listing of buffers displayed at the top of a window. It
+provides an at-a-glance view of the buffers you're working with. Set
+the `editor.bufferline` configuration key to `"always"` to always show the
+bufferline, `"multiple"` to show the bufferline only when there are multiple
+buffers open, and `"never"` to disable it.
+
+## Behind-the-scenes improvements
+
+22.12 brings also brings important changes to Helix's plumbing:
+
+- The code-path for writing files has been overhauled. This fixes a number of
+  edge cases around writing large files and failures to write.
+- Performance has been improved for tree-sitter parsing, querying and the
+  handling of injections. This is a noticeable speed boost for large markdown
+  files in particular since markdown uses injections extensively.
+- Failure handling in the LSP code-paths has been improved. Helix now
+  gracefully handles cases like language servers not supporting capabilities
+  and unexpected language server crashes.
+- The speed and memory usage of the `:reload` command has been vastly improved.
+  This comes from the creation of [`imara-diff`], a new diffing
+  implementation which is faster than the one used internally by `git`!
+
+## Wrapping up
+
+There are many more changes arriving now in 22.12 than we can fit in this post.
+Check out the 22.12 [changelog] for the full details on all of the performance
+boosts, usability improvements and fixes in 22.12.
+
+Contribute and follow along with development in the [Helix GitHub
+repository][helix-git] and be sure to join in on discussions in the [Matrix
+channel][matrix].
+
+[changelog]: https://github.com/helix-editor/helix/blob/master/CHANGELOG.md#2212-2022-12-06
+[helix-git]: https://github.com/helix-editor/helix/
+[matrix]: https://matrix.to/#/#helix-community:matrix.org
+[`imara-diff`]: https://github.com/pascalkuthe/imara-diff

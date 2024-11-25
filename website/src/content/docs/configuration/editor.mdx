@@ -1,0 +1,1702 @@
+---
+title: Editor
+---
+
+import ConfigOption from '@/components/ConfigOption.astro';
+import Master from "@/components/Master.astro";
+
+Helix makes it a priority to have a solid out-of-the-box experience, with minimal configuration required to start using the editor.
+
+However, there are many things one may wish to customize such as:
+
+- Creating custom keybindings and macros
+- Using custom theme
+- Configure stuff like auto pairs, statusline, etc.
+
+## Introduction
+
+### Setting config options
+
+In the editor, you can change various options without editing any config file. For example by using `:set cursorline false`. This will be reset when you leave the editor.
+
+To permanently store config options, create a `config.toml` file located in your config directory:
+
+- Linux and Mac: `~/.config/helix/config.toml`
+- Windows: `%AppData%\helix\config.toml`
+
+:::tip
+
+You also can open the config file by typing `:config-open` within Helix in normal mode, and reload it with `:config-reload`.
+
+:::
+
+### Sample config
+
+```toml
+# helix/config.toml
+theme = "catppuccin-mocha"
+
+[editor]
+line-number = "relative"
+mouse = false
+
+[editor.cursor-shape]
+insert = "bar"
+normal = "block"
+select = "underline"
+```
+
+For available themes, Helix comes with _a lot_ of bundled themes, so they are on a separate page. See the full [list of themes](/reference/list-of-themes).
+
+## `[editor]` Section
+
+<ConfigOption name="scrolloff">
+
+```toml
+[editor]
+scrolloff = 5
+```
+
+<div slot="info">
+
+Number of lines of padding around the edge of the screen when scrolling
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="mouse">
+
+```toml
+[editor]
+mouse = true
+```
+
+<div slot="info">
+
+Enable mouse mode
+
+</div>
+
+</ConfigOption>
+
+<Master>
+
+<ConfigOption name="default-yank-register">
+
+```toml
+[editor]
+default-yank-register = "
+```
+
+<div slot="info">
+
+Default register used for yank/paste
+
+</div>
+
+</ConfigOption>
+
+</Master>
+
+<ConfigOption name="middle-click-paste">
+
+```toml
+[editor]
+middle-click-paste = true
+```
+
+<div slot="info">
+
+Middle click paste support
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="scroll-lines">
+
+```toml
+[editor]
+scroll-lines = 3
+```
+
+<div slot="info">
+
+Number of lines to scroll per scroll wheel step
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="shell">
+
+Unix:
+
+```toml
+[editor]
+shell = ["sh", "-c"]
+```
+
+Windows:
+
+```toml
+[editor]
+shell = ["cmd", "/C"]
+```
+
+<div slot="info">
+
+Shell to use when running external commands
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="line-number">
+
+```toml
+[editor]
+line-number = absolute
+```
+
+<div slot="info">
+
+Line number display: `absolute` simply shows each line's number, while `relative` shows the distance from the current line. When unfocused or in insert mode, `relative` will still show absolute line numbers
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="cursorline">
+
+```toml
+[editor]
+cursorline = false
+```
+
+<div slot="info">
+
+Highlight all lines with a cursor
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="cursorcolumn">
+
+```toml
+[editor]
+cursorcolumn = false
+```
+
+<div slot="info">
+
+Highlight all columns with a cursor
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="gutters">
+
+```toml
+[editor]
+gutters = [
+  "diagnostics",
+  "spacer",
+  "line-numbers",
+  "spacer",
+  "diff",
+]
+```
+
+<div slot="info">
+
+Gutters to display: Available are:
+
+- `diagnostics`
+- `diff`
+- `line-numbers`
+- `spacer`
+
+Note that `diagnostics` also includes other features like breakpoints, 1-width padding will be inserted if gutters is non-empty
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="auto-completion">
+
+```toml
+[editor]
+auto-completion = true
+```
+
+<div slot="info">
+
+Enable automatic pop up of auto-completion
+
+</div>
+
+</ConfigOption>
+
+<Master>
+
+<ConfigOption name="path-completion">
+
+```toml
+[editor]
+path-completion = true
+```
+
+<div slot="info">
+
+Enable filepath completion.
+
+Show files and directories if an existing path at the cursor was recognized, either absolute or relative to the current opened document or current working directory (if the buffer is not yet saved).
+
+</div>
+
+</ConfigOption>
+
+</Master>
+
+<ConfigOption name="auto-format">
+
+```toml
+[editor]
+auto-format = true
+```
+
+<div slot="info">
+
+Enable automatic formatting on save
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="idle-timeout">
+
+```toml
+[editor]
+idle-timeout = 250
+```
+
+<div slot="info">
+
+Time in milliseconds since last keypress before idle timers trigger.
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="completion-timeout">
+
+```toml
+[editor]
+completion-timeout = 250
+```
+
+<div slot="info">
+
+Time in milliseconds after typing a word character before completions are shown, set to 5 for instant.
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="preview-completion-insert">
+
+```toml
+[editor]
+preview-completion-insert = true
+```
+
+<div slot="info">
+
+Whether to apply completion item instantly when selected
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="completion-trigger-len">
+
+```toml
+[editor]
+completion-trigger-len = 2
+```
+
+<div slot="info">
+
+The min-length of word under cursor to trigger autocompletion
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="completion-replace">
+
+```toml
+[editor]
+completion-replace = false
+```
+
+<div slot="info">
+
+Set to `true` to make completions always replace the entire word and not just the part before the cursor
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="auto-info">
+
+```toml
+[editor]
+auto-info = true
+```
+
+<div slot="info">
+
+Whether to display info boxes
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="true-color">
+
+```toml
+[editor]
+true-color = false
+```
+
+<div slot="info">
+
+Set to `true` to override automatic detection of terminal truecolor support in the event of a false negative
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="undercurl">
+
+```toml
+[editor]
+undercurl = false
+```
+
+<div slot="info">
+
+Set to `true` to override automatic detection of terminal undercurl support in the event of a false negative
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="rulers">
+
+```toml
+[editor]
+rulers = []
+```
+
+<div slot="info">
+
+List of column positions at which to display the rulers. Can be overridden by language specific `rulers` in `languages.toml` file
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="bufferline">
+
+```toml
+[editor]
+bufferline = "never"
+```
+
+<div slot="info">
+
+Renders a line at the top of the editor displaying open buffers. Can be `always`, `never` or `multiple` (only shown if more than one buffer is in use)
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="color-modes">
+
+```toml
+[editor]
+color-modes = false
+```
+
+<div slot="info">
+
+Whether to color the mode indicator with different colors depending on the mode itself
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="text-width">
+
+```toml
+[editor]
+text-width = 80
+```
+
+<div slot="info">
+
+Maximum line length. Used for the `:reflow` command and soft-wrapping if `soft-wrap.wrap-at-text-width` is set
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="workspace-lsp-roots">
+
+```toml
+[editor]
+workspace-lsp-roots = []
+```
+
+<div slot="info">
+
+Directories relative to the workspace root that are treated as LSP roots. Should only be set in `.helix/config.toml`
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="default-line-ending">
+
+```toml
+[editor]
+default-line-ending = "native"
+```
+
+<div slot="info">
+
+The line ending to use for new documents. Can be `native`, `lf`, `crlf`, `ff`, `cr` or `nel`. `native` uses the platform's native line ending (`crlf` on Windows, otherwise `lf`).
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="insert-final-newline">
+
+```toml
+[editor]
+insert-final-newline = true
+```
+
+<div slot="info">
+
+Whether to automatically insert a trailing line-ending on write if missing
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="popup-border">
+
+```toml
+[editor]
+popup-border = "none"
+```
+
+<div slot="info">
+
+Draw border around `popup`, `menu`, `all`, or `none`
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="indent-heuristic">
+
+```toml
+[editor]
+indent-heuristic = "hybrid"
+```
+
+<div slot="info">
+
+How the indentation for a newly inserted line is computed:
+
+- `simple` just copies the indentation level from the previous line,
+- `tree-sitter` computes the indentation based on the syntax tree
+- `hybrid` combines both approaches.
+
+If the chosen heuristic is not available, a different one will be used as a fallback (the fallback order being `hybrid` -> `tree-sitter` -> `simple`).
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="jump-label-alphabet">
+
+```toml
+[editor]
+jump-label-alphabet = "abcdefghijklmnopqrstuvwxyz"
+```
+
+<div slot="info">
+
+The characters that are used to generate two character jump labels. Characters at the start of the alphabet are used first.
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="end-of-line-diagnostics">
+
+```toml
+[editor]
+end-of-line-diagnostics = "disable"
+```
+
+<div slot="info">
+
+Minimum severity of diagnostics to render at the end of the line. Set to `disable` to disable entirely.
+
+Refer to the setting about `inline-diagnostics` for more details
+
+</div>
+
+</ConfigOption>
+
+<Master>
+
+<ConfigOption name="clipboard-provider">
+
+Platform and environment specific.
+
+<div slot="info">
+
+Which API to use for clipboard interaction. One of
+
+- `pasteboard` (MacOS),
+- `wayland`,
+- `x-clip`,
+- `x-sel`,
+- `win-32-yank`,
+- `termux`,
+- `tmux`,
+- `windows`,
+- `termcode`,
+- `none`, or a custom command set.
+
+</div>
+
+</ConfigOption>
+
+### `[editor.clipboard-provider]` Section
+
+Helix can be configured wither to use a builtin clipboard configuration or to use
+a provided command.
+
+For instance, setting it to use OSC 52 termcodes, the configuration would be:
+
+```toml
+[editor]
+clipboard-provider = "termcode"
+```
+
+Alternatively, Helix can be configured to use arbitary commands for clipboard integration:
+
+```toml
+[editor.clipboard-provider.custom]
+yank = { command = "cat",  args = ["test.txt"] }
+paste = { command = "tee",  args = ["test.txt"] }
+primary-yank = { command = "cat",  args = ["test-primary.txt"] } # optional
+primary-paste = { command = "tee",  args = ["test-primary.txt"] } # optional
+```
+
+For custom commands the contents of the yank/paste is communicated over stdin/stdout.
+
+</Master>
+
+### `[editor.statusline]` Section
+
+Allows configuring the statusline at the bottom of the editor.
+
+The configuration distinguishes between three areas of the status line:
+
+`[ ... ... LEFT ... ... | ... ... ... CENTER ... ... ... | ... ... RIGHT ... ... ]`
+
+Statusline elements can be defined as follows:
+
+```toml
+[editor.statusline]
+left = ["mode", "spinner"]
+center = ["file-name"]
+right = ["diagnostics", "selections", "position", "file-encoding", "file-line-ending", "file-type"]
+separator = "│"
+mode.normal = "NORMAL"
+mode.insert = "INSERT"
+mode.select = "SELECT"
+```
+
+The `[editor.statusline]` key takes the following sub-keys:
+
+<ConfigOption name="left">
+
+```toml
+[editor.statusline]
+left = [
+  "mode",
+  "spinner",
+  "file-name",
+  "read-only-indicator",
+  "file-modification-indicator"
+]
+```
+
+<div slot="info">
+
+A list of elements aligned to the left of the statusline
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="center">
+
+```toml
+[editor.statusline]
+center = []
+```
+
+<div slot="info">
+
+A list of elements aligned to the middle of the statusline
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="right">
+
+```toml
+[editor.statusline]
+right = [
+  "diagnostics",
+  "selections",
+  "register",
+  "position",
+  "file-encoding"
+]
+```
+
+<div slot="info">
+
+A list of elements aligned to the right of the statusline
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="separator">
+
+```toml
+[editor.statusline]
+separator = "│"
+```
+
+<div slot="info">
+
+The character used to separate elements in the statusline
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="mode.normal">
+
+```toml
+[editor.statusline]
+mode.normal = "NOR"
+```
+
+<div slot="info">
+
+The text shown in the `mode` element for normal mode
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="mode.insert">
+
+```toml
+[editor.statusline]
+mode.insert = "INS"
+```
+
+<div slot="info">
+
+The text shown in the `mode` element for insert mode
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="mode.select">
+
+```toml
+[editor.statusline]
+mode.select = "SEL"
+```
+
+<div slot="info">
+
+The text shown in the `mode` element for select mode
+
+</div>
+
+</ConfigOption>
+
+The following statusline elements can be configured:
+
+- `mode`: The current editor mode (`mode.normal`/`mode.insert`/`mode.select`)
+- `spinner`: A progress spinner indicating LSP activity
+- `file-name`: The path/name of the opened file
+- `file-absolute-path`: The absolute path/name of the opened file
+- `file-base-name`: The basename of the opened file
+- `file-modification-indicator`: | The indicator to show whether the file is modified (a `[+]` appears when there are unsaved changes) |
+- `file-encoding`: The encoding of the opened file if it differs from UTF-8
+- `file-line-ending`: The file line endings (CRLF or LF)
+- `read-only-indicator`: An indicator that shows `[readonly]` when a file cannot be written
+- `total-line-numbers`: The total line numbers of the opened file
+- `file-type`: The type of the opened file
+- `diagnostics`: The number of warnings and/or errors
+- `workspace-diagnostics`: The number of warnings and/or errors on workspace
+- `selections`: The number of active selections
+- `primary-selection-length`: The number of characters currently in primary selection
+- `position`: The cursor position
+- `position-percentage`: The cursor position as a percentage of the total number of lines
+- `separator`: The string defined in `editor.statusline.separator` (defaults to `"│"`)
+- `spacer`: Inserts a space between elements (multiple/contiguous spacers may be specified)
+- `version-control`: The current branch name or detached commit hash of the opened workspace
+- `register`: The current selected register
+
+### `[editor.lsp]` Section
+
+<ConfigOption name="enable">
+
+```toml
+[editor.lsp]
+enable = true
+```
+
+<div slot="info">
+
+Enables LSP integration. Setting to false will completely disable language servers regardless of language settings.
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="display-messages">
+
+```toml
+[editor.lsp]
+display-messages = false
+```
+
+<div slot="info">
+
+Display LSP progress messages below statusline
+
+By default, a progress spinner is shown in the statusline beside the file path.
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="auto-signature-help">
+
+```toml
+[editor.lsp]
+auto-signature-help = true
+```
+
+<div slot="info">
+
+Enable automatic popup of signature help (parameter hints)
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="display-inlay-hints">
+
+```toml
+[editor.lsp]
+display-inlay-hints = false
+```
+
+<div slot="info">
+
+Display inlay hints
+
+:::note
+You may also have to activate them in the LSP config for them to appear, not just in Helix.
+
+Inlay hints in Helix are still being improved on and may be a little bit laggy/janky under some circumstances.
+
+Please report any bugs you see so we can fix them!
+:::
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="display-signature-help-docs">
+
+```toml
+[editor.lsp]
+display-signature-help-docs = true
+```
+
+<div slot="info">
+
+Display docs under signature help popup
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="snippets">
+
+```toml
+[editor.lsp]
+snippets = true
+```
+
+<div slot="info">
+
+Enables snippet completions.
+
+Requires a server restart (`:lsp-restart`) to take effect after `:config-reload`/`:set`.
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="goto-reference-include-declaration">
+
+```toml
+[editor.lsp]
+goto-reference-include-declaration = true
+```
+
+<div slot="info">
+
+Include declaration in the goto references popup.
+
+</div>
+
+</ConfigOption>
+
+### `[editor.cursor-shape]` Section
+
+Defines the shape of cursor in each mode.
+Valid values for these options are `block`, `bar`, `underline`, or `hidden`.
+
+:::note
+
+Due to limitations of the terminal environment, only the primary cursor can change shape.
+
+:::
+
+<ConfigOption name="normal">
+
+```toml
+[editor.cursor-shape]
+normal = "block"
+```
+
+<div slot="info">
+
+Cursor shape in [normal mode][normal mode]
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="insert">
+
+```toml
+[editor.cursor-shape]
+insert = "block"
+```
+
+<div slot="info">
+
+Cursor shape in [insert mode][insert mode]
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="select">
+
+```toml
+[editor.cursor-shape]
+select = "block"
+```
+
+<div slot="info">
+
+Cursor shape in [select mode][select mode]
+
+</div>
+
+</ConfigOption>
+
+[normal mode]: /reference/keymap#normal-mode
+[insert mode]: /reference/keymap#insert-mode
+[select mode]: /reference/keymap#select--extend-mode
+
+### `[editor.file-picker]` Section
+
+Set options for file picker and global search. Ignoring a file means it is
+not visible in the Helix file picker and global search.
+
+All git related options are only enabled in a git repository.
+
+Ignore files can be placed locally as `.ignore` or put in your home directory as `~/.ignore`. They support the usual ignore and negative ignore (unignore) rules used in `.gitignore` files.
+
+Additionally, you can use Helix-specific ignore files by creating a local `.helix/ignore` file in the current workspace or a global `ignore` file located in your Helix config directory:
+
+- Linux and Mac: `~/.config/helix/ignore`
+- Windows: `%AppData%\helix\ignore`
+
+Example:
+
+```ini
+# unignore in file picker and global search
+!.github/
+!.gitignore
+!.gitattributes
+```
+
+<ConfigOption name="hidden">
+
+```toml
+[editor.file-picker]
+hidden = true
+```
+
+<div slot="info">
+
+Enables ignoring hidden files
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="follow-symlinks">
+
+```toml
+[editor.file-picker]
+follow-symlinks = true
+```
+
+<div slot="info">
+
+Follow symlinks instead of ignoring them
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="deduplicate-links">
+
+```toml
+[editor.file-picker]
+deduplicate-links = true
+```
+
+<div slot="info">
+
+Ignore symlinks that point at files already shown in the picker
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="parents">
+
+```toml
+[editor.file-picker]
+parents = true
+```
+
+<div slot="info">
+
+Enables reading ignore files from parent directories
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="ignore">
+
+```toml
+[editor.file-picker]
+ignore = true
+```
+
+<div slot="info">
+
+Enables reading `.ignore` files
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="git-ignore">
+
+```toml
+[editor.file-picker]
+git-ignore = true
+```
+
+<div slot="info">
+
+Enables reading `.gitignore` files
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="git-global">
+
+```toml
+[editor.file-picker]
+git-global = true
+```
+
+<div slot="info">
+
+Enables reading global `.gitignore`, whose path is specified in git's config: `core.excludesfile` option
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="git-exclude">
+
+```toml
+[editor.file-picker]
+git-exclude = true
+```
+
+<div slot="info">
+
+Enables reading `.git/info/exclude` files
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="max-depth">
+
+Unset by default
+
+<div slot="info">
+
+Set with an integer value for maximum depth to recurse
+
+</div>
+
+</ConfigOption>
+
+### `[editor.auto-pairs]` Section
+
+<ConfigOption name="auto-pairs">
+
+```toml
+[editor]
+auto-pairs = true
+```
+
+<div slot="info">
+
+Enables automatic insertion of pairs to parentheses, brackets, etc.
+
+Can be a simple boolean value, or a specific mapping of pairs of single characters.
+
+</div>
+
+</ConfigOption>
+
+The default pairs are <code>(){}[]''""``</code>, but these can be customized by
+setting `auto-pairs` to a TOML table:
+
+```toml
+[editor.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+'`' = '`'
+'<' = '>'
+```
+
+Additionally, this setting can be used in a language config. Unless
+the editor setting is `false`, this will override the editor config in
+documents with this language.
+
+Example `languages.toml` that adds `<>` and removes `''`
+
+```toml
+[[language]]
+name = "rust"
+
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+'`' = '`'
+'<' = '>'
+```
+
+### `[editor.auto-save]` Section
+
+Control auto save behavior.
+
+<ConfigOption name="focus-lost">
+
+```toml
+[editor.auto-save]
+focus-lost = false
+```
+
+<div slot="info">
+
+Enable automatic saving on the focus moving away from Helix. Requires [focus event support](https://github.com/helix-editor/helix/wiki/Terminal-Support) from your terminal
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="after-delay.enable">
+
+```toml
+[editor.auto-save]
+after-delay.enable = false
+```
+
+<div slot="info">
+
+Enable automatic saving after `auto-save.after-delay.timeout` milliseconds have passed since last edit.
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="after-delay.timeout">
+
+```toml
+[editor.auto-save]
+after-delay.timeout = 3000
+```
+
+<div slot="info">
+
+Time in milliseconds since last edit before auto save timer triggers.
+
+</div>
+
+</ConfigOption>
+
+### `[editor.search]` Section
+
+Search specific options.
+
+<ConfigOption name="smart-case">
+
+```toml
+[editor.search]
+smart-case = true
+```
+
+<div slot="info">
+
+Enable smart case regex searching (case-insensitive unless pattern contains upper case characters)
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="wrap-around">
+
+```toml
+[editor.wrap-around]
+wrap-around = true
+```
+
+<div slot="info">
+
+Whether the search should wrap after depleting the matches
+
+</div>
+
+</ConfigOption>
+
+### `[editor.whitespace]` Section
+
+Options for rendering whitespace with visible characters.
+
+Use `:set whitespace.render all` to temporarily enable visible whitespace.
+
+<ConfigOption name="render">
+
+```toml
+[editor.whitespace]
+render = "none"
+```
+
+<div slot="info">
+
+Whether to render whitespace.
+
+May either be `all` or `none`, or a table with sub-keys `space`, `nbsp`, `nnbsp`, `tab`, and `newline`
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="characters">
+
+See example
+
+<div slot="info">
+
+Literal characters to use when rendering whitespace. Sub-keys may be any of `tab`, `space`, `nbsp`, `nnbsp`, `newline` or `tabpad`
+
+Example
+
+```toml
+[editor.whitespace]
+render = "all"
+# or control each character
+[editor.whitespace.render]
+space = "all"
+tab = "all"
+nbsp = "none"
+nnbsp = "none"
+newline = "none"
+
+[editor.whitespace.characters]
+space = "·"
+nbsp = "⍽"
+nnbsp = "␣"
+tab = "→"
+newline = "⏎"
+tabpad = "·" # Tabs will look like "→···" (depending on tab width)
+```
+
+</div>
+
+</ConfigOption>
+
+### `[editor.indent-guides]` Section
+
+Options for rendering vertical indent guides.
+
+<ConfigOption name="render">
+
+```toml
+[editor.indent-guides]
+render = false
+```
+
+<div slot="info">
+
+Whether to render indent guides
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="character">
+
+```toml
+[editor.indent-guides]
+character = "│"
+```
+
+<div slot="info">
+
+Literal character to use for rendering the indent guide
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="skip-levels">
+
+```toml
+[editor.indent-guides]
+skip-levels = 0
+```
+
+<div slot="info">
+
+Number of indent levels to skip
+
+</div>
+
+</ConfigOption>
+
+Example:
+
+```toml
+[editor.indent-guides]
+render = true
+character = "╎" # Some characters that work well: "▏", "┆", "┊", "⸽"
+skip-levels = 1
+```
+
+### `[editor.gutters]` Section
+
+For simplicity, `editor.gutters` accepts an array of gutter types, which will
+use default settings for all gutter components.
+
+```toml
+[editor]
+gutters = ["diff", "diagnostics", "line-numbers", "spacer"]
+```
+
+To customize the behavior of gutters, the `[editor.gutters]` section must
+be used. This section contains top level settings, as well as settings for
+specific gutter components as subsections.
+
+<ConfigOption name="layout">
+
+```toml
+[editor.gutters]
+layout = ["diagnostics", "spacer", "line-numbers", "spacer", "diff"]
+```
+
+<div slot="info">
+
+A vector of gutters to display
+
+</div>
+
+</ConfigOption>
+
+Example:
+
+```toml
+[editor.gutters]
+layout = ["diff", "diagnostics", "line-numbers", "spacer"]
+```
+
+#### `[editor.gutters.line-numbers]` Section
+
+Options for the line number gutter
+
+<ConfigOption name="min-width">
+
+```toml
+[editor.gutters.line-numbers]
+min-width = 3
+```
+
+<div slot="info">
+
+The minimum number of characters to use
+
+</div>
+
+</ConfigOption>
+
+Example:
+
+```toml
+[editor.gutters.line-numbers]
+min-width = 1
+```
+
+#### `[editor.gutters.diagnostics]` Section
+
+Currently unused
+
+#### `[editor.gutters.diff]` Section
+
+The `diff` gutter option displays colored bars indicating whether a `git` diff represents that a line was added, removed or changed.
+These colors are controlled by the theme attributes `diff.plus`, `diff.minus` and `diff.delta`.
+
+Other diff providers will eventually be supported by a future plugin system.
+
+There are currently no options for this section.
+
+#### `[editor.gutters.spacer]` Section
+
+Currently unused
+
+### `[editor.soft-wrap]` Section
+
+Options for soft wrapping lines that exceed the view width:
+
+<ConfigOption name="enable">
+
+```toml
+[editor.soft-wrap]
+enable = false
+```
+
+<div slot="info">
+
+Whether soft wrapping is enabled.
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="max-wrap">
+
+```toml
+[editor.soft-wrap]
+max-wrap = 20
+```
+
+<div slot="info">
+
+Maximum free space left at the end of the line.
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="max-indent-retain">
+
+```toml
+[editor.soft-wrap]
+max-indent-retain = 40
+```
+
+<div slot="info">
+
+Maximum indentation to carry over when soft wrapping a line.
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="wrap-indicator">
+
+```toml
+[editor.soft-wrap]
+wrap-indicator = "↪"
+```
+
+<div slot="info">
+
+Text inserted before soft wrapped lines, highlighted with `ui.virtual.wrap`
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="wrap-at-text-width">
+
+```toml
+[editor.soft-wrap]
+wrap-at-text-width = false
+```
+
+<div slot="info">
+
+Soft wrap at `text-width` instead of using the full viewport size.
+
+</div>
+
+</ConfigOption>
+
+Example:
+
+```toml
+[editor.soft-wrap]
+enable = true
+max-wrap = 25 # increase value to reduce forced mid-word wrapping
+max-indent-retain = 0
+wrap-indicator = ""  # set wrap-indicator to "" to hide it
+```
+
+### `[editor.smart-tab]` Section
+
+Options for navigating and editing using tab key.
+
+<ConfigOption name="enable">
+
+```toml
+[editor.smart-tab]
+enable = true
+```
+
+<div slot="info">
+
+If set to true, then when the cursor is in a position with non-whitespace to its left, instead of inserting a tab, it will run `move_parent_node_end`. If there is only whitespace to the left, then it inserts a tab as normal. With the default bindings, to explicitly insert a tab character, press Shift-tab.
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="supersede-menu">
+
+```toml
+[editor.smart-tab]
+supersede-menu = false
+```
+
+<div slot="info">
+
+Normally, when a menu is on screen, such as when auto complete is triggered, the tab key is bound to cycling through the items. This means when menus are on screen, one cannot use the tab key to trigger the `smart-tab` command. If this option is set to true, the `smart-tab` command always takes precedence, which means one cannot use the tab key to cycle through menu items. One of the other bindings must be used instead, such as arrow keys or `C-n`/`C-p`.
+
+</div>
+
+</ConfigOption>
+
+Due to lack of support for S-tab in some terminals, the default keybindings don't fully embrace smart-tab editing experience. If you enjoy smart-tab navigation and a terminal that supports the [Enhanced Keyboard protocol](https://github.com/helix-editor/helix/wiki/Terminal-Support#enhanced-keyboard-protocol), consider setting extra keybindings:
+
+```toml
+[keys.normal]
+tab = "move_parent_node_end"
+S-tab = "move_parent_node_start"
+
+[keys.insert]
+S-tab = "move_parent_node_start"
+
+[keys.select]
+tab = "extend_parent_node_end"
+S-tab = "extend_parent_node_start"
+```
+
+<Master>
+
+### `[editor.inline-diagnostics]` Section
+
+Options for rendering diagnostics inside the text like shown below
+
+```
+fn main() {
+  let foo = bar;
+            └─ no such value in this scope
+}
+```
+
+<ConfigOption name="cursor-line">
+
+```toml
+[editor.inline-diagnostics]
+cursor-line = "disable"
+```
+
+<div slot="info">
+
+The minimum severity that a diagnostic must have to be shown inline on the line that contains the primary cursor. Set to `disable` to not show any diagnostics inline. This option does not have any effect when in insert-mode and will only take effect 350ms after moving the cursor to a different line.
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="other-lines">
+
+```toml
+[editor.inline-diagnostics]
+other-lines = "disable"
+```
+
+<div slot="info">
+
+The minimum severity that a diagnostic must have to be shown inline on a line that does not contain the cursor-line. Set to `disable` to not show any diagnostics inline.
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="prefix-len">
+
+```toml
+[editor.inline-diagnostics]
+prefix-len = 1
+```
+
+<div slot="info">
+
+How many horizontal bars `─` are rendered before the diagnostic text.
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="max-wrap">
+
+```toml
+[editor.inline-diagnostics]
+max-wrap = 20
+```
+
+<div slot="info">
+
+Equivalent of the editor.soft-wrap.max-wrap option for diagnostics.
+
+</div>
+
+</ConfigOption>
+
+<ConfigOption name="max-diagnostics">
+
+```toml
+[editor.inline-diagnostics]
+max-diagnostics = 10
+```
+
+<div slot="info">
+
+Maximum number of diagnostics to render inline for a given line
+
+</div>
+
+</ConfigOption>
+
+The (first) diagnostic with the highest severity that is not shown inline is rendered at the end of the line (as long as its severity is higher than the `end-of-line-diagnostics` config option):
+
+```
+fn main() {
+  let baz = 1;
+  let foo = bar; a local variable with a similar name exists: baz
+            └─ no such value in this scope
+}
+```
+
+The new diagnostic rendering is not yet enabled by default. As soon as end of line or inline diagnostics are enabled the old diagnostics rendering is automatically disabled. The recommended default setting are:
+
+```toml
+[editor]
+end-of-line-diagnostics = "hint"
+[editor.inline-diagnostics]
+cursor-line = "warning" # show warnings and errors on the cursorline inline
+```
+
+</Master>
+
+## Overriding the Config File
+
+You can override the default config file by:
+
+- Specifying it with the `-c` or `--config` command line argument, for example `hx -c path/to/custom-config.toml`
+- Having a `config.toml` local to a project by putting it under a `.helix` directory in your repository. Its settings will be merged with the configuration directory `config.toml` and the built-in configuration.

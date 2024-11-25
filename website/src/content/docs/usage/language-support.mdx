@@ -1,0 +1,100 @@
+---
+title: Language Support
+---
+
+Language Servers provide functionality such as:
+
+- Goto definition
+- Hover
+- Goto references
+- Search symbol in workspace
+- Diagnostics
+
+Language Servers support is a priority for Helix, and we provide out of the box configurations for basically every language you would want.
+
+In this guide we'll explore how to setup language server for Go, as well as formatting on save. The process will be similar for other languages.
+
+First, let's check what we need to add Go support. Use `hx --health <language>` to check the status. For instance:
+
+```sh
+hx --health go
+```
+
+```ansi
+Configured language servers:
+ [31m✘[0m gopls: [31m'gopls' not found in $PATH[0m
+ [31m✘[0m jedi-language-server: [31m'golangci-lint-langserver' not found in $PATH[0m
+Configured debug adapter: [32mdlv[0m
+Binary for debug adapter: [31m'dlv' not found in $PATH[0m
+Configured formatter: [33mNone[0m
+Highlight queries: [32m✓[0m
+Textobject queries: [32m✓[0m
+Indent queries: [32m✓[0m
+```
+
+## Language Server
+
+Helix tells us that `gopls` is already configured, even though we haven't installed it. Install it using your operating system's package manager!
+
+---
+
+Now that you've installed it, check `hx --health` again:
+
+```ansi
+Configured language servers:
+ [32m✓[0m gopls: [32m/path/to/gopls[0m
+ [31m✘[0m jedi-language-server: [31m'golangci-lint-langserver' not found in $PATH[0m
+Configured debug adapter: [32mdlv[0m
+Binary for debug adapter: [31m'dlv' not found in $PATH[0m
+Configured formatter: [33mNone[0m
+Highlight queries: [32m✓[0m
+Textobject queries: [32m✓[0m
+Indent queries: [32m✓[0m
+```
+
+Perfect, now the language server will be configured for you.
+
+## Formatter
+
+Now we want to configure formatting on save for Go. There are many different formatters, and we'll go with [`gofumpt`](https://github.com/mvdan/gofumpt).
+
+Go ahead and install `gofumpt` with your package manager...
+
+---
+
+Now that it's installed, we'll configure `gopls` to use `gofumpt`.
+
+If you haven't already, create a `languages.toml` file in your helix config directory, which will vary by operating system:
+
+- Linux and Mac: `~/.config/helix/languages.toml`
+- Windows: `%AppData%\helix\languages.toml`
+
+Then add the following to the file:
+
+```toml
+# languages.toml
+[language-server.gopls.config]
+gofumpt = true
+```
+
+Now go into your Go file and check, formatting and LSP will both work!
+
+## Next steps
+
+- Table of all languages and whether there is a default LSP for them: [language support](/help/language-defaults).
+- List of [language server configurations per language](/reference/language-servers).
+- List of [formatter configurations per language](/reference/formatters).
+
+## Can't find what you're looking for?
+
+:::tip
+
+If you want to install a language server / formatter which Helix doesn't configure, you've looked at [formatters reference](/reference/formatters) and [language servers reference](/configuration/languages) but found nothing that helps you, a decent next step is to use GitHub's search feature.
+
+In all likelyhood, _someone_ has probably created the same setup that you want to have in Helix. A [quick search](https://github.com/search?q=path%3Ahelix%2Flanguages.toml&type=code) on GitHub with the query of `path:helix/languages.toml` yields thousands of results.
+
+If you want to install a formatter like `<whatever>` and feel like you're stuck, then we recommend searching for e.g. `path:helix/languages.toml <whatever>` and looking at the results to find out if any of the code samples you find will help you. In all likelihood, you'll succeed!
+
+Once you figure it out, [please send us a pull request](https://github.com/helix-editor/helix/compare) to add it to the docs!
+
+:::

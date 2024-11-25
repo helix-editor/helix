@@ -1,0 +1,66 @@
+---
+title: Recipes
+---
+
+Includes common solutions to some problems.
+
+## Git Integration
+
+Helix comes with basic git integration such as the ability to see which files have been modified on the gutters, and acting on git hunks as text objects. But a more comprehensive git integration can be desired, which is understandable.
+
+Lazygit is the most popular git TUI and you can smoothly integrate it with Helix with the following keymap:
+
+```toml
+# helix/config.toml
+[keys.normal]
+C-g = [
+    ":write-all",
+    ":new",
+    ":insert-output lazygit",
+    ":buffer-close!",
+    ":redraw",
+    ":reload-all"
+]
+```
+
+Explanation
+
+1. `write-all`: save all buffers so that the changes can be shown in lazygit and commited right away
+2. `new`: create new empty buffer
+3. `insert-output lazygit`: runs the `lazygit` command and inserts it's output into the new buffer
+4. when you exit lazygit, `buffer-close!` will kill the previously empty buffer and send you pack to where you were previously
+5. `redraw` is necessary to re-render the UI to show the buffers
+6. `reload-all` because if e.g. you commit everything, helix will still show the symbols indicating that lines were changed / deleted on the left of the line numbers. This will prevent that
+
+## Save file without formatting
+
+If you have `auto-format` turned on, but you want to save a file _without formatting_, then do the following:
+
+- `:set-language text`
+- Write the file
+- Optionally, change it back with `:set-language`
+
+## More intuitive x and X motions
+
+Some people prefer to remap <kbd>x</kbd> and <kbd>X</kbd> motions from the defaults:
+
+```toml
+# helix/config.toml
+x = "extend_line_below"
+X = "extend_to_line_bounds"
+```
+
+To the following:
+
+```toml
+# helix/config.toml
+x = "select_line_below"
+X = "select_line_above"
+```
+
+Due to the fact that they may find it more natural to have <kbd>x</kbd> and <kbd>X</kbd> perform opposite motions, similar to other motions in Helix.
+
+Currently some people want this to become the default.
+
+- [Discussion](https://github.com/helix-editor/helix/discussions/11600)
+- [Pull request](https://github.com/helix-editor/helix/pull/12013)

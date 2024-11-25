@@ -1,0 +1,109 @@
+---
+import "asciinema-player/dist/bundle/asciinema-player.css";
+// @ts-expect-error
+import { AsciinemaSettings } from "asciinema-player";
+
+interface Props {
+  src: string;
+  settings?: AsciinemaSettings;
+  class?: string;
+  title?: string;
+}
+
+const defaultSettings = {
+  autoPlay: false,
+  loop: true,
+  preload: true,
+  theme: 'helix',
+  controls: true,
+  poster: "npt:0",
+  fit: "width",
+  terminalFontFamily: "JetBrainsMono",
+};
+
+const {
+  src,
+  settings = {},
+  class: extraClasses = "",
+  title = undefined,
+}: Props = Astro.props;
+
+const demoId = "asciinema-demo-" + (src.split("/").pop() as string).split(".")[0];
+---
+
+<asciinema-player
+  id={demoId}
+  class={extraClasses}
+  data-src={src}
+  data-title={title}
+  data-settings={JSON.stringify({ ...defaultSettings, ...settings })}
+>
+</asciinema-player>
+
+<script>
+  // @ts-expect-error
+  import * as AsciinemaPlayer from "asciinema-player";
+  class Asciinema extends HTMLElement {
+    constructor() {
+      super();
+      const src = this.dataset.src;
+      if (!this.dataset.settings) {
+        throw new Error("Settings not found")
+      }
+      let settings = JSON.parse(this.dataset.settings);
+
+      if (window.location.hash === `#${this.id}`) {
+        settings.autoPlay = true;
+      }
+
+      document.fonts.load("1em " + settings.terminalFontFamily).then(() => {
+        const player = AsciinemaPlayer.create(src, this, settings);
+          if (this.dataset.title) {
+            const element = document
+              .getElementById(`${this.id}-link`);
+
+              if (!element) {
+                throw new Error("Asciinema player not found")
+              }
+        
+              element.addEventListener("click", () => {
+                player.play();
+              });
+          }
+      });
+    }
+  }
+
+  customElements.define("asciinema-player", Asciinema);
+</script>
+
+<style is:global>
+  .ap-play-button {
+    @apply !relative;
+  }
+  .ap-terminal {
+    @apply transform-gpu;
+  }
+
+  .asciinema-player-theme-helix {
+    --term-color-foreground: #dbbfef;
+    --term-color-background: #452859; 
+
+    --term-color-0: #a4a0e8;
+    --term-color-1: #a4a0e8;
+    --term-color-2: #a4a0e8;
+    --term-color-3: #a4a0e8;
+    --term-color-4: #a4a0e8;
+    --term-color-5: #a4a0e8;
+    --term-color-6: #a4a0e8;
+    --term-color-7: #a4a0e8;
+    --term-color-8: #a4a0e8;
+    --term-color-9: #a4a0e8;
+    --term-color-10: #a4a0e8;
+    --term-color-11: #a4a0e8;
+    --term-color-12: #a4a0e8;
+    --term-color-13: #a4a0e8;
+    --term-color-14: #a4a0e8;
+    --term-color-15: #a4a0e8;
+  }
+</style>

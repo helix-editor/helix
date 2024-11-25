@@ -1,0 +1,134 @@
+---
+title: Pickers
+---
+
+import { T } from "@/termshots/pickers/index.astro";
+
+import Master from "@/components/Master.astro";
+
+import { FileTree } from "@astrojs/starlight/components";
+
+Pickers are interactive windows used to select various kinds of items, and Helix has support for a variety of them.
+
+## Useful pickers
+
+Suppose we have the following directory structure, and we're located in the `my-project` directory:
+
+<FileTree>
+
+- my-project
+  - src
+    - app
+      - page.tsx
+      - globals.css
+      - layout.tsx
+    - components
+      - button.tsx
+  - tsconfig.json
+  - package.json
+  - README.md
+
+</FileTree>
+
+If we open a specific file e.g. with `hx README.md`, then it'll just open normally.
+
+But if we open the _directory_, then it'll actually open a file picker at that location. For instance, if we run `hx src`:
+
+<T.OpenedFilePicker />
+
+It opens a file picker in the `src` directory.
+
+### File picker
+
+Another way to open the file picker is with <kbd>Space</kbd> + <kbd>f</kbd>.
+
+The file picker allows you to search for files recursively.
+
+It's super handy when you know the name of a file but it's somewhere, buried very deep.
+
+<T.OpenedFilePickerManually />
+
+Note that this command opens a file picker at the git root directory, not our current working directory.
+
+So it shows each file under `my-project/` and not just `src/`, even though we opened helix in `src`. It searched to find the project directory, and searches files there.
+
+With <kbd>Space</kbd> + <kbd>F</kbd>, it opens a picker at our _current working directory_.
+
+<T.OpenedFilePickerManually />
+
+### Global search
+
+<kbd>Space</kbd> + <kbd>/</kbd> opens a picker where you can search for any string in any of the files recursively from the current directory.
+
+For example, to find strings with `className`:
+
+<T.GlobalSearch />
+
+By pressing <kbd>Enter</kbd> we can open the file.
+
+### Open last picker
+
+Suppose we did a couple more navigations around files, and now we want to go back.
+
+We could just repeat the last steps, but there's a better way. <kbd>Space</kbd> + <kbd>'</kbd> opens the exact picker that you last used:
+
+<T.OpenLastPicker />
+
+### Buffer picker
+
+Now let's say we opened several files and we'd like to go work on one of the files we already opened. But we don't want to perform the task of finding that file again.
+
+You can open a picker that shows your currently open buffers with <kbd>Space</kbd> + <kbd>b</kbd>:
+
+<T.BufferPicker />
+
+## Usage
+
+Most pickers perform fuzzy matching using [fzf syntax](https://github.com/junegunn/fzf?tab=readme-ov-file#search-syntax).
+
+Two exceptions are:
+
+- Global search picker, which uses regex
+- Workspace symbol picker, which passes search terms to the LSP.
+
+:::note
+
+For now, OR operations with `|` are not supported, so e.g. you can't search for `cat|dog` to find files with the string cat or the string dog
+
+:::
+
+### Keymap
+
+Within a picker:
+
+- <kbd>Enter</kbd> opens the selected file
+- <kbd>Ctrl</kbd> + <kbd>v</kbd> opens as a horizontal split
+- <kbd>Ctrl</kbd> + <kbd>s</kbd> opens as a vertical split
+
+For more keymaps that you can use in a picker, see the [picker keymap reference](/reference/keymap#picker).
+
+<Master>
+
+### Filtering
+
+If a picker shows multiple columns, you may apply the filter to a specific column by prefixing the column name with `%`.
+
+Column names can be shortened to any prefix, so `%p`, `%pa` or `%pat` all mean the same as `%path`.
+
+For example, a query of `helix %p .toml !lang` in the global search picker searches for the term "helix" within files with paths ending in ".toml" but not including "lang".
+
+</Master>
+
+### Using registers in pickers
+
+You can insert the contents of a [register](/usage/registers) using `Ctrl-r` followed by a register name.
+
+For example, one could insert the currently selected text using `Ctrl-r`-`.`, or the directory of the current file using `Ctrl-r`-`%` followed by `Ctrl-w` to remove the last path section.
+
+The global search picker will use the contents of the [search register](/usage/registers#default-registers) if you press `Enter` without typing a filter.
+
+For example, pressing `*`-`Space-/`-`Enter` will start a global search for the currently selected text.
+
+## Next steps
+
+More pickers can be found in the [keymap reference](/reference/keymap#space-mode).

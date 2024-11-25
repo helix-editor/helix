@@ -1,0 +1,42 @@
+---
+// NOTE: we intentionally don't import @astrojs/starlight/components/ThemeSelect.astro because we don't want to allow users to use a different theme
+import type { Props } from '@astrojs/starlight/props';
+---
+
+{/* Only show documentation link on home page */}
+{
+	Astro.props.slug === '' && (
+		<div>
+			<a href="/news">News</a>
+		</div>
+	)
+}
+{
+	Astro.props.slug.startsWith("news") && (
+		<div>
+			<a href="/getting-started/basics">Docs</a>
+		</div>
+	)
+}
+
+<style>
+	div {
+		display: none;
+		height: 2rem;
+		padding-inline-start: 1rem;
+		border-inline-start: 1px solid var(--sl-color-gray-5);
+	}
+
+	@media (width >= 50rem) {
+		div {
+			display: flex;
+			align-items: center;
+		}
+	}
+
+	a {
+		font-weight: 600;
+		color: var(--sl-color-text-accent);
+		text-decoration: none;
+	}
+</style>

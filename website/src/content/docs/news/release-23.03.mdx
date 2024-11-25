@@ -1,0 +1,123 @@
+---
+title: Release 23.03 Highlights
+date: 2023-03-31T00:00:00Z
+description: Highlights of the 23.03 release.
+---
+
+import Asciinema from "@/components/Asciinema.astro"
+
+Helix is a modal text editor with built-in support for multiple selections,
+Language Server Protocol (LSP), tree-sitter, and experimental support for Debug
+Adapter Protocol (DAP).
+
+Today marks the 23.03 release. First, a big _thank you_ to everyone involved!
+This release includes changes from 102 contributors. Today's release brings
+some especially useful and exciting features, so let's jump right in.
+
+## Soft-wrap
+
+<Asciinema src="/blog/softwrap.cast" />
+
+Soft-wrap breaks up lines to fit in view without inserting actual line break
+characters into the text (so called "hard-wrapping"). This can be useful for
+reading and editing documentation or code with especially long lines. Enable
+soft-wrap in your config with the `editor.soft-wrap.enable` key:
+
+```toml
+# ~/.config/helix/config.toml
+[editor.soft-wrap]
+enable = true
+```
+
+Heuristics for where to break lines and the wrap indicator may also be
+[configured](https://docs.helix-editor.com/configuration.html#editorsoft-wrap-section).
+
+Soft-wrap is the first feature implemented on top of a new "virtual text" API
+within the Helix codebase. The virtual text API allows us to decorate and
+manipulate the actual text in a document without disturbing positioning and
+modifications. The virtual text API opens the door for many new exciting
+features like the inlay hints we'll see next.
+
+## Inlay hints
+
+<Asciinema src="/blog/inlay-hints.cast" />
+
+Inlay hints are a new feature in the latest LSP specification. Language servers
+can provide editors with hints to show in a document. In the example above,
+rust-analyzer provides type hints for variables and intermediary expressions
+as well as parameter names in function calls.
+
+Inlay hints can be enabled in your config with the `lsp.display-inlay-hints`
+key.
+
+## Initial support for snippets
+
+<Asciinema src="/blog/snippets.cast" />
+
+LSP snippets are a way for language servers to provide more complex completions
+for an editor. Language servers can specify where to place cursors within a
+completion (tabstops), placeholder values and more. Helix now has initial
+support for LSP completions, leaving more advanced snippet features like
+virtual placeholders, multiple tabstops, and variable substitutions for future
+work.
+
+## Dynamic workspace symbol picker
+
+<Asciinema src="/blog/dynamic-workspace-symbol-picker.cast" />
+
+The workspace symbol picker (`<space>S`) is an LSP-driven feature for looking
+up a symbol in a project. Large projects might have many symbols, though, so
+this symbol picker typically wouldn't load them all at once. The workspace
+symbol picker has been reworked in this release though to dynamically
+re-request symbols with a new query as you type in the picker. This lets the
+language server narrow down the number of symbols and only tell Helix about the
+ones relevant to the search. This rework fixes compatibility with some language
+servers which returned empty symbols with no query (`gopls`, `pyright`,
+`clangd`) or limited results (`rust-analyzer`).
+
+The "dynamic picker" introduced in this refactor may benefit other pickers in
+the future, for example allowing the global search picker (`<space>/`) to
+update on-the-fly as you change the query.
+
+## Version control HEAD statusline element
+
+<Asciinema src="/blog/vcs-statusline-element.cast" />
+
+A new statusline element has been added which displays the version control
+HEAD. Add this to your statusline by introducing the `"version-control"`
+element in the
+[`editor.statusline`](https://docs.helix-editor.com/configuration.html#editorstatusline-section)
+section of your config for the `left`, `center` or `right` sides.
+
+## Enhanced keyboard protocol
+
+Support for the [enhanced keyboard protocol] is now enabled. Terminals that
+support the protocol (Kitty, WezTerm) can now send unambiguous keycodes to
+Helix, enabling key combinations that weren't possible to bind before like
+`C-/`, `C-h` or `S-backspace`. This functionality works out-of-the-box for
+terminals that support the protocol.
+
+[enhanced keyboard protocol]: https://sw.kovidgoyal.net/kitty/keyboard-protocol/
+
+## Runtime directory refactor
+
+Helix keeps files like tree-sitter parsers and queries, themes and the tutor
+file in a special "runtime" directory. This directory is typically installed
+by your package manager and shouldn't be modified by hand. Multiple runtime
+directories are now supported, so you can keep the runtime files installed by
+your package manager unchanged while adding new tree-sitter parsers and
+queries to a local runtime directory. On Unix systems you can add files to the
+`~/.config/helix/runtime` directory which take precedence over the runtime
+directory installed by a package manager.
+
+## Wrapping up
+
+These flashy features are just the tip of the iceberg though. Check out the
+23.03 [changelog] for the full details on all of the changes in this release.
+
+Come chat about usage and development questions in the [Matrix space][matrix]
+and follow along with Helix's development in the [GitHub repository][helix-git].
+
+[changelog]: https://github.com/helix-editor/helix/blob/master/CHANGELOG.md#2303-2023-03-31
+[helix-git]: https://github.com/helix-editor/helix/
+[matrix]: https://matrix.to/#/#helix-community:matrix.org

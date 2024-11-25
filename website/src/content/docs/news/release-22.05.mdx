@@ -1,0 +1,126 @@
+---
+title: Release 22.05 Highlights
+date: 2022-05-28T13:00:00Z
+description: Highlights of the 22.05 release.
+---
+
+import Asciinema from "@/components/Asciinema.astro";
+
+Helix is a modal text editor with built-in support for multiple selections,
+Language Server Protocol (LSP), tree-sitter, and experimental support for Debug
+Adapter Protocol (DAP).
+
+Today marks the 22.05 release, a featureful release with over double the number
+of contributors as last release (110!). A big thanks to all involved! 🙌
+
+Also a big shout out to [`@amirrezaask`](https://github.com/amirrezaask) for
+this great [Helix introduction video](https://www.youtube.com/watch?v=__U4A2Q9fNI)!
+
+Let's check out the flashy features of 22.05.
+
+## Indentation rework
+
+The indentation system has been fully reworked. Indentation still works by
+querying the parsed tree-sitter syntax tree for a document, but now query files
+can use the full expressive power of tree-sitter queries rather than just
+simple node names. Expect more robust indentation with fewer edge cases.
+
+## Configurable gutters
+
+Gutters can now be configured in your `config.toml` file. For example, you can
+remove the line-number gutter while still showing LSP diagnostics.
+
+```toml
+[editor]
+gutters = ["diagnostics"] # default is ["diagnostics", "line-numbers"]
+```
+
+## Local language configuration
+
+Language configuration can now be specified local to a project. Create a
+`.helix` directory and a `languages.toml` under it to override values from the
+[default language configuration]. For example, override a C project's indents
+to use tabs instead of spaces for indentation:
+
+```toml
+# my_c_project/.helix/languages.toml
+[[language]]
+name = "c"
+indent = { tab-width = 8, unit = "\t" }
+```
+
+## Rulers
+
+<Asciinema src="/blog/rulers.cast" />
+
+Vertical rulers may now be configured through the `rulers` option. Use them
+as a guide when adhering to a maximum line length.
+
+## Show visible whitespace
+
+<Asciinema src="/blog/visible-whitespace.cast" />
+
+Whitespace characters like spaces, tabs, and newlines may now be rendered. Use
+the `whitespace.render` option either at runtime with the `:set` command or in
+your `config.toml` under the editor section. Visible whitespace indicators can
+make Helix's selection model more intuitive, especially around line endings.
+The characters used for tabs, spaces, non-breaking space, and newlines may also
+be customized as well as whether any of the characters are rendered at all. In
+fact, for the remaining asciicasts in this post, you'll be seeing my custom tab
+and newline characters!
+
+## Use registers in prompts
+
+<Asciinema src="/blog/insert-registers-in-prompts.cast" />
+
+Values stored in registers may now be used in prompts like search or global
+search. In the above example, we yank a selection to the `"` register with
+`y` and then open up the global search prompt with `Space` `/`. The available
+registers are shown above the prompt and we hit `"` to insert the contents of
+the `"` register.
+
+## Reflow paragraphs
+
+<Asciinema src="/blog/reflow.cast" />
+
+The new `:reflow` command hard-wraps text to a given column width. Default
+column widths may be configured on a per-language basis. Reflow recognizes
+matching prefixes between lines, so you may reflow line-comments, markdown
+quotes or lines with leading whitespace and the leading characters will be
+placed appropriately.
+
+## Swap windows
+
+<Asciinema src="/blog/window-swapping.cast" />
+
+Windows may now be swapped with neighbor windows and splits may be transposed.
+With the window menu open (`C-w` or `space w`), use `H`, `J`, `K`, and `L`
+to swap the current window with the left, down, up, and right neighbors,
+respectively. Use `t` or `C-t` to switch between a vertical and horizontal
+split or vice versa.
+
+## Set a language at runtime
+
+<Asciinema src="/blog/set-language.cast" />
+
+The language for a buffer may now be set at runtime. Use
+`:set-language language` (or `:lang language` for short) to set the language
+and switch language servers.
+
+## Wrapping up
+
+These are just some highlights from the changes in 22.05. Check out the
+[changelog] for the full set. Pick up the release binaries for 22.05 on the
+[release page]. Starting with this release, an AppImage is included in the
+release binaries for easier usage from Linux.
+
+Expect plenty more features and improvements in Helix 22.07 coming in July.
+Contribute and follow along with development in the
+[GitHub repository][helix-git] and be sure to join in on discussions in the
+[Matrix channel][matrix].
+
+[changelog]: https://github.com/helix-editor/helix/blob/master/CHANGELOG.md#2205-2022-05-17
+[default language configuration]: https://docs.helix-editor.com/guides/adding_languages.html#language-configuration
+[helix-git]: https://github.com/helix-editor/helix/
+[matrix]: https://matrix.to/#/#helix-community:matrix.org
+[release page]: https://github.com/helix-editor/helix/releases/tag/22.05

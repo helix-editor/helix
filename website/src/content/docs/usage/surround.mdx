@@ -1,0 +1,58 @@
+---
+title: Surround
+---
+
+import { T } from "@/termshots/surround/index.astro";
+
+Helix comes with built-in surround support, allowing you to perform actions such as:
+
+- Surround selection with character
+- Replace surrounding character
+- Delete surrounding character
+
+## Surround selection with character
+
+You can surround selections with specific characters with <kbd>ms</kbd> for _**m**ake **s**urrounding_. For example, with the following state:
+
+<T.SurroundSelectionInit />
+
+Pressing <kbd>ms(</kbd>, you surround the selection with `(`:
+
+<T.SurroundSelection />
+
+## Replace surrounding character
+
+But what if we actually meant to surround it with `{` instead? That's fine! We can _**m**ake **r**eplace_ the surrounding character with <kbd>mr</kbd>
+
+For instance, <kbd>mr(\{</kbd> replaces the surrounding `(` with a `{`:
+
+<T.ReplaceSurrounding />
+
+## Delete surrounding character
+
+If we wanted to delete the surrounding character, we could also use <kbd>md</kbd> for _**m**ake **d**elete_. For example to delete the nearest surrounding pair of `{`, use <kbd>md\{</kbd>.
+
+<T.DeleteSurrounding />
+
+## List of surrounds
+
+Helix has support for the following pairs of surrounds:
+
+- `{` and `}`
+- `(` and `)`
+- `[` and `]`
+- `<` and `>`
+
+## Use any character
+
+You can also use any other character which will act on the literal characters. For instance, if we have a markdown file like follows:
+
+<T.MarkdownInit />
+
+Then pressing <kbd>md*</kbd> will delete the nearest `*`.
+
+<T.DeleteSurroundingAsterisk />
+
+Or using <kbd>mro\{</kbd> will replace the nearest pairs of `o` character with `{`:
+
+<T.ReplaceSurroundingO />

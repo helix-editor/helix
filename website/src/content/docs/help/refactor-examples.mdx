@@ -1,0 +1,63 @@
+---
+title: Refactor Examples
+---
+
+import { T } from "@/termshots/refactor-examples/index.astro";
+
+Concrete examples showing how powerful multiple cursor functionality can be.
+
+## Object to Array of (key, value)
+
+<T.InitialStateJs />
+
+We want to transform this object into an array of tuples where, the first element of each tuple is the key of the object and the second element is the value:
+
+<T.FinalStateJs />
+
+Steps:
+
+1. Inside the object, use <kbd>mr\{[</kbd> to replace the surrounding `{` with `[`:
+
+<T.ReplacedCurliesWithSquare />
+
+2. <kbd>mi[</kbd> to select inside the entire array:
+
+<T.SelectedInsideArray />
+
+3. <kbd>s</kbd> to enter select mode, then <kbd>:</kbd> + <kbd>Enter</kbd> will place a cursor on every `:`.
+
+<T.CursorOnEachColon />
+
+4. <kbd>r,</kbd> replaces each selection with a `,`. A cursor is line a single-width selection, and we have multiple cursors, so it will replace each `:` with `,`.
+
+<T.ReplacedColonsWithCommas />
+
+5. <kbd>t,</kbd> moves the cursor on each line to the ending comma.
+
+<T.MovedCursorToEnd />
+
+6. <kbd>;</kbd> the selection around each cursor into a single selection.
+
+<T.CollapsedAllSelections />
+
+7. <kbd>vgs</kbd> selects each line excluding the final comma.
+
+<T.SelectEachLine />
+
+8. <kbd>ms[</kbd> surrounds each individual selection with `[` to turn it into an array.
+
+<T.SurroundEachWithArray />
+
+9. <kbd>l</kbd> moves 1 character forward, replacing the selection with just a 1-width selection:
+
+<T.MoveOneCharForward />
+
+10. <kbd>e</kbd> selects until the end of each word.
+
+<T.SelectUntilEndOfEachWord />
+
+11. <kbd>ms"</kbd> surrounds the items with double quotes to make strings.
+
+<T.AddedSurroundingQuotations />
+
+The final command to achieve all of that is `mr{[mi[s:<enter>r,t,;vgsms[lems"`.

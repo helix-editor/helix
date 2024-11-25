@@ -1,0 +1,140 @@
+---
+title: Release 22.03 Highlights
+date: 2022-03-28T16:25:00Z
+description: "Highlights of the 22.03 release: the health-check flag, experimental DAP support, improved incremental injection parsing, and an overhauled tree-sitter grammar system."
+---
+
+import Asciinema from "@/components/Asciinema.astro"
+
+Ranging from small quality-of-life improvements and fixes to large features
+and refactors, Helix 22.03 brings some exciting changes. Helix is a modal
+text editor with built-in support for multiple selections, Language
+Server Protocol (LSP), tree-sitter, and now Debug Adapter Protocol (DAP).
+
+Before we look at the highlights, there are some administrative notes.
+`master` branch changes are now published separately from the release
+[documentation][docs]. Find the new `master` docs [here][master-docs].
+Helix is switching versioning schemes. Expect to find new releases in
+Calendar Version format: `YY.0M(.MICRO)`. We're aiming to cut regular
+releases every two months or so. Check out the [changelog][changelog]
+for all of the new features and fixes from this release.
+
+With that out of the way, let's check out the highlights!
+
+## Health-check
+
+Helix 22.03 brings a new CLI flag: `hx --health`. Use the new health-check
+flag to troubleshoot missing language servers and queries.
+
+Check the health of all languages with `hx --health` or ask for details
+about a specific language with `hx --health <lang>`.
+
+w92 h24
+<Asciinema src="/blog/health-check.cast" />
+
+## Experimental DAP Support
+
+Debug Adapter Protocol (DAP) is an abstract protocol for editors and debuggers
+to communicate. It's very similar in spirit to the Language Server Protocol
+(LSP), but built for debugging. Interact with the debug adapter with
+`<space-d>`.
+
+w154 h46
+<Asciinema src="/blog/dap.cast" />
+
+Note that the DAP adapter is experimental: it isn't yet documented, there may
+be bugs, and the UX is a bit clunky. Contributions are very welcome!
+
+## Incremental Injection Parsing Rewrite
+
+One of the cooler features of syntax highlight driven by tree-sitter is the
+ability to _inject_ a language into another language's document. For example,
+if you're writing Markdown, you might use a code-fence like so:
+
+    This is some rust:
+
+    ```rust
+    println!("Hello, world!")
+    ```
+
+Helix highlights the Rust block by injecting tree-sitter-rust. Injections
+have been rewritten so that changes within are now parsed incrementally, which
+is a big speed boost when editing documents with large injected blocks.
+
+Along with this rewrite, Helix now supports _combined_ injections. For example,
+when highlighting Interactive Elixir (IEx), we might have a block of code like
+the following:
+
+```elixir
+iex> send(self(), :hello)
+iex> receive do: (:hello -> :ok)
+```
+
+The IEx grammar injects tree-sitter-elixir into each line after the prompt
+token. Combined injections cover the case where separate injected documents
+must be parsed in one combined document, like so:
+
+```elixir
+iex> if true do
+...>   :ok
+...> end
+```
+
+Helix can now parse all three lines together. In the future this can be used
+to add support for templating languages like EJS or ERB.
+
+## Tree-Sitter Grammars Refactor
+
+In the past, tree-sitter grammar repositories have been added to the Helix
+repository as Git submodules. Submodules can be painful to work with though,
+especially when there are more than 50 in a repository. Cloning, CI, and
+packaging times have slowed down as language support has improved.
+
+Helix 22.03 completely overhauls the system for tree-sitter grammars. The headline
+is that **submodules are gone**! If you're working with the source, you can
+now clone with a standard `git clone https://github.com/helix-editor/helix`.
+So where did the tree-sitter submodules go? They've been replaced with two
+new CLI flags: `hx --grammar fetch` to clone grammar repositories into the
+runtime directory and `hx --grammar build` to compile them. Use `-g` for
+short. Grammar repositories are shallow-cloned in parallel, so fetching all
+60 grammars can now take as little as 6 seconds on a good connection.
+
+If you're building from source or developing Helix, note that fetching and
+building are included in the `helix-term` build step, so you should not
+need to manually fetch or build grammars.
+
+Additionally, if you would like to customize which tree-sitter grammars
+you fetch and build, you may now add the `use-grammars` key to the **top** of
+your `languages.toml`:
+
+w92 h24
+<Asciinema src="/blog/use-grammars.cast" />
+
+If you're writing a tree-sitter grammar, you can try out integrating it
+by pointing helix to your grammar's local path in `languages.toml` without
+needing to publish changes to a Git remote:
+
+```toml
+[[language]]
+name = "mylang"
+# ..
+
+[[grammar]]
+name = "mylang"
+source = { path = "/local/path/to/tree-sitter-mylang" }
+```
+
+Running `hx -g build` will build the grammar. Add some queries and you're
+on your way to interactive grammar development.
+
+## Up Next
+
+The next release is sure to be exciting as well. Contribute and follow
+along with development in the [GitHub repository][helix-git] and be sure to
+join in on discussions in the [Matrix channel][matrix].
+
+[changelog]: https://github.com/helix-editor/helix/blob/master/CHANGELOG.md#2203-2022-03-28
+[docs]: https://docs.helix-editor.com/
+[master-docs]: https://docs.helix-editor.com/master/
+[helix-git]: https://github.com/helix-editor/helix/
+[matrix]: https://matrix.to/#/#helix-community:matrix.org

@@ -1,0 +1,27 @@
+{
+  "name": "helix-docs",
+  "type": "module",
+  "version": "1.0.0",
+  "scripts": {
+    "termshots": "node scripts/termshots.js",
+    "predev": "pnpm termshots",
+    "prebuild": "pnpm termshots",
+    "prepreview": "pnpm termshots",
+    "dev": "astro dev",
+    "build": "astro check && astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/check": "^0.9.4",
+    "@astrojs/sitemap": "^3.2.1",
+    "@astrojs/starlight": "^0.29.2",
+    "asciinema-player": "^3.8.1",
+    "astro": "^4.16.10",
+    "sharp": "^0.32.5",
+    "starlight-blog": "^0.15.0",
+    "starlight-contributor-list": "^0.1.0",
+    "starlight-links-validator": "^0.13.2",
+    "typescript": "^5.6.3"
+  }
+}

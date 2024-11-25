@@ -1,0 +1,179 @@
+---
+title: Text Objects
+---
+
+import { T } from "@/termshots/text-objects/index.astro";
+
+We'll explore both of these features on this page.
+
+Text Objects are a way to manipulate a piece of text in a structured way. They allow you to refer to blocks of text based on their purpose and perform powerful actions. For instance:
+
+- Select inside of a function.
+- Move to the next argument and seletc it.
+- Select the next changed text tracked by git.
+- Select the previous type.
+
+For example, with the following Python file:
+
+<T.InitialPythonFile />
+
+Move your cursor in the `__init__` method, and press <kbd>maf</kbd> for _**m**anipulate **a**round **f**unction_ to select the entire method:
+
+<T.SelectedInitMethod />
+
+Or <kbd>mif</kbd> for _**m**anipulate **i**nside **f**unction_ to select the body of the method:
+
+<T.SelectedInsideInitMethod />
+
+Additionally, you can move between most text objects. For instance, <kbd>]f</kbd> with go to the previous function.
+
+<T.MoveToNextMethod />
+
+The full syntax is:
+
+- <kbd>mi</kbd> + `<textobject>` to _**m**anipulate **i**nside_ a textobject. Highlight a smaller region of the text object, for example the body of a function.
+- <kbd>ma</kbd> + `<textobject>` to _**m**anipulate **a**round_ a textobject. Selects the entire text object, including surrounding whitespace.
+- <kbd>]</kbd> + `<textobject>` to go to the next instance of the textobject.
+- <kbd>[</kbd> + `<textobject>` to go to the previous instance of the textobject.
+
+### List of Text Objects
+
+- `p`, `w` and `W`: [primitive text objects](#primitive)
+- `(`, `)`, `{`, `}`, `[`, `]`, `<`, `>`, `'`, `"` and `` ` ``: [pair text objects](#pair-text-objects)
+- `g`: [git hunk](#git-hunk)
+- `f`, `t`, `a`, `c`, `T`, `g`: [tree-sitter text objects](#tree-sitter-text-objects)
+
+#### Primitive
+
+##### word
+
+A word is consists only of alphanumeric characters and underscores, so `a-Z`, `0-9` and `_`.
+
+For instance, take the following file, with two cursors:
+
+<T.RustInitialState />
+
+```rs
+pri*ntln!("Hello, wo*rld");
+```
+
+- Selecting inside word with <kbd>miw</kbd>:
+
+<T.SelectedInsideWord />
+
+- Selecting around word with <kbd>maw</kbd>:
+
+<T.SelectedAroundWord />
+
+Note that we now also have the space before the `world` as our selection!
+
+##### WORD
+
+A WORD is always delimited by whitespace such as newlines, tabs and spaces.
+
+Consider this file again:
+
+<T.RustInitialState />
+
+- Selecting inside WORD with <kbd>miW</kbd>:
+
+<T.SelectedInsideBigWord />
+
+- Selecting around WORD with <kbd>maW</kbd>:
+
+<T.SelectedAroundBigWord />
+
+Note that the first selection was `println!("Hey, ` and the second selection is ` world!");`, since these selections share a common character (the space), they essentially merge.
+
+##### Paragraph
+
+A paragraph is delimited by two newlines, as well as start and end of files. For example in the following file with 3 cursors:
+
+<T.MarkdownFile />
+
+- Select inside paragarph with <kbd>mip</kbd>:
+
+<T.MarkdownFileSelectParagraphs />
+
+- Select around paragraph with <kbd>map</kbd>:
+
+<T.MarkdownFileSelectAroundParagraphs />
+
+#### Pair Text Objects
+
+These allow you to select:
+
+- Inside of the surrounding pair, excluding the surrounding characters
+- Inside of the surrounding pair, including the surrounding characters
+
+For example, with the following state:
+
+<T.TypescriptFile />
+
+Pressing <kbd>mi(</kbd> will select:
+
+<T.TypescriptFileInsideParentheses />
+
+While <kbd>mi)</kbd> will select:
+
+<T.TypescriptFileAroundParentheses />
+
+List of available pairs:
+
+- `(` and `)`
+- `[` and `]`
+- `{` and `}`
+- `<` and `>`
+- `'` and `'`
+- `"` and `"`
+- `` ` `` and `` ` ``
+
+#### Git Hunk
+
+If you are in a repository, then you will also have the `g` for _**g**it hunk_ textobject.
+
+It will select the entire change.
+
+For instance, if we have the following file, with the added lines visible by the green bar indicator on the gutter:
+
+<T.GitHunkExample />
+
+Then <kbd>mig</kbd> will select the git hunk.
+
+<T.GitHunkSelected />
+
+#### Tree-sitter Text Objects
+
+Available for most languages.
+
+To find out for your language, run `hx --health <language>`. For example if haskell queries are available, running `hx --health haskell` will show:
+
+```ansi
+Textobject queries: [32m✓
+```
+
+Available text objects:
+
+- `f` for _**f**unction_
+- `t` for _**t**ype_
+- `a` for _**a**rgument_
+- `c` for _**c**omment_
+- `T` for _**T**est_
+
+## Syntax-aware Motions
+
+Some commands allow you to move the selection according to its location in the syntax tree. For example, many languages have the following syntax for function calls:
+
+<T.SyntaxAwareInit />
+
+If you use <kbd>Alt</kbd> + <kbd>n</kbd>, it will select the next sibling:
+
+<T.NextSibling />
+
+Similarly, <kbd>Alt</kbd> + <kbd>p</kbd> selects the previous sibling:
+
+<T.PrevSibling />
+
+<kbd>Alt</kbd> + <kbd>o</kbd> will expand selection to the parent node:
+
+<T.ParentNode />

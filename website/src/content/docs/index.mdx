@@ -1,0 +1,67 @@
+---
+title: Helix Editor
+description: A post-modern text editor.
+template: splash
+editUrl: false
+hero:
+  title: <span class="text-accent-200">Helix</span>
+  tagline: A post-modern text editor.
+  image:
+    html: <img src="/favicon.svg" style="width:100px;margin:auto;" />
+  actions:
+    - text: Get Started
+      link: /getting-started/basics
+      icon: right-arrow
+    - text: View Source
+      link: https://starlight.astro.build
+      icon: external
+      variant: minimal
+---
+
+import { ContributorList } from "starlight-contributor-list";
+import { Icon, Card, CardGrid } from '@astrojs/starlight/components';
+import GetStarted from "@/components/GetStarted.astro";
+import Hexagons from "@/components/Hexagons.astro";
+
+<Hexagons />
+
+<CardGrid stagger>
+
+<Card title="Edit at the Speed of Thought" icon="rocket">
+With macros, surround, text objects, multiple cursors and more -- become the 10X developer you deserve to be.
+
+</Card>
+
+<Card title="Built-in Language Server Support" icon="open-book">
+
+Use your favorite features such as intellisense, hover, symbol search, diagnostics and more. Configured out of the box, for your own sanity.
+
+</Card>
+
+<Card title="Intuitive Editing Model" icon="pencil">
+
+Selections as a core editing primitive. Every action acts on a selection, no more surpsises. Own your editor.
+
+</Card>
+
+<Card title="Blazingly Fast, written in Rust" icon="seti:rust">
+
+No Electron. No VimScript. No JavaScript. Use it over ssh, tmux, or a plain terminal. Your laptop battery life will thank you.
+
+</Card>
+
+<Card title="Modern Editor Features" icon="setting">
+
+Fuzzy finder to jump to files and symbols, project wide search, [beautiful themes](/reference/list-of-themes#list-of-themes), auto closing bracket pairs, and more.
+
+</Card>
+
+</CardGrid>
+
+<GetStarted />
+
+## Contributors
+
+---
+
+<ContributorList githubRepo="helix-editor/helix" />
