@@ -20,7 +20,10 @@ hero:
 
 import { ContributorList } from "starlight-contributor-list";
 import { Icon, Card, CardGrid } from '@astrojs/starlight/components';
-import Hexagons from "@/components/Hexagons.astro"
+import GetStarted from "@/components/GetStarted.astro";
+import Hexagons from "@/components/Hexagons.astro";
+
+<Hexagons />
 
 <CardGrid stagger>
 
@@ -55,12 +58,10 @@ Fuzzy finder to jump to files and symbols, project wide search, [beautiful theme
 
 </CardGrid>
 
+<GetStarted />
+
 ## Contributors
 
 ---
-
-https://css-tricks.com/hexagons-and-beyond-flexible-responsive-grid-patterns-sans-media-queries/
-
-<Hexagons />
 
 <ContributorList githubRepo="helix-editor/helix" />
