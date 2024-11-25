@@ -14,6 +14,15 @@ export default defineConfig({
   },
   integrations: [
     starlight({
+      head: [
+        {
+          tag: "link",
+          attrs: {
+            rel: "sitemap",
+            href: "/sitemap-index.xml",
+          },
+        },
+      ],
       plugins: [
         starlightLinksValidator(),
         starlightBlog({ title: "News", prefix: "news" }),
