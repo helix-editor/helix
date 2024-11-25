@@ -14,6 +14,7 @@
   },
   "dependencies": {
     "@astrojs/check": "^0.9.4",
+    "@astrojs/sitemap": "^3.2.1",
     "@astrojs/starlight": "^0.29.2",
     "asciinema-player": "^3.8.1",
     "astro": "^4.16.10",
