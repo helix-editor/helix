@@ -11,7 +11,8 @@ use crate::{
     input::KeyEvent,
     register::Registers,
     theme::{self, Theme},
-    tree::{self, Tree},
+    tree::{self, Tree, TreeInfoTree},
+    view::ViewPosition,
     Document, DocumentId, View, ViewId,
 };
 use dap::StackFrame;
@@ -1047,6 +1048,33 @@ pub struct Breakpoint {
     pub log_message: Option<String>,
 }
 
+// Data structures to represent a split view.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Layout {
+    Horizontal,
+    Vertical,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SplitEntryNode {
+    pub layout: Layout,
+    pub children: Vec<SplitEntryTree>,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SplitEntryLeaf {
+    // Path to the document.
+    pub path: PathBuf,
+    // Where was the position of the view.
+    pub view_position: ViewPosition,
+    pub selection: Selection,
+    // Whether this was the focused split or not.
+    pub focus: bool,
+}
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SplitEntryTree {
+    Leaf(Option<SplitEntryLeaf>),
+    Node(SplitEntryNode),
+}
+
 use futures_util::stream::{Flatten, Once};
 
 type Diagnostics = BTreeMap<Uri, Vec<(lsp::Diagnostic, DiagnosticProvider)>>;
@@ -1055,6 +1083,7 @@ pub struct Editor {
     /// Current editing mode.
     pub mode: Mode,
     pub tree: Tree,
+    pub split_info: HashMap<String, SplitEntryTree>,
     pub next_document_id: DocumentId,
     pub documents: BTreeMap<DocumentId, Document>,
 
@@ -1179,6 +1208,7 @@ impl Action {
 }
 
 /// Error thrown on failed document closed
+#[derive(Debug)]
 pub enum CloseError {
     /// Document doesn't exist
     DoesNotExist,
@@ -1206,6 +1236,7 @@ impl Editor {
         Self {
             mode: Mode::Normal,
             tree: Tree::new(area),
+            split_info: HashMap::new(),
             next_document_id: DocumentId::default(),
             documents: BTreeMap::new(),
             saves: HashMap::new(),
@@ -1710,6 +1741,144 @@ impl Editor {
                 doc: focus_lost,
             });
         }
+    }
+
+    fn get_path_from_view_id(&self, view_id: ViewId) -> Option<PathBuf> {
+        let doc = self.tree.try_get(view_id).unwrap().doc;
+        let doc = &self.documents[&doc];
+
+        doc.path().cloned()
+    }
+
+    fn get_split_tree(&self, focus_id: ViewId, tree_info: TreeInfoTree) -> SplitEntryTree {
+        match tree_info {
+            TreeInfoTree::Leaf(view_id) => {
+                SplitEntryTree::Leaf(self.get_path_from_view_id(view_id).map(|path| {
+                    let doc = self.tree.try_get(view_id).unwrap().doc;
+                    let doc = self.document(doc).unwrap();
+                    SplitEntryLeaf {
+                        path,
+                        view_position: doc.view_offset(view_id),
+                        selection: doc.selection(view_id).clone(),
+                        focus: view_id == focus_id,
+                    }
+                }))
+            }
+            TreeInfoTree::Node(node) => {
+                let mut children = Vec::with_capacity(node.children.len());
+
+                for child in node.children {
+                    children.push(self.get_split_tree(focus_id, child));
+                }
+
+                let layout = match node.layout {
+                    tree::Layout::Horizontal => Layout::Horizontal,
+                    tree::Layout::Vertical => Layout::Vertical,
+                };
+
+                SplitEntryTree::Node(SplitEntryNode { layout, children })
+            }
+        }
+    }
+
+    pub fn save_split(&mut self, split_name: String) {
+        let tree_info = self.tree.get_tree_info();
+
+        self.split_info.insert(
+            split_name,
+            self.get_split_tree(tree_info.focus, tree_info.tree),
+        );
+    }
+
+    fn load_split_tree(&mut self, focus: ViewId, split_tree: &SplitEntryTree) -> Option<ViewId> {
+        self.focus(focus);
+
+        match split_tree {
+            SplitEntryTree::Leaf(leaf) => {
+                let leaf = match leaf {
+                    Some(l) => l,
+                    None => return None,
+                };
+                match self.open(&leaf.path, Action::Replace) {
+                    Err(err) => {
+                        self.set_error(format!(
+                            "Unable to load split for '{}': {}",
+                            leaf.path.to_string_lossy(),
+                            err
+                        ));
+                        None
+                    }
+                    Ok(_) => {
+                        let (view, doc) = current!(self);
+
+                        doc.set_view_offset(view.id, leaf.view_position);
+                        doc.set_selection(view.id, leaf.selection.clone());
+
+                        if leaf.focus {
+                            Some(view.id)
+                        } else {
+                            None
+                        }
+                    }
+                }
+            }
+            SplitEntryTree::Node(node) => {
+                let mut view_child_pairs = Vec::with_capacity(node.children.len());
+                for child in &node.children {
+                    let layout = match node.layout {
+                        Layout::Horizontal => Action::HorizontalSplit,
+                        Layout::Vertical => Action::VerticalSplit,
+                    };
+                    let _ = self.new_file(layout);
+                    view_child_pairs.push((view!(self).id, child));
+                }
+
+                let mut to_focus = None;
+                for (view, child) in view_child_pairs {
+                    let f = self.load_split_tree(view, child);
+                    assert!(!(to_focus.is_some() && f.is_some()));
+                    to_focus = f;
+                }
+
+                // Close the temporal view and buffer.
+                let doc_to_close = self.tree.get(focus).doc;
+                self.close(focus);
+                self.close_document(doc_to_close, true).unwrap();
+
+                to_focus
+            }
+        }
+    }
+
+    pub fn load_split(&mut self, split_name: String) -> anyhow::Result<()> {
+        if !self.split_info.contains_key(&split_name) {
+            anyhow::bail!(format!("Split '{}' doesn't exist.", split_name));
+        }
+
+        // First let's close all the views currently open. Note that we need to
+        // skip one, otherwise we end up without views to work with.
+        let views: Vec<_> = self.tree.views().skip(1).map(|(view, _)| view.id).collect();
+        for view_id in views {
+            self.close(view_id);
+        }
+        let _ = self.new_file(Action::Replace);
+
+        // Get the split that the user asked for.
+        let split_entry_tree = match self.split_info.get(&split_name) {
+            Some(se) => se,
+            None => unreachable!(),
+        };
+
+        // Load the split.
+        let focus = self.load_split_tree(self.tree.focus, &split_entry_tree.clone());
+
+        // Lets focus to the view we are suppose to.
+        match focus {
+            Some(f) => self.focus(f),
+            None => bail!("Unable to load and focus splits"),
+        }
+
+        Ok(())
     }
 
     /// Generate an id for a new document and register it.
