@@ -353,6 +353,7 @@ impl MappableCommand {
         extend_search_next, "Add next search match to selection",
         extend_search_prev, "Add previous search match to selection",
         search_selection, "Use current selection as search pattern",
+        search_selection_detect_word_boundaries, "Use current selection as the search pattern, automatically wrapping with `\\b` on word boundaries",
         make_search_word_bounded, "Modify current search to make it word bounded",
         global_search, "Global search in workspace folder",
         extend_line, "Select current line, if already selected, extend to another line based on the anchor",
@@ -2243,14 +2244,53 @@ fn extend_search_prev(cx: &mut Context) {
 }
 
 fn search_selection(cx: &mut Context) {
+    search_selection_impl(cx, false)
+}
+
+fn search_selection_detect_word_boundaries(cx: &mut Context) {
+    search_selection_impl(cx, true)
+}
+
+fn search_selection_impl(cx: &mut Context, detect_word_boundaries: bool) {
+    fn is_at_word_start(text: RopeSlice, index: usize) -> bool {
+        let ch = text.char(index);
+        if index == 0 {
+            return char_is_word(ch);
+        }
+        let prev_ch = text.char(index - 1);
+
+        !char_is_word(prev_ch) && char_is_word(ch)
+    }
+
+    fn is_at_word_end(text: RopeSlice, index: usize) -> bool {
+        if index == 0 || index == text.len_chars() {
+            return false;
+        }
+        let ch = text.char(index);
+        let prev_ch = text.char(index - 1);
+
+        char_is_word(prev_ch) && !char_is_word(ch)
+    }
+
     let register = cx.register.unwrap_or('/');
     let (view, doc) = current!(cx.editor);
-    let contents = doc.text().slice(..);
+    let text = doc.text().slice(..);
 
     let regex = doc
         .selection(view.id)
         .iter()
-        .map(|selection| regex::escape(&selection.fragment(contents)))
+        .map(|selection| {
+            let add_boundary_prefix =
+                detect_word_boundaries && is_at_word_start(text, selection.from());
+            let add_boundary_suffix =
+                detect_word_boundaries && is_at_word_end(text, selection.to());
+
+            let prefix = if add_boundary_prefix { "\\b" } else { "" };
+            let suffix = if add_boundary_suffix { "\\b" } else { "" };
+
+            let word = regex::escape(&selection.fragment(text));
+            format!("{}{}{}", prefix, word, suffix)
+        })
         .collect::<HashSet<_>>() // Collect into hashset to deduplicate identical regexes
         .into_iter()
         .collect::<Vec<_>>()

@@ -160,7 +160,8 @@ Search commands all operate on the `/` register by default. To use a different r
 | `?`   | Search for previous pattern                 | `rsearch`            |
 | `n`   | Select next search match                    | `search_next`        |
 | `N`   | Select previous search match                | `search_prev`        |
-| `*`   | Use current selection as the search pattern | `search_selection`   |
+| `*`   | Use current selection as the search pattern, automatically wrapping with `\b` on word boundaries | `search_selection_detect_word_boundaries` |
+| `Alt-*` | Use current selection as the search pattern | `search_selection` |
 
 ### Minor modes
 
