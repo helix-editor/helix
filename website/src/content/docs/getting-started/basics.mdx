@@ -58,7 +58,7 @@ You can find out how to do this in [Remap Caps Lock to Escape](/help/recipes#rem
 We only have one line of text, so let's duplicate it several times. Type:
 
 - <kbd>x</kbd>, which will select the entire line.
-- <kbd>y</kbd>, which will _**y**ank_ (copy) the selection to _a clipboard_.
+- <kbd>y</kbd>, which will _**y**ank_ (copy) the selection to clipboard.
 - <kbd>p</kbd>, which will paste the contents of the selection after the cursor.
 
 Spam <kbd>p</kbd> a few times to create several lines.
@@ -107,22 +107,22 @@ The <kbd>d</kbd> command deletes the current selection and copies what has been 
 
 Let's test it out by doing the following:
 
-- Select the line we just changed with <kbd>x</kbd>.
+1. Select the line we just changed with <kbd>x</kbd>.
 
-<T.SelectedLineWeJustChanged />
+   <T.SelectedLineWeJustChanged />
 
-- <kbd>d</kbd> to delete this line.
+1. <kbd>d</kbd> to delete this line.
 
-<T.SelectedLineDeleted />
+   <T.SelectedLineDeleted />
 
-- Spam <kbd>p</kbd> a few times to create some duplicates.
+1. Spam <kbd>p</kbd> a few times to create some duplicates.
 
-<T.SelectedLineDuplicated />
+   <T.SelectedLineDuplicated />
 
-Now let's remove all of our previous `Hello helix!` by doing the following for each `Hello helix!` line:
+Let's remove all of our previous `Hello helix!` by doing the following for each `Hello helix!` line:
 
-- Select the line with <kbd>x</kbd>.
-- <kbd>d</kbd> to delete it.
+1. Select the line with <kbd>x</kbd>.
+1. <kbd>d</kbd> to delete it.
 
 Now we have something like this:
 
@@ -181,9 +181,53 @@ Now, delete the selection with <kbd>d</kbd>.
 
 <T.FullFileDeleted />
 
+### Goto Word
+
+Using <kbd>b</kbd> to go to the beginning of the word and <kbd>e</kbd> to go to the end is useful if you are already at the word you want. But if you are far away, a very powerful command is _**g**oto **w**ord_ -- <kbd>gw</kbd>.
+
+<T.GotoWordShowcase />
+
+<kbd>gw</kbd> will create two letters at the start of every word in sight. When you type those two letters, you instantly jump to the specified word.
+
+Let's say we want to jump to the `plates` word. The first two characters have been replaced by `at` and highlighted. If we write `at`, we will highlight that word!
+
+<T.HighlightedPlatesWordWithGotoWord />
+
+### Replace
+
+You can also replace a selection with contents of a register.
+
+1. Select the `moon` word by using <kbd>gw</kbd> and yank it with <kbd>y</kbd>.
+2. Select the `sun` word and replace it with `moon` with <kbd>R</kbd>.
+
+### Search
+
+Go to the first line by using <kbd>gg</kbd>.
+
+To search for a word, use <kbd>/</kbd> command. Type `will` which is going to highlight the next `will` keyword, and then <kbd>Enter ↵</kbd> to select it.
+
+Since there are several `will`s in the text, you can cycle between them:
+
+- <kbd>n</kbd> cycles to the next search.
+- <kbd>N</kbd> cycles to the previous search.
+
+### More ways to enter Insert Mode
+
+Select the `clouds` word using <kbd>gw</kbd>. If you press <kbd>i</kbd>, you will go into insert mode at the beginning of the selection. There are also 5 more ways to enter Insert mode:
+
+- <kbd>a</kbd> for _**append**_ go into insert mode at the end of the selection
+- <kbd>I</kbd> go into insert mode at the beginning of the current line
+- <kbd>A</kbd> go into insert mode at the end of the current line
+- <kbd>o</kbd> add a newline below and go into insert mode
+- <kbd>O</kbd> add a newline above and go into insert mode
+
+Try all of them out!
+
 ### Registers
 
-Helix has a concept called _registers_, which is like having many clipboards at once (hence the _"a clipboard"_). To interact with them, prefix yank and delete commands with a <kbd>"</kbd> and then the name of the register.
+Helix has a concept called _registers_, which is like having many clipboards at once.
+
+To interact with them, prefix yank and delete commands with a <kbd>"</kbd> and then the name of the register.
 
 For example, the contents of the system clipboard are stored inside the `+` register.
 
@@ -204,23 +248,21 @@ and the moon will
 
 1. Navigate to the last line by using <kbd>ge</kbd> for _**g**oto end_.
 
-<T.GotoLastLine />
+   <T.GotoLastLine />
 
 1. Select the last line with <kbd>x</kbd> and then yank it with <kbd>y</kbd>.
 
-<T.CopiedLastLine />
+   <T.CopiedLastLine />
 
 1. Navigate to the second line by using <kbd>2gg</kbd>.
 1. Select the second line by using <kbd>x</kbd> and then yank into into the <kbd>e</kbd> register with <kbd>"ey</kbd>.
 
-<T.CopiedSecondLineIntoERegister />
-
-Now:
+   <T.CopiedSecondLineIntoERegister />
 
 1. Navigate to the third line by using <kbd>3gg</kbd>.
 1. Paste what we copied previously by using <kbd>p</kbd>.
 
-<T.PastedPreviouslyCopied />
+   <T.PastedPreviouslyCopied />
 
 Notice how we haven't pasted the 2nd line's contents, but rather the last lines'? Because we yanked the 2nd line's contents into the <kbd>e</kbd> register. To paste from it, use <kbd>"ep</kbd>.
 
@@ -234,53 +276,9 @@ Take note of the fact that when we press <kbd>p</kbd>, it pastes the contents of
 
 <T.PastedFromERegisterBefore />
 
-That's great! We learned how to use registers and the system clipboard.
-
-### Goto Word
-
-Using <kbd>b</kbd> to go to the beginning of the word and <kbd>e</kbd> to go to the end is useful if you are already at the word you want. But if you are far away, a very powerful command is _**g**oto **w**ord_ -- <kbd>gw</kbd>.
-
-<T.GotoWordShowcase />
-
-<kbd>gw</kbd> will create two letters at the start of every word in sight. When you type those two letters, you instantly jump to the specified word.
-
-Let's say we want to jump to the `plates` word. The first two characters have been replaced by `at` and highlighted. If we write `at`, we will highlight that word!
-
-<T.HighlightedPlatesWordWithGotoWord />
-
-### More ways to enter Insert Mode
-
-Select the `clouds` word using <kbd>gw</kbd>. If you press <kbd>i</kbd>, you will go into insert mode at the beginning of the selection. There are also 5 more ways to enter Insert mode:
-
-- <kbd>a</kbd> for _**append**_ go into insert mode at the end of the selection
-- <kbd>I</kbd> go into insert mode at the beginning of the current line
-- <kbd>A</kbd> go into insert mode at the end of the current line
-- <kbd>o</kbd> add a newline below and go into insert mode
-- <kbd>O</kbd> add a newline above and go into insert mode
-
-Try all of them out!
-
-### Replace
-
-You can also replace a selection with contents of a register.
-
-1. Select the `moon` word by using <kbd>gw</kbd> and yank it with <kbd>y</kbd>.
-2. Select the `sun` word and replace it with `moon` with <kbd>R</kbd>.
-
-### Search
-
-Go to the first line by using <kbd>gg</kbd>.
-
-To search for a word, use <kbd>/</kbd> command. Type `will` which is going to highlight the next `will` keyword, and then <kbd>Enter ↵</kbd> to select it.
-
-Since there are several `will`s in the text, you can cycle between them:
-
-- <kbd>n</kbd> cycles to the next search.
-- <kbd>N</kbd> cycles to the previous search.
-
 ### Move to characters
 
-You can also search for individual characters by using <kbd>t</kbd>, which stands for _**to**_.
+You can also search for individual characters by using <kbd>t</kbd>, which stands for _**t**o_.
 
 1. Copy the text below
 
