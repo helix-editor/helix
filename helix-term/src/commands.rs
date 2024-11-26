@@ -2244,19 +2244,37 @@ fn extend_search_prev(cx: &mut Context) {
 
 fn search_selection(cx: &mut Context) {
     let register = cx.register.unwrap_or('/');
+    let count = cx.count();
     let (view, doc) = current!(cx.editor);
     let contents = doc.text().slice(..);
 
-    let regex = doc
-        .selection(view.id)
-        .iter()
-        .map(|selection| regex::escape(&selection.fragment(contents)))
-        .collect::<HashSet<_>>() // Collect into hashset to deduplicate identical regexes
-        .into_iter()
-        .collect::<Vec<_>>()
-        .join("|");
+    // Checks whether there is only one selection with a width of 1
+    let selections = doc.selection(view.id);
+    let primary = selections.primary();
+    let regex = if selections.len() == 1 && primary.len() == 1 {
+        let text = doc.text();
+        let text_slice = text.slice(..);
+        // In this case select the WORD under the cursor
+        let current_word = textobject::textobject_word(
+            text_slice,
+            primary,
+            textobject::TextObject::Inside,
+            count,
+            false,
+        );
+        let text_to_search = current_word.fragment(text_slice).to_string();
+        regex::escape(&text_to_search)
+    } else {
+        selections
+            .iter()
+            .map(|selection| regex::escape(&selection.fragment(contents)))
+            .collect::<HashSet<_>>() // Collect into hashset to deduplicate identical regexes
+            .into_iter()
+            .collect::<Vec<_>>()
+            .join("|")
+    };
 
-    let msg = format!("register '{}' set to '{}'", register, &regex);
+    let msg = format!("register '{}' set to '{}'", '/', &regex);
     match cx.editor.registers.push(register, regex) {
         Ok(_) => {
             cx.editor.registers.last_search_register = register;

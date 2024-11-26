@@ -154,13 +154,13 @@ Normal mode is the default mode when you launch helix. You can return to it from
 
 Search commands all operate on the `/` register by default. To use a different register, use `"<char>`.
 
-| Key   | Description                                 | Command              |
-| ----- | -----------                                 | -------              |
-| `/`   | Search for regex pattern                    | `search`             |
-| `?`   | Search for previous pattern                 | `rsearch`            |
-| `n`   | Select next search match                    | `search_next`        |
-| `N`   | Select previous search match                | `search_prev`        |
-| `*`   | Use current selection as the search pattern | `search_selection`   |
+| Key   | Description                                                                                                           | Command              |
+| ----- | -----------                                                                                                           | -------              |
+| `/`   | Search for regex pattern                                                                                              | `search`             |
+| `?`   | Search for previous pattern                                                                                           | `rsearch`            |
+| `n`   | Select next search match                                                                                              | `search_next`        |
+| `N`   | Select previous search match                                                                                          | `search_prev`        |
+| `*`   | Use current selection as the search pattern, if only a single char is selected the current word (miW) is used instead | `search_selection`   |
 
 ### Minor modes
 
