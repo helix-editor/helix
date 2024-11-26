@@ -5,35 +5,43 @@ description: Learn how to manipulate text with syntax aware motions and text obj
 
 import { T } from "@/termshots/text-objects/index.astro";
 
-We'll explore both of these features on this page.
-
 Text Objects are a way to manipulate a piece of text in a structured way. They allow you to refer to blocks of text based on their purpose and perform powerful actions. For instance:
 
-- Select inside of a function.
-- Move to the next argument and select it.
+- Selecting inside of a function.
+- Select the next argument.
 - Select the next changed text tracked by git.
 - Select the previous type.
+
+Notice that in each item in the above list we _select_ something? This builds upon the idea that we talked about in the [selection-first approach](/getting-started/basics#selection-first-approach) section.
+
+Text objects allow us to use this mechanism to be even more productive.
+
+## Using Text Objects
 
 For example, with the following Python file:
 
 <T.InitialPythonFile />
 
-Move your cursor in the `__init__` method, and press <kbd>maf</kbd> for _**m**atch **a**round **f**unction_ to select the entire method:
+### Basic Example
 
-<T.SelectedInitMethod />
+1. Move your cursor in the `__init__` method, and press <kbd>maf</kbd> for _**m**atch **a**round **f**unction_ to select the entire method:
 
-Or <kbd>mif</kbd> for _**m**atch **i**nside **f**unction_ to select the body of the method:
+   <T.SelectedInitMethod />
 
-<T.SelectedInsideInitMethod />
+1. Use <kbd>mif</kbd> for _**m**atch **i**nside **f**unction_ to select the body of the method:
 
-Additionally, you can move between most text objects. For instance, <kbd>]f</kbd> with go to the previous function.
+   <T.SelectedInsideInitMethod />
 
-<T.MoveToNextMethod />
+1. Additionally, you can move between most text objects.
 
-The full syntax is:
+   For instance, use <kbd>]f</kbd> with go to the previous function.
+
+   <T.MoveToNextMethod />
+
+### Syntax
 
 - <kbd>mi</kbd> + `<textobject>` to _**m**atch **i**nside_ a textobject. Highlight a smaller region of the text object, for example the body of a function.
-- <kbd>ma</kbd> + `<textobject>` to _**m**atch **a**round_ a textobject. Selects the entire text object, including surrounding whitespace.
+- <kbd>ma</kbd> + `<textobject>` to _**m**atch **a**round_ a textobject. Selects the entire text object, which usually includes surrounding whitespace.
 - <kbd>]</kbd> + `<textobject>` to go to the next instance of the textobject.
 - <kbd>[</kbd> + `<textobject>` to go to the previous instance of the textobject.
 
@@ -54,17 +62,13 @@ For instance, take the following file, with two cursors:
 
 <T.RustInitialState />
 
-```rs
-pri*ntln!("Hello, wo*rld");
-```
+1. Match inside word with <kbd>miw</kbd>:
 
-- Matching inside word with <kbd>miw</kbd>:
+   <T.SelectedInsideWord />
 
-<T.SelectedInsideWord />
+1. Matching around word with <kbd>maw</kbd>:
 
-- Matching around word with <kbd>maw</kbd>:
-
-<T.SelectedAroundWord />
+   <T.SelectedAroundWord />
 
 Note that we now also have the space before the `world` as our selection!
 
@@ -76,13 +80,13 @@ Consider this file again:
 
 <T.RustInitialState />
 
-- Matching inside WORD with <kbd>miW</kbd>:
+1. Match inside WORD with <kbd>miW</kbd>:
 
-<T.SelectedInsideBigWord />
+   <T.SelectedInsideBigWord />
 
-- Matching around WORD with <kbd>maW</kbd>:
+1. Matching around WORD with <kbd>maW</kbd>:
 
-<T.SelectedAroundBigWord />
+   <T.SelectedAroundBigWord />
 
 Note that the first selection was `println!("Hey, ` and the second selection is ` world!");`, since these selections share a common character (the space), they essentially merge.
 
@@ -92,13 +96,13 @@ A paragraph is delimited by two newlines, as well as start and end of files. For
 
 <T.MarkdownFile />
 
-- Match inside paragarph with <kbd>mip</kbd>:
+1. Match inside paragarph with <kbd>mip</kbd>:
 
-<T.MarkdownFileSelectParagraphs />
+   <T.MarkdownFileSelectParagraphs />
 
-- Match around paragraph with <kbd>map</kbd>:
+1. Match around paragraph with <kbd>map</kbd>:
 
-<T.MarkdownFileSelectAroundParagraphs />
+   <T.MarkdownFileSelectAroundParagraphs />
 
 #### Pair Text Objects
 
@@ -111,15 +115,15 @@ For example, with the following state:
 
 <T.TypescriptFile />
 
-Pressing <kbd>mi(</kbd> will select:
+1. Pressing <kbd>mi(</kbd> will select:
 
-<T.TypescriptFileInsideParentheses />
+   <T.TypescriptFileInsideParentheses />
 
-While <kbd>ma(</kbd> will select:
+1. While <kbd>ma(</kbd> will select:
 
-<T.TypescriptFileAroundParentheses />
+   <T.TypescriptFileAroundParentheses />
 
-List of available pairs:
+Full list of available pairs:
 
 - `(` and `)`
 - `[` and `]`
@@ -139,21 +143,21 @@ For instance, if we have the following file, with the added lines visible by the
 
 <T.GitHunkExample />
 
-Then <kbd>mig</kbd> will select the git hunk.
+Using <kbd>mig</kbd> will select the git hunk:
 
 <T.GitHunkSelected />
 
 #### Tree-sitter Text Objects
 
-Available for most languages.
+Available for most languages, specifically ones with text objects support. See the [full list of all languages with configured text object queries](/help/language-defaults).
 
-To find out for your language, run `hx --health <language>`. For example if haskell queries are available, running `hx --health haskell` will show:
+To find out for your language from the terminal, run `hx --health <language>`. If queries for a specific language like python are available, running `hx --health python` will show:
 
 ```ansi
 Textobject queries: [32m✓
 ```
 
-Available text objects:
+List of available text objects:
 
 - `f` for _**f**unction_
 - `t` for _**t**ype_
@@ -167,14 +171,14 @@ Some commands allow you to move the selection according to its location in the s
 
 <T.SyntaxAwareInit />
 
-If you use <kbd>Alt</kbd> + <kbd>n</kbd>, it will select the next sibling:
+1. If you use <kbd>Alt</kbd> + <kbd>n</kbd>, it will select the next sibling:
 
-<T.NextSibling />
+   <T.NextSibling />
 
-Similarly, <kbd>Alt</kbd> + <kbd>p</kbd> selects the previous sibling:
+1. Similarly, <kbd>Alt</kbd> + <kbd>p</kbd> selects the previous sibling:
 
-<T.PrevSibling />
+   <T.PrevSibling />
 
-<kbd>Alt</kbd> + <kbd>o</kbd> will expand selection to the parent node:
+1. <kbd>Alt</kbd> + <kbd>o</kbd> will expand selection to the parent node:
 
-<T.ParentNode />
+   <T.ParentNode />
