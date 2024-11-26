@@ -3,6 +3,8 @@ import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import starlightLinksValidator from "starlight-links-validator";
 import starlightBlog from "starlight-blog";
+import { rehypeHeadingIds } from "@astrojs/markdown-remark";
+import rehypeAutolinkHeadings from "rehype-autolink-headings";
 
 import sitemap from "@astrojs/sitemap";
 
@@ -11,6 +13,12 @@ export default defineConfig({
   site: "https://helix.github.io",
   vite: {
     optimizeDeps: { include: ["asciinema-player"] },
+  },
+  markdown: {
+    rehypePlugins: [
+      rehypeHeadingIds,
+      [rehypeAutolinkHeadings, { behavior: "wrap" }],
+    ],
   },
   integrations: [
     starlight({
@@ -40,8 +48,7 @@ export default defineConfig({
         ThemeSelect: "./src/components/ThemeSelect.astro",
       },
       editLink: {
-        baseUrl:
-          "https://github.com/helix-editor/helix/edit/main/website/",
+        baseUrl: "https://github.com/helix-editor/helix/edit/main/website/",
       },
       sidebar: [
         {
