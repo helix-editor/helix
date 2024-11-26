@@ -3,23 +3,46 @@ title: Language Support
 description: Learn how to configure language servers and auto formatting in Helix
 ---
 
-Language Servers provide functionality such as:
+Helix implements the [Language Server Protocol](https://microsoft.github.io/language-server-protocol/) (LSP) which allows support for loved language-specific features such as:
 
-- Goto definition
-- Hover
-- Goto references
-- Search symbol in workspace
+- Intellisense
+- Goto Definition
+- View documentation on hover
+- Workspace symbol search
 - Diagnostics
 
-Language Servers support is a priority for Helix, and we provide out of the box configurations for basically every language you would want.
+<details>
+<summary>
+ What is an "LSP"?
+</summary>
+
+Historically, each individual editor had to implement a set of tools for each individual language.
+
+This was chaotic and meant that there was an extremely high cost to developming a text editor with features such as goto definition, intellisense, documentation on hover and diagnostics.
+
+Thankfully, with the introduction of the LSP everything changed -- as it standardized a means of communications between editors and languages.
+
+Nowadays, instead of editors having to implement support for _every language in existence_, they just need to implement one feature -- the LSP.
+
+Third parties will each create a _language server_, which provides functionalities for a specific language.
+
+The implementor of the LSP communicates with all of those language servers to provide desired editor functionality.
+
+As a bonus, this significantly reduced the barries of entry to have great editor tooling per-language. Do you use some obscure language that no one has heard about since the 90s at your work? Consider [implementing a language server](https://tamerlan.dev/how-to-build-a-language-server-with-go/) for it to make your life easier.
+
+</details>
+
+Default configurations for languages are available for [many _many_ languages](/help/language-defaults#language-support), and [you can also add your own](/contributing/languages).
 
 In this guide we'll explore how to setup language server for Go, as well as formatting on save. The process will be similar for other languages.
 
-First, let's check what we need to add Go support. Use `hx --health <language>` to check the status. For instance:
+First, let's check what we need to add Go support. Use `hx --health <language>` to check the status of `go`. For example:
 
 ```sh
 hx --health go
 ```
+
+Since we've just recently installed Helix, we haven't set anything up yet.
 
 ```ansi
 Configured language servers:
@@ -33,13 +56,13 @@ Textobject queries: [32m✓[0m
 Indent queries: [32m✓[0m
 ```
 
+Despite the fact, syntax highlighting is available out of the box with **_zero_** configuration. Neat!
+
 ## Language Server
 
 Helix tells us that `gopls` is already configured, even though we haven't installed it. Install it using your operating system's package manager!
 
----
-
-Now that you've installed it, check `hx --health` again:
+After installing it, let's check `hx --health` yet again:
 
 ```ansi
 Configured language servers:
@@ -53,24 +76,30 @@ Textobject queries: [32m✓[0m
 Indent queries: [32m✓[0m
 ```
 
-Perfect, now the language server will be configured for you.
+Helix is able to recognize the path of the `gopls` we've installed. At this point language features like intellisense will _just work_, as Helix configures them by default.
+
+:::note
+
+See [Troubleshooting LSP](/help/troubleshooting#lsp-isnt-working) if you face issues.
+
+:::
 
 ## Formatter
 
-Now we want to configure formatting on save for Go. There are many different formatters, and we'll go with [`gofumpt`](https://github.com/mvdan/gofumpt).
+Language support is useful, but over the years most people have stopped manually formatting code and let that job be automated by tools called formatters.
 
-Go ahead and install `gofumpt` with your package manager...
+Formatters take your file as input, and adjust _insignificant whitespace_ to conform it to certain standards. Examples of formatters include [biome](https://github.com/biomejs/biome) and [rustfmt](https://github.com/rust-lang/rustfmt).
 
----
+Let's configure a formatter for Go which will perform its job everytime we save the file. One of the popular formatters for Go is called [`gofumpt`](https://github.com/mvdan/gofumpt), so we'll _go_ with it.
 
-Now that it's installed, we'll configure `gopls` to use `gofumpt`.
+Install `gofumpt` with your operating system's package manager, similar to how you've installed the language server (`gopls`) previously.
 
-If you haven't already, create a `languages.toml` file in your helix config directory, which will vary by operating system:
+To configure `gopls` to format on save, create a `languages.toml` file in your helix config directory, which will vary by operating system:
 
 - Linux and Mac: `~/.config/helix/languages.toml`
 - Windows: `%AppData%\helix\languages.toml`
 
-Then add the following to the file:
+Add the following language entry to the file:
 
 ```toml
 # languages.toml
@@ -78,13 +107,28 @@ Then add the following to the file:
 gofumpt = true
 ```
 
+Every time you save your Go files, they will be automatically formatted. For times when this is undesired, see [saving a file without formatting](/help/faq#save-file-without-formatting).
+
 Now go into your Go file and check, formatting and LSP will both work!
+
+## Useful keymaps
+
+To invoke language server functionalities, use the following keymap
+
+Helix includes default keymap for using language server functionality. Some examples:
+
+- <kbd>Space</kbd> + <kbd>r</kbd> renames the symbol under the cursor across the project
+- <kbd>Space</kbd> + <kbd>k</kbd> will show documentation for the symbol under the cursor
+- <kbd>g</kbd> + <kbd>r</kbd> brings up a list of symbols referencing the symbol under the cursor
+
+A list of other LSP-related keymappings are available under [goto mode](http://localhost:4321/reference/keymap#goto-mode) and [space mode](http://localhost:4321/reference/keymap#space-mode).
 
 ## Next steps
 
-- Table of all languages and whether there is a default LSP for them: [language support](/help/language-defaults).
-- List of [language server configurations per language](/reference/language-servers).
-- List of [formatter configurations per language](/reference/formatters).
+- See the [Information about default configurations for each language](/help/language-defaults#language-support)
+- Setup language servers for your specific language, with information available at [language server configurations per language](/reference/language-servers).
+- To configure formatters for your language, see [formatter configurations per language](/reference/formatters).
+- Learn how to use [fuzzy finders, workspace symbol search and other useful pickers](/usage/pickers).
 
 ## Can't find what you're looking for?
 

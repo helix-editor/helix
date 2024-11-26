@@ -86,7 +86,6 @@ export default defineConfig({
             "usage/surround",
             "usage/language-support",
             "usage/pickers",
-            "usage/registers",
           ],
         },
         {
@@ -104,6 +103,7 @@ export default defineConfig({
             "reference/typed-commands",
             "reference/list-of-themes",
             "reference/custom-themes",
+            "reference/registers",
             "reference/language-servers",
             "reference/formatters",
             "reference/debuggers",
