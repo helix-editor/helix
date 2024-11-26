@@ -85,6 +85,7 @@ export default defineConfig({
             "usage/text-objects",
             "usage/surround",
             "usage/language-support",
+            "usage/buffers",
             "usage/pickers",
           ],
         },

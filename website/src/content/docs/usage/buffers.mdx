@@ -1,0 +1,222 @@
+---
+title: Buffers
+---
+
+import { T } from "@/termshots/buffers/index.astro";
+
+Windows allow you to view and manage multiple buffers at once.
+
+For example, you may be copying code from file A and pasting it into file B line-by-one with slight modifications. It would be fitting to have two windows open side-by-side for this task.
+
+<details>
+<summary>
+  Difference between Windows and Buffers
+</summary>
+
+- A buffer is the in-memory text of a file.
+
+  For example you can open 10 files with:
+
+  ```sh
+  # expands to: hx file1 file2 ... file10
+  hx file{1..10}
+  ```
+
+  There will be 10 buffers stored in memory, but only 1 opened window.
+
+- A window is a viewport on a buffer.
+
+  If you open those 10 files again with `--vsplit` (probably a bad idea!):
+
+  ```sh
+  hx --vsplit file{1..10}
+  ```
+
+  It'll store 10 buffers in memory, as well as open 10 windows.
+
+</details>
+
+## Opening Multiple Files
+
+Let's start from the command line, where we used to open files using `hx <filename>`.
+
+This time, let's open several files!
+
+```sh
+hx file1 file2 file3
+```
+
+If you run the above command, you'll just see an empty screen:
+
+<T.EmptyScreen />
+
+But notice the `Loaded 3 files.` message at the bottom left? We've got all of those files open.
+
+Let's leave a message in our first buffer:
+
+<T.FirstBufferMessage />
+
+## Navigating Buffers
+
+To go to the next buffer, use the command <kbd>gn</kbd> for _**g**oto **n**ext_.
+
+<T.SecondBuffer />
+
+Leave another message here, and then let's do the same on the third buffer:
+
+<T.ThirdBuffer />
+
+You can go to the previous buffers by using <kbd>gp</kbd>. So try to cycle between them with the commands we learned now:
+
+- <kbd>gn</kbd> to go to the next buffer
+- <kbd>gp</kbd> to go to the previous buffer
+
+## Bufferline
+
+So this is useful, we can have multiple files open. But it's hard to really get a feel for where exactly we are in terms of buffers.
+
+Enable the bufferline by using `:set bufferline always`. This adds a bar at the top showing all of our three files:
+
+<T.WithBufferlineEnabled />
+
+With the bufferline, we can tell right off the bat which buffer is the currently active one.
+
+## Opening files with a glob
+
+Let's save all files and quit. We could use `:wqa` to _**w**rite **q**uit **a**ll_ but we'll use `:xa` which is exactly the same but 1 character shorter!
+
+Go ahead and open those files again, this time we won't manually type out their names but rather use a [glob](https://tldp.org/LDP/abs/html/globbingref.html).
+
+We want a glob which _expands_ to `file1 file2 file3`, what kind of pattern can we notice with those files? Well, they all begin with the string `file`.
+
+So we could do something like this:
+
+```sh
+hx file*
+```
+
+This will match every file in the current directory which begins with the string `file` and then has _whatever_ at the end.
+
+The "_whatever_" is exactly what the asterk -- `*` represents. `*` is a wildcard that matches _literally anything_, so it will match `file1`, `file2` and `file3` (as well as anything else that begins with `file`).
+
+When we execute that command, helix will open the same 3 buffers. We'll use `:set bufferline always` again:
+
+<T.OpenedWithWildcard />
+
+## Opening files with more complex filtering logic
+
+As you've just seen, `hx` command + globs is powerful. But this is only the beginning!
+
+This command will open every single file with a `.rs` extension in the current directory, recursively. So it will even open super nested files like `./some/directory/some/where/very/nested/main.rs`:
+
+```sh
+hx **/*.rs
+```
+
+Or as another example, we want to open a buffer in Helix for every file which contains the string `export default async function`, using the GNU utilities [`find`](https://www.gnu.org/software/findutils/manual/html_mono/find.html) and [`grep`](https://www.gnu.org/software/grep/) we can do just that:
+
+```sh
+hx $(find . -type f -exec grep -l \
+ "export default async function" {} +)
+```
+
+Let's disect the command:
+
+- `find .`: Search every file and directory in the current directory and any sub-directories.
+- `-type f`: Match only files, and not directories.
+- `-exec grep -l "export default async function" {}`: Runs the following command on each file: searches for the string `export default async function`, outputting the names of files that it matches.
+- `+` groups the files.
+- The entire command `find . -type f -exec grep -l "export default async function" {} +` above will output the names of every file matched file as follows:
+
+```
+./file-one.js
+./nested/another-file.js
+./somewhere/deep/nested/file.ts
+```
+
+Placing it inside of `$( ... )` uses [shell variable expansion](https://www.gnu.org/software/bash/manual/html_node/Shell-Parameter-Expansion.html) to effectively replace the entire command with the following identical output:
+
+```sh
+hx ./file-one.js \
+   ./nested/another-file.js \
+   ./somewhere/deep/nested/file.ts
+```
+
+Which then opens each of those files in Helix as a separate buffer.
+
+This functionality comes in handy when you need to complete a certain task on every single file matching a pattern, but the task cannot be automated as each file requires manual inspection.
+
+Finally, it's useful to know that Helix can open files at specific line numbers, aswell as column numbers. For example this command opens the `main.rs` file at line 122:
+
+```sh
+hx main.rs:122
+```
+
+The following will open on line 122, column 6:
+
+```sh
+hx main.rs:122:6kkkkk
+```
+
+## Viewing multiple buffers at once
+
+So far we explored having multiple files open in background, but we've only really seen a single buffer _at the same time_. We had to press commands like <kbd>gp</kbd> and <kbd>gn</kbd> to switch between them.
+
+It's possible to open multiple of them at once. For instance, if we have our `file1 file2 file3` opened:
+
+<T.OpenedWithWildcard />
+
+We can open a "split" by using <kbd>Ctrl</kbd> + <kbd>w</kbd> + <kbd>s</kbd>. Let's have three opened:
+
+<T.ThreeSplitsOpened />
+
+Our cursor is at the bottom split. To navigate to the upper split, we use motions which are similar to <kbd>h</kbd>, <kbd>j</kbd>, <kbd>k</kbd> and <kbd>l</kbd>:
+
+- <kbd>Ctrl</kbd> + <kbd>w</kbd> + <kbd>h</kbd> moves to buffer above
+- <kbd>Ctrl</kbd> + <kbd>w</kbd> + <kbd>j</kbd> moves to buffer below
+- <kbd>Ctrl</kbd> + <kbd>w</kbd> + <kbd>k</kbd> moves to buffer on the right
+- <kbd>Ctrl</kbd> + <kbd>w</kbd> + <kbd>l</kbd> moves to buffer on the left
+
+Each of these buffers has a dedicated statusline. The statusline of the currently active buffer will have its mode shown. For example, we are currently on the second buffer:
+
+<T.OnTheSecondBuffer />
+
+Inside of these buffers, we can use them just like normal. So we can switch between the different buffers with <kbd>gn</kbd> to go to the next one, and <kbd>gp</kbd> to go to the previous one.
+
+Let's make all of the buffers represent different files:
+
+<T.AllBuffersDifferent />
+
+Close them one-by-one by using <kbd>Ctrl</kbd> + <kbd>w</kbd> + <kbd>q</kbd>.
+
+## Opening splits from the command line
+
+The `--vsplit` and `--hsplit` flags can be used with Helix to open all of the files as either vertical or horizontal splits.
+
+Let's quit completely with `:xa` yet again, and run the following command:
+
+```sh
+hx --vsplit file1 file2
+```
+
+That command opened two files, but this time in a vertical split instead of horizontal split.
+
+<T.OpenedVSplitFiles />
+
+Let's close the buffer #2 with <kbd>Ctrl</kbd> + <kbd>w</kbd> + <kbd>q</kbd> to explore our next command.
+
+<kbd>ga</kbd> lets us _**g**oto_ the last _**a**ccessed_ file. That is, consider this chain of actions:
+
+- Open file `main.rs`
+- Open file `lib.rs`, this is our current buffer.
+- Pressing <kbd>ga</kbd> will open the buffer corresponding to the `main.rs`
+- Pressing <kbd>ga</kbd> again will open the `lib.rs` buffer.
+- Pressing <kbd>ga</kbd> again will open the `main.rs` buffer.
+- Pressing <kbd>ga</kbd> again will open the `lib.rs` buffer.
+- Pressing <kbd>ga</kbd> again will open the `main.rs` buffer.
+
+## Next steps
+
+Now that you know how to open multiple buffers and work with windows, let's explore the [various useful "pickers" available in Helix](/usage/pickers).
+
+You may also be interested in the [windows mode keymap reference](/reference/keymap#window-mode), which includes a list of all the keymappings available to manipulate buffers.

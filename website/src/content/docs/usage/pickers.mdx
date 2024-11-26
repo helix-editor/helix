@@ -87,56 +87,6 @@ You can open a picker that shows your currently open buffers with <kbd>Space</kb
 
 <T.BufferPicker />
 
-:::tip
-
-Alternatively, [you can use the bufferline](/configuration/editor#bufferline) to navigate across buffers as well as:
-
-- <kbd>gp</kbd> to go to the previous buffer
-- <kbd>gn</kbd> to go to the next buffer
-
-This is especially useful when Helix opens file in a glob. For instance, the following command:
-
-```sh
-hx **/*.rs
-```
-
-Will open every single file with a `.rs` extension as a buffer, and you can navigate between them using the two aformentioned commands.
-
-Or another example, open a buffer in Helix for every file which contains the string `export default async function`, using the GNU utilities [`find`](https://www.gnu.org/software/findutils/manual/html_mono/find.html) and [`grep`](https://www.gnu.org/software/grep/):
-
-```sh
-hx $(find . -type f -exec grep -l \
- "export default async function" {} +)
-```
-
-Let's disect the command:
-
-- `find .`: Search every file and directory in the current directory and any sub-directories.
-- `-type f`: Match only files, and not directories.
-- `-exec grep -l "export default async function" {}`: Runs the following command on each file: searches for the string `export default async function`, outputting the names of files that it matches.
-- `+` groups the files.
-- The entire command `find . -type f -exec grep -l "export default async function" {} +` above will output the names of every file matched file as follows:
-
-```
-./file-one.js
-./nested/another-file.js
-./somewhere/deep/nested/file.ts
-```
-
-Placing it inside of `$( ... )` uses [shell variable expansion](https://www.gnu.org/software/bash/manual/html_node/Shell-Parameter-Expansion.html) to effectively replace the entire command with the following identical output:
-
-```sh
-hx ./file-one.js \
-   ./nested/another-file.js \
-   ./somewhere/deep/nested/file.ts
-```
-
-Which then opens each of those files in Helix as a separate buffer.
-
-This functionality comes in handy when you need to complete a certain task on every single file matching a pattern, but the task cannot be automated as each file requires manual inspection.
-
-:::
-
 ## Usage
 
 Most pickers perform fuzzy matching using [fzf syntax](https://github.com/junegunn/fzf?tab=readme-ov-file#search-syntax).
