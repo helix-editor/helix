@@ -66,7 +66,8 @@ export default defineConfig({
         Head: "./src/components/Head.astro",
       },
       editLink: {
-        baseUrl: "https://github.com/helix-editor/helix/edit/main/website/",
+        baseUrl:
+          "https://github.com/NikitaRevenco/helix/tree/new-website/website",
       },
       sidebar: [
         {
