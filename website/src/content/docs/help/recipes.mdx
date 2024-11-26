@@ -126,6 +126,93 @@ The script will run automatically every time you start your computer.
 
 </Tabs>
 
+## Project-wide Search and Replace
+
+In helix, you can perform search-and-replace in a file by using <kbd>%</kbd> to select the whole file and then <kbd>s</kbd> to match a regex against the file, placing cursors on each match.
+
+But what if you want to perform a project-wide search and replace? Helix currently doesn't provide that functionality, but there is an external tool called [`scooter`](https://github.com/thomasschafer/scooter) which was created exactly for this purpose. Check it out!
+
+## Integrated Terminal
+
+At the moment, there's no way to open a terminal from within Helix. Despite that, many users prefer using <kbd>Ctrl</kbd> + <kbd>z</kbd> which puts the current process to sleep.
+
+When you run this command from inside Helix, it will be put to sleep. You'll be able to access the terminal again, browse files, and do everything else you usually do.
+
+Once you need to return back to Helix, you can type `fg` in the terminal which will bring Helix back from sleep and resume it exactly where you left it. You can use this to run background processes while using Helix, and other shell commands.
+
+:::tip[Use Ctrl + Z to toggle between Helix and Terminal]
+
+If you prefer using <kbd>Ctrl</kbd> + <kbd>z</kbd> to put Helix to sleep, and then use <kbd>Ctrl</kbd> + <kbd>z</kbd> to wake it up again instead of using `fg`, then you can!
+
+Depending on your shell, put a snippet of code into your terminal.
+
+<Tabs>
+
+<TabItem label="zsh">
+
+Add the following to your `~/.zshrc`:
+
+```sh
+# Allow Ctrl-z to toggle between suspend and resume
+function Resume {
+  fg
+  zle push-input
+  BUFFER=""
+  zle accept-line
+}
+zle -N Resume
+bindkey "^Z" Resume
+```
+
+</TabItem>
+
+<TabItem label="fish">
+
+Add the following to your fish config file:
+
+```sh
+bind \cz 'fg 2>/dev/null; commandline -f repaint'
+```
+
+This is possible since [fish v3.2.0](https://fishshell.com/docs/3.2/relnotes.html#new-or-improved-bindings).
+
+Source: [Binding CTRL-Z](https://github.com/fish-shell/fish-shell/issues/7152#issuecomment-663575001).
+
+</TabItem>
+
+<TabItem label="bash">
+
+Use [bash-preexec.sh](https://github.com/rcaloras/bash-preexec) to:
+
+- Disable the Ctrl-Z keybinding before printing the prompt
+- Enable the Ctrl-Z keybinding before executing a command
+
+This way, we are able to repurpose Ctrl-Z when in a Bash interactive prompt. But any command ran by Bash will still be able to suspend normally with <kbd>Ctrl</kbd> + <kbd>Z</kbd>.
+
+You might need to change this path to your bash-preexec.sh location.
+
+```sh
+source ~/.config/bash/bash-preexec.sh
+preexec () {
+  stty susp '^Z'
+}
+precmd () {
+  stty susp undef
+}
+
+# Bind Ctrl-Z to "fg %-" (resume next to last suspended job, or last if only one)
+# This binding works like this:
+# - If you have one job, Ctlr-Z will toggle in and out of it.
+# - If you have more  jobs, "Ctrl-Z Ctrl-Z" will toggle between the last two.
+bind '"\C-z":"fg %-\n"'
+```
+
+</TabItem>
+
+</Tabs>
+
+:::
+
 ## More intuitive x and X motions
 
 Some people prefer to remap <kbd>x</kbd> and <kbd>X</kbd> motions from the defaults:
