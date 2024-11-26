@@ -71,7 +71,7 @@ export default defineConfig({
       },
       sidebar: [
         {
-          label: "Getting Started",
+          label: "Start Here",
           items: ["getting-started/installation", "getting-started/basics"],
         },
         {
