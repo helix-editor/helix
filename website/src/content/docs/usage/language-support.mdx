@@ -18,7 +18,7 @@ Helix implements the [Language Server Protocol](https://microsoft.github.io/lang
 
 Historically, each individual editor had to implement a set of tools for each individual language.
 
-This was chaotic and meant that there was an extremely high cost to developming a text editor with features such as goto definition, intellisense, documentation on hover and diagnostics.
+This was chaotic and meant that there was an extremely high cost to developing a text editor with features such as goto definition, intellisense, documentation on hover and diagnostics.
 
 Thankfully, with the introduction of the LSP everything changed -- as it standardized a means of communications between editors and languages.
 
@@ -28,7 +28,7 @@ Third parties will each create a _language server_, which provides functionaliti
 
 The implementor of the LSP communicates with all of those language servers to provide desired editor functionality.
 
-As a bonus, this significantly reduced the barries of entry to have great editor tooling per-language. Do you use some obscure language that no one has heard about since the 90s at your work? Consider [implementing a language server](https://tamerlan.dev/how-to-build-a-language-server-with-go/) for it to make your life easier.
+As a bonus, this significantly reduced the barrier of entry to have great editor tooling per-language. Do you use some obscure language that no one has heard about since the 90s at your work? Consider [implementing a language server](https://tamerlan.dev/how-to-build-a-language-server-with-go/) for it to make your life easier.
 
 </details>
 
@@ -90,7 +90,7 @@ Language support is useful, but over the years most people have stopped manually
 
 Formatters take your file as input, and adjust _insignificant whitespace_ to conform it to certain standards. Examples of formatters include [biome](https://github.com/biomejs/biome) and [rustfmt](https://github.com/rust-lang/rustfmt).
 
-Let's configure a formatter for Go which will perform its job everytime we save the file. One of the popular formatters for Go is called [`gofumpt`](https://github.com/mvdan/gofumpt), so we'll _go_ with it.
+Let's configure a formatter for Go which will perform its job every time we save the file. One of the popular formatters for Go is called [`gofumpt`](https://github.com/mvdan/gofumpt), so we'll _go_ with it.
 
 Install `gofumpt` with your operating system's package manager, similar to how you've installed the language server (`gopls`) previously.
 
@@ -125,7 +125,7 @@ A list of other LSP-related keymappings are available under [goto mode](/referen
 
 ## Next steps
 
-- Learn how to work with multiple files in Helix sequentially aswell as ways to open multiple files from the command line.
+- Learn how to work with multiple files in Helix sequentially as well as ways to open multiple files from the command line.
 - See the [Information about default configurations for each language](/help/language-defaults#language-support)
 - Setup language servers for your specific language, with information available at [language server configurations per language](/reference/language-servers).
 - To configure formatters for your language, see [formatter configurations per language](/reference/formatters).
@@ -137,7 +137,7 @@ A list of other LSP-related keymappings are available under [goto mode](/referen
 
 If you want to install a language server / formatter which Helix doesn't configure, you've looked at [formatters reference](/reference/formatters) and [language servers reference](/configuration/languages) but found nothing that helps you, a decent next step is to use GitHub's search feature.
 
-In all likelyhood, _someone_ has probably created the same setup that you want to have in Helix. A [quick search](https://github.com/search?q=path%3Ahelix%2Flanguages.toml&type=code) on GitHub with the query of `path:helix/languages.toml` yields thousands of results.
+In all likelihood, _someone_ has probably created the same setup that you want to have in Helix. A [quick search](https://github.com/search?q=path%3Ahelix%2Flanguages.toml&type=code) on GitHub with the query of `path:helix/languages.toml` yields thousands of results.
 
 If you want to install a formatter like `<whatever>` and feel like you're stuck, then we recommend searching for e.g. `path:helix/languages.toml <whatever>` and looking at the results to find out if any of the code samples you find will help you. In all likelihood, you'll succeed!
 

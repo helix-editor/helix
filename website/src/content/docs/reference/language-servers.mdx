@@ -1816,17 +1816,13 @@ Non language-specific Language Server Protocols, non-coding LSPs, and others.
 
 ### Harper-ls
 
-[Harper](https://github.com/elijah-potter/harper/) is an English grammer and
-spelling checker for comments and text.\
-Installing:
+[Harper](https://github.com/elijah-potter/harper/) is an English grammar and spelling checker for comments and text. Installing:
 
 ```sh
 cargo install harper-ls --locked
 ```
 
-Harper will need to be manually added to each language you'd like check's
-language server list.\
-Usage:
+Harper will need to be manually added to each language you'd like check's language server list. Usage:
 
 ```toml
 [language-server.harper-ls]
@@ -1834,8 +1830,7 @@ command = "harper-ls"
 args = ["--stdio"]
 ```
 
-Disabling specific
-[linters](https://github.com/elijah-potter/harper/blob/master/harper-ls/README.md#configuration).
+Disabling specific [linters](https://github.com/elijah-potter/harper/blob/master/harper-ls/README.md#configuration).
 
 ```toml
 [language-server.harper-ls.config.harper-ls.linters]

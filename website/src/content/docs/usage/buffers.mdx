@@ -120,7 +120,7 @@ hx $(find . -type f -exec grep -l \
  "export default async function" {} +)
 ```
 
-Let's disect the command:
+Let's dissect the command:
 
 - `find .`: Search every file and directory in the current directory and any sub-directories.
 - `-type f`: Match only files, and not directories.
@@ -189,7 +189,7 @@ We can do that by matching "a sequence of non-whitespace characters at the begin
 
 - `^` means "at the beginning"
 - `\S` means "a non-whitespace character"
-- `+` means "match at least one occurence of"
+- `+` means "match at least one occurrence of"
 
 So this regex will extract the following from the above example:
 
