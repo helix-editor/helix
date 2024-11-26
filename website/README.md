@@ -2,7 +2,7 @@
 
 [![Built with Starlight](https://astro.badg.es/v2/built-with-starlight/tiny.svg)](https://starlight.astro.build)
 
-The helix documentation.
+The Helix documentation.
 
 [Contributing instructions](https://helix-editor.vercel.app/contributing/this-site).
 

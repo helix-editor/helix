@@ -13,7 +13,7 @@ Create a new text file and open it with Helix by running `hx file.txt`. This is 
 
 <T.OpeningFile />
 
-Notice the `NOR` in the bottom-left corner, this indicates that you are currently in Normal mode. In this mode, typing letters like <kbd>e</kbd> and <kbd>n</kbd> won't insert them into the text, but rather have specific _commands_ which we will explore later.
+Notice the `NOR` in the bottom-left corner, this indicates that you are currently in Normal mode. In this mode, typing letters like <kbd>e</kbd> and <kbd>n</kbd> won't insert them as text, but rather have specific _commands_ which we will explore later.
 
 To actually insert some text, press <kbd>i</kbd>, which is the command to get into Insert mode, indicated by the `INS` in the bottom-left corner. In this mode, the letters you type will be inserted directly into the document.
 
@@ -25,7 +25,7 @@ To get back into Normal mode press <kbd>Esc</kbd>. This will change the color of
 
 ### Movement
 
-To move your cursor you could use arrow keys, both in normal and insert modes:
+To move your cursor you could use arrow keys, both in Normal and Insert modes:
 
 - <kbd>↑</kbd> move cursor up
 - <kbd>↓</kbd> move cursor down
@@ -65,7 +65,7 @@ Spam <kbd>p</kbd> a few times to create several lines.
 
 <T.SeveralLines />
 
-Now you can try using the <kbd>h</kbd>, <kbd>j</kbd>, <kbd>k</kbd> and <kbd>l</kbd> motions traverse the text!
+Now you can try using the <kbd>h</kbd>, <kbd>j</kbd>, <kbd>k</kbd> and <kbd>l</kbd> motions to traverse the text!
 
 ### Word-based Movement
 
@@ -130,13 +130,13 @@ Now we have something like this:
 
 ### Undo and Redo
 
-What if we made a mistake, and want to go back? The <kbd>u</kbd> command will _**u**ndo_ our most recent action. It's similar to `Ctrl-z` in other editors.
+What if we made a mistake, and want to go back? The <kbd>u</kbd> command will _**u**ndo_ our most recent action. It's similar to <kbd>Ctrl</kbd> + <kbd>z</kbd> in other editors.
 
 Try pressing down <kbd>u</kbd> a few times to get to our previous state, before we made all those modifications:
 
 <T.PressedUAFewTimes />
 
-<kbd>U</kbd> is similar to <kbd>Ctrl</kbd> + <kbd>Z</kbd> in other editors. It will _undo the last undo_. It's the inverse of <kbd>u</kbd>.
+<kbd>U</kbd> is similar to <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>z</kbd> in other editors. It will _undo the last undo_. It's the inverse of <kbd>u</kbd>.
 
 Press <kbd>U</kbd> until we get back to our most recent state:
 
@@ -152,8 +152,8 @@ Feel free to make modifications to your file using the commands we have learned 
 - <kbd>x</kbd> selects the entire line.
 - <kbd>y</kbd> yanks the selection.
 - <kbd>p</kbd> pastes the recently copied selection.
-- <kbd>e</kbd> moves to the end of the current word.
-- <kbd>b</kbd> moves to the beginning of the current word.
+- <kbd>e</kbd> selects and moves to the end of the current word.
+- <kbd>b</kbd> selects and moves to the beginning of the current word.
 - <kbd>;</kbd> removes the extra selection.
 - <kbd>d</kbd> deletes the current selection, without exiting Normal mode.
 - <kbd>c</kbd> changes the current selection, by deleting it and entering Insert mode.
@@ -208,8 +208,8 @@ To search for a word, use <kbd>/</kbd> command. Type `will` which is going to hi
 
 Since there are several `will`s in the text, you can cycle between them:
 
-- <kbd>n</kbd> cycles to the next search.
-- <kbd>N</kbd> cycles to the previous search.
+- <kbd>n</kbd> cycles to the next match.
+- <kbd>N</kbd> cycles to the previous match.
 
 ### More ways to enter Insert Mode
 
@@ -217,7 +217,7 @@ Select the `clouds` word using <kbd>gw</kbd>. If you press <kbd>i</kbd>, you wil
 
 - <kbd>a</kbd> for _**append**_ go into insert mode at the end of the selection
 - <kbd>I</kbd> go into insert mode at the beginning of the current line
-- <kbd>A</kbd> go into insert mode at the end of the current line
+- <kbd>A</kbd> to append at the end of the current line
 - <kbd>o</kbd> add a newline below and go into insert mode
 - <kbd>O</kbd> add a newline above and go into insert mode
 
@@ -237,14 +237,14 @@ On linux, you may need a clipboard provider like [xclip](https://github.com/astr
 
 :::
 
-Paste the following content into the file with <kbd>"+p</kbd>:
+1. Paste the following content into the file with <kbd>"+p</kbd>:
 
-```
-The plates will
-and the clouds will
-The sun will
-and the moon will
-```
+   ```
+   The plates will
+   and the clouds will
+   The sun will
+   and the moon will
+   ```
 
 1. Navigate to the last line by using <kbd>ge</kbd> for _**g**oto end_.
 
@@ -278,7 +278,7 @@ Take note of the fact that when we press <kbd>p</kbd>, it pastes the contents of
 
 ### Move to characters
 
-You can also search for individual characters by using <kbd>t</kbd>, which stands for _**t**o_.
+You can also search for individual characters by using <kbd>t</kbd>, which stands for _**t**ill_.
 
 1. Copy the text below
 

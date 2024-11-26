@@ -10,7 +10,7 @@ We'll explore both of these features on this page.
 Text Objects are a way to manipulate a piece of text in a structured way. They allow you to refer to blocks of text based on their purpose and perform powerful actions. For instance:
 
 - Select inside of a function.
-- Move to the next argument and seletc it.
+- Move to the next argument and select it.
 - Select the next changed text tracked by git.
 - Select the previous type.
 
@@ -18,11 +18,11 @@ For example, with the following Python file:
 
 <T.InitialPythonFile />
 
-Move your cursor in the `__init__` method, and press <kbd>maf</kbd> for _**m**anipulate **a**round **f**unction_ to select the entire method:
+Move your cursor in the `__init__` method, and press <kbd>maf</kbd> for _**m**atch **a**round **f**unction_ to select the entire method:
 
 <T.SelectedInitMethod />
 
-Or <kbd>mif</kbd> for _**m**anipulate **i**nside **f**unction_ to select the body of the method:
+Or <kbd>mif</kbd> for _**m**atch **i**nside **f**unction_ to select the body of the method:
 
 <T.SelectedInsideInitMethod />
 
@@ -32,8 +32,8 @@ Additionally, you can move between most text objects. For instance, <kbd>]f</kbd
 
 The full syntax is:
 
-- <kbd>mi</kbd> + `<textobject>` to _**m**anipulate **i**nside_ a textobject. Highlight a smaller region of the text object, for example the body of a function.
-- <kbd>ma</kbd> + `<textobject>` to _**m**anipulate **a**round_ a textobject. Selects the entire text object, including surrounding whitespace.
+- <kbd>mi</kbd> + `<textobject>` to _**m**atch **i**nside_ a textobject. Highlight a smaller region of the text object, for example the body of a function.
+- <kbd>ma</kbd> + `<textobject>` to _**m**atch **a**round_ a textobject. Selects the entire text object, including surrounding whitespace.
 - <kbd>]</kbd> + `<textobject>` to go to the next instance of the textobject.
 - <kbd>[</kbd> + `<textobject>` to go to the previous instance of the textobject.
 
@@ -48,7 +48,7 @@ The full syntax is:
 
 ##### word
 
-A word is consists only of alphanumeric characters and underscores, so `a-Z`, `0-9` and `_`.
+A word consists only of alphanumeric characters and underscores, so `a-Z`, `0-9` and `_`.
 
 For instance, take the following file, with two cursors:
 
@@ -58,11 +58,11 @@ For instance, take the following file, with two cursors:
 pri*ntln!("Hello, wo*rld");
 ```
 
-- Selecting inside word with <kbd>miw</kbd>:
+- Matching inside word with <kbd>miw</kbd>:
 
 <T.SelectedInsideWord />
 
-- Selecting around word with <kbd>maw</kbd>:
+- Matching around word with <kbd>maw</kbd>:
 
 <T.SelectedAroundWord />
 
@@ -76,11 +76,11 @@ Consider this file again:
 
 <T.RustInitialState />
 
-- Selecting inside WORD with <kbd>miW</kbd>:
+- Matching inside WORD with <kbd>miW</kbd>:
 
 <T.SelectedInsideBigWord />
 
-- Selecting around WORD with <kbd>maW</kbd>:
+- Matching around WORD with <kbd>maW</kbd>:
 
 <T.SelectedAroundBigWord />
 
@@ -92,11 +92,11 @@ A paragraph is delimited by two newlines, as well as start and end of files. For
 
 <T.MarkdownFile />
 
-- Select inside paragarph with <kbd>mip</kbd>:
+- Match inside paragarph with <kbd>mip</kbd>:
 
 <T.MarkdownFileSelectParagraphs />
 
-- Select around paragraph with <kbd>map</kbd>:
+- Match around paragraph with <kbd>map</kbd>:
 
 <T.MarkdownFileSelectAroundParagraphs />
 
@@ -115,7 +115,7 @@ Pressing <kbd>mi(</kbd> will select:
 
 <T.TypescriptFileInsideParentheses />
 
-While <kbd>mi)</kbd> will select:
+While <kbd>ma(</kbd> will select:
 
 <T.TypescriptFileAroundParentheses />
 

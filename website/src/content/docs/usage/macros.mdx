@@ -78,13 +78,15 @@ Let's consider the following file, which includes some repetition:
 
 <T.PythonBeginningState />
 
-And we want every variable to be a maximum of 3 characters, as well as the functions have to be static methods on a class. The final outcome will look like this:
+And we want every variable to be a maximum of 3 characters, and functions to be static methods on a class.
+
+The final outcome will look like this:
 
 <T.PythonFinalState />
 
 ---
 
-1. First, let's rename each of the functions from `calculate_whatever` to `get_whatever`.
+1. First, let's rename each of the functions from `calculate_*` to `get_*`.
 
    The easiest way to do search-and-replace in Helix is to first select the entire file with <kbd>%</kbd>.
 
@@ -235,9 +237,7 @@ And we want every variable to be a maximum of 3 characters, as well as the funct
 
    <T.IndentAllBy1Level />
 
-1. Press <kbd>i</kbd> to go into insert mode at the very beginning of the selection, <kbd>Enter</kbd> to add a newline.
-
-Use <kbd>Esc</kbd> to enter normal mode and then <kbd>k</kbd> to go to the line above, <kbd>I</kbd> to enter Insert mode.
+1. Now, press <kbd>O</kbd> to create a newline above and enter Insert mode.
 
 1. Finally, type `class Calculator:` and <kbd>Esc</kbd> to go back to normal mode.
 
