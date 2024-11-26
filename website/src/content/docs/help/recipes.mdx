@@ -29,7 +29,7 @@ Explanation
 1. `write-all`: save all buffers so that the changes can be shown in lazygit and commited right away
 2. `new`: create new empty buffer
 3. `insert-output lazygit`: runs the `lazygit` command and inserts it's output into the new buffer
-4. when you exit lazygit, `buffer-close!` will kill the previously empty buffer and send you pack to where you were previously
+4. When you exit `lazygit`, `buffer-close!` will kill the previously empty buffer, sending you back to where you were previously.
 5. `redraw` is necessary to re-render the UI to show the buffers
 6. `reload-all` because if e.g. you commit everything, helix will still show the symbols indicating that lines were changed / deleted on the left of the line numbers. This will prevent that
 
