@@ -137,7 +137,9 @@ port install helix
 
 Windows Package Manager `winget` command-line tool is by default available on Windows 11 and modern versions of Windows 10 as a part of the App Installer.
 
-You can get App Installer from the [Microsoft Store](https://apps.microsoft.com/detail/9nblggh4nns1?rtc=1&hl=en-gb&gl=GB#activetab=pivot:overviewtab). If it's already installed, make sure it is updated with the latest version.
+You can get App Installer from the [Microsoft Store](https://apps.microsoft.com/detail/9nblggh4nns1?rtc=1&hl=en-gb&gl=GB#activetab=pivot:overviewtab).
+
+If it's already installed, make sure it is updated with the latest version.
 
 ```sh
 winget install Helix.Helix
@@ -175,7 +177,24 @@ pacman -S mingw-w64-ucrt-x86_64-helix
 
 ## Pre-built binaries
 
-Download pre-built binaries from the [GitHub Releases page](https://github.com/helix-editor/helix/releases). Add the `hx` binary to your system's `$PATH` to use it from the command line, and copy the `runtime` directory into the config directory (for example `~/.config/helix/runtime` on Linux and macOS). The runtime location can be overriden via the HELIX_RUNTIME environment variable.
+Download pre-built binaries from the [GitHub Releases page](https://github.com/helix-editor/helix/releases).
+
+<Steps>
+
+1. Add the `hx` binary to your system's `$PATH` to use it from the command line.
+
+2. Copy the `runtime` directory into the config directory:
+
+   - `~/.config/helix/runtime` on Linux and MacOS
+   - `%appdata%\helix\runtime` on Windows
+
+</Steps>
+
+:::tip
+
+You can override the runtime location with the `HELIX_RUNTIME` environment variable.
+
+:::
 
 ## Building from source
 
