@@ -1,5 +1,5 @@
 ---
-title: Multiple Cursors
+title: Multiple Cursors and Macros
 description: Learn how to use powerful multiple cursor functionality in Helix
 ---
 
@@ -7,133 +7,148 @@ import { T } from "@/termshots/multiple-cursors/index.astro"
 
 One of the most powerful features Helix has is multiple cursor support in combination with macros.
 
-It allows you to perform complex refactors which can be broken down to a series of steps, as well as seacrh-and-replace.
+It allows you to perform complex refactors which can be broken down to a series of steps, as well as search-and-replace.
 
 The best way to learn is with examples, and we'll provide you with many examples in this page.
 
-## Introduction
+## Multiple Cursors
 
-We have some HTML which has repeating classes, and we want to refactor it. From this:
+We have some HTML which has repeating classes:
 
 <T.HtmlBeginningState />
 
-To this:
+And we want to change each `px-3` class to `px-4`, aswell as each `font-bold` class to `font-thin`:
 
 <T.HtmlFinalState />
 
-### Basic Example
+### Using multiple cursors
 
-First, place your cursor on the first `3`:
+1. Place your cursor on the first `3`:
 
-<T.CursorOnFirst3 />
+   <T.CursorOnFirst3 />
 
-Next, press <kbd>C</kbd> which creates a cursor below, until you have a cursor on each individual `3`:
+1. Press <kbd>C</kbd> which creates a cursor below, until you have a cursor on each individual `3`:
 
-<T.CursorOnEach3 />
+   <T.CursorOnEach3 />
 
-Now, just press `r` which will replace the character, and then `4` to replace each of the `3`s with a `4`.
+1. Press `r` which will replace the character, and then `4` to replace each of the `3`s with a `4`.
 
-<T.Each3ReplacedWith4 />
+   <T.Each3ReplacedWith4 />
 
-Our goal is to change the class `font-bold` to `font-thin`, which you can do by pressing <kbd>bbb</kbd> until each `bold` is highlighted:
+1. Our goal is to change the class `font-bold` to `font-thin`, which you can do by pressing <kbd>bbb</kbd> until each `bold` is highlighted:
 
-<T.EachBoldIsHighlighted />
+   <T.EachBoldIsHighlighted />
 
-Press <kbd>c</kbd> to change, and then type `thin ` and <kbd>Esc</kbd> to return back to normal mode.
+1. Press <kbd>c</kbd> to change, and then type `thin` and <kbd>Esc</kbd> to return back to normal mode.
 
-<T.EachBoldChangedToThin />
+   <T.EachBoldChangedToThin />
 
-Success! Let's see another way to do the same thing.
+Let's see another way to do the same thing.
 
-### Another Example
+### Same example, different strategy
 
-From the following state:
+1. From the following state:
 
-<T.HtmlBeginningState />
+   <T.HtmlBeginningState />
 
-Press <kbd>gw</kbd> to show two letters at the start of each word:
+1. Press <kbd>gw</kbd> to show two letters at the start of each word:
 
-<T.UsedGotoWord />
+   <T.UsedGotoWord />
 
-Navigate to the first instance of the `bold` word by pressing the 2-character key combination, which in our case that would be <kbd>ac</kbd>:
+1. Navigate to the first instance of the `bold` word by pressing the 2-character key combination, which in our case that would be <kbd>ac</kbd>:
 
-<T.SelectedFirstBoldWithGw />
+   <T.SelectedFirstBoldWithGw />
 
-The entire `bold` word is highlighted now. Press <kbd>C</kbd> again 3 times until you select each instance of `bold`:
+1. The entire `bold` word is highlighted now.
 
-<T.EachBoldIsHighlightedAgain />
+   Press <kbd>C</kbd> again 3 times until you select each instance of `bold`:
 
-As you see, the visual selection gets transferred over! Again, change the contents of each selection by using <kbd>c</kbd> to delete and enter insert mode -- then type `thin` and <kbd>Esc</kbd> to return back to normal mode.
+   <T.EachBoldIsHighlightedAgain />
 
-<T.EachBoldChangedToThinAgain />
+1. As you see, the visual selection gets transferred over!
 
-Press <kbd>f</kbd> + <kbd>3</kbd> to find the next 3:
+   Change the contents of each selection by using <kbd>c</kbd> to delete and enter insert mode -- then type `thin` and <kbd>Esc</kbd> to return back to normal mode.
 
-<T.EntirePxClassHighlighted />
+   <T.EachBoldChangedToThinAgain />
 
-We could delete the entire `px-3` class if we wanted, but instead we'll press <kbd>a</kbd> to append at the end of each selection, which puts us into insert mode.
+1. Press <kbd>f</kbd> + <kbd>3</kbd> to find the next 3:
 
-<T.InsertModeAfterEachPxClass />
+   <T.EntirePxClassHighlighted />
 
-Delete the 3 by pressing backspace, then add a 4, exiting back to insert mode with <kbd>Esc</kbd>:
+1. We could delete the entire `px-3` class if we wanted.
 
-<T.FinalTransformationAgain />
+   Instead press <kbd>a</kbd> to append at the end of each selection, which puts us into insert mode.
 
-### With macros
+   <T.InsertModeAfterEachPxClass />
 
-Macros also allow you to repeat certain motions, and they can be used in combination with multiple cursor!
+1. Delete the 3 by pressing backspace, then add a 4, exiting back to insert mode with <kbd>Esc</kbd>:
 
-Place your cursor on the first line, after the dash:
+   <T.FinalTransformationAgain />
 
-<T.CursorAfterDash />
-
-Use <kbd>Q</kbd> to begin recording a macro, and then press <kbd>e</kbd> to select the full `thin` word:
-
-<T.RecordingMacroBegins />
-
-Change it to `bold` using <kbd>c</kbd> to delete and insert mode, then type `bold` and <kbd>Esc</kbd> to go back to normal mode:
-
-<T.ChangedThinToBoldMacro />
-
-Now <kbd>f</kbd> (find) + <kbd>3</kbd> (find to next 3) + <kbd>;</kbd> (collapse selection to a single cursor) to select the `3`:
-
-<T.SelectedFirst3 />
-
-And replace it with a `4` using <kbd>r</kbd> to enter replace mode which waits for the next character, and type `4`:
-
-<T.Replaced3With4 />
-
-Press <kbd>Q</kbd> to stop recording the macro.
-
-<T.FinishedRecordingMacro />
-
-Okay, so the hard part is done! Now go back to the `-` you started from by using <kbd>F</kbd> + <kbd>-</kbd> which finds the previous `-`, repeat this motion by using <kbd>Alt</kbd> + <kbd>.</kbd> and then collapse selection with <kbd>;</kbd>:
-
-<T.BackToTheBeginning />
-
-Hit <kbd>j</kbd> to go down a line and create 2 more cursors on each `-` by pressing <kbd>C</kbd> 2 more times:
-
-<T.Created3MoreCursors />
-
-And just press <kbd>q</kbd> (note the lowercase q) to repeat the motions you've recorded earlier.
-
-<T.FinalStateWithMacros />
+These two examples show that often there are multiple ways to accomplish the same refactoring in Helix. Over time, you'll be able to choose which way to use based on the circumstances.
 
 ## Macros
 
-Macros are a way to record your keystrokes and then replay them whenever you want to. By default, when you press <kbd>Q</kbd> a macro will begin recording into the register `Q`.
+Macros are a way to record your keystrokes and then replay them whenever you want to.
 
-When you press <kbd>q</kbd>, it will replay the macro from register `Q`. But you can have a lot of macros at your disposal, ready to use whenever.
+Basic keymaps:
 
-For example, to record a macro into a specific register, press <kbd>"</kbd> to select the register, then a character which will be the register where your macro is stored, and then <kbd>Q</kbd>. So for example:
+- <kbd>Q</kbd> will begin recording a macro into the [register](/getting-started/basics#registers) `Q`.
+- <kbd>q</kbd> replays the macro from register `Q`.
+
+You can have a lot of macros at your disposal in various registers, ready to use whenever. You use registers with macros just like usual.
+
+For example, to record a macro into a specific register, press <kbd>"</kbd> to select the register, then a character which will be the register where your macro is stored, and then <kbd>Q</kbd>. For instance:
 
 - <kbd>"</kbd> + <kbd>e</kbd> + <kbd>Q</kbd> to record a macro into the `e` register.
 
-To stop recording, just pressing `Q` again is enough.
+To stop recording, press `Q` again.
 
-Replay the macro by using register + <kbd>q</kbd>. So continuing our previous example:
+Replay the macro by using register + <kbd>q</kbd>. For example:
 
 - <kbd>"</kbd> + <kbd>e</kbd> + <kbd>q</kbd>
+
+### Using macros
+
+1. Place your cursor on the first line, after the dash:
+
+   <T.CursorAfterDash />
+
+1. Use <kbd>Q</kbd> to begin recording a macro, and press <kbd>e</kbd> to select the full `thin` word:
+
+   <T.RecordingMacroBegins />
+
+1. Change it to `bold` using <kbd>c</kbd> to delete and insert mode, then type `bold` and <kbd>Esc</kbd> to go back to normal mode:
+
+   <T.ChangedThinToBoldMacro />
+
+1. Use <kbd>f</kbd> + <kbd>3</kbd> to find to next 3, and then <kbd>;</kbd> to collapse selection to a single cursor in order to select the `3`:
+
+   <T.SelectedFirst3 />
+
+1. Replace it with a `4` using <kbd>r</kbd> to enter replace mode which waits for the next character, and type `4`:
+
+   <T.Replaced3With4 />
+
+1. Press <kbd>Q</kbd> to stop recording the macro.
+
+   <T.FinishedRecordingMacro />
+
+1. Okay, so the hard part is done!
+
+   Now go back to the `-` you started from by using <kbd>F</kbd> + <kbd>-</kbd> which finds the previous `-`.
+
+   Repeat this motion by using <kbd>Alt</kbd> + <kbd>.</kbd> and then collapse selection with <kbd>;</kbd>:
+
+   <T.BackToTheBeginning />
+
+1. Hit <kbd>j</kbd> to go down a line and create 2 more cursors on each `-` by pressing <kbd>C</kbd> 2 more times:
+
+   <T.Created3MoreCursors />
+
+1. And just press <kbd>q</kbd> (note the lowercase q) to repeat the motions you've recorded earlier.
+
+   <T.FinalStateWithMacros />
 
 ## Search and Select
 
@@ -143,144 +158,177 @@ Let's consider the following file, which includes some repetition:
 
 <T.PythonBeginningState />
 
-And we want every variable to be a maximum of 3 characters, as well as the functions have to be static methods on a class.
+And we want every variable to be a maximum of 3 characters, as well as the functions have to be static methods on a class. The final outcome will look like this:
 
 <T.PythonFinalState />
 
 ### Search and Replace
 
-First, let's rename each of the functions from `calculate_whatever` to `get_whatever`. The easiest way to do search-and-replace in Helix is to first select the entire file with <kbd>%</kbd>.
+1. First, let's rename each of the functions from `calculate_whatever` to `get_whatever`.
 
-<T.SelectedFullPythonFile />
+   The easiest way to do search-and-replace in Helix is to first select the entire file with <kbd>%</kbd>.
 
-Next, we're going to use <kbd>s</kbd> which allows us to _**s**elect_ inside of our selection. Basically, it takes an input and will search for that input and create a cursor everywhere it finds it.
+   <T.SelectedFullPythonFile />
 
-<T.UsedSToSelectInsideSelection />
+1. We're going to use <kbd>s</kbd> which allows us to _**s**elect_ inside of our selection.
 
-Type the following: `calculate` and then <kbd>Enter</kbd>.
+   Basically, it takes an input and will search for that input and create a cursor everywhere it finds it.
 
-<T.TypedCalculate />
+   <T.UsedSToSelectInsideSelection />
 
-As you see, it created a selection and a cursor on every single instance of the `calculate` word.
+1. Type the following: `calculate` and then <kbd>Enter</kbd>.
 
-Awesome, we can now just press <kbd>c</kbd> to delete the contents of each selection, which also places us into insert mode, and then type `get` and <kbd>Esc</kbd> to go back to normal more:
+   <T.TypedCalculate />
 
-<T.ReplacedEachCalculateWithGet />
+   As you see, it created a selection and a cursor on every single instance of the `calculate` word.
 
-Now we have a cursor on each function definition, this is perfect and we shouldn't lose this opportunity (e.g. by instinctively using <kbd>,</kbd> to collapse each cursor into a single one)
+   We can now just press <kbd>c</kbd> to delete the contents of each selection, which also places us into insert mode, and type `get` then <kbd>Esc</kbd> to go back to normal more:
 
-Instead, we're going to create an empty line above each cursor by pressing <kbd>O</kbd> and then writing `@staticmethod`, finally going back to normal mode with <kbd>Esc</kbd>:
+   <T.ReplacedEachCalculateWithGet />
 
-<T.AddedStaticMethodIndicator />
+1. Now that we have a cursor on each function definition, lets create an empty line above each cursor by pressing <kbd>O</kbd> and then writing `@staticmethod`, finally going back to normal mode with <kbd>Esc</kbd>:
 
-Now our goal is to rename the parameters to be 3 letters instead. To do this, we're going to first select the function definition as well as the first line of the body of each function, with <kbd>j</kbd> and then by using <kbd>x</kbd> twice:
+   <T.AddedStaticMethodIndicator />
 
-<T.SelectedFirstTwoLinesOfEachFunction />
+1. Our goal is to rename the parameters to be 3 letters.
 
-Let's use <kbd>s</kbd> now which will ask us for a prompt. This time, we won't just enter a string but we'll enter a very small regex: `\w+`. This is going to select every word:
+   To do this, we're going to first select the function definition as well as the first line of the body of each function, with <kbd>j</kbd> and then by using <kbd>x</kbd> twice:
 
-<T.SelectedEveryWord />
+   <T.SelectedFirstTwoLinesOfEachFunction />
 
-This selected a few extra words than we wanted, but that's okay! One of the selections is the "primary" selection which we can tell by the `2:3` in the left right corner, which means that our primary selection is on line 2 character 3.
+1. Let's use <kbd>s</kbd> now which will ask us for a prompt.
 
-We can make the next selection our primary selection by using <kbd>)</kbd>, which is seen by the `2:12` in the counter, meaning that our primary selection is at the `get_area` method:
+   This time, we won't just enter a string but we'll enter a very small regex: `\w+`, which selects every word:
 
-<T.NextSelectionPrimary />
+   <T.SelectedEveryWord />
 
-And then we can go back to the previous one with <kbd>(</kbd>:
+1. This selected a few extra words than we wanted, but that's okay! One of the selections is the "primary" selection which we can tell by the `2:3` in the left right corner, which means that our primary selection is on line 2 character 3.
 
-<T.BackToPreviousSelection />
+   We can make the next selection our primary selection by using <kbd>)</kbd>, which is seen by the `2:12` in the counter, meaning that our primary selection is at the `get_area` method:
 
-By pressing <kbd>Alt</kbd> + <kbd>,</kbd>, we can remove the primary selection, so that `def` is not selected:
+   <T.NextSelectionPrimary />
 
-<T.RemovedPrimarySelection />
+   We can go back to the previous one with <kbd>(</kbd>:
 
-Removing that selection automatically made `get_area` the next selected region. We don't want this one either, so we'll remove it again with <kbd>Alt</kbd> + <kbd>,</kbd>:
+   <T.BackToPreviousSelection />
 
-<T.RemovedPrimarySelectionAgain />
+1. By pressing <kbd>Alt</kbd> + <kbd>,</kbd>, we can remove the primary selection, so that `def` is not selected:
 
-Press <kbd>)</kbd> a few times until you reach the next selection you want to remove. If you go over by one, just press <kbd>(</kbd> to make the previous selection primary.
+   <T.RemovedPrimarySelection />
 
-Let's repeat this step until we _only_ have the words `length`, `width` and `height` selected:
+1. Removing that selection automatically made `get_area` the next selected region. We don't want this one either, so we'll remove it again with <kbd>Alt</kbd> + <kbd>,</kbd>:
 
-<T.OnlyParamsSelected />
+   <T.RemovedPrimarySelectionAgain />
 
-At this point, we can begin our removal process. Go to the beginning of each word by pressing <kbd>b</kbd>, and then press <kbd>l</kbd> a couple of times until you are on the 4th character of each word:
+   Press <kbd>)</kbd> a few times until you reach the next selection you want to remove. If you go over by one, just press <kbd>(</kbd> to make the previous selection primary.
 
-<T.OnFourthCharOfEachWord />
+1. Let's repeat the previous step until we _only_ have the words `length`, `width` and `height` selected:
 
-Now, we're going to press <kbd>e</kbd> to go to the end of each word which will highlight it:
+   <T.OnlyParamsSelected />
 
-<T.SelectEndOfEachParam />
+1. At this point, we can begin our removal process.
 
-And finally press <kbd>d</kbd> to delete it.
+   Go to the beginning of each word by pressing <kbd>b</kbd>, and then press <kbd>l</kbd> a couple of times until you are on the 4th character of each word:
 
-<T.DeletedEndOfEachWord />
+   <T.OnFourthCharOfEachWord />
 
-Great we're almost there! Let's actually undo this step so that we can look at an alternative way of accomplishing this thing. Press `u` just once which will undo our replacement:
+1. Let's press <kbd>e</kbd> to go to the end of each word which will highlight it:
 
-<T.UndidStep />
+   <T.SelectEndOfEachParam />
 
-An alternative way to accomplish the same is to simply select the entire file again with <kbd>%</kbd>:
+1. Press <kbd>d</kbd> to delete it.
 
-<T.SelectedEntireFileAgain />
+   <T.DeletedEndOfEachWord />
 
-Now, with the power of <kbd>s</kbd> and Regex, we can select the `length`, `width` and `height` words by chaining them together with the "OR" operator. So for instance, type the following: `length|width|height`:
+1. Great we're almost there!
 
-<T.SelectedAllLengthWidthHeight />
+   Let's actually undo this step so that we can look at an alternative way of accomplishing the same result.
 
-This is certaintly simpler but it's good to know both approaches. Hit <kbd>Enter</kbd> to select and yet again, go to the beginning of each word with <kbd>b</kbd> and then move 3 characters to the right with <kbd>lll</kbd>, press <kbd>e</kbd> to go to the end of each word and delete it:
+   Press `u` just once which will undo our replacement:
 
-<T.RemovedLastPartOfEachParam />
+   <T.UndidStep />
 
-Now we're going to remove the variable declarations of `result` on each line, and instead directly return the calculation.
+1. An alternative way is to select the entire file again with <kbd>%</kbd>:
 
-Go ahead and select the entire file again with <kbd>%</kbd>. And then use the <kbd>s</kbd> to bring up the select prompt again. Type `result =` which will select all instances of `result =`:
+   <T.SelectedEntireFileAgain />
 
-<T.SelectedAllResultVars />
+1. With the power of <kbd>s</kbd> and Regex, we can select the `length`, `width` and `height` words by chaining them together with the "OR" operator.
 
-<kbd>Enter</kbd> to select, and then Press <kbd>C</kbd> to duplicate the selection on each line:
+   For instance, type the following: `length|width|height`:
 
-<T.SelectedAllResultVarsAndC />
+   <T.SelectedAllLengthWidthHeight />
 
-By using <kbd>Alt</kbd> + <kbd>(</kbd>, we can rotate the _contents_ of the selection backward:
+   This is certaintly simpler but it's good to know both approaches.
 
-<T.RotatedContentsOfSelections />
+1. Hit <kbd>Enter</kbd> to select and go to the beginning of each word with <kbd>b</kbd>
 
-Try using <kbd>Alt</kbd> + <kbd>)</kbd> to rotate the selection forward. You can keep on pressing the key but the difference between <kbd>Alt</kbd> + <kbd>)</kbd> and <kbd>Alt</kbd> + <kbd>(</kbd> won't be obvious in this example, since we basically have the same selections repeated.
+1. Move 3 characters to the right with <kbd>lll</kbd>
+1. Press <kbd>e</kbd> to go to the end of each word and delete it:
 
-Regardless, press <kbd>Alt</kbd> + <kbd>)</kbd> at least once to get into the following state:
+   <T.RemovedLastPartOfEachParam />
 
-<T.RotatedContentsOfSelections />
+1. Lets to remove the variable declarations of `result` on each line, and instead directly return the calculation.
 
-Collapse each cursor so that there is only a single selection with <kbd>;</kbd>:
+   Go ahead and select the entire file again with <kbd>%</kbd> then use the <kbd>s</kbd> to bring up the select prompt again.
 
-<T.EachSelectionCollapsed />
+1. Type `result =` which will select all instances of `result =`:
 
-Now, just press <kbd>d</kbd> twice to delete two characters on each of the 6 lines:
+   <T.SelectedAllResultVars />
 
-<T.DeletedTwoChars />
+1. <kbd>Enter</kbd> to select, and then Press <kbd>C</kbd> to duplicate the selection on each line:
 
-Okay so at this point, we are _almost_ there. We just need to delete the `result sult` line.
+   <T.SelectedAllResultVarsAndC />
 
-To do this, use the <kbd>s</kbd> again and type `s` in the prompt. This will select the `s` in each of your selections and place a cursor there:
+1. By using <kbd>Alt</kbd> + <kbd>(</kbd>, we can rotate the _contents_ of the selection backward:
 
-<T.SelectedAllS />
+   <T.RotatedContentsOfSelections />
 
-Press <kbd>Enter</kbd> to select, and then press <kbd>x</kbd> to select the entire line and <kbd>d</kbd> to delete it. Voila!
+   Try using <kbd>Alt</kbd> + <kbd>)</kbd> to rotate the selection forward. You can keep on pressing the key but the difference between <kbd>Alt</kbd> + <kbd>)</kbd> and <kbd>Alt</kbd> + <kbd>(</kbd> won't be obvious in this example, since we basically have the same selections repeated.
 
-<T.Deleted3Lines />
+   Regardless, press <kbd>Alt</kbd> + <kbd>)</kbd> at least once to get into the following state:
 
-We've got just a few steps left. Namely, select the entire file again with <kbd>%</kbd>:
+   <T.RotatedContentsOfSelections />
 
-<T.SelectedEntireFileAgain2 />
+1. Collapse each cursor so that there is only a single selection with <kbd>;</kbd>:
 
-Press <kbd>\></kbd> which will indent everything by 1 level. We need this since we're going to nest it in a class, after all. You can also use <kbd>\<</kbd> to de-dent the selection by 1 level too.
+   <T.EachSelectionCollapsed />
 
-<T.IndentAllBy1Level />
+1. Now, just press <kbd>d</kbd> twice to delete two characters on each of the 6 lines:
 
-Now, press <kbd>i</kbd> to go into insert mode at the very beginning of the selection, <kbd>Enter</kbd> to add a newline, <kbd>Esc</kbd> to enter normal mode, <kbd>k</kbd> to go to the line above, <kbd>I</kbd> to enter Insert mode and then type `class Calculator:` and <kbd>Esc</kbd> to go back to normal mode.
+   <T.DeletedTwoChars />
 
-<T.FinalStatePython />
+1. Okay so at this point, we are _almost_ there. We just need to delete the `result sult` line.
+
+   To do this, use the <kbd>s</kbd> again and type `s` in the prompt. This will select the `s` in each of your selections and place a cursor there:
+
+   <T.SelectedAllS />
+
+1. Press <kbd>Enter</kbd> to select, and then press <kbd>x</kbd> to select the entire line and <kbd>d</kbd> to delete it. Voila!
+
+   <T.Deleted3Lines />
+
+1. We've got just a few steps left. Namely, select the entire file again with <kbd>%</kbd>:
+
+   <T.SelectedEntireFileAgain2 />
+
+1. Press <kbd>\></kbd> which will indent everything by 1 level. We need this since we're going to nest it in a class, after all. You can also use <kbd>\<</kbd> to de-dent the selection by 1 level too.
+
+   <T.IndentAllBy1Level />
+
+1. Press <kbd>i</kbd> to go into insert mode at the very beginning of the selection, <kbd>Enter</kbd> to add a newline.
+
+Use <kbd>Esc</kbd> to enter normal mode and then <kbd>k</kbd> to go to the line above, <kbd>I</kbd> to enter Insert mode.
+
+1. Finally, type `class Calculator:` and <kbd>Esc</kbd> to go back to normal mode.
+
+   <T.FinalStatePython />
 
 At last, we've succeeded 🥳!
+
+## Next steps
+
+At your disposal is now one of the most powerful methods to manipulate text: Macros and Multiple Cursors. There are still ways to improve to become more powerful.
+
+- Check out [more refactoring examples](/help/refactor-examples).
+- Learn more advanced text manipulation techniques with [text objects](/usage/text-objects) and [surround](/usage/surround).
+- Configure [language server support](/usage/language-support) to gain access to a plethora of powerful tools such as workspace symbol search, variable name refactoring and more.
