@@ -1,100 +1,20 @@
 ---
-title: Multiple Cursors and Macros
-description: Learn how to use powerful multiple cursor functionality in Helix
+title: Macros
+description: Explore using Macros to automate repetetive tasks in Helix
 ---
 
-import { T } from "@/termshots/multiple-cursors/index.astro"
+import { T } from "@/termshots/macros/index.astro"
 
-One of the most powerful features Helix has is multiple cursor support in combination with macros.
+Now that you've learned how to [refactor text using multiple cursors](/guides/multiple-cursors), the next step is to learn about macros and how to effectively use them for complex refactorings.
 
-It allows you to perform complex refactors which can be broken down to a series of steps, as well as search-and-replace.
-
-The best way to learn is with examples, and we'll provide you with many examples in this page.
-
-## Multiple Cursors
-
-We have some HTML which has repeating classes:
-
-<T.HtmlBeginningState />
-
-And we want to change each `px-3` class to `px-4`, aswell as each `font-bold` class to `font-thin`:
-
-<T.HtmlFinalState />
-
-### Using multiple cursors
-
-1. Place your cursor on the first `3`:
-
-   <T.CursorOnFirst3 />
-
-1. Press <kbd>C</kbd> which creates a cursor below, until you have a cursor on each individual `3`:
-
-   <T.CursorOnEach3 />
-
-1. Press `r` which will replace the character, and then `4` to replace each of the `3`s with a `4`.
-
-   <T.Each3ReplacedWith4 />
-
-1. Our goal is to change the class `font-bold` to `font-thin`, which you can do by pressing <kbd>bbb</kbd> until each `bold` is highlighted:
-
-   <T.EachBoldIsHighlighted />
-
-1. Press <kbd>c</kbd> to change, and then type `thin` and <kbd>Esc</kbd> to return back to normal mode.
-
-   <T.EachBoldChangedToThin />
-
-Let's see another way to do the same thing.
-
-### Same example, different strategy
-
-1. From the following state:
-
-   <T.HtmlBeginningState />
-
-1. Press <kbd>gw</kbd> to show two letters at the start of each word:
-
-   <T.UsedGotoWord />
-
-1. Navigate to the first instance of the `bold` word by pressing the 2-character key combination, which in our case that would be <kbd>ac</kbd>:
-
-   <T.SelectedFirstBoldWithGw />
-
-1. The entire `bold` word is highlighted now.
-
-   Press <kbd>C</kbd> again 3 times until you select each instance of `bold`:
-
-   <T.EachBoldIsHighlightedAgain />
-
-1. As you see, the visual selection gets transferred over!
-
-   Change the contents of each selection by using <kbd>c</kbd> to delete and enter insert mode -- then type `thin` and <kbd>Esc</kbd> to return back to normal mode.
-
-   <T.EachBoldChangedToThinAgain />
-
-1. Press <kbd>f</kbd> + <kbd>3</kbd> to find the next 3:
-
-   <T.EntirePxClassHighlighted />
-
-1. We could delete the entire `px-3` class if we wanted.
-
-   Instead press <kbd>a</kbd> to append at the end of each selection, which puts us into insert mode.
-
-   <T.InsertModeAfterEachPxClass />
-
-1. Delete the 3 by pressing backspace, then add a 4, exiting back to insert mode with <kbd>Esc</kbd>:
-
-   <T.FinalTransformationAgain />
-
-These two examples show that often there are multiple ways to accomplish the same refactoring in Helix. Over time, you'll be able to choose which way to use based on the circumstances.
-
-## Macros
+## Introduction
 
 Macros are a way to record your keystrokes and then replay them whenever you want to.
 
-Basic keymaps:
+The two most important keys here are:
 
-- <kbd>Q</kbd> will begin recording a macro into the [register](/getting-started/basics#registers) `Q`.
-- <kbd>q</kbd> replays the macro from register `Q`.
+- <kbd>Q</kbd> which begins recording a macro into the [register](/getting-started/basics#registers) `Q`.
+- <kbd>q</kbd> which replays the macro from register `Q`.
 
 You can have a lot of macros at your disposal in various registers, ready to use whenever. You use registers with macros just like usual.
 
@@ -108,7 +28,7 @@ Replay the macro by using register + <kbd>q</kbd>. For example:
 
 - <kbd>"</kbd> + <kbd>e</kbd> + <kbd>q</kbd>
 
-### Using macros
+## Using macros
 
 1. Place your cursor on the first line, after the dash:
 
@@ -162,7 +82,7 @@ And we want every variable to be a maximum of 3 characters, as well as the funct
 
 <T.PythonFinalState />
 
-### Search and Replace
+---
 
 1. First, let's rename each of the functions from `calculate_whatever` to `get_whatever`.
 

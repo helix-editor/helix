@@ -1,0 +1,96 @@
+---
+title: Multiple Cursors
+description: Learn how to use powerful multiple cursor functionality in Helix
+---
+
+import { T } from "@/termshots/multiple-cursors/index.astro"
+
+One of the most powerful features Helix has is multiple cursor.
+
+Multiple cursors allow you to perform complex refactors which can be broken down to a series of steps, as well as search-and-replace.
+
+The best way to learn is with examples, and we'll provide you with many examples in this page.
+
+## Introduction
+
+We have some HTML which has repeating classes:
+
+<T.HtmlBeginningState />
+
+And we want to change each `px-3` class to `px-4`, aswell as each `font-bold` class to `font-thin`:
+
+<T.HtmlFinalState />
+
+---
+
+1. First, begin by placing your cursor on the first `3`:
+
+   <T.CursorOnFirst3 />
+
+1. Press <kbd>C</kbd> which creates a cursor below, until you have a cursor on each individual `3`:
+
+   <T.CursorOnEach3 />
+
+1. Press `r` which will replace the character, and then `4` to replace each of the `3`s with a `4`.
+
+   <T.Each3ReplacedWith4 />
+
+1. Our goal is to change the class `font-bold` to `font-thin`, which you can do by pressing <kbd>bbb</kbd> until each `bold` is highlighted:
+
+   <T.EachBoldIsHighlighted />
+
+1. Press <kbd>c</kbd> to change, and then type `thin` and <kbd>Esc</kbd> to return back to normal mode.
+
+   <T.EachBoldChangedToThin />
+
+## Choosing a Strategy
+
+There are often many ways to accomplish the same refactoring with different keystrokes in Helix, which provides nice flexibility.
+
+Let's see the same example we have done previously, but in a slightly different manner.
+
+---
+
+1. From the following state:
+
+   <T.HtmlBeginningState />
+
+1. Press <kbd>gw</kbd> to show two letters at the start of each word:
+
+   <T.UsedGotoWord />
+
+1. Navigate to the first instance of the `bold` word by pressing the 2-character key combination, which in our case that would be <kbd>ac</kbd>:
+
+   <T.SelectedFirstBoldWithGw />
+
+1. The entire `bold` word is highlighted now.
+
+   Press <kbd>C</kbd> again 3 times until you select each instance of `bold`:
+
+   <T.EachBoldIsHighlightedAgain />
+
+1. As you see, the visual selection gets transferred over!
+
+   Change the contents of each selection by using <kbd>c</kbd> to delete and enter insert mode -- then type `thin` and <kbd>Esc</kbd> to return back to normal mode.
+
+   <T.EachBoldChangedToThinAgain />
+
+1. Press <kbd>f</kbd> + <kbd>3</kbd> to find the next 3:
+
+   <T.EntirePxClassHighlighted />
+
+1. We could delete the entire `px-3` class if we wanted.
+
+   Instead press <kbd>a</kbd> to append at the end of each selection, which puts us into insert mode.
+
+   <T.InsertModeAfterEachPxClass />
+
+1. Delete the 3 by pressing backspace, then add a 4, exiting back to insert mode with <kbd>Esc</kbd>:
+
+   <T.FinalTransformationAgain />
+
+As you become more familiar, you'll learn to pick out more efficient ways of accomplishing the same task, and which method is better based upon circumstances.
+
+## Next step
+
+Now that you've learned the basics of multiple cursor usage, take your refactoring skills to the _next level_ with [macros](/guides/macros).

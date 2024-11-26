@@ -75,14 +75,15 @@ export default defineConfig({
           items: ["getting-started/installation", "getting-started/basics"],
         },
         {
-          label: "Usage",
+          label: "Guides",
           items: [
-            "usage/multiple-cursors",
-            "usage/text-objects",
-            "usage/surround",
-            "usage/language-support",
-            "usage/pickers",
-            "usage/registers",
+            "guides/multiple-cursors",
+            "guides/macros",
+            "guides/text-objects",
+            "guides/surround",
+            "guides/language-support",
+            "guides/pickers",
+            "guides/registers",
           ],
         },
         {
