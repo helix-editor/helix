@@ -5,6 +5,7 @@ import starlightLinksValidator from "starlight-links-validator";
 import starlightBlog from "starlight-blog";
 import { rehypeHeadingIds } from "@astrojs/markdown-remark";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
+import rehypeExternalLinks from "rehype-external-links";
 
 import sitemap from "@astrojs/sitemap";
 
@@ -17,6 +18,20 @@ export default defineConfig({
   markdown: {
     rehypePlugins: [
       rehypeHeadingIds,
+
+      [
+        rehypeExternalLinks,
+        {
+          content: {
+            type: "text",
+            value: " ↗",
+          },
+          properties: {
+            target: "_blank",
+          },
+          rel: ["noopener"],
+        },
+      ],
       [rehypeAutolinkHeadings, { behavior: "wrap" }],
     ],
   },

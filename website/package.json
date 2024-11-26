@@ -21,6 +21,7 @@
     "asciinema-player": "^3.8.1",
     "astro": "^4.16.10",
     "rehype-autolink-headings": "^7.1.0",
+    "rehype-external-links": "^3.0.0",
     "sharp": "^0.32.5",
     "starlight-blog": "^0.15.0",
     "starlight-contributor-list": "^0.1.0",
