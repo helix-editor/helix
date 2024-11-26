@@ -2252,21 +2252,43 @@ fn search_selection_detect_word_boundaries(cx: &mut Context) {
 }
 
 fn search_selection_impl(cx: &mut Context, detect_word_boundaries: bool) {
+    fn is_at_word_start(text: RopeSlice, index: usize) -> bool {
+        let ch = text.char(index);
+        if index == 0 {
+            return char_is_word(ch);
+        }
+        let prev_ch = text.char(index - 1);
+
+        !char_is_word(prev_ch) && char_is_word(ch)
+    }
+
+    fn is_at_word_end(text: RopeSlice, index: usize) -> bool {
+        if index == 0 || index == text.len_chars() {
+            return false;
+        }
+        let ch = text.char(index);
+        let prev_ch = text.char(index - 1);
+
+        char_is_word(prev_ch) && !char_is_word(ch)
+    }
+
     let register = cx.register.unwrap_or('/');
     let (view, doc) = current!(cx.editor);
-    let contents = doc.text().slice(..);
+    let text = doc.text().slice(..);
 
     let regex = doc
         .selection(view.id)
         .iter()
         .map(|selection| {
-            let add_boundary_prefix = detect_word_boundaries && is_bow(selection.from(), contents);
-            let add_boundary_suffix = detect_word_boundaries && is_eow(selection.to(), contents);
+            let add_boundary_prefix =
+                detect_word_boundaries && is_at_word_start(text, selection.from());
+            let add_boundary_suffix =
+                detect_word_boundaries && is_at_word_end(text, selection.to());
 
             let prefix = if add_boundary_prefix { "\\b" } else { "" };
             let suffix = if add_boundary_suffix { "\\b" } else { "" };
 
-            let word = regex::escape(&selection.fragment(contents));
+            let word = regex::escape(&selection.fragment(text));
             format!("{}{}{}", prefix, word, suffix)
         })
         .collect::<HashSet<_>>() // Collect into hashset to deduplicate identical regexes
@@ -2281,42 +2303,6 @@ fn search_selection_impl(cx: &mut Context, detect_word_boundaries: bool) {
             cx.editor.set_status(msg)
         }
         Err(err) => cx.editor.set_error(err.to_string()),
-    }
-
-    fn is_bow(index: usize, contents: RopeSlice) -> bool {
-        match index.checked_sub(1) {
-            Some(prev_index) => get_successive_chars(prev_index, contents)
-                .map(|(c1, c2)| !char_is_word(c1) && char_is_word(c2))
-                .unwrap_or(false),
-            // we are at the beginning of the file
-            None => contents.get_char(index).map(char_is_word).unwrap_or(false),
-        }
-    }
-
-    fn is_eow(index: usize, contents: RopeSlice) -> bool {
-        match index.checked_sub(1) {
-            Some(prev_index) => {
-                // we are at the end of the file
-                if index == contents.len_chars() {
-                    contents
-                        .get_char(prev_index)
-                        .map(char_is_word)
-                        .unwrap_or(false)
-                } else {
-                    get_successive_chars(prev_index, contents)
-                        .map(|(c1, c2)| char_is_word(c1) && !char_is_word(c2))
-                        .unwrap_or(false)
-                }
-            }
-            None => false,
-        }
-    }
-
-    fn get_successive_chars(start: usize, contents: RopeSlice) -> Option<(char, char)> {
-        let mut it = contents.chars_at(start);
-        let c1 = it.next()?;
-        let c2 = it.next()?;
-        Some((c1, c2))
     }
 }
 
