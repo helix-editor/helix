@@ -5,11 +5,15 @@ description: Powerful surround integration for seamless manipulation of text
 
 import { T } from "@/termshots/surround/index.astro";
 
-Helix comes with built-in surround support, allowing you to perform actions such as:
+Surrounds are another useful feature of Helix which allow you to perform common actions such as:
 
 - Surround selection with character
 - Replace surrounding character
 - Delete surrounding character
+
+You can use any character for a surround add, replace or delete operation -- such as `x`.
+
+Some surround characters are more advanced, for having a selecting and surrounding it with `(` with add `(` at the beginning of the selection and `)` at the end.
 
 ## Surround selection with character
 
@@ -50,10 +54,16 @@ You can also use any other character which will act on the literal characters. F
 
 <T.MarkdownInit />
 
-Then pressing <kbd>md*</kbd> will delete the nearest `*`.
+1. Pressing <kbd>md*</kbd> will delete the nearest `*`.
 
 <T.DeleteSurroundingAsterisk />
 
-Or using <kbd>mro\{</kbd> will replace the nearest pairs of `o` character with `{`:
+1. Using <kbd>mro\{</kbd> will replace the nearest pairs of `o` character with `{`:
 
 <T.ReplaceSurroundingO />
+
+## Next steps
+
+With [multiple cursors](/usage/multiple-cursors), [macros](/usage/macros), [text objects](/usage/text-bojects) and finally surround you now have all of the most important tools for efficiently working with text.
+
+Let's learn how to configure editor tooling next, with setting up [language support](/usage/language-support).
