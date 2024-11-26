@@ -38,6 +38,9 @@ export default defineConfig({
   },
   integrations: [
     starlight({
+      tableOfContents: {
+        maxHeadingLevel: 5,
+      },
       head: [
         {
           tag: "link",
