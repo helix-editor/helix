@@ -2,7 +2,7 @@ name: Deploy to GitHub Pages
 
 on:
   push:
-    branches: [ new-website ]
+    branches: [master]
   # To run this workflow manually from the Actions tab on GitHub.
   workflow_dispatch:
 
