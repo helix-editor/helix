@@ -2540,11 +2540,11 @@ source = { git = "https://github.com/sourcegraph/tree-sitter-jsonnet", rev = "04
 name = "ada"
 scope = "source.ada"
 injection-regex = "ada"
-file-types = ["adb", "ads", "gpr"]
+file-types = ["adb", "ads"]
 roots = ["alire.toml"]
 comment-token = "--"
 indent = { tab-width = 3, unit = "   " }
-language-servers = ["ada-language-server", "ada-gpr-language-server"]
+language-servers = ["ada-language-server"]
 
 
 [[grammar]]
@@ -3942,3 +3942,17 @@ indent = { tab-width = 4, unit = "    " }
 [[grammar]]
 name = "amber"
 source = { git = "https://github.com/amber-lang/tree-sitter-amber", rev = "c6df3ec2ec243ed76550c525e7ac3d9a10c6c814" }
+
+[[language]]
+name = "gpr"
+scope = "source.gpr"
+injection-regex = "gpr"
+file-types = ["gpr"]
+roots = ["alire.toml"]
+comment-token = "--"
+indent = { tab-width = 3, unit = "   " }
+language-servers = ["ada-gpr-language-server"]
+
+[[grammar]]
+name = "gpr"
+source = { git = "https://github.com/brownts/tree-sitter-gpr", rev = "cea857d3c18d1385d1f5b66cd09ea1e44173945c" }
