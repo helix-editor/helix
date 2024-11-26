@@ -1,0 +1,23 @@
+---
+/*
+ * Head override to enable OG image 
+ *
+ * Sourced from https://hideoo.dev/notes/starlight-og-images
+ */
+
+import type { Props } from '@astrojs/starlight/props'
+import Default from '@astrojs/starlight/components/Head.astro'
+
+// Get the URL of the generated image for the current page using its
+// ID and replace the file extension with `.png`.
+const ogImageUrl = new URL(
+  `/og/${Astro.props.id.replace(/\.\w+$/, '.png')}`,
+  Astro.site,
+)
+---
+
+<Default {...Astro.props}><slot /></Default>
+
+<!-- tags for the Open Graph images. -->
+<meta property="og:image" content={ogImageUrl} />
+<meta name="twitter:image" content={ogImageUrl} />

@@ -11,7 +11,7 @@ import sitemap from "@astrojs/sitemap";
 
 // https://astro.build/config
 export default defineConfig({
-  site: "https://helix.github.io",
+  site: "https://helix-editor.vercel.app",
   vite: {
     optimizeDeps: { include: ["asciinema-player"] },
   },
@@ -61,6 +61,7 @@ export default defineConfig({
       components: {
         ThemeProvider: "./src/components/ThemeProvider.astro",
         ThemeSelect: "./src/components/ThemeSelect.astro",
+        Head: "./src/components/Head.astro",
       },
       editLink: {
         baseUrl: "https://github.com/helix-editor/helix/edit/main/website/",

@@ -20,6 +20,8 @@
     "@astrojs/starlight": "^0.29.2",
     "asciinema-player": "^3.8.1",
     "astro": "^4.16.10",
+    "astro-og-canvas": "^0.5.4",
+    "canvaskit-wasm": "^0.39.1",
     "rehype-autolink-headings": "^7.1.0",
     "rehype-external-links": "^3.0.0",
     "sharp": "^0.32.5",

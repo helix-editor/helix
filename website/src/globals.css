@@ -1,42 +1,5 @@
 @import "asciinema-player/dist/bundle/asciinema-player.css";
 
-@font-face {
-  font-family: "JetBrainsMono";
-  src: url("/fonts/JetBrainsMono-Regular.woff2") format("woff2");
-  font-weight: normal;
-  font-style: normal;
-  font-display: swap;
-}
-
-/* styled headings */
-.sl-markdown-content :is(h1, h2, h3, h4, h5, h6) > a {
-  color: var(--sl-color-white);
-  text-decoration: none;
-  position: relative;
-
-  &:hover {
-    text-decoration: underline;
-  }
-
-  /* indicator for desktop users  */
-  @media screen and (min-width: 1440px) {
-    &::before {
-      content: "#";
-      position: absolute;
-      left: -1.8rem;
-      top: 0.2rem;
-      opacity: 0;
-      pointer-events: none;
-    }
-    &:hover::before {
-      opacity: 1;
-      transition-property: opacity;
-      transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-      transition-duration: 100ms;
-    }
-  }
-}
-
 :root {
   --white: 0, 0%, 100%;
   --lilac: 275, 60%, 84%;
@@ -100,6 +63,43 @@
   --sl-color-gray-4: hsl(var(--purple-lavender));
   --sl-color-gray-5: hsl(var(--bossanova));
   --sl-color-gray-6: hsl(var(--midnight));
+}
+
+@font-face {
+  font-family: "JetBrainsMono";
+  src: url("/fonts/JetBrainsMono-Regular.woff2") format("woff2");
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* styled headings */
+.sl-markdown-content :is(h1, h2, h3, h4, h5, h6) > a {
+  color: var(--sl-color-white);
+  text-decoration: none;
+  position: relative;
+
+  &:hover {
+    text-decoration: underline;
+  }
+
+  /* indicator for desktop users  */
+  @media screen and (min-width: 1440px) {
+    &::before {
+      content: "#";
+      position: absolute;
+      left: -1.8rem;
+      top: 0.2rem;
+      opacity: 0;
+      pointer-events: none;
+    }
+    &:hover::before {
+      opacity: 1;
+      transition-property: opacity;
+      transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+      transition-duration: 100ms;
+    }
+  }
 }
 
 main .sl-container {
