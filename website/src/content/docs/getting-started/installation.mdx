@@ -5,10 +5,13 @@ description: Install the Helix Editor on various platforms including instruction
 
 import { Steps, Tabs, TabItem } from "@astrojs/starlight/components";
 
-To install Helix, follow the instructions specific to your operating system and package manager. Note that:
+To install Helix, follow the instructions specific to your operating system and package manager.
 
-- To get the latest nightly version of Helix, you need to build from source.
-- To take full advantage of Helix, install the language servers for your preferred programming languages.
+:::note
+
+- To get the latest nightly version of Helix, you need to [build from source](#building-from-source).
+
+:::
 
 ## Package Managers
 
@@ -22,8 +25,8 @@ To install Helix, follow the instructions specific to your operating system and 
 Add the `PPA` for Helix:
 
 ```sh
-sudo add-apt-repository ppa:maveonair/helix-editor
-sudo apt update
+sudo add-apt-repository ppa:maveonair/helix-editor && \
+sudo apt update && \
 sudo apt install helix
 ```
 
@@ -72,7 +75,7 @@ If you are using a version of Nix without flakes enabled, install [Cachix CLI](h
 Helix is available on [Flathub](https://flathub.org/en-GB/apps/com.helix_editor.Helix):
 
 ```sh
-flatpak install flathub com.helix_editor.Helix
+flatpak install flathub com.helix_editor.Helix && \
 flatpak run com.helix_editor.Helix
 ```
 
@@ -90,11 +93,12 @@ This will install Helix as both `/snap/bin/helix` and `/snap/bin/hx`, so make su
 </TabItem>
 <TabItem label="AppImage">
 
-Install Helix using the Linux [AppImage](https://appimage.org/) format. Download the official Helix AppImage from the [latest releases](https://github.com/helix-editor/helix/releases/latest) page.
+Install Helix using the Linux [AppImage](https://appimage.org/) format by downloading the official Helix AppImage from the [latest releases](https://github.com/helix-editor/helix/releases/latest) page.
 
 ```sh
-chmod +x helix-*.AppImage # change permission for executable mode
-./helix-*.AppImage # run helix
+# change permission for executable mode and run helix
+chmod +x helix-*.AppImage && \
+./helix-*.AppImage
 ```
 
 </TabItem>
