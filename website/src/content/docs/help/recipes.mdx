@@ -3,6 +3,8 @@ title: Recipes
 description: Common answers to problems in Helix such as Git Integration
 ---
 
+import { Steps, Tabs, TabItem } from "@astrojs/starlight/components";
+
 Includes common solutions to some problems.
 
 ## Git Integration
@@ -32,6 +34,97 @@ Explanation
 4. When you exit `lazygit`, `buffer-close!` will kill the previously empty buffer, sending you back to where you were previously.
 5. `redraw` is necessary to re-render the UI to show the buffers
 6. `reload-all` because if e.g. you commit everything, helix will still show the symbols indicating that lines were changed / deleted on the left of the line numbers. This will prevent that
+
+## Remap Caps Lock to Escape
+
+The <kbd>Esc</kbd> key is quite far away from the home row on most keyboards. Due to this fact, many people remap <kbd>Caps Lock</kbd> to <kbd>Esc</kbd>.
+
+To do this, follow instructions for your operating system.
+
+<Tabs>
+<TabItem label="Linux" icon="linux">
+
+You can use [`xmodmap`](https://manpages.ubuntu.com/manpages/oracular/en/man1/xmodmap.1.html):
+
+```sh
+xmodmap -e "keycode 9 = Caps_Lock NoSymbol Caps_Lock"
+```
+
+:::tip[Make it run automatically (optional)]
+
+To get this change for every session, after you have run the previous commands:
+
+1. Create a file called `~/.xmodmap` with the new keymaps:
+
+   ```sh
+   xmodmap -pke > ~/.xmodmap
+   ```
+
+1. Create a file called `.xinitrc` in your home directory, containing the following line:
+
+   ```sh
+   xmodmap .xmodmap
+   ```
+
+:::
+
+For more information [see this StackOverflow thread](https://askubuntu.com/questions/363346/how-to-permanently-switch-caps-lock-and-esc).
+
+</TabItem>
+
+<TabItem label="macOS" icon="apple">
+
+<Steps>
+
+1. Open _System Settings > Keyboard > Keyboard Shortcuts > Modifier Keys_
+
+1. Map the caps lock key to escape.
+
+</Steps>
+
+</TabItem>
+
+<TabItem label="Windows" icon="windows">
+
+AutoHotkey is a free and open source scripting language for Windows, primarily useful for remapping keyboard keys in our example.
+
+<Steps>
+
+1. Install AutoHotkey from the [AutoHotkey installation page](https://www.autohotkey.com/download/).
+
+1. Create a new `remap-caps-lock.ahk` file on your desktop.
+
+1. Right-click on the new script file and select `Edit script`.
+
+1. Add this line to the script:
+
+   ```ahk
+   CapsLock::Esc
+   ```
+
+1. Run the script by double-clicking on it. It will start running in the background.
+
+</Steps>
+
+:::tip[Make it run automatically (optional)]
+
+<Steps>
+
+1. Press <kbd>Win</kbd> + <kbd>R</kbd> to open the `Run` dialog.
+
+1. Type `shell:startup` and press <kbd>Enter</kbd>.
+
+1. Copy the `remap-caps-lock.ahk` file and paste it into the Startup folder.
+
+</Steps>
+
+The script will run automatically every time you start your computer.
+
+:::
+
+</TabItem>
+
+</Tabs>
 
 ## Save file without formatting
 
