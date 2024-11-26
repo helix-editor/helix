@@ -81,7 +81,7 @@ Enable the bufferline by using `:set bufferline always`. This adds a bar at the 
 
 With the bufferline, we can tell right off the bat which buffer is the currently active one.
 
-## Opening files with a glob
+## Opening buffers with a glob
 
 Let's save all files and quit. We could use `:wqa` to _**w**rite **q**uit **a**ll_ but we'll use `:xa` which is exactly the same but 1 character shorter!
 
@@ -103,7 +103,7 @@ When we execute that command, helix will open the same 3 buffers. We'll use `:se
 
 <T.OpenedWithWildcard />
 
-## Opening files with more complex filtering logic
+## Opening buffers with more complex filtering logic
 
 As you've just seen, `hx` command + globs is powerful. But this is only the beginning!
 
@@ -146,6 +146,8 @@ Which then opens each of those files in Helix as a separate buffer.
 
 This functionality comes in handy when you need to complete a certain task on every single file matching a pattern, but the task cannot be automated as each file requires manual inspection.
 
+## Opening buffers at specific line and column numbers
+
 Finally, it's useful to know that Helix can open files at specific line numbers, aswell as column numbers. For example this command opens the `main.rs` file at line 122:
 
 ```sh
@@ -155,8 +157,76 @@ hx main.rs:122
 The following will open on line 122, column 6:
 
 ```sh
-hx main.rs:122:6kkkkk
+hx main.rs:122:6
 ```
+
+We can use the above two facts to make some **_truly powerful_** commands. I make a lot of spelling mistakes.
+
+Instead of manually going through 40+ markdown files in order to fix these spelling mistakes, I run the following command which we'll disect in a moment:
+
+```sh
+hx $(pnpm dlx cspell **/*.mdx | rg "^\S+")
+```
+
+That command will find every spelling mistake by using the `cspell` tool.
+
+The `cspell` which can be used as follows to spellcheck against every `.mdx` file (these files which contain _this site_'s content):
+
+```sh
+pnpm dlx cspell **/*.mdx
+```
+
+It outputs information in the following format:
+
+```sh
+usage/text-objects.mdx:43:53 - Unknown word (nside)
+usage/text-objects.mdx:43:62 - Unknown word (textobject)
+```
+
+Since Helix can work with the first part of the text before the whitespace, we want to filter out everything until the first space.
+
+We can do that by matching "a sequence of non-whitespace characters at the beginning". In terms of regex, it would be the same as this `^\S+`.
+
+- `^` means "at the beginning"
+- `\S` means "a non-whitespace character"
+- `+` means "match at least one occurence of"
+
+So this regex will extract the following from the above example:
+
+```sh
+usage/text-objects.mdx:43:53
+usage/text-objects.mdx:43:62
+```
+
+To apply the regex to the output of `cspell` tool, we use [`ripgrep`](https://github.com/BurntSushi/ripgrep) which is a modern alternative to `grep`, so the following command:
+
+```sh
+pnpm dlx cspell **/*.mdx | rg -o "^\S+"
+```
+
+Will produce an output like this:
+
+```
+basics.mdx:6:22 basics.mdx:82:56 basics.mdx:236:51 basics.mdx:297:72 basics.mdx:305:109 basics.mdx:309:104 installation.mdx:6:40
+```
+
+To use that in helix, we simply enclose the entire command in `$( ... )` to make use of shell expansion:
+
+```sh
+hx $(pnpm dlx cspell **/*.mdx | rg -o "^\S+")
+```
+
+And it will open every single spelling error as a buffer, we'll be able to traverse them with <kbd>gn</kbd> and <kbd>gp</kbd>. Extremely powerful.
+
+:::tip
+
+Ripgrep also includes a `--vimgrep` flag, which will output each match beginning with the exact syntax that we want:
+
+```
+filename:line_number:column_number
+```
+
+:::
 
 ## Viewing multiple buffers at once
 
