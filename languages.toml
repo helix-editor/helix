@@ -3955,4 +3955,4 @@ language-servers = ["ada-gpr-language-server"]
 
 [[grammar]]
 name = "gpr"
-source = { git = "https://github.com/brownts/tree-sitter-gpr.git", rev = "cea857d3c18d1385d1f5b66cd09ea1e44173945c" }
+source = { git = "https://github.com/brownts/tree-sitter-gpr", rev = "cea857d3c18d1385d1f5b66cd09ea1e44173945c" }

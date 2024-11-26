@@ -25,7 +25,7 @@
 
 (comment) @comment
 (string_literal) @string
-(numeric_literal) @number
+(numeric_literal) @constant.numeric
 
 ;; Type
 (typed_string_declaration name: (identifier) @type)
