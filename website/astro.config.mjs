@@ -89,14 +89,6 @@ export default defineConfig({
           ],
         },
         {
-          label: "Configuration",
-          items: [
-            "configuration/editor",
-            "configuration/languages",
-            "configuration/remapping",
-          ],
-        },
-        {
           label: "Reference",
           items: [
             "reference/keymap",
@@ -107,6 +99,14 @@ export default defineConfig({
             "reference/language-servers",
             "reference/formatters",
             "reference/debuggers",
+          ],
+        },
+        {
+          label: "Configuration",
+          items: [
+            "configuration/editor",
+            "configuration/languages",
+            "configuration/remapping",
           ],
         },
         {

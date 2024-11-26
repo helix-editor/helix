@@ -3,6 +3,8 @@ title: Remapping
 description: Learn about how to create custom keybindings and the types of commands in Helix
 ---
 
+import Master from "@/components/Master.astro";
+
 Helix currently supports one-way key remapping through a simple TOML configuration
 file. (More powerful solutions such as rebinding via commands will be
 available in the future).
@@ -25,6 +27,8 @@ See the [Typed Commands](/reference/typed-commands) documentation for a list of 
 
 Also available at `TypableCommandList` declaration in the source code at [`helix-term/src/commands/typed.rs`](https://github.com/helix-editor/helix/blob/master/helix-term/src/commands/typed.rs).
 
+<Master>
+
 ### Macros
 
 Sequences of keys that are executed in order.
@@ -45,6 +49,8 @@ For now, macro keybindings are not allowed in keybinding sequences due to limita
 Modifier keys (e.g. Alt+o) can be used like `"<A-o>"`, e.g. `"@miw<A-o>"`
 
 :::
+
+</Master>
 
 ## Remapping
 

@@ -9,19 +9,25 @@ import Master from "@/components/Master.astro";
 
 import { FileTree } from "@astrojs/starlight/components";
 
-Pickers are interactive windows used to select various kinds of items, and Helix has support for a variety of them.
+A very efficient way of navigating across the filesystem and projects is not with a file tree, but rather by using pickers, which are interactive windows used to select various kinds of items.
+
+If you know at least a few characters of the filename, then you can use a file picker to effectively teleport to that file -- via typing those few characters and selecting the first result. This is possible thanks to [fuzzy searching](https://www.techtarget.com/whatis/definition/fuzzy-search).
 
 ## Useful pickers
+
+Some of the most useful pickers that are really worth knowing about.
+
+### File Picker
 
 Suppose we have the following directory structure, and we're located in the `my-project` directory:
 
 <FileTree>
 
-- my-project
+- my-project **⟵** you are here
   - src
     - app
       - page.tsx
-      - globals.css
+      - globals.css **⟵** you want to go here
       - layout.tsx
     - components
       - button.tsx
@@ -37,25 +43,21 @@ But if we open the _directory_, then it'll actually open a file picker at that l
 
 <T.OpenedFilePicker />
 
-It opens a file picker in the `src` directory.
+It opens a file picker in the `src` directory, allowing us to perform a _fuzzy search_, recursively matching against _every file in the directory, and any sub-directory_.
 
-### File picker
+Typing just a few characters of the file that we want to go then pressing <kbd>Enter</kbd> to select the first result will teleport us there. Extremely handy when you know the name of a file and just want to go there, without wasting time traversing directories.
 
-Another way to open the file picker is with <kbd>Space</kbd> + <kbd>f</kbd>.
+You can also manually open a file picker by using <kbd>Space</kbd> + <kbd>f</kbd>. This will open it at the _root project directory_, so Helix will traverse up the tree to find whatever it considers the "project root", usually if there is a `.git` folder.
 
-The file picker allows you to search for files recursively.
+To open a file picker at the _current working directory_, use <kbd>Space</kbd> + <kbd>f</kbd>.
 
-It's super handy when you know the name of a file but it's somewhere, buried very deep.
+:::note
 
-<T.OpenedFilePickerManually />
+On the latest release, the global search is still available, but there will not be an interactive picker.
 
-Note that this command opens a file picker at the git root directory, not our current working directory.
+:::
 
-So it shows each file under `my-project/` and not just `src/`, even though we opened helix in `src`. It searched to find the project directory, and searches files there.
-
-With <kbd>Space</kbd> + <kbd>F</kbd>, it opens a picker at our _current working directory_.
-
-<T.OpenedFilePickerManually />
+<Master>
 
 ### Global search
 
@@ -67,21 +69,73 @@ For example, to find strings with `className`:
 
 By pressing <kbd>Enter</kbd> we can open the file.
 
+</Master>
+
 ### Open last picker
 
 Suppose we did a couple more navigations around files, and now we want to go back.
 
-We could just repeat the last steps, but there's a better way. <kbd>Space</kbd> + <kbd>'</kbd> opens the exact picker that you last used:
+We could just repeat the last steps, but there's a better way. <kbd>Space</kbd> + <kbd>'</kbd> opens the exact picker that you last used, left in its previous state:
 
 <T.OpenLastPicker />
 
 ### Buffer picker
 
-Now let's say we opened several files and we'd like to go work on one of the files we already opened. But we don't want to perform the task of finding that file again.
+Say we opened several files and we'd like to go work on one of the files we already opened. But we don't want to perform the task of finding that file again, as it's buried somewhere _very deep_ within the project.
 
 You can open a picker that shows your currently open buffers with <kbd>Space</kbd> + <kbd>b</kbd>:
 
 <T.BufferPicker />
+
+:::tip
+
+Alternatively, [you can use the bufferline](http://localhost:4321/configuration/editor#bufferline) to navigate across buffers as well as:
+
+- <kbd>gp</kbd> to go to the previous buffer
+- <kbd>gn</kbd> to go to the next buffer
+
+This is especially useful when Helix opens file in a glob. For instance, the following command:
+
+```sh
+hx **/*.rs
+```
+
+Will open every single file with a `.rs` extension as a buffer, and you can navigate between them using the two aformentioned commands.
+
+Or another example, open a buffer in Helix for every file which contains the string `export default async function`, using the GNU utilities [`find`](https://www.gnu.org/software/findutils/manual/html_mono/find.html) and [`grep`](https://www.gnu.org/software/grep/):
+
+```sh
+hx $(find . -type f -exec grep -l \
+ "export default async function" {} +)
+```
+
+Let's disect the command:
+
+- `find .`: Search every file and directory in the current directory and any sub-directories.
+- `-type f`: Match only files, and not directories.
+- `-exec grep -l "export default async function" {}`: Runs the following command on each file: searches for the string `export default async function`, outputting the names of files that it matches.
+- `+` groups the files.
+- The entire command `find . -type f -exec grep -l "export default async function" {} +` above will output the names of every file matched file as follows:
+
+```
+./file-one.js
+./nested/another-file.js
+./somewhere/deep/nested/file.ts
+```
+
+Placing it inside of `$( ... )` uses [shell variable expansion](https://www.gnu.org/software/bash/manual/html_node/Shell-Parameter-Expansion.html) to effectively replace the entire command with the following identical output:
+
+```sh
+hx ./file-one.js \
+   ./nested/another-file.js \
+   ./somewhere/deep/nested/file.ts
+```
+
+Which then opens each of those files in Helix as a separate buffer.
+
+This functionality comes in handy when you need to complete a certain task on every single file matching a pattern, but the task cannot be automated as each file requires manual inspection.
+
+:::
 
 ## Usage
 
@@ -100,7 +154,7 @@ For now, OR operations with `|` are not supported, so e.g. you can't search for 
 
 ### Keymap
 
-Within a picker:
+Within a picker, the following commands are useful:
 
 - <kbd>Enter</kbd> opens the selected file
 - <kbd>Ctrl</kbd> + <kbd>v</kbd> opens as a horizontal split
@@ -122,14 +176,15 @@ For example, a query of `helix %p .toml !lang` in the global search picker searc
 
 ### Using registers in pickers
 
-You can insert the contents of a [register](/usage/registers) using `Ctrl-r` followed by a register name.
+You can insert the contents of a [register](/getting-started/basics#registers) using <kbd>Ctrl</kbd> + <kbd>r</kbd> followed by a register name.
 
-For example, one could insert the currently selected text using `Ctrl-r`-`.`, or the directory of the current file using `Ctrl-r`-`%` followed by `Ctrl-w` to remove the last path section.
+For example, one could insert the currently selected text using <kbd>Ctrl</kbd> + <kbd>r</kbd> + <kbd>.</kbd>, or the directory of the current file using <kbd>Ctrl</kbd> + <kbd>r</kbd> + <kbd>%</kbd> followed by <kbd>Ctrl</kbd> <kbd>w</kbd> to remove the last path section.
 
-The global search picker will use the contents of the [search register](/usage/registers#default-registers) if you press `Enter` without typing a filter.
+The global search picker will use the contents of the [search register](/usage/registers#default-registers) if you press <kbd>Enter</kbd> without typing a filter.
 
-For example, pressing `*`-`Space-/`-`Enter` will start a global search for the currently selected text.
+For example, pressing <kbd>\*</kbd> + <kbd>Space</kbd> + <kbd>/</kbd> + <kbd>Enter</kbd> will start a global search for the currently selected text.
 
 ## Next steps
 
-More pickers can be found in the [keymap reference](/reference/keymap#space-mode).
+- More pickers can be found in the [keymap reference](/reference/keymap#space-mode).
+- See list of [special registers](/reference/registers).
