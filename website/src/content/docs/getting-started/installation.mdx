@@ -198,26 +198,53 @@ You can override the runtime location with the `HELIX_RUNTIME` environment varia
 
 ## Building from source
 
-Clone the Helix GitHub repository into a directory of your choice. The
-examples in this documentation assume installation into either `~/src/` on
-Linux and macOS, or `%userprofile%\src\` on Windows.
+### Requirements
 
 - The [Rust toolchain](https://www.rust-lang.org/tools/install)
 - The [Git version control system](https://git-scm.com/)
 - A C++14 compatible compiler to build the tree-sitter grammars, for example GCC or Clang
 
+:::note
+
 If you are using the `musl-libc` standard library instead of `glibc` the following environment variable must be set during the build to ensure tree-sitter grammars can be loaded correctly:
 
+<Tabs syncKey="platforms">
+
+<TabItem label="Linux and macOS" icon="linux">
+
 ```sh
-RUSTFLAGS="-C target-feature=-crt-static"
+export RUSTFLAGS="-C target-feature=-crt-static"
 ```
+
+</TabItem>
+
+<TabItem label="Windows" icon="windows">
+
+```sh
+set RUSTFLAGS "-C target-feature=-crt-static"
+```
+
+</TabItem>
+
+</Tabs>
+
+:::
+
+### Installation
+
+<Steps>
 
 1. Clone the repository:
 
    ```sh
-   git clone https://github.com/helix-editor/helix
+   git clone https://github.com/helix-editor/helix && \
    cd helix
    ```
+
+   The examples in this documentation assume installationinto either:
+
+   - `~/src/` on Linux and macOS
+   - `%userprofile%\src\` on Windows
 
 2. Compile from source:
 
@@ -225,27 +252,48 @@ RUSTFLAGS="-C target-feature=-crt-static"
    cargo install --path helix-term --locked
    ```
 
-   This command will create the `hx` executable and construct the tree-sitter
-   grammars in the local `runtime` folder.
+   This command will create the `hx` executable and construct the tree-sitter grammars in the local `runtime` folder.
+
+</Steps>
 
 :::tip
 
 If you do not want to fetch or build grammars, set an environment variable `HELIX_DISABLE_AUTO_GRAMMAR_BUILD`.
 
-Tree-sitter grammars can be fetched and compiled if not pre-packaged.
+<Tabs syncKey="platforms">
 
-Fetch grammars with `hx --grammar fetch` and compile them with
-`hx --grammar build`.
+<TabItem label="Linux and macOS" icon="linux">
 
-This will install them in
-the `runtime` directory within the user's helix config directory (more
-[details below](#multiple-runtime-directories)).
+```sh
+export HELIX_DISABLE_AUTO_GRAMMAR_BUILD=1
+```
+
+</TabItem>
+
+<TabItem label="Windows" icon="windows">
+
+```sh
+set HELIX_DISABLE_AUTO_GRAMMAR_BUILD 1
+```
+
+</TabItem>
+
+</Tabs>
+
+---
+
+Tree-sitter grammars can be fetched and compiled if not pre-packaged:
+
+- `hx --grammar fetch` fetches the grammars.
+- `hx --grammar build` compiles them.
+
+This will install them in the `runtime` directory within the user's helix config directory (more [details below](#multiple-runtime-directories)).
 
 :::
 
 ### Configuring Helix's runtime files
 
-<Tabs>
+<Tabs syncKey="platforms">
 
 <TabItem label="Linux and macOS">
 
@@ -269,9 +317,7 @@ If the above command fails to create a symbolic link because the file exists eit
 
 <TabItem label="Windows">
 
-Either set the `HELIX_RUNTIME` environment variable to point to the runtime files using the Windows setting (search for
-`Edit environment variables for your account`) or use the `setx` command in
-Cmd:
+Either set the `HELIX_RUNTIME` environment variable to point to the runtime files using the Windows setting (search for `Edit environment variables for your account`) or use the `setx` command in Cmd:
 
 ```sh
 setx HELIX_RUNTIME "%userprofile%\source\repos\helix\runtime"
@@ -308,7 +354,7 @@ following order:
 1. `runtime/` sibling directory to `$CARGO_MANIFEST_DIR` directory (this is intended for
    developing and testing helix only).
 2. `runtime/` subdirectory of OS-dependent helix user config directory.
-3. `$HELIX_RUNTIME`
+3. `HELIX_RUNTIME` environment variable.
 4. Distribution-specific fallback directory (set at compile time—not run time—
    with the `HELIX_DEFAULT_RUNTIME` environment variable)
 5. `runtime/` subdirectory of path to Helix executable.
@@ -316,23 +362,80 @@ following order:
 This order also sets the priority for selecting which file will be used if multiple runtime
 directories have files with the same name.
 
-#### Note to packagers
+:::note[Note to packagers]
 
-If you are making a package of Helix for end users, to provide a good out of
-the box experience, you should set the `HELIX_DEFAULT_RUNTIME` environment
-variable at build time (before invoking `cargo build`) to a directory which
-will store the final runtime files after installation. For example, say you want
-to package the runtime into `/usr/lib/helix/runtime`. The rough steps a build
-script could follow are:
+If you are making a package of Helix for end users, to provide a good out of the box experience, you should set the `HELIX_DEFAULT_RUNTIME` environment variable at build time (before invoking `cargo build`) to a directory which will store the final runtime files after installation.
 
-1. `export HELIX_DEFAULT_RUNTIME=/usr/lib/helix/runtime`
-1. `cargo build --profile opt --locked --path helix-term`
-1. `cp -r runtime $BUILD_DIR/usr/lib/helix/`
-1. `cp target/opt/hx $BUILD_DIR/usr/bin/hx`
+For example, say you wantto package the runtime into `/usr/lib/helix/runtime`. The rough steps a build script could follow are:
+
+<Tabs syncKey="platforms">
+
+<TabItem label="Linux and macOS" icon="linux">
+
+<Steps>
+
+1.  Set the default runtime environment variable
+
+    ```sh
+    export HELIX_DEFAULT_RUNTIME=/usr/lib/helix/runtime
+    ```
+
+1.  Build Helix with the "opt" profile
+
+    ```sh
+    cargo build --profile opt --locked --path helix-term
+    ```
+
+1.  Copy the runtime directory to the target build directory
+
+    ```sh
+    cp -r runtime $BUILD_DIR/usr/lib/helix/
+    ```
+
+1.  Copy the built Helix executable to the target directory
+
+    ```sh
+    cp target/opt/hx $BUILD_DIR/usr/bin/hx
+    ```
+
+</Steps>
+
+</TabItem>
+
+<TabItem label="Windows" icon="windows">
+
+<Steps>
+
+1.  Set the default runtime environment variable
+
+    ```sh
+    set HELIX_DEFAULT_RUNTIME=C:\path\to\helix\runtime
+    ```
+
+1.  Build Helix with the "opt" profile
+    ```sh
+    cargo build --profile opt --locked --path helix-term
+    ```
+1.  Copy the runtime directory to the target build directory
+    ```sh
+    xcopy /E /I runtime %BUILD_DIR%\usr\lib\helix\
+    ```
+1.  Copy the built Helix executable to the target directory
+    ```sh
+    copy target\opt\hx.exe %BUILD_DIR%\usr\bin\hx.exe
+    ```
+
+</Steps>
+
+</TabItem>
+
+</Tabs>
 
 This way the resulting `hx` binary will always look for its runtime directory in
 `/usr/lib/helix/runtime` if the user has no custom runtime in `~/.config/helix`
 or `HELIX_RUNTIME`.
+
+:::
 
 ### Validating the installation
 
@@ -343,32 +446,78 @@ check:
 hx --health
 ```
 
-For more information on the health check results refer to
-[Health check](https://github.com/helix-editor/helix/wiki/Healthcheck).
+For more information on the health check results refer to [Health check](/help/troubleshooting#health-check).
 
-### Configure the desktop shortcut
+<details>
+<summary>Configure the desktop shortcut (Linux only)</summary>
 
-If your desktop environment supports the
-[XDG desktop menu](https://specifications.freedesktop.org/menu-spec/menu-spec-latest.html)
-you can configure Helix to show up in the application menu by copying the
-provided `.desktop` and icon files to their correct folders:
+If your desktop environment supports the [XDG desktop menu](https://specifications.freedesktop.org/menu-spec/menu-spec-latest.html) you can configure Helix to show up in the application menu.
+
+<Steps>
+
+1. Copy the provided `.desktop` and icon files to their correct folders:
+
+   ```sh
+   cp contrib/Helix.desktop ~/.local/share/applications && \
+   cp contrib/helix.png ~/.local/share/icons
+   ```
+
+1. Convert the links in the `.desktop` file to absolute paths to avoid potential problems:
+
+   ```sh
+   sed -i -e "s|Exec=hx %F|Exec=$(readlink -f ~/.cargo/bin/hx) %F|g" \
+     -e "s|Icon=helix|Icon=$(readlink -f ~/.icons/helix.png)|g" ~/.local/share/applications/Helix.desktop
+   ```
+
+</Steps>
+
+To use another terminal than the system default, you can modify the `.desktop` file. Depending on which terminal you use:
+
+<Tabs>
+
+<TabItem label="Kitty" />
 
 ```sh
-cp contrib/Helix.desktop ~/.local/share/applications
-cp contrib/helix.png ~/.icons # or ~/.local/share/icons
-```
-
-It is recommended to convert the links in the `.desktop` file to absolute paths to avoid potential problems:
-
-```sh
-sed -i -e "s|Exec=hx %F|Exec=$(readlink -f ~/.cargo/bin/hx) %F|g" \
-  -e "s|Icon=helix|Icon=$(readlink -f ~/.icons/helix.png)|g" ~/.local/share/applications/Helix.desktop
-```
-
-To use another terminal than the system default, you can modify the `.desktop`
-file. For example, to use `kitty`:
-
-```sh
-sed -i "s|Exec=hx %F|Exec=kitty hx %F|g" ~/.local/share/applications/Helix.desktop
+sed -i "s|Exec=hx %F|Exec=kitty hx %F|g" ~/.local/share/applications/Helix.desktop && \
 sed -i "s|Terminal=true|Terminal=false|g" ~/.local/share/applications/Helix.desktop
 ```
+
+</Tabs>
+
+<TabItem label="Wezterm">
+
+```sh
+sed -i "s|Exec=hx %F|Exec=wezterm start hx %F|g" ~/.local/share/applications/Helix.desktop && \
+sed -i "s|Terminal=true|Terminal=false|g" ~/.local/share/applications/Helix.desktop
+```
+
+</TabItem>
+
+<TabItem label="Alacritty">
+
+```sh
+sed -i "s|Exec=hx %F|Exec=alacritty --command hx %F|g" ~/.local/share/applications/Helix.desktop && \
+sed -i "s|Terminal=true|Terminal=false|g" ~/.local/share/applications/Helix.desktop
+```
+
+</TabItem>
+
+<TabItem label="Gnome Terminal">
+
+```sh
+sed -i "s|Exec=hx %F|Exec=gnome-terminal hx %F|g" ~/.local/share/applications/Helix.desktop && \
+sed -i "s|Terminal=true|Terminal=false|g" ~/.local/share/applications/Helix.desktop
+```
+
+</TabItem>
+
+<TabItem label="Rio">
+
+```sh
+sed -i "s|Exec=hx %F|Exec=rio -e hx %F|g" ~/.local/share/applications/Helix.desktop && \
+sed -i "s|Terminal=true|Terminal=false|g" ~/.local/share/applications/Helix.desktop
+```
+
+</TabItem>
+
+</details>
