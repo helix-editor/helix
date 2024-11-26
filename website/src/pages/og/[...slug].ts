@@ -25,7 +25,7 @@ export const { getStaticPaths, GET } = OGImageRoute({
       description: page.data.description,
       logo: {
         path: "./src/assets/logo.png",
-        size: [115, 181],
+        size: [58],
       },
       /* styles to use for the image */
       bgGradient: [[69, 40, 88]],
