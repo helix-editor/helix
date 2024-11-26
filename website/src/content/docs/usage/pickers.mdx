@@ -89,7 +89,7 @@ You can open a picker that shows your currently open buffers with <kbd>Space</kb
 
 :::tip
 
-Alternatively, [you can use the bufferline](http://localhost:4321/configuration/editor#bufferline) to navigate across buffers as well as:
+Alternatively, [you can use the bufferline](/configuration/editor#bufferline) to navigate across buffers as well as:
 
 - <kbd>gp</kbd> to go to the previous buffer
 - <kbd>gn</kbd> to go to the next buffer
@@ -176,15 +176,14 @@ For example, a query of `helix %p .toml !lang` in the global search picker searc
 
 ### Using registers in pickers
 
-You can insert the contents of a [register](/getting-started/basics#registers) using <kbd>Ctrl</kbd> + <kbd>r</kbd> followed by a register name.
+You can insert the contents of a [register](/start-here/basics#registers) using <kbd>Ctrl</kbd> + <kbd>r</kbd> followed by a register name.
 
 For example, one could insert the currently selected text using <kbd>Ctrl</kbd> + <kbd>r</kbd> + <kbd>.</kbd>, or the directory of the current file using <kbd>Ctrl</kbd> + <kbd>r</kbd> + <kbd>%</kbd> followed by <kbd>Ctrl</kbd> <kbd>w</kbd> to remove the last path section.
 
-The global search picker will use the contents of the [search register](/usage/registers#default-registers) if you press <kbd>Enter</kbd> without typing a filter.
+The global search picker will use the contents of the [search register](/reference/registers#default-registers) if you press <kbd>Enter</kbd> without typing a filter.
 
 For example, pressing <kbd>\*</kbd> + <kbd>Space</kbd> + <kbd>/</kbd> + <kbd>Enter</kbd> will start a global search for the currently selected text.
 
 ## Next steps
 
 - More pickers can be found in the [keymap reference](/reference/keymap#space-mode).
-- See list of [special registers](/reference/registers).

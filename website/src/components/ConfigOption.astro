@@ -1,24 +1,18 @@
----
-const { name } = Astro.props;
----
-<div class="title">
-  <h3>
-    {name}
-  </h3>
+<div class="info-container">
+  <slot name="info"/>
 </div>
-<slot name="info" />
 <div class="default">
   <strong>Default</strong>
   <slot name="default" />
 </div>
 
 <style>
-  .title {
-    border-bottom: 1px solid var(--sl-color-gray-5);
-    padding-bottom: 1rem;
-  }
   .default {
     border: 2px solid var(--sl-color-gray-5);
     padding: 0.5rem;
+  }
+  .info-container {
+    border-top: 1px solid var(--sl-color-gray-5);
+    padding-top: 1rem;
   }
 </style>
