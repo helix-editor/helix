@@ -3,6 +3,7 @@ import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import starlightLinksValidator from "starlight-links-validator";
 import starlightBlog from "starlight-blog";
+import starlightImageZoom from "starlight-image-zoom";
 import { rehypeHeadingIds } from "@astrojs/markdown-remark";
 import rehypeAutolinkHeadings from "rehype-autolink-headings";
 import rehypeExternalLinks from "rehype-external-links";
@@ -47,6 +48,7 @@ export default defineConfig({
         },
       ],
       plugins: [
+        starlightImageZoom(),
         starlightLinksValidator(),
         starlightBlog({ title: "News", prefix: "news" }),
       ],

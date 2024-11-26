@@ -47,6 +47,9 @@ importers:
       starlight-contributor-list:
         specifier: ^0.1.0
         version: 0.1.0(@astrojs/starlight@0.29.2(astro@4.16.13(rollup@4.27.2)(typescript@5.6.3)))
+      starlight-image-zoom:
+        specifier: ^0.9.0
+        version: 0.9.0(@astrojs/starlight@0.29.2(astro@4.16.13(rollup@4.27.2)(typescript@5.6.3)))
       starlight-links-validator:
         specifier: ^0.13.2
         version: 0.13.2(@astrojs/starlight@0.29.2(astro@4.16.13(rollup@4.27.2)(typescript@5.6.3)))(astro@4.16.13(rollup@4.27.2)(typescript@5.6.3))
@@ -2132,6 +2135,12 @@ packages:
     engines: {node: ^18.17.1 || ^20.3.0 || >=21.0.0}
     peerDependencies:
       '@astrojs/starlight': '>=0.28'
+
+  starlight-image-zoom@0.9.0:
+    resolution: {integrity: sha512-XG87T80g5hsT6dvtNk9OKx0gD+M8lsloVTApQYnxdc3JD8lQBfu2kCsrwkyrwXZRtV7JRyd0PDHwx1UFmGmI1g==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@astrojs/starlight': '>=0.22.0'
 
   starlight-links-validator@0.13.2:
     resolution: {integrity: sha512-BP6vf+fj91LnQXPnggWVhZXhcSF1x6SHof0GRg+IGgY0idSbIU7OHE2SvLggs2fRZ5SflVqpCTpK0pQcOmYcDg==}
@@ -5297,6 +5306,13 @@ snapshots:
     transitivePeerDependencies:
       - encoding
       - supports-color
+
+  starlight-image-zoom@0.9.0(@astrojs/starlight@0.29.2(astro@4.16.13(rollup@4.27.2)(typescript@5.6.3))):
+    dependencies:
+      '@astrojs/starlight': 0.29.2(astro@4.16.13(rollup@4.27.2)(typescript@5.6.3))
+      rehype-raw: 7.0.0
+      unist-util-visit: 5.0.0
+      unist-util-visit-parents: 6.0.1
 
   starlight-links-validator@0.13.2(@astrojs/starlight@0.29.2(astro@4.16.13(rollup@4.27.2)(typescript@5.6.3)))(astro@4.16.13(rollup@4.27.2)(typescript@5.6.3)):
     dependencies:
