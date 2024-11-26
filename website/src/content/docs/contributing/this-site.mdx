@@ -8,9 +8,27 @@ import { FileTree, Steps } from "@astrojs/starlight/components";
 
 import Asciinema from "@/components/Asciinema.astro";
 
-First, clone the repository.
+This website is currently a Pull Request: [#12127](https://github.com/helix-editor/helix/pull/12127)
 
----
+If it isn't merged, it will continue to be maintained at the current URL.
+
+First, clone the repository which is a fork of `helix`:
+
+```sh
+git clone git@github.com:NikitaRevenco/helix.git
+```
+
+The actual website is located at the `new-website` branch.
+
+```sh
+git checkout new-website
+```
+
+Website is located within the `website` directory.
+
+```sh
+cd helix/website
+```
 
 Install the dependencies:
 
