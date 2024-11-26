@@ -51,7 +51,9 @@ For available themes, Helix comes with _a lot_ of bundled themes, so they are on
 
 ## `[editor]` Section
 
-<ConfigOption name="scrolloff">
+### scrolloff
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -66,7 +68,9 @@ Number of lines of padding around the edge of the screen when scrolling
 
 </ConfigOption>
 
-<ConfigOption name="mouse">
+### mouse
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -83,7 +87,9 @@ Enable mouse mode
 
 <Master>
 
-<ConfigOption name="default-yank-register">
+### default-yank-register
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -100,7 +106,9 @@ Default register used for yank/paste
 
 </Master>
 
-<ConfigOption name="middle-click-paste">
+### middle-click-paste
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -115,7 +123,9 @@ Middle click paste support
 
 </ConfigOption>
 
-<ConfigOption name="scroll-lines">
+### scroll-lines
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -130,7 +140,9 @@ Number of lines to scroll per scroll wheel step
 
 </ConfigOption>
 
-<ConfigOption name="shell">
+### shell
+
+<ConfigOption>
 
 Unix:
 
@@ -154,7 +166,9 @@ Shell to use when running external commands
 
 </ConfigOption>
 
-<ConfigOption name="line-number">
+### line-number
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -169,7 +183,9 @@ Line number display: `absolute` simply shows each line's number, while `relative
 
 </ConfigOption>
 
-<ConfigOption name="cursorline">
+### cursorline
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -184,7 +200,9 @@ Highlight all lines with a cursor
 
 </ConfigOption>
 
-<ConfigOption name="cursorcolumn">
+### cursorcolumn
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -199,7 +217,9 @@ Highlight all columns with a cursor
 
 </ConfigOption>
 
-<ConfigOption name="gutters">
+### gutters
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -227,7 +247,9 @@ Note that `diagnostics` also includes other features like breakpoints, 1-width p
 
 </ConfigOption>
 
-<ConfigOption name="auto-completion">
+### auto-completion
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -244,7 +266,9 @@ Enable automatic pop up of auto-completion
 
 <Master>
 
-<ConfigOption name="path-completion">
+### path-completion
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -263,7 +287,9 @@ Show files and directories if an existing path at the cursor was recognized, eit
 
 </Master>
 
-<ConfigOption name="auto-format">
+### auto-format
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -278,7 +304,9 @@ Enable automatic formatting on save
 
 </ConfigOption>
 
-<ConfigOption name="idle-timeout">
+### idle-timeout
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -293,7 +321,9 @@ Time in milliseconds since last keypress before idle timers trigger.
 
 </ConfigOption>
 
-<ConfigOption name="completion-timeout">
+### completion-timeout
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -308,7 +338,9 @@ Time in milliseconds after typing a word character before completions are shown,
 
 </ConfigOption>
 
-<ConfigOption name="preview-completion-insert">
+### preview-completion-insert
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -323,7 +355,9 @@ Whether to apply completion item instantly when selected
 
 </ConfigOption>
 
-<ConfigOption name="completion-trigger-len">
+### completion-trigger-len
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -338,7 +372,9 @@ The min-length of word under cursor to trigger autocompletion
 
 </ConfigOption>
 
-<ConfigOption name="completion-replace">
+### completion-replace
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -353,7 +389,9 @@ Set to `true` to make completions always replace the entire word and not just th
 
 </ConfigOption>
 
-<ConfigOption name="auto-info">
+### auto-info
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -368,7 +406,9 @@ Whether to display info boxes
 
 </ConfigOption>
 
-<ConfigOption name="true-color">
+### true-color
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -383,7 +423,9 @@ Set to `true` to override automatic detection of terminal truecolor support in t
 
 </ConfigOption>
 
-<ConfigOption name="undercurl">
+### undercurl
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -398,7 +440,9 @@ Set to `true` to override automatic detection of terminal undercurl support in t
 
 </ConfigOption>
 
-<ConfigOption name="rulers">
+### rulers
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -413,7 +457,9 @@ List of column positions at which to display the rulers. Can be overridden by la
 
 </ConfigOption>
 
-<ConfigOption name="bufferline">
+### bufferline
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -428,7 +474,9 @@ Renders a line at the top of the editor displaying open buffers. Can be `always`
 
 </ConfigOption>
 
-<ConfigOption name="color-modes">
+### color-modes
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -443,7 +491,9 @@ Whether to color the mode indicator with different colors depending on the mode 
 
 </ConfigOption>
 
-<ConfigOption name="text-width">
+### text-width
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -458,7 +508,9 @@ Maximum line length. Used for the `:reflow` command and soft-wrapping if `soft-w
 
 </ConfigOption>
 
-<ConfigOption name="workspace-lsp-roots">
+### workspace-lsp-roots
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -473,7 +525,9 @@ Directories relative to the workspace root that are treated as LSP roots. Should
 
 </ConfigOption>
 
-<ConfigOption name="default-line-ending">
+### default-line-ending
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -488,7 +542,9 @@ The line ending to use for new documents. Can be `native`, `lf`, `crlf`, `ff`, `
 
 </ConfigOption>
 
-<ConfigOption name="insert-final-newline">
+### insert-final-newline
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -503,7 +559,9 @@ Whether to automatically insert a trailing line-ending on write if missing
 
 </ConfigOption>
 
-<ConfigOption name="popup-border">
+### popup-border
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -518,7 +576,9 @@ Draw border around `popup`, `menu`, `all`, or `none`
 
 </ConfigOption>
 
-<ConfigOption name="indent-heuristic">
+### indent-heuristic
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -539,7 +599,9 @@ If the chosen heuristic is not available, a different one will be used as a fall
 
 </ConfigOption>
 
-<ConfigOption name="jump-label-alphabet">
+### jump-label-alphabet
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -554,7 +616,9 @@ The characters that are used to generate two character jump labels. Characters a
 
 </ConfigOption>
 
-<ConfigOption name="end-of-line-diagnostics">
+### end-of-line-diagnostics
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -573,7 +637,9 @@ Refer to the setting about `inline-diagnostics` for more details
 
 <Master>
 
-<ConfigOption name="clipboard-provider">
+### clipboard-provider
+
+<ConfigOption>
 
 Platform and environment specific.
 
@@ -645,7 +711,9 @@ mode.select = "SELECT"
 
 The `[editor.statusline]` key takes the following sub-keys:
 
-<ConfigOption name="left">
+### left
+
+<ConfigOption>
 
 ```toml
 [editor.statusline]
@@ -666,7 +734,9 @@ A list of elements aligned to the left of the statusline
 
 </ConfigOption>
 
-<ConfigOption name="center">
+### center
+
+<ConfigOption>
 
 ```toml
 [editor.statusline]
@@ -681,7 +751,9 @@ A list of elements aligned to the middle of the statusline
 
 </ConfigOption>
 
-<ConfigOption name="right">
+### right
+
+<ConfigOption>
 
 ```toml
 [editor.statusline]
@@ -702,7 +774,9 @@ A list of elements aligned to the right of the statusline
 
 </ConfigOption>
 
-<ConfigOption name="separator">
+### separator
+
+<ConfigOption>
 
 ```toml
 [editor.statusline]
@@ -788,7 +862,9 @@ The following statusline elements can be configured:
 
 ### `[editor.lsp]` Section
 
-<ConfigOption name="enable">
+### enable
+
+<ConfigOption>
 
 ```toml
 [editor.lsp]
@@ -803,7 +879,9 @@ Enables LSP integration. Setting to false will completely disable language serve
 
 </ConfigOption>
 
-<ConfigOption name="display-messages">
+### display-messages
+
+<ConfigOption>
 
 ```toml
 [editor.lsp]
@@ -820,7 +898,9 @@ By default, a progress spinner is shown in the statusline beside the file path.
 
 </ConfigOption>
 
-<ConfigOption name="auto-signature-help">
+### auto-signature-help
+
+<ConfigOption>
 
 ```toml
 [editor.lsp]
@@ -835,7 +915,9 @@ Enable automatic popup of signature help (parameter hints)
 
 </ConfigOption>
 
-<ConfigOption name="display-inlay-hints">
+### display-inlay-hints
+
+<ConfigOption>
 
 ```toml
 [editor.lsp]
@@ -858,7 +940,9 @@ Please report any bugs you see so we can fix them!
 
 </ConfigOption>
 
-<ConfigOption name="display-signature-help-docs">
+### display-signature-help-docs
+
+<ConfigOption>
 
 ```toml
 [editor.lsp]
@@ -873,7 +957,9 @@ Display docs under signature help popup
 
 </ConfigOption>
 
-<ConfigOption name="snippets">
+### snippets
+
+<ConfigOption>
 
 ```toml
 [editor.lsp]
@@ -890,7 +976,9 @@ Requires a server restart (`:lsp-restart`) to take effect after `:config-reload`
 
 </ConfigOption>
 
-<ConfigOption name="goto-reference-include-declaration">
+### goto-reference-include-declaration
+
+<ConfigOption>
 
 ```toml
 [editor.lsp]
@@ -916,7 +1004,9 @@ Due to limitations of the terminal environment, only the primary cursor can chan
 
 :::
 
-<ConfigOption name="normal">
+### normal
+
+<ConfigOption>
 
 ```toml
 [editor.cursor-shape]
@@ -931,7 +1021,9 @@ Cursor shape in [normal mode][normal mode]
 
 </ConfigOption>
 
-<ConfigOption name="insert">
+### insert
+
+<ConfigOption>
 
 ```toml
 [editor.cursor-shape]
@@ -946,7 +1038,9 @@ Cursor shape in [insert mode][insert mode]
 
 </ConfigOption>
 
-<ConfigOption name="select">
+### select
+
+<ConfigOption>
 
 ```toml
 [editor.cursor-shape]
@@ -988,7 +1082,9 @@ Example:
 !.gitattributes
 ```
 
-<ConfigOption name="hidden">
+### hidden
+
+<ConfigOption>
 
 ```toml
 [editor.file-picker]
@@ -1003,7 +1099,9 @@ Enables ignoring hidden files
 
 </ConfigOption>
 
-<ConfigOption name="follow-symlinks">
+### follow-symlinks
+
+<ConfigOption>
 
 ```toml
 [editor.file-picker]
@@ -1018,7 +1116,9 @@ Follow symlinks instead of ignoring them
 
 </ConfigOption>
 
-<ConfigOption name="deduplicate-links">
+### deduplicate-links
+
+<ConfigOption>
 
 ```toml
 [editor.file-picker]
@@ -1033,7 +1133,9 @@ Ignore symlinks that point at files already shown in the picker
 
 </ConfigOption>
 
-<ConfigOption name="parents">
+### parents
+
+<ConfigOption>
 
 ```toml
 [editor.file-picker]
@@ -1048,7 +1150,9 @@ Enables reading ignore files from parent directories
 
 </ConfigOption>
 
-<ConfigOption name="ignore">
+### ignore
+
+<ConfigOption>
 
 ```toml
 [editor.file-picker]
@@ -1063,7 +1167,9 @@ Enables reading `.ignore` files
 
 </ConfigOption>
 
-<ConfigOption name="git-ignore">
+### git-ignore
+
+<ConfigOption>
 
 ```toml
 [editor.file-picker]
@@ -1078,7 +1184,9 @@ Enables reading `.gitignore` files
 
 </ConfigOption>
 
-<ConfigOption name="git-global">
+### git-global
+
+<ConfigOption>
 
 ```toml
 [editor.file-picker]
@@ -1093,7 +1201,9 @@ Enables reading global `.gitignore`, whose path is specified in git's config: `c
 
 </ConfigOption>
 
-<ConfigOption name="git-exclude">
+### git-exclude
+
+<ConfigOption>
 
 ```toml
 [editor.file-picker]
@@ -1108,7 +1218,9 @@ Enables reading `.git/info/exclude` files
 
 </ConfigOption>
 
-<ConfigOption name="max-depth">
+### max-depth
+
+<ConfigOption>
 
 Unset by default
 
@@ -1122,7 +1234,9 @@ Set with an integer value for maximum depth to recurse
 
 ### `[editor.auto-pairs]` Section
 
-<ConfigOption name="auto-pairs">
+### auto-pairs
+
+<ConfigOption>
 
 ```toml
 [editor]
@@ -1175,7 +1289,9 @@ name = "rust"
 
 Control auto save behavior.
 
-<ConfigOption name="focus-lost">
+### focus-lost
+
+<ConfigOption>
 
 ```toml
 [editor.auto-save]
@@ -1224,7 +1340,9 @@ Time in milliseconds since last edit before auto save timer triggers.
 
 Search specific options.
 
-<ConfigOption name="smart-case">
+### smart-case
+
+<ConfigOption>
 
 ```toml
 [editor.search]
@@ -1239,7 +1357,9 @@ Enable smart case regex searching (case-insensitive unless pattern contains uppe
 
 </ConfigOption>
 
-<ConfigOption name="wrap-around">
+### wrap-around
+
+<ConfigOption>
 
 ```toml
 [editor.wrap-around]
@@ -1260,7 +1380,9 @@ Options for rendering whitespace with visible characters.
 
 Use `:set whitespace.render all` to temporarily enable visible whitespace.
 
-<ConfigOption name="render">
+### render
+
+<ConfigOption>
 
 ```toml
 [editor.whitespace]
@@ -1277,7 +1399,9 @@ May either be `all` or `none`, or a table with sub-keys `space`, `nbsp`, `nnbsp`
 
 </ConfigOption>
 
-<ConfigOption name="characters">
+### characters
+
+<ConfigOption>
 
 See example
 
@@ -1315,7 +1439,9 @@ tabpad = "·" # Tabs will look like "→···" (depending on tab width)
 
 Options for rendering vertical indent guides.
 
-<ConfigOption name="render">
+### render
+
+<ConfigOption>
 
 ```toml
 [editor.indent-guides]
@@ -1330,7 +1456,9 @@ Whether to render indent guides
 
 </ConfigOption>
 
-<ConfigOption name="character">
+### character
+
+<ConfigOption>
 
 ```toml
 [editor.indent-guides]
@@ -1345,7 +1473,9 @@ Literal character to use for rendering the indent guide
 
 </ConfigOption>
 
-<ConfigOption name="skip-levels">
+### skip-levels
+
+<ConfigOption>
 
 ```toml
 [editor.indent-guides]
@@ -1383,7 +1513,9 @@ To customize the behavior of gutters, the `[editor.gutters]` section must
 be used. This section contains top level settings, as well as settings for
 specific gutter components as subsections.
 
-<ConfigOption name="layout">
+### layout
+
+<ConfigOption>
 
 ```toml
 [editor.gutters]
@@ -1409,7 +1541,9 @@ layout = ["diff", "diagnostics", "line-numbers", "spacer"]
 
 Options for the line number gutter
 
-<ConfigOption name="min-width">
+### min-width
+
+<ConfigOption>
 
 ```toml
 [editor.gutters.line-numbers]
@@ -1452,7 +1586,9 @@ Currently unused
 
 Options for soft wrapping lines that exceed the view width:
 
-<ConfigOption name="enable">
+### enable
+
+<ConfigOption>
 
 ```toml
 [editor.soft-wrap]
@@ -1467,7 +1603,9 @@ Whether soft wrapping is enabled.
 
 </ConfigOption>
 
-<ConfigOption name="max-wrap">
+### max-wrap
+
+<ConfigOption>
 
 ```toml
 [editor.soft-wrap]
@@ -1482,7 +1620,9 @@ Maximum free space left at the end of the line.
 
 </ConfigOption>
 
-<ConfigOption name="max-indent-retain">
+### max-indent-retain
+
+<ConfigOption>
 
 ```toml
 [editor.soft-wrap]
@@ -1497,7 +1637,9 @@ Maximum indentation to carry over when soft wrapping a line.
 
 </ConfigOption>
 
-<ConfigOption name="wrap-indicator">
+### wrap-indicator
+
+<ConfigOption>
 
 ```toml
 [editor.soft-wrap]
@@ -1512,7 +1654,9 @@ Text inserted before soft wrapped lines, highlighted with `ui.virtual.wrap`
 
 </ConfigOption>
 
-<ConfigOption name="wrap-at-text-width">
+### wrap-at-text-width
+
+<ConfigOption>
 
 ```toml
 [editor.soft-wrap]
@@ -1541,7 +1685,9 @@ wrap-indicator = ""  # set wrap-indicator to "" to hide it
 
 Options for navigating and editing using tab key.
 
-<ConfigOption name="enable">
+### enable
+
+<ConfigOption>
 
 ```toml
 [editor.smart-tab]
@@ -1556,7 +1702,9 @@ If set to true, then when the cursor is in a position with non-whitespace to its
 
 </ConfigOption>
 
-<ConfigOption name="supersede-menu">
+### supersede-menu
+
+<ConfigOption>
 
 ```toml
 [editor.smart-tab]
@@ -1599,7 +1747,9 @@ fn main() {
 }
 ```
 
-<ConfigOption name="cursor-line">
+### cursor-line
+
+<ConfigOption>
 
 ```toml
 [editor.inline-diagnostics]
@@ -1614,7 +1764,9 @@ The minimum severity that a diagnostic must have to be shown inline on the line 
 
 </ConfigOption>
 
-<ConfigOption name="other-lines">
+### other-lines
+
+<ConfigOption>
 
 ```toml
 [editor.inline-diagnostics]
@@ -1629,7 +1781,9 @@ The minimum severity that a diagnostic must have to be shown inline on a line th
 
 </ConfigOption>
 
-<ConfigOption name="prefix-len">
+### prefix-len
+
+<ConfigOption>
 
 ```toml
 [editor.inline-diagnostics]
@@ -1644,7 +1798,9 @@ How many horizontal bars `─` are rendered before the diagnostic text.
 
 </ConfigOption>
 
-<ConfigOption name="max-wrap">
+### max-wrap
+
+<ConfigOption>
 
 ```toml
 [editor.inline-diagnostics]
@@ -1659,7 +1815,9 @@ Equivalent of the editor.soft-wrap.max-wrap option for diagnostics.
 
 </ConfigOption>
 
-<ConfigOption name="max-diagnostics">
+### max-diagnostics
+
+<ConfigOption>
 
 ```toml
 [editor.inline-diagnostics]
