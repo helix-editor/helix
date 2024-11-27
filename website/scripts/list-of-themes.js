@@ -208,31 +208,37 @@ const parsedThemes = themes
     ];
   })
   .map(([name, palette, theme]) => {
-    return Object.fromEntries(
-      Object.entries(theme).map(([scope, color]) => {
-        const isHex = (s) => s.startsWith("#");
-        if (typeof color.fg === "string") {
-          if (!isHex(color.fg)) {
-            color.fg = palette[color.fg];
+    return [
+      name,
+      Object.fromEntries(
+        Object.entries(theme).map(([scope, color]) => {
+          const isHex = (s) => s.startsWith("#");
+          if (typeof color.fg === "string") {
+            if (!isHex(color.fg)) {
+              color.fg = palette[color.fg];
+            }
           }
-        }
-        if (typeof color.bg === "string") {
-          if (!isHex(color.bg)) {
-            color.bg = palette[color.bg];
+          if (typeof color.bg === "string") {
+            if (!isHex(color.bg)) {
+              color.bg = palette[color.bg];
+            }
           }
-        }
-        return [scope, color];
-      }),
-    );
+          return [scope, color];
+        }),
+      ),
+    ];
   })
   .map(themeToHtml)
   .join("");
 
 console.log(parsedThemes);
 
-function themeToHtml(theme) {
+function themeToHtml([themeName, theme]) {
   return `\
-<pre style="background-color:${theme["ui.background"].bg}" class="termshot-theme"><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.linenr"].fg}">  1</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["keyword"].fg}">fn</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["function"].fg}">main</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["punctuation"].fg}">()</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["punctuation"].fg}">{</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"]}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">             </font></span>
+<h3>
+  <code>${themeName}</code>
+</h3>
+<pre aria-label="${themeName} theme preview" aria-role="img" style="background-color:${theme["ui.background"].bg}"><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.linenr"].fg}">  1</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["keyword"].fg}">fn</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["function"].fg}">main</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["punctuation"].fg}">()</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["punctuation"].fg}">{</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"]}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">             </font></span>
 <span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.linenr"].fg}">  2</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["keyword"].fg}">let</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">numbers</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["operator"].fg}">=</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">         </font></span>
 <span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["ui.linenr.selected"].fg}">  3</font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.linenr.selected"].fg}"><font color="${theme["ui.cursor"].fg}"> </font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["ui.virtual"].fg}">   </font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["function.macro"].fg}">vec!</font></span><span style="background-color:${theme["ui.cursorline.primary"]}"><font color="${theme["punctuation"].fg}">[</font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["constant.numeric"].fg}">1</font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["punctuation"].fg}">,</font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["constant.numeric"].fg}">2</font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["punctuation"].fg}">,</font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["constant.numeric"].fg}">3</font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["punctuation"].fg}">,</font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["constant.numeric"].fg}">4</font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["punctuation.delimiter"].fg}">];</font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["ui.background"].fg}">   </font></span>
 <span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.linenr"].fg}">  4</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["keyword"].fg}">let</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">doubled:</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["type.builtin"].fg}">Vec</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["punctuation"].fg}">&lt;</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["type.builtin"].fg}">i32</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["punctuation"].fg}">&gt;</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}"> </font></span>
