@@ -2,6 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 use std::borrow::Cow;
+use std::sync::{Arc, Mutex};
 use thiserror::Error;
 
 #[derive(Clone, Copy)]
@@ -97,7 +98,7 @@ mod external {
         Windows,
         Termux,
         #[cfg(feature = "term")]
-        Termcode,
+        Termcode(TermcodeProvider),
         Custom(CommandProvider),
         None,
     }
@@ -163,7 +164,7 @@ mod external {
             } else if binary_exists("win32yank.exe") {
                 Self::Win32Yank
             } else if cfg!(feature = "term") {
-                Self::Termcode
+                Self::Termcode(TermcodeProvider::default())
             } else {
                 Self::None
             }
@@ -198,7 +199,7 @@ mod external {
                 #[cfg(windows)]
                 Self::Windows => "windows".into(),
                 #[cfg(feature = "term")]
-                Self::Termcode => "termcode".into(),
+                Self::Termcode(_) => "termcode".into(),
                 Self::Custom(command_provider) => Cow::Owned(format!(
                     "custom ({}+{})",
                     command_provider.yank.command, command_provider.paste.command
@@ -244,7 +245,7 @@ mod external {
                     ClipboardType::Selection => Ok(String::new()),
                 },
                 #[cfg(feature = "term")]
-                Self::Termcode => Err(ClipboardError::ReadingNotSupported),
+                Self::Termcode(provider) => provider.get_contents(clipboard_type),
                 Self::Custom(command_provider) => {
                     execute_command(&command_provider.yank, None, true)?
                         .ok_or(ClipboardError::MissingStdout)
@@ -290,12 +291,8 @@ mod external {
                     ClipboardType::Selection => Ok(()),
                 },
                 #[cfg(feature = "term")]
-                Self::Termcode => {
-                    crossterm::queue!(
-                        std::io::stdout(),
-                        osc52::SetClipboardCommand::new(content, clipboard_type)
-                    )?;
-                    Ok(())
+                Self::Termcode(provider) => {
+                    provider.set_contents(content.to_owned(), &clipboard_type)
                 }
                 Self::Custom(command_provider) => match clipboard_type {
                     ClipboardType::Clipboard => {
@@ -311,6 +308,54 @@ mod external {
                 },
                 Self::None => Ok(()),
             }
+        }
+    }
+
+    #[cfg(feature = "term")]
+    #[derive(Default, Debug, Clone, Serialize, Deserialize)]
+    pub struct TermcodeProvider {
+        #[serde(skip)]
+        buf: Arc<Mutex<String>>,
+        #[serde(skip)]
+        primary_buf: Arc<Mutex<String>>,
+    }
+
+    #[cfg(feature = "term")]
+    impl PartialEq for TermcodeProvider {
+        fn eq(&self, _other: &Self) -> bool {
+            true
+        }
+    }
+
+    #[cfg(feature = "term")]
+    impl Eq for TermcodeProvider {}
+
+    #[cfg(feature = "term")]
+    impl TermcodeProvider {
+        fn get_contents(&self, clipboard_type: &ClipboardType) -> Result<String> {
+            // This is the same noop if term is enabled or not.
+            // We don't use the get side of OSC 52 as it isn't often enabled, it's a security hole,
+            // and it would require this to be async to listen for the response
+            let value = match clipboard_type {
+                ClipboardType::Clipboard => self.buf.lock().unwrap().clone(),
+                ClipboardType::Selection => self.primary_buf.lock().unwrap().clone(),
+            };
+
+            Ok(value)
+        }
+
+        fn set_contents(&self, content: String, clipboard_type: &ClipboardType) -> Result<()> {
+            #[cfg(feature = "term")]
+            crossterm::execute!(
+                std::io::stdout(),
+                osc52::SetClipboardCommand::new(&content, *clipboard_type)
+            )?;
+            // Set our internal variables to use in get_content regardless of using OSC 52
+            match clipboard_type {
+                ClipboardType::Clipboard => *self.buf.lock().unwrap() = content,
+                ClipboardType::Selection => *self.primary_buf.lock().unwrap() = content,
+            }
+            Ok(())
         }
     }
 
