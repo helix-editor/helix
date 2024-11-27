@@ -44,31 +44,34 @@ To do this, follow instructions for your operating system.
 <Tabs>
 <TabItem label="Linux" icon="linux">
 
-You can use [`xmodmap`](https://manpages.ubuntu.com/manpages/oracular/en/man1/xmodmap.1.html):
+You can use [`keyd`](https://github.com/rvaiya/keyd), which is a modern alternative to `xmodmap` compatible with Wayland and XOrg.
 
-```sh
-xmodmap -e "keycode 9 = Caps_Lock NoSymbol Caps_Lock"
-```
+<Steps>
 
-:::tip[Make it run automatically (optional)]
+1. Install `keyd` using your system's package manager
 
-To get this change for every session, after you have run the previous commands:
-
-1. Create a file called `~/.xmodmap` with the new keymaps:
+1. Start the `keyd` daemon:
 
    ```sh
-   xmodmap -pke > ~/.xmodmap
+   sudo systemctl enable keyd
    ```
 
-1. Create a file called `.xinitrc` in your home directory, containing the following line:
+1. Place the following in `/etc/keyd/default.conf`
 
    ```sh
-   xmodmap .xmodmap
+   [ids]
+   *
+   [main]
+   # Maps capslock to escape when pressed and control when held.
+   capslock = overload(control, esc)
+
+   # Remaps the escape key to capslock
+   esc = capslock
    ```
 
-:::
+1. Run `sudo keyd reload` to reload the config set.
 
-For more information [see this StackOverflow thread](https://askubuntu.com/questions/363346/how-to-permanently-switch-caps-lock-and-esc).
+</Steps>
 
 </TabItem>
 
