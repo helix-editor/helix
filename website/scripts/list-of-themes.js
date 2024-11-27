@@ -98,416 +98,152 @@ const setIntersection = (a, b) =>
 // console.log(themesChanged);
 
 /* normalization -- themes should have a specific structure */
-const normalize = (theme, ...highlightNames) => {
-  highlightNames.forEach((highlightName) => {
-    if (!isObject(theme[highlightName])) {
-      theme[highlightName] = { fg: theme[highlightName] };
+
+const parsedThemes = themes
+  .flatMap(([themeName, theme], i) => {
+    if (themeName !== "catppuccin_mocha") {
+      return [];
     }
-  });
-};
-
-const parsedThemes = themes.map(([themeName, theme], i) => {
-  /* fallbacks -- if a key has not been specified, another key will be used for it */
-  // theme["ui.cursorline.primary"] ??= { bg: theme["ui.background"].bg };
-  // theme["ui.linenr"] ??= { fg: theme["ui.text"] };
-  // theme["ui.linenr.selected"] ??= { fg: theme["ui.selection"].bg };
-
-  // theme["function"] ?? { fg: theme["text"] };
-  // theme["function.macro"] ?? { fg: theme["function"] };
-
-  normalize(
-    theme,
-    "ui.linenr",
-    "function",
-    "ui.linenr.selected",
-    "function.macro",
-  );
-  const obj = {
-    "ui.background": {
+    const background = {
       bg: theme["ui.background"].bg,
-    },
-    "ui.linenr": {
-      fg: theme["ui.linenr"].fg ?? theme["ui.text"].fg ?? theme["ui.text"],
-    },
-  };
+      fg: theme["ui.background"].fg || "#ffaaaa",
+    };
 
-  Object.entries(obj).forEach(([highlightName, highlightValue]) => {
-    if (
-      typeof highlightValue.bg !== "string" &&
-      typeof highlightValue.fg !== "string"
-    ) {
-      console.error(themeName);
-      console.error(`${highlightName}: ${JSON.stringify(highlightValue)}`);
-      throw new Error(`${highlightName}`);
-    }
-  });
+    const getColor = (key, fallback) => {
+      const value = theme[key];
+      if (typeof value === "string") {
+        return { fg: value };
+      } else if (!value) {
+        return fallback();
+      }
+      return value;
+    };
 
-  return obj;
-});
+    const getFallbackColor = (primaryKey, fallbackFn) => {
+      const value = theme[primaryKey];
+      if (typeof value === "string") {
+        return { fg: value };
+      } else if (!value) {
+        return fallbackFn();
+      }
+      return value;
+    };
 
-// type Theme = {
-//   "ui.linenr": Foreground;
-//   keyword: Foreground;
-//   function: Foreground;
-//   punctuation: Foreground;
-//   variable: Foreground;
-//   operator: Foreground;
-//   "ui.cursorline.primary": Background;
-//   "ui.linenr.selected": Foreground;
-//   "ui.virtual.ruler": Foreground;
-//   "function.macro": Foreground;
-//   constant: Foreground;
-//   "type.builtin": Foreground;
-//   "punctuation.delimiter": Foreground;
-//   "variable.parameter": Foreground;
-//   "constant.numeric": Foreground;
-//   comment: Foreground;
-//   "ui.statusline": Foreground & Background;
-// };
+    const getUiBackground = () => background;
+    const getVariable = () => getColor("variable", () => background.fg);
+    const getFunction = () => getFallbackColor("function", getVariable);
+    const getMacro = () => getFallbackColor("function.macro", getFunction);
+    const getKeyword = () => getFallbackColor("keyword", getVariable);
+    const getUiLinenr = () => getColor("ui.linenr", () => background.fg);
+    const getUiLinenrSelected = () =>
+      getFallbackColor("ui.linenr.selected", getHighlight);
+    const getOperator = () => getColor("operator", () => background.fg);
+    const getPunctuation = () => getColor("punctuation", () => background.fg);
+    const getConstant = () => getFallbackColor("constant", getVariable);
+    const getConstantNumeric = () =>
+      getFallbackColor("constant.numeric", getConstant);
+    const getPunctuationDelimiter = () =>
+      getFallbackColor("punctuation.delimiter", getPunctuation);
+    const getVariableParameter = () =>
+      getFallbackColor("variable.parameter", getVariable);
+    const getComment = () => getColor("comment", () => background.fg);
+    const getType = () => getFallbackColor("type", getVariable);
+    const getTypeBuiltin = () => getFallbackColor("type.builtin", getType);
+
+    const getUiStatusline = () => {
+      const uiStatusline = theme["ui.statusline"];
+      if (!uiStatusline) return {};
+      return {
+        fg: uiStatusline.fg || background.fg,
+        bg: uiStatusline.bg || background.bg,
+      };
+    };
+
+    const getHighlight = () => getColor("ui.highlight", getUiBackground);
+    const getUiCursorline = () =>
+      getFallbackColor("ui.cursorline", getHighlight);
+    const getUiCursorlinePrimary = () =>
+      getFallbackColor("ui.cursorline.primary", getUiCursorline);
+
+    const getUiVirtual = () =>
+      getFallbackColor("ui.virtual", getUiVirtualInlayHint);
+
+    const getUiCursor = () =>
+      getFallbackColor("ui.cursor.primary", () => background.fg);
+
+    const getUiVirtualInlayHint = () =>
+      getColor("ui.virtual.inlay-hint", () => background.fg);
+    const getUiVirtualIndentGuide = () =>
+      getFallbackColor("ui.virtual.indent-guide", getUiVirtualInlayHint);
+    const getUiVirtualRuler = () =>
+      getFallbackColor("ui.virtual.ruler", getUiVirtualIndentGuide);
+
+    return [
+      [
+        themeName,
+        theme.palette,
+        {
+          "ui.background": getUiBackground(),
+          keyword: getKeyword(),
+          variable: getVariable(),
+          "variable.parameter": getVariableParameter(),
+          "ui.statusline": getUiStatusline(),
+          "ui.linenr": getUiLinenr(),
+          function: getFunction(),
+          "function.macro": getMacro(),
+          operator: getOperator(),
+          punctuation: getPunctuation(),
+          "punctuation.delimiter": getPunctuationDelimiter(),
+          constant: getConstant(),
+          "constant.numeric": getConstantNumeric(),
+          comment: getComment(),
+          "type.builtin": getTypeBuiltin(),
+          "ui.cursorline.primary": getUiCursorlinePrimary(),
+          "ui.linenr.selected": getUiLinenrSelected(),
+          "ui.virtual.ruler": getUiVirtualRuler(),
+          "ui.virtual": getUiVirtual(),
+          "ui.cursor": getUiCursor(),
+        },
+      ],
+    ];
+  })
+  .map(([name, palette, theme]) => {
+    return Object.fromEntries(
+      Object.entries(theme).map(([scope, color]) => {
+        const isHex = (s) => s.startsWith("#");
+        if (typeof color.fg === "string") {
+          if (!isHex(color.fg)) {
+            color.fg = palette[color.fg];
+          }
+        }
+        if (typeof color.bg === "string") {
+          if (!isHex(color.bg)) {
+            color.bg = palette[color.bg];
+          }
+        }
+        return [scope, color];
+      }),
+    );
+  })
+  .map(themeToHtml)
+  .join("");
+
+console.log(parsedThemes);
 
 function themeToHtml(theme) {
   return `\
-<pre style="background-color:${theme["ui.background"]}" class="termshot-theme">
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}">  1</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.keyword}">fn</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.function.fg}">main</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.punctuation}">()</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.punctuation}">&lcub;</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}">  2</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.keyword}">let</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.variable}">numbers</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.operator}">=</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.cursorline.primary"].bg}"></span>
-	<span style="background-color:${theme["ui.cursorline.primary"].bg}">
-		<font color="${theme["ui.linenr.selected"].fg}">  3</font>
-	</span>
-	<span style="background-color:${theme["ui.cursorline.primary"].bg}"></span>
-	<span style="background-color:${theme["ui.linenr"].fg}">
-		<font color="${theme["ui.virtual.ruler"]}"></font>
-	</span>
-	<span style="background-color:${theme["ui.cursorline.primary"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.cursorline.primary"].bg}">
-		<font color="${theme["function.macro"].fg}">vec!</font>
-	</span>
-	<span style="background-color:${theme["ui.cursorline.primary"].bg}">
-		<font color="${theme.punctuation}">[</font>
-	</span>
-	<span style="background-color:${theme["ui.cursorline.primary"].bg}">
-		<font color="${theme.constant}">1</font>
-	</span>
-	<span style="background-color:${theme["ui.cursorline.primary"].bg}">
-		<font color="${theme.punctuation}">,</font>
-	</span>
-	<span style="background-color:${theme["ui.cursorline.primary"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.cursorline.primary"].bg}">
-		<font color="${theme.constant}">2</font>
-	</span>
-	<span style="background-color:${theme["ui.cursorline.primary"].bg}">
-		<font color="${theme.punctuation}">,</font>
-	</span>
-	<span style="background-color:${theme["ui.cursorline.primary"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.cursorline.primary"].bg}">
-		<font color="${theme.constant}">3</font>
-	</span>
-	<span style="background-color:${theme["ui.cursorline.primary"].bg}">
-		<font color="${theme.punctuation}">,</font>
-	</span>
-	<span style="background-color:${theme["ui.cursorline.primary"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.cursorline.primary"].bg}">
-		<font color="${theme.constant}">4</font>
-	</span>
-	<span style="background-color:${theme["ui.cursorline.primary"].bg}">
-		<font color="${theme.punctuation}">];</font>
-	</span>
-	<span style="background-color:${theme["ui.cursorline.primary"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.cursorline.primary"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}">  4</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.keyword}">let</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.variable}">doubled:</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["type.builtin"]}">Vec</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.punctuation}">&lt;</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["type.builtin"]}">i32</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.punctuation}">&gt;</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}">  5</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.operator}">=</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.variable}">numbers</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}">  6</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["punctuation.delimiter"]}">.</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.function.fg}">iter</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.punctuation}">()</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}">  7</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["punctuation.delimiter"]}">.</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.function.fg}">map</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.punctuation}">(|</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["variable.parameter"]}">n</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.punctuation}">|</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["variable.parameter"]}">n</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.operator}">*</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["constant.numeric"].fg}">2</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.punctuation}">)</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}">  8</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["punctuation.delimiter"]}">.</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.function.fg}">collect</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.punctuation}">()</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["punctuation.delimiter"]}">;</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}">  9</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.comment}">//</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.comment}">[2,</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.comment}">4,</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.comment}">6,</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.comment}">8]</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"> 10</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["function.macro"].fg}">dbg!</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["punctuation.delimiter"]}">(</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.variable}">doubled</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.punctuation}">)</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["punctuation.delimiter"]}">;</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"> 11</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme.punctuation}">&rcub;</font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}">
-		<font color="${theme["ui.linenr"].fg}"></font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-	<span style="background-color:${theme["ui.statusline"].bg}">
-		<font color="${theme["ui.statusline"].fg}"> NOR   main.rs [+]   1 sel  3:1 </font>
-	</span>
-	<span style="background-color:${theme["ui.background"].bg}"></span>
-</pre>
-`;
+<pre style="background-color:${theme["ui.background"].bg}" class="termshot-theme"><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.linenr"].fg}">  1</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["keyword"].fg}">fn</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["function"].fg}">main</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["punctuation"].fg}">()</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["punctuation"].fg}">{</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"]}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">             </font></span>
+<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.linenr"].fg}">  2</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["keyword"].fg}">let</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">numbers</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["operator"].fg}">=</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">         </font></span>
+<span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["ui.linenr.selected"].fg}">  3</font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.linenr.selected"].fg}"><font color="${theme["ui.cursor"].fg}"> </font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["ui.virtual"].fg}">   </font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["function.macro"].fg}">vec!</font></span><span style="background-color:${theme["ui.cursorline.primary"]}"><font color="${theme["punctuation"].fg}">[</font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["constant.numeric"].fg}">1</font></span><span style="background-color:${theme["punctuation"].fg}"><font color="#9399B2">,</font></span><span style="background-color:#2A2B3C"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:#2A2B3C"><font color="#FAB387">2</font></span><span style="background-color:#2A2B3C"><font color="#9399B2">,</font></span><span style="background-color:#2A2B3C"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:#2A2B3C"><font color="#FAB387">3</font></span><span style="background-color:#2A2B3C"><font color="#9399B2">,</font></span><span style="background-color:#2A2B3C"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:#2A2B3C"><font color="#FAB387">4</font></span><span style="background-color:#2A2B3C"><font color="#9399B2">];</font></span><span style="background-color:#2A2B3C"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:#2A2B3C"><font color="${theme["ui.background"].fg}">   </font></span>
+<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#45475A">  4</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#CBA6F7">let</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">doubled:</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#F9E2AF">Vec</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#9399B2">&lt;</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#F9E2AF">i32</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#9399B2">&gt;</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}"> </font></span>
+<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#45475A">  5</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}">    </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#89DCEB">=</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">numbers</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">           </font></span>
+<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#45475A">  6</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}">        </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#9399B2">.</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#89B4FA">iter</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#9399B2">()</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">         </font></span>
+<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#45475A">  7</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}">        </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#9399B2">.</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#89B4FA">map</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#9399B2">(|</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#EBA0AC"><i>n</i></font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#9399B2">|</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#EBA0AC"><i>n</i></font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#89DCEB">*</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#FAB387">2</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#9399B2">)</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}"> </font></span>
+<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#45475A">  8</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}">        </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#9399B2">.</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#89B4FA">collect</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#9399B2">();</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">     </font></span>
+<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#45475A">  9</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#9399B2"><i>//</i></font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"><i> </i></font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#9399B2"><i>[2,</i></font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"><i> </i></font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#9399B2"><i>4,</i></font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"><i> </i></font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#9399B2"><i>6,</i></font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"><i> </i></font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#9399B2"><i>8]</i></font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">       </font></span>
+<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#45475A"> 10</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#CBA6F7">dbg!</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#9399B2">(</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">doubled</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#9399B2">);</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">        </font></span>
+<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#45475A"> 11</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="#9399B2">}</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">                       </font></span>
+<span style="background-color:#181825"><font color="#BAC2DE"> NOR   main.rs [+]   1 sel  3:1 </font></span>
+<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">                                </font></span>
+</pre>`;
 }
