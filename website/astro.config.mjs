@@ -49,6 +49,14 @@ export default defineConfig({
             href: "/sitemap-index.xml",
           },
         },
+        {
+          tag: "script",
+          attrs: {
+            src: "https://static.cloudflareinsights.com/beacon.min.js",
+            "data-cf-beacon": '{"token": "1c63f959be334c96913d5c16499a3887"}',
+            defer: true,
+          },
+        },
       ],
       plugins: [
         starlightImageZoom(),
