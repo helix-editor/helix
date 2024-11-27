@@ -1713,6 +1713,12 @@ impl Document {
         self.version
     }
 
+    pub fn path_completion_enabled(&self) -> bool {
+        self.language_config()
+            .and_then(|lang_config| lang_config.path_completion)
+            .unwrap_or_else(|| self.config.load().path_completion)
+    }
+
     /// maintains the order as configured in the language_servers TOML array
     pub fn language_servers(&self) -> impl Iterator<Item = &helix_lsp::Client> {
         self.language_config().into_iter().flat_map(move |config| {

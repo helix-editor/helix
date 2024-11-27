@@ -101,7 +101,15 @@ Download the official Helix AppImage from the [latest releases](https://github.c
 chmod +x helix-*.AppImage # change permission for executable mode
 ./helix-*.AppImage # run helix
 ```
- 
+
+You can optionally [add the `.desktop` file](./building-from-source.md#configure-the-desktop-shortcut). Helix must be installed in `PATH` with the name `hx`. For example:
+```sh
+mkdir -p "$HOME/.local/bin"
+mv helix-*.AppImage "$HOME/.local/bin/hx"
+```
+
+and make sure `~/.local/bin` is in your `PATH`.
+
 ## macOS
 
 ### Homebrew Core

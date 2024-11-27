@@ -12,6 +12,8 @@
  (unicode_string_literal)
  (yul_string_literal)
 ] @string
+(hex_string_literal "hex" @string.special.symbol)
+(unicode_string_literal "unicode" @string.special.symbol)
 [
  (number_literal)
  (yul_decimal_number)
@@ -20,6 +22,7 @@
 [
  (true)
  (false)
+ (yul_boolean)
 ] @constant.builtin.boolean
 
 (comment) @comment
@@ -44,18 +47,18 @@
 (type_name "(" @punctuation.bracket "=>" @punctuation.delimiter ")" @punctuation.bracket)
 
 ; Definitions
-(struct_declaration 
+(struct_declaration
   name: (identifier) @type)
-(enum_declaration 
+(enum_declaration
   name: (identifier) @type)
 (contract_declaration
-  name: (identifier) @type) 
+  name: (identifier) @type)
 (library_declaration
-  name: (identifier) @type) 
+  name: (identifier) @type)
 (interface_declaration
   name: (identifier) @type)
-(event_definition 
-  name: (identifier) @type) 
+(event_definition
+  name: (identifier) @type)
 
 (function_definition
   name:  (identifier) @function)

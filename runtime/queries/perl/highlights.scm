@@ -1,9 +1,9 @@
 [
-  "use" "no" "require" "package"
+  "use" "no" "require" "package" "class" "role"
 ] @keyword.control.import
 
 [
-  "sub"
+  "sub" "method" "async" "extended"
 ] @keyword.function
 
 [
@@ -17,7 +17,7 @@
 ] @keyword.control.repeat
 
 [
-  "my" "our" "local"
+  "my" "our" "local" "state"
 ] @keyword.storage.modifier
 
 [
@@ -29,9 +29,10 @@
 ] @constant.builtin
 
 (phaser_statement phase: _ @keyword.directive)
+(class_phaser_statement phase: _ @keyword.directive)
 
 [
-  "or" "and"
+  "or" "xor" "and"
   "eq" "ne" "cmp" "lt" "le" "ge" "gt"
   "isa"
 ] @keyword.operator
@@ -55,7 +56,7 @@
 
 [(quoted_regexp) (match_regexp)] @string.regexp
 
-(autoquoted_bareword _?) @string.special
+(autoquoted_bareword) @string.special
 
 [(scalar) (arraylen)] @variable
 (scalar_deref_expression ["->" "$" "*"] @variable)

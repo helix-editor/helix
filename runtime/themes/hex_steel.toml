@@ -1,14 +1,16 @@
+# Author : portalsurfer <https://github.com/PORTALSURFER>
+
 "comment" = { fg = "comment" }
 "comment.block.documentation" = { bg = "comment_doc", modifiers = ["italic"] }
 
 "constant" = { fg = "t11" }
 "function" = { fg = "t10" }
-"function.method" = { fg = "t10" }
+"function.method" = { fg = "t7" }
 "function.macro" = { fg = "t7" }
 "keyword.storage.modifier" = { fg = "t7" }
 "keyword.control.import" = { fg = "t8" }
 "keyword.control" = { fg = "t8" }
-"keyword.function" = { fg = "t7" }
+"keyword.function" = { fg = "t11" }
 "keyword" = { fg = "t6" }
 "operator" = { fg = "t8" }
 "punctuation" = { fg = "t9" }
@@ -18,6 +20,8 @@
 "type" = { fg = "t8", modifiers = ["bold"] }
 "namespace" = { fg = "t6", modifiers = ["bold"] }
 "variable" = { fg = "t4" }
+"variable.parameter" = { fg = "t6" } 
+"variable.other.member" = { fg = "t3" } 
 "label" = { fg = "t4" }
 
 "diff.plus" = { fg = "diff_plus" }
@@ -25,10 +29,12 @@
 "diff.delta.moved" = { fg = "diff_delta_moved" }
 "diff.minus" = { fg = "diff_minus" }
 
-"ui.cursor.insert" = { fg = "t2", bg = "highlight" }
-"ui.cursor.select" = { fg = "t2", bg = "highlight_two" }
-"ui.cursor" = { fg = "t1", bg = "highlight_three" }
-"ui.cursor.match" = { fg = "highlight", bg = "selection", modifiers = ["bold"] }
+"ui.cursor.primary.insert" = { fg = "t2", bg = "highlight" }
+"ui.cursor.primary.select" = { fg = "t2", bg = "highlight_two" }
+"ui.cursor.primary" = { fg = "t1", bg = "highlight_three" }
+"ui.cursor.match" = { fg = "highlight", bg = "t1", modifiers = ["bold"] }
+"ui.cursorline.primary" = { bg = "ruler" }
+"ui.cursorline.secondary" = { bg = "ruler" }
 
 "ui.linenr" = { fg = "t3", bg = "t2" }
 "ui.linenr.selected" = { fg = "highlight_three", bg = "t2" }
@@ -42,10 +48,7 @@
 "ui.popup" = { fg = "t4", bg = "t1" }
 "ui.window" = { fg = "t4" }
 
-"ui.selection.primary" = { bg = "selection" }
-"ui.selection" = { bg = "selection" }
-
-"ui.cursorline.primary" = { bg = "t1" }
+"ui.selection" = { fg = "selection_fg", bg = "selection" }
 
 "ui.statusline" = { fg = "t4", bg = "t1" }
 "ui.statusline.inactive" = { fg = "t4", bg = "t1" }
@@ -55,17 +58,20 @@
 
 "ui.text" = { fg = "t4" }
 "ui.text.focus" = { fg = "highlight_three", modifiers = ["bold"] }
-#
-"ui.virtual.ruler" = { bg = "t1" }
+
+"ui.virtual.ruler" = { bg = "ruler" }
 "ui.virtual.indent-guide" = { fg = "t3" }
 "ui.virtual.whitespace" = { fg = "t3" }
+"ui.virtual.jump-label" = { fg = "t11", modifiers = ["bold"] }
+"ui.virtual.inlay-hint" = { fg = "hints", modifiers = ["bold"] }
+
+"ui.bufferline" = { fg = "t3", bg = "t1" }
+"ui.bufferline.active" = { fg = "t7", bg = "t2" }
 
 "diagnostic.error" = { underline = { color = "error", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "warning", style = "curl" } }
 "diagnostic.info" = { underline = { color = "info", style = "curl" } }
 "diagnostic.hint" = { underline = { color = "display", style = "curl" } }
-"diagnostic.unnecessary" = { modifiers = ["dim"] }
-"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 "error" = { fg = "error", modifiers = ["bold"] }
 "warning" = { fg = "warning", modifiers = ["bold"] }
@@ -73,14 +79,14 @@
 "hint" = { fg = "display", modifiers = ["bold"] }
 "special" = { fg = "t7", modifiers = ["bold"] }
 
-"markup.heading" = { fg = "t4" }
-"markup.list" = { fg = "t4" }
+"markup.heading" = { fg = "t7" }
+"markup.list" = { fg = "t7" }
 "markup.bold" = { fg = "t4" }
 "markup.italic" = { fg = "t4" }
 "markup.strikethrough" = { fg = "t4", modifiers = ["crossed_out"] }
-"markup.link.url" = { fg = "t4", modifiers = ["underlined"] }
-"markup.link.text" = { fg = "t4" }
-"markup.quote" = { fg = "t4" }
+"markup.link.url" = { fg = "t11", modifiers = ["underlined"] }
+"markup.link.text" = { fg = "t11" }
+"markup.quote" = { fg = "t5" }
 "markup.raw" = { fg = "t4" }
 
 [palette]
@@ -93,25 +99,28 @@ t6 = "#6e8789"
 t7 = "#d85c60"
 t8 = "#9bc1bb"
 t9 = "#b5c5c5"
-t10 = "#c0d0ce"
+t10 = "#c3c3bd"
 t11 = "#f78c5e"
 
-highlight = "#3f36f2"
+highlight = "#f23672"
 highlight_two = "#f69c3c"
 highlight_three = "#d4d987"
 
-selection = "#032d4a"
+selection = "#4a9aa6"
+selection_fg = "#080a0b"
 
 black = "#000000"
-comment = "#d4d987"
+comment = "#654642"
 comment_doc = "#234048"
+hints = "#31353c"
+ruler  = "#222320"
 
-error = "#ff0900"
+error = "#ff4000"
 warning = "#ffbf00"
 display = "#42baff"
 info = "#dad7d5"
 
-diff_minus = "#ff0900"
+diff_minus = "#ff4000"
 diff_delta = "#0078bd"
-diff_plus = "#87a800"
+diff_plus = "#c9d400"
 diff_delta_moved = "#0048bd"

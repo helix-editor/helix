@@ -32,7 +32,7 @@
 //! to helix-view in the future if we manage to detach the compositor from its rendering backend.
 
 use anyhow::Result;
-pub use cancel::{cancelable_future, cancelation, CancelRx, CancelTx};
+pub use cancel::{cancelable_future, TaskController, TaskHandle};
 pub use debounce::{send_blocking, AsyncHook};
 pub use redraw::{
     lock_frame, redraw_requested, request_redraw, start_frame, RenderLockGuard, RequestRedrawOnDrop,
