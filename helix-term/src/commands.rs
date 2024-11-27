@@ -1286,7 +1286,6 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         // rarely so in practice) so that gf on quoted/braced path works (not sure about this
         // but apparently that is how gf has worked historically in helix)
         let path = find_paths(search_range, true)
-            .inspect(|mat| println!("{mat:?} {:?}", pos - search_start))
             .take_while(|range| search_start + range.start <= pos + 1)
             .find(|range| pos <= search_start + range.end)
             .map(|range| Cow::from(search_range.byte_slice(range)));
