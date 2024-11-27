@@ -19,17 +19,20 @@ pub fn current_working_dir() -> PathBuf {
 
     // implementation of crossplatform pwd -L
     // we want pwd -L so that symlinked directories are handled correctly
-    let mut cwd = std::env::current_dir().expect("Couldn't determine current working directory");
+    let mut cwd = std::env::current_dir();
 
-    let pwd = std::env::var_os("PWD");
-    #[cfg(windows)]
-    let pwd = pwd.or_else(|| std::env::var_os("CD"));
+    if cwd.is_err() {
+        let pwd = std::env::var_os("PWD");
+        #[cfg(windows)]
+        let pwd = pwd.or_else(|| std::env::var_os("CD"));
 
-    if let Some(pwd) = pwd.map(PathBuf::from) {
-        if pwd.canonicalize().ok().as_ref() == Some(&cwd) {
-            cwd = pwd;
+        if let Some(pwd) = pwd.map(PathBuf::from) {
+            cwd = Ok(pwd);
         }
     }
+
+    let cwd = cwd.expect("Couldn't determine current working directory");
+
     let mut dst = CWD.write().unwrap();
     *dst = Some(cwd.clone());
 
