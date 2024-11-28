@@ -79,52 +79,36 @@ pub mod util {
         offset_encoding: OffsetEncoding,
     ) -> lsp::Diagnostic {
         use helix_core::diagnostic::Severity::*;
-
-        let range = Range::new(diag.range.start, diag.range.end);
+    
+        let range = range_to_lsp_range(doc, Range::new(diag.range.start, diag.range.end), offset_encoding);
         let severity = diag.severity.map(|s| match s {
             Hint => lsp::DiagnosticSeverity::HINT,
             Info => lsp::DiagnosticSeverity::INFORMATION,
             Warning => lsp::DiagnosticSeverity::WARNING,
             Error => lsp::DiagnosticSeverity::ERROR,
         });
-
-        let code = match diag.code.clone() {
-            Some(x) => match x {
-                NumberOrString::Number(x) => Some(lsp::NumberOrString::Number(x)),
-                NumberOrString::String(x) => Some(lsp::NumberOrString::String(x)),
-            },
-            None => None,
-        };
-
-        let new_tags: Vec<_> = diag
-            .tags
-            .iter()
-            .map(|tag| match tag {
-                helix_core::diagnostic::DiagnosticTag::Unnecessary => {
-                    lsp::DiagnosticTag::UNNECESSARY
-                }
-                helix_core::diagnostic::DiagnosticTag::Deprecated => lsp::DiagnosticTag::DEPRECATED,
-            })
-            .collect();
-
-        let tags = if !new_tags.is_empty() {
-            Some(new_tags)
-        } else {
-            None
-        };
-
+    
+        let code = diag.code.clone().map(|x| match x {
+            NumberOrString::Number(n) => lsp::NumberOrString::Number(n),
+            NumberOrString::String(s) => lsp::NumberOrString::String(s),
+        });
+    
+        let tags = diag.tags.iter().map(|tag| match tag {
+            helix_core::diagnostic::DiagnosticTag::Unnecessary => lsp::DiagnosticTag::UNNECESSARY,
+            helix_core::diagnostic::DiagnosticTag::Deprecated => lsp::DiagnosticTag::DEPRECATED,
+        }).collect::<Vec<_>>();
+    
         lsp::Diagnostic {
-            range: range_to_lsp_range(doc, range, offset_encoding),
+            range,
             severity,
             code,
             source: diag.source.clone(),
-            message: diag.message.to_owned(),
-            related_information: None,
-            tags,
-            data: diag.data.to_owned(),
+            message: diag.message.to_string(),
+            tags: (!tags.is_empty()).then_some(tags),
             ..Default::default()
         }
     }
+    
 
     /// Converts [`lsp::Position`] to a position in the document.
     ///
