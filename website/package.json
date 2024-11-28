@@ -4,7 +4,9 @@
   "packageManager": "pnpm@latest",
   "version": "1.0.0",
   "scripts": {
-    "termshots": "node scripts/termshots.js",
+    "generate:termshot-index-files": "node scripts/termshots.js",
+    "generate:list-of-themes": "node scripts/list-of-themes.js",
+    "termshots": "pnpm generate:list-of-themes && pnpm generate:termshot-index-files",
     "predev": "pnpm termshots",
     "prebuild": "pnpm termshots",
     "prepreview": "pnpm termshots",
