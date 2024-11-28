@@ -1,6 +1,6 @@
 inherits = "flexoki_light"
 
-[palette]
+# [palette]
 tx = "#CECDC3"
 tx-2 = "#878580"
 tx-3 = "#575653"
