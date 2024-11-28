@@ -79,25 +79,35 @@ pub mod util {
         offset_encoding: OffsetEncoding,
     ) -> lsp::Diagnostic {
         use helix_core::diagnostic::Severity::*;
-    
-        let range = range_to_lsp_range(doc, Range::new(diag.range.start, diag.range.end), offset_encoding);
+
+        let range = range_to_lsp_range(
+            doc,
+            Range::new(diag.range.start, diag.range.end),
+            offset_encoding,
+        );
         let severity = diag.severity.map(|s| match s {
             Hint => lsp::DiagnosticSeverity::HINT,
             Info => lsp::DiagnosticSeverity::INFORMATION,
             Warning => lsp::DiagnosticSeverity::WARNING,
             Error => lsp::DiagnosticSeverity::ERROR,
         });
-    
+
         let code = diag.code.clone().map(|x| match x {
             NumberOrString::Number(n) => lsp::NumberOrString::Number(n),
             NumberOrString::String(s) => lsp::NumberOrString::String(s),
         });
-    
-        let tags = diag.tags.iter().map(|tag| match tag {
-            helix_core::diagnostic::DiagnosticTag::Unnecessary => lsp::DiagnosticTag::UNNECESSARY,
-            helix_core::diagnostic::DiagnosticTag::Deprecated => lsp::DiagnosticTag::DEPRECATED,
-        }).collect::<Vec<_>>();
-    
+
+        let tags = diag
+            .tags
+            .iter()
+            .map(|tag| match tag {
+                helix_core::diagnostic::DiagnosticTag::Unnecessary => {
+                    lsp::DiagnosticTag::UNNECESSARY
+                }
+                helix_core::diagnostic::DiagnosticTag::Deprecated => lsp::DiagnosticTag::DEPRECATED,
+            })
+            .collect::<Vec<_>>();
+
         lsp::Diagnostic {
             range,
             severity,
@@ -108,7 +118,6 @@ pub mod util {
             ..Default::default()
         }
     }
-    
 
     /// Converts [`lsp::Position`] to a position in the document.
     ///
