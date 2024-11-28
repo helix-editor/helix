@@ -7,7 +7,7 @@
 import util from "node:util";
 import toml from "@iarna/toml";
 import fs from "node:fs";
-import path from "node:path";
+import path, { delimiter } from "node:path";
 import { fileURLToPath } from "node:url";
 
 function isObject(item) {
@@ -226,65 +226,144 @@ const parsedThemes = themes
 console.log(parsedThemes);
 
 function factory(theme) {
-  const withBackground = (children) =>
-    `<span style="background-color:${theme["ui.background"].bg}">${children}</span>`;
+  const backgroundWrapperCreator = (cursorline) => (children) =>
+    `<span style="background-color:${theme[cursorline ? "ui.cursorline.primary" : "ui.background"].bg}">${children}</span>`;
 
-  return {
-    operator: (operator) =>
-      withBackground(
-        `<font color="${theme["operator"].fg}">${operator}</font>`,
+  const withBackground = backgroundWrapperCreator(false);
+  const withBackgroundCursorline = backgroundWrapperCreator(true);
+
+  const raw = {
+    operator: (background) => (operator) =>
+      background(`<font color="${theme["operator"].fg}">${operator}</font>`),
+
+    linenr: (background) => (lineNumber) =>
+      background(
+        `<font color="${theme["ui.linenr"].fg}">${" ".repeat(3 - String(lineNumber).length)}${lineNumber}</font>`,
       ),
 
-    linenr: (lineNumber) =>
-      withBackground(
-        `<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.linenr"].fg}">  ${lineNumber}</font></span>`,
-      ),
+    space:
+      (background) =>
+      (count = 1) =>
+        background(
+          `<font color="${theme["ui.background"].fg}">${" ".repeat(count)}</font>`,
+        ),
 
-    space: (count = 1) =>
-      withBackground(
-        `<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">${" ".repeat(count)}</font></span>`,
-      ),
+    fn:
+      (background, subtype = "") =>
+      (func) =>
+        background(
+          `<font color="${theme[`function${subtype}`].fg}">${func}</font>`,
+        ),
 
-    fn: (func) =>
-      withBackground(
-        `<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["function"].fg}">${func}</font></span>`,
-      ),
+    keyword: (background) => (keyword) =>
+      background(`<font color="${theme["keyword"].fg}">${keyword}</font>`),
 
-    keyword: (keyword) =>
-      withBackground(`<font color="${theme["keyword"].fg}">${keyword}</font>`),
+    variable:
+      (background, subtype = "") =>
+      (variable) =>
+        background(
+          `<font color="${theme[`variable${subtype}`].fg}">${subtype === ".parameter" ? "<i>" : ""}${variable}${subtype === ".parameter" ? "</i>" : ""}</font>`,
+        ),
 
-    variable: (variable) =>
-      withBackground(
-        `<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["variable"].fg}">${variable}</font></span>`,
-      ),
+    punctuation:
+      (background, subtype = "") =>
+      (punctuation) =>
+        background(
+          `<font color="${theme[`punctuation${subtype}`].fg}">${punctuation}</font>`,
+        ),
 
-    punctuation: (punctuation) =>
-      withBackground(
-        `<font color="${theme["punctuation"].fg}">${punctuation}</font>`,
-      ),
+    number:
+      (background, subtype = ".numeric") =>
+      (n) =>
+        background(
+          `<font color="${theme[`constant${subtype}`].fg}">${n}</font>`,
+        ),
+
+    comment:
+      (background, subtype = "") =>
+      (n) =>
+        background(
+          `<font color="${theme[`comment${subtype}`].fg}"><i>${n}</i></font>`,
+        ),
+
+    type:
+      (background, subtype = "") =>
+      (t) =>
+        background(`<font color="${theme[`type${subtype}`].fg}">${t}</font>`),
   };
+
+  const utils = {
+    number: raw.number(withBackground),
+    operator: raw.operator(withBackground),
+    linenr: raw.linenr(withBackground),
+    fn: raw.fn(withBackground),
+    space: raw.space(withBackground),
+    keyword: raw.keyword(withBackground),
+    variable: raw.variable(withBackground),
+    comment: raw.comment(withBackground),
+    param: raw.variable(withBackground, ".parameter"),
+    punctuation: raw.punctuation(withBackground),
+    macro: raw.fn(withBackground, ".macro"),
+    type: raw.type(withBackground),
+    typeBuiltin: raw.type(withBackground, ".builtin"),
+    punctuationDelimiter: raw.punctuation(withBackground, ".delimiter"),
+    cursorline: {
+      macro: raw.fn(withBackgroundCursorline, ".macro"),
+      punctuationDelimiter: raw.punctuation(
+        withBackgroundCursorline,
+        ".delimiter",
+      ),
+      number: raw.number(withBackgroundCursorline),
+      operator: raw.operator(withBackgroundCursorline),
+      linenr: raw.linenr(withBackgroundCursorline),
+      fn: raw.fn(withBackgroundCursorline),
+      space: raw.space(withBackgroundCursorline),
+      keyword: raw.keyword(withBackgroundCursorline),
+      variable: raw.variable(withBackgroundCursorline),
+      punctuation: raw.punctuation(withBackgroundCursorline),
+    },
+  };
+
+  return utils;
 }
 
 function themeToHtml([themeName, theme]) {
-  const { operator, keyword, punctuation, space, linenr, fn, variable } =
-    factory(theme);
+  const {
+    operator,
+    keyword,
+    punctuation,
+    comment,
+    space,
+    linenr,
+    fn,
+    param,
+    macro,
+    typeBuiltin,
+    variable,
+    punctuationDelimiter,
+    cursorline,
+    number,
+  } = factory(theme);
+
+  // prettier-ignore
+  const lines = [
+    [ `<pre aria-label="${themeName} theme preview" aria-role="img" style="background-color:${theme["ui.background"].bg}">`, space(2), linenr(1), space(2), keyword("fn"), space(), fn("main"), punctuation("()"), space(), punctuation("{"), space(14), ],
+    [ space(2), linenr(2), space(4), keyword("let"), space(), variable("numbers"), space(), operator("="), space(10), ],
+    [ cursorline.space(2), `<span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["ui.linenr.selected"].fg}">  3</font></span>`, cursorline.space(2), `<span style="background-color:${theme["ui.linenr.selected"].fg}"><font color="${theme["ui.cursor"].fg}"> </font></span>`, cursorline.space(3), cursorline.macro("dbg!"), cursorline.punctuation("["), cursorline.number(1), cursorline.punctuation(","), cursorline.space(), cursorline.number(2), cursorline.punctuation(","), cursorline.space(), cursorline.number(3), cursorline.punctuation(","), cursorline.space(), cursorline.number(4), cursorline.punctuation("]"), cursorline.punctuationDelimiter(";"), cursorline.space(4), ],
+    [ space(2), linenr(4), space(4), keyword("let"), space(), variable("doubled"), punctuation(":"), space(1), typeBuiltin("Vec"), punctuation("<"), typeBuiltin("i32"), punctuation(">"), ],
+    [ space(2), linenr(6), space(10), punctuation("."), fn("iter"), punctuation("()"), space(9), ],
+    [ space(2), linenr(7), space(10), punctuation("."), fn("map"), punctuation("(|"), param("n"), punctuation("|"), space(), param("n"), space(), operator("*"), space(), number(2), punctuation(")"), ],
+    [ space(2), linenr(8), space(10), punctuation("."), fn("collect"), punctuation("()"), punctuationDelimiter(";"), ],
+    [ space(2), linenr(9), space(4), comment("//"), space(), comment("[2,"), space(), comment("4,"), space(), comment("6,"), space(), comment("8]"), ],
+    [ space(2), linenr(10), space(4), macro("dbg!"), punctuation("("), variable("doubled"), punctuation(")"), punctuationDelimiter(";"), ],
+    [ space(2), linenr(11), space(2), punctuation("}") ],
+    [ `<span style="background-color:${theme["ui.statusline"].bg}"><font color="${theme["ui.statusline"].fg}"> NOR   main.rs [+]   1 sel  3:1 </font></span>`, ],
+    [space(32)],
+  ];
 
   return `\
 <h3>
   <code>${themeName}</code>
 </h3>
-<pre aria-label="${themeName} theme preview" aria-role="img" style="background-color:${theme["ui.background"].bg}">${space(2)}${linenr(1)}${space(2)}${keyword("fn")}${space()}${fn("main")}${punctuation("()")}${space()}${punctuation("{")}${space(14)}
-${space(2)}${linenr(2)}${space(4)}${keyword("let")}${space()}${variable("numbers")}${space()}${operator("=")}${space(10)}
-<span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["ui.linenr.selected"].fg}">  3</font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.linenr.selected"].fg}"><font color="${theme["ui.cursor"].fg}"> </font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["ui.virtual"].fg}">   </font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["function.macro"].fg}">vec!</font></span><span style="background-color:${theme["ui.cursorline.primary"]}"><font color="${theme["punctuation"].fg}">[</font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["constant.numeric"].fg}">1</font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["punctuation"].fg}">,</font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["constant.numeric"].fg}">2</font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["punctuation"].fg}">,</font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["constant.numeric"].fg}">3</font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["punctuation"].fg}">,</font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["constant.numeric"].fg}">4</font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["punctuation.delimiter"].fg}">];</font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.cursorline.primary"].bg}"><font color="${theme["ui.background"].fg}">   </font></span>
-<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.linenr"].fg}">  4</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}">  </font></span>${keyword("let")}<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">doubled:</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["type.builtin"].fg}">Vec</font></span>${punctuation("&lt;")}<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["type.builtin"].fg}">i32</font></span>${punctuation("&gt;")}<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}"> </font></span>
-<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.linenr"].fg}">  5</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}">    </font></span>${operator("=")}<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">numbers</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">           </font></span>
-<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.linenr"].fg}">  6</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}">        </font></span>${punctuation(".")}<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["function"].fg}">iter</font></span>${punctuation("()")}<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">         </font></span>
-<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.linenr"].fg}">  7</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}">        </font></span>${punctuation(".")}<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["function"].fg}">map</font></span>${punctuation("(|")}<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["variable.parameter"].fg}"><i>n</i></font></span>${punctuation("|")}<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["variable.parameter"].fg}"><i>n</i></font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span>${operator("*")}<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["constant.numeric"].fg}">2</font></span>${punctuation(")")}<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}"> </font></span>
-<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.linenr"].fg}">  8</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}">        </font></span>${punctuation(".")}<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["function"].fg}">collect</font></span>${punctuation("();")}<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">     </font></span>
-<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.linenr"].fg}">  9</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["comment"].fg}"><i>//</i></font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"><i> </i></font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["comment"].fg}"><i>[2,</i></font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"><i> </i></font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["comment"].fg}"><i>4,</i></font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"><i> </i></font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["comment"].fg}"><i>6,</i></font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"><i> </i></font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["comment"].fg}"><i>8]</i></font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">       </font></span>
-<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.linenr"].fg}"> 10</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["function.macro"].fg}">dbg!</font></span>${punctuation("(")}<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">doubled</font></span>${punctuation(");")}<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">        </font></span>
-<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.linenr"].fg}"> 11</font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">  </font></span>${punctuation("}")}<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.virtual"].fg}"> </font></span><span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">                       </font></span>
-<span style="background-color:${theme["ui.statusline"].bg}"><font color="${theme["ui.statusline"].fg}"> NOR   main.rs [+]   1 sel  3:1 </font></span>
-<span style="background-color:${theme["ui.background"].bg}"><font color="${theme["ui.background"].fg}">                                </font></span>
-</pre>`;
+${lines.map((line) => line.join("")).join("\n")}`;
 }
