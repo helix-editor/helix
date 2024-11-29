@@ -1078,6 +1078,12 @@ pub struct Breakpoint {
     pub log_message: Option<String>,
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct CompletionItemKindStyle {
+    pub text: Option<String>,
+    pub style: Option<theme::Style>,
+}
+
 use futures_util::stream::{Flatten, Once};
 
 pub struct Editor {
@@ -1125,6 +1131,7 @@ pub struct Editor {
 
     pub config: Arc<dyn DynAccess<Config>>,
     pub auto_pairs: Option<AutoPairs>,
+    pub completion_item_kind_styles: Arc<HashMap<lsp::CompletionItemKind, CompletionItemKindStyle>>,
 
     pub idle_timer: Pin<Box<Sleep>>,
     redraw_timer: Pin<Box<Sleep>>,
@@ -1230,6 +1237,9 @@ impl Editor {
         // HAXX: offset the render area height by 1 to account for prompt/commandline
         area.height -= 1;
 
+        let theme = theme_loader.default();
+        let completion_item_kind_styles = compute_completion_item_kind_styles(&theme, &conf);
+
         Self {
             mode: Mode::Normal,
             tree: Tree::new(area),
@@ -1242,7 +1252,7 @@ impl Editor {
             selected_register: None,
             macro_recording: None,
             macro_replaying: Vec::new(),
-            theme: theme_loader.default(),
+            theme,
             language_servers,
             diagnostics: BTreeMap::new(),
             diff_providers: DiffProviderRegistry::default(),
@@ -1265,6 +1275,7 @@ impl Editor {
             last_completion: None,
             config,
             auto_pairs,
+            completion_item_kind_styles: Arc::new(completion_item_kind_styles),
             exit_code: 0,
             config_events: unbounded_channel(),
             needs_redraw: false,
@@ -1405,6 +1416,10 @@ impl Editor {
             }
         }
 
+        self.completion_item_kind_styles = Arc::new(compute_completion_item_kind_styles(
+            &self.theme,
+            &self.config(),
+        ));
         self._refresh();
     }
 
@@ -2272,6 +2287,48 @@ fn try_restore_indent(doc: &mut Document, view: &mut View) {
             });
         doc.apply(&transaction, view.id);
     }
+}
+
+fn compute_completion_item_kind_styles(
+    theme: &Theme,
+    config: &DynGuard<Config>,
+) -> HashMap<lsp::CompletionItemKind, CompletionItemKindStyle> {
+    let mut ret = HashMap::new();
+    for (scope_name, kind) in [
+        ("text", lsp::CompletionItemKind::TEXT),
+        ("method", lsp::CompletionItemKind::METHOD),
+        ("function", lsp::CompletionItemKind::FUNCTION),
+        ("constructor", lsp::CompletionItemKind::CONSTRUCTOR),
+        ("field", lsp::CompletionItemKind::FIELD),
+        ("variable", lsp::CompletionItemKind::VARIABLE),
+        ("class", lsp::CompletionItemKind::CLASS),
+        ("interface", lsp::CompletionItemKind::INTERFACE),
+        ("module", lsp::CompletionItemKind::MODULE),
+        ("property", lsp::CompletionItemKind::PROPERTY),
+        ("unit", lsp::CompletionItemKind::UNIT),
+        ("value", lsp::CompletionItemKind::VALUE),
+        ("enum", lsp::CompletionItemKind::ENUM),
+        ("keyword", lsp::CompletionItemKind::KEYWORD),
+        ("snippet", lsp::CompletionItemKind::SNIPPET),
+        ("color", lsp::CompletionItemKind::COLOR),
+        ("file", lsp::CompletionItemKind::FILE),
+        ("reference", lsp::CompletionItemKind::REFERENCE),
+        ("folder", lsp::CompletionItemKind::FOLDER),
+        ("enum-member", lsp::CompletionItemKind::ENUM_MEMBER),
+        ("constant", lsp::CompletionItemKind::CONSTANT),
+        ("struct", lsp::CompletionItemKind::STRUCT),
+        ("event", lsp::CompletionItemKind::EVENT),
+        ("operator", lsp::CompletionItemKind::OPERATOR),
+        ("type-parameter", lsp::CompletionItemKind::TYPE_PARAMETER),
+    ] {
+        let style = theme.try_get(&dbg!(format!("ui.completion.kind.{scope_name}")));
+        let text = config.completion_item_kinds.get(&kind).cloned();
+        if style.is_some() || text.is_some() {
+            ret.insert(kind, CompletionItemKindStyle { text, style });
+        }
+    }
+
+    ret
 }
 
 #[derive(Default)]

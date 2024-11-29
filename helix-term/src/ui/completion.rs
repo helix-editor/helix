@@ -7,14 +7,14 @@ use crate::{
 };
 use helix_view::{
     document::SavePoint,
-    editor::CompleteAction,
+    editor::{CompleteAction, CompletionItemKindStyle},
     handlers::lsp::SignatureHelpInvoked,
     theme::{Modifier, Style},
     ViewId,
 };
 use tui::{buffer::Buffer as Surface, text::Span};
 
-use std::{borrow::Cow, sync::Arc};
+use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
 use helix_core::{self as core, chars, Change, Transaction};
 use helix_view::{graphics::Rect, Document, Editor};
@@ -23,8 +23,45 @@ use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
 
 use helix_lsp::{lsp, util, OffsetEncoding};
 
+pub struct CompletionData {
+    completion_item_kinds: Arc<HashMap<lsp::CompletionItemKind, CompletionItemKindStyle>>,
+    default_style: Style,
+}
+
+const fn completion_item_kind_name(kind: Option<lsp::CompletionItemKind>) -> Option<&'static str> {
+    match kind {
+        Some(lsp::CompletionItemKind::TEXT) => Some("text"),
+        Some(lsp::CompletionItemKind::METHOD) => Some("method"),
+        Some(lsp::CompletionItemKind::FUNCTION) => Some("function"),
+        Some(lsp::CompletionItemKind::CONSTRUCTOR) => Some("constructor"),
+        Some(lsp::CompletionItemKind::FIELD) => Some("field"),
+        Some(lsp::CompletionItemKind::VARIABLE) => Some("variable"),
+        Some(lsp::CompletionItemKind::CLASS) => Some("class"),
+        Some(lsp::CompletionItemKind::INTERFACE) => Some("interface"),
+        Some(lsp::CompletionItemKind::MODULE) => Some("module"),
+        Some(lsp::CompletionItemKind::PROPERTY) => Some("property"),
+        Some(lsp::CompletionItemKind::UNIT) => Some("unit"),
+        Some(lsp::CompletionItemKind::VALUE) => Some("value"),
+        Some(lsp::CompletionItemKind::ENUM) => Some("enum"),
+        Some(lsp::CompletionItemKind::KEYWORD) => Some("keyword"),
+        Some(lsp::CompletionItemKind::SNIPPET) => Some("snippet"),
+        Some(lsp::CompletionItemKind::COLOR) => Some("color"),
+        Some(lsp::CompletionItemKind::FILE) => Some("file"),
+        Some(lsp::CompletionItemKind::REFERENCE) => Some("reference"),
+        Some(lsp::CompletionItemKind::FOLDER) => Some("folder"),
+        Some(lsp::CompletionItemKind::ENUM_MEMBER) => Some("enum-member"),
+        Some(lsp::CompletionItemKind::CONSTANT) => Some("constant"),
+        Some(lsp::CompletionItemKind::STRUCT) => Some("struct"),
+        Some(lsp::CompletionItemKind::EVENT) => Some("event"),
+        Some(lsp::CompletionItemKind::OPERATOR) => Some("operator"),
+        Some(lsp::CompletionItemKind::TYPE_PARAMETER) => Some("type-parameter"),
+        _ => None,
+    }
+}
+
 impl menu::Item for CompletionItem {
-    type Data = ();
+    type Data = CompletionData;
+
     fn sort_text(&self, data: &Self::Data) -> Cow<str> {
         self.filter_text(data)
     }
@@ -42,7 +79,7 @@ impl menu::Item for CompletionItem {
         }
     }
 
-    fn format(&self, _data: &Self::Data) -> menu::Row {
+    fn format(&self, data: &Self::Data) -> menu::Row {
         let deprecated = match self {
             CompletionItem::Lsp(LspCompletionItem { item, .. }) => {
                 item.deprecated.unwrap_or_default()
@@ -58,53 +95,46 @@ impl menu::Item for CompletionItem {
             CompletionItem::Other(core::CompletionItem { label, .. }) => label,
         };
 
-        let kind = match self {
-            CompletionItem::Lsp(LspCompletionItem { item, .. }) => match item.kind {
-                Some(lsp::CompletionItemKind::TEXT) => "text",
-                Some(lsp::CompletionItemKind::METHOD) => "method",
-                Some(lsp::CompletionItemKind::FUNCTION) => "function",
-                Some(lsp::CompletionItemKind::CONSTRUCTOR) => "constructor",
-                Some(lsp::CompletionItemKind::FIELD) => "field",
-                Some(lsp::CompletionItemKind::VARIABLE) => "variable",
-                Some(lsp::CompletionItemKind::CLASS) => "class",
-                Some(lsp::CompletionItemKind::INTERFACE) => "interface",
-                Some(lsp::CompletionItemKind::MODULE) => "module",
-                Some(lsp::CompletionItemKind::PROPERTY) => "property",
-                Some(lsp::CompletionItemKind::UNIT) => "unit",
-                Some(lsp::CompletionItemKind::VALUE) => "value",
-                Some(lsp::CompletionItemKind::ENUM) => "enum",
-                Some(lsp::CompletionItemKind::KEYWORD) => "keyword",
-                Some(lsp::CompletionItemKind::SNIPPET) => "snippet",
-                Some(lsp::CompletionItemKind::COLOR) => "color",
-                Some(lsp::CompletionItemKind::FILE) => "file",
-                Some(lsp::CompletionItemKind::REFERENCE) => "reference",
-                Some(lsp::CompletionItemKind::FOLDER) => "folder",
-                Some(lsp::CompletionItemKind::ENUM_MEMBER) => "enum_member",
-                Some(lsp::CompletionItemKind::CONSTANT) => "constant",
-                Some(lsp::CompletionItemKind::STRUCT) => "struct",
-                Some(lsp::CompletionItemKind::EVENT) => "event",
-                Some(lsp::CompletionItemKind::OPERATOR) => "operator",
-                Some(lsp::CompletionItemKind::TYPE_PARAMETER) => "type_param",
-                Some(kind) => {
-                    log::error!("Received unknown completion item kind: {:?}", kind);
-                    ""
-                }
-                None => "",
+        let label_cell = menu::Cell::from(Span::styled(
+            label,
+            if deprecated {
+                Style::default().add_modifier(Modifier::CROSSED_OUT)
+            } else {
+                Style::default()
             },
-            CompletionItem::Other(core::CompletionItem { kind, .. }) => kind,
+        ));
+
+        let kind_cell = match self {
+            CompletionItem::Lsp(LspCompletionItem { item, .. }) => {
+                // If the user specified a custom kind text, use that. It will cause an allocation
+                // though it should not have much impact since its pretty short strings
+                if let Some(kind_style) = item
+                    .kind
+                    // NOTE: This table gets populated with default text as well.
+                    .and_then(|kind| data.completion_item_kinds.get(&kind))
+                {
+                    let style = kind_style.style.unwrap_or(data.default_style);
+                    if let Some(text) = kind_style.text.clone() {
+                        menu::Cell::from(Span::styled(text, style))
+                    } else {
+                        let text = completion_item_kind_name(item.kind).unwrap_or_else(|| {
+                            log::error!("Got invalid LSP completion item kind: {:?}", item.kind);
+                            ""
+                        });
+                        menu::Cell::from(Span::styled(text, style))
+                    }
+                } else {
+                    let text = completion_item_kind_name(item.kind).unwrap_or_else(|| {
+                        log::error!("Got invalid LSP completion item kind: {:?}", item.kind);
+                        ""
+                    });
+                    menu::Cell::from(Span::styled(text, data.default_style))
+                }
+            }
+            CompletionItem::Other(core::CompletionItem { kind, .. }) => menu::Cell::from(&**kind),
         };
 
-        menu::Row::new([
-            menu::Cell::from(Span::styled(
-                label,
-                if deprecated {
-                    Style::default().add_modifier(Modifier::CROSSED_OUT)
-                } else {
-                    Style::default()
-                },
-            )),
-            menu::Cell::from(kind),
-        ])
+        menu::Row::new([label_cell, kind_cell])
     }
 }
 
@@ -130,9 +160,13 @@ impl Completion {
         let replace_mode = editor.config().completion_replace;
         // Sort completion items according to their preselect status (given by the LSP server)
         items.sort_by_key(|item| !item.preselect());
+        let data = CompletionData {
+            completion_item_kinds: Arc::clone(&editor.completion_item_kind_styles),
+            default_style: editor.theme.get("ui.completion.kind"),
+        };
 
         // Then create the menu
-        let menu = Menu::new(items, (), move |editor: &mut Editor, item, event| {
+        let menu = Menu::new(items, data, move |editor: &mut Editor, item, event| {
             fn lsp_item_to_transaction(
                 doc: &Document,
                 view_id: ViewId,
