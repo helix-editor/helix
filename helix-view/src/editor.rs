@@ -2240,41 +2240,28 @@ fn try_restore_indent(doc: &mut Document, view: &mut View) {
     }
 }
 
+// NOTE: When you implement a new completion source/handler, dont forget to add
+// your completion kinds here!
+#[rustfmt::skip]
+const ALL_KINDS: &[&str] = &[
+    // All of these are LSP item kinds.
+    // It happens that file and folder are also here.
+    "text", "method", "function", "constructor", "field", "variable",
+    "class", "interface", "module", "property", "unit", "value", "enum",
+    "keyword", "snippet", "color", "file", "reference", "folder",
+    "enum-member", "constant", "struct", "event", "operator",
+    "type-parameter",
+    // The following are specific to path completion source
+    // We ignore the other linux-specific ones (block, socket, etc...)
+    "link"
+];
+
 fn compute_completion_item_kind_styles(
     theme: &Theme,
     config: &DynGuard<Config>,
 ) -> HashMap<&'static str, CompletionItemKindStyle> {
     let mut ret = HashMap::new();
-    // We populate with LSP kinds and additionally file+folder for path completion
-    for name in [
-        "text",
-        "method",
-        "function",
-        "constructor",
-        "field",
-        "variable",
-        "class",
-        "interface",
-        "module",
-        "property",
-        "unit",
-        "value",
-        "enum",
-        "keyword",
-        "snippet",
-        "color",
-        "file",
-        "reference",
-        "folder",
-        "enum-member",
-        "constant",
-        "struct",
-        "event",
-        "operator",
-        "type-parameter",
-        "file",
-        "folder",
-    ] {
+    for &name in ALL_KINDS {
         let style = theme.try_get(&format!("ui.completion.kind.{name}"));
         let text = config.completion_item_kinds.get(name).cloned();
         if style.is_some() || text.is_some() {

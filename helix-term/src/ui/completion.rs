@@ -125,15 +125,27 @@ impl menu::Item for CompletionItem {
                 }
             }
             CompletionItem::Other(core::CompletionItem { kind, .. }) => {
-                if let Some(kind_style) = data.completion_item_kinds.get(kind.as_ref()) {
+                let kind = match kind.as_ref() {
+                    // This is for path completion source.
+                    // Got this from helix-term/src/handlers/completion/path.rs
+                    // On unix these are all just **file** descriptors
+                    #[cfg(unix)]
+                    "block" | "socket" | "char_device" | "fifo" => "file",
+
+                    // NOTE: Whenever you add a new completion source, you may want to add overrides
+                    // here if you wish to.
+                    x => x, // otherwise keep untouched.
+                };
+
+                if let Some(kind_style) = data.completion_item_kinds.get(kind) {
                     let style = kind_style.style.unwrap_or(data.default_style);
                     if let Some(text) = kind_style.text.as_ref() {
                         menu::Cell::from(Span::styled(text.clone(), style))
                     } else {
-                        menu::Cell::from(Span::styled(kind.as_ref(), style))
+                        menu::Cell::from(Span::styled(kind, style))
                     }
                 } else {
-                    menu::Cell::from(Span::styled(kind.as_ref(), data.default_style))
+                    menu::Cell::from(Span::styled(kind, data.default_style))
                 }
             }
         };
