@@ -306,8 +306,7 @@ pub struct Config {
     pub completion_replace: bool,
     /// The completion item kind text to display in the completion menu. Leave kind empty to use
     /// the kind's name.
-    #[serde(deserialize_with = "deserialize_completion_item_kinds")]
-    pub completion_item_kinds: HashMap<lsp::CompletionItemKind, String>,
+    pub completion_item_kinds: HashMap<String, String>,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
@@ -852,58 +851,6 @@ where
     }
 }
 
-fn deserialize_completion_item_kinds<'de, D>(
-    deserializer: D,
-) -> Result<HashMap<lsp::CompletionItemKind, String>, D::Error>
-where
-    D: serde::Deserializer<'de>,
-{
-    let raw = HashMap::<String, String>::deserialize(deserializer)?;
-    let mut ret = HashMap::with_capacity(raw.len());
-
-    for (kind, text) in raw {
-        // NOTE: Doing manual string check since CompletionItemKind::from_str uses
-        // PascalCase while the configuration is in kebab-case
-        let kind = match kind.as_str() {
-            "text" => lsp::CompletionItemKind::TEXT,
-            "method" => lsp::CompletionItemKind::METHOD,
-            "function" => lsp::CompletionItemKind::FUNCTION,
-            "constructor" => lsp::CompletionItemKind::CONSTRUCTOR,
-            "field" => lsp::CompletionItemKind::FIELD,
-            "variable" => lsp::CompletionItemKind::VARIABLE,
-            "class" => lsp::CompletionItemKind::CLASS,
-            "interface" => lsp::CompletionItemKind::INTERFACE,
-            "module" => lsp::CompletionItemKind::MODULE,
-            "property" => lsp::CompletionItemKind::PROPERTY,
-            "unit" => lsp::CompletionItemKind::UNIT,
-            "value" => lsp::CompletionItemKind::VALUE,
-            "enum" => lsp::CompletionItemKind::ENUM,
-            "keyword" => lsp::CompletionItemKind::KEYWORD,
-            "snippet" => lsp::CompletionItemKind::SNIPPET,
-            "color" => lsp::CompletionItemKind::COLOR,
-            "file" => lsp::CompletionItemKind::FILE,
-            "reference" => lsp::CompletionItemKind::REFERENCE,
-            "folder" => lsp::CompletionItemKind::FOLDER,
-            "enum-member" => lsp::CompletionItemKind::ENUM_MEMBER,
-            "constant" => lsp::CompletionItemKind::CONSTANT,
-            "struct" => lsp::CompletionItemKind::STRUCT,
-            "event" => lsp::CompletionItemKind::EVENT,
-            "operator" => lsp::CompletionItemKind::OPERATOR,
-            "type-parameter" => lsp::CompletionItemKind::TYPE_PARAMETER,
-            _ => {
-                return Err(<D::Error as serde::de::Error>::invalid_value(
-                    serde::de::Unexpected::Str(kind.as_str()),
-                    &"CompletionItemKind",
-                ));
-            }
-        };
-
-        ret.insert(kind, text);
-    }
-
-    Ok(ret)
-}
-
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct WhitespaceCharacters {
@@ -1131,7 +1078,7 @@ pub struct Editor {
 
     pub config: Arc<dyn DynAccess<Config>>,
     pub auto_pairs: Option<AutoPairs>,
-    pub completion_item_kind_styles: Arc<HashMap<lsp::CompletionItemKind, CompletionItemKindStyle>>,
+    pub completion_item_kind_styles: Arc<HashMap<&'static str, CompletionItemKindStyle>>,
 
     pub idle_timer: Pin<Box<Sleep>>,
     redraw_timer: Pin<Box<Sleep>>,
@@ -1322,6 +1269,10 @@ impl Editor {
     pub fn refresh_config(&mut self) {
         let config = self.config();
         self.auto_pairs = (&config.auto_pairs).into();
+        self.completion_item_kind_styles = Arc::new(compute_completion_item_kind_styles(
+            &self.theme,
+            &self.config(),
+        ));
         self.reset_idle_timer();
         self._refresh();
     }
@@ -2292,39 +2243,42 @@ fn try_restore_indent(doc: &mut Document, view: &mut View) {
 fn compute_completion_item_kind_styles(
     theme: &Theme,
     config: &DynGuard<Config>,
-) -> HashMap<lsp::CompletionItemKind, CompletionItemKindStyle> {
+) -> HashMap<&'static str, CompletionItemKindStyle> {
     let mut ret = HashMap::new();
-    for (scope_name, kind) in [
-        ("text", lsp::CompletionItemKind::TEXT),
-        ("method", lsp::CompletionItemKind::METHOD),
-        ("function", lsp::CompletionItemKind::FUNCTION),
-        ("constructor", lsp::CompletionItemKind::CONSTRUCTOR),
-        ("field", lsp::CompletionItemKind::FIELD),
-        ("variable", lsp::CompletionItemKind::VARIABLE),
-        ("class", lsp::CompletionItemKind::CLASS),
-        ("interface", lsp::CompletionItemKind::INTERFACE),
-        ("module", lsp::CompletionItemKind::MODULE),
-        ("property", lsp::CompletionItemKind::PROPERTY),
-        ("unit", lsp::CompletionItemKind::UNIT),
-        ("value", lsp::CompletionItemKind::VALUE),
-        ("enum", lsp::CompletionItemKind::ENUM),
-        ("keyword", lsp::CompletionItemKind::KEYWORD),
-        ("snippet", lsp::CompletionItemKind::SNIPPET),
-        ("color", lsp::CompletionItemKind::COLOR),
-        ("file", lsp::CompletionItemKind::FILE),
-        ("reference", lsp::CompletionItemKind::REFERENCE),
-        ("folder", lsp::CompletionItemKind::FOLDER),
-        ("enum-member", lsp::CompletionItemKind::ENUM_MEMBER),
-        ("constant", lsp::CompletionItemKind::CONSTANT),
-        ("struct", lsp::CompletionItemKind::STRUCT),
-        ("event", lsp::CompletionItemKind::EVENT),
-        ("operator", lsp::CompletionItemKind::OPERATOR),
-        ("type-parameter", lsp::CompletionItemKind::TYPE_PARAMETER),
+    // We populate with LSP kinds and additionally file+folder for path completion
+    for name in [
+        "text",
+        "method",
+        "function",
+        "constructor",
+        "field",
+        "variable",
+        "class",
+        "interface",
+        "module",
+        "property",
+        "unit",
+        "value",
+        "enum",
+        "keyword",
+        "snippet",
+        "color",
+        "file",
+        "reference",
+        "folder",
+        "enum-member",
+        "constant",
+        "struct",
+        "event",
+        "operator",
+        "type-parameter",
+        "file",
+        "folder",
     ] {
-        let style = theme.try_get(&dbg!(format!("ui.completion.kind.{scope_name}")));
-        let text = config.completion_item_kinds.get(&kind).cloned();
+        let style = theme.try_get(&format!("ui.completion.kind.{name}"));
+        let text = config.completion_item_kinds.get(name).cloned();
         if style.is_some() || text.is_some() {
-            ret.insert(kind, CompletionItemKindStyle { text, style });
+            ret.insert(name, CompletionItemKindStyle { text, style });
         }
     }
 

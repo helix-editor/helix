@@ -24,7 +24,7 @@ use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
 use helix_lsp::{lsp, util, OffsetEncoding};
 
 pub struct CompletionData {
-    completion_item_kinds: Arc<HashMap<lsp::CompletionItemKind, CompletionItemKindStyle>>,
+    completion_item_kinds: Arc<HashMap<&'static str, CompletionItemKindStyle>>,
     default_style: Style,
 }
 
@@ -108,30 +108,34 @@ impl menu::Item for CompletionItem {
             CompletionItem::Lsp(LspCompletionItem { item, .. }) => {
                 // If the user specified a custom kind text, use that. It will cause an allocation
                 // though it should not have much impact since its pretty short strings
-                if let Some(kind_style) = item
-                    .kind
-                    // NOTE: This table gets populated with default text as well.
-                    .and_then(|kind| data.completion_item_kinds.get(&kind))
-                {
+                let kind_name = completion_item_kind_name(item.kind).unwrap_or_else(|| {
+                    log::error!("Got invalid LSP completion item kind: {:?}", item.kind);
+                    ""
+                });
+
+                if let Some(kind_style) = data.completion_item_kinds.get(kind_name) {
                     let style = kind_style.style.unwrap_or(data.default_style);
-                    if let Some(text) = kind_style.text.clone() {
-                        menu::Cell::from(Span::styled(text, style))
+                    if let Some(text) = kind_style.text.as_ref() {
+                        menu::Cell::from(Span::styled(text.clone(), style))
                     } else {
-                        let text = completion_item_kind_name(item.kind).unwrap_or_else(|| {
-                            log::error!("Got invalid LSP completion item kind: {:?}", item.kind);
-                            ""
-                        });
-                        menu::Cell::from(Span::styled(text, style))
+                        menu::Cell::from(Span::styled(kind_name, style))
                     }
                 } else {
-                    let text = completion_item_kind_name(item.kind).unwrap_or_else(|| {
-                        log::error!("Got invalid LSP completion item kind: {:?}", item.kind);
-                        ""
-                    });
-                    menu::Cell::from(Span::styled(text, data.default_style))
+                    menu::Cell::from(Span::styled(kind_name, data.default_style))
                 }
             }
-            CompletionItem::Other(core::CompletionItem { kind, .. }) => menu::Cell::from(&**kind),
+            CompletionItem::Other(core::CompletionItem { kind, .. }) => {
+                if let Some(kind_style) = data.completion_item_kinds.get(kind.as_ref()) {
+                    let style = kind_style.style.unwrap_or(data.default_style);
+                    if let Some(text) = kind_style.text.as_ref() {
+                        menu::Cell::from(Span::styled(text.clone(), style))
+                    } else {
+                        menu::Cell::from(Span::styled(kind.as_ref(), style))
+                    }
+                } else {
+                    menu::Cell::from(Span::styled(kind.as_ref(), data.default_style))
+                }
+            }
         };
 
         menu::Row::new([label_cell, kind_cell])
