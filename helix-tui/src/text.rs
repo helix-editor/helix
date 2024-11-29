@@ -212,7 +212,7 @@ impl<'a> From<Cow<'a, str>> for Span<'a> {
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Spans<'a>(pub Vec<Span<'a>>);
 
-impl<'a> Spans<'a> {
+impl Spans<'_> {
     /// Returns the width of the underlying string.
     ///
     /// ## Examples
