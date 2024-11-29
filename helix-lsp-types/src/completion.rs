@@ -22,7 +22,7 @@ impl InsertTextFormat {
 }
 
 /// The kind of a completion entry.
-#[derive(Eq, PartialEq, Clone, Copy, Serialize, Deserialize)]
+#[derive(Eq, PartialEq, Clone, Copy, Serialize, Deserialize, Hash)]
 #[serde(transparent)]
 pub struct CompletionItemKind(i32);
 lsp_enum! {

@@ -304,6 +304,10 @@ pub struct Config {
     /// Whether to instruct the LSP to replace the entire word when applying a completion
     /// or to only insert new text
     pub completion_replace: bool,
+    /// The completion item kind text to display in the completion menu. Leave kind empty to use
+    /// the kind's name.
+    #[serde(deserialize_with = "deserialize_completion_item_kinds")]
+    pub completion_item_kinds: HashMap<lsp::CompletionItemKind, String>,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
@@ -848,6 +852,58 @@ where
     }
 }
 
+fn deserialize_completion_item_kinds<'de, D>(
+    deserializer: D,
+) -> Result<HashMap<lsp::CompletionItemKind, String>, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let raw = HashMap::<String, String>::deserialize(deserializer)?;
+    let mut ret = HashMap::with_capacity(raw.len());
+
+    for (kind, text) in raw {
+        // NOTE: Doing manual string check since CompletionItemKind::from_str uses
+        // PascalCase while the configuration is in kebab-case
+        let kind = match kind.as_str() {
+            "text" => lsp::CompletionItemKind::TEXT,
+            "method" => lsp::CompletionItemKind::METHOD,
+            "function" => lsp::CompletionItemKind::FUNCTION,
+            "constructor" => lsp::CompletionItemKind::CONSTRUCTOR,
+            "field" => lsp::CompletionItemKind::FIELD,
+            "variable" => lsp::CompletionItemKind::VARIABLE,
+            "class" => lsp::CompletionItemKind::CLASS,
+            "interface" => lsp::CompletionItemKind::INTERFACE,
+            "module" => lsp::CompletionItemKind::MODULE,
+            "property" => lsp::CompletionItemKind::PROPERTY,
+            "unit" => lsp::CompletionItemKind::UNIT,
+            "value" => lsp::CompletionItemKind::VALUE,
+            "enum" => lsp::CompletionItemKind::ENUM,
+            "keyword" => lsp::CompletionItemKind::KEYWORD,
+            "snippet" => lsp::CompletionItemKind::SNIPPET,
+            "color" => lsp::CompletionItemKind::COLOR,
+            "file" => lsp::CompletionItemKind::FILE,
+            "reference" => lsp::CompletionItemKind::REFERENCE,
+            "folder" => lsp::CompletionItemKind::FOLDER,
+            "enum-member" => lsp::CompletionItemKind::ENUM_MEMBER,
+            "constant" => lsp::CompletionItemKind::CONSTANT,
+            "struct" => lsp::CompletionItemKind::STRUCT,
+            "event" => lsp::CompletionItemKind::EVENT,
+            "operator" => lsp::CompletionItemKind::OPERATOR,
+            "type-parameter" => lsp::CompletionItemKind::TYPE_PARAMETER,
+            _ => {
+                return Err(<D::Error as serde::de::Error>::invalid_value(
+                    serde::de::Unexpected::Str(kind.as_str()),
+                    &"CompletionItemKind",
+                ));
+            }
+        };
+
+        ret.insert(kind, text);
+    }
+
+    Ok(ret)
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct WhitespaceCharacters {
@@ -963,6 +1019,7 @@ impl Default for Config {
             auto_save: AutoSave::default(),
             idle_timeout: Duration::from_millis(250),
             completion_timeout: Duration::from_millis(250),
+            completion_item_kinds: HashMap::new(),
             preview_completion_insert: true,
             completion_trigger_len: 2,
             auto_info: true,
