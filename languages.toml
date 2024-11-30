@@ -3463,7 +3463,11 @@ source = { git = "https://github.com/urbit-pilled/tree-sitter-hoon", rev = "1d5d
 [[language]]
 name = "hocon"
 scope = "source.conf"
-file-types = ["conf"]
+file-types = [
+  { glob = "**/src/*/resources/**/*.conf" },
+  { glob = "*scalafmt*.conf" },
+  { glob = "*scalafix*.conf" },
+]
 comment-token = "#"
 auto-format = true
 indent = { tab-width = 2, unit = "  " }
