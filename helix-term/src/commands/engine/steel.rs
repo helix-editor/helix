@@ -509,6 +509,20 @@ fn load_typed_commands(engine: &mut Engine, generate_sources: bool) {
     engine.register_module(module);
 }
 
+fn get_option_value(cx: &mut Context, args: Vec<String>) -> anyhow::Result<SteelVal> {
+    if args.len() != 1 {
+        anyhow::bail!("Bad arguments. Usage: `:get key`");
+    }
+
+    let key = &args[0].to_lowercase();
+    let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
+
+    let config = serde_json::json!(std::ops::Deref::deref(&cx.editor.config()));
+    let pointer = format!("/{}", key.replace('.', "/"));
+    let value = config.pointer(&pointer).ok_or_else(key_error)?;
+    Ok(value.to_owned().into_steelval().unwrap())
+}
+
 // File picker configurations
 fn fp_hidden(config: &mut FilePickerConfig, option: bool) {
     config.hidden = option;
@@ -577,6 +591,8 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
             .send(ConfigEvent::Change)
             .unwrap();
     });
+
+    module.register_fn("get-config-option-value", get_option_value);
 
     module
         .register_fn("raw-file-picker", || FilePickerConfig::default())
@@ -690,6 +706,14 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
 (provide update-configuration!)
 (define (update-configuration!)
     (helix.update-configuration! *helix.config*))
+"#,
+        ));
+
+        builtin_configuration_module.push_str(&format!(
+            r#"
+(provide get-config-option-value)
+(define (get-config-option-value arg)
+    (helix.get-config-option-value *helix.cx*))
 "#,
         ));
 
