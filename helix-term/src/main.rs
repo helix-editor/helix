@@ -59,7 +59,7 @@ FLAGS:
                                    CATEGORY can be a language or one of 'clipboard', 'languages'
                                    or 'all'. 'all' is the default if not specified.
     -g, --grammar {{fetch|build}}    Fetches or builds tree-sitter grammars listed in languages.toml
-    -d, --default-config              Use the default configuration file
+    -d, --default-config           Use the default configuration file
     -c, --config <file>            Specifies a file to use for configuration
     -v                             Increases logging verbosity each use for up to 3 times
     --log <file>                   Specifies a file to use for logging
