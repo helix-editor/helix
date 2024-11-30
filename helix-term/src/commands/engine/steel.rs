@@ -509,16 +509,11 @@ fn load_typed_commands(engine: &mut Engine, generate_sources: bool) {
     engine.register_module(module);
 }
 
-fn get_option_value(cx: &mut Context, args: Vec<String>) -> anyhow::Result<SteelVal> {
-    if args.len() != 1 {
-        anyhow::bail!("Bad arguments. Usage: `:get key`");
-    }
-
-    let key = &args[0].to_lowercase();
-    let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
+fn get_option_value(cx: &mut Context, option: String) -> anyhow::Result<SteelVal> {
+    let key_error = || anyhow::anyhow!("Unknown key `{}`", option);
 
     let config = serde_json::json!(std::ops::Deref::deref(&cx.editor.config()));
-    let pointer = format!("/{}", key.replace('.', "/"));
+    let pointer = format!("/{}", option.replace('.', "/"));
     let value = config.pointer(&pointer).ok_or_else(key_error)?;
     Ok(value.to_owned().into_steelval().unwrap())
 }
@@ -713,7 +708,7 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
             r#"
 (provide get-config-option-value)
 (define (get-config-option-value arg)
-    (helix.get-config-option-value *helix.cx*))
+    (helix.get-config-option-value *helix.cx* arg))
 "#,
         ));
 
