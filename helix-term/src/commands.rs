@@ -6,7 +6,7 @@ pub use dap::*;
 use futures_util::FutureExt;
 use helix_event::status;
 use helix_stdx::{
-    path::expand_tilde,
+    path::{self, find_paths},
     rope::{self, RopeSliceExt},
 };
 use helix_vcs::{FileChange, Hunk};
@@ -353,6 +353,7 @@ impl MappableCommand {
         extend_search_next, "Add next search match to selection",
         extend_search_prev, "Add previous search match to selection",
         search_selection, "Use current selection as search pattern",
+        search_selection_detect_word_boundaries, "Use current selection as the search pattern, automatically wrapping with `\\b` on word boundaries",
         make_search_word_bounded, "Modify current search to make it word bounded",
         global_search, "Global search in workspace folder",
         extend_line, "Select current line, if already selected, extend to another line based on the anchor",
@@ -1272,53 +1273,30 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         .unwrap_or_default();
 
     let paths: Vec<_> = if selections.len() == 1 && primary.len() == 1 {
-        // Secial case: if there is only one one-width selection, try to detect the
-        // path under the cursor.
-        let is_valid_path_char = |c: &char| {
-            #[cfg(target_os = "windows")]
-            let valid_chars = &[
-                '@', '/', '\\', '.', '-', '_', '+', '#', '$', '%', '{', '}', '[', ']', ':', '!',
-                '~', '=',
-            ];
-            #[cfg(not(target_os = "windows"))]
-            let valid_chars = &['@', '/', '.', '-', '_', '+', '#', '$', '%', '~', '=', ':'];
-
-            valid_chars.contains(c) || c.is_alphabetic() || c.is_numeric()
-        };
-
-        let cursor_pos = primary.cursor(text.slice(..));
-        let pre_cursor_pos = cursor_pos.saturating_sub(1);
-        let post_cursor_pos = cursor_pos + 1;
-        let start_pos = if is_valid_path_char(&text.char(cursor_pos)) {
-            cursor_pos
-        } else if is_valid_path_char(&text.char(pre_cursor_pos)) {
-            pre_cursor_pos
-        } else {
-            post_cursor_pos
-        };
-
-        let prefix_len = text
-            .chars_at(start_pos)
-            .reversed()
-            .take_while(is_valid_path_char)
-            .count();
-
-        let postfix_len = text
-            .chars_at(start_pos)
-            .take_while(is_valid_path_char)
-            .count();
-
-        let path: String = text
-            .slice((start_pos - prefix_len)..(start_pos + postfix_len))
-            .into();
-        log::debug!("goto_file auto-detected path: {}", path);
-
-        vec![path]
+        let mut pos = primary.cursor(text.slice(..));
+        pos = text.char_to_byte(pos);
+        let search_start = text
+            .line_to_byte(text.byte_to_line(pos))
+            .max(pos.saturating_sub(1000));
+        let search_end = text
+            .line_to_byte(text.byte_to_line(pos) + 1)
+            .min(pos + 1000);
+        let search_range = text.slice(search_start..search_end);
+        // we also allow paths that are next to the cursor (can be ambigous but
+        // rarely so in practice) so that gf on quoted/braced path works (not sure about this
+        // but apparently that is how gf has worked historically in helix)
+        let path = find_paths(search_range, true)
+            .take_while(|range| search_start + range.start <= pos + 1)
+            .find(|range| pos <= search_start + range.end)
+            .map(|range| Cow::from(search_range.byte_slice(range)));
+        log::debug!("goto_file auto-detected path: {path:?}");
+        let path = path.unwrap_or_else(|| primary.fragment(text.slice(..)));
+        vec![path.into_owned()]
     } else {
         // Otherwise use each selection, trimmed.
         selections
             .fragments(text.slice(..))
-            .map(|sel| sel.trim().to_string())
+            .map(|sel| sel.trim().to_owned())
             .filter(|sel| !sel.is_empty())
             .collect()
     };
@@ -1329,7 +1307,7 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
             continue;
         }
 
-        let path = expand_tilde(Cow::from(PathBuf::from(sel)));
+        let path = path::expand(&sel);
         let path = &rel_path.join(path);
         if path.is_dir() {
             let picker = ui::file_picker(path.into(), &cx.editor.config());
@@ -2265,14 +2243,53 @@ fn extend_search_prev(cx: &mut Context) {
 }
 
 fn search_selection(cx: &mut Context) {
+    search_selection_impl(cx, false)
+}
+
+fn search_selection_detect_word_boundaries(cx: &mut Context) {
+    search_selection_impl(cx, true)
+}
+
+fn search_selection_impl(cx: &mut Context, detect_word_boundaries: bool) {
+    fn is_at_word_start(text: RopeSlice, index: usize) -> bool {
+        let ch = text.char(index);
+        if index == 0 {
+            return char_is_word(ch);
+        }
+        let prev_ch = text.char(index - 1);
+
+        !char_is_word(prev_ch) && char_is_word(ch)
+    }
+
+    fn is_at_word_end(text: RopeSlice, index: usize) -> bool {
+        if index == 0 || index == text.len_chars() {
+            return false;
+        }
+        let ch = text.char(index);
+        let prev_ch = text.char(index - 1);
+
+        char_is_word(prev_ch) && !char_is_word(ch)
+    }
+
     let register = cx.register.unwrap_or('/');
     let (view, doc) = current!(cx.editor);
-    let contents = doc.text().slice(..);
+    let text = doc.text().slice(..);
 
     let regex = doc
         .selection(view.id)
         .iter()
-        .map(|selection| regex::escape(&selection.fragment(contents)))
+        .map(|selection| {
+            let add_boundary_prefix =
+                detect_word_boundaries && is_at_word_start(text, selection.from());
+            let add_boundary_suffix =
+                detect_word_boundaries && is_at_word_end(text, selection.to());
+
+            let prefix = if add_boundary_prefix { "\\b" } else { "" };
+            let suffix = if add_boundary_suffix { "\\b" } else { "" };
+
+            let word = regex::escape(&selection.fragment(text));
+            format!("{}{}{}", prefix, word, suffix)
+        })
         .collect::<HashSet<_>>() // Collect into hashset to deduplicate identical regexes
         .into_iter()
         .collect::<Vec<_>>()
@@ -2735,7 +2752,9 @@ fn delete_selection_impl(cx: &mut Context, op: Operation, yank: YankAction) {
         // yank the selection
         let text = doc.text().slice(..);
         let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
-        let reg_name = cx.register.unwrap_or('"');
+        let reg_name = cx
+            .register
+            .unwrap_or_else(|| cx.editor.config.load().default_yank_register);
         if let Err(err) = cx.editor.registers.write(reg_name, values) {
             cx.editor.set_error(err.to_string());
             return;
@@ -4221,7 +4240,11 @@ fn commit_undo_checkpoint(cx: &mut Context) {
 // Yank / Paste
 
 fn yank(cx: &mut Context) {
-    yank_impl(cx.editor, cx.register.unwrap_or('"'));
+    yank_impl(
+        cx.editor,
+        cx.register
+            .unwrap_or(cx.editor.config().default_yank_register),
+    );
     exit_select_mode(cx);
 }
 
@@ -4282,7 +4305,12 @@ fn yank_joined_impl(editor: &mut Editor, separator: &str, register: char) {
 
 fn yank_joined(cx: &mut Context) {
     let separator = doc!(cx.editor).line_ending.as_str();
-    yank_joined_impl(cx.editor, separator, cx.register.unwrap_or('"'));
+    yank_joined_impl(
+        cx.editor,
+        separator,
+        cx.register
+            .unwrap_or(cx.editor.config().default_yank_register),
+    );
     exit_select_mode(cx);
 }
 
@@ -4337,6 +4365,10 @@ fn paste_impl(
 ) {
     if values.is_empty() {
         return;
+    }
+
+    if mode == Mode::Insert {
+        doc.append_changes_to_history(view);
     }
 
     let repeat = std::iter::repeat(
@@ -4438,7 +4470,12 @@ fn paste_primary_clipboard_before(cx: &mut Context) {
 }
 
 fn replace_with_yanked(cx: &mut Context) {
-    replace_with_yanked_impl(cx.editor, cx.register.unwrap_or('"'), cx.count());
+    replace_with_yanked_impl(
+        cx.editor,
+        cx.register
+            .unwrap_or(cx.editor.config().default_yank_register),
+        cx.count(),
+    );
     exit_select_mode(cx);
 }
 
@@ -4501,7 +4538,8 @@ fn paste(editor: &mut Editor, register: char, pos: Paste, count: usize) {
 fn paste_after(cx: &mut Context) {
     paste(
         cx.editor,
-        cx.register.unwrap_or('"'),
+        cx.register
+            .unwrap_or(cx.editor.config().default_yank_register),
         Paste::After,
         cx.count(),
     );
@@ -4511,7 +4549,8 @@ fn paste_after(cx: &mut Context) {
 fn paste_before(cx: &mut Context) {
     paste(
         cx.editor,
-        cx.register.unwrap_or('"'),
+        cx.register
+            .unwrap_or(cx.editor.config().default_yank_register),
         Paste::Before,
         cx.count(),
     );
@@ -5365,7 +5404,8 @@ fn insert_register(cx: &mut Context) {
             cx.register = Some(ch);
             paste(
                 cx.editor,
-                cx.register.unwrap_or('"'),
+                cx.register
+                    .unwrap_or(cx.editor.config().default_yank_register),
                 Paste::Cursor,
                 cx.count(),
             );

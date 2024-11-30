@@ -3,6 +3,7 @@
 | ada | ✓ | ✓ |  | `ada_language_server` |
 | adl | ✓ | ✓ | ✓ |  |
 | agda | ✓ |  |  |  |
+| amber | ✓ |  |  |  |
 | astro | ✓ |  |  |  |
 | awk | ✓ | ✓ |  | `awk-language-server` |
 | bash | ✓ | ✓ | ✓ | `bash-language-server` |
@@ -77,6 +78,7 @@
 | gomod | ✓ |  |  | `gopls` |
 | gotmpl | ✓ |  |  | `gopls` |
 | gowork | ✓ |  |  | `gopls` |
+| gpr | ✓ |  |  | `ada_language_server` |
 | graphql | ✓ | ✓ |  | `graphql-lsp` |
 | groovy | ✓ |  |  |  |
 | gts | ✓ | ✓ | ✓ | `typescript-language-server`, `vscode-eslint-language-server`, `ember-language-server` |
@@ -91,7 +93,7 @@
 | hosts | ✓ |  |  |  |
 | html | ✓ |  |  | `vscode-html-language-server`, `superhtml` |
 | hurl | ✓ | ✓ | ✓ |  |
-| hyprlang | ✓ |  | ✓ |  |
+| hyprlang | ✓ |  | ✓ | `hyprls` |
 | idris |  |  |  | `idris2-lsp` |
 | iex | ✓ |  |  |  |
 | ini | ✓ |  |  |  |
@@ -136,6 +138,7 @@
 | move | ✓ |  |  |  |
 | msbuild | ✓ |  | ✓ |  |
 | nasm | ✓ | ✓ |  |  |
+| nestedtext | ✓ | ✓ | ✓ |  |
 | nickel | ✓ |  | ✓ | `nls` |
 | nim | ✓ | ✓ | ✓ | `nimlangserver` |
 | nix | ✓ | ✓ |  | `nil`, `nixd` |
@@ -168,6 +171,7 @@
 | purescript | ✓ | ✓ |  | `purescript-language-server` |
 | python | ✓ | ✓ | ✓ | `ruff`, `jedi-language-server`, `pylsp` |
 | qml | ✓ |  | ✓ | `qmlls` |
+| quint | ✓ |  |  | `quint-language-server` |
 | r | ✓ |  |  | `R` |
 | racket | ✓ |  | ✓ | `racket` |
 | regex | ✓ |  |  |  |
@@ -189,6 +193,7 @@
 | sml | ✓ |  |  |  |
 | snakemake | ✓ |  | ✓ | `pylsp` |
 | solidity | ✓ | ✓ |  | `solc` |
+| spade | ✓ |  | ✓ | `spade-language-server` |
 | spicedb | ✓ |  |  |  |
 | sql | ✓ | ✓ |  |  |
 | sshclientconfig | ✓ |  |  |  |
@@ -204,6 +209,7 @@
 | task | ✓ |  |  |  |
 | tcl | ✓ |  | ✓ |  |
 | templ | ✓ |  |  | `templ` |
+| textproto | ✓ | ✓ | ✓ |  |
 | tfvars | ✓ |  | ✓ | `terraform-ls` |
 | thrift | ✓ |  |  |  |
 | todotxt | ✓ |  |  |  |
@@ -215,7 +221,7 @@
 | typespec | ✓ | ✓ | ✓ | `tsp-server` |
 | typst | ✓ |  |  | `tinymist`, `typst-lsp` |
 | ungrammar | ✓ |  |  |  |
-| unison | ✓ |  | ✓ |  |
+| unison | ✓ | ✓ | ✓ |  |
 | uxntal | ✓ |  |  |  |
 | v | ✓ | ✓ | ✓ | `v-analyzer` |
 | vala | ✓ | ✓ |  | `vala-language-server` |
