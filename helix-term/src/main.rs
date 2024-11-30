@@ -59,6 +59,7 @@ FLAGS:
                                    CATEGORY can be a language or one of 'clipboard', 'languages'
                                    or 'all'. 'all' is the default if not specified.
     -g, --grammar {{fetch|build}}    Fetches or builds tree-sitter grammars listed in languages.toml
+    -d, --default-config              Use the default configuration file
     -c, --config <file>            Specifies a file to use for configuration
     -v                             Increases logging verbosity each use for up to 3 times
     --log <file>                   Specifies a file to use for logging
@@ -129,18 +130,22 @@ FLAGS:
         helix_stdx::env::set_current_working_dir(path)?;
     }
 
-    let config = match Config::load_default() {
-        Ok(config) => config,
-        Err(ConfigLoadError::Error(err)) if err.kind() == std::io::ErrorKind::NotFound => {
-            Config::default()
-        }
-        Err(ConfigLoadError::Error(err)) => return Err(Error::new(err)),
-        Err(ConfigLoadError::BadConfig(err)) => {
-            eprintln!("Bad config: {}", err);
-            eprintln!("Press <ENTER> to continue with default config");
-            use std::io::Read;
-            let _ = std::io::stdin().read(&mut []);
-            Config::default()
+    let config = if args.default_config {
+        Config::default()
+    } else {
+        match Config::load_default() {
+            Ok(config) => config,
+            Err(ConfigLoadError::Error(err)) if err.kind() == std::io::ErrorKind::NotFound => {
+                Config::default()
+            }
+            Err(ConfigLoadError::Error(err)) => return Err(Error::new(err)),
+            Err(ConfigLoadError::BadConfig(err)) => {
+                eprintln!("Bad config: {}", err);
+                eprintln!("Press <ENTER> to continue with default config");
+                use std::io::Read;
+                let _ = std::io::stdin().read(&mut []);
+                Config::default()
+            }
         }
     };
 
