@@ -1,50 +1,78 @@
-; mark the string passed #match? as a regex
-(((predicate_name) @function
-  (capture)
-  (string) @string.regexp)
- (#eq? @function "#match?"))
+((predicate
+  name: (identifier) @_name
+  parameters:
+    (parameters
+      (string
+        "\"" @string
+        "\"" @string) @string.regexp
+      .
+      (string) .))
+  (#any-of? @_name "gsub" "not-gsub"))
 
-; highlight inheritance comments
-(((comment) @keyword.directive)
- (#match? @keyword.directive "^; +inherits *:"))
+((comment) @keyword.directive
+  (#match? @keyword.directive "^;+\s*format\-ignore\s*$"))
+
+((program
+  .
+  (comment)*
+  .
+  (comment) @keyword.directive)
+  (#match? @keyword.directive "^;+ *extends *$"))
+
+((program
+  .
+  (comment)*
+  .
+  (comment) @keyword.import)
+  (#match? @keyword.import "^;+ *inherits *:"))
+
+((parameters
+  (identifier) @number)
+  (#match? @number "^[-+]?[0-9]+(.[0-9]+)?$"))
+
+"_" @constant
 
 [
-  "("
-  ")"
-  "["
-  "]"
-] @punctuation.bracket
+  "@"
+  "#"
+] @punctuation.special
 
 ":" @punctuation.delimiter
-"!" @operator
 
 [
-  (one_or_more)
-  (zero_or_one)
-  (zero_or_more)
-] @operator
+  "["
+  "]"
+  "("
+  ")"
+] @punctuation.bracket
 
-[
-  (wildcard_node)
-  (anchor)
-] @constant.builtin
+"." @operator
 
-[
-  (anonymous_leaf)
-  (string)
-] @string
+(predicate_type) @punctuation.special
+
+(quantifier) @operator
 
 (comment) @comment
 
-(field_name) @variable.other.member
+(negated_field
+  "!" @operator
+  (identifier) @property)
 
-(capture) @label
+(field_definition
+  name: (identifier) @property)
 
-((predicate_name) @function
- (#any-of? @function "#eq?" "#match?" "#any-of?" "#not-any-of?" "#is?" "#is-not?" "#not-same-line?" "#not-kind-eq?" "#set!" "#select-adjacent!" "#strip!"))
-(predicate_name) @error
+(named_node
+  name: (identifier) @variable)
+
+(predicate
+  name: (identifier) @function)
+
+(anonymous_node
+  (string) @string)
+
+(capture
+  (identifier) @type)
 
 (escape_sequence) @constant.character.escape
 
-(node_name) @tag
-(variable) @variable
+(string) @string
