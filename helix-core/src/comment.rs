@@ -147,10 +147,7 @@ pub fn find_block_comments(
     let mut only_whitespace = true;
     let mut comment_changes = Vec::with_capacity(selection.len());
     let default_tokens = tokens.first().cloned().unwrap_or_default();
-    // TODO: check if this can be removed on MSRV bump
-    #[allow(clippy::redundant_clone)]
     let mut start_token = default_tokens.start.clone();
-    #[allow(clippy::redundant_clone)]
     let mut end_token = default_tokens.end.clone();
 
     let mut tokens = tokens.to_vec();
