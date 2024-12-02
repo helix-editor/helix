@@ -599,16 +599,22 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                             (size, _) if size > MAX_FILE_SIZE_FOR_PREVIEW => {
                                 CachedPreview::LargeFile
                             }
-                            _ => Document::open(&path, None, None, editor.config.clone())
-                                .map(|doc| {
-                                    // Asynchronously highlight the new document
-                                    helix_event::send_blocking(
-                                        &self.preview_highlight_handler,
-                                        path.clone(),
-                                    );
-                                    CachedPreview::Document(Box::new(doc))
-                                })
-                                .unwrap_or(CachedPreview::NotFound),
+                            _ => Document::open(
+                                &path,
+                                None,
+                                None,
+                                editor.config.clone(),
+                                &editor.diff_providers,
+                            )
+                            .map(|doc| {
+                                // Asynchronously highlight the new document
+                                helix_event::send_blocking(
+                                    &self.preview_highlight_handler,
+                                    path.clone(),
+                                );
+                                CachedPreview::Document(Box::new(doc))
+                            })
+                            .unwrap_or(CachedPreview::NotFound),
                         },
                     )
                     .unwrap_or(CachedPreview::NotFound);
