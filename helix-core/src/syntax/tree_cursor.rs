@@ -217,7 +217,7 @@ impl<'a> TreeCursor<'a> {
 
     /// Returns an iterator over the children of the node the TreeCursor is on
     /// at the time this is called.
-    pub fn children(&'a mut self) -> ChildIter {
+    pub fn children(&'a mut self) -> ChildIter<'a> {
         let parent = self.node();
 
         ChildIter {
@@ -229,7 +229,7 @@ impl<'a> TreeCursor<'a> {
 
     /// Returns an iterator over the named children of the node the TreeCursor is on
     /// at the time this is called.
-    pub fn named_children(&'a mut self) -> ChildIter {
+    pub fn named_children(&'a mut self) -> ChildIter<'a> {
         let parent = self.node();
 
         ChildIter {

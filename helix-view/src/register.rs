@@ -307,13 +307,13 @@ impl<'a> Iterator for RegisterValues<'a> {
     }
 }
 
-impl<'a> DoubleEndedIterator for RegisterValues<'a> {
+impl DoubleEndedIterator for RegisterValues<'_> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.iter.next_back()
     }
 }
 
-impl<'a> ExactSizeIterator for RegisterValues<'a> {
+impl ExactSizeIterator for RegisterValues<'_> {
     fn len(&self) -> usize {
         self.iter.len()
     }

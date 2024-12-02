@@ -72,7 +72,7 @@ impl<'a> From<&'a Path> for PathOrId<'a> {
     }
 }
 
-impl<'a> From<DocumentId> for PathOrId<'a> {
+impl From<DocumentId> for PathOrId<'_> {
     fn from(v: DocumentId) -> Self {
         Self::Id(v)
     }
