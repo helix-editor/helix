@@ -415,7 +415,8 @@ impl Prompt {
         let cols = std::cmp::max(1, area.width / max_len);
         let col_width = (area.width.saturating_sub(cols)) / cols;
 
-        let height = ((self.completion.len() as u16 + cols - 1) / cols)
+        let height = (self.completion.len() as u16)
+            .div_ceil(cols)
             .min(10) // at most 10 rows (or less)
             .min(area.height.saturating_sub(1));
 

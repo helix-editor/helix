@@ -344,12 +344,8 @@ impl<T: Component> Component for Popup<T> {
             let fits = len <= win_height;
             let scroll_style = cx.editor.theme.get("ui.menu.scroll");
 
-            const fn div_ceil(a: usize, b: usize) -> usize {
-                (a + b - 1) / b
-            }
-
             if !fits {
-                let scroll_height = div_ceil(win_height.pow(2), len).min(win_height);
+                let scroll_height = win_height.pow(2).div_ceil(len).min(win_height);
                 let scroll_line = (win_height - scroll_height) * scroll
                     / std::cmp::max(1, len.saturating_sub(win_height));
 
