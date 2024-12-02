@@ -3960,3 +3960,14 @@ language-servers = ["ada-gpr-language-server"]
 [[grammar]]
 name = "gpr"
 source = { git = "https://github.com/brownts/tree-sitter-gpr", rev = "cea857d3c18d1385d1f5b66cd09ea1e44173945c" }
+
+[[language]]
+name = "vento"
+scope = "text.html.vto"
+file-types = ["vto"]
+block-comment-tokens = { start = "{{#", end = "#}}" }
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "vento"
+source = { git = "https://github.com/ventojs/tree-sitter-vento", rev = "3321077d7446c1b3b017c294fd56ce028ed817fe" }
