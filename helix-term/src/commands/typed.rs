@@ -2636,7 +2636,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "format",
         aliases: &["fmt"],
-        doc: "Format the file using the LSP formatter.",
+        doc: "Format the file using an external formatter or language server.",
         fun: format,
         signature: CommandSignature::none(),
     },
