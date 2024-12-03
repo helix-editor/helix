@@ -211,7 +211,7 @@ impl<A, M> Layer<'_, A, M> {
 }
 
 impl<'a, A, M> From<(&'a [A], M)> for Layer<'a, A, M> {
-    fn from((annotations, metadata): (&'a [A], M)) -> Layer<A, M> {
+    fn from((annotations, metadata): (&'a [A], M)) -> Layer<'a, A, M> {
         Layer {
             annotations,
             current_index: Cell::new(0),

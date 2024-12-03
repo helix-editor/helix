@@ -59,10 +59,16 @@ the default value (e.g. to `10240` from `256`) by running `ulimit -n 10240`.
 
 ## Minimum Stable Rust Version (MSRV) Policy
 
-Helix follows the MSRV of Firefox.
-The current MSRV and future changes to the MSRV are listed in the [Firefox documentation].
+Helix keeps an intentionally low MSRV for the sake of easy building and packaging
+downstream. We follow [Firefox's MSRV policy]. Once Firefox's MSRV increases we
+may bump ours as well, but be sure to check that popular distributions like Ubuntu
+package the new MSRV version. When increasing the MSRV, update these three places:
 
-[Firefox documentation]: https://firefox-source-docs.mozilla.org/writing-rust-code/update-policy.html
+* the `workspace.package.rust-version` key in `Cargo.toml` in the repository root
+* the `env.MSRV` key at the top of `.github/workflows/build.yml`
+* the `toolchain.channel` key in `rust-toolchain.toml`
+
+[Firefox's MSRV policy]: https://firefox-source-docs.mozilla.org/writing-rust-code/update-policy.html
 [good-first-issue]: https://github.com/helix-editor/helix/labels/E-easy
 [log-file]: https://github.com/helix-editor/helix/wiki/FAQ#access-the-log-file
 [architecture.md]: ./architecture.md

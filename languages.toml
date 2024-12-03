@@ -3168,7 +3168,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "just"
-source = { git = "https://github.com/poliorcetics/tree-sitter-just", rev = "6e28fa6cba511c694247cd802d1c3b14f8d34dbb" }
+source = { git = "https://github.com/poliorcetics/tree-sitter-just", rev = "180bb15d64c63585c4f65c551350048f21987bcb" }
 
 [[language]]
 name = "gn"
@@ -3463,7 +3463,11 @@ source = { git = "https://github.com/urbit-pilled/tree-sitter-hoon", rev = "1d5d
 [[language]]
 name = "hocon"
 scope = "source.conf"
-file-types = ["conf"]
+file-types = [
+  { glob = "**/src/*/resources/**/*.conf" },
+  { glob = "*scalafmt*.conf" },
+  { glob = "*scalafix*.conf" },
+]
 comment-token = "#"
 auto-format = true
 indent = { tab-width = 2, unit = "  " }
@@ -3956,3 +3960,14 @@ language-servers = ["ada-gpr-language-server"]
 [[grammar]]
 name = "gpr"
 source = { git = "https://github.com/brownts/tree-sitter-gpr", rev = "cea857d3c18d1385d1f5b66cd09ea1e44173945c" }
+
+[[language]]
+name = "vento"
+scope = "text.html.vto"
+file-types = ["vto"]
+block-comment-tokens = { start = "{{#", end = "#}}" }
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "vento"
+source = { git = "https://github.com/ventojs/tree-sitter-vento", rev = "3321077d7446c1b3b017c294fd56ce028ed817fe" }
