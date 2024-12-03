@@ -59,7 +59,7 @@ pub fn lang_features() -> Result<String, DynError> {
             .map(|t| t.long_title().to_string())
             .collect::<Vec<_>>(),
     );
-    cols.push("Default LSP".to_owned());
+    cols.push("Default language servers".to_owned());
 
     md.push_str(&md_table_heading(&cols));
     let config = helpers::lang_config();

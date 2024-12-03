@@ -1,4 +1,4 @@
-| Language | Syntax Highlighting | Treesitter Textobjects | Auto Indent | Default LSP |
+| Language | Syntax Highlighting | Treesitter Textobjects | Auto Indent | Default language servers |
 | --- | --- | --- | --- | --- |
 | ada | ✓ | ✓ |  | `ada_language_server` |
 | adl | ✓ | ✓ | ✓ |  |
