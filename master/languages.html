@@ -174,7 +174,7 @@ It provides the default configurations for languages and language servers.</p>
 <li>
 <p>In your <a href="./configuration.html">configuration directory</a>. This overrides values
 from the built-in language configuration. For example, to disable
-auto-LSP-formatting in Rust:</p>
+auto-formatting for Rust:</p>
 <pre><code class="language-toml"># in &lt;config_dir&gt;/helix/languages.toml
 
 [language-server.mylang-lsp]
@@ -273,7 +273,7 @@ languages = { typescript = [ { formatCommand ="prettier --stdin-filepath ${INPUT
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>command</code></td><td>The name or path of the language server binary to execute. Binaries must be in <code>$PATH</code></td></tr>
 <tr><td><code>args</code></td><td>A list of arguments to pass to the language server binary</td></tr>
-<tr><td><code>config</code></td><td>LSP initialization options</td></tr>
+<tr><td><code>config</code></td><td>Language server initialization options</td></tr>
 <tr><td><code>timeout</code></td><td>The maximum time a request to the language server may take, in seconds. Defaults to <code>20</code></td></tr>
 <tr><td><code>environment</code></td><td>Any environment variables that will be used when starting the language server <code>{ "KEY1" = "Value1", "KEY2" = "Value2" }</code></td></tr>
 <tr><td><code>required-root-patterns</code></td><td>A list of <code>glob</code> patterns to look for in the working directory. The language server is started if at least one of them is found.</td></tr>
