@@ -4,20 +4,20 @@ use std::time::Duration;
 
 use arc_swap::ArcSwap;
 use futures_util::stream::FuturesUnordered;
+use futures_util::FutureExt;
 use helix_core::chars::char_is_word;
 use helix_core::syntax::LanguageServerFeature;
-use helix_event::{
-    cancelable_future, cancelation, register_hook, send_blocking, CancelRx, CancelTx,
-};
+use helix_event::{cancelable_future, register_hook, send_blocking, TaskController, TaskHandle};
 use helix_lsp::lsp;
 use helix_lsp::util::pos_to_lsp_pos;
 use helix_stdx::rope::RopeSliceExt;
 use helix_view::document::{Mode, SavePoint};
 use helix_view::handlers::lsp::CompletionEvent;
 use helix_view::{DocumentId, Editor, ViewId};
+use path::path_completion;
 use tokio::sync::mpsc::Sender;
 use tokio::time::Instant;
-use tokio_stream::StreamExt;
+use tokio_stream::StreamExt as _;
 
 use crate::commands;
 use crate::compositor::Compositor;
@@ -27,10 +27,13 @@ use crate::job::{dispatch, dispatch_blocking};
 use crate::keymap::MappableCommand;
 use crate::ui::editor::InsertEvent;
 use crate::ui::lsp::SignatureHelp;
-use crate::ui::{self, CompletionItem, Popup};
+use crate::ui::{self, Popup};
 
 use super::Handlers;
+pub use item::{CompletionItem, LspCompletionItem};
 pub use resolve::ResolveHandler;
+mod item;
+mod path;
 mod resolve;
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -53,12 +56,8 @@ pub(super) struct CompletionHandler {
     /// currently active trigger which will cause a
     /// completion request after the timeout
     trigger: Option<Trigger>,
-    /// A handle for currently active completion request.
-    /// This can be used to determine whether the current
-    /// request is still active (and new triggers should be
-    /// ignored) and can also be used to abort the current
-    /// request (by dropping the handle)
-    request: Option<CancelTx>,
+    in_flight: Option<Trigger>,
+    task_controller: TaskController,
     config: Arc<ArcSwap<Config>>,
 }
 
@@ -66,8 +65,9 @@ impl CompletionHandler {
     pub fn new(config: Arc<ArcSwap<Config>>) -> CompletionHandler {
         Self {
             config,
-            request: None,
+            task_controller: TaskController::new(),
             trigger: None,
+            in_flight: None,
         }
     }
 }
@@ -80,6 +80,9 @@ impl helix_event::AsyncHook for CompletionHandler {
         event: Self::Event,
         _old_timeout: Option<Instant>,
     ) -> Option<Instant> {
+        if self.in_flight.is_some() && !self.task_controller.is_running() {
+            self.in_flight = None;
+        }
         match event {
             CompletionEvent::AutoTrigger {
                 cursor: trigger_pos,
@@ -90,7 +93,7 @@ impl helix_event::AsyncHook for CompletionHandler {
                 // but people may create weird keymaps/use the mouse so lets be extra careful
                 if self
                     .trigger
-                    .as_ref()
+                    .or(self.in_flight)
                     .map_or(true, |trigger| trigger.doc != doc || trigger.view != view)
                 {
                     self.trigger = Some(Trigger {
@@ -103,7 +106,7 @@ impl helix_event::AsyncHook for CompletionHandler {
             }
             CompletionEvent::TriggerChar { cursor, doc, view } => {
                 // immediately request completions and drop all auto completion requests
-                self.request = None;
+                self.task_controller.cancel();
                 self.trigger = Some(Trigger {
                     pos: cursor,
                     view,
@@ -113,7 +116,6 @@ impl helix_event::AsyncHook for CompletionHandler {
             }
             CompletionEvent::ManualTrigger { cursor, doc, view } => {
                 // immediately request completions and drop all auto completion requests
-                self.request = None;
                 self.trigger = Some(Trigger {
                     pos: cursor,
                     view,
@@ -126,21 +128,21 @@ impl helix_event::AsyncHook for CompletionHandler {
             }
             CompletionEvent::Cancel => {
                 self.trigger = None;
-                self.request = None;
+                self.task_controller.cancel();
             }
             CompletionEvent::DeleteText { cursor } => {
                 // if we deleted the original trigger, abort the completion
-                if matches!(self.trigger, Some(Trigger{ pos, .. }) if cursor < pos) {
+                if matches!(self.trigger.or(self.in_flight), Some(Trigger{ pos, .. }) if cursor < pos)
+                {
                     self.trigger = None;
-                    self.request = None;
+                    self.task_controller.cancel();
                 }
             }
         }
         self.trigger.map(|trigger| {
             // if the current request was closed forget about it
             // otherwise immediately restart the completion request
-            let cancel = self.request.take().map_or(false, |req| !req.is_closed());
-            let timeout = if trigger.kind == TriggerKind::Auto && !cancel {
+            let timeout = if trigger.kind == TriggerKind::Auto {
                 self.config.load().editor.completion_timeout
             } else {
                 // we want almost instant completions for trigger chars
@@ -155,17 +157,17 @@ impl helix_event::AsyncHook for CompletionHandler {
 
     fn finish_debounce(&mut self) {
         let trigger = self.trigger.take().expect("debounce always has a trigger");
-        let (tx, rx) = cancelation();
-        self.request = Some(tx);
+        self.in_flight = Some(trigger);
+        let handle = self.task_controller.restart();
         dispatch_blocking(move |editor, compositor| {
-            request_completion(trigger, rx, editor, compositor)
+            request_completion(trigger, handle, editor, compositor)
         });
     }
 }
 
 fn request_completion(
     mut trigger: Trigger,
-    cancel: CancelRx,
+    handle: TaskHandle,
     editor: &mut Editor,
     compositor: &mut Compositor,
 ) {
@@ -251,15 +253,19 @@ fn request_completion(
                     None => Vec::new(),
                 }
                 .into_iter()
-                .map(|item| CompletionItem {
-                    item,
-                    provider: language_server_id,
-                    resolved: false,
+                .map(|item| {
+                    CompletionItem::Lsp(LspCompletionItem {
+                        item,
+                        provider: language_server_id,
+                        resolved: false,
+                    })
                 })
                 .collect();
                 anyhow::Ok(items)
             }
+            .boxed()
         })
+        .chain(path_completion(cursor, text.clone(), doc, handle.clone()))
         .collect();
 
     let future = async move {
@@ -280,12 +286,13 @@ fn request_completion(
     let ui = compositor.find::<ui::EditorView>().unwrap();
     ui.last_insert.1.push(InsertEvent::RequestCompletion);
     tokio::spawn(async move {
-        let items = cancelable_future(future, cancel).await.unwrap_or_default();
-        if items.is_empty() {
+        let items = cancelable_future(future, &handle).await;
+        let Some(items) = items.filter(|items| !items.is_empty()) else {
             return;
-        }
+        };
         dispatch(move |editor, compositor| {
-            show_completion(editor, compositor, items, trigger, savepoint)
+            show_completion(editor, compositor, items, trigger, savepoint);
+            drop(handle)
         })
         .await
     });
@@ -346,7 +353,17 @@ pub fn trigger_auto_completion(
                         ..
                     }) if triggers.iter().any(|trigger| text.ends_with(trigger)))
         });
-    if is_trigger_char {
+
+    let cursor_char = text
+        .get_bytes_at(text.len_bytes())
+        .and_then(|t| t.reversed().next());
+
+    #[cfg(windows)]
+    let is_path_completion_trigger = matches!(cursor_char, Some(b'/' | b'\\'));
+    #[cfg(not(windows))]
+    let is_path_completion_trigger = matches!(cursor_char, Some(b'/'));
+
+    if is_trigger_char || (is_path_completion_trigger && doc.path_completion_enabled()) {
         send_blocking(
             tx,
             CompletionEvent::TriggerChar {

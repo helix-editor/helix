@@ -386,7 +386,7 @@ enum IndentCaptureType<'a> {
     Align(RopeSlice<'a>),
 }
 
-impl<'a> IndentCaptureType<'a> {
+impl IndentCaptureType<'_> {
     fn default_scope(&self) -> IndentScope {
         match self {
             IndentCaptureType::Indent | IndentCaptureType::IndentAlways => IndentScope::Tail,

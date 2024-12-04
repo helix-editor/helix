@@ -1,7 +1,7 @@
 ; Classes (modules)
 ;------------------
 
-(module_declaration definition: ((_) @class.inside)) @class.around
+(module_binding definition: ((_) @class.inside)) @class.around
 
 ; Blocks
 ;-------

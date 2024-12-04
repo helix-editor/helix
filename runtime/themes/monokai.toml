@@ -1,5 +1,7 @@
 # Author: Shafkath Shuhan <shafkathshuhannyc@gmail.com>
 
+"tag" = { fg = "tag" }
+
 "namespace" = { fg = "type" }
 "module" = { fg = "type" }
 
@@ -116,3 +118,4 @@ cursor = "#a6a6a6"
 inactive_cursor = "#878b91"
 widget = "#1e1f1c"
 selection = "#414339"
+tag = "#F92672"

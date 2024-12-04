@@ -8,6 +8,9 @@ on:
   schedule:
     - cron: "00 01 * * *"
 
+env:
+  MSRV: "1.76"
+
 jobs:
   check:
     name: Check (msrv)
@@ -17,8 +20,10 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.70
+      - name: Install MSRV toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.MSRV }}
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -38,8 +43,10 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.70
+      - name: Install MSRV toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.MSRV }}
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -70,9 +77,10 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.70
+      - name: Install MSRV toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: ${{ env.MSRV }}
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
@@ -98,8 +106,10 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.70
+      - name: Install MSRV toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.MSRV }}
 
       - uses: Swatinem/rust-cache@v2
         with:
