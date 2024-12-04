@@ -123,6 +123,7 @@ tinymist = { command = "tinymist" }
 pkgbuild-language-server = { command = "pkgbuild-language-server" }
 helm_ls = { command = "helm_ls", args = ["serve"] }
 ember-language-server = { command = "ember-language-server", args = ["--stdio"] }
+teal-language-server = { command = "teal-language-server" }
 
 [language-server.ansible-language-server]
 command = "ansible-language-server"
@@ -1296,6 +1297,20 @@ language-servers = [ "lua-language-server" ]
 [[grammar]]
 name = "lua"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-lua", rev = "88e446476a1e97a8724dff7a23e2d709855077f2" }
+
+[[grammar]]
+name = "teal"
+source = { git = "https://github.com/euclidianAce/tree-sitter-teal", rev = "3db655924b2ff1c54fdf6371b5425ea6b5dccefe" }
+
+[[language]]
+name = "teal"
+scope = "source.tl"
+injection-regex = "teal"
+file-types = ["tl"]
+comment-tokens = "--"
+block-comment-tokens = { start = "--[[", end = "--]]" }
+roots = [ "tlconfig.lua" ]
+language-servers = [ "teal-lsp" ]
 
 [[language]]
 name = "svelte"
