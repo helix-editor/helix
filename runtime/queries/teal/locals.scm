@@ -1,18 +1,17 @@
 
 (var_declaration
   declarators: (var_declarators
-  (var (identifier)) @local.definition.var))
+  (var (identifier)) @local.definition))
 
 (var_assignment
   variables: (assignment_variables
-    (var (identifier) @local.definition.var) @local.definition.associated))
+    (var (identifier) @local.definition)))
 
-(arg name: (identifier) @local.definition.parameter)
+(arg name: (identifier) @local.definition)
 
 (anon_function) @local.scope
 ((function_statement
-  (function_name) @local.definition.function) @local.scope
-  (#set! local.definition.function.local.scope "parent"))
+  (function_name) @local.definition) @local.scope)
 
 (program) @local.scope
 (if_statement) @local.scope
