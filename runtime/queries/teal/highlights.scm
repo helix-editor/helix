@@ -168,4 +168,3 @@
 ;    (#eq? @func-name "format"))
 
 
-(ERROR) @error

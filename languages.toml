@@ -1279,7 +1279,7 @@ source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-lua", rev 
 
 [[grammar]]
 name = "teal"
-source = { git = "https://github.com/euclidianAce/tree-sitter-teal", rev = "485fbdc00d811b01b2090dff4d0469fd1d0350f5" }
+source = { git = "https://github.com/euclidianAce/tree-sitter-teal", rev = "3db655924b2ff1c54fdf6371b5425ea6b5dccefe" }
 
 [[language]]
 name = "teal"
