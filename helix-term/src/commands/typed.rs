@@ -456,13 +456,15 @@ fn format(
     }
 
     let (view, doc) = current!(cx.editor);
-    if let Some(format) = doc.format() {
-        let callback = make_format_callback(doc.id(), doc.version(), view.id, format, None);
-        cx.jobs.callback(callback);
-    }
+    let format = doc.format().context(
+        "A formatter isn't available, and no language server provides formatting capabilities",
+    )?;
+    let callback = make_format_callback(doc.id(), doc.version(), view.id, format, None);
+    cx.jobs.callback(callback);
 
     Ok(())
 }
+
 fn set_indent_style(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
