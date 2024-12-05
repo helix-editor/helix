@@ -54,7 +54,7 @@
 "markup.heading"              = { fg = "markup_heading_fg", modifiers = ["bold"] }
 "markup.bold"                 = { fg = "markup_bold_fg", modifiers = ["bold"] }
 "markup.italic"               = { fg = "markup_italic_fg", modifiers = ["italic"] }
-"markup.link.url"             = { fg = "markup_link_url_fg", modifiers = ["underline"] }
+"markup.link.url"             = { fg = "markup_link_url_fg", modifiers = ["underlined"] }
 "markup.link.text"            = { fg = "markup_link_text_fg" }
 "markup.quote"                = { fg = "markup_quote_fg", modifiers = ["italic"] }
 
