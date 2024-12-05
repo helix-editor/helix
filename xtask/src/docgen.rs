@@ -86,8 +86,9 @@ pub fn static_commands() -> Result<String, DynError> {
                                 format!("`` {} ``", keys)
                             })
                             .collect();
-                        // sort for stable output. sort simple letters-only binds first, then lexicographic
-                        bind_strings.sort_by_key(|s| (s.contains('<'), s.to_owned()));
+                        // sort for stable output. sorting by length puts simple
+                        // keybindings first and groups similar keys together
+                        bind_strings.sort_by_key(|s| (s.len(), s.to_owned()));
                         bind_strings.join(", ")
                     })
                     .unwrap_or_default();

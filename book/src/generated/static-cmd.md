@@ -56,14 +56,14 @@
 | `switch_case` | Switch (toggle) case | normal: `` ~ ``, select: `` ~ `` |
 | `switch_to_uppercase` | Switch to uppercase | normal: `` <A-`> ``, select: `` <A-`> `` |
 | `switch_to_lowercase` | Switch to lowercase | normal: `` ` ``, select: `` ` `` |
-| `page_up` | Move page up | normal: `` <C-b> ``, `` <pageup> ``, `` Z<C-b> ``, `` Z<pageup> ``, `` z<C-b> ``, `` z<pageup> ``, select: `` <C-b> ``, `` <pageup> ``, `` Z<C-b> ``, `` Z<pageup> ``, `` z<C-b> ``, `` z<pageup> ``, insert: `` <pageup> `` |
-| `page_down` | Move page down | normal: `` <C-f> ``, `` <pagedown> ``, `` Z<C-f> ``, `` Z<pagedown> ``, `` z<C-f> ``, `` z<pagedown> ``, select: `` <C-f> ``, `` <pagedown> ``, `` Z<C-f> ``, `` Z<pagedown> ``, `` z<C-f> ``, `` z<pagedown> ``, insert: `` <pagedown> `` |
+| `page_up` | Move page up | normal: `` <C-b> ``, `` Z<C-b> ``, `` z<C-b> ``, `` <pageup> ``, `` Z<pageup> ``, `` z<pageup> ``, select: `` <C-b> ``, `` Z<C-b> ``, `` z<C-b> ``, `` <pageup> ``, `` Z<pageup> ``, `` z<pageup> ``, insert: `` <pageup> `` |
+| `page_down` | Move page down | normal: `` <C-f> ``, `` Z<C-f> ``, `` z<C-f> ``, `` <pagedown> ``, `` Z<pagedown> ``, `` z<pagedown> ``, select: `` <C-f> ``, `` Z<C-f> ``, `` z<C-f> ``, `` <pagedown> ``, `` Z<pagedown> ``, `` z<pagedown> ``, insert: `` <pagedown> `` |
 | `half_page_up` | Move half page up |  |
 | `half_page_down` | Move half page down |  |
 | `page_cursor_up` | Move page and cursor up |  |
 | `page_cursor_down` | Move page and cursor down |  |
-| `page_cursor_half_up` | Move page and cursor half up | normal: `` <C-u> ``, `` Z<C-u> ``, `` Z<backspace> ``, `` z<C-u> ``, `` z<backspace> ``, select: `` <C-u> ``, `` Z<C-u> ``, `` Z<backspace> ``, `` z<C-u> ``, `` z<backspace> `` |
-| `page_cursor_half_down` | Move page and cursor half down | normal: `` <C-d> ``, `` Z<C-d> ``, `` Z<space> ``, `` z<C-d> ``, `` z<space> ``, select: `` <C-d> ``, `` Z<C-d> ``, `` Z<space> ``, `` z<C-d> ``, `` z<space> `` |
+| `page_cursor_half_up` | Move page and cursor half up | normal: `` <C-u> ``, `` Z<C-u> ``, `` z<C-u> ``, `` Z<backspace> ``, `` z<backspace> ``, select: `` <C-u> ``, `` Z<C-u> ``, `` z<C-u> ``, `` Z<backspace> ``, `` z<backspace> `` |
+| `page_cursor_half_down` | Move page and cursor half down | normal: `` <C-d> ``, `` Z<C-d> ``, `` z<C-d> ``, `` Z<space> ``, `` z<space> ``, select: `` <C-d> ``, `` Z<C-d> ``, `` z<C-d> ``, `` Z<space> ``, `` z<space> `` |
 | `select_all` | Select whole document | normal: `` % ``, select: `` % `` |
 | `select_regex` | Select all regex matches inside selections | normal: `` s ``, select: `` s `` |
 | `split_selection` | Split selections on regex matches | normal: `` S ``, select: `` S `` |
@@ -72,11 +72,12 @@
 | `merge_consecutive_selections` | Merge consecutive selections | normal: `` <A-_> ``, select: `` <A-_> `` |
 | `search` | Search for regex pattern | normal: `` / ``, `` Z/ ``, `` z/ ``, select: `` / ``, `` Z/ ``, `` z/ `` |
 | `rsearch` | Reverse search for regex pattern | normal: `` ? ``, `` Z? ``, `` z? ``, select: `` ? ``, `` Z? ``, `` z? `` |
-| `search_next` | Select next search match | normal: `` Zn ``, `` n ``, `` zn ``, select: `` Zn ``, `` zn `` |
+| `search_next` | Select next search match | normal: `` n ``, `` Zn ``, `` zn ``, select: `` Zn ``, `` zn `` |
 | `search_prev` | Select previous search match | normal: `` N ``, `` ZN ``, `` zN ``, select: `` ZN ``, `` zN `` |
 | `extend_search_next` | Add next search match to selection | select: `` n `` |
 | `extend_search_prev` | Add previous search match to selection | select: `` N `` |
-| `search_selection` | Use current selection as search pattern | normal: `` * ``, select: `` * `` |
+| `search_selection` | Use current selection as search pattern | normal: `` <A-*> ``, select: `` <A-*> `` |
+| `search_selection_detect_word_boundaries` | Use current selection as the search pattern, automatically wrapping with `\b` on word boundaries | normal: `` * ``, select: `` * `` |
 | `make_search_word_bounded` | Modify current search to make it word bounded |  |
 | `global_search` | Global search in workspace folder | normal: `` <space>/ ``, select: `` <space>/ `` |
 | `extend_line` | Select current line, if already selected, extend to another line based on the anchor |  |
@@ -159,9 +160,9 @@
 | `smart_tab` | Insert tab if all cursors have all whitespace to their left; otherwise, run a separate command. | insert: `` <tab> `` |
 | `insert_tab` | Insert tab char | insert: `` <S-tab> `` |
 | `insert_newline` | Insert newline char | insert: `` <C-j> ``, `` <ret> `` |
-| `delete_char_backward` | Delete previous char | insert: `` <C-h> ``, `` <S-backspace> ``, `` <backspace> `` |
+| `delete_char_backward` | Delete previous char | insert: `` <C-h> ``, `` <backspace> ``, `` <S-backspace> `` |
 | `delete_char_forward` | Delete next char | insert: `` <C-d> ``, `` <del> `` |
-| `delete_word_backward` | Delete previous word | insert: `` <A-backspace> ``, `` <C-w> `` |
+| `delete_word_backward` | Delete previous word | insert: `` <C-w> ``, `` <A-backspace> `` |
 | `delete_word_forward` | Delete next word | insert: `` <A-d> ``, `` <A-del> `` |
 | `kill_to_line_start` | Delete till start of line | insert: `` <C-u> `` |
 | `kill_to_line_end` | Delete till end of line | insert: `` <C-k> `` |
@@ -208,31 +209,31 @@
 | `rotate_selection_contents_backward` | Rotate selections contents backward | normal: `` <A-(> ``, select: `` <A-(> `` |
 | `reverse_selection_contents` | Reverse selections contents |  |
 | `expand_selection` | Expand selection to parent syntax node | normal: `` <A-o> ``, `` <A-up> ``, select: `` <A-o> ``, `` <A-up> `` |
-| `shrink_selection` | Shrink selection to previously expanded syntax node | normal: `` <A-down> ``, `` <A-i> ``, select: `` <A-down> ``, `` <A-i> `` |
+| `shrink_selection` | Shrink selection to previously expanded syntax node | normal: `` <A-i> ``, `` <A-down> ``, select: `` <A-i> ``, `` <A-down> `` |
 | `select_next_sibling` | Select next sibling in the syntax tree | normal: `` <A-n> ``, `` <A-right> ``, select: `` <A-n> ``, `` <A-right> `` |
-| `select_prev_sibling` | Select previous sibling the in syntax tree | normal: `` <A-left> ``, `` <A-p> ``, select: `` <A-left> ``, `` <A-p> `` |
+| `select_prev_sibling` | Select previous sibling the in syntax tree | normal: `` <A-p> ``, `` <A-left> ``, select: `` <A-p> ``, `` <A-left> `` |
 | `select_all_siblings` | Select all siblings of the current node | normal: `` <A-a> ``, select: `` <A-a> `` |
 | `select_all_children` | Select all children of the current node | normal: `` <A-I> ``, `` <S-A-down> ``, select: `` <A-I> ``, `` <S-A-down> `` |
 | `jump_forward` | Jump forward on jumplist | normal: `` <C-i> ``, `` <tab> ``, select: `` <C-i> ``, `` <tab> `` |
 | `jump_backward` | Jump backward on jumplist | normal: `` <C-o> ``, select: `` <C-o> `` |
 | `save_selection` | Save current selection to jumplist | normal: `` <C-s> ``, select: `` <C-s> `` |
-| `jump_view_right` | Jump to right split | normal: `` <C-w><C-l> ``, `` <C-w><right> ``, `` <C-w>l ``, `` <space>w<C-l> ``, `` <space>w<right> ``, `` <space>wl ``, select: `` <C-w><C-l> ``, `` <C-w><right> ``, `` <C-w>l ``, `` <space>w<C-l> ``, `` <space>w<right> ``, `` <space>wl `` |
-| `jump_view_left` | Jump to left split | normal: `` <C-w><C-h> ``, `` <C-w><left> ``, `` <C-w>h ``, `` <space>w<C-h> ``, `` <space>w<left> ``, `` <space>wh ``, select: `` <C-w><C-h> ``, `` <C-w><left> ``, `` <C-w>h ``, `` <space>w<C-h> ``, `` <space>w<left> ``, `` <space>wh `` |
-| `jump_view_up` | Jump to split above | normal: `` <C-w><C-k> ``, `` <C-w><up> ``, `` <C-w>k ``, `` <space>w<C-k> ``, `` <space>w<up> ``, `` <space>wk ``, select: `` <C-w><C-k> ``, `` <C-w><up> ``, `` <C-w>k ``, `` <space>w<C-k> ``, `` <space>w<up> ``, `` <space>wk `` |
-| `jump_view_down` | Jump to split below | normal: `` <C-w><C-j> ``, `` <C-w><down> ``, `` <C-w>j ``, `` <space>w<C-j> ``, `` <space>w<down> ``, `` <space>wj ``, select: `` <C-w><C-j> ``, `` <C-w><down> ``, `` <C-w>j ``, `` <space>w<C-j> ``, `` <space>w<down> ``, `` <space>wj `` |
+| `jump_view_right` | Jump to right split | normal: `` <C-w>l ``, `` <space>wl ``, `` <C-w><C-l> ``, `` <C-w><right> ``, `` <space>w<C-l> ``, `` <space>w<right> ``, select: `` <C-w>l ``, `` <space>wl ``, `` <C-w><C-l> ``, `` <C-w><right> ``, `` <space>w<C-l> ``, `` <space>w<right> `` |
+| `jump_view_left` | Jump to left split | normal: `` <C-w>h ``, `` <space>wh ``, `` <C-w><C-h> ``, `` <C-w><left> ``, `` <space>w<C-h> ``, `` <space>w<left> ``, select: `` <C-w>h ``, `` <space>wh ``, `` <C-w><C-h> ``, `` <C-w><left> ``, `` <space>w<C-h> ``, `` <space>w<left> `` |
+| `jump_view_up` | Jump to split above | normal: `` <C-w>k ``, `` <C-w><up> ``, `` <space>wk ``, `` <C-w><C-k> ``, `` <space>w<up> ``, `` <space>w<C-k> ``, select: `` <C-w>k ``, `` <C-w><up> ``, `` <space>wk ``, `` <C-w><C-k> ``, `` <space>w<up> ``, `` <space>w<C-k> `` |
+| `jump_view_down` | Jump to split below | normal: `` <C-w>j ``, `` <space>wj ``, `` <C-w><C-j> ``, `` <C-w><down> ``, `` <space>w<C-j> ``, `` <space>w<down> ``, select: `` <C-w>j ``, `` <space>wj ``, `` <C-w><C-j> ``, `` <C-w><down> ``, `` <space>w<C-j> ``, `` <space>w<down> `` |
 | `swap_view_right` | Swap with right split | normal: `` <C-w>L ``, `` <space>wL ``, select: `` <C-w>L ``, `` <space>wL `` |
 | `swap_view_left` | Swap with left split | normal: `` <C-w>H ``, `` <space>wH ``, select: `` <C-w>H ``, `` <space>wH `` |
 | `swap_view_up` | Swap with split above | normal: `` <C-w>K ``, `` <space>wK ``, select: `` <C-w>K ``, `` <space>wK `` |
 | `swap_view_down` | Swap with split below | normal: `` <C-w>J ``, `` <space>wJ ``, select: `` <C-w>J ``, `` <space>wJ `` |
-| `transpose_view` | Transpose splits | normal: `` <C-w><C-t> ``, `` <C-w>t ``, `` <space>w<C-t> ``, `` <space>wt ``, select: `` <C-w><C-t> ``, `` <C-w>t ``, `` <space>w<C-t> ``, `` <space>wt `` |
-| `rotate_view` | Goto next window | normal: `` <C-w><C-w> ``, `` <C-w>w ``, `` <space>w<C-w> ``, `` <space>ww ``, select: `` <C-w><C-w> ``, `` <C-w>w ``, `` <space>w<C-w> ``, `` <space>ww `` |
+| `transpose_view` | Transpose splits | normal: `` <C-w>t ``, `` <space>wt ``, `` <C-w><C-t> ``, `` <space>w<C-t> ``, select: `` <C-w>t ``, `` <space>wt ``, `` <C-w><C-t> ``, `` <space>w<C-t> `` |
+| `rotate_view` | Goto next window | normal: `` <C-w>w ``, `` <space>ww ``, `` <C-w><C-w> ``, `` <space>w<C-w> ``, select: `` <C-w>w ``, `` <space>ww ``, `` <C-w><C-w> ``, `` <space>w<C-w> `` |
 | `rotate_view_reverse` | Goto previous window |  |
-| `hsplit` | Horizontal bottom split | normal: `` <C-w><C-s> ``, `` <C-w>s ``, `` <space>w<C-s> ``, `` <space>ws ``, select: `` <C-w><C-s> ``, `` <C-w>s ``, `` <space>w<C-s> ``, `` <space>ws `` |
-| `hsplit_new` | Horizontal bottom split scratch buffer | normal: `` <C-w>n<C-s> ``, `` <C-w>ns ``, `` <space>wn<C-s> ``, `` <space>wns ``, select: `` <C-w>n<C-s> ``, `` <C-w>ns ``, `` <space>wn<C-s> ``, `` <space>wns `` |
-| `vsplit` | Vertical right split | normal: `` <C-w><C-v> ``, `` <C-w>v ``, `` <space>w<C-v> ``, `` <space>wv ``, select: `` <C-w><C-v> ``, `` <C-w>v ``, `` <space>w<C-v> ``, `` <space>wv `` |
-| `vsplit_new` | Vertical right split scratch buffer | normal: `` <C-w>n<C-v> ``, `` <C-w>nv ``, `` <space>wn<C-v> ``, `` <space>wnv ``, select: `` <C-w>n<C-v> ``, `` <C-w>nv ``, `` <space>wn<C-v> ``, `` <space>wnv `` |
-| `wclose` | Close window | normal: `` <C-w><C-q> ``, `` <C-w>q ``, `` <space>w<C-q> ``, `` <space>wq ``, select: `` <C-w><C-q> ``, `` <C-w>q ``, `` <space>w<C-q> ``, `` <space>wq `` |
-| `wonly` | Close windows except current | normal: `` <C-w><C-o> ``, `` <C-w>o ``, `` <space>w<C-o> ``, `` <space>wo ``, select: `` <C-w><C-o> ``, `` <C-w>o ``, `` <space>w<C-o> ``, `` <space>wo `` |
+| `hsplit` | Horizontal bottom split | normal: `` <C-w>s ``, `` <space>ws ``, `` <C-w><C-s> ``, `` <space>w<C-s> ``, select: `` <C-w>s ``, `` <space>ws ``, `` <C-w><C-s> ``, `` <space>w<C-s> `` |
+| `hsplit_new` | Horizontal bottom split scratch buffer | normal: `` <C-w>ns ``, `` <space>wns ``, `` <C-w>n<C-s> ``, `` <space>wn<C-s> ``, select: `` <C-w>ns ``, `` <space>wns ``, `` <C-w>n<C-s> ``, `` <space>wn<C-s> `` |
+| `vsplit` | Vertical right split | normal: `` <C-w>v ``, `` <space>wv ``, `` <C-w><C-v> ``, `` <space>w<C-v> ``, select: `` <C-w>v ``, `` <space>wv ``, `` <C-w><C-v> ``, `` <space>w<C-v> `` |
+| `vsplit_new` | Vertical right split scratch buffer | normal: `` <C-w>nv ``, `` <space>wnv ``, `` <C-w>n<C-v> ``, `` <space>wn<C-v> ``, select: `` <C-w>nv ``, `` <space>wnv ``, `` <C-w>n<C-v> ``, `` <space>wn<C-v> `` |
+| `wclose` | Close window | normal: `` <C-w>q ``, `` <space>wq ``, `` <C-w><C-q> ``, `` <space>w<C-q> ``, select: `` <C-w>q ``, `` <space>wq ``, `` <C-w><C-q> ``, `` <space>w<C-q> `` |
+| `wonly` | Close windows except current | normal: `` <C-w>o ``, `` <space>wo ``, `` <C-w><C-o> ``, `` <space>w<C-o> ``, select: `` <C-w>o ``, `` <space>wo ``, `` <C-w><C-o> ``, `` <space>w<C-o> `` |
 | `select_register` | Select register | normal: `` " ``, select: `` " `` |
 | `insert_register` | Insert register | insert: `` <C-r> `` |
 | `align_view_middle` | Align view middle | normal: `` Zm ``, `` zm ``, select: `` Zm ``, `` zm `` |
