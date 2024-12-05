@@ -1091,7 +1091,7 @@ fn change_current_directory(
     }
 
     let dir = match args.first() {
-        Some(Cow::Borrowed("-")) => cx.editor.last_cwd,
+        Some(Cow::Borrowed("-")) => cx.editor.last_cwd.clone(),
         Some(input_path) => Some(
             helix_stdx::path::expand_tilde(Path::new(input_path.as_ref()).to_owned())
                 .deref()
@@ -1101,7 +1101,7 @@ fn change_current_directory(
     };
 
     if let Some(dir) = dir {
-        helix_stdx::env::set_current_working_dir(dir)?;
+        helix_stdx::env::set_current_working_dir(&mut cx.editor.last_cwd, dir)?;
 
         cx.editor.set_status(format!(
             "Current working directory is now {}",

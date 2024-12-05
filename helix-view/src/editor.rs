@@ -1094,6 +1094,8 @@ pub struct Editor {
 
     pub mouse_down_range: Option<Range>,
     pub cursor_cache: CursorCache,
+
+    pub last_cwd: Option<PathBuf>,
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
@@ -1214,6 +1216,7 @@ impl Editor {
             handlers,
             mouse_down_range: None,
             cursor_cache: CursorCache::default(),
+            last_cwd: None,
         }
     }
 
