@@ -884,7 +884,7 @@ roots = ["pyproject.toml", "setup.py", "poetry.lock", "pyrightconfig.json"]
 comment-token = "#"
 language-servers = ["ruff", "jedi", "pylsp"]
 # TODO: pyls needs utf-8 offsets
-indent = { tab-width = 4, unit = "    " }
+indent = { tab-width = 4, unit = "    ", required = true }
 
 [[grammar]]
 name = "python"
@@ -1343,7 +1343,7 @@ name = "yaml"
 scope = "source.yaml"
 file-types = ["yml", "yaml", { glob = ".prettierrc" }, { glob = ".clangd" }, { glob = ".clang-format" }]
 comment-token = "#"
-indent = { tab-width = 2, unit = "  " }
+indent = { tab-width = 2, unit = "  ", required = true }
 language-servers = [ "yaml-language-server", "ansible-language-server" ]
 injection-regex = "yml|yaml"
 
@@ -1484,7 +1484,7 @@ file-types = [{ glob = "Makefile" }, { glob = "makefile" }, "make", "mk", "mak",
 shebangs = ["make", "gmake"]
 injection-regex = "(make|makefile|Makefile|mk)"
 comment-token = "#"
-indent = { tab-width = 4, unit = "\t" }
+indent = { tab-width = 4, unit = "\t", required = true }
 
 [[grammar]]
 name = "make"
@@ -3112,7 +3112,7 @@ file-types = ["nim", "nims", "nimble"]
 shebangs = []
 comment-token = "#"
 block-comment-tokens = { start = "#[", end = "]#" }
-indent = { tab-width = 2, unit = "  " }
+indent = { tab-width = 2, unit = "  ", required = true }
 language-servers = [ "nimlangserver" ]
 
 [language.auto-pairs]

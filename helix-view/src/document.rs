@@ -7,7 +7,7 @@ use helix_core::auto_pairs::AutoPairs;
 use helix_core::chars::char_is_word;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
-use helix_core::syntax::{Highlight, LanguageServerFeature};
+use helix_core::syntax::{Highlight, LanguageServerFeature, IndentationConfiguration};
 use helix_core::text_annotations::{InlineAnnotation, Overlay};
 use helix_lsp::util::lsp_pos_to_pos;
 use helix_stdx::faccess::{copy_metadata, readonly};
@@ -643,7 +643,7 @@ use helix_lsp::{lsp, Client, LanguageServerId, LanguageServerName};
 use url::Url;
 
 impl Document {
-    pub fn from(
+    fn from0(
         text: Rope,
         encoding_with_bom_info: Option<(&'static Encoding, bool)>,
         config: Arc<dyn DynAccess<Config>>,
@@ -687,6 +687,16 @@ impl Document {
         }
     }
 
+    pub fn from(
+        text: Rope,
+        encoding_with_bom_info: Option<(&'static Encoding, bool)>,
+        config: Arc<dyn DynAccess<Config>>,
+    ) -> Self {
+        let mut doc = Self::from0(text, encoding_with_bom_info, config);
+        doc.detect_indent_and_line_ending();
+        doc
+    }
+
     pub fn default(config: Arc<dyn DynAccess<Config>>) -> Self {
         let line_ending: LineEnding = config.load().default_line_ending.into();
         let text = Rope::from(line_ending.as_str());
@@ -720,7 +730,7 @@ impl Document {
             (Rope::from(line_ending.as_str()), encoding, false)
         };
 
-        let mut doc = Self::from(rope, Some((encoding, has_bom)), config);
+        let mut doc = Self::from0(rope, Some((encoding, has_bom)), config);
 
         // set the path and try detecting the language
         doc.set_path(Some(path));
@@ -1065,14 +1075,13 @@ impl Document {
             .or_else(|| config_loader.language_config_for_shebang(self.text().slice(..)))
     }
 
-    /// Detect the indentation used in the file, or otherwise defaults to the language indentation
-    /// configured in `languages.toml`, with a fallback to tabs if it isn't specified. Line ending
+    /// Detect the indentation used in the file, or otherwise defaults to the global indentation
+    /// configured in `config.toml` and then the language indentation configured in 
+    /// `languages.toml`, with a fallback to tabs if it isn't specified. Line ending
     /// is likewise auto-detected, and will remain unchanged if no line endings were detected.
     pub fn detect_indent_and_line_ending(&mut self) {
         self.indent_style = auto_detect_indent_style(&self.text).unwrap_or_else(|| {
-            self.language_config()
-                .and_then(|config| config.indent.as_ref())
-                .map_or(DEFAULT_INDENT, |config| IndentStyle::from_str(&config.unit))
+            self.indent_config(DEFAULT_INDENT, |config| config.unit.as_ref().map(|unit| IndentStyle::from_str(unit)))
         });
         if let Some(line_ending) = auto_detect_line_ending(&self.text) {
             self.line_ending = line_ending;
@@ -1105,6 +1114,17 @@ impl Document {
             None => false,
             Some(p) => readonly(p),
         };
+    }
+
+    fn indent_config<T, F: Fn(IndentationConfiguration) -> Option<T>>(&self, default: T, mapper: F) -> T {
+        let mut indent = self.config.load().indent.clone();
+
+        if let Some(c) = self.language_config().and_then(|config| config.indent.as_ref()) {
+            indent.tab_width = indent.tab_width.filter(|_| !c.required).or(Some(c.tab_width));
+            indent.unit = indent.unit.filter(|_| !c.required).or(Some(c.unit.clone()));
+        }
+
+        mapper(indent).unwrap_or(default)
     }
 
     /// Reload the document from its path.
@@ -1796,9 +1816,7 @@ impl Document {
 
     /// The width that the tab character is rendered at
     pub fn tab_width(&self) -> usize {
-        self.language_config()
-            .and_then(|config| config.indent.as_ref())
-            .map_or(4, |config| config.tab_width) // fallback to 4 columns
+        self.indent_config(4, |config| config.tab_width) // fallback to 4 columns
     }
 
     // The width (in spaces) of a level of indentation.
