@@ -390,7 +390,7 @@ impl std::str::FromStr for KeyEvent {
             _ if s.ends_with('-')
                 && tokens.last().map(|s| str::is_empty(s)).unwrap_or_default() =>
             {
-                if tokens.len() == 2 {
+                if tokens.len() > 1 {
                     return Err(anyhow!(
                         "Key '-' cannot be used with modifiers, use '{}' instead",
                         keys::MINUS
