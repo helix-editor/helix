@@ -62,7 +62,7 @@ marksman = { command = "marksman", args = ["server"] }
 metals = { command = "metals", config = { "isHttpEnabled" = true, metals = { inlayHints = { typeParameters = {enable = true} , hintsInPatternMatch = {enable = true} }  } } }
 mesonlsp = { command = "mesonlsp", args = ["--lsp"] }
 mint = { command = "mint", args = ["ls"] }
-mojo-lsp = { command = "mojo-lsp-server" }
+mojo-lsp = { command = "magic", args = ["run", "mojo-lsp-server"] }
 nil = { command = "nil" }
 nimlangserver = { command = "nimlangserver" }
 nimlsp = { command = "nimlsp" }
@@ -412,7 +412,7 @@ language-servers = [ "mojo-lsp" ]
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
 auto-format = true
-formatter = { command = "mojo", args = ["format", "-q", "-"]}
+formatter = { command = "magic", args = ["run", "mojo" , "format", "-q", "-"]}
 
 [[grammar]]
 name = "mojo"
