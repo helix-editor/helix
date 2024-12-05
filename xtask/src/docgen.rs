@@ -1,12 +1,18 @@
 use crate::helpers;
 use crate::path;
 use crate::DynError;
+
+use helix_term::commands::MappableCommand;
 use helix_term::commands::TYPABLE_COMMAND_LIST;
 use helix_term::health::TsFeature;
+use helix_term::ui::EditorView;
+use helix_view::document::Mode;
+
 use std::collections::HashSet;
 use std::fs;
 
 pub const TYPABLE_COMMANDS_MD_OUTPUT: &str = "typable-cmd.md";
+pub const STATIC_COMMANDS_MD_OUTPUT: &str = "static-cmd.md";
 pub const LANG_SUPPORT_MD_OUTPUT: &str = "lang-support.md";
 
 fn md_table_heading(cols: &[String]) -> String {
@@ -43,6 +49,68 @@ pub fn typable_commands() -> Result<String, DynError> {
         let doc = cmd.doc.replace('\n', "<br>");
 
         md.push_str(&md_table_row(&[names.to_owned(), doc.to_owned()]));
+    }
+
+    Ok(md)
+}
+
+pub fn static_commands() -> Result<String, DynError> {
+    let mut md = String::new();
+    let keymap = EditorView::default().keymaps.map();
+    let keymaps = [
+        ("normal", keymap[&Mode::Normal].reverse_map()),
+        ("select", keymap[&Mode::Select].reverse_map()),
+        ("insert", keymap[&Mode::Insert].reverse_map()),
+    ];
+
+    md.push_str(&md_table_heading(&[
+        "Name".to_owned(),
+        "Description".to_owned(),
+        "Default keybinds".to_owned(),
+    ]));
+
+    for cmd in MappableCommand::STATIC_COMMAND_LIST {
+        let keymap_strings: Vec<_> = keymaps
+            .iter()
+            .map(|(mode, keymap)| {
+                let bindings = keymap
+                    .get(cmd.name())
+                    .map(|bindings| {
+                        let mut bind_strings: Vec<_> = bindings
+                            .iter()
+                            .map(|bind| {
+                                let keys = &bind
+                                    .iter()
+                                    .map(|key| key.key_sequence_format())
+                                    .collect::<String>()
+                                    // escape | so it doesn't get rendered as a column separator
+                                    .replace('|', "\\|");
+                                format!("`` {} ``", keys)
+                            })
+                            .collect();
+                        // sort for stable output. sorting by length puts simple
+                        // keybindings first and groups similar keys together
+                        bind_strings.sort_by_key(|s| (s.len(), s.to_owned()));
+                        bind_strings.join(", ")
+                    })
+                    .unwrap_or_default();
+
+                (mode, bindings)
+            })
+            .collect();
+
+        let keymap_string = keymap_strings
+            .iter()
+            .filter(|(_, bindings)| !bindings.is_empty())
+            .map(|(mode, bindings)| format!("{}: {}", mode, bindings))
+            .collect::<Vec<_>>()
+            .join(", ");
+
+        md.push_str(&md_table_row(&[
+            md_mono(cmd.name()),
+            cmd.doc().to_owned(),
+            keymap_string,
+        ]));
     }
 
     Ok(md)
