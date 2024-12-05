@@ -7,16 +7,8 @@ use std::{
 
 use once_cell::sync::Lazy;
 
+// We keep the CWD as a static so that we can access it in places where we don't have access to the Editor
 static CWD: RwLock<Option<PathBuf>> = RwLock::new(None);
-// previous working directory, stored to allow `:cd -`
-static PREV_CWD: RwLock<Option<PathBuf>> = RwLock::new(None);
-
-fn change_cwd(new_dir: PathBuf) {
-    let mut cwd = CWD.write().unwrap();
-    let mut prev_cwd = PREV_CWD.write().unwrap();
-    *prev_cwd = cwd.clone();
-    *cwd = Some(new_dir);
-}
 
 // Get the current working directory.
 // This information is managed internally as the call to std::env::current_dir
@@ -39,7 +31,8 @@ pub fn current_working_dir() -> PathBuf {
             cwd = pwd;
         }
     }
-    change_cwd(cwd.clone());
+    let mut dst = CWD.write().unwrap();
+    *dst = Some(cwd.clone());
 
     cwd
 }
@@ -47,14 +40,10 @@ pub fn current_working_dir() -> PathBuf {
 pub fn set_current_working_dir(path: impl AsRef<Path>) -> std::io::Result<()> {
     let path = crate::path::canonicalize(path);
     std::env::set_current_dir(&path)?;
-    change_cwd(path);
+    let mut cwd = CWD.write().unwrap();
+    *cwd = Some(path);
 
     Ok(())
-}
-
-pub fn previous_working_dir() -> Option<PathBuf> {
-    let prev_cwd = &*PREV_CWD.read().unwrap();
-    prev_cwd.clone()
 }
 
 pub fn env_var_is_set(env_var_name: &str) -> bool {
