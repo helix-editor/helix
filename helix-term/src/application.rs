@@ -222,10 +222,7 @@ impl Application {
                         // opened last is focused on.
                         let view_id = editor.tree.focus;
                         let doc = doc_mut!(editor, &doc_id);
-                        // positions.map(Range::point);
-                        // let pos =
-                        //     Selection::point(pos_at_coords(doc.text().slice(..), positions, true));
-                        // panic!("{pos:#?}");
+
                         let ranges = positions
                             .iter()
                             .map(|position| {
