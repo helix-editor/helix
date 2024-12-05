@@ -160,19 +160,7 @@ impl Application {
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None);
         } else if !args.files.is_empty() {
-            let mut files_it = args
-                .files
-                .iter()
-                .fold(vec![], |mut acc, (filename, position)| {
-                    match acc.iter().position(|(fname, _)| *fname == filename) {
-                        None => acc.push((filename, vec![position])),
-                        Some(idx) => acc[idx].1.push(position),
-                    };
-
-                    acc
-                })
-                .into_iter()
-                .peekable();
+            let mut files_it = args.files.into_iter().peekable();
 
             // If the first file is a directory, skip it and open a picker
             if let Some((first, _)) = files_it.next_if(|(p, _)| p.is_dir()) {
@@ -201,7 +189,7 @@ impl Application {
                             Some(Layout::Horizontal) => Action::HorizontalSplit,
                             None => Action::Load,
                         };
-                        let doc_id = match editor.open(file, action) {
+                        let doc_id = match editor.open(&file, action) {
                             // Ignore irregular files during application init.
                             Err(DocumentOpenError::IrregularFile) => {
                                 nr_of_files -= 1;
@@ -220,7 +208,7 @@ impl Application {
                         let ranges = positions
                             .iter()
                             .map(|position| {
-                                Range::point(pos_at_coords(doc.text().slice(..), **position, true))
+                                Range::point(pos_at_coords(doc.text().slice(..), *position, true))
                             })
                             .collect();
 
