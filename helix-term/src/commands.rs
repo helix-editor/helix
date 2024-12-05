@@ -226,13 +226,30 @@ impl MappableCommand {
         match &self {
             Self::Typable { name, args, doc: _ } => {
                 let args: Vec<Cow<str>> = args.iter().map(Cow::from).collect();
+                let mut joined_args = args.join(" ");
+                let expanded_args = match args.len() {
+                    0 => vec![],
+                    _ => {
+                        if let Ok(expanded) =
+                            cx.editor.expand_variable_in_string(&joined_args, true)
+                        {
+                            joined_args = expanded.to_string();
+                            joined_args.split(' ').map(Cow::from).collect()
+                        } else {
+                            args
+                        }
+                    }
+                };
                 if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
                     let mut cx = compositor::Context {
                         editor: cx.editor,
                         jobs: cx.jobs,
                         scroll: None,
                     };
-                    if let Err(e) = (command.fun)(&mut cx, &args[..], PromptEvent::Validate) {
+
+                    if let Err(e) =
+                        (command.fun)(&mut cx, &expanded_args[..], PromptEvent::Validate)
+                    {
                         cx.editor.set_error(format!("{}", e));
                     }
                 }
