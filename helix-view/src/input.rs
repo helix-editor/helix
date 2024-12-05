@@ -387,6 +387,18 @@ impl std::str::FromStr for KeyEvent {
                     .then_some(KeyCode::F(function))
                     .ok_or_else(|| anyhow!("Invalid function key '{}'", function))?
             }
+            _ if s.ends_with('-')
+                && tokens.last().map(|s| str::is_empty(s)).unwrap_or_default() =>
+            {
+                // When '-' is used in a key there will be two empty strings. E.g.:
+                //
+                // - without modifiers: `"-".split('-') == ["", ""]`
+                // - with modifiers: `"S--".split('-') == ["S", "", ""]`
+                //
+                // So we have to pop one more token in this case.
+                tokens.pop();
+                KeyCode::Char('-')
+            }
             invalid => return Err(anyhow!("Invalid key code '{}'", invalid)),
         };
 
@@ -709,6 +721,13 @@ mod test {
                 modifiers: KeyModifiers::NONE
             }
         );
+        assert_eq!(
+            str::parse::<KeyEvent>("C--").unwrap(),
+            KeyEvent {
+                code: KeyCode::Char('-'),
+                modifiers: KeyModifiers::CONTROL,
+            }
+        );
     }
 
     #[test]
@@ -720,7 +739,6 @@ mod test {
         assert!(str::parse::<KeyEvent>("C-A-S-C-1").is_err());
         assert!(str::parse::<KeyEvent>("FU").is_err());
         assert!(str::parse::<KeyEvent>("123").is_err());
-        assert!(str::parse::<KeyEvent>("S--").is_err());
         assert!(str::parse::<KeyEvent>("S-percent").is_err());
     }
 
