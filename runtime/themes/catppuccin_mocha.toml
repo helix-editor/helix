@@ -52,6 +52,8 @@
 "markup.list" = "mauve"
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
+"markup.list.unchecked" = "overlay2"
+"markup.list.checked" = "green"
 "markup.link.url" = { fg = "blue", modifiers = ["italic", "underlined"] }
 "markup.link.text" = "blue"
 "markup.raw" = "flamingo"
