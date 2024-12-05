@@ -1331,7 +1331,7 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         if path.is_dir() {
             let picker = ui::file_picker(path.into(), &cx.editor.config());
             cx.push_layer(Box::new(overlaid(picker)));
-        } else if let Err(e) = cx.editor.open(path, action, false) {
+        } else if let Err(e) = cx.editor.open(path, action) {
             cx.editor.set_error(format!("Open file failed: {:?}", e));
         }
     }
@@ -1368,7 +1368,7 @@ fn open_url(cx: &mut Context, url: Url, action: Action) {
             if path.is_dir() {
                 let picker = ui::file_picker(path.into(), &cx.editor.config());
                 cx.push_layer(Box::new(overlaid(picker)));
-            } else if let Err(e) = cx.editor.open(path, action, false) {
+            } else if let Err(e) = cx.editor.open(path, action) {
                 cx.editor.set_error(format!("Open file failed: {:?}", e));
             }
         }
@@ -2534,7 +2534,7 @@ fn global_search(cx: &mut Context) {
         [],
         config,
         move |cx, FileResult { path, line_num, .. }, action| {
-            let doc = match cx.editor.open(path, action, false) {
+            let doc = match cx.editor.open(path, action) {
                 Ok(id) => doc_mut!(cx.editor, &id),
                 Err(e) => {
                     cx.editor
@@ -3213,7 +3213,7 @@ fn changed_file_picker(cx: &mut Context) {
         },
         |cx, meta: &FileChange, action| {
             let path_to_open = meta.path();
-            if let Err(e) = cx.editor.open(path_to_open, action, false) {
+            if let Err(e) = cx.editor.open(path_to_open, action) {
                 let err = if let Some(err) = e.source() {
                     format!("{}", err)
                 } else {

@@ -128,7 +128,7 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
             cx.jobs.callback(callback);
         } else {
             // Otherwise, just open the file
-            let _ = cx.editor.open(&path, Action::Replace, false)?;
+            let _ = cx.editor.open(&path, Action::Replace)?;
             let (view, doc) = current!(cx.editor);
             let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
             doc.set_selection(view.id, pos);
@@ -1665,7 +1665,7 @@ fn vsplit(
     } else {
         for arg in args {
             cx.editor
-                .open(&PathBuf::from(arg.as_ref()), Action::VerticalSplit, false)?;
+                .open(&PathBuf::from(arg.as_ref()), Action::VerticalSplit)?;
         }
     }
 
@@ -1686,7 +1686,7 @@ fn hsplit(
     } else {
         for arg in args {
             cx.editor
-                .open(&PathBuf::from(arg.as_ref()), Action::HorizontalSplit, false)?;
+                .open(&PathBuf::from(arg.as_ref()), Action::HorizontalSplit)?;
         }
     }
 
@@ -1795,7 +1795,7 @@ fn tutor(
     }
 
     let path = helix_loader::runtime_file(Path::new("tutor"));
-    cx.editor.open(&path, Action::Replace, false)?;
+    cx.editor.open(&path, Action::Replace)?;
     // Unset path to prevent accidentally saving to the original tutor file.
     doc_mut!(cx.editor).set_path(None);
     Ok(())
@@ -2191,7 +2191,7 @@ fn open_config(
     }
 
     cx.editor
-        .open(&helix_loader::config_file(), Action::Replace, false)?;
+        .open(&helix_loader::config_file(), Action::Replace)?;
     Ok(())
 }
 
@@ -2204,11 +2204,8 @@ fn open_workspace_config(
         return Ok(());
     }
 
-    cx.editor.open(
-        &helix_loader::workspace_config_file(),
-        Action::Replace,
-        false,
-    )?;
+    cx.editor
+        .open(&helix_loader::workspace_config_file(), Action::Replace)?;
     Ok(())
 }
 
@@ -2221,8 +2218,7 @@ fn open_log(
         return Ok(());
     }
 
-    cx.editor
-        .open(&helix_loader::log_file(), Action::Replace, false)?;
+    cx.editor.open(&helix_loader::log_file(), Action::Replace)?;
     Ok(())
 }
 

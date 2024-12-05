@@ -103,7 +103,7 @@ impl Editor {
         };
         let path = uri.as_path().expect("URIs are valid paths");
 
-        let doc_id = match self.open(path, Action::Load, false) {
+        let doc_id = match self.open(path, Action::Load) {
             Ok(doc_id) => doc_id,
             Err(err) => {
                 let err = format!(
