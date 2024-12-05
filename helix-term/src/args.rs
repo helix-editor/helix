@@ -17,6 +17,7 @@ pub struct Args {
     pub log_file: Option<PathBuf>,
     pub config_file: Option<PathBuf>,
     pub default_config: bool,
+    pub default_language_config: bool,
     pub files: Vec<(PathBuf, Position)>,
     pub working_directory: Option<PathBuf>,
 }
@@ -54,7 +55,8 @@ impl Args {
                         anyhow::bail!("--grammar must be followed by either 'fetch' or 'build'")
                     }
                 },
-                "-d" | "--default-config" => args.default_config = true,
+                "--default-config" => args.default_config = true,
+                "--default-language-config" => args.default_language_config = true,
                 "-c" | "--config" => match argv.next().as_deref() {
                     Some(path) => args.config_file = Some(path.into()),
                     None => anyhow::bail!("--config must specify a path to read"),

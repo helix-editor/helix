@@ -59,8 +59,9 @@ FLAGS:
                                    CATEGORY can be a language or one of 'clipboard', 'languages'
                                    or 'all'. 'all' is the default if not specified.
     -g, --grammar {{fetch|build}}    Fetches or builds tree-sitter grammars listed in languages.toml
-    -d, --default-config           Use the default configuration file
     -c, --config <file>            Specifies a file to use for configuration
+    --default-config               Use the default configuration file
+    --default-language-config      Use the default language configuration file
     -v                             Increases logging verbosity each use for up to 3 times
     --log <file>                   Specifies a file to use for logging
                                    (default file: {})
@@ -149,14 +150,18 @@ FLAGS:
         }
     };
 
-    let lang_loader = helix_core::config::user_lang_loader().unwrap_or_else(|err| {
-        eprintln!("{}", err);
-        eprintln!("Press <ENTER> to continue with default language config");
-        use std::io::Read;
-        // This waits for an enter press.
-        let _ = std::io::stdin().read(&mut []);
+    let lang_loader = if args.default_language_config {
         helix_core::config::default_lang_loader()
-    });
+    } else {
+        helix_core::config::user_lang_loader().unwrap_or_else(|err| {
+            eprintln!("{}", err);
+            eprintln!("Press <ENTER> to continue with default language config");
+            use std::io::Read;
+            // This waits for an enter press.
+            let _ = std::io::stdin().read(&mut []);
+            helix_core::config::default_lang_loader()
+        })
+    };
 
     // TODO: use the thread local executor to spawn the application task separately from the work pool
     let mut app =
