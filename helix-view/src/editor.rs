@@ -1073,6 +1073,7 @@ pub struct Editor {
     redraw_timer: Pin<Box<Sleep>>,
     last_motion: Option<Motion>,
     pub last_completion: Option<CompleteAction>,
+    pub last_cwd: Option<PathBuf>,
 
     pub exit_code: i32,
 
@@ -1094,8 +1095,6 @@ pub struct Editor {
 
     pub mouse_down_range: Option<Range>,
     pub cursor_cache: CursorCache,
-
-    pub last_cwd: Option<PathBuf>,
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
@@ -1208,6 +1207,7 @@ impl Editor {
             redraw_timer: Box::pin(sleep(Duration::MAX)),
             last_motion: None,
             last_completion: None,
+            last_cwd: None,
             config,
             auto_pairs,
             exit_code: 0,
@@ -1216,7 +1216,6 @@ impl Editor {
             handlers,
             mouse_down_range: None,
             cursor_cache: CursorCache::default(),
-            last_cwd: None,
         }
     }
 
