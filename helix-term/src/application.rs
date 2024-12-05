@@ -156,7 +156,7 @@ impl Application {
 
         if args.load_tutor {
             let path = helix_loader::runtime_file(Path::new("tutor"));
-            editor.open(&path, Action::VerticalSplit, false)?;
+            editor.open(&path, Action::VerticalSplit)?;
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None);
         } else if !args.files.is_empty() {
@@ -189,7 +189,7 @@ impl Application {
                             Some(Layout::Horizontal) => Action::HorizontalSplit,
                             None => Action::Load,
                         };
-                        let doc_id = match editor.open(&file, action, true) {
+                        let doc_id = match editor.open(&file, action) {
                             // Ignore irregular files during application init.
                             Err(DocumentOpenError::IrregularFile) => {
                                 nr_of_files -= 1;
@@ -1163,7 +1163,7 @@ impl Application {
             _ => helix_view::editor::Action::VerticalSplit,
         };
 
-        let doc_id = match self.editor.open(path, action, false) {
+        let doc_id = match self.editor.open(path, action) {
             Ok(id) => id,
             Err(err) => {
                 log::error!("failed to open path: {:?}: {:?}", uri, err);
