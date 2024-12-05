@@ -1091,7 +1091,7 @@ fn change_current_directory(
     }
 
     let dir = match args.first() {
-        Some(Cow::Borrowed("-")) => helix_stdx::env::previous_working_dir(),
+        Some(Cow::Borrowed("-")) => cx.editor.last_cwd,
         Some(input_path) => Some(
             helix_stdx::path::expand_tilde(Path::new(input_path.as_ref()).to_owned())
                 .deref()
