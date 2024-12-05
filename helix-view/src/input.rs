@@ -676,6 +676,13 @@ mod test {
                 modifiers: KeyModifiers::NONE
             }
         );
+        assert_eq!(
+            str::parse::<KeyEvent>("-").unwrap(),
+            KeyEvent {
+                code: KeyCode::Char('-'),
+                modifiers: KeyModifiers::NONE,
+            }
+        );
     }
 
     #[test]
@@ -724,13 +731,6 @@ mod test {
                 modifiers: KeyModifiers::NONE
             }
         );
-        assert_eq!(
-            str::parse::<KeyEvent>("C--").unwrap(),
-            KeyEvent {
-                code: KeyCode::Char('-'),
-                modifiers: KeyModifiers::CONTROL,
-            }
-        );
     }
 
     #[test]
@@ -742,6 +742,7 @@ mod test {
         assert!(str::parse::<KeyEvent>("C-A-S-C-1").is_err());
         assert!(str::parse::<KeyEvent>("FU").is_err());
         assert!(str::parse::<KeyEvent>("123").is_err());
+        assert!(str::parse::<KeyEvent>("S--").is_err());
         assert!(str::parse::<KeyEvent>("S-percent").is_err());
     }
 
