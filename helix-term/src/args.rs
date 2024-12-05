@@ -28,7 +28,7 @@ impl Args {
         let mut line_number = 0;
 
         let mut insert_file_with_position = |file_with_position: &str| {
-            let (filename, position) = parse_file(&file_with_position);
+            let (filename, position) = parse_file(file_with_position);
 
             // Before setting the working directory, resolve all the paths in args.files
             let filename = helix_stdx::path::canonicalize(filename);
@@ -107,10 +107,10 @@ impl Args {
                 arg if arg.starts_with('+') => {
                     match arg[1..].parse::<usize>() {
                         Ok(n) => line_number = n.saturating_sub(1),
-                        _ => insert_file_with_position(&arg),
+                        _ => insert_file_with_position(arg),
                     };
                 }
-                arg => insert_file_with_position(&arg),
+                arg => insert_file_with_position(arg),
             }
         }
 
