@@ -134,7 +134,7 @@ fn jump_to_position(
     offset_encoding: OffsetEncoding,
     action: Action,
 ) {
-    let doc = match editor.open(path, action) {
+    let doc = match editor.open(path, action, false) {
         Ok(id) => doc_mut!(editor, &id),
         Err(err) => {
             let err = format!("failed to open path: {:?}: {:?}", path, err);

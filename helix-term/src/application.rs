@@ -156,7 +156,7 @@ impl Application {
 
         if args.load_tutor {
             let path = helix_loader::runtime_file(Path::new("tutor"));
-            editor.open(&path, Action::VerticalSplit)?;
+            editor.open(&path, Action::VerticalSplit, false)?;
             // Unset path to prevent accidentally saving to the original tutor file.
             doc_mut!(editor).set_path(None);
         } else if !args.files.is_empty() {
@@ -1169,7 +1169,7 @@ impl Application {
             _ => helix_view::editor::Action::VerticalSplit,
         };
 
-        let doc_id = match self.editor.open(path, action) {
+        let doc_id = match self.editor.open(path, action, false) {
             Ok(id) => id,
             Err(err) => {
                 log::error!("failed to open path: {:?}: {:?}", uri, err);

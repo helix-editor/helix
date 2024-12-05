@@ -241,7 +241,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         },
     )];
     let picker = Picker::new(columns, 0, [], root, move |cx, path: &PathBuf, action| {
-        if let Err(e) = cx.editor.open(path, action) {
+        if let Err(e) = cx.editor.open(path, action, false) {
             let err = if let Some(err) = e.source() {
                 format!("{}", err)
             } else {
