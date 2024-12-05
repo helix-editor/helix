@@ -9,6 +9,7 @@ use super::*;
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::{line_ending, shellwords::Shellwords};
+use helix_stdx::path::home_dir;
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
 use serde_json::Value;
@@ -1089,11 +1090,14 @@ fn change_current_directory(
         return Ok(());
     }
 
-    let dir = args
-        .first()
-        .context("target directory not provided")?
-        .as_ref();
-    let dir = helix_stdx::path::expand_tilde(Path::new(dir));
+    let dir = match args.first() {
+        Some(input_path) => {
+            helix_stdx::path::expand_tilde(Path::new(input_path.as_ref()).to_owned())
+                .deref()
+                .to_path_buf()
+        }
+        None => home_dir()?.as_path().to_owned(),
+    };
 
     helix_stdx::env::set_current_working_dir(dir)?;
 
