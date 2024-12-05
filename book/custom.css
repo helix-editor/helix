@@ -18,7 +18,7 @@ html {
 
 .chapter .section li.chapter-item {
   line-height: inherit;
-  padding: .5rem .5rem 0 .5rem;
+  padding: 0.5rem 0.5rem 0 0.5rem;
 }
 
 .content {
@@ -28,12 +28,24 @@ html {
 }
 
 /* 2 1.75 1.5 1.25 1 .875 */
-.content h1 { font-size: 2em }
-.content h2 { font-size: 1.75em }
-.content h3 { font-size: 1.5em }
-.content h4 { font-size: 1.25em }
-.content h5 { font-size: 1em }
-.content h6 { font-size: .875em }
+.content h1 {
+  font-size: 2em;
+}
+.content h2 {
+  font-size: 1.75em;
+}
+.content h3 {
+  font-size: 1.5em;
+}
+.content h4 {
+  font-size: 1.25em;
+}
+.content h5 {
+  font-size: 1em;
+}
+.content h6 {
+  font-size: 0.875em;
+}
 
 .content h1,
 .content h2,
@@ -41,7 +53,36 @@ html {
 .content h4 {
   font-weight: 500;
   margin-top: 1.275em;
-  margin-bottom: .875em;
+  margin-bottom: 0.875em;
+}
+
+aside {
+  --space: 1.25rem;
+  margin-top: 4rem;
+  margin-bottom: 4rem;
+  padding-left: var(--space);
+  color: var(--fg);
+  padding-bottom: var(--space);
+  /* TODO: use a custom color here */
+  border-left: 4px solid var(--links);
+  position: relative;
+  color: var(--fg);
+  background-color: var(--quote-bg);
+  padding-top: 4rem;
+  &::before {
+    font-weight: bold;
+    position: absolute;
+    top: var(--space);
+    left: var(--space);
+  }
+}
+
+/* TODO: customize border color based on aside type */
+aside.tip::before {
+  content: "💡 Tip";
+}
+aside.note::before {
+  content: "ℹ️ Note";
 }
 
 .content p,
@@ -49,11 +90,11 @@ html {
 .content ul,
 .content table {
   margin-top: 0;
-  margin-bottom: .875em;
+  margin-bottom: 0.875em;
 }
 
 .content ul li {
-  margin-bottom: .25rem;
+  margin-bottom: 0.25rem;
 }
 
 .content ul {
@@ -62,18 +103,18 @@ html {
 
 .content ul ul,
 .content ol ul {
-  margin-bottom: .5rem;
+  margin-bottom: 0.5rem;
 }
 
 .content li p {
-  margin-bottom: .5em;
+  margin-bottom: 0.5em;
 }
 
 blockquote {
   margin: 1.5rem 0;
   padding: 1rem 1.5rem;
   color: var(--fg);
-  opacity: .9;
+  opacity: 0.9;
   background-color: var(--quote-bg);
   border-left: 4px solid var(--quote-border);
   border-top: none;
@@ -89,7 +130,7 @@ table {
 }
 
 table thead th {
-  padding: .75rem;
+  padding: 0.75rem;
   text-align: left;
   font-weight: 500;
   line-height: 1.5;
@@ -97,7 +138,7 @@ table thead th {
 }
 
 table td {
-  padding: .75rem;
+  padding: 0.75rem;
   border: none;
 }
 
@@ -141,13 +182,13 @@ code.hljs {
   --icons-hover: #b7b9cc;
 
   /* --links: #a4a0e8; */
-  --links: #ECCDBA;
+  --links: #eccdba;
 
   --inline-code-color: hsl(48.7, 7.8%, 70%);
 
   --theme-popup-bg: #161923;
   --theme-popup-border: #737480;
-  --theme-hover: rgba(0, 0, 0, .2);
+  --theme-hover: rgba(0, 0, 0, 0.2);
 
   --quote-bg: #281733;
   --quote-border: hsl(226, 15%, 22%);
@@ -165,6 +206,12 @@ code.hljs {
   --searchresults-border-color: #5c5c68;
   --searchresults-li-bg: #242430;
   --search-mark-bg: #a2cff5;
+}
+
+:where(.colibri) kbd {
+  border-color: hsl(48.7, 7.8%, 25%);
+  color: hsl(48.7, 7.8%, 70%);
+  background-color: #2f1e2e;
 }
 
 .colibri .content .header {

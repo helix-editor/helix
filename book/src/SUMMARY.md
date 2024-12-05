@@ -6,6 +6,7 @@
   - [Package Managers](./package-managers.md)
   - [Building from source](./building-from-source.md)
 - [Usage](./usage.md)
+  - [Getting Started](./getting-started.md)
   - [Registers](./registers.md)
   - [Surround](./surround.md)
   - [Textobjects](./textobjects.md)
