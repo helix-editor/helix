@@ -37,18 +37,12 @@ pub fn current_working_dir() -> PathBuf {
     cwd
 }
 
-pub fn set_current_working_dir(
-    last_cwd: &mut Option<PathBuf>,
-    path: impl AsRef<Path>,
-) -> std::io::Result<()> {
+pub fn set_current_working_dir(path: impl AsRef<Path>) -> std::io::Result<Option<PathBuf>> {
     let path = crate::path::canonicalize(path);
     std::env::set_current_dir(&path)?;
-    *last_cwd = (*CWD.read().unwrap()).clone();
     let mut cwd = CWD.write().unwrap();
 
-    *cwd = Some(path);
-
-    Ok(())
+    Ok(cwd.replace(path))
 }
 
 pub fn env_var_is_set(env_var_name: &str) -> bool {
@@ -182,7 +176,7 @@ mod tests {
         let cwd = current_working_dir();
         assert_ne!(cwd, new_path);
 
-        set_current_working_dir(&mut None, &new_path).expect("Couldn't set new path");
+        set_current_working_dir(&new_path).expect("Couldn't set new path");
 
         let cwd = current_working_dir();
         assert_eq!(cwd, new_path);

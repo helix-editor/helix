@@ -1091,29 +1091,25 @@ fn change_current_directory(
     }
 
     let dir = match args.first() {
-        Some(Cow::Borrowed("-")) => cx.editor.last_cwd.clone(),
-        Some(input_path) => Some(
+        Some(Cow::Borrowed("-")) => cx
+            .editor
+            .last_cwd
+            .clone()
+            .ok_or(anyhow!("No previous working directory"))?,
+        Some(input_path) => {
             helix_stdx::path::expand_tilde(Path::new(input_path.as_ref()).to_owned())
                 .deref()
-                .to_path_buf(),
-        ),
-        None => Some(home_dir()?.as_path().to_owned()),
+                .to_path_buf()
+        }
+        None => home_dir()?.as_path().to_owned(),
     };
 
-    if let Some(dir) = dir {
-        helix_stdx::env::set_current_working_dir(&mut cx.editor.last_cwd, dir)?;
+    cx.editor.last_cwd = helix_stdx::env::set_current_working_dir(dir)?;
 
-        cx.editor.set_status(format!(
-            "Current working directory is now {}",
-            helix_stdx::env::current_working_dir().display()
-        ));
-    } else {
-        // dir is None only if there is not a previous working directory, in which case we won't change it
-        cx.editor.set_status(format!(
-            "Current working directory is still {}",
-            helix_stdx::env::current_working_dir().display()
-        ));
-    };
+    cx.editor.set_status(format!(
+        "Current working directory is now {}",
+        helix_stdx::env::current_working_dir().display()
+    ));
 
     Ok(())
 }
