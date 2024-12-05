@@ -390,11 +390,14 @@ impl std::str::FromStr for KeyEvent {
             _ if s.ends_with('-')
                 && tokens.last().map(|s| str::is_empty(s)).unwrap_or_default() =>
             {
-                // When '-' is used in a key there will be two empty strings. E.g.:
-                //
-                // - without modifiers: `"-".split('-') == ["", ""]`
-                // - with modifiers: `"S--".split('-') == ["S", "", ""]`
-                //
+                if tokens.len() == 2 {
+                    return Err(anyhow!(
+                        "Key '-' cannot be used with modifiers, use '{}' instead",
+                        keys::MINUS
+                    ));
+                }
+                // When '-' is used in a key there will be two empty strings,
+                // because `"-".split('-') == ["", ""]`.
                 // So we have to pop one more token in this case.
                 tokens.pop();
                 KeyCode::Char('-')
