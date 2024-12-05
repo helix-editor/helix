@@ -82,7 +82,9 @@ pub fn static_commands() -> Result<String, DynError> {
                                 let keys = &bind
                                     .iter()
                                     .map(|key| key.key_sequence_format())
-                                    .collect::<String>();
+                                    .collect::<String>()
+                                    // escape | so it doesn't get rendered as a column separator
+                                    .replace('|', "\\|");
                                 format!("`` {} ``", keys)
                             })
                             .collect();
