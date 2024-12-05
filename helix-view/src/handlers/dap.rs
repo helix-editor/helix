@@ -63,7 +63,7 @@ pub fn jump_to_stack_frame(editor: &mut Editor, frame: &helix_dap::StackFrame) {
         return;
     };
 
-    if let Err(e) = editor.open(&path, Action::Replace) {
+    if let Err(e) = editor.open(&path, Action::Replace, false) {
         editor.set_error(format!("Unable to jump to stack frame: {}", e));
         return;
     }
