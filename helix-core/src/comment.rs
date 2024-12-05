@@ -9,7 +9,7 @@ use crate::{
 use helix_stdx::rope::RopeSliceExt;
 use std::borrow::Cow;
 
-pub const DEFAULT_COMMENT_TOKEN: &str = "//";
+pub const DEFAULT_COMMENT_TOKEN: &str = "#";
 
 /// Returns the longest matching comment token of the given line (if it exists).
 pub fn get_comment_token<'a, S: AsRef<str>>(
@@ -373,12 +373,12 @@ mod test {
             let transaction = toggle_line_comments(&doc, &selection, None);
             transaction.apply(&mut doc);
 
-            assert_eq!(doc, "  // 1\n\n  // 2\n  // 3");
+            assert_eq!(doc, "  # 1\n\n  # 2\n  # 3");
         }
 
         #[test]
         fn uncomment() {
-            let mut doc = Rope::from("  // 1\n\n  // 2\n  // 3");
+            let mut doc = Rope::from("  # 1\n\n  # 2\n  # 3");
             let mut selection = Selection::single(0, doc.len_chars() - 1);
 
             let transaction = toggle_line_comments(&doc, &selection, None);
@@ -391,7 +391,7 @@ mod test {
 
         #[test]
         fn uncomment_0_margin_comments() {
-            let mut doc = Rope::from("  //1\n\n  //2\n  //3");
+            let mut doc = Rope::from("  #1\n\n  #2\n  #3");
             let mut selection = Selection::single(0, doc.len_chars() - 1);
 
             let transaction = toggle_line_comments(&doc, &selection, None);
@@ -404,7 +404,7 @@ mod test {
 
         #[test]
         fn uncomment_0_margin_comments_with_no_space() {
-            let mut doc = Rope::from("//");
+            let mut doc = Rope::from("#");
             let mut selection = Selection::single(0, doc.len_chars() - 1);
 
             let transaction = toggle_line_comments(&doc, &selection, None);
