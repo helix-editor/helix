@@ -1073,6 +1073,7 @@ pub struct Editor {
     redraw_timer: Pin<Box<Sleep>>,
     last_motion: Option<Motion>,
     pub last_completion: Option<CompleteAction>,
+    pub last_cwd: Option<PathBuf>,
 
     pub exit_code: i32,
 
@@ -1206,6 +1207,7 @@ impl Editor {
             redraw_timer: Box::pin(sleep(Duration::MAX)),
             last_motion: None,
             last_completion: None,
+            last_cwd: None,
             config,
             auto_pairs,
             exit_code: 0,
