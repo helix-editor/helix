@@ -1090,18 +1090,14 @@ fn change_current_directory(
         return Ok(());
     }
 
-    let dir = match args.first() {
-        Some(Cow::Borrowed("-")) => cx
+    let dir = match args.first().map(AsRef::as_ref) {
+        Some("-") => cx
             .editor
             .last_cwd
             .clone()
             .ok_or(anyhow!("No previous working directory"))?,
-        Some(input_path) => {
-            helix_stdx::path::expand_tilde(Path::new(input_path.as_ref()).to_owned())
-                .deref()
-                .to_path_buf()
-        }
-        None => home_dir()?.as_path().to_owned(),
+        Some(input_path) => helix_stdx::path::expand_tilde(Path::new(input_path)).to_path_buf(),
+        None => home_dir()?,
     };
 
     cx.editor.last_cwd = helix_stdx::env::set_current_working_dir(dir)?;
