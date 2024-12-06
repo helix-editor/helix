@@ -2145,12 +2145,12 @@ fn tree_sitter_tree(
 
             // If this document doesn't exist, create it. If it exists, override the contents with our new string
 
-            if let Some(_) = cx.editor.documents.get_mut(&doc_id) {
-                if let Ok(_) = cx.editor.close_document(doc_id, true) {
-                } else {
-                    bail!("Couldn't close the previous Tree Sitter document")
-                };
+            if cx.editor.documents.get_mut(&doc_id).is_some()
+                && cx.editor.close_document(doc_id, true).is_err()
+            {
+                bail!("Couldn't close the previous Tree Sitter document")
             }
+
             cx.editor.new_file_from_document_with_id(
                 Action::VerticalSplit,
                 Document::from(Rope::from(contents), None, cx.editor.config.clone()),
