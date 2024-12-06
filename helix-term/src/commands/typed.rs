@@ -2116,6 +2116,56 @@ fn reflow(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
     Ok(())
 }
 
+fn tree_sitter_tree(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    // let (view, doc) = current_ref!(cx.editor);
+
+    let _doc = cx.editor.new_file_from_document(
+        Action::HorizontalSplit,
+        Document::from(Rope::from("Hello world"), None, cx.editor.config.clone()),
+    );
+
+    // if let Some(syntax) = doc.syntax() {
+    //     let primary_selection = doc.selection(view.id).primary();
+    //     let text = doc.text();
+    //     let from = text.char_to_byte(primary_selection.from());
+    //     let to = text.char_to_byte(primary_selection.to());
+
+    // view.new_
+    // let doc = cx.editor.new_file(Action::HorizontalSplit);
+
+    // cx.editor.swap;
+
+    // if let Some(selected_node) = syntax.descendant_for_byte_range(from, to) {
+    //     let mut contents = String::from("```tsq\n");
+    //     helix_core::syntax::pretty_print_tree(&mut contents, selected_node)?;
+    //     contents.push_str("\n```");
+
+    //     let callback = async move {
+    //         let call: job::Callback = Callback::EditorCompositor(Box::new(
+    //             move |editor: &mut Editor, compositor: &mut Compositor| {
+    //                 let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
+    //                 let popup = Popup::new("hover", contents).auto_close(true);
+    //                 compositor.replace_or_push("hover", popup);
+    //             },
+    //         ));
+    //         Ok(call)
+    //     };
+
+    //     cx.jobs.callback(callback);
+    // }
+    // }
+
+    Ok(())
+}
+
 fn tree_sitter_subtree(
     cx: &mut compositor::Context,
     _args: Args,
@@ -3320,6 +3370,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             positionals: (0, Some(0)),
             ..Signature::DEFAULT
         },
+    },
+    TypableCommand {
+        name: "tree-sitter-tree",
+        aliases: &["ts-tree"],
+        doc: "Display tree-sitter tree that spans the full document, primarily for debugging queries.",
+        fun: tree_sitter_tree,
+        signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "config-reload",
