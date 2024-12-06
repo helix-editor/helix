@@ -61,6 +61,11 @@ use arc_swap::{
 
 pub const DEFAULT_AUTO_SAVE_DELAY: u64 = 3000;
 
+// No document is likely to ever reach this size
+// This is needed to be able to replace the previous Tree Sitter Tree Document with a new one
+// WARNING: do not set this to 0, as it will result in undefined behaviour.
+pub const TREE_SITTER_TREE_DOCUMENT_ID: usize = 100_000_000;
+
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
     D: serde::Deserializer<'de>,
@@ -1688,13 +1693,9 @@ impl Editor {
         }
     }
 
-    /// Generate an id for a new document and register it.
-    fn new_document(&mut self, mut doc: Document) -> DocumentId {
-        let id = self.next_document_id;
-        // Safety: adding 1 from 1 is fine, probably impossible to reach usize max
-        self.next_document_id =
-            DocumentId(unsafe { NonZeroUsize::new_unchecked(self.next_document_id.0.get() + 1) });
+    fn new_document_impl(&mut self, mut doc: Document, id: DocumentId) -> DocumentId {
         doc.id = id;
+
         self.documents.insert(id, doc);
 
         let (save_sender, save_receiver) = tokio::sync::mpsc::unbounded_channel();
@@ -1702,14 +1703,38 @@ impl Editor {
 
         let stream = UnboundedReceiverStream::new(save_receiver).flatten();
         self.save_queue.push(stream);
-
         id
+    }
+
+    fn new_document_with_id(&mut self, doc: Document, id: DocumentId) -> DocumentId {
+        self.new_document_impl(doc, id)
+    }
+
+    /// Generate an id for a new document and register it.
+    fn new_document(&mut self, doc: Document) -> DocumentId {
+        let id = self.next_document_id;
+
+        // Safety: adding 1 from 1 is fine, probably impossible to reach usize max
+        self.next_document_id =
+            DocumentId(unsafe { NonZeroUsize::new_unchecked(self.next_document_id.0.get() + 1) });
+
+        self.new_document_impl(doc, id)
     }
 
     pub fn new_file_from_document(&mut self, action: Action, doc: Document) -> DocumentId {
         let id = self.new_document(doc);
         self.switch(id, action);
         id
+    }
+
+    pub fn new_file_from_document_with_id(
+        &mut self,
+        action: Action,
+        doc: Document,
+        id: DocumentId,
+    ) {
+        self.new_document_with_id(doc, id);
+        self.switch(id, action);
     }
 
     pub fn new_file(&mut self, action: Action) -> DocumentId {

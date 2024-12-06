@@ -24,6 +24,12 @@ use std::num::NonZeroUsize;
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub struct DocumentId(NonZeroUsize);
 
+impl DocumentId {
+    pub fn new(id: NonZeroUsize) -> DocumentId {
+        DocumentId(id)
+    }
+}
+
 impl Default for DocumentId {
     fn default() -> DocumentId {
         // Safety: 1 is non-zero
