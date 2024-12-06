@@ -1719,7 +1719,7 @@ impl Editor {
     }
 
     pub fn document_id_by_path(&self, path: &Path) -> Option<DocumentId> {
-        self.document_by_path(&path).map(|doc| doc.id)
+        self.document_by_path(path).map(|doc| doc.id)
     }
 
     // ??? possible use for integration tests
