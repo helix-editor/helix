@@ -445,9 +445,11 @@ impl Prompt {
             let mut row = 0;
             let mut col = 0;
 
-            for (i, (_range, completion, _style)) in
+            for (i, (_range, completion, style)) in
                 self.completion.iter().enumerate().skip(offset).take(items)
             {
+                let completion_color = style.unwrap_or(completion_color);
+
                 let color = if Some(i) == self.selection {
                     completion_color.invert()
                 } else {
