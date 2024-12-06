@@ -2143,8 +2143,6 @@ fn tree_sitter_tree(
             let mut contents = String::new();
             helix_core::syntax::pretty_print_tree(&mut contents, selected_node)?;
 
-            // If this document doesn't exist, create it. If it exists, override the contents with our new string
-
             if cx.editor.documents.get_mut(&doc_id).is_some()
                 && cx.editor.close_document(doc_id, true).is_err()
             {
