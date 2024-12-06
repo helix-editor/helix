@@ -2125,43 +2125,24 @@ fn tree_sitter_tree(
         return Ok(());
     }
 
-    // let (view, doc) = current_ref!(cx.editor);
+    let (_view, doc) = current_ref!(cx.editor);
 
-    let _doc = cx.editor.new_file_from_document(
-        Action::HorizontalSplit,
-        Document::from(Rope::from("Hello world"), None, cx.editor.config.clone()),
-    );
+    if let Some(syntax) = doc.syntax() {
+        let text = doc.text();
+        let from = 0;
+        let to = text.len_chars();
 
-    // if let Some(syntax) = doc.syntax() {
-    //     let primary_selection = doc.selection(view.id).primary();
-    //     let text = doc.text();
-    //     let from = text.char_to_byte(primary_selection.from());
-    //     let to = text.char_to_byte(primary_selection.to());
+        if let Some(selected_node) = syntax.descendant_for_byte_range(from, to) {
+            let mut contents = String::from("```tsq\n");
+            helix_core::syntax::pretty_print_tree(&mut contents, selected_node)?;
+            contents.push_str("\n```");
 
-    // view.new_
-    // let doc = cx.editor.new_file(Action::HorizontalSplit);
-
-    // cx.editor.swap;
-
-    // if let Some(selected_node) = syntax.descendant_for_byte_range(from, to) {
-    //     let mut contents = String::from("```tsq\n");
-    //     helix_core::syntax::pretty_print_tree(&mut contents, selected_node)?;
-    //     contents.push_str("\n```");
-
-    //     let callback = async move {
-    //         let call: job::Callback = Callback::EditorCompositor(Box::new(
-    //             move |editor: &mut Editor, compositor: &mut Compositor| {
-    //                 let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
-    //                 let popup = Popup::new("hover", contents).auto_close(true);
-    //                 compositor.replace_or_push("hover", popup);
-    //             },
-    //         ));
-    //         Ok(call)
-    //     };
-
-    //     cx.jobs.callback(callback);
-    // }
-    // }
+            cx.editor.new_file_from_document(
+                Action::VerticalSplit,
+                Document::from(Rope::from(contents), None, cx.editor.config.clone()),
+            );
+        }
+    }
 
     Ok(())
 }
