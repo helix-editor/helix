@@ -1940,8 +1940,8 @@ fn toggle_diagnostics(
     ensure!(args.is_empty(), ":toggle-diagnostics takes no arguments");
 
     let (view, _) = current!(cx.editor);
-
-    view.diagnostics_handler.toggle_diagnostics();
+    view.diagnostics_handler.toggle_active();
+    cx.editor.toggle_diagnostics();
 
     Ok(())
 }

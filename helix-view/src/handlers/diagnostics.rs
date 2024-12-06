@@ -94,9 +94,6 @@ impl DiagnosticsHandler {
 }
 
 impl DiagnosticsHandler {
-    pub fn toggle_diagnostics(&mut self) {
-        self.active = !self.active;
-    }
     pub fn immediately_show_diagnostic(&self, doc: &Document, view: ViewId) {
         self.last_doc.set(doc.id());
         let cursor_line = doc
@@ -107,6 +104,11 @@ impl DiagnosticsHandler {
         self.active_generation
             .store(self.generation.get(), atomic::Ordering::Relaxed);
     }
+
+    pub fn toggle_active(&mut self) {
+        self.active = !self.active;
+    }
+
     pub fn show_cursorline_diagnostics(&self, doc: &Document, view: ViewId) -> bool {
         if !self.active {
             return false;
