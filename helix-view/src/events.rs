@@ -5,6 +5,7 @@ use crate::{Document, DocumentId, Editor, ViewId};
 
 events! {
     DocumentDidChange<'a> { doc: &'a mut Document, view: ViewId, old_text: &'a Rope  }
+    DocumentDidOpen<'a> { doc: &'a Document}
     SelectionDidChange<'a> { doc: &'a mut Document, view: ViewId }
     DiagnosticsDidChange<'a> { editor: &'a mut Editor, doc: DocumentId }
 }
