@@ -137,7 +137,7 @@ impl Serialize for Version {
 
 struct VersionVisitor;
 
-impl<'v> Visitor<'v> for VersionVisitor {
+impl Visitor<'_> for VersionVisitor {
     type Value = Version;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {

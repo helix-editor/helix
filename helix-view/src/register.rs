@@ -5,7 +5,7 @@ use arc_swap::access::DynAccess;
 use helix_core::NATIVE_LINE_ENDING;
 
 use crate::{
-    clipboard::{ClipboardProvider, ClipboardType},
+    clipboard::{ClipboardError, ClipboardProvider, ClipboardType},
     Editor,
 };
 
@@ -238,6 +238,10 @@ fn read_from_clipboard<'a>(
                 RegisterValues::new(iter::once(contents.into()))
             }
         }
+        Err(ClipboardError::ReadingNotSupported) => match saved_values {
+            Some(values) => RegisterValues::new(values.iter().map(Cow::from).rev()),
+            None => RegisterValues::new(iter::empty()),
+        },
         Err(err) => {
             log::error!(
                 "Failed to read {} clipboard: {err}",
@@ -307,13 +311,13 @@ impl<'a> Iterator for RegisterValues<'a> {
     }
 }
 
-impl<'a> DoubleEndedIterator for RegisterValues<'a> {
+impl DoubleEndedIterator for RegisterValues<'_> {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.iter.next_back()
     }
 }
 
-impl<'a> ExactSizeIterator for RegisterValues<'a> {
+impl ExactSizeIterator for RegisterValues<'_> {
     fn len(&self) -> usize {
         self.iter.len()
     }

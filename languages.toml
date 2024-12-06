@@ -62,7 +62,7 @@ marksman = { command = "marksman", args = ["server"] }
 metals = { command = "metals", config = { "isHttpEnabled" = true, metals = { inlayHints = { typeParameters = {enable = true} , hintsInPatternMatch = {enable = true} }  } } }
 mesonlsp = { command = "mesonlsp", args = ["--lsp"] }
 mint = { command = "mint", args = ["ls"] }
-mojo-lsp = { command = "mojo-lsp-server" }
+mojo-lsp = { command = "magic", args = ["run", "mojo-lsp-server"] }
 nil = { command = "nil" }
 nimlangserver = { command = "nimlangserver" }
 nimlsp = { command = "nimlsp" }
@@ -123,6 +123,7 @@ tinymist = { command = "tinymist" }
 pkgbuild-language-server = { command = "pkgbuild-language-server" }
 helm_ls = { command = "helm_ls", args = ["serve"] }
 ember-language-server = { command = "ember-language-server", args = ["--stdio"] }
+teal-language-server = { command = "teal-language-server" }
 
 [language-server.ansible-language-server]
 command = "ansible-language-server"
@@ -411,7 +412,7 @@ language-servers = [ "mojo-lsp" ]
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
 auto-format = true
-formatter = { command = "mojo", args = ["format", "-q", "-"]}
+formatter = { command = "magic", args = ["run", "mojo" , "format", "-q", "-"]}
 
 [[grammar]]
 name = "mojo"
@@ -1296,6 +1297,20 @@ language-servers = [ "lua-language-server" ]
 [[grammar]]
 name = "lua"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-lua", rev = "88e446476a1e97a8724dff7a23e2d709855077f2" }
+
+[[grammar]]
+name = "teal"
+source = { git = "https://github.com/euclidianAce/tree-sitter-teal", rev = "3db655924b2ff1c54fdf6371b5425ea6b5dccefe" }
+
+[[language]]
+name = "teal"
+scope = "source.tl"
+injection-regex = "teal"
+file-types = ["tl"]
+comment-tokens = "--"
+block-comment-tokens = { start = "--[[", end = "--]]" }
+roots = [ "tlconfig.lua" ]
+language-servers = [ "teal-lsp" ]
 
 [[language]]
 name = "svelte"
@@ -3168,7 +3183,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "just"
-source = { git = "https://github.com/poliorcetics/tree-sitter-just", rev = "6e28fa6cba511c694247cd802d1c3b14f8d34dbb" }
+source = { git = "https://github.com/poliorcetics/tree-sitter-just", rev = "180bb15d64c63585c4f65c551350048f21987bcb" }
 
 [[language]]
 name = "gn"
@@ -3463,7 +3478,11 @@ source = { git = "https://github.com/urbit-pilled/tree-sitter-hoon", rev = "1d5d
 [[language]]
 name = "hocon"
 scope = "source.conf"
-file-types = ["conf"]
+file-types = [
+  { glob = "**/src/*/resources/**/*.conf" },
+  { glob = "*scalafmt*.conf" },
+  { glob = "*scalafix*.conf" },
+]
 comment-token = "#"
 auto-format = true
 indent = { tab-width = 2, unit = "  " }
@@ -3956,3 +3975,14 @@ language-servers = ["ada-gpr-language-server"]
 [[grammar]]
 name = "gpr"
 source = { git = "https://github.com/brownts/tree-sitter-gpr", rev = "cea857d3c18d1385d1f5b66cd09ea1e44173945c" }
+
+[[language]]
+name = "vento"
+scope = "text.html.vto"
+file-types = ["vto"]
+block-comment-tokens = { start = "{{#", end = "#}}" }
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "vento"
+source = { git = "https://github.com/ventojs/tree-sitter-vento", rev = "3321077d7446c1b3b017c294fd56ce028ed817fe" }

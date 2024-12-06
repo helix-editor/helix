@@ -27,7 +27,7 @@ pub struct Context<'a> {
     pub jobs: &'a mut Jobs,
 }
 
-impl<'a> Context<'a> {
+impl Context<'_> {
     /// Waits on all pending jobs, and then tries to flush all pending write
     /// operations for all documents.
     pub fn block_try_flush_writes(&mut self) -> anyhow::Result<()> {

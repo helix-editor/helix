@@ -39,7 +39,7 @@ impl<'a, 'b> WordWrapper<'a, 'b> {
     }
 }
 
-impl<'a, 'b> LineComposer<'a> for WordWrapper<'a, 'b> {
+impl<'a> LineComposer<'a> for WordWrapper<'a, '_> {
     fn next_line(&mut self) -> Option<(&[StyledGrapheme<'a>], u16)> {
         if self.max_line_width == 0 {
             return None;
@@ -152,7 +152,7 @@ impl<'a, 'b> LineTruncator<'a, 'b> {
     }
 }
 
-impl<'a, 'b> LineComposer<'a> for LineTruncator<'a, 'b> {
+impl<'a> LineComposer<'a> for LineTruncator<'a, '_> {
     fn next_line(&mut self) -> Option<(&[StyledGrapheme<'a>], u16)> {
         if self.max_line_width == 0 {
             return None;

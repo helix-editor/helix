@@ -13,7 +13,7 @@ There are three possible locations for a `languages.toml` file:
 
 2. In your [configuration directory](./configuration.md). This overrides values
    from the built-in language configuration. For example, to disable
-   auto-LSP-formatting in Rust:
+   auto-formatting for Rust:
 
    ```toml
    # in <config_dir>/helix/languages.toml
@@ -128,7 +128,7 @@ These are the available options for a language server.
 | ----                       | -----------                                                                                                                       |
 | `command`                  | The name or path of the language server binary to execute. Binaries must be in `$PATH`                                            |
 | `args`                     | A list of arguments to pass to the language server binary                                                                         |
-| `config`                   | LSP initialization options                                                                                                        |
+| `config`                   | Language server initialization options                                                                                            |
 | `timeout`                  | The maximum time a request to the language server may take, in seconds. Defaults to `20`                                          |
 | `environment`              | Any environment variables that will be used when starting the language server `{ "KEY1" = "Value1", "KEY2" = "Value2" }`          |
 | `required-root-patterns`   | A list of `glob` patterns to look for in the working directory. The language server is started if at least one of them is found.  |
