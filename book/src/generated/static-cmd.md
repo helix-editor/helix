@@ -89,8 +89,12 @@
 | `shrink_to_line_bounds` | Shrink selection to line bounds | normal: `` <A-x> ``, select: `` <A-x> `` |
 | `delete_selection` | Delete selection | normal: `` d ``, select: `` d `` |
 | `delete_selection_noyank` | Delete selection without yanking | normal: `` <A-d> ``, select: `` <A-d> `` |
+| `delete_selection_to_clipboard` | Delete selection, yanking the deleted text to clipboard |  |
+| `delete_selection_to_primary_clipboard` | Delete selection, yanking the deleted text to primary clipboard |  |
 | `change_selection` | Change selection | normal: `` c ``, select: `` c `` |
 | `change_selection_noyank` | Change selection without yanking | normal: `` <A-c> ``, select: `` <A-c> `` |
+| `change_selection_to_clipboard` | Change selection, yanking the changed text to clipboard |  |
+| `change_selection_to_primary_clipboard` | Change selection, yanking the changed text to primary clipboard |  |
 | `collapse_selection` | Collapse selection into single cursor | normal: `` ; ``, select: `` ; `` |
 | `flip_selections` | Flip selection cursor and anchor | normal: `` <A-;> ``, select: `` <A-;> `` |
 | `ensure_selections_forward` | Ensure all selections face forward | normal: `` <A-:> ``, select: `` <A-:> `` |
