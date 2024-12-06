@@ -2133,14 +2133,17 @@ fn tree_sitter_tree(
         let to = text.len_chars();
 
         if let Some(selected_node) = syntax.descendant_for_byte_range(from, to) {
-            let mut contents = String::from("```tsq\n");
+            let mut contents = String::new();
             helix_core::syntax::pretty_print_tree(&mut contents, selected_node)?;
-            contents.push_str("\n```");
 
             cx.editor.new_file_from_document(
                 Action::VerticalSplit,
                 Document::from(Rope::from(contents), None, cx.editor.config.clone()),
             );
+
+            let (_view, doc) = current!(cx.editor);
+
+            doc.set_language_by_language_id("tsq", cx.editor.syn_loader.clone())?
         }
     }
 
