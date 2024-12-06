@@ -290,6 +290,7 @@ This layer is a kludge of mappings, mostly pickers.
 | `g`     | Open changed file picker                                                | `changed_file_picker`                      |
 | `G`     | Debug (experimental)                                                    | N/A                                        |
 | `k`     | Show documentation for item under cursor in a [popup](#popup) (**LSP**) | `hover`                                    |
+| `K`     | Show documentation for item under cursor in a new buffer (**LSP**)      | `hover_dump`                                    |
 | `s`     | Open document symbol picker (**LSP**)                                   | `symbol_picker`                            |
 | `S`     | Open workspace symbol picker (**LSP**)                                  | `workspace_symbol_picker`                  |
 | `d`     | Open document diagnostics picker (**LSP**)                              | `diagnostics_picker`                       |
