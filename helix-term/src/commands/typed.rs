@@ -1928,6 +1928,24 @@ fn set_option(
     Ok(())
 }
 
+fn toggle_diagnostics(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    ensure!(args.is_empty(), ":toggle-diagnostics takes no arguments");
+
+    let (view, _) = current!(cx.editor);
+
+    view.diagnostics_handler.toggle_diagnostics();
+
+    Ok(())
+}
+
 /// Toggle boolean config option at runtime. Access nested values by dot
 /// syntax, for example to toggle smart case search, use `:toggle search.smart-
 /// case`.
@@ -3149,6 +3167,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: read,
         signature: CommandSignature::positional(&[completers::filename]),
     },
+    TypableCommand {
+        name: "toggle-diagnostics",
+        aliases: &["td"],
+        doc: "Toggle Diagnostics",
+        fun: toggle_diagnostics,
+        signature: CommandSignature::all(completers::register)
+    }
 ];
 
 pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableCommand>> =

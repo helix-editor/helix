@@ -1049,6 +1049,8 @@ pub struct Editor {
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
     pub breakpoints: HashMap<PathBuf, Vec<Breakpoint>>,
 
+    pub show_diagnostics: bool,
+
     pub syn_loader: Arc<ArcSwap<syntax::Loader>>,
     pub theme_loader: Arc<theme::Loader>,
     /// last_theme is used for theme previews. We store the current theme here,
@@ -1195,6 +1197,7 @@ impl Editor {
             breakpoints: HashMap::new(),
             syn_loader,
             theme_loader,
+            show_diagnostics: true,
             last_theme: None,
             last_selection: None,
             registers: Registers::new(Box::new(arc_swap::access::Map::new(
@@ -1326,6 +1329,10 @@ impl Editor {
 
     pub fn set_theme(&mut self, theme: Theme) {
         self.set_theme_impl(theme, ThemeAction::Set);
+    }
+
+    pub fn toggle_diagnostics(&mut self) {
+        self.show_diagnostics = !self.show_diagnostics;
     }
 
     fn set_theme_impl(&mut self, theme: Theme, preview: ThemeAction) {

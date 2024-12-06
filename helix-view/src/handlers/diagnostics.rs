@@ -94,6 +94,9 @@ impl DiagnosticsHandler {
 }
 
 impl DiagnosticsHandler {
+    pub fn toggle_diagnostics(&mut self) {
+        self.active = !self.active;
+    }
     pub fn immediately_show_diagnostic(&self, doc: &Document, view: ViewId) {
         self.last_doc.set(doc.id());
         let cursor_line = doc
