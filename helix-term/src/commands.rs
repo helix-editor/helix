@@ -365,8 +365,12 @@ impl MappableCommand {
         shrink_to_line_bounds, "Shrink selection to line bounds",
         delete_selection, "Delete selection",
         delete_selection_noyank, "Delete selection without yanking",
+        delete_selection_to_clipboard, "Delete selection, yanking the deleted text to clipboard",
+        delete_selection_to_primary_clipboard, "Delete selection, yanking the deleted text to primary clipboard",
         change_selection, "Change selection",
         change_selection_noyank, "Change selection without yanking",
+        change_selection_to_clipboard, "Change selection, yanking the changed text to clipboard",
+        change_selection_to_primary_clipboard, "Change selection, yanking the changed text to primary clipboard",
         collapse_selection, "Collapse selection into single cursor",
         flip_selections, "Flip selection cursor and anchor",
         ensure_selections_forward, "Ensure all selections face forward",
@@ -2742,7 +2746,12 @@ enum YankAction {
     NoYank,
 }
 
-fn delete_selection_impl(cx: &mut Context, op: Operation, yank: YankAction) {
+fn delete_selection_impl(
+    cx: &mut Context,
+    op: Operation,
+    yank: YankAction,
+    register: Option<char>,
+) {
     let (view, doc) = current!(cx.editor);
 
     let selection = doc.selection(view.id);
@@ -2752,9 +2761,12 @@ fn delete_selection_impl(cx: &mut Context, op: Operation, yank: YankAction) {
         // yank the selection
         let text = doc.text().slice(..);
         let values: Vec<String> = selection.fragments(text).map(Cow::into_owned).collect();
-        let reg_name = cx
-            .register
-            .unwrap_or_else(|| cx.editor.config.load().default_yank_register);
+
+        let reg_name = register.unwrap_or(
+            cx.register
+                .unwrap_or_else(|| cx.editor.config.load().default_yank_register),
+        );
+
         if let Err(err) = cx.editor.registers.write(reg_name, values) {
             cx.editor.set_error(err.to_string());
             return;
@@ -2827,19 +2839,35 @@ fn delete_by_selection_insert_mode(
 }
 
 fn delete_selection(cx: &mut Context) {
-    delete_selection_impl(cx, Operation::Delete, YankAction::Yank);
+    delete_selection_impl(cx, Operation::Delete, YankAction::Yank, None);
 }
 
 fn delete_selection_noyank(cx: &mut Context) {
-    delete_selection_impl(cx, Operation::Delete, YankAction::NoYank);
+    delete_selection_impl(cx, Operation::Delete, YankAction::NoYank, None);
+}
+
+fn delete_selection_to_clipboard(cx: &mut Context) {
+    delete_selection_impl(cx, Operation::Delete, YankAction::Yank, Some('+'));
+}
+
+fn delete_selection_to_primary_clipboard(cx: &mut Context) {
+    delete_selection_impl(cx, Operation::Delete, YankAction::Yank, Some('*'));
 }
 
 fn change_selection(cx: &mut Context) {
-    delete_selection_impl(cx, Operation::Change, YankAction::Yank);
+    delete_selection_impl(cx, Operation::Change, YankAction::Yank, None);
 }
 
 fn change_selection_noyank(cx: &mut Context) {
-    delete_selection_impl(cx, Operation::Change, YankAction::NoYank);
+    delete_selection_impl(cx, Operation::Change, YankAction::NoYank, None);
+}
+
+fn change_selection_to_clipboard(cx: &mut Context) {
+    delete_selection_impl(cx, Operation::Change, YankAction::Yank, Some('+'));
+}
+
+fn change_selection_to_primary_clipboard(cx: &mut Context) {
+    delete_selection_impl(cx, Operation::Change, YankAction::Yank, Some('*'));
 }
 
 fn collapse_selection(cx: &mut Context) {
