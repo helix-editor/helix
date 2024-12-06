@@ -3178,7 +3178,7 @@ pub(super) fn command_mode(cx: &mut Context) {
                     false,
                 )
                 .into_iter()
-                .map(|(name, _)| (0.., name.into()))
+                .map(|(name, _)| (0.., name.into(), None))
                 .collect()
             } else {
                 // Otherwise, use the command's completer and the last shellword
@@ -3197,13 +3197,13 @@ pub(super) fn command_mode(cx: &mut Context) {
                 {
                     completer(editor, word)
                         .into_iter()
-                        .map(|(range, file)| {
+                        .map(|(range, file, style)| {
                             let file = shellwords::escape(file);
 
                             // offset ranges to input
                             let offset = input.len() - word_len;
                             let range = (range.start + offset)..;
-                            (range, file)
+                            (range, file, style)
                         })
                         .collect()
                 } else {

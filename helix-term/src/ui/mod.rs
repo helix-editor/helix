@@ -290,7 +290,7 @@ pub mod completers {
 
         fuzzy_match(input, names, true)
             .into_iter()
-            .map(|(name, _)| ((0..), name))
+            .map(|(name, _)| ((0..), name, None))
             .collect()
     }
 
@@ -306,7 +306,7 @@ pub mod completers {
 
         fuzzy_match(input, names, false)
             .into_iter()
-            .map(|(name, _)| ((0..), name.into()))
+            .map(|(name, _)| ((0..), name.into(), None))
             .collect()
     }
 
@@ -336,7 +336,7 @@ pub mod completers {
 
         fuzzy_match(input, &*KEYS, false)
             .into_iter()
-            .map(|(name, _)| ((0..), name.into()))
+            .map(|(name, _)| ((0..), name.into(), None))
             .collect()
     }
 
@@ -371,7 +371,7 @@ pub mod completers {
 
         fuzzy_match(input, language_ids, false)
             .into_iter()
-            .map(|(name, _)| ((0..), name.to_owned().into()))
+            .map(|(name, _)| ((0..), name.to_owned().into(), None))
             .collect()
     }
 
@@ -387,7 +387,7 @@ pub mod completers {
 
         fuzzy_match(input, commands, false)
             .into_iter()
-            .map(|(name, _)| ((0..), name.to_owned().into()))
+            .map(|(name, _)| ((0..), name.to_owned().into(), None))
             .collect()
     }
 
@@ -511,13 +511,13 @@ pub mod completers {
             let range = (input.len().saturating_sub(file_name.len()))..;
             fuzzy_match(&file_name, files, true)
                 .into_iter()
-                .map(|(name, _)| (range.clone(), name))
+                .map(|(name, _)| (range.clone(), name, None))
                 .collect()
 
             // TODO: complete to longest common match
         } else {
-            let mut files: Vec<_> = files.map(|file| (end.clone(), file)).collect();
-            files.sort_unstable_by(|(_, path1), (_, path2)| path1.cmp(path2));
+            let mut files: Vec<_> = files.map(|file| (end.clone(), file, None)).collect();
+            files.sort_unstable_by(|(_, path1, _), (_, path2, _)| path1.cmp(path2));
             files
         }
     }
@@ -532,7 +532,7 @@ pub mod completers {
 
         fuzzy_match(input, iter, false)
             .into_iter()
-            .map(|(name, _)| ((0..), name.into()))
+            .map(|(name, _)| ((0..), name.into(), None))
             .collect()
     }
 }
