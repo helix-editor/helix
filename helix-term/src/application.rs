@@ -189,7 +189,7 @@ impl Application {
                             Some(Layout::Horizontal) => Action::HorizontalSplit,
                             None => Action::Load,
                         };
-                        let old_id = editor.buf_id_by_path(&file);
+                        let old_id = editor.document_id_by_path(&file);
                         let doc_id = match editor.open(&file, action) {
                             // Ignore irregular files during application init.
                             Err(DocumentOpenError::IrregularFile) => {
