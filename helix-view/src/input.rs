@@ -387,13 +387,12 @@ impl std::str::FromStr for KeyEvent {
                     .then_some(KeyCode::F(function))
                     .ok_or_else(|| anyhow!("Invalid function key '{}'", function))?
             }
-            _ if s.ends_with('-')
-                && tokens.last().map(|s| str::is_empty(s)).unwrap_or_default() =>
-            {
-                if tokens.len() > 1 {
+            _ if s.ends_with('-') => {
+                if s != "-" {
+                    let suggestion = format!("{}{}", s.get(..s.len() - 1).unwrap(), keys::MINUS);
                     return Err(anyhow!(
                         "Key '-' cannot be used with modifiers, use '{}' instead",
-                        keys::MINUS
+                        suggestion
                     ));
                 }
                 // When '-' is used in a key there will be two empty strings,
