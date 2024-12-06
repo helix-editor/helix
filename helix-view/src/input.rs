@@ -387,6 +387,23 @@ impl std::str::FromStr for KeyEvent {
                     .then_some(KeyCode::F(function))
                     .ok_or_else(|| anyhow!("Invalid function key '{}'", function))?
             }
+            // Checking that the last token is empty ensures that this branch is only taken if
+            // `-` is used as a code. For example this branch will not be taken for `S-` (which is
+            // missing a code).
+            _ if s.ends_with('-') && tokens.last().is_some_and(|t| t.is_empty()) => {
+                if s == "-" {
+                    return Ok(KeyEvent {
+                        code: KeyCode::Char('-'),
+                        modifiers: KeyModifiers::empty(),
+                    });
+                } else {
+                    let suggestion = format!("{}-{}", s.trim_end_matches('-'), keys::MINUS);
+                    return Err(anyhow!(
+                        "Key '-' cannot be used with modifiers, use '{}' instead",
+                        suggestion
+                    ));
+                }
+            }
             invalid => return Err(anyhow!("Invalid key code '{}'", invalid)),
         };
 
@@ -661,6 +678,13 @@ mod test {
                 modifiers: KeyModifiers::NONE
             }
         );
+        assert_eq!(
+            str::parse::<KeyEvent>("-").unwrap(),
+            KeyEvent {
+                code: KeyCode::Char('-'),
+                modifiers: KeyModifiers::NONE,
+            }
+        );
     }
 
     #[test]
@@ -721,6 +745,7 @@ mod test {
         assert!(str::parse::<KeyEvent>("FU").is_err());
         assert!(str::parse::<KeyEvent>("123").is_err());
         assert!(str::parse::<KeyEvent>("S--").is_err());
+        assert!(str::parse::<KeyEvent>("S-").is_err());
         assert!(str::parse::<KeyEvent>("S-percent").is_err());
     }
 
