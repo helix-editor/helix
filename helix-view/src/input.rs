@@ -1,10 +1,9 @@
 //! Input event handling, currently backed by crossterm.
+pub use crate::keyboard::{KeyCode, KeyModifiers, MediaKeyCode, ModifierKeyCode};
 use anyhow::{anyhow, Error};
 use helix_core::unicode::{segmentation::UnicodeSegmentation, width::UnicodeWidthStr};
 use serde::de::{self, Deserialize, Deserializer};
 use std::fmt;
-
-pub use crate::keyboard::{KeyCode, KeyModifiers, MediaKeyCode, ModifierKeyCode};
 
 #[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Hash)]
 pub enum Event {
@@ -325,7 +324,43 @@ impl std::str::FromStr for KeyEvent {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut tokens: Vec<_> = s.split('-').collect();
-        let mut code = match tokens.pop().ok_or_else(|| anyhow!("Missing key code"))? {
+        let mut code = KeyCode::from_str(tokens.pop().ok_or_else(|| anyhow!("Missing key code"))?)?;
+        let mut modifiers = KeyModifiers::empty();
+        for token in tokens {
+            let flag = match token {
+                "S" => KeyModifiers::SHIFT,
+                "A" => KeyModifiers::ALT,
+                "C" => KeyModifiers::CONTROL,
+                _ => return Err(anyhow!("Invalid key modifier '{}-'", token)),
+            };
+
+            if modifiers.contains(flag) {
+                return Err(anyhow!("Repeated key modifier '{}-'", token));
+            }
+            modifiers.insert(flag);
+        }
+
+        // Normalize character keys so that characters like C-S-r and C-R
+        // are represented by equal KeyEvents.
+        match code {
+            KeyCode::Char(ch)
+                if ch.is_ascii_lowercase() && modifiers.contains(KeyModifiers::SHIFT) =>
+            {
+                code = KeyCode::Char(ch.to_ascii_uppercase());
+                modifiers.remove(KeyModifiers::SHIFT);
+            }
+            _ => (),
+        }
+
+        Ok(KeyEvent { code, modifiers })
+    }
+}
+
+impl std::str::FromStr for KeyCode {
+    type Err = Error;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(match s {
             keys::BACKSPACE => KeyCode::Backspace,
             keys::ENTER => KeyCode::Enter,
             keys::LEFT => KeyCode::Left,
@@ -405,36 +440,7 @@ impl std::str::FromStr for KeyEvent {
                 }
             }
             invalid => return Err(anyhow!("Invalid key code '{}'", invalid)),
-        };
-
-        let mut modifiers = KeyModifiers::empty();
-        for token in tokens {
-            let flag = match token {
-                "S" => KeyModifiers::SHIFT,
-                "A" => KeyModifiers::ALT,
-                "C" => KeyModifiers::CONTROL,
-                _ => return Err(anyhow!("Invalid key modifier '{}-'", token)),
-            };
-
-            if modifiers.contains(flag) {
-                return Err(anyhow!("Repeated key modifier '{}-'", token));
-            }
-            modifiers.insert(flag);
-        }
-
-        // Normalize character keys so that characters like C-S-r and C-R
-        // are represented by equal KeyEvents.
-        match code {
-            KeyCode::Char(ch)
-                if ch.is_ascii_lowercase() && modifiers.contains(KeyModifiers::SHIFT) =>
-            {
-                code = KeyCode::Char(ch.to_ascii_uppercase());
-                modifiers.remove(KeyModifiers::SHIFT);
-            }
-            _ => (),
-        }
-
-        Ok(KeyEvent { code, modifiers })
+        })
     }
 }
 
