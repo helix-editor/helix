@@ -1141,7 +1141,7 @@ pub fn hover_dump(cx: &mut Context) {
             Document::from(Rope::from(contents), None, editor.config.clone()),
         );
         let (_view, doc) = current!(editor);
-        if let Ok(_) = doc.set_language_by_language_id("markdown", editor.syn_loader.clone()) {};
+        let _ = doc.set_language_by_language_id("markdown", editor.syn_loader.clone());
     })
 }
 
