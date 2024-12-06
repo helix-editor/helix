@@ -512,7 +512,8 @@ pub mod completers {
             PathBuf::from_str(file.as_ref())
                 .ok()
                 .filter(|path| path.is_dir())
-                .map(|_| editor.theme.get("ui.text.focus"))
+                // TODO: use a custom theme key e.g. "ui.text.directory"
+                .map(|_| editor.theme.get("function"))
         };
 
         // if empty, return a list of dirs and files in current dir

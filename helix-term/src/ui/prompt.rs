@@ -401,7 +401,7 @@ impl Prompt {
         let theme = &cx.editor.theme;
         let prompt_color = theme.get("ui.text");
         let completion_color = theme.get("ui.menu");
-        // let selected_color = theme.get("ui.menu.selected");
+        let selected_color = theme.get("ui.menu.selected");
         let suggestion_color = theme.get("ui.text.inactive");
         let background = theme.get("ui.background");
         // completion
@@ -451,7 +451,7 @@ impl Prompt {
                 let completion_color = style.unwrap_or(completion_color);
 
                 let color = if Some(i) == self.selection {
-                    completion_color.invert()
+                    selected_color
                 } else {
                     completion_color
                 };

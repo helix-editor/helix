@@ -508,23 +508,6 @@ impl Style {
         self
     }
 
-    /// Inverts the background and foreground
-    ///
-    /// ## Examples
-    ///
-    /// ```rust
-    /// # use helix_view::graphics::{Color, Style};
-    /// let style = Style::default().bg(Color::Blue).fg(Color::Red);
-    /// let inverted = Style::default().bg(Color::Red).fg(Color::Blue);
-    /// assert_eq!(style.invert(), inverted);
-    /// ```
-    pub const fn invert(mut self) -> Style {
-        let bg = self.bg;
-        self.bg = self.fg;
-        self.fg = bg;
-        self
-    }
-
     /// Changes the underline color.
     ///
     /// ## Examples
