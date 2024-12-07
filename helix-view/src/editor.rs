@@ -1035,6 +1035,7 @@ pub struct Editor {
     pub tree: Tree,
     pub next_document_id: DocumentId,
     pub documents: BTreeMap<DocumentId, Document>,
+    pub tree_sitter_tree_document_id: Option<DocumentId>,
 
     // We Flatten<> to resolve the inner DocumentSavedEventFuture. For that we need a stream of streams, hence the Once<>.
     // https://stackoverflow.com/a/66875668
@@ -1186,6 +1187,7 @@ impl Editor {
             tree: Tree::new(area),
             next_document_id: DocumentId::default(),
             documents: BTreeMap::new(),
+            tree_sitter_tree_document_id: None,
             saves: HashMap::new(),
             save_queue: SelectAll::new(),
             write_count: 0,

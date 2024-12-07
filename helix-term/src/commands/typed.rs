@@ -2139,10 +2139,20 @@ fn tree_sitter_tree(
             let mut contents = String::new();
             helix_core::syntax::pretty_print_tree(&mut contents, selected_node)?;
 
-            cx.editor.new_file_from_document(
+            if let Some(tree_sitter_tree_document_id) = cx.editor.tree_sitter_tree_document_id {
+                if cx
+                    .editor
+                    .close_document(tree_sitter_tree_document_id, true)
+                    .is_err()
+                {
+                    bail!("Could not close the previous tree sitter tree document")
+                };
+            };
+
+            cx.editor.tree_sitter_tree_document_id = Some(cx.editor.new_file_from_document(
                 Action::VerticalSplit,
                 Document::from(Rope::from(contents), None, cx.editor.config.clone()),
-            );
+            ));
 
             let (_view, doc) = current!(cx.editor);
 
