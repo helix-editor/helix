@@ -197,13 +197,12 @@ impl Application {
                                 continue;
                             }
                             Err(err) => return Err(anyhow::anyhow!(err)),
-                            Ok(doc_id) => {
-                                // We can't open more than 1 buffer for 1 file, in this case we already have opened this file previously
-                                if old_id == Some(doc_id) {
-                                    nr_of_files -= 1;
-                                }
+                            // We can't open more than 1 buffer for 1 file, in this case we already have opened this file previously
+                            Ok(doc_id) if old_id == Some(doc_id) => {
+                                nr_of_files -= 1;
                                 doc_id
                             }
+                            Ok(doc_id) => doc_id,
                         };
                         // with Action::Load all documents have the same view
                         // NOTE: this isn't necessarily true anymore. If
