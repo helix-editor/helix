@@ -2128,10 +2128,6 @@ fn tree_sitter_tree(
         return Ok(());
     }
 
-    // Safety: 100_000_000 != 0
-    let doc_id =
-        DocumentId::new(unsafe { NonZeroUsize::new_unchecked(TREE_SITTER_TREE_DOCUMENT_ID) });
-
     let (_view, doc) = current_ref!(cx.editor);
 
     if let Some(syntax) = doc.syntax() {
@@ -2143,17 +2139,11 @@ fn tree_sitter_tree(
             let mut contents = String::new();
             helix_core::syntax::pretty_print_tree(&mut contents, selected_node)?;
 
-            if cx.editor.documents.get_mut(&doc_id).is_some()
-                && cx.editor.close_document(doc_id, true).is_err()
-            {
-                bail!("Couldn't close the previous Tree Sitter document")
-            }
-
-            cx.editor.new_file_from_document_with_id(
+            cx.editor.new_file_from_document(
                 Action::VerticalSplit,
                 Document::from(Rope::from(contents), None, cx.editor.config.clone()),
-                doc_id,
             );
+
             let (_view, doc) = current!(cx.editor);
 
             doc.set_language_by_language_id("tsq", cx.editor.syn_loader.clone())?
