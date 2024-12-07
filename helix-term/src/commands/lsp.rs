@@ -1140,8 +1140,8 @@ pub fn hover_dump(cx: &mut Context) {
             Action::VerticalSplit,
             Document::from(Rope::from(contents), None, editor.config.clone()),
         );
-        let (_view, doc) = current!(editor);
-        let _ = doc.set_language_by_language_id("markdown", editor.syn_loader.clone());
+        let hover_doc = doc_mut!(editor);
+        let _ = hover_doc.set_language_by_language_id("markdown", editor.syn_loader.clone());
     })
 }
 
