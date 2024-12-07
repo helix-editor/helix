@@ -2128,7 +2128,7 @@ fn tree_sitter_tree(
         return Ok(());
     }
 
-    let (_view, doc) = current_ref!(cx.editor);
+    let doc = doc!(cx.editor);
 
     if let Some(syntax) = doc.syntax() {
         let text = doc.text();
@@ -2154,9 +2154,10 @@ fn tree_sitter_tree(
                 Document::from(Rope::from(contents), None, cx.editor.config.clone()),
             ));
 
-            let (_view, doc) = current!(cx.editor);
+            let tree_sitter_tree_document = doc_mut!(cx.editor);
 
-            doc.set_language_by_language_id("tsq", cx.editor.syn_loader.clone())?
+            tree_sitter_tree_document
+                .set_language_by_language_id("tsq", cx.editor.syn_loader.clone())?
         }
     }
 
