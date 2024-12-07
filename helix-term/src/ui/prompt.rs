@@ -449,14 +449,13 @@ impl Prompt {
             for (i, (_range, completion)) in
                 self.completion.iter().enumerate().skip(offset).take(items)
             {
-                let completion_color = if completion.style == Style::default() {
-                    completion_color
-                } else {
-                    completion.style
-                };
+                let is_selected = Some(i) == self.selection;
+                let has_custom_style = completion.style != Style::default();
 
-                let color = if Some(i) == self.selection {
+                let completion_item_style = if is_selected {
                     selected_color
+                } else if has_custom_style {
+                    completion.style
                 } else {
                     completion_color
                 };
@@ -466,8 +465,9 @@ impl Prompt {
                     area.y + row,
                     &completion.content,
                     col_width.saturating_sub(1) as usize,
-                    color,
+                    completion_item_style,
                 );
+
                 row += 1;
                 if row > area.height - 1 {
                     row = 0;
