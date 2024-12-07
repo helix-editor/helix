@@ -350,7 +350,6 @@ pub mod completers {
         input: &str,
         git_ignore: bool,
     ) -> Vec<Completion> {
-        // styles are not lost here
         filename_impl(editor, input, git_ignore, |entry| {
             let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
 
@@ -533,7 +532,6 @@ pub mod completers {
                 .map(|file| (end.clone(), style_from_file(file)))
                 .collect();
             files.sort_unstable_by(|(_, path1), (_, path2)| path1.content.cmp(&path2.content));
-            // ok, so the Styles get correctly applied
             files
         }
     }
