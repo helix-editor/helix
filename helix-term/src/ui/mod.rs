@@ -274,6 +274,7 @@ pub mod completers {
     use helix_view::{editor::Config, Editor};
     use once_cell::sync::Lazy;
     use std::borrow::Cow;
+    use tui::text::Span;
 
     pub type Completer = fn(&Editor, &str) -> Vec<Completion>;
 
@@ -290,7 +291,7 @@ pub mod completers {
 
         fuzzy_match(input, names, true)
             .into_iter()
-            .map(|(name, _)| ((0..), name, None))
+            .map(|(name, _)| ((0..), Span::raw(name)))
             .collect()
     }
 
@@ -306,7 +307,7 @@ pub mod completers {
 
         fuzzy_match(input, names, false)
             .into_iter()
-            .map(|(name, _)| ((0..), name.into(), None))
+            .map(|(name, _)| ((0..), Span::raw(name)))
             .collect()
     }
 
@@ -336,7 +337,7 @@ pub mod completers {
 
         fuzzy_match(input, &*KEYS, false)
             .into_iter()
-            .map(|(name, _)| ((0..), name.into(), None))
+            .map(|(name, _)| ((0..), Span::raw(name)))
             .collect()
     }
 
@@ -349,6 +350,7 @@ pub mod completers {
         input: &str,
         git_ignore: bool,
     ) -> Vec<Completion> {
+        // styles are not lost here
         filename_impl(editor, input, git_ignore, |entry| {
             let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
 
@@ -371,7 +373,7 @@ pub mod completers {
 
         fuzzy_match(input, language_ids, false)
             .into_iter()
-            .map(|(name, _)| ((0..), name.to_owned().into(), None))
+            .map(|(name, _)| ((0..), Span::raw(name.to_owned())))
             .collect()
     }
 
@@ -387,7 +389,7 @@ pub mod completers {
 
         fuzzy_match(input, commands, false)
             .into_iter()
-            .map(|(name, _)| ((0..), name.to_owned().into(), None))
+            .map(|(name, _)| ((0..), Span::raw(name.to_owned())))
             .collect()
     }
 
@@ -509,11 +511,11 @@ pub mod completers {
         // TODO: use a custom theme key e.g. "ui.text.directory"
         let directory_color = editor.theme.get("function");
 
-        let style_from_file = |file: Cow<'_, str>| {
-            if file.ends_with('/') {
-                Some(directory_color)
+        let style_from_file = |file: Cow<'static, str>| {
+            if file.ends_with(std::path::MAIN_SEPARATOR) {
+                Span::styled(file, directory_color)
             } else {
-                None
+                Span::raw(file)
             }
         };
 
@@ -522,15 +524,16 @@ pub mod completers {
             let range = (input.len().saturating_sub(file_name.len()))..;
             fuzzy_match(&file_name, files, true)
                 .into_iter()
-                .map(|(name, _)| (range.clone(), name.clone(), style_from_file(name)))
+                .map(|(name, _)| (range.clone(), style_from_file(name)))
                 .collect()
 
             // TODO: complete to longest common match
         } else {
             let mut files: Vec<_> = files
-                .map(|file| (end.clone(), file.clone(), style_from_file(file)))
+                .map(|file| (end.clone(), style_from_file(file)))
                 .collect();
-            files.sort_unstable_by(|(_, path1, _), (_, path2, _)| path1.cmp(path2));
+            files.sort_unstable_by(|(_, path1), (_, path2)| path1.content.cmp(&path2.content));
+            // ok, so the Styles get correctly applied
             files
         }
     }
@@ -545,7 +548,7 @@ pub mod completers {
 
         fuzzy_match(input, iter, false)
             .into_iter()
-            .map(|(name, _)| ((0..), name.into(), None))
+            .map(|(name, _)| ((0..), Span::raw(name)))
             .collect()
     }
 }
