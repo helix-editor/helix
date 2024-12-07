@@ -506,11 +506,11 @@ pub mod completers {
             }) // TODO: unwrap or skip
             .filter(|path| !path.is_empty());
 
+        // TODO: use a custom theme key e.g. "ui.text.directory"
         let directory_color = editor.theme.get("function");
 
         let style_from_file = |file: Cow<'_, str>| {
             if file.ends_with('/') {
-                // TODO: use a custom theme key e.g. "ui.text.directory"
                 Some(directory_color)
             } else {
                 None
