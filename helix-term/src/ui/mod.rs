@@ -274,8 +274,6 @@ pub mod completers {
     use helix_view::{editor::Config, Editor};
     use once_cell::sync::Lazy;
     use std::borrow::Cow;
-    use std::path::PathBuf;
-    use std::str::FromStr;
 
     pub type Completer = fn(&Editor, &str) -> Vec<Completion>;
 
@@ -511,7 +509,7 @@ pub mod completers {
         let directory_color = editor.theme.get("function");
 
         let style_from_file = |file: Cow<'_, str>| {
-            if file.ends_with("/") {
+            if file.ends_with('/') {
                 // TODO: use a custom theme key e.g. "ui.text.directory"
                 Some(directory_color)
             } else {
