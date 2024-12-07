@@ -508,12 +508,15 @@ pub mod completers {
             }) // TODO: unwrap or skip
             .filter(|path| !path.is_empty());
 
+        let directory_color = editor.theme.get("function");
+
         let style_from_file = |file: Cow<'_, str>| {
-            PathBuf::from_str(file.as_ref())
-                .ok()
-                .filter(|path| path.is_dir())
+            if file.ends_with("/") {
                 // TODO: use a custom theme key e.g. "ui.text.directory"
-                .map(|_| editor.theme.get("function"))
+                Some(directory_color)
+            } else {
+                None
+            }
         };
 
         // if empty, return a list of dirs and files in current dir
