@@ -401,7 +401,7 @@ impl Prompt {
     pub fn render_prompt(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let theme = &cx.editor.theme;
         let prompt_color = theme.get("ui.text");
-        let completion_color = theme.get("ui.menu");
+        let default_completion_color = theme.get("ui.menu");
         let selected_color = theme.get("ui.menu.selected");
         let suggestion_color = theme.get("ui.text.inactive");
         let background = theme.get("ui.background");
@@ -457,7 +457,7 @@ impl Prompt {
                 } else if has_custom_style {
                     completion.style
                 } else {
-                    completion_color
+                    default_completion_color
                 };
 
                 surface.set_stringn(
