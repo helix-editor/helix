@@ -225,8 +225,18 @@ c = ":run-shell-command cargo build"
 t = ":run-shell-command cargo test"
 </code></pre>
 <h2 id="special-keys-and-modifiers"><a class="header" href="#special-keys-and-modifiers">Special keys and modifiers</a></h2>
-<p>Ctrl, Shift and Alt modifiers are encoded respectively with the prefixes
-<code>C-</code>, <code>S-</code> and <code>A-</code>. Special keys are encoded as follows:</p>
+<p>Ctrl, Shift and Alt modifiers are encoded respectively with the prefixes <code>C-</code>, <code>S-</code> and <code>A-</code>.</p>
+<p>The <a href="https://en.wikipedia.org/wiki/Super_key_(keyboard_button)">Super key</a> - the Windows/Linux
+key or the Command key on Mac keyboards - is also supported when using a terminal emulator that
+supports the <a href="https://github.com/helix-editor/helix/wiki/Terminal-Support#enhanced-keyboard-protocol">enhanced keyboard protocol</a>.
+The super key is encoded with prefixes <code>Meta-</code>, <code>Cmd-</code> or <code>Win-</code>. These are all synonyms for the
+super modifier - binding a key with a <code>Win-</code> modifier will mean it can be used with the
+Windows/Linux key or the Command key.</p>
+<pre><code class="language-toml">[keys.normal]
+C-s = ":write" # Ctrl and 's' to write
+Cmd-s = ":write" # Cmd or Win or Meta and 's' to write
+</code></pre>
+<p>Special keys are encoded as follows:</p>
 <div class="table-wrapper"><table><thead><tr><th>Key name</th><th>Representation</th></tr></thead><tbody>
 <tr><td>Backspace</td><td><code>"backspace"</code></td></tr>
 <tr><td>Space</td><td><code>"space"</code></td></tr>
