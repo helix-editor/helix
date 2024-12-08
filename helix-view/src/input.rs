@@ -162,7 +162,12 @@ pub(crate) mod keys {
 impl fmt::Display for KeyEvent {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
         f.write_fmt(format_args!(
-            "{}{}{}",
+            "{}{}{}{}",
+            if self.modifiers.contains(KeyModifiers::SUPER) {
+                "Meta-"
+            } else {
+                ""
+            },
             if self.modifiers.contains(KeyModifiers::SHIFT) {
                 "S-"
             } else {
@@ -312,6 +317,10 @@ impl UnicodeWidthStr for KeyEvent {
         if self.modifiers.contains(KeyModifiers::CONTROL) {
             width += 2;
         }
+        if self.modifiers.contains(KeyModifiers::SUPER) {
+            // "-Meta"
+            width += 5;
+        }
         width
     }
 
@@ -413,6 +422,7 @@ impl std::str::FromStr for KeyEvent {
                 "S" => KeyModifiers::SHIFT,
                 "A" => KeyModifiers::ALT,
                 "C" => KeyModifiers::CONTROL,
+                "Meta" | "Cmd" | "Win" => KeyModifiers::SUPER,
                 _ => return Err(anyhow!("Invalid key modifier '{}-'", token)),
             };
 
@@ -731,6 +741,28 @@ mod test {
             KeyEvent {
                 code: KeyCode::Char('W'),
                 modifiers: KeyModifiers::NONE
+            }
+        );
+
+        assert_eq!(
+            str::parse::<KeyEvent>("Meta-c").unwrap(),
+            KeyEvent {
+                code: KeyCode::Char('c'),
+                modifiers: KeyModifiers::SUPER
+            }
+        );
+        assert_eq!(
+            str::parse::<KeyEvent>("Win-s").unwrap(),
+            KeyEvent {
+                code: KeyCode::Char('s'),
+                modifiers: KeyModifiers::SUPER
+            }
+        );
+        assert_eq!(
+            str::parse::<KeyEvent>("Cmd-d").unwrap(),
+            KeyEvent {
+                code: KeyCode::Char('d'),
+                modifiers: KeyModifiers::SUPER
             }
         );
     }
