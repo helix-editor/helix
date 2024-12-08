@@ -3458,7 +3458,6 @@ fn open(cx: &mut Context, open: Open) {
     let selection = doc.selection(view.id);
 
     let mut ranges = SmallVec::with_capacity(selection.len());
-    let mut offs = 0;
 
     let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
         // the line number, where the cursor is currently
@@ -3530,7 +3529,7 @@ fn open(cx: &mut Context, open: Open) {
         let text = text.repeat(count);
 
         // calculate new selection ranges
-        let pos = offs + above_next_line_end_index + above_next_line_end_width;
+        let pos = above_next_line_end_index + above_next_line_end_width;
         let comment_len = continue_comment_token
             .map(|token| token.len() + 1) // `+ 1` for the extra space added
             .unwrap_or_default();
@@ -3542,8 +3541,6 @@ fn open(cx: &mut Context, open: Open) {
                 pos + (i * (1 + indent_len + comment_len)) + indent_len + comment_len,
             ));
         }
-
-        offs += text.chars().count();
 
         (
             above_next_line_end_index,
