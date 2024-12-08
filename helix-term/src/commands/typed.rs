@@ -2530,8 +2530,18 @@ fn read(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     Ok(())
 }
 
-static SUB_DOC_QUIT: Lazy<HashMap<&'static str, &'static str>> =
-    Lazy::new(|| HashMap::from([("a", "b")]));
+static SUB_DOC_QUIT: Lazy<HashMap<&'static str, &'static str>> = Lazy::new(|| {
+    HashMap::from([
+        ( "scrolloff", "Number of lines of padding around the edge of the screen when scrolling\n\ndefault\n\n 5"),
+        ("mouse" , "Enable mouse mode\n\ndefault\n\n true"),
+        ("default-yank-register" , "Default register used for yank/paste\n\ndefault\n\n\""),
+        ("middle-click-paste" , "Middle click paste support\n\ndefault\n\n true"),
+        ("scroll-lines" , "Number of lines to scroll per scroll wheel step\n\ndefault\n\n 3"),
+        ("line-number" , "Line number display: `absolute` simply shows each line's number, while `relative` shows the distance from the current line. When unfocused or in insert mode, `relative` will still show absolute line numbers\n\ndefault\n\n absolute"),
+        ("cursorline" , "Highlight all lines with a cursor\n\ndefault\n\n false"),
+        ("cursorcolumn" , "Highlight all columns with a cursor\n\ndefault\n\n false"),
+    ])
+});
 
 pub static TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
