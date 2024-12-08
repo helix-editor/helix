@@ -7,6 +7,7 @@ use helix_core::auto_pairs::AutoPairs;
 use helix_core::chars::char_is_word;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
+use helix_core::movement::Movement;
 use helix_core::syntax::{Highlight, LanguageServerFeature};
 use helix_core::text_annotations::{InlineAnnotation, Overlay};
 use helix_lsp::util::lsp_pos_to_pos;
@@ -102,6 +103,16 @@ impl Serialize for Mode {
         serializer.collect_str(self)
     }
 }
+
+impl From<Mode> for Movement {
+    fn from(mode: Mode) -> Self {
+        match mode {
+            Mode::Select => Movement::Extend,
+            _ => Movement::Move,
+        }
+    }
+}
+
 /// A snapshot of the text of a document that we want to write out to disk
 #[derive(Debug, Clone)]
 pub struct DocumentSavedEvent {
