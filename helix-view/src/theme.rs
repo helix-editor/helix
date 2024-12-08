@@ -9,7 +9,7 @@ use helix_core::hashmap;
 use helix_loader::merge_toml_values;
 use log::warn;
 use once_cell::sync::Lazy;
-use serde::{Deserialize, Deserializer};
+use serde::{Deserialize, Deserializer, Serialize};
 use toml::{map::Map, Value};
 
 use crate::graphics::UnderlineStyle;
@@ -537,6 +537,28 @@ impl TryFrom<Value> for ThemePalette {
         }
 
         Ok(Self::new(palette))
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(untagged, deny_unknown_fields)]
+pub enum Config {
+    Static(String),
+    Adaptive { light: String, dark: String },
+}
+
+impl Config {
+    pub fn get_active_theme(&self) -> &str {
+        match self {
+            Config::Static(x) => x,
+            Config::Adaptive { light, dark } => {
+                use terminal_colorsaurus::{color_scheme, ColorScheme, QueryOptions};
+                match color_scheme(QueryOptions::default()).unwrap_or(ColorScheme::Dark) {
+                    ColorScheme::Light => light,
+                    ColorScheme::Dark => dark,
+                }
+            }
+        }
     }
 }
 

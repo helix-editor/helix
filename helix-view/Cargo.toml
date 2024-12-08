@@ -27,6 +27,7 @@ helix-vcs = { path = "../helix-vcs" }
 bitflags = "2.6"
 anyhow = "1"
 crossterm = { version = "0.28", optional = true }
+terminal-colorsaurus = "0.4"
 
 tempfile = "3.14"
 

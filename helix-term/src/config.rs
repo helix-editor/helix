@@ -11,7 +11,7 @@ use toml::de::Error as TomlError;
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct Config {
-    pub theme: Option<String>,
+    pub theme: Option<helix_view::theme::Config>,
     pub keys: HashMap<Mode, KeyTrie>,
     pub editor: helix_view::editor::Config,
 }
@@ -19,7 +19,7 @@ pub struct Config {
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct ConfigRaw {
-    pub theme: Option<String>,
+    pub theme: Option<helix_view::theme::Config>,
     pub keys: Option<HashMap<Mode, KeyTrie>>,
     pub editor: Option<toml::Value>,
 }
