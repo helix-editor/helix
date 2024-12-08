@@ -48,8 +48,10 @@
 | `:show-directory`, `:pwd` | Show the current working directory. |
 | `:encoding` | Set encoding. Based on `https://encoding.spec.whatwg.org`. |
 | `:character-info`, `:char` | Get info about the character under the primary cursor. |
-| `:reload`, `:rl` | Discard changes and reload from the source file. |
-| `:reload-all`, `:rla` | Discard changes and reload all documents from the source files. |
+| `:reload`, `:rl` | Reload from the source file, if no changes were made. |
+| `:reload!`, `:rl!` | Discard changes and reload from the source file. |
+| `:reload-all`, `:rla` | Reload all documents from the source files, if no changes were made. |
+| `:reload-all!`, `:rla!` | Discard changes and reload all documents from the source files. |
 | `:update`, `:u` | Write changes only if the file has been modified. |
 | `:lsp-workspace-command` | Open workspace command picker |
 | `:lsp-restart` | Restarts the language servers used by the current doc |
