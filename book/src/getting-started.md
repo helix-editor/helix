@@ -6,7 +6,7 @@ To get started check out the [installation instructions](/install.md) in order t
 
 Create a new text file and open it with Helix by running `hx file.txt`.
 
-In the bottom left corner, you'll notice a `NOR`, which indicates that you are currently in Normal mode. 
+In the bottom left corner, you'll notice a `NOR`, which indicates that you are currently in **Nor**mal mode. 
 
 In this mode, typing letters like <kbd>e</kbd> and <kbd>n</kbd> won't insert them as text, but rather have specific _commands_ which we will explore later.
 
