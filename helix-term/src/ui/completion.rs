@@ -1,10 +1,16 @@
+use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
 use crate::{
     compositor::{Component, Context, Event, EventResult},
-    handlers::{
-        completion::{CompletionItem, LspCompletionItem, ResolveHandler},
-        trigger_auto_completion,
+    handlers::completion::{
+        trigger_auto_completion, CompletionItem, CompletionResponse, LspCompletionItem,
+        ResolveHandler,
     },
 };
+use helix_core::{
+    self as core, chars, completion::CompletionProvider, fuzzy::MATCHER, Change, Transaction,
+};
+use helix_event::TaskController;
+use helix_lsp::{lsp, util, OffsetEncoding};
 use helix_view::{
     document::SavePoint,
     editor::CompleteAction,
@@ -12,35 +18,17 @@ use helix_view::{
     theme::{Modifier, Style},
     ViewId,
 };
+use helix_view::{graphics::Rect, Document, Editor};
+use nucleo::{
+    pattern::{Atom, AtomKind, CaseMatching, Normalization},
+    Config, Utf32Str,
+};
 use tui::{buffer::Buffer as Surface, text::Span};
 
-use std::{borrow::Cow, sync::Arc};
-
-use helix_core::{self as core, chars, Change, Transaction};
-use helix_view::{graphics::Rect, Document, Editor};
-
-use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
-
-use helix_lsp::{lsp, util, OffsetEncoding};
+use std::{cmp::Reverse, collections::HashMap, sync::Arc};
 
 impl menu::Item for CompletionItem {
     type Data = ();
-    fn sort_text(&self, data: &Self::Data) -> Cow<str> {
-        self.filter_text(data)
-    }
-
-    #[inline]
-    fn filter_text(&self, _data: &Self::Data) -> Cow<str> {
-        match self {
-            CompletionItem::Lsp(LspCompletionItem { item, .. }) => item
-                .filter_text
-                .as_ref()
-                .unwrap_or(&item.label)
-                .as_str()
-                .into(),
-            CompletionItem::Other(core::CompletionItem { label, .. }) => label.clone(),
-        }
-    }
 
     fn format(&self, _data: &Self::Data) -> menu::Row {
         let deprecated = match self {
@@ -115,6 +103,9 @@ pub struct Completion {
     trigger_offset: usize,
     filter: String,
     resolve_handler: ResolveHandler,
+    pub incomplete_completion_lists: HashMap<CompletionProvider, i8>,
+    // controller for requesting updates for incomplete completion lists
+    pub incomplete_list_controller: TaskController,
 }
 
 impl Completion {
@@ -123,13 +114,12 @@ impl Completion {
     pub fn new(
         editor: &Editor,
         savepoint: Arc<SavePoint>,
-        mut items: Vec<CompletionItem>,
+        items: Vec<CompletionItem>,
+        incomplete_completion_lists: HashMap<CompletionProvider, i8>,
         trigger_offset: usize,
     ) -> Self {
         let preview_completion_insert = editor.config().preview_completion_insert;
         let replace_mode = editor.config().completion_replace;
-        // Sort completion items according to their preselect status (given by the LSP server)
-        items.sort_by_key(|item| !item.preselect());
 
         // Then create the menu
         let menu = Menu::new(items, (), move |editor: &mut Editor, item, event| {
@@ -390,15 +380,75 @@ impl Completion {
             // and avoid allocation during matching
             filter: String::from(fragment),
             resolve_handler: ResolveHandler::new(),
+            incomplete_completion_lists,
+            incomplete_list_controller: TaskController::new(),
         };
 
         // need to recompute immediately in case start_offset != trigger_offset
-        completion
-            .popup
-            .contents_mut()
-            .score(&completion.filter, false);
+        completion.score(false);
 
         completion
+    }
+
+    fn score(&mut self, incremental: bool) {
+        let pattern = &self.filter;
+        let mut matcher = MATCHER.lock();
+        matcher.config = Config::DEFAULT;
+        // slight preference towards prefix matches
+        matcher.config.prefer_prefix = true;
+        let pattern = Atom::new(
+            pattern,
+            CaseMatching::Ignore,
+            Normalization::Smart,
+            AtomKind::Fuzzy,
+            false,
+        );
+        let mut buf = Vec::new();
+        let (matches, options) = self.popup.contents_mut().update_options();
+        if incremental {
+            matches.retain_mut(|(index, score)| {
+                let option = &options[*index as usize];
+                let text = option.filter_text();
+                let new_score = pattern.score(Utf32Str::new(text, &mut buf), &mut matcher);
+                match new_score {
+                    Some(new_score) => {
+                        *score = new_score as u32 / 2;
+                        true
+                    }
+                    None => false,
+                }
+            })
+        } else {
+            matches.clear();
+            matches.extend(options.iter().enumerate().filter_map(|(i, option)| {
+                let text = option.filter_text();
+                pattern
+                    .score(Utf32Str::new(text, &mut buf), &mut matcher)
+                    .map(|score| (i as u32, score as u32 / 3))
+            }));
+        }
+        // nuclueo is meant as an fzf-like fuzzy matcher and only hides
+        // matches that are truely impossible (as in the sequence of char
+        // just doens't appeart) that doesn't work well for completions
+        // with multi lsps where all completions of the next lsp are below
+        // the current one (so you would good suggestions from the second lsp below those
+        // of the first). Setting a reasonable cutoff below which to move
+        // bad completions out of the way helps with that.
+        //
+        // The score computation is a heuristic dervied from nucleo internal
+        // constants and may move upstream in the future. I want to test this out
+        // here to settle on a good number
+        let min_score = (7 + pattern.needle_text().len() as u32 * 14) / 3;
+        matches.sort_unstable_by_key(|&(i, score)| {
+            let option = &options[i as usize];
+            (
+                score <= min_score,
+                Reverse(option.preselect()),
+                option.provider_priority(),
+                Reverse(score),
+                i,
+            )
+        });
     }
 
     /// Synchronously resolve the given completion item. This is used when
@@ -442,7 +492,28 @@ impl Completion {
                 }
             }
         }
-        menu.score(&self.filter, c.is_some());
+        self.score(c.is_some());
+        self.popup.contents_mut().reset_cursor();
+    }
+
+    pub fn replace_provider_completions(&mut self, response: CompletionResponse) {
+        let menu = self.popup.contents_mut();
+        let (_, options) = menu.update_options();
+        if self
+            .incomplete_completion_lists
+            .remove(&response.provider)
+            .is_some()
+        {
+            options.retain(|item| item.provider() != response.provider)
+        }
+        if response.incomplete {
+            self.incomplete_completion_lists
+                .insert(response.provider, response.priority);
+        }
+        response.into_items(options);
+        self.score(false);
+        let menu = self.popup.contents_mut();
+        menu.ensure_cursor_in_bounds();
     }
 
     pub fn is_empty(&self) -> bool {

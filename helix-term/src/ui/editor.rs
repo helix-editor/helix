@@ -14,6 +14,7 @@ use crate::{
 };
 
 use helix_core::{
+    completion::CompletionProvider,
     diagnostic::NumberOrString,
     graphemes::{next_grapheme_boundary, prev_grapheme_boundary},
     movement::Direction,
@@ -31,7 +32,7 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc, sync::Arc};
+use std::{collections::HashMap, mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc, sync::Arc};
 
 use tui::{buffer::Buffer as Surface, text::Span};
 
@@ -1031,10 +1032,17 @@ impl EditorView {
         editor: &mut Editor,
         savepoint: Arc<SavePoint>,
         items: Vec<CompletionItem>,
+        incomplete_completion_lists: HashMap<CompletionProvider, i8>,
         trigger_offset: usize,
         size: Rect,
     ) -> Option<Rect> {
-        let mut completion = Completion::new(editor, savepoint, items, trigger_offset);
+        let mut completion = Completion::new(
+            editor,
+            savepoint,
+            items,
+            incomplete_completion_lists,
+            trigger_offset,
+        );
 
         if completion.is_empty() {
             // skip if we got no completion results

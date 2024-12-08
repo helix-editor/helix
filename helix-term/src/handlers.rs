@@ -9,7 +9,6 @@ use crate::handlers::auto_save::AutoSaveHandler;
 use crate::handlers::completion::CompletionHandler;
 use crate::handlers::signature_help::SignatureHelpHandler;
 
-pub use completion::trigger_auto_completion;
 pub use helix_view::handlers::Handlers;
 
 mod auto_save;
