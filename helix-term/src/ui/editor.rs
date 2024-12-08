@@ -241,7 +241,20 @@ impl EditorView {
         let mut context =
             statusline::RenderContext::new(editor, doc, view, is_focused, &self.spinners);
 
-        statusline::render(&mut context, statusline_area, surface);
+        let is_bottom_statusline = viewport.height - statusline_area.y == 1;
+        let has_editor_status = editor.status_msg.is_some();
+
+        // We always render the statusline, unless it meets all of these conditions:
+        // - It's at the bottom of the screen
+        // - There is a status message
+        // - We want to merge the statusline with the commandline
+        //
+        // In this case, the status message is overlaid on top of the statusline, and we do not render the statusline.
+        if is_bottom_statusline && has_editor_status && config.statusline.merge_with_commandline {
+            // do not render the statusline
+        } else {
+            statusline::render(&mut context, statusline_area, surface)
+        }
     }
 
     pub fn render_rulers(
@@ -1487,8 +1500,15 @@ impl Component for EditorView {
             _ => false,
         };
 
-        // -1 for commandline and -1 for bufferline
-        let mut editor_area = area.clip_bottom(1);
+        // If merge_with_commandline option is set, then status message renders on top of the statusline, in which case we will not show the statusline
+        // Otherwise, status message renders in a separate line, so we give it 1 line of vertical space
+        let mut editor_area = area.clip_bottom(if config.statusline.merge_with_commandline {
+            0
+        } else {
+            1
+        });
+
+        // Editor area decreases by 1, to give 1 line of vertical space for bufferline
         if use_bufferline {
             editor_area = editor_area.clip_top(1);
         }
