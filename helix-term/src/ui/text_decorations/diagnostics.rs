@@ -123,7 +123,6 @@ impl Renderer<'_, '_> {
         end_col - start_col
     }
 
-    // need to toggle this
     fn draw_diagnostic(&mut self, diag: &Diagnostic, col: u16, next_severity: Option<Severity>) {
         let severity = diag.severity();
         let (sym, sym_severity) = if let Some(next_severity) = next_severity {
