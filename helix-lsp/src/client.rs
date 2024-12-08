@@ -426,29 +426,32 @@ impl Client {
         let server_tx = self.server_tx.clone();
         let id = self.next_request_id();
 
-        let params = serde_json::to_value(params);
+        // it' important this is not part of the future so that it gets
+        // executed right away so that the request order stays concisents
+        let rx = serde_json::to_value(params)
+            .map_err(Error::from)
+            .and_then(|params| {
+                let request = jsonrpc::MethodCall {
+                    jsonrpc: Some(jsonrpc::Version::V2),
+                    id: id.clone(),
+                    method: R::METHOD.to_string(),
+                    params: Self::value_into_params(params),
+                };
+                let (tx, rx) = channel::<Result<Value>>(1);
+                server_tx
+                    .send(Payload::Request {
+                        chan: tx,
+                        value: request,
+                    })
+                    .map_err(|e| Error::Other(e.into()))?;
+                Ok(rx)
+            });
+
         async move {
             use std::time::Duration;
             use tokio::time::timeout;
-
-            let request = jsonrpc::MethodCall {
-                jsonrpc: Some(jsonrpc::Version::V2),
-                id: id.clone(),
-                method: R::METHOD.to_string(),
-                params: Self::value_into_params(params?),
-            };
-
-            let (tx, mut rx) = channel::<Result<Value>>(1);
-
-            server_tx
-                .send(Payload::Request {
-                    chan: tx,
-                    value: request,
-                })
-                .map_err(|e| Error::Other(e.into()))?;
-
             // TODO: delay other calls until initialize success
-            timeout(Duration::from_secs(timeout_secs), rx.recv())
+            timeout(Duration::from_secs(timeout_secs), rx?.recv())
                 .await
                 .map_err(|_| Error::Timeout(id))? // return Timeout
                 .ok_or(Error::StreamClosed)?
@@ -465,21 +468,25 @@ impl Client {
     {
         let server_tx = self.server_tx.clone();
 
-        async move {
-            let params = serde_json::to_value(params)?;
+        // it' important this is not part of the future so that it gets
+        // executed right away so that the request order stays consisents
+        let res = serde_json::to_value(params)
+            .map_err(Error::from)
+            .and_then(|params| {
+                let params = serde_json::to_value(params)?;
 
-            let notification = jsonrpc::Notification {
-                jsonrpc: Some(jsonrpc::Version::V2),
-                method: R::METHOD.to_string(),
-                params: Self::value_into_params(params),
-            };
-
-            server_tx
-                .send(Payload::Notification(notification))
-                .map_err(|e| Error::Other(e.into()))?;
-
-            Ok(())
-        }
+                let notification = jsonrpc::Notification {
+                    jsonrpc: Some(jsonrpc::Version::V2),
+                    method: R::METHOD.to_string(),
+                    params: Self::value_into_params(params),
+                };
+                server_tx
+                    .send(Payload::Notification(notification))
+                    .map_err(|e| Error::Other(e.into()))
+            });
+        // TODO: this function is not async and never should have been
+        // but turning it into non-async function is a big refactor
+        async move { res }
     }
 
     /// Reply to a language server RPC call.
@@ -492,26 +499,27 @@ impl Client {
 
         let server_tx = self.server_tx.clone();
 
-        async move {
-            let output = match result {
-                Ok(result) => Output::Success(Success {
+        let output = match result {
+            Ok(result) => serde_json::to_value(result).map(|result| {
+                Output::Success(Success {
                     jsonrpc: Some(Version::V2),
                     id,
-                    result: serde_json::to_value(result)?,
-                }),
-                Err(error) => Output::Failure(Failure {
-                    jsonrpc: Some(Version::V2),
-                    id,
-                    error,
-                }),
-            };
+                    result,
+                })
+            }),
+            Err(error) => Ok(Output::Failure(Failure {
+                jsonrpc: Some(Version::V2),
+                id,
+                error,
+            })),
+        };
 
+        let res = output.map_err(Error::from).and_then(|output| {
             server_tx
                 .send(Payload::Response(output))
-                .map_err(|e| Error::Other(e.into()))?;
-
-            Ok(())
-        }
+                .map_err(|e| Error::Other(e.into()))
+        });
+        async move { res }
     }
 
     // -------------------------------------------------------------------------------------------
