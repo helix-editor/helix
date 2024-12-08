@@ -1,6 +1,6 @@
 use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
-use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Selection};
+use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Range, Selection};
 use helix_lsp::{
     lsp::{self, notification::Notification},
     util::lsp_range_to_range,
@@ -164,14 +164,14 @@ impl Application {
 
             // If the first file is a directory, skip it and open a picker
             if let Some((first, _)) = files_it.next_if(|(p, _)| p.is_dir()) {
-                let picker = ui::file_picker(first, &config.load().editor);
+                let picker = ui::file_picker(first.to_path_buf(), &config.load().editor);
                 compositor.push(Box::new(overlaid(picker)));
             }
 
             // If there are any more files specified, open them
             if files_it.peek().is_some() {
                 let mut nr_of_files = 0;
-                for (file, pos) in files_it {
+                for (file, positions) in files_it {
                     nr_of_files += 1;
                     if file.is_dir() {
                         return Err(anyhow::anyhow!(
@@ -210,8 +210,15 @@ impl Application {
                         // opened last is focused on.
                         let view_id = editor.tree.focus;
                         let doc = doc_mut!(editor, &doc_id);
-                        let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
-                        doc.set_selection(view_id, pos);
+
+                        let ranges = positions
+                            .iter()
+                            .map(|position| {
+                                Range::point(pos_at_coords(doc.text().slice(..), *position, true))
+                            })
+                            .collect();
+
+                        doc.set_selection(view_id, Selection::new(ranges, 0));
                     }
                 }
 
