@@ -25,7 +25,7 @@ pub struct TypableCommand {
     /// What completion methods, if any, does this command have?
     pub signature: CommandSignature,
     /// This command may or may not have sub-documentations, e.g. a documentation on :set-language awk, where we have extra docs to display for "awk".
-    pub sub_doc: Option<HashMap<&'static str, &'static str>>,
+    pub sub_doc: Option<&'static Lazy<HashMap<&'static str, &'static str>>>,
 }
 
 impl TypableCommand {
@@ -37,7 +37,7 @@ impl TypableCommand {
     }
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct CommandSignature {
     // Arguments with specific completion methods based on their position.
     positional_args: &'static [Completer],
@@ -2530,7 +2530,10 @@ fn read(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     Ok(())
 }
 
-pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
+static SUB_DOC_QUIT: Lazy<HashMap<&'static str, &'static str>> =
+    Lazy::new(|| HashMap::from([("a", "b")]));
+
+pub static TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "quit",
         aliases: &["q"],
@@ -3069,7 +3072,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: set_option,
         // TODO: Add support for completion of the options value(s), when appropriate.
         signature: CommandSignature::positional(&[completers::setting]),
-        sub_doc: None,
+        sub_doc: Some(&SUB_DOC_QUIT),
     },
     TypableCommand {
         name: "toggle-option",
@@ -3333,34 +3336,34 @@ pub(super) fn command_mode(cx: &mut Context) {
         // input contains the entire command
         let mut input = input.split(' ');
         let part = input.next().unwrap_or_default();
-        let second = input.next().unwrap_or_default();
+        // let second = input.next().unwrap_or_default();
 
         if let Some(typed::TypableCommand {
             doc,
             aliases,
-            sub_doc,
+            // sub_doc,
             ..
         }) = typed::TYPABLE_COMMAND_MAP.get(part)
         {
             if aliases.is_empty() {
-                if let Some(sub_doc) = sub_doc.as_ref().and_then(|map| map.get(second)) {
-                    return Some(format!("{}\n\n──────\n\n{}", doc, sub_doc).into());
-                }
+                // if let Some(sub_doc) = sub_doc.as_ref().and_then(|map| map.get(second)) {
+                //     return Some(format!("{}\n\n──────\n\n{}", doc, sub_doc).into());
+                // }
 
                 return Some((*doc).into());
             }
 
-            if let Some(sub_doc) = sub_doc.as_ref().and_then(|map| map.get(second)) {
-                return Some(
-                    format!(
-                        "{}\nAliases: {}\n\n──────\n\n{}",
-                        doc,
-                        aliases.join(", "),
-                        sub_doc
-                    )
-                    .into(),
-                );
-            }
+            // if let Some(sub_doc) = sub_doc.as_ref().and_then(|map| map.get(second)) {
+            //     return Some(
+            //         format!(
+            //             "{}\nAliases: {}\n\n──────\n\n{}",
+            //             doc,
+            //             aliases.join(", "),
+            //             sub_doc
+            //         )
+            //         .into(),
+            //     );
+            // }
 
             return Some(format!("{}\nAliases: {}", doc, aliases.join(", ")).into());
         }
