@@ -130,6 +130,12 @@ pub enum DocumentOpenError {
     IoError(#[from] io::Error),
 }
 
+#[derive(Debug)]
+pub enum EmitLspNotification {
+    Async,
+    Sync,
+}
+
 pub struct Document {
     pub(crate) id: DocumentId,
     text: Rope,
@@ -1269,7 +1275,7 @@ impl Document {
         &mut self,
         transaction: &Transaction,
         view_id: ViewId,
-        emit_lsp_notification: bool,
+        emit_lsp_notification: Option<EmitLspNotification>,
     ) -> bool {
         use helix_core::Assoc;
 
@@ -1426,19 +1432,31 @@ impl Document {
             });
         }
 
-        if emit_lsp_notification {
-            // TODO: move to hook
-            // emit lsp notification
+        // emit lsp notification
+        if let Some(emit_lsp_notification) = emit_lsp_notification {
             for language_server in self.language_servers() {
-                let notify = language_server.text_document_did_change(
-                    self.versioned_identifier(),
-                    &old_doc,
-                    self.text(),
-                    changes,
-                );
+                match emit_lsp_notification {
+                    EmitLspNotification::Async => {
+                        // TODO: move to hook
+                        let notify = language_server.text_document_did_change(
+                            self.versioned_identifier(),
+                            &old_doc,
+                            self.text(),
+                            changes,
+                        );
 
-                if let Some(notify) = notify {
-                    tokio::spawn(notify);
+                        if let Some(notify) = notify {
+                            tokio::spawn(notify);
+                        }
+                    }
+                    EmitLspNotification::Sync => {
+                        let _ = language_server.text_document_did_change_sync(
+                            self.versioned_identifier(),
+                            &old_doc,
+                            self.text(),
+                            changes,
+                        );
+                    }
                 }
             }
         }
@@ -1450,7 +1468,7 @@ impl Document {
         &mut self,
         transaction: &Transaction,
         view_id: ViewId,
-        emit_lsp_notification: bool,
+        emit_lsp_notification: Option<EmitLspNotification>,
     ) -> bool {
         // store the state just before any changes are made. This allows us to undo to the
         // state just before a transaction was applied.
@@ -1473,14 +1491,20 @@ impl Document {
     }
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
     pub fn apply(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
-        self.apply_inner(transaction, view_id, true)
+        self.apply_inner(transaction, view_id, Some(EmitLspNotification::Async))
+    }
+
+    /// Apply a [`Transaction`] to the [`Document`] to change its text and
+    /// emit the lsp notifcation synchronously
+    pub fn apply_sync_notification(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
+        self.apply_inner(transaction, view_id, Some(EmitLspNotification::Sync))
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text
     /// without notifying the language servers. This is useful for temporary transactions
     /// that must not influence the server.
     pub fn apply_temporary(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
-        self.apply_inner(transaction, view_id, false)
+        self.apply_inner(transaction, view_id, None)
     }
 
     fn undo_redo_impl(&mut self, view: &mut View, undo: bool) -> bool {
@@ -1492,7 +1516,7 @@ impl Document {
         let mut history = self.history.take();
         let txn = if undo { history.undo() } else { history.redo() };
         let success = if let Some(txn) = txn {
-            self.apply_impl(txn, view.id, true)
+            self.apply_impl(txn, view.id, Some(EmitLspNotification::Async))
         } else {
             false
         };
@@ -1548,7 +1572,12 @@ impl Document {
         savepoint
     }
 
-    pub fn restore(&mut self, view: &mut View, savepoint: &SavePoint, emit_lsp_notification: bool) {
+    pub fn restore(
+        &mut self,
+        view: &mut View,
+        savepoint: &SavePoint,
+        emit_lsp_notification: Option<EmitLspNotification>,
+    ) {
         assert_eq!(
             savepoint.view, view.id,
             "Savepoint must not be used with a different view!"
@@ -1581,7 +1610,7 @@ impl Document {
         };
         let mut success = false;
         for txn in txns {
-            if self.apply_impl(&txn, view.id, true) {
+            if self.apply_impl(&txn, view.id, Some(EmitLspNotification::Async)) {
                 success = true;
             }
         }
