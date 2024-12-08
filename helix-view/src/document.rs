@@ -1435,16 +1435,12 @@ impl Document {
             // TODO: move to hook
             // emit lsp notification
             for language_server in self.language_servers() {
-                let notify = language_server.text_document_did_change(
+                let _ = language_server.text_document_did_change(
                     self.versioned_identifier(),
                     &old_doc,
                     self.text(),
                     changes,
                 );
-
-                if let Some(notify) = notify {
-                    tokio::spawn(notify);
-                }
             }
         }
 
@@ -1749,6 +1745,25 @@ impl Document {
         self.language_config().into_iter().flat_map(move |config| {
             config.language_servers.iter().filter_map(move |features| {
                 let ls = &**self.language_servers.get(&features.name)?;
+                if ls.is_initialized()
+                    && ls.supports_feature(feature)
+                    && features.has_feature(feature)
+                {
+                    Some(ls)
+                } else {
+                    None
+                }
+            })
+        })
+    }
+
+    pub fn language_servers_with_feature_owned(
+        &self,
+        feature: LanguageServerFeature,
+    ) -> impl Iterator<Item = Arc<helix_lsp::Client>> + '_ {
+        self.language_config().into_iter().flat_map(move |config| {
+            config.language_servers.iter().filter_map(move |features| {
+                let ls = self.language_servers.get(&features.name)?.clone();
                 if ls.is_initialized()
                     && ls.supports_feature(feature)
                     && features.has_feature(feature)
