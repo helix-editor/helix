@@ -10,7 +10,7 @@ In the bottom left corner, you'll notice a `NOR`, which indicates that you are c
 
 In this mode, typing letters like <kbd>e</kbd> and <kbd>n</kbd> won't insert them as text, but rather have specific _commands_ which we will explore later.
 
-To actually insert some text, press <kbd>i</kbd>, which is the command to get into Insert mode, indicated by the `INS` in the bottom-left corner. 
+To actually insert some text, press <kbd>i</kbd>, which is the command to get into **Ins**ert mode, indicated by the `INS` in the bottom-left corner. 
 
 In Insert mode, the letters you type will be inserted directly into the document.
 
