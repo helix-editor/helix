@@ -7,7 +7,8 @@
     (member_expression
       property: (property_identifier) @injection.language)
   ]
-  arguments: (template_string) @injection.content)
+  arguments: (template_string) @injection.content
+  (#match? @injection.language "^(html|css)$"))
 
 ; Parse the contents of gql template literals
 
