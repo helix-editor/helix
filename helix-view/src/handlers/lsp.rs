@@ -1,11 +1,45 @@
+use std::collections::HashMap;
 use std::fmt::Display;
+use std::sync::Arc;
 
+use crate::document::SavePoint;
 use crate::editor::Action;
 use crate::Editor;
 use crate::{DocumentId, ViewId};
+use helix_core::completion::CompletionProvider;
 use helix_core::Uri;
+use helix_event::{send_blocking, TaskController};
 use helix_lsp::util::generate_transaction_from_edits;
 use helix_lsp::{lsp, OffsetEncoding};
+use tokio::sync::mpsc::Sender;
+
+pub struct CompletionHandler {
+    event_tx: Sender<CompletionEvent>,
+    pub active_completions: HashMap<CompletionProvider, CompletionResponseMeta>,
+    pub request_controller: TaskController,
+}
+
+impl CompletionHandler {
+    pub fn new(event_tx: Sender<CompletionEvent>) -> CompletionHandler {
+        CompletionHandler {
+            event_tx,
+            active_completions: HashMap::new(),
+            request_controller: TaskController::new(),
+        }
+    }
+}
+
+impl CompletionHandler {
+    pub fn event(&self, event: CompletionEvent) {
+        send_blocking(&self.event_tx, event);
+    }
+}
+// bikeshed: this name sucks but I don't have a better idea
+pub struct CompletionResponseMeta {
+    pub incomplete: bool,
+    pub priority: i8,
+    pub savepoint: Arc<SavePoint>,
+}
 
 pub enum CompletionEvent {
     /// Auto completion was triggered by typing a word char

@@ -1,7 +1,7 @@
 use helix_event::send_blocking;
 use tokio::sync::mpsc::Sender;
 
-use crate::handlers::lsp::SignatureHelpInvoked;
+use crate::handlers::lsp::{CompletionHandler, SignatureHelpInvoked};
 use crate::{DocumentId, Editor, ViewId};
 
 pub mod dap;
@@ -16,7 +16,7 @@ pub enum AutoSaveEvent {
 
 pub struct Handlers {
     // only public because most of the actual implementation is in helix-term right now :/
-    pub completions: Sender<lsp::CompletionEvent>,
+    pub completions: CompletionHandler,
     pub signature_hints: Sender<lsp::SignatureHelpEvent>,
     pub auto_save: Sender<AutoSaveEvent>,
 }
@@ -24,14 +24,11 @@ pub struct Handlers {
 impl Handlers {
     /// Manually trigger completion (c-x)
     pub fn trigger_completions(&self, trigger_pos: usize, doc: DocumentId, view: ViewId) {
-        send_blocking(
-            &self.completions,
-            lsp::CompletionEvent::ManualTrigger {
-                cursor: trigger_pos,
-                doc,
-                view,
-            },
-        );
+        self.completions.event(lsp::CompletionEvent::ManualTrigger {
+            cursor: trigger_pos,
+            doc,
+            view,
+        });
     }
 
     pub fn trigger_signature_help(&self, invocation: SignatureHelpInvoked, editor: &Editor) {

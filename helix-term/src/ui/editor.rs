@@ -24,14 +24,14 @@ use helix_core::{
 };
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
-    document::{Mode, SavePoint, SCRATCH_BUFFER_NAME},
+    document::{Mode, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc, sync::Arc};
+use std::{mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc};
 
 use tui::{buffer::Buffer as Surface, text::Span};
 
@@ -1029,12 +1029,11 @@ impl EditorView {
     pub fn set_completion(
         &mut self,
         editor: &mut Editor,
-        savepoint: Arc<SavePoint>,
         items: Vec<CompletionItem>,
         trigger_offset: usize,
         size: Rect,
     ) -> Option<Rect> {
-        let mut completion = Completion::new(editor, savepoint, items, trigger_offset);
+        let mut completion = Completion::new(editor, items, trigger_offset);
 
         if completion.is_empty() {
             // skip if we got no completion results
@@ -1052,6 +1051,8 @@ impl EditorView {
 
     pub fn clear_completion(&mut self, editor: &mut Editor) {
         self.completion = None;
+        editor.handlers.completions.request_controller.restart();
+        editor.handlers.completions.active_completions.clear();
         if let Some(last_completion) = editor.last_completion.take() {
             match last_completion {
                 CompleteAction::Triggered => (),

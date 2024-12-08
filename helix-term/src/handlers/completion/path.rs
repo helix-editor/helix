@@ -3,24 +3,25 @@ use std::{
     fs,
     path::{Path, PathBuf},
     str::FromStr as _,
+    sync::Arc,
 };
 
-use futures_util::{future::BoxFuture, FutureExt as _};
-use helix_core as core;
 use helix_core::Transaction;
+use helix_core::{self as core, completion::CompletionProvider};
 use helix_event::TaskHandle;
 use helix_stdx::path::{self, canonicalize, fold_home_dir, get_path_suffix};
-use helix_view::Document;
+use helix_view::{document::SavePoint, handlers::lsp::CompletionResponseMeta, Document};
 use url::Url;
 
-use super::item::CompletionItem;
+use crate::handlers::completion::{item::CompletionResponse, CompletionItem, CompletionItems};
 
 pub(crate) fn path_completion(
     cursor: usize,
     text: core::Rope,
     doc: &Document,
     handle: TaskHandle,
-) -> Option<BoxFuture<'static, anyhow::Result<Vec<CompletionItem>>>> {
+    savepoint: Arc<SavePoint>,
+) -> Option<impl FnOnce() -> CompletionResponse> {
     if !doc.path_completion_enabled() {
         return None;
     }
@@ -67,12 +68,22 @@ pub(crate) fn path_completion(
         return None;
     }
 
-    let future = tokio::task::spawn_blocking(move || {
+    // TODO: handle properly in the future
+    const PRIORITY: i8 = 1;
+    let future = move || {
         let Ok(read_dir) = std::fs::read_dir(&dir_path) else {
-            return Vec::new();
+            return CompletionResponse {
+                items: CompletionItems::Other(Vec::new()),
+                provider: CompletionProvider::PathCompletions,
+                meta: CompletionResponseMeta {
+                    incomplete: false,
+                    priority: PRIORITY,
+                    savepoint,
+                },
+            };
         };
 
-        read_dir
+        let res: Vec<_> = read_dir
             .filter_map(Result::ok)
             .filter_map(|dir_entry| {
                 dir_entry
@@ -103,12 +114,22 @@ pub(crate) fn path_completion(
                     label: file_name.into(),
                     transaction,
                     documentation,
+                    provider: CompletionProvider::PathCompletions,
                 }))
             })
-            .collect::<Vec<_>>()
-    });
+            .collect();
+        CompletionResponse {
+            items: CompletionItems::Other(res),
+            provider: CompletionProvider::PathCompletions,
+            meta: CompletionResponseMeta {
+                incomplete: false,
+                priority: PRIORITY,
+                savepoint,
+            },
+        }
+    };
 
-    Some(async move { Ok(future.await?) }.boxed())
+    Some(future)
 }
 
 #[cfg(unix)]
