@@ -14,7 +14,7 @@ use tui::{text::Span, widgets::Row};
 use super::{align_view, push_jump, Align, Context, Editor};
 
 use helix_core::{
-    syntax::LanguageServerFeature, text_annotations::InlineAnnotation, Selection, Uri,
+    syntax::LanguageServerFeature, text_annotations::InlineAnnotation, Rope, Selection, Uri,
 };
 use helix_stdx::path;
 use helix_view::{
@@ -1008,7 +1008,10 @@ pub fn signature_help(cx: &mut Context) {
         .trigger_signature_help(SignatureHelpInvoked::Manual, cx.editor)
 }
 
-pub fn hover(cx: &mut Context) {
+pub fn hover_impl<T>(cx: &mut Context, callback: T)
+where
+    T: FnOnce(String, &mut Editor, &mut Compositor) + std::marker::Send + 'static,
+{
     let (view, doc) = current!(cx.editor);
 
     // TODO support multiple language servers (merge UI somehow)
@@ -1049,14 +1052,29 @@ pub fn hover(cx: &mut Context) {
                     lsp::HoverContents::Markup(contents) => contents.value,
                 };
 
-                // skip if contents empty
-
-                let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
-                let popup = Popup::new("hover", contents).auto_close(true);
-                compositor.replace_or_push("hover", popup);
+                callback(contents, editor, compositor);
             }
         },
     );
+}
+
+pub fn hover_dump(cx: &mut Context) {
+    hover_impl(cx, |contents, editor, _compositor| {
+        editor.new_file_from_document(
+            Action::VerticalSplit,
+            Document::from(Rope::from(contents), None, editor.config.clone()),
+        );
+        let hover_doc = doc_mut!(editor);
+        let _ = hover_doc.set_language_by_language_id("markdown", editor.syn_loader.clone());
+    })
+}
+
+pub fn hover(cx: &mut Context) {
+    hover_impl(cx, |contents, editor, compositor| {
+        let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
+        let popup = Popup::new("hover", contents).auto_close(true);
+        compositor.replace_or_push("hover", popup);
+    })
 }
 
 pub fn rename_symbol(cx: &mut Context) {
