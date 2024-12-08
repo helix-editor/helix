@@ -1718,10 +1718,14 @@ impl Editor {
         Ok(doc_id)
     }
 
+    pub fn document_id_by_path(&self, path: &Path) -> Option<DocumentId> {
+        self.document_by_path(path).map(|doc| doc.id)
+    }
+
     // ??? possible use for integration tests
     pub fn open(&mut self, path: &Path, action: Action) -> Result<DocumentId, DocumentOpenError> {
         let path = helix_stdx::path::canonicalize(path);
-        let id = self.document_by_path(&path).map(|doc| doc.id);
+        let id = self.document_id_by_path(&path);
 
         let id = if let Some(id) = id {
             id
