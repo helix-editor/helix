@@ -649,10 +649,6 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
 
         // -- Render the input bar:
 
-        let area = inner.clip_left(1).with_height(1);
-        // render the prompt first since it will clear its background
-        self.prompt.render(area, surface, cx);
-
         let count = format!(
             "{}{}/{}",
             if status.running || self.matcher.active_injectors() > 0 {
@@ -663,6 +659,13 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             snapshot.matched_item_count(),
             snapshot.item_count(),
         );
+
+        let area = inner.clip_left(1).with_height(1);
+        let line_area = area.clip_right(count.len() as u16 + 1);
+
+        // render the prompt first since it will clear its background
+        self.prompt.render(line_area, surface, cx);
+
         surface.set_stringn(
             (area.x + area.width).saturating_sub(count.len() as u16 + 1),
             area.y,
@@ -1073,7 +1076,15 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
         let inner = block.inner(area);
 
         // prompt area
-        let area = inner.clip_left(1).with_height(1);
+        let render_preview =
+            self.show_preview && self.file_fn.is_some() && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
+
+        let picker_width = if render_preview {
+            area.width / 2
+        } else {
+            area.width
+        };
+        let area = inner.clip_left(1).with_height(1).with_width(picker_width);
 
         self.prompt.cursor(area, editor)
     }
