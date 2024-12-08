@@ -12,7 +12,10 @@
 
 (command_name) @function
 
-(variable_name) @variable.other.member
+(variable_name) @variable
+
+((variable_name) @constant
+  (#match? @constant "^[A-Z][A-Z_0-9]*$"))
 
 [
   "if"
@@ -48,6 +51,9 @@
 
 (comment) @comment
 
+((word) @constant.builtin.boolean
+  (#any-of? @constant.builtin.boolean "true" "false"))
+
 (function_definition name: (word) @function)
 
 (file_descriptor) @constant.numeric.integer
@@ -56,7 +62,7 @@
   (command_substitution)
   (process_substitution)
   (expansion)
-]@embedded
+] @embedded
 
 [
   "$"
