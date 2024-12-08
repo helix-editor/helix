@@ -3336,34 +3336,32 @@ pub(super) fn command_mode(cx: &mut Context) {
         // input contains the entire command
         let mut input = input.split(' ');
         let part = input.next().unwrap_or_default();
-        // let second = input.next().unwrap_or_default();
+        let second = input.next().unwrap_or_default();
 
         if let Some(typed::TypableCommand {
             doc,
             aliases,
-            // sub_doc,
+            sub_doc,
             ..
         }) = typed::TYPABLE_COMMAND_MAP.get(part)
         {
             if aliases.is_empty() {
-                // if let Some(sub_doc) = sub_doc.as_ref().and_then(|map| map.get(second)) {
-                //     return Some(format!("{}\n\n──────\n\n{}", doc, sub_doc).into());
-                // }
+                if let Some(sub_doc) = sub_doc.as_ref().and_then(|map| map.get(second)) {
+                    return Some(format!("{doc}\n\n─── {second} ───\n\n{sub_doc}").into());
+                }
 
                 return Some((*doc).into());
             }
 
-            // if let Some(sub_doc) = sub_doc.as_ref().and_then(|map| map.get(second)) {
-            //     return Some(
-            //         format!(
-            //             "{}\nAliases: {}\n\n──────\n\n{}",
-            //             doc,
-            //             aliases.join(", "),
-            //             sub_doc
-            //         )
-            //         .into(),
-            //     );
-            // }
+            if let Some(sub_doc) = sub_doc.as_ref().and_then(|map| map.get(second)) {
+                return Some(
+                    format!(
+                        "{doc}\nAliases: {}\n\n─── {second}  ───\n\n{sub_doc}",
+                        aliases.join(", "),
+                    )
+                    .into(),
+                );
+            }
 
             return Some(format!("{}\nAliases: {}", doc, aliases.join(", ")).into());
         }
