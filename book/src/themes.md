@@ -316,6 +316,8 @@ These scopes are used for theming the editor interface:
 | `ui.menu`                         | Code and command completion menus                                                              |
 | `ui.menu.selected`                | Selected autocomplete item                                                                     |
 | `ui.menu.scroll`                  | `fg` sets thumb color, `bg` sets track color of scrollbar                                      |
+| `ui.completion.kind`              | Default completion menu item kind color                                                        |
+| `ui.completion.kind.{kind}`       | Completion menu item kind for `kind`. These are the same as [completion item kinds][cik]       |
 | `ui.selection`                    | For selections in the editing area                                                             |
 | `ui.selection.primary`            |                                                                                                |
 | `ui.highlight`                    | Highlighted lines in the picker preview                                                        |
@@ -337,3 +339,4 @@ These scopes are used for theming the editor interface:
 | `diagnostic.deprecated`           | Diagnostics with deprecated tag (editing area)                                                 |
 
 [editor-section]: ./configuration.md#editor-section
+[cik]: ./editor.md#editorcompletion-item-kinds-section

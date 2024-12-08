@@ -304,6 +304,9 @@ pub struct Config {
     /// Whether to instruct the LSP to replace the entire word when applying a completion
     /// or to only insert new text
     pub completion_replace: bool,
+    /// The completion item kind text to display in the completion menu. Leave kind empty to use
+    /// the kind's name.
+    pub completion_item_kinds: HashMap<String, String>,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
@@ -963,6 +966,7 @@ impl Default for Config {
             auto_save: AutoSave::default(),
             idle_timeout: Duration::from_millis(250),
             completion_timeout: Duration::from_millis(250),
+            completion_item_kinds: HashMap::new(),
             preview_completion_insert: true,
             completion_trigger_len: 2,
             auto_info: true,
@@ -1021,6 +1025,12 @@ pub struct Breakpoint {
     pub log_message: Option<String>,
 }
 
+#[derive(Debug, Clone, Default)]
+pub struct CompletionItemKindStyle {
+    pub text: Option<String>,
+    pub style: Option<theme::Style>,
+}
+
 use futures_util::stream::{Flatten, Once};
 
 pub struct Editor {
@@ -1068,6 +1078,7 @@ pub struct Editor {
 
     pub config: Arc<dyn DynAccess<Config>>,
     pub auto_pairs: Option<AutoPairs>,
+    pub completion_item_kind_styles: Arc<HashMap<&'static str, CompletionItemKindStyle>>,
 
     pub idle_timer: Pin<Box<Sleep>>,
     redraw_timer: Pin<Box<Sleep>>,
@@ -1174,6 +1185,9 @@ impl Editor {
         // HAXX: offset the render area height by 1 to account for prompt/commandline
         area.height -= 1;
 
+        let theme = theme_loader.default();
+        let completion_item_kind_styles = compute_completion_item_kind_styles(&theme, &conf);
+
         Self {
             mode: Mode::Normal,
             tree: Tree::new(area),
@@ -1186,7 +1200,7 @@ impl Editor {
             selected_register: None,
             macro_recording: None,
             macro_replaying: Vec::new(),
-            theme: theme_loader.default(),
+            theme,
             language_servers,
             diagnostics: BTreeMap::new(),
             diff_providers: DiffProviderRegistry::default(),
@@ -1210,6 +1224,7 @@ impl Editor {
             last_cwd: None,
             config,
             auto_pairs,
+            completion_item_kind_styles: Arc::new(completion_item_kind_styles),
             exit_code: 0,
             config_events: unbounded_channel(),
             needs_redraw: false,
@@ -1256,6 +1271,10 @@ impl Editor {
     pub fn refresh_config(&mut self) {
         let config = self.config();
         self.auto_pairs = (&config.auto_pairs).into();
+        self.completion_item_kind_styles = Arc::new(compute_completion_item_kind_styles(
+            &self.theme,
+            &self.config(),
+        ));
         self.reset_idle_timer();
         self._refresh();
     }
@@ -1350,6 +1369,10 @@ impl Editor {
             }
         }
 
+        self.completion_item_kind_styles = Arc::new(compute_completion_item_kind_styles(
+            &self.theme,
+            &self.config(),
+        ));
         self._refresh();
     }
 
@@ -2221,6 +2244,38 @@ fn try_restore_indent(doc: &mut Document, view: &mut View) {
             });
         doc.apply(&transaction, view.id);
     }
+}
+
+// NOTE: When you implement a new completion source/handler, dont forget to add
+// your completion kinds here!
+#[rustfmt::skip]
+const ALL_KINDS: &[&str] = &[
+    // All of these are LSP item kinds.
+    // It happens that file and folder are also here.
+    "text", "method", "function", "constructor", "field", "variable",
+    "class", "interface", "module", "property", "unit", "value", "enum",
+    "keyword", "snippet", "color", "file", "reference", "folder",
+    "enum-member", "constant", "struct", "event", "operator",
+    "type-parameter",
+    // The following are specific to path completion source
+    // We ignore the other linux-specific ones (block, socket, etc...)
+    "link"
+];
+
+fn compute_completion_item_kind_styles(
+    theme: &Theme,
+    config: &DynGuard<Config>,
+) -> HashMap<&'static str, CompletionItemKindStyle> {
+    let mut ret = HashMap::new();
+    for &name in ALL_KINDS {
+        let style = theme.try_get(&format!("ui.completion.kind.{name}"));
+        let text = config.completion_item_kinds.get(name).cloned();
+        if style.is_some() || text.is_some() {
+            ret.insert(name, CompletionItemKindStyle { text, style });
+        }
+    }
+
+    ret
 }
 
 #[derive(Default)]
