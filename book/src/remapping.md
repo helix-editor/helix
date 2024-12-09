@@ -68,6 +68,10 @@ k = "scroll_down"
 m = ":run-shell-command make"
 c = ":run-shell-command cargo build"
 t = ":run-shell-command cargo test"
+
+# Creates a basic 'zen-mode' similar to VSCode's
+z = ["toggle_zoom", ":set-max-width 120", ":set gutters.layout []"]
+Z = ["toggle_zoom", ":set-max-width 0", ':set gutters.layout ["diagnostics","spacer","line-numbers","spacer","diff"]']
 ```
 
 ## Special keys and modifiers
