@@ -58,7 +58,7 @@
 
 ### `[editor.clipboard-provider]` Section
 
-Helix can be configured wither to use a builtin clipboard configuration or to use
+Helix can be configured either to use a builtin clipboard configuration or to use
 a provided command.
 
 For instance, setting it to use OSC 52 termcodes, the configuration would be:
