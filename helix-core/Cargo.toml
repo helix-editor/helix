@@ -18,6 +18,7 @@ integration = []
 [dependencies]
 helix-stdx = { path = "../helix-stdx" }
 helix-loader = { path = "../helix-loader" }
+helix-parsec = { path = "../helix-parsec" }
 
 ropey = { version = "1.6.1", default-features = false, features = ["simd"] }
 smallvec = "1.13"
@@ -42,6 +43,7 @@ dunce = "1.0"
 url = "2.5.4"
 
 log = "0.4"
+anyhow = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0"
 toml = "0.8"
@@ -58,6 +60,7 @@ textwrap = "0.16.1"
 nucleo.workspace = true
 parking_lot = "0.12"
 globset = "0.4.15"
+regex-cursor = "0.1.4"
 
 [dev-dependencies]
 quickcheck = { version = "1", default-features = false }

@@ -27,6 +27,7 @@ string = "silver"
 "constant.character.escape" = "honey"
 # used for lifetimes
 label = "honey"
+tabstop = { modifiers = ["italic"], bg = "bossanova" }
 
 "markup.heading" = "lilac"
 "markup.bold" = { modifiers = ["bold"] }
