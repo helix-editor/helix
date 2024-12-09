@@ -7,6 +7,7 @@ use crate::{
     regex::Regex,
     transaction::{ChangeSet, Operation},
     RopeSlice, Tendril,
+    indent::MAX_INDENT,
 };
 
 use ahash::RandomState;
@@ -59,11 +60,11 @@ where
     D: serde::Deserializer<'de>,
 {
     usize::deserialize(deserializer).and_then(|n| {
-        if n > 0 && n <= 64 {
+        if n > 0 && n <= MAX_INDENT.into() {
             Ok(n)
         } else {
             Err(serde::de::Error::custom(
-                "tab width must be a value from 1 to 64 inclusive",
+                format!("tab width must be a value from 1 to {} inclusive", MAX_INDENT),
             ))
         }
     })
