@@ -1649,18 +1649,15 @@ impl Editor {
             }
             Action::HorizontalSplit | Action::VerticalSplit => {
                 // copy the current view, unless there is no view yet
+                let config = self.config();
+                let gutters = config.gutters.clone();
+                let enable_diagnostics = config.enable_diagnostics;
                 let view = self
                     .tree
                     .try_get(self.tree.focus)
                     .filter(|v| id == v.doc) // Different Document
                     .cloned()
-                    .unwrap_or_else(|| {
-                        View::new(
-                            id,
-                            self.config().gutters.clone(),
-                            self.config().enable_diagnostics,
-                        )
-                    });
+                    .unwrap_or_else(|| View::new(id, gutters, enable_diagnostics));
                 let view_id = self.tree.split(
                     view,
                     match action {

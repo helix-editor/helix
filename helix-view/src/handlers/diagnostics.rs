@@ -59,7 +59,7 @@ pub struct DiagnosticsHandler {
     generation: Cell<usize>,
     last_doc: Cell<DocumentId>,
     last_cursor_line: Cell<usize>,
-    pub active: bool,
+    pub active: Cell<bool>,
     pub events: Sender<DiagnosticEvent>,
 }
 
@@ -69,7 +69,7 @@ pub struct DiagnosticsHandler {
 // but to fix that larger architecutre changes are needed
 impl Clone for DiagnosticsHandler {
     fn clone(&self) -> Self {
-        Self::new(self.active)
+        Self::new(self.active.take())
     }
 }
 
@@ -88,7 +88,7 @@ impl DiagnosticsHandler {
             events,
             last_doc: Cell::new(DocumentId(NonZeroUsize::new(usize::MAX).unwrap())),
             last_cursor_line: Cell::new(usize::MAX),
-            active: enable_diagnostics,
+            active: true,
         }
     }
 }
@@ -106,7 +106,7 @@ impl DiagnosticsHandler {
     }
 
     pub fn show_cursorline_diagnostics(&self, doc: &Document, view: ViewId) -> bool {
-        if !self.active {
+        if !self.active.take() {
             return false;
         }
         let cursor_line = doc

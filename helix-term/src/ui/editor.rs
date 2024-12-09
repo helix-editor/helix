@@ -191,7 +191,11 @@ impl EditorView {
         }
         let config = doc.config.load();
 
-        if editor.config().enable_diagnostics {
+        // view.diagnostics_handler
+        //     .active
+        //     .set(config.enable_diagnostics);
+
+        if config.enable_diagnostics {
             let width = view.inner_width(doc);
             let enable_cursor_line = view
                 .diagnostics_handler
@@ -235,7 +239,7 @@ impl EditorView {
 
         if config.inline_diagnostics.disabled()
             && config.end_of_line_diagnostics == DiagnosticFilter::Disable
-            && editor.config().enable_diagnostics
+            && config.enable_diagnostics
         {
             Self::render_diagnostics(doc, view, inner, surface, theme);
         }
