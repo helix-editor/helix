@@ -3486,7 +3486,7 @@ fn open(cx: &mut Context, open: Open) {
             )
         };
 
-        let continue_comment_token = if doc.config.load().continue_comment {
+        let continue_comment_token = if doc.config.load().continue_comments {
             doc.language_config()
                 .and_then(|config| config.comment_tokens.as_ref())
                 .and_then(|tokens| comment::get_comment_token(text, tokens, cursor_line))
@@ -3968,7 +3968,7 @@ pub mod insert {
 
             let mut new_text = String::new();
 
-            let continue_comment_token = if doc.config.load().continue_comment {
+            let continue_comment_token = if doc.config.load().continue_comments {
                 doc.language_config()
                     .and_then(|config| config.comment_tokens.as_ref())
                     .and_then(|tokens| comment::get_comment_token(text, tokens, current_line))
