@@ -59,7 +59,7 @@ pub struct DiagnosticsHandler {
     generation: Cell<usize>,
     last_doc: Cell<DocumentId>,
     last_cursor_line: Cell<usize>,
-    pub active: Cell<bool>,
+    pub active: bool,
     pub events: Sender<DiagnosticEvent>,
 }
 
@@ -69,7 +69,7 @@ pub struct DiagnosticsHandler {
 // but to fix that larger architecutre changes are needed
 impl Clone for DiagnosticsHandler {
     fn clone(&self) -> Self {
-        Self::new(self.active.take())
+        Self::new(self.active)
     }
 }
 

@@ -17,9 +17,7 @@ pub(super) fn register_hooks(_handlers: &Handlers) {
     });
     register_hook!(move |event: &mut OnModeSwitch<'_, '_>| {
         for (view, _) in event.cx.editor.tree.views_mut() {
-            view.diagnostics_handler
-                .active
-                .set(event.new_mode != Mode::Insert);
+            view.diagnostics_handler.active = event.new_mode != Mode::Insert;
         }
         Ok(())
     });
