@@ -106,7 +106,7 @@ impl DiagnosticsHandler {
     }
 
     pub fn show_cursorline_diagnostics(&self, doc: &Document, view: ViewId) -> bool {
-        if !self.active.take() {
+        if !self.active || !doc.config.load().enable_diagnostics {
             return false;
         }
         let cursor_line = doc

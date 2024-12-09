@@ -189,11 +189,8 @@ impl EditorView {
                 primary_cursor,
             });
         }
-        let config = doc.config.load();
 
-        // view.diagnostics_handler
-        //     .active
-        //     .set(config.enable_diagnostics);
+        let config = doc.config.load();
 
         if config.enable_diagnostics {
             let width = view.inner_width(doc);
@@ -202,7 +199,6 @@ impl EditorView {
                 .show_cursorline_diagnostics(doc, view.id);
             let inline_diagnostic_config =
                 config.inline_diagnostics.prepare(width, enable_cursor_line);
-
             decorations.add_decoration(InlineDiagnostics::new(
                 doc,
                 theme,
