@@ -1746,7 +1746,7 @@ fn get_option(
         return Ok(());
     }
 
-    if args.count() != 1 {
+    if args.arg_count() != 1 {
         anyhow::bail!("Bad arguments. Usage: `:get key`");
     }
 
@@ -1847,12 +1847,14 @@ fn toggle_option(
         }
         Value::String(ref value) => {
             ensure!(
-                args.count() >= 2,
+                // key + arguments
+                args.arg_count() >= 3,
                 "Bad arguments. For string configurations use: `:toggle key val1 val2 ...`",
             );
 
             Value::String(
-                args.skip_while(|e| *e != value)
+                args.clone()
+                    .skip_while(|e| *e != value)
                     .nth(1)
                     .unwrap_or_else(|| args.nth(1).unwrap())
                     .to_string(),
@@ -1860,14 +1862,16 @@ fn toggle_option(
         }
         Value::Number(ref value) => {
             ensure!(
-                args.count() >= 2,
+                // key + arguments
+                args.arg_count() >= 3,
                 "Bad arguments. For number configurations use: `:toggle key val1 val2 ...`",
             );
 
             let value = value.to_string();
 
             Value::Number(
-                args.skip_while(|e| *e != value)
+                args.clone()
+                    .skip_while(|e| *e != value)
                     .nth(1)
                     .unwrap_or_else(|| args.nth(1).unwrap())
                     .parse()?,
@@ -1930,7 +1934,7 @@ fn language(
         return Ok(());
     }
 
-    if args.count() != 1 {
+    if args.arg_count() != 1 {
         anyhow::bail!("Bad arguments. Usage: `:set-language language`");
     }
 
@@ -2275,7 +2279,7 @@ fn clear_register(
     }
 
     ensure!(
-        args.count() <= 1,
+        args.arg_count() <= 1,
         ":clear-register takes at most 1 argument"
     );
 
@@ -2330,7 +2334,7 @@ fn move_buffer(
         return Ok(());
     }
 
-    ensure!(args.count() == 1, format!(":move takes one argument"));
+    ensure!(args.arg_count() == 1, format!(":move takes one argument"));
 
     let old_path = doc!(cx.editor)
         .path()
@@ -2394,7 +2398,7 @@ fn read(cx: &mut compositor::Context, mut args: Args, event: PromptEvent) -> any
     let (view, doc) = current!(cx.editor);
 
     ensure!(!args.is_empty(), "file name is expected");
-    ensure!(args.count() == 1, "only the file name is expected");
+    ensure!(args.arg_count() == 1, "only the file name is expected");
 
     let filename = args.next().unwrap();
     let path = PathBuf::from(filename);
@@ -3148,7 +3152,7 @@ pub(super) fn command_mode(cx: &mut Context) {
 fn argument_number_of(shellwords: &Shellwords) -> usize {
     shellwords
         .args()
-        .count()
+        .arg_count()
         .saturating_sub(1 - usize::from(shellwords.ends_with_whitespace()))
 }
 

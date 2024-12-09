@@ -112,20 +112,30 @@ impl<'a> Shellwords<'a> {
 /// An iterator over an input string which yields arguments.
 ///
 /// Splits on whitespace, but respects quoted substrings (using double quotes, single quotes, or backticks).
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct Args<'a> {
     input: &'a str,
     idx: usize,
     start: usize,
+    count: usize,
 }
 
 impl<'a> Args<'a> {
     #[inline]
     fn parse(input: &'a str) -> Self {
+        let count = Self {
+            input,
+            idx: 0,
+            start: 0,
+            count: 0,
+        }
+        .fold(0, |acc, _| acc + 1);
+
         Self {
             input,
             idx: 0,
             start: 0,
+            count,
         }
     }
 
@@ -166,6 +176,13 @@ impl<'a> Args<'a> {
         &self.input[self.idx..]
     }
 
+    /// Returns the number of arguments given in a command.
+    ///
+    /// This count is aware of all parsing rules for `Args`.
+    pub fn arg_count(&self) -> usize {
+        self.count
+    }
+
     /// Convenient function to return an empty `Args`.
     ///
     /// When used in any iteration, it will always return `None`.
@@ -175,11 +192,11 @@ impl<'a> Args<'a> {
             input: "",
             idx: 0,
             start: 0,
+            count: 0,
         }
     }
 }
 
-#[allow(clippy::copy_iterator)]
 impl<'a> Iterator for Args<'a> {
     type Item = &'a str;
 
@@ -300,6 +317,13 @@ impl<'a> Iterator for Args<'a> {
 
         // All args have been parsed.
         None
+    }
+
+    fn count(self) -> usize
+    where
+        Self: Sized,
+    {
+        panic!("use `arg_count` instead to get the number of arguments.");
     }
 }
 
