@@ -69,13 +69,13 @@ pub struct DiagnosticsHandler {
 // but to fix that larger architecutre changes are needed
 impl Clone for DiagnosticsHandler {
     fn clone(&self) -> Self {
-        Self::new()
+        Self::new(self.active)
     }
 }
 
 impl DiagnosticsHandler {
     #[allow(clippy::new_without_default)]
-    pub fn new() -> Self {
+    pub fn new(enable_diagnostics: bool) -> Self {
         let active_generation = Arc::new(AtomicUsize::new(0));
         let events = DiagnosticTimeout {
             active_generation: active_generation.clone(),
@@ -88,7 +88,7 @@ impl DiagnosticsHandler {
             events,
             last_doc: Cell::new(DocumentId(NonZeroUsize::new(usize::MAX).unwrap())),
             last_cursor_line: Cell::new(usize::MAX),
-            active: true,
+            active: enable_diagnostics,
         }
     }
 }
@@ -103,10 +103,6 @@ impl DiagnosticsHandler {
         self.last_cursor_line.set(cursor_line);
         self.active_generation
             .store(self.generation.get(), atomic::Ordering::Relaxed);
-    }
-
-    pub fn toggle_active(&mut self) {
-        self.active = !self.active;
     }
 
     pub fn show_cursorline_diagnostics(&self, doc: &Document, view: ViewId) -> bool {

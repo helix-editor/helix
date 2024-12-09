@@ -168,7 +168,7 @@ impl fmt::Debug for View {
 }
 
 impl View {
-    pub fn new(doc: DocumentId, gutters: GutterConfig) -> Self {
+    pub fn new(doc: DocumentId, gutters: GutterConfig, enable_diagnostics: bool) -> Self {
         Self {
             id: ViewId::default(),
             doc,
@@ -179,7 +179,7 @@ impl View {
             object_selections: Vec::new(),
             gutters,
             doc_revisions: HashMap::new(),
-            diagnostics_handler: DiagnosticsHandler::new(),
+            diagnostics_handler: DiagnosticsHandler::new(enable_diagnostics),
         }
     }
 
@@ -695,7 +695,7 @@ mod tests {
 
     #[test]
     fn test_text_pos_at_screen_coords() {
-        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        let mut view = View::new(DocumentId::default(), GutterConfig::default(), true);
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
         let mut doc = Document::from(
@@ -870,6 +870,7 @@ mod tests {
                 layout: vec![GutterType::Diagnostics],
                 line_numbers: GutterLineNumbersConfig::default(),
             },
+            true,
         );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
@@ -900,6 +901,7 @@ mod tests {
                 layout: vec![],
                 line_numbers: GutterLineNumbersConfig::default(),
             },
+            true,
         );
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("abc\n\tdef");
@@ -924,7 +926,7 @@ mod tests {
 
     #[test]
     fn test_text_pos_at_screen_coords_cjk() {
-        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        let mut view = View::new(DocumentId::default(), GutterConfig::default(), true);
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hi! こんにちは皆さん");
         let mut doc = Document::from(
@@ -1008,7 +1010,7 @@ mod tests {
 
     #[test]
     fn test_text_pos_at_screen_coords_graphemes() {
-        let mut view = View::new(DocumentId::default(), GutterConfig::default());
+        let mut view = View::new(DocumentId::default(), GutterConfig::default(), true);
         view.area = Rect::new(40, 40, 40, 40);
         let rope = Rope::from_str("Hèl̀l̀ò world!");
         let mut doc = Document::from(

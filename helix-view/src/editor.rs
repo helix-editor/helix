@@ -350,6 +350,7 @@ pub struct Config {
         deserialize_with = "deserialize_alphabet"
     )]
     pub jump_label_alphabet: Vec<char>,
+    pub enable_diagnostics: bool,
     /// Display diagnostic below the line they occur.
     pub inline_diagnostics: InlineDiagnosticsConfig,
     pub end_of_line_diagnostics: DiagnosticFilter,
@@ -992,6 +993,7 @@ impl Default for Config {
             popup_border: PopupBorderConfig::None,
             indent_heuristic: IndentationHeuristic::default(),
             jump_label_alphabet: ('a'..='z').collect(),
+            enable_diagnostics: true,
             inline_diagnostics: InlineDiagnosticsConfig::default(),
             end_of_line_diagnostics: DiagnosticFilter::Disable,
             clipboard_provider: ClipboardProvider::default(),
@@ -1048,8 +1050,6 @@ pub struct Editor {
     pub debugger: Option<dap::Client>,
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
     pub breakpoints: HashMap<PathBuf, Vec<Breakpoint>>,
-
-    pub show_diagnostics: bool,
 
     pub syn_loader: Arc<ArcSwap<syntax::Loader>>,
     pub theme_loader: Arc<theme::Loader>,
@@ -1197,7 +1197,6 @@ impl Editor {
             breakpoints: HashMap::new(),
             syn_loader,
             theme_loader,
-            show_diagnostics: true,
             last_theme: None,
             last_selection: None,
             registers: Registers::new(Box::new(arc_swap::access::Map::new(
@@ -1329,10 +1328,6 @@ impl Editor {
 
     pub fn set_theme(&mut self, theme: Theme) {
         self.set_theme_impl(theme, ThemeAction::Set);
-    }
-
-    pub fn toggle_diagnostics(&mut self) {
-        self.show_diagnostics = !self.show_diagnostics;
     }
 
     fn set_theme_impl(&mut self, theme: Theme, preview: ThemeAction) {
@@ -1659,7 +1654,13 @@ impl Editor {
                     .try_get(self.tree.focus)
                     .filter(|v| id == v.doc) // Different Document
                     .cloned()
-                    .unwrap_or_else(|| View::new(id, self.config().gutters.clone()));
+                    .unwrap_or_else(|| {
+                        View::new(
+                            id,
+                            self.config().gutters.clone(),
+                            self.config().enable_diagnostics,
+                        )
+                    });
                 let view_id = self.tree.split(
                     view,
                     match action {
@@ -1833,7 +1834,11 @@ impl Editor {
                 .map(|(&doc_id, _)| doc_id)
                 .next()
                 .unwrap_or_else(|| self.new_document(Document::default(self.config.clone())));
-            let view = View::new(doc_id, self.config().gutters.clone());
+            let view = View::new(
+                doc_id,
+                self.config().gutters.clone(),
+                self.config().enable_diagnostics,
+            );
             let view_id = self.tree.insert(view);
             let doc = doc_mut!(self, &doc_id);
             doc.ensure_view_init(view_id);
