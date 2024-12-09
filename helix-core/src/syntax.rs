@@ -4,10 +4,10 @@ use crate::{
     auto_pairs::AutoPairs,
     chars::char_is_line_ending,
     diagnostic::Severity,
+    indent::MAX_INDENT,
     regex::Regex,
     transaction::{ChangeSet, Operation},
     RopeSlice, Tendril,
-    indent::MAX_INDENT,
 };
 
 use ahash::RandomState;
@@ -63,9 +63,10 @@ where
         if n > 0 && n <= MAX_INDENT.into() {
             Ok(n)
         } else {
-            Err(serde::de::Error::custom(
-                format!("tab width must be a value from 1 to {} inclusive", MAX_INDENT),
-            ))
+            Err(serde::de::Error::custom(format!(
+                "tab width must be a value from 1 to {} inclusive",
+                MAX_INDENT
+            )))
         }
     })
 }
