@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{collections::HashSet, fmt::Display};
 
 use crate::{
     graphemes::next_grapheme_boundary,
@@ -313,6 +313,249 @@ pub fn get_surround_pos(
     Ok(change_pos)
 }
 
+/// Test whether a character would be considered a valid character if it was used for either JSX, HTML or XML tags
+/// JSX tags may have `.` in them for scoping
+/// HTML tags may have `-` in them if it's a custom element
+/// Both JSX and HTML tags may have `_`
+fn is_valid_tagname_char(ch: char) -> bool {
+    ch.is_alphanumeric() || ch == '_' || ch == '-' || ch == '.'
+}
+
+/// Find the opening `<tag>` starting from `cursor_pos` and iterating until the beginning of the text.
+/// Returns the Range of the tag's name (excluding the `<` and `>` characters.)
+/// As well as the actual name of the tag
+/// Additionally, it returns the last position where it stopped searching.
+fn find_prev_tag(
+    text: RopeSlice,
+    mut cursor_pos: usize,
+    skip: usize,
+) -> Result<(Range, String, usize)> {
+    if cursor_pos == 0 || skip == 0 {
+        return Err(Error::RangeExceedsText);
+    }
+
+    let mut chars = text.chars_at(cursor_pos);
+
+    loop {
+        let prev_char = match chars.prev() {
+            Some(ch) => ch,
+            None => return Err(Error::PairNotFound),
+        };
+        cursor_pos -= 1;
+
+        if prev_char == '>' {
+            let mut possible_tag_name = String::new();
+            loop {
+                let current_char = match chars.prev() {
+                    Some(ch) => ch,
+                    None => return Err(Error::PairNotFound),
+                };
+                cursor_pos -= 1;
+                if current_char == '<' {
+                    let tag_name = possible_tag_name
+                        .chars()
+                        .rev()
+                        .take_while(|&ch| is_valid_tagname_char(ch))
+                        .collect::<String>();
+
+                    let range = Range::new(cursor_pos + 1, cursor_pos + tag_name.len() + 1);
+                    return Ok((range, tag_name, cursor_pos));
+                }
+                possible_tag_name.push(current_char);
+            }
+        }
+    }
+}
+
+/// Find the closing `</tag>` starting from `pos` and iterating the end of the text.
+/// Returns the Range of the tag's name (excluding the `</` and `>` characters.)
+/// As well as the actual name of the tag and where it last stopped searching.
+fn find_next_tag(
+    text: RopeSlice,
+    mut cursor_pos: usize,
+    skip: usize,
+) -> Result<(Range, String, usize)> {
+    if cursor_pos >= text.len_chars() || skip == 0 {
+        return Err(Error::RangeExceedsText);
+    }
+
+    let mut chars = text.chars_at(cursor_pos);
+
+    // look forward and find something that looks like a closing tag, e.g. <html> and extract it's name so we get "html"
+    loop {
+        let next_char = match chars.next() {
+            Some(ch) => ch,
+            None => return Err(Error::PairNotFound),
+        };
+        cursor_pos += 1;
+        if next_char == '<' {
+            let char_after_that = match chars.next() {
+                Some(ch) => ch,
+                None => return Err(Error::PairNotFound),
+            };
+            cursor_pos += 1;
+            if char_after_that == '/' {
+                let mut possible_tag_name = String::new();
+                loop {
+                    let current_char = match chars.next() {
+                        Some(ch) => ch,
+                        None => return Err(Error::PairNotFound),
+                    };
+                    cursor_pos += 1;
+                    if is_valid_tagname_char(current_char) {
+                        possible_tag_name.push(current_char);
+                    } else if current_char == '>' && possible_tag_name.len() != 0 {
+                        let range =
+                            Range::new(cursor_pos - possible_tag_name.len() - 1, cursor_pos - 1);
+
+                        return Ok((range, possible_tag_name, cursor_pos));
+                    } else {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Get the two sorted `Range`s corresponding to nth matching tags surrounding the cursor, as well as the name of the tags.
+fn find_nth_nearest_tag(
+    forward_text: RopeSlice,
+    cursor_pos: usize,
+    skip: usize,
+) -> Result<((Range, Range), String)> {
+    let backward_text = forward_text.clone();
+
+    let mut forward_tags = vec![];
+    let mut previous_forward_pos = cursor_pos;
+
+    /// the maximum length of chars we will search forward and backward to find the tags, provided we don't hit the end or the beginning of the document
+    const SEARCH_CHARS: usize = 2000;
+
+    while {
+        let is_within_offset = previous_forward_pos - cursor_pos < SEARCH_CHARS;
+        let is_within_bounds = previous_forward_pos < forward_text.len_chars();
+
+        is_within_offset && is_within_bounds
+    } {
+        match find_next_tag(forward_text, previous_forward_pos, skip) {
+            Ok((forward_tag_range, forward_tag_name, forward_search_idx)) => {
+                forward_tags.push((forward_tag_range, forward_tag_name));
+                previous_forward_pos = forward_search_idx;
+            }
+            Err(err) => match err {
+                Error::PairNotFound => {
+                    break;
+                }
+                other_error => {
+                    return Err(other_error);
+                }
+            },
+        }
+    }
+
+    let mut backward_tags = vec![];
+    let mut previous_backward_pos = cursor_pos;
+
+    while {
+        let is_within_offset = cursor_pos - previous_backward_pos < SEARCH_CHARS;
+        let is_within_bounds = previous_backward_pos > 0;
+
+        is_within_offset && is_within_bounds
+    } {
+        match find_prev_tag(backward_text, previous_backward_pos, skip) {
+            Ok((backward_tag_range, backward_tag_name, backward_search_idx)) => {
+                backward_tags.push((backward_tag_range, backward_tag_name));
+                previous_backward_pos = backward_search_idx;
+            }
+            Err(err) => match err {
+                Error::PairNotFound => {
+                    break;
+                }
+                other_error => {
+                    return Err(other_error);
+                }
+            },
+        }
+    }
+
+    // only consider the tags which are in both collections.
+    let backward_tag_names: HashSet<_> = backward_tags.iter().map(|(_, tag)| tag.clone()).collect();
+    let forward_tag_names: HashSet<_> = forward_tags.iter().map(|(_, tag)| tag.clone()).collect();
+
+    let common_tags: HashSet<_> = backward_tag_names
+        .intersection(&forward_tag_names)
+        .collect();
+
+    let backward_tags: Vec<_> = backward_tags
+        .into_iter()
+        .filter(|(_, tag)| common_tags.contains(tag))
+        .collect();
+
+    let forward_tags: Vec<_> = forward_tags
+        .into_iter()
+        .filter(|(_, tag)| common_tags.contains(tag))
+        .collect();
+
+    // improperly ordered tags such as <div> <span> </div> </span> are ignored completely
+    let matching_tags: Vec<((Range, String), (Range, String))> = forward_tags
+        .into_iter()
+        .zip(backward_tags)
+        .filter(|((_, forward_tag_name), (_, backward_tag_name))| {
+            forward_tag_name == backward_tag_name
+        })
+        .collect();
+
+    // If the count overflows past the highest available outer tag, e.g. user types 100 but we can only select up to 4 nestings of tags -- simply select the last one available
+    let access_index = if skip - 1 <= matching_tags.len() {
+        skip - 1
+    } else {
+        matching_tags.len() - 1
+    };
+
+    if let Some(nth_matching_tags) = matching_tags.into_iter().nth(access_index) {
+        let ((range_forward, tag_name), (range_backward, _tag_name)) = nth_matching_tags;
+
+        Ok(((range_backward, range_forward), tag_name))
+    } else {
+        Err(Error::PairNotFound)
+    }
+}
+
+/// Find position of surrounding <tag>s around every cursor as well as the tag's names.
+/// Returns Err if any positions overlap. Note that the positions are in a flat Vec.
+/// Use get_surround_pos_tag().chunks(2) to get matching pairs of surround positions.
+pub fn get_surround_pos_tag(
+    text: RopeSlice,
+    selection: &Selection,
+    skip: usize,
+) -> Result<Vec<(Range, String)>> {
+    let mut change_pos = vec![];
+
+    for &range in selection {
+        let cursor_pos = range.cursor(text);
+
+        let ((prev_tag, next_tag), tag_name) = find_nth_nearest_tag(text, cursor_pos, skip)?;
+
+        change_pos.push((prev_tag, tag_name.clone()));
+        change_pos.push((next_tag, tag_name));
+    }
+
+    // sort all ranges by their beginning
+    change_pos.sort_by(|&(a, _), (b, _)| a.from().cmp(&b.from()));
+
+    // if the end of any range exceeds beginning of the next range, there is an overlap
+    let has_overlaps = change_pos
+        .windows(2)
+        .any(|window| window[0].0.to() > window[1].0.from());
+
+    if has_overlaps {
+        Err(Error::CursorOverlap)
+    } else {
+        Ok(change_pos)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -445,9 +688,238 @@ mod test {
         )
     }
 
-    // Create a Rope and a matching Selection using a specification language.
-    // ^ is a single-point selection.
-    // _ is an expected index. These are returned as a Vec<usize> for use in assertions.
+    #[test]
+    fn test_find_surrounding_tag_simple() {
+        let (doc, selection, expectations) = rope_with_selections_and_expectations_tags(
+            "<html> test </html>",
+            " ____   ^     ____ ",
+            vec!["html"],
+        );
+
+        assert_eq!(
+            get_surround_pos_tag(doc.slice(..), &selection, 1),
+            expectations
+        );
+    }
+
+    #[test]
+    fn test_find_surrounding_tag_with_extra_closing_tag() {
+        let (doc, selection, expectations) = rope_with_selections_and_expectations_tags(
+            "<div> test </html> </div>",
+            " ___    ^            ___ ",
+            vec!["div"],
+        );
+
+        assert_eq!(
+            get_surround_pos_tag(doc.slice(..), &selection, 1),
+            expectations
+        );
+    }
+
+    #[test]
+    fn test_find_surrounding_tag_with_broken_tags() {
+        let (doc, selection, _) = rope_with_selections_and_expectations_tags(
+            "<span> <div> simple example </span> </html> </div>",
+            "                    ^                             ",
+            vec![],
+        );
+
+        assert_eq!(
+            get_surround_pos_tag(doc.slice(..), &selection, 1),
+            Err(Error::PairNotFound)
+        );
+    }
+
+    #[test]
+    fn test_find_surrounding_tag_with_many_tags() {
+        let (doc, selection, expectations) = rope_with_selections_and_expectations_tags(
+            "<span> <div><html>  simple example </div> </html> </span>",
+            " ____                      ^                        ____ ",
+            vec!["span"],
+        );
+
+        assert_eq!(
+            get_surround_pos_tag(doc.slice(..), &selection, 1),
+            expectations
+        );
+    }
+
+    #[test]
+    fn test_find_surrounding_tag_with_nth_tag_newline() {
+        let (doc, selection, expectations) = rope_with_selections_and_expectations_tags(
+            "<span> <div> test\n\n </div> </span>",
+            " ____         ^  \n\n          ____ ",
+            vec!["span"],
+        );
+
+        assert_eq!(
+            get_surround_pos_tag(doc.slice(..), &selection, 2),
+            expectations
+        );
+    }
+
+    #[test]
+    fn test_find_surrounding_tag_multiple_cursor() {
+        let (doc, selection, expectations) = rope_with_selections_and_expectations_tags(
+            "<span> <div> </div> </span>\n\n <b> <a>     </a> </b>",
+            " ____       ^         ____ \n\n  _       ^         _ ",
+            vec!["span", "b"],
+        );
+
+        assert_eq!(
+            get_surround_pos_tag(doc.slice(..), &selection, 2),
+            expectations
+        );
+    }
+
+    #[test]
+    fn test_find_surrounding_tag_empty_document() {
+        let (doc, selection, _) = rope_with_selections_and_expectations_tags(
+            " hello world, wonderful world! ",
+            "               ^               ",
+            vec![],
+        );
+
+        assert_eq!(
+            get_surround_pos_tag(doc.slice(..), &selection, 1),
+            Err(Error::PairNotFound)
+        );
+    }
+
+    #[test]
+    fn test_find_surrounding_tag_unclosed_tag() {
+        let (doc, selection, _) = rope_with_selections_and_expectations_tags(
+            "this is an <div> Unclosed tag",
+            " ^                           ",
+            vec![],
+        );
+
+        assert_eq!(
+            get_surround_pos_tag(doc.slice(..), &selection, 1),
+            Err(Error::PairNotFound)
+        );
+    }
+
+    #[test]
+    fn test_find_surrounding_tag_nested_with_partial_overlap() {
+        let (doc, selection, expectations) = rope_with_selections_and_expectations_tags(
+            "<div> <span> <p> Text </span> </p> </div>",
+            "       ____  ^          ____             ",
+            vec!["span"],
+        );
+
+        assert_eq!(
+            get_surround_pos_tag(doc.slice(..), &selection, 1),
+            expectations
+        );
+    }
+
+    #[test]
+    fn test_find_surrounding_tag_nested_same_tag_multiple_levels() {
+        let (doc, selection, _) = rope_with_selections_and_expectations_tags(
+            "<div> <div> <div> Nested </div> </div> </div>",
+            " ___      ^                              ___ ",
+            vec!["div"],
+        );
+
+        assert_eq!(
+            get_surround_pos_tag(doc.slice(..), &selection, 2),
+            Err(Error::PairNotFound)
+        );
+    }
+
+    #[test]
+    fn test_find_surrounding_tag_self_closing_tags_ignored() {
+        let (doc, selection, expectations) = rope_with_selections_and_expectations_tags(
+            "<div> <img /> <span> Text </span> </div>",
+            " ___             ^                  ___ ",
+            vec!["div"],
+        );
+
+        assert_eq!(
+            get_surround_pos_tag(doc.slice(..), &selection, 1),
+            expectations
+        );
+    }
+
+    #[test]
+    fn test_find_surrounding_tag_adjacent_tags() {
+        let (doc, selection, expectations) = rope_with_selections_and_expectations_tags(
+            "<div></div><span></span>",
+            " ___ ^ ___              ",
+            vec!["div"],
+        );
+
+        assert_eq!(
+            get_surround_pos_tag(doc.slice(..), &selection, 1),
+            expectations
+        );
+    }
+
+    /// Create a Rope and a matching Selection using a specification language.
+    /// ^ is a cursor position.
+    /// Continuous _ denote start and end of ranges. These are returned as (Range, Range)
+    /// for use within assertions.
+    fn rope_with_selections_and_expectations_tags(
+        text: &str,
+        spec: &str,
+        tag_names: Vec<&str>,
+    ) -> (Rope, Selection, Result<Vec<(Range, String)>>) {
+        if text.len() != spec.len() {
+            panic!("specification must match text length -- are newlines aligned?");
+        }
+
+        let selections: SmallVec<[Range; 1]> = spec
+            .match_indices('^')
+            .map(|(i, _)| Range::point(i))
+            .collect();
+
+        let mut tag_names = tag_names
+            .into_iter()
+            .flat_map(|tag_name| vec![tag_name, tag_name]);
+
+        let raw_ranges = spec
+            .char_indices()
+            .chain(std::iter::once((spec.len(), ' ')))
+            .fold(Vec::new(), |mut groups, (i, c)| {
+                match (groups.last_mut(), c) {
+                    (Some((_start, end)), '_') if *end + 1 == i => {
+                        // Extend current group
+                        *end = i;
+                    }
+                    (Some((_start, end)), '_') if *end < i => {
+                        // Start a new group after a gap
+                        groups.push((i, i));
+                    }
+                    (None, '_') => {
+                        // Start the first group
+                        groups.push((i, i));
+                    }
+                    _ => {} // Ignore non-underscore characters
+                }
+                groups
+            })
+            .into_iter();
+
+        let range_and_tags = raw_ranges
+            .map(|(anchor, head)| {
+                (
+                    Range::new(anchor, head + 1),
+                    String::from(tag_names.next().unwrap()),
+                )
+            })
+            .collect();
+
+        (
+            Rope::from(text),
+            Selection::new(selections, 0),
+            Ok(range_and_tags),
+        )
+    }
+
+    /// Create a Rope and a matching Selection using a specification language.
+    /// ^ is a single-point selection.
+    /// _ is an expected index. These are returned as a Vec<usize> for use in assertions.
     fn rope_with_selections_and_expectations(
         text: &str,
         spec: &str,
