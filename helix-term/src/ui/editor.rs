@@ -233,9 +233,9 @@ impl EditorView {
             }
         }
 
-        if config.inline_diagnostics.disabled()
+        if config.enable_diagnostics
+            && config.inline_diagnostics.disabled()
             && config.end_of_line_diagnostics == DiagnosticFilter::Disable
-            && config.enable_diagnostics
         {
             Self::render_diagnostics(doc, view, inner, surface, theme);
         }
