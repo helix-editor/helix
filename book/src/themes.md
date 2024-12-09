@@ -283,7 +283,6 @@ These scopes are used for theming the editor interface:
 | `ui.debug.active`                 | Indicator for the line at which debugging execution is paused at, found in the gutter          |
 | `ui.gutter`                       | Gutter                                                                                         |
 | `ui.gutter.selected`              | Gutter for the line the cursor is on                                                           |
-| `ui.highlight.frameline`          | Line at which debugging execution is paused at                                                 |
 | `ui.linenr`                       | Line numbers                                                                                   |
 | `ui.linenr.selected`              | Line number for the line the cursor is on                                                      |
 | `ui.statusline`                   | Statusline                                                                                     |
@@ -293,12 +292,13 @@ These scopes are used for theming the editor interface:
 | `ui.statusline.select`            | Statusline mode during select mode ([only if `editor.color-modes` is enabled][editor-section]) |
 | `ui.statusline.separator`         | Separator character in statusline                                                              |
 | `ui.bufferline`                   | Style for the buffer line                                                                      |
-| `ui.bufferline.active`            | Style for the active buffer in buffer line                                                        |
+| `ui.bufferline.active`            | Style for the active buffer in buffer line                                                     |
 | `ui.bufferline.background`        | Style for bufferline background                                                                |
 | `ui.popup`                        | Documentation popups (e.g. Space + k)                                                          |
 | `ui.popup.info`                   | Prompt for multiple key options                                                                |
-| `ui.picker.header`                | Column names in pickers with multiple columns                                                  |
-| `ui.picker.header.active`         | The column name in pickers with multiple columns where the cursor is entering into.            |
+| `ui.picker.header`                | Header row area in pickers with multiple columns                                               |
+| `ui.picker.header.column`         | Column names in pickers with multiple columns                                                  |
+| `ui.picker.header.column.active`  | The column name in pickers with multiple columns where the cursor is entering into.            |
 | `ui.window`                       | Borderlines separating splits                                                                  |
 | `ui.help`                         | Description box for commands                                                                   |
 | `ui.text`                         | Default text style, command prompts, popup text, etc.                                          |
@@ -309,8 +309,8 @@ These scopes are used for theming the editor interface:
 | `ui.virtual.whitespace`           | Visible whitespace characters                                                                  |
 | `ui.virtual.indent-guide`         | Vertical indent width guides                                                                   |
 | `ui.virtual.inlay-hint`           | Default style for inlay hints of all kinds                                                     |
-| `ui.virtual.inlay-hint.parameter` | Style for inlay hints of kind `parameter` (LSPs are not required to set a kind)                |
-| `ui.virtual.inlay-hint.type`      | Style for inlay hints of kind `type` (LSPs are not required to set a kind)                     |
+| `ui.virtual.inlay-hint.parameter` | Style for inlay hints of kind `parameter` (language servers are not required to set a kind)    |
+| `ui.virtual.inlay-hint.type`      | Style for inlay hints of kind `type` (language servers are not required to set a kind)         |
 | `ui.virtual.wrap`                 | Soft-wrap indicator (see the [`editor.soft-wrap` config][editor-section])                      |
 | `ui.virtual.jump-label`           | Style for virtual jump labels                                                                  |
 | `ui.menu`                         | Code and command completion menus                                                              |
@@ -319,6 +319,7 @@ These scopes are used for theming the editor interface:
 | `ui.selection`                    | For selections in the editing area                                                             |
 | `ui.selection.primary`            |                                                                                                |
 | `ui.highlight`                    | Highlighted lines in the picker preview                                                        |
+| `ui.highlight.frameline`          | Line at which debugging execution is paused at                                                 |
 | `ui.cursorline.primary`           | The line of the primary cursor ([if cursorline is enabled][editor-section])                    |
 | `ui.cursorline.secondary`         | The lines of any other cursors ([if cursorline is enabled][editor-section])                    |
 | `ui.cursorcolumn.primary`         | The column of the primary cursor ([if cursorcolumn is enabled][editor-section])                |

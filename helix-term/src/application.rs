@@ -35,7 +35,9 @@ use log::{debug, error, info, warn};
 use std::io::stdout;
 use std::{collections::btree_map::Entry, io::stdin, path::Path, sync::Arc};
 
-use anyhow::{Context, Error};
+#[cfg(not(windows))]
+use anyhow::Context;
+use anyhow::Error;
 
 use crossterm::{event::Event as CrosstermEvent, tty::IsTty};
 #[cfg(not(windows))]
@@ -173,7 +175,7 @@ impl Application {
                     nr_of_files += 1;
                     if file.is_dir() {
                         return Err(anyhow::anyhow!(
-                            "expected a path to file, found a directory. (to open a directory pass it as first argument)"
+                            "expected a path to file, but found a directory: {file:?}. (to open a directory pass it as first argument)"
                         ));
                     } else {
                         // If the user passes in either `--vsplit` or
@@ -187,6 +189,7 @@ impl Application {
                             Some(Layout::Horizontal) => Action::HorizontalSplit,
                             None => Action::Load,
                         };
+                        let old_id = editor.document_id_by_path(&file);
                         let doc_id = match editor.open(&file, action) {
                             // Ignore irregular files during application init.
                             Err(DocumentOpenError::IrregularFile) => {
@@ -194,6 +197,11 @@ impl Application {
                                 continue;
                             }
                             Err(err) => return Err(anyhow::anyhow!(err)),
+                            // We can't open more than 1 buffer for 1 file, in this case we already have opened this file previously
+                            Ok(doc_id) if old_id == Some(doc_id) => {
+                                nr_of_files -= 1;
+                                doc_id
+                            }
                             Ok(doc_id) => doc_id,
                         };
                         // with Action::Load all documents have the same view
@@ -395,9 +403,9 @@ impl Application {
 
         // reset view position in case softwrap was enabled/disabled
         let scrolloff = self.editor.config().scrolloff;
-        for (view, _) in self.editor.tree.views_mut() {
-            let doc = &self.editor.documents[&view.doc];
-            view.ensure_cursor_in_view(doc, scrolloff)
+        for (view, _) in self.editor.tree.views() {
+            let doc = doc_mut!(self.editor, &view.doc);
+            view.ensure_cursor_in_view(doc, scrolloff);
         }
     }
 
@@ -575,7 +583,7 @@ impl Application {
             doc_save_event.revision
         );
 
-        doc.set_last_saved_revision(doc_save_event.revision);
+        doc.set_last_saved_revision(doc_save_event.revision, doc_save_event.save_time);
 
         let lines = doc_save_event.text.len_lines();
         let bytes = doc_save_event.text.len_bytes();
@@ -844,7 +852,15 @@ impl Application {
                         }
                     }
                     Notification::ShowMessage(params) => {
-                        log::warn!("unhandled window/showMessage: {:?}", params);
+                        if self.config.load().editor.lsp.display_messages {
+                            match params.typ {
+                                lsp::MessageType::ERROR => self.editor.set_error(params.message),
+                                lsp::MessageType::WARNING => {
+                                    self.editor.set_warning(params.message)
+                                }
+                                _ => self.editor.set_status(params.message),
+                            }
+                        }
                     }
                     Notification::LogMessage(params) => {
                         log::info!("window/logMessage: {:?}", params);
@@ -928,7 +944,7 @@ impl Application {
                             self.lsp_progress.update(server_id, token, work);
                         }
 
-                        if self.config.load().editor.lsp.display_messages {
+                        if self.config.load().editor.lsp.display_progress_messages {
                             self.editor.set_status(status);
                         }
                     }

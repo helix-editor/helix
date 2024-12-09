@@ -26,6 +26,8 @@
 "ui.menu.selected" = { bg = "ui", fg = "tx" }
 "ui.debug" = { fg = "or", bg = "bg" }
 "ui.highlight.frameline" = { bg = "ye" }
+"ui.bufferline" = { fg = "tx-2", bg = "bg-2"}                      
+"ui.bufferline.active" = { fg = "ye", bg = "bg-2" }                          
 "diagnostic.hint" = { underline = { color = "bl", style = "curl" } }
 "diagnostic.info" = { underline = { color = "bl", style = "curl" } }
 "diagnostic.warning" = { underline = { color = "ye", style = "curl" } }
@@ -36,7 +38,6 @@
 "info" = { fg = "ye", modifiers = ["bold"] }
 "warning" = { fg = "or", modifiers = ["bold"] }
 "error" = { fg = "re", modifiers = ["bold"] }
-
 "attribute" = "ye"
 "type" = "ye"
 "constructor" = "gr"
@@ -62,7 +63,6 @@
 "function" = "or"
 "tag" = "bl"
 "namespace" = "re"
-
 "markup.heading" = "or"
 "markup.list" = "ye"
 "markup.bold" = { fg = "or", modifiers = ["bold"] }
@@ -87,6 +87,7 @@ ui-2 = "#DAD8CE"
 ui = "#E6E4D9"
 bg-2 = "#F2F0E5"
 bg = "#FFFCF0"
+
 
 re = "#AF3029"
 or = "#BC5215"

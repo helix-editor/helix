@@ -204,7 +204,7 @@ impl<'a> TreeCursor<'a> {
 
         self.injection_ranges[start_idx..]
             .iter()
-            .take_while(|range| range.start < end)
+            .take_while(|range| range.start < end || range.depth > 1)
             .find_map(|range| (range.start <= start).then_some(range.layer_id))
             .unwrap_or(self.root)
     }
@@ -217,7 +217,7 @@ impl<'a> TreeCursor<'a> {
 
     /// Returns an iterator over the children of the node the TreeCursor is on
     /// at the time this is called.
-    pub fn children(&'a mut self) -> ChildIter {
+    pub fn children(&'a mut self) -> ChildIter<'a> {
         let parent = self.node();
 
         ChildIter {
@@ -229,7 +229,7 @@ impl<'a> TreeCursor<'a> {
 
     /// Returns an iterator over the named children of the node the TreeCursor is on
     /// at the time this is called.
-    pub fn named_children(&'a mut self) -> ChildIter {
+    pub fn named_children(&'a mut self) -> ChildIter<'a> {
         let parent = self.node();
 
         ChildIter {

@@ -1,3 +1,5 @@
+# Author : portalsurfer <https://github.com/PORTALSURFER>
+
 inherits = "hex_steel"
 
 [palette]
@@ -19,12 +21,21 @@ highlight_three = "#f8ed8b"
 
 black = "#000000"
 
-selection = "#382e1e"
+selection = "#b10656"
+selection_fg = "#101719"
 
-comment = "#61bdd1"
+comment = "#417e8c"
 comment_doc = "#234048"
 
 error = "#ff0900"
 warning = "#ffbf00"
 display = "#57ff89"
 info = "#dad7d5"
+
+hints = "#39515c"
+ruler  = "#1e3039"
+
+diff_minus = "#ff4000"
+diff_delta = "#0078bd"
+diff_plus = "#c9d400"
+diff_delta_moved = "#0048bd"
