@@ -4286,6 +4286,12 @@ fn yank_joined_impl(editor: &mut Editor, separator: &str, register: char) {
     let (view, doc) = current!(editor);
     let text = doc.text().slice(..);
 
+    let separator = if separator.is_empty() {
+        doc.line_ending.as_str()
+    } else {
+        separator
+    };
+
     let selection = doc.selection(view.id);
     let selections = selection.len();
     let joined = selection
