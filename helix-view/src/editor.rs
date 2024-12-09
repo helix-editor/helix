@@ -1649,15 +1649,12 @@ impl Editor {
             }
             Action::HorizontalSplit | Action::VerticalSplit => {
                 // copy the current view, unless there is no view yet
-                let config = self.config();
-                let gutters = config.gutters.clone();
-                let enable_diagnostics = config.enable_diagnostics;
                 let view = self
                     .tree
                     .try_get(self.tree.focus)
                     .filter(|v| id == v.doc) // Different Document
                     .cloned()
-                    .unwrap_or_else(|| View::new(id, gutters, enable_diagnostics));
+                    .unwrap_or_else(|| View::new(id, self.config().gutters.clone()));
                 let view_id = self.tree.split(
                     view,
                     match action {
@@ -1831,11 +1828,7 @@ impl Editor {
                 .map(|(&doc_id, _)| doc_id)
                 .next()
                 .unwrap_or_else(|| self.new_document(Document::default(self.config.clone())));
-            let view = View::new(
-                doc_id,
-                self.config().gutters.clone(),
-                self.config().enable_diagnostics,
-            );
+            let view = View::new(doc_id, self.config().gutters.clone());
             let view_id = self.tree.insert(view);
             let doc = doc_mut!(self, &doc_id);
             doc.ensure_view_init(view_id);

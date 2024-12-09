@@ -69,13 +69,13 @@ pub struct DiagnosticsHandler {
 // but to fix that larger architecutre changes are needed
 impl Clone for DiagnosticsHandler {
     fn clone(&self) -> Self {
-        Self::new(self.active)
+        Self::new()
     }
 }
 
 impl DiagnosticsHandler {
     #[allow(clippy::new_without_default)]
-    pub fn new(enable_diagnostics: bool) -> Self {
+    pub fn new() -> Self {
         let active_generation = Arc::new(AtomicUsize::new(0));
         let events = DiagnosticTimeout {
             active_generation: active_generation.clone(),
