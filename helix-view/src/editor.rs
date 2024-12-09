@@ -304,6 +304,9 @@ pub struct Config {
     /// Whether to instruct the LSP to replace the entire word when applying a completion
     /// or to only insert new text
     pub completion_replace: bool,
+    /// `true` if helix should automatically add a line comment token if you're currently in a comment
+    /// and press `enter`.
+    pub continue_comments: bool,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
@@ -985,6 +988,7 @@ impl Default for Config {
             },
             text_width: 80,
             completion_replace: false,
+            continue_comments: true,
             workspace_lsp_roots: Vec::new(),
             default_line_ending: LineEndingConfig::default(),
             insert_final_newline: true,

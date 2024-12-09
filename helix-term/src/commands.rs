@@ -3486,10 +3486,13 @@ fn open(cx: &mut Context, open: Open) {
             )
         };
 
-        let continue_comment_token = doc
-            .language_config()
-            .and_then(|config| config.comment_tokens.as_ref())
-            .and_then(|tokens| comment::get_comment_token(text, tokens, cursor_line));
+        let continue_comment_token = if doc.config.load().continue_comments {
+            doc.language_config()
+                .and_then(|config| config.comment_tokens.as_ref())
+                .and_then(|tokens| comment::get_comment_token(text, tokens, cursor_line))
+        } else {
+            None
+        };
 
         let line = text.line(cursor_line);
         let indent = match line.first_non_whitespace_char() {
@@ -3965,10 +3968,13 @@ pub mod insert {
 
             let mut new_text = String::new();
 
-            let continue_comment_token = doc
-                .language_config()
-                .and_then(|config| config.comment_tokens.as_ref())
-                .and_then(|tokens| comment::get_comment_token(text, tokens, current_line));
+            let continue_comment_token = if doc.config.load().continue_comments {
+                doc.language_config()
+                    .and_then(|config| config.comment_tokens.as_ref())
+                    .and_then(|tokens| comment::get_comment_token(text, tokens, current_line))
+            } else {
+                None
+            };
 
             let (from, to, local_offs) = if let Some(idx) =
                 text.slice(line_start..pos).last_non_whitespace_char()
