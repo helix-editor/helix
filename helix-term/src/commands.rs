@@ -3474,10 +3474,13 @@ fn open(cx: &mut Context, open: Open) {
 
         let above_next_new_line_num = next_new_line_num.saturating_sub(1);
 
-        let continue_comment_token = doc
-            .language_config()
-            .and_then(|config| config.comment_tokens.as_ref())
-            .and_then(|tokens| comment::get_comment_token(text, tokens, curr_line_num));
+        let continue_comment_token = if doc.config.load().continue_comments {
+            doc.language_config()
+                .and_then(|config| config.comment_tokens.as_ref())
+                .and_then(|tokens| comment::get_comment_token(text, tokens, curr_line_num))
+        } else {
+            None
+        };
 
         // Index to insert newlines after, as well as the char width
         // to use to compensate for those inserted newlines.
@@ -3976,10 +3979,13 @@ pub mod insert {
 
             let mut new_text = String::new();
 
-            let continue_comment_token = doc
-                .language_config()
-                .and_then(|config| config.comment_tokens.as_ref())
-                .and_then(|tokens| comment::get_comment_token(text, tokens, current_line));
+            let continue_comment_token = if doc.config.load().continue_comments {
+                doc.language_config()
+                    .and_then(|config| config.comment_tokens.as_ref())
+                    .and_then(|tokens| comment::get_comment_token(text, tokens, current_line))
+            } else {
+                None
+            };
 
             let (from, to, local_offs) = if let Some(idx) =
                 text.slice(line_start..pos).last_non_whitespace_char()

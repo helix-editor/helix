@@ -304,6 +304,9 @@ pub struct Config {
     /// Whether to instruct the LSP to replace the entire word when applying a completion
     /// or to only insert new text
     pub completion_replace: bool,
+    /// `true` if helix should automatically add a line comment token if you're currently in a comment
+    /// and press `enter`.
+    pub continue_comments: bool,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
@@ -985,6 +988,7 @@ impl Default for Config {
             },
             text_width: 80,
             completion_replace: false,
+            continue_comments: true,
             workspace_lsp_roots: Vec::new(),
             default_line_ending: LineEndingConfig::default(),
             insert_final_newline: true,
@@ -1718,10 +1722,14 @@ impl Editor {
         Ok(doc_id)
     }
 
+    pub fn document_id_by_path(&self, path: &Path) -> Option<DocumentId> {
+        self.document_by_path(path).map(|doc| doc.id)
+    }
+
     // ??? possible use for integration tests
     pub fn open(&mut self, path: &Path, action: Action) -> Result<DocumentId, DocumentOpenError> {
         let path = helix_stdx::path::canonicalize(path);
-        let id = self.document_by_path(&path).map(|doc| doc.id);
+        let id = self.document_id_by_path(&path);
 
         let id = if let Some(id) = id {
             id
