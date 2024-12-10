@@ -270,10 +270,11 @@ pub mod completers {
     use helix_core::fuzzy::fuzzy_match;
     use helix_core::syntax::LanguageServerFeature;
     use helix_view::document::SCRATCH_BUFFER_NAME;
-    use helix_view::theme;
+    use helix_view::theme::{self};
     use helix_view::{editor::Config, Editor};
     use once_cell::sync::Lazy;
     use std::borrow::Cow;
+    use tui::text::Span;
 
     pub type Completer = fn(&Editor, &str) -> Vec<Completion>;
 
@@ -290,7 +291,7 @@ pub mod completers {
 
         fuzzy_match(input, names, true)
             .into_iter()
-            .map(|(name, _)| ((0..), name))
+            .map(|(name, _)| ((0..), Span::raw(name)))
             .collect()
     }
 
@@ -306,7 +307,7 @@ pub mod completers {
 
         fuzzy_match(input, names, false)
             .into_iter()
-            .map(|(name, _)| ((0..), name.into()))
+            .map(|(name, _)| ((0..), Span::raw(name)))
             .collect()
     }
 
@@ -336,7 +337,7 @@ pub mod completers {
 
         fuzzy_match(input, &*KEYS, false)
             .into_iter()
-            .map(|(name, _)| ((0..), name.into()))
+            .map(|(name, _)| ((0..), Span::raw(name)))
             .collect()
     }
 
@@ -371,7 +372,7 @@ pub mod completers {
 
         fuzzy_match(input, language_ids, false)
             .into_iter()
-            .map(|(name, _)| ((0..), name.to_owned().into()))
+            .map(|(name, _)| ((0..), Span::raw(name.to_owned())))
             .collect()
     }
 
@@ -387,7 +388,7 @@ pub mod completers {
 
         fuzzy_match(input, commands, false)
             .into_iter()
-            .map(|(name, _)| ((0..), name.to_owned().into()))
+            .map(|(name, _)| ((0..), Span::raw(name.to_owned())))
             .collect()
     }
 
@@ -424,7 +425,7 @@ pub mod completers {
 
     // TODO: we could return an iter/lazy thing so it can fetch as many as it needs.
     fn filename_impl<F>(
-        _editor: &Editor,
+        editor: &Editor,
         input: &str,
         git_ignore: bool,
         filter_fn: F,
@@ -506,18 +507,31 @@ pub mod completers {
             }) // TODO: unwrap or skip
             .filter(|path| !path.is_empty());
 
+        // TODO: use a custom theme key e.g. "ui.text.directory"
+        let directory_color = editor.theme.get("function");
+
+        let style_from_file = |file: Cow<'static, str>| {
+            if file.ends_with(std::path::MAIN_SEPARATOR) {
+                Span::styled(file, directory_color)
+            } else {
+                Span::raw(file)
+            }
+        };
+
         // if empty, return a list of dirs and files in current dir
         if let Some(file_name) = file_name {
             let range = (input.len().saturating_sub(file_name.len()))..;
             fuzzy_match(&file_name, files, true)
                 .into_iter()
-                .map(|(name, _)| (range.clone(), name))
+                .map(|(name, _)| (range.clone(), style_from_file(name)))
                 .collect()
 
             // TODO: complete to longest common match
         } else {
-            let mut files: Vec<_> = files.map(|file| (end.clone(), file)).collect();
-            files.sort_unstable_by(|(_, path1), (_, path2)| path1.cmp(path2));
+            let mut files: Vec<_> = files
+                .map(|file| (end.clone(), style_from_file(file)))
+                .collect();
+            files.sort_unstable_by(|(_, path1), (_, path2)| path1.content.cmp(&path2.content));
             files
         }
     }
@@ -532,7 +546,7 @@ pub mod completers {
 
         fuzzy_match(input, iter, false)
             .into_iter()
-            .map(|(name, _)| ((0..), name.into()))
+            .map(|(name, _)| ((0..), Span::raw(name)))
             .collect()
     }
 }
