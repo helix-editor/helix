@@ -30,6 +30,7 @@ pub use text::Text;
 
 use helix_view::Editor;
 
+use std::path::Path;
 use std::{error::Error, path::PathBuf};
 
 pub fn prompt(
@@ -263,6 +264,76 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         });
     }
     picker
+}
+
+pub fn file_browser(root: PathBuf) -> Result<FilePicker, std::io::Error> {
+    let root = helix_stdx::path::canonicalize(root);
+    let directory_content = directory_content(&root)?;
+
+    let columns = [PickerColumn::new(
+        "path",
+        |item: &PathBuf, root: &PathBuf| {
+            let name = item.strip_prefix(root).unwrap_or(item).to_string_lossy();
+            if item.is_dir() {
+                format!("{}/", name).into()
+            } else {
+                name.into()
+            }
+        },
+    )];
+    let picker = Picker::new(
+        columns,
+        0,
+        directory_content,
+        root,
+        move |cx, path: &PathBuf, action| {
+            if path.is_dir() {
+                let owned_path = path.clone();
+                let callback = Box::pin(async move {
+                    let call: Callback =
+                        Callback::EditorCompositor(Box::new(move |_editor, compositor| {
+                            if let Ok(picker) = file_browser(owned_path) {
+                                compositor.push(Box::new(overlay::overlaid(picker)));
+                            }
+                        }));
+                    Ok(call)
+                });
+                cx.jobs.callback(callback);
+            } else if let Err(e) = cx.editor.open(path, action) {
+                let err = if let Some(err) = e.source() {
+                    format!("{}", err)
+                } else {
+                    format!("unable to open \"{}\"", path.display())
+                };
+                cx.editor.set_error(err);
+            }
+        },
+    )
+    .with_preview(|_editor, path| Some((path.as_path().into(), None)));
+
+    Ok(picker)
+}
+
+fn directory_content(path: &Path) -> Result<Vec<PathBuf>, std::io::Error> {
+    let mut dirs = Vec::new();
+    let mut files = Vec::new();
+    for entry in std::fs::read_dir(path)?.flatten() {
+        if entry.path().is_dir() {
+            dirs.push(entry.path());
+        } else {
+            files.push(entry.path());
+        }
+    }
+    dirs.sort();
+    files.sort();
+
+    let mut content = Vec::new();
+    if path.parent().is_some() {
+        content.insert(0, path.join(".."));
+    }
+    content.extend(dirs);
+    content.extend(files);
+    Ok(content)
 }
 
 pub mod completers {
