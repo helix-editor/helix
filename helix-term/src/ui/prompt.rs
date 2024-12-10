@@ -5,9 +5,11 @@ use helix_core::syntax;
 use helix_view::document::Mode;
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;
+use helix_view::theme::Style;
 use std::sync::Arc;
 use std::{borrow::Cow, ops::RangeFrom};
 use tui::buffer::Buffer as Surface;
+use tui::text::Span;
 use tui::widgets::{Block, Widget};
 
 use helix_core::{
@@ -19,7 +21,8 @@ use helix_view::{
 };
 
 type PromptCharHandler = Box<dyn Fn(&mut Prompt, char, &Context)>;
-pub type Completion = (RangeFrom<usize>, Cow<'static, str>);
+
+pub type Completion = (RangeFrom<usize>, Span<'static>);
 type CompletionFn = Box<dyn FnMut(&Editor, &str) -> Vec<Completion>>;
 type CallbackFn = Box<dyn FnMut(&mut Context, &str, PromptEvent)>;
 pub type DocFn = Box<dyn Fn(&str) -> Option<Cow<str>>>;
@@ -382,7 +385,7 @@ impl Prompt {
 
         let (range, item) = &self.completion[index];
 
-        self.line.replace_range(range.clone(), item);
+        self.line.replace_range(range.clone(), &item.content);
 
         self.move_end();
     }
@@ -398,7 +401,7 @@ impl Prompt {
     pub fn render_prompt(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let theme = &cx.editor.theme;
         let prompt_color = theme.get("ui.text");
-        let completion_color = theme.get("ui.menu");
+        let default_completion_color = theme.get("ui.menu");
         let selected_color = theme.get("ui.menu.selected");
         let suggestion_color = theme.get("ui.text.inactive");
         let background = theme.get("ui.background");
@@ -407,7 +410,7 @@ impl Prompt {
         let max_len = self
             .completion
             .iter()
-            .map(|(_, completion)| completion.len() as u16)
+            .map(|(_, completion)| completion.content.len() as u16)
             .max()
             .unwrap_or(BASE_WIDTH)
             .max(BASE_WIDTH);
@@ -446,18 +449,25 @@ impl Prompt {
             for (i, (_range, completion)) in
                 self.completion.iter().enumerate().skip(offset).take(items)
             {
-                let color = if Some(i) == self.selection {
-                    selected_color // TODO: just invert bg
+                let is_selected = Some(i) == self.selection;
+                let has_custom_style = completion.style != Style::default();
+
+                let completion_item_style = if is_selected {
+                    selected_color
+                } else if has_custom_style {
+                    completion.style
                 } else {
-                    completion_color
+                    default_completion_color
                 };
+
                 surface.set_stringn(
                     area.x + col * (1 + col_width),
                     area.y + row,
-                    completion,
+                    &completion.content,
                     col_width.saturating_sub(1) as usize,
-                    color,
+                    completion_item_style,
                 );
+
                 row += 1;
                 if row > area.height - 1 {
                     row = 0;
@@ -654,7 +664,7 @@ impl Component for Prompt {
                     .editor
                     .registers
                     .iter_preview()
-                    .map(|(ch, preview)| (0.., format!("{} {}", ch, &preview).into()))
+                    .map(|(ch, preview)| (0.., Span::raw(format!("{} {}", ch, &preview))))
                     .collect();
                 self.next_char_handler = Some(Box::new(|prompt, c, context| {
                     prompt.insert_str(
