@@ -11,6 +11,7 @@ pub enum CharCategory {
     Unknown,
 }
 
+/// Determine whether a character is a line ending, whitespace, a "word" character, a punctuation or unknown
 #[inline]
 pub fn categorize_char(ch: char) -> CharCategory {
     if char_is_line_ending(ch) {
@@ -30,6 +31,12 @@ pub fn categorize_char(ch: char) -> CharCategory {
 #[inline]
 pub fn char_is_line_ending(ch: char) -> bool {
     LineEnding::from_char(ch).is_some()
+}
+
+/// Determine whether a character is a subword text object delimiter.
+#[inline]
+pub fn char_is_subword_textobj_delimiter(ch: char) -> bool {
+    ch == '_' || ch == '-' || ch == '/'
 }
 
 /// Determine whether a character qualifies as (non-line-break)
