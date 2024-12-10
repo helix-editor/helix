@@ -1,3 +1,5 @@
+; inherits: c
+
 ; Functions
 
 ; These casts are parsed as function calls, but are not.
@@ -132,5 +134,3 @@
 ; Strings
 
 (raw_string_literal) @string
-
-; inherits: c
