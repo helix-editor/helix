@@ -1,3 +1,5 @@
+mod variable_expansion;
+
 use crate::{
     annotations::diagnostics::{DiagnosticFilter, InlineDiagnosticsConfig},
     clipboard::ClipboardProvider,

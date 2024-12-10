@@ -424,7 +424,7 @@ pub mod completers {
 
     // TODO: we could return an iter/lazy thing so it can fetch as many as it needs.
     fn filename_impl<F>(
-        _editor: &Editor,
+        editor: &Editor,
         input: &str,
         git_ignore: bool,
         filter_fn: F,
@@ -438,7 +438,13 @@ pub mod completers {
         use std::path::Path;
 
         let is_tilde = input == "~";
-        let path = helix_stdx::path::expand_tilde(Path::new(input));
+        let path = editor
+            .expand_variable_in_string(input, false)
+            .map_or(input.to_string(), |expanded_input| {
+                expanded_input.into_owned()
+            });
+
+        let path = helix_stdx::path::expand_tilde(Path::new(path.as_str()));
 
         let (dir, file_name) = if input.ends_with(std::path::MAIN_SEPARATOR) {
             (path, None)
