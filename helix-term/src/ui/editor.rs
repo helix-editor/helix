@@ -1332,6 +1332,7 @@ impl Component for EditorView {
         };
 
         match event {
+            Event::Noop => EventResult::Consumed(None),
             Event::Paste(contents) => {
                 self.handle_non_key_input(&mut cx);
                 cx.count = cx.editor.count;

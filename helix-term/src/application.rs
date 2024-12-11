@@ -642,6 +642,16 @@ impl Application {
         };
         // Handle key events
         let should_redraw = match event.unwrap() {
+            CrosstermEvent::OscString(osc_string) => {
+                if let Some(color_string) = osc_string.strip_prefix(b"11;") {
+                    if let Some(color) = terminal_colorsaurus::parse::xparsecolor(color_string) {
+                        let is_light = color.perceived_lightness() >= 50;
+                        self.editor.set_status(format!("is_light = {}", is_light))
+                    }
+                }
+
+                true
+            }
             CrosstermEvent::Resize(width, height) => {
                 self.terminal
                     .resize(Rect::new(0, 0, width, height))

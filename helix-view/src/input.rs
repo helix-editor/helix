@@ -15,6 +15,7 @@ pub enum Event {
     Paste(String),
     Resize(u16, u16),
     IdleTimeout,
+    Noop,
 }
 
 #[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Copy, Hash)]
@@ -441,6 +442,7 @@ impl From<crossterm::event::Event> for Event {
             crossterm::event::Event::FocusGained => Self::FocusGained,
             crossterm::event::Event::FocusLost => Self::FocusLost,
             crossterm::event::Event::Paste(s) => Self::Paste(s),
+            crossterm::event::Event::OscString(_s) => Self::Noop,
         }
     }
 }

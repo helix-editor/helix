@@ -52,3 +52,7 @@ repository = "https://github.com/helix-editor/helix"
 homepage = "https://helix-editor.com"
 license = "MPL-2.0"
 rust-version = "1.76"
+
+[patch.crates-io]
+crossterm = { git = "https://github.com/bash/crossterm", branch = "parse-osc" }
+terminal-colorsaurus = { git = "https://github.com/bash/terminal-colorsaurus", branch = "parse-utils" }
