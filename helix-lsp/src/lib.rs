@@ -10,6 +10,7 @@ pub use client::Client;
 pub use futures_executor::block_on;
 pub use helix_lsp_types as lsp;
 pub use jsonrpc::Call;
+use lsp::request::Request;
 pub use lsp::{Position, Url};
 
 use futures_util::stream::select_all::SelectAll;
@@ -565,11 +566,11 @@ pub enum MethodCall {
     RegisterCapability(lsp::RegistrationParams),
     UnregisterCapability(lsp::UnregistrationParams),
     ShowDocument(lsp::ShowDocumentParams),
+    WorkspaceDiagnosticRefresh,
 }
 
 impl MethodCall {
     pub fn parse(method: &str, params: jsonrpc::Params) -> Result<MethodCall> {
-        use lsp::request::Request;
         let request = match method {
             lsp::request::WorkDoneProgressCreate::METHOD => {
                 let params: lsp::WorkDoneProgressCreateParams = params.parse()?;
@@ -596,6 +597,7 @@ impl MethodCall {
                 let params: lsp::ShowDocumentParams = params.parse()?;
                 Self::ShowDocument(params)
             }
+            lsp::request::WorkspaceDiagnosticRefresh::METHOD => Self::WorkspaceDiagnosticRefresh,
             _ => {
                 return Err(Error::Unhandled);
             }
