@@ -215,8 +215,8 @@ impl EditorView {
         );
         Self::render_rulers(editor, doc, view, inner, surface, theme);
 
-        // if we're not at the edge of the screen, draw a right border
-        if viewport.right() != view.area.right() {
+        // if we're not at the edge of the screen or zoomed, draw a right border
+        if viewport.right() != view.area.right() && !editor.tree.zoom {
             let x = area.right();
             let border_style = theme.get("ui.window");
             for y in area.top()..area.bottom() {
@@ -1501,8 +1501,10 @@ impl Component for EditorView {
         }
 
         for (view, is_focused) in cx.editor.tree.views() {
-            let doc = cx.editor.document(view.doc).unwrap();
-            self.render_view(cx.editor, doc, view, area, surface, is_focused);
+            if !cx.editor.tree.zoom || is_focused {
+                let doc = cx.editor.document(view.doc).unwrap();
+                self.render_view(cx.editor, doc, view, area, surface, is_focused);
+            }
         }
 
         if config.auto_info {

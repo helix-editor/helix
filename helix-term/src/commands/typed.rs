@@ -2528,6 +2528,32 @@ fn read(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     Ok(())
 }
 
+fn set_max_width(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let Some(width) = args.first() else {
+        bail!(":set-max-width takes one argument")
+    };
+    let width = width.parse()?;
+    cx.editor.tree.max_width = width;
+    cx.editor.tree.recalculate();
+
+    if width == 0 {
+        cx.editor.set_status("Unset maximum width");
+    } else {
+        cx.editor
+            .set_status(format!("Set maximum width to {}", width));
+    }
+
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "quit",
@@ -3148,6 +3174,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         doc: "Load a file into buffer",
         fun: read,
         signature: CommandSignature::positional(&[completers::filename]),
+    },
+    TypableCommand {
+        name: "set-max-width",
+        aliases: &[],
+        doc: "Set the maximum width of the editor. If set to 0 it will take up the entire width.",
+        fun: set_max_width,
+        signature: CommandSignature::positional(&[completers::none]),
     },
 ];
 
