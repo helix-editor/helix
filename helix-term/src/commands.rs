@@ -5764,7 +5764,7 @@ fn surround_add(cx: &mut Context) {
                 surround_add_impl(doc, view, length, open, close);
                 exit_select_mode(cx);
             }
-            None => return,
+            None => (),
         };
     })
 }
