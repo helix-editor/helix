@@ -769,7 +769,7 @@ impl<'a> ChangeIterator<'a> {
     }
 }
 
-impl<'a> Iterator for ChangeIterator<'a> {
+impl Iterator for ChangeIterator<'_> {
     type Item = Change;
 
     fn next(&mut self) -> Option<Self::Item> {

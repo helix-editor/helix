@@ -705,7 +705,7 @@ impl<'a> Iterator for Traverse<'a> {
     }
 }
 
-impl<'a> DoubleEndedIterator for Traverse<'a> {
+impl DoubleEndedIterator for Traverse<'_> {
     fn next_back(&mut self) -> Option<Self::Item> {
         loop {
             let key = self.stack.pop()?;

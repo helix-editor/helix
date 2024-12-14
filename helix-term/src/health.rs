@@ -154,7 +154,7 @@ pub fn languages_all() -> std::io::Result<()> {
         }
     };
 
-    let mut headings = vec!["Language", "LSP", "DAP", "Formatter"];
+    let mut headings = vec!["Language", "Language servers", "Debug adapter", "Formatter"];
 
     for feat in TsFeature::all() {
         headings.push(feat.short_title())

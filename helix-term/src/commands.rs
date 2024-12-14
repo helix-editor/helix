@@ -98,7 +98,7 @@ pub struct Context<'a> {
     pub jobs: &'a mut Jobs,
 }
 
-impl<'a> Context<'a> {
+impl Context<'_> {
     /// Push a new component onto the compositor.
     pub fn push_layer(&mut self, component: Box<dyn Component>) {
         self.callback
@@ -353,6 +353,7 @@ impl MappableCommand {
         extend_search_next, "Add next search match to selection",
         extend_search_prev, "Add previous search match to selection",
         search_selection, "Use current selection as search pattern",
+        search_selection_detect_word_boundaries, "Use current selection as the search pattern, automatically wrapping with `\\b` on word boundaries",
         make_search_word_bounded, "Modify current search to make it word bounded",
         global_search, "Global search in workspace folder",
         extend_line, "Select current line, if already selected, extend to another line based on the anchor",
@@ -1289,7 +1290,6 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         // rarely so in practice) so that gf on quoted/braced path works (not sure about this
         // but apparently that is how gf has worked historically in helix)
         let path = find_paths(search_range, true)
-            .inspect(|mat| println!("{mat:?} {:?}", pos - search_start))
             .take_while(|range| search_start + range.start <= pos + 1)
             .find(|range| pos <= search_start + range.end)
             .map(|range| Cow::from(search_range.byte_slice(range)));
@@ -2247,14 +2247,53 @@ fn extend_search_prev(cx: &mut Context) {
 }
 
 fn search_selection(cx: &mut Context) {
+    search_selection_impl(cx, false)
+}
+
+fn search_selection_detect_word_boundaries(cx: &mut Context) {
+    search_selection_impl(cx, true)
+}
+
+fn search_selection_impl(cx: &mut Context, detect_word_boundaries: bool) {
+    fn is_at_word_start(text: RopeSlice, index: usize) -> bool {
+        let ch = text.char(index);
+        if index == 0 {
+            return char_is_word(ch);
+        }
+        let prev_ch = text.char(index - 1);
+
+        !char_is_word(prev_ch) && char_is_word(ch)
+    }
+
+    fn is_at_word_end(text: RopeSlice, index: usize) -> bool {
+        if index == 0 || index == text.len_chars() {
+            return false;
+        }
+        let ch = text.char(index);
+        let prev_ch = text.char(index - 1);
+
+        char_is_word(prev_ch) && !char_is_word(ch)
+    }
+
     let register = cx.register.unwrap_or('/');
     let (view, doc) = current!(cx.editor);
-    let contents = doc.text().slice(..);
+    let text = doc.text().slice(..);
 
     let regex = doc
         .selection(view.id)
         .iter()
-        .map(|selection| regex::escape(&selection.fragment(contents)))
+        .map(|selection| {
+            let add_boundary_prefix =
+                detect_word_boundaries && is_at_word_start(text, selection.from());
+            let add_boundary_suffix =
+                detect_word_boundaries && is_at_word_end(text, selection.to());
+
+            let prefix = if add_boundary_prefix { "\\b" } else { "" };
+            let suffix = if add_boundary_suffix { "\\b" } else { "" };
+
+            let word = regex::escape(&selection.fragment(text));
+            format!("{}{}{}", prefix, word, suffix)
+        })
         .collect::<HashSet<_>>() // Collect into hashset to deduplicate identical regexes
         .into_iter()
         .collect::<Vec<_>>()
@@ -3423,40 +3462,42 @@ fn open(cx: &mut Context, open: Open) {
     let selection = doc.selection(view.id);
 
     let mut ranges = SmallVec::with_capacity(selection.len());
-    let mut offs = 0;
 
     let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
-        let cursor_line = text.char_to_line(match open {
+        // the line number, where the cursor is currently
+        let curr_line_num = text.char_to_line(match open {
             Open::Below => graphemes::prev_grapheme_boundary(text, range.to()),
             Open::Above => range.from(),
         });
 
-        let new_line = match open {
-            // adjust position to the end of the line (next line - 1)
-            Open::Below => cursor_line + 1,
-            // adjust position to the end of the previous line (current line - 1)
-            Open::Above => cursor_line,
+        // the next line number, where the cursor will be, after finishing the transaction
+        let next_new_line_num = match open {
+            Open::Below => curr_line_num + 1,
+            Open::Above => curr_line_num,
         };
 
-        let line_num = new_line.saturating_sub(1);
+        let above_next_new_line_num = next_new_line_num.saturating_sub(1);
+
+        let continue_comment_token = if doc.config.load().continue_comments {
+            doc.language_config()
+                .and_then(|config| config.comment_tokens.as_ref())
+                .and_then(|tokens| comment::get_comment_token(text, tokens, curr_line_num))
+        } else {
+            None
+        };
 
         // Index to insert newlines after, as well as the char width
         // to use to compensate for those inserted newlines.
-        let (line_end_index, line_end_offset_width) = if new_line == 0 {
+        let (above_next_line_end_index, above_next_line_end_width) = if next_new_line_num == 0 {
             (0, 0)
         } else {
             (
-                line_end_char_index(&text, line_num),
+                line_end_char_index(&text, above_next_new_line_num),
                 doc.line_ending.len_chars(),
             )
         };
 
-        let continue_comment_token = doc
-            .language_config()
-            .and_then(|config| config.comment_tokens.as_ref())
-            .and_then(|tokens| comment::get_comment_token(text, tokens, cursor_line));
-
-        let line = text.line(cursor_line);
+        let line = text.line(curr_line_num);
         let indent = match line.first_non_whitespace_char() {
             Some(pos) if continue_comment_token.is_some() => line.slice(..pos).to_string(),
             _ => indent::indent_for_newline(
@@ -3466,26 +3507,36 @@ fn open(cx: &mut Context, open: Open) {
                 &doc.indent_style,
                 doc.tab_width(),
                 text,
-                line_num,
-                line_end_index,
-                cursor_line,
+                above_next_new_line_num,
+                above_next_line_end_index,
+                curr_line_num,
             ),
         };
 
         let indent_len = indent.len();
         let mut text = String::with_capacity(1 + indent_len);
-        text.push_str(doc.line_ending.as_str());
-        text.push_str(&indent);
 
-        if let Some(token) = continue_comment_token {
-            text.push_str(token);
-            text.push(' ');
+        if open == Open::Above && next_new_line_num == 0 {
+            text.push_str(&indent);
+            if let Some(token) = continue_comment_token {
+                text.push_str(token);
+                text.push(' ');
+            }
+            text.push_str(doc.line_ending.as_str());
+        } else {
+            text.push_str(doc.line_ending.as_str());
+            text.push_str(&indent);
+
+            if let Some(token) = continue_comment_token {
+                text.push_str(token);
+                text.push(' ');
+            }
         }
 
         let text = text.repeat(count);
 
         // calculate new selection ranges
-        let pos = offs + line_end_index + line_end_offset_width;
+        let pos = above_next_line_end_index + above_next_line_end_width;
         let comment_len = continue_comment_token
             .map(|token| token.len() + 1) // `+ 1` for the extra space added
             .unwrap_or_default();
@@ -3498,9 +3549,11 @@ fn open(cx: &mut Context, open: Open) {
             ));
         }
 
-        offs += text.chars().count();
-
-        (line_end_index, line_end_index, Some(text.into()))
+        (
+            above_next_line_end_index,
+            above_next_line_end_index,
+            Some(text.into()),
+        )
     });
 
     transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
@@ -3926,27 +3979,22 @@ pub mod insert {
             let curr = contents.get_char(pos).unwrap_or(' ');
 
             let current_line = text.char_to_line(pos);
-            let line_is_only_whitespace = text
-                .line(current_line)
-                .chars()
-                .all(|char| char.is_ascii_whitespace());
+            let line_start = text.line_to_char(current_line);
 
             let mut new_text = String::new();
 
-            let continue_comment_token = doc
-                .language_config()
-                .and_then(|config| config.comment_tokens.as_ref())
-                .and_then(|tokens| comment::get_comment_token(text, tokens, current_line));
-
-            // If the current line is all whitespace, insert a line ending at the beginning of
-            // the current line. This makes the current line empty and the new line contain the
-            // indentation of the old line.
-            let (from, to, local_offs) = if line_is_only_whitespace {
-                let line_start = text.line_to_char(current_line);
-                new_text.push_str(doc.line_ending.as_str());
-
-                (line_start, line_start, new_text.chars().count())
+            let continue_comment_token = if doc.config.load().continue_comments {
+                doc.language_config()
+                    .and_then(|config| config.comment_tokens.as_ref())
+                    .and_then(|tokens| comment::get_comment_token(text, tokens, current_line))
             } else {
+                None
+            };
+
+            let (from, to, local_offs) = if let Some(idx) =
+                text.slice(line_start..pos).last_non_whitespace_char()
+            {
+                let first_trailing_whitespace_char = (line_start + idx + 1).min(pos);
                 let line = text.line(current_line);
 
                 let indent = match line.first_non_whitespace_char() {
@@ -3999,20 +4047,34 @@ pub mod insert {
                     new_text.chars().count()
                 };
 
-                (pos, pos, local_offs)
+                (
+                    first_trailing_whitespace_char,
+                    pos,
+                    // Note that `first_trailing_whitespace_char` is at least `pos` so the
+                    // unsigned subtraction (`pos - first_trailing_whitespace_char`) cannot
+                    // underflow.
+                    local_offs as isize - (pos - first_trailing_whitespace_char) as isize,
+                )
+            } else {
+                // If the current line is all whitespace, insert a line ending at the beginning of
+                // the current line. This makes the current line empty and the new line contain the
+                // indentation of the old line.
+                new_text.push_str(doc.line_ending.as_str());
+
+                (line_start, line_start, new_text.chars().count() as isize)
             };
 
             let new_range = if range.cursor(text) > range.anchor {
                 // when appending, extend the range by local_offs
                 Range::new(
                     range.anchor + global_offs,
-                    range.head + local_offs + global_offs,
+                    (range.head as isize + local_offs) as usize + global_offs,
                 )
             } else {
                 // when inserting, slide the range by local_offs
                 Range::new(
-                    range.anchor + local_offs + global_offs,
-                    range.head + local_offs + global_offs,
+                    (range.anchor as isize + local_offs) as usize + global_offs,
+                    (range.head as isize + local_offs) as usize + global_offs,
                 )
             };
 

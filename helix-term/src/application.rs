@@ -174,7 +174,7 @@ impl Application {
                     nr_of_files += 1;
                     if file.is_dir() {
                         return Err(anyhow::anyhow!(
-                            "expected a path to file, found a directory. (to open a directory pass it as first argument)"
+                            "expected a path to file, but found a directory: {file:?}. (to open a directory pass it as first argument)"
                         ));
                     } else {
                         // If the user passes in either `--vsplit` or
@@ -188,6 +188,7 @@ impl Application {
                             Some(Layout::Horizontal) => Action::HorizontalSplit,
                             None => Action::Load,
                         };
+                        let old_id = editor.document_id_by_path(&file);
                         let doc_id = match editor.open(&file, action) {
                             // Ignore irregular files during application init.
                             Err(DocumentOpenError::IrregularFile) => {
@@ -195,6 +196,11 @@ impl Application {
                                 continue;
                             }
                             Err(err) => return Err(anyhow::anyhow!(err)),
+                            // We can't open more than 1 buffer for 1 file, in this case we already have opened this file previously
+                            Ok(doc_id) if old_id == Some(doc_id) => {
+                                nr_of_files -= 1;
+                                doc_id
+                            }
                             Ok(doc_id) => doc_id,
                         };
                         // with Action::Load all documents have the same view

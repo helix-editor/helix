@@ -140,7 +140,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "?" => rsearch,
         "n" => search_next,
         "N" => search_prev,
-        "*" => search_selection,
+        "*" => search_selection_detect_word_boundaries,
+        "A-*" => search_selection,
 
         "u" => undo,
         "U" => redo,
