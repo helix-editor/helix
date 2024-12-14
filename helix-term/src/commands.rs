@@ -5671,48 +5671,101 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
     cx.editor.autoinfo = Some(Info::new(title, &help_text));
 }
 
+fn surround_add_impl(
+    doc: &mut Document,
+    view: &mut View,
+    surround_len: usize,
+    open: Tendril,
+    close: Tendril,
+) {
+    let selection = doc.selection(view.id);
+    let mut changes = Vec::with_capacity(selection.len() * 2);
+    let mut ranges = SmallVec::with_capacity(selection.len());
+    let mut offs = 0;
+
+    for range in selection.iter() {
+        changes.push((range.from(), range.from(), Some(open.clone())));
+        changes.push((range.to(), range.to(), Some(close.clone())));
+
+        ranges.push(
+            Range::new(offs + range.from(), offs + range.to() + surround_len)
+                .with_direction(range.direction()),
+        );
+
+        offs += surround_len;
+    }
+
+    let transaction = Transaction::change(doc.text(), changes.into_iter())
+        .with_selection(Selection::new(ranges, selection.primary_index()));
+    doc.apply(&transaction, view.id);
+}
+
 fn surround_add(cx: &mut Context) {
     cx.on_next_key(move |cx, event| {
         let (view, doc) = current!(cx.editor);
-        // surround_len is the number of new characters being added.
-        let (open, close, surround_len) = match event.char() {
+        match event.char() {
             Some(ch) => {
-                let (o, c) = match_brackets::get_pair(ch);
-                let mut open = Tendril::new();
-                open.push(o);
-                let mut close = Tendril::new();
-                close.push(c);
-                (open, close, 2)
+                if ch == 'x' || ch == 'f' {
+                    let is_tag = ch == 'x';
+
+                    let prompt_title = if is_tag {
+                        "tag-name:"
+                    } else {
+                        "function-name:"
+                    };
+
+                    let prompt = Prompt::new(
+                        prompt_title.into(),
+                        Some('S'),
+                        ui::completers::none,
+                        move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
+                            if event != PromptEvent::Validate {
+                                return;
+                            }
+
+                            let (view, doc) = current!(cx.editor);
+
+                            let input = input.to_string();
+
+                            let open = if is_tag {
+                                format!("<{}>", input)
+                            } else {
+                                format!("{}(", input)
+                            };
+                            let close = if is_tag {
+                                format!("</{}>", input)
+                            } else {
+                                ")".into()
+                            };
+
+                            let open = Tendril::from(open);
+                            let close = Tendril::from(close);
+
+                            let length = open.len() + close.len();
+
+                            surround_add_impl(doc, view, length, open, close);
+                            cx.editor.mode = Mode::Normal;
+                        },
+                    );
+                    cx.push_layer(Box::new(prompt));
+                } else {
+                    let (open, close) = match_brackets::get_pair(ch);
+                    let open = Tendril::from(open.to_string());
+                    let close = Tendril::from(close.to_string());
+
+                    surround_add_impl(doc, view, 2, open, close);
+                    exit_select_mode(cx);
+                };
             }
-            None if event.code == KeyCode::Enter => (
-                doc.line_ending.as_str().into(),
-                doc.line_ending.as_str().into(),
-                2 * doc.line_ending.len_chars(),
-            ),
+            None if event.code == KeyCode::Enter => {
+                let open = doc.line_ending.as_str().into();
+                let close = doc.line_ending.as_str().into();
+                let length = 2 * doc.line_ending.len_chars();
+                surround_add_impl(doc, view, length, open, close);
+                exit_select_mode(cx);
+            }
             None => return,
         };
-
-        let selection = doc.selection(view.id);
-        let mut changes = Vec::with_capacity(selection.len() * 2);
-        let mut ranges = SmallVec::with_capacity(selection.len());
-        let mut offs = 0;
-
-        for range in selection.iter() {
-            changes.push((range.from(), range.from(), Some(open.clone())));
-            changes.push((range.to(), range.to(), Some(close.clone())));
-
-            ranges.push(
-                Range::new(offs + range.from(), offs + range.to() + surround_len)
-                    .with_direction(range.direction()),
-            );
-
-            offs += surround_len;
-        }
-
-        let transaction = Transaction::change(doc.text(), changes.into_iter())
-            .with_selection(Selection::new(ranges, selection.primary_index()));
-        doc.apply(&transaction, view.id);
-        exit_select_mode(cx);
     })
 }
 
