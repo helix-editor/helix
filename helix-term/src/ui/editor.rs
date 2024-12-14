@@ -8,9 +8,10 @@ use crate::{
     keymap::{KeymapResult, Keymaps},
     ui::{
         document::{render_document, LinePos, TextRenderer},
+        markdown::StyledText,
         statusline,
         text_decorations::{self, Decoration, DecorationManager, InlineDiagnostics},
-        Completion, Markdown, Popup, ProgressSpinners,
+        Completion, Popup, ProgressSpinners,
     },
 };
 
@@ -1601,8 +1602,8 @@ impl Component for EditorView {
                     let call: job::Callback = Callback::EditorCompositor(Box::new(
                         move |editor: &mut Editor, compositor: &mut Compositor| {
                             if let Some((contents, _)) = &editor.status_msg {
-                                let contents =
-                                    Markdown::new(contents.to_string(), editor.syn_loader.clone());
+                                let contents = StyledText::new(contents.to_string(), style);
+
                                 let popup = Popup::new("hover", contents).auto_close(true);
                                 compositor.replace_or_push("hover", popup);
                             }
