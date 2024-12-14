@@ -94,7 +94,6 @@ Special keys are encoded as follows:
 | Backspace    | `"backspace"`  |
 | Space        | `"space"`      |
 | Return/Enter | `"ret"`        |
-| \-           | `"minus"`      |
 | Left         | `"left"`       |
 | Right        | `"right"`      |
 | Up           | `"up"`         |
@@ -110,3 +109,12 @@ Special keys are encoded as follows:
 | Escape       | `"esc"`        |
 
 Keys can be disabled by binding them to the `no_op` command.
+
+All other keys such as `?`, `!`, `-` etc. can be used literally:
+
+```toml
+[keys.normal]
+"?" = ":write"
+"!" = ":write"
+"-" = ":write"
+```
