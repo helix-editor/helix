@@ -5785,10 +5785,7 @@ fn surround_replace(cx: &mut Context) {
             exit_select_mode(cx);
         });
 
-        cx.editor.autoinfo = Some(Info::new(
-            "Replace pair with a pair of",
-            &SURROUND_HELP_TEXT,
-        ));
+        cx.editor.autoinfo = Some(Info::new("Replace with a pair of", &SURROUND_HELP_TEXT));
     });
 
     cx.editor.autoinfo = Some(Info::new("Replace nearest pair of", &SURROUND_HELP_TEXT));
