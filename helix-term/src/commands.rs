@@ -5724,10 +5724,7 @@ fn surround_add(cx: &mut Context) {
         exit_select_mode(cx);
     });
 
-    cx.editor.autoinfo = Some(Info::new(
-        "Surround selections with a pair of",
-        &SURROUND_HELP_TEXT,
-    ));
+    cx.editor.autoinfo = Some(Info::new("Surround selections with", &SURROUND_HELP_TEXT));
 }
 
 fn surround_replace(cx: &mut Context) {
