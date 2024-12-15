@@ -63,6 +63,7 @@ use crate::{
 };
 
 use crate::job::{self, Jobs};
+
 use std::{
     cmp::Ordering,
     collections::{HashMap, HashSet},
@@ -6181,18 +6182,20 @@ fn add_function_parameter(cx: &mut Context) {
         cursor
             .set_byte_range(text.char_to_byte(new_range.anchor)..text.char_to_byte(new_range.head));
 
-        let has_args = lang_config
+        let should_add_comma = lang_config
             .textobject_query()
             .and_then(|q| {
                 q.capture_nodes_any(&["parameter.around"], root, slice, &mut cursor)?
-                    .next()
+                    .last()
             })
-            .is_some();
+            .map_or(false, |cn| {
+                !cn.byte_range().any(|i| slice.get_char(i) == Some(','))
+            });
 
         push_jump(view, doc);
 
         doc.set_selection(view.id, selection.transform(|_| new_range));
-        if has_args {
+        if should_add_comma {
             insert_char(cx, ',');
         }
         collapse_selection(cx);
