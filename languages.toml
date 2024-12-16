@@ -56,6 +56,7 @@ koka = { command = "koka", args = ["--language-server", "--lsstdio"] }
 kotlin-language-server = { command = "kotlin-language-server" }
 lean = { command = "lean", args = [ "--server", "--memory=1024" ] }
 ltex-ls = { command = "ltex-ls" }
+ltex-ls-plus = { command = "ltex-ls-plus" }
 markdoc-ls = { command = "markdoc-ls", args = ["--stdio"] }
 markdown-oxide = { command = "markdown-oxide" }
 marksman = { command = "marksman", args = ["server"] }
