@@ -94,7 +94,7 @@
 ; Variables
 
 ((identifier) @constant
- (#match? @constant "^[A-Z_]{2,}$"))
+ (#match? @constant "^_*[A-Z][A-Z\\d_]*$"))
 
 ((identifier) @type
  (#match? @type "^[A-Z]"))
@@ -134,14 +134,17 @@
   "//="
   "/="
   "&"
+  "&="
   "%"
   "%="
   "^"
+  "^="
   "+"
   "->"
   "+="
   "<"
   "<<"
+  "<<="
   "<="
   "<>"
   "="
@@ -150,8 +153,11 @@
   ">"
   ">="
   ">>"
+  ">>="
   "|"
+  "|="
   "~"
+  "@="
 ] @operator
 
 [

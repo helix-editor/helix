@@ -54,7 +54,7 @@ pub struct History {
 }
 
 /// A single point in history. See [History] for more information.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct Revision {
     parent: usize,
     last_child: Option<NonZeroUsize>,
@@ -72,8 +72,8 @@ impl Default for History {
             revisions: vec![Revision {
                 parent: 0,
                 last_child: None,
-                transaction: Transaction::from(ChangeSet::new(&Rope::new())),
-                inversion: Transaction::from(ChangeSet::new(&Rope::new())),
+                transaction: Transaction::from(ChangeSet::new("".into())),
+                inversion: Transaction::from(ChangeSet::new("".into())),
                 timestamp: Instant::now(),
             }],
             current: 0,
@@ -117,6 +117,21 @@ impl History {
     #[inline]
     pub const fn at_root(&self) -> bool {
         self.current == 0
+    }
+
+    /// Returns the changes since the given revision composed into a transaction.
+    /// Returns None if there are no changes between the current and given revisions.
+    pub fn changes_since(&self, revision: usize) -> Option<Transaction> {
+        let lca = self.lowest_common_ancestor(revision, self.current);
+        let up = self.path_up(revision, lca);
+        let down = self.path_up(self.current, lca);
+        let up_txns = up
+            .iter()
+            .rev()
+            .map(|&n| self.revisions[n].inversion.clone());
+        let down_txns = down.iter().map(|&n| self.revisions[n].transaction.clone());
+
+        down_txns.chain(up_txns).reduce(|acc, tx| tx.compose(acc))
     }
 
     /// Undo the last edit.

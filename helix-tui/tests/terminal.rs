@@ -17,14 +17,16 @@ fn terminal_buffer_size_should_not_be_limited() {
 //     let backend = TestBackend::new(10, 10);
 //     let mut terminal = Terminal::new(backend)?;
 //     let frame = terminal.draw(|f| {
-//         let paragraph = Paragraph::new("Test");
+//         let text = Text::from("Test");
+//         let paragraph = Paragraph::new(&text);
 //         f.render_widget(paragraph, f.size());
 //     })?;
 //     assert_eq!(frame.buffer.get(0, 0).symbol, "T");
 //     assert_eq!(frame.area, Rect::new(0, 0, 10, 10));
 //     terminal.backend_mut().resize(8, 8);
 //     let frame = terminal.draw(|f| {
-//         let paragraph = Paragraph::new("test");
+//         let text = Text::from("test");
+//         let paragraph = Paragraph::new(&text);
 //         f.render_widget(paragraph, f.size());
 //     })?;
 //     assert_eq!(frame.buffer.get(0, 0).symbol, "t");

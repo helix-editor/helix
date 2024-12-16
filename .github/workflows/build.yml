@@ -4,72 +4,61 @@ on:
   push:
     branches:
       - master
+  merge_group:
   schedule:
     - cron: '00 01 * * *'
 
 jobs:
   check:
-    name: Check
+    name: Check (msrv)
     runs-on: ubuntu-latest
-    strategy:
-      matrix:
-        rust: [stable, msrv]
+    if: github.repository == 'helix-editor/helix' || github.event_name != 'schedule'
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
-
-      - name: Use MSRV rust toolchain
-        if: matrix.rust == 'msrv'
-        run: cp .github/workflows/msrv-rust-toolchain.toml rust-toolchain.toml
-
+        uses: actions/checkout@v4
       - name: Install stable toolchain
         uses: helix-editor/rust-toolchain@v1
         with:
           profile: minimal
           override: true
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "build"
 
       - name: Run cargo check
-        uses: actions-rs/cargo@v1
-        with:
-          command: check
+        run: cargo check
 
   test:
     name: Test Suite
     runs-on: ${{ matrix.os }}
+    if: github.repository == 'helix-editor/helix' || github.event_name != 'schedule'
     env:
       RUST_BACKTRACE: 1
       HELIX_LOG_LEVEL: info
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install stable toolchain
-        uses: helix-editor/rust-toolchain@v1
-        with:
-          profile: minimal
-          override: true
+        uses: dtolnay/rust-toolchain@1.70
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "build"
 
       - name: Cache test tree-sitter grammar
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: runtime/grammars
           key: ${{ runner.os }}-stable-v${{ env.CACHE_VERSION }}-tree-sitter-grammars-${{ hashFiles('languages.toml') }}
           restore-keys: ${{ runner.os }}-stable-v${{ env.CACHE_VERSION }}-tree-sitter-grammars-
 
       - name: Run cargo test
-        uses: actions-rs/cargo@v1
-        with:
-          command: test
-          args: --workspace
+        run: cargo test --workspace
 
       - name: Run cargo integration-test
-        uses: actions-rs/cargo@v1
-        with:
-          command: integration-test
+        run: cargo integration-test
 
     strategy:
       matrix:
@@ -78,59 +67,51 @@ jobs:
   lints:
     name: Lints
     runs-on: ubuntu-latest
+    if: github.repository == 'helix-editor/helix' || github.event_name != 'schedule'
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install stable toolchain
-        uses: helix-editor/rust-toolchain@v1
+        uses: dtolnay/rust-toolchain@1.70
         with:
-          profile: minimal
-          override: true
           components: rustfmt, clippy
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "build"
 
       - name: Run cargo fmt
-        uses: actions-rs/cargo@v1
-        with:
-          command: fmt
-          args: --all -- --check
+        run: cargo fmt --all --check
 
       - name: Run cargo clippy
-        uses: actions-rs/cargo@v1
-        with:
-          command: clippy
-          args: --workspace --all-targets -- -D warnings
+        run: cargo clippy --workspace --all-targets -- -D warnings
 
       - name: Run cargo doc
-        uses: actions-rs/cargo@v1
-        with:
-          command: doc
-          args: --no-deps --workspace --document-private-items
+        run: cargo doc --no-deps --workspace --document-private-items
         env:
           RUSTDOCFLAGS: -D warnings
 
   docs:
     name: Docs
     runs-on: ubuntu-latest
+    if: github.repository == 'helix-editor/helix' || github.event_name != 'schedule'
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Install stable toolchain
-        uses: helix-editor/rust-toolchain@v1
-        with:
-          profile: minimal
-          override: true
+        uses: dtolnay/rust-toolchain@1.70
 
-      - uses: Swatinem/rust-cache@v1
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "build"
+
+      - name: Validate queries
+        run: cargo xtask query-check
 
       - name: Generate docs
-        uses: actions-rs/cargo@v1
-        with:
-          command: xtask
-          args: docgen
+        run: cargo xtask docgen
 
       - name: Check uncommitted documentation changes
         run: |
@@ -139,23 +120,3 @@ jobs:
             || (echo "Run 'cargo xtask docgen', commit the changes and push again" \
             && exit 1)
 
-  queries:
-    name: Tree-sitter queries
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v3
-
-      - name: Install stable toolchain
-        uses: helix-editor/rust-toolchain@v1
-        with:
-          profile: minimal
-          override: true
-
-      - uses: Swatinem/rust-cache@v1
-
-      - name: Generate docs
-        uses: actions-rs/cargo@v1
-        with:
-          command: xtask
-          args: query-check

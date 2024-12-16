@@ -33,6 +33,7 @@
 "markup.list" = "red"
 "markup.bold" = { fg = "yellow", modifiers = ["bold"] }
 "markup.italic" = { fg = "magenta", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.url" = { fg = "yellow", modifiers = ["underlined"] }
 "markup.link.text" = "red"
 "markup.quote" = "cyan"
@@ -67,3 +68,10 @@
 "error" = "#D74E50"
 "info" = "#839A53"
 "hint" = "#A6B6CE"
+
+"diagnostic.warning" = { underline = { color = "#D4A520", style = "curl" } }
+"diagnostic.error" = { underline = { color = "#D74E50", style = "curl" } }
+"diagnostic.info" = { underline = { color = "#839A53", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "#A6B6CE", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }

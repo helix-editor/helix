@@ -1,4 +1,4 @@
-// Each component declares it's own size constraints and gets fitted based on it's parent.
+// Each component declares its own size constraints and gets fitted based on its parent.
 // Q: how does this work with popups?
 // cursive does compositor.screen_mut().add_layer_at(pos::absolute(x, y), <component>)
 use helix_core::Position;
@@ -7,6 +7,7 @@ use helix_view::graphics::{CursorKind, Rect};
 use tui::buffer::Buffer as Surface;
 
 pub type Callback = Box<dyn FnOnce(&mut Compositor, &mut Context)>;
+pub type SyncCallback = Box<dyn FnOnce(&mut Compositor, &mut Context) + Sync>;
 
 // Cursive-inspired
 pub enum EventResult {
@@ -15,6 +16,7 @@ pub enum EventResult {
 }
 
 use crate::job::Jobs;
+use crate::ui::picker;
 use helix_view::Editor;
 
 pub use helix_view::input::Event;
@@ -78,6 +80,7 @@ pub struct Compositor {
     area: Rect,
 
     pub(crate) last_picker: Option<Box<dyn Component>>,
+    pub(crate) full_redraw: bool,
 }
 
 impl Compositor {
@@ -86,6 +89,7 @@ impl Compositor {
             layers: Vec::new(),
             area,
             last_picker: None,
+            full_redraw: false,
         }
     }
 
@@ -97,7 +101,13 @@ impl Compositor {
         self.area = area;
     }
 
+    /// Add a layer to be rendered in front of all existing layers.
     pub fn push(&mut self, mut layer: Box<dyn Component>) {
+        // immediately clear last_picker field to avoid excessive memory
+        // consumption for picker with many items
+        if layer.id() == Some(picker::ID) {
+            self.last_picker = None;
+        }
         let size = self.size();
         // trigger required_size on init
         layer.required_size((size.width, size.height));
@@ -136,7 +146,8 @@ impl Compositor {
         let mut consumed = false;
 
         // propagate events through the layers until we either find a layer that consumes it or we
-        // run out of layers (event bubbling)
+        // run out of layers (event bubbling), starting at the front layer and then moving to the
+        // background.
         for layer in self.layers.iter_mut().rev() {
             match layer.handle_event(event, cx) {
                 EventResult::Consumed(Some(callback)) => {
@@ -196,6 +207,10 @@ impl Compositor {
             .iter_mut()
             .find(|component| component.id() == Some(id))
             .and_then(|component| component.as_any_mut().downcast_mut())
+    }
+
+    pub fn need_full_redraw(&mut self) {
+        self.full_redraw = true;
     }
 }
 

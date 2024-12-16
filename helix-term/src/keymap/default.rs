@@ -1,14 +1,14 @@
 use std::collections::HashMap;
 
 use super::macros::keymap;
-use super::{Keymap, Mode};
+use super::{KeyTrie, Mode};
 use helix_core::hashmap;
 
-pub fn default() -> HashMap<Mode, Keymap> {
+pub fn default() -> HashMap<Mode, KeyTrie> {
     let normal = keymap!({ "Normal mode"
         "h" | "left" => move_char_left,
-        "j" | "down" => move_line_down,
-        "k" | "up" => move_line_up,
+        "j" | "down" => move_visual_line_down,
+        "k" | "up" => move_visual_line_up,
         "l" | "right" => move_char_right,
 
         "t" => find_till_char,
@@ -44,6 +44,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "l" => goto_line_end,
             "s" => goto_first_nonwhitespace,
             "d" => goto_definition,
+            "D" => goto_declaration,
             "y" => goto_type_definition,
             "r" => goto_reference,
             "i" => goto_implementation,
@@ -54,7 +55,10 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "m" => goto_last_modified_file,
             "n" => goto_next_buffer,
             "p" => goto_previous_buffer,
+            "k" => move_line_up,
+            "j" => move_line_down,
             "." => goto_last_modification,
+            "w" => goto_word,
         },
         ":" => command_mode,
 
@@ -76,6 +80,8 @@ pub fn default() -> HashMap<Mode, Keymap> {
 
         "s" => select_regex,
         "A-s" => split_selection_on_newline,
+        "A-minus" => merge_selections,
+        "A-_" => merge_consecutive_selections,
         "S" => split_selection,
         ";" => collapse_selection,
         "A-;" => flip_selections,
@@ -83,6 +89,8 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "A-i" | "A-down" => shrink_selection,
         "A-p" | "A-left" => select_prev_sibling,
         "A-n" | "A-right" => select_next_sibling,
+        "A-e" => move_parent_node_end,
+        "A-b" => move_parent_node_start,
 
         "%" => select_all,
         "x" => extend_line_below,
@@ -100,22 +108,28 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "[" => { "Left bracket"
             "d" => goto_prev_diag,
             "D" => goto_first_diag,
+            "g" => goto_prev_change,
+            "G" => goto_first_change,
             "f" => goto_prev_function,
-            "c" => goto_prev_class,
+            "t" => goto_prev_class,
             "a" => goto_prev_parameter,
-            "o" => goto_prev_comment,
-            "t" => goto_prev_test,
+            "c" => goto_prev_comment,
+            "e" => goto_prev_entry,
+            "T" => goto_prev_test,
             "p" => goto_prev_paragraph,
             "space" => add_newline_above,
         },
         "]" => { "Right bracket"
             "d" => goto_next_diag,
             "D" => goto_last_diag,
+            "g" => goto_next_change,
+            "G" => goto_last_change,
             "f" => goto_next_function,
-            "c" => goto_next_class,
+            "t" => goto_next_class,
             "a" => goto_next_parameter,
-            "o" => goto_next_comment,
-            "t" => goto_next_test,
+            "c" => goto_next_comment,
+            "e" => goto_next_entry,
+            "T" => goto_next_test,
             "p" => goto_next_paragraph,
             "space" => add_newline_below,
         },
@@ -167,8 +181,8 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "esc" => normal_mode,
         "C-b" | "pageup" => page_up,
         "C-f" | "pagedown" => page_down,
-        "C-u" => half_page_up,
-        "C-d" => half_page_down,
+        "C-u" => page_cursor_half_up,
+        "C-d" => page_cursor_half_down,
 
         "C-w" => { "Window"
             "C-w" | "w" => rotate_view,
@@ -198,7 +212,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
 
         // z family for save/restore/combine from/to sels from register
 
-        "tab" => jump_forward, // tab == <C-i>
+        "C-i" | "tab" => jump_forward, // tab == <C-i>
         "C-o" => jump_backward,
         "C-s" => save_selection,
 
@@ -211,10 +225,12 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "S" => workspace_symbol_picker,
             "d" => diagnostics_picker,
             "D" => workspace_diagnostics_picker,
+            "g" => changed_file_picker,
             "a" => code_action,
             "'" => last_picker,
-            "g" => { "Debug (experimental)" sticky=true
+            "G" => { "Debug (experimental)" sticky=true
                 "l" => dap_launch,
+                "r" => dap_restart,
                 "b" => dap_toggle_breakpoint,
                 "c" => dap_continue,
                 "h" => dap_pause,
@@ -255,7 +271,7 @@ pub fn default() -> HashMap<Mode, Keymap> {
                     "C-v" | "v" => vsplit_new,
                 },
             },
-            "y" => yank_joined_to_clipboard,
+            "y" => yank_to_clipboard,
             "Y" => yank_main_selection_to_clipboard,
             "p" => paste_clipboard_after,
             "P" => paste_clipboard_before,
@@ -264,6 +280,9 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "k" => hover,
             "r" => rename_symbol,
             "h" => select_references_to_symbol_under_cursor,
+            "c" => toggle_comments,
+            "C" => toggle_block_comments,
+            "A-c" => toggle_line_comments,
             "?" => command_palette,
         },
         "z" => { "View"
@@ -275,8 +294,8 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "j" | "down" => scroll_down,
             "C-b" | "pageup" => page_up,
             "C-f" | "pagedown" => page_down,
-            "C-u" | "backspace" => half_page_up,
-            "C-d" | "space" => half_page_down,
+            "C-u" | "backspace" => page_cursor_half_up,
+            "C-d" | "space" => page_cursor_half_down,
 
             "/" => search,
             "?" => rsearch,
@@ -292,8 +311,8 @@ pub fn default() -> HashMap<Mode, Keymap> {
             "j" | "down" => scroll_down,
             "C-b" | "pageup" => page_up,
             "C-f" | "pagedown" => page_down,
-            "C-u" | "backspace" => half_page_up,
-            "C-d" | "space" => half_page_down,
+            "C-u" | "backspace" => page_cursor_half_up,
+            "C-d" | "space" => page_cursor_half_down,
 
             "/" => search,
             "?" => rsearch,
@@ -315,8 +334,8 @@ pub fn default() -> HashMap<Mode, Keymap> {
     let mut select = normal.clone();
     select.merge_nodes(keymap!({ "Select mode"
         "h" | "left" => extend_char_left,
-        "j" | "down" => extend_line_down,
-        "k" | "up" => extend_line_up,
+        "j" | "down" => extend_visual_line_down,
+        "k" | "up" => extend_visual_line_up,
         "l" | "right" => extend_char_right,
 
         "w" => extend_next_word_start,
@@ -325,6 +344,9 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "W" => extend_next_long_word_start,
         "B" => extend_prev_long_word_start,
         "E" => extend_next_long_word_end,
+
+        "A-e" => extend_parent_node_end,
+        "A-b" => extend_parent_node_start,
 
         "n" => extend_search_next,
         "N" => extend_search_prev,
@@ -339,6 +361,11 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "esc" => exit_select_mode,
 
         "v" => normal_mode,
+        "g" => { "Goto"
+            "k" => extend_line_up,
+            "j" => extend_line_down,
+            "w" => extend_to_word,
+        },
     }));
     let insert = keymap!({ "Insert mode"
         "esc" => normal_mode,
@@ -351,13 +378,14 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "A-d" | "A-del" => delete_word_forward,
         "C-u" => kill_to_line_start,
         "C-k" => kill_to_line_end,
-        "C-h" | "backspace" => delete_char_backward,
+        "C-h" | "backspace" | "S-backspace" => delete_char_backward,
         "C-d" | "del" => delete_char_forward,
         "C-j" | "ret" => insert_newline,
-        "tab" => insert_tab,
+        "tab" => smart_tab,
+        "S-tab" => insert_tab,
 
-        "up" => move_line_up,
-        "down" => move_line_down,
+        "up" => move_visual_line_up,
+        "down" => move_visual_line_down,
         "left" => move_char_left,
         "right" => move_char_right,
         "pageup" => page_up,
@@ -366,8 +394,8 @@ pub fn default() -> HashMap<Mode, Keymap> {
         "end" => goto_line_end_newline,
     });
     hashmap!(
-        Mode::Normal => Keymap::new(normal),
-        Mode::Select => Keymap::new(select),
-        Mode::Insert => Keymap::new(insert),
+        Mode::Normal => normal,
+        Mode::Select => select,
+        Mode::Insert => insert,
     )
 }

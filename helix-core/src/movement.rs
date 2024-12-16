@@ -1,19 +1,22 @@
-use std::iter;
+use std::{cmp::Reverse, iter};
 
 use ropey::iter::Chars;
 use tree_sitter::{Node, QueryCursor};
 
 use crate::{
+    char_idx_at_visual_offset,
     chars::{categorize_char, char_is_line_ending, CharCategory},
+    doc_formatter::TextFormat,
     graphemes::{
         next_grapheme_boundary, nth_next_grapheme_boundary, nth_prev_grapheme_boundary,
         prev_grapheme_boundary,
     },
     line_ending::rope_is_line_ending,
-    pos_at_visual_coords,
+    position::char_idx_at_visual_block_offset,
     syntax::LanguageConfiguration,
+    text_annotations::TextAnnotations,
     textobject::TextObject,
-    visual_coords_at_pos, Position, Range, RopeSlice,
+    visual_offset_from_block, Range, RopeSlice, Selection, Syntax,
 };
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
@@ -34,7 +37,8 @@ pub fn move_horizontally(
     dir: Direction,
     count: usize,
     behaviour: Movement,
-    _: usize,
+    _: &TextFormat,
+    _: &mut TextAnnotations,
 ) -> Range {
     let pos = range.cursor(slice);
 
@@ -48,35 +52,116 @@ pub fn move_horizontally(
     range.put_cursor(slice, new_pos, behaviour == Movement::Extend)
 }
 
+pub fn move_vertically_visual(
+    slice: RopeSlice,
+    range: Range,
+    dir: Direction,
+    count: usize,
+    behaviour: Movement,
+    text_fmt: &TextFormat,
+    annotations: &mut TextAnnotations,
+) -> Range {
+    if !text_fmt.soft_wrap {
+        return move_vertically(slice, range, dir, count, behaviour, text_fmt, annotations);
+    }
+    annotations.clear_line_annotations();
+    let pos = range.cursor(slice);
+
+    // Compute the current position's 2d coordinates.
+    let (visual_pos, block_off) = visual_offset_from_block(slice, pos, pos, text_fmt, annotations);
+    let new_col = range
+        .old_visual_position
+        .map_or(visual_pos.col as u32, |(_, col)| col);
+
+    // Compute the new position.
+    let mut row_off = match dir {
+        Direction::Forward => count as isize,
+        Direction::Backward => -(count as isize),
+    };
+
+    // TODO how to handle inline annotations that span an entire visual line (very unlikely).
+
+    // Compute visual offset relative to block start to avoid trasversing the block twice
+    row_off += visual_pos.row as isize;
+    let new_pos = char_idx_at_visual_offset(
+        slice,
+        block_off,
+        row_off,
+        new_col as usize,
+        text_fmt,
+        annotations,
+    )
+    .0;
+
+    // Special-case to avoid moving to the end of the last non-empty line.
+    if behaviour == Movement::Extend && slice.line(slice.char_to_line(new_pos)).len_chars() == 0 {
+        return range;
+    }
+
+    let mut new_range = range.put_cursor(slice, new_pos, behaviour == Movement::Extend);
+    new_range.old_visual_position = Some((0, new_col));
+    new_range
+}
+
 pub fn move_vertically(
     slice: RopeSlice,
     range: Range,
     dir: Direction,
     count: usize,
     behaviour: Movement,
-    tab_width: usize,
+    text_fmt: &TextFormat,
+    annotations: &mut TextAnnotations,
 ) -> Range {
+    annotations.clear_line_annotations();
     let pos = range.cursor(slice);
+    let line_idx = slice.char_to_line(pos);
+    let line_start = slice.line_to_char(line_idx);
 
     // Compute the current position's 2d coordinates.
-    let Position { row, col } = visual_coords_at_pos(slice, pos, tab_width);
-    let horiz = range.horiz.unwrap_or(col as u32);
+    let visual_pos = visual_offset_from_block(slice, line_start, pos, text_fmt, annotations).0;
+    let (mut new_row, new_col) = range
+        .old_visual_position
+        .map_or((visual_pos.row as u32, visual_pos.col as u32), |pos| pos);
+    new_row = new_row.max(visual_pos.row as u32);
+    let line_idx = slice.char_to_line(pos);
 
     // Compute the new position.
-    let new_row = match dir {
-        Direction::Forward => (row + count).min(slice.len_lines().saturating_sub(1)),
-        Direction::Backward => row.saturating_sub(count),
+    let mut new_line_idx = match dir {
+        Direction::Forward => line_idx.saturating_add(count),
+        Direction::Backward => line_idx.saturating_sub(count),
     };
-    let new_col = col.max(horiz as usize);
-    let new_pos = pos_at_visual_coords(slice, Position::new(new_row, new_col), tab_width);
+
+    let line = if new_line_idx >= slice.len_lines() - 1 {
+        // there is no line terminator for the last line
+        // so the logic below is not necessary here
+        new_line_idx = slice.len_lines() - 1;
+        slice
+    } else {
+        // char_idx_at_visual_block_offset returns a one-past-the-end index
+        // in case it reaches the end of the slice
+        // to avoid moving to the nextline in that case the line terminator is removed from the line
+        let new_line_end = prev_grapheme_boundary(slice, slice.line_to_char(new_line_idx + 1));
+        slice.slice(..new_line_end)
+    };
+
+    let new_line_start = line.line_to_char(new_line_idx);
+
+    let (new_pos, _) = char_idx_at_visual_block_offset(
+        line,
+        new_line_start,
+        new_row as usize,
+        new_col as usize,
+        text_fmt,
+        annotations,
+    );
 
     // Special-case to avoid moving to the end of the last non-empty line.
-    if behaviour == Movement::Extend && slice.line(new_row).len_chars() == 0 {
+    if behaviour == Movement::Extend && slice.line(new_line_idx).len_chars() == 0 {
         return range;
     }
 
     let mut new_range = range.put_cursor(slice, new_pos, behaviour == Movement::Extend);
-    new_range.horiz = Some(horiz);
+    new_range.old_visual_position = Some((new_row, new_col));
     new_range
 }
 
@@ -92,6 +177,10 @@ pub fn move_prev_word_start(slice: RopeSlice, range: Range, count: usize) -> Ran
     word_move(slice, range, count, WordMotionTarget::PrevWordStart)
 }
 
+pub fn move_prev_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::PrevWordEnd)
+}
+
 pub fn move_next_long_word_start(slice: RopeSlice, range: Range, count: usize) -> Range {
     word_move(slice, range, count, WordMotionTarget::NextLongWordStart)
 }
@@ -104,8 +193,8 @@ pub fn move_prev_long_word_start(slice: RopeSlice, range: Range, count: usize) -
     word_move(slice, range, count, WordMotionTarget::PrevLongWordStart)
 }
 
-pub fn move_prev_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
-    word_move(slice, range, count, WordMotionTarget::PrevWordEnd)
+pub fn move_prev_long_word_end(slice: RopeSlice, range: Range, count: usize) -> Range {
+    word_move(slice, range, count, WordMotionTarget::PrevLongWordEnd)
 }
 
 fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTarget) -> Range {
@@ -114,6 +203,7 @@ fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTar
         WordMotionTarget::PrevWordStart
             | WordMotionTarget::PrevLongWordStart
             | WordMotionTarget::PrevWordEnd
+            | WordMotionTarget::PrevLongWordEnd
     );
 
     // Special-case early-out.
@@ -142,9 +232,15 @@ fn word_move(slice: RopeSlice, range: Range, count: usize, target: WordMotionTar
     };
 
     // Do the main work.
-    (0..count).fold(start_range, |r, _| {
-        slice.chars_at(r.head).range_to_target(target, r)
-    })
+    let mut range = start_range;
+    for _ in 0..count {
+        let next_range = slice.chars_at(range.head).range_to_target(target, range);
+        if range == next_range {
+            break;
+        }
+        range = next_range;
+    }
+    range
 }
 
 pub fn move_prev_paragraph(
@@ -166,6 +262,7 @@ pub fn move_prev_paragraph(
     let mut lines = slice.lines_at(line);
     lines.reverse();
     let mut lines = lines.map(rope_is_line_ending).peekable();
+    let mut last_line = line;
     for _ in 0..count {
         while lines.next_if(|&e| e).is_some() {
             line -= 1;
@@ -173,6 +270,10 @@ pub fn move_prev_paragraph(
         while lines.next_if(|&e| !e).is_some() {
             line -= 1;
         }
+        if line == last_line {
+            break;
+        }
+        last_line = line;
     }
 
     let head = slice.line_to_char(line);
@@ -208,6 +309,7 @@ pub fn move_next_paragraph(
         line += 1;
     }
     let mut lines = slice.lines_at(line).map(rope_is_line_ending).peekable();
+    let mut last_line = line;
     for _ in 0..count {
         while lines.next_if(|&e| !e).is_some() {
             line += 1;
@@ -215,6 +317,10 @@ pub fn move_next_paragraph(
         while lines.next_if(|&e| e).is_some() {
             line += 1;
         }
+        if line == last_line {
+            break;
+        }
+        last_line = line;
     }
     let head = slice.line_to_char(line);
     let anchor = if behavior == Movement::Move {
@@ -276,6 +382,7 @@ pub enum WordMotionTarget {
     NextLongWordStart,
     NextLongWordEnd,
     PrevLongWordStart,
+    PrevLongWordEnd,
 }
 
 pub trait CharHelpers {
@@ -292,6 +399,7 @@ impl CharHelpers for Chars<'_> {
             WordMotionTarget::PrevWordStart
                 | WordMotionTarget::PrevLongWordStart
                 | WordMotionTarget::PrevWordEnd
+                | WordMotionTarget::PrevLongWordEnd
         );
 
         // Reverse the iterator if needed for the motion direction.
@@ -378,7 +486,7 @@ fn reached_target(target: WordMotionTarget, prev_ch: char, next_ch: char) -> boo
             is_word_boundary(prev_ch, next_ch)
                 && (!prev_ch.is_whitespace() || char_is_line_ending(next_ch))
         }
-        WordMotionTarget::NextLongWordStart => {
+        WordMotionTarget::NextLongWordStart | WordMotionTarget::PrevLongWordEnd => {
             is_long_word_boundary(prev_ch, next_ch)
                 && (char_is_line_ending(next_ch) || !next_ch.is_whitespace())
         }
@@ -419,10 +527,10 @@ pub fn goto_treesitter_object(
         let node = match dir {
             Direction::Forward => nodes
                 .filter(|n| n.start_byte() > byte_pos)
-                .min_by_key(|n| n.start_byte())?,
+                .min_by_key(|n| (n.start_byte(), Reverse(n.end_byte())))?,
             Direction::Backward => nodes
                 .filter(|n| n.end_byte() < byte_pos)
-                .max_by_key(|n| n.end_byte())?,
+                .max_by_key(|n| (n.end_byte(), Reverse(n.start_byte())))?,
         };
 
         let len = slice.len_bytes();
@@ -438,7 +546,88 @@ pub fn goto_treesitter_object(
         // head of range should be at beginning
         Some(Range::new(start_char, end_char))
     };
-    (0..count).fold(range, |range, _| get_range(range).unwrap_or(range))
+    let mut last_range = range;
+    for _ in 0..count {
+        match get_range(last_range) {
+            Some(r) if r != last_range => last_range = r,
+            _ => break,
+        }
+    }
+    last_range
+}
+
+fn find_parent_start(mut node: Node) -> Option<Node> {
+    let start = node.start_byte();
+
+    while node.start_byte() >= start || !node.is_named() {
+        node = node.parent()?;
+    }
+
+    Some(node)
+}
+
+pub fn move_parent_node_end(
+    syntax: &Syntax,
+    text: RopeSlice,
+    selection: Selection,
+    dir: Direction,
+    movement: Movement,
+) -> Selection {
+    selection.transform(|range| {
+        let start_from = text.char_to_byte(range.from());
+        let start_to = text.char_to_byte(range.to());
+
+        let mut node = match syntax.named_descendant_for_byte_range(start_from, start_to) {
+            Some(node) => node,
+            None => {
+                log::debug!(
+                    "no descendant found for byte range: {} - {}",
+                    start_from,
+                    start_to
+                );
+                return range;
+            }
+        };
+
+        let mut end_head = match dir {
+            // moving forward, we always want to move one past the end of the
+            // current node, so use the end byte of the current node, which is an exclusive
+            // end of the range
+            Direction::Forward => text.byte_to_char(node.end_byte()),
+
+            // moving backward, we want the cursor to land on the start char of
+            // the current node, or if it is already at the start of a node, to traverse up to
+            // the parent
+            Direction::Backward => {
+                let end_head = text.byte_to_char(node.start_byte());
+
+                // if we're already on the beginning, look up to the parent
+                if end_head == range.cursor(text) {
+                    node = find_parent_start(node).unwrap_or(node);
+                    text.byte_to_char(node.start_byte())
+                } else {
+                    end_head
+                }
+            }
+        };
+
+        if movement == Movement::Move {
+            // preserve direction of original range
+            if range.direction() == Direction::Forward {
+                Range::new(end_head, end_head + 1)
+            } else {
+                Range::new(end_head + 1, end_head)
+            }
+        } else {
+            // if we end up with a forward range, then adjust it to be one past
+            // where we want
+            if end_head >= range.anchor {
+                end_head += 1;
+            }
+
+            Range::new(range.anchor, end_head)
+        }
+    })
 }
 
 #[cfg(test)]
@@ -473,7 +662,16 @@ mod test {
         assert_eq!(
             coords_at_pos(
                 slice,
-                move_vertically(slice, range, Direction::Forward, 1, Movement::Move, 4).head
+                move_vertically_visual(
+                    slice,
+                    range,
+                    Direction::Forward,
+                    1,
+                    Movement::Move,
+                    &TextFormat::default(),
+                    &mut TextAnnotations::default(),
+                )
+                .head
             ),
             (1, 3).into()
         );
@@ -497,7 +695,15 @@ mod test {
         ];
 
         for ((direction, amount), coordinates) in moves_and_expected_coordinates {
-            range = move_horizontally(slice, range, direction, amount, Movement::Move, 0);
+            range = move_horizontally(
+                slice,
+                range,
+                direction,
+                amount,
+                Movement::Move,
+                &TextFormat::default(),
+                &mut TextAnnotations::default(),
+            );
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into())
         }
     }
@@ -523,7 +729,15 @@ mod test {
         ];
 
         for ((direction, amount), coordinates) in moves_and_expected_coordinates {
-            range = move_horizontally(slice, range, direction, amount, Movement::Move, 0);
+            range = move_horizontally(
+                slice,
+                range,
+                direction,
+                amount,
+                Movement::Move,
+                &TextFormat::default(),
+                &mut TextAnnotations::default(),
+            );
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
             assert_eq!(range.head, range.anchor);
         }
@@ -545,7 +759,15 @@ mod test {
         ];
 
         for (direction, amount) in moves {
-            range = move_horizontally(slice, range, direction, amount, Movement::Extend, 0);
+            range = move_horizontally(
+                slice,
+                range,
+                direction,
+                amount,
+                Movement::Extend,
+                &TextFormat::default(),
+                &mut TextAnnotations::default(),
+            );
             assert_eq!(range.anchor, original_anchor);
         }
     }
@@ -569,7 +791,15 @@ mod test {
         ];
 
         for ((direction, amount), coordinates) in moves_and_expected_coordinates {
-            range = move_vertically(slice, range, direction, amount, Movement::Move, 4);
+            range = move_vertically_visual(
+                slice,
+                range,
+                direction,
+                amount,
+                Movement::Move,
+                &TextFormat::default(),
+                &mut TextAnnotations::default(),
+            );
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
             assert_eq!(range.head, range.anchor);
         }
@@ -603,8 +833,24 @@ mod test {
 
         for ((axis, direction, amount), coordinates) in moves_and_expected_coordinates {
             range = match axis {
-                Axis::H => move_horizontally(slice, range, direction, amount, Movement::Move, 0),
-                Axis::V => move_vertically(slice, range, direction, amount, Movement::Move, 4),
+                Axis::H => move_horizontally(
+                    slice,
+                    range,
+                    direction,
+                    amount,
+                    Movement::Move,
+                    &TextFormat::default(),
+                    &mut TextAnnotations::default(),
+                ),
+                Axis::V => move_vertically_visual(
+                    slice,
+                    range,
+                    direction,
+                    amount,
+                    Movement::Move,
+                    &TextFormat::default(),
+                    &mut TextAnnotations::default(),
+                ),
             };
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
             assert_eq!(range.head, range.anchor);
@@ -638,8 +884,24 @@ mod test {
 
         for ((axis, direction, amount), coordinates) in moves_and_expected_coordinates {
             range = match axis {
-                Axis::H => move_horizontally(slice, range, direction, amount, Movement::Move, 0),
-                Axis::V => move_vertically(slice, range, direction, amount, Movement::Move, 4),
+                Axis::H => move_horizontally(
+                    slice,
+                    range,
+                    direction,
+                    amount,
+                    Movement::Move,
+                    &TextFormat::default(),
+                    &mut TextAnnotations::default(),
+                ),
+                Axis::V => move_vertically_visual(
+                    slice,
+                    range,
+                    direction,
+                    amount,
+                    Movement::Move,
+                    &TextFormat::default(),
+                    &mut TextAnnotations::default(),
+                ),
             };
             assert_eq!(coords_at_pos(slice, range.head), coordinates.into());
             assert_eq!(range.head, range.anchor);
@@ -1265,6 +1527,100 @@ mod test {
     }
 
     #[test]
+    fn test_behaviour_when_moving_to_end_of_prev_long_words() {
+        let tests = [
+            (
+                "Basic backward motion from the middle of a word",
+                vec![(1, Range::new(3, 3), Range::new(4, 0))],
+            ),
+            ("Starting from after boundary retreats the anchor",
+                vec![(1, Range::new(0, 9), Range::new(8, 0))],
+            ),
+            (
+                "Jump    to end of a word succeeded by whitespace",
+                vec![(1, Range::new(10, 10), Range::new(10, 4))],
+            ),
+            (
+                "    Jump to start of line from end of word preceded by whitespace",
+                vec![(1, Range::new(3, 4), Range::new(4, 0))],
+            ),
+            ("Previous anchor is irrelevant for backward motions",
+                vec![(1, Range::new(12, 5), Range::new(6, 0))]),
+            (
+                "    Starting from whitespace moves to first space in sequence",
+                vec![(1, Range::new(0, 4), Range::new(4, 0))],
+            ),
+            ("Identifiers_with_underscores are considered a single word",
+                vec![(1, Range::new(0, 20), Range::new(20, 0))]),
+            (
+                "Jumping\n    \nback through a newline selects whitespace",
+                vec![(1, Range::new(0, 13), Range::new(12, 8))],
+            ),
+            (
+                "Jumping to start of word from the end selects the word",
+                vec![(1, Range::new(6, 7), Range::new(7, 0))],
+            ),
+            (
+                "alphanumeric.!,and.?=punctuation are treated exactly the same",
+                vec![(1, Range::new(29, 30), Range::new(30, 0))],
+            ),
+            (
+                "...   ... punctuation and spaces behave as expected",
+                vec![
+                    (1, Range::new(0, 10), Range::new(9, 3)),
+                    (1, Range::new(10, 6), Range::new(7, 3)),
+                ],
+            ),
+            (".._.._ punctuation is joined by underscores into a single block",
+                vec![(1, Range::new(0, 6), Range::new(6, 0))]),
+            (
+                "Newlines\n\nare bridged seamlessly.",
+                vec![(1, Range::new(0, 10), Range::new(8, 0))],
+            ),
+            (
+                "Jumping    \n\n\n\n\nback from within a newline group selects previous block",
+                vec![(1, Range::new(0, 13), Range::new(11, 7))],
+            ),
+            (
+                "Failed motions do not modify the range",
+                vec![(0, Range::new(3, 0), Range::new(3, 0))],
+            ),
+            (
+                "Multiple motions at once resolve correctly",
+                vec![(3, Range::new(19, 19), Range::new(8, 0))],
+            ),
+            (
+                "Excessive motions are performed partially",
+                vec![(999, Range::new(40, 40), Range::new(9, 0))],
+            ),
+            (
+                "", // Edge case of moving backwards in empty string
+                vec![(1, Range::new(0, 0), Range::new(0, 0))],
+            ),
+            (
+                "\n\n\n\n\n", // Edge case of moving backwards in all newlines
+                vec![(1, Range::new(5, 5), Range::new(0, 0))],
+            ),
+            ("   \n   \nJumping back through alternated space blocks and newlines selects the space blocks",
+                vec![
+                    (1, Range::new(0, 8), Range::new(7, 4)),
+                    (1, Range::new(7, 4), Range::new(3, 0)),
+                ]),
+            ("ヒーリ..クス multibyte characters behave as normal characters, including when interacting with punctuation",
+                vec![
+                    (1, Range::new(0, 8), Range::new(7, 0)),
+                ]),
+        ];
+
+        for (sample, scenario) in tests {
+            for (count, begin, expected_end) in scenario.into_iter() {
+                let range = move_prev_long_word_end(Rope::from(sample).slice(..), begin, count);
+                assert_eq!(range, expected_end, "Case failed: [{}]", sample);
+            }
+        }
+    }
+
+    #[test]
     fn test_behaviour_when_moving_to_prev_paragraph_single() {
         let tests = [
             ("#[|]#", "#[|]#"),
@@ -1293,7 +1649,7 @@ mod test {
             let text = Rope::from(s.as_str());
             let selection =
                 selection.transform(|r| move_prev_paragraph(text.slice(..), r, 1, Movement::Move));
-            let actual = crate::test::plain(&s, selection);
+            let actual = crate::test::plain(s.as_ref(), &selection);
             assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
         }
     }
@@ -1316,7 +1672,7 @@ mod test {
             let text = Rope::from(s.as_str());
             let selection =
                 selection.transform(|r| move_prev_paragraph(text.slice(..), r, 2, Movement::Move));
-            let actual = crate::test::plain(&s, selection);
+            let actual = crate::test::plain(s.as_ref(), &selection);
             assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
         }
     }
@@ -1339,7 +1695,7 @@ mod test {
             let text = Rope::from(s.as_str());
             let selection = selection
                 .transform(|r| move_prev_paragraph(text.slice(..), r, 1, Movement::Extend));
-            let actual = crate::test::plain(&s, selection);
+            let actual = crate::test::plain(s.as_ref(), &selection);
             assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
         }
     }
@@ -1359,7 +1715,7 @@ mod test {
                 "a\nb\n\n#[goto\nthird\n\n|]#paragraph",
             ),
             (
-                "a\nb#[\n|]#\ngoto\nsecond\n\nparagraph",
+                "a\nb#[\n|]#\n\ngoto\nsecond\n\nparagraph",
                 "a\nb#[\n\n|]#goto\nsecond\n\nparagraph",
             ),
             (
@@ -1381,7 +1737,7 @@ mod test {
             let text = Rope::from(s.as_str());
             let selection =
                 selection.transform(|r| move_next_paragraph(text.slice(..), r, 1, Movement::Move));
-            let actual = crate::test::plain(&s, selection);
+            let actual = crate::test::plain(s.as_ref(), &selection);
             assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
         }
     }
@@ -1404,7 +1760,7 @@ mod test {
             let text = Rope::from(s.as_str());
             let selection =
                 selection.transform(|r| move_next_paragraph(text.slice(..), r, 2, Movement::Move));
-            let actual = crate::test::plain(&s, selection);
+            let actual = crate::test::plain(s.as_ref(), &selection);
             assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
         }
     }
@@ -1427,7 +1783,7 @@ mod test {
             let text = Rope::from(s.as_str());
             let selection = selection
                 .transform(|r| move_next_paragraph(text.slice(..), r, 1, Movement::Extend));
-            let actual = crate::test::plain(&s, selection);
+            let actual = crate::test::plain(s.as_ref(), &selection);
             assert_eq!(actual, expected, "\nbefore: `{:?}`", before);
         }
     }

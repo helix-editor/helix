@@ -1,4 +1,4 @@
-(comment) @comment
+[(comment) (single_line_comment)] @comment
 
 "~" @operator
 ">" @operator
@@ -44,9 +44,9 @@
 "@while" @keyword.control.repeat
 
 ((property_name) @variable
- (match? @variable "^--"))
+ (#match? @variable "^--"))
 ((plain_value) @variable
- (match? @variable "^--"))
+ (#match? @variable "^--"))
 
 (tag_name) @tag
 (universal_selector) @tag

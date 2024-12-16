@@ -1,0 +1,85 @@
+# Author: dgkf
+# Modified from base16_terminal, Author: NNB <nnbnh@protonmail.com>
+
+inherits = "term16_dark"
+
+"ui.background.separator" = "light-gray"
+"ui.cursor" = { fg = "gray", modifiers = ["reversed"] }
+"ui.cursor.match" = { fg = "yellow", modifiers = ["reversed"] }
+"ui.cursor.primary" = { fg = "black", modifiers = ["reversed"] }
+"ui.cursor.secondary" = { fg = "gray", modifiers = ["reversed"] }
+"ui.cursorline.primary" = { bg = "white" }
+"ui.cursorline.secondary" = { bg = "white" }
+"ui.cursorcolumn.primary" = { bg = "white" }
+"ui.cursorcolumn.secondary" = { bg = "white" }
+"ui.gutter" = { }
+"ui.gutter.selected" = { bg = "white" }
+"ui.linenr" = { fg = "gray", modifiers = ["dim"] }
+"ui.linenr.selected" = { fg = "black",  modifiers = ["bold"] }
+"ui.menu" = { bg = "light-gray" }
+"ui.menu.selected" = { fg = "white", bg = "gray", modifiers = ["bold"] }
+"ui.menu.scroll" = { fg = "light-blue" }
+"ui.help" = { }
+"ui.text" = { }
+"ui.text.focus" = { }
+"ui.popup" = { bg = "white" }
+"ui.selection" = { bg = "light-gray" }
+"ui.statusline" = { bg = "white" }
+"ui.statusline.inactive" = { fg = "gray", modifiers = ["underlined"] }
+"ui.statusline.insert" = { fg = "white", bg = "blue" }
+"ui.statusline.select" = { fg = "white", bg = "magenta" }
+"ui.virtual" = { fg = "light-gray" }
+"ui.virtual.indent-guide" = { fg = "light-gray", modifiers = ["dim"] }
+"ui.virtual.ruler" = { bg = "white" }
+"ui.virtual.wrap" = { fg = "light-gray" }
+"ui.window" = { fg = "gray", modifiers = ["dim"] }
+
+"comment" = { fg = "gray", modifiers = ["italic", "dim"] }
+
+"attribute" = "yellow"
+"constant" = { fg = "yellow", modifiers = ["bold"] }
+"constant.numeric" = { fg = "yellow", modifiers = ["bold"] }
+"constant.character.escape" = "blue"
+"constructor" = "blue"
+"function" = "blue"
+"function.builtin" = { fg = "blue", modifiers = ["bold"] }
+"tag" = { fg = "magenta", modifiers = ["dim"] }
+"type" = "blue"
+"type.builtin" = { fg = "blue", modifiers = ["bold"] }
+"type.enum.variant" = { fg = "magenta", modifiers = ["dim"] }
+"string"  = "green"
+"special" = "red"
+"variable" = { fg = "black", modifiers = ["dim"] }
+"variable.parameter" = { fg = "red", modifiers = ["italic", "dim"] }
+"variable.other.member" = "green"
+"keyword" = "magenta"
+"keyword.control.exception" = "red"
+"keyword.directive" = { fg = "yellow", modifiers = ["bold"] }
+"keyword.operator" = { fg = "blue", modifiers = ["bold"] }
+"label" = "red"
+"namespace" = { fg = "blue", modifiers = ["dim"] }
+
+"markup.heading" = { fg = "blue", modifiers = ["bold"] }
+"markup.list" = "red"
+"markup.bold" = { fg = "cyan", modifiers = ["bold"] }
+"markup.italic" = { fg = "blue", modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+"markup.link.url" = { fg = "magenta", modifiers = ["dim"] }
+"markup.link.text" = { fg = "magenta", modifiers = ["bold"] }
+"markup.quote" = "cyan"
+"markup.raw" = "blue"
+
+"diff.plus" = "green"
+"diff.delta" = "yellow"
+"diff.minus" = "red"
+
+"diagnostic.hint" = { underline = { color = "cyan", style = "curl" } }
+"diagnostic.info" = { underline = { color = "blue", style = "curl" } }
+"diagnostic.warning" = { underline = { color = "yellow", style = "curl" } }
+"diagnostic.error" = { underline = { color = "red", style = "curl" } }
+
+"hint" = "cyan"
+"info" = "blue"
+"debug" = "light-yellow"
+"warning" = "yellow"
+"error" = "red"

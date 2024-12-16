@@ -1,0 +1,10 @@
+(assignment (NAME) @local.definition)
+(alias left:(NAME) @local.definition)
+(alias right:(NAME) @local.reference)
+(value (NAME) @local.reference)
+(parameter (NAME) @local.definition)
+
+(call (NAME) @local.reference)
+(dependency (NAME) @local.reference)
+(depcall (NAME) @local.reference)
+(recipeheader (NAME) @local.definition)

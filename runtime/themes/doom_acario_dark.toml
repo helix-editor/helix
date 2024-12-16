@@ -29,6 +29,7 @@
 
 'markup.bold' = { fg = 'orange', modifiers = ['bold'] }
 'markup.italic' = { fg = 'magenta', modifiers = ['italic'] }
+'markup.strikethrough' = { modifiers = ['crossed_out'] }
 'markup.heading' = { fg = 'red' }
 'markup.link' = { fg = 'orange' }
 'markup.link.url' = { fg = 'magenta' }
@@ -41,7 +42,7 @@
 
 'diff.plus' = { fg = 'green' }
 'diff.minus' = { fg = 'red' }
-'diff.delta' = { fg = 'green' }
+'diff.delta' = { fg = 'blue' }
 
 'ui.background'= { bg = 'bg' }
 'ui.cursor' = { bg = 'orange', fg = 'bg-alt' }
@@ -73,10 +74,12 @@
 'info' = { fg = 'blue', modifiers = ['bold'] }
 'hint' = { fg = 'blue', modifiers = ['bold'] }
 
-'diagnostic'= { fg = 'red', modifiers = ['underlined'] }
-'diagnostic.error'= { fg = 'red', modifiers = ['underlined'] }
-'diagnostic.info'= { fg = 'blue', modifiers = ['underlined'] }
-'diagnostic.warning'= { fg = 'yellow', modifiers = ['underlined'] }
+'diagnostic.hint'= { underline = { color = 'red', style = "curl"} }
+'diagnostic.error'= { underline = { color = 'red', style = "curl"} }
+'diagnostic.info'= { underline = { color = 'blue', style = "curl"} }
+'diagnostic.warning'= { underline = { color = 'yellow', style = "curl"} }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 
 'special' = { fg = 'orange' }
 

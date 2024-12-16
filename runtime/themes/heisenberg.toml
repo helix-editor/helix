@@ -59,10 +59,12 @@
 "error" = { fg = "chili_powder_red", modifiers = ["bold"] }
 "info" = { fg = "crystal_blue", modifiers = ["bold"] }
 "hint" = { fg = "crystal_blue", modifiers = ["bold"] }
-"diagnostic"= { fg = "chili_powder_red", modifiers = ["underlined"] }
-"diagnostic.info"= { fg = "crystal_blue", modifiers = ["underlined"] }
-"diagnostic.warning"= { fg = "vapor_yellow", modifiers = ["underlined"] }
-"diagnostic.error"= { fg = "chili_powder_red", modifiers = ["underlined"] }
+"diagnostic.hint" = { underline = {color = "chili_powder_red", style = "curl" } }
+"diagnostic.info" = { underline = {color = "crystal_blue", style = "curl" } }
+"diagnostic.warning" = { underline = {color = "vapor_yellow", style = "curl" } }
+"diagnostic.error" = { underline = {color = "chili_powder_red", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
 "ui.bufferline" = { fg = "gray", bg = "background" }
 "ui.bufferline.active" = { fg = "foreground", bg = "dark_gray" }
 

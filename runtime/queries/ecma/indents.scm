@@ -5,6 +5,7 @@
   (formal_parameters)
 
   (statement_block)
+  (switch_statement)
   (object_pattern)
   (class_body)
   (named_imports)
@@ -14,6 +15,11 @@
   (template_substitution)
   (export_clause)
 ] @indent
+
+[
+  (switch_case)
+  (switch_default)
+] @indent @extend
 
 [
   "}"
