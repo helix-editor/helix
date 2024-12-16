@@ -2509,10 +2509,14 @@ fn read(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
 
     let filename = args.first().unwrap();
     let path = PathBuf::from(if filename.starts_with('~') {
-        // Will fail on Windows systems
-        let home_dir = env::var("HOME")?;
-        let rest = &filename[1..];
-        home_dir + rest
+        // POSIX compliant systems should have the HOME environment
+        // variable set
+        if let Ok(home_dir) = env::var("HOME") {
+            home_dir + &filename[1..]
+        } else {
+            // In Windows systems, just let the ~ be
+            filename.to_string()
+        }
     } else {
         filename.to_string()
     });
