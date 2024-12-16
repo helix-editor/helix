@@ -1,3 +1,4 @@
+use std::env;
 use std::fmt::Write;
 use std::io::BufReader;
 use std::ops::Deref;
@@ -2507,7 +2508,15 @@ fn read(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     ensure!(args.len() == 1, "only the file name is expected");
 
     let filename = args.first().unwrap();
-    let path = PathBuf::from(filename.to_string());
+    let path = PathBuf::from(if filename.starts_with('~') {
+        // Will fail on Windows systems
+        let home_dir = env::var("HOME")?;
+        let rest = &filename[1..];
+        home_dir + rest
+    } else {
+        filename.to_string()
+    });
+
     ensure!(
         path.exists() && path.is_file(),
         "path is not a file: {:?}",
