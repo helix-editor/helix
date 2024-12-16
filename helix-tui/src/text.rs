@@ -5,7 +5,7 @@
 //! - A single line string where all graphemes have the same style is represented by a [`Span`].
 //! - A single line string where each grapheme may have its own style is represented by [`Spans`].
 //! - A multiple line string where each grapheme may have its own style is represented by a
-//! [`Text`].
+//!   [`Text`].
 //!
 //! These types form a hierarchy: [`Spans`] is a collection of [`Span`] and each line of [`Text`]
 //! is a [`Spans`].
@@ -212,7 +212,7 @@ impl<'a> From<Cow<'a, str>> for Span<'a> {
 #[derive(Debug, Default, Clone, PartialEq, Eq)]
 pub struct Spans<'a>(pub Vec<Span<'a>>);
 
-impl<'a> Spans<'a> {
+impl Spans<'_> {
     /// Returns the width of the underlying string.
     ///
     /// ## Examples

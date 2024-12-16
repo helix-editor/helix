@@ -1,8 +1,12 @@
 pub use etcetera::home_dir;
+use once_cell::sync::Lazy;
+use regex_cursor::{engines::meta::Regex, Input};
+use ropey::RopeSlice;
 
 use std::{
     borrow::Cow,
     ffi::OsString,
+    ops::Range,
     path::{Component, Path, PathBuf, MAIN_SEPARATOR_STR},
 };
 
@@ -51,7 +55,7 @@ where
 
 /// Normalize a path without resolving symlinks.
 // Strategy: start from the first component and move up. Cannonicalize previous path,
-// join component, cannonicalize new path, strip prefix and join to the final result.
+// join component, canonicalize new path, strip prefix and join to the final result.
 pub fn normalize(path: impl AsRef<Path>) -> PathBuf {
     let mut components = path.as_ref().components().peekable();
     let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().cloned() {
@@ -201,6 +205,96 @@ pub fn get_truncated_path(path: impl AsRef<Path>) -> PathBuf {
     ret
 }
 
+fn path_component_regex(windows: bool) -> String {
+    // TODO: support backslash path escape on windows (when using git bash for example)
+    let space_escape = if windows { r"[\^`]\s" } else { r"[\\]\s" };
+    // partially baesd on what's allowed in an url but with some care to avoid
+    // false positivies (like any kind of brackets or quotes)
+    r"[\w@.\-+#$%?!,;~&]|".to_owned() + space_escape
+}
+
+/// Regex for delimited environment captures like `${HOME}`.
+fn braced_env_regex(windows: bool) -> String {
+    r"\$\{(?:".to_owned() + &path_component_regex(windows) + r"|[/:=])+\}"
+}
+
+fn compile_path_regex(
+    prefix: &str,
+    postfix: &str,
+    match_single_file: bool,
+    windows: bool,
+) -> Regex {
+    let first_component = format!(
+        "(?:{}|(?:{}))",
+        braced_env_regex(windows),
+        path_component_regex(windows)
+    );
+    // For all components except the first we allow an equals so that `foo=/
+    // bar/baz` does not include foo. This is primarily intended for url queries
+    // (where an equals is never in the first component)
+    let component = format!("(?:{first_component}|=)");
+    let sep = if windows { r"[/\\]" } else { "/" };
+    let url_prefix = r"[\w+\-.]+://??";
+    let path_prefix = if windows {
+        // single slash handles most windows prefixes (like\\server\...) but `\
+        // \?\C:\..` (and C:\) needs special handling, since we don't allow : in path
+        // components (so that colon separated paths and <path>:<line> work)
+        r"\\\\\?\\\w:|\w:|\\|"
+    } else {
+        ""
+    };
+    let path_start = format!("(?:{first_component}+|~|{path_prefix}{url_prefix})");
+    let optional = if match_single_file {
+        format!("|{path_start}")
+    } else {
+        String::new()
+    };
+    let path_regex = format!(
+        "{prefix}(?:{path_start}?(?:(?:{sep}{component}+)+{sep}?|{sep}){optional}){postfix}"
+    );
+    Regex::new(&path_regex).unwrap()
+}
+
+/// If `src` ends with a path then this function returns the part of the slice.
+pub fn get_path_suffix(src: RopeSlice<'_>, match_single_file: bool) -> Option<RopeSlice<'_>> {
+    let regex = if match_single_file {
+        static REGEX: Lazy<Regex> = Lazy::new(|| compile_path_regex("", "$", true, cfg!(windows)));
+        &*REGEX
+    } else {
+        static REGEX: Lazy<Regex> = Lazy::new(|| compile_path_regex("", "$", false, cfg!(windows)));
+        &*REGEX
+    };
+
+    regex
+        .find(Input::new(src))
+        .map(|mat| src.byte_slice(mat.range()))
+}
+
+/// Returns an iterator of the **byte** ranges in src that contain a path.
+pub fn find_paths(
+    src: RopeSlice<'_>,
+    match_single_file: bool,
+) -> impl Iterator<Item = Range<usize>> + '_ {
+    let regex = if match_single_file {
+        static REGEX: Lazy<Regex> = Lazy::new(|| compile_path_regex("", "", true, cfg!(windows)));
+        &*REGEX
+    } else {
+        static REGEX: Lazy<Regex> = Lazy::new(|| compile_path_regex("", "", false, cfg!(windows)));
+        &*REGEX
+    };
+    regex.find_iter(Input::new(src)).map(|mat| mat.range())
+}
+
+/// Performs substitution of `~` and environment variables, see [`env::expand`](crate::env::expand) and [`expand_tilde`]
+pub fn expand<T: AsRef<Path> + ?Sized>(path: &T) -> Cow<'_, Path> {
+    let path = path.as_ref();
+    let path = expand_tilde(path);
+    match crate::env::expand(&*path) {
+        Cow::Borrowed(_) => path,
+        Cow::Owned(path) => PathBuf::from(path).into(),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use std::{
@@ -208,7 +302,10 @@ mod tests {
         path::{Component, Path},
     };
 
-    use crate::path;
+    use regex_cursor::Input;
+    use ropey::RopeSlice;
+
+    use crate::path::{self, compile_path_regex};
 
     #[test]
     fn expand_tilde() {
@@ -226,6 +323,129 @@ mod tests {
 
             // The path was at least expanded to something.
             assert_ne!(component_count, 0);
+        }
+    }
+
+    macro_rules! assert_match {
+        ($regex: expr, $haystack: expr) => {
+            let haystack = Input::new(RopeSlice::from($haystack));
+            assert!(
+                $regex.is_match(haystack),
+                "regex should match {}",
+                $haystack
+            );
+        };
+    }
+    macro_rules! assert_no_match {
+        ($regex: expr, $haystack: expr) => {
+            let haystack = Input::new(RopeSlice::from($haystack));
+            assert!(
+                !$regex.is_match(haystack),
+                "regex should not match {}",
+                $haystack
+            );
+        };
+    }
+
+    macro_rules! assert_matches {
+        ($regex: expr, $haystack: expr, [$($matches: expr),*]) => {
+            let src = $haystack;
+            let matches: Vec<_> = $regex
+                .find_iter(Input::new(RopeSlice::from(src)))
+                .map(|it| &src[it.range()])
+                .collect();
+            assert_eq!(matches, vec![$($matches),*]);
+        };
+    }
+
+    /// Linux-only path
+    #[test]
+    fn path_regex_unix() {
+        // due to ambiguity with the `\` path separator we can't support space escapes `\ ` on windows
+        let regex = compile_path_regex("^", "$", false, false);
+        assert_match!(regex, "${FOO}/hello\\ world");
+        assert_match!(regex, "${FOO}/\\ ");
+    }
+
+    /// Windows-only paths
+    #[test]
+    fn path_regex_windows() {
+        let regex = compile_path_regex("^", "$", false, true);
+        assert_match!(regex, "${FOO}/hello^ world");
+        assert_match!(regex, "${FOO}/hello` world");
+        assert_match!(regex, "${FOO}/^ ");
+        assert_match!(regex, "${FOO}/` ");
+        assert_match!(regex, r"foo\bar");
+        assert_match!(regex, r"foo\bar");
+        assert_match!(regex, r"..\bar");
+        assert_match!(regex, r"..\");
+        assert_match!(regex, r"C:\");
+        assert_match!(regex, r"\\?\C:\foo");
+        assert_match!(regex, r"\\server\foo");
+    }
+
+    /// Paths that should work on all platforms
+    #[test]
+    fn path_regex() {
+        for windows in [false, true] {
+            let regex = compile_path_regex("^", "$", false, windows);
+            assert_no_match!(regex, "foo");
+            assert_no_match!(regex, "");
+            assert_match!(regex, "https://github.com/notifications/query=foo");
+            assert_match!(regex, "file:///foo/bar");
+            assert_match!(regex, "foo/bar");
+            assert_match!(regex, "$HOME/foo");
+            assert_match!(regex, "${FOO:-bar}/baz");
+            assert_match!(regex, "foo/bar_");
+            assert_match!(regex, "/home/bar");
+            assert_match!(regex, "foo/");
+            assert_match!(regex, "./");
+            assert_match!(regex, "../");
+            assert_match!(regex, "../..");
+            assert_match!(regex, "./foo");
+            assert_match!(regex, "./foo.rs");
+            assert_match!(regex, "/");
+            assert_match!(regex, "~/");
+            assert_match!(regex, "~/foo");
+            assert_match!(regex, "~/foo");
+            assert_match!(regex, "~/foo/../baz");
+            assert_match!(regex, "${HOME}/foo");
+            assert_match!(regex, "$HOME/foo");
+            assert_match!(regex, "/$FOO");
+            assert_match!(regex, "/${FOO}");
+            assert_match!(regex, "/${FOO}/${BAR}");
+            assert_match!(regex, "/${FOO}/${BAR}/foo");
+            assert_match!(regex, "/${FOO}/${BAR}");
+            assert_match!(regex, "${FOO}/hello_$WORLD");
+            assert_match!(regex, "${FOO}/hello_${WORLD}");
+            let regex = compile_path_regex("", "", false, windows);
+            assert_no_match!(regex, "");
+            assert_matches!(
+                regex,
+                r#"${FOO}/hello_${WORLD}  ${FOO}/hello_${WORLD} foo("./bar", "/home/foo")""#,
+                [
+                    "${FOO}/hello_${WORLD}",
+                    "${FOO}/hello_${WORLD}",
+                    "./bar",
+                    "/home/foo"
+                ]
+            );
+            assert_matches!(
+                regex,
+                r#"--> helix-stdx/src/path.rs:427:13"#,
+                ["helix-stdx/src/path.rs"]
+            );
+            assert_matches!(
+                regex,
+                r#"PATH=/foo/bar:/bar/baz:${foo:-/foo}/bar:${PATH}"#,
+                ["/foo/bar", "/bar/baz", "${foo:-/foo}/bar"]
+            );
+            let regex = compile_path_regex("^", "$", true, windows);
+            assert_no_match!(regex, "");
+            assert_match!(regex, "foo");
+            assert_match!(regex, "foo/");
+            assert_match!(regex, "$FOO");
+            assert_match!(regex, "${BAR}");
         }
     }
 }

@@ -37,7 +37,7 @@ fn get_line_offset(line_width: u16, text_area_width: u16, alignment: Alignment) 
 ///     Spans::from(Span::styled("Second line", Style::default().fg(Color::Red))),
 /// ]);
 /// Paragraph::new(&text)
-///     .block(Block::default().title("Paragraph").borders(Borders::ALL))
+///     .block(Block::bordered().title("Paragraph"))
 ///     .style(Style::default().fg(Color::White).bg(Color::Black))
 ///     .alignment(Alignment::Center)
 ///     .wrap(Wrap { trim: true });
@@ -129,7 +129,7 @@ impl<'a> Paragraph<'a> {
     }
 }
 
-impl<'a> Widget for Paragraph<'a> {
+impl Widget for Paragraph<'_> {
     fn render(mut self, area: Rect, buf: &mut Buffer) {
         buf.set_style(area, self.style);
         let text_area = match self.block.take() {

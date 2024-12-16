@@ -79,8 +79,6 @@
 "ui.text" = { fg = "base1" }
 # 影响 picker列表选中, 快捷键帮助窗口文本
 "ui.text.focus" = { fg = "blue", modifiers = ["bold"]}
-# file picker中， 预览的当前选中项
-"ui.highlight" = { fg = "red", modifiers = ["bold", "italic", "underlined"] }
 
 # 主光标/selectio
 "ui.cursor.primary" = { fg = "base03", bg = "base1" }
@@ -92,7 +90,7 @@
 "ui.selection.primary" = { bg = "base015" }
 
 "ui.virtual.indent-guide" = { fg = "base02" }
-"ui.virtual.ruler" = { fg = "red" }
+"ui.virtual.ruler" = { bg = "base02" }
 
 # normal模式的光标
 "ui.cursor" = {fg = "base02", bg = "cyan"}

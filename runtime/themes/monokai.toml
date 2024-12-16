@@ -1,5 +1,7 @@
 # Author: Shafkath Shuhan <shafkathshuhannyc@gmail.com>
 
+"tag" = { fg = "tag" }
+
 "namespace" = { fg = "type" }
 "module" = { fg = "type" }
 
@@ -79,10 +81,12 @@
 "ui.statusline" = { fg = "active_text", bg = "#414339" }
 "ui.statusline.inactive" = { fg = "active_text", bg = "#75715e" }
 
-"ui.bufferline" = { fg = "grey2", bg = "bg3" }
+# Malformed ANSI: grey2, bg3. See 'https://github.com/helix-editor/helix/issues/5709'
+# "ui.bufferline" = { fg = "grey2", bg = "bg3" }
 "ui.bufferline.active" = { fg = "active_text", bg = "selection", modifiers = [
   "bold",
 ] }
+"ui.virtual.inlay-hint" = { fg = "#88846F" }
 
 "ui.text" = { fg = "text" }
 "ui.text.focus" = { fg = "active_text" }
@@ -114,3 +118,4 @@ cursor = "#a6a6a6"
 inactive_cursor = "#878b91"
 widget = "#1e1f1c"
 selection = "#414339"
+tag = "#F92672"

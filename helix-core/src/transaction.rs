@@ -29,6 +29,12 @@ pub enum Assoc {
     /// Acts like `Before` if a word character is inserted
     /// before the position, otherwise acts like `After`
     BeforeWord,
+    /// Acts like `Before` but if the position is within an exact replacement
+    /// (exact size) the offset to the start of the replacement is kept
+    BeforeSticky,
+    /// Acts like `After` but if the position is within an exact replacement
+    /// (exact size) the offset to the start of the replacement is kept
+    AfterSticky,
 }
 
 impl Assoc {
@@ -40,12 +46,16 @@ impl Assoc {
     fn insert_offset(self, s: &str) -> usize {
         let chars = s.chars().count();
         match self {
-            Assoc::After => chars,
+            Assoc::After | Assoc::AfterSticky => chars,
             Assoc::AfterWord => s.chars().take_while(|&c| char_is_word(c)).count(),
             // return position before inserted text
-            Assoc::Before => 0,
+            Assoc::Before | Assoc::BeforeSticky => 0,
             Assoc::BeforeWord => chars - s.chars().rev().take_while(|&c| char_is_word(c)).count(),
         }
+    }
+
+    pub fn sticky(self) -> bool {
+        matches!(self, Assoc::BeforeSticky | Assoc::AfterSticky)
     }
 }
 
@@ -378,7 +388,9 @@ impl ChangeSet {
             macro_rules! map {
                 ($map: expr, $i: expr) => {
                     loop {
-                        let Some((pos, assoc)) = positions.peek_mut() else { return; };
+                        let Some((pos, assoc)) = positions.peek_mut() else {
+                            return;
+                        };
                         if **pos < old_pos {
                             // Positions are not sorted, revert to the last Operation that
                             // contains this position and continue iterating from there.
@@ -405,7 +417,10 @@ impl ChangeSet {
                             debug_assert!(old_pos <= **pos, "Reverse Iter across changeset works");
                             continue 'outer;
                         }
-                        let Some(new_pos) = $map(**pos, *assoc) else { break; };
+                        #[allow(clippy::redundant_closure_call)]
+                        let Some(new_pos) = $map(**pos, *assoc) else {
+                            break;
+                        };
                         **pos = new_pos;
                         positions.next();
                     }
@@ -451,8 +466,14 @@ impl ChangeSet {
                                 if pos == old_pos && assoc.stay_at_gaps() {
                                     new_pos
                                 } else {
-                                    // place to end of insert
-                                    new_pos + assoc.insert_offset(s)
+                                    let ins = assoc.insert_offset(s);
+                                    // if the deleted and inserted text have the exact same size
+                                    // keep the relative offset into the new text
+                                    if *len == ins && assoc.sticky() {
+                                        new_pos + (pos - old_pos)
+                                    } else {
+                                        new_pos + assoc.insert_offset(s)
+                                    }
                                 }
                             }),
                             i
@@ -748,7 +769,7 @@ impl<'a> ChangeIterator<'a> {
     }
 }
 
-impl<'a> Iterator for ChangeIterator<'a> {
+impl Iterator for ChangeIterator<'_> {
     type Item = Change;
 
     fn next(&mut self) -> Option<Self::Item> {

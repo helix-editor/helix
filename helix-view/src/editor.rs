@@ -1,6 +1,9 @@
 use crate::{
-    align_view,
-    document::{DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint},
+    annotations::diagnostics::{DiagnosticFilter, InlineDiagnosticsConfig},
+    clipboard::ClipboardProvider,
+    document::{
+        DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
+    },
     graphics::{CursorKind, Rect},
     handlers::Handlers,
     info::Info,
@@ -8,15 +11,14 @@ use crate::{
     register::Registers,
     theme::{self, Theme},
     tree::{self, Tree},
-    view::ViewPosition,
-    Align, Document, DocumentId, View, ViewId,
+    Document, DocumentId, View, ViewId,
 };
 use dap::StackFrame;
 use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
-use helix_lsp::Call;
+use helix_lsp::{Call, LanguageServerId};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 
 use std::{
@@ -42,7 +44,7 @@ pub use helix_core::diagnostic::Severity;
 use helix_core::{
     auto_pairs::AutoPairs,
     syntax::{self, AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
-    Change, LineEnding, Position, Range, Selection, NATIVE_LINE_ENDING,
+    Change, LineEnding, Position, Range, Selection, Uri, NATIVE_LINE_ENDING,
 };
 use helix_dap as dap;
 use helix_lsp::lsp;
@@ -54,6 +56,8 @@ use arc_swap::{
     access::{DynAccess, DynGuard},
     ArcSwap,
 };
+
+pub const DEFAULT_AUTO_SAVE_DELAY: u64 = 3000;
 
 fn deserialize_duration_millis<'de, D>(deserializer: D) -> Result<Duration, D::Error>
 where
@@ -212,6 +216,14 @@ impl Default for FilePickerConfig {
     }
 }
 
+fn serialize_alphabet<S>(alphabet: &[char], serializer: S) -> Result<S::Ok, S::Error>
+where
+    S: Serializer,
+{
+    let alphabet: String = alphabet.iter().collect();
+    serializer.serialize_str(&alphabet)
+}
+
 fn deserialize_alphabet<'de, D>(deserializer: D) -> Result<Vec<char>, D::Error>
 where
     D: Deserializer<'de>,
@@ -256,10 +268,20 @@ pub struct Config {
     pub auto_pairs: AutoPairConfig,
     /// Automatic auto-completion, automatically pop up without user trigger. Defaults to true.
     pub auto_completion: bool,
+    /// Enable filepath completion.
+    /// Show files and directories if an existing path at the cursor was recognized,
+    /// either absolute or relative to the current opened document or current working directory (if the buffer is not yet saved).
+    /// Defaults to true.
+    pub path_completion: bool,
     /// Automatic formatting on save. Defaults to true.
     pub auto_format: bool,
-    /// Automatic save on focus lost. Defaults to false.
-    pub auto_save: bool,
+    /// Default register used for yank/paste. Defaults to '"'
+    pub default_yank_register: char,
+    /// Automatic save on focus lost and/or after delay.
+    /// Time delay in milliseconds since last edit after which auto save timer triggers.
+    /// Time delay defaults to false with 3000ms delay. Focus lost defaults to false.
+    #[serde(deserialize_with = "deserialize_auto_save")]
+    pub auto_save: AutoSave,
     /// Set a global text_width
     pub text_width: usize,
     /// Time in milliseconds since last keypress before idle timers trigger.
@@ -282,6 +304,9 @@ pub struct Config {
     /// Whether to instruct the LSP to replace the entire word when applying a completion
     /// or to only insert new text
     pub completion_replace: bool,
+    /// `true` if helix should automatically add a line comment token if you're currently in a comment
+    /// and press `enter`.
+    pub continue_comments: bool,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
@@ -323,8 +348,16 @@ pub struct Config {
     #[serde(default)]
     pub indent_heuristic: IndentationHeuristic,
     /// labels characters used in jumpmode
-    #[serde(skip_serializing, deserialize_with = "deserialize_alphabet")]
+    #[serde(
+        serialize_with = "serialize_alphabet",
+        deserialize_with = "deserialize_alphabet"
+    )]
     pub jump_label_alphabet: Vec<char>,
+    /// Display diagnostic below the line they occur.
+    pub inline_diagnostics: InlineDiagnosticsConfig,
+    pub end_of_line_diagnostics: DiagnosticFilter,
+    // Set to override the default clipboard provider
+    pub clipboard_provider: ClipboardProvider,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -375,7 +408,7 @@ pub fn get_terminal_provider() -> Option<TerminalConfig> {
     })
 }
 
-#[cfg(not(any(windows, target_os = "wasm32")))]
+#[cfg(not(any(windows, target_arch = "wasm32")))]
 pub fn get_terminal_provider() -> Option<TerminalConfig> {
     use helix_stdx::env::{binary_exists, env_var_is_set};
 
@@ -401,7 +434,9 @@ pub fn get_terminal_provider() -> Option<TerminalConfig> {
 pub struct LspConfig {
     /// Enables LSP
     pub enable: bool,
-    /// Display LSP progress messages below statusline
+    /// Display LSP messagess from $/progress below statusline
+    pub display_progress_messages: bool,
+    /// Display LSP messages from window/showMessage below statusline
     pub display_messages: bool,
     /// Enable automatic pop up of signature help (parameter hints)
     pub auto_signature_help: bool,
@@ -419,7 +454,8 @@ impl Default for LspConfig {
     fn default() -> Self {
         Self {
             enable: true,
-            display_messages: false,
+            display_progress_messages: false,
+            display_messages: true,
             auto_signature_help: true,
             display_signature_help_docs: true,
             display_inlay_hints: false,
@@ -760,6 +796,61 @@ impl WhitespaceRender {
     }
 }
 
+#[derive(Debug, Default, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct AutoSave {
+    /// Auto save after a delay in milliseconds. Defaults to disabled.
+    #[serde(default)]
+    pub after_delay: AutoSaveAfterDelay,
+    /// Auto save on focus lost. Defaults to false.
+    #[serde(default)]
+    pub focus_lost: bool,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
+#[serde(deny_unknown_fields)]
+pub struct AutoSaveAfterDelay {
+    #[serde(default)]
+    /// Enable auto save after delay. Defaults to false.
+    pub enable: bool,
+    #[serde(default = "default_auto_save_delay")]
+    /// Time delay in milliseconds. Defaults to [DEFAULT_AUTO_SAVE_DELAY].
+    pub timeout: u64,
+}
+
+impl Default for AutoSaveAfterDelay {
+    fn default() -> Self {
+        Self {
+            enable: false,
+            timeout: DEFAULT_AUTO_SAVE_DELAY,
+        }
+    }
+}
+
+fn default_auto_save_delay() -> u64 {
+    DEFAULT_AUTO_SAVE_DELAY
+}
+
+fn deserialize_auto_save<'de, D>(deserializer: D) -> Result<AutoSave, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    #[derive(Deserialize, Serialize)]
+    #[serde(untagged, deny_unknown_fields, rename_all = "kebab-case")]
+    enum AutoSaveToml {
+        EnableFocusLost(bool),
+        AutoSave(AutoSave),
+    }
+
+    match AutoSaveToml::deserialize(deserializer)? {
+        AutoSaveToml::EnableFocusLost(focus_lost) => Ok(AutoSave {
+            focus_lost,
+            ..Default::default()
+        }),
+        AutoSaveToml::AutoSave(auto_save) => Ok(auto_save),
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct WhitespaceCharacters {
@@ -869,8 +960,10 @@ impl Default for Config {
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
+            path_completion: true,
             auto_format: true,
-            auto_save: false,
+            default_yank_register: '"',
+            auto_save: AutoSave::default(),
             idle_timeout: Duration::from_millis(250),
             completion_timeout: Duration::from_millis(250),
             preview_completion_insert: true,
@@ -895,6 +988,7 @@ impl Default for Config {
             },
             text_width: 80,
             completion_replace: false,
+            continue_comments: true,
             workspace_lsp_roots: Vec::new(),
             default_line_ending: LineEndingConfig::default(),
             insert_final_newline: true,
@@ -902,6 +996,9 @@ impl Default for Config {
             popup_border: PopupBorderConfig::None,
             indent_heuristic: IndentationHeuristic::default(),
             jump_label_alphabet: ('a'..='z').collect(),
+            inline_diagnostics: InlineDiagnosticsConfig::default(),
+            end_of_line_diagnostics: DiagnosticFilter::Disable,
+            clipboard_provider: ClipboardProvider::default(),
         }
     }
 }
@@ -949,7 +1046,7 @@ pub struct Editor {
     pub macro_recording: Option<(char, Vec<KeyEvent>)>,
     pub macro_replaying: Vec<char>,
     pub language_servers: helix_lsp::Registry,
-    pub diagnostics: BTreeMap<PathBuf, Vec<(lsp::Diagnostic, usize)>>,
+    pub diagnostics: BTreeMap<Uri, Vec<(lsp::Diagnostic, LanguageServerId)>>,
     pub diff_providers: DiffProviderRegistry,
 
     pub debugger: Option<dap::Client>,
@@ -980,6 +1077,7 @@ pub struct Editor {
     redraw_timer: Pin<Box<Sleep>>,
     last_motion: Option<Motion>,
     pub last_completion: Option<CompleteAction>,
+    pub last_cwd: Option<PathBuf>,
 
     pub exit_code: i32,
 
@@ -997,10 +1095,10 @@ pub struct Editor {
     /// This cache is only a performance optimization to
     /// avoid calculating the cursor position multiple
     /// times during rendering and should not be set by other functions.
-    pub cursor_cache: Cell<Option<Option<Position>>>,
     pub handlers: Handlers,
 
     pub mouse_down_range: Option<Range>,
+    pub cursor_cache: CursorCache,
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
@@ -1009,7 +1107,7 @@ pub type Motion = Box<dyn Fn(&mut Editor)>;
 pub enum EditorEvent {
     DocumentSaved(DocumentSavedEventResult),
     ConfigEvent(ConfigEvent),
-    LanguageServerMessage((usize, Call)),
+    LanguageServerMessage((LanguageServerId, Call)),
     DebuggerEvent(dap::Payload),
     IdleTimer,
     Redraw,
@@ -1103,21 +1201,25 @@ impl Editor {
             theme_loader,
             last_theme: None,
             last_selection: None,
-            registers: Registers::default(),
+            registers: Registers::new(Box::new(arc_swap::access::Map::new(
+                Arc::clone(&config),
+                |config: &Config| &config.clipboard_provider,
+            ))),
             status_msg: None,
             autoinfo: None,
             idle_timer: Box::pin(sleep(conf.idle_timeout)),
             redraw_timer: Box::pin(sleep(Duration::MAX)),
             last_motion: None,
             last_completion: None,
+            last_cwd: None,
             config,
             auto_pairs,
             exit_code: 0,
             config_events: unbounded_channel(),
             needs_redraw: false,
-            cursor_cache: Cell::new(None),
             handlers,
             mouse_down_range: None,
+            cursor_cache: CursorCache::default(),
         }
     }
 
@@ -1195,6 +1297,13 @@ impl Editor {
     }
 
     #[inline]
+    pub fn set_warning<T: Into<Cow<'static, str>>>(&mut self, warning: T) {
+        let warning = warning.into();
+        log::warn!("editor warning: {}", warning);
+        self.status_msg = Some((warning, Severity::Warning));
+    }
+
+    #[inline]
     pub fn get_status(&self) -> Option<(&Cow<'static, str>, &Severity)> {
         self.status_msg.as_ref().map(|(status, sev)| (status, sev))
     }
@@ -1249,8 +1358,13 @@ impl Editor {
     }
 
     #[inline]
-    pub fn language_server_by_id(&self, language_server_id: usize) -> Option<&helix_lsp::Client> {
-        self.language_servers.get_by_id(language_server_id)
+    pub fn language_server_by_id(
+        &self,
+        language_server_id: LanguageServerId,
+    ) -> Option<&helix_lsp::Client> {
+        self.language_servers
+            .get_by_id(language_server_id)
+            .map(|client| &**client)
     }
 
     /// Refreshes the language server for a given document
@@ -1294,6 +1408,11 @@ impl Editor {
         }
         let is_dir = new_path.is_dir();
         for ls in self.language_servers.iter_clients() {
+            // A new language server might have been started in `set_doc_path` and won't
+            // be initialized yet. Skip the `did_rename` notification for this server.
+            if !ls.is_initialized() {
+                continue;
+            }
             if let Some(notification) = ls.did_rename(old_path, &new_path, is_dir) {
                 tokio::spawn(notification);
             };
@@ -1340,6 +1459,7 @@ impl Editor {
         let doc = doc_mut!(self, &doc_id);
         let diagnostics = Editor::doc_diagnostics(&self.language_servers, &self.diagnostics, doc);
         doc.replace_diagnostics(diagnostics, &[], None);
+        doc.reset_all_inlay_hints();
     }
 
     /// Launch a language server for a given document
@@ -1445,16 +1565,17 @@ impl Editor {
     }
 
     fn replace_document_in_view(&mut self, current_view: ViewId, doc_id: DocumentId) {
+        let scrolloff = self.config().scrolloff;
         let view = self.tree.get_mut(current_view);
-        view.doc = doc_id;
-        view.offset = ViewPosition::default();
 
+        view.doc = doc_id;
         let doc = doc_mut!(self, &doc_id);
+
         doc.ensure_view_init(view.id);
         view.sync_changes(doc);
         doc.mark_as_focused();
 
-        align_view(doc, view, Align::Center);
+        view.ensure_cursor_in_view(doc, scrolloff)
     }
 
     pub fn switch(&mut self, id: DocumentId, action: Action) {
@@ -1465,7 +1586,9 @@ impl Editor {
             return;
         }
 
-        self.enter_normal_mode();
+        if !matches!(action, Action::Load) {
+            self.enter_normal_mode();
+        }
 
         match action {
             Action::Replace => {
@@ -1599,10 +1722,14 @@ impl Editor {
         Ok(doc_id)
     }
 
+    pub fn document_id_by_path(&self, path: &Path) -> Option<DocumentId> {
+        self.document_by_path(path).map(|doc| doc.id)
+    }
+
     // ??? possible use for integration tests
-    pub fn open(&mut self, path: &Path, action: Action) -> Result<DocumentId, Error> {
+    pub fn open(&mut self, path: &Path, action: Action) -> Result<DocumentId, DocumentOpenError> {
         let path = helix_stdx::path::canonicalize(path);
-        let id = self.document_by_path(&path).map(|doc| doc.id);
+        let id = self.document_id_by_path(&path);
 
         let id = if let Some(id) = id {
             id
@@ -1812,8 +1939,8 @@ impl Editor {
 
     pub fn ensure_cursor_in_view(&mut self, id: ViewId) {
         let config = self.config();
-        let view = self.tree.get_mut(id);
-        let doc = &self.documents[&view.doc];
+        let view = self.tree.get(id);
+        let doc = doc_mut!(self, &view.doc);
         view.ensure_cursor_in_view(doc, config.scrolloff)
     }
 
@@ -1850,7 +1977,7 @@ impl Editor {
     /// Returns all supported diagnostics for the document
     pub fn doc_diagnostics<'a>(
         language_servers: &'a helix_lsp::Registry,
-        diagnostics: &'a BTreeMap<PathBuf, Vec<(lsp::Diagnostic, usize)>>,
+        diagnostics: &'a BTreeMap<Uri, Vec<(lsp::Diagnostic, LanguageServerId)>>,
         document: &Document,
     ) -> impl Iterator<Item = helix_core::Diagnostic> + 'a {
         Editor::doc_diagnostics_with_filter(language_servers, diagnostics, document, |_, _| true)
@@ -1860,16 +1987,15 @@ impl Editor {
     /// filtered by `filter` which is invocated with the raw `lsp::Diagnostic` and the language server id it came from
     pub fn doc_diagnostics_with_filter<'a>(
         language_servers: &'a helix_lsp::Registry,
-        diagnostics: &'a BTreeMap<PathBuf, Vec<(lsp::Diagnostic, usize)>>,
-
+        diagnostics: &'a BTreeMap<Uri, Vec<(lsp::Diagnostic, LanguageServerId)>>,
         document: &Document,
-        filter: impl Fn(&lsp::Diagnostic, usize) -> bool + 'a,
+        filter: impl Fn(&lsp::Diagnostic, LanguageServerId) -> bool + 'a,
     ) -> impl Iterator<Item = helix_core::Diagnostic> + 'a {
         let text = document.text().clone();
         let language_config = document.language.clone();
         document
-            .path()
-            .and_then(|path| diagnostics.get(path))
+            .uri()
+            .and_then(|uri| diagnostics.get(&uri))
             .map(|diags| {
                 diags.iter().filter_map(move |(diagnostic, lsp_id)| {
                     let ls = language_servers.get_by_id(*lsp_id)?;
@@ -1905,15 +2031,7 @@ impl Editor {
     pub fn cursor(&self) -> (Option<Position>, CursorKind) {
         let config = self.config();
         let (view, doc) = current_ref!(self);
-        let cursor = doc
-            .selection(view.id)
-            .primary()
-            .cursor(doc.text().slice(..));
-        let pos = self
-            .cursor_cache
-            .get()
-            .unwrap_or_else(|| view.screen_coords_at_pos(doc, doc.text().slice(..), cursor));
-        if let Some(mut pos) = pos {
+        if let Some(mut pos) = self.cursor_cache.get(view, doc) {
             let inner = view.inner_area(doc);
             pos.col += inner.x as usize;
             pos.row += inner.y as usize;
@@ -2006,7 +2124,7 @@ impl Editor {
                 };
 
                 let doc = doc_mut!(self, &save_event.doc_id);
-                doc.set_last_saved_revision(save_event.revision);
+                doc.set_last_saved_revision(save_event.revision, save_event.save_time);
             }
         }
 
@@ -2106,5 +2224,30 @@ fn try_restore_indent(doc: &mut Document, view: &mut View) {
                 (line_start_pos, pos, None)
             });
         doc.apply(&transaction, view.id);
+    }
+}
+
+#[derive(Default)]
+pub struct CursorCache(Cell<Option<Option<Position>>>);
+
+impl CursorCache {
+    pub fn get(&self, view: &View, doc: &Document) -> Option<Position> {
+        if let Some(pos) = self.0.get() {
+            return pos;
+        }
+
+        let text = doc.text().slice(..);
+        let cursor = doc.selection(view.id).primary().cursor(text);
+        let res = view.screen_coords_at_pos(doc, text, cursor);
+        self.set(res);
+        res
+    }
+
+    pub fn set(&self, cursor_pos: Option<Position>) {
+        self.0.set(Some(cursor_pos))
+    }
+
+    pub fn reset(&self) {
+        self.0.set(None)
     }
 }

@@ -28,6 +28,11 @@ pub enum Grapheme<'a> {
 }
 
 impl<'a> Grapheme<'a> {
+    pub fn new_decoration(g: &'static str) -> Grapheme<'a> {
+        assert_ne!(g, "\t");
+        Grapheme::new(g.into(), 0, 0)
+    }
+
     pub fn new(g: GraphemeStr<'a>, visual_x: usize, tab_width: u16) -> Grapheme<'a> {
         match g {
             g if g == "\t" => Grapheme::Tab {
@@ -278,23 +283,6 @@ pub fn ensure_grapheme_boundary_prev(slice: RopeSlice, char_idx: usize) -> usize
     }
 }
 
-/// Returns the passed byte index if it's already a grapheme boundary,
-/// or the next grapheme boundary byte index if not.
-#[must_use]
-#[inline]
-pub fn ensure_grapheme_boundary_next_byte(slice: RopeSlice, byte_idx: usize) -> usize {
-    if byte_idx == 0 {
-        byte_idx
-    } else {
-        // TODO: optimize so we're not constructing grapheme cursor twice
-        if is_grapheme_boundary_byte(slice, byte_idx) {
-            byte_idx
-        } else {
-            next_grapheme_boundary_byte(slice, byte_idx)
-        }
-    }
-}
-
 /// Returns whether the given char position is a grapheme boundary.
 #[must_use]
 pub fn is_grapheme_boundary(slice: RopeSlice, char_idx: usize) -> bool {
@@ -358,7 +346,7 @@ pub struct RopeGraphemes<'a> {
     cursor: GraphemeCursor,
 }
 
-impl<'a> fmt::Debug for RopeGraphemes<'a> {
+impl fmt::Debug for RopeGraphemes<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RopeGraphemes")
             .field("text", &self.text)
@@ -370,7 +358,7 @@ impl<'a> fmt::Debug for RopeGraphemes<'a> {
     }
 }
 
-impl<'a> RopeGraphemes<'a> {
+impl RopeGraphemes<'_> {
     #[must_use]
     pub fn new(slice: RopeSlice) -> RopeGraphemes {
         let mut chunks = slice.chunks();
@@ -435,7 +423,7 @@ pub struct RevRopeGraphemes<'a> {
     cursor: GraphemeCursor,
 }
 
-impl<'a> fmt::Debug for RevRopeGraphemes<'a> {
+impl fmt::Debug for RevRopeGraphemes<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RevRopeGraphemes")
             .field("text", &self.text)
@@ -447,7 +435,7 @@ impl<'a> fmt::Debug for RevRopeGraphemes<'a> {
     }
 }
 
-impl<'a> RevRopeGraphemes<'a> {
+impl RevRopeGraphemes<'_> {
     #[must_use]
     pub fn new(slice: RopeSlice) -> RevRopeGraphemes {
         let (mut chunks, mut cur_chunk_start, _, _) = slice.chunks_at_byte(slice.len_bytes());
@@ -554,7 +542,7 @@ impl<'a> From<&'a str> for GraphemeStr<'a> {
     }
 }
 
-impl<'a> From<String> for GraphemeStr<'a> {
+impl From<String> for GraphemeStr<'_> {
     fn from(g: String) -> Self {
         let len = g.len();
         let ptr = Box::into_raw(g.into_bytes().into_boxed_slice()) as *mut u8;

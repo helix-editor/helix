@@ -5,12 +5,20 @@ use crate::handlers::lsp::SignatureHelpInvoked;
 use crate::{DocumentId, Editor, ViewId};
 
 pub mod dap;
+pub mod diagnostics;
 pub mod lsp;
+
+#[derive(Debug)]
+pub enum AutoSaveEvent {
+    DocumentChanged { save_after: u64 },
+    LeftInsertMode,
+}
 
 pub struct Handlers {
     // only public because most of the actual implementation is in helix-term right now :/
     pub completions: Sender<lsp::CompletionEvent>,
     pub signature_hints: Sender<lsp::SignatureHelpEvent>,
+    pub auto_save: Sender<AutoSaveEvent>,
 }
 
 impl Handlers {

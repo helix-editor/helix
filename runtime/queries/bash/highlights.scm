@@ -1,9 +1,14 @@
 [
   (string)
   (raw_string)
+  (ansi_c_string)
   (heredoc_body)
-  (heredoc_start)
 ] @string
+
+[
+  (heredoc_start)
+  (heredoc_end)
+] @label
 
 (command_name) @function
 
@@ -60,7 +65,6 @@
   ">>"
   "<"
   "|"
-  (expansion_flags)
 ] @operator
 
 (

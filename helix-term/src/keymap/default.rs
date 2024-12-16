@@ -87,10 +87,12 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "A-;" => flip_selections,
         "A-o" | "A-up" => expand_selection,
         "A-i" | "A-down" => shrink_selection,
+        "A-I" | "A-S-down" => select_all_children,
         "A-p" | "A-left" => select_prev_sibling,
         "A-n" | "A-right" => select_next_sibling,
         "A-e" => move_parent_node_end,
         "A-b" => move_parent_node_start,
+        "A-a" => select_all_siblings,
 
         "%" => select_all,
         "x" => extend_line_below,
@@ -138,7 +140,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "?" => rsearch,
         "n" => search_next,
         "N" => search_prev,
-        "*" => search_selection,
+        "*" => search_selection_detect_word_boundaries,
+        "A-*" => search_selection,
 
         "u" => undo,
         "U" => redo,
