@@ -12,7 +12,6 @@ use helix_core::{line_ending, shellwords::Shellwords};
 use helix_stdx::path::home_dir;
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
-use path::expand_tilde;
 use serde_json::Value;
 use ui::completers::{self, Completer};
 
@@ -2508,7 +2507,7 @@ fn read(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     ensure!(args.len() == 1, "only the file name is expected");
 
     let filename = args.first().unwrap();
-    let path = expand_tilde(PathBuf::from(filename.to_string()));
+    let path = helix_stdx::path::expand_tilde(PathBuf::from(filename.to_string()));
 
     ensure!(
         path.exists() && path.is_file(),
