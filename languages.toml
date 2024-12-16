@@ -1184,7 +1184,8 @@ file-types = ["java", "jav", "pde"]
 roots = ["pom.xml", "build.gradle", "build.gradle.kts"]
 language-servers = [ "jdtls" ]
 indent = { tab-width = 2, unit = "  " }
-comment-token = "//"
+comment-tokens = ["//"]
+block-comment-tokens = { start = "/*", end = "*/" }
 
 [[grammar]]
 name = "java"
