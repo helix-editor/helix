@@ -118,3 +118,5 @@ All other keys such as `?`, `!`, `-` etc. can be used literally:
 "!" = ":write"
 "-" = ":write"
 ```
+
+Note: `-` can't be used when combined with a modifier, for example `Alt` + `-` should be written as `A-minus`. `A--` is not accepted.
