@@ -5,7 +5,6 @@ use helix_core::syntax;
 use helix_view::document::Mode;
 use helix_view::input::KeyEvent;
 use helix_view::keyboard::KeyCode;
-use helix_view::theme::Style;
 use std::sync::Arc;
 use std::{borrow::Cow, ops::RangeFrom};
 use tui::buffer::Buffer as Surface;
@@ -401,7 +400,7 @@ impl Prompt {
     pub fn render_prompt(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let theme = &cx.editor.theme;
         let prompt_color = theme.get("ui.text");
-        let default_completion_color = theme.get("ui.menu");
+        let completion_color = theme.get("ui.menu");
         let selected_color = theme.get("ui.menu.selected");
         let suggestion_color = theme.get("ui.text.inactive");
         let background = theme.get("ui.background");
@@ -453,10 +452,8 @@ impl Prompt {
 
                 let completion_item_style = if is_selected {
                     selected_color
-                } else if completion.style != Style::default() {
-                    completion.style
                 } else {
-                    default_completion_color
+                    completion_color.patch(completion.style)
                 };
 
                 surface.set_stringn(
