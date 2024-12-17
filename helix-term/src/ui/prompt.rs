@@ -663,7 +663,7 @@ impl Component for Prompt {
                     .editor
                     .registers
                     .iter_preview()
-                    .map(|(ch, preview)| (0.., Span::raw(format!("{} {}", ch, &preview))))
+                    .map(|(ch, preview)| (0.., format!("{} {}", ch, &preview).into()))
                     .collect();
                 self.next_char_handler = Some(Box::new(|prompt, c, context| {
                     prompt.insert_str(

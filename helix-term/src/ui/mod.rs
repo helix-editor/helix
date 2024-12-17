@@ -291,7 +291,7 @@ pub mod completers {
 
         fuzzy_match(input, names, true)
             .into_iter()
-            .map(|(name, _)| ((0..), Span::raw(name)))
+            .map(|(name, _)| ((0..), name.into()))
             .collect()
     }
 
@@ -307,7 +307,7 @@ pub mod completers {
 
         fuzzy_match(input, names, false)
             .into_iter()
-            .map(|(name, _)| ((0..), Span::raw(name)))
+            .map(|(name, _)| ((0..), name.into()))
             .collect()
     }
 
@@ -372,7 +372,7 @@ pub mod completers {
 
         fuzzy_match(input, language_ids, false)
             .into_iter()
-            .map(|(name, _)| ((0..), Span::raw(name.to_owned())))
+            .map(|(name, _)| ((0..), name.to_owned().into()))
             .collect()
     }
 
@@ -388,7 +388,7 @@ pub mod completers {
 
         fuzzy_match(input, commands, false)
             .into_iter()
-            .map(|(name, _)| ((0..), Span::raw(name.to_owned())))
+            .map(|(name, _)| ((0..), name.to_owned().into()))
             .collect()
     }
 
@@ -545,7 +545,7 @@ pub mod completers {
 
         fuzzy_match(input, iter, false)
             .into_iter()
-            .map(|(name, _)| ((0..), Span::raw(name)))
+            .map(|(name, _)| ((0..), name.into()))
             .collect()
     }
 }

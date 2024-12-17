@@ -3178,7 +3178,7 @@ pub(super) fn command_mode(cx: &mut Context) {
                     false,
                 )
                 .into_iter()
-                .map(|(name, _)| (0.., Span::raw(name)))
+                .map(|(name, _)| (0.., name.into()))
                 .collect()
             } else {
                 // Otherwise, use the command's completer and the last shellword
