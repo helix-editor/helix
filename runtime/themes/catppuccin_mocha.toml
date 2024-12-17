@@ -86,6 +86,7 @@
 "ui.text" = "text"
 "ui.text.focus" = { fg = "text", bg = "surface0", modifiers = ["bold"] }
 "ui.text.inactive" = { fg = "overlay1" }
+"ui.text.directory" = { fg = "blue" }
 
 "ui.virtual" = "overlay0"
 "ui.virtual.ruler" = { bg = "surface0" }

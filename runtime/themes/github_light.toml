@@ -59,6 +59,7 @@ label = "scale.red.5"
 "ui.text" = { fg = "fg.muted" }
 "ui.text.focus" = { fg = "fg.default" }
 "ui.text.inactive" = "fg.subtle"
+"ui.text.directory" = { fg = "scale.blue.4" }
 "ui.virtual" = { fg = "scale.gray.2" }
 "ui.virtual.ruler" = { bg = "canvas.subtle" }
 
