@@ -450,11 +450,10 @@ impl Prompt {
                 self.completion.iter().enumerate().skip(offset).take(items)
             {
                 let is_selected = Some(i) == self.selection;
-                let has_custom_style = completion.style != Style::default();
 
                 let completion_item_style = if is_selected {
                     selected_color
-                } else if has_custom_style {
+                } else if completion.style != Style::default() {
                     completion.style
                 } else {
                     default_completion_color
