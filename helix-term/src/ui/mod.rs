@@ -507,8 +507,7 @@ pub mod completers {
             }) // TODO: unwrap or skip
             .filter(|path| !path.is_empty());
 
-        // TODO: use a custom theme key e.g. "ui.text.directory"
-        let directory_color = editor.theme.get("function");
+        let directory_color = editor.theme.get("ui.text.directory");
 
         let style_from_file = |file: Cow<'static, str>| {
             if file.ends_with(std::path::MAIN_SEPARATOR) {
