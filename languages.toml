@@ -1174,7 +1174,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "julia"
-source = { git = "https://github.com/tree-sitter/tree-sitter-julia", rev = "8fb38abff74652c4faddbf04d2d5bbbc6b4bae25" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-julia", rev = "e84f10db8eeb8b9807786bfc658808edaa1b4fa2" }
 
 [[language]]
 name = "java"
@@ -1706,7 +1706,7 @@ language-servers = [ "docker-langserver" ]
 
 [[grammar]]
 name = "dockerfile"
-source = { git = "https://github.com/camdencheek/tree-sitter-dockerfile", rev = "8ee3a0f7587b2bd8c45c8cb7d28bd414604aec62" }
+source = { git = "https://github.com/camdencheek/tree-sitter-dockerfile", rev = "868e44ce378deb68aac902a9db68ff82d2299dd0" }
 
 [[language]]
 name = "docker-compose"
@@ -1966,7 +1966,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "ron"
-source = { git = "https://github.com/zee-editor/tree-sitter-ron", rev = "7762d709a0f7c1f9e269d0125a2e8a7a69006146" }
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-ron", rev = "78938553b93075e638035f624973083451b29055" }
 
 [[language]]
 name = "robot"
@@ -2457,7 +2457,7 @@ formatter = { command = "cue", args = ["fmt", "-"] }
 
 [[grammar]]
 name = "cue"
-source = { git = "https://github.com/eonpatapon/tree-sitter-cue", rev = "61843e3beebf19417e4fede4e8be4df1084317ad" }
+source = { git = "https://github.com/eonpatapon/tree-sitter-cue", rev = "8a5f273bfa281c66354da562f2307c2d394b6c81" }
 
 [[language]]
 name = "slint"

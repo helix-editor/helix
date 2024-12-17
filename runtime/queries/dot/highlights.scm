@@ -1,3 +1,5 @@
+(identifier) @variable
+
 (keyword) @keyword
 (string_literal) @string
 (number_literal) @constant.numeric
@@ -33,11 +35,9 @@
     (identifier) @constant)
 )
 
-[
-  (comment)
-  (preproc)
-] @comment
+(comment) @comment
+
+(preproc) @keyword.directive
 
 (ERROR) @error
 
-(identifier) @variable
