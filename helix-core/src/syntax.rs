@@ -125,6 +125,9 @@ pub struct LanguageConfiguration {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub formatter: Option<FormatterConfiguration>,
 
+    /// If set, overrides `editor.path-completion`.
+    pub path_completion: Option<bool>,
+
     #[serde(default)]
     pub diagnostic_severity: Severity,
 
@@ -616,7 +619,7 @@ pub enum CapturedNode<'a> {
     Grouped(Vec<Node<'a>>),
 }
 
-impl<'a> CapturedNode<'a> {
+impl CapturedNode<'_> {
     pub fn start_byte(&self) -> usize {
         match self {
             Self::Single(n) => n.start_byte(),
@@ -1849,7 +1852,7 @@ struct HighlightIterLayer<'a> {
     depth: u32,
 }
 
-impl<'a> fmt::Debug for HighlightIterLayer<'a> {
+impl fmt::Debug for HighlightIterLayer<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("HighlightIterLayer").finish()
     }
@@ -2106,7 +2109,7 @@ impl HighlightConfiguration {
     }
 }
 
-impl<'a> HighlightIterLayer<'a> {
+impl HighlightIterLayer<'_> {
     // First, sort scope boundaries by their byte offset in the document. At a
     // given position, emit scope endings before scope beginnings. Finally, emit
     // scope boundaries from deeper layers first.
@@ -2244,7 +2247,7 @@ fn intersect_ranges(
     result
 }
 
-impl<'a> HighlightIter<'a> {
+impl HighlightIter<'_> {
     fn emit_event(
         &mut self,
         offset: usize,
@@ -2299,7 +2302,7 @@ impl<'a> HighlightIter<'a> {
     }
 }
 
-impl<'a> Iterator for HighlightIter<'a> {
+impl Iterator for HighlightIter<'_> {
     type Item = Result<HighlightEvent, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {

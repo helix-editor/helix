@@ -52,6 +52,8 @@
 "markup.list" = "mauve"
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
+"markup.list.unchecked" = "overlay2"
+"markup.list.checked" = "green"
 "markup.link.url" = { fg = "blue", modifiers = ["italic", "underlined"] }
 "markup.link.text" = "blue"
 "markup.raw" = "flamingo"
@@ -84,6 +86,7 @@
 "ui.text" = "text"
 "ui.text.focus" = { fg = "text", bg = "surface0", modifiers = ["bold"] }
 "ui.text.inactive" = { fg = "overlay1" }
+"ui.text.directory" = { fg = "blue" }
 
 "ui.virtual" = "overlay0"
 "ui.virtual.ruler" = { bg = "surface0" }
