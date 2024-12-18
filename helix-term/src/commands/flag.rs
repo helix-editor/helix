@@ -1,3 +1,4 @@
+#[derive(Debug, Clone, Copy)]
 pub struct Flag {
     pub long: &'static str,
     pub short: Option<&'static str>,
