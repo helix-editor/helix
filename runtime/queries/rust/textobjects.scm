@@ -1,6 +1,11 @@
 (function_item
   body: (_) @function.inside) @function.around
 
+(parameters) @parameters.around
+
+(function_item
+    return_type: (_) @return_type.around )
+
 (closure_expression
   body: (_) @function.inside) @function.around
 

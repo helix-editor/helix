@@ -47,6 +47,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "D" => goto_declaration,
             "y" => goto_type_definition,
             "r" => goto_reference,
+            "R" => goto_return_type,
             "i" => goto_implementation,
             "t" => goto_window_top,
             "c" => goto_window_center,
@@ -286,6 +287,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "c" => toggle_comments,
             "C" => toggle_block_comments,
             "A-c" => toggle_line_comments,
+            "i" => add_function_parameter,
             "?" => command_palette,
         },
         "z" => { "View"
