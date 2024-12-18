@@ -2183,7 +2183,7 @@ fn searcher(cx: &mut Context, direction: Direction) {
             completions
                 .iter()
                 .filter(|comp| comp.starts_with(input))
-                .map(|comp| (0.., std::borrow::Cow::Owned(comp.clone())))
+                .map(|comp| (0.., comp.clone().into()))
                 .collect()
         },
         move |cx, regex, event| {

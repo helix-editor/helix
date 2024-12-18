@@ -3198,8 +3198,8 @@ pub(super) fn command_mode(cx: &mut Context) {
                 {
                     completer(editor, word)
                         .into_iter()
-                        .map(|(range, file)| {
-                            let file = shellwords::escape(file);
+                        .map(|(range, mut file)| {
+                            file.content = shellwords::escape(file.content);
 
                             // offset ranges to input
                             let offset = input.len() - word_len;
