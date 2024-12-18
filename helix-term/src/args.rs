@@ -33,12 +33,10 @@ impl Args {
             // Before setting the working directory, resolve all the paths in args.files
             let filename = helix_stdx::path::canonicalize(filename);
 
-            match args.files.get(&filename) {
-                Some(_) => args.files.get_mut(&filename).unwrap().push(position),
-                None => {
-                    args.files.insert(filename, vec![position]);
-                }
-            };
+            args.files
+                .entry(filename)
+                .and_modify(|positions| positions.push(position))
+                .or_insert_with(|| vec![position]);
         };
 
         argv.next(); // skip the program, we don't care about that
