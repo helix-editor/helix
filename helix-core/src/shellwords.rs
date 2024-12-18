@@ -1,3 +1,5 @@
+use ahash::{HashMap, HashMapExt};
+use anyhow::bail;
 use smartstring::{LazyCompact, SmartString};
 use std::{
     borrow::Cow,
@@ -141,34 +143,77 @@ pub enum ParseMode {
 pub struct Args<'a> {
     input: &'a str,
     positionals: Vec<Cow<'a, str>>,
+    flags: HashMap<&'static str, Cow<'a, str>>,
 }
 
 impl<'a> Args<'a> {
     /// Creates an instance of `Args`, with behavior shaped from a signature.
     #[inline]
-    pub fn from_signature(args: &'a str, mode: ParseMode) -> anyhow::Result<Self> {
-        // TODO: Extract flags into `HashMap`
-        // let mut flags: HashMap<Cow<'_, str>, Cow<'_, str>> = HashMap::new();
-        // Remove `with_unescaping` here and then do it down below.
-        let positionals = ArgsParser::from(args);
+    pub fn from_signature(
+        input: &'a str,
+        mode: ParseMode,
+        flags: &'static [Flag],
+    ) -> anyhow::Result<Self> {
+        let mut __flags: HashMap<&'static str, Cow<'a, str>> = HashMap::new();
+        let mut args = ArgsParser::from(input);
 
-        let args = match mode {
-            ParseMode::Literal => Args {
-                input: args,
-                positionals: vec![unescape(args, false)],
-                // TODO: flags: flags,
-            },
-            ParseMode::Parameters => Args {
-                input: args,
-                positionals: positionals
-                    .with_unescaping()
-                    .unescape_backslashes()
-                    .collect(),
-                // TODO: flags: flags,
-            },
-        };
+        while let Some(arg) = args.peek() {
+            if arg == "--" {
+                // Consume `--`
+                args.next();
+                break;
+            }
 
-        Ok(args)
+            if !arg.starts_with("--") && !arg.starts_with('-') {
+                break;
+            }
+
+            // Consume flag
+            let arg = args.next().unwrap();
+            let stripped = arg.trim_start_matches("--").trim_start_matches('-');
+
+            if let Some(flag) = flags
+                .iter()
+                .find(|flag| flag.long == stripped || flag.short == Some(stripped))
+            {
+                if flag.accepts.is_some() {
+                    if let Some(value) = args.next() {
+                        __flags.insert(flag.long, value);
+                    } else {
+                        bail!("`--{}` is expected to take a parameter", flag.long);
+                    }
+                } else {
+                    // Boolean flag
+                    __flags.insert(flag.long, Cow::default());
+                }
+            } else {
+                // TODO: better error
+                bail!(
+                    "unknown flag `{arg}`, must be one of {}",
+                    flags
+                        .iter()
+                        .map(|flag| flag.long)
+                        .fold(String::new(), |mut s, name| {
+                            s.push_str(name);
+                            s.push_str(", ");
+                            s
+                        })
+                );
+            }
+        }
+
+        match mode {
+            ParseMode::Literal => Ok(Self {
+                input,
+                positionals: vec![unescape(&input[args.idx..], false)],
+                flags: __flags,
+            }),
+            ParseMode::Parameters => Ok(Self {
+                input,
+                positionals: args.with_unescaping().collect(),
+                flags: __flags,
+            }),
+        }
     }
 
     /// Returns the count of how many arguments there are.
@@ -222,17 +267,29 @@ impl<'a> Args<'a> {
         Self {
             input: "",
             positionals: Vec::new(),
+            flags: HashMap::default(),
         }
+    }
+
+    pub fn get_flag<T: FlagValue<'a>>(&'a self, name: &str) -> anyhow::Result<Option<T>> {
+        let Some(value) = self.flags.get(name) else {
+            return Ok(None);
+        };
+        T::from_str(value).map(|v| Some(v))
+    }
+
+    pub fn has_flag(&'a self, name: &str) -> bool {
+        self.flags.contains_key(name)
     }
 }
 
-// NOTE: When created with `from`, none but the most basic unescaping happens.
 impl<'a> From<&'a String> for Args<'a> {
     #[inline]
     fn from(args: &'a String) -> Self {
         Args {
             input: args,
             positionals: ArgsParser::from(args).collect(),
+            flags: HashMap::default(),
         }
     }
 }
@@ -243,6 +300,7 @@ impl<'a> From<&'a str> for Args<'a> {
         Args {
             input: args,
             positionals: ArgsParser::from(args).collect(),
+            flags: HashMap::default(),
         }
     }
 }
@@ -253,6 +311,7 @@ impl<'a> From<&'a Cow<'_, str>> for Args<'a> {
         Args {
             input: args,
             positionals: ArgsParser::from(args).collect(),
+            flags: HashMap::default(),
         }
     }
 }
@@ -371,11 +430,10 @@ impl<'a, const U: bool, const UB: bool> ArgsParser<'a, U, UB> {
 
     /// Returns a reference to the `next()` value without advancing the iterator.
     ///
-    /// Unlike `std::iter::Peakable::peek` this does not return a double reference, `&&str`
-    /// but a normal `&str`.
+    /// Unlike `std::iter::Peakable::peek` this does not return a double reference.
     #[inline]
     #[must_use]
-    pub fn peek(&self) -> Option<Cow<'_, str>> {
+    pub fn peek(&'a self) -> Option<Cow<'a, str>> {
         self.clone().next()
     }
 }
@@ -715,6 +773,107 @@ fn unescape(input: &str, unescape_blackslash: bool) -> Cow<'_, str> {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub struct Flag {
+    pub long: &'static str,
+    pub short: Option<&'static str>,
+    pub desc: &'static str,
+    pub accepts: Option<&'static str>,
+    pub completer: Option<()>,
+}
+
+pub trait FlagValue<'a>: Sized {
+    fn from_str(value: &'a str) -> anyhow::Result<Self>;
+}
+
+impl FlagValue<'_> for char {
+    fn from_str(value: &str) -> anyhow::Result<Self> {
+        if value.is_empty() {
+            anyhow::bail!("nothing was provided to flag when there was expected to be one");
+        }
+
+        let mut chars = value.chars();
+        anyhow::ensure!(
+            chars.clone().count() == 1,
+            "failed to convert `{value}` into a `char`, too many characters were provided"
+        );
+
+        Ok(chars.next().unwrap())
+    }
+}
+
+impl<'a> FlagValue<'a> for &'a str {
+    fn from_str(value: &'a str) -> anyhow::Result<Self> {
+        Ok(value)
+    }
+}
+
+impl<'a> FlagValue<'a> for String {
+    fn from_str(value: &'a str) -> anyhow::Result<Self> {
+        Ok(value.to_string())
+    }
+}
+
+impl<'a> FlagValue<'a> for &'a std::path::Path {
+    fn from_str(value: &'a str) -> anyhow::Result<Self> {
+        Ok(value.as_ref())
+    }
+}
+
+impl<'a> FlagValue<'a> for std::path::PathBuf {
+    fn from_str(value: &'a str) -> anyhow::Result<Self> {
+        Ok(value.into())
+    }
+}
+
+impl FlagValue<'_> for i8 {
+    fn from_str(value: &str) -> anyhow::Result<Self> {
+        Ok(value.parse()?)
+    }
+}
+
+impl FlagValue<'_> for u8 {
+    fn from_str(value: &str) -> anyhow::Result<Self> {
+        Ok(value.parse()?)
+    }
+}
+
+impl FlagValue<'_> for i32 {
+    fn from_str(value: &str) -> anyhow::Result<Self> {
+        Ok(value.parse()?)
+    }
+}
+
+impl FlagValue<'_> for u32 {
+    fn from_str(value: &str) -> anyhow::Result<Self> {
+        Ok(value.parse()?)
+    }
+}
+
+impl FlagValue<'_> for i64 {
+    fn from_str(value: &str) -> anyhow::Result<Self> {
+        Ok(value.parse()?)
+    }
+}
+
+impl FlagValue<'_> for u64 {
+    fn from_str(value: &str) -> anyhow::Result<Self> {
+        Ok(value.parse()?)
+    }
+}
+
+impl FlagValue<'_> for i128 {
+    fn from_str(value: &str) -> anyhow::Result<Self> {
+        Ok(value.parse()?)
+    }
+}
+
+impl FlagValue<'_> for u128 {
+    fn from_str(value: &str) -> anyhow::Result<Self> {
+        Ok(value.parse()?)
+    }
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -749,12 +908,96 @@ mod test {
             shellwords.args()
         );
 
-        let parser = Args::from_signature(shellwords.args(), ParseMode::Parameters).unwrap();
+        let parser = Args::from_signature(shellwords.args(), ParseMode::Parameters, &[]).unwrap();
 
         assert_eq!(Cow::from("single_word"), parser[0]);
         assert_eq!(Cow::from("twó"), parser[1]);
         assert_eq!(Cow::from("wörds"), parser[2]);
         assert_eq!(Cow::from(r#"\three "with escaping\"#), parser[3]);
+    }
+
+    #[test]
+    fn should_split_args_and_flags() {
+        let shellwords = Shellwords::from(":w --no-format");
+        let args = Args::from_signature(
+            shellwords.args(),
+            ParseMode::Parameters,
+            &[Flag {
+                long: "no-format",
+                short: None,
+                desc: "test",
+                accepts: None,
+                completer: None,
+            }],
+        )
+        .unwrap();
+
+        assert_eq!(":w", shellwords.command());
+        assert!(args.is_empty());
+        assert!(args.has_flag("no-format"));
+    }
+
+    #[test]
+    fn should_terminate_flags_with_delimiter() {
+        let shellwords = Shellwords::from(":w --no-format -- --no-format");
+        let args = Args::from_signature(
+            shellwords.args(),
+            ParseMode::Parameters,
+            &[Flag {
+                long: "no-format",
+                short: None,
+                desc: "test",
+                accepts: None,
+                completer: None,
+            }],
+        )
+        .unwrap();
+
+        assert_eq!(":w", shellwords.command());
+        assert_eq!("--no-format", &args[0]);
+        assert!(args.has_flag("no-format"));
+    }
+
+    #[test]
+    fn should_find_flag_from_short_name() {
+        let shellwords = Shellwords::from(":yank -d");
+        let args = Args::from_signature(
+            shellwords.args(),
+            ParseMode::Parameters,
+            &[Flag {
+                long: "diagnostic",
+                short: Some("d"),
+                desc: "test",
+                accepts: None,
+                completer: None,
+            }],
+        )
+        .unwrap();
+
+        assert_eq!(":yank", shellwords.command());
+        assert!(args.is_empty());
+        assert!(args.has_flag("diagnostic"));
+    }
+
+    #[test]
+    fn should_have_flag_that_accepts_param() {
+        let shellwords = Shellwords::from(":o --env ENV_PATH");
+        let args = Args::from_signature(
+            shellwords.args(),
+            ParseMode::Parameters,
+            &[Flag {
+                long: "env",
+                short: Some("e"),
+                desc: "test",
+                accepts: Some("<path>"),
+                completer: None,
+            }],
+        )
+        .unwrap();
+
+        assert_eq!(":o", shellwords.command());
+        assert!(args.is_empty());
+        assert_eq!(Some("ENV_PATH"), args.get_flag::<&str>("env").unwrap());
     }
 
     #[test]

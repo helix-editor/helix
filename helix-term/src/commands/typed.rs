@@ -13,7 +13,7 @@ use helix_stdx::path::home_dir;
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
 use serde_json::Value;
-use shellwords::{Args, ParseMode};
+use shellwords::{Args, Flag, ParseMode};
 use ui::completers::{self, Completer};
 
 #[derive(Clone)]
@@ -60,11 +60,137 @@ impl TypableCommand {
 
         Ok(())
     }
+
+    fn prompt(&self) -> String {
+        // EXAMPLE:
+        // write [<flags>] <path>: write the current buffer to its file.
+        //
+        // aliases:
+        //     w
+        //     wa -> write --all
+        // flags:
+        //     --no-format        exclude formatting operation when saving.
+        let mut prompt = String::new();
+
+        prompt.push_str(self.name);
+
+        if !self.signature.flags.is_empty() {
+            prompt.push_str(" [<flags>]");
+        }
+
+        if let Some(accepts) = self.signature.accepts {
+            write!(prompt, " {accepts}").unwrap();
+        }
+
+        // HACK:
+        // The prompt can cutoff content at the bottom as the size is not be calculated properly.
+        //
+        // This adds enough spaces to look like it adds a new line after the top line
+        // but if the actual text were to overflow this value, then the text would occupy
+        // this space.
+        //
+        // In practice, when cycling where it may wrap, it just looks like there is always at least one line between
+        // the top line and the rest of the info, whether this is a figurative newline or actual text filling it.
+        if self.doc.len() < 75 {
+            writeln!(prompt, ": {}{}", self.doc, " ".repeat(75 - self.doc.len())).unwrap();
+        } else {
+            writeln!(prompt, ": {}", self.doc).unwrap();
+        }
+
+        if !self.aliases.is_empty() {
+            prompt.push_str("aliases:\n");
+
+            for alias in self.aliases {
+                writeln!(prompt, "    {alias}").unwrap();
+            }
+        }
+
+        if !self.signature.flags.is_empty() {
+            prompt.push_str("flags:\n");
+
+            let max: usize = self
+                .signature
+                .flags
+                .iter()
+                .map(|flag| {
+                    flag.long.len()
+                        + flag.short.as_ref().map_or(0, |short| short.len())
+                        + flag.accepts.as_ref().map_or(0, |accept| accept.len())
+                })
+                .max()
+                .unwrap_or(0);
+
+            let spaces: usize = 8;
+
+            for flag in self.signature.flags {
+                if let Some(short) = &flag.short {
+                    if let Some(accepts) = &flag.accepts {
+                        writeln!(
+                            prompt,
+                            "    --{}, -{} {}{:<width$}{}",
+                            flag.long,
+                            short,
+                            accepts,
+                            "",
+                            flag.desc,
+                            width = max
+                                .saturating_sub(flag.long.len() + short.len() + accepts.len())
+                                + spaces
+                        )
+                        .unwrap();
+                    } else {
+                        writeln!(
+                            prompt,
+                            "    --{}, -{}{:<width$}{}",
+                            flag.long,
+                            short,
+                            "",
+                            flag.desc,
+                            width = max.saturating_sub(flag.long.len() + short.len()) + spaces + 1
+                        )
+                        .unwrap();
+                    }
+                } else if let Some(accepts) = &flag.accepts {
+                    writeln!(
+                        prompt,
+                        "    --{} {}{:<width$}{}",
+                        flag.long,
+                        accepts,
+                        "",
+                        flag.desc,
+                        width = max.saturating_sub(flag.long.len() + accepts.len()) + spaces + 3
+                    )
+                    .unwrap();
+                } else {
+                    writeln!(
+                        prompt,
+                        "    --{}{:<width$}{}",
+                        flag.long,
+                        "",
+                        flag.desc,
+                        width = max.saturating_sub(flag.long.len()) + spaces + 4
+                    )
+                    .unwrap();
+                }
+            }
+        }
+
+        // HACK: Makes sure that the text touches the bottom of the prompt window.
+        //
+        // This is a continuation of the hack from earlier as there could be left over spaces,
+        // adding a gap at the bottom.
+        while prompt.ends_with(['\n', '\r', ' ']) {
+            prompt.pop();
+        }
+
+        prompt
+    }
 }
 
 #[derive(Clone)]
 pub struct CommandSignature {
-    // TODO: flags: flags![],
+    pub flags: &'static [Flag],
+    accepts: Option<&'static str>,
     /// The min-max of the about of arguments a command can take.
     ///
     /// - **0**: (0, Some(0))
@@ -372,6 +498,7 @@ fn write_impl(
     cx: &mut compositor::Context,
     path: Option<&Cow<'_, str>>,
     force: bool,
+    format: bool,
 ) -> anyhow::Result<()> {
     let config = cx.editor.config();
     let jobs = &mut cx.jobs;
@@ -386,7 +513,7 @@ fn write_impl(
 
     let path: Option<PathBuf> = path.map(|path| path.as_ref().into());
 
-    let fmt = if config.auto_format {
+    let fmt = if config.auto_format && format {
         doc.auto_format().map(|fmt| {
             let callback = make_format_callback(
                 doc.id(),
@@ -424,7 +551,7 @@ fn write(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow
         return Ok(());
     }
 
-    write_impl(cx, args.first(), false)
+    write_impl(cx, args.first(), false, args.has_flag("no-format"))
 }
 
 fn force_write(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
@@ -432,7 +559,7 @@ fn force_write(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
         return Ok(());
     }
 
-    write_impl(cx, args.first(), true)
+    write_impl(cx, args.first(), true, args.has_flag("no-format"))
 }
 
 fn write_buffer_close(
@@ -444,7 +571,7 @@ fn write_buffer_close(
         return Ok(());
     }
 
-    write_impl(cx, args.first(), false)?;
+    write_impl(cx, args.first(), false, args.has_flag("no-format"))?;
 
     let document_ids = buffer_gather_paths_impl(cx.editor, args);
     buffer_close_by_ids_impl(cx, &document_ids, false)
@@ -459,7 +586,7 @@ fn force_write_buffer_close(
         return Ok(());
     }
 
-    write_impl(cx, args.first(), true)?;
+    write_impl(cx, args.first(), true, args.has_flag("no-format"))?;
 
     let document_ids = buffer_gather_paths_impl(cx.editor, args);
     buffer_close_by_ids_impl(cx, &document_ids, false)
@@ -641,7 +768,7 @@ fn write_quit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
         return Ok(());
     }
 
-    write_impl(cx, args.first(), false)?;
+    write_impl(cx, args.first(), false, args.has_flag("no-format"))?;
     cx.block_try_flush_writes()?;
     quit(cx, Args::empty(), event)
 }
@@ -655,7 +782,7 @@ fn force_write_quit(
         return Ok(());
     }
 
-    write_impl(cx, args.first(), true)?;
+    write_impl(cx, args.first(), true, args.has_flag("no-format"))?;
     cx.block_try_flush_writes()?;
     force_quit(cx, Args::empty(), event)
 }
@@ -2453,6 +2580,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "quit",
         aliases: &["q"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none(),
@@ -2464,6 +2593,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "quit!",
         aliases: &["q!"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2475,6 +2606,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "open",
         aliases: &["o", "edit", "e"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<path>"),
             positionals: (1, None),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::all(completers::filename)
@@ -2486,6 +2619,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "buffer-close",
         aliases: &["bc", "bclose"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<buffer>"),
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::all(completers::buffer)
@@ -2497,6 +2632,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "buffer-close!",
         aliases: &["bc!", "bclose!"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<buffer>"),
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::all(completers::buffer)
@@ -2508,6 +2645,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "buffer-close-others",
         aliases: &["bco", "bcloseother"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2519,6 +2658,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "buffer-close-others!",
         aliases: &["bco!", "bcloseother!"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2530,6 +2671,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "buffer-close-all",
         aliases: &["bca", "bcloseall"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2541,6 +2684,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "buffer-close-all!",
         aliases: &["bca!", "bcloseall!"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2552,6 +2697,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "buffer-next",
         aliases: &["bn", "bnext"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2563,6 +2710,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "buffer-previous",
         aliases: &["bp", "bprev"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2574,6 +2723,16 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "write",
         aliases: &["w"],
         signature: CommandSignature {
+            flags: &[
+                Flag {
+                    long: "no-format",
+                    short: None,
+                    desc: "skips formatting when saving buffer",
+                    accepts: None,
+                    completer: None,
+                }
+            ],
+            accepts: Some("<path>"),
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::positional(&[completers::filename])
@@ -2585,6 +2744,16 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "write!",
         aliases: &["w!"],
         signature: CommandSignature {
+            flags: &[
+                Flag {
+                    long: "no-format",
+                    short: None,
+                    desc: "skips formatting when saving buffer",
+                    accepts: None,
+                    completer: None,
+                }
+            ],
+            accepts: Some("<path>"),
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::positional(&[completers::filename])
@@ -2596,6 +2765,16 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "write-buffer-close",
         aliases: &["wbc"],
         signature: CommandSignature {
+            flags: &[
+                Flag {
+                    long: "no-format",
+                    short: None,
+                    desc: "skips formatting when saving buffer",
+                    accepts: None,
+                    completer: None,
+                }
+            ],
+            accepts: Some("<path>"),
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::positional(&[completers::filename])
@@ -2607,6 +2786,16 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "write-buffer-close!",
         aliases: &["wbc!"],
         signature: CommandSignature {
+            flags: &[
+                Flag {
+                    long: "no-format",
+                    short: None,
+                    desc: "skips formatting when saving buffer",
+                    accepts: None,
+                    completer: None,
+                }
+            ],
+            accepts: Some("<path>"),
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::positional(&[completers::filename])
@@ -2618,6 +2807,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "new",
         aliases: &["n"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2629,6 +2820,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "format",
         aliases: &["fmt"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2640,6 +2833,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "indent-style",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<indent>"),
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2651,6 +2846,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "line-ending",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<line-ending>"),
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2665,6 +2862,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "earlier",
         aliases: &["ear"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<steps|span>"),
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2676,6 +2875,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "later",
         aliases: &["lat"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<steps|span>"),
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2687,6 +2888,16 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "write-quit",
         aliases: &["wq", "x"],
         signature: CommandSignature {
+            flags: &[
+                Flag {
+                    long: "no-format",
+                    short: None,
+                    desc: "skips formatting when saving buffer",
+                    accepts: None,
+                    completer: None,
+                }
+            ],
+            accepts: Some("<path>"),
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::positional(&[completers::filename])
@@ -2698,6 +2909,16 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "write-quit!",
         aliases: &["wq!", "x!"],
         signature: CommandSignature {
+            flags: &[
+                Flag {
+                    long: "no-format",
+                    short: None,
+                    desc: "skips formatting when saving buffer",
+                    accepts: None,
+                    completer: None,
+                }
+            ],
+            accepts: Some("<path>"),
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::positional(&[completers::filename])
@@ -2709,6 +2930,16 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "write-all",
         aliases: &["wa"],
         signature: CommandSignature {
+            flags: &[
+                Flag {
+                    long: "no-format",
+                    short: None,
+                    desc: "skips formatting when saving buffers",
+                    accepts: None,
+                    completer: None,
+                }
+            ],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2720,6 +2951,16 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "write-all!",
         aliases: &["wa!"],
         signature: CommandSignature {
+            flags: &[
+                Flag {
+                    long: "no-format",
+                    short: None,
+                    desc: "skips formatting when saving buffers",
+                    accepts: None,
+                    completer: None,
+                }
+            ],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2731,6 +2972,16 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "write-quit-all",
         aliases: &["wqa", "xa"],
         signature: CommandSignature {
+            flags: &[
+                Flag {
+                    long: "no-format",
+                    short: None,
+                    desc: "skips formatting when saving buffers",
+                    accepts: None,
+                    completer: None,
+                }
+            ],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2742,6 +2993,16 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "write-quit-all!",
         aliases: &["wqa!", "xa!"],
         signature: CommandSignature {
+            flags: &[
+                Flag {
+                    long: "no-format",
+                    short: None,
+                    desc: "skips formatting when saving buffers",
+                    accepts: None,
+                    completer: None,
+                }
+            ],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2753,6 +3014,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "quit-all",
         aliases: &["qa"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2764,6 +3027,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "quit-all!",
         aliases: &["qa!"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2775,6 +3040,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "cquit",
         aliases: &["cq"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<code>"),
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
              completer: CommandCompleter::none()
@@ -2786,6 +3053,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "cquit!",
         aliases: &["cq!"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<code>"),
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2797,6 +3066,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "theme",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<theme>"),
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::positional(&[completers::theme])
@@ -2808,6 +3079,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "yank-join",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<separator>"),
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2819,6 +3092,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "clipboard-yank",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2830,6 +3105,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "clipboard-yank-join",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2841,6 +3118,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "primary-clipboard-yank",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2852,6 +3131,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "primary-clipboard-yank-join",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<separator>"),
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2863,6 +3144,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "clipboard-paste-after",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2874,6 +3157,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "clipboard-paste-before",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2885,6 +3170,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "clipboard-paste-replace",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2896,6 +3183,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "primary-clipboard-paste-after",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2907,6 +3196,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "primary-clipboard-paste-before",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2918,6 +3209,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "primary-clipboard-paste-replace",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2929,6 +3222,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "show-clipboard-provider",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2940,6 +3235,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "change-current-directory",
         aliases: &["cd"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<directory>"),
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::positional(&[completers::directory])
@@ -2951,6 +3248,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "show-directory",
         aliases: &["pwd"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2962,6 +3261,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "encoding",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<encoding>"),
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2973,6 +3274,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "character-info",
         aliases: &["char"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2984,6 +3287,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "reload",
         aliases: &["rl"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -2995,6 +3300,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "reload-all",
         aliases: &["rla"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -3006,6 +3313,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "update",
         aliases: &["u"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -3017,6 +3326,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "lsp-workspace-command",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::positional(&[completers::lsp_workspace_command])
@@ -3028,6 +3339,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "lsp-restart",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -3039,6 +3352,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "lsp-stop",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -3050,6 +3365,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "tree-sitter-scopes",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -3061,6 +3378,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "tree-sitter-highlight-name",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -3073,6 +3392,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["dbg"],
         // correct postitional ?
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<params>"),
             positionals: (0, None),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -3085,6 +3406,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["dbg-tcp"],
         // correct postitional ?
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<address>"),
             positionals: (0, None),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -3097,6 +3420,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         // correct postitional ?
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -3108,6 +3433,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "vsplit",
         aliases: &["vs"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<path>"),
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::all(completers::filename)
@@ -3119,6 +3446,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "vsplit-new",
         aliases: &["vnew"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -3130,6 +3459,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "hsplit",
         aliases: &["hs", "sp"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<path>"),
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::all(completers::filename)
@@ -3141,6 +3472,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "hsplit-new",
         aliases: &["hnew"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -3152,6 +3485,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "tutor",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -3163,6 +3498,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "goto",
         aliases: &["g"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<linenumber>"),
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -3174,6 +3511,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "set-language",
         aliases: &["lang"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<language>"),
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::positional(&[completers::language])
@@ -3186,6 +3525,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["set"],
         // TODO: Add support for completion of the options value(s), when appropriate.
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<option> <value>"),
             positionals: (2, Some(2)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::positional(&[completers::setting])
@@ -3197,6 +3538,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "toggle-option",
         aliases: &["toggle"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<option> <value> <value>"),
             positionals: (1, None),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::positional(&[completers::setting])
@@ -3209,6 +3552,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "get-option",
         aliases: &["get"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<option>"),
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::positional(&[completers::setting])
@@ -3220,6 +3565,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "sort",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -3231,6 +3578,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "rsort",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -3242,6 +3591,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "reflow",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -3253,6 +3604,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "tree-sitter-subtree",
         aliases: &["ts-subtree"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -3264,6 +3617,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "config-reload",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -3275,6 +3630,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "config-open",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -3286,6 +3643,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "config-open-workspace",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -3297,6 +3656,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "log-open",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -3308,6 +3669,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "insert-output",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<command>"),
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Literal,
             completer: CommandCompleter::none()
@@ -3319,6 +3682,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "append-output",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<command>"),
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Literal,
             completer: CommandCompleter::none()
@@ -3330,6 +3695,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "pipe",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<command>"),
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Literal,
             completer: CommandCompleter::none()
@@ -3341,6 +3708,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "pipe-to",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<command>"),
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Literal,
             completer: CommandCompleter::none()
@@ -3353,6 +3722,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["sh"],
         // TODO: Is this right? path completions?
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<command>"),
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Literal,
             completer: CommandCompleter::all(completers::filename)
@@ -3364,6 +3735,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "reset-diff-change",
         aliases: &["diffget", "diffg"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -3375,6 +3748,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "clear-register",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<register>"),
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::all(completers::register)
@@ -3386,6 +3761,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "redraw",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
@@ -3397,6 +3774,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "move",
         aliases: &["mv"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<path>"),
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::positional(&[completers::filename])
@@ -3408,6 +3787,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "yank-diagnostic",
         aliases: &[],
         signature: CommandSignature {
+            flags: &[],
+            accepts: None,
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::all(completers::register)
@@ -3419,6 +3800,8 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "read",
         aliases: &["r"],
         signature: CommandSignature {
+            flags: &[],
+            accepts: Some("<path>"),
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::positional(&[completers::filename])
@@ -3500,14 +3883,17 @@ pub(super) fn command_mode(cx: &mut Context) {
 
             // Handle typable commands
             if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(command) {
-                let args =
-                    match Args::from_signature(shellwords.args(), command.signature.parse_mode) {
-                        Ok(args) => args,
-                        Err(err) => {
-                            cx.editor.set_error(err.to_string());
-                            return;
-                        }
-                    };
+                let args = match Args::from_signature(
+                    shellwords.args(),
+                    command.signature.parse_mode,
+                    command.signature.flags,
+                ) {
+                    Ok(args) => args,
+                    Err(err) => {
+                        cx.editor.set_error(err.to_string());
+                        return;
+                    }
+                };
 
                 if event == PromptEvent::Validate {
                     if let Err(err) = command.ensure_signature(args.len()) {
@@ -3528,13 +3914,8 @@ pub(super) fn command_mode(cx: &mut Context) {
     prompt.doc_fn = Box::new(|input: &str| {
         let shellwords = Shellwords::from(input);
 
-        if let Some(typed::TypableCommand { doc, aliases, .. }) =
-            typed::TYPABLE_COMMAND_MAP.get(shellwords.command())
-        {
-            if aliases.is_empty() {
-                return Some((*doc).into());
-            }
-            return Some(format!("{}\nAliases: {}", doc, aliases.join(", ")).into());
+        if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(shellwords.command()) {
+            return Some(command.prompt().into());
         }
 
         None

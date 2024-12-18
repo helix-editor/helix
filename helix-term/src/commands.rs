@@ -245,7 +245,11 @@ impl MappableCommand {
         match &self {
             Self::Typable { name, args, doc: _ } => {
                 if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
-                    let args = match Args::from_signature(args, command.signature.parse_mode) {
+                    let args = match Args::from_signature(
+                        args,
+                        command.signature.parse_mode,
+                        command.signature.flags,
+                    ) {
                         Ok(args) => args,
                         Err(err) => {
                             cx.editor.set_error(err.to_string());
