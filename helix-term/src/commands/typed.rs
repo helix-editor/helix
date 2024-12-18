@@ -2123,7 +2123,7 @@ fn language(
 
 fn sort(
     cx: &mut compositor::Context,
-    args: Args,
+    mut args: Args,
     flags: &[Flag],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
@@ -2131,27 +2131,25 @@ fn sort(
         return Ok(());
     }
 
-    sort_impl(cx, args, flags, false)
-}
+    if let Some(flag) = args.next() {
+        let flag = flag.trim_start_matches("--").trim_start_matches('-');
 
-fn sort_reverse(
-    cx: &mut compositor::Context,
-    args: Args,
-    flags: &[Flag],
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
+        if flags
+            .iter()
+            .any(|x| x.long == flag || x.short == Some(flag))
+        {
+            sort_impl(cx, true);
+        } else {
+            bail!("There is no flag `--{flag}` on sort");
+        }
+    } else {
+        sort_impl(cx, false);
     }
-    sort_impl(cx, args, flags, true)
+
+    Ok(())
 }
 
-fn sort_impl(
-    cx: &mut compositor::Context,
-    _args: Args,
-    _flags: &[Flag],
-    reverse: bool,
-) -> anyhow::Result<()> {
+fn sort_impl(cx: &mut compositor::Context, reverse: bool) {
     let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
@@ -2179,8 +2177,6 @@ fn sort_impl(
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view);
     view.ensure_cursor_in_view(doc, scrolloff);
-
-    Ok(())
 }
 
 fn reflow(
@@ -3204,14 +3200,6 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         flags: &[flag!{long: "reverse", short: "r", desc: "sort ranges in selection in reverse order"}],
         doc: "Sort ranges in selection.",
         fun: sort,
-        signature: CommandSignature::none(),
-    },
-    TypableCommand {
-        name: "rsort",
-        aliases: &[],
-        flags: &[],
-        doc: "Sort ranges in selection in reverse order.",
-        fun: sort_reverse,
         signature: CommandSignature::none(),
     },
     TypableCommand {
