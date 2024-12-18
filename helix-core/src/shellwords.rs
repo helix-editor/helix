@@ -204,6 +204,12 @@ impl<'a> Args<'a> {
         let mut args = self.peekable();
 
         if let Some(arg) = args.peek() {
+            if *arg == "--" {
+                // Consume the `--` leaving only the remaining command arguments left to yield.
+                self.next();
+                return None;
+            }
+
             if flags.any(|f| f == arg.trim_start_matches('-').trim_start_matches("--")) {
                 return self
                     .next()
