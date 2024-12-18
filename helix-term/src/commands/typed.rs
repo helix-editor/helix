@@ -2139,7 +2139,9 @@ fn sort(
     if let Some(flag) = args.flags(flags) {
         match flag {
             "reverse" | "r" => sort_impl(cx, true),
-            _ => bail!("unhandle command flag `{flag}`, implementation failed to cover all flags."),
+            _ => {
+                bail!("unhandled command flag `{flag}`, implementation failed to cover all flags.")
+            }
         }
     } else {
         sort_impl(cx, false);
