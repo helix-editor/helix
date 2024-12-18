@@ -245,7 +245,7 @@ impl MappableCommand {
     pub fn execute(&self, cx: &mut Context) {
         match &self {
             Self::Typable { name, args, doc: _ } => {
-                if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
+                if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
                     let mut cx = compositor::Context {
                         editor: cx.editor,
                         jobs: cx.jobs,
@@ -253,7 +253,7 @@ impl MappableCommand {
                     };
 
                     if let Err(err) =
-                        (command.fun)(&mut cx, Args::from(args), PromptEvent::Validate)
+                        (cmd.fun)(&mut cx, Args::from(args), cmd.flags, PromptEvent::Validate)
                     {
                         cx.editor.set_error(format!("{err}"));
                     }
