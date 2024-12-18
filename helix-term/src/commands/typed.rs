@@ -6,6 +6,7 @@ use crate::job::Job;
 
 use super::*;
 
+use flag::Flag;
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::{line_ending, shellwords::Shellwords};
@@ -20,6 +21,7 @@ use ui::completers::{self, Completer};
 pub struct TypableCommand {
     pub name: &'static str,
     pub aliases: &'static [&'static str],
+    pub flags: &'static [Flag],
     pub doc: &'static str,
     // params, flags, helper, completer
     pub fun: fn(&mut compositor::Context, Args, PromptEvent) -> anyhow::Result<()>,
@@ -2427,6 +2429,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "quit",
         aliases: &["q"],
+        flags: &[],
         doc: "Close the current view.",
         fun: quit,
         signature: CommandSignature::none(),
@@ -2434,6 +2437,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "quit!",
         aliases: &["q!"],
+        flags: &[],
         doc: "Force close the current view, ignoring unsaved changes.",
         fun: force_quit,
         signature: CommandSignature::none(),
@@ -2441,6 +2445,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "open",
         aliases: &["o", "edit", "e"],
+        flags: &[],
         doc: "Open a file from disk into the current view.",
         fun: open,
         signature: CommandSignature::all(completers::filename),
@@ -2448,6 +2453,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "buffer-close",
         aliases: &["bc", "bclose"],
+        flags: &[],
         doc: "Close the current buffer.",
         fun: buffer_close,
         signature: CommandSignature::all(completers::buffer),
@@ -2455,6 +2461,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "buffer-close!",
         aliases: &["bc!", "bclose!"],
+        flags: &[],
         doc: "Close the current buffer forcefully, ignoring unsaved changes.",
         fun: force_buffer_close,
         signature: CommandSignature::all(completers::buffer)
@@ -2462,6 +2469,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "buffer-close-others",
         aliases: &["bco", "bcloseother"],
+        flags: &[],
         doc: "Close all buffers but the currently focused one.",
         fun: buffer_close_others,
         signature: CommandSignature::none(),
@@ -2469,6 +2477,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "buffer-close-others!",
         aliases: &["bco!", "bcloseother!"],
+        flags: &[],
         doc: "Force close all buffers but the currently focused one.",
         fun: force_buffer_close_others,
         signature: CommandSignature::none(),
@@ -2476,6 +2485,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "buffer-close-all",
         aliases: &["bca", "bcloseall"],
+        flags: &[],
         doc: "Close all buffers without quitting.",
         fun: buffer_close_all,
         signature: CommandSignature::none(),
@@ -2483,6 +2493,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "buffer-close-all!",
         aliases: &["bca!", "bcloseall!"],
+        flags: &[],
         doc: "Force close all buffers ignoring unsaved changes without quitting.",
         fun: force_buffer_close_all,
         signature: CommandSignature::none(),
@@ -2490,6 +2501,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "buffer-next",
         aliases: &["bn", "bnext"],
+        flags: &[],
         doc: "Goto next buffer.",
         fun: buffer_next,
         signature: CommandSignature::none(),
@@ -2497,6 +2509,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "buffer-previous",
         aliases: &["bp", "bprev"],
+        flags: &[],
         doc: "Goto previous buffer.",
         fun: buffer_previous,
         signature: CommandSignature::none(),
@@ -2504,6 +2517,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "write",
         aliases: &["w"],
+        flags: &[],
         doc: "Write changes to disk. Accepts an optional path (:write some/path.txt)",
         fun: write,
         signature: CommandSignature::positional(&[completers::filename]),
@@ -2511,6 +2525,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "write!",
         aliases: &["w!"],
+        flags: &[],
         doc: "Force write changes to disk creating necessary subdirectories. Accepts an optional path (:write! some/path.txt)",
         fun: force_write,
         signature: CommandSignature::positional(&[completers::filename]),
@@ -2518,6 +2533,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "write-buffer-close",
         aliases: &["wbc"],
+        flags: &[],
         doc: "Write changes to disk and closes the buffer. Accepts an optional path (:write-buffer-close some/path.txt)",
         fun: write_buffer_close,
         signature: CommandSignature::positional(&[completers::filename]),
@@ -2525,6 +2541,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "write-buffer-close!",
         aliases: &["wbc!"],
+        flags: &[],
         doc: "Force write changes to disk creating necessary subdirectories and closes the buffer. Accepts an optional path (:write-buffer-close! some/path.txt)",
         fun: force_write_buffer_close,
         signature: CommandSignature::positional(&[completers::filename]),
@@ -2532,6 +2549,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "new",
         aliases: &["n"],
+        flags: &[],
         doc: "Create a new scratch buffer.",
         fun: new_file,
         signature: CommandSignature::none(),
@@ -2539,6 +2557,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "format",
         aliases: &["fmt"],
+        flags: &[],
         doc: "Format the file using an external formatter or language server.",
         fun: format,
         signature: CommandSignature::none(),
@@ -2546,6 +2565,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "indent-style",
         aliases: &[],
+        flags: &[],
         doc: "Set the indentation style for editing. ('t' for tabs or 1-16 for number of spaces.)",
         fun: set_indent_style,
         signature: CommandSignature::none(),
@@ -2553,6 +2573,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "line-ending",
         aliases: &[],
+        flags: &[],
         #[cfg(not(feature = "unicode-lines"))]
         doc: "Set the document's default line ending. Options: crlf, lf.",
         #[cfg(feature = "unicode-lines")]
@@ -2563,6 +2584,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "earlier",
         aliases: &["ear"],
+        flags: &[],
         doc: "Jump back to an earlier point in edit history. Accepts a number of steps or a time span.",
         fun: earlier,
         signature: CommandSignature::none(),
@@ -2570,6 +2592,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "later",
         aliases: &["lat"],
+        flags: &[],
         doc: "Jump to a later point in edit history. Accepts a number of steps or a time span.",
         fun: later,
         signature: CommandSignature::none(),
@@ -2577,6 +2600,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "write-quit",
         aliases: &["wq", "x"],
+        flags: &[],
         doc: "Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt)",
         fun: write_quit,
         signature: CommandSignature::positional(&[completers::filename]),
@@ -2584,6 +2608,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "write-quit!",
         aliases: &["wq!", "x!"],
+        flags: &[],
         doc: "Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt)",
         fun: force_write_quit,
         signature: CommandSignature::positional(&[completers::filename]),
@@ -2591,6 +2616,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "write-all",
         aliases: &["wa"],
+        flags: &[],
         doc: "Write changes from all buffers to disk.",
         fun: write_all,
         signature: CommandSignature::none(),
@@ -2598,6 +2624,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "write-all!",
         aliases: &["wa!"],
+        flags: &[],
         doc: "Forcefully write changes from all buffers to disk creating necessary subdirectories.",
         fun: force_write_all,
         signature: CommandSignature::none(),
@@ -2605,6 +2632,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "write-quit-all",
         aliases: &["wqa", "xa"],
+        flags: &[],
         doc: "Write changes from all buffers to disk and close all views.",
         fun: write_all_quit,
         signature: CommandSignature::none(),
@@ -2612,6 +2640,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "write-quit-all!",
         aliases: &["wqa!", "xa!"],
+        flags: &[],
         doc: "Write changes from all buffers to disk and close all views forcefully (ignoring unsaved changes).",
         fun: force_write_all_quit,
         signature: CommandSignature::none(),
@@ -2619,6 +2648,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "quit-all",
         aliases: &["qa"],
+        flags: &[],
         doc: "Close all views.",
         fun: quit_all,
         signature: CommandSignature::none(),
@@ -2626,6 +2656,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "quit-all!",
         aliases: &["qa!"],
+        flags: &[],
         doc: "Force close all views ignoring unsaved changes.",
         fun: force_quit_all,
         signature: CommandSignature::none(),
@@ -2633,6 +2664,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "cquit",
         aliases: &["cq"],
+        flags: &[],
         doc: "Quit with exit code (default 1). Accepts an optional integer exit code (:cq 2).",
         fun: cquit,
         signature: CommandSignature::none(),
@@ -2640,6 +2672,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "cquit!",
         aliases: &["cq!"],
+        flags: &[],
         doc: "Force quit with exit code (default 1) ignoring unsaved changes. Accepts an optional integer exit code (:cq! 2).",
         fun: force_cquit,
         signature: CommandSignature::none(),
@@ -2647,6 +2680,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "theme",
         aliases: &[],
+        flags: &[],
         doc: "Change the editor theme (show current theme if no name specified).",
         fun: theme,
         signature: CommandSignature::positional(&[completers::theme]),
@@ -2654,6 +2688,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "yank-join",
         aliases: &[],
+        flags: &[],
         doc: "Yank joined selections. A separator can be provided as first argument. Default value is newline.",
         fun: yank_joined,
         signature: CommandSignature::none(),
@@ -2661,6 +2696,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "clipboard-yank",
         aliases: &[],
+        flags: &[],
         doc: "Yank main selection into system clipboard.",
         fun: yank_main_selection_to_clipboard,
         signature: CommandSignature::none(),
@@ -2668,6 +2704,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "clipboard-yank-join",
         aliases: &[],
+        flags: &[],
         doc: "Yank joined selections into system clipboard. A separator can be provided as first argument. Default value is newline.", // FIXME: current UI can't display long doc.
         fun: yank_joined_to_clipboard,
         signature: CommandSignature::none(),
@@ -2675,6 +2712,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "primary-clipboard-yank",
         aliases: &[],
+        flags: &[],
         doc: "Yank main selection into system primary clipboard.",
         fun: yank_main_selection_to_primary_clipboard,
         signature: CommandSignature::none(),
@@ -2682,6 +2720,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "primary-clipboard-yank-join",
         aliases: &[],
+        flags: &[],
         doc: "Yank joined selections into system primary clipboard. A separator can be provided as first argument. Default value is newline.", // FIXME: current UI can't display long doc.
         fun: yank_joined_to_primary_clipboard,
         signature: CommandSignature::none(),
@@ -2689,6 +2728,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "clipboard-paste-after",
         aliases: &[],
+        flags: &[],
         doc: "Paste system clipboard after selections.",
         fun: paste_clipboard_after,
         signature: CommandSignature::none(),
@@ -2696,6 +2736,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "clipboard-paste-before",
         aliases: &[],
+        flags: &[],
         doc: "Paste system clipboard before selections.",
         fun: paste_clipboard_before,
         signature: CommandSignature::none(),
@@ -2703,6 +2744,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "clipboard-paste-replace",
         aliases: &[],
+        flags: &[],
         doc: "Replace selections with content of system clipboard.",
         fun: replace_selections_with_clipboard,
         signature: CommandSignature::none(),
@@ -2710,6 +2752,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "primary-clipboard-paste-after",
         aliases: &[],
+        flags: &[],
         doc: "Paste primary clipboard after selections.",
         fun: paste_primary_clipboard_after,
         signature: CommandSignature::none(),
@@ -2717,6 +2760,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "primary-clipboard-paste-before",
         aliases: &[],
+        flags: &[],
         doc: "Paste primary clipboard before selections.",
         fun: paste_primary_clipboard_before,
         signature: CommandSignature::none(),
@@ -2724,6 +2768,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "primary-clipboard-paste-replace",
         aliases: &[],
+        flags: &[],
         doc: "Replace selections with content of system primary clipboard.",
         fun: replace_selections_with_primary_clipboard,
         signature: CommandSignature::none(),
@@ -2731,6 +2776,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "show-clipboard-provider",
         aliases: &[],
+        flags: &[],
         doc: "Show clipboard provider name in status bar.",
         fun: show_clipboard_provider,
         signature: CommandSignature::none(),
@@ -2738,6 +2784,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "change-current-directory",
         aliases: &["cd"],
+        flags: &[],
         doc: "Change the current working directory.",
         fun: change_current_directory,
         signature: CommandSignature::positional(&[completers::directory]),
@@ -2745,6 +2792,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "show-directory",
         aliases: &["pwd"],
+        flags: &[],
         doc: "Show the current working directory.",
         fun: show_current_directory,
         signature: CommandSignature::none(),
@@ -2752,6 +2800,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "encoding",
         aliases: &[],
+        flags: &[],
         doc: "Set encoding. Based on `https://encoding.spec.whatwg.org`.",
         fun: set_encoding,
         signature: CommandSignature::none(),
@@ -2759,6 +2808,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "character-info",
         aliases: &["char"],
+        flags: &[],
         doc: "Get info about the character under the primary cursor.",
         fun: get_character_info,
         signature: CommandSignature::none(),
@@ -2766,6 +2816,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "reload",
         aliases: &["rl"],
+        flags: &[],
         doc: "Discard changes and reload from the source file.",
         fun: reload,
         signature: CommandSignature::none(),
@@ -2773,6 +2824,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "reload-all",
         aliases: &["rla"],
+        flags: &[],
         doc: "Discard changes and reload all documents from the source files.",
         fun: reload_all,
         signature: CommandSignature::none(),
@@ -2780,6 +2832,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "update",
         aliases: &["u"],
+        flags: &[],
         doc: "Write changes only if the file has been modified.",
         fun: update,
         signature: CommandSignature::none(),
@@ -2787,6 +2840,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "lsp-workspace-command",
         aliases: &[],
+        flags: &[],
         doc: "Open workspace command picker",
         fun: lsp_workspace_command,
         signature: CommandSignature::positional(&[completers::lsp_workspace_command]),
@@ -2794,6 +2848,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "lsp-restart",
         aliases: &[],
+        flags: &[],
         doc: "Restarts the language servers used by the current doc",
         fun: lsp_restart,
         signature: CommandSignature::none(),
@@ -2801,6 +2856,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "lsp-stop",
         aliases: &[],
+        flags: &[],
         doc: "Stops the language servers that are used by the current doc",
         fun: lsp_stop,
         signature: CommandSignature::none(),
@@ -2808,6 +2864,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "tree-sitter-scopes",
         aliases: &[],
+        flags: &[],
         doc: "Display tree sitter scopes, primarily for theming and development.",
         fun: tree_sitter_scopes,
         signature: CommandSignature::none(),
@@ -2815,6 +2872,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "tree-sitter-highlight-name",
         aliases: &[],
+        flags: &[],
         doc: "Display name of tree-sitter highlight scope under the cursor.",
         fun: tree_sitter_highlight_name,
         signature: CommandSignature::none(),
@@ -2822,6 +2880,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "debug-start",
         aliases: &["dbg"],
+        flags: &[],
         doc: "Start a debug session from a given template with given parameters.",
         fun: debug_start,
         signature: CommandSignature::none(),
@@ -2829,6 +2888,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "debug-remote",
         aliases: &["dbg-tcp"],
+        flags: &[],
         doc: "Connect to a debug adapter by TCP address and start a debugging session from a given template with given parameters.",
         fun: debug_remote,
         signature: CommandSignature::none(),
@@ -2836,6 +2896,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "debug-eval",
         aliases: &[],
+        flags: &[],
         doc: "Evaluate expression in current debug context.",
         fun: debug_eval,
         signature: CommandSignature::none(),
@@ -2843,6 +2904,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "vsplit",
         aliases: &["vs"],
+        flags: &[],
         doc: "Open the file in a vertical split.",
         fun: vsplit,
         signature: CommandSignature::all(completers::filename)
@@ -2850,6 +2912,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "vsplit-new",
         aliases: &["vnew"],
+        flags: &[],
         doc: "Open a scratch buffer in a vertical split.",
         fun: vsplit_new,
         signature: CommandSignature::none(),
@@ -2857,6 +2920,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "hsplit",
         aliases: &["hs", "sp"],
+        flags: &[],
         doc: "Open the file in a horizontal split.",
         fun: hsplit,
         signature: CommandSignature::all(completers::filename)
@@ -2864,6 +2928,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "hsplit-new",
         aliases: &["hnew"],
+        flags: &[],
         doc: "Open a scratch buffer in a horizontal split.",
         fun: hsplit_new,
         signature: CommandSignature::none(),
@@ -2871,6 +2936,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "tutor",
         aliases: &[],
+        flags: &[],
         doc: "Open the tutorial.",
         fun: tutor,
         signature: CommandSignature::none(),
@@ -2878,6 +2944,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "goto",
         aliases: &["g"],
+        flags: &[],
         doc: "Goto line number.",
         fun: goto_line_number,
         signature: CommandSignature::none(),
@@ -2885,6 +2952,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "set-language",
         aliases: &["lang"],
+        flags: &[],
         doc: "Set the language of current buffer (show current language if no value specified).",
         fun: language,
         signature: CommandSignature::positional(&[completers::language]),
@@ -2892,6 +2960,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "set-option",
         aliases: &["set"],
+        flags: &[],
         doc: "Set a config option at runtime.\nFor example to disable smart case search, use `:set search.smart-case false`.",
         fun: set_option,
         // TODO: Add support for completion of the options value(s), when appropriate.
@@ -2900,6 +2969,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "toggle-option",
         aliases: &["toggle"],
+        flags: &[],
         doc: "Toggle a boolean config option at runtime.\nFor example to toggle smart case search, use `:toggle search.smart-case`.",
         fun: toggle_option,
         signature: CommandSignature::positional(&[completers::setting]),
@@ -2907,6 +2977,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "get-option",
         aliases: &["get"],
+        flags: &[],
         doc: "Get the current value of a config option.",
         fun: get_option,
         signature: CommandSignature::positional(&[completers::setting]),
@@ -2914,6 +2985,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "sort",
         aliases: &[],
+        flags: &[],
         doc: "Sort ranges in selection.",
         fun: sort,
         signature: CommandSignature::none(),
@@ -2921,6 +2993,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "rsort",
         aliases: &[],
+        flags: &[],
         doc: "Sort ranges in selection in reverse order.",
         fun: sort_reverse,
         signature: CommandSignature::none(),
@@ -2928,6 +3001,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "reflow",
         aliases: &[],
+        flags: &[],
         doc: "Hard-wrap the current selection of lines to a given width.",
         fun: reflow,
         signature: CommandSignature::none(),
@@ -2935,6 +3009,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "tree-sitter-subtree",
         aliases: &["ts-subtree"],
+        flags: &[],
         doc: "Display the smallest tree-sitter subtree that spans the primary selection, primarily for debugging queries.",
         fun: tree_sitter_subtree,
         signature: CommandSignature::none(),
@@ -2942,6 +3017,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "config-reload",
         aliases: &[],
+        flags: &[],
         doc: "Refresh user config.",
         fun: refresh_config,
         signature: CommandSignature::none(),
@@ -2949,6 +3025,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "config-open",
         aliases: &[],
+        flags: &[],
         doc: "Open the user config.toml file.",
         fun: open_config,
         signature: CommandSignature::none(),
@@ -2956,6 +3033,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "config-open-workspace",
         aliases: &[],
+        flags: &[],
         doc: "Open the workspace config.toml file.",
         fun: open_workspace_config,
         signature: CommandSignature::none(),
@@ -2963,6 +3041,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "log-open",
         aliases: &[],
+        flags: &[],
         doc: "Open the helix log file.",
         fun: open_log,
         signature: CommandSignature::none(),
@@ -2970,6 +3049,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "insert-output",
         aliases: &[],
+        flags: &[],
         doc: "Run shell command, inserting output before each selection.",
         fun: insert_output,
         signature: CommandSignature::none(),
@@ -2977,6 +3057,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "append-output",
         aliases: &[],
+        flags: &[],
         doc: "Run shell command, appending output after each selection.",
         fun: append_output,
         signature: CommandSignature::none(),
@@ -2984,6 +3065,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "pipe",
         aliases: &[],
+        flags: &[],
         doc: "Pipe each selection to the shell command.",
         fun: pipe,
         signature: CommandSignature::none(),
@@ -2991,6 +3073,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "pipe-to",
         aliases: &[],
+        flags: &[],
         doc: "Pipe each selection to the shell command, ignoring output.",
         fun: pipe_to,
         signature: CommandSignature::none(),
@@ -2998,6 +3081,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "run-shell-command",
         aliases: &["sh"],
+        flags: &[],
         doc: "Run a shell command",
         fun: run_shell_command,
         signature: CommandSignature::all(completers::filename)
@@ -3005,6 +3089,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "reset-diff-change",
         aliases: &["diffget", "diffg"],
+        flags: &[],
         doc: "Reset the diff change at the cursor position.",
         fun: reset_diff_change,
         signature: CommandSignature::none(),
@@ -3012,6 +3097,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "clear-register",
         aliases: &[],
+        flags: &[],
         doc: "Clear given register. If no argument is provided, clear all registers.",
         fun: clear_register,
         signature: CommandSignature::all(completers::register),
@@ -3019,6 +3105,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "redraw",
         aliases: &[],
+        flags: &[],
         doc: "Clear and re-render the whole UI",
         fun: redraw,
         signature: CommandSignature::none(),
@@ -3026,6 +3113,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "move",
         aliases: &["mv"],
+        flags: &[],
         doc: "Move the current buffer and its corresponding file to a different path",
         fun: move_buffer,
         signature: CommandSignature::positional(&[completers::filename]),
@@ -3033,6 +3121,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "yank-diagnostic",
         aliases: &[],
+        flags: &[],
         doc: "Yank diagnostic(s) under primary cursor to register, or clipboard by default",
         fun: yank_diagnostic,
         signature: CommandSignature::all(completers::register),
@@ -3040,6 +3129,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "read",
         aliases: &["r"],
+        flags: &[],
         doc: "Load a file into buffer",
         fun: read,
         signature: CommandSignature::positional(&[completers::filename]),
