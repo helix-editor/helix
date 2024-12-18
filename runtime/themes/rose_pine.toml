@@ -36,6 +36,7 @@
 "ui.text" = { fg = "text" }
 "ui.text.focus" = { bg = "overlay" }
 "ui.text.info" = { fg = "subtle" }
+"ui.text.directory" = { fg = "iris" }
 
 "ui.virtual.jump-label" = { fg = "love", modifiers = ["bold"] }
 "ui.virtual.ruler" = { bg = "overlay" }

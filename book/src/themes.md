@@ -305,6 +305,7 @@ These scopes are used for theming the editor interface:
 | `ui.text.focus`                   | The currently selected line in the picker                                                      |
 | `ui.text.inactive`                | Same as `ui.text` but when the text is inactive (e.g. suggestions)                             |
 | `ui.text.info`                    | The key: command text in `ui.popup.info` boxes                                                 |
+| `ui.text.directory`               | Directory names in prompt completion                                                           |
 | `ui.virtual.ruler`                | Ruler columns (see the [`editor.rulers` config][editor-section])                               |
 | `ui.virtual.whitespace`           | Visible whitespace characters                                                                  |
 | `ui.virtual.indent-guide`         | Vertical indent width guides                                                                   |

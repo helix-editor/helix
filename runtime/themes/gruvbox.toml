@@ -106,6 +106,7 @@
 "ui.statusline.select" = { fg = "bg1", bg = "orange1", modifiers = ["bold"] }
 
 "ui.text" = { fg = "fg1" }
+"ui.text.directory" = { fg = "blue1" }
 "ui.virtual.inlay-hint" = { fg = "gray" }
 "ui.virtual.jump-label" = { fg = "purple0", modifiers = ["bold"] }
 "ui.virtual.ruler" = { bg = "bg1" }

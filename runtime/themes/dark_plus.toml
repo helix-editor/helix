@@ -72,6 +72,7 @@
 "ui.bufferline.background"   = { bg = "background" }
 "ui.text"                    = { fg = "text" }
 "ui.text.focus"              = { fg = "white" }
+"ui.text.directory"          = { fg = "blue3" }
 "ui.virtual.whitespace"      = { fg = "#3e3e3d" }
 "ui.virtual.ruler"           = { bg = "borders" }
 "ui.virtual.indent-guide"    = { fg = "dark_gray4" }

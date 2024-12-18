@@ -32,6 +32,17 @@ use helix_view::Editor;
 
 use std::{error::Error, path::PathBuf};
 
+struct Utf8PathBuf {
+    path: String,
+    is_dir: bool,
+}
+
+impl AsRef<str> for Utf8PathBuf {
+    fn as_ref(&self) -> &str {
+        &self.path
+    }
+}
+
 pub fn prompt(
     cx: &mut crate::commands::Context,
     prompt: std::borrow::Cow<'static, str>,
@@ -266,6 +277,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
 }
 
 pub mod completers {
+    use super::Utf8PathBuf;
     use crate::ui::prompt::Completion;
     use helix_core::fuzzy::fuzzy_match;
     use helix_core::syntax::LanguageServerFeature;
@@ -274,6 +286,7 @@ pub mod completers {
     use helix_view::{editor::Config, Editor};
     use once_cell::sync::Lazy;
     use std::borrow::Cow;
+    use tui::text::Span;
 
     pub type Completer = fn(&Editor, &str) -> Vec<Completion>;
 
@@ -290,7 +303,7 @@ pub mod completers {
 
         fuzzy_match(input, names, true)
             .into_iter()
-            .map(|(name, _)| ((0..), name))
+            .map(|(name, _)| ((0..), name.into()))
             .collect()
     }
 
@@ -336,7 +349,7 @@ pub mod completers {
 
         fuzzy_match(input, &*KEYS, false)
             .into_iter()
-            .map(|(name, _)| ((0..), name.into()))
+            .map(|(name, _)| ((0..), Span::raw(name)))
             .collect()
     }
 
@@ -424,7 +437,7 @@ pub mod completers {
 
     // TODO: we could return an iter/lazy thing so it can fetch as many as it needs.
     fn filename_impl<F>(
-        _editor: &Editor,
+        editor: &Editor,
         input: &str,
         git_ignore: bool,
         filter_fn: F,
@@ -482,7 +495,7 @@ pub mod completers {
                         return None;
                     }
 
-                    //let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
+                    let is_dir = entry.file_type().is_some_and(|entry| entry.is_dir());
 
                     let path = entry.path();
                     let mut path = if is_tilde {
@@ -501,23 +514,35 @@ pub mod completers {
                     }
 
                     let path = path.into_os_string().into_string().ok()?;
-                    Some(Cow::from(path))
+                    Some(Utf8PathBuf { path, is_dir })
                 })
             }) // TODO: unwrap or skip
-            .filter(|path| !path.is_empty());
+            .filter(|path| !path.path.is_empty());
+
+        let directory_color = editor.theme.get("ui.text.directory");
+
+        let style_from_file = |file: Utf8PathBuf| {
+            if file.is_dir {
+                Span::styled(file.path, directory_color)
+            } else {
+                Span::raw(file.path)
+            }
+        };
 
         // if empty, return a list of dirs and files in current dir
         if let Some(file_name) = file_name {
             let range = (input.len().saturating_sub(file_name.len()))..;
             fuzzy_match(&file_name, files, true)
                 .into_iter()
-                .map(|(name, _)| (range.clone(), name))
+                .map(|(name, _)| (range.clone(), style_from_file(name)))
                 .collect()
 
             // TODO: complete to longest common match
         } else {
-            let mut files: Vec<_> = files.map(|file| (end.clone(), file)).collect();
-            files.sort_unstable_by(|(_, path1), (_, path2)| path1.cmp(path2));
+            let mut files: Vec<_> = files
+                .map(|file| (end.clone(), style_from_file(file)))
+                .collect();
+            files.sort_unstable_by(|(_, path1), (_, path2)| path1.content.cmp(&path2.content));
             files
         }
     }

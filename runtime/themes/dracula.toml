@@ -118,6 +118,7 @@
 "ui.statusline.select"            = { fg    = "black",           bg = "cyan",          modifiers = ["bold"] }
 "ui.text"                         = { fg    = "foreground"                                                  }
 "ui.text.focus"                   = { fg    = "cyan"                                                        }
+"ui.text.directory"               = { fg    = "cyan"                                                        }
 "ui.virtual.indent-guide"         = { fg    = "indent"                                                      }
 "ui.virtual.inlay-hint"           = { fg    = "cyan"                                                        }
 "ui.virtual.inlay-hint.parameter" = { fg    = "cyan",            modifiers = ["italic", "dim"]              }
