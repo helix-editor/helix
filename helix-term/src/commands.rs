@@ -1,4 +1,5 @@
 pub(crate) mod dap;
+pub(crate) mod flag;
 pub(crate) mod lsp;
 pub(crate) mod typed;
 
