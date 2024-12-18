@@ -2131,16 +2131,15 @@ fn sort(
         return Ok(());
     }
 
-    if let Some(flag) = args.next() {
-        let flag = flag.trim_start_matches("--").trim_start_matches('-');
+    let flags = flags
+        .iter()
+        .map(|flag| flag.long)
+        .chain(flags.iter().filter_map(|flag| flag.short));
 
-        if flags
-            .iter()
-            .any(|x| x.long == flag || x.short == Some(flag))
-        {
-            sort_impl(cx, true);
-        } else {
-            bail!("There is no flag `--{flag}` on sort");
+    if let Some(flag) = args.flags(flags) {
+        match flag {
+            "reverse" | "r" => sort_impl(cx, true),
+            _ => bail!("unhandle command flag `{flag}`, implementation failed to cover all flags."),
         }
     } else {
         sort_impl(cx, false);
