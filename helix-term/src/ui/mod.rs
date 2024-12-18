@@ -277,12 +277,12 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
 }
 
 pub mod completers {
+    use super::Utf8PathBuf;
     use crate::ui::prompt::Completion;
-    use crate::ui::Utf8PathBuf;
     use helix_core::fuzzy::fuzzy_match;
     use helix_core::syntax::LanguageServerFeature;
     use helix_view::document::SCRATCH_BUFFER_NAME;
-    use helix_view::theme::{self};
+    use helix_view::theme;
     use helix_view::{editor::Config, Editor};
     use once_cell::sync::Lazy;
     use std::borrow::Cow;
@@ -495,7 +495,7 @@ pub mod completers {
                         return None;
                     }
 
-                    let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
+                    let is_dir = entry.file_type().is_some_and(|entry| entry.is_dir());
 
                     let path = entry.path();
                     let mut path = if is_tilde {
