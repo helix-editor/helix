@@ -211,14 +211,20 @@ impl Application {
                         let view_id = editor.tree.focus;
                         let doc = doc_mut!(editor, &doc_id);
 
-                        let ranges = pos
-                            .iter()
-                            .map(|position| {
-                                Range::point(pos_at_coords(doc.text().slice(..), *position, true))
-                            })
-                            .collect();
+                        let pos = Selection::new(
+                            pos.iter()
+                                .map(|position| {
+                                    Range::point(pos_at_coords(
+                                        doc.text().slice(..),
+                                        *position,
+                                        true,
+                                    ))
+                                })
+                                .collect(),
+                            0,
+                        );
 
-                        doc.set_selection(view_id, Selection::new(ranges, 0));
+                        doc.set_selection(view_id, pos);
                     }
                 }
 
