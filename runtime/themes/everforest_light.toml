@@ -93,6 +93,7 @@
 "ui.window" = { fg = "bg4", bg = "bg_dim" }
 "ui.help" = { fg = "fg", bg = "bg2" }
 "ui.text" = "fg"
+"ui.text.directory" = { fg = "green" }
 "ui.text.focus" = "fg"
 "ui.menu" = { fg = "fg", bg = "bg3" }
 "ui.menu.selected" = { fg = "bg0", bg = "green" }
