@@ -307,11 +307,25 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
             .map(|formatter| formatter.command.to_string()),
     )?;
 
+    probe_parser(lang.grammar.as_ref().unwrap_or(&lang.language_id))?;
+
     for ts_feat in TsFeature::all() {
         probe_treesitter_feature(&lang_str, *ts_feat)?
     }
 
     Ok(())
+}
+
+fn probe_parser(grammar_name: &str) -> std::io::Result<()> {
+    let stdout = std::io::stdout();
+    let mut stdout = stdout.lock();
+
+    write!(stdout, "Tree-sitter parser: ")?;
+
+    match helix_loader::grammar::get_language(grammar_name) {
+        Ok(_) => writeln!(stdout, "{}", "✓".green()),
+        Err(_) => writeln!(stdout, "{}", "None".yellow()),
+    }
 }
 
 /// Display diagnostics about multiple LSPs and DAPs.
