@@ -103,6 +103,17 @@ impl<'a> TreeCursor<'a> {
         false
     }
 
+    pub fn goto_parent_until_has_siblings(&mut self) {
+        while self.is_only_child() {
+            self.goto_parent();
+        }
+    }
+
+    /// Check if a cursor points to the node that is a child and has no siblings
+    pub fn is_only_child(&self) -> bool {
+        self.node().parent().is_some_and(|p| p.child_count() == 1)
+    }
+
     /// Finds the injection layer that has exactly the same range as the given `range`.
     fn layer_id_of_byte_range(&self, search_range: Range<usize>) -> Option<LayerId> {
         let start_idx = self
@@ -144,6 +155,29 @@ impl<'a> TreeCursor<'a> {
 
     pub fn goto_first_child(&mut self) -> bool {
         self.goto_first_child_impl(false)
+    }
+
+    pub fn goto_last_child(&mut self) -> bool {
+        // Check if the current node's range is an exact injection layer range.
+        if let Some(layer_id) = self
+            .layer_id_of_byte_range(self.node().byte_range())
+            .filter(|&layer_id| layer_id != self.current)
+        {
+            // Switch to the child layer.
+            self.current = layer_id;
+            self.cursor = self.layers[self.current].tree().root_node();
+            return true;
+        }
+
+        let child = self.cursor.children(&mut self.cursor.walk()).last();
+
+        if let Some(child) = child {
+            // Otherwise descend in the current tree.
+            self.cursor = child;
+            true
+        } else {
+            false
+        }
     }
 
     pub fn goto_first_named_child(&mut self) -> bool {
@@ -236,6 +270,30 @@ impl<'a> TreeCursor<'a> {
             cursor: self,
             parent,
             named: true,
+        }
+    }
+
+    pub fn goto_first_sibling(&mut self) {
+        self.goto_parent();
+        self.goto_first_child();
+    }
+
+    pub fn goto_last_sibling(&mut self) {
+        self.goto_parent();
+        self.goto_last_child();
+    }
+
+    pub fn goto_next_sibling_or_wrap(&mut self) {
+        let went_to_next = self.goto_next_sibling();
+        if !went_to_next {
+            self.goto_first_sibling();
+        }
+    }
+
+    pub fn goto_prev_sibling_or_wrap(&mut self) {
+        let went_to_prev = self.goto_prev_sibling();
+        if !went_to_prev {
+            self.goto_last_sibling();
         }
     }
 }
