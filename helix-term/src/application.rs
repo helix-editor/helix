@@ -210,7 +210,6 @@ impl Application {
                         // opened last is focused on.
                         let view_id = editor.tree.focus;
                         let doc = doc_mut!(editor, &doc_id);
-
                         let pos = Selection::new(
                             pos.iter()
                                 .map(|position| {
@@ -223,7 +222,6 @@ impl Application {
                                 .collect(),
                             0,
                         );
-
                         doc.set_selection(view_id, pos);
                     }
                 }
