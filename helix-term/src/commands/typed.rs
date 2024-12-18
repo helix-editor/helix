@@ -3426,13 +3426,51 @@ pub(super) fn command_mode(cx: &mut Context) {
     prompt.doc_fn = Box::new(|input: &str| {
         let shellwords = Shellwords::from(input);
 
-        if let Some(typed::TypableCommand { doc, aliases, .. }) =
-            typed::TYPABLE_COMMAND_MAP.get(shellwords.command())
+        if let Some(typed::TypableCommand {
+            name,
+            aliases,
+            flags,
+            doc,
+            ..
+        }) = typed::TYPABLE_COMMAND_MAP.get(shellwords.command())
         {
-            if aliases.is_empty() {
-                return Some((*doc).into());
+            // EXAMPLE:
+            // write [<flags>] - write the current buffer to its file.
+            // aliases: w
+            // flags:
+            //     --no-format    exclude formatting operation when saving.
+            let mut prompt = String::new();
+
+            prompt.push_str(name);
+
+            if !flags.is_empty() {
+                prompt.push_str(" [<flags>]");
             }
-            return Some(format!("{}\nAliases: {}", doc, aliases.join(", ")).into());
+
+            writeln!(prompt, " - {doc}").unwrap();
+
+            if !aliases.is_empty() {
+                writeln!(prompt, "aliases: {}", aliases.join(", ")).unwrap();
+            }
+
+            if !flags.is_empty() {
+                prompt.push_str("flags:\n");
+
+                for flag in *flags {
+                    write!(prompt, "    --{}", flag.long).unwrap();
+
+                    if let Some(short) = flag.short {
+                        write!(prompt, ", -{short}").unwrap();
+                    }
+
+                    // TODO: Need to add if the flag takes any arguments?
+                    // --all, -a   <arg>    will save all
+
+                    writeln!(prompt, "    {}", flag.desc).unwrap();
+                }
+            }
+
+            return Some(prompt.into());
         }
 
         None
