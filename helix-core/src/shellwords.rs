@@ -200,6 +200,24 @@ impl<'a> Args<'a> {
             start: 0,
         }
     }
+
+    pub fn flags<'f, F: Iterator<Item = &'f str>>(&mut self, mut flags: F) -> Option<&'a str> {
+        if self.is_empty() {
+            return None;
+        }
+
+        let mut args = self.peekable();
+
+        if let Some(arg) = args.peek() {
+            if flags.any(|f| f == arg.trim_start_matches('-').trim_start_matches("--")) {
+                return self
+                    .next()
+                    .map(|flag| flag.trim_start_matches('-').trim_start_matches("--"));
+            }
+        }
+
+        None
+    }
 }
 
 impl<'a> Iterator for Args<'a> {
