@@ -180,6 +180,7 @@ where
             if visible {
                 match context.editor.mode() {
                     Mode::Insert => &modenames.insert,
+                    Mode::Overtype => &modenames.overtype,
                     Mode::Select => &modenames.select,
                     Mode::Normal => &modenames.normal,
                 }
@@ -191,6 +192,7 @@ where
         if visible && config.color_modes {
             match context.editor.mode() {
                 Mode::Insert => Some(context.editor.theme.get("ui.statusline.insert")),
+                Mode::Overtype => Some(context.editor.theme.get("ui.statusline.overtype")),
                 Mode::Select => Some(context.editor.theme.get("ui.statusline.select")),
                 Mode::Normal => Some(context.editor.theme.get("ui.statusline.normal")),
             }
