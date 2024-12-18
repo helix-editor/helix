@@ -7,6 +7,7 @@ use std::{
 
 use once_cell::sync::Lazy;
 
+// We keep the CWD as a static so that we can access it in places where we don't have access to the Editor
 static CWD: RwLock<Option<PathBuf>> = RwLock::new(None);
 
 // Get the current working directory.
@@ -36,12 +37,12 @@ pub fn current_working_dir() -> PathBuf {
     cwd
 }
 
-pub fn set_current_working_dir(path: impl AsRef<Path>) -> std::io::Result<()> {
+pub fn set_current_working_dir(path: impl AsRef<Path>) -> std::io::Result<Option<PathBuf>> {
     let path = crate::path::canonicalize(path);
     std::env::set_current_dir(&path)?;
     let mut cwd = CWD.write().unwrap();
-    *cwd = Some(path);
-    Ok(())
+
+    Ok(cwd.replace(path))
 }
 
 pub fn env_var_is_set(env_var_name: &str) -> bool {

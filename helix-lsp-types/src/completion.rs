@@ -497,7 +497,6 @@ pub struct CompletionItem {
     /// insertText is ignored.
     ///
     /// Most editors support two different operation when accepting a completion item. One is to insert a
-
     /// completion text and the other is to replace an existing text with a completion text. Since this can
     /// usually not predetermined by a server it can report both ranges. Clients need to signal support for
     /// `InsertReplaceEdits` via the `textDocument.completion.insertReplaceSupport` client capability

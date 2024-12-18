@@ -72,15 +72,28 @@ t = ":run-shell-command cargo test"
 
 ## Special keys and modifiers
 
-Ctrl, Shift and Alt modifiers are encoded respectively with the prefixes
-`C-`, `S-` and `A-`. Special keys are encoded as follows:
+Ctrl, Shift and Alt modifiers are encoded respectively with the prefixes `C-`, `S-` and `A-`.
+
+The [Super key](https://en.wikipedia.org/wiki/Super_key_(keyboard_button)) - the Windows/Linux
+key or the Command key on Mac keyboards - is also supported when using a terminal emulator that
+supports the [enhanced keyboard protocol](https://github.com/helix-editor/helix/wiki/Terminal-Support#enhanced-keyboard-protocol).
+The super key is encoded with prefixes `Meta-`, `Cmd-` or `Win-`. These are all synonyms for the
+super modifier - binding a key with a `Win-` modifier will mean it can be used with the
+Windows/Linux key or the Command key.
+
+```toml
+[keys.normal]
+C-s = ":write" # Ctrl and 's' to write
+Cmd-s = ":write" # Cmd or Win or Meta and 's' to write
+```
+
+Special keys are encoded as follows:
 
 | Key name     | Representation |
 | ---          | ---            |
 | Backspace    | `"backspace"`  |
 | Space        | `"space"`      |
 | Return/Enter | `"ret"`        |
-| \-           | `"minus"`      |
 | Left         | `"left"`       |
 | Right        | `"right"`      |
 | Up           | `"up"`         |
@@ -96,3 +109,14 @@ Ctrl, Shift and Alt modifiers are encoded respectively with the prefixes
 | Escape       | `"esc"`        |
 
 Keys can be disabled by binding them to the `no_op` command.
+
+All other keys such as `?`, `!`, `-` etc. can be used literally:
+
+```toml
+[keys.normal]
+"?" = ":write"
+"!" = ":write"
+"-" = ":write"
+```
+
+Note: `-` can't be used when combined with a modifier, for example `Alt` + `-` should be written as `A-minus`. `A--` is not accepted.

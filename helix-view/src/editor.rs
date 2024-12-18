@@ -4,6 +4,7 @@ use crate::{
     document::{
         DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
     },
+    events::DocumentFocusLost,
     graphics::{CursorKind, Rect},
     handlers::Handlers,
     info::Info,
@@ -14,6 +15,7 @@ use crate::{
     Document, DocumentId, View, ViewId,
 };
 use dap::StackFrame;
+use helix_event::dispatch;
 use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
@@ -307,6 +309,9 @@ pub struct Config {
     /// The completion item kind text to display in the completion menu. Leave kind empty to use
     /// the kind's name.
     pub completion_item_kinds: HashMap<String, String>,
+    /// `true` if helix should automatically add a line comment token if you're currently in a comment
+    /// and press `enter`.
+    pub continue_comments: bool,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
@@ -989,6 +994,7 @@ impl Default for Config {
             },
             text_width: 80,
             completion_replace: false,
+            continue_comments: true,
             workspace_lsp_roots: Vec::new(),
             default_line_ending: LineEndingConfig::default(),
             insert_final_newline: true,
@@ -1084,6 +1090,7 @@ pub struct Editor {
     redraw_timer: Pin<Box<Sleep>>,
     last_motion: Option<Motion>,
     pub last_completion: Option<CompleteAction>,
+    pub last_cwd: Option<PathBuf>,
 
     pub exit_code: i32,
 
@@ -1141,6 +1148,7 @@ pub enum CompleteAction {
     Applied {
         trigger_offset: usize,
         changes: Vec<Change>,
+        placeholder: bool,
     },
 }
 
@@ -1220,6 +1228,7 @@ impl Editor {
             redraw_timer: Box::pin(sleep(Duration::MAX)),
             last_motion: None,
             last_completion: None,
+            last_cwd: None,
             config,
             auto_pairs,
             completion_item_kind_styles: Arc::new(completion_item_kind_styles),
@@ -1607,7 +1616,7 @@ impl Editor {
             self.enter_normal_mode();
         }
 
-        match action {
+        let focust_lost = match action {
             Action::Replace => {
                 let (view, doc) = current_ref!(self);
                 // If the current view is an empty scratch buffer and is not displayed in any other views, delete it.
@@ -1657,6 +1666,10 @@ impl Editor {
 
                 self.replace_document_in_view(view_id, id);
 
+                dispatch(DocumentFocusLost {
+                    editor: self,
+                    doc: id,
+                });
                 return;
             }
             Action::Load => {
@@ -1667,6 +1680,7 @@ impl Editor {
                 return;
             }
             Action::HorizontalSplit | Action::VerticalSplit => {
+                let focus_lost = self.tree.try_get(self.tree.focus).map(|view| view.doc);
                 // copy the current view, unless there is no view yet
                 let view = self
                     .tree
@@ -1686,10 +1700,17 @@ impl Editor {
                 let doc = doc_mut!(self, &id);
                 doc.ensure_view_init(view_id);
                 doc.mark_as_focused();
+                focus_lost
             }
-        }
+        };
 
         self._refresh();
+        if let Some(focus_lost) = focust_lost {
+            dispatch(DocumentFocusLost {
+                editor: self,
+                doc: focus_lost,
+            });
+        }
     }
 
     /// Generate an id for a new document and register it.
@@ -1739,10 +1760,14 @@ impl Editor {
         Ok(doc_id)
     }
 
+    pub fn document_id_by_path(&self, path: &Path) -> Option<DocumentId> {
+        self.document_by_path(path).map(|doc| doc.id)
+    }
+
     // ??? possible use for integration tests
     pub fn open(&mut self, path: &Path, action: Action) -> Result<DocumentId, DocumentOpenError> {
         let path = helix_stdx::path::canonicalize(path);
-        let id = self.document_by_path(&path).map(|doc| doc.id);
+        let id = self.document_id_by_path(&path);
 
         let id = if let Some(id) = id {
             id
@@ -1916,11 +1941,15 @@ impl Editor {
                 let doc = doc_mut!(self, &view.doc);
                 view.sync_changes(doc);
             }
+            let view = view!(self, view_id);
+            let doc = doc_mut!(self, &view.doc);
+            doc.mark_as_focused();
+            let focus_lost = self.tree.get(prev_id).doc;
+            dispatch(DocumentFocusLost {
+                editor: self,
+                doc: focus_lost,
+            });
         }
-
-        let view = view!(self, view_id);
-        let doc = doc_mut!(self, &view.doc);
-        doc.mark_as_focused();
     }
 
     pub fn focus_next(&mut self) {
