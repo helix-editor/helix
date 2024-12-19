@@ -83,8 +83,7 @@ impl menu::Item for CompletionItem {
                 Some(lsp::CompletionItemKind::KEYWORD) => "keyword",
                 Some(lsp::CompletionItemKind::SNIPPET) => "snippet",
                 Some(lsp::CompletionItemKind::COLOR) => {
-                    let doc = item.documentation.clone();
-                    let maybe_hex_color = match &doc {
+                    let maybe_hex_color = match &item.documentation {
                         Some(Documentation::String(text)) => Some(text),
                         Some(Documentation::MarkupContent(MarkupContent { value, .. })) => {
                             Some(value)
