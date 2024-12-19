@@ -117,7 +117,7 @@ impl menu::Item for CompletionItem {
                 }
                 None => "".into(),
             },
-            CompletionItem::Other(core::CompletionItem { kind, .. }) => Span::raw(kind.to_string()),
+            CompletionItem::Other(core::CompletionItem { kind, .. }) => kind.as_ref().into(),
         };
 
         let first_cell = menu::Cell::from(Span::styled(
