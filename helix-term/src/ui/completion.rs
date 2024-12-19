@@ -68,20 +68,6 @@ impl menu::Item for CompletionItem {
             CompletionItem::Other(core::CompletionItem { label, .. }) => label,
         };
 
-        let first_cell = menu::Cell::from(Span::styled(
-            label,
-            if deprecated {
-                Style::default().add_modifier(Modifier::CROSSED_OUT)
-            } else if kind.stuff == "folder" {
-                *dir_style
-            } else {
-                Style::default()
-            },
-        ));
-
-        menu::Row::new([first_cell, menu::Cell::from(kind)])
-        
-
         let kind = match self {
             CompletionItem::Lsp(LspCompletionItem { item, .. }) => match item.kind {
                 Some(lsp::CompletionItemKind::TEXT) => "text".into(),
@@ -133,15 +119,20 @@ impl menu::Item for CompletionItem {
             },
             CompletionItem::Other(core::CompletionItem { kind, .. }) => Span::raw(kind.to_string()),
         };
+
+        let first_cell = menu::Cell::from(Span::styled(
+            label,
+            if deprecated {
+                Style::default().add_modifier(Modifier::CROSSED_OUT)
+            } else if kind.content == "folder" {
+                *dir_style
+            } else {
+                Style::default()
+            },
+        ));
+
         menu::Row::new([
-            menu::Cell::from(Span::styled(
-                label,
-                if deprecated {
-                    Style::default().add_modifier(Modifier::CROSSED_OUT)
-                } else {
-                    Style::default()
-                },
-            )),
+            first_cell,
             if kind.content == "■" {
                 menu::Cell::from(Spans::from(vec![Span::raw("color "), kind]))
             } else {
