@@ -92,7 +92,7 @@ impl menu::Item for CompletionItem {
                         None => None,
                     };
                     maybe_hex_color.map_or(Span::raw("color"), |c| match Color::from_hex(c) {
-                        Ok(l) => Span::styled("●", Style::default().fg(l)),
+                        Ok(l) => Span::styled("       ", Style::default().bg(l)),
                         Err(_) => Span::raw("color"),
                     })
                 }
