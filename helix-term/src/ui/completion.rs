@@ -137,14 +137,13 @@ impl Completion {
         // Sort completion items according to their preselect status (given by the LSP server)
         items.sort_by_key(|item| !item.preselect());
 
-        // Then create the menu
-        let menu = Menu::new(
-            items,
-            editor.theme.get("ui.text.directory"),
-            move |editor: &mut Editor, item, event| {
-                let (view, doc) = current!(editor);
+        let dir_color = editor.theme.get("ui.text.directory");
 
-                macro_rules! language_server {
+        // Then create the menu
+        let menu = Menu::new(items, dir_color, move |editor: &mut Editor, item, event| {
+            let (view, doc) = current!(editor);
+
+            macro_rules! language_server {
                 ($item:expr) => {
                     match editor
                         .language_servers
@@ -161,137 +160,136 @@ impl Completion {
                 };
             }
 
-                match event {
-                    PromptEvent::Abort => {}
-                    PromptEvent::Update if preview_completion_insert => {
-                        // Update creates "ghost" transactions which are not sent to the
-                        // lsp server to avoid messing up re-requesting completions. Once a
-                        // completion has been selected (with tab, c-n or c-p) it's always accepted whenever anything
-                        // is typed. The only way to avoid that is to explicitly abort the completion
-                        // with c-c. This will remove the "ghost" transaction.
-                        //
-                        // The ghost transaction is modeled with a transaction that is not sent to the LS.
-                        // (apply_temporary) and a savepoint. It's extremely important this savepoint is restored
-                        // (also without sending the transaction to the LS) *before any further transaction is applied*.
-                        // Otherwise incremental sync breaks (since the state of the LS doesn't match the state the transaction
-                        // is applied to).
-                        if matches!(editor.last_completion, Some(CompleteAction::Triggered)) {
-                            editor.last_completion = Some(CompleteAction::Selected {
-                                savepoint: doc.savepoint(view),
-                            })
-                        }
-                        // if more text was entered, remove it
-                        doc.restore(view, &savepoint, false);
-                        // always present here
-                        let item = item.unwrap();
-
-                        match item {
-                            CompletionItem::Lsp(item) => {
-                                let (transaction, _) = lsp_item_to_transaction(
-                                    doc,
-                                    view.id,
-                                    &item.item,
-                                    language_server!(item).offset_encoding(),
-                                    trigger_offset,
-                                    replace_mode,
-                                );
-                                doc.apply_temporary(&transaction, view.id)
-                            }
-                            CompletionItem::Other(core::CompletionItem { transaction, .. }) => {
-                                doc.apply_temporary(transaction, view.id)
-                            }
-                        };
+            match event {
+                PromptEvent::Abort => {}
+                PromptEvent::Update if preview_completion_insert => {
+                    // Update creates "ghost" transactions which are not sent to the
+                    // lsp server to avoid messing up re-requesting completions. Once a
+                    // completion has been selected (with tab, c-n or c-p) it's always accepted whenever anything
+                    // is typed. The only way to avoid that is to explicitly abort the completion
+                    // with c-c. This will remove the "ghost" transaction.
+                    //
+                    // The ghost transaction is modeled with a transaction that is not sent to the LS.
+                    // (apply_temporary) and a savepoint. It's extremely important this savepoint is restored
+                    // (also without sending the transaction to the LS) *before any further transaction is applied*.
+                    // Otherwise incremental sync breaks (since the state of the LS doesn't match the state the transaction
+                    // is applied to).
+                    if matches!(editor.last_completion, Some(CompleteAction::Triggered)) {
+                        editor.last_completion = Some(CompleteAction::Selected {
+                            savepoint: doc.savepoint(view),
+                        })
                     }
-                    PromptEvent::Update => {}
-                    PromptEvent::Validate => {
-                        if let Some(CompleteAction::Selected { savepoint }) =
-                            editor.last_completion.take()
-                        {
-                            doc.restore(view, &savepoint, false);
+                    // if more text was entered, remove it
+                    doc.restore(view, &savepoint, false);
+                    // always present here
+                    let item = item.unwrap();
+
+                    match item {
+                        CompletionItem::Lsp(item) => {
+                            let (transaction, _) = lsp_item_to_transaction(
+                                doc,
+                                view.id,
+                                &item.item,
+                                language_server!(item).offset_encoding(),
+                                trigger_offset,
+                                replace_mode,
+                            );
+                            doc.apply_temporary(&transaction, view.id)
                         }
-
-                        // if more text was entered, remove it
-                        doc.restore(view, &savepoint, true);
-                        // save an undo checkpoint before the completion
-                        doc.append_changes_to_history(view);
-
-                        // item always present here
-                        let (transaction, additional_edits, snippet) = match item.unwrap().clone() {
-                            CompletionItem::Lsp(mut item) => {
-                                let language_server = language_server!(item);
-
-                                // resolve item if not yet resolved
-                                if !item.resolved {
-                                    if let Some(resolved_item) = Self::resolve_completion_item(
-                                        language_server,
-                                        item.item.clone(),
-                                    ) {
-                                        item.item = resolved_item;
-                                    }
-                                };
-
-                                let encoding = language_server.offset_encoding();
-                                let (transaction, snippet) = lsp_item_to_transaction(
-                                    doc,
-                                    view.id,
-                                    &item.item,
-                                    encoding,
-                                    trigger_offset,
-                                    replace_mode,
-                                );
-                                let add_edits = item.item.additional_text_edits;
-
-                                (
-                                    transaction,
-                                    add_edits.map(|edits| (edits, encoding)),
-                                    snippet,
-                                )
-                            }
-                            CompletionItem::Other(core::CompletionItem { transaction, .. }) => {
-                                (transaction, None, None)
-                            }
-                        };
-
-                        doc.apply(&transaction, view.id);
-                        let placeholder = snippet.is_some();
-                        if let Some(snippet) = snippet {
-                            doc.active_snippet = match doc.active_snippet.take() {
-                                Some(active) => active.insert_subsnippet(snippet),
-                                None => ActiveSnippet::new(snippet),
-                            };
+                        CompletionItem::Other(core::CompletionItem { transaction, .. }) => {
+                            doc.apply_temporary(transaction, view.id)
                         }
-
-                        editor.last_completion = Some(CompleteAction::Applied {
-                            trigger_offset,
-                            changes: completion_changes(&transaction, trigger_offset),
-                            placeholder,
-                        });
-
-                        // TODO: add additional _edits to completion_changes?
-                        if let Some((additional_edits, offset_encoding)) = additional_edits {
-                            if !additional_edits.is_empty() {
-                                let transaction = util::generate_transaction_from_edits(
-                                    doc.text(),
-                                    additional_edits,
-                                    offset_encoding, // TODO: should probably transcode in Client
-                                );
-                                doc.apply(&transaction, view.id);
-                            }
-                        }
-                        // we could have just inserted a trigger char (like a `crate::` completion for rust
-                        // so we want to retrigger immediately when accepting a completion.
-                        trigger_auto_completion(&editor.handlers.completions, editor, true);
-                    }
-                };
-
-                // In case the popup was deleted because of an intersection w/ the auto-complete menu.
-                if event != PromptEvent::Update {
-                    editor
-                        .handlers
-                        .trigger_signature_help(SignatureHelpInvoked::Automatic, editor);
+                    };
                 }
-            },
-        );
+                PromptEvent::Update => {}
+                PromptEvent::Validate => {
+                    if let Some(CompleteAction::Selected { savepoint }) =
+                        editor.last_completion.take()
+                    {
+                        doc.restore(view, &savepoint, false);
+                    }
+
+                    // if more text was entered, remove it
+                    doc.restore(view, &savepoint, true);
+                    // save an undo checkpoint before the completion
+                    doc.append_changes_to_history(view);
+
+                    // item always present here
+                    let (transaction, additional_edits, snippet) = match item.unwrap().clone() {
+                        CompletionItem::Lsp(mut item) => {
+                            let language_server = language_server!(item);
+
+                            // resolve item if not yet resolved
+                            if !item.resolved {
+                                if let Some(resolved_item) = Self::resolve_completion_item(
+                                    language_server,
+                                    item.item.clone(),
+                                ) {
+                                    item.item = resolved_item;
+                                }
+                            };
+
+                            let encoding = language_server.offset_encoding();
+                            let (transaction, snippet) = lsp_item_to_transaction(
+                                doc,
+                                view.id,
+                                &item.item,
+                                encoding,
+                                trigger_offset,
+                                replace_mode,
+                            );
+                            let add_edits = item.item.additional_text_edits;
+
+                            (
+                                transaction,
+                                add_edits.map(|edits| (edits, encoding)),
+                                snippet,
+                            )
+                        }
+                        CompletionItem::Other(core::CompletionItem { transaction, .. }) => {
+                            (transaction, None, None)
+                        }
+                    };
+
+                    doc.apply(&transaction, view.id);
+                    let placeholder = snippet.is_some();
+                    if let Some(snippet) = snippet {
+                        doc.active_snippet = match doc.active_snippet.take() {
+                            Some(active) => active.insert_subsnippet(snippet),
+                            None => ActiveSnippet::new(snippet),
+                        };
+                    }
+
+                    editor.last_completion = Some(CompleteAction::Applied {
+                        trigger_offset,
+                        changes: completion_changes(&transaction, trigger_offset),
+                        placeholder,
+                    });
+
+                    // TODO: add additional _edits to completion_changes?
+                    if let Some((additional_edits, offset_encoding)) = additional_edits {
+                        if !additional_edits.is_empty() {
+                            let transaction = util::generate_transaction_from_edits(
+                                doc.text(),
+                                additional_edits,
+                                offset_encoding, // TODO: should probably transcode in Client
+                            );
+                            doc.apply(&transaction, view.id);
+                        }
+                    }
+                    // we could have just inserted a trigger char (like a `crate::` completion for rust
+                    // so we want to retrigger immediately when accepting a completion.
+                    trigger_auto_completion(&editor.handlers.completions, editor, true);
+                }
+            };
+
+            // In case the popup was deleted because of an intersection w/ the auto-complete menu.
+            if event != PromptEvent::Update {
+                editor
+                    .handlers
+                    .trigger_signature_help(SignatureHelpInvoked::Automatic, editor);
+            }
+        });
 
         let popup = Popup::new(Self::ID, menu)
             .with_scrollbar(false)
