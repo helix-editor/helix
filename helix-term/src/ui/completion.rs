@@ -91,19 +91,30 @@ impl menu::Item for CompletionItem {
                         }
                         None => None,
                     };
-                    return menu::Row::new([
-                        first_cell,
-                        maybe_hex_color
-                            .map_or(Span::raw("color"), |hex_color| {
-                                match HexColor::parse_rgb(hex_color)
-                                    .map(|c| Color::Rgb(c.r, c.g, c.b))
-                                {
-                                    Ok(l) => Span::styled("       ", Style::default().bg(l)),
-                                    Err(_) => Span::raw("color"),
-                                }
-                            })
-                            .into(),
-                    ]);
+
+                    let content = maybe_hex_color.map_or(Span::raw("color"), |hex_color| {
+                        let maybe_color = match (
+                            hex_color
+                                .get(1..=2)
+                                .and_then(|r| u8::from_str_radix(r, 16).ok()),
+                            hex_color
+                                .get(3..=4)
+                                .and_then(|g| u8::from_str_radix(g, 16).ok()),
+                            hex_color
+                                .get(5..=6)
+                                .and_then(|b| u8::from_str_radix(b, 16).ok()),
+                        ) {
+                            (Some(r), Some(g), Some(b)) => Some(Color::Rgb(r, g, b)),
+                            _ => None,
+                        };
+
+                        match maybe_color {
+                            Some(color) => Span::styled("        ", Style::default().bg(color)),
+                            None => Span::raw("color"),
+                        }
+                    });
+
+                    return menu::Row::new([first_cell, menu::Cell::from(content)]);
                 }
                 Some(lsp::CompletionItemKind::FILE) => "file",
                 Some(lsp::CompletionItemKind::REFERENCE) => "reference",
