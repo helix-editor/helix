@@ -1,6 +1,7 @@
 use anyhow::Result;
 use helix_core::Position;
 use helix_view::tree::Layout;
+use indexmap::IndexMap;
 use std::path::{Path, PathBuf};
 
 #[derive(Default)]
@@ -16,7 +17,7 @@ pub struct Args {
     pub verbosity: u64,
     pub log_file: Option<PathBuf>,
     pub config_file: Option<PathBuf>,
-    pub files: Vec<(PathBuf, Position)>,
+    pub files: IndexMap<PathBuf, Vec<Position>>,
     pub working_directory: Option<PathBuf>,
 }
 
@@ -25,6 +26,18 @@ impl Args {
         let mut args = Args::default();
         let mut argv = std::env::args().peekable();
         let mut line_number = 0;
+
+        let mut insert_file_with_position = |file_with_position: &str| {
+            let (filename, position) = parse_file(file_with_position);
+
+            // Before setting the working directory, resolve all the paths in args.files
+            let filename = helix_stdx::path::canonicalize(filename);
+
+            args.files
+                .entry(filename)
+                .and_modify(|positions| positions.push(position))
+                .or_insert_with(|| vec![position]);
+        };
 
         argv.next(); // skip the program, we don't care about that
 
@@ -92,21 +105,25 @@ impl Args {
                 arg if arg.starts_with('+') => {
                     match arg[1..].parse::<usize>() {
                         Ok(n) => line_number = n.saturating_sub(1),
-                        _ => args.files.push(parse_file(arg)),
+                        _ => insert_file_with_position(arg),
                     };
                 }
-                arg => args.files.push(parse_file(arg)),
+                arg => insert_file_with_position(arg),
             }
         }
 
         // push the remaining args, if any to the files
         for arg in argv {
-            args.files.push(parse_file(&arg));
+            insert_file_with_position(&arg);
         }
 
-        if let Some(file) = args.files.first_mut() {
-            if line_number != 0 {
-                file.1.row = line_number;
+        if line_number != 0 {
+            if let Some(first_position) = args
+                .files
+                .first_mut()
+                .and_then(|(_, positions)| positions.first_mut())
+            {
+                first_position.row = line_number;
             }
         }
 
