@@ -49,6 +49,8 @@ fern = "0.7"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 log = "0.4"
 
+hex_color = "3.0"
+
 # File picker
 nucleo.workspace = true
 ignore = "0.4"

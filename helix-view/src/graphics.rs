@@ -1,5 +1,4 @@
 use bitflags::bitflags;
-use hex_color::{HexColor, ParseHexColorError};
 use serde::{Deserialize, Serialize};
 use std::{
     cmp::{max, min},
@@ -262,12 +261,6 @@ pub enum Color {
     White,
     Rgb(u8, u8, u8),
     Indexed(u8),
-}
-
-impl Color {
-    pub fn from_hex(hex: &str) -> Result<Self, ParseHexColorError> {
-        HexColor::parse_rgb(hex).map(|c| Self::Rgb(c.r, c.g, c.b))
-    }
 }
 
 #[cfg(feature = "term")]

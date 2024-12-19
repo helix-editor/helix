@@ -12,6 +12,7 @@ use helix_view::{
     theme::{Color, Modifier, Style},
     ViewId,
 };
+use hex_color::HexColor;
 use tui::{buffer::Buffer as Surface, text::Span};
 
 use std::{borrow::Cow, sync::Arc};
@@ -94,7 +95,9 @@ impl menu::Item for CompletionItem {
                         first_cell,
                         maybe_hex_color
                             .map_or(Span::raw("color"), |hex_color| {
-                                match Color::from_hex(hex_color) {
+                                match HexColor::parse_rgb(hex_color)
+                                    .map(|c| Color::Rgb(c.r, c.g, c.b))
+                                {
                                     Ok(l) => Span::styled("       ", Style::default().bg(l)),
                                     Err(_) => Span::raw("color"),
                                 }
