@@ -185,6 +185,7 @@ where
                 )
             )?;
         }
+        execute!(self.buffer, QueryBackgroundColor)?;
         Ok(())
     }
 
@@ -460,5 +461,27 @@ impl Command for SetUnderlineColor {
             std::io::ErrorKind::Other,
             "SetUnderlineColor not supported by winapi.",
         ))
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct QueryBackgroundColor;
+
+impl crossterm::Command for QueryBackgroundColor {
+    fn write_ansi(&self, f: &mut impl fmt::Write) -> fmt::Result {
+        f.write_str("\x1b]11;?\x07")
+    }
+
+    #[cfg(windows)]
+    fn execute_winapi(&self) -> std::io::Result<()> {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "QueryBackgroundColor not supported by winapi.",
+        ))
+    }
+
+    #[cfg(windows)]
+    fn is_ansi_code_supported(&self) -> bool {
+        true
     }
 }
