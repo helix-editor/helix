@@ -100,7 +100,7 @@ impl menu::Item for CompletionItem {
                                 Span::raw("color "),
                                 Span::styled("■", Style::default().fg(color)),
                             ]),
-                            // there is documentation but it cannot be parsed as a color
+                            // there is documentation but it cannot be parsed as a hex color
                             None => "color".into(),
                         }
                     })
