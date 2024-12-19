@@ -38,6 +38,69 @@ impl TypableCommand {
             .get(n)
             .map_or(&self.signature.var_args, |completer| completer)
     }
+
+    fn prompt(&self) -> String {
+        // EXAMPLE:
+        // write [<flags>] - write the current buffer to its file.
+        // aliases: w
+        // flags:
+        //     --no-format        exclude formatting operation when saving.
+        let mut prompt = String::new();
+
+        prompt.push_str(self.name);
+
+        if !self.flags.is_empty() {
+            prompt.push_str(" [<flags>]");
+        }
+
+        if let Some(accepts) = self.accepts {
+            write!(prompt, " {accepts}").unwrap();
+        }
+
+        writeln!(prompt, ": {}", self.doc).unwrap();
+
+        if !self.aliases.is_empty() {
+            writeln!(prompt, "aliases: {}", self.aliases.join(", ")).unwrap();
+        }
+
+        if !self.flags.is_empty() {
+            prompt.push_str("flags:\n");
+
+            let width: usize = self
+                .flags
+                .into_iter()
+                .map(|flag| flag.long.len() + flag.short.map_or(0, str::len))
+                .max()
+                .unwrap_or(0);
+
+            let spaces: usize = 8;
+
+            for flag in &self.flags {
+                if let Some(short) = flag.short {
+                    writeln!(
+                        prompt,
+                        "    --{}, -{:<width$}{}",
+                        flag.long,
+                        short,
+                        flag.desc,
+                        width = (width - flag.long.len() + short.len()) + spaces
+                    )
+                    .unwrap();
+                } else {
+                    writeln!(
+                        prompt,
+                        "    --{:<width$}{}",
+                        flag.long,
+                        flag.desc,
+                        width = (width - flag.long.len()) + spaces + 7
+                    )
+                    .unwrap();
+                }
+            }
+        }
+
+        prompt
+    }
 }
 
 #[derive(Clone)]
@@ -3608,74 +3671,8 @@ pub(super) fn command_mode(cx: &mut Context) {
     prompt.doc_fn = Box::new(|input: &str| {
         let shellwords = Shellwords::from(input);
 
-        if let Some(typed::TypableCommand {
-            name,
-            aliases,
-            flags,
-            accepts,
-            doc,
-            ..
-        }) = typed::TYPABLE_COMMAND_MAP.get(shellwords.command())
-        {
-            // EXAMPLE:
-            // write [<flags>] - write the current buffer to its file.
-            // aliases: w
-            // flags:
-            //     --no-format    exclude formatting operation when saving.
-            let mut prompt = String::new();
-
-            prompt.push_str(name);
-
-            if !flags.is_empty() {
-                prompt.push_str(" [<flags>]");
-            }
-
-            if let Some(accepts) = accepts {
-                write!(prompt, " {accepts}").unwrap();
-            }
-
-            writeln!(prompt, ": {doc}").unwrap();
-
-            if !aliases.is_empty() {
-                writeln!(prompt, "aliases: {}", aliases.join(", ")).unwrap();
-            }
-
-            if !flags.is_empty() {
-                prompt.push_str("flags:\n");
-
-                let width: usize = flags
-                    .into_iter()
-                    .map(|flag| flag.long.len() + flag.short.map_or(0, str::len))
-                    .max()
-                    .unwrap_or(0);
-
-                let spaces: usize = 8;
-
-                for flag in flags {
-                    if let Some(short) = flag.short {
-                        writeln!(
-                            prompt,
-                            "    --{}, -{:<width$}{}",
-                            flag.long,
-                            short,
-                            flag.desc,
-                            width = (width - flag.long.len() + short.len()) + spaces
-                        )
-                        .unwrap();
-                    } else {
-                        writeln!(
-                            prompt,
-                            "    --{:<width$}{}",
-                            flag.long,
-                            flag.desc,
-                            width = (width - flag.long.len()) + spaces + 7
-                        )
-                        .unwrap();
-                    }
-                }
-            }
-
-            return Some(prompt.into());
+        if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(shellwords.command()) {
+            return Some(command.prompt().into());
         }
 
         None
