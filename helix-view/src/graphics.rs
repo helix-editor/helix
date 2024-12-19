@@ -263,6 +263,17 @@ pub enum Color {
     Indexed(u8),
 }
 
+impl Color {
+    pub fn from_hex(hex: &str) -> Option<Self> {
+        match [1..=2, 3..=4, 5..=6]
+            .map(|range| hex.get(range).and_then(|c| u8::from_str_radix(c, 16).ok()))
+        {
+            [Some(r), Some(g), Some(b)] => Some(Self::Rgb(r, g, b)),
+            _ => None,
+        }
+    }
+}
+
 #[cfg(feature = "term")]
 impl From<Color> for crossterm::style::Color {
     fn from(color: Color) -> Self {
