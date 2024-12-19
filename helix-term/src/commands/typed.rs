@@ -2290,6 +2290,28 @@ fn pipe_impl(
     Ok(())
 }
 
+fn pipe_all(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    ensure!(!args.is_empty(), "Shell command required");
+    let cmd = args.join(" ");
+
+    let shell = &cx.editor.config().shell;
+    let text = current!(cx.editor).1.text().slice(..);
+
+    if let Err(err) = shell_impl(shell, &cmd, Some(text.into())) {
+        cx.editor.set_error(err.to_string());
+    }
+
+    Ok(())
+}
+
 fn run_shell_command(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -3099,6 +3121,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Pipe each selection to the shell command, ignoring output.",
         fun: pipe_to,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "pipe-all",
+        aliases: &[],
+        doc: "Pipe entire document to the shell command, ignoring output.",
+        fun: pipe_all,
         signature: CommandSignature::none(),
     },
     TypableCommand {
