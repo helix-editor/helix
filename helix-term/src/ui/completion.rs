@@ -46,7 +46,7 @@ impl menu::Item for CompletionItem {
         }
     }
 
-    fn format(&self, data: &Self::Data) -> menu::Row {
+    fn format(&self, dir_style: &Self::Data) -> menu::Row {
         let deprecated = match self {
             CompletionItem::Lsp(LspCompletionItem { item, .. }) => {
                 item.deprecated.unwrap_or_default()
@@ -104,7 +104,7 @@ impl menu::Item for CompletionItem {
                 if deprecated {
                     Style::default().add_modifier(Modifier::CROSSED_OUT)
                 } else if kind == "folder" {
-                    *data
+                    *dir_style
                 } else {
                     Style::default()
                 },
@@ -137,10 +137,10 @@ impl Completion {
         // Sort completion items according to their preselect status (given by the LSP server)
         items.sort_by_key(|item| !item.preselect());
 
-        let dir_color = editor.theme.get("ui.text.directory");
+        let dir_style = editor.theme.get("ui.text.directory");
 
         // Then create the menu
-        let menu = Menu::new(items, dir_color, move |editor: &mut Editor, item, event| {
+        let menu = Menu::new(items, dir_style, move |editor: &mut Editor, item, event| {
             let (view, doc) = current!(editor);
 
             macro_rules! language_server {
