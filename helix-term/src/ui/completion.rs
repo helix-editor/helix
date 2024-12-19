@@ -12,8 +12,10 @@ use helix_view::{
     theme::{Color, Modifier, Style},
     ViewId,
 };
-use hex_color::HexColor;
-use tui::{buffer::Buffer as Surface, text::Span};
+use tui::{
+    buffer::Buffer as Surface,
+    text::{Span, Spans},
+};
 
 use std::{borrow::Cow, sync::Arc};
 
@@ -110,8 +112,8 @@ impl menu::Item for CompletionItem {
                         let maybe_color = Color::from_hex(hex);
 
                         match maybe_color {
-                            Some(color) => Span::styled("        ", Style::default().bg(color)),
-                            None => Span::raw("color"),
+                            Some(color) => Span::styled("■", Style::default().fg(color)),
+                            None => Span::raw(""),
                         }
                     })
                 }
@@ -132,6 +134,21 @@ impl menu::Item for CompletionItem {
             },
             CompletionItem::Other(core::CompletionItem { kind, .. }) => Span::raw(kind.to_string()),
         };
+        menu::Row::new([
+            menu::Cell::from(Span::styled(
+                label,
+                if deprecated {
+                    Style::default().add_modifier(Modifier::CROSSED_OUT)
+                } else {
+                    Style::default()
+                },
+            )),
+            if kind.content == "■" {
+                menu::Cell::from(Spans::from(vec![Span::raw("color "), kind]))
+            } else {
+                menu::Cell::from(kind)
+            },
+        ])
     }
 }
 
