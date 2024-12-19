@@ -3195,10 +3195,10 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         flags: flags![
             {
-            long: "reverse",
-            short: "r",
-            desc: "sort ranges in selection in reverse order"
-            }
+                long: "reverse",
+                short: "r",
+                desc: "sort ranges in selection in reverse order"
+            },
         ],
         doc: "Sort ranges in selection.",
         fun: sort,
@@ -3353,7 +3353,7 @@ pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableComma
             .collect()
     });
 
-#[allow(clippy::unnecessary_unwrap)]
+#[allow(clippy::unnecessary_unwrap, clippy::too_many_lines)]
 pub(super) fn command_mode(cx: &mut Context) {
     let mut prompt = Prompt::new(
         ":".into(),
@@ -3460,17 +3460,35 @@ pub(super) fn command_mode(cx: &mut Context) {
             if !flags.is_empty() {
                 prompt.push_str("flags:\n");
 
+                let width: usize = flags
+                    .into_iter()
+                    .map(|flag| flag.long.len() + flag.short.map_or(0, str::len))
+                    .max()
+                    .unwrap_or(0);
+
+                let spaces: usize = 8;
+
                 for flag in flags {
-                    write!(prompt, "    --{}", flag.long).unwrap();
-
                     if let Some(short) = flag.short {
-                        write!(prompt, ", -{short}").unwrap();
+                        writeln!(
+                            prompt,
+                            "    --{}, -{:<width$}{}",
+                            flag.long,
+                            short,
+                            flag.desc,
+                            width = (width - flag.long.len() + short.len()) + spaces
+                        )
+                        .unwrap();
+                    } else {
+                        writeln!(
+                            prompt,
+                            "    --{:<width$}{}",
+                            flag.long,
+                            flag.desc,
+                            width = (width - flag.long.len()) + spaces + 7
+                        )
+                        .unwrap();
                     }
-
-                    // TODO: Need to add if the flag takes any arguments?
-                    // --all, -a   <arg>    will save all
-
-                    writeln!(prompt, "    {}", flag.desc).unwrap();
                 }
             }
 
