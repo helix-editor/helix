@@ -64,7 +64,7 @@ macro_rules! flags {
     // Multiple flags case
     [$({ long: $long:expr, $(short: $short:expr,)? desc: $desc:expr $(, accepts: $accepts:expr)? $(,)?}),* $(,)?] => {
         {
-            static FLAGS: &[$crate::commands::flag::Flag] = &[
+            const FLAGS: &[$crate::commands::flag::Flag] = &[
                 $(
                     $crate::commands::flag::Flag {
                         long: $long,
