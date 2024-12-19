@@ -52,7 +52,7 @@ pub struct Flag {
     pub long: &'static str,
     pub short: Option<&'static str>,
     pub desc: &'static str,
-    pub takes: bool,
+    pub accepts: Option<&'static str>,
 }
 
 #[macro_export]
@@ -62,7 +62,7 @@ macro_rules! flags {
         $crate::commands::flag::Flags::empty()
     };
     // Multiple flags case
-    [$({ long: $long:expr, $(short: $short:expr,)? desc: $desc:expr $(, takes: $takes:expr)? $(,)?}),* $(,)?] => {
+    [$({ long: $long:expr, $(short: $short:expr,)? desc: $desc:expr $(, accepts: $accepts:expr)? $(,)?}),* $(,)?] => {
         {
             static FLAGS: &[$crate::commands::flag::Flag] = &[
                 $(
@@ -75,7 +75,12 @@ macro_rules! flags {
                             short
                         },
                         desc: $desc,
-                        takes: false $(|| $takes)?,
+                        accepts: {
+                            #[allow(unused_mut, unused_assignments)]
+                            let mut accepts: Option<&'static str> = None;
+                            $(accepts = Some($accepts);)?
+                            accepts
+                        },
                     }
                 ),*
             ];
@@ -94,11 +99,11 @@ mod tests {
               long: "--all",
               short: "-a",
               desc:  "clears all registers",
-              takes: true,
            },
            {
               long: "--all",
               desc:  "clears all registers",
+              accepts: "<register>"
            }
         ];
 
@@ -108,13 +113,13 @@ mod tests {
         assert_eq!("--all", full.long);
         assert_eq!(Some("-a"), full.short);
         assert_eq!("clears all registers", full.desc);
-        assert!(full.takes);
+        assert!(full.accepts.is_none());
 
         let partial = iter.next().unwrap();
 
         assert_eq!("--all", partial.long);
         assert_eq!(None, partial.short);
         assert_eq!("clears all registers", partial.desc);
-        assert!(!partial.takes);
+        assert_eq!(Some("<register>"), partial.accepts);
     }
 }
