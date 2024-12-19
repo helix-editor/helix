@@ -354,7 +354,12 @@ fn buffer_previous(
     Ok(())
 }
 
-fn write_impl(cx: &mut compositor::Context, path: Option<&str>, force: bool) -> anyhow::Result<()> {
+fn write_impl(
+    cx: &mut compositor::Context,
+    path: Option<&str>,
+    force: bool,
+    format: bool,
+) -> anyhow::Result<()> {
     let config = cx.editor.config();
     let jobs = &mut cx.jobs;
     let (view, doc) = current!(cx.editor);
@@ -366,7 +371,7 @@ fn write_impl(cx: &mut compositor::Context, path: Option<&str>, force: bool) -> 
     // Save an undo checkpoint for any outstanding changes.
     doc.append_changes_to_history(view);
 
-    let fmt = if config.auto_format {
+    let fmt = if config.auto_format && format {
         doc.auto_format().map(|fmt| {
             let callback = make_format_callback(
                 doc.id(),
@@ -402,40 +407,67 @@ fn insert_final_newline(doc: &mut Document, view_id: ViewId) {
 fn write(
     cx: &mut compositor::Context,
     mut args: Args,
-    _flags: Flags,
+    flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    write_impl(cx, args.next(), false)
+    if let Some(flag) = args.flag(&flags) {
+        match flag {
+            "no-format" => write_impl(cx, args.next(), false, false),
+            _ => {
+                bail!("unhandled command flag `{flag}`, implementation failed to cover all flags.")
+            }
+        }
+    } else {
+        write_impl(cx, args.next(), false, true)
+    }
 }
 
 fn force_write(
     cx: &mut compositor::Context,
     mut args: Args,
-    _flags: Flags,
+    flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    write_impl(cx, args.next(), true)
+    if let Some(flag) = args.flag(&flags) {
+        match flag {
+            "no-format" => write_impl(cx, args.next(), true, false),
+            _ => {
+                bail!("unhandled command flag `{flag}`, implementation failed to cover all flags.")
+            }
+        }
+    } else {
+        write_impl(cx, args.next(), true, true)
+    }
 }
 
 fn write_buffer_close(
     cx: &mut compositor::Context,
     mut args: Args,
-    _flags: Flags,
+    flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    write_impl(cx, args.next(), false)?;
+    if let Some(flag) = args.flag(&flags) {
+        match flag {
+            "no-format" => write_impl(cx, args.next(), false, false)?,
+            _ => {
+                bail!("unhandled command flag `{flag}`, implementation failed to cover all flags.")
+            }
+        }
+    } else {
+        write_impl(cx, args.next(), false, true)?;
+    };
 
     let document_ids = buffer_gather_paths_impl(cx.editor, args);
     buffer_close_by_ids_impl(cx, &document_ids, false)
@@ -444,14 +476,23 @@ fn write_buffer_close(
 fn force_write_buffer_close(
     cx: &mut compositor::Context,
     mut args: Args,
-    _flags: Flags,
+    flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    write_impl(cx, args.next(), true)?;
+    if let Some(flag) = args.flag(&flags) {
+        match flag {
+            "no-format" => write_impl(cx, args.next(), true, false)?,
+            _ => {
+                bail!("unhandled command flag `{flag}`, implementation failed to cover all flags.")
+            }
+        }
+    } else {
+        write_impl(cx, args.next(), true, true)?;
+    };
 
     let document_ids = buffer_gather_paths_impl(cx.editor, args);
     buffer_close_by_ids_impl(cx, &document_ids, false)
@@ -660,7 +701,17 @@ fn write_quit(
         return Ok(());
     }
 
-    write_impl(cx, args.next(), false)?;
+    if let Some(flag) = args.flag(&flags) {
+        match flag {
+            "no-format" => write_impl(cx, args.next(), false, false)?,
+            _ => {
+                bail!("unhandled command flag `{flag}`, implementation failed to cover all flags.")
+            }
+        }
+    } else {
+        write_impl(cx, args.next(), false, true)?;
+    };
+
     cx.block_try_flush_writes()?;
     quit(cx, Args::empty(), flags, event)
 }
@@ -675,7 +726,17 @@ fn force_write_quit(
         return Ok(());
     }
 
-    write_impl(cx, args.next(), true)?;
+    if let Some(flag) = args.flag(&flags) {
+        match flag {
+            "no-format" => write_impl(cx, args.next(), true, false)?,
+            _ => {
+                bail!("unhandled command flag `{flag}`, implementation failed to cover all flags.")
+            }
+        }
+    } else {
+        write_impl(cx, args.next(), true, true)?;
+    };
+
     cx.block_try_flush_writes()?;
     force_quit(cx, Args::empty(), flags, event)
 }
@@ -2737,7 +2798,10 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "write",
         aliases: &["w"],
-        flags: flags![],
+        flags: flags![{
+            long: "no-format",
+            desc: "skips formatting step when writing",
+        }],
         accepts: Some("<path>"),
         doc: "write changes to disk",
         fun: write,
@@ -2746,7 +2810,10 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "write!",
         aliases: &["w!"],
-        flags: flags![],
+        flags: flags![{
+            long: "no-format",
+            desc: "skips formatting step when writing",
+        }],
         accepts: Some("<path>"),
         doc: "force write changes to disk creating necessary subdirectories.",
         fun: force_write,
@@ -2755,7 +2822,10 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "write-buffer-close",
         aliases: &["wbc"],
-        flags: flags![],
+        flags: flags![{
+            long: "no-format",
+            desc: "skips formatting step when writing",
+        }],
         accepts: Some("<path>"),
         doc: "write changes to disk and closes the buffer",
         fun: write_buffer_close,
@@ -2764,7 +2834,10 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "write-buffer-close!",
         aliases: &["wbc!"],
-        flags: flags![],
+        flags: flags![{
+            long: "no-format",
+            desc: "skips formatting step when writing",
+        }],
         accepts: Some("<path>"),
         doc: "force write changes to disk creating necessary subdirectories and closes the buffer",
         fun: force_write_buffer_close,
@@ -2830,7 +2903,10 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "write-quit",
         aliases: &["wq", "x"],
-        flags: flags![],
+        flags: flags![{
+            long: "no-format",
+            desc: "skips formatting step when writing",
+        }],
         accepts: Some("<path>"),
         doc: "write changes to disk and close the current view.",
         fun: write_quit,
@@ -2839,7 +2915,10 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "write-quit!",
         aliases: &["wq!", "x!"],
-        flags: flags![],
+        flags: flags![{
+            long: "no-format",
+            desc: "skips formatting step when writing",
+        }],
         accepts: Some("<path>"),
         doc: "write changes to disk and close the current view forcefully.",
         fun: force_write_quit,
