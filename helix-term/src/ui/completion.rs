@@ -109,9 +109,7 @@ impl menu::Item for CompletionItem {
                     };
 
                     maybe_hex_color.map_or(Span::raw("color"), |hex| {
-                        let maybe_color = Color::from_hex(hex);
-
-                        match maybe_color {
+                        match Color::from_hex(hex) {
                             Some(color) => Span::styled("■", Style::default().fg(color)),
                             // there is documentation but it doesn't conform to the format to parse the hex color
                             None => Span::raw("color"),
