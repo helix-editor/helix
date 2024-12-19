@@ -2531,7 +2531,7 @@ fn reset_diff_change(
 fn clear_register(
     cx: &mut compositor::Context,
     mut args: Args,
-    _flags: Flags,
+    flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -2539,14 +2539,21 @@ fn clear_register(
     }
 
     ensure!(
-        args.arg_count() <= 1,
-        ":clear-register takes at most 1 argument"
+        args.arg_count() == 1,
+        ":clear-register takes a flag or a register"
     );
 
-    if args.is_empty() {
-        cx.editor.registers.clear();
-        cx.editor.set_status("All registers cleared");
-        return Ok(());
+    if let Some(flag) = args.flag(&flags) {
+        match flag {
+            "all" | "a" => {
+                cx.editor.registers.clear();
+                cx.editor.set_status("All registers cleared");
+                return Ok(());
+            }
+            _ => {
+                bail!("unhandled command flag `{flag}`, implementation failed to cover all flags.")
+            }
+        }
     }
 
     let register = args.next().unwrap();
@@ -3465,9 +3472,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "clear-register",
         aliases: &[],
-        flags: flags![],
+        flags: flags![{
+            long: "all",
+            short: "a",
+            desc: "clears all registers",
+        }],
         accepts: Some("<register>"),
-        doc: "clear given register. if no argument is provided, clear all registers.",
+        doc: "clear given register.",
         fun: clear_register,
         signature: CommandSignature::all(completers::register),
     },
