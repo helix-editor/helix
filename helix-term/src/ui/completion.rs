@@ -93,18 +93,14 @@ impl menu::Item for CompletionItem {
                     };
 
                     let content = maybe_hex_color.map_or(Span::raw("color"), |hex_color| {
-                        let maybe_color = match (
-                            hex_color
-                                .get(1..=2)
-                                .and_then(|r| u8::from_str_radix(r, 16).ok()),
-                            hex_color
-                                .get(3..=4)
-                                .and_then(|g| u8::from_str_radix(g, 16).ok()),
-                            hex_color
-                                .get(5..=6)
-                                .and_then(|b| u8::from_str_radix(b, 16).ok()),
-                        ) {
-                            (Some(r), Some(g), Some(b)) => Some(Color::Rgb(r, g, b)),
+                        let maybe_color = match {
+                            [1..=2, 3..=4, 5..=6].map(|a| {
+                                hex_color
+                                    .get(a)
+                                    .and_then(|c| u8::from_str_radix(c, 16).ok())
+                            })
+                        } {
+                            [Some(r), Some(g), Some(b)] => Some(Color::Rgb(r, g, b)),
                             _ => None,
                         };
 
