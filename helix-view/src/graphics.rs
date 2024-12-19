@@ -268,7 +268,7 @@ pub enum Color {
 /// # Examples
 ///
 /// ```rust
-/// let color1 = Color::from_hex("#c0ffee");
+/// let color1 = Color::from_hex("#c0ffee").unwrap();
 /// let color2 = Color::Rgb(192, 255, 238);
 ///
 /// assert_eq!(color1, color2);
