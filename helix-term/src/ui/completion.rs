@@ -113,7 +113,8 @@ impl menu::Item for CompletionItem {
 
                         match maybe_color {
                             Some(color) => Span::styled("■", Style::default().fg(color)),
-                            None => Span::raw(""),
+                            // there is documentation but it doesn't conform to the format to parse the hex color
+                            None => Span::raw("color"),
                         }
                     })
                 }
