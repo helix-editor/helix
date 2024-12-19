@@ -196,7 +196,16 @@ impl<'a> Args<'a> {
         }
     }
 
-    pub fn flags<'f, F: Iterator<Item = &'f str>>(&mut self, mut flags: F) -> Option<&'a str> {
+    /// Takes in an iterator of flags and checks to see if the next argument to be yielded matches, returning it.
+    ///
+    /// # Behavior
+    ///
+    /// - **No Match**: Iterator is only advanced if a match is found; calling `flag` and then `next` when there are no matching flags would produce the expected next argument.
+    ///
+    /// - **Termination**: This check is terminated upon encountering a `--` in the arguments. Upon encountering, it will also consume the `--`, so subsequent calls on `Self` will yield the arguments beyond `--`.
+    ///
+    /// - **Match**: Argument is consumed and returned as a flag. This advances the iterator.
+    pub fn flag<F: IntoFlags>(&mut self, flags: &F) -> Option<&'a str> {
         if self.is_empty() {
             return None;
         }
@@ -210,7 +219,10 @@ impl<'a> Args<'a> {
                 return None;
             }
 
-            if flags.any(|f| f == arg.trim_start_matches('-').trim_start_matches("--")) {
+            if flags
+                .into_flags()
+                .any(|f| f == arg.trim_start_matches('-').trim_start_matches("--"))
+            {
                 return self
                     .next()
                     .map(|flag| flag.trim_start_matches('-').trim_start_matches("--"));
@@ -520,6 +532,10 @@ pub fn unescape(input: &str) -> Cow<'_, str> {
     } else {
         input.into()
     }
+}
+
+pub trait IntoFlags: Copy {
+    fn into_flags(self) -> impl Iterator<Item = &'static str>;
 }
 
 #[cfg(test)]

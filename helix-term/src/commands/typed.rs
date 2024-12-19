@@ -2,12 +2,12 @@ use std::fmt::Write;
 use std::io::BufReader;
 use std::ops::Deref;
 
-use crate::flag;
+use crate::flags;
 use crate::job::Job;
 
 use super::*;
 
-use flag::Flag;
+use flag::Flags;
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::{line_ending, shellwords::Shellwords};
@@ -22,10 +22,10 @@ use ui::completers::{self, Completer};
 pub struct TypableCommand {
     pub name: &'static str,
     pub aliases: &'static [&'static str],
-    pub flags: &'static [Flag],
+    pub flags: Flags,
     pub doc: &'static str,
     // params, flags, helper, completer
-    pub fun: fn(&mut compositor::Context, Args, &[Flag], PromptEvent) -> anyhow::Result<()>,
+    pub fun: fn(&mut compositor::Context, Args, Flags, PromptEvent) -> anyhow::Result<()>,
     /// What completion methods, if any, does this command have?
     pub signature: CommandSignature,
 }
@@ -74,7 +74,7 @@ impl CommandSignature {
 fn quit(
     cx: &mut compositor::Context,
     args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     log::debug!("quitting...");
@@ -99,7 +99,7 @@ fn quit(
 fn force_quit(
     cx: &mut compositor::Context,
     args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -117,7 +117,7 @@ fn force_quit(
 fn open(
     cx: &mut compositor::Context,
     args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -231,7 +231,7 @@ fn buffer_gather_paths_impl(editor: &mut Editor, args: Args) -> Vec<DocumentId> 
 fn buffer_close(
     cx: &mut compositor::Context,
     args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -245,7 +245,7 @@ fn buffer_close(
 fn force_buffer_close(
     cx: &mut compositor::Context,
     args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -268,7 +268,7 @@ fn buffer_gather_others_impl(editor: &mut Editor) -> Vec<DocumentId> {
 fn buffer_close_others(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -282,7 +282,7 @@ fn buffer_close_others(
 fn force_buffer_close_others(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -300,7 +300,7 @@ fn buffer_gather_all_impl(editor: &mut Editor) -> Vec<DocumentId> {
 fn buffer_close_all(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -314,7 +314,7 @@ fn buffer_close_all(
 fn force_buffer_close_all(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -328,7 +328,7 @@ fn force_buffer_close_all(
 fn buffer_next(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -342,7 +342,7 @@ fn buffer_next(
 fn buffer_previous(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -401,7 +401,7 @@ fn insert_final_newline(doc: &mut Document, view_id: ViewId) {
 fn write(
     cx: &mut compositor::Context,
     mut args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -414,7 +414,7 @@ fn write(
 fn force_write(
     cx: &mut compositor::Context,
     mut args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -427,7 +427,7 @@ fn force_write(
 fn write_buffer_close(
     cx: &mut compositor::Context,
     mut args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -443,7 +443,7 @@ fn write_buffer_close(
 fn force_write_buffer_close(
     cx: &mut compositor::Context,
     mut args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -459,7 +459,7 @@ fn force_write_buffer_close(
 fn new_file(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -474,7 +474,7 @@ fn new_file(
 fn format(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -494,7 +494,7 @@ fn format(
 fn set_indent_style(
     cx: &mut compositor::Context,
     mut args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -537,7 +537,7 @@ fn set_indent_style(
 fn set_line_ending(
     cx: &mut compositor::Context,
     mut args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -610,7 +610,7 @@ fn set_line_ending(
 fn earlier(
     cx: &mut compositor::Context,
     args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -631,7 +631,7 @@ fn earlier(
 fn later(
     cx: &mut compositor::Context,
     args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -652,7 +652,7 @@ fn later(
 fn write_quit(
     cx: &mut compositor::Context,
     mut args: Args,
-    flags: &[Flag],
+    flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -667,7 +667,7 @@ fn write_quit(
 fn force_write_quit(
     cx: &mut compositor::Context,
     mut args: Args,
-    flags: &[Flag],
+    flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -779,7 +779,7 @@ pub fn write_all_impl(
 fn write_all(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -792,7 +792,7 @@ fn write_all(
 fn force_write_all(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -805,7 +805,7 @@ fn force_write_all(
 fn write_all_quit(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -818,7 +818,7 @@ fn write_all_quit(
 fn force_write_all_quit(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -846,7 +846,7 @@ fn quit_all_impl(cx: &mut compositor::Context, force: bool) -> anyhow::Result<()
 fn quit_all(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -858,7 +858,7 @@ fn quit_all(
 fn force_quit_all(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -870,7 +870,7 @@ fn force_quit_all(
 fn cquit(
     cx: &mut compositor::Context,
     mut args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -889,7 +889,7 @@ fn cquit(
 fn force_cquit(
     cx: &mut compositor::Context,
     mut args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -908,7 +908,7 @@ fn force_cquit(
 fn theme(
     cx: &mut compositor::Context,
     mut args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     let true_color = cx.editor.config.load().true_color || crate::true_color();
@@ -954,7 +954,7 @@ fn theme(
 fn yank_main_selection_to_clipboard(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -967,7 +967,7 @@ fn yank_main_selection_to_clipboard(
 fn yank_joined(
     cx: &mut compositor::Context,
     args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -981,7 +981,7 @@ fn yank_joined(
 fn yank_joined_to_clipboard(
     cx: &mut compositor::Context,
     args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -994,7 +994,7 @@ fn yank_joined_to_clipboard(
 fn yank_main_selection_to_primary_clipboard(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1007,7 +1007,7 @@ fn yank_main_selection_to_primary_clipboard(
 fn yank_joined_to_primary_clipboard(
     cx: &mut compositor::Context,
     args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1021,7 +1021,7 @@ fn yank_joined_to_primary_clipboard(
 fn paste_clipboard_after(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1034,7 +1034,7 @@ fn paste_clipboard_after(
 fn paste_clipboard_before(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1047,7 +1047,7 @@ fn paste_clipboard_before(
 fn paste_primary_clipboard_after(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1060,7 +1060,7 @@ fn paste_primary_clipboard_after(
 fn paste_primary_clipboard_before(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1073,7 +1073,7 @@ fn paste_primary_clipboard_before(
 fn replace_selections_with_clipboard(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1086,7 +1086,7 @@ fn replace_selections_with_clipboard(
 fn replace_selections_with_primary_clipboard(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1099,7 +1099,7 @@ fn replace_selections_with_primary_clipboard(
 fn show_clipboard_provider(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1113,7 +1113,7 @@ fn show_clipboard_provider(
 fn change_current_directory(
     cx: &mut compositor::Context,
     mut args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1143,7 +1143,7 @@ fn change_current_directory(
 fn show_current_directory(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1165,7 +1165,7 @@ fn show_current_directory(
 fn set_encoding(
     cx: &mut compositor::Context,
     mut args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1186,7 +1186,7 @@ fn set_encoding(
 fn get_character_info(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1312,7 +1312,7 @@ fn get_character_info(
 fn reload(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1336,7 +1336,7 @@ fn reload(
 fn reload_all(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1397,7 +1397,7 @@ fn reload_all(
 fn update(
     cx: &mut compositor::Context,
     args: Args,
-    flags: &[Flag],
+    flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1415,7 +1415,7 @@ fn update(
 fn lsp_workspace_command(
     cx: &mut compositor::Context,
     args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1507,7 +1507,7 @@ fn lsp_workspace_command(
 fn lsp_restart(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1556,7 +1556,7 @@ fn lsp_restart(
 fn lsp_stop(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1586,7 +1586,7 @@ fn lsp_stop(
 fn tree_sitter_scopes(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1620,7 +1620,7 @@ fn tree_sitter_scopes(
 fn tree_sitter_highlight_name(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     fn find_highlight_at_cursor(
@@ -1696,7 +1696,7 @@ fn tree_sitter_highlight_name(
 fn vsplit(
     cx: &mut compositor::Context,
     args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1714,7 +1714,7 @@ fn vsplit(
 fn hsplit(
     cx: &mut compositor::Context,
     args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1733,7 +1733,7 @@ fn hsplit(
 fn vsplit_new(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1746,7 +1746,7 @@ fn vsplit_new(
 fn hsplit_new(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1759,7 +1759,7 @@ fn hsplit_new(
 fn debug_eval(
     cx: &mut compositor::Context,
     args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1787,7 +1787,7 @@ fn debug_eval(
 fn debug_start(
     cx: &mut compositor::Context,
     mut args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1799,7 +1799,7 @@ fn debug_start(
 fn debug_remote(
     cx: &mut compositor::Context,
     mut args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1817,7 +1817,7 @@ fn debug_remote(
 fn tutor(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1863,7 +1863,7 @@ fn update_goto_line_number_preview(
 pub(super) fn goto_line_number(
     cx: &mut compositor::Context,
     args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     match event {
@@ -1900,7 +1900,7 @@ pub(super) fn goto_line_number(
 fn get_option(
     cx: &mut compositor::Context,
     mut args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1927,7 +1927,7 @@ fn get_option(
 fn set_option(
     cx: &mut compositor::Context,
     mut args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1982,7 +1982,7 @@ fn set_option(
 fn toggle_option(
     cx: &mut compositor::Context,
     mut args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -2084,7 +2084,7 @@ fn toggle_option(
 fn language(
     cx: &mut compositor::Context,
     mut args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -2124,19 +2124,14 @@ fn language(
 fn sort(
     cx: &mut compositor::Context,
     mut args: Args,
-    flags: &[Flag],
+    flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    let flags = flags
-        .iter()
-        .map(|flag| flag.long)
-        .chain(flags.iter().filter_map(|flag| flag.short));
-
-    if let Some(flag) = args.flags(flags) {
+    if let Some(flag) = args.flag(&flags) {
         match flag {
             "reverse" | "r" => sort_impl(cx, true),
             _ => {
@@ -2183,7 +2178,7 @@ fn sort_impl(cx: &mut compositor::Context, reverse: bool) {
 fn reflow(
     cx: &mut compositor::Context,
     mut args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -2225,7 +2220,7 @@ fn reflow(
 fn tree_sitter_subtree(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -2265,7 +2260,7 @@ fn tree_sitter_subtree(
 fn open_config(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -2279,7 +2274,7 @@ fn open_config(
 fn open_workspace_config(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -2293,7 +2288,7 @@ fn open_workspace_config(
 fn open_log(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -2306,7 +2301,7 @@ fn open_log(
 fn refresh_config(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -2320,7 +2315,7 @@ fn refresh_config(
 fn append_output(
     cx: &mut compositor::Context,
     args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -2335,7 +2330,7 @@ fn append_output(
 fn insert_output(
     cx: &mut compositor::Context,
     args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -2350,7 +2345,7 @@ fn insert_output(
 fn pipe_to(
     cx: &mut compositor::Context,
     args: Args,
-    flags: &[Flag],
+    flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     pipe_impl(cx, args, flags, event, &ShellBehavior::Ignore)
@@ -2359,7 +2354,7 @@ fn pipe_to(
 fn pipe(
     cx: &mut compositor::Context,
     args: Args,
-    flags: &[Flag],
+    flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     pipe_impl(cx, args, flags, event, &ShellBehavior::Replace)
@@ -2368,7 +2363,7 @@ fn pipe(
 fn pipe_impl(
     cx: &mut compositor::Context,
     args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
     behavior: &ShellBehavior,
 ) -> anyhow::Result<()> {
@@ -2384,7 +2379,7 @@ fn pipe_impl(
 fn run_shell_command(
     cx: &mut compositor::Context,
     args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -2422,7 +2417,7 @@ fn run_shell_command(
 fn reset_diff_change(
     cx: &mut compositor::Context,
     args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -2474,7 +2469,7 @@ fn reset_diff_change(
 fn clear_register(
     cx: &mut compositor::Context,
     mut args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -2512,7 +2507,7 @@ fn clear_register(
 fn redraw(
     cx: &mut compositor::Context,
     _args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -2536,7 +2531,7 @@ fn redraw(
 fn move_buffer(
     cx: &mut compositor::Context,
     mut args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -2561,7 +2556,7 @@ fn move_buffer(
 fn yank_diagnostic(
     cx: &mut compositor::Context,
     mut args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -2602,7 +2597,7 @@ fn yank_diagnostic(
 fn read(
     cx: &mut compositor::Context,
     mut args: Args,
-    _flags: &[Flag],
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -2642,7 +2637,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "quit",
         aliases: &["q"],
-        flags: &[],
+        flags: flags![],
         doc: "Close the current view.",
         fun: quit,
         signature: CommandSignature::none(),
@@ -2650,7 +2645,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "quit!",
         aliases: &["q!"],
-        flags: &[],
+        flags: flags![],
         doc: "Force close the current view, ignoring unsaved changes.",
         fun: force_quit,
         signature: CommandSignature::none(),
@@ -2658,7 +2653,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "open",
         aliases: &["o", "edit", "e"],
-        flags: &[],
+        flags: flags![],
         doc: "Open a file from disk into the current view.",
         fun: open,
         signature: CommandSignature::all(completers::filename),
@@ -2666,7 +2661,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "buffer-close",
         aliases: &["bc", "bclose"],
-        flags: &[],
+        flags: flags![],
         doc: "Close the current buffer.",
         fun: buffer_close,
         signature: CommandSignature::all(completers::buffer),
@@ -2674,7 +2669,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "buffer-close!",
         aliases: &["bc!", "bclose!"],
-        flags: &[],
+        flags: flags![],
         doc: "Close the current buffer forcefully, ignoring unsaved changes.",
         fun: force_buffer_close,
         signature: CommandSignature::all(completers::buffer)
@@ -2682,7 +2677,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "buffer-close-others",
         aliases: &["bco", "bcloseother"],
-        flags: &[],
+        flags: flags![],
         doc: "Close all buffers but the currently focused one.",
         fun: buffer_close_others,
         signature: CommandSignature::none(),
@@ -2690,7 +2685,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "buffer-close-others!",
         aliases: &["bco!", "bcloseother!"],
-        flags: &[],
+        flags: flags![],
         doc: "Force close all buffers but the currently focused one.",
         fun: force_buffer_close_others,
         signature: CommandSignature::none(),
@@ -2698,7 +2693,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "buffer-close-all",
         aliases: &["bca", "bcloseall"],
-        flags: &[],
+        flags: flags![],
         doc: "Close all buffers without quitting.",
         fun: buffer_close_all,
         signature: CommandSignature::none(),
@@ -2706,7 +2701,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "buffer-close-all!",
         aliases: &["bca!", "bcloseall!"],
-        flags: &[],
+        flags: flags![],
         doc: "Force close all buffers ignoring unsaved changes without quitting.",
         fun: force_buffer_close_all,
         signature: CommandSignature::none(),
@@ -2714,7 +2709,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "buffer-next",
         aliases: &["bn", "bnext"],
-        flags: &[],
+        flags: flags![],
         doc: "Goto next buffer.",
         fun: buffer_next,
         signature: CommandSignature::none(),
@@ -2722,7 +2717,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "buffer-previous",
         aliases: &["bp", "bprev"],
-        flags: &[],
+        flags: flags![],
         doc: "Goto previous buffer.",
         fun: buffer_previous,
         signature: CommandSignature::none(),
@@ -2730,7 +2725,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "write",
         aliases: &["w"],
-        flags: &[],
+        flags: flags![],
         doc: "Write changes to disk. Accepts an optional path (:write some/path.txt)",
         fun: write,
         signature: CommandSignature::positional(&[completers::filename]),
@@ -2738,7 +2733,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "write!",
         aliases: &["w!"],
-        flags: &[],
+        flags: flags![],
         doc: "Force write changes to disk creating necessary subdirectories. Accepts an optional path (:write! some/path.txt)",
         fun: force_write,
         signature: CommandSignature::positional(&[completers::filename]),
@@ -2746,7 +2741,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "write-buffer-close",
         aliases: &["wbc"],
-        flags: &[],
+        flags: flags![],
         doc: "Write changes to disk and closes the buffer. Accepts an optional path (:write-buffer-close some/path.txt)",
         fun: write_buffer_close,
         signature: CommandSignature::positional(&[completers::filename]),
@@ -2754,7 +2749,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "write-buffer-close!",
         aliases: &["wbc!"],
-        flags: &[],
+        flags: flags![],
         doc: "Force write changes to disk creating necessary subdirectories and closes the buffer. Accepts an optional path (:write-buffer-close! some/path.txt)",
         fun: force_write_buffer_close,
         signature: CommandSignature::positional(&[completers::filename]),
@@ -2762,7 +2757,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "new",
         aliases: &["n"],
-        flags: &[],
+        flags: flags![],
         doc: "Create a new scratch buffer.",
         fun: new_file,
         signature: CommandSignature::none(),
@@ -2770,7 +2765,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "format",
         aliases: &["fmt"],
-        flags: &[],
+        flags: flags![],
         doc: "Format the file using an external formatter or language server.",
         fun: format,
         signature: CommandSignature::none(),
@@ -2778,7 +2773,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "indent-style",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Set the indentation style for editing. ('t' for tabs or 1-16 for number of spaces.)",
         fun: set_indent_style,
         signature: CommandSignature::none(),
@@ -2786,7 +2781,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "line-ending",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         #[cfg(not(feature = "unicode-lines"))]
         doc: "Set the document's default line ending. Options: crlf, lf.",
         #[cfg(feature = "unicode-lines")]
@@ -2797,7 +2792,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "earlier",
         aliases: &["ear"],
-        flags: &[],
+        flags: flags![],
         doc: "Jump back to an earlier point in edit history. Accepts a number of steps or a time span.",
         fun: earlier,
         signature: CommandSignature::none(),
@@ -2805,7 +2800,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "later",
         aliases: &["lat"],
-        flags: &[],
+        flags: flags![],
         doc: "Jump to a later point in edit history. Accepts a number of steps or a time span.",
         fun: later,
         signature: CommandSignature::none(),
@@ -2813,7 +2808,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "write-quit",
         aliases: &["wq", "x"],
-        flags: &[],
+        flags: flags![],
         doc: "Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt)",
         fun: write_quit,
         signature: CommandSignature::positional(&[completers::filename]),
@@ -2821,7 +2816,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "write-quit!",
         aliases: &["wq!", "x!"],
-        flags: &[],
+        flags: flags![],
         doc: "Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt)",
         fun: force_write_quit,
         signature: CommandSignature::positional(&[completers::filename]),
@@ -2829,7 +2824,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "write-all",
         aliases: &["wa"],
-        flags: &[],
+        flags: flags![],
         doc: "Write changes from all buffers to disk.",
         fun: write_all,
         signature: CommandSignature::none(),
@@ -2837,7 +2832,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "write-all!",
         aliases: &["wa!"],
-        flags: &[],
+        flags: flags![],
         doc: "Forcefully write changes from all buffers to disk creating necessary subdirectories.",
         fun: force_write_all,
         signature: CommandSignature::none(),
@@ -2845,7 +2840,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "write-quit-all",
         aliases: &["wqa", "xa"],
-        flags: &[],
+        flags: flags![],
         doc: "Write changes from all buffers to disk and close all views.",
         fun: write_all_quit,
         signature: CommandSignature::none(),
@@ -2853,7 +2848,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "write-quit-all!",
         aliases: &["wqa!", "xa!"],
-        flags: &[],
+        flags: flags![],
         doc: "Write changes from all buffers to disk and close all views forcefully (ignoring unsaved changes).",
         fun: force_write_all_quit,
         signature: CommandSignature::none(),
@@ -2861,7 +2856,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "quit-all",
         aliases: &["qa"],
-        flags: &[],
+        flags: flags![],
         doc: "Close all views.",
         fun: quit_all,
         signature: CommandSignature::none(),
@@ -2869,7 +2864,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "quit-all!",
         aliases: &["qa!"],
-        flags: &[],
+        flags: flags![],
         doc: "Force close all views ignoring unsaved changes.",
         fun: force_quit_all,
         signature: CommandSignature::none(),
@@ -2877,7 +2872,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "cquit",
         aliases: &["cq"],
-        flags: &[],
+        flags: flags![],
         doc: "Quit with exit code (default 1). Accepts an optional integer exit code (:cq 2).",
         fun: cquit,
         signature: CommandSignature::none(),
@@ -2885,7 +2880,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "cquit!",
         aliases: &["cq!"],
-        flags: &[],
+        flags: flags![],
         doc: "Force quit with exit code (default 1) ignoring unsaved changes. Accepts an optional integer exit code (:cq! 2).",
         fun: force_cquit,
         signature: CommandSignature::none(),
@@ -2893,7 +2888,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "theme",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Change the editor theme (show current theme if no name specified).",
         fun: theme,
         signature: CommandSignature::positional(&[completers::theme]),
@@ -2901,7 +2896,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "yank-join",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Yank joined selections. A separator can be provided as first argument. Default value is newline.",
         fun: yank_joined,
         signature: CommandSignature::none(),
@@ -2909,7 +2904,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "clipboard-yank",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Yank main selection into system clipboard.",
         fun: yank_main_selection_to_clipboard,
         signature: CommandSignature::none(),
@@ -2917,7 +2912,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "clipboard-yank-join",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Yank joined selections into system clipboard. A separator can be provided as first argument. Default value is newline.", // FIXME: current UI can't display long doc.
         fun: yank_joined_to_clipboard,
         signature: CommandSignature::none(),
@@ -2925,7 +2920,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "primary-clipboard-yank",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Yank main selection into system primary clipboard.",
         fun: yank_main_selection_to_primary_clipboard,
         signature: CommandSignature::none(),
@@ -2933,7 +2928,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "primary-clipboard-yank-join",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Yank joined selections into system primary clipboard. A separator can be provided as first argument. Default value is newline.", // FIXME: current UI can't display long doc.
         fun: yank_joined_to_primary_clipboard,
         signature: CommandSignature::none(),
@@ -2941,7 +2936,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "clipboard-paste-after",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Paste system clipboard after selections.",
         fun: paste_clipboard_after,
         signature: CommandSignature::none(),
@@ -2949,7 +2944,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "clipboard-paste-before",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Paste system clipboard before selections.",
         fun: paste_clipboard_before,
         signature: CommandSignature::none(),
@@ -2957,7 +2952,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "clipboard-paste-replace",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Replace selections with content of system clipboard.",
         fun: replace_selections_with_clipboard,
         signature: CommandSignature::none(),
@@ -2965,7 +2960,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "primary-clipboard-paste-after",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Paste primary clipboard after selections.",
         fun: paste_primary_clipboard_after,
         signature: CommandSignature::none(),
@@ -2973,7 +2968,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "primary-clipboard-paste-before",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Paste primary clipboard before selections.",
         fun: paste_primary_clipboard_before,
         signature: CommandSignature::none(),
@@ -2981,7 +2976,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "primary-clipboard-paste-replace",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Replace selections with content of system primary clipboard.",
         fun: replace_selections_with_primary_clipboard,
         signature: CommandSignature::none(),
@@ -2989,7 +2984,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "show-clipboard-provider",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Show clipboard provider name in status bar.",
         fun: show_clipboard_provider,
         signature: CommandSignature::none(),
@@ -2997,7 +2992,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "change-current-directory",
         aliases: &["cd"],
-        flags: &[],
+        flags: flags![],
         doc: "Change the current working directory.",
         fun: change_current_directory,
         signature: CommandSignature::positional(&[completers::directory]),
@@ -3005,7 +3000,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "show-directory",
         aliases: &["pwd"],
-        flags: &[],
+        flags: flags![],
         doc: "Show the current working directory.",
         fun: show_current_directory,
         signature: CommandSignature::none(),
@@ -3013,7 +3008,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "encoding",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Set encoding. Based on `https://encoding.spec.whatwg.org`.",
         fun: set_encoding,
         signature: CommandSignature::none(),
@@ -3021,7 +3016,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "character-info",
         aliases: &["char"],
-        flags: &[],
+        flags: flags![],
         doc: "Get info about the character under the primary cursor.",
         fun: get_character_info,
         signature: CommandSignature::none(),
@@ -3029,7 +3024,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "reload",
         aliases: &["rl"],
-        flags: &[],
+        flags: flags![],
         doc: "Discard changes and reload from the source file.",
         fun: reload,
         signature: CommandSignature::none(),
@@ -3037,7 +3032,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "reload-all",
         aliases: &["rla"],
-        flags: &[],
+        flags: flags![],
         doc: "Discard changes and reload all documents from the source files.",
         fun: reload_all,
         signature: CommandSignature::none(),
@@ -3045,7 +3040,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "update",
         aliases: &["u"],
-        flags: &[],
+        flags: flags![],
         doc: "Write changes only if the file has been modified.",
         fun: update,
         signature: CommandSignature::none(),
@@ -3053,7 +3048,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "lsp-workspace-command",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Open workspace command picker",
         fun: lsp_workspace_command,
         signature: CommandSignature::positional(&[completers::lsp_workspace_command]),
@@ -3061,7 +3056,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "lsp-restart",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Restarts the language servers used by the current doc",
         fun: lsp_restart,
         signature: CommandSignature::none(),
@@ -3069,7 +3064,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "lsp-stop",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Stops the language servers that are used by the current doc",
         fun: lsp_stop,
         signature: CommandSignature::none(),
@@ -3077,7 +3072,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "tree-sitter-scopes",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Display tree sitter scopes, primarily for theming and development.",
         fun: tree_sitter_scopes,
         signature: CommandSignature::none(),
@@ -3085,7 +3080,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "tree-sitter-highlight-name",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Display name of tree-sitter highlight scope under the cursor.",
         fun: tree_sitter_highlight_name,
         signature: CommandSignature::none(),
@@ -3093,7 +3088,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "debug-start",
         aliases: &["dbg"],
-        flags: &[],
+        flags: flags![],
         doc: "Start a debug session from a given template with given parameters.",
         fun: debug_start,
         signature: CommandSignature::none(),
@@ -3101,7 +3096,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "debug-remote",
         aliases: &["dbg-tcp"],
-        flags: &[],
+        flags: flags![],
         doc: "Connect to a debug adapter by TCP address and start a debugging session from a given template with given parameters.",
         fun: debug_remote,
         signature: CommandSignature::none(),
@@ -3109,7 +3104,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "debug-eval",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Evaluate expression in current debug context.",
         fun: debug_eval,
         signature: CommandSignature::none(),
@@ -3117,7 +3112,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "vsplit",
         aliases: &["vs"],
-        flags: &[],
+        flags: flags![],
         doc: "Open the file in a vertical split.",
         fun: vsplit,
         signature: CommandSignature::all(completers::filename)
@@ -3125,7 +3120,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "vsplit-new",
         aliases: &["vnew"],
-        flags: &[],
+        flags: flags![],
         doc: "Open a scratch buffer in a vertical split.",
         fun: vsplit_new,
         signature: CommandSignature::none(),
@@ -3133,7 +3128,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "hsplit",
         aliases: &["hs", "sp"],
-        flags: &[],
+        flags: flags![],
         doc: "Open the file in a horizontal split.",
         fun: hsplit,
         signature: CommandSignature::all(completers::filename)
@@ -3141,7 +3136,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "hsplit-new",
         aliases: &["hnew"],
-        flags: &[],
+        flags: flags![],
         doc: "Open a scratch buffer in a horizontal split.",
         fun: hsplit_new,
         signature: CommandSignature::none(),
@@ -3149,7 +3144,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "tutor",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Open the tutorial.",
         fun: tutor,
         signature: CommandSignature::none(),
@@ -3157,7 +3152,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "goto",
         aliases: &["g"],
-        flags: &[],
+        flags: flags![],
         doc: "Goto line number.",
         fun: goto_line_number,
         signature: CommandSignature::none(),
@@ -3165,7 +3160,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "set-language",
         aliases: &["lang"],
-        flags: &[],
+        flags: flags![],
         doc: "Set the language of current buffer (show current language if no value specified).",
         fun: language,
         signature: CommandSignature::positional(&[completers::language]),
@@ -3173,7 +3168,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "set-option",
         aliases: &["set"],
-        flags: &[],
+        flags: flags![],
         doc: "Set a config option at runtime.\nFor example to disable smart case search, use `:set search.smart-case false`.",
         fun: set_option,
         // TODO: Add support for completion of the options value(s), when appropriate.
@@ -3182,7 +3177,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "toggle-option",
         aliases: &["toggle"],
-        flags: &[],
+        flags: flags![],
         doc: "Toggle a boolean config option at runtime.\nFor example to toggle smart case search, use `:toggle search.smart-case`.",
         fun: toggle_option,
         signature: CommandSignature::positional(&[completers::setting]),
@@ -3190,7 +3185,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "get-option",
         aliases: &["get"],
-        flags: &[],
+        flags: flags![],
         doc: "Get the current value of a config option.",
         fun: get_option,
         signature: CommandSignature::positional(&[completers::setting]),
@@ -3198,7 +3193,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "sort",
         aliases: &[],
-        flags: &[flag!{long: "reverse", short: "r", desc: "sort ranges in selection in reverse order"}],
+        flags: flags![
+            {
+            long: "reverse",
+            short: "r",
+            desc: "sort ranges in selection in reverse order"
+            }
+        ],
         doc: "Sort ranges in selection.",
         fun: sort,
         signature: CommandSignature::none(),
@@ -3206,7 +3207,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "reflow",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Hard-wrap the current selection of lines to a given width.",
         fun: reflow,
         signature: CommandSignature::none(),
@@ -3214,7 +3215,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "tree-sitter-subtree",
         aliases: &["ts-subtree"],
-        flags: &[],
+        flags: flags![],
         doc: "Display the smallest tree-sitter subtree that spans the primary selection, primarily for debugging queries.",
         fun: tree_sitter_subtree,
         signature: CommandSignature::none(),
@@ -3222,7 +3223,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "config-reload",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Refresh user config.",
         fun: refresh_config,
         signature: CommandSignature::none(),
@@ -3230,7 +3231,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "config-open",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Open the user config.toml file.",
         fun: open_config,
         signature: CommandSignature::none(),
@@ -3238,7 +3239,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "config-open-workspace",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Open the workspace config.toml file.",
         fun: open_workspace_config,
         signature: CommandSignature::none(),
@@ -3246,7 +3247,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "log-open",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Open the helix log file.",
         fun: open_log,
         signature: CommandSignature::none(),
@@ -3254,7 +3255,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "insert-output",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Run shell command, inserting output before each selection.",
         fun: insert_output,
         signature: CommandSignature::none(),
@@ -3262,7 +3263,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "append-output",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Run shell command, appending output after each selection.",
         fun: append_output,
         signature: CommandSignature::none(),
@@ -3270,7 +3271,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "pipe",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Pipe each selection to the shell command.",
         fun: pipe,
         signature: CommandSignature::none(),
@@ -3278,7 +3279,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "pipe-to",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Pipe each selection to the shell command, ignoring output.",
         fun: pipe_to,
         signature: CommandSignature::none(),
@@ -3286,7 +3287,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "run-shell-command",
         aliases: &["sh"],
-        flags: &[],
+        flags: flags![],
         doc: "Run a shell command",
         fun: run_shell_command,
         signature: CommandSignature::all(completers::filename)
@@ -3294,7 +3295,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "reset-diff-change",
         aliases: &["diffget", "diffg"],
-        flags: &[],
+        flags: flags![],
         doc: "Reset the diff change at the cursor position.",
         fun: reset_diff_change,
         signature: CommandSignature::none(),
@@ -3302,7 +3303,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "clear-register",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Clear given register. If no argument is provided, clear all registers.",
         fun: clear_register,
         signature: CommandSignature::all(completers::register),
@@ -3310,7 +3311,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "redraw",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Clear and re-render the whole UI",
         fun: redraw,
         signature: CommandSignature::none(),
@@ -3318,7 +3319,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "move",
         aliases: &["mv"],
-        flags: &[],
+        flags: flags![],
         doc: "Move the current buffer and its corresponding file to a different path",
         fun: move_buffer,
         signature: CommandSignature::positional(&[completers::filename]),
@@ -3326,7 +3327,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "yank-diagnostic",
         aliases: &[],
-        flags: &[],
+        flags: flags![],
         doc: "Yank diagnostic(s) under primary cursor to register, or clipboard by default",
         fun: yank_diagnostic,
         signature: CommandSignature::all(completers::register),
@@ -3334,7 +3335,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "read",
         aliases: &["r"],
-        flags: &[],
+        flags: flags![],
         doc: "Load a file into buffer",
         fun: read,
         signature: CommandSignature::positional(&[completers::filename]),
@@ -3408,7 +3409,8 @@ pub(super) fn command_mode(cx: &mut Context) {
 
             // If input is `:NUMBER`, interpret as line number and go there.
             if command.parse::<usize>().is_ok() {
-                if let Err(err) = typed::goto_line_number(cx, Args::from(command), &[], event) {
+                if let Err(err) = typed::goto_line_number(cx, Args::from(command), flags![], event)
+                {
                     cx.editor.set_error(format!("{err}"));
                 }
                 return;
@@ -3458,7 +3460,7 @@ pub(super) fn command_mode(cx: &mut Context) {
             if !flags.is_empty() {
                 prompt.push_str("flags:\n");
 
-                for flag in *flags {
+                for flag in flags {
                     write!(prompt, "    --{}", flag.long).unwrap();
 
                     if let Some(short) = flag.short {
