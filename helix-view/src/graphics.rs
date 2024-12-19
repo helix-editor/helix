@@ -275,8 +275,7 @@ impl Color {
     /// assert_eq!(color1, color2);
     /// ```
     pub fn from_hex(hex: &str) -> Option<Self> {
-        match [1..=2, 3..=4, 5..=6]
-            .map(|range| hex.get(range).and_then(|c| u8::from_str_radix(c, 16).ok()))
+        match [1..=2, 3..=4, 5..=6].map(|i| hex.get(i).and_then(|c| u8::from_str_radix(c, 16).ok()))
         {
             [Some(r), Some(g), Some(b)] => Some(Self::Rgb(r, g, b)),
             _ => None,
