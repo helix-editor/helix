@@ -132,6 +132,21 @@ pub fn cache_dir() -> PathBuf {
     path
 }
 
+pub fn state_dir() -> PathBuf {
+    #[cfg(unix)]
+    {
+        let strategy = choose_base_strategy().expect("Unable to find the state directory!");
+        let mut path = strategy.state_dir().unwrap();
+        path.push("helix");
+        path
+    }
+
+    #[cfg(windows)]
+    {
+        cache_dir()
+    }
+}
+
 pub fn config_file() -> PathBuf {
     CONFIG_FILE.get().map(|path| path.to_path_buf()).unwrap()
 }
