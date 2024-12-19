@@ -240,11 +240,11 @@ impl<'a> Args<'a> {
         let mut flag = F::default();
 
         while let Some(arg) = self.next() {
-            let arg = arg.trim_start_matches("--").trim_start_matches('-');
-
             if arg == "--" {
                 return Ok(flag);
             }
+
+            let arg = arg.trim_start_matches("--").trim_start_matches('-');
 
             flag.extract(arg, self)?;
         }
