@@ -104,7 +104,7 @@ impl menu::Item for CompletionItem {
                 if deprecated {
                     Style::default().add_modifier(Modifier::CROSSED_OUT)
                 } else if kind == "folder" {
-                    directory_style
+                    *directory_style
                 } else {
                     Style::default()
                 },
