@@ -28,7 +28,7 @@ use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
 use helix_lsp::{lsp, util, OffsetEncoding};
 
 impl menu::Item for CompletionItem {
-    type Data = ();
+    type Data = Style;
     fn sort_text(&self, data: &Self::Data) -> Cow<str> {
         self.filter_text(data)
     }
@@ -46,7 +46,7 @@ impl menu::Item for CompletionItem {
         }
     }
 
-    fn format(&self, _data: &Self::Data) -> menu::Row {
+    fn format(&self, directory_style: &Self::Data) -> menu::Row {
         let deprecated = match self {
             CompletionItem::Lsp(LspCompletionItem { item, .. }) => {
                 item.deprecated.unwrap_or_default()
@@ -103,6 +103,8 @@ impl menu::Item for CompletionItem {
                 label,
                 if deprecated {
                     Style::default().add_modifier(Modifier::CROSSED_OUT)
+                } else if kind == "folder" {
+                    directory_style
                 } else {
                     Style::default()
                 },
@@ -136,7 +138,7 @@ impl Completion {
         items.sort_by_key(|item| !item.preselect());
 
         // Then create the menu
-        let menu = Menu::new(items, (), move |editor: &mut Editor, item, event| {
+        let menu = Menu::new(items, editor.theme.get("ui.text.directory"), move |editor: &mut Editor, item, event| {
             let (view, doc) = current!(editor);
 
             macro_rules! language_server {
