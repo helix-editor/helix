@@ -101,7 +101,7 @@ impl menu::Item for CompletionItem {
                 Some(lsp::CompletionItemKind::SNIPPET) => "snippet".into(),
                 Some(lsp::CompletionItemKind::COLOR) => {
                     let maybe_hex_color = match &item.documentation {
-                        Some(Documentation::String(text)) => Some(text),
+                        Some(Documentation::String(value)) => Some(value),
                         Some(Documentation::MarkupContent(MarkupContent { value, .. })) => {
                             Some(value)
                         }
