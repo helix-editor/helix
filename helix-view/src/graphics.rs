@@ -269,7 +269,7 @@ impl Color {
     /// # Examples
     ///
     /// ```rust
-    /// use helix_view::theme::Color
+    /// use helix_view::theme::Color;
     ///
     /// let color1 = Color::from_hex("#c0ffee").unwrap();
     /// let color2 = Color::Rgb(192, 255, 238);
