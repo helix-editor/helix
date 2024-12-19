@@ -46,7 +46,7 @@ impl menu::Item for CompletionItem {
         }
     }
 
-    fn format(&self, directory_style: &Self::Data) -> menu::Row {
+    fn format(&self, data: &Self::Data) -> menu::Row {
         let deprecated = match self {
             CompletionItem::Lsp(LspCompletionItem { item, .. }) => {
                 item.deprecated.unwrap_or_default()
@@ -104,7 +104,7 @@ impl menu::Item for CompletionItem {
                 if deprecated {
                     Style::default().add_modifier(Modifier::CROSSED_OUT)
                 } else if kind == "folder" {
-                    *directory_style
+                    *data
                 } else {
                     Style::default()
                 },
