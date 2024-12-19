@@ -69,9 +69,9 @@ macro_rules! flags {
                     $crate::commands::flag::Flag {
                         long: $long,
                         short: {
-                            #[allow(unused_mut)]
-                            let mut short = None;
-                             $(let _ = short.replace($short);)?
+                            #[allow(unused_mut, unused_assignments)]
+                            let mut short: Option<&'static str> = None;
+                            $(short = Some($short);)?
                             short
                         },
                         desc: $desc,
