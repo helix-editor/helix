@@ -94,11 +94,14 @@ impl menu::Item for CompletionItem {
                         None => None,
                     };
 
-                    maybe_hex_color.map_or(Span::raw("color"), |hex| {
+                    maybe_hex_color.map_or(Span::raw("color").into(), |hex| {
                         match Color::from_hex(hex) {
-                            Some(color) => Span::styled("■", Style::default().fg(color)),
-                            // there is documentation but it doesn't conform to the format to parse the hex color
-                            None => Span::raw("color"),
+                            Some(color) => Spans::from(vec![
+                                Span::raw("color "),
+                                Span::styled("■", Style::default().fg(color)),
+                            ]),
+                            // there is documentation but it cannot be parsed as a color
+                            None => "color".into(),
                         }
                     })
                 }
@@ -120,25 +123,20 @@ impl menu::Item for CompletionItem {
             CompletionItem::Other(core::CompletionItem { kind, .. }) => kind.as_ref().into(),
         };
 
-        let first_cell = menu::Cell::from(Span::styled(
+        log::error!("{:#?}", kind.0[0].content);
+
+        let label = Span::styled(
             label,
             if deprecated {
                 Style::default().add_modifier(Modifier::CROSSED_OUT)
-            } else if kind.content == "folder" {
+            } else if kind.0[0].content == "folder" {
                 *dir_style
             } else {
                 Style::default()
             },
-        ));
+        );
 
-        menu::Row::new([
-            first_cell,
-            if kind.content == "■" {
-                menu::Cell::from(Spans::from(vec![Span::raw("color "), kind]))
-            } else {
-                menu::Cell::from(kind)
-            },
-        ])
+        menu::Row::new([menu::Cell::from(label), menu::Cell::from(kind)])
     }
 }
 
