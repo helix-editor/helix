@@ -263,6 +263,16 @@ pub enum Color {
     Indexed(u8),
 }
 
+/// Creates a `Color` from a hex string
+///
+/// # Examples
+///
+/// ```rust
+/// let color1 = Color::from_hex("#c0ffee");
+/// let color2 = Color::Rgb(192, 255, 238);
+///
+/// assert_eq!(color1, color2);
+/// ```
 impl Color {
     pub fn from_hex(hex: &str) -> Option<Self> {
         match [1..=2, 3..=4, 5..=6]
