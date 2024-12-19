@@ -123,8 +123,6 @@ impl menu::Item for CompletionItem {
             CompletionItem::Other(core::CompletionItem { kind, .. }) => kind.as_ref().into(),
         };
 
-        log::error!("{:#?}", kind.0[0].content);
-
         let label = Span::styled(
             label,
             if deprecated {
