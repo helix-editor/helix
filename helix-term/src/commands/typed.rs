@@ -2142,6 +2142,54 @@ fn reflow(
     Ok(())
 }
 
+// This is a basic implementation for viewing the entire tree sitter tree of a file
+// In the future, this command could be updated such that it opens a buffer which automatically highlights the tree sitter sub-tree of where we currently have our cursor
+// And vice-versa: Moving cursor across nodes in the tree sitter tree will need to also move the cursor across the original file
+fn tree_sitter_tree(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let doc = doc!(cx.editor);
+
+    if let Some(syntax) = doc.syntax() {
+        let text = doc.text();
+        let from = 0;
+        let to = text.len_chars();
+
+        if let Some(selected_node) = syntax.descendant_for_byte_range(from, to) {
+            let mut contents = String::new();
+            helix_core::syntax::pretty_print_tree(&mut contents, selected_node)?;
+
+            if let Some(tree_sitter_tree_document_id) = cx.editor.tree_sitter_tree_document_id {
+                if cx
+                    .editor
+                    .close_document(tree_sitter_tree_document_id, true)
+                    .is_err()
+                {
+                    bail!("Could not close the previous tree sitter tree document")
+                };
+            };
+
+            cx.editor.tree_sitter_tree_document_id = Some(cx.editor.new_file_from_document(
+                Action::VerticalSplit,
+                Document::from(Rope::from(contents), None, cx.editor.config.clone()),
+            ));
+
+            let tree_sitter_tree_document = doc_mut!(cx.editor);
+
+            tree_sitter_tree_document
+                .set_language_by_language_id("tsq", cx.editor.syn_loader.clone())?
+        }
+    }
+
+    Ok(())
+}
+
 fn tree_sitter_subtree(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -3043,6 +3091,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["ts-subtree"],
         doc: "Display the smallest tree-sitter subtree that spans the primary selection, primarily for debugging queries.",
         fun: tree_sitter_subtree,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "tree-sitter-tree",
+        aliases: &["ts-tree"],
+        doc: "Display tree-sitter tree that spans the full document, primarily for debugging queries.",
+        fun: tree_sitter_tree,
         signature: CommandSignature::none(),
     },
     TypableCommand {
