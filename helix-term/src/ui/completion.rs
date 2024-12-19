@@ -66,61 +66,6 @@ impl menu::Item for CompletionItem {
             CompletionItem::Other(core::CompletionItem { label, .. }) => label,
         };
 
-        let kind = match self {
-            CompletionItem::Lsp(LspCompletionItem { item, .. }) => match item.kind {
-                Some(lsp::CompletionItemKind::TEXT) => "text",
-                Some(lsp::CompletionItemKind::METHOD) => "method",
-                Some(lsp::CompletionItemKind::FUNCTION) => "function",
-                Some(lsp::CompletionItemKind::CONSTRUCTOR) => "constructor",
-                Some(lsp::CompletionItemKind::FIELD) => "field",
-                Some(lsp::CompletionItemKind::VARIABLE) => "variable",
-                Some(lsp::CompletionItemKind::CLASS) => "class",
-                Some(lsp::CompletionItemKind::INTERFACE) => "interface",
-                Some(lsp::CompletionItemKind::MODULE) => "module",
-                Some(lsp::CompletionItemKind::PROPERTY) => "property",
-                Some(lsp::CompletionItemKind::UNIT) => "unit",
-                Some(lsp::CompletionItemKind::VALUE) => "value",
-                Some(lsp::CompletionItemKind::ENUM) => "enum",
-                Some(lsp::CompletionItemKind::KEYWORD) => "keyword",
-                Some(lsp::CompletionItemKind::SNIPPET) => "snippet",
-                Some(lsp::CompletionItemKind::COLOR) => {
-                    let maybe_hex_color = match &item.documentation {
-                        Some(Documentation::String(text)) => Some(text),
-                        Some(Documentation::MarkupContent(MarkupContent { value, .. })) => {
-                            Some(value)
-                        }
-                        None => None,
-                    };
-
-                    let content = maybe_hex_color.map_or(Span::raw("color"), |hex| {
-                        let maybe_color = Color::from_hex(hex);
-
-                        match maybe_color {
-                            Some(color) => Span::styled("        ", Style::default().bg(color)),
-                            None => Span::raw("color"),
-                        }
-                    });
-
-                    return menu::Row::new([first_cell, menu::Cell::from(content)]);
-                }
-                Some(lsp::CompletionItemKind::FILE) => "file",
-                Some(lsp::CompletionItemKind::REFERENCE) => "reference",
-                Some(lsp::CompletionItemKind::FOLDER) => "folder",
-                Some(lsp::CompletionItemKind::ENUM_MEMBER) => "enum_member",
-                Some(lsp::CompletionItemKind::CONSTANT) => "constant",
-                Some(lsp::CompletionItemKind::STRUCT) => "struct",
-                Some(lsp::CompletionItemKind::EVENT) => "event",
-                Some(lsp::CompletionItemKind::OPERATOR) => "operator",
-                Some(lsp::CompletionItemKind::TYPE_PARAMETER) => "type_param",
-                Some(kind) => {
-                    log::error!("Received unknown completion item kind: {:?}", kind);
-                    ""
-                }
-                None => "",
-            },
-            CompletionItem::Other(core::CompletionItem { kind, .. }) => kind,
-        };
-
         let first_cell = menu::Cell::from(Span::styled(
             label,
             if deprecated {
@@ -133,6 +78,60 @@ impl menu::Item for CompletionItem {
         ));
 
         menu::Row::new([first_cell, menu::Cell::from(kind)])
+        
+
+        let kind = match self {
+            CompletionItem::Lsp(LspCompletionItem { item, .. }) => match item.kind {
+                Some(lsp::CompletionItemKind::TEXT) => "text".into(),
+                Some(lsp::CompletionItemKind::METHOD) => "method".into(),
+                Some(lsp::CompletionItemKind::FUNCTION) => "function".into(),
+                Some(lsp::CompletionItemKind::CONSTRUCTOR) => "constructor".into(),
+                Some(lsp::CompletionItemKind::FIELD) => "field".into(),
+                Some(lsp::CompletionItemKind::VARIABLE) => "variable".into(),
+                Some(lsp::CompletionItemKind::CLASS) => "class".into(),
+                Some(lsp::CompletionItemKind::INTERFACE) => "interface".into(),
+                Some(lsp::CompletionItemKind::MODULE) => "module".into(),
+                Some(lsp::CompletionItemKind::PROPERTY) => "property".into(),
+                Some(lsp::CompletionItemKind::UNIT) => "unit".into(),
+                Some(lsp::CompletionItemKind::VALUE) => "value".into(),
+                Some(lsp::CompletionItemKind::ENUM) => "enum".into(),
+                Some(lsp::CompletionItemKind::KEYWORD) => "keyword".into(),
+                Some(lsp::CompletionItemKind::SNIPPET) => "snippet".into(),
+                Some(lsp::CompletionItemKind::COLOR) => {
+                    let maybe_hex_color = match &item.documentation {
+                        Some(Documentation::String(text)) => Some(text),
+                        Some(Documentation::MarkupContent(MarkupContent { value, .. })) => {
+                            Some(value)
+                        }
+                        None => None,
+                    };
+
+                    maybe_hex_color.map_or(Span::raw("color"), |hex| {
+                        let maybe_color = Color::from_hex(hex);
+
+                        match maybe_color {
+                            Some(color) => Span::styled("        ", Style::default().bg(color)),
+                            None => Span::raw("color"),
+                        }
+                    })
+                }
+                Some(lsp::CompletionItemKind::FILE) => "file".into(),
+                Some(lsp::CompletionItemKind::REFERENCE) => "reference".into(),
+                Some(lsp::CompletionItemKind::FOLDER) => "folder".into(),
+                Some(lsp::CompletionItemKind::ENUM_MEMBER) => "enum_member".into(),
+                Some(lsp::CompletionItemKind::CONSTANT) => "constant".into(),
+                Some(lsp::CompletionItemKind::STRUCT) => "struct".into(),
+                Some(lsp::CompletionItemKind::EVENT) => "event".into(),
+                Some(lsp::CompletionItemKind::OPERATOR) => "operator".into(),
+                Some(lsp::CompletionItemKind::TYPE_PARAMETER) => "type_param".into(),
+                Some(kind) => {
+                    log::error!("Received unknown completion item kind: {:?}", kind);
+                    "".into()
+                }
+                None => "".into(),
+            },
+            CompletionItem::Other(core::CompletionItem { kind, .. }) => Span::raw(kind.to_string()),
+        };
     }
 }
 
