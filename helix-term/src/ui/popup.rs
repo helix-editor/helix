@@ -124,15 +124,10 @@ impl<T: Component> Popup<T> {
     }
 
     fn render_info(&mut self, viewport: Rect, editor: &Editor) -> RenderInfo {
-        let mut position = editor.cursor().0.unwrap_or_default();
-        if let Some(old_position) = self
+        let position = self
             .position
-            .filter(|old_position| old_position.row == position.row)
-        {
-            position = old_position;
-        } else {
-            self.position = Some(position);
-        }
+            .or_else(|| editor.cursor().0)
+            .unwrap_or_default();
 
         let is_menu = self
             .contents
