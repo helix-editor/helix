@@ -94,9 +94,11 @@ impl menu::Item for CompletionItem {
                     return menu::Row::new([
                         first_cell,
                         maybe_hex_color
-                            .map_or(Span::raw("color"), |c| match Color::from_hex(c) {
-                                Ok(l) => Span::styled("       ", Style::default().bg(l)),
-                                Err(_) => Span::raw("color"),
+                            .map_or(Span::raw("color"), |hex_color| {
+                                match Color::from_hex(hex_color) {
+                                    Ok(l) => Span::styled("       ", Style::default().bg(l)),
+                                    Err(_) => Span::raw("color"),
+                                }
                             })
                             .into(),
                     ]);
