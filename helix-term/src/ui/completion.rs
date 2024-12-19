@@ -139,7 +139,7 @@ impl Completion {
 
         let dir_color = editor.theme.get("ui.text.directory");
 
-        // Then create the mene
+        // Then create the menu
         let menu = Menu::new(items, dir_color, move |editor: &mut Editor, item, event| {
             let (view, doc) = current!(editor);
 
