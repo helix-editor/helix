@@ -210,19 +210,18 @@ impl<'a> Args<'a> {
             return None;
         }
 
-        let mut args = self.peekable();
+        let mut args = self.clone();
 
-        if let Some(arg) = args.peek() {
-            if *arg == "--" {
+        if let Some(arg) = args.next() {
+            if arg == "--" {
                 // Consume the `--` leaving only the remaining command arguments left to yield.
                 self.next();
                 return None;
             }
 
-            if flags
-                .into_flags()
-                .any(|f| f == arg.trim_start_matches('-').trim_start_matches("--"))
-            {
+            let arg = arg.trim_start_matches('-').trim_start_matches("--");
+
+            if flags.into_flags().any(|flag| arg == flag) {
                 return self
                     .next()
                     .map(|flag| flag.trim_start_matches('-').trim_start_matches("--"));
