@@ -144,17 +144,23 @@ pub fn to_camel_or_pascal_case_with(
     is_pascal: bool,
 ) {
     let mut capitalize_next = is_pascal;
+    let mut prev_is_lowercase = false;
 
     for c in text {
         if c.is_alphanumeric() {
+            if prev_is_lowercase && c.is_uppercase() {
+                capitalize_next = true;
+            }
             if capitalize_next {
                 buf.extend(c.to_uppercase());
                 capitalize_next = false;
             } else {
                 buf.extend(c.to_lowercase());
             }
+            prev_is_lowercase = c.is_lowercase();
         } else {
             capitalize_next = true;
+            prev_is_lowercase = false;
         }
     }
 }
@@ -240,7 +246,7 @@ mod tests {
         pascal_test("HELLO  WORLD", "HelloWorld");
         pascal_test("HELLO-world", "HelloWorld");
         pascal_test("hello  WORLD ", "HelloWorld");
-        // pascal_test("helloWorld", "HelloWorld");
+        pascal_test("helloWorld", "HelloWorld");
     }
 
     #[test]
