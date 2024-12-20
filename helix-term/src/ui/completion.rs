@@ -94,7 +94,7 @@ impl menu::Item for CompletionItem {
                         None => None,
                     };
 
-                    maybe_hex_color.map_or(Span::raw("color").into(), |hex| {
+                    maybe_hex_color.map_or("color".into(), |hex| {
                         match Color::from_hex(hex) {
                             Some(color) => Spans::from(vec![
                                 Span::raw("color "),
