@@ -356,7 +356,7 @@ impl MappableCommand {
         extend_prev_char, "Extend to previous occurrence of char",
         repeat_last_motion, "Repeat last motion",
         replace, "Replace with new char",
-        switch_case, "Switch to aLTERNATE cASE",
+        switch_to_alternate_case, "Switch to aLTERNATE cASE",
         switch_to_uppercase, "Switch to UPPERCASE",
         switch_to_lowercase, "Switch to lowercase",
         switch_to_pascal_case, "Switch to PascalCase",
@@ -1803,7 +1803,7 @@ fn switch_to_uppercase(cx: &mut Context) {
     switch_case_impl(cx, |chars| to_uppercase(chars))
 }
 
-fn switch_case(cx: &mut Context) {
+fn switch_to_alternate_case(cx: &mut Context) {
     switch_case_impl(cx, |chars| to_alternate_case(chars))
 }
 
