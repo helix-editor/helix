@@ -1,13 +1,13 @@
 (comment) @comment
 
-(number) @number
-(metric) @number
+(number) @constant.numeric
+(metric) @constant.numeric
 
-(regex) @regex
+(regex) @string
 
 (variable) @variable
 
-(modifier) @operator
+(modifier) @keyword.operator
 
 (simple_directive
 	name: (directive) @function)
@@ -25,7 +25,7 @@
 (string) @string
 
 (scheme) @string
-(ipv4) @number
+(ipv4) @constant.numeric
 
 [
 	";"
