@@ -1,7 +1,7 @@
 use helix_core::unicode::segmentation::UnicodeSegmentation;
 use helix_loader::grammar::git;
 
-use crate::{helpers::lang_config_raw, DynError};
+use crate::{helpers::lang_config_grammars, DynError};
 
 pub fn grammar_check() -> Result<(), DynError> {
     let pool = threadpool::Builder::new().build();
@@ -14,7 +14,7 @@ pub fn grammar_check() -> Result<(), DynError> {
             .to_owned(),
     );
 
-    for language in lang_config_raw().grammar {
+    for language in lang_config_grammars().grammar {
         let tx = tx.clone();
         let current_dir = std::sync::Arc::clone(&current_dir);
 
@@ -29,7 +29,7 @@ pub fn grammar_check() -> Result<(), DynError> {
 
                 let current_commit = language.source.rev;
 
-                let updates_available = current_commit == latest_commit;
+                let updates_available = current_commit != latest_commit;
 
                 let repo = language.source.git;
                 let name = language.name;
