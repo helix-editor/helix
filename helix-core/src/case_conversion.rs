@@ -19,7 +19,7 @@ pub fn complex_case_conversion(
     capitalize_first: bool,
     separator: Option<char>,
 ) {
-    let mut capitalize_next = capitalize_first;
+    let mut should_capitalize_current = capitalize_first;
     let mut prev: Option<char> = None;
 
     for c in text.skip_while(|ch| ch.is_whitespace()) {
@@ -33,16 +33,16 @@ pub fn complex_case_conversion(
                 }
             }
             if prev.is_some_and(|p| p.is_lowercase()) && c.is_uppercase() {
-                capitalize_next = true;
+                should_capitalize_current = true;
             }
-            if capitalize_next {
+            if should_capitalize_current {
                 buf.push(c.to_ascii_uppercase());
-                capitalize_next = false;
+                should_capitalize_current = false;
             } else {
                 buf.extend(c.to_lowercase());
             }
         } else {
-            capitalize_next = true;
+            should_capitalize_current = true;
             if let Some(separator) = separator {
                 if prev.is_some_and(|p| p != separator) {
                     buf.push(separator);
