@@ -29,15 +29,27 @@ pub fn grammar_check() -> Result<(), DynError> {
                 let name = language.name;
 
                 let link = if repo.starts_with("https://github.com") {
-                    format!("{blue}{repo}/compare/{current_commit}...{latest_commit}{reset}")
+                    let url = format!("{blue}\u{1b}]8;;{}/compare{current_commit}...{latest_commit}\u{1b}\\{}\u{1b}]8;;\u{1b}\\{reset}", repo, "[View Diff]");
+                    url
+                    // format!("{blue}{repo}/compare/{current_commit}...{latest_commit}{reset}")
                 } else {
-                    format!("{blue}{repo}{reset}")
+                    let url = format!("{blue}\u{1b}]8;;{}\u{1b}\\{}\u{1b}]8;;\u{1b}\\{reset}", repo, "[Grammar]");
+                    url
+                };
+
+
+                let status = if updates_available {
+                    format!("{bold_green}Updates available{reset}")
+                } else {
+                    "Up to date".into()
                 };
 
                 let out = if updates_available {
-                    format!("    {bold_green}Updates available{reset} {name} {link}")
+                    format!(
+                        "{status} {link} {name} ",
+                    )
                 } else {
-                    format!("    Up to date        {name}")
+                    format!("{status}                    {name}")
                 };
                 let _ = tx.send(out);
             }
@@ -47,7 +59,7 @@ pub fn grammar_check() -> Result<(), DynError> {
     drop(tx);
 
     for msg in rx.iter() {
-        println!("{msg}");
+        println!("    {msg}");
     }
 
     Ok(())
