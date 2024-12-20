@@ -6,25 +6,25 @@
 
 ; Definitions
 (assign
-  lhs: (identifier) @local.definition.var)
+  lhs: (identifier) @local.definition)
 
 (variable
-  (identifier) @local.definition.var)
+  (identifier) @local.definition)
 
 (arg
-  (identifier) @local.definition.parameter)
+  (identifier) @local.definition)
 
 (arg
-  (variable (identifier)) @local.definition.parameter)
+  (variable (identifier)) @local.definition)
 
 (import_item
-  (identifier) @local.definition.import)
+  (identifier) @local.definition)
 
 (entry_block
-  (identifier) @local.definition.field)
+  (identifier) @local.definition)
 
 (entry_inline
-  (identifier) @local.definition.field)
+  (identifier) @local.definition)
 
 ; References
 (identifier) @local.reference
