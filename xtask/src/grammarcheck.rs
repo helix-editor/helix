@@ -16,7 +16,6 @@ pub fn grammar_check() -> Result<(), DynError> {
         pool.execute(move || {
             let bold_green = "\x1b[1;32m";
             let reset = "\x1b[0m";
-            let underline = "\x1b[4m";
             let blue = "\x1b[34m";
 
             if let Ok(result) = git(&current_dir, ["ls-remote", &language.source.git]) {
@@ -30,11 +29,9 @@ pub fn grammar_check() -> Result<(), DynError> {
                 let name = language.name;
 
                 let link = if repo.starts_with("https://github.com") {
-                    format!(
-                        "{underline}{blue}{repo}/compare/{current_commit}...{latest_commit}{reset}"
-                    )
+                    format!("{blue}{repo}/compare/{current_commit}...{latest_commit}{reset}")
                 } else {
-                    format!("{underline}{blue}{repo}{reset}")
+                    format!("{blue}{repo}{reset}")
                 };
 
                 let out = if updates_available {
