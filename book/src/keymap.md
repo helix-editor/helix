@@ -70,7 +70,6 @@ Normal mode is the default mode when you launch helix. You can return to it from
 | -----       | -----------                                                          | -------                   |
 | `r`         | Replace with a character                                             | `replace`                 |
 | `R`         | Replace with yanked text                                             | `replace_with_yanked`     |
-| `~`         | Switch case of the selected text                                     | `switch_case`             |
 | `i`         | Insert before selection                                              | `insert_mode`             |
 | `a`         | Insert after selection (append)                                      | `append_mode`             |
 | `I`         | Insert at the start of the line                                      | `insert_at_line_start`    |
@@ -242,13 +241,14 @@ Various commands for changing the case of text in different ways.
 
 | Key              | Description                                      | Command                    |
 | -----            | -----------                                      | -------                    |
-| `l`              | Switch all text to lowercase                     | `switch_to_lowercase`      |
-| `u`              | Switch all text to UPPERCASE                     | `switch_to_uppercase`      |
+| `l`              | Switch text to lowercase                         | `switch_to_lowercase`      |
+| `u`              | Switch text to UPPERCASE                         | `switch_to_uppercase`      |
 | `p`              | Switch text to Pascal Case                       | `switch_to_pascal_case`    |
 | `c`              | Switch text to camelCase                         | `switch_to_camel_case`     |
 | `t`              | Switch text to Title Case                        | `switch_to_title_case`     |
 | `s`              | Switch text to snake_case                        | `switch_to_snake_case`     |
 | `k`              | Switch text to kebab-case                        | `switch_to_kebab_case`     |
+| `a`              | Switch text to aLTERNATE cASE                    | `switch_to_alternate_case` |
 
 TODO: Mappings for selecting syntax nodes (a superset of `[`).
 

@@ -53,9 +53,9 @@
 | `extend_prev_char` | Extend to previous occurrence of char | select: `` F `` |
 | `repeat_last_motion` | Repeat last motion | normal: `` <A-.> ``, select: `` <A-.> `` |
 | `replace` | Replace with new char | normal: `` r ``, select: `` r `` |
-| `switch_to_alternate_case` | Switch to aLTERNATE cASE | normal: `` ~ ``, select: `` ~ `` |
-| `switch_to_upper_case` | Switch to UPPERCASE | normal: `` `u ``, select: `` `u `` |
-| `switch_to_lower_case` | Switch to lowercase | normal: `` `l ``, select: `` `l `` |
+| `switch_to_alternate_case` | Switch to aLTERNATE cASE | normal: `` `a ``, select: `` `a `` |
+| `switch_to_uppercase` | Switch to UPPERCASE | normal: `` `u ``, select: `` `u `` |
+| `switch_to_lowercase` | Switch to lowercase | normal: `` `l ``, select: `` `l `` |
 | `switch_to_pascal_case` | Switch to PascalCase | normal: `` `p ``, select: `` `p `` |
 | `switch_to_camel_case` | Switch to camelCase | normal: `` `c ``, select: `` `c `` |
 | `switch_to_title_case` | Switch to Title Case | normal: `` `t ``, select: `` `t `` |
