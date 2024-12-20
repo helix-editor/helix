@@ -238,7 +238,7 @@ Jumps to various locations.
 
 Accessed by typing ` ` ` in [normal mode](#normal-mode).
 
-Various functions for changing case of text in different ways.
+Various commands for changing the case of text in different ways.
 
 | Key              | Description                                      | Command                    |
 | -----            | -----------                                      | -------                    |
