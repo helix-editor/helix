@@ -317,7 +317,7 @@ fn get_revision(repository_dir: &Path) -> Option<String> {
 
 // A wrapper around 'git' commands which returns stdout in success and a
 // helpful error message showing the command, stdout, and stderr in error.
-fn git<I, S>(repository_dir: &Path, args: I) -> Result<String>
+pub fn git<I, S>(repository_dir: &Path, args: I) -> Result<String>
 where
     I: IntoIterator<Item = S>,
     S: AsRef<std::ffi::OsStr>,

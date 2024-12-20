@@ -83,7 +83,7 @@ fn default_timeout() -> u64 {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
 pub struct Configuration2 {
-    pub grammar: Vec<Option<Gramma>>,
+    pub grammar: Vec<Gramma>,
 }
 
 // largely based on tree-sitter/cli/src/loader.rs
