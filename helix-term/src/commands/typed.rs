@@ -3223,7 +3223,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
                 long: "join",
                 short: "j",
                 desc: "joins selection with optional separator",
-                accepts: "<sperator>"
+                accepts: "<separator>"
             },
             {
                 long: "primary",
