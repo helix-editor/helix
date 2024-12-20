@@ -151,153 +151,179 @@ pub fn to_snake_case(text: impl Iterator<Item = char>) -> Tendril {
 mod tests {
     use super::*;
 
-    fn case_tester<'a, F>(change_fn: F) -> impl Fn(&'a str, &'a str) + 'a
-    where
-        F: Fn(std::str::Chars<'a>) -> Tendril + 'a,
-    {
-        move |input: &str, expected: &str| {
-            let transformed = change_fn(input.chars());
-            let m = transformed.to_string();
-            dbg!(input);
-            assert_eq!(m.as_str(), expected)
+    #[test]
+    fn test_camel_case_conversion() {
+        let tests = [
+            ("hello world", "helloWorld"),
+            ("Hello World", "helloWorld"),
+            ("hello_world", "helloWorld"),
+            ("HELLO_WORLD", "helloWorld"),
+            ("hello-world", "helloWorld"),
+            ("hello  world", "helloWorld"),
+            ("   hello world", "helloWorld"),
+            ("hello\tworld", "helloWorld"),
+            ("HELLO  WORLD", "helloWorld"),
+            ("HELLO-world", "helloWorld"),
+            ("hello  WORLD ", "helloWorld"),
+            ("helloWorld", "helloWorld"),
+        ];
+
+        for (input, expected) in tests {
+            assert_eq!(to_camel_case(input.chars()), expected)
         }
     }
 
     #[test]
-    fn test_camel_case_conversion() {
-        let camel_test = case_tester(to_camel_case);
-        camel_test("hello world", "helloWorld");
-        camel_test("Hello World", "helloWorld");
-        camel_test("hello_world", "helloWorld");
-        camel_test("HELLO_WORLD", "helloWorld");
-        camel_test("hello-world", "helloWorld");
-        camel_test("hello  world", "helloWorld");
-        camel_test("   hello world", "helloWorld");
-        camel_test("hello\tworld", "helloWorld");
-        camel_test("HELLO  WORLD", "helloWorld");
-        camel_test("HELLO-world", "helloWorld");
-        camel_test("hello  WORLD ", "helloWorld");
-        camel_test("helloWorld", "helloWorld");
-    }
-
-    #[test]
     fn test_lower_case_conversion() {
-        let lower_test = case_tester(to_lower_case);
-        lower_test("HelloWorld", "helloworld");
-        lower_test("HELLO WORLD", "hello world");
-        lower_test("hello_world", "hello_world");
-        lower_test("Hello-World", "hello-world");
-        lower_test("Hello", "hello");
-        lower_test("WORLD", "world");
-        lower_test("hello  world", "hello  world");
-        lower_test("HELLOworld", "helloworld");
-        lower_test("hello-world", "hello-world");
-        lower_test("hello_world_here", "hello_world_here");
-        lower_test("HELLO_world", "hello_world");
-        lower_test("MixEdCaseString", "mixedcasestring");
+        let tests = [
+            ("HelloWorld", "helloworld"),
+            ("HELLO WORLD", "hello world"),
+            ("hello_world", "hello_world"),
+            ("Hello-World", "hello-world"),
+            ("Hello", "hello"),
+            ("WORLD", "world"),
+            ("hello  world", "hello  world"),
+            ("HELLOworld", "helloworld"),
+            ("hello-world", "hello-world"),
+            ("hello_world_here", "hello_world_here"),
+            ("HELLO_world", "hello_world"),
+            ("MixEdCaseString", "mixedcasestring"),
+        ];
+
+        for (input, expected) in tests {
+            assert_eq!(to_lower_case(input.chars()), expected)
+        }
     }
 
     #[test]
     fn test_upper_case_conversion() {
-        let upper_test = case_tester(to_upper_case);
-        upper_test("helloWorld", "HELLOWORLD");
-        upper_test("hello world", "HELLO WORLD");
-        upper_test("hello_world", "HELLO_WORLD");
-        upper_test("Hello-World", "HELLO-WORLD");
-        upper_test("Hello", "HELLO");
-        upper_test("world", "WORLD");
-        upper_test("hello  world", "HELLO  WORLD");
-        upper_test("helloworld", "HELLOWORLD");
-        upper_test("hello-world", "HELLO-WORLD");
-        upper_test("hello_world_here", "HELLO_WORLD_HERE");
-        upper_test("hello_WORLD", "HELLO_WORLD");
-        upper_test("mixedCaseString", "MIXEDCASESTRING");
+        let tests = [
+            ("helloWorld", "HELLOWORLD"),
+            ("hello world", "HELLO WORLD"),
+            ("hello_world", "HELLO_WORLD"),
+            ("Hello-World", "HELLO-WORLD"),
+            ("Hello", "HELLO"),
+            ("world", "WORLD"),
+            ("hello  world", "HELLO  WORLD"),
+            ("helloworld", "HELLOWORLD"),
+            ("hello-world", "HELLO-WORLD"),
+            ("hello_world_here", "HELLO_WORLD_HERE"),
+            ("hello_WORLD", "HELLO_WORLD"),
+            ("mixedCaseString", "MIXEDCASESTRING"),
+        ];
+
+        for (input, expected) in tests {
+            assert_eq!(to_upper_case(input.chars()), expected)
+        }
     }
 
     #[test]
     fn test_pascal_case_conversion() {
-        let pascal_test = case_tester(to_pascal_case);
-        pascal_test("hello world", "HelloWorld");
-        pascal_test("Hello World", "HelloWorld");
-        pascal_test("hello_world", "HelloWorld");
-        pascal_test("HELLO_WORLD", "HelloWorld");
-        pascal_test("hello-world", "HelloWorld");
-        pascal_test("hello  world", "HelloWorld");
-        pascal_test("   hello world", "HelloWorld");
-        pascal_test("hello\tworld", "HelloWorld");
-        pascal_test("HELLO  WORLD", "HelloWorld");
-        pascal_test("HELLO-world", "HelloWorld");
-        pascal_test("hello  WORLD ", "HelloWorld");
-        pascal_test("helloWorld", "HelloWorld");
+        let tests = [
+            ("hello world", "HelloWorld"),
+            ("Hello World", "HelloWorld"),
+            ("hello_world", "HelloWorld"),
+            ("HELLO_WORLD", "HelloWorld"),
+            ("hello-world", "HelloWorld"),
+            ("hello  world", "HelloWorld"),
+            ("   hello world", "HelloWorld"),
+            ("hello\tworld", "HelloWorld"),
+            ("HELLO  WORLD", "HelloWorld"),
+            ("HELLO-world", "HelloWorld"),
+            ("hello  WORLD ", "HelloWorld"),
+            ("helloWorld", "HelloWorld"),
+        ];
+
+        for (input, expected) in tests {
+            assert_eq!(to_pascal_case(input.chars()), expected)
+        }
     }
 
     #[test]
     fn test_alternate_case_conversion() {
-        let alternate_test = case_tester(to_alternate_case);
-        alternate_test("hello world", "HELLO WORLD");
-        alternate_test("Hello World", "hELLO wORLD");
-        alternate_test("helLo_woRlD", "HELlO_WOrLd");
-        alternate_test("HELLO_world", "hello_WORLD");
-        alternate_test("hello-world", "HELLO-WORLD");
-        alternate_test("Hello-world", "hELLO-WORLD");
-        alternate_test("hello", "HELLO");
-        alternate_test("HELLO", "hello");
-        alternate_test("hello123", "HELLO123");
-        alternate_test("hello WORLD", "HELLO world");
-        alternate_test("HELLO123 world", "hello123 WORLD");
-        alternate_test("world hello", "WORLD HELLO");
+        let tests = [
+            ("hello world", "HELLO WORLD"),
+            ("Hello World", "hELLO wORLD"),
+            ("helLo_woRlD", "HELlO_WOrLd"),
+            ("HELLO_world", "hello_WORLD"),
+            ("hello-world", "HELLO-WORLD"),
+            ("Hello-world", "hELLO-WORLD"),
+            ("hello", "HELLO"),
+            ("HELLO", "hello"),
+            ("hello123", "HELLO123"),
+            ("hello WORLD", "HELLO world"),
+            ("HELLO123 world", "hello123 WORLD"),
+            ("world hello", "WORLD HELLO"),
+        ];
+
+        for (input, expected) in tests {
+            assert_eq!(to_alternate_case(input.chars()), expected)
+        }
     }
 
     #[test]
     fn test_title_case_conversion() {
-        let title_test = case_tester(to_title_case);
-        title_test("hello world", "Hello World");
-        title_test("Hello World", "Hello World");
-        title_test("hello_world", "Hello World");
-        title_test("HELLO_WORLD", "Hello World");
-        title_test("hello-world", "Hello World");
+        let tests = [
+            ("hello world", "Hello World"),
+            ("Hello World", "Hello World"),
+            ("hello_world", "Hello World"),
+            ("HELLO_WORLD", "Hello World"),
+            ("hello-world", "Hello World"),
+            ("hello  world", "Hello World"),
+            ("   hello world", "Hello World"),
+            ("hello\tworld", "Hello World"),
+            // ("HELLO  WORLD", "Hello World"),
+            ("HELLO-world", "Hello World"),
+            // ("hello  WORLD ", "Hello World"),
+            // ("helloWorld", "Hello World"),
+        ];
 
-        title_test("hello  world", "Hello World");
-
-        title_test("   hello world", "Hello World");
-        title_test("hello\tworld", "Hello World");
-        // title_test("HELLO  WORLD", "Hello World");
-        title_test("HELLO-world", "Hello World");
-        // title_test("hello  WORLD ", "Hello World");
-        // title_test("helloWorld", "Hello World");
+        for (input, expected) in tests {
+            assert_eq!(to_title_case(input.chars()), expected)
+        }
     }
 
     #[test]
     fn test_kebab_case_conversion() {
-        let kebab_test = case_tester(to_kebab_case);
-        kebab_test("helloWorld", "hello-world");
-        kebab_test("HelloWorld", "hello-world");
-        kebab_test("hello_world", "hello-world");
-        kebab_test("HELLO_WORLD", "hello-world");
-        kebab_test("hello-world", "hello-world");
-        kebab_test("hello  world", "hello-world");
-        kebab_test("hello\tworld", "hello-world");
-        kebab_test("HELLO  WORLD", "hello-world");
-        kebab_test("HELLO-world", "hello-world");
-        kebab_test("hello  WORLD ", "hello-world");
-        kebab_test("helloWorld", "hello-world");
-        kebab_test("HelloWorld123", "hello-world123");
+        let tests = [
+            ("helloWorld", "hello-world"),
+            ("HelloWorld", "hello-world"),
+            ("hello_world", "hello-world"),
+            ("HELLO_WORLD", "hello-world"),
+            ("hello-world", "hello-world"),
+            ("hello  world", "hello-world"),
+            ("hello\tworld", "hello-world"),
+            ("HELLO  WORLD", "hello-world"),
+            ("HELLO-world", "hello-world"),
+            ("hello  WORLD ", "hello-world"),
+            ("helloWorld", "hello-world"),
+            ("HelloWorld123", "hello-world123"),
+        ];
+
+        for (input, expected) in tests {
+            assert_eq!(to_kebab_case(input.chars()), expected)
+        }
     }
 
     #[test]
     fn test_snake_case_conversion() {
-        let snake_test = case_tester(to_snake_case);
-        snake_test("helloWorld", "hello_world");
-        snake_test("HelloWorld", "hello_world");
-        snake_test("hello world", "hello_world");
-        snake_test("HELLO WORLD", "hello_world");
-        snake_test("hello-world", "hello_world");
-        snake_test("hello  world", "hello_world");
-        snake_test("hello\tworld", "hello_world");
-        snake_test("HELLO  WORLD", "hello_world");
-        snake_test("HELLO-world", "hello_world");
-        snake_test("hello  WORLD ", "hello_world");
-        snake_test("helloWorld", "hello_world");
-        snake_test("helloWORLD123", "hello_world123");
+        let tests = [
+            ("helloWorld", "hello_world"),
+            ("HelloWorld", "hello_world"),
+            ("hello world", "hello_world"),
+            ("HELLO WORLD", "hello_world"),
+            ("hello-world", "hello_world"),
+            ("hello  world", "hello_world"),
+            ("hello\tworld", "hello_world"),
+            ("HELLO  WORLD", "hello_world"),
+            ("HELLO-world", "hello_world"),
+            ("hello  WORLD ", "hello_world"),
+            ("helloWorld", "hello_world"),
+            ("helloWORLD123", "hello_world123"),
+        ];
+
+        for (input, expected) in tests {
+            assert_eq!(to_snake_case(input.chars()), expected)
+        }
     }
 }
