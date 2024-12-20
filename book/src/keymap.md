@@ -250,8 +250,6 @@ Various commands for changing the case of text in different ways.
 | `k`              | Switch text to kebab-case                        | `switch_to_kebab_case`     |
 | `a`              | Switch text to aLTERNATE cASE                    | `switch_to_alternate_case` |
 
-TODO: Mappings for selecting syntax nodes (a superset of `[`).
-
 #### Match mode
 
 Accessed by typing `m` in [normal mode](#normal-mode).
