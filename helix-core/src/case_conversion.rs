@@ -2,6 +2,114 @@ use crate::Tendril;
 
 // todo: should this be grapheme aware?
 
+pub fn to_simple_case_with(
+    text: impl Iterator<Item = char>,
+    buf: &mut Tendril,
+    transform_char: impl Fn(&char) -> char,
+) {
+    for c in text {
+        buf.push(transform_char(&c))
+    }
+}
+
+pub fn to_camel_or_pascal_or_title_case_with(
+    text: impl Iterator<Item = char>,
+    buf: &mut Tendril,
+    capitalize_first: bool,
+    capitalize_rest: bool,
+    separator: Option<char>,
+) {
+    let mut capitalize_next = capitalize_first;
+    let mut prev: Option<char> = None;
+
+    for c in text.skip_while(|ch| ch.is_whitespace()) {
+        if c.is_alphanumeric() {
+            if prev.is_some_and(|p| p.is_lowercase()) && c.is_uppercase() {
+                capitalize_next = true;
+            }
+            if capitalize_next && capitalize_rest {
+                buf.push(if capitalize_rest {
+                    c.to_ascii_uppercase()
+                } else {
+                    c
+                });
+                capitalize_next = false;
+            } else {
+                buf.extend(c.to_lowercase());
+            }
+        } else {
+            capitalize_next = true;
+            if let Some(separator) = separator {
+                if prev.is_some_and(|p| p != separator) {
+                    buf.push(separator);
+                }
+            }
+        }
+        prev = Some(c);
+    }
+}
+
+pub fn to_case_with_separator(
+    text: impl Iterator<Item = char>,
+    buf: &mut Tendril,
+    separator: char,
+) {
+    let mut prev: Option<char> = None;
+
+    for c in text.skip_while(|ch| ch.is_whitespace()) {
+        if c.is_alphanumeric() {
+            if prev.is_some_and(|p| p.is_lowercase()) && c.is_uppercase()
+                || !prev.is_some_and(|p| p.is_alphanumeric()) && !buf.is_empty()
+            {
+                buf.push(separator);
+            }
+
+            buf.push(c.to_ascii_lowercase());
+        }
+        prev = Some(c);
+    }
+}
+
+pub fn to_alternate_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
+    to_simple_case_with(text, buf, |c| {
+        if c.is_uppercase() {
+            c.to_ascii_lowercase()
+        } else if c.is_lowercase() {
+            c.to_ascii_uppercase()
+        } else {
+            *c
+        }
+    });
+}
+
+pub fn to_upper_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
+    to_simple_case_with(text, buf, char::to_ascii_uppercase);
+}
+
+pub fn to_lower_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
+    to_simple_case_with(text, buf, char::to_ascii_lowercase);
+}
+
+pub fn to_kebab_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
+    to_case_with_separator(text, buf, '-');
+}
+
+pub fn to_snake_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
+    to_case_with_separator(text, buf, '_');
+}
+
+pub fn to_title_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
+    to_camel_or_pascal_or_title_case_with(text, buf, true, true, Some(' '));
+}
+
+pub fn to_camel_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
+    to_camel_or_pascal_or_title_case_with(text, buf, false, true, None);
+}
+
+pub fn to_pascal_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
+    to_camel_or_pascal_or_title_case_with(text, buf, true, true, None);
+}
+
 fn to_case<I>(text: I, to_case_with: fn(I, &mut Tendril)) -> Tendril
 where
     I: Iterator<Item = char>,
@@ -41,114 +149,6 @@ pub fn to_kebab_case(text: impl Iterator<Item = char>) -> Tendril {
 
 pub fn to_snake_case(text: impl Iterator<Item = char>) -> Tendril {
     to_case(text, to_snake_case_with)
-}
-
-pub fn to_upper_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
-    for c in text {
-        for c in c.to_uppercase() {
-            buf.push(c)
-        }
-    }
-}
-
-pub fn to_lower_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
-    for c in text {
-        for c in c.to_lowercase() {
-            buf.push(c)
-        }
-    }
-}
-
-pub fn to_alternate_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
-    for c in text {
-        if c.is_uppercase() {
-            buf.extend(c.to_lowercase())
-        } else if c.is_lowercase() {
-            buf.extend(c.to_uppercase())
-        } else {
-            buf.push(c)
-        }
-    }
-}
-
-pub fn to_camel_or_pascal_or_title_case_with(
-    text: impl Iterator<Item = char>,
-    buf: &mut Tendril,
-    capitalize_first: bool,
-    separator: Option<char>,
-) {
-    let mut capitalize_next = capitalize_first;
-    let mut prev: Option<char> = None;
-
-    for c in text.skip_while(|ch| ch.is_whitespace()) {
-        if c.is_alphanumeric() {
-            if prev.is_some_and(|p| p.is_lowercase()) && c.is_uppercase() {
-                capitalize_next = true;
-            }
-            if capitalize_next {
-                buf.extend(c.to_uppercase());
-                capitalize_next = false;
-            } else {
-                buf.extend(c.to_lowercase());
-            }
-        } else {
-            capitalize_next = true;
-            if let Some(separator) = separator {
-                if prev.is_some_and(|p| p != separator) {
-                    buf.push(separator);
-                }
-            }
-        }
-        prev = Some(c);
-    }
-}
-
-pub fn to_case_with_separator(
-    text: impl Iterator<Item = char>,
-    buf: &mut Tendril,
-    separator: char,
-) {
-    let mut prev_is_lowercase = false;
-    let mut prev_is_alphanumeric = false;
-
-    for c in text.skip_while(|ch| ch.is_whitespace()) {
-        if c.is_alphanumeric() {
-            if prev_is_lowercase && c.is_uppercase() || !prev_is_alphanumeric && !buf.is_empty() {
-                buf.push(separator);
-            }
-
-            buf.push(c.to_ascii_lowercase());
-            prev_is_lowercase = c.is_lowercase();
-            prev_is_alphanumeric = true;
-        } else {
-            prev_is_lowercase = false;
-            prev_is_alphanumeric = false;
-        }
-    }
-
-    if buf.ends_with(separator) {
-        buf.pop();
-    }
-}
-
-pub fn to_kebab_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
-    to_case_with_separator(text, buf, '-');
-}
-
-pub fn to_snake_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
-    to_case_with_separator(text, buf, '_');
-}
-
-pub fn to_title_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
-    to_camel_or_pascal_or_title_case_with(text, buf, true, Some(' '));
-}
-
-pub fn to_camel_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
-    to_camel_or_pascal_or_title_case_with(text, buf, false, None);
-}
-
-pub fn to_pascal_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
-    to_camel_or_pascal_or_title_case_with(text, buf, true, None);
 }
 
 #[cfg(test)]
