@@ -573,6 +573,7 @@ impl MappableCommand {
         dap_disable_exceptions, "Disable exception breakpoints",
         shell_pipe, "Pipe selections through shell command",
         shell_pipe_to, "Pipe selections into shell command ignoring output",
+        shell_pipe_all, "Pipe entire document into shell command ignoring output.",
         shell_insert_output, "Insert shell command output before selections",
         shell_append_output, "Append shell command output after selections",
         shell_keep_pipe, "Filter selections with shell predicate",
@@ -5857,6 +5858,10 @@ fn shell_pipe(cx: &mut Context) {
 
 fn shell_pipe_to(cx: &mut Context) {
     shell_prompt(cx, "pipe-to:".into(), ShellBehavior::Ignore);
+}
+
+fn shell_pipe_all(cx: &mut Context) {
+    shell_prompt(cx, "pipe-all:".into(), ShellBehavior::Ignore);
 }
 
 fn shell_insert_output(cx: &mut Context) {
