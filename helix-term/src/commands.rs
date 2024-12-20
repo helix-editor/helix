@@ -1717,12 +1717,13 @@ fn replace(cx: &mut Context) {
 
 fn switch_case_impl<F>(cx: &mut Context, change_fn: F)
 where
-    F: Fn(RopeSlice) -> Tendril,
+    F: Fn(&dyn Iterator<Item = char>) -> Tendril,
 {
     let (view, doc) = current!(cx.editor);
     let selection = doc.selection(view.id);
     let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
-        let text: Tendril = change_fn(range.slice(doc.text().slice(..)));
+        let chars = range.slice(doc.text().slice(..)).chars();
+        let text = change_fn(&chars);
 
         (range.from(), range.to(), Some(text))
     });
