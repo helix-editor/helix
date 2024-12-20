@@ -1,6 +1,6 @@
 use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
-use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Selection};
+use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Range, Selection};
 use helix_lsp::{
     lsp::{self, notification::Notification},
     util::lsp_range_to_range,
@@ -210,7 +210,18 @@ impl Application {
                         // opened last is focused on.
                         let view_id = editor.tree.focus;
                         let doc = doc_mut!(editor, &doc_id);
-                        let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+                        let pos = Selection::new(
+                            pos.iter()
+                                .map(|position| {
+                                    Range::point(pos_at_coords(
+                                        doc.text().slice(..),
+                                        *position,
+                                        true,
+                                    ))
+                                })
+                                .collect(),
+                            0,
+                        );
                         doc.set_selection(view_id, pos);
                     }
                 }
