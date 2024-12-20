@@ -1,41 +1,4 @@
-use helix_core::unicode::segmentation::UnicodeSegmentation;
-use helix_loader::grammar::git;
-
-use crate::{helpers::lang_config_raw, DynError};
-
-pub fn treesittere() -> Result<(), DynError> {
-    let current_dir = std::env::current_dir().expect("Failed to get current directory");
-
-    for language in lang_config_raw().grammar {
-        let bold_green = "\x1b[1;32m";
-        let reset = "\x1b[0m";
-        let underline = "\x1b[4m";
-        let blue = "\x1b[34m";
-
-        let result = git(current_dir.as_path(), ["ls-remote", &language.source.git])?;
-
-        let latest_commit = result.split_word_bounds().next().unwrap();
-
-        let current_commit = language.source.rev;
-
-        let status = if current_commit == latest_commit {
-            "Up to date       ".into()
-        } else {
-            format!("{bold_green}Updates available{reset}")
-        };
-        let repo = language.source.git;
-        let name = language.name;
-
-        let link =
-            format!("{underline}{blue}{repo}/compare/{current_commit}...{latest_commit}{reset}");
-
-        println!("    {status} {name}\n    {link}\n");
-    }
-
-    println!("Query check succeeded");
-
-    Ok(())
-}
+use crate::DynError;
 
 pub fn query_check() -> Result<(), DynError> {
     use crate::helpers::lang_config;
