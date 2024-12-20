@@ -7,7 +7,7 @@
 
 ((procedure_declaration
   (attributes (attribute "@" "(" (identifier) @attr_name ")"))
-  (identifier) (procedure (block)) @test.inside) @test.around
+  (identifier) (procedure (block) @test.inside)) @test.around
  (#match? @attr_name "test"))
 
 (comment) @comment.inside
