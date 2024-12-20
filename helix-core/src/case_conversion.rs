@@ -185,6 +185,14 @@ mod tests {
         camel_test("Hello World", "helloWorld");
         camel_test("hello_world", "helloWorld");
         camel_test("HELLO_WORLD", "helloWorld");
+        camel_test("hello-world", "helloWorld");
+        camel_test("hello  world", "helloWorld");
+        // camel_test("   hello world", "helloWorld");
+        camel_test("hello\tworld", "helloWorld");
+        camel_test("HELLO  WORLD", "helloWorld");
+        camel_test("HELLO-world", "helloWorld");
+        camel_test("hello  WORLD ", "helloWorld");
+        // camel_test("helloWorld", "helloWorld");
     }
 
     #[test]
@@ -194,6 +202,14 @@ mod tests {
         lower_test("HELLO WORLD", "hello world");
         lower_test("hello_world", "hello_world");
         lower_test("Hello-World", "hello-world");
+        lower_test("Hello", "hello");
+        lower_test("WORLD", "world");
+        lower_test("hello  world", "hello  world");
+        lower_test("HELLOworld", "helloworld");
+        lower_test("hello-world", "hello-world");
+        lower_test("hello_world_here", "hello_world_here");
+        lower_test("HELLO_world", "hello_world");
+        lower_test("MixEdCaseString", "mixedcasestring");
     }
 
     #[test]
@@ -203,6 +219,14 @@ mod tests {
         upper_test("hello world", "HELLO WORLD");
         upper_test("hello_world", "HELLO_WORLD");
         upper_test("Hello-World", "HELLO-WORLD");
+        upper_test("Hello", "HELLO");
+        upper_test("world", "WORLD");
+        upper_test("hello  world", "HELLO  WORLD");
+        upper_test("helloworld", "HELLOWORLD");
+        upper_test("hello-world", "HELLO-WORLD");
+        upper_test("hello_world_here", "HELLO_WORLD_HERE");
+        upper_test("hello_WORLD", "HELLO_WORLD");
+        upper_test("mixedCaseString", "MIXEDCASESTRING");
     }
 
     #[test]
@@ -212,6 +236,14 @@ mod tests {
         pascal_test("Hello World", "HelloWorld");
         pascal_test("hello_world", "HelloWorld");
         pascal_test("HELLO_WORLD", "HelloWorld");
+        pascal_test("hello-world", "HelloWorld");
+        pascal_test("hello  world", "HelloWorld");
+        pascal_test("   hello world", "HelloWorld");
+        pascal_test("hello\tworld", "HelloWorld");
+        pascal_test("HELLO  WORLD", "HelloWorld");
+        pascal_test("HELLO-world", "HelloWorld");
+        pascal_test("hello  WORLD ", "HelloWorld");
+        // pascal_test("helloWorld", "HelloWorld");
     }
 
     #[test]
@@ -220,6 +252,15 @@ mod tests {
         alternate_test("hello world", "HELLO WORLD");
         alternate_test("Hello World", "hELLO wORLD");
         alternate_test("helLo_woRlD", "HELlO_WOrLd");
+        alternate_test("HELLO_world", "hello_WORLD");
+        alternate_test("hello-world", "HELLO-WORLD");
+        alternate_test("Hello-world", "hELLO-WORLD");
+        alternate_test("hello", "HELLO");
+        alternate_test("HELLO", "hello");
+        alternate_test("hello123", "HELLO123");
+        alternate_test("hello WORLD", "HELLO world");
+        alternate_test("HELLO123 world", "hello123 WORLD");
+        alternate_test("world hello", "WORLD HELLO");
     }
 
     #[test]
@@ -229,6 +270,14 @@ mod tests {
         title_test("Hello World", "Hello World");
         title_test("hello_world", "Hello World");
         title_test("HELLO_WORLD", "Hello World");
+        title_test("hello-world", "Hello World");
+        // title_test("hello  world", "Hello World");
+        title_test("   hello world", "Hello World");
+        title_test("hello\tworld", "Hello World");
+        // title_test("HELLO  WORLD", "Hello World");
+        title_test("HELLO-world", "Hello World");
+        // title_test("hello  WORLD ", "Hello World");
+        // title_test("helloWorld", "Hello World");
     }
 
     #[test]
@@ -238,6 +287,14 @@ mod tests {
         kebab_test("HelloWorld", "hello-world");
         kebab_test("hello_world", "hello-world");
         kebab_test("HELLO_WORLD", "hello-world");
+        kebab_test("hello-world", "hello-world");
+        kebab_test("hello  world", "hello-world");
+        kebab_test("hello\tworld", "hello-world");
+        kebab_test("HELLO  WORLD", "hello-world");
+        kebab_test("HELLO-world", "hello-world");
+        kebab_test("hello  WORLD ", "hello-world");
+        kebab_test("helloWorld", "hello-world");
+        kebab_test("HelloWorld123", "hello-world123");
     }
 
     #[test]
@@ -247,5 +304,13 @@ mod tests {
         snake_test("HelloWorld", "hello_world");
         snake_test("hello world", "hello_world");
         snake_test("HELLO WORLD", "hello_world");
+        snake_test("hello-world", "hello_world");
+        snake_test("hello  world", "hello_world");
+        snake_test("hello\tworld", "hello_world");
+        snake_test("HELLO  WORLD", "hello_world");
+        snake_test("HELLO-world", "hello_world");
+        snake_test("hello  WORLD ", "hello_world");
+        snake_test("helloWorld", "hello_world");
+        // snake_test("HELLOworld123", "hello_world123");
     }
 }
