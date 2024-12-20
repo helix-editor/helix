@@ -19,15 +19,15 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "R" => replace_with_yanked,
         "A-." =>  repeat_last_motion,
 
-        "~" => switch_to_alternate_case,
+        // "~" => switch_to_alternate_case,
         "`" => { "Case"
-            "l" => switch_to_lowercase,
-            "u" => switch_to_uppercase,
+            // "l" => switch_to_lowercase,
+            // "u" => switch_to_uppercase,
             "p" => switch_to_pascal_case,
-            "c" => switch_to_camel_case,
-            "t" => switch_to_title_case,
-            "s" => switch_to_snake_case,
-            "k" => switch_to_kebab_case,
+            // "c" => switch_to_camel_case,
+            // "t" => switch_to_title_case,
+            // "s" => switch_to_snake_case,
+            // "k" => switch_to_kebab_case,
         },
 
         "home" => goto_line_start,
