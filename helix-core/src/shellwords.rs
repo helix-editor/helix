@@ -139,6 +139,19 @@ impl<'a> Args<'a> {
         }
     }
 
+    /// Convenient function to return an empty `Args`.
+    ///
+    /// When used in any iteration, it will always return `None`.
+    #[inline(always)]
+    pub const fn empty() -> Self {
+        Self {
+            input: "",
+            idx: 0,
+            start: 0,
+            count: 0,
+        }
+    }
+
     #[inline]
     pub fn is_empty(&self) -> bool {
         self.input.is_empty()
@@ -176,24 +189,16 @@ impl<'a> Args<'a> {
         &self.input[self.idx..]
     }
 
+    #[must_use]
+    fn peek(&self) -> Option<&str> {
+        self.clone().next()
+    }
+
     /// Returns the number of arguments given in a command.
     ///
     /// This count is aware of all parsing rules for `Args`.
     pub fn arg_count(&self) -> usize {
         self.count
-    }
-
-    /// Convenient function to return an empty `Args`.
-    ///
-    /// When used in any iteration, it will always return `None`.
-    #[inline(always)]
-    pub const fn empty() -> Self {
-        Self {
-            input: "",
-            idx: 0,
-            start: 0,
-            count: 0,
-        }
     }
 
     /// Takes in an iterator of flags and checks to see if the next argument to be yielded matches, returning it.
@@ -210,16 +215,14 @@ impl<'a> Args<'a> {
             return None;
         }
 
-        let mut args = self.clone();
-
-        if let Some(arg) = args.next() {
+        if let Some(arg) = self.peek() {
             if arg == "--" {
                 // Consume the `--` leaving only the remaining command arguments left to yield.
                 self.next();
                 return None;
             }
 
-            if !arg.starts_with("--") || !arg.starts_with('-') {
+            if !arg.starts_with("--") && !arg.starts_with('-') {
                 return None;
             }
 
