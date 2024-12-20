@@ -101,6 +101,23 @@ impl JumpList {
         self.jumps.iter()
     }
 
+    pub fn remove_from_head(&mut self, to_remove: usize) {
+        for _ in 0..to_remove {
+            if self.jumps.pop_front().is_none() {
+                break;
+            }
+        }
+        self.current = self.jumps.len();
+    }
+
+    pub fn clear(&mut self) {
+        self.jumps.clear();
+    }
+
+    pub fn len(&self) -> usize {
+        self.jumps.len()
+    }
+
     /// Applies a [`Transaction`] of changes to the jumplist.
     /// This is necessary to ensure that changes to documents do not leave jump-list
     /// selections pointing to parts of the text which no longer exist.
