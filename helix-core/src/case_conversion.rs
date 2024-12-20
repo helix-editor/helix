@@ -24,6 +24,14 @@ pub fn complex_case_conversion(
 
     for c in text.skip_while(|ch| ch.is_whitespace()) {
         if c.is_alphanumeric() {
+            if let Some(separator) = separator {
+                if prev.is_some_and(|p| p != separator)
+                    && prev.is_some_and(|p| p.is_lowercase())
+                    && c.is_uppercase()
+                {
+                    buf.push(separator);
+                }
+            }
             if prev.is_some_and(|p| p.is_lowercase()) && c.is_uppercase() {
                 capitalize_next = true;
             }
@@ -266,18 +274,18 @@ mod tests {
     #[test]
     fn test_title_case_conversion() {
         let tests = [
-            // ("hello world", "Hello World"),
-            // ("Hello World", "Hello World"),
-            // ("hello_world", "Hello World"),
-            // ("HELLO_WORLD", "Hello World"),
-            // ("hello-world", "Hello World"),
-            // ("hello  world", "Hello World"),
-            // ("   hello world", "Hello World"),
-            // ("hello\tworld", "Hello World"),
-            // ("HELLO  WORLD", "Hello World"),
-            // ("HELLO-world", "Hello World"),
+            ("hello world", "Hello World"),
+            ("Hello World", "Hello World"),
+            ("hello_world", "Hello World"),
+            ("HELLO_WORLD", "Hello World"),
+            ("hello-world", "Hello World"),
+            ("hello  world", "Hello World"),
+            ("   hello world", "Hello World"),
+            ("hello\tworld", "Hello World"),
+            ("HELLO  WORLD", "Hello World"),
+            ("HELLO-world", "Hello World"),
             ("hello  WORLD ", "Hello World"),
-            // ("helloWorld", "Hello World"),
+            ("helloWorld", "Hello World"),
         ];
 
         for (input, expected) in tests {
