@@ -147,7 +147,7 @@
 | nunjucks | ✓ |  |  |  |
 | ocaml | ✓ |  | ✓ | `ocamllsp` |
 | ocaml-interface | ✓ |  |  | `ocamllsp` |
-| odin | ✓ |  | ✓ | `ols` |
+| odin | ✓ | ✓ | ✓ | `ols` |
 | ohm | ✓ | ✓ | ✓ |  |
 | opencl | ✓ | ✓ | ✓ | `clangd` |
 | openscad | ✓ |  |  | `openscad-lsp` |
