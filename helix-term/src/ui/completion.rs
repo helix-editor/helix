@@ -85,26 +85,22 @@ impl menu::Item for CompletionItem {
                 Some(lsp::CompletionItemKind::ENUM) => "enum".into(),
                 Some(lsp::CompletionItemKind::KEYWORD) => "keyword".into(),
                 Some(lsp::CompletionItemKind::SNIPPET) => "snippet".into(),
-                Some(lsp::CompletionItemKind::COLOR) => {
-                    let maybe_hex_color = match &item.documentation {
-                        Some(Documentation::String(value)) => Some(value),
-                        Some(Documentation::MarkupContent(MarkupContent { value, .. })) => {
-                            Some(value)
-                        }
-                        None => None,
-                    };
-
-                    maybe_hex_color.map_or("color".into(), |hex| {
-                        match Color::from_hex(hex) {
-                            Some(color) => Spans::from(vec![
-                                Span::raw("color "),
-                                Span::styled("■", Style::default().fg(color)),
-                            ]),
-                            // there is documentation but it cannot be parsed as a hex color
-                            None => "color".into(),
-                        }
+                Some(lsp::CompletionItemKind::COLOR) => item
+                    .documentation
+                    .as_ref()
+                    .and_then(|docs| {
+                        let text = match docs {
+                            Documentation::String(text) => text,
+                            Documentation::MarkupContent(MarkupContent { value, .. }) => value,
+                        };
+                        Color::from_hex(text)
                     })
-                }
+                    .map_or("color".into(), |color| {
+                        Spans::from(vec![
+                            Span::raw("color "),
+                            Span::styled("■", Style::default().fg(color)),
+                        ])
+                    }),
                 Some(lsp::CompletionItemKind::FILE) => "file".into(),
                 Some(lsp::CompletionItemKind::REFERENCE) => "reference".into(),
                 Some(lsp::CompletionItemKind::FOLDER) => "folder".into(),
