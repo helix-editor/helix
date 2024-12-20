@@ -17,6 +17,7 @@ pub mod indent;
 pub mod line_ending;
 pub mod macros;
 pub mod match_brackets;
+pub mod modeline;
 pub mod movement;
 pub mod object;
 mod position;
