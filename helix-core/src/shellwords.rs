@@ -564,7 +564,7 @@ pub trait Flags: Default {
         args: &'i mut Args,
     ) -> anyhow::Result<()>;
 
-    fn prompt(&self) -> Option<&'static str> {
+    fn prompt(&self) -> Option<String> {
         None
     }
 }
