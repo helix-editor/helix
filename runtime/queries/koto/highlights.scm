@@ -35,7 +35,7 @@
 [
   "return"
   "yield"
-] @keyword.return
+] @keyword.control.return
 
 [
   "if"
@@ -44,7 +44,7 @@
   "else if"
   "match"
   "switch"
-] @keyword.conditional
+] @keyword.control.conditional
 
 [
   (break)
@@ -54,21 +54,21 @@
   "loop"
   "until"
   "while"
-] @keyword.repeat
+] @keyword.control.repeat
 
 [
   "throw"
   "try"
   "catch"
   "finally"
-] @keyword.exception
+] @keyword.control.exception
 
 [
   "export"
   "from"
   "import"
   "as"
-] @keyword.import
+] @keyword.control.import
 
 (string (interpolation ("{") @punctuation.special))
 (string (interpolation ("}") @punctuation.special))
@@ -111,7 +111,7 @@
 
 (comment) @comment
 
-(debug) @keyword.debug
+(debug) @keyword
 
 (string) @string
 
