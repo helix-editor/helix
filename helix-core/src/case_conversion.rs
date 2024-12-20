@@ -2,7 +2,6 @@ use crate::Tendril;
 
 // todo: should this be grapheme aware?
 
-/// Converts each character into a different one, with zero context about surrounding characters
 pub fn simple_case_conversion(
     text: impl Iterator<Item = char>,
     buf: &mut Tendril,
