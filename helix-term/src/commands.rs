@@ -19,7 +19,8 @@ pub use typed::*;
 
 use helix_core::{
     case_conversion::{
-        to_alternate_case, to_camel_case, to_lower_case, to_pascal_case, to_upper_case,
+        to_alternate_case, to_camel_case, to_lower_case, to_pascal_case, to_title_case,
+        to_upper_case,
     },
     char_idx_at_visual_offset,
     chars::char_is_word,
@@ -1804,6 +1805,10 @@ fn switch_to_upper_case(cx: &mut Context) {
 
 fn switch_to_alternate_case(cx: &mut Context) {
     switch_case_impl(cx, |chars| to_alternate_case(chars))
+}
+
+fn switch_to_title_case(cx: &mut Context) {
+    switch_case_impl(cx, |chars| to_title_case(chars))
 }
 
 // fn switch_to_snake_case(cx: &mut Context) {

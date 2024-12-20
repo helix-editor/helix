@@ -28,7 +28,11 @@ pub fn to_pascal_case(text: impl Iterator<Item = char>) -> Tendril {
 }
 
 pub fn to_alternate_case(text: impl Iterator<Item = char>) -> Tendril {
-    to_case(text, to_pascal_case_with)
+    to_case(text, to_alternate_case_with)
+}
+
+pub fn to_title_case(text: impl Iterator<Item = char>) -> Tendril {
+    to_case(text, to_title_case_with)
 }
 
 pub fn to_upper_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
@@ -69,6 +73,24 @@ pub fn to_pascal_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) 
         }
         if at_word_start {
             at_word_start = false;
+            buf.extend(c.to_uppercase());
+        } else {
+            buf.push(c)
+        }
+    }
+}
+
+pub fn to_title_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
+    let mut at_word_start = true;
+    for c in text {
+        // we don't count _ as a word char here so case conversions work well
+        if !c.is_alphanumeric() {
+            at_word_start = true;
+            continue;
+        }
+        if at_word_start {
+            at_word_start = false;
+            buf.push(' ');
             buf.extend(c.to_uppercase());
         } else {
             buf.push(c)
