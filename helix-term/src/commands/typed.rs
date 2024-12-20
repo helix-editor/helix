@@ -1124,6 +1124,87 @@ fn theme(
     Ok(())
 }
 
+fn yank(
+    cx: &mut compositor::Context,
+    mut args: Args,
+    flags: Flags,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    // Flags
+    let mut join = false;
+    let mut register: Option<char> = cx.editor.selected_register;
+    let mut primary = false;
+    let mut diagnostic = false;
+
+    flags! {
+        for flags, args => {
+            "join" | "j" =>  join = true,
+            "primary" | "p" => primary = true,
+            "clipboard" | "c" => register = Some('*'),
+            "system" | "s" => register = Some('+'),
+            "diagnostic" | "d" => diagnostic = true,
+            "register" | "r" => {
+                 if let Some(arg) = args.next() {
+                     let mut reg = arg.chars();
+                     ensure!(reg.clone().count() == 1, "invalid register was provided");
+                     register = reg.next();
+                 } else {
+                     bail!("`register` flag was used, but nothing was passed to it");
+                 }
+            },
+        }
+    }
+
+    if diagnostic {
+        let (view, doc) = current_ref!(cx.editor);
+        let primary = doc.selection(view.id).primary();
+
+        // Look only for diagnostics that intersect with the primary selection
+        let diag: Vec<_> = doc
+            .diagnostics()
+            .iter()
+            .filter(|d| primary.overlaps(&helix_core::Range::new(d.range.start, d.range.end)))
+            .map(|d| d.message.clone())
+            .collect();
+        let n = diag.len();
+        if n == 0 {
+            bail!("No diagnostics under primary selection");
+        }
+
+        let register = register.unwrap_or('"');
+
+        cx.editor.registers.write(register, diag)?;
+        cx.editor.set_status(format!(
+            "Yanked {n} diagnostic{} to register {register}",
+            if n == 1 { "" } else { "s" }
+        ));
+
+        return Ok(());
+    }
+
+    if primary && join {
+        bail!("`primary` and `join` were both passed as flags, but are mutually exclusive");
+    }
+
+    if primary {
+        yank_primary_selection_impl(cx.editor, register.unwrap_or('"'));
+        return Ok(());
+    }
+
+    if join {
+        yank_joined_impl(cx.editor, args.rest(), register.unwrap_or('"'));
+        return Ok(());
+    }
+
+    yank_impl(cx.editor, register.unwrap_or('"'));
+
+    Ok(())
+}
+
 fn yank_main_selection_to_clipboard(
     cx: &mut compositor::Context,
     _args: Args,
@@ -3132,6 +3213,48 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         accepts: Some("<separator>"),
         doc: "yank joined selections. a separator can be provided as first argument. default value is newline.",
         fun: yank_joined,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "yank",
+        aliases: &[],
+        flags: flags![
+            {
+                long: "join",
+                short: "j",
+                desc: "joins selection with optional separator",
+                accepts: "<sperator>"
+            },
+            {
+                long: "primary",
+                short: "p",
+                desc: "yanks only the primary selection",
+            },
+            {
+                long: "register",
+                short: "r",
+                desc: "specify the register to yank to",
+                accepts: "<register>",
+            },
+            {
+                long: "clipboard",
+                short: "c",
+                desc: "yanks to the primary (*) clipboard",
+            },
+            {
+                long: "system",
+                short: "s",
+                desc: "yanks to the system (+) clipboard",
+            },
+            {
+                long: "diagnostic",
+                short: "d",
+                desc: "yanks the diagnostic under the primary cursor",
+            },
+        ],
+        accepts: None,
+        doc: "yank selection to clipboard.",
+        fun: yank,
         signature: CommandSignature::none(),
     },
     TypableCommand {
