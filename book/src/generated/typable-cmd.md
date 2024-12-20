@@ -33,6 +33,7 @@
 | `:cquit!`, `:cq!` | force quit with exit code (default 1) ignoring unsaved changes. |
 | `:theme` | change the editor theme (show current theme if no name specified). |
 | `:yank-join` | yank joined selections. a separator can be provided as first argument. default value is newline. |
+| `:yank` | yank selection to clipboard. |
 | `:clipboard-yank` | yank main selection into system clipboard. |
 | `:clipboard-yank-join` | yank joined selections into system clipboard. a separator can be provided as first argument. default value is newline. |
 | `:primary-clipboard-yank` | yank main selection into system primary clipboard. |
