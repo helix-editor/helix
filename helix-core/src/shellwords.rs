@@ -237,22 +237,6 @@ impl<'a> Args<'a> {
 
         None
     }
-
-    pub fn try_extract_flags<F: Flags>(&mut self) -> anyhow::Result<F> {
-        let mut flag = F::default();
-
-        while let Some(arg) = self.next() {
-            if arg == "--" || !arg.starts_with("--") || !arg.starts_with('-') {
-                return Ok(flag);
-            }
-
-            let arg = arg.trim_start_matches("--").trim_start_matches('-');
-
-            flag.extract(arg, self)?;
-        }
-
-        Ok(flag)
-    }
 }
 
 impl<'a> Iterator for Args<'a> {
@@ -558,18 +542,6 @@ pub fn unescape(input: &str) -> Cow<'_, str> {
 
 pub trait IntoFlags: Copy {
     fn into_flags(self) -> impl Iterator<Item = &'static str>;
-}
-
-pub trait Flags: Default {
-    fn extract<'f, 'a, 'i, Args: Iterator<Item = &'a str>>(
-        &'f mut self,
-        arg: &'a str,
-        args: &'i mut Args,
-    ) -> anyhow::Result<()>;
-
-    fn prompt(&self) -> Option<String> {
-        None
-    }
 }
 
 #[cfg(test)]
