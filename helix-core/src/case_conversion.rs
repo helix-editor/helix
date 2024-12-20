@@ -71,6 +71,33 @@ pub fn to_alternate_case_with(text: impl Iterator<Item = char>, buf: &mut Tendri
     }
 }
 
+pub fn to_camel_or_pascal_case_with(
+    text: impl Iterator<Item = char>,
+    buf: &mut Tendril,
+    is_pascal: bool,
+) {
+    let mut capitalize_next = is_pascal;
+    let mut prev_is_lowercase = false;
+
+    for c in text.skip_while(|ch| ch.is_whitespace()) {
+        if c.is_alphanumeric() {
+            if prev_is_lowercase && c.is_uppercase() {
+                capitalize_next = true;
+            }
+            if capitalize_next {
+                buf.extend(c.to_uppercase());
+                capitalize_next = false;
+            } else {
+                buf.extend(c.to_lowercase());
+            }
+            prev_is_lowercase = c.is_lowercase();
+        } else {
+            capitalize_next = true;
+            prev_is_lowercase = false;
+        }
+    }
+}
+
 pub fn to_title_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
     let mut capitalize_next = true;
     let mut prev: Option<char> = None;
@@ -93,7 +120,7 @@ pub fn to_title_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
         prev = Some(c);
     }
 
-    *buf = buf.trim().into();
+    *buf = buf.trim_end().into();
 }
 
 pub fn to_case_with_separator(
@@ -138,33 +165,6 @@ pub fn to_camel_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
 
 pub fn to_pascal_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
     to_camel_or_pascal_case_with(text, buf, true);
-}
-
-pub fn to_camel_or_pascal_case_with(
-    text: impl Iterator<Item = char>,
-    buf: &mut Tendril,
-    is_pascal: bool,
-) {
-    let mut capitalize_next = is_pascal;
-    let mut prev_is_lowercase = false;
-
-    for c in text.skip_while(|ch| ch.is_whitespace()) {
-        if c.is_alphanumeric() {
-            if prev_is_lowercase && c.is_uppercase() {
-                capitalize_next = true;
-            }
-            if capitalize_next {
-                buf.extend(c.to_uppercase());
-                capitalize_next = false;
-            } else {
-                buf.extend(c.to_lowercase());
-            }
-            prev_is_lowercase = c.is_lowercase();
-        } else {
-            capitalize_next = true;
-            prev_is_lowercase = false;
-        }
-    }
 }
 
 #[cfg(test)]
