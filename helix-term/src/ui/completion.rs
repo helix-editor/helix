@@ -28,10 +28,7 @@ use helix_view::{graphics::Rect, Document, Editor};
 
 use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
 
-use helix_lsp::{
-    lsp::{self, Documentation, MarkupContent},
-    util, OffsetEncoding,
-};
+use helix_lsp::{lsp, util, OffsetEncoding};
 
 impl menu::Item for CompletionItem {
     type Data = Style;
@@ -90,8 +87,10 @@ impl menu::Item for CompletionItem {
                     .as_ref()
                     .and_then(|docs| {
                         let text = match docs {
-                            Documentation::String(text) => text,
-                            Documentation::MarkupContent(MarkupContent { value, .. }) => value,
+                            lsp::Documentation::String(text) => text,
+                            lsp::Documentation::MarkupContent(lsp::MarkupContent {
+                                value, ..
+                            }) => value,
                         };
                         Color::from_hex(text)
                     })
