@@ -18,7 +18,9 @@ use tui::{
 pub use typed::*;
 
 use helix_core::{
-    case_conversion::to_pascal_case,
+    case_conversion::{
+        to_alternate_case, to_camel_case, to_lower_case, to_pascal_case, to_upper_case,
+    },
     char_idx_at_visual_offset,
     chars::char_is_word,
     command_line, comment,
@@ -353,11 +355,11 @@ impl MappableCommand {
         extend_prev_char, "Extend to previous occurrence of char",
         repeat_last_motion, "Repeat last motion",
         replace, "Replace with new char",
-        // switch_to_alternate_case, "Switch to aLTERNATE cASE",
-        // switch_to_uppercase, "Switch to UPPERCASE",
-        // switch_to_lowercase, "Switch to lowercase",
+        switch_to_alternate_case, "Switch to aLTERNATE cASE",
+        switch_to_upper_case, "Switch to UPPERCASE",
+        switch_to_lower_case, "Switch to lowercase",
         switch_to_pascal_case, "Switch to PascalCase",
-        // switch_to_camel_case, "Switch to camelCase",
+        switch_to_camel_case, "Switch to camelCase",
         // switch_to_title_case, "Switch to Title Case",
         // switch_to_snake_case, "Switch to snake_case",
         // switch_to_kebab_case, "Switch to kebab-case",
@@ -1715,23 +1717,6 @@ fn replace(cx: &mut Context) {
     })
 }
 
-// fn switch_to_alternate_case(cx: &mut Context) {
-//     switch_case_impl(cx, |string| {
-//         string
-//             .chars()
-//             .flat_map(|ch| {
-//                 if ch.is_lowercase() {
-//                     ch.to_uppercase().collect()
-//                 } else if ch.is_uppercase() {
-//                     ch.to_lowercase().collect()
-//                 } else {
-//                     vec![ch]
-//                 }
-//             })
-//             .collect()
-//     });
-// }
-
 fn switch_case_impl<F>(cx: &mut Context, change_fn: F)
 where
     F: for<'a> Fn(&mut (dyn Iterator<Item = char> + 'a)) -> Tendril,
@@ -1805,13 +1790,21 @@ fn switch_to_pascal_case(cx: &mut Context) {
     switch_case_impl(cx, |chars| to_pascal_case(chars))
 }
 
-// fn switch_to_camel_case(cx: &mut Context) {
-//     switch_heck_case_impl(cx, |str| str.to_lower_camel_case())
-// }
+fn switch_to_camel_case(cx: &mut Context) {
+    switch_case_impl(cx, |chars| to_camel_case(chars))
+}
 
-// fn switch_to_title_case(cx: &mut Context) {
-//     switch_heck_case_impl(cx, |str| str.to_title_case())
-// }
+fn switch_to_lower_case(cx: &mut Context) {
+    switch_case_impl(cx, |chars| to_upper_case(chars))
+}
+
+fn switch_to_upper_case(cx: &mut Context) {
+    switch_case_impl(cx, |chars| to_lower_case(chars))
+}
+
+fn switch_to_alternate_case(cx: &mut Context) {
+    switch_case_impl(cx, |chars| to_alternate_case(chars))
+}
 
 // fn switch_to_snake_case(cx: &mut Context) {
 //     switch_heck_case_impl(cx, |str| str.to_snake_case())
