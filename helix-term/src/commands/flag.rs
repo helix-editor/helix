@@ -87,6 +87,21 @@ macro_rules! flags {
             $crate::commands::flag::Flags::new(FLAGS)
         }
     };
+    // Extract flags boilerplate
+    (for $flags:expr, $args:expr => { $($flag:pat => $action:expr),* $(,)? }) => {
+        while let Some(flag) = $args.flag(&$flags) {
+            match flag {
+                $(
+                    $flag => {
+                        $action; // Apply the action when the flag matches
+                    }
+                )*
+                _ => {
+                    anyhow::bail!("unhandled command flag `{}`, implementation failed to cover all flags.", flag);
+                }
+            }
+        }
+    };
 }
 
 #[cfg(test)]

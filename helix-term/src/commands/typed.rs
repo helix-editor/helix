@@ -477,16 +477,16 @@ fn write(
         return Ok(());
     }
 
-    if let Some(flag) = args.flag(&flags) {
-        match flag {
-            "no-format" => write_impl(cx, args.next(), false, false),
-            _ => {
-                bail!("unhandled command flag `{flag}`, implementation failed to cover all flags.")
-            }
+    // Flags
+    let mut format = true;
+
+    flags! {
+        for flags, args => {
+            "no-format" => format = false,
         }
-    } else {
-        write_impl(cx, args.next(), false, true)
     }
+
+    write_impl(cx, args.next(), false, format)
 }
 
 fn force_write(
@@ -499,16 +499,16 @@ fn force_write(
         return Ok(());
     }
 
-    if let Some(flag) = args.flag(&flags) {
-        match flag {
-            "no-format" => write_impl(cx, args.next(), true, false),
-            _ => {
-                bail!("unhandled command flag `{flag}`, implementation failed to cover all flags.")
-            }
+    // Flags
+    let mut format = true;
+
+    flags! {
+        for flags, args => {
+            "no-format" => format = false,
         }
-    } else {
-        write_impl(cx, args.next(), true, true)
     }
+
+    write_impl(cx, args.next(), true, format)
 }
 
 fn write_buffer_close(
@@ -521,18 +521,18 @@ fn write_buffer_close(
         return Ok(());
     }
 
-    if let Some(flag) = args.flag(&flags) {
-        match flag {
-            "no-format" => write_impl(cx, args.next(), false, false)?,
-            _ => {
-                bail!("unhandled command flag `{flag}`, implementation failed to cover all flags.")
-            }
-        }
-    } else {
-        write_impl(cx, args.next(), false, true)?;
-    };
+    // Flags
+    let mut format = true;
 
+    flags! {
+        for flags, args => {
+            "no-format" => format = false,
+        }
+    }
+
+    write_impl(cx, args.next(), false, format)?;
     let document_ids = buffer_gather_paths_impl(cx.editor, args);
+
     buffer_close_by_ids_impl(cx, &document_ids, false)
 }
 
@@ -546,16 +546,16 @@ fn force_write_buffer_close(
         return Ok(());
     }
 
-    if let Some(flag) = args.flag(&flags) {
-        match flag {
-            "no-format" => write_impl(cx, args.next(), true, false)?,
-            _ => {
-                bail!("unhandled command flag `{flag}`, implementation failed to cover all flags.")
-            }
+    // Flags
+    let mut format = true;
+
+    flags! {
+        for flags, args => {
+            "no-format" => format = false,
         }
-    } else {
-        write_impl(cx, args.next(), true, true)?;
-    };
+    }
+
+    write_impl(cx, args.next(), true, format)?;
 
     let document_ids = buffer_gather_paths_impl(cx.editor, args);
     buffer_close_by_ids_impl(cx, &document_ids, false)
@@ -764,16 +764,16 @@ fn write_quit(
         return Ok(());
     }
 
-    if let Some(flag) = args.flag(&flags) {
-        match flag {
-            "no-format" => write_impl(cx, args.next(), false, false)?,
-            _ => {
-                bail!("unhandled command flag `{flag}`, implementation failed to cover all flags.")
-            }
+    // Flags
+    let mut format = true;
+
+    flags! {
+        for flags, args => {
+            "no-format" => format = false,
         }
-    } else {
-        write_impl(cx, args.next(), false, true)?;
-    };
+    }
+
+    write_impl(cx, args.next(), false, format)?;
 
     cx.block_try_flush_writes()?;
     quit(cx, Args::empty(), flags, event)
@@ -789,16 +789,16 @@ fn force_write_quit(
         return Ok(());
     }
 
-    if let Some(flag) = args.flag(&flags) {
-        match flag {
-            "no-format" => write_impl(cx, args.next(), true, false)?,
-            _ => {
-                bail!("unhandled command flag `{flag}`, implementation failed to cover all flags.")
-            }
+    // Flags
+    let mut format = true;
+
+    flags! {
+        for flags, args => {
+            "no-format" => format = false,
         }
-    } else {
-        write_impl(cx, args.next(), true, true)?;
-    };
+    }
+
+    write_impl(cx, args.next(), true, format)?;
 
     cx.block_try_flush_writes()?;
     force_quit(cx, Args::empty(), flags, event)
@@ -2256,16 +2256,16 @@ fn sort(
         return Ok(());
     }
 
-    if let Some(flag) = args.flag(&flags) {
-        match flag {
-            "reverse" | "r" => sort_impl(cx, true),
-            _ => {
-                bail!("unhandled command flag `{flag}`, implementation failed to cover all flags.")
-            }
+    // Flags
+    let mut reverse = false;
+
+    flags! {
+        for flags, args => {
+            "reverse" | "r" => reverse = true,
         }
-    } else {
-        sort_impl(cx, false);
     }
+
+    sort_impl(cx, reverse);
 
     Ok(())
 }
@@ -2606,17 +2606,19 @@ fn clear_register(
         ":clear-register takes a flag or a register"
     );
 
-    if let Some(flag) = args.flag(&flags) {
-        match flag {
-            "all" | "a" => {
-                cx.editor.registers.clear();
-                cx.editor.set_status("All registers cleared");
-                return Ok(());
-            }
-            _ => {
-                bail!("unhandled command flag `{flag}`, implementation failed to cover all flags.")
-            }
+    // Flags
+    let mut all = false;
+
+    flags! {
+        for flags, args => {
+            "all" | "a" => all = true,
         }
+    }
+
+    if all {
+        cx.editor.registers.clear();
+        cx.editor.set_status("All registers cleared");
+        return Ok(());
     }
 
     let register = args.next().unwrap();

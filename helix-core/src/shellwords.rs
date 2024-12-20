@@ -215,16 +215,14 @@ impl<'a> Args<'a> {
             return None;
         }
 
-        let mut args = self.clone();
-
-        if let Some(arg) = args.next() {
+        if let Some(arg) = self.peek() {
             if arg == "--" {
                 // Consume the `--` leaving only the remaining command arguments left to yield.
                 self.next();
                 return None;
             }
 
-            if !arg.starts_with("--") || !arg.starts_with('-') {
+            if !arg.starts_with("--") && !arg.starts_with('-') {
                 return None;
             }
 
