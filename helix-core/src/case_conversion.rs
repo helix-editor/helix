@@ -63,15 +63,23 @@ pub fn separator_case_conversion(
     let mut prev: Option<char> = None;
 
     for c in text.skip_while(|ch| ch.is_whitespace()) {
-        if c.is_alphanumeric() {
-            if prev.is_some_and(|p| p.is_lowercase()) && c.is_uppercase()
-                || !prev.is_some_and(|p| p.is_alphanumeric()) && !buf.is_empty()
-            {
-                buf.push(separator);
-            }
-
-            buf.push(c.to_ascii_lowercase());
+        if !c.is_alphanumeric() {
+            prev = Some(c);
+            continue;
         }
+
+        // "camelCase" => transition at 'l' -> 'C'
+        let has_camel_transition = prev.is_some_and(|p| p.is_lowercase()) && c.is_uppercase();
+        // "email@somewhere" => transition at 'l' -> '@'
+        // first character must not be separator, e.g. @emailSomewhere should not become -email-somewhere
+        let has_alphanum_transition = !prev.is_some_and(|p| p.is_alphanumeric()) && !buf.is_empty();
+
+        if has_camel_transition || has_alphanum_transition {
+            buf.push(separator);
+        }
+
+        buf.push(c.to_ascii_lowercase());
+
         prev = Some(c);
     }
 }
