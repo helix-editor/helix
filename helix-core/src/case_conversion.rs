@@ -73,22 +73,24 @@ pub fn to_alternate_case_with(text: impl Iterator<Item = char>, buf: &mut Tendri
 
 pub fn to_title_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
     let mut capitalize_next = true;
-    let mut prev_is_lowercase = false;
+    let mut prev: Option<char> = None;
 
     for c in text.skip_while(|ch| ch.is_whitespace()) {
         if c.is_alphanumeric() {
-            if capitalize_next || (prev_is_lowercase && c.is_uppercase()) {
+            if capitalize_next || (prev.is_some_and(|p| p.is_lowercase()) && c.is_uppercase()) {
                 buf.extend(c.to_uppercase());
                 capitalize_next = false;
             } else {
                 buf.extend(c.to_lowercase());
             }
-            prev_is_lowercase = c.is_lowercase();
         } else {
             capitalize_next = true;
-            prev_is_lowercase = false;
-            buf.push(' ');
+            // only if the previous char is not already space
+            if prev.is_some_and(|p| p != ' ') {
+                buf.push(' ');
+            }
         }
+        prev = Some(c);
     }
 
     *buf = buf.trim().into();
@@ -274,7 +276,9 @@ mod tests {
         title_test("hello_world", "Hello World");
         title_test("HELLO_WORLD", "Hello World");
         title_test("hello-world", "Hello World");
-        // title_test("hello  world", "Hello World");
+
+        title_test("hello  world", "Hello World");
+
         title_test("   hello world", "Hello World");
         title_test("hello\tworld", "Hello World");
         // title_test("HELLO  WORLD", "Hello World");
