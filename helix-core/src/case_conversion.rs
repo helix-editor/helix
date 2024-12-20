@@ -2,7 +2,7 @@ use crate::Tendril;
 
 // todo: should this be grapheme aware?
 
-pub fn to_simple_case_with(
+pub fn simple_case_conversion(
     text: impl Iterator<Item = char>,
     buf: &mut Tendril,
     transform_char: impl Fn(&char) -> char,
@@ -12,7 +12,7 @@ pub fn to_simple_case_with(
     }
 }
 
-pub fn to_camel_or_pascal_or_title_case_with(
+pub fn complex_case_conversion(
     text: impl Iterator<Item = char>,
     buf: &mut Tendril,
     capitalize_first: bool,
@@ -49,7 +49,7 @@ pub fn to_camel_or_pascal_or_title_case_with(
     }
 }
 
-pub fn to_case_with_separator(
+pub fn separator_case_conversion(
     text: impl Iterator<Item = char>,
     buf: &mut Tendril,
     separator: char,
@@ -70,8 +70,8 @@ pub fn to_case_with_separator(
     }
 }
 
-pub fn to_alternate_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
-    to_simple_case_with(text, buf, |c| {
+pub fn into_alternate_case(text: impl Iterator<Item = char>, buf: &mut Tendril) {
+    simple_case_conversion(text, buf, |c| {
         if c.is_uppercase() {
             c.to_ascii_lowercase()
         } else if c.is_lowercase() {
@@ -82,32 +82,32 @@ pub fn to_alternate_case_with(text: impl Iterator<Item = char>, buf: &mut Tendri
     });
 }
 
-pub fn to_upper_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
-    to_simple_case_with(text, buf, char::to_ascii_uppercase);
+pub fn into_upper_case(text: impl Iterator<Item = char>, buf: &mut Tendril) {
+    simple_case_conversion(text, buf, char::to_ascii_uppercase);
 }
 
-pub fn to_lower_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
-    to_simple_case_with(text, buf, char::to_ascii_lowercase);
+pub fn into_lower_case(text: impl Iterator<Item = char>, buf: &mut Tendril) {
+    simple_case_conversion(text, buf, char::to_ascii_lowercase);
 }
 
-pub fn to_kebab_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
-    to_case_with_separator(text, buf, '-');
+pub fn into_kebab_case(text: impl Iterator<Item = char>, buf: &mut Tendril) {
+    separator_case_conversion(text, buf, '-');
 }
 
-pub fn to_snake_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
-    to_case_with_separator(text, buf, '_');
+pub fn into_snake_case(text: impl Iterator<Item = char>, buf: &mut Tendril) {
+    separator_case_conversion(text, buf, '_');
 }
 
-pub fn to_title_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
-    to_camel_or_pascal_or_title_case_with(text, buf, true, true, Some(' '));
+pub fn into_title_case(text: impl Iterator<Item = char>, buf: &mut Tendril) {
+    complex_case_conversion(text, buf, true, true, Some(' '));
 }
 
-pub fn to_camel_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
-    to_camel_or_pascal_or_title_case_with(text, buf, false, true, None);
+pub fn into_camel_case(text: impl Iterator<Item = char>, buf: &mut Tendril) {
+    complex_case_conversion(text, buf, false, true, None);
 }
 
-pub fn to_pascal_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
-    to_camel_or_pascal_or_title_case_with(text, buf, true, true, None);
+pub fn into_pascal_case(text: impl Iterator<Item = char>, buf: &mut Tendril) {
+    complex_case_conversion(text, buf, true, true, None);
 }
 
 fn to_case<I>(text: I, to_case_with: fn(I, &mut Tendril)) -> Tendril
@@ -120,35 +120,35 @@ where
 }
 
 pub fn to_camel_case(text: impl Iterator<Item = char>) -> Tendril {
-    to_case(text, to_camel_case_with)
+    to_case(text, into_camel_case)
 }
 
 pub fn to_lower_case(text: impl Iterator<Item = char>) -> Tendril {
-    to_case(text, to_lower_case_with)
+    to_case(text, into_lower_case)
 }
 
 pub fn to_upper_case(text: impl Iterator<Item = char>) -> Tendril {
-    to_case(text, to_upper_case_with)
+    to_case(text, into_upper_case)
 }
 
 pub fn to_pascal_case(text: impl Iterator<Item = char>) -> Tendril {
-    to_case(text, to_pascal_case_with)
+    to_case(text, into_pascal_case)
 }
 
 pub fn to_alternate_case(text: impl Iterator<Item = char>) -> Tendril {
-    to_case(text, to_alternate_case_with)
+    to_case(text, into_alternate_case)
 }
 
 pub fn to_title_case(text: impl Iterator<Item = char>) -> Tendril {
-    to_case(text, to_title_case_with)
+    to_case(text, into_title_case)
 }
 
 pub fn to_kebab_case(text: impl Iterator<Item = char>) -> Tendril {
-    to_case(text, to_kebab_case_with)
+    to_case(text, into_kebab_case)
 }
 
 pub fn to_snake_case(text: impl Iterator<Item = char>) -> Tendril {
-    to_case(text, to_snake_case_with)
+    to_case(text, into_snake_case)
 }
 
 #[cfg(test)]
