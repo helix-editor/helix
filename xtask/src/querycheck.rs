@@ -1,4 +1,31 @@
-use crate::DynError;
+use crate::{helpers::lang_config_raw, DynError};
+
+pub fn treesittere() -> Result<(), DynError> {
+    for language in lang_config_raw().grammar {
+        dbg!(language);
+        // let language_name = &language.language_id;
+        // let grammar_name = language.grammar.as_ref().unwrap_or(language_name);
+        // for query_file in query_files {
+        //     let language = get_language(grammar_name);
+        //     let query_text = read_query(language_name, query_file);
+        //     if let Ok(lang) = language {
+        //         if !query_text.is_empty() {
+        //             if let Err(reason) = Query::new(&lang, &query_text) {
+        //                 return Err(format!(
+        //                     "Failed to parse {} queries for {}: {}",
+        //                     query_file, language_name, reason
+        //                 )
+        //                 .into());
+        //             }
+        //         }
+        //     }
+        // }
+    }
+
+    println!("Query check succeeded");
+
+    Ok(())
+}
 
 pub fn query_check() -> Result<(), DynError> {
     use crate::helpers::lang_config;

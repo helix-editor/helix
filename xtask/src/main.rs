@@ -13,9 +13,13 @@ pub mod tasks {
     use crate::docgen::{
         LANG_SUPPORT_MD_OUTPUT, STATIC_COMMANDS_MD_OUTPUT, TYPABLE_COMMANDS_MD_OUTPUT,
     };
-    use crate::querycheck::query_check;
+    use crate::querycheck::{query_check, treesittere};
     use crate::theme_check::theme_check;
     use crate::DynError;
+
+    pub fn treesitter() -> Result<(), DynError> {
+        treesittere()
+    }
 
     pub fn docgen() -> Result<(), DynError> {
         write(TYPABLE_COMMANDS_MD_OUTPUT, &typable_commands()?);
@@ -53,6 +57,7 @@ fn main() -> Result<(), DynError> {
             "docgen" => tasks::docgen()?,
             "query-check" => tasks::querycheck()?,
             "theme-check" => tasks::themecheck()?,
+            "treesitter" => tasks::treesitter()?,
             invalid => return Err(format!("Invalid task name: {}", invalid).into()),
         },
     };

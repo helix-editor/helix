@@ -82,6 +82,29 @@ fn default_timeout() -> u64 {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case")]
+pub struct Configuration2 {
+    pub grammar: Vec<Option<Gramma>>,
+}
+
+// largely based on tree-sitter/cli/src/loader.rs
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+pub struct Gramma {
+    pub name: String,
+    pub source: Sauce,
+}
+
+// largely based on tree-sitter/cli/src/loader.rs
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+pub struct Sauce {
+    pub git: String,
+    pub rev: String,
+    pub subpath: Option<String>,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
 pub struct Configuration {
     pub language: Vec<LanguageConfiguration>,
     #[serde(default)]
