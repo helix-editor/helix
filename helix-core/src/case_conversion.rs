@@ -75,7 +75,7 @@ pub fn to_title_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
     let mut capitalize_next = true;
     let mut prev_is_lowercase = false;
 
-    for c in text {
+    for c in text.skip_while(|ch| ch.is_whitespace()) {
         if c.is_alphanumeric() {
             if capitalize_next || (prev_is_lowercase && c.is_uppercase()) {
                 buf.extend(c.to_uppercase());
@@ -102,7 +102,7 @@ pub fn to_case_with_separator(
     let mut prev_is_lowercase = false;
     let mut prev_is_alphanumeric = false;
 
-    for c in text {
+    for c in text.skip_while(|ch| ch.is_whitespace()) {
         if c.is_alphanumeric() {
             if prev_is_lowercase && c.is_uppercase() || !prev_is_alphanumeric && !buf.is_empty() {
                 buf.push(separator);
@@ -146,7 +146,7 @@ pub fn to_camel_or_pascal_case_with(
     let mut capitalize_next = is_pascal;
     let mut prev_is_lowercase = false;
 
-    for c in text {
+    for c in text.skip_while(|ch| ch.is_whitespace()) {
         if c.is_alphanumeric() {
             if prev_is_lowercase && c.is_uppercase() {
                 capitalize_next = true;
@@ -190,12 +190,12 @@ mod tests {
         camel_test("HELLO_WORLD", "helloWorld");
         camel_test("hello-world", "helloWorld");
         camel_test("hello  world", "helloWorld");
-        // camel_test("   hello world", "helloWorld");
+        camel_test("   hello world", "helloWorld");
         camel_test("hello\tworld", "helloWorld");
         camel_test("HELLO  WORLD", "helloWorld");
         camel_test("HELLO-world", "helloWorld");
         camel_test("hello  WORLD ", "helloWorld");
-        // camel_test("helloWorld", "helloWorld");
+        camel_test("helloWorld", "helloWorld");
     }
 
     #[test]
