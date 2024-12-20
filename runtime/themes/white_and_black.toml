@@ -1,0 +1,60 @@
+# Author: ChiefMateStarbuck <septimusguy@gmail.com>
+
+"attribute"                       = { modifiers = ["italic"] }
+
+"diagnostic"                      = { underline = { style = "curl" } }
+"diagnostic.hint"                 = { underline = { style = "curl" } }
+"diagnostic.warning"              = { underline = { style = "curl" } }
+"diagnostic.error"                = { underline = { style = "curl" } }
+"diagnostic.info"                 = { underline = { style = "curl" } }
+"diagnostic.unnecessary"          = { modifiers = ["dim"] }
+"diagnostic.deprecated"           = { modifiers = ["crossed_out"] }
+
+"keyword.storage.type"            = { modifiers = ["italic"] }
+
+"markup.bold"                     = { modifiers = ["bold"] }
+"markup.heading"                  = { modifiers = ["bold"] }
+"markup.italic"                   = { modifiers = ["italic"] }
+"markup.quote"                    = { modifiers = ["italic"] }
+"markup.strikethrough"            = { modifiers = ["crossed_out"] }
+
+"type"                            = { modifiers = ["italic"] }
+"type.enum.variant"               = { modifiers = ["italic"] }
+
+"ui.background"                   = { bg = "background" }
+"ui.bufferline"                   = { fg = "background", bg = "foreground"}
+"ui.bufferline.active"            = { fg = "foreground", bg = "background"}
+"ui.cursor"                       = { bg = "primary"}
+"ui.cursor.insert"                = { bg = "primary"}
+"ui.cursor.match"                 = { bg = "primary"}
+"ui.cursor.normal"                = { bg = "primary"}
+"ui.cursor.select"                = { bg = "primary"}
+"ui.cursor.primary.insert"        = { fg = "background", bg = "foreground" }
+"ui.cursor.primary.normal"        = { fg = "background", bg = "foreground" }
+"ui.cursor.primary.select"        = { fg = "background", bg = "foreground" }
+"ui.cursorline.primary"           = { bg = "primary" }
+"ui.linenr"                       = { fg = "foreground" }
+"ui.menu"                         = { fg = "background", bg = "foreground" }
+"ui.menu.selected"                = { fg = "foreground", bg = "background"}
+"ui.popup"                        = { fg = "foreground", bg = "background" }
+"ui.selection"                    = { bg = "secondary", underline = { style = "curl" } }
+"ui.selection.primary"            = { bg = "primary", underline = { style = "curl" }}
+"ui.statusline"                   = { fg = "background", bg = "foreground" }
+"ui.statusline.insert"            = {  modifiers = ["bold"] }
+"ui.statusline.normal"            = {  modifiers = ["bold"] }
+"ui.statusline.select"            = {  modifiers = ["bold"] }
+"ui.text"                         = { fg = "foreground" }
+"ui.text.focus"                   = { fg = "foreground" }
+"ui.virtual.inlay-hint.parameter" = { modifiers = ["italic", "dim"] }
+"ui.virtual.inlay-hint.type"      = { modifiers = ["italic", "dim"] }
+"ui.virtual.jump-label"           = { modifiers = ["bold"] }
+
+
+"variable.builtin"                = { modifiers = ["bold"] }
+"variable.parameter"              = { modifiers = ["bold"] }
+
+[palette]
+foreground = "#000000"
+background = "#ffffff"
+primary    = "#c9c9c9"
+secondary  = "#e3e1e1"
