@@ -2,6 +2,7 @@ use crate::Tendril;
 
 // todo: should this be grapheme aware?
 
+/// Converts each character into a different one, with zero context about surrounding characters
 pub fn simple_case_conversion(
     text: impl Iterator<Item = char>,
     buf: &mut Tendril,
@@ -16,7 +17,6 @@ pub fn complex_case_conversion(
     text: impl Iterator<Item = char>,
     buf: &mut Tendril,
     capitalize_first: bool,
-    capitalize_rest: bool,
     separator: Option<char>,
 ) {
     let mut capitalize_next = capitalize_first;
@@ -27,12 +27,8 @@ pub fn complex_case_conversion(
             if prev.is_some_and(|p| p.is_lowercase()) && c.is_uppercase() {
                 capitalize_next = true;
             }
-            if capitalize_next && capitalize_rest {
-                buf.push(if capitalize_rest {
-                    c.to_ascii_uppercase()
-                } else {
-                    c
-                });
+            if capitalize_next {
+                buf.push(c.to_ascii_uppercase());
                 capitalize_next = false;
             } else {
                 buf.extend(c.to_lowercase());
@@ -99,15 +95,15 @@ pub fn into_snake_case(text: impl Iterator<Item = char>, buf: &mut Tendril) {
 }
 
 pub fn into_title_case(text: impl Iterator<Item = char>, buf: &mut Tendril) {
-    complex_case_conversion(text, buf, true, true, Some(' '));
+    complex_case_conversion(text, buf, true, Some(' '));
 }
 
 pub fn into_camel_case(text: impl Iterator<Item = char>, buf: &mut Tendril) {
-    complex_case_conversion(text, buf, false, true, None);
+    complex_case_conversion(text, buf, false, None);
 }
 
 pub fn into_pascal_case(text: impl Iterator<Item = char>, buf: &mut Tendril) {
-    complex_case_conversion(text, buf, true, true, None);
+    complex_case_conversion(text, buf, true, None);
 }
 
 fn to_case<I>(text: I, to_case_with: fn(I, &mut Tendril)) -> Tendril
