@@ -40,93 +40,120 @@ pub struct Shellwords<'a> {
 impl<'a> From<&'a str> for Shellwords<'a> {
     fn from(input: &'a str) -> Self {
         use State::*;
-
         let mut state = Unquoted;
         let mut words = Vec::new();
         let mut parts = Vec::new();
         let mut escaped = String::with_capacity(input.len());
-
+        let mut inside_variable_expansion = false;
+        let mut nested_variable_expansion_count = 0;
         let mut part_start = 0;
         let mut unescaped_start = 0;
         let mut end = 0;
 
         for (i, c) in input.char_indices() {
-            state = match state {
-                OnWhitespace => match c {
-                    '"' => {
-                        end = i;
-                        Dquoted
+            if c == '%' {
+                //%sh{this "should" be escaped}
+                if let Some(t) = input.get(i + 1..i + 3) {
+                    if t == "sh" {
+                        nested_variable_expansion_count += 1;
+                        inside_variable_expansion = true;
                     }
-                    '\'' => {
-                        end = i;
-                        Quoted
+                }
+                //%{this "should" be escaped}
+                if let Some(t) = input.get(i + 1..i + 2) {
+                    if t == "{" {
+                        nested_variable_expansion_count += 1;
+                        inside_variable_expansion = true;
                     }
-                    '\\' => {
-                        if cfg!(unix) {
-                            escaped.push_str(&input[unescaped_start..i]);
-                            unescaped_start = i + 1;
-                            UnquotedEscaped
-                        } else {
-                            OnWhitespace
-                        }
-                    }
-                    c if c.is_ascii_whitespace() => {
-                        end = i;
-                        OnWhitespace
-                    }
-                    _ => Unquoted,
-                },
-                Unquoted => match c {
-                    '\\' => {
-                        if cfg!(unix) {
-                            escaped.push_str(&input[unescaped_start..i]);
-                            unescaped_start = i + 1;
-                            UnquotedEscaped
-                        } else {
-                            Unquoted
-                        }
-                    }
-                    c if c.is_ascii_whitespace() => {
-                        end = i;
-                        OnWhitespace
-                    }
-                    _ => Unquoted,
-                },
-                UnquotedEscaped => Unquoted,
-                Quoted => match c {
-                    '\\' => {
-                        if cfg!(unix) {
-                            escaped.push_str(&input[unescaped_start..i]);
-                            unescaped_start = i + 1;
-                            QuoteEscaped
-                        } else {
-                            Quoted
-                        }
-                    }
-                    '\'' => {
-                        end = i;
-                        OnWhitespace
-                    }
-                    _ => Quoted,
-                },
-                QuoteEscaped => Quoted,
-                Dquoted => match c {
-                    '\\' => {
-                        if cfg!(unix) {
-                            escaped.push_str(&input[unescaped_start..i]);
-                            unescaped_start = i + 1;
-                            DquoteEscaped
-                        } else {
+                }
+            }
+            if c == '}' {
+                nested_variable_expansion_count -= 1;
+                if nested_variable_expansion_count == 0 {
+                    inside_variable_expansion = false;
+                }
+            }
+
+            state = if !inside_variable_expansion {
+                match state {
+                    OnWhitespace => match c {
+                        '"' => {
+                            end = i;
                             Dquoted
                         }
-                    }
-                    '"' => {
-                        end = i;
-                        OnWhitespace
-                    }
-                    _ => Dquoted,
-                },
-                DquoteEscaped => Dquoted,
+                        '\'' => {
+                            end = i;
+                            Quoted
+                        }
+                        '\\' => {
+                            if cfg!(unix) {
+                                escaped.push_str(&input[unescaped_start..i]);
+                                unescaped_start = i + 1;
+                                UnquotedEscaped
+                            } else {
+                                OnWhitespace
+                            }
+                        }
+                        c if c.is_ascii_whitespace() => {
+                            end = i;
+                            OnWhitespace
+                        }
+                        _ => Unquoted,
+                    },
+                    Unquoted => match c {
+                        '\\' => {
+                            if cfg!(unix) {
+                                escaped.push_str(&input[unescaped_start..i]);
+                                unescaped_start = i + 1;
+                                UnquotedEscaped
+                            } else {
+                                Unquoted
+                            }
+                        }
+                        c if c.is_ascii_whitespace() => {
+                            end = i;
+                            OnWhitespace
+                        }
+                        _ => Unquoted,
+                    },
+                    UnquotedEscaped => Unquoted,
+                    Quoted => match c {
+                        '\\' => {
+                            if cfg!(unix) {
+                                escaped.push_str(&input[unescaped_start..i]);
+                                unescaped_start = i + 1;
+                                QuoteEscaped
+                            } else {
+                                Quoted
+                            }
+                        }
+                        '\'' => {
+                            end = i;
+                            OnWhitespace
+                        }
+                        _ => Quoted,
+                    },
+                    QuoteEscaped => Quoted,
+                    Dquoted => match c {
+                        '\\' => {
+                            if cfg!(unix) {
+                                escaped.push_str(&input[unescaped_start..i]);
+                                unescaped_start = i + 1;
+                                DquoteEscaped
+                            } else {
+                                Dquoted
+                            }
+                        }
+                        '"' => {
+                            end = i;
+                            OnWhitespace
+                        }
+                        _ => Dquoted,
+                    },
+                    DquoteEscaped => Dquoted,
+                }
+            } else {
+                state
             };
 
             let c_len = c.len_utf8();
@@ -233,6 +260,38 @@ mod test {
             Cow::from(r#"three "with escaping\"#),
         ];
         // TODO test is_owned and is_borrowed, once they get stabilized.
+        assert_eq!(expected, result);
+    }
+    #[test]
+    fn test_expansion() {
+        let input = r#"echo %{filename} %{linenumber}"#;
+        let shellwords = Shellwords::from(input);
+        let result = shellwords.words().to_vec();
+        let expected = vec![
+            Cow::from("echo"),
+            Cow::from("%{filename}"),
+            Cow::from("%{linenumber}"),
+        ];
+        assert_eq!(expected, result);
+
+        let input = r#"echo %{filename} 'world' %{something to 'escape}"#;
+        let shellwords = Shellwords::from(input);
+        let result = shellwords.words().to_vec();
+        let expected = vec![
+            Cow::from("echo"),
+            Cow::from("%{filename}"),
+            Cow::from("world"),
+            Cow::from("%{something to 'escape}"),
+        ];
+        assert_eq!(expected, result);
+        let input = r#"echo %sh{%sh{%{filename}}} cool"#;
+        let shellwords = Shellwords::from(input);
+        let result = shellwords.words().to_vec();
+        let expected = vec![
+            Cow::from("echo"),
+            Cow::from("%sh{%sh{%{filename}}}"),
+            Cow::from("cool"),
+        ];
         assert_eq!(expected, result);
     }
 
