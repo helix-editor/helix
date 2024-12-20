@@ -10,8 +10,8 @@ use regex_cursor::engines::meta::Regex;
 use regex_cursor::regex_automata::util::syntax::Config as RegexConfig;
 use ropey::RopeSlice;
 
-use crate::case_conversion::into_lower_case;
-use crate::case_conversion::into_upper_case;
+use crate::case_conversion::into_lowercase;
+use crate::case_conversion::into_uppercase;
 use crate::case_conversion::{into_camel_case, into_pascal_case};
 use crate::snippets::parser::{self, CaseChange, FormatItem};
 use crate::snippets::{TabstopIdx, LAST_TABSTOP_IDX};
@@ -348,8 +348,8 @@ impl Transform {
                         if let Some(cap) = cap.get_group(i).filter(|i| !i.is_empty()) {
                             let mut chars = doc.byte_slice(cap.range()).chars();
                             match change {
-                                CaseChange::Upcase => into_upper_case(chars, &mut buf),
-                                CaseChange::Downcase => into_lower_case(chars, &mut buf),
+                                CaseChange::Upcase => into_uppercase(chars, &mut buf),
+                                CaseChange::Downcase => into_lowercase(chars, &mut buf),
                                 CaseChange::Capitalize => {
                                     let first_char = chars.next().unwrap();
                                     buf.extend(first_char.to_uppercase());

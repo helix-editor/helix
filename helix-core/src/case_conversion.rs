@@ -96,11 +96,11 @@ pub fn into_alternate_case(text: impl Iterator<Item = char>, buf: &mut Tendril) 
     });
 }
 
-pub fn into_upper_case(text: impl Iterator<Item = char>, buf: &mut Tendril) {
+pub fn into_uppercase(text: impl Iterator<Item = char>, buf: &mut Tendril) {
     simple_case_conversion(text, buf, char::to_ascii_uppercase);
 }
 
-pub fn into_lower_case(text: impl Iterator<Item = char>, buf: &mut Tendril) {
+pub fn into_lowercase(text: impl Iterator<Item = char>, buf: &mut Tendril) {
     simple_case_conversion(text, buf, char::to_ascii_lowercase);
 }
 
@@ -137,12 +137,12 @@ pub fn to_camel_case(text: impl Iterator<Item = char>) -> Tendril {
     to_case(text, into_camel_case)
 }
 
-pub fn to_lower_case(text: impl Iterator<Item = char>) -> Tendril {
-    to_case(text, into_lower_case)
+pub fn to_lowercase(text: impl Iterator<Item = char>) -> Tendril {
+    to_case(text, into_lowercase)
 }
 
-pub fn to_upper_case(text: impl Iterator<Item = char>) -> Tendril {
-    to_case(text, into_upper_case)
+pub fn to_uppercase(text: impl Iterator<Item = char>) -> Tendril {
+    to_case(text, into_uppercase)
 }
 
 pub fn to_pascal_case(text: impl Iterator<Item = char>) -> Tendril {
@@ -209,7 +209,7 @@ mod tests {
         ];
 
         for (input, expected) in tests {
-            assert_eq!(to_lower_case(input.chars()), expected)
+            assert_eq!(to_lowercase(input.chars()), expected)
         }
     }
 
@@ -231,7 +231,7 @@ mod tests {
         ];
 
         for (input, expected) in tests {
-            assert_eq!(to_upper_case(input.chars()), expected)
+            assert_eq!(to_uppercase(input.chars()), expected)
         }
     }
 

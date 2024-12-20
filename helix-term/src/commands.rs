@@ -19,8 +19,8 @@ pub use typed::*;
 
 use helix_core::{
     case_conversion::{
-        to_alternate_case, to_camel_case, to_kebab_case, to_lower_case, to_pascal_case,
-        to_snake_case, to_title_case, to_upper_case,
+        to_alternate_case, to_camel_case, to_kebab_case, to_lowercase, to_pascal_case,
+        to_snake_case, to_title_case, to_uppercase,
     },
     char_idx_at_visual_offset,
     chars::char_is_word,
@@ -356,9 +356,9 @@ impl MappableCommand {
         extend_prev_char, "Extend to previous occurrence of char",
         repeat_last_motion, "Repeat last motion",
         replace, "Replace with new char",
-        switch_to_alternate_case, "Switch to aLTERNATE cASE",
-        switch_to_upper_case, "Switch to UPPERCASE",
-        switch_to_lower_case, "Switch to lowercase",
+        switch_case, "Switch to aLTERNATE cASE",
+        switch_to_uppercase, "Switch to UPPERCASE",
+        switch_to_lowercase, "Switch to lowercase",
         switch_to_pascal_case, "Switch to PascalCase",
         switch_to_camel_case, "Switch to camelCase",
         switch_to_title_case, "Switch to Title Case",
@@ -1795,15 +1795,15 @@ fn switch_to_camel_case(cx: &mut Context) {
     switch_case_impl(cx, |chars| to_camel_case(chars))
 }
 
-fn switch_to_lower_case(cx: &mut Context) {
-    switch_case_impl(cx, |chars| to_lower_case(chars))
+fn switch_to_lowercase(cx: &mut Context) {
+    switch_case_impl(cx, |chars| to_lowercase(chars))
 }
 
-fn switch_to_upper_case(cx: &mut Context) {
-    switch_case_impl(cx, |chars| to_upper_case(chars))
+fn switch_to_uppercase(cx: &mut Context) {
+    switch_case_impl(cx, |chars| to_uppercase(chars))
 }
 
-fn switch_to_alternate_case(cx: &mut Context) {
+fn switch_case(cx: &mut Context) {
     switch_case_impl(cx, |chars| to_alternate_case(chars))
 }
 
