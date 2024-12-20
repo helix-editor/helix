@@ -57,7 +57,20 @@ impl TypableCommand {
             write!(prompt, " {accepts}").unwrap();
         }
 
-        writeln!(prompt, ": {}", self.doc).unwrap();
+        // HACK:
+        // PROBLEM: The prompt can cutoff content at the bottom as the size is not be calculated properly.
+        //
+        // This adds enough spaces to look like it adds a new line after the top line
+        // but if the actual text were to overflow this value, then the text would occupy
+        // this space.
+        //
+        // In practice, when cycling where it may wrap, it just looks like there is always at least one line between
+        // the top line and the rest of the info, whether this is a figurative newline or actual text filling it.
+        if self.doc.len() < 75 {
+            writeln!(prompt, ": {}{}", self.doc, " ".repeat(75 - self.doc.len())).unwrap();
+        } else {
+            writeln!(prompt, ": {}", self.doc).unwrap();
+        }
 
         if !self.aliases.is_empty() {
             writeln!(prompt, "aliases: {}", self.aliases.join(", ")).unwrap();
@@ -97,6 +110,14 @@ impl TypableCommand {
                     .unwrap();
                 }
             }
+        }
+
+        // HACK: Makes sure that the text touches the bottom of the prompt window.
+        //
+        // This is a continuation of the hack from earlier as there could be left over spaces,
+        // adding a gap at the bottom.
+        while prompt.ends_with(['\n', '\r', ' ']) {
+            prompt.pop();
         }
 
         prompt
