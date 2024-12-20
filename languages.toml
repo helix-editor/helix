@@ -3995,6 +3995,7 @@ name = "nginx"
 scope = "source.nginx"
 injection-regex = "nginx"
 file-types = ["conf"]
+roots = ["nginx.conf"]
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }
 
