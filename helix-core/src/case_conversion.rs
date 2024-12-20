@@ -99,15 +99,12 @@ pub fn to_case_with_separator(
     buf: &mut Tendril,
     separator: char,
 ) {
-    let mut prev_is_lowercase = false; // Tracks if the previous character was lowercase
-    let mut prev_is_alphanumeric = false; // Tracks if the previous character was alphanumeric
+    let mut prev_is_lowercase = false;
+    let mut prev_is_alphanumeric = false;
 
     for c in text {
         if c.is_alphanumeric() {
-            if prev_is_lowercase && c.is_uppercase() {
-                buf.push(separator);
-            }
-            if !prev_is_alphanumeric && !buf.is_empty() {
+            if prev_is_lowercase && c.is_uppercase() || !prev_is_alphanumeric && !buf.is_empty() {
                 buf.push(separator);
             }
 
@@ -311,6 +308,6 @@ mod tests {
         snake_test("HELLO-world", "hello_world");
         snake_test("hello  WORLD ", "hello_world");
         snake_test("helloWorld", "hello_world");
-        // snake_test("HELLOworld123", "hello_world123");
+        snake_test("helloWORLD123", "hello_world123");
     }
 }
