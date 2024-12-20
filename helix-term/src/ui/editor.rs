@@ -892,7 +892,34 @@ impl EditorView {
     ) -> Option<KeymapResult> {
         let mut last_mode = mode;
         self.pseudo_pending.extend(self.keymaps.pending());
+
         let key_result = self.keymaps.get(mode, event);
+
+        #[cfg(feature = "scancode")]
+        let key_result = {
+            if !matches!(
+                key_result,
+                KeymapResult::NotFound | KeymapResult::Cancelled(_)
+            ) {
+                key_result
+            } else {
+                match key_result {
+                    KeymapResult::NotFound => {
+                        self.keymaps.get(mode, cxt.editor.scancode_apply(event))
+                    }
+                    KeymapResult::Cancelled(mut keys) => {
+                        // replay keys previous keys and try again by scancode key
+                        let _ = keys.pop();
+                        for key in keys {
+                            let _ = self.keymaps.get(mode, key);
+                        }
+                        self.keymaps.get(mode, cxt.editor.scancode_apply(event))
+                    }
+                    _ => unreachable!(),
+                }
+            }
+        };
+
         cxt.editor.autoinfo = self.keymaps.sticky().map(|node| node.infobox());
 
         let mut execute_command = |command: &commands::MappableCommand| {
