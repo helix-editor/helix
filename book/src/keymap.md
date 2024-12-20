@@ -169,7 +169,7 @@ These sub-modes are accessible from normal mode and typically switch back to nor
 | -----    | -----------                                        | -------        |
 | `v`      | Enter [select (extend) mode](#select--extend-mode) | `select_mode`  |
 | `g`      | Enter [goto mode](#goto-mode)                      | N/A            |
-| ` ` `      | Enter [case mode](#case-mode)                    | N/A            |
+| ` ` `    | Enter [case mode](#case-mode)                    | N/A            |
 | `m`      | Enter [match mode](#match-mode)                    | N/A            |
 | `:`      | Enter command mode                                 | `command_mode` |
 | `z`      | Enter [view mode](#view-mode)                      | N/A            |
