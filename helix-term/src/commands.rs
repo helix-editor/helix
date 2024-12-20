@@ -19,8 +19,8 @@ pub use typed::*;
 
 use helix_core::{
     case_conversion::{
-        to_alternate_case, to_camel_case, to_lower_case, to_pascal_case, to_title_case,
-        to_upper_case,
+        to_alternate_case, to_camel_case, to_kebab_case, to_lower_case, to_pascal_case,
+        to_snake_case, to_title_case, to_upper_case,
     },
     char_idx_at_visual_offset,
     chars::char_is_word,
@@ -362,8 +362,8 @@ impl MappableCommand {
         switch_to_pascal_case, "Switch to PascalCase",
         switch_to_camel_case, "Switch to camelCase",
         switch_to_title_case, "Switch to Title Case",
-        // switch_to_snake_case, "Switch to snake_case",
-        // switch_to_kebab_case, "Switch to kebab-case",
+        switch_to_snake_case, "Switch to snake_case",
+        switch_to_kebab_case, "Switch to kebab-case",
         page_up, "Move page up",
         page_down, "Move page down",
         half_page_up, "Move half page up",
@@ -1811,25 +1811,13 @@ fn switch_to_title_case(cx: &mut Context) {
     switch_case_impl(cx, |chars| to_title_case(chars))
 }
 
-// fn switch_to_snake_case(cx: &mut Context) {
-//     switch_heck_case_impl(cx, |str| str.to_snake_case())
-// }
+fn switch_to_snake_case(cx: &mut Context) {
+    switch_case_impl(cx, |chars| to_snake_case(chars))
+}
 
-// fn switch_to_kebab_case(cx: &mut Context) {
-//     switch_heck_case_impl(cx, |str| str.to_kebab_case())
-// }
-
-// fn switch_to_uppercase(cx: &mut Context) {
-//     switch_case_impl(cx, |string| {
-//         string.chunks().map(|chunk| chunk.to_uppercase()).collect()
-//     });
-// }
-
-// fn switch_to_lowercase(cx: &mut Context) {
-//     switch_case_impl(cx, |string| {
-//         string.chunks().map(|chunk| chunk.to_lowercase()).collect()
-//     });
-// }
+fn switch_to_kebab_case(cx: &mut Context) {
+    switch_case_impl(cx, |chars| to_kebab_case(chars))
+}
 
 pub fn scroll(cx: &mut Context, offset: usize, direction: Direction, sync_cursor: bool) {
     use Direction::*;

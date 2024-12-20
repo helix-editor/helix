@@ -21,13 +21,13 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
 
         "~" => switch_to_alternate_case,
         "`" => { "Case"
-            "l" => switch_to_lowercase,
-            "u" => switch_to_uppercase,
+            "l" => switch_to_lower_case,
+            "u" => switch_to_upper_case,
             "p" => switch_to_pascal_case,
             "c" => switch_to_camel_case,
             "t" => switch_to_title_case,
-            // "s" => switch_to_snake_case,
-            // "k" => switch_to_kebab_case,
+            "s" => switch_to_snake_case,
+            "k" => switch_to_kebab_case,
         },
 
         "home" => goto_line_start,
