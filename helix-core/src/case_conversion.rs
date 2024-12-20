@@ -71,17 +71,18 @@ pub fn to_alternate_case_with(text: impl Iterator<Item = char>, buf: &mut Tendri
     }
 }
 
-pub fn to_camel_or_pascal_case_with(
+pub fn to_camel_or_pascal_or_title_case_with(
     text: impl Iterator<Item = char>,
     buf: &mut Tendril,
-    is_pascal: bool,
+    capitalize_first: bool,
+    separator: Option<char>,
 ) {
-    let mut capitalize_next = is_pascal;
-    let mut prev_is_lowercase = false;
+    let mut capitalize_next = capitalize_first;
+    let mut prev: Option<char> = None;
 
     for c in text.skip_while(|ch| ch.is_whitespace()) {
         if c.is_alphanumeric() {
-            if prev_is_lowercase && c.is_uppercase() {
+            if prev.is_some_and(|p| p.is_lowercase()) && c.is_uppercase() {
                 capitalize_next = true;
             }
             if capitalize_next {
@@ -90,37 +91,16 @@ pub fn to_camel_or_pascal_case_with(
             } else {
                 buf.extend(c.to_lowercase());
             }
-            prev_is_lowercase = c.is_lowercase();
         } else {
             capitalize_next = true;
-            prev_is_lowercase = false;
-        }
-    }
-}
-
-pub fn to_title_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
-    let mut capitalize_next = true;
-    let mut prev: Option<char> = None;
-
-    for c in text.skip_while(|ch| ch.is_whitespace()) {
-        if c.is_alphanumeric() {
-            if capitalize_next || (prev.is_some_and(|p| p.is_lowercase()) && c.is_uppercase()) {
-                buf.extend(c.to_uppercase());
-                capitalize_next = false;
-            } else {
-                buf.extend(c.to_lowercase());
-            }
-        } else {
-            capitalize_next = true;
-            // only if the previous char is not already space
-            if prev.is_some_and(|p| p != ' ') {
-                buf.push(' ');
+            if let Some(separator) = separator {
+                if prev.is_some_and(|p| p != separator) {
+                    buf.push(separator);
+                }
             }
         }
         prev = Some(c);
     }
-
-    *buf = buf.trim_end().into();
 }
 
 pub fn to_case_with_separator(
@@ -159,12 +139,16 @@ pub fn to_snake_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
     to_case_with_separator(text, buf, '_');
 }
 
+pub fn to_title_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
+    to_camel_or_pascal_or_title_case_with(text, buf, true, Some(' '));
+}
+
 pub fn to_camel_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
-    to_camel_or_pascal_case_with(text, buf, false);
+    to_camel_or_pascal_or_title_case_with(text, buf, false, None);
 }
 
 pub fn to_pascal_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
-    to_camel_or_pascal_case_with(text, buf, true);
+    to_camel_or_pascal_or_title_case_with(text, buf, true, None);
 }
 
 #[cfg(test)]
