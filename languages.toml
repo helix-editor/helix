@@ -53,6 +53,7 @@ jq-lsp = { command = "jq-lsp" }
 jsonnet-language-server = { command = "jsonnet-language-server", args= ["-t", "--lint"] }
 julia = { command = "julia", timeout = 60, args = [ "--startup-file=no", "--history-file=no", "--quiet", "-e", "using LanguageServer; runserver()", ] }
 koka = { command = "koka", args = ["--language-server", "--lsstdio"] }
+koto-ls = { command = "koto-ls" }
 kotlin-language-server = { command = "kotlin-language-server" }
 lean = { command = "lean", args = [ "--server", "--memory=1024" ] }
 ltex-ls = { command = "ltex-ls" }
@@ -3964,6 +3965,20 @@ indent = { tab-width = 4, unit = "    " }
 [[grammar]]
 name = "amber"
 source = { git = "https://github.com/amber-lang/tree-sitter-amber", rev = "c6df3ec2ec243ed76550c525e7ac3d9a10c6c814" }
+
+[[language]]
+name = "koto"
+scope = "source.koto"
+injection-regex = "koto"
+file-types = ["koto"]
+comment-token = "#"
+block-comment-tokens = ["#-", "-#"]
+indent = { tab-width = 2, unit = "  " }
+language-servers = ["koto-ls"]
+
+[[grammar]]
+name = "koto"
+source = { git = "https://github.com/koto-lang/tree-sitter-koto", rev = "b420f7922d0d74905fd0d771e5b83be9ee8a8a9a" }
 
 [[language]]
 name = "gpr"
