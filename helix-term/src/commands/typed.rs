@@ -82,7 +82,11 @@ impl TypableCommand {
             let width: usize = self
                 .flags
                 .into_iter()
-                .map(|flag| flag.long.len() + flag.short.map_or(0, str::len))
+                .map(|flag| {
+                    flag.long.len()
+                        + flag.short.map_or(0, str::len)
+                        + flag.accepts.map_or(0, str::len)
+                })
                 .max()
                 .unwrap_or(0);
 
@@ -90,13 +94,36 @@ impl TypableCommand {
 
             for flag in &self.flags {
                 if let Some(short) = flag.short {
+                    if let Some(accepts) = flag.accepts {
+                        writeln!(
+                            prompt,
+                            "    --{}, -{} {:<width$}{}",
+                            flag.long,
+                            short,
+                            accepts,
+                            flag.desc,
+                            width = (width - flag.long.len() + short.len()) + spaces
+                        )
+                        .unwrap();
+                    } else {
+                        writeln!(
+                            prompt,
+                            "    --{}, -{:<width$}{}",
+                            flag.long,
+                            short,
+                            flag.desc,
+                            width = (width - flag.long.len() + short.len()) + spaces + 2
+                        )
+                        .unwrap();
+                    }
+                } else if let Some(accepts) = flag.accepts {
                     writeln!(
                         prompt,
-                        "    --{}, -{:<width$}{}",
+                        "    --{} {:<width$}{}",
                         flag.long,
-                        short,
+                        accepts,
                         flag.desc,
-                        width = (width - flag.long.len() + short.len()) + spaces
+                        width = (width - flag.long.len()) + spaces + 7
                     )
                     .unwrap();
                 } else {
