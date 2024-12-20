@@ -224,6 +224,10 @@ impl<'a> Args<'a> {
                 return None;
             }
 
+            if !arg.starts_with("--") || !arg.starts_with('-') {
+                return None;
+            }
+
             let arg = arg.trim_start_matches('-').trim_start_matches("--");
 
             if flags.into_flags().any(|flag| arg == flag) {
@@ -240,7 +244,7 @@ impl<'a> Args<'a> {
         let mut flag = F::default();
 
         while let Some(arg) = self.next() {
-            if arg == "--" {
+            if arg == "--" || !arg.starts_with("--") || !arg.starts_with('-') {
                 return Ok(flag);
             }
 
