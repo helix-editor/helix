@@ -38,6 +38,7 @@ use helix_core::{
     ChangeSet, Diagnostic, LineEnding, Range, Rope, RopeBuilder, Selection, Syntax, Transaction,
 };
 
+use crate::theme::Color;
 use crate::{
     editor::Config,
     events::{DocumentDidChange, SelectionDidChange},
@@ -142,10 +143,15 @@ pub struct Document {
     ///
     /// To know if they're up-to-date, check the `id` field in `DocumentInlayHints`.
     pub(crate) inlay_hints: HashMap<ViewId, DocumentInlayHints>,
+    /// Color swatches for the document
+    ///
+    /// To know if they're up-to-date, check the `id` field in `DocumentColorSwatches`.
+    pub(crate) color_swatches: HashMap<ViewId, DocumentColorSwatches>,
     pub(crate) jump_labels: HashMap<ViewId, Vec<Overlay>>,
     /// Set to `true` when the document is updated, reset to `false` on the next inlay hints
     /// update from the LSP
     pub inlay_hints_oudated: bool,
+    pub color_swatches_outdated: bool,
 
     path: Option<PathBuf>,
     encoding: &'static encoding::Encoding,
@@ -263,6 +269,48 @@ pub struct DocumentInlayHintsId {
     pub last_line: usize,
 }
 
+/// Color swatches for a single `(Document, View)` combo.
+///
+/// Color swatches are always `InlineAnnotation`s, not overlays or line-ones: LSP may choose to place
+/// them anywhere in the text and will sometime offer config options to move them where the user
+/// wants them but it shouldn't be Helix who decides that so we use the most precise positioning.
+///
+/// To get a tuple of corresponding (Color, Color Swatch) use zip(color_swatches, colors)
+#[derive(Debug, Clone)]
+pub struct DocumentColorSwatches {
+    /// Identifier for the color swatches stored in this structure. To be checked to know if they have
+    /// to be recomputed on idle or not.
+    pub id: ColorSwatchesId,
+
+    pub color_swatches: Vec<InlineAnnotation>,
+    pub colors: Vec<Color>,
+}
+
+impl DocumentColorSwatches {
+    /// Generate an empty list of color swatches with the given ID.
+    pub fn empty_with_id(id: ColorSwatchesId) -> Self {
+        Self {
+            id,
+            color_swatches: Vec::new(),
+            colors: Vec::new(),
+        }
+    }
+}
+
+/// Associated with a [`Document`] and [`ViewId`], uniquely identifies the state of color swatches for
+/// for that document and view: if this changed since the last save, the color swatches for the view
+/// should be recomputed.
+///
+/// We can't store the `ViewOffset` instead of the first and last asked-for lines because if
+/// softwrapping changes, the `ViewOffset` may not change while the displayed lines will.
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct ColorSwatchesId {
+    /// First line for which the document color was requested.
+    pub first_line: usize,
+    /// Last line for which the document color was requested.
+    pub last_line: usize,
+}
+
 use std::{fmt, mem};
 impl fmt::Debug for Document {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -272,6 +320,7 @@ impl fmt::Debug for Document {
             .field("selections", &self.selections)
             .field("inlay_hints_oudated", &self.inlay_hints_oudated)
             .field("text_annotations", &self.inlay_hints)
+            .field("color_swatches", &self.color_swatches)
             .field("view_data", &self.view_data)
             .field("path", &self.path)
             .field("encoding", &self.encoding)
@@ -665,6 +714,8 @@ impl Document {
             selections: HashMap::default(),
             inlay_hints: HashMap::default(),
             inlay_hints_oudated: false,
+            color_swatches: HashMap::default(),
+            color_swatches_outdated: false,
             view_data: Default::default(),
             indent_style: DEFAULT_INDENT,
             line_ending,
@@ -1260,10 +1311,11 @@ impl Document {
         self.focused_at = std::time::Instant::now();
     }
 
-    /// Remove a view's selection and inlay hints from this document.
+    /// Remove a view's selection, inlay hints and color swatches from this document.
     pub fn remove_view(&mut self, view_id: ViewId) {
         self.selections.remove(&view_id);
         self.inlay_hints.remove(&view_id);
+        self.color_swatches.remove(&view_id);
         self.jump_labels.remove(&view_id);
     }
 
@@ -1394,6 +1446,8 @@ impl Document {
         };
 
         self.inlay_hints_oudated = true;
+        self.color_swatches_outdated = true;
+
         for text_annotation in self.inlay_hints.values_mut() {
             let DocumentInlayHints {
                 id: _,
@@ -1409,6 +1463,16 @@ impl Document {
             apply_inlay_hint_changes(parameter_inlay_hints);
             apply_inlay_hint_changes(other_inlay_hints);
             apply_inlay_hint_changes(padding_after_inlay_hints);
+        }
+
+        for text_annotation in self.color_swatches.values_mut() {
+            let DocumentColorSwatches {
+                id: _,
+                colors: _,
+                color_swatches,
+            } = text_annotation;
+
+            apply_inlay_hint_changes(color_swatches);
         }
 
         helix_event::dispatch(DocumentDidChange {
@@ -2135,6 +2199,10 @@ impl Document {
         self.inlay_hints.insert(view_id, inlay_hints);
     }
 
+    pub fn set_color_swatches(&mut self, view_id: ViewId, color_swatches: DocumentColorSwatches) {
+        self.color_swatches.insert(view_id, color_swatches);
+    }
+
     pub fn set_jump_labels(&mut self, view_id: ViewId, labels: Vec<Overlay>) {
         self.jump_labels.insert(view_id, labels);
     }
@@ -2146,6 +2214,11 @@ impl Document {
     /// Get the inlay hints for this document and `view_id`.
     pub fn inlay_hints(&self, view_id: ViewId) -> Option<&DocumentInlayHints> {
         self.inlay_hints.get(&view_id)
+    }
+
+    /// Get the color swatches for this document and `view_id`.
+    pub fn color_swatches(&self, view_id: ViewId) -> Option<&DocumentColorSwatches> {
+        self.color_swatches.get(&view_id)
     }
 
     /// Completely removes all the inlay hints saved for the document, dropping them to free memory

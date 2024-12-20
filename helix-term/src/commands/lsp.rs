@@ -18,10 +18,10 @@ use helix_core::{
 };
 use helix_stdx::path;
 use helix_view::{
-    document::{DocumentInlayHints, DocumentInlayHintsId},
+    document::{ColorSwatchesId, DocumentColorSwatches, DocumentInlayHints, DocumentInlayHintsId},
     editor::Action,
     handlers::lsp::SignatureHelpInvoked,
-    theme::Style,
+    theme::{Color, Style},
     Document, View,
 };
 
@@ -1254,6 +1254,25 @@ pub fn compute_inlay_hints_for_all_views(editor: &mut Editor, jobs: &mut crate::
     }
 }
 
+fn lsp_annotations_area(view: &View, doc: &Document) -> (usize, usize) {
+    // Compute ~3 times the current view heigh, that way some scrolling
+    // will not show half the view with annoations half without while still being faster
+    // than computing all the hints for the full file
+    let doc_text = doc.text();
+    let len_lines = doc_text.len_lines();
+
+    let view_height = view.inner_height();
+    let first_visible_line =
+        doc_text.char_to_line(doc.view_offset(view.id).anchor.min(doc_text.len_chars()));
+
+    let first_line = first_visible_line.saturating_sub(view_height);
+    let last_line = first_visible_line
+        .saturating_add(view_height.saturating_mul(2))
+        .min(len_lines);
+
+    (first_line, last_line)
+}
+
 fn compute_inlay_hints_for_view(
     view: &View,
     doc: &Document,
@@ -1265,20 +1284,7 @@ fn compute_inlay_hints_for_view(
         .language_servers_with_feature(LanguageServerFeature::InlayHints)
         .next()?;
 
-    let doc_text = doc.text();
-    let len_lines = doc_text.len_lines();
-
-    // Compute ~3 times the current view height of inlay hints, that way some scrolling
-    // will not show half the view with hints and half without while still being faster
-    // than computing all the hints for the full file (which could be dozens of time
-    // longer than the view is).
-    let view_height = view.inner_height();
-    let first_visible_line =
-        doc_text.char_to_line(doc.view_offset(view_id).anchor.min(doc_text.len_chars()));
-    let first_line = first_visible_line.saturating_sub(view_height);
-    let last_line = first_visible_line
-        .saturating_add(view_height.saturating_mul(2))
-        .min(len_lines);
+    let (first_line, last_line) = lsp_annotations_area(view, doc);
 
     let new_doc_inlay_hints_id = DocumentInlayHintsId {
         first_line,
@@ -1293,6 +1299,7 @@ fn compute_inlay_hints_for_view(
         return None;
     }
 
+    let doc_text = doc.text();
     let doc_slice = doc_text.slice(..);
     let first_char_in_range = doc_slice.line_to_char(first_line);
     let last_char_in_range = doc_slice.line_to_char(last_line);
@@ -1393,6 +1400,123 @@ fn compute_inlay_hints_for_view(
                 },
             );
             doc.inlay_hints_oudated = false;
+        },
+    );
+
+    Some(callback)
+}
+
+pub fn compute_color_swatches_for_all_views(editor: &mut Editor, jobs: &mut crate::job::Jobs) {
+    if !editor.config().lsp.display_color_swatches {
+        return;
+    }
+
+    for (view, _) in editor.tree.views() {
+        let doc = match editor.documents.get(&view.doc) {
+            Some(doc) => doc,
+            None => continue,
+        };
+        if let Some(callback) = compute_color_swatches_for_view(view, doc) {
+            jobs.callback(callback);
+        }
+    }
+}
+
+fn compute_color_swatches_for_view(
+    view: &View,
+    doc: &Document,
+) -> Option<std::pin::Pin<Box<impl Future<Output = Result<crate::job::Callback, anyhow::Error>>>>> {
+    let view_id = view.id;
+    let doc_id = view.doc;
+
+    let language_server = doc
+        .language_servers_with_feature(LanguageServerFeature::ColorProvider)
+        .next()?;
+
+    let (first_line, last_line) = lsp_annotations_area(view, doc);
+
+    let new_doc_color_swatches_id = ColorSwatchesId {
+        first_line,
+        last_line,
+    };
+
+    // Don't recompute the color swatches in case nothing has changed about the view
+    if !doc.color_swatches_outdated
+        && doc
+            .color_swatches(view_id)
+            .map_or(false, |dih| dih.id == new_doc_color_swatches_id)
+    {
+        return None;
+    }
+
+    let offset_encoding = language_server.offset_encoding();
+
+    let callback = super::make_job_callback(
+        language_server.text_document_color_swatches(doc.identifier(), None)?,
+        move |editor, _compositor, response: Option<Vec<lsp::ColorInformation>>| {
+            // The config was modified or the window was closed while the request was in flight
+            if !editor.config().lsp.display_color_swatches || editor.tree.try_get(view_id).is_none()
+            {
+                return;
+            }
+
+            // Add annotations to relevant document, not the current one (it may have changed in between)
+            let doc = match editor.documents.get_mut(&doc_id) {
+                Some(doc) => doc,
+                None => return,
+            };
+
+            // If we have neither color swatches nor an LSP, empty the color swatches since they're now oudated
+            let mut swatches = match response {
+                Some(swatches) if !swatches.is_empty() => swatches,
+                _ => {
+                    doc.set_color_swatches(
+                        view_id,
+                        DocumentColorSwatches::empty_with_id(new_doc_color_swatches_id),
+                    );
+                    doc.color_swatches_outdated = false;
+                    return;
+                }
+            };
+
+            // Most language servers will already send them sorted but ensure this is the case to
+            // avoid errors on our end.
+            swatches.sort_by_key(|inlay_hint| inlay_hint.range.start);
+
+            let mut color_swatches = Vec::with_capacity(swatches.len());
+            let mut colors = Vec::with_capacity(swatches.len());
+
+            let doc_text = doc.text();
+
+            for swatch in swatches {
+                let char_idx = match helix_lsp::util::lsp_pos_to_pos(
+                    doc_text,
+                    swatch.range.start,
+                    offset_encoding,
+                ) {
+                    Some(pos) => pos,
+                    // Skip color swatches that have no "real" position
+                    None => continue,
+                };
+
+                color_swatches.push(InlineAnnotation::new(char_idx, "■ "));
+                colors.push(Color::Rgb(
+                    (swatch.color.red * 255.) as u8,
+                    (swatch.color.green * 255.) as u8,
+                    (swatch.color.blue * 255.) as u8,
+                ));
+            }
+
+            doc.set_color_swatches(
+                view_id,
+                DocumentColorSwatches {
+                    id: new_doc_color_swatches_id,
+                    colors,
+                    color_swatches,
+                },
+            );
+
+            doc.color_swatches_outdated = false;
         },
     );
 

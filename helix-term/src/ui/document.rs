@@ -216,7 +216,8 @@ pub fn render_text(
                 .unwrap_or((Style::default(), usize::MAX));
         }
 
-        let grapheme_style = if let GraphemeSource::VirtualText { highlight } = grapheme.source {
+        let mut grapheme_style = if let GraphemeSource::VirtualText { highlight } = grapheme.source
+        {
             let mut style = renderer.text_style;
             if let Some(highlight) = highlight {
                 style = style.patch(theme.highlight(highlight.0));
@@ -231,7 +232,8 @@ pub fn render_text(
                 overlay_style: overlay_style_span.0,
             }
         };
-        decorations.decorate_grapheme(renderer, &grapheme);
+
+        decorations.decorate_grapheme(renderer, &grapheme, &mut grapheme_style.syntax_style);
 
         let virt = grapheme.is_virtual();
         let grapheme_width = renderer.draw_grapheme(

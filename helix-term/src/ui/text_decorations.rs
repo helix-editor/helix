@@ -2,7 +2,10 @@ use std::cmp::Ordering;
 
 use helix_core::doc_formatter::FormattedGrapheme;
 use helix_core::Position;
-use helix_view::editor::CursorCache;
+use helix_view::{
+    editor::CursorCache,
+    theme::{Color, Style},
+};
 
 use crate::ui::document::{LinePos, TextRenderer};
 
@@ -81,6 +84,7 @@ pub trait Decoration {
         &mut self,
         _renderer: &mut TextRenderer,
         _grapheme: &FormattedGrapheme,
+        _style: &mut Style,
     ) -> usize {
         usize::MAX
     }
@@ -108,7 +112,12 @@ impl<'a> DecorationManager<'a> {
         }
     }
 
-    pub fn decorate_grapheme(&mut self, renderer: &mut TextRenderer, grapheme: &FormattedGrapheme) {
+    pub fn decorate_grapheme(
+        &mut self,
+        renderer: &mut TextRenderer,
+        grapheme: &FormattedGrapheme,
+        style: &mut Style,
+    ) {
         for (decoration, hook_char_idx) in &mut self.decorations {
             loop {
                 match (*hook_char_idx).cmp(&grapheme.char_idx) {
@@ -117,7 +126,7 @@ impl<'a> DecorationManager<'a> {
                         *hook_char_idx = decoration.skip_concealed_anchor(grapheme.char_idx)
                     }
                     Ordering::Equal => {
-                        *hook_char_idx = decoration.decorate_grapheme(renderer, grapheme)
+                        *hook_char_idx = decoration.decorate_grapheme(renderer, grapheme, style)
                     }
                     Ordering::Greater => break,
                 }
@@ -144,6 +153,37 @@ impl<'a> DecorationManager<'a> {
     }
 }
 
+pub struct ColorSwatch {
+    color: Color,
+    pos: usize,
+}
+
+impl ColorSwatch {
+    pub fn new(color: Color, pos: usize) -> Self {
+        ColorSwatch { color, pos }
+    }
+}
+
+impl Decoration for ColorSwatch {
+    fn decorate_grapheme(
+        &mut self,
+        _renderer: &mut TextRenderer,
+        _grapheme: &FormattedGrapheme,
+        style: &mut Style,
+    ) -> usize {
+        style.fg = Some(self.color);
+        usize::MAX
+    }
+
+    fn reset_pos(&mut self, pos: usize) -> usize {
+        if self.pos >= pos {
+            self.pos
+        } else {
+            usize::MAX
+        }
+    }
+}
+
 /// Cursor rendering is done externally so all the cursor decoration
 /// does is save the position of primary cursor
 pub struct Cursor<'a> {
@@ -163,6 +203,7 @@ impl Decoration for Cursor<'_> {
         &mut self,
         renderer: &mut TextRenderer,
         grapheme: &FormattedGrapheme,
+        _style: &mut Style,
     ) -> usize {
         if renderer.column_in_bounds(grapheme.visual_pos.col, grapheme.width())
             && renderer.offset.row < grapheme.visual_pos.row

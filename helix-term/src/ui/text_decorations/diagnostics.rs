@@ -307,6 +307,7 @@ impl Decoration for InlineDiagnostics<'_> {
         &mut self,
         renderer: &mut TextRenderer,
         grapheme: &FormattedGrapheme,
+        _style: &mut Style,
     ) -> usize {
         self.state
             .proccess_anchor(grapheme, renderer.viewport.width, renderer.offset.col)
