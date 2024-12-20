@@ -361,7 +361,7 @@ impl MappableCommand {
         switch_to_lower_case, "Switch to lowercase",
         switch_to_pascal_case, "Switch to PascalCase",
         switch_to_camel_case, "Switch to camelCase",
-        // switch_to_title_case, "Switch to Title Case",
+        switch_to_title_case, "Switch to Title Case",
         // switch_to_snake_case, "Switch to snake_case",
         // switch_to_kebab_case, "Switch to kebab-case",
         page_up, "Move page up",
