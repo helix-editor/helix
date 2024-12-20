@@ -7,12 +7,7 @@ pub fn grammar_check() -> Result<(), DynError> {
     let pool = threadpool::Builder::new().build();
     let (tx, rx) = std::sync::mpsc::channel::<String>();
 
-    let current_dir = std::sync::Arc::new(
-        std::env::current_dir()
-            .expect("Failed to get current directory")
-            .as_path()
-            .to_owned(),
-    );
+    let current_dir = std::sync::Arc::new(std::env::current_dir().unwrap().as_path().to_owned());
 
     for language in lang_config_grammars().grammar {
         let tx = tx.clone();
