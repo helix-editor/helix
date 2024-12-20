@@ -125,8 +125,8 @@ pub fn to_kebab_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
 }
 
 pub fn to_title_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
-    let mut at_word_start = false;
-    for c in text {
+    let mut at_word_start = true;
+    for (i, c) in text.enumerate() {
         // we don't count _ as a word char here so case conversions work well
         if !c.is_alphanumeric() {
             at_word_start = true;
@@ -134,7 +134,9 @@ pub fn to_title_case_with(text: impl Iterator<Item = char>, buf: &mut Tendril) {
         }
         if at_word_start {
             at_word_start = false;
-            buf.push(' ');
+            if i != 0 {
+                buf.push(' ');
+            }
             buf.extend(c.to_uppercase());
         } else {
             buf.push(c)
