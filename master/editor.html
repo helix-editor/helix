@@ -518,6 +518,7 @@ S-tab = "extend_parent_node_start"
 <tr><td><code>max-diagnostics</code></td><td>Maximum number of diagnostics to render inline for a given line</td><td><code>10</code></td></tr>
 </tbody></table>
 </div>
+<p>The allowed values for <code>cursor-line</code> and <code>other-lines</code> are: <code>error</code>, <code>warning</code>, <code>info</code>, <code>hint</code>.</p>
 <p>The (first) diagnostic with the highest severity that is not shown inline is rendered at the end of the line (as long as its severity is higher than the <code>end-of-line-diagnostics</code> config option):</p>
 <pre><code>fn main() {
   let baz = 1;
