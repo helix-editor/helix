@@ -42,8 +42,7 @@ fn workspace_for_path(path: &Path) -> WorkspaceFolder {
 
     lsp::WorkspaceFolder {
         name,
-        uri: lsp::Url::from_directory_path(path)
-            .expect("absolute paths can be converted to `Url`s"),
+        uri: lsp::Url::from_directory_path(path),
     }
 }
 
@@ -203,9 +202,7 @@ impl Client {
             Transport::start(reader, writer, stderr, id, name.clone());
 
         let workspace_folders = root.clone().into_iter().collect();
-        let root_uri = root.clone().map(|root| {
-            lsp::Url::from_file_path(root).expect("absolute paths can be converted to `Url`s")
-        });
+        let root_uri = root.clone().map(lsp::Url::from_file_path);
         // `root_uri` and `workspace_folder` can be empty in case there is no workspace
         // `root_url` can not, use `workspace` as a fallback
         let root_path = root.unwrap_or(workspace);
@@ -743,11 +740,11 @@ impl Client {
             } else {
                 Url::from_file_path(path)
             };
-            Some(url.ok()?.into_string())
+            url.into_string()
         };
         let files = vec![lsp::FileRename {
-            old_uri: url_from_path(old_path)?,
-            new_uri: url_from_path(new_path)?,
+            old_uri: url_from_path(old_path),
+            new_uri: url_from_path(new_path),
         }];
         let request = self.call_with_timeout::<lsp::request::WillRenameFiles>(
             &lsp::RenameFilesParams { files },
@@ -777,12 +774,12 @@ impl Client {
             } else {
                 Url::from_file_path(path)
             };
-            Some(url.ok()?.into_string())
+            url.into_string()
         };
 
         let files = vec![lsp::FileRename {
-            old_uri: url_from_path(old_path)?,
-            new_uri: url_from_path(new_path)?,
+            old_uri: url_from_path(old_path),
+            new_uri: url_from_path(new_path),
         }];
         Some(self.notify::<lsp::notification::DidRenameFiles>(lsp::RenameFilesParams { files }))
     }

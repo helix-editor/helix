@@ -1822,7 +1822,7 @@ impl Document {
 
     /// File path as a URL.
     pub fn url(&self) -> Option<lsp::Url> {
-        lsp::Url::from_file_path(self.path()?).ok()
+        self.path().map(lsp::Url::from_file_path)
     }
 
     pub fn uri(&self) -> Option<helix_core::Uri> {
