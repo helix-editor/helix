@@ -17,6 +17,7 @@ pub fn grammar_check() -> Result<(), DynError> {
             let bold_green = "\x1b[1;32m";
             let reset = "\x1b[0m";
             let blue = "\x1b[34m";
+            let dark = "\x1b[35m";
 
             if let Ok(result) = git(&current_dir, ["ls-remote", &language.source.git]) {
                 let latest_commit = result.split_word_bounds().next().unwrap();
@@ -31,9 +32,8 @@ pub fn grammar_check() -> Result<(), DynError> {
                 let link = if repo.starts_with("https://github.com") {
                     let url = format!("{blue}\u{1b}]8;;{}/compare{current_commit}...{latest_commit}\u{1b}\\{}\u{1b}]8;;\u{1b}\\{reset}", repo, "[View Diff]");
                     url
-                    // format!("{blue}{repo}/compare/{current_commit}...{latest_commit}{reset}")
                 } else {
-                    let url = format!("{blue}\u{1b}]8;;{}\u{1b}\\{}\u{1b}]8;;\u{1b}\\{reset}", repo, "[Grammar]");
+                    let url = format!("{dark}\u{1b}]8;;{}\u{1b}\\{}\u{1b}]8;;\u{1b}\\{reset}", repo, "[Repo Link]");
                     url
                 };
 
@@ -57,6 +57,8 @@ pub fn grammar_check() -> Result<(), DynError> {
     }
 
     drop(tx);
+
+    println!("\n\n");
 
     for msg in rx.iter() {
         println!("    {msg}");
