@@ -934,16 +934,17 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
 
 impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I, D> {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        // +---------+ +---------+
-        // |prompt   | |preview  |
-        // +---------+ |         |
-        // |picker   | |         |
-        // |         | |         |
-        // +---------+ +---------+
+        // +---------+ +-------------+
+        // |prompt   | |preview      |
+        // +---------+ |             |
+        // |picker   | |             |
+        // |         | |             |
+        // +---------+ +-------------+
 
         let render_preview =
             self.show_preview && self.file_fn.is_some() && area.width > MIN_AREA_WIDTH_FOR_PREVIEW;
 
+        // The preview gets more space if it present
         let picker_width = if render_preview {
             area.width * 3 / 8
         } else {
