@@ -60,6 +60,7 @@
 
 "ui.background" = { bg = "bg", fg = "text" }
 "ui.text" = { fg = "text" }
+"ui.text.directory" = { fg = "blue" }
 
 "ui.statusline" = { bg = "bg", fg = "text" }
 "ui.statusline.inactive" = { bg = "bg", fg = "disabled" }

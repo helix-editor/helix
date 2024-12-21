@@ -13,7 +13,7 @@ There are three possible locations for a `languages.toml` file:
 
 2. In your [configuration directory](./configuration.md). This overrides values
    from the built-in language configuration. For example, to disable
-   auto-LSP-formatting in Rust:
+   auto-formatting for Rust:
 
    ```toml
    # in <config_dir>/helix/languages.toml
@@ -60,7 +60,7 @@ These configuration keys are available:
 | `shebangs`            | The interpreters from the shebang line, for example `["sh", "bash"]` |
 | `roots`               | A set of marker files to look for when trying to find the workspace root. For example `Cargo.lock`, `yarn.lock` |
 | `auto-format`         | Whether to autoformat this language when saving               |
-| `diagnostic-severity` | Minimal severity of diagnostic for it to be displayed. (Allowed values: `Error`, `Warning`, `Info`, `Hint`) |
+| `diagnostic-severity` | Minimal severity of diagnostic for it to be displayed. (Allowed values: `error`, `warning`, `info`, `hint`) |
 | `comment-tokens`      | The tokens to use as a comment token, either a single token `"//"` or an array `["//", "///", "//!"]` (the first token will be used for commenting). Also configurable as `comment-token` for backwards compatibility|
 | `block-comment-tokens`| The start and end tokens for a multiline comment either an array or single table of `{ start = "/*", end = "*/"}`. The first set of tokens will be used for commenting, any pairs in the array can be uncommented |
 | `indent`              | The indent to use. Has sub keys `unit` (the text inserted into the document when indenting; usually set to N spaces or `"\t"` for tabs) and `tab-width` (the number of spaces rendered for a tab) |
@@ -128,7 +128,7 @@ These are the available options for a language server.
 | ----                       | -----------                                                                                                                       |
 | `command`                  | The name or path of the language server binary to execute. Binaries must be in `$PATH`                                            |
 | `args`                     | A list of arguments to pass to the language server binary                                                                         |
-| `config`                   | LSP initialization options                                                                                                        |
+| `config`                   | Language server initialization options                                                                                            |
 | `timeout`                  | The maximum time a request to the language server may take, in seconds. Defaults to `20`                                          |
 | `environment`              | Any environment variables that will be used when starting the language server `{ "KEY1" = "Value1", "KEY2" = "Value2" }`          |
 | `required-root-patterns`   | A list of `glob` patterns to look for in the working directory. The language server is started if at least one of them is found.  |

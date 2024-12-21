@@ -280,7 +280,7 @@ fn build_theme_values(
     for (name, style_value) in values {
         let mut style = Style::default();
         if let Err(err) = palette.parse_style(&mut style, style_value) {
-            warnings.push(err);
+            warnings.push(format!("Failed to parse style for key {name:?}. {err}"));
         }
 
         // these are used both as UI and as highlights
