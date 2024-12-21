@@ -87,7 +87,7 @@ fn request_auto_save(editor: &mut Editor) {
         jobs: &mut Jobs::new(),
     };
 
-    if let Err(e) = commands::typed::write_all_impl(context, false, false) {
+    if let Err(e) = commands::typed::write_all_impl(context, false, false, true) {
         context.editor.set_error(format!("{}", e));
     }
 }
