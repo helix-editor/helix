@@ -11,33 +11,19 @@
 | `:buffer-close-all!`, `:bca!`, `:bcloseall!` | force close all buffers ignoring unsaved changes without quitting. |
 | `:buffer-next`, `:bn`, `:bnext` | goto next buffer. |
 | `:buffer-previous`, `:bp`, `:bprev` | goto previous buffer. |
-| `:write`, `:w` | write changes to disk |
-| `:write!`, `:w!` | force write changes to disk creating necessary subdirectories. |
-| `:write-buffer-close`, `:wbc` | write changes to disk and closes the buffer |
-| `:write-buffer-close!`, `:wbc!` | force write changes to disk creating necessary subdirectories and closes the buffer |
+| `:write`, `:w`, `:u`, `:x`, `:wq`, `:x!`, `:wq!`, `:w!`, `:wa`, `:wa!`, `:waq`, `:wqa`, `:xa`, `:waq!`, `:wqa!`, `:xa!`, `:wbc`, `:wbc!` | write changes to disk |
 | `:new`, `:n` | create a new scratch buffer. |
 | `:format`, `:fmt` | format the file using an external formatter or language server. |
 | `:indent-style` | set the indentation style for editing. ('t' for tabs or 1-16 for number of spaces.) |
 | `:line-ending` | Set the document's default line ending. Options: crlf, lf. |
 | `:earlier`, `:ear` | jump back to an earlier point in edit history. |
 | `:later`, `:lat` | jump to a later point in edit history. |
-| `:write-quit`, `:wq`, `:x` | write changes to disk and close the current view. |
-| `:write-quit!`, `:wq!`, `:x!` | write changes to disk and close the current view forcefully. |
-| `:write-all`, `:wa` | write changes from all buffers to disk. |
-| `:write-all!`, `:wa!` | forcefully write changes from all buffers to disk creating necessary subdirectories. |
-| `:write-quit-all`, `:wqa`, `:xa` | write changes from all buffers to disk and close all views. |
-| `:write-quit-all!`, `:wqa!`, `:xa!` | write changes from all buffers to disk and close all views forcefully (ignoring unsaved changes). |
 | `:quit-all`, `:qa` | close all views. |
 | `:quit-all!`, `:qa!` | force close all views ignoring unsaved changes. |
 | `:cquit`, `:cq` | quit with exit code (default 1) |
 | `:cquit!`, `:cq!` | force quit with exit code (default 1) ignoring unsaved changes. |
 | `:theme` | change the editor theme (show current theme if no name specified). |
-| `:yank-join` | yank joined selections. a separator can be provided as first argument. default value is newline. |
-| `:yank` | yank selection to clipboard. |
-| `:clipboard-yank` | yank main selection into system clipboard. |
-| `:clipboard-yank-join` | yank joined selections into system clipboard. a separator can be provided as first argument. default value is newline. |
-| `:primary-clipboard-yank` | yank main selection into system primary clipboard. |
-| `:primary-clipboard-yank-join` | yank joined selections into system primary clipboard. a separator can be provided as first argument. default value is newline. |
+| `:yank`, `:y`, `:yj`, `:yd` | yank selection to clipboard. |
 | `:clipboard-paste-after` | paste system clipboard after selections. |
 | `:clipboard-paste-before` | paste system clipboard before selections. |
 | `:clipboard-paste-replace` | replace selections with content of system clipboard. |
@@ -51,7 +37,6 @@
 | `:character-info`, `:char` | get info about the character under the primary cursor. |
 | `:reload`, `:rl` | discard changes and reload from the source file. |
 | `:reload-all`, `:rla` | discard changes and reload all documents from the source files. |
-| `:update`, `:u` | write changes only if the file has been modified. |
 | `:lsp-workspace-command` | open workspace command picker |
 | `:lsp-restart` | restarts the language servers used by the current doc |
 | `:lsp-stop` | stops the language servers that are used by the current doc |
@@ -70,7 +55,7 @@
 | `:set-option`, `:set` | set a config option at runtime. for example to disable smart case search, use `:set search.smart-case false`. |
 | `:toggle-option`, `:toggle` | toggle a boolean config option at runtime. for example to toggle smart case search, use `:toggle search.smart-case`. |
 | `:get-option`, `:get` | get the current value of a config option. |
-| `:sort` | sort ranges in selection. |
+| `:sort`, `:rsort` | sort ranges in selection. |
 | `:reflow` | hard-wrap the current selection of lines to a given width. |
 | `:tree-sitter-subtree`, `:ts-subtree` | display the smallest tree-sitter subtree that spans the primary selection, primarily for debugging queries. |
 | `:config-reload` | refresh user config. |
@@ -86,5 +71,4 @@
 | `:clear-register` | clear given register. |
 | `:redraw` | clear and re-render the whole UI |
 | `:move`, `:mv` | move the current buffer and its corresponding file to a different path |
-| `:yank-diagnostic` | yank diagnostic(s) under primary cursor to register, or clipboard by default |
 | `:read`, `:r` | load a file into buffer |
