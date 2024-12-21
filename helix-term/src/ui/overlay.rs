@@ -19,7 +19,7 @@ pub struct Overlay<T> {
 pub fn overlaid<T>(content: T) -> Overlay<T> {
     Overlay {
         content,
-        calc_child_size: Box::new(|rect: Rect| clip_rect_relative(rect.clip_bottom(2), 90, 90)),
+        calc_child_size: Box::new(|rect: Rect| clip_rect_relative(rect.clip_bottom(0), 100, 100)),
     }
 }
 
