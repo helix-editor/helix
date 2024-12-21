@@ -2,11 +2,12 @@ use std::fmt::Write;
 use std::io::BufReader;
 use std::ops::Deref;
 
-use crate::flags;
 use crate::job::Job;
+use crate::{aliases, flags};
 
 use super::*;
 
+use alias::Aliases;
 use flag::Flags;
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
@@ -21,7 +22,7 @@ use ui::completers::{self, Completer};
 #[derive(Clone)]
 pub struct TypableCommand {
     pub name: &'static str,
-    pub aliases: &'static [&'static str],
+    pub aliases: Aliases,
     pub flags: Flags,
     pub accepts: Option<&'static str>,
     pub doc: &'static str,
@@ -39,10 +40,18 @@ impl TypableCommand {
             .map_or(&self.signature.var_args, |completer| completer)
     }
 
+    pub fn flags(&self, name: &str) -> Option<&str> {
+        let alias = self.aliases.get(name)?;
+        alias.flags()
+    }
+
     fn prompt(&self) -> String {
         // EXAMPLE:
-        // write [<flags>] - write the current buffer to its file.
-        // aliases: w
+        // write [<flags>] <path>: write the current buffer to its file.
+        //
+        // aliases:
+        //     w
+        //     wa -> write --all
         // flags:
         //     --no-format        exclude formatting operation when saving.
         let mut prompt = String::new();
@@ -73,19 +82,27 @@ impl TypableCommand {
         }
 
         if !self.aliases.is_empty() {
-            writeln!(prompt, "aliases: {}", self.aliases.join(", ")).unwrap();
+            prompt.push_str("aliases:\n");
+
+            for alias in self.aliases.iter() {
+                if let Some(map) = alias.command {
+                    writeln!(prompt, "    {} -> {map}", alias.name).unwrap();
+                } else {
+                    writeln!(prompt, "    {}", alias.name).unwrap();
+                }
+            }
         }
 
         if !self.flags.is_empty() {
             prompt.push_str("flags:\n");
 
-            let width: usize = self
+            let max: usize = self
                 .flags
-                .into_iter()
+                .iter()
                 .map(|flag| {
                     flag.long.len()
-                        + flag.short.map_or(0, str::len)
-                        + flag.accepts.map_or(0, str::len)
+                        + flag.short.as_ref().map_or(0, |short| short.len())
+                        + flag.accepts.as_ref().map_or(0, |accept| accept.len())
                 })
                 .max()
                 .unwrap_or(0);
@@ -93,46 +110,52 @@ impl TypableCommand {
             let spaces: usize = 8;
 
             for flag in &self.flags {
-                if let Some(short) = flag.short {
-                    if let Some(accepts) = flag.accepts {
+                if let Some(short) = &flag.short {
+                    if let Some(accepts) = &flag.accepts {
                         writeln!(
                             prompt,
-                            "    --{}, -{} {:<width$}{}",
+                            "    --{}, -{} {}{:<width$}{}",
                             flag.long,
                             short,
                             accepts,
+                            "",
                             flag.desc,
-                            width = (width - flag.long.len() + short.len()) + spaces
+                            width = max
+                                .saturating_sub(flag.long.len() + short.len() + accepts.len())
+                                + spaces
                         )
                         .unwrap();
                     } else {
                         writeln!(
                             prompt,
-                            "    --{}, -{:<width$}{}",
+                            "    --{}, -{}{:<width$}{}",
                             flag.long,
                             short,
+                            "",
                             flag.desc,
-                            width = (width - flag.long.len() + short.len()) + spaces + 2
+                            width = max.saturating_sub(flag.long.len() + short.len()) + spaces + 1
                         )
                         .unwrap();
                     }
-                } else if let Some(accepts) = flag.accepts {
+                } else if let Some(accepts) = &flag.accepts {
                     writeln!(
                         prompt,
-                        "    --{} {:<width$}{}",
+                        "    --{} {}{:<width$}{}",
                         flag.long,
                         accepts,
+                        "",
                         flag.desc,
-                        width = (width - flag.long.len()) + spaces + 7
+                        width = max.saturating_sub(flag.long.len() + accepts.len()) + spaces + 3
                     )
                     .unwrap();
                 } else {
                     writeln!(
                         prompt,
-                        "    --{:<width$}{}",
+                        "    --{}{:<width$}{}",
                         flag.long,
+                        "",
                         flag.desc,
-                        width = (width - flag.long.len()) + spaces + 7
+                        width = max.saturating_sub(flag.long.len()) + spaces + 4
                     )
                     .unwrap();
                 }
@@ -525,89 +548,124 @@ fn write(
         return Ok(());
     }
 
-    // Flags
-    let mut format = true;
-
-    flags! {
-        for flags, args => {
-            "no-format" => format = false,
-        }
-    }
-
-    write_impl(cx, args.next(), false, format)
-}
-
-fn force_write(
-    cx: &mut compositor::Context,
-    mut args: Args,
-    flags: Flags,
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
+    let (_, doc) = current!(cx.editor);
 
     // Flags
     let mut format = true;
+    let mut force = false;
+    let mut quit = false;
+    let mut all = false;
+    let mut close_buffer = false;
+    let mut update = false;
 
     flags! {
         for flags, args => {
+            "all" | "a" => all = true,
+            "quit" | "q" => quit = true,
+            "force" | "f" => force = true,
+            "update" | "u" => update = true,
             "no-format" => format = false,
+            "close-buffer" => close_buffer = true,
         }
     }
 
-    write_impl(cx, args.next(), true, format)
-}
-
-fn write_buffer_close(
-    cx: &mut compositor::Context,
-    mut args: Args,
-    flags: Flags,
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
-
-    // Flags
-    let mut format = true;
-
-    flags! {
-        for flags, args => {
-            "no-format" => format = false,
+    if all {
+        write_all_impl(cx, force, true, format)?;
+    } else if update {
+        if doc.is_modified() {
+            write_impl(cx, args.next(), force, format)?;
         }
+    } else {
+        write_impl(cx, args.next(), force, format)?;
     }
 
-    write_impl(cx, args.next(), false, format)?;
-    let document_ids = buffer_gather_paths_impl(cx.editor, args);
+    if quit && !all {
+        cx.block_try_flush_writes()?;
+        self::quit(cx, Args::empty(), flags, event)?;
+    } else if quit && all {
+        quit_all_impl(cx, force)?;
+    }
 
-    buffer_close_by_ids_impl(cx, &document_ids, false)
+    // After `quit` as that would close helix anyways.
+    if close_buffer {
+        let doc_ids = buffer_gather_paths_impl(cx.editor, args);
+        buffer_close_by_ids_impl(cx, &doc_ids, force)?;
+    }
+
+    Ok(())
 }
 
-fn force_write_buffer_close(
-    cx: &mut compositor::Context,
-    mut args: Args,
-    flags: Flags,
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
+// fn force_write(
+//     cx: &mut compositor::Context,
+//     mut args: Args,
+//     flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
 
-    // Flags
-    let mut format = true;
+//     // Flags
+//     let mut format = true;
 
-    flags! {
-        for flags, args => {
-            "no-format" => format = false,
-        }
-    }
+//     flags! {
+//         for flags, args => {
+//             "no-format" => format = false,
+//         }
+//     }
 
-    write_impl(cx, args.next(), true, format)?;
+//     write_impl(cx, args.next(), true, format)
+// }
 
-    let document_ids = buffer_gather_paths_impl(cx.editor, args);
-    buffer_close_by_ids_impl(cx, &document_ids, false)
-}
+// fn write_buffer_close(
+//     cx: &mut compositor::Context,
+//     mut args: Args,
+//     flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
+
+//     // Flags
+//     let mut format = true;
+
+//     flags! {
+//         for flags, args => {
+//             "no-format" => format = false,
+//         }
+//     }
+
+//     write_impl(cx, args.next(), false, format)?;
+//     let document_ids = buffer_gather_paths_impl(cx.editor, args);
+
+//     buffer_close_by_ids_impl(cx, &document_ids, false)
+// }
+
+// fn force_write_buffer_close(
+//     cx: &mut compositor::Context,
+//     mut args: Args,
+//     flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
+
+//     // Flags
+//     let mut format = true;
+
+//     flags! {
+//         for flags, args => {
+//             "no-format" => format = false,
+//         }
+//     }
+
+//     write_impl(cx, args.next(), true, format)?;
+
+//     let document_ids = buffer_gather_paths_impl(cx.editor, args);
+//     buffer_close_by_ids_impl(cx, &document_ids, false)
+// }
 
 fn new_file(
     cx: &mut compositor::Context,
@@ -802,55 +860,55 @@ fn later(
     Ok(())
 }
 
-fn write_quit(
-    cx: &mut compositor::Context,
-    mut args: Args,
-    flags: Flags,
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
+// fn write_quit(
+//     cx: &mut compositor::Context,
+//     mut args: Args,
+//     flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
 
-    // Flags
-    let mut format = true;
+//     // Flags
+//     let mut format = true;
 
-    flags! {
-        for flags, args => {
-            "no-format" => format = false,
-        }
-    }
+//     flags! {
+//         for flags, args => {
+//             "no-format" => format = false,
+//         }
+//     }
 
-    write_impl(cx, args.next(), false, format)?;
+//     write_impl(cx, args.next(), false, format)?;
 
-    cx.block_try_flush_writes()?;
-    quit(cx, Args::empty(), flags, event)
-}
+//     cx.block_try_flush_writes()?;
+//     quit(cx, Args::empty(), flags, event)
+// }
 
-fn force_write_quit(
-    cx: &mut compositor::Context,
-    mut args: Args,
-    flags: Flags,
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
+// fn force_write_quit(
+//     cx: &mut compositor::Context,
+//     mut args: Args,
+//     flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
 
-    // Flags
-    let mut format = true;
+//     // Flags
+//     let mut format = true;
 
-    flags! {
-        for flags, args => {
-            "no-format" => format = false,
-        }
-    }
+//     flags! {
+//         for flags, args => {
+//             "no-format" => format = false,
+//         }
+//     }
 
-    write_impl(cx, args.next(), true, format)?;
+//     write_impl(cx, args.next(), true, format)?;
 
-    cx.block_try_flush_writes()?;
-    force_quit(cx, Args::empty(), flags, event)
-}
+//     cx.block_try_flush_writes()?;
+//     force_quit(cx, Args::empty(), flags, event)
+// }
 
 /// Results in an error if there are modified buffers remaining and sets editor
 /// error, otherwise returns `Ok(())`. If the current document is unmodified,
@@ -882,6 +940,7 @@ pub fn write_all_impl(
     cx: &mut compositor::Context,
     force: bool,
     write_scratch: bool,
+    format: bool,
 ) -> anyhow::Result<()> {
     let mut errors: Vec<&'static str> = Vec::new();
     let config = cx.editor.config();
@@ -922,7 +981,7 @@ pub fn write_all_impl(
         // Save an undo checkpoint for any outstanding changes.
         doc.append_changes_to_history(view);
 
-        let fmt = if config.auto_format {
+        let fmt = if config.auto_format && format {
             doc.auto_format().map(|fmt| {
                 let callback = make_format_callback(
                     doc_id,
@@ -949,57 +1008,57 @@ pub fn write_all_impl(
     Ok(())
 }
 
-fn write_all(
-    cx: &mut compositor::Context,
-    _args: Args,
-    _flags: Flags,
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
+// fn write_all(
+//     cx: &mut compositor::Context,
+//     _args: Args,
+//     _flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
 
-    write_all_impl(cx, false, true)
-}
+//     write_all_impl(cx, false, true, true)
+// }
 
-fn force_write_all(
-    cx: &mut compositor::Context,
-    _args: Args,
-    _flags: Flags,
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
+// fn force_write_all(
+//     cx: &mut compositor::Context,
+//     _args: Args,
+//     _flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
 
-    write_all_impl(cx, true, true)
-}
+//     write_all_impl(cx, true, true, true)
+// }
 
-fn write_all_quit(
-    cx: &mut compositor::Context,
-    _args: Args,
-    _flags: Flags,
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
-    write_all_impl(cx, false, true)?;
-    quit_all_impl(cx, false)
-}
+// fn write_all_quit(
+//     cx: &mut compositor::Context,
+//     _args: Args,
+//     _flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
+//     write_all_impl(cx, false, true, true)?;
+//     quit_all_impl(cx, false)
+// }
 
-fn force_write_all_quit(
-    cx: &mut compositor::Context,
-    _args: Args,
-    _flags: Flags,
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
-    let _ = write_all_impl(cx, true, true);
-    quit_all_impl(cx, true)
-}
+// fn force_write_all_quit(
+//     cx: &mut compositor::Context,
+//     _args: Args,
+//     _flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
+//     let _ = write_all_impl(cx, true, true, true);
+//     quit_all_impl(cx, true)
+// }
 
 fn quit_all_impl(cx: &mut compositor::Context, force: bool) -> anyhow::Result<()> {
     cx.block_try_flush_writes()?;
@@ -1205,72 +1264,72 @@ fn yank(
     Ok(())
 }
 
-fn yank_main_selection_to_clipboard(
-    cx: &mut compositor::Context,
-    _args: Args,
-    _flags: Flags,
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
-    yank_primary_selection_impl(cx.editor, '+');
-    Ok(())
-}
+// fn yank_main_selection_to_clipboard(
+//     cx: &mut compositor::Context,
+//     _args: Args,
+//     _flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
+//     yank_primary_selection_impl(cx.editor, '+');
+//     Ok(())
+// }
 
-fn yank_joined(
-    cx: &mut compositor::Context,
-    args: Args,
-    _flags: Flags,
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
-    let register = cx.editor.selected_register.unwrap_or('"');
-    yank_joined_impl(cx.editor, args.raw(), register);
-    Ok(())
-}
+// fn yank_joined(
+//     cx: &mut compositor::Context,
+//     args: Args,
+//     _flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
+//     let register = cx.editor.selected_register.unwrap_or('"');
+//     yank_joined_impl(cx.editor, args.raw(), register);
+//     Ok(())
+// }
 
-fn yank_joined_to_clipboard(
-    cx: &mut compositor::Context,
-    args: Args,
-    _flags: Flags,
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
-    yank_joined_impl(cx.editor, args.raw(), '+');
-    Ok(())
-}
+// fn yank_joined_to_clipboard(
+//     cx: &mut compositor::Context,
+//     args: Args,
+//     _flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
+//     yank_joined_impl(cx.editor, args.raw(), '+');
+//     Ok(())
+// }
 
-fn yank_main_selection_to_primary_clipboard(
-    cx: &mut compositor::Context,
-    _args: Args,
-    _flags: Flags,
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
-    yank_primary_selection_impl(cx.editor, '*');
-    Ok(())
-}
+// fn yank_main_selection_to_primary_clipboard(
+//     cx: &mut compositor::Context,
+//     _args: Args,
+//     _flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
+//     yank_primary_selection_impl(cx.editor, '*');
+//     Ok(())
+// }
 
-fn yank_joined_to_primary_clipboard(
-    cx: &mut compositor::Context,
-    args: Args,
-    _flags: Flags,
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
+// fn yank_joined_to_primary_clipboard(
+//     cx: &mut compositor::Context,
+//     args: Args,
+//     _flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
 
-    yank_joined_impl(cx.editor, args.raw(), '*');
-    Ok(())
-}
+//     yank_joined_impl(cx.editor, args.raw(), '*');
+//     Ok(())
+// }
 
 fn paste_clipboard_after(
     cx: &mut compositor::Context,
@@ -1647,24 +1706,24 @@ fn reload_all(
     Ok(())
 }
 
-/// Update the [`Document`] if it has been modified.
-fn update(
-    cx: &mut compositor::Context,
-    args: Args,
-    flags: Flags,
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
+// /// Update the [`Document`] if it has been modified.
+// fn update(
+//     cx: &mut compositor::Context,
+//     args: Args,
+//     flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
 
-    let (_view, doc) = current!(cx.editor);
-    if doc.is_modified() {
-        write(cx, args, flags, event)
-    } else {
-        Ok(())
-    }
-}
+//     let (_view, doc) = current!(cx.editor);
+//     if doc.is_modified() {
+//         write(cx, args, flags, event)
+//     } else {
+//         Ok(())
+//     }
+// }
 
 fn lsp_workspace_command(
     cx: &mut compositor::Context,
@@ -2816,46 +2875,46 @@ fn move_buffer(
     Ok(())
 }
 
-fn yank_diagnostic(
-    cx: &mut compositor::Context,
-    mut args: Args,
-    _flags: Flags,
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
+// fn yank_diagnostic(
+//     cx: &mut compositor::Context,
+//     mut args: Args,
+//     _flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
 
-    let reg = match args.next() {
-        Some(s) => {
-            ensure!(s.chars().count() == 1, format!("Invalid register {s}"));
-            s.chars().next().unwrap()
-        }
-        None => '+',
-    };
+//     let reg = match args.next() {
+//         Some(s) => {
+//             ensure!(s.chars().count() == 1, format!("Invalid register {s}"));
+//             s.chars().next().unwrap()
+//         }
+//         None => '+',
+//     };
 
-    let (view, doc) = current_ref!(cx.editor);
-    let primary = doc.selection(view.id).primary();
+//     let (view, doc) = current_ref!(cx.editor);
+//     let primary = doc.selection(view.id).primary();
 
-    // Look only for diagnostics that intersect with the primary selection
-    let diag: Vec<_> = doc
-        .diagnostics()
-        .iter()
-        .filter(|d| primary.overlaps(&helix_core::Range::new(d.range.start, d.range.end)))
-        .map(|d| d.message.clone())
-        .collect();
-    let n = diag.len();
-    if n == 0 {
-        bail!("No diagnostics under primary selection");
-    }
+//     // Look only for diagnostics that intersect with the primary selection
+//     let diag: Vec<_> = doc
+//         .diagnostics()
+//         .iter()
+//         .filter(|d| primary.overlaps(&helix_core::Range::new(d.range.start, d.range.end)))
+//         .map(|d| d.message.clone())
+//         .collect();
+//     let n = diag.len();
+//     if n == 0 {
+//         bail!("No diagnostics under primary selection");
+//     }
 
-    cx.editor.registers.write(reg, diag)?;
-    cx.editor.set_status(format!(
-        "Yanked {n} diagnostic{} to register {reg}",
-        if n == 1 { "" } else { "s" }
-    ));
-    Ok(())
-}
+//     cx.editor.registers.write(reg, diag)?;
+//     cx.editor.set_status(format!(
+//         "Yanked {n} diagnostic{} to register {reg}",
+//         if n == 1 { "" } else { "s" }
+//     ));
+//     Ok(())
+// }
 
 fn read(
     cx: &mut compositor::Context,
@@ -2899,7 +2958,7 @@ fn read(
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "quit",
-        aliases: &["q"],
+        aliases: aliases!["q"],
         flags: flags![],
         accepts: None,
         doc: "close the current view.",
@@ -2908,7 +2967,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "quit!",
-        aliases: &["q!"],
+        aliases: aliases!["q!"],
         flags: flags![],
         accepts: None,
         doc: "force close the current view, ignoring unsaved changes.",
@@ -2917,7 +2976,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "open",
-        aliases: &["o", "edit", "e"],
+        aliases: aliases!["o", "edit", "e"],
         flags: flags![],
         accepts: Some("<path>"),
         doc: "open a file from disk into the current view.",
@@ -2926,7 +2985,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "buffer-close",
-        aliases: &["bc", "bclose"],
+        aliases: aliases!["bc", "bclose"],
         flags: flags![],
         accepts: None,
         doc: "close the current buffer.",
@@ -2935,7 +2994,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "buffer-close!",
-        aliases: &["bc!", "bclose!"],
+        aliases: aliases!["bc!", "bclose!"],
         flags: flags![],
         accepts: None,
         doc: "close the current buffer forcefully, ignoring unsaved changes.",
@@ -2944,7 +3003,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "buffer-close-others",
-        aliases: &["bco", "bcloseother"],
+        aliases: aliases!["bco", "bcloseother"],
         flags: flags![],
         accepts: None,
         doc: "close all buffers but the currently focused one.",
@@ -2953,7 +3012,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "buffer-close-others!",
-        aliases: &["bco!", "bcloseother!"],
+        aliases: aliases!["bco!", "bcloseother!"],
         flags: flags![],
         accepts: None,
         doc: "force close all buffers but the currently focused one.",
@@ -2962,7 +3021,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "buffer-close-all",
-        aliases: &["bca", "bcloseall"],
+        aliases: aliases!["bca", "bcloseall"],
         flags: flags![],
         accepts: None,
         doc: "close all buffers without quitting.",
@@ -2971,7 +3030,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "buffer-close-all!",
-        aliases: &["bca!", "bcloseall!"],
+        aliases: aliases!["bca!", "bcloseall!"],
         flags: flags![],
         accepts: None,
         doc: "force close all buffers ignoring unsaved changes without quitting.",
@@ -2980,7 +3039,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "buffer-next",
-        aliases: &["bn", "bnext"],
+        aliases: aliases!["bn", "bnext"],
         flags: flags![],
         accepts: None,
         doc: "goto next buffer.",
@@ -2989,7 +3048,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "buffer-previous",
-        aliases: &["bp", "bprev"],
+        aliases: aliases!["bp", "bprev"],
         flags: flags![],
         accepts: None,
         doc: "goto previous buffer.",
@@ -2998,55 +3057,99 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "write",
-        aliases: &["w"],
-        flags: flags![{
-            long: "no-format",
-            desc: "skips formatting step when writing",
-        }],
+        aliases: aliases![
+            "w",
+            "u" => "write --update",
+            "x" => "write --quit",
+            "wq" => "write --quit",
+            "x!" => "write --quit --force",
+            "wq!" => "write --quit --force",
+            "w!" => "write --force",
+            "wa" => "write --all",
+            "wa!" => "write --all --force",
+            "waq" => "write --all --quit",
+            "wqa" => "write --all --quit",
+            "xa" => "write --all --quit",
+            "waq!" => "write --all --force --quit",
+            "wqa!" => "write --all --force --quit",
+            "xa!" => "write --all --force --quit",
+            "wbc" => "write --close-buffer",
+            "wbc!" => "write --force --close-buffer",
+        ],
+        flags: flags![
+            {
+                long: "all",
+                short: "a",
+                desc: "writes all buffers",
+            },
+            {
+                long: "quit",
+                short: "q",
+                desc: "quit helix after write",
+            },
+            {
+                long: "force",
+                short: "f",
+                desc: "forcefully write changes",
+            },
+            {
+                long: "update",
+                short: "u",
+                desc: "write only modified changes",
+            },
+            {
+                long: "no-format",
+                desc: "skips formatting step when writing",
+            },
+            {
+                long: "close-buffer",
+                desc: "close buffer after writing",
+            },
+        ],
         accepts: Some("<path>"),
         doc: "write changes to disk",
         fun: write,
         signature: CommandSignature::positional(&[completers::filename]),
     },
-    TypableCommand {
-        name: "write!",
-        aliases: &["w!"],
-        flags: flags![{
-            long: "no-format",
-            desc: "skips formatting step when writing",
-        }],
-        accepts: Some("<path>"),
-        doc: "force write changes to disk creating necessary subdirectories.",
-        fun: force_write,
-        signature: CommandSignature::positional(&[completers::filename]),
-    },
-    TypableCommand {
-        name: "write-buffer-close",
-        aliases: &["wbc"],
-        flags: flags![{
-            long: "no-format",
-            desc: "skips formatting step when writing",
-        }],
-        accepts: Some("<path>"),
-        doc: "write changes to disk and closes the buffer",
-        fun: write_buffer_close,
-        signature: CommandSignature::positional(&[completers::filename]),
-    },
-    TypableCommand {
-        name: "write-buffer-close!",
-        aliases: &["wbc!"],
-        flags: flags![{
-            long: "no-format",
-            desc: "skips formatting step when writing",
-        }],
-        accepts: Some("<path>"),
-        doc: "force write changes to disk creating necessary subdirectories and closes the buffer",
-        fun: force_write_buffer_close,
-        signature: CommandSignature::positional(&[completers::filename]),
-    },
+    // TypableCommand {
+    //     name: "write!",
+    //     aliases: aliases!["w!"],
+    //     flags: flags![{
+    //         long: "no-format",
+    //         desc: "skips formatting step when writing",
+    //     }],
+    //     accepts: Some("<path>"),
+    //     doc: "force write changes to disk creating necessary subdirectories.",
+    //     fun: force_write,
+    //     signature: CommandSignature::positional(&[completers::filename]),
+    // },
+    // TypableCommand {
+    //     name: "write-buffer-close",
+    //     aliases: aliases!["wbc"],
+    //     flags: flags![{
+    //         long: "no-format",
+    //         desc: "skips formatting step when writing",
+    //     }],
+    //     accepts: Some("<path>"),
+    //     doc: "write changes to disk and closes the buffer",
+    //     fun: write_buffer_close,
+    //     signature: CommandSignature::positional(&[completers::filename]),
+    // },
+    // TypableCommand {
+    //     name: "write-buffer-close!",
+    //     aliases: aliases!["wbc!"],
+    //     flags: flags![{
+    //         long: "no-format",
+    //         desc: "skips formatting step when writing",
+    //     }],
+    //     accepts: Some("<path>"),
+    //     doc: "force write changes to disk creating necessary subdirectories and closes the buffer",
+    //     fun: force_write_buffer_close,
+    //     signature: CommandSignature::positional(&[completers::filename]),
+    // },
     TypableCommand {
         name: "new",
-        aliases: &["n"],
+        aliases: aliases!["n"],
         flags: flags![],
         accepts: None,
         doc: "create a new scratch buffer.",
@@ -3055,7 +3158,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "format",
-        aliases: &["fmt"],
+        aliases: aliases!["fmt"],
         flags: flags![],
         accepts: None,
         doc: "format the file using an external formatter or language server.",
@@ -3064,7 +3167,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "indent-style",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![],
         accepts: Some("<indent>|<number>"),
         doc: "set the indentation style for editing. ('t' for tabs or 1-16 for number of spaces.)",
@@ -3073,7 +3176,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "line-ending",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![],
         accepts: Some("<ending>"),
         #[cfg(not(feature = "unicode-lines"))]
@@ -3085,7 +3188,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "earlier",
-        aliases: &["ear"],
+        aliases: aliases!["ear"],
         flags: flags![],
         accepts: Some("<steps>|<timespan>"),
         doc: "jump back to an earlier point in edit history.",
@@ -3094,76 +3197,76 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "later",
-        aliases: &["lat"],
+        aliases: aliases!["lat"],
         flags: flags![],
         accepts: Some("<steps>|<timespan>"),
         doc: "jump to a later point in edit history.",
         fun: later,
         signature: CommandSignature::none(),
     },
-    TypableCommand {
-        name: "write-quit",
-        aliases: &["wq", "x"],
-        flags: flags![{
-            long: "no-format",
-            desc: "skips formatting step when writing",
-        }],
-        accepts: Some("<path>"),
-        doc: "write changes to disk and close the current view.",
-        fun: write_quit,
-        signature: CommandSignature::positional(&[completers::filename]),
-    },
-    TypableCommand {
-        name: "write-quit!",
-        aliases: &["wq!", "x!"],
-        flags: flags![{
-            long: "no-format",
-            desc: "skips formatting step when writing",
-        }],
-        accepts: Some("<path>"),
-        doc: "write changes to disk and close the current view forcefully.",
-        fun: force_write_quit,
-        signature: CommandSignature::positional(&[completers::filename]),
-    },
-    TypableCommand {
-        name: "write-all",
-        aliases: &["wa"],
-        flags: flags![],
-        accepts: None,
-        doc: "write changes from all buffers to disk.",
-        fun: write_all,
-        signature: CommandSignature::none(),
-    },
-    TypableCommand {
-        name: "write-all!",
-        aliases: &["wa!"],
-        flags: flags![],
-        accepts: None,
-        doc: "forcefully write changes from all buffers to disk creating necessary subdirectories.",
-        fun: force_write_all,
-        signature: CommandSignature::none(),
-    },
-    TypableCommand {
-        name: "write-quit-all",
-        aliases: &["wqa", "xa"],
-        flags: flags![],
-        accepts: None,
-        doc: "write changes from all buffers to disk and close all views.",
-        fun: write_all_quit,
-        signature: CommandSignature::none(),
-    },
-    TypableCommand {
-        name: "write-quit-all!",
-        aliases: &["wqa!", "xa!"],
-        flags: flags![],
-        accepts: None,
-        doc: "write changes from all buffers to disk and close all views forcefully (ignoring unsaved changes).",
-        fun: force_write_all_quit,
-        signature: CommandSignature::none(),
-    },
+    // TypableCommand {
+    //     name: "write-quit",
+    //     aliases: aliases!["wq", "x"],
+    //     flags: flags![{
+    //         long: "no-format",
+    //         desc: "skips formatting step when writing",
+    //     }],
+    //     accepts: Some("<path>"),
+    //     doc: "write changes to disk and close the current view.",
+    //     fun: write_quit,
+    //     signature: CommandSignature::positional(&[completers::filename]),
+    // },
+    // TypableCommand {
+    //     name: "write-quit!",
+    //     aliases: aliases!["wq!", "x!"],
+    //     flags: flags![{
+    //         long: "no-format",
+    //         desc: "skips formatting step when writing",
+    //     }],
+    //     accepts: Some("<path>"),
+    //     doc: "write changes to disk and close the current view forcefully.",
+    //     fun: force_write_quit,
+    //     signature: CommandSignature::positional(&[completers::filename]),
+    // },
+    // TypableCommand {
+    //     name: "write-all",
+    //     aliases: aliases!["wa"],
+    //     flags: flags![],
+    //     accepts: None,
+    //     doc: "write changes from all buffers to disk.",
+    //     fun: write_all,
+    //     signature: CommandSignature::none(),
+    // },
+    // TypableCommand {
+    //     name: "write-all!",
+    //     aliases: aliases!["wa!"],
+    //     flags: flags![],
+    //     accepts: None,
+    //     doc: "forcefully write changes from all buffers to disk creating necessary subdirectories.",
+    //     fun: force_write_all,
+    //     signature: CommandSignature::none(),
+    // },
+    // TypableCommand {
+    //     name: "write-quit-all",
+    //     aliases: aliases!["wqa", "xa"],
+    //     flags: flags![],
+    //     accepts: None,
+    //     doc: "write changes from all buffers to disk and close all views.",
+    //     fun: write_all_quit,
+    //     signature: CommandSignature::none(),
+    // },
+    // TypableCommand {
+    //     name: "write-quit-all!",
+    //     aliases: aliases!["wqa!", "xa!"],
+    //     flags: flags![],
+    //     accepts: None,
+    //     doc: "write changes from all buffers to disk and close all views forcefully (ignoring unsaved changes).",
+    //     fun: force_write_all_quit,
+    //     signature: CommandSignature::none(),
+    // },
     TypableCommand {
         name: "quit-all",
-        aliases: &["qa"],
+        aliases: aliases!["qa"],
         flags: flags![],
         accepts: None,
         doc: "close all views.",
@@ -3172,7 +3275,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "quit-all!",
-        aliases: &["qa!"],
+        aliases: aliases!["qa!"],
         flags: flags![],
         accepts: None,
         doc: "force close all views ignoring unsaved changes.",
@@ -3181,7 +3284,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "cquit",
-        aliases: &["cq"],
+        aliases: aliases!["cq"],
         flags: flags![],
         accepts: Some("<number>"),
         doc: "quit with exit code (default 1)",
@@ -3190,7 +3293,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "cquit!",
-        aliases: &["cq!"],
+        aliases: aliases!["cq!"],
         flags: flags![],
         accepts: Some("<number>"),
         doc: "force quit with exit code (default 1) ignoring unsaved changes.",
@@ -3199,25 +3302,29 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "theme",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![],
         accepts: Some("<theme>"),
         doc: "change the editor theme (show current theme if no name specified).",
         fun: theme,
         signature: CommandSignature::positional(&[completers::theme]),
     },
-    TypableCommand {
-        name: "yank-join",
-        aliases: &[],
-        flags: flags![],
-        accepts: Some("<separator>"),
-        doc: "yank joined selections. a separator can be provided as first argument. default value is newline.",
-        fun: yank_joined,
-        signature: CommandSignature::none(),
-    },
+    // TypableCommand {
+    //     name: "yank-join",
+    //     aliases: aliases![],
+    //     flags: flags![],
+    //     accepts: Some("<separator>"),
+    //     doc: "yank joined selections. a separator can be provided as first argument. default value is newline.",
+    //     fun: yank_joined,
+    //     signature: CommandSignature::none(),
+    // },
     TypableCommand {
         name: "yank",
-        aliases: &[],
+        aliases: aliases![
+            "y",
+            "yj" => "yank --join",
+            "yd" => "yank --diagnostic",
+        ],
         flags: flags![
             {
                 long: "join",
@@ -3257,45 +3364,45 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         fun: yank,
         signature: CommandSignature::none(),
     },
-    TypableCommand {
-        name: "clipboard-yank",
-        aliases: &[],
-        flags: flags![],
-        accepts: None,
-        doc: "yank main selection into system clipboard.",
-        fun: yank_main_selection_to_clipboard,
-        signature: CommandSignature::none(),
-    },
-    TypableCommand {
-        name: "clipboard-yank-join",
-        aliases: &[],
-        flags: flags![],
-        accepts: Some("<separator>"),
-        doc: "yank joined selections into system clipboard. a separator can be provided as first argument. default value is newline.", // FIXME: current UI can't display long doc.
-        fun: yank_joined_to_clipboard,
-        signature: CommandSignature::none(),
-    },
-    TypableCommand {
-        name: "primary-clipboard-yank",
-        aliases: &[],
-        flags: flags![],
-        accepts: None,
-        doc: "yank main selection into system primary clipboard.",
-        fun: yank_main_selection_to_primary_clipboard,
-        signature: CommandSignature::none(),
-    },
-    TypableCommand {
-        name: "primary-clipboard-yank-join",
-        aliases: &[],
-        flags: flags![],
-        accepts: Some("<separator>"),
-        doc: "yank joined selections into system primary clipboard. a separator can be provided as first argument. default value is newline.", // FIXME: current UI can't display long doc.
-        fun: yank_joined_to_primary_clipboard,
-        signature: CommandSignature::none(),
-    },
+    // TypableCommand {
+    //     name: "clipboard-yank",
+    //     aliases: aliases![],
+    //     flags: flags![],
+    //     accepts: None,
+    //     doc: "yank main selection into system clipboard.",
+    //     fun: yank_main_selection_to_clipboard,
+    //     signature: CommandSignature::none(),
+    // },
+    // TypableCommand {
+    //     name: "clipboard-yank-join",
+    //     aliases: aliases![],
+    //     flags: flags![],
+    //     accepts: Some("<separator>"),
+    //     doc: "yank joined selections into system clipboard. a separator can be provided as first argument. default value is newline.", // FIXME: current UI can't display long doc.
+    //     fun: yank_joined_to_clipboard,
+    //     signature: CommandSignature::none(),
+    // },
+    // TypableCommand {
+    //     name: "primary-clipboard-yank",
+    //     aliases: aliases![],
+    //     flags: flags![],
+    //     accepts: None,
+    //     doc: "yank main selection into system primary clipboard.",
+    //     fun: yank_main_selection_to_primary_clipboard,
+    //     signature: CommandSignature::none(),
+    // },
+    // TypableCommand {
+    //     name: "primary-clipboard-yank-join",
+    //     aliases: aliases![],
+    //     flags: flags![],
+    //     accepts: Some("<separator>"),
+    //     doc: "yank joined selections into system primary clipboard. a separator can be provided as first argument. default value is newline.", // FIXME: current UI can't display long doc.
+    //     fun: yank_joined_to_primary_clipboard,
+    //     signature: CommandSignature::none(),
+    // },
     TypableCommand {
         name: "clipboard-paste-after",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![],
         accepts: None,
         doc: "paste system clipboard after selections.",
@@ -3304,7 +3411,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "clipboard-paste-before",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![],
         accepts: None,
         doc: "paste system clipboard before selections.",
@@ -3313,7 +3420,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "clipboard-paste-replace",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![],
         accepts: None,
         doc: "replace selections with content of system clipboard.",
@@ -3322,7 +3429,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "primary-clipboard-paste-after",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![],
         accepts: None,
         doc: "paste primary clipboard after selections.",
@@ -3331,7 +3438,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "primary-clipboard-paste-before",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![],
         accepts: None,
         doc: "paste primary clipboard before selections.",
@@ -3340,7 +3447,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "primary-clipboard-paste-replace",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![],
         accepts: None,
         doc: "replace selections with content of system primary clipboard.",
@@ -3349,7 +3456,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "show-clipboard-provider",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![],
         accepts: None,
         doc: "show clipboard provider name in status bar.",
@@ -3358,7 +3465,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "change-current-directory",
-        aliases: &["cd"],
+        aliases: aliases!["cd"],
         flags: flags![],
         accepts: Some("<path>"),
         doc: "change the current working directory.",
@@ -3367,7 +3474,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "show-directory",
-        aliases: &["pwd"],
+        aliases: aliases!["pwd"],
         flags: flags![],
         accepts: None,
         doc: "show the current working directory.",
@@ -3376,7 +3483,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "encoding",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![],
         accepts: Some("<encoding>"),
         doc: "set encoding. based on `https://encoding.spec.whatwg.org`.",
@@ -3385,7 +3492,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "character-info",
-        aliases: &["char"],
+        aliases: aliases!["char"],
         flags: flags![],
         accepts: None,
         doc: "get info about the character under the primary cursor.",
@@ -3394,7 +3501,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "reload",
-        aliases: &["rl"],
+        aliases: aliases!["rl"],
         flags: flags![],
         accepts: None,
         doc: "discard changes and reload from the source file.",
@@ -3403,25 +3510,25 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "reload-all",
-        aliases: &["rla"],
+        aliases: aliases!["rla"],
         flags: flags![],
         accepts: None,
         doc: "discard changes and reload all documents from the source files.",
         fun: reload_all,
         signature: CommandSignature::none(),
     },
-    TypableCommand {
-        name: "update",
-        aliases: &["u"],
-        flags: flags![],
-        accepts: None,
-        doc: "write changes only if the file has been modified.",
-        fun: update,
-        signature: CommandSignature::none(),
-    },
+    // TypableCommand {
+    //     name: "update",
+    //     aliases: aliases!["u"],
+    //     flags: flags![],
+    //     accepts: None,
+    //     doc: "write changes only if the file has been modified.",
+    //     fun: update,
+    //     signature: CommandSignature::none(),
+    // },
     TypableCommand {
         name: "lsp-workspace-command",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![],
         accepts: None,
         doc: "open workspace command picker",
@@ -3430,7 +3537,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "lsp-restart",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![],
         accepts: None,
         doc: "restarts the language servers used by the current doc",
@@ -3439,7 +3546,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "lsp-stop",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![],
         accepts: None,
         doc: "stops the language servers that are used by the current doc",
@@ -3448,7 +3555,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "tree-sitter-scopes",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![],
         accepts: None,
         doc: "display tree sitter scopes, primarily for theming and development.",
@@ -3457,7 +3564,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "tree-sitter-highlight-name",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![],
         accepts: None,
         doc: "display name of tree-sitter highlight scope under the cursor.",
@@ -3466,7 +3573,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "debug-start",
-        aliases: &["dbg"],
+        aliases: aliases!["dbg"],
         flags: flags![],
         accepts: None,
         doc: "start a debug session from a given template with given parameters.",
@@ -3475,7 +3582,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "debug-remote",
-        aliases: &["dbg-tcp"],
+        aliases: aliases!["dbg-tcp"],
         flags: flags![],
         accepts: None,
         doc: "connect to a debug adapter by TCP address and start a debugging session from a given template with given parameters.",
@@ -3484,7 +3591,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "debug-eval",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![],
         accepts: None,
         doc: "evaluate expression in current debug context.",
@@ -3493,7 +3600,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "vsplit",
-        aliases: &["vs"],
+        aliases: aliases!["vs"],
         flags: flags![],
         accepts: Some("<path>"),
         doc: "open the file in a vertical split.",
@@ -3502,7 +3609,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "vsplit-new",
-        aliases: &["vnew"],
+        aliases: aliases!["vnew"],
         flags: flags![],
         accepts: None,
         doc: "open a scratch buffer in a vertical split.",
@@ -3511,7 +3618,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "hsplit",
-        aliases: &["hs", "sp"],
+        aliases: aliases!["hs", "sp"],
         flags: flags![],
         accepts: Some("<path>"),
         doc: "open the file in a horizontal split.",
@@ -3520,7 +3627,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "hsplit-new",
-        aliases: &["hnew"],
+        aliases: aliases!["hnew"],
         flags: flags![],
         accepts: None,
         doc: "open a scratch buffer in a horizontal split.",
@@ -3529,7 +3636,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "tutor",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![],
         accepts: None,
         doc: "open the tutorial.",
@@ -3538,7 +3645,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "goto",
-        aliases: &["g"],
+        aliases: aliases!["g"],
         flags: flags![],
         accepts: Some("<number>"),
         doc: "goto line number.",
@@ -3547,7 +3654,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "set-language",
-        aliases: &["lang"],
+        aliases: aliases!["lang"],
         flags: flags![],
         accepts: Some("<lang>"),
         doc: "set the language of current buffer (show current language if no value specified).",
@@ -3556,7 +3663,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "set-option",
-        aliases: &["set"],
+        aliases: aliases!["set"],
         flags: flags![],
         accepts: Some("<option> <value>"),
         doc: "set a config option at runtime. for example to disable smart case search, use `:set search.smart-case false`.",
@@ -3566,7 +3673,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "toggle-option",
-        aliases: &["toggle"],
+        aliases: aliases!["toggle"],
         flags: flags![],
         accepts: Some("<option>"),
         doc: "toggle a boolean config option at runtime. for example to toggle smart case search, use `:toggle search.smart-case`.",
@@ -3575,7 +3682,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "get-option",
-        aliases: &["get"],
+        aliases: aliases!["get"],
         flags: flags![],
         accepts: Some("<option>"),
         doc: "get the current value of a config option.",
@@ -3584,7 +3691,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "sort",
-        aliases: &[],
+        aliases: aliases!["rsort" => "sort --reverse"],
         flags: flags![
             {
                 long: "reverse",
@@ -3599,7 +3706,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "reflow",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![],
         accepts: None,
         doc: "hard-wrap the current selection of lines to a given width.",
@@ -3608,7 +3715,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "tree-sitter-subtree",
-        aliases: &["ts-subtree"],
+        aliases: aliases!["ts-subtree"],
         flags: flags![],
         accepts: None,
         doc: "display the smallest tree-sitter subtree that spans the primary selection, primarily for debugging queries.",
@@ -3617,7 +3724,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "config-reload",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![],
         accepts: None,
         doc: "refresh user config.",
@@ -3626,7 +3733,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "config-open",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![],
         accepts: None,
         doc: "open the user config.toml file.",
@@ -3635,7 +3742,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "config-open-workspace",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![],
         accepts: None,
         doc: "open the workspace config.toml file.",
@@ -3644,7 +3751,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "log-open",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![],
         accepts: None,
         doc: "open the helix log file.",
@@ -3653,7 +3760,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "insert-output",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![],
         accepts: Some("<cmd>"),
         doc: "run shell command, inserting output before each selection.",
@@ -3662,7 +3769,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "append-output",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![],
         accepts: Some("<cmd>"),
         doc: "run shell command, appending output after each selection.",
@@ -3671,7 +3778,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "pipe",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![],
         accepts: Some("<cmd>"),
         doc: "pipe each selection to the shell command.",
@@ -3680,7 +3787,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "pipe-to",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![],
         accepts: Some("<cmd>"),
         doc: "pipe each selection to the shell command, ignoring output.",
@@ -3689,7 +3796,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "run-shell-command",
-        aliases: &["sh"],
+        aliases: aliases!["sh"],
         flags: flags![],
         accepts: Some("<cmd>"),
         doc: "run a shell command",
@@ -3698,7 +3805,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "reset-diff-change",
-        aliases: &["diffget", "diffg"],
+        aliases: aliases!["diffget", "diffg"],
         flags: flags![],
         accepts: None,
         doc: "reset the diff change at the cursor position.",
@@ -3707,7 +3814,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "clear-register",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![{
             long: "all",
             short: "a",
@@ -3720,7 +3827,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "redraw",
-        aliases: &[],
+        aliases: aliases![],
         flags: flags![],
         accepts: None,
         doc: "clear and re-render the whole UI",
@@ -3729,25 +3836,25 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "move",
-        aliases: &["mv"],
+        aliases: aliases!["mv"],
         flags: flags![],
         accepts: Some("<path>"),
         doc: "move the current buffer and its corresponding file to a different path",
         fun: move_buffer,
         signature: CommandSignature::positional(&[completers::filename]),
     },
-    TypableCommand {
-        name: "yank-diagnostic",
-        aliases: &[],
-        flags: flags![],
-        accepts: None,
-        doc: "yank diagnostic(s) under primary cursor to register, or clipboard by default",
-        fun: yank_diagnostic,
-        signature: CommandSignature::all(completers::register),
-    },
+    // TypableCommand {
+    //     name: "yank-diagnostic",
+    //     aliases: aliases![],
+    //     flags: flags![],
+    //     accepts: None,
+    //     doc: "yank diagnostic(s) under primary cursor to register, or clipboard by default",
+    //     fun: yank_diagnostic,
+    //     signature: CommandSignature::all(completers::register),
+    // },
     TypableCommand {
         name: "read",
-        aliases: &["r"],
+        aliases: aliases!["r"],
         flags: flags![],
         accepts: Some("<path>"),
         doc: "load a file into buffer",
@@ -3762,7 +3869,7 @@ pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableComma
             .iter()
             .flat_map(|cmd| {
                 std::iter::once((cmd.name, cmd))
-                    .chain(cmd.aliases.iter().map(move |&alias| (alias, cmd)))
+                    .chain(cmd.aliases.iter().map(move |&alias| (alias.name, cmd)))
             })
             .collect()
     });
@@ -3832,7 +3939,15 @@ pub(super) fn command_mode(cx: &mut Context) {
 
             // Handle typable commands
             if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(command) {
-                if let Err(err) = (cmd.fun)(cx, shellwords.args(), cmd.flags, event) {
+                if let Some(flags) = cmd.flags(command) {
+                    // TODO: Maybe shellwords.command should return a (command: &str, rest: &str)?
+                    // Or have a shellwords.split_command that does this.
+                    let args = format!("{flags}{}", input.trim_start_matches(command));
+
+                    if let Err(err) = (cmd.fun)(cx, Args::from(&args), cmd.flags, event) {
+                        cx.editor.set_error(format!("{err}"));
+                    }
+                } else if let Err(err) = (cmd.fun)(cx, shellwords.args(), cmd.flags, event) {
                     cx.editor.set_error(format!("{err}"));
                 }
             } else if event == PromptEvent::Validate {

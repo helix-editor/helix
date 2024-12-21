@@ -1,3 +1,4 @@
+pub(crate) mod alias;
 pub(crate) mod dap;
 pub(crate) mod flag;
 pub(crate) mod lsp;

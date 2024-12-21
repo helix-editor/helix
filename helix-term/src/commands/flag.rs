@@ -20,6 +20,10 @@ impl Flags {
         self.0.is_empty()
     }
 
+    pub fn iter(&self) -> impl Iterator<Item = &Flag> {
+        self.0.iter()
+    }
+
     #[inline]
     pub fn names(&self) -> impl Iterator<Item = &'static str> {
         self.0
