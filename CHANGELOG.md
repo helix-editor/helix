@@ -1,3 +1,233 @@
+<!--
+# YY.0M (YYYY-0M-0D)
+
+Breaking changes:
+
+Features:
+
+Commands:
+
+Usability improvements:
+
+Fixes:
+
+Themes:
+
+New languages:
+
+Updated languages and queries:
+
+Packaging:
+-->
+
+# 25.01 (2025-01-01)
+
+... github says 142 contributors, check `git log` instead ...
+
+checkpoint <https://github.com/helix-editor/helix/compare/ea17b9edb708bc5ea26fec95dda66a6f45753545...master>
+
+Breaking changes:
+
+Features:
+
+* Big refactor for `Picker`s (#9647, #11209, #11216, #11211, #11343, #11406)
+    * Use a table layout and allow filtering by column
+    * Reimplement `global_search` to allow changing the query dynamically
+* Add an alternative "inline" display for LSP diagnostics (#6417, #11815)
+* Support defining keybindings as macros (#4709)
+* Continue line comments in `o`/`O` and on `<ret>` in insert mode (#10996, #12213, #12215)
+* Allow configuring and switching clipboard providers at runtime (#10839, b855cd0, 467fad5, 191b0f0)
+* Add support for path completion (#2608)
+* Support bindings with the Super (Cwd/Win/Meta) modifier (#6592)
+* Support rendering and jumping between tabstops in snippet completions (#9801)
+* Allow theming directory completions (#12205, #12295)
+
+Commands:
+
+* Add commands to move within snake_case or camelCase words (#8147)
+* Add `search_selection_detect_word_boundaries` (#12126)
+    * This command takes the `*` key in normal and select mode, replacing `search_selection` which was moved to `A-*`.
+
+Usability improvements:
+
+* Add `:edit` and `:e` aliases for `:open` (#11186, #11196)
+* Trim trailing newline from pipe command outputs when the input doesn't have a trailing newline (#11183, 4f63a46)
+* Add `:mv` alias for `:move` (#11256)
+* Return document display name instead of absolute path from the `%` special register (#11275)
+* Track view position on a per-view instead of per-document basis (#10559)
+* Improve scrolloff calculation to leave a gap in the middle (#11323)
+* Show a popup for stderr printed by failed `:sh` commands (#11239)
+* Add statusline errors when nothing is selected with `s`, `K`, `A-K` (#11370)
+* Add `.svn` as a workspace root marker (#11429)
+* Trim the end of `:sh` outputs (#11161)
+* Show LSP `window/showMessage` messages in the statusline (#5535)
+* Support finding workspace directories via `.jj` directories (#11685)
+* Join single-line comments with `join_selections` (`J`) (#11742)
+* Show anonymous syntax tree nodes in `:tree-sitter-subtree` (#11663)
+* Save an undo checkpoint before paste in insert mode (#8121)
+* Only break on ASCII spaces in `:reflow` (#12048)
+* Add a `default-yank-register` config option (#11936)
+* Show a statusline error for `:format` when a formatter is not available (#12183)
+* Change to the home directory with `:cd` with no arguments (#12042)
+* Change default comment token to `#` for unrecognized files (#12080, #12266, bae6a58)
+* Trim all trailing whitespace on `insert_newline` (#12177)
+* Change to the prior directory with `:cd -` (#12194)
+* Allow parsing `-` (with no modifiers) as a keybinding (#12191)
+* Improve opening statusline and error messages when opening duplicate files or directories (#12199)
+* Trim trailing colons in paths passed on the argv (#9963)
+* Show tree-sitter parser availability in `hx --health <lang>` (#12228)
+* Show a preview block for colors in the LSP completion menu (#12299)
+* Add infobox help for `surround_add`, `surround_replace` and `surround_delete` (#12262)
+
+Fixes:
+
+* Respect document indentation settings in `format_selections` (`=`) (#11169)
+* Avoid switching the current document to normal mode during an LSP `workspace/applyEdit` operation (#11176)
+* Fix off-by-one in LSP `find_completion_range` (#11266)
+* Prefer file-system mtime to local system time for detecting external modifications (#11142, #11352, #11358, #11361)
+* Fix writing of hardlinks (#11340)
+* Prevent language servers from being automatically restarted when stopped with `:lsp-stop` (#11321)
+* Stable-sort LSP text edits (#11357)
+* Fix determination of current language layer in documents with nested language injections (#11365)
+* Fix a panic from `:move`ing a file to a new extension which starts a language server (#11387)
+* Fix a panic from duplicating the diff gutter (#11092)
+* Keep cursor position when exactly replacing text (#5930)
+* Fix a panic from `jump_backward` on a newly opened split (#11508)
+* Fix a panic from language servers sending an unknown diagnostic severity (#11569)
+* Fix a panic when drawing at the edge of the screen (#11737)
+* Fix git repo detection on symlinks (#11732)
+* Fix a panic from a language server sending an out-of-range active signature index in `textDocument/signatureHelp` (#11825)
+* Fix a panic from using `C-k` in a prompt ending in a multi-byte character (#12237)
+* Expand tildes in paths passed to `:read` (#12271)
+* Respect per-language `workspace-lsp-roots` configuration when opening new documents (#12223)
+
+Themes:
+
+* Bring `kanagawa` colors better in line with neovim version (#11187, #11270)
+* Add `ao` (#11063)
+* Update `dark_plus` (#11415)
+* Add `iceberg-light` and `iceberg-dark` (#10674)
+* Update everforest themes (#11459)
+* Update gruvbox themes (#11477)
+* Change primary selection cursor color for `naysayer` (#11617)
+* Style picker column names in `horizon-dark` (#11649)
+* Style picker column names in Darcula themes (#11649)
+* Update diagnostics colors in `snazzy` (#11731)
+* Update bogster themes (#11353)
+* Highlight `keyword.storage` in `onedark` (#11802)
+* Add `ui.virtual.jump-label` to `serika-dark` (#11911)
+* Add `adwaita-light` (#10869)
+* Add seoul256 themes (#11466)
+* Add yo themes (#11703)
+* Add `eiffel` (#11679)
+* Add `carbonfox` (#11558)
+* Set tags color in monokai themes (#11917)
+* Improve readability of spacebones picker selection (#12064)
+* Update modus themes (#11949)
+* Use bold for statusline mode indicator in `onedarker` (#11958)
+* Update hex themes, add a new hex theme (#10849)
+* Add `sunset` (#12093)
+* Add bufferline highlighting for flexoki themes (#12146)
+* Add colors for (un)checked list items to catppuccin themes (#12167)
+* Update `voxed` (#9328)
+* Add `vintage` (#9361)
+* Add directory style to everforest themes (#12287)
+* Add inactive text and update jump label highlights in `dark_plus` (#12289)
+* Sync changes with catppuccin themes (#12304)
+
+New languages:
+
+* `jjdescription` (#11271, #11857)
+* i3wm and Sway configs (#11424)
+* TypeSpec (#11412)
+* jq (#11393)
+* Thrift (#11367)
+* Gherkin (#11083)
+* Circom (#11676)
+* Dune (#11829)
+* Snakemake (#11858, #11936)
+* Cylc (#11830)
+* textproto (#11874)
+* Spade (#11448, #12276)
+* NestedText (#11987)
+* Quint (#11898)
+* Amber-lang (#12021)
+* Vento (#12147)
+* Teal (#12081)
+* Koto (#12307)
+
+Updated languages and queries:
+
+* Add comment injections for Hare (#11173)
+* Improve highlights for `blade.php` files (#11138)
+* Update tree-sitter-slint (#11224, #11757, #12297)
+* Recognize `just` files as Just (#11286)
+* Recognize `mdx` as Markdown (#11122)
+* Update Just grammar and queries (#11306)
+* Recognize `tclsh` as TCL (#11236)
+* Update Godot grammar and queries (#11235)
+* Update Gleam grammar and queries (#11427)
+* Add `mesonlsp` for Meson (#11416)
+* Update HTML highlights (#11400)
+* Add comment textobjects for Verilog (#11388)
+* Switch tree-sitter-just grammar (#11380, #11606, #12141)
+* Update tree-sitter-fsharp (#11061)
+* Add `nixd` for Nix (#10767)
+* Highlight types and enum members from the Rust prelude (#8535)
+* Improve textobjects for HCL, Nix (#11513)
+* Add textobjects queries for docker-compose, dockerfile, env, git-config, hcl, hocon, prisma, SQL and YAML (#11513)
+* Recognize cshtml files as HTML (#11540)
+* Set a memory limit for the Lean language server (#11683)
+* Add configurations for jedi and ruff language servers (#11630)
+* Update Vue highlights (#11706)
+* Switch tree-sitter-hcl grammar (#11749)
+* Fix `odinfmt` formatter configuration (#11759)
+* Recognize `rbs` files as Ruby (#11786)
+* Update tree-sitter-nickel (#11771)
+* Recognize `ldtk` and `ldtkl` files as JSON (#11793)
+* Fix highlights for builtin functions in Fish (#11792)
+* Add `superhtml` for HTML (#11609)
+* Add a configuration for the Vale language server (#11636)
+* Add Erlang Language Platform (`elp`) for Erlang (#11499)
+* Update Odin highlights (#11804)
+* Remove auto-pairs for single quotes in SML (#11838)
+* Add `glsl_analyzer` for GLSL (#11891)
+* Recognize `.prettierrc` as YAML (#11997)
+* Fix `swift-format` formatter configuration (#12052)
+* Add `package.json` and `tsconfig.json` as JS/TS workspace roots (#10652)
+* Add "INVARIANT" to comment error highlights (#12094)
+* Update Rescript grammar and queries (#11165)
+* Update tree-sitter-nasm (#11795)
+* Update LLVM grammars (#11851)
+* Update Perl and Pod grammars (#11848)
+* Add Nim injections in Nix (#11837)
+* Recognize `livemd` as Markdown (#12034)
+* Update Unison grammar and queries (#12039)
+* Turn off Swift auto-format by default (#12071)
+* Recognize `.swift-format` as JSON (#12071)
+* Recognize `.clangd` and `.clang-format` as YAML (#12032)
+* Recognize `ssh_config.d/*.conf` as sshclientconfig (#11947)
+* Update comment token configs for Zig (#12049)
+* Update tree-sitter-bicep (#11525)
+* Add `hyperls` for Hyperlang (#11056)
+* Add highlight queries for Solidity (#12102)
+* Recognize `WORKSPACE.bzlmod` as Starlark (#12103)
+* Update Ada grammar and queries (#12131)
+* Restrict Hocon file-types glob patterns (#12156)
+* Update Mojo language server to Magic (#12195)
+* Switch tree-sitter-v grammar (#12236)
+* Add "COMPLIANCE" to comment error highlights (#12094)
+* Add a language server configuration for `ltex-ls-plus` (#12251)
+* Update tree-sitter-dockerfile (#12230)
+* Add `]` to PHP outdents (#12286)
+* Add textobjects for Odin (#12302)
+
+Packaging:
+
+* Add completions for Nushell (#11262, #11346)
+* Fix completion of flags in Bash completions (#11246)
+* Include shell completions in Nix outputs (#11518)
+
 # 24.07 (2024-07-14)
 
 Thanks to all of the contributors! This release has changes from 160 contributors.
