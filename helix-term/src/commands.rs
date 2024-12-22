@@ -5788,7 +5788,10 @@ fn surround_replace(cx: &mut Context) {
         cx.editor.autoinfo = Some(Info::new("Replace with a pair of", &SURROUND_HELP_TEXT));
     });
 
-    cx.editor.autoinfo = Some(Info::new("Replace nearest pair of", &SURROUND_HELP_TEXT));
+    cx.editor.autoinfo = Some(Info::new(
+        "Replace surrounding pair of",
+        &SURROUND_HELP_TEXT,
+    ));
 }
 
 fn surround_delete(cx: &mut Context) {
@@ -5819,7 +5822,7 @@ fn surround_delete(cx: &mut Context) {
         exit_select_mode(cx);
     });
 
-    cx.editor.autoinfo = Some(Info::new("Delete nearest pair of", &SURROUND_HELP_TEXT));
+    cx.editor.autoinfo = Some(Info::new("Delete surrounding pair of", &SURROUND_HELP_TEXT));
 }
 
 #[derive(Eq, PartialEq)]
