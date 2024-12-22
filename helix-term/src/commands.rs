@@ -1,4 +1,5 @@
 pub(crate) mod dap;
+pub(crate) mod expansions;
 pub(crate) mod lsp;
 pub(crate) mod typed;
 
@@ -251,10 +252,17 @@ impl MappableCommand {
                         scroll: None,
                     };
 
-                    if let Err(err) =
-                        (command.fun)(&mut cx, Args::from(args), PromptEvent::Validate)
-                    {
-                        cx.editor.set_error(format!("{err}"));
+                    match expand_args(cx.editor, args.into(), true) {
+                        Ok(args) => {
+                            if let Err(err) = (command.fun)(
+                                &mut cx,
+                                Args::from(args.as_ref()),
+                                PromptEvent::Validate,
+                            ) {
+                                cx.editor.set_error(format!("{err}"));
+                            }
+                        }
+                        Err(e) => cx.editor.set_error(format!("{e}")),
                     }
                 }
             }
@@ -715,6 +723,8 @@ fn move_impl(cx: &mut Context, move_fn: MoveFn, dir: Direction, behaviour: Movem
 }
 
 use helix_core::movement::{move_horizontally, move_vertically};
+
+use self::expansions::expand_args;
 
 fn move_char_left(cx: &mut Context) {
     move_impl(cx, move_horizontally, Direction::Backward, Movement::Move)

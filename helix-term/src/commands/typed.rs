@@ -4,6 +4,7 @@ use std::ops::Deref;
 
 use crate::job::Job;
 
+use super::expansions::expand_args;
 use super::*;
 
 use helix_core::fuzzy::fuzzy_match;
@@ -3122,28 +3123,33 @@ pub(super) fn command_mode(cx: &mut Context) {
             }
         }, // completion
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
-            let shellwords = Shellwords::from(input);
-            let command = shellwords.command();
+            match expand_args(cx.editor, input.into(), true) {
+                Ok(args) => {
+                    let shellwords = Shellwords::from(args.as_ref());
+                    let command = shellwords.command();
 
-            if command.is_empty() {
-                return;
-            }
+                    if command.is_empty() {
+                        return;
+                    }
 
-            // If input is `:NUMBER`, interpret as line number and go there.
-            if command.parse::<usize>().is_ok() {
-                if let Err(err) = typed::goto_line_number(cx, Args::from(command), event) {
-                    cx.editor.set_error(format!("{err}"));
+                    // If input is `:NUMBER`, interpret as line number and go there.
+                    if command.parse::<usize>().is_ok() {
+                        if let Err(err) = typed::goto_line_number(cx, Args::from(command), event) {
+                            cx.editor.set_error(format!("{err}"));
+                        }
+                        return;
+                    }
+
+                    // Handle typable commands
+                    if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(command) {
+                        if let Err(err) = (cmd.fun)(cx, shellwords.args(), event) {
+                            cx.editor.set_error(format!("{err}"));
+                        }
+                    } else if event == PromptEvent::Validate {
+                        cx.editor.set_error(format!("no such command: '{command}'"));
+                    }
                 }
-                return;
-            }
-
-            // Handle typable commands
-            if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(command) {
-                if let Err(err) = (cmd.fun)(cx, shellwords.args(), event) {
-                    cx.editor.set_error(format!("{err}"));
-                }
-            } else if event == PromptEvent::Validate {
-                cx.editor.set_error(format!("no such command: '{command}'"));
+                Err(e) => cx.editor.set_error(format!("{e}")),
             }
         },
     );

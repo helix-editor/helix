@@ -4,8 +4,8 @@ use super::*;
 
 mod insert;
 mod movement;
+mod variable_expansion;
 mod write;
-
 #[tokio::test(flavor = "multi_thread")]
 async fn test_selection_duplication() -> anyhow::Result<()> {
     // Forward
