@@ -16,7 +16,7 @@ being published.
     * Add new `<release>` entry in `contrib/Helix.appdata.xml` with release information according to the [AppStream spec](https://www.freedesktop.org/software/appstream/docs/sect-Metadata-Releases.html)
 * Tag and push
     * Switch to master and pull
-    * `git tag -s -m "<tag>" -a <tag> && git push` (note the `-s` which signs the tag)
+    * `git tag -s -m "<tag>" -a <tag> && git push origin <tag>` (note the `-s` which signs the tag)
 * Wait for the Release CI to finish
     * It will automatically turn the git tag into a GitHub release when it uploads artifacts
 * Edit the new release
