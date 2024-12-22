@@ -6029,7 +6029,7 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
             let input = range.slice(text);
             match shell_impl(shell, cmd, pipe.then(|| input.into())) {
                 Ok(mut output) => {
-                    if !input.ends_with("\n") && !output.is_empty() && output.ends_with('\n') {
+                    if !input.ends_with("\n") && output.ends_with('\n') {
                         output.pop();
                         if output.ends_with('\r') {
                             output.pop();
