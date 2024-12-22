@@ -5711,8 +5711,17 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
     cx.editor.autoinfo = Some(Info::new(title, &help_text));
 }
 
+static SURROUND_HELP_TEXT: [(&str, &str); 5] = [
+    ("( or )", "Parentheses"),
+    ("{ or }", "Curly braces"),
+    ("< or >", "Angled brackets"),
+    ("[ or ]", "Square brackets"),
+    (" ", "... or any character"),
+];
+
 fn surround_add(cx: &mut Context) {
     cx.on_next_key(move |cx, event| {
+        cx.editor.autoinfo = None;
         let (view, doc) = current!(cx.editor);
         // surround_len is the number of new characters being added.
         let (open, close, surround_len) = match event.char() {
@@ -5753,7 +5762,9 @@ fn surround_add(cx: &mut Context) {
             .with_selection(Selection::new(ranges, selection.primary_index()));
         doc.apply(&transaction, view.id);
         exit_select_mode(cx);
-    })
+    });
+
+    cx.editor.autoinfo = Some(Info::new("Surround selections with", &SURROUND_HELP_TEXT));
 }
 
 fn surround_replace(cx: &mut Context) {
@@ -5785,6 +5796,7 @@ fn surround_replace(cx: &mut Context) {
         );
 
         cx.on_next_key(move |cx, event| {
+            cx.editor.autoinfo = None;
             let (view, doc) = current!(cx.editor);
             let to = match event.char() {
                 Some(to) => to,
@@ -5812,12 +5824,20 @@ fn surround_replace(cx: &mut Context) {
             doc.apply(&transaction, view.id);
             exit_select_mode(cx);
         });
-    })
+
+        cx.editor.autoinfo = Some(Info::new("Replace with a pair of", &SURROUND_HELP_TEXT));
+    });
+
+    cx.editor.autoinfo = Some(Info::new(
+        "Replace surrounding pair of",
+        &SURROUND_HELP_TEXT,
+    ));
 }
 
 fn surround_delete(cx: &mut Context) {
     let count = cx.count();
     cx.on_next_key(move |cx, event| {
+        cx.editor.autoinfo = None;
         let surround_ch = match event.char() {
             Some('m') => None, // m selects the closest surround pair
             Some(ch) => Some(ch),
@@ -5840,7 +5860,9 @@ fn surround_delete(cx: &mut Context) {
             Transaction::change(doc.text(), change_pos.into_iter().map(|p| (p, p + 1, None)));
         doc.apply(&transaction, view.id);
         exit_select_mode(cx);
-    })
+    });
+
+    cx.editor.autoinfo = Some(Info::new("Delete surrounding pair of", &SURROUND_HELP_TEXT));
 }
 
 #[derive(Eq, PartialEq)]
