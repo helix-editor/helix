@@ -3994,7 +3994,12 @@ source = { git = "https://github.com/ventojs/tree-sitter-vento", rev = "3321077d
 name = "nginx"
 scope = "source.nginx"
 injection-regex = "nginx"
-file-types = ["conf"]
+file-types = [
+  { glob = "sites-available/*.conf" },
+  { glob = "sites-enabled/*.conf" },
+  { glob = "nginx.conf" },
+  { glob = "conf.d/*.conf" } 
+]
 roots = ["nginx.conf"]
 comment-token = "#"
 indent = { tab-width = 4, unit = "    " }

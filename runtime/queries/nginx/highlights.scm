@@ -43,6 +43,3 @@
 
 (lua_block_directive
 	"access_by_lua_block" @function)
-
-; Lua Debug
-(lua_code) @definition.type
