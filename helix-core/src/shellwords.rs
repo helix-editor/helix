@@ -166,6 +166,16 @@ impl<'a> Args<'a> {
         &self.input[self.idx..]
     }
 
+    /// Returns a reference to the `next()` value without advancing the iterator.
+    ///
+    /// Unlike `std::iter::Peakable::peek` this does not return a double reference, `&&str`
+    /// but a normal `&str`.
+    #[inline]
+    #[must_use]
+    fn peek(&self) -> Option<&str> {
+        self.clone().next()
+    }
+
     /// Returns the total number of arguments given in a command.
     ///
     /// This count is aware of all parsing rules for `Args`.
@@ -583,6 +593,15 @@ mod test {
             Shellwords::from(":o   a").args().collect::<Vec<_>>(),
             &["a"]
         );
+    }
+
+    #[test]
+    fn should_peek_next_arg_and_not_consume() {
+        let mut args = Shellwords::from(":o a").args();
+
+        assert_eq!(Some("a"), args.peek());
+        assert_eq!(Some("a"), args.next());
+        assert_eq!(None, args.next());
     }
 
     #[test]
