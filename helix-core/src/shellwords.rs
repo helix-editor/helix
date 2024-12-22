@@ -117,25 +117,15 @@ pub struct Args<'a> {
     input: &'a str,
     idx: usize,
     start: usize,
-    count: usize,
 }
 
 impl<'a> Args<'a> {
     #[inline]
     fn parse(input: &'a str) -> Self {
-        let count = Self {
-            input,
-            idx: 0,
-            start: 0,
-            count: 0,
-        }
-        .fold(0, |acc, _| acc + 1);
-
         Self {
             input,
             idx: 0,
             start: 0,
-            count,
         }
     }
 
@@ -176,11 +166,17 @@ impl<'a> Args<'a> {
         &self.input[self.idx..]
     }
 
-    /// Returns the number of arguments given in a command.
+    /// Returns the total number of arguments given in a command.
     ///
     /// This count is aware of all parsing rules for `Args`.
+    #[must_use]
     pub fn arg_count(&self) -> usize {
-        self.count
+        Self {
+            input: self.input,
+            idx: 0,
+            start: 0,
+        }
+        .fold(0, |acc, _| acc + 1)
     }
 
     /// Convenient function to return an empty `Args`.
@@ -192,7 +188,6 @@ impl<'a> Args<'a> {
             input: "",
             idx: 0,
             start: 0,
-            count: 0,
         }
     }
 }
