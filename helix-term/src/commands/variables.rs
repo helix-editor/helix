@@ -4,11 +4,7 @@ use anyhow::Result;
 use helix_core::coords_at_pos;
 use helix_view::Editor;
 
-pub fn expand_args<'a>(
-    editor: &Editor,
-    input: Cow<'a, str>,
-    expand_sh: bool,
-) -> Result<Cow<'a, str>> {
+pub fn expand<'a>(editor: &Editor, input: Cow<'a, str>, expand_sh: bool) -> Result<Cow<'a, str>> {
     let (view, doc) = current_ref!(editor);
     let shell = &editor.config().shell;
 
@@ -106,7 +102,9 @@ pub fn expand_args<'a>(
                                         .primary()
                                         .fragment(doc.text().slice(..))
                                         .to_string(),
-                                    _ => anyhow::bail!("Unknown variable"),
+                                    _ => {
+                                        anyhow::bail!("Unknown variable {}", &input[index + 2..end])
+                                    }
                                 };
 
                                 o.push_str(value.trim());
@@ -128,7 +126,7 @@ pub fn expand_args<'a>(
                                     }
 
                                     if let Some(o) = output.as_mut() {
-                                        let body = expand_args(
+                                        let body = expand(
                                             editor,
                                             Cow::Borrowed(&input[index + 4..end]),
                                             expand_sh,

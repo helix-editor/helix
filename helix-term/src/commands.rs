@@ -1,7 +1,7 @@
 pub(crate) mod dap;
-pub(crate) mod expansions;
 pub(crate) mod lsp;
 pub(crate) mod typed;
+pub(crate) mod variables;
 
 pub use dap::*;
 use futures_util::FutureExt;
@@ -252,7 +252,7 @@ impl MappableCommand {
                         scroll: None,
                     };
 
-                    match expand_args(cx.editor, args.into(), true) {
+                    match variables::expand(cx.editor, args.into(), true) {
                         Ok(args) => {
                             if let Err(err) = (command.fun)(
                                 &mut cx,
@@ -723,8 +723,6 @@ fn move_impl(cx: &mut Context, move_fn: MoveFn, dir: Direction, behaviour: Movem
 }
 
 use helix_core::movement::{move_horizontally, move_vertically};
-
-use self::expansions::expand_args;
 
 fn move_char_left(cx: &mut Context) {
     move_impl(cx, move_horizontally, Direction::Backward, Movement::Move)

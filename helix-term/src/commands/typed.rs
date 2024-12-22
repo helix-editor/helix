@@ -4,7 +4,7 @@ use std::ops::Deref;
 
 use crate::job::Job;
 
-use super::expansions::expand_args;
+use super::variables;
 use super::*;
 
 use helix_core::fuzzy::fuzzy_match;
@@ -3122,7 +3122,7 @@ pub(super) fn command_mode(cx: &mut Context) {
             }
         }, // completion
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
-            match expand_args(cx.editor, input.into(), true) {
+            match variables::expand(cx.editor, input.into(), true) {
                 Ok(args) => {
                     let shellwords = Shellwords::from(args.as_ref());
                     let command = shellwords.command();
