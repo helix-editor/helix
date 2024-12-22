@@ -761,6 +761,11 @@ impl Document {
             use std::process::Stdio;
             let text = self.text().clone();
             let mut process = tokio::process::Command::new(&fmt_cmd);
+            if let Some(path) = self.path.clone() {
+                if let Some(parent) = path.parent() {
+                    process.current_dir(parent);
+                }
+            }
             process
                 .args(fmt_args)
                 .stdin(Stdio::piped())
