@@ -172,7 +172,7 @@ impl<'a> Args<'a> {
     /// but a normal `&str`.
     #[inline]
     #[must_use]
-    fn peek(&self) -> Option<&str> {
+    pub fn peek(&self) -> Option<&str> {
         self.clone().next()
     }
 
