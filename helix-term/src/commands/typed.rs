@@ -2429,8 +2429,7 @@ fn echo(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
         return Ok(());
     }
 
-    let args = args.collect::<Vec<&str>>().join(" ");
-    cx.editor.set_status(args);
+    cx.editor.set_status(args.raw().to_owned());
 
     Ok(())
 }
