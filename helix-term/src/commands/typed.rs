@@ -2423,6 +2423,17 @@ fn read(cx: &mut compositor::Context, mut args: Args, event: PromptEvent) -> any
     Ok(())
 }
 
+fn echo(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let args = args.collect::<Vec<&str>>().join(" ");
+    cx.editor.set_status(args);
+
+    Ok(())
+}
+
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "quit",
@@ -2430,6 +2441,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         doc: "Close the current view.",
         fun: quit,
         signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "echo",
+        aliases: &[],
+        doc: "Print the processed input to the editor status",
+        fun: echo,
+        signature: CommandSignature::none()
     },
     TypableCommand {
         name: "quit!",
