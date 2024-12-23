@@ -3058,11 +3058,12 @@ pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableComma
             .collect()
     });
 
-#[allow(clippy::unnecessary_unwrap)]
+#[allow(clippy::unnecessary_unwrap, clippy::too_many_lines)]
 pub(super) fn command_mode(cx: &mut Context) {
     // PERF: Cheap clone
-    let commands = Arc::new(cx.editor.config().commands.clone());
+    let custom_commands = Arc::new(cx.editor.config().commands.clone());
 
+    let commands = custom_commands.clone();
     let mut prompt = Prompt::new(
         ":".into(),
         Some(':'),
@@ -3095,8 +3096,11 @@ pub(super) fn command_mode(cx: &mut Context) {
                     .last()
                     .map_or(("", 0), |last| (last, last.len()));
 
+                // TODO: Need to validate that the command name given for the completer option is a valid typable command
                 let command = commands.get(command).map_or(command, |c| {
-                    c.completer.as_ref().map_or(command, String::as_str)
+                    c.completer
+                        .as_ref()
+                        .map_or(command, |name| name.trim_start_matches(':'))
                 });
 
                 TYPABLE_COMMAND_MAP
@@ -3138,10 +3142,19 @@ pub(super) fn command_mode(cx: &mut Context) {
                 for command in custom.iter() {
                     // TODO: Expand variables: #11164
 
-                    let shellwords = Shellwords::from(command);
+                    if let Some(typed_command) =
+                        typed::TYPABLE_COMMAND_MAP.get(Shellwords::from(command).command())
+                    {
+                        // TODO: More advanced merging of arguments
+                        // If command being typed has no args, assume that they come from custom command
+                        let args = if shellwords.args().is_empty() {
+                            Shellwords::from(command).args()
+                        } else {
+                            shellwords.args()
+                        };
+                        log::error!("input: {:?}", args.clone().collect::<Vec<_>>());
 
-                    if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(shellwords.command()) {
-                        if let Err(err) = (command.fun)(cx, shellwords.args(), event) {
+                        if let Err(err) = (typed_command.fun)(cx, args, event) {
                             cx.editor.set_error(format!("{err}"));
                             // Short circuit on error
                             return;
@@ -3165,10 +3178,14 @@ pub(super) fn command_mode(cx: &mut Context) {
         },
     );
 
-    prompt.doc_fn = Box::new(|input: &str| {
+    prompt.doc_fn = Box::new(move |input: &str| {
         let shellwords = Shellwords::from(input);
 
-        if let Some(typed::TypableCommand { doc, aliases, .. }) =
+        if let Some(command) = custom_commands.clone().get(input) {
+            if let Some(desc) = &command.desc {
+                return Some(desc.clone().into());
+            }
+        } else if let Some(typed::TypableCommand { doc, aliases, .. }) =
             typed::TYPABLE_COMMAND_MAP.get(shellwords.command())
         {
             if aliases.is_empty() {
