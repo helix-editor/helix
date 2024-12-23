@@ -1,6 +1,7 @@
 use crate::{
     annotations::diagnostics::{DiagnosticFilter, InlineDiagnosticsConfig},
     clipboard::ClipboardProvider,
+    commands::custom::CustomTypeableCommands,
     document::{
         DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
     },
@@ -431,6 +432,9 @@ pub struct Config {
     /// Whether to enable Kitty Keyboard Protocol
     pub kitty_keyboard_protocol: KittyKeyboardProtocolConfig,
     pub buffer_picker: BufferPickerConfig,
+    /// Custom typable commands
+    #[serde(skip)]
+    pub commands: CustomTypeableCommands,
 }
 
 #[derive(Debug, Default, PartialEq, Eq, PartialOrd, Ord, Deserialize, Serialize, Clone, Copy)]
@@ -1153,6 +1157,7 @@ impl Default for Config {
             rainbow_brackets: false,
             kitty_keyboard_protocol: Default::default(),
             buffer_picker: BufferPickerConfig::default(),
+            commands: CustomTypeableCommands::default(),
         }
     }
 }
