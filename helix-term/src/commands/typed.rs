@@ -9,6 +9,7 @@ use super::*;
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::{line_ending, shellwords::Shellwords};
+use helix_stdx::path::home_dir;
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
 use serde_json::Value;
@@ -456,13 +457,15 @@ fn format(
     }
 
     let (view, doc) = current!(cx.editor);
-    if let Some(format) = doc.format() {
-        let callback = make_format_callback(doc.id(), doc.version(), view.id, format, None);
-        cx.jobs.callback(callback);
-    }
+    let format = doc.format().context(
+        "A formatter isn't available, and no language server provides formatting capabilities",
+    )?;
+    let callback = make_format_callback(doc.id(), doc.version(), view.id, format, None);
+    cx.jobs.callback(callback);
 
     Ok(())
 }
+
 fn set_indent_style(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -1074,7 +1077,7 @@ fn show_clipboard_provider(
     }
 
     cx.editor
-        .set_status(cx.editor.registers.clipboard_provider_name().to_string());
+        .set_status(cx.editor.registers.clipboard_provider_name());
     Ok(())
 }
 
@@ -1087,18 +1090,23 @@ fn change_current_directory(
         return Ok(());
     }
 
-    let dir = args
-        .first()
-        .context("target directory not provided")?
-        .as_ref();
-    let dir = helix_stdx::path::expand_tilde(Path::new(dir));
+    let dir = match args.first().map(AsRef::as_ref) {
+        Some("-") => cx
+            .editor
+            .last_cwd
+            .clone()
+            .ok_or(anyhow!("No previous working directory"))?,
+        Some(input_path) => helix_stdx::path::expand_tilde(Path::new(input_path)).to_path_buf(),
+        None => home_dir()?,
+    };
 
-    helix_stdx::env::set_current_working_dir(dir)?;
+    cx.editor.last_cwd = helix_stdx::env::set_current_working_dir(dir)?;
 
     cx.editor.set_status(format!(
         "Current working directory is now {}",
         helix_stdx::env::current_working_dir().display()
     ));
+
     Ok(())
 }
 
@@ -2499,7 +2507,8 @@ fn read(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     ensure!(args.len() == 1, "only the file name is expected");
 
     let filename = args.first().unwrap();
-    let path = PathBuf::from(filename.to_string());
+    let path = helix_stdx::path::expand_tilde(PathBuf::from(filename.to_string()));
+
     ensure!(
         path.exists() && path.is_file(),
         "path is not a file: {:?}",
@@ -2636,7 +2645,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "format",
         aliases: &["fmt"],
-        doc: "Format the file using the LSP formatter.",
+        doc: "Format the file using an external formatter or language server.",
         fun: format,
         signature: CommandSignature::none(),
     },
@@ -3032,7 +3041,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "tree-sitter-subtree",
         aliases: &["ts-subtree"],
-        doc: "Display tree sitter subtree under cursor, primarily for debugging queries.",
+        doc: "Display the smallest tree-sitter subtree that spans the primary selection, primarily for debugging queries.",
         fun: tree_sitter_subtree,
         signature: CommandSignature::none(),
     },
@@ -3189,8 +3198,8 @@ pub(super) fn command_mode(cx: &mut Context) {
                 {
                     completer(editor, word)
                         .into_iter()
-                        .map(|(range, file)| {
-                            let file = shellwords::escape(file);
+                        .map(|(range, mut file)| {
+                            file.content = shellwords::escape(file.content);
 
                             // offset ranges to input
                             let offset = input.len() - word_len;

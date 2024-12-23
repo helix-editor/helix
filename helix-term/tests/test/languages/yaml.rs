@@ -795,7 +795,7 @@ async fn auto_indent() -> anyhow::Result<()> {
             "##},
             "i<ret>",
             indoc! {"\
-                foo: 
+                foo:
                   #[|b]#ar
             "},
         ),

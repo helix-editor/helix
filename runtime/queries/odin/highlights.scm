@@ -4,9 +4,12 @@
 ] @keyword.directive
 
 [
-  "import"
-  "package"
+ "package"
 ] @namespace
+
+[
+  "import" 
+] @keyword.control.import
 
 [
   "foreign"
@@ -200,7 +203,7 @@
 
 (struct . (identifier) @type)
 
-(field_type . (identifier) "." (identifier) @type)
+(field_type . (identifier) @keyword.storage.type "." (identifier) @type)
 
 (bit_set_type (identifier) @type ";")
 
@@ -247,6 +250,8 @@
 (foreign_block (identifier) @namespace)
 
 (using_statement (identifier) @namespace)
+
+(import_declaration (identifier) @keyword.storage.type)
 
 ; Parameters
 

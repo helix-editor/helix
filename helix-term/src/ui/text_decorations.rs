@@ -164,7 +164,7 @@ impl Decoration for Cursor<'_> {
         renderer: &mut TextRenderer,
         grapheme: &FormattedGrapheme,
     ) -> usize {
-        if renderer.column_in_bounds(grapheme.visual_pos.col)
+        if renderer.column_in_bounds(grapheme.visual_pos.col, grapheme.width())
             && renderer.offset.row < grapheme.visual_pos.row
         {
             let position = grapheme.visual_pos - renderer.offset;

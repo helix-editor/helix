@@ -1,5 +1,4 @@
-Any copyright to the test code below this comment is dedicated to the
-Public Domain. http://creativecommons.org/publicdomain/zero/1.0/
+Generated from WHATWG indexes.json; see LICENSE-WHATWG.
 
 This is a generated file. Please do not edit.
 Instead, please regenerate using generate-encoding-data.py
@@ -7185,13 +7184,13 @@ Instead, please regenerate using generate-encoding-data.py
 χ
 ψ
 ω
-
-
-
-
-
-
-
+︐
+︒
+︑
+︓
+︔
+︕
+︖
 ︵
 ︶
 ︹
@@ -7204,14 +7203,14 @@ Instead, please regenerate using generate-encoding-data.py
 ﹂
 ﹃
 ﹄
-
-
+︗
+︘
 ︻
 ︼
 ︷
 ︸
 ︱
-
+︙
 ︳
 ︴
 
@@ -23778,7 +23777,7 @@ Instead, please regenerate using generate-encoding-data.py
 㑇
 ⺈
 ⺋
-
+龴
 㖞
 㘚
 㘎
@@ -23786,19 +23785,19 @@ Instead, please regenerate using generate-encoding-data.py
 ⺗
 㥮
 㤘
-
+龵
 㧏
 㧟
 㩳
 㧐
-
-
+龶
+龷
 㭎
 㱮
 㳠
 ⺧
 
-
+龸
 ⺪
 䁖
 䅟
@@ -23815,7 +23814,7 @@ Instead, please regenerate using generate-encoding-data.py
 䓖
 䙡
 䙌
-
+龹
 䜣
 䜩
 䝼
@@ -23832,7 +23831,7 @@ Instead, please regenerate using generate-encoding-data.py
 䦛
 䦷
 䦶
-
+龺
 
 䲣
 䲟
@@ -23848,7 +23847,7 @@ Instead, please regenerate using generate-encoding-data.py
 䴘
 䴙
 䶮
-
+龻
 
 
 

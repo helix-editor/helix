@@ -7,6 +7,7 @@ use helix_core::auto_pairs::AutoPairs;
 use helix_core::chars::char_is_word;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
+use helix_core::snippets::{ActiveSnippet, SnippetRenderCtx};
 use helix_core::syntax::{Highlight, LanguageServerFeature};
 use helix_core::text_annotations::{InlineAnnotation, Overlay};
 use helix_lsp::util::lsp_pos_to_pos;
@@ -135,6 +136,7 @@ pub struct Document {
     text: Rope,
     selections: HashMap<ViewId, Selection>,
     view_data: HashMap<ViewId, ViewData>,
+    pub active_snippet: Option<ActiveSnippet>,
 
     /// Inlay hints annotations for the document, by view.
     ///
@@ -655,6 +657,7 @@ impl Document {
 
         Self {
             id: DocumentId::default(),
+            active_snippet: None,
             path: None,
             encoding,
             has_bom,
@@ -1412,6 +1415,8 @@ impl Document {
             doc: self,
             view: view_id,
             old_text: &old_doc,
+            changes,
+            ghost_transaction: !emit_lsp_notification,
         });
 
         // if specified, the current selection should instead be replaced by transaction.selection
@@ -1711,6 +1716,12 @@ impl Document {
     /// Current document version, incremented at each change.
     pub fn version(&self) -> i32 {
         self.version
+    }
+
+    pub fn path_completion_enabled(&self) -> bool {
+        self.language_config()
+            .and_then(|lang_config| lang_config.path_completion)
+            .unwrap_or_else(|| self.config.load().path_completion)
     }
 
     /// maintains the order as configured in the language_servers TOML array
@@ -2042,6 +2053,16 @@ impl Document {
         match &self.language {
             Some(lang) => lang.as_ref().auto_pairs.as_ref().or(global_config),
             None => global_config,
+        }
+    }
+
+    pub fn snippet_ctx(&self) -> SnippetRenderCtx {
+        SnippetRenderCtx {
+            // TODO snippet variable resolution
+            resolve_var: Box::new(|_| None),
+            tab_width: self.tab_width(),
+            indent_style: self.indent_style,
+            line_ending: self.line_ending.as_str(),
         }
     }
 
