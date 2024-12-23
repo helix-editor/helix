@@ -3060,7 +3060,7 @@ pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableComma
 
 #[allow(clippy::unnecessary_unwrap)]
 pub(super) fn command_mode(cx: &mut Context) {
-    // PERF: cheap clone
+    // PERF: Cheap clone
     let commands = Arc::new(cx.editor.config().commands.clone());
 
     let mut prompt = Prompt::new(
@@ -3136,7 +3136,7 @@ pub(super) fn command_mode(cx: &mut Context) {
             // Checking for custom commands first priotizes custom commands over built-in/
             if let Some(custom) = cx.editor.config().commands.get(command) {
                 for command in custom.iter() {
-                    // TODO: Expand args: #11164
+                    // TODO: Expand variables: #11164
 
                     let shellwords = Shellwords::from(command);
 
