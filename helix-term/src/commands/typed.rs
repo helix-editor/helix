@@ -1,6 +1,7 @@
 use std::fmt::Write;
 use std::io::BufReader;
 use std::ops::Deref;
+use std::sync::Arc;
 
 use crate::job::Job;
 
@@ -3059,24 +3060,33 @@ pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableComma
 
 #[allow(clippy::unnecessary_unwrap)]
 pub(super) fn command_mode(cx: &mut Context) {
+    // PERF: cheap clone
+    let commands = Arc::new(cx.editor.config().commands.clone());
+
     let mut prompt = Prompt::new(
         ":".into(),
         Some(':'),
-        |editor: &Editor, input: &str| {
+        move |editor: &Editor, input: &str| {
             let shellwords = Shellwords::from(input);
             let command = shellwords.command();
+
+            let commands = commands.clone();
+            let names = commands.names();
+
+            let items = TYPABLE_COMMAND_LIST
+                .iter()
+                .map(|command| command.name)
+                .chain(names)
+                .map(|name| name.to_string())
+                .collect::<Vec<String>>();
 
             if command.is_empty()
                 || (shellwords.args().next().is_none() && !shellwords.ends_with_whitespace())
             {
-                fuzzy_match(
-                    input,
-                    TYPABLE_COMMAND_LIST.iter().map(|command| command.name),
-                    false,
-                )
-                .into_iter()
-                .map(|(name, _)| (0.., name.into()))
-                .collect()
+                fuzzy_match(input, items, false)
+                    .into_iter()
+                    .map(|(name, _)| (0.., name.into()))
+                    .collect()
             } else {
                 // Otherwise, use the command's completer and the last shellword
                 // as completion input.
@@ -3084,6 +3094,10 @@ pub(super) fn command_mode(cx: &mut Context) {
                     .args()
                     .last()
                     .map_or(("", 0), |last| (last, last.len()));
+
+                let command = commands.get(command).map_or(command, |c| {
+                    c.completer.as_ref().map_or(command, String::as_str)
+                });
 
                 TYPABLE_COMMAND_MAP
                     .get(command)
@@ -3119,8 +3133,29 @@ pub(super) fn command_mode(cx: &mut Context) {
                 return;
             }
 
+            // Checking for custom commands first priotizes custom commands over built-in/
+            if let Some(custom) = cx.editor.config().commands.get(command) {
+                for command in custom.iter() {
+                    // TODO: Expand args: #11164
+
+                    let shellwords = Shellwords::from(command);
+
+                    if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(shellwords.command()) {
+                        if let Err(err) = (command.fun)(cx, shellwords.args(), event) {
+                            cx.editor.set_error(format!("{err}"));
+                            // Short circuit on error
+                            return;
+                        }
+                    } else if event == PromptEvent::Validate {
+                        cx.editor
+                            .set_error(format!("no such command: '{}'", shellwords.command()));
+                        // Short circuit on error
+                        return;
+                    }
+                }
+            }
             // Handle typable commands
-            if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(command) {
+            else if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(command) {
                 if let Err(err) = (cmd.fun)(cx, shellwords.args(), event) {
                     cx.editor.set_error(format!("{err}"));
                 }
