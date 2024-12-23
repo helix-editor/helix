@@ -1,7 +1,7 @@
 use crate::{
     annotations::diagnostics::{DiagnosticFilter, InlineDiagnosticsConfig},
     clipboard::ClipboardProvider,
-    commands::custom::Commands,
+    commands::custom::CustomTypeableCommands,
     document::{
         DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
     },
@@ -362,7 +362,7 @@ pub struct Config {
     // Set to override the default clipboard provider
     pub clipboard_provider: ClipboardProvider,
     /// Custom typeable commands
-    pub commands: Commands,
+    pub commands: CustomTypeableCommands,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -1004,7 +1004,7 @@ impl Default for Config {
             inline_diagnostics: InlineDiagnosticsConfig::default(),
             end_of_line_diagnostics: DiagnosticFilter::Disable,
             clipboard_provider: ClipboardProvider::default(),
-            commands: Commands::default(),
+            commands: CustomTypeableCommands::default(),
         }
     }
 }

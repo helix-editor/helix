@@ -44,14 +44,14 @@ use serde::{Deserialize, Serialize};
 
 // TODO: Might need to manually implement Serialize and Deserialize
 #[derive(Debug, Clone, Default, Deserialize, Serialize, PartialEq, Eq)]
-pub struct Commands {
-    pub commands: Vec<Command>,
+pub struct CustomTypeableCommands {
+    pub commands: Vec<CustomTypableCommand>,
 }
 
-impl Commands {
+impl CustomTypeableCommands {
     #[inline]
     #[must_use]
-    pub fn get(&self, name: &str) -> Option<&Command> {
+    pub fn get(&self, name: &str) -> Option<&CustomTypableCommand> {
         self.commands.iter().find(|command| command.name == name)
     }
 
@@ -62,7 +62,7 @@ impl Commands {
 }
 
 #[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
-pub struct Command {
+pub struct CustomTypableCommand {
     pub name: String,
     pub desc: Option<String>,
     pub commands: Vec<String>,
@@ -70,7 +70,7 @@ pub struct Command {
     pub completer: Option<String>,
 }
 
-impl Command {
+impl CustomTypableCommand {
     pub fn prompt(&self) -> String {
         // wcd! <path>: writes buffer forcefully, then changes to its directory
         //
