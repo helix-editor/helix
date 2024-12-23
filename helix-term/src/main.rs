@@ -136,6 +136,13 @@ FLAGS:
             let _ = std::io::stdin().read(&mut []);
             Config::default()
         }
+        Err(ConfigLoadError::BadCustomTypableCommand(err)) => {
+            eprintln!("Bad config: {}", err);
+            eprintln!("Press <ENTER> to continue with default config");
+            use std::io::Read;
+            let _ = std::io::stdin().read(&mut []);
+            Config::default()
+        }
     };
 
     let lang_loader = helix_core::config::user_lang_loader().unwrap_or_else(|err| {

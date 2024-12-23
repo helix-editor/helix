@@ -25,7 +25,14 @@
 //! This module also defines structs for configuring the parsing of the command line for a
 //! command. See `Flag` and `Signature`.
 
-use std::{borrow::Cow, collections::HashMap, error::Error, fmt, ops, slice, vec};
+use std::{
+    borrow::Cow,
+    collections::HashMap,
+    error::Error,
+    fmt, ops,
+    slice::{self},
+    vec,
+};
 
 /// Splits a command line into the command and arguments parts.
 ///
@@ -253,6 +260,10 @@ pub enum ExpansionKind {
     ///
     /// For example `%sh{echo hello}`.
     Shell,
+    /// Represents a placeholder positional argument.
+    ///
+    /// For example `%arg{0}`
+    Arg,
 }
 
 impl ExpansionKind {
@@ -263,6 +274,7 @@ impl ExpansionKind {
             Self::Variable => "",
             Self::Unicode => "u",
             Self::Shell => "sh",
+            Self::Arg => "arg",
         }
     }
 
@@ -271,6 +283,7 @@ impl ExpansionKind {
             "" => Some(Self::Variable),
             "u" => Some(Self::Unicode),
             "sh" => Some(Self::Shell),
+            "arg" => Some(Self::Arg),
             _ => None,
         }
     }
@@ -915,6 +928,11 @@ impl<'a> Args<'a> {
     /// Gets the positional argument at the given index, if one exists.
     pub fn get(&'a self, index: usize) -> Option<&'a str> {
         self.positionals.get(index).map(AsRef::as_ref)
+    }
+
+    /// Gets the positional arguments as a slice.
+    pub fn as_slice(&self) -> &[Cow<'a, str>] {
+        &self.positionals
     }
 
     /// Flattens all positional arguments together with the given separator between each

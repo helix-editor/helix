@@ -252,7 +252,7 @@ impl MappableCommand {
                         scroll: None,
                     };
                     if let Err(e) =
-                        typed::execute_command(&mut cx, command, args, PromptEvent::Validate)
+                        typed::execute_command(&mut cx, command, args, &[], PromptEvent::Validate)
                     {
                         cx.editor.set_error(format!("{}", e));
                     }
