@@ -85,7 +85,7 @@ pub type FileLocation<'a> = (PathOrId<'a>, Option<(usize, usize)>);
 
 pub enum CachedPreview {
     Document(Box<Document>),
-    Directory(Vec<String>),
+    Directory(Vec<(String, bool)>),
     Binary,
     LargeFile,
     NotFound,
@@ -107,7 +107,7 @@ impl Preview<'_, '_> {
         }
     }
 
-    fn dir_content(&self) -> Option<&Vec<String>> {
+    fn dir_content(&self) -> Option<&Vec<(String, bool)>> {
         match self {
             Preview::Cached(CachedPreview::Directory(dir_content)) => Some(dir_content),
             _ => None,
@@ -599,12 +599,12 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                             let files = super::directory_content(&path)?;
                             let file_names: Vec<_> = files
                                 .iter()
-                                .filter_map(|file| {
-                                    let name = file.file_name()?.to_string_lossy();
-                                    if file.is_dir() {
-                                        Some(format!("{}/", name))
+                                .filter_map(|(path, is_dir)| {
+                                    let name = path.file_name()?.to_string_lossy();
+                                    if *is_dir {
+                                        Some((format!("{}/", name), true))
                                     } else {
-                                        Some(name.into_owned())
+                                        Some((name.into_owned(), false))
                                     }
                                 })
                                 .collect();
@@ -857,6 +857,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         // clear area
         let background = cx.editor.theme.get("ui.background");
         let text = cx.editor.theme.get("ui.text");
+        let directory = cx.editor.theme.get("ui.text.directory");
         surface.clear_with(area, background);
 
         const BLOCK: Block<'_> = Block::bordered();
@@ -879,14 +880,16 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
                 }
                 _ => {
                     if let Some(dir_content) = preview.dir_content() {
-                        for (i, entry) in dir_content.iter().take(inner.height as usize).enumerate()
+                        for (i, (path, is_dir)) in
+                            dir_content.iter().take(inner.height as usize).enumerate()
                         {
+                            let style = if *is_dir { directory } else { text };
                             surface.set_stringn(
                                 inner.x,
                                 inner.y + i as u16,
-                                entry,
+                                path,
                                 inner.width as usize,
-                                text,
+                                style,
                             );
                         }
                         return;
