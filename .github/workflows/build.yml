@@ -106,6 +106,8 @@ jobs:
 
       - name: Run cargo build
         run: cargo build --profile release
+
+      - name: Store artifact
         uses: actions/upload-artifact@v4
         with:
           name: hx
