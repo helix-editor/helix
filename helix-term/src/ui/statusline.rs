@@ -347,10 +347,16 @@ fn render_selections<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let count = context.doc.selection(context.view.id).len();
+    let selection = context.doc.selection(context.view.id);
+    let count = selection.len();
     write(
         context,
-        format!(" {} sel{} ", count, if count == 1 { "" } else { "s" }),
+        format!(
+            "{}/{} sel{} ",
+            selection.primary_index() + 1,
+            count,
+            if count == 1 { "" } else { "s" }
+        ),
         None,
     );
 }
