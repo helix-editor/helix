@@ -3,6 +3,7 @@ on:
   push:
     branches:
       - master
+  workflow_dispatch:
 
 env:
   MSRV: "1.76"
@@ -86,3 +87,26 @@ jobs:
         run: cargo doc --no-deps --workspace --document-private-items
         env:
           RUSTDOCFLAGS: -D warnings
+
+  build:
+    name: Build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v4
+
+      - name: Install MSRV toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.MSRV }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: "build"
+
+      - name: Run cargo build
+        run: cargo build --profile release
+        uses: actions/upload-artifact@v4
+        with:
+          name: hx
+          path: target/release/hx
