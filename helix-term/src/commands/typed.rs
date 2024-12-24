@@ -3195,8 +3195,7 @@ pub(super) fn command_mode(cx: &mut Context) {
                             return;
                         }
                     } else if event == PromptEvent::Validate {
-                        cx.editor
-                            .set_error(format!("no such command: '{}'", command));
+                        cx.editor.set_error(format!("no such command: '{command}'"));
                         // Short circuit on error
                         return;
                     }
