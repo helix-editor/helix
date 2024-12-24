@@ -3061,9 +3061,9 @@ pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableComma
 #[allow(clippy::unnecessary_unwrap, clippy::too_many_lines)]
 pub(super) fn command_mode(cx: &mut Context) {
     // PERF: Cheap clone
-    let custom_commands = Arc::new(cx.editor.config().commands.clone());
+    let arced = Arc::new(cx.editor.config().commands.clone());
 
-    let commands = custom_commands.clone();
+    let commands = arced.clone();
     let mut prompt = Prompt::new(
         ":".into(),
         Some(':'),
@@ -3074,6 +3074,7 @@ pub(super) fn command_mode(cx: &mut Context) {
             let commands = commands.clone();
             let names = commands.names();
 
+            // PERF: Cloning(to_string) because of lifetimes
             let items = TYPABLE_COMMAND_LIST
                 .iter()
                 .map(|command| command.name)
@@ -3141,18 +3142,52 @@ pub(super) fn command_mode(cx: &mut Context) {
             if let Some(custom) = cx.editor.config().commands.get(command) {
                 for command in custom.iter() {
                     // TODO: Expand variables: #11164
+                    // let args = match variables::expand(...) {
+                    //    Ok(args: Cow<'_, str>) => args,
+                    //    Err(err) => {
+                    //         cx.editor.set_error(format!("{err}"));
+                    //         // Short circuit on error
+                    //         return;
+                    //    }
+                    // }
+                    //
 
                     if let Some(typed_command) =
                         typed::TYPABLE_COMMAND_MAP.get(Shellwords::from(command).command())
                     {
-                        // TODO: More advanced merging of arguments
-                        // If command being typed has no args, assume that they come from custom command
-                        let args = if shellwords.args().is_empty() {
+                        // TEST: should allow for an option `%{arg}` even if no path is path is provided and work as if
+                        // the `%{arg}` eas never present.
+                        //
+                        // Assume that if the command contains an `%{arg[:NUMBER]}` it will be accepting arguments from
+                        // input and therefore not standalone.
+                        //
+                        // If `true`, then will use any arguments the command itself may have been written
+                        // with and ignore any typed-in arguments.
+                        //
+                        // This is a special case for when config has simplest usage:
+                        //
+                        //     "ww" = ":write --force"
+                        //
+                        // It will only use: `--force` as arguments when running `:write`.
+                        //
+                        // This also means that users dont have to explicitly use `%{arg}` every time:
+                        //
+                        //     "ww" = ":write --force %{arg}"
+                        //
+                        // Though in the case of `:write`, they probably should.
+                        //
+                        // Regardless, some commands explicitly take zero arguments and this check should prevent
+                        // input arguments being passed when they shouldnt.
+                        //
+                        // If `false`, then will assume that that command was passed arguments in expansion and that
+                        // whats left is the full argument list to be sent run.
+                        let args = if is_standalone(command) {
                             Shellwords::from(command).args()
                         } else {
+                            // Input args
+                            // TODO: Args::from(&args) from the expanded variables.
                             shellwords.args()
                         };
-                        log::error!("input: {:?}", args.clone().collect::<Vec<_>>());
 
                         if let Err(err) = (typed_command.fun)(cx, args, event) {
                             cx.editor.set_error(format!("{err}"));
@@ -3161,7 +3196,7 @@ pub(super) fn command_mode(cx: &mut Context) {
                         }
                     } else if event == PromptEvent::Validate {
                         cx.editor
-                            .set_error(format!("no such command: '{}'", shellwords.command()));
+                            .set_error(format!("no such command: '{}'", command));
                         // Short circuit on error
                         return;
                     }
@@ -3178,10 +3213,11 @@ pub(super) fn command_mode(cx: &mut Context) {
         },
     );
 
+    let commands = arced.clone();
     prompt.doc_fn = Box::new(move |input: &str| {
         let shellwords = Shellwords::from(input);
 
-        if let Some(command) = custom_commands.clone().get(input) {
+        if let Some(command) = commands.clone().get(input) {
             if let Some(desc) = &command.desc {
                 return Some(desc.clone().into());
             }
@@ -3191,6 +3227,7 @@ pub(super) fn command_mode(cx: &mut Context) {
             if aliases.is_empty() {
                 return Some((*doc).into());
             }
+
             return Some(format!("{}\nAliases: {}", doc, aliases.join(", ")).into());
         }
 
@@ -3209,6 +3246,64 @@ fn argument_number_of(shellwords: &Shellwords) -> usize {
         .saturating_sub(1 - usize::from(shellwords.ends_with_whitespace()))
 }
 
+// NOTE: Only used in one spot
+#[inline(always)]
+fn is_standalone(command: &str) -> bool {
+    let mut idx = 0;
+    let bytes = command.as_bytes();
+
+    while idx < bytes.len() {
+        if bytes[idx] == b'%' {
+            if let Some(next) = bytes.get(idx + 1) {
+                if *next == b'{' {
+                    // advance beyond `{`
+                    idx += 2;
+                    if let Some(arg) = bytes.get(idx..) {
+                        match arg {
+                            [b'a', b'r', b'g', b':', ..] => {
+                                // Advance beyond the `:`
+                                idx += 4;
+
+                                let mut is_prev_digit = false;
+
+                                for byte in &bytes[idx..] {
+                                    // Found end of arg bracket
+                                    if *byte == b'}' && is_prev_digit {
+                                        return false;
+                                    }
+
+                                    if char::from(*byte).is_ascii_digit() {
+                                        is_prev_digit = true;
+                                    } else {
+                                        break;
+                                    }
+                                }
+                            }
+                            [b'a', b'r', b'g', b'}', ..] => {
+                                return false;
+                            }
+                            _ => {
+                                idx += 2 + 4;
+                                continue;
+                            }
+                        }
+                    }
+                    idx += 1;
+                    continue;
+                }
+                idx += 1;
+                continue;
+            }
+            idx += 1;
+            continue;
+        }
+        idx += 1;
+        continue;
+    }
+
+    true
+}
+
 #[test]
 fn test_argument_number_of() {
     let cases = vec![
@@ -3225,4 +3320,23 @@ fn test_argument_number_of() {
     for case in cases {
         assert_eq!(case.1, argument_number_of(&Shellwords::from(case.0)));
     }
+}
+
+#[test]
+fn should_indicate_if_command_is_standalone() {
+    assert!(is_standalone("write --force"));
+
+    // Must provide digit
+    assert!(is_standalone("write --force %{arg:}"));
+
+    // Muts have `:` before digits can be added
+    assert!(is_standalone("write --force %{arg122444}"));
+
+    // Must have closing bracket
+    assert!(is_standalone("write --force %{arg"));
+    assert!(is_standalone("write --force %{arg:1"));
+
+    // Has valid variable
+    assert!(!is_standalone("write --force %{arg}"));
+    assert!(!is_standalone("write --force %{arg:1083472348978}"));
 }
