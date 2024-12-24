@@ -251,11 +251,39 @@ fn force_quit(
 
 fn open(
     cx: &mut compositor::Context,
-    args: Args,
-    _flags: Flags,
+    mut args: Args,
+    flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    // Flags
+    let mut env: Option<&str> = None;
+
+    flags! {
+        for flags, args => {
+            "env" => env = args.next(),
+        }
+    }
+
+    // If from `--env` disregard other arguments and open
+    if let Some(env) = env {
+        let Ok(path) = std::env::var(env) else {
+            // Assume that error will be because its not found
+            // not because of invalid unicode.
+            bail!("`{env}` was not found")
+        };
+
+        let (path, pos) = args::parse_file(&path);
+        let _ = cx.editor.open(&path, Action::Replace)?;
+        let (view, doc) = current!(cx.editor);
+        let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+        doc.set_selection(view.id, pos);
+        // does not affect opening a buffer without pos
+        align_view(doc, view, Align::Center);
+
         return Ok(());
     }
 
@@ -2977,7 +3005,12 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "open",
         aliases: aliases!["o", "edit", "e"],
-        flags: flags![],
+        flags: flags![
+            {
+                long: "env",
+                desc: "opens path from environment variable"
+            }
+        ],
         accepts: Some("<path>"),
         doc: "open a file from disk into the current view.",
         fun: open,
