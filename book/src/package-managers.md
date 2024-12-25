@@ -121,7 +121,7 @@ brew install helix
 ### MacPorts
 
 ```sh
-port install helix
+sudo port install helix
 ```
 
 ## Windows
