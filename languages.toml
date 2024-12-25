@@ -3319,7 +3319,7 @@ text-width = 72
 
 [[grammar]]
 name = "jjdescription"
-source = { git = "https://github.com/kareigu/tree-sitter-jjdescription", rev = "23dd3dd18ee29bdd761642511aa314215801afd8" }
+source = { git = "https://github.com/kareigu/tree-sitter-jjdescription", rev = "d09205b52b5a0165b588a793e366c1116468d86f" }
 
 [[language]]
 name = "jq"
