@@ -55,4 +55,12 @@
   "]"
   "{"
   "}"
-]  @punctuation.bracket
+] @punctuation.bracket
+
+[
+  "="
+] @operator
+
+[
+  ";"
+] @punctuation.delimiter
