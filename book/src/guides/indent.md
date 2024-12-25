@@ -2,7 +2,7 @@
 
 Helix uses tree-sitter to correctly indent new lines. This requires a tree-
 sitter grammar and an `indent.scm` query file placed in `runtime/queries/
-{language}/indents.scm`. The indentation for a line is calculated by traversing
+{language}/indents.tsq`. The indentation for a line is calculated by traversing
 the syntax tree from the lowest node at the beginning of the new line (see
 [Indent queries](#indent-queries)). Each of these nodes contributes to the total
 indent when it is captured by the query (in what way depends on the name of
@@ -24,7 +24,7 @@ the `tree-sitter` heuristic is used.
 ## Indent queries
 
 When Helix is inserting a new line through `o`, `O`, or `<ret>`, to determine
-the indent level for the new line, the query in `indents.scm` is run on the
+the indent level for the new line, the query in `indents.tsq` is run on the
 document. The starting position of the query is the end of the line above where
 a new line will be inserted.
 

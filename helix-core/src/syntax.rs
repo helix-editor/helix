@@ -743,12 +743,12 @@ pub fn read_query(language: &str, filename: &str) -> String {
 
 impl LanguageConfiguration {
     fn initialize_highlight(&self, scopes: &[String]) -> Option<Arc<HighlightConfiguration>> {
-        let highlights_query = read_query(&self.language_id, "highlights.scm");
+        let highlights_query = read_query(&self.language_id, "highlights.tsq");
         // always highlight syntax errors
         // highlights_query += "\n(ERROR) @error";
 
-        let injections_query = read_query(&self.language_id, "injections.scm");
-        let locals_query = read_query(&self.language_id, "locals.scm");
+        let injections_query = read_query(&self.language_id, "injections.tsq");
+        let locals_query = read_query(&self.language_id, "locals.tsq");
 
         if highlights_query.is_empty() {
             None
@@ -794,14 +794,14 @@ impl LanguageConfiguration {
 
     pub fn indent_query(&self) -> Option<&Query> {
         self.indent_query
-            .get_or_init(|| self.load_query("indents.scm"))
+            .get_or_init(|| self.load_query("indents.tsq"))
             .as_ref()
     }
 
     pub fn textobject_query(&self) -> Option<&TextObjectQuery> {
         self.textobject_query
             .get_or_init(|| {
-                self.load_query("textobjects.scm")
+                self.load_query("textobjects.tsq")
                     .map(|query| TextObjectQuery { query })
             })
             .as_ref()
@@ -2822,11 +2822,11 @@ mod test {
         let language = get_language("rust").unwrap();
         let config = HighlightConfiguration::new(
             language,
-            &std::fs::read_to_string("../runtime/grammars/sources/rust/queries/highlights.scm")
+            &std::fs::read_to_string("../runtime/grammars/sources/rust/queries/highlights.tsq")
                 .unwrap(),
-            &std::fs::read_to_string("../runtime/grammars/sources/rust/queries/injections.scm")
+            &std::fs::read_to_string("../runtime/grammars/sources/rust/queries/injections.tsq")
                 .unwrap(),
-            "", // locals.scm
+            "", // locals.tsq
         )
         .unwrap();
         config.configure(&highlight_names);
@@ -3015,7 +3015,7 @@ mod test {
     #[test]
     fn test_load_runtime_file() {
         // Test to make sure we can load some data from the runtime directory.
-        let contents = load_runtime_file("rust", "indents.scm").unwrap();
+        let contents = load_runtime_file("rust", "indents.tsq").unwrap();
         assert!(!contents.is_empty());
 
         let results = load_runtime_file("rust", "does-not-exist");

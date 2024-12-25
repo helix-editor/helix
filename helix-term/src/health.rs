@@ -21,9 +21,9 @@ impl TsFeature {
 
     pub fn runtime_filename(&self) -> &'static str {
         match *self {
-            Self::Highlight => "highlights.scm",
-            Self::TextObject => "textobjects.scm",
-            Self::AutoIndent => "indents.scm",
+            Self::Highlight => "highlights.tsq",
+            Self::TextObject => "textobjects.tsq",
+            Self::AutoIndent => "indents.tsq",
         }
     }
 

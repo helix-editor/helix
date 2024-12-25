@@ -158,12 +158,12 @@
   "ref"
 ] @keyword.storage.modifier
 
-; TODO: variable.mut to highlight mutable identifiers via locals.scm
+; TODO: variable.mut to highlight mutable identifiers via locals.tsq
 
 ; -------
 ; Constructors
 ; -------
-; TODO: this is largely guesswork, remove it once we get actual info from locals.scm or r-a
+; TODO: this is largely guesswork, remove it once we get actual info from locals.tsq or r-a
 
 (struct_expression
   name: (type_identifier) @constructor)

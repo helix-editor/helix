@@ -6,11 +6,11 @@ pub fn query_check() -> Result<(), DynError> {
     use helix_loader::grammar::get_language;
 
     let query_files = [
-        "highlights.scm",
-        "locals.scm",
-        "injections.scm",
-        "textobjects.scm",
-        "indents.scm",
+        "highlights.tsq",
+        "locals.tsq",
+        "injections.tsq",
+        "textobjects.tsq",
+        "indents.tsq",
     ];
 
     for language in lang_config().language {

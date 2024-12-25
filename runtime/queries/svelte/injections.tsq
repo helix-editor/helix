@@ -1,4 +1,4 @@
-; injections.scm
+; injections.tsq
 ; --------------
 ((style_element
   (raw_text) @injection.content)
