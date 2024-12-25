@@ -3066,25 +3066,33 @@ pub(super) fn command_mode(cx: &mut Context) {
     let mut prompt = Prompt::new(
         ":".into(),
         Some(':'),
+        // completion
         move |editor: &Editor, input: &str| {
-            let shellwords = Shellwords::from(input);
+            let shellwords = Shellwords::from(input.trim_start_matches('^'));
             let command = shellwords.command();
 
             let commands = commands.clone();
             let names = commands.names();
 
             // HACK: Cloning(to_string) because of lifetimes
-            let items = TYPABLE_COMMAND_LIST
-                .iter()
-                .map(|command| command.name)
-                .chain(names)
-                .map(|name| name.to_string())
-                .collect::<Vec<String>>();
+            let items = if input.starts_with('^') {
+                TYPABLE_COMMAND_LIST
+                    .iter()
+                    .map(|command| command.name.to_string())
+                    .collect::<Vec<String>>()
+            } else {
+                TYPABLE_COMMAND_LIST
+                    .iter()
+                    .map(|command| command.name)
+                    .chain(names)
+                    .map(|name| name.to_string())
+                    .collect::<Vec<String>>()
+            };
 
             if command.is_empty()
                 || (shellwords.args().next().is_none() && !shellwords.ends_with_whitespace())
             {
-                fuzzy_match(input, items, false)
+                fuzzy_match(command, items, false)
                     .into_iter()
                     .map(|(name, _)| (0.., name.into()))
                     .collect()
@@ -3120,7 +3128,8 @@ pub(super) fn command_mode(cx: &mut Context) {
                             .collect()
                     })
             }
-        }, // completion
+        },
+        // callback
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
             let shellwords = Shellwords::from(input);
             let command = shellwords.command();
@@ -3145,119 +3154,136 @@ pub(super) fn command_mode(cx: &mut Context) {
                 );
             }
 
-            // Checking for custom commands first priotizes custom commands over built-in/
-            if let Some(custom) = cx.editor.config().commands.get(command) {
-                for command in custom.iter() {
-                    if let Some(typed_command) =
-                        typed::TYPABLE_COMMAND_MAP.get(Shellwords::from(command).command())
-                    {
-                        // TODO: Expand variables: #11164
-                        //
-                        // let args = match variables::expand(...) {
-                        //    Ok(args: Cow<'_, str>) => args,
-                        //    Err(err) => {
-                        //         cx.editor.set_error(format!("{err}"));
-                        //         // Short circuit on error
-                        //         return;
-                        //    }
-                        // }
-                        //
+            let is_escaped = command.starts_with('^');
+            let command = command.trim_start_matches('^');
 
-                        // TEST: should allow for an option `%{arg}` even if no path is path is provided and work as if
-                        // the `%{arg}` eas never present.
-                        //
-                        // Assume that if the command contains an `%{arg[:NUMBER]}` it will be accepting arguments from
-                        // input and therefore not standalone.
-                        //
-                        // If `false`, then will use any arguments the command itself may have been written
-                        // with and ignore any typed-in arguments.
-                        //
-                        // This is a special case for when config has simplest usage:
-                        //
-                        //     "ww" = ":write --force"
-                        //
-                        // It will only use: `--force` as arguments when running `:write`.
-                        //
-                        // This also means that users dont have to explicitly use `%{arg}` every time:
-                        //
-                        //     "ww" = ":write --force %{arg}"
-                        //
-                        // Though in the case of `:write`, they probably should.
-                        //
-                        // Regardless, some commands explicitly take zero arguments and this check should prevent
-                        // input arguments being passed when they shouldnt.
-                        //
-                        // If `true`, then will assume that the command was passed arguments in expansion and that
-                        // whats left is the full argument list to be sent run.
-                        let args = if contains_arg_variable(command) {
-                            // Input args
-                            // TODO: Args::from(&args) from the expanded variables.
-                            shellwords.args()
-                        } else {
-                            Shellwords::from(command).args()
-                        };
+            // Checking for custom commands first priotizes custom commands over built-in.
+            //
+            // Custom commands can be escaped with a `^`.
+            //
+            // TODO: When let chains are stable reduce nestedness
+            if !is_escaped {
+                if let Some(custom) = cx.editor.config().commands.get(command) {
+                    for command in custom.iter() {
+                        if let Some(typed_command) =
+                            typed::TYPABLE_COMMAND_MAP.get(Shellwords::from(command).command())
+                        {
+                            // TODO: Expand variables: #11164
+                            //
+                            // let args = match variables::expand(...) {
+                            //    Ok(args: Cow<'_, str>) => args,
+                            //    Err(err) => {
+                            //         cx.editor.set_error(format!("{err}"));
+                            //         // Short circuit on error
+                            //         return;
+                            //    }
+                            // }
+                            //
 
-                        if let Err(err) = (typed_command.fun)(cx, args, event) {
-                            cx.editor.set_error(format!("{err}"));
+                            // TEST: should allow for an option `%{arg}` even if no path is path is provided and work as if
+                            // the `%{arg}` eas never present.
+                            //
+                            // Assume that if the command contains an `%{arg[:NUMBER]}` it will be accepting arguments from
+                            // input and therefore not standalone.
+                            //
+                            // If `false`, then will use any arguments the command itself may have been written
+                            // with and ignore any typed-in arguments.
+                            //
+                            // This is a special case for when config has simplest usage:
+                            //
+                            //     "ww" = ":write --force"
+                            //
+                            // It will only use: `--force` as arguments when running `:write`.
+                            //
+                            // This also means that users dont have to explicitly use `%{arg}` every time:
+                            //
+                            //     "ww" = ":write --force %{arg}"
+                            //
+                            // Though in the case of `:write`, they probably should.
+                            //
+                            // Regardless, some commands explicitly take zero arguments and this check should prevent
+                            // input arguments being passed when they shouldnt.
+                            //
+                            // If `true`, then will assume that the command was passed arguments in expansion and that
+                            // whats left is the full argument list to be sent run.
+                            let args = if contains_arg_variable(command) {
+                                // Input args
+                                // TODO: Args::from(&args) from the expanded variables.
+                                shellwords.args()
+                            } else {
+                                Shellwords::from(command).args()
+                            };
+
+                            if let Err(err) = (typed_command.fun)(cx, args, event) {
+                                cx.editor.set_error(format!("{err}"));
+                                // Short circuit on error
+                                return;
+                            }
+                            // Handle static commands
+                        } else if let Some(static_command) =
+                            super::MappableCommand::STATIC_COMMAND_LIST
+                                .iter()
+                                .find(|mappable| {
+                                    mappable.name() == Shellwords::from(command).command()
+                                })
+                        {
+                            let mut cx = super::Context {
+                                register: None,
+                                count: None,
+                                editor: cx.editor,
+                                callback: vec![],
+                                on_next_key_callback: None,
+                                jobs: cx.jobs,
+                            };
+
+                            let MappableCommand::Static { fun, .. } = static_command else {
+                                unreachable!("should only be able to get a static command from `STATIC_COMMAND_LIST`")
+                            };
+
+                            (fun)(&mut cx);
+                            // Handle macro
+                        } else if let Some(suffix) = command.strip_prefix('@') {
+                            let keys = match helix_view::input::parse_macro(suffix) {
+                                Ok(keys) => keys,
+                                Err(err) => {
+                                    cx.editor.set_error(format!(
+                                        "failed to parse macro `{command}`: {err}"
+                                    ));
+                                    return;
+                                }
+                            };
+
+                            // Protect against recursive macros.
+                            if cx.editor.macro_replaying.contains(&'@') {
+                                cx.editor.set_error("Cannot execute macro because the [@] register is already playing a macro");
+                                return;
+                            }
+
+                            let mut cx = super::Context {
+                                register: None,
+                                count: None,
+                                editor: cx.editor,
+                                callback: vec![],
+                                on_next_key_callback: None,
+                                jobs: cx.jobs,
+                            };
+
+                            cx.editor.macro_replaying.push('@');
+                            cx.callback.push(Box::new(move |compositor, cx| {
+                                for key in keys {
+                                    compositor.handle_event(&compositor::Event::Key(key), cx);
+                                }
+                                cx.editor.macro_replaying.pop();
+                            }));
+                        } else if event == PromptEvent::Validate {
+                            cx.editor.set_error(format!("no such command: '{command}'"));
                             // Short circuit on error
                             return;
                         }
-                        // Handle static commands
-                    } else if let Some(static_command) = super::MappableCommand::STATIC_COMMAND_LIST
-                        .iter()
-                        .find(|mappable| mappable.name() == Shellwords::from(command).command())
-                    {
-                        let mut cx = super::Context {
-                            register: None,
-                            count: None,
-                            editor: cx.editor,
-                            callback: vec![],
-                            on_next_key_callback: None,
-                            jobs: cx.jobs,
-                        };
-
-                        let MappableCommand::Static { fun, .. } = static_command else {
-                            unreachable!("should only be able to get a static command from `STATIC_COMMAND_LIST`")
-                        };
-
-                        (fun)(&mut cx);
-                        // Handle macro
-                    } else if let Some(suffix) = command.strip_prefix('@') {
-                        let keys = match helix_view::input::parse_macro(suffix) {
-                            Ok(keys) => keys,
-                            Err(err) => {
-                                cx.editor
-                                    .set_error(format!("failed to parse macro `{command}`: {err}"));
-                                return;
-                            }
-                        };
-
-                        // Protect against recursive macros.
-                        if cx.editor.macro_replaying.contains(&'@') {
-                            cx.editor.set_error("Cannot execute macro because the [@] register is already playing a macro");
-                            return;
-                        }
-
-                        let mut cx = super::Context {
-                            register: None,
-                            count: None,
-                            editor: cx.editor,
-                            callback: vec![],
-                            on_next_key_callback: None,
-                            jobs: cx.jobs,
-                        };
-
-                        cx.editor.macro_replaying.push('@');
-                        cx.callback.push(Box::new(move |compositor, cx| {
-                            for key in keys {
-                                compositor.handle_event(&compositor::Event::Key(key), cx);
-                            }
-                            cx.editor.macro_replaying.pop();
-                        }));
-                    } else if event == PromptEvent::Validate {
-                        cx.editor.set_error(format!("no such command: '{command}'"));
-                        // Short circuit on error
-                        return;
+                    }
+                } else if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(command) {
+                    if let Err(err) = (cmd.fun)(cx, shellwords.args(), event) {
+                        cx.editor.set_error(format!("{err}"));
                     }
                 }
             }
@@ -3277,9 +3303,7 @@ pub(super) fn command_mode(cx: &mut Context) {
         let shellwords = Shellwords::from(input);
 
         if let Some(command) = commands.clone().get(input) {
-            if let Some(desc) = &command.desc {
-                return Some(desc.clone().into());
-            }
+            return Some(command.prompt().into());
         } else if let Some(typed::TypableCommand { doc, aliases, .. }) =
             typed::TYPABLE_COMMAND_MAP.get(shellwords.command())
         {
