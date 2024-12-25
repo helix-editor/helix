@@ -3060,7 +3060,6 @@ pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableComma
 
 #[allow(clippy::unnecessary_unwrap, clippy::too_many_lines)]
 pub(super) fn command_mode(cx: &mut Context) {
-    // PERF: Cheap clone
     let arced = Arc::new(cx.editor.config().commands.clone());
 
     let commands = arced.clone();
@@ -3074,7 +3073,7 @@ pub(super) fn command_mode(cx: &mut Context) {
             let commands = commands.clone();
             let names = commands.names();
 
-            // PERF: Cloning(to_string) because of lifetimes
+            // HACK: Cloning(to_string) because of lifetimes
             let items = TYPABLE_COMMAND_LIST
                 .iter()
                 .map(|command| command.name)
@@ -3170,7 +3169,7 @@ pub(super) fn command_mode(cx: &mut Context) {
                         // Assume that if the command contains an `%{arg[:NUMBER]}` it will be accepting arguments from
                         // input and therefore not standalone.
                         //
-                        // If `true`, then will use any arguments the command itself may have been written
+                        // If `false`, then will use any arguments the command itself may have been written
                         // with and ignore any typed-in arguments.
                         //
                         // This is a special case for when config has simplest usage:
@@ -3188,7 +3187,7 @@ pub(super) fn command_mode(cx: &mut Context) {
                         // Regardless, some commands explicitly take zero arguments and this check should prevent
                         // input arguments being passed when they shouldnt.
                         //
-                        // If `false`, then will assume that that command was passed arguments in expansion and that
+                        // If `true`, then will assume that the command was passed arguments in expansion and that
                         // whats left is the full argument list to be sent run.
                         let args = if contains_arg_variable(command) {
                             // Input args
