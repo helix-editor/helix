@@ -2507,7 +2507,8 @@ fn read(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     ensure!(args.len() == 1, "only the file name is expected");
 
     let filename = args.first().unwrap();
-    let path = PathBuf::from(filename.to_string());
+    let path = helix_stdx::path::expand_tilde(PathBuf::from(filename.to_string()));
+
     ensure!(
         path.exists() && path.is_file(),
         "path is not a file: {:?}",
@@ -3197,8 +3198,8 @@ pub(super) fn command_mode(cx: &mut Context) {
                 {
                     completer(editor, word)
                         .into_iter()
-                        .map(|(range, file)| {
-                            let file = shellwords::escape(file);
+                        .map(|(range, mut file)| {
+                            file.content = shellwords::escape(file.content);
 
                             // offset ranges to input
                             let offset = input.len() - word_len;

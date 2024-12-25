@@ -9,14 +9,21 @@ use helix_view::{
     document::SavePoint,
     editor::CompleteAction,
     handlers::lsp::SignatureHelpInvoked,
-    theme::{Modifier, Style},
+    theme::{Color, Modifier, Style},
     ViewId,
 };
-use tui::{buffer::Buffer as Surface, text::Span};
+use tui::{
+    buffer::Buffer as Surface,
+    text::{Span, Spans},
+};
 
 use std::{borrow::Cow, sync::Arc};
 
-use helix_core::{self as core, chars, Change, Transaction};
+use helix_core::{
+    self as core, chars,
+    snippets::{ActiveSnippet, RenderedSnippet, Snippet},
+    Change, Transaction,
+};
 use helix_view::{graphics::Rect, Document, Editor};
 
 use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
@@ -24,7 +31,7 @@ use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
 use helix_lsp::{lsp, util, OffsetEncoding};
 
 impl menu::Item for CompletionItem {
-    type Data = ();
+    type Data = Style;
     fn sort_text(&self, data: &Self::Data) -> Cow<str> {
         self.filter_text(data)
     }
@@ -42,7 +49,7 @@ impl menu::Item for CompletionItem {
         }
     }
 
-    fn format(&self, _data: &Self::Data) -> menu::Row {
+    fn format(&self, dir_style: &Self::Data) -> menu::Row {
         let deprecated = match self {
             CompletionItem::Lsp(LspCompletionItem { item, .. }) => {
                 item.deprecated.unwrap_or_default()
@@ -60,51 +67,69 @@ impl menu::Item for CompletionItem {
 
         let kind = match self {
             CompletionItem::Lsp(LspCompletionItem { item, .. }) => match item.kind {
-                Some(lsp::CompletionItemKind::TEXT) => "text",
-                Some(lsp::CompletionItemKind::METHOD) => "method",
-                Some(lsp::CompletionItemKind::FUNCTION) => "function",
-                Some(lsp::CompletionItemKind::CONSTRUCTOR) => "constructor",
-                Some(lsp::CompletionItemKind::FIELD) => "field",
-                Some(lsp::CompletionItemKind::VARIABLE) => "variable",
-                Some(lsp::CompletionItemKind::CLASS) => "class",
-                Some(lsp::CompletionItemKind::INTERFACE) => "interface",
-                Some(lsp::CompletionItemKind::MODULE) => "module",
-                Some(lsp::CompletionItemKind::PROPERTY) => "property",
-                Some(lsp::CompletionItemKind::UNIT) => "unit",
-                Some(lsp::CompletionItemKind::VALUE) => "value",
-                Some(lsp::CompletionItemKind::ENUM) => "enum",
-                Some(lsp::CompletionItemKind::KEYWORD) => "keyword",
-                Some(lsp::CompletionItemKind::SNIPPET) => "snippet",
-                Some(lsp::CompletionItemKind::COLOR) => "color",
-                Some(lsp::CompletionItemKind::FILE) => "file",
-                Some(lsp::CompletionItemKind::REFERENCE) => "reference",
-                Some(lsp::CompletionItemKind::FOLDER) => "folder",
-                Some(lsp::CompletionItemKind::ENUM_MEMBER) => "enum_member",
-                Some(lsp::CompletionItemKind::CONSTANT) => "constant",
-                Some(lsp::CompletionItemKind::STRUCT) => "struct",
-                Some(lsp::CompletionItemKind::EVENT) => "event",
-                Some(lsp::CompletionItemKind::OPERATOR) => "operator",
-                Some(lsp::CompletionItemKind::TYPE_PARAMETER) => "type_param",
+                Some(lsp::CompletionItemKind::TEXT) => "text".into(),
+                Some(lsp::CompletionItemKind::METHOD) => "method".into(),
+                Some(lsp::CompletionItemKind::FUNCTION) => "function".into(),
+                Some(lsp::CompletionItemKind::CONSTRUCTOR) => "constructor".into(),
+                Some(lsp::CompletionItemKind::FIELD) => "field".into(),
+                Some(lsp::CompletionItemKind::VARIABLE) => "variable".into(),
+                Some(lsp::CompletionItemKind::CLASS) => "class".into(),
+                Some(lsp::CompletionItemKind::INTERFACE) => "interface".into(),
+                Some(lsp::CompletionItemKind::MODULE) => "module".into(),
+                Some(lsp::CompletionItemKind::PROPERTY) => "property".into(),
+                Some(lsp::CompletionItemKind::UNIT) => "unit".into(),
+                Some(lsp::CompletionItemKind::VALUE) => "value".into(),
+                Some(lsp::CompletionItemKind::ENUM) => "enum".into(),
+                Some(lsp::CompletionItemKind::KEYWORD) => "keyword".into(),
+                Some(lsp::CompletionItemKind::SNIPPET) => "snippet".into(),
+                Some(lsp::CompletionItemKind::COLOR) => item
+                    .documentation
+                    .as_ref()
+                    .and_then(|docs| {
+                        let text = match docs {
+                            lsp::Documentation::String(text) => text,
+                            lsp::Documentation::MarkupContent(lsp::MarkupContent {
+                                value, ..
+                            }) => value,
+                        };
+                        Color::from_hex(text)
+                    })
+                    .map_or("color".into(), |color| {
+                        Spans::from(vec![
+                            Span::raw("color "),
+                            Span::styled("■", Style::default().fg(color)),
+                        ])
+                    }),
+                Some(lsp::CompletionItemKind::FILE) => "file".into(),
+                Some(lsp::CompletionItemKind::REFERENCE) => "reference".into(),
+                Some(lsp::CompletionItemKind::FOLDER) => "folder".into(),
+                Some(lsp::CompletionItemKind::ENUM_MEMBER) => "enum_member".into(),
+                Some(lsp::CompletionItemKind::CONSTANT) => "constant".into(),
+                Some(lsp::CompletionItemKind::STRUCT) => "struct".into(),
+                Some(lsp::CompletionItemKind::EVENT) => "event".into(),
+                Some(lsp::CompletionItemKind::OPERATOR) => "operator".into(),
+                Some(lsp::CompletionItemKind::TYPE_PARAMETER) => "type_param".into(),
                 Some(kind) => {
                     log::error!("Received unknown completion item kind: {:?}", kind);
-                    ""
+                    "".into()
                 }
-                None => "",
+                None => "".into(),
             },
-            CompletionItem::Other(core::CompletionItem { kind, .. }) => kind,
+            CompletionItem::Other(core::CompletionItem { kind, .. }) => kind.as_ref().into(),
         };
 
-        menu::Row::new([
-            menu::Cell::from(Span::styled(
-                label,
-                if deprecated {
-                    Style::default().add_modifier(Modifier::CROSSED_OUT)
-                } else {
-                    Style::default()
-                },
-            )),
-            menu::Cell::from(kind),
-        ])
+        let label = Span::styled(
+            label,
+            if deprecated {
+                Style::default().add_modifier(Modifier::CROSSED_OUT)
+            } else if kind.0[0].content == "folder" {
+                *dir_style
+            } else {
+                Style::default()
+            },
+        );
+
+        menu::Row::new([menu::Cell::from(label), menu::Cell::from(kind)])
     }
 }
 
@@ -131,103 +156,10 @@ impl Completion {
         // Sort completion items according to their preselect status (given by the LSP server)
         items.sort_by_key(|item| !item.preselect());
 
+        let dir_style = editor.theme.get("ui.text.directory");
+
         // Then create the menu
-        let menu = Menu::new(items, (), move |editor: &mut Editor, item, event| {
-            fn lsp_item_to_transaction(
-                doc: &Document,
-                view_id: ViewId,
-                item: &lsp::CompletionItem,
-                offset_encoding: OffsetEncoding,
-                trigger_offset: usize,
-                include_placeholder: bool,
-                replace_mode: bool,
-            ) -> Transaction {
-                use helix_lsp::snippet;
-                let selection = doc.selection(view_id);
-                let text = doc.text().slice(..);
-                let primary_cursor = selection.primary().cursor(text);
-
-                let (edit_offset, new_text) = if let Some(edit) = &item.text_edit {
-                    let edit = match edit {
-                        lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
-                        lsp::CompletionTextEdit::InsertAndReplace(item) => {
-                            let range = if replace_mode {
-                                item.replace
-                            } else {
-                                item.insert
-                            };
-                            lsp::TextEdit::new(range, item.new_text.clone())
-                        }
-                    };
-
-                    let Some(range) =
-                        util::lsp_range_to_range(doc.text(), edit.range, offset_encoding)
-                    else {
-                        return Transaction::new(doc.text());
-                    };
-
-                    let start_offset = range.anchor as i128 - primary_cursor as i128;
-                    let end_offset = range.head as i128 - primary_cursor as i128;
-
-                    (Some((start_offset, end_offset)), edit.new_text)
-                } else {
-                    let new_text = item
-                        .insert_text
-                        .clone()
-                        .unwrap_or_else(|| item.label.clone());
-                    // check that we are still at the correct savepoint
-                    // we can still generate a transaction regardless but if the
-                    // document changed (and not just the selection) then we will
-                    // likely delete the wrong text (same if we applied an edit sent by the LS)
-                    debug_assert!(primary_cursor == trigger_offset);
-                    (None, new_text)
-                };
-
-                if matches!(item.kind, Some(lsp::CompletionItemKind::SNIPPET))
-                    || matches!(
-                        item.insert_text_format,
-                        Some(lsp::InsertTextFormat::SNIPPET)
-                    )
-                {
-                    match snippet::parse(&new_text) {
-                        Ok(snippet) => util::generate_transaction_from_snippet(
-                            doc.text(),
-                            selection,
-                            edit_offset,
-                            replace_mode,
-                            snippet,
-                            doc.line_ending.as_str(),
-                            include_placeholder,
-                            doc.tab_width(),
-                            doc.indent_width(),
-                        ),
-                        Err(err) => {
-                            log::error!(
-                                "Failed to parse snippet: {:?}, remaining output: {}",
-                                &new_text,
-                                err
-                            );
-                            Transaction::new(doc.text())
-                        }
-                    }
-                } else {
-                    util::generate_transaction_from_completion_edit(
-                        doc.text(),
-                        selection,
-                        edit_offset,
-                        replace_mode,
-                        new_text,
-                    )
-                }
-            }
-
-            fn completion_changes(transaction: &Transaction, trigger_offset: usize) -> Vec<Change> {
-                transaction
-                    .changes_iter()
-                    .filter(|(start, end, _)| (*start..=*end).contains(&trigger_offset))
-                    .collect()
-            }
-
+        let menu = Menu::new(items, dir_style, move |editor: &mut Editor, item, event| {
             let (view, doc) = current!(editor);
 
             macro_rules! language_server {
@@ -272,18 +204,17 @@ impl Completion {
                     let item = item.unwrap();
 
                     match item {
-                        CompletionItem::Lsp(item) => doc.apply_temporary(
-                            &lsp_item_to_transaction(
+                        CompletionItem::Lsp(item) => {
+                            let (transaction, _) = lsp_item_to_transaction(
                                 doc,
                                 view.id,
                                 &item.item,
                                 language_server!(item).offset_encoding(),
                                 trigger_offset,
-                                true,
                                 replace_mode,
-                            ),
-                            view.id,
-                        ),
+                            );
+                            doc.apply_temporary(&transaction, view.id)
+                        }
                         CompletionItem::Other(core::CompletionItem { transaction, .. }) => {
                             doc.apply_temporary(transaction, view.id)
                         }
@@ -303,7 +234,7 @@ impl Completion {
                     doc.append_changes_to_history(view);
 
                     // item always present here
-                    let (transaction, additional_edits) = match item.unwrap().clone() {
+                    let (transaction, additional_edits, snippet) = match item.unwrap().clone() {
                         CompletionItem::Lsp(mut item) => {
                             let language_server = language_server!(item);
 
@@ -318,29 +249,40 @@ impl Completion {
                             };
 
                             let encoding = language_server.offset_encoding();
-                            let transaction = lsp_item_to_transaction(
+                            let (transaction, snippet) = lsp_item_to_transaction(
                                 doc,
                                 view.id,
                                 &item.item,
                                 encoding,
                                 trigger_offset,
-                                false,
                                 replace_mode,
                             );
                             let add_edits = item.item.additional_text_edits;
 
-                            (transaction, add_edits.map(|edits| (edits, encoding)))
+                            (
+                                transaction,
+                                add_edits.map(|edits| (edits, encoding)),
+                                snippet,
+                            )
                         }
                         CompletionItem::Other(core::CompletionItem { transaction, .. }) => {
-                            (transaction, None)
+                            (transaction, None, None)
                         }
                     };
 
                     doc.apply(&transaction, view.id);
+                    let placeholder = snippet.is_some();
+                    if let Some(snippet) = snippet {
+                        doc.active_snippet = match doc.active_snippet.take() {
+                            Some(active) => active.insert_subsnippet(snippet),
+                            None => ActiveSnippet::new(snippet),
+                        };
+                    }
 
                     editor.last_completion = Some(CompleteAction::Applied {
                         trigger_offset,
                         changes: completion_changes(&transaction, trigger_offset),
+                        placeholder,
                     });
 
                     // TODO: add additional _edits to completion_changes?
@@ -580,4 +522,87 @@ impl Component for Completion {
 
         markdown_doc.render(doc_area, surface, cx);
     }
+}
+fn lsp_item_to_transaction(
+    doc: &Document,
+    view_id: ViewId,
+    item: &lsp::CompletionItem,
+    offset_encoding: OffsetEncoding,
+    trigger_offset: usize,
+    replace_mode: bool,
+) -> (Transaction, Option<RenderedSnippet>) {
+    let selection = doc.selection(view_id);
+    let text = doc.text().slice(..);
+    let primary_cursor = selection.primary().cursor(text);
+
+    let (edit_offset, new_text) = if let Some(edit) = &item.text_edit {
+        let edit = match edit {
+            lsp::CompletionTextEdit::Edit(edit) => edit.clone(),
+            lsp::CompletionTextEdit::InsertAndReplace(item) => {
+                let range = if replace_mode {
+                    item.replace
+                } else {
+                    item.insert
+                };
+                lsp::TextEdit::new(range, item.new_text.clone())
+            }
+        };
+
+        let Some(range) = util::lsp_range_to_range(doc.text(), edit.range, offset_encoding) else {
+            return (Transaction::new(doc.text()), None);
+        };
+
+        let start_offset = range.anchor as i128 - primary_cursor as i128;
+        let end_offset = range.head as i128 - primary_cursor as i128;
+
+        (Some((start_offset, end_offset)), edit.new_text)
+    } else {
+        let new_text = item
+            .insert_text
+            .clone()
+            .unwrap_or_else(|| item.label.clone());
+        // check that we are still at the correct savepoint
+        // we can still generate a transaction regardless but if the
+        // document changed (and not just the selection) then we will
+        // likely delete the wrong text (same if we applied an edit sent by the LS)
+        debug_assert!(primary_cursor == trigger_offset);
+        (None, new_text)
+    };
+
+    if matches!(item.kind, Some(lsp::CompletionItemKind::SNIPPET))
+        || matches!(
+            item.insert_text_format,
+            Some(lsp::InsertTextFormat::SNIPPET)
+        )
+    {
+        let Ok(snippet) = Snippet::parse(&new_text) else {
+            log::error!("Failed to parse snippet: {new_text:?}",);
+            return (Transaction::new(doc.text()), None);
+        };
+        let (transaction, snippet) = util::generate_transaction_from_snippet(
+            doc.text(),
+            selection,
+            edit_offset,
+            replace_mode,
+            snippet,
+            &mut doc.snippet_ctx(),
+        );
+        (transaction, Some(snippet))
+    } else {
+        let transaction = util::generate_transaction_from_completion_edit(
+            doc.text(),
+            selection,
+            edit_offset,
+            replace_mode,
+            new_text,
+        );
+        (transaction, None)
+    }
+}
+
+fn completion_changes(transaction: &Transaction, trigger_offset: usize) -> Vec<Change> {
+    transaction
+        .changes_iter()
+        .filter(|(start, end, _)| (*start..=*end).contains(&trigger_offset))
+        .collect()
 }

@@ -20,7 +20,8 @@ fn main() {
         .output()
         .ok()
         .filter(|output| output.status.success())
-        .and_then(|x| String::from_utf8(x.stdout).ok());
+        .and_then(|x| String::from_utf8(x.stdout).ok())
+        .or_else(|| option_env!("HELIX_NIX_BUILD_REV").map(|s| s.to_string()));
 
     let calver = get_calver();
     let version: Cow<_> = match &git_hash {

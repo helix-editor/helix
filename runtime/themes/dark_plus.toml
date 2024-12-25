@@ -72,11 +72,13 @@
 "ui.bufferline.background"   = { bg = "background" }
 "ui.text"                    = { fg = "text" }
 "ui.text.focus"              = { fg = "white" }
+"ui.text.directory"          = { fg = "blue3" }
+"ui.text.inactive"           = { fg = "dark_gray" }
 "ui.virtual.whitespace"      = { fg = "#3e3e3d" }
 "ui.virtual.ruler"           = { bg = "borders" }
 "ui.virtual.indent-guide"    = { fg = "dark_gray4" }
 "ui.virtual.inlay-hint"      = { fg = "dark_gray5"}
-"ui.virtual.jump-label"      = { fg = "dark_gray", modifiers = ["bold"] }
+"ui.virtual.jump-label"      = { fg = "yellow", modifiers = ["bold"] }
 "ui.highlight.frameline"     = { bg = "#4b4b18" }
 "ui.debug.active"            = { fg = "#ffcc00" }
 "ui.debug.breakpoint"        = { fg = "#e51400" }

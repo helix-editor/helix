@@ -21,7 +21,7 @@
 "variable" = "text"
 "variable.parameter" = { fg = "maroon", modifiers = ["italic"] }
 "variable.builtin" = "red"
-"variable.other.member" = "teal"
+"variable.other.member" = "blue"
 
 "label" = "sapphire" # used for lifetimes
 
@@ -50,10 +50,10 @@
 "markup.heading.5" = "pink"
 "markup.heading.6" = "teal"
 "markup.list" = "mauve"
-"markup.bold" = { modifiers = ["bold"] }
-"markup.italic" = { modifiers = ["italic"] }
 "markup.list.unchecked" = "overlay2"
 "markup.list.checked" = "green"
+"markup.bold" = { modifiers = ["bold"] }
+"markup.italic" = { modifiers = ["italic"] }
 "markup.link.url" = { fg = "blue", modifiers = ["italic", "underlined"] }
 "markup.link.text" = "blue"
 "markup.raw" = "flamingo"
@@ -86,6 +86,7 @@
 "ui.text" = "text"
 "ui.text.focus" = { fg = "text", bg = "surface0", modifiers = ["bold"] }
 "ui.text.inactive" = { fg = "overlay1" }
+"ui.text.directory" = { fg = "blue" }
 
 "ui.virtual" = "overlay0"
 "ui.virtual.ruler" = { bg = "surface0" }
