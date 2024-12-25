@@ -1,6 +1,6 @@
 // TODO: When adding custom aliases to the command prompt list, must priotize the custom over the built-in.
 // - Should include removing the alias from the aliases command?
-// 
+//
 // TODO: Need to get access to a new table in the config: [commands].
 // TODO: Could add an `aliases` to `CustomTypableCommand` and then add those as well?
 
@@ -70,4 +70,3 @@ impl CustomTypableCommand {
             .map(|command| command.trim_start_matches(':'))
     }
 }
-
