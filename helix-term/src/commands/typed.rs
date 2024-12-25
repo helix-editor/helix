@@ -2719,23 +2719,32 @@ fn pipe_impl(
 
 fn run_shell_command(
     cx: &mut compositor::Context,
-    args: Args,
-    _flags: Flags,
+    mut args: Args,
+    flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
+    // Flags
+    let mut no_popup = false;
+
+    flags! {
+        for flags, args => {
+            "no-popup" => no_popup = true,
+        }
+    }
+
     let shell = cx.editor.config().shell.clone();
 
-    let args = helix_core::shellwords::unescape(args.raw()).into_owned();
+    let args = helix_core::shellwords::unescape(args.rest()).into_owned();
 
     let callback = async move {
         let output = shell_impl_async(&shell, &args, None).await?;
         let call: job::Callback = Callback::EditorCompositor(Box::new(
             move |editor: &mut Editor, compositor: &mut Compositor| {
-                if !output.is_empty() {
+                if !output.is_empty() && !no_popup {
                     let contents = ui::Markdown::new(
                         format!("```sh\n{}\n```", output.trim_end()),
                         editor.syn_loader.clone(),
@@ -3830,7 +3839,12 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "run-shell-command",
         aliases: aliases!["sh"],
-        flags: flags![],
+        flags: flags![
+            {
+                long: "no-popup",
+                desc: "no longer show shell output in popup"
+            }
+        ],
         accepts: Some("<cmd>"),
         doc: "run a shell command",
         fun: run_shell_command,
