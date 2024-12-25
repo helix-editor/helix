@@ -56,10 +56,10 @@
 
 (negated_field
   "!" @operator
-  (identifier) @property)
+  (identifier) @variable.other.member)
 
 (field_definition
-  name: (identifier) @property)
+  name: (identifier) @variable.other.member)
 
 (named_node
   name: (identifier) @variable)
