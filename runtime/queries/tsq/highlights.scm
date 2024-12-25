@@ -27,8 +27,8 @@
   (#match? @keyword.import "^;+ *inherits *:"))
 
 ((parameters
-  (identifier) @number)
-  (#match? @number "^[-+]?[0-9]+(.[0-9]+)?$"))
+  (identifier) @constant.numeric)
+  (#match? @constant.numeric "^[-+]?[0-9]+(.[0-9]+)?$"))
 
 "_" @constant
 
