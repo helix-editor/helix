@@ -3138,23 +3138,32 @@ pub(super) fn command_mode(cx: &mut Context) {
                 return;
             }
 
+            // Protects against weird recursion issues in expansion.
+            // Positional arguments are only meant for use in the config.
+            if contains_arg_variable(shellwords.args().raw()) {
+                cx.editor.set_error(
+                    "Input arguments cannot contain a positional argument variable: `%{arg[:INT]}`",
+                );
+            }
+
             // Checking for custom commands first priotizes custom commands over built-in/
             if let Some(custom) = cx.editor.config().commands.get(command) {
                 for command in custom.iter() {
-                    // TODO: Expand variables: #11164
-                    // let args = match variables::expand(...) {
-                    //    Ok(args: Cow<'_, str>) => args,
-                    //    Err(err) => {
-                    //         cx.editor.set_error(format!("{err}"));
-                    //         // Short circuit on error
-                    //         return;
-                    //    }
-                    // }
-                    //
-
                     if let Some(typed_command) =
                         typed::TYPABLE_COMMAND_MAP.get(Shellwords::from(command).command())
                     {
+                        // TODO: Expand variables: #11164
+                        //
+                        // let args = match variables::expand(...) {
+                        //    Ok(args: Cow<'_, str>) => args,
+                        //    Err(err) => {
+                        //         cx.editor.set_error(format!("{err}"));
+                        //         // Short circuit on error
+                        //         return;
+                        //    }
+                        // }
+                        //
+
                         // TEST: should allow for an option `%{arg}` even if no path is path is provided and work as if
                         // the `%{arg}` eas never present.
                         //
@@ -3181,12 +3190,12 @@ pub(super) fn command_mode(cx: &mut Context) {
                         //
                         // If `false`, then will assume that that command was passed arguments in expansion and that
                         // whats left is the full argument list to be sent run.
-                        let args = if is_standalone(command) {
-                            Shellwords::from(command).args()
-                        } else {
+                        let args = if contains_arg_variable(command) {
                             // Input args
                             // TODO: Args::from(&args) from the expanded variables.
                             shellwords.args()
+                        } else {
+                            Shellwords::from(command).args()
                         };
 
                         if let Err(err) = (typed_command.fun)(cx, args, event) {
@@ -3194,6 +3203,58 @@ pub(super) fn command_mode(cx: &mut Context) {
                             // Short circuit on error
                             return;
                         }
+                        // Handle static commands
+                    } else if let Some(static_command) = super::MappableCommand::STATIC_COMMAND_LIST
+                        .iter()
+                        .find(|mappable| mappable.name() == Shellwords::from(command).command())
+                    {
+                        let mut cx = super::Context {
+                            register: None,
+                            count: None,
+                            editor: cx.editor,
+                            callback: vec![],
+                            on_next_key_callback: None,
+                            jobs: cx.jobs,
+                        };
+
+                        let MappableCommand::Static { fun, .. } = static_command else {
+                            unreachable!("should only be able to get a static command from `STATIC_COMMAND_LIST`")
+                        };
+
+                        (fun)(&mut cx);
+                        // Handle macro
+                    } else if let Some(suffix) = command.strip_prefix('@') {
+                        let keys = match helix_view::input::parse_macro(suffix) {
+                            Ok(keys) => keys,
+                            Err(err) => {
+                                cx.editor
+                                    .set_error(format!("failed to parse macro `{command}`: {err}"));
+                                return;
+                            }
+                        };
+
+                        // Protect against recursive macros.
+                        if cx.editor.macro_replaying.contains(&'@') {
+                            cx.editor.set_error("Cannot execute macro because the [@] register is already playing a macro");
+                            return;
+                        }
+
+                        let mut cx = super::Context {
+                            register: None,
+                            count: None,
+                            editor: cx.editor,
+                            callback: vec![],
+                            on_next_key_callback: None,
+                            jobs: cx.jobs,
+                        };
+
+                        cx.editor.macro_replaying.push('@');
+                        cx.callback.push(Box::new(move |compositor, cx| {
+                            for key in keys {
+                                compositor.handle_event(&compositor::Event::Key(key), cx);
+                            }
+                            cx.editor.macro_replaying.pop();
+                        }));
                     } else if event == PromptEvent::Validate {
                         cx.editor.set_error(format!("no such command: '{command}'"));
                         // Short circuit on error
@@ -3201,7 +3262,7 @@ pub(super) fn command_mode(cx: &mut Context) {
                     }
                 }
             }
-            // Handle typable commands
+            // Handle typable commands as normal
             else if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(command) {
                 if let Err(err) = (cmd.fun)(cx, shellwords.args(), event) {
                     cx.editor.set_error(format!("{err}"));
@@ -3245,9 +3306,11 @@ fn argument_number_of(shellwords: &Shellwords) -> usize {
         .saturating_sub(1 - usize::from(shellwords.ends_with_whitespace()))
 }
 
-// NOTE: Only used in one spot
+// TODO: Will turn into check for an input argument so that it cannot be `%{arg}`
+// as this could cause issues with expansion recursion
+// NOTE: Only used in one
 #[inline(always)]
-fn is_standalone(command: &str) -> bool {
+fn contains_arg_variable(command: &str) -> bool {
     let mut idx = 0;
     let bytes = command.as_bytes();
 
@@ -3268,7 +3331,7 @@ fn is_standalone(command: &str) -> bool {
                                 for byte in &bytes[idx..] {
                                     // Found end of arg bracket
                                     if *byte == b'}' && is_prev_digit {
-                                        return false;
+                                        return true;
                                     }
 
                                     if char::from(*byte).is_ascii_digit() {
@@ -3279,7 +3342,7 @@ fn is_standalone(command: &str) -> bool {
                                 }
                             }
                             [b'a', b'r', b'g', b'}', ..] => {
-                                return false;
+                                return true;
                             }
                             _ => {
                                 idx += 2 + 4;
@@ -3300,7 +3363,7 @@ fn is_standalone(command: &str) -> bool {
         continue;
     }
 
-    true
+    false
 }
 
 #[test]
@@ -3322,20 +3385,20 @@ fn test_argument_number_of() {
 }
 
 #[test]
-fn should_indicate_if_command_is_standalone() {
-    assert!(is_standalone("write --force"));
+fn should_indicate_if_command_contained_arg_variable() {
+    assert!(!contains_arg_variable("write --force"));
 
     // Must provide digit
-    assert!(is_standalone("write --force %{arg:}"));
+    assert!(!contains_arg_variable("write --force %{arg:}"));
 
     // Muts have `:` before digits can be added
-    assert!(is_standalone("write --force %{arg122444}"));
+    assert!(!contains_arg_variable("write --force %{arg122444}"));
 
     // Must have closing bracket
-    assert!(is_standalone("write --force %{arg"));
-    assert!(is_standalone("write --force %{arg:1"));
+    assert!(!contains_arg_variable("write --force %{arg"));
+    assert!(!contains_arg_variable("write --force %{arg:1"));
 
     // Has valid variable
-    assert!(!is_standalone("write --force %{arg}"));
-    assert!(!is_standalone("write --force %{arg:1083472348978}"));
+    assert!(contains_arg_variable("write --force %{arg}"));
+    assert!(contains_arg_variable("write --force %{arg:1083472348978}"));
 }
