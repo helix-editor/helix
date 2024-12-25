@@ -144,6 +144,7 @@ fn status(repo: &Repository, f: impl Fn(Result<FileChange>) -> bool) -> Result<(
             copies: None,
             percentage: Some(0.5),
             limit: 1000,
+            ..Default::default()
         }));
 
     // No filtering based on path
