@@ -361,6 +361,7 @@ pub struct Config {
     pub end_of_line_diagnostics: DiagnosticFilter,
     // Set to override the default clipboard provider
     pub clipboard_provider: ClipboardProvider,
+    #[serde(skip)]
     /// Custom typeable commands
     pub commands: CustomTypeableCommands,
 }

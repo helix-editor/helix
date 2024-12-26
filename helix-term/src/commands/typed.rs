@@ -1,7 +1,6 @@
 use std::fmt::Write;
 use std::io::BufReader;
 use std::ops::Deref;
-use std::sync::Arc;
 
 use crate::job::Job;
 
@@ -3060,9 +3059,7 @@ pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableComma
 
 #[allow(clippy::unnecessary_unwrap, clippy::too_many_lines)]
 pub(super) fn command_mode(cx: &mut Context) {
-    let arced = Arc::new(cx.editor.config().commands.clone());
-
-    let commands = arced.clone();
+    let commands = cx.editor.config().commands.clone();
     let mut prompt = Prompt::new(
         ":".into(),
         Some(':'),
@@ -3071,23 +3068,16 @@ pub(super) fn command_mode(cx: &mut Context) {
             let shellwords = Shellwords::from(input.trim_start_matches('^'));
             let command = shellwords.command();
 
-            let commands = commands.clone();
-            let names = commands.names();
-
-            // HACK: Cloning(to_string) because of lifetimes
-            let items = if input.starts_with('^') {
-                TYPABLE_COMMAND_LIST
-                    .iter()
-                    .map(|command| command.name.to_string())
-                    .collect::<Vec<String>>()
-            } else {
-                TYPABLE_COMMAND_LIST
-                    .iter()
-                    .map(|command| command.name)
-                    .chain(names)
-                    .map(|name| name.to_string())
-                    .collect::<Vec<String>>()
-            };
+            let items = TYPABLE_COMMAND_LIST
+                .iter()
+                .map(|command| command.name)
+                .chain(commands.names())
+                // HACK: `to_string` because of lifetimes:
+                //
+                // captured variable cannot escape `FnMut` closure body
+                // `FnMut` closures only have access to their captured variables while they are executing
+                // therefore, they cannot allow references to captured variables to escape
+                .map(|name| name.to_string());
 
             if command.is_empty()
                 || (shellwords.args().next().is_none() && !shellwords.ends_with_whitespace())
@@ -3298,11 +3288,11 @@ pub(super) fn command_mode(cx: &mut Context) {
         },
     );
 
-    let commands = arced.clone();
+    let commands = cx.editor.config().commands.clone();
     prompt.doc_fn = Box::new(move |input: &str| {
         let shellwords = Shellwords::from(input);
 
-        if let Some(command) = commands.clone().get(input) {
+        if let Some(command) = commands.get(input) {
             return Some(command.prompt().into());
         } else if let Some(typed::TypableCommand { doc, aliases, .. }) =
             typed::TYPABLE_COMMAND_MAP.get(shellwords.command())

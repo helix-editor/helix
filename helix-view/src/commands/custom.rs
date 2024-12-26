@@ -4,15 +4,11 @@
 // TODO: Need to get access to a new table in the config: [commands].
 // TODO: Could add an `aliases` to `CustomTypableCommand` and then add those as well?
 
-use std::fmt::Write;
+use std::{fmt::Write, sync::Arc};
 
-use serde::{Deserialize, Serialize};
-
-// TODO: Might need to manually implement Serialize and Deserialize
-//     -Will need to do so if want to use `Arc` to make cloning cheaper.
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CustomTypeableCommands {
-    pub commands: Vec<CustomTypableCommand>,
+    pub commands: Arc<[CustomTypableCommand]>,
 }
 
 impl Default for CustomTypeableCommands {
@@ -20,30 +16,29 @@ impl Default for CustomTypeableCommands {
         Self {
             commands: vec![
                 CustomTypableCommand {
-                    name: String::from(":lg"),
-                    desc: Some(String::from("runs lazygit in a floating pane")),
-                    commands: vec![String::from(
-                        ":sh wezterm cli spawn --floating-pane lazygit",
-                    )],
+                    name: Arc::from(":lg"),
+                    desc: Some(Arc::from("runs lazygit in a floating pane")),
+                    commands: vec![Arc::from(":sh wezterm cli spawn --floating-pane lazygit")]
+                        .into(),
                     accepts: None,
                     completer: None,
                 },
                 CustomTypableCommand {
-                    name: String::from(":w"),
-                    desc: Some(String::from(
-                        "writes buffer forcefully and changes directory",
-                    )),
+                    name: Arc::from(":w"),
+                    desc: Some(Arc::from("writes buffer forcefully and changes directory")),
                     commands: vec![
-                        String::from(":write --force %{arg}"),
-                        String::from(":cd %sh{ %{arg} | path dirname }"),
-                        String::from(":cd %sh{ %{arg} | path dirname }"),
-                        String::from(":cd %sh{ %{arg} | path dirname }"),
-                        String::from(":cd %sh{ %{arg} | path dirname }"),
-                    ],
-                    accepts: Some(String::from("<path>")),
-                    completer: Some(String::from(":write")),
+                        Arc::from(":write --force %{arg}"),
+                        Arc::from(":cd %sh{ %{arg} | path dirname }"),
+                        Arc::from(":cd %sh{ %{arg} | path dirname }"),
+                        Arc::from(":cd %sh{ %{arg} | path dirname }"),
+                        Arc::from(":cd %sh{ %{arg} | path dirname }"),
+                    ]
+                    .into(),
+                    accepts: Some(Arc::from("<path>")),
+                    completer: Some(Arc::from(":write")),
                 },
-            ],
+            ]
+            .into(),
         }
     }
 }
@@ -62,18 +57,17 @@ impl CustomTypeableCommands {
         self.commands
             .iter()
             // ":wbc!" -> "wbc!"
-            .map(|command| command.name.as_str().trim_start_matches(':'))
+            .map(|command| command.name.as_ref())
     }
 }
 
-// TODO: Arc<str> ?
-#[derive(Debug, Clone, Deserialize, Serialize, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CustomTypableCommand {
-    pub name: String,
-    pub desc: Option<String>,
-    pub commands: Vec<String>,
-    pub accepts: Option<String>,
-    pub completer: Option<String>,
+    pub name: Arc<str>,
+    pub desc: Option<Arc<str>>,
+    pub commands: Arc<[Arc<str>]>,
+    pub accepts: Option<Arc<str>>,
+    pub completer: Option<Arc<str>>,
 }
 
 impl CustomTypableCommand {
