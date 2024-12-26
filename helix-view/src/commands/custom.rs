@@ -1,9 +1,3 @@
-// TODO: When adding custom aliases to the command prompt list, must priotize the custom over the built-in.
-// - Should include removing the alias from the aliases command?
-//
-// TODO: Need to get access to a new table in the config: [commands].
-// TODO: Could add an `aliases` to `CustomTypableCommand` and then add those as well?
-
 use std::{fmt::Write, sync::Arc};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -14,31 +8,7 @@ pub struct CustomTypeableCommands {
 impl Default for CustomTypeableCommands {
     fn default() -> Self {
         Self {
-            commands: vec![
-                CustomTypableCommand {
-                    name: Arc::from(":lg"),
-                    desc: Some(Arc::from("runs lazygit in a floating pane")),
-                    commands: vec![Arc::from(":sh wezterm cli spawn --floating-pane lazygit")]
-                        .into(),
-                    accepts: None,
-                    completer: None,
-                },
-                CustomTypableCommand {
-                    name: Arc::from(":w"),
-                    desc: Some(Arc::from("writes buffer forcefully and changes directory")),
-                    commands: vec![
-                        Arc::from(":write --force %{arg}"),
-                        Arc::from(":cd %sh{ %{arg} | path dirname }"),
-                        Arc::from(":cd %sh{ %{arg} | path dirname }"),
-                        Arc::from(":cd %sh{ %{arg} | path dirname }"),
-                        Arc::from(":cd %sh{ %{arg} | path dirname }"),
-                    ]
-                    .into(),
-                    accepts: Some(Arc::from("<path>")),
-                    completer: Some(Arc::from(":write")),
-                },
-            ]
-            .into(),
+            commands: Arc::new([]),
         }
     }
 }
@@ -49,15 +19,12 @@ impl CustomTypeableCommands {
     pub fn get(&self, name: &str) -> Option<&CustomTypableCommand> {
         self.commands
             .iter()
-            .find(|command| command.name.trim_start_matches(':') == name.trim_start_matches(':'))
+            .find(|command| command.name.as_ref() == name)
     }
 
     #[inline]
     pub fn names(&self) -> impl Iterator<Item = &str> {
-        self.commands
-            .iter()
-            // ":wbc!" -> "wbc!"
-            .map(|command| command.name.as_ref())
+        self.commands.iter().map(|command| command.name.as_ref())
     }
 }
 
@@ -78,7 +45,7 @@ impl CustomTypableCommand {
         //     :write --force %{arg} -> :cd %sh{ %{arg} | path dirname }
         let mut prompt = String::new();
 
-        prompt.push_str(self.name.trim_start_matches(':'));
+        prompt.push_str(self.name.as_ref());
 
         if let Some(accepts) = &self.accepts {
             write!(prompt, " {accepts}").unwrap();
@@ -98,7 +65,7 @@ impl CustomTypableCommand {
         prompt.push_str("   ");
 
         for (idx, command) in self.commands.iter().enumerate() {
-            write!(prompt, ":{}", command.trim_start_matches(':')).unwrap();
+            write!(prompt, ":{command}").unwrap();
 
             if idx + 1 == self.commands.len() {
                 break;
@@ -126,8 +93,6 @@ impl CustomTypableCommand {
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &str> {
-        self.commands
-            .iter()
-            .map(|command| command.trim_start_matches(':'))
+        self.commands.iter().map(|command| command.as_ref())
     }
 }
