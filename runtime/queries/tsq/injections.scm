@@ -6,5 +6,5 @@
   parameters:
     (parameters
       (string) @injection.content))
-  (#any-of? @_name "match" "not-match" "vim-match" "not-vim-match")
+  (#any-of? @_name "match" "not-match")
   (#set! injection.language "regex"))
