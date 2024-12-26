@@ -283,7 +283,7 @@ mod tests {
     }
 
     #[test]
-    fn should_deserialize_commands() {
+    fn should_deserialize_custom_commands() {
         let config = r#"
 [commands]
 ":wq" = [":write", "quit"]
@@ -295,4 +295,20 @@ mod tests {
             panic!("{err:#?}")
         };
     }
+
+    // TODO: See if this capabiliy till be allowed
+    //     #[test]
+    //     fn should_deserialize_custom_commands_into_keys() {
+    //         let config = r#"
+    // [keys.normal.space]
+    // g = ":lg"
+
+    // [commands]
+    // ":lg" = ""
+    // "#;
+
+    //         if let Err(err) = Config::load_test(config) {
+    //             panic!("{err:#?}")
+    //         };
+    //     }
 }
