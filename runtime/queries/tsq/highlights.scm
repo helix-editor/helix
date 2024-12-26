@@ -1,24 +1,3 @@
-((predicate
-  name: (identifier) @_name
-  parameters:
-    (parameters
-      (string
-        "\"" @string
-        "\"" @string) @string.regexp
-      .
-      (string) .))
-  (#any-of? @_name "gsub" "not-gsub"))
-
-((comment) @keyword.directive
-  (#match? @keyword.directive "^;+\s*format\-ignore\s*$"))
-
-((program
-  .
-  (comment)*
-  .
-  (comment) @keyword.directive)
-  (#match? @keyword.directive "^;+ *extends *$"))
-
 ((program
   .
   (comment)*
