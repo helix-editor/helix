@@ -701,7 +701,11 @@ impl Registry {
                     }
 
                     if let Some((_, client)) = clients.iter().enumerate().find(|(i, client)| {
-                        client.try_add_doc(&language_config.roots, root_dirs, doc_path, *i == 0)
+                        let manual_roots = language_config
+                            .workspace_lsp_roots
+                            .as_deref()
+                            .unwrap_or(root_dirs);
+                        client.try_add_doc(&language_config.roots, manual_roots, doc_path, *i == 0)
                     }) {
                         return Some((name.to_owned(), Ok(client.clone())));
                     }

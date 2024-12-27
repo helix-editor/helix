@@ -4401,6 +4401,8 @@ enum Paste {
     Cursor,
 }
 
+static LINE_ENDING_REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\r\n|\r|\n").unwrap());
+
 fn paste_impl(
     values: &[String],
     doc: &mut Document,
@@ -4417,26 +4419,26 @@ fn paste_impl(
         doc.append_changes_to_history(view);
     }
 
-    let repeat = std::iter::repeat(
-        // `values` is asserted to have at least one entry above.
-        values
-            .last()
-            .map(|value| Tendril::from(value.repeat(count)))
-            .unwrap(),
-    );
-
     // if any of values ends with a line ending, it's linewise paste
     let linewise = values
         .iter()
         .any(|value| get_line_ending_of_str(value).is_some());
 
-    // Only compiled once.
-    static REGEX: Lazy<Regex> = Lazy::new(|| Regex::new(r"\r\n|\r|\n").unwrap());
-    let mut values = values
-        .iter()
-        .map(|value| REGEX.replace_all(value, doc.line_ending.as_str()))
-        .map(|value| Tendril::from(value.as_ref().repeat(count)))
-        .chain(repeat);
+    let map_value = |value| {
+        let value = LINE_ENDING_REGEX.replace_all(value, doc.line_ending.as_str());
+        let mut out = Tendril::from(value.as_ref());
+        for _ in 1..count {
+            out.push_str(&value);
+        }
+        out
+    };
+
+    let repeat = std::iter::repeat(
+        // `values` is asserted to have at least one entry above.
+        map_value(values.last().unwrap()),
+    );
+
+    let mut values = values.iter().map(|value| map_value(value)).chain(repeat);
 
     let text = doc.text();
     let selection = doc.selection(view.id);
@@ -4533,19 +4535,24 @@ fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
     else {
         return;
     };
-    let values: Vec<_> = values.map(|value| value.to_string()).collect();
     let scrolloff = editor.config().scrolloff;
+    let (view, doc) = current_ref!(editor);
 
-    let (view, doc) = current!(editor);
-    let repeat = std::iter::repeat(
-        values
-            .last()
-            .map(|value| Tendril::from(&value.repeat(count)))
-            .unwrap(),
-    );
-    let mut values = values
-        .iter()
-        .map(|value| Tendril::from(&value.repeat(count)))
+    let map_value = |value: &Cow<str>| {
+        let value = LINE_ENDING_REGEX.replace_all(value, doc.line_ending.as_str());
+        let mut out = Tendril::from(value.as_ref());
+        for _ in 1..count {
+            out.push_str(&value);
+        }
+        out
+    };
+    let mut values_rev = values.rev().peekable();
+    // `values` is asserted to have at least one entry above.
+    let last = values_rev.peek().unwrap();
+    let repeat = std::iter::repeat(map_value(last));
+    let mut values = values_rev
+        .rev()
+        .map(|value| map_value(&value))
         .chain(repeat);
     let selection = doc.selection(view.id);
     let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
@@ -4555,7 +4562,9 @@ fn replace_with_yanked_impl(editor: &mut Editor, register: char, count: usize) {
             (range.from(), range.to(), None)
         }
     });
+    drop(values);
 
+    let (view, doc) = current!(editor);
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view);
     view.ensure_cursor_in_view(doc, scrolloff);
@@ -5711,8 +5720,17 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
     cx.editor.autoinfo = Some(Info::new(title, &help_text));
 }
 
+static SURROUND_HELP_TEXT: [(&str, &str); 5] = [
+    ("( or )", "Parentheses"),
+    ("{ or }", "Curly braces"),
+    ("< or >", "Angled brackets"),
+    ("[ or ]", "Square brackets"),
+    (" ", "... or any character"),
+];
+
 fn surround_add(cx: &mut Context) {
     cx.on_next_key(move |cx, event| {
+        cx.editor.autoinfo = None;
         let (view, doc) = current!(cx.editor);
         // surround_len is the number of new characters being added.
         let (open, close, surround_len) = match event.char() {
@@ -5753,7 +5771,9 @@ fn surround_add(cx: &mut Context) {
             .with_selection(Selection::new(ranges, selection.primary_index()));
         doc.apply(&transaction, view.id);
         exit_select_mode(cx);
-    })
+    });
+
+    cx.editor.autoinfo = Some(Info::new("Surround selections with", &SURROUND_HELP_TEXT));
 }
 
 fn surround_replace(cx: &mut Context) {
@@ -5785,6 +5805,7 @@ fn surround_replace(cx: &mut Context) {
         );
 
         cx.on_next_key(move |cx, event| {
+            cx.editor.autoinfo = None;
             let (view, doc) = current!(cx.editor);
             let to = match event.char() {
                 Some(to) => to,
@@ -5812,12 +5833,20 @@ fn surround_replace(cx: &mut Context) {
             doc.apply(&transaction, view.id);
             exit_select_mode(cx);
         });
-    })
+
+        cx.editor.autoinfo = Some(Info::new("Replace with a pair of", &SURROUND_HELP_TEXT));
+    });
+
+    cx.editor.autoinfo = Some(Info::new(
+        "Replace surrounding pair of",
+        &SURROUND_HELP_TEXT,
+    ));
 }
 
 fn surround_delete(cx: &mut Context) {
     let count = cx.count();
     cx.on_next_key(move |cx, event| {
+        cx.editor.autoinfo = None;
         let surround_ch = match event.char() {
             Some('m') => None, // m selects the closest surround pair
             Some(ch) => Some(ch),
@@ -5840,7 +5869,9 @@ fn surround_delete(cx: &mut Context) {
             Transaction::change(doc.text(), change_pos.into_iter().map(|p| (p, p + 1, None)));
         doc.apply(&transaction, view.id);
         exit_select_mode(cx);
-    })
+    });
+
+    cx.editor.autoinfo = Some(Info::new("Delete surrounding pair of", &SURROUND_HELP_TEXT));
 }
 
 #[derive(Eq, PartialEq)]
@@ -6007,7 +6038,7 @@ fn shell(cx: &mut compositor::Context, cmd: &str, behavior: &ShellBehavior) {
             let input = range.slice(text);
             match shell_impl(shell, cmd, pipe.then(|| input.into())) {
                 Ok(mut output) => {
-                    if !input.ends_with("\n") && !output.is_empty() && output.ends_with('\n') {
+                    if !input.ends_with("\n") && output.ends_with('\n') {
                         output.pop();
                         if output.ends_with('\r') {
                             output.pop();

@@ -53,6 +53,7 @@ jq-lsp = { command = "jq-lsp" }
 jsonnet-language-server = { command = "jsonnet-language-server", args= ["-t", "--lint"] }
 julia = { command = "julia", timeout = 60, args = [ "--startup-file=no", "--history-file=no", "--quiet", "-e", "using LanguageServer; runserver()", ] }
 koka = { command = "koka", args = ["--language-server", "--lsstdio"] }
+koto-ls = { command = "koto-ls" }
 kotlin-language-server = { command = "kotlin-language-server" }
 lean = { command = "lean", args = [ "--server", "--memory=1024" ] }
 ltex-ls = { command = "ltex-ls" }
@@ -2068,7 +2069,7 @@ language-servers = [ "elixir-ls" ]
 
 [[grammar]]
 name = "heex"
-source = { git = "https://github.com/phoenixframework/tree-sitter-heex", rev = "2e1348c3cf2c9323e87c2744796cf3f3868aa82a" }
+source = { git = "https://github.com/phoenixframework/tree-sitter-heex", rev = "f6b83f305a755cd49cf5f6a66b2b789be93dc7b9" }
 
 [[language]]
 name = "sql"
@@ -2471,7 +2472,7 @@ language-servers = [ "slint-lsp" ]
 
 [[grammar]]
 name = "slint"
-source = { git = "https://github.com/slint-ui/tree-sitter-slint", rev = "34ccfd58d3baee7636f62d9326f32092264e8407" }
+source = { git = "https://github.com/slint-ui/tree-sitter-slint", rev = "f11da7e62051ba8b9d4faa299c26de8aeedfc1cd" }
 
 [[language]]
 name = "task"
@@ -3318,7 +3319,7 @@ text-width = 72
 
 [[grammar]]
 name = "jjdescription"
-source = { git = "https://github.com/kareigu/tree-sitter-jjdescription", rev = "23dd3dd18ee29bdd761642511aa314215801afd8" }
+source = { git = "https://github.com/kareigu/tree-sitter-jjdescription", rev = "d09205b52b5a0165b588a793e366c1116468d86f" }
 
 [[language]]
 name = "jq"
@@ -3966,6 +3967,20 @@ name = "amber"
 source = { git = "https://github.com/amber-lang/tree-sitter-amber", rev = "c6df3ec2ec243ed76550c525e7ac3d9a10c6c814" }
 
 [[language]]
+name = "koto"
+scope = "source.koto"
+injection-regex = "koto"
+file-types = ["koto"]
+comment-token = "#"
+block-comment-tokens = ["#-", "-#"]
+indent = { tab-width = 2, unit = "  " }
+language-servers = ["koto-ls"]
+
+[[grammar]]
+name = "koto"
+source = { git = "https://github.com/koto-lang/tree-sitter-koto", rev = "b420f7922d0d74905fd0d771e5b83be9ee8a8a9a" }
+
+[[language]]
 name = "gpr"
 scope = "source.gpr"
 injection-regex = "gpr"
@@ -3989,3 +4004,21 @@ indent = { tab-width = 4, unit = "    " }
 [[grammar]]
 name = "vento"
 source = { git = "https://github.com/ventojs/tree-sitter-vento", rev = "3321077d7446c1b3b017c294fd56ce028ed817fe" }
+
+[[language]]
+name = "nginx"
+scope = "source.nginx"
+injection-regex = "nginx"
+file-types = [
+  { glob = "sites-available/*.conf" },
+  { glob = "sites-enabled/*.conf" },
+  { glob = "nginx.conf" },
+  { glob = "conf.d/*.conf" } 
+]
+roots = ["nginx.conf"]
+comment-token = "#"
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "nginx"
+source = { git = "https://gitlab.com/joncoole/tree-sitter-nginx", rev = "b4b61db443602b69410ab469c122c01b1e685aa0" }

@@ -9,10 +9,13 @@ use helix_view::{
     document::SavePoint,
     editor::{CompleteAction, CompletionItemKindStyle},
     handlers::lsp::SignatureHelpInvoked,
-    theme::{Modifier, Style},
+    theme::{Color, Modifier, Style},
     ViewId,
 };
-use tui::{buffer::Buffer as Surface, text::Span};
+use tui::{
+    buffer::Buffer as Surface,
+    text::{Span, Spans},
+};
 
 use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
@@ -109,6 +112,35 @@ impl menu::Item for CompletionItem {
         ));
 
         let kind_cell = match self {
+            // Special case: Handle COLOR completion item kind by putting a preview of the color
+            // provided by the lsp server. For example colors given by the tailwind LSP server
+            //
+            // We just add a little square previewing the color.
+            CompletionItem::Lsp(LspCompletionItem { item, .. })
+                if item.kind == Some(lsp::CompletionItemKind::COLOR) =>
+            {
+                menu::Cell::from(
+                    item.documentation
+                        .as_ref()
+                        .and_then(|docs| {
+                            let text = match docs {
+                                lsp::Documentation::String(text) => text,
+                                lsp::Documentation::MarkupContent(lsp::MarkupContent {
+                                    value,
+                                    ..
+                                }) => value,
+                            };
+                            Color::from_hex(text)
+                        })
+                        .map_or("color".into(), |color| {
+                            Spans::from(vec![
+                                Span::raw("color "),
+                                Span::styled("■", Style::default().fg(color)),
+                            ])
+                        }),
+                )
+            }
+            // Otherwise, handle the styling of the item kind as usual.
             CompletionItem::Lsp(LspCompletionItem { item, .. }) => {
                 // If the user specified a custom kind text, use that. It will cause an allocation
                 // though it should not have much impact since its pretty short strings
