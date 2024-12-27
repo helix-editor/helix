@@ -22,11 +22,11 @@ Packaging:
 
 # 25.01 (2025-01-01)
 
-... github says 142 contributors, check `git log` instead ...
+`git log` says there are 164 contributors since 24.07
 
-checkpoint <https://github.com/helix-editor/helix/compare/ea17b9edb708bc5ea26fec95dda66a6f45753545...master>
+checkpoint <https://github.com/helix-editor/helix/compare/a5a7cff311e909ecab41f840742a5309634aeec3...master>
 
-Breaking changes:
+<!-- Breaking changes: -->
 
 Features:
 
@@ -100,6 +100,7 @@ Fixes:
 * Fix a panic from using `C-k` in a prompt ending in a multi-byte character (#12237)
 * Expand tildes in paths passed to `:read` (#12271)
 * Respect per-language `workspace-lsp-roots` configuration when opening new documents (#12223)
+* Consistently replace line-endings in paste/replace commands (c262fe4)
 
 Themes:
 
@@ -134,10 +135,11 @@ Themes:
 * Add directory style to everforest themes (#12287)
 * Add inactive text and update jump label highlights in `dark_plus` (#12289)
 * Sync changes with catppuccin themes (#12304)
+* Add `ui.text.directory` to `nightfox` (#12328)
 
 New languages:
 
-* `jjdescription` (#11271, #11857)
+* `jjdescription` (#11271, #11857, #12305)
 * i3wm and Sway configs (#11424)
 * TypeSpec (#11412)
 * jq (#11393)
@@ -155,6 +157,7 @@ New languages:
 * Vento (#12147)
 * Teal (#12081)
 * Koto (#12307)
+* NGINX (#12309)
 
 Updated languages and queries:
 
@@ -221,6 +224,9 @@ Updated languages and queries:
 * Update tree-sitter-dockerfile (#12230)
 * Add `]` to PHP outdents (#12286)
 * Add textobjects for Odin (#12302)
+* Update tree-sitter-heex and queries (#12334)
+* Update protobuf highlights (#12339)
+* Switch tree-sitter-query (TSQ) grammar (#12148)
 
 Packaging:
 
