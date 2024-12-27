@@ -194,6 +194,8 @@ pub struct Document {
     pub focused_at: std::time::Instant,
 
     pub readonly: bool,
+
+    pub previous_diagnostic_id: Option<String>,
 }
 
 /// Inlay hints for a single `(Document, View)` combo.
@@ -687,6 +689,7 @@ impl Document {
             focused_at: std::time::Instant::now(),
             readonly: false,
             jump_labels: HashMap::new(),
+            previous_diagnostic_id: None,
         }
     }
 
@@ -2152,6 +2155,10 @@ impl Document {
     /// (since it often means inlay hints have been fully deactivated).
     pub fn reset_all_inlay_hints(&mut self) {
         self.inlay_hints = Default::default();
+    }
+
+    pub fn has_language_server_with_feature(&self, feature: LanguageServerFeature) -> bool {
+        self.language_servers_with_feature(feature).next().is_some()
     }
 }
 
