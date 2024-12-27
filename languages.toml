@@ -122,6 +122,7 @@ zls = { command = "zls" }
 blueprint-compiler = { command = "blueprint-compiler", args = ["lsp"] }
 typst-lsp = { command = "typst-lsp" }
 tinymist = { command = "tinymist" }
+ts_query_ls = { command = "ts_query_ls" }
 pkgbuild-language-server = { command = "pkgbuild-language-server" }
 helm_ls = { command = "helm_ls", args = ["serve"] }
 ember-language-server = { command = "ember-language-server", args = ["--stdio"] }
@@ -1458,14 +1459,21 @@ language-servers = [ "swipl" ]
 [[language]]
 name = "tsq"
 scope = "source.tsq"
-file-types = ["tsq"]
+file-types = [{ glob = "queries/*.scm" }, { glob = "injections.scm" },  { glob = "highlights.scm" },  { glob = "indents.scm" },  { glob = "textobjects.scm" },  { glob = "locals.scm" },  { glob = "tags.scm" }]
 comment-token = ";"
 injection-regex = "tsq"
+language-servers = ["ts_query_ls"]
+grammar = "query"
 indent = { tab-width = 2, unit = "  " }
 
+[language.auto-pairs]
+'(' = ')'
+'[' = ']'
+'"' = '"'
+
 [[grammar]]
-name = "tsq"
-source = { git = "https://github.com/the-mikedavis/tree-sitter-tsq", rev = "48b5e9f82ae0a4727201626f33a17f69f8e0ff86" }
+name = "query"
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-query", rev = "a6674e279b14958625d7a530cabe06119c7a1532" }
 
 [[language]]
 name = "cmake"
