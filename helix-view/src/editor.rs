@@ -2269,8 +2269,8 @@ fn try_restore_indent(doc: &mut Document, view: &mut View) {
     }
 }
 
-// NOTE: When you implement a new completion source/handler, dont forget to add
-// your completion kinds here!
+// FIXME: This is an ugly hack since the completion menu does not know all the sources we support
+// Don't know...
 #[rustfmt::skip]
 const ALL_KINDS: &[&str] = &[
     // All of these are LSP item kinds.
