@@ -34,7 +34,7 @@ below.
 2. Create a new directory for the language with the path
    `runtime/queries/<name>/`.
 3. Refer to the
-   [tree-sitter website](https://tree-sitter.github.io/tree-sitter/syntax-highlighting#queries)
+   [tree-sitter website](https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#highlights)
    for more information on writing queries.
 4. A list of highlight captures can be found [on the themes page](https://docs.helix-editor.com/themes.html#scopes).
 

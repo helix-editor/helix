@@ -44,6 +44,6 @@ in its `textobjects.scm` file, function navigation should also work automaticall
 `function.movement` should be defined only if the node captured by `function.around`
 doesn't make sense in a navigation context.
 
-[tree-sitter-queries]: https://tree-sitter.github.io/tree-sitter/using-parsers#query-syntax
-[tree-sitter-captures]: https://tree-sitter.github.io/tree-sitter/using-parsers#capturing-nodes
+[tree-sitter-queries]: https://tree-sitter.github.io/tree-sitter/using-parsers/queries/1-syntax.html
+[tree-sitter-captures]: https://tree-sitter.github.io/tree-sitter/using-parsers/queries/2-operators.html#capturing-nodes
 [textobject-examples]: https://github.com/search?q=repo%3Ahelix-editor%2Fhelix+path%3A%2A%2A/textobjects.scm&type=Code&ref=advsearch&l=&l=
