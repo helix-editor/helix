@@ -3303,6 +3303,7 @@ injection-regex = "nunjucks"
 file-types = ["njk"]
 indent = { tab-width = 2, unit = "  " }
 grammar = "jinja2"
+block-comment-tokens = { start = "{#", end = "#}" }
 
 [[language]]
 name = "jinja"
@@ -3311,6 +3312,7 @@ injection-regex = "jinja"
 file-types = ["jinja", "jinja2", "j2"]
 indent = { tab-width = 2, unit = "  " }
 grammar = "jinja2"
+block-comment-tokens = { start = "{#", end = "#}" }
 
 [[grammar]]
 name = "jinja2"
