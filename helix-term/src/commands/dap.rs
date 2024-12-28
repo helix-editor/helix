@@ -518,15 +518,16 @@ pub fn dap_variables(cx: &mut Context) {
         Some(thread_frame) => thread_frame,
         None => {
             cx.editor
-                .set_error("Failed to get stack frame for thread: {thread_id}");
+                .set_error(format!("Failed to get stack frame for thread: {thread_id}"));
             return;
         }
     };
     let stack_frame = match thread_frame.get(frame) {
         Some(stack_frame) => stack_frame,
         None => {
-            cx.editor
-                .set_error("Failed to get stack frame for thread {thread_id} and frame {frame}.");
+            cx.editor.set_error(format!(
+                "Failed to get stack frame for thread {thread_id} and frame {frame}."
+            ));
             return;
         }
     };
