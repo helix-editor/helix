@@ -2244,7 +2244,7 @@ berry = "#2A2A4D"
 <h3 id="scopes"><a class="header" href="#scopes">Scopes</a></h3>
 <p>The following is a list of scopes available to use for styling:</p>
 <h4 id="syntax-highlighting"><a class="header" href="#syntax-highlighting">Syntax highlighting</a></h4>
-<p>These keys match <a href="https://tree-sitter.github.io/tree-sitter/syntax-highlighting#theme">tree-sitter scopes</a>.</p>
+<p>These keys match <a href="https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#highlights">tree-sitter scopes</a>.</p>
 <p>When determining styling for a highlight, the longest matching theme key will be used. For example, if the highlight is <code>function.builtin.static</code>, the key <code>function.builtin</code> will be used instead of <code>function</code>.</p>
 <p>We use a similar set of scopes as
 <a href="https://www.sublimetext.com/docs/scope_naming.html">Sublime Text</a>. See also
@@ -2704,7 +2704,7 @@ language-servers = [ "mylang-lsp" ]
 <tr><td><code>name</code></td><td>The name of the language</td></tr>
 <tr><td><code>language-id</code></td><td>The language-id for language servers, checkout the table at <a href="https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentItem">TextDocumentItem</a> for the right id</td></tr>
 <tr><td><code>scope</code></td><td>A string like <code>source.js</code> that identifies the language. Currently, we strive to match the scope names used by popular TextMate grammars and by the Linguist library. Usually <code>source.&lt;name&gt;</code> or <code>text.&lt;name&gt;</code> in case of markup languages</td></tr>
-<tr><td><code>injection-regex</code></td><td>regex pattern that will be tested against a language name in order to determine whether this language should be used for a potential <a href="https://tree-sitter.github.io/tree-sitter/syntax-highlighting#language-injection">language injection</a> site.</td></tr>
+<tr><td><code>injection-regex</code></td><td>regex pattern that will be tested against a language name in order to determine whether this language should be used for a potential <a href="https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#language-injection">language injection</a> site.</td></tr>
 <tr><td><code>file-types</code></td><td>The filetypes of the language, for example <code>["yml", "yaml"]</code>. See the file-type detection section below.</td></tr>
 <tr><td><code>shebangs</code></td><td>The interpreters from the shebang line, for example <code>["sh", "bash"]</code></td></tr>
 <tr><td><code>roots</code></td><td>A set of marker files to look for when trying to find the workspace root. For example <code>Cargo.lock</code>, <code>yarn.lock</code></td></tr>
@@ -2892,7 +2892,7 @@ you will need to add queries.</li>
 <li>Create a new directory for the language with the path
 <code>runtime/queries/&lt;name&gt;/</code>.</li>
 <li>Refer to the
-<a href="https://tree-sitter.github.io/tree-sitter/syntax-highlighting#queries">tree-sitter website</a>
+<a href="https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#highlights">tree-sitter website</a>
 for more information on writing queries.</li>
 <li>A list of highlight captures can be found <a href="https://docs.helix-editor.com/themes.html#scopes">on the themes page</a>.</li>
 </ol>
@@ -2918,13 +2918,13 @@ remove the compiled parser located at <code>runtime/grammars/&lt;name&gt;.so</co
 These textobjects require an accompanying tree-sitter grammar and a <code>textobjects.scm</code> query file
 to work properly. Tree-sitter allows us to query the source code syntax tree
 and capture specific parts of it. The queries are written in a lisp dialect.
-More information on how to write queries can be found in the <a href="https://tree-sitter.github.io/tree-sitter/using-parsers#query-syntax">official tree-sitter
+More information on how to write queries can be found in the <a href="https://tree-sitter.github.io/tree-sitter/using-parsers/queries/1-syntax.html">official tree-sitter
 documentation</a>.</p>
 <p>Query files should be placed in <code>runtime/queries/{language}/textobjects.scm</code>
 when contributing to Helix. Note that to test the query files locally you should put
 them under your local runtime directory (<code>~/.config/helix/runtime</code> on Linux
 for example).</p>
-<p>The following <a href="https://tree-sitter.github.io/tree-sitter/using-parsers#capturing-nodes">captures</a> are recognized:</p>
+<p>The following <a href="https://tree-sitter.github.io/tree-sitter/using-parsers/queries/2-operators.html#capturing-nodes">captures</a> are recognized:</p>
 <div class="table-wrapper"><table><thead><tr><th>Capture Name</th></tr></thead><tbody>
 <tr><td><code>function.inside</code></td></tr>
 <tr><td><code>function.around</code></td></tr>
@@ -3284,7 +3284,7 @@ line. (Note these scopes are the defaults for <code>@indent</code> and <code>@ou
 written explicitly for demonstration.)</p>
 <div style="break-before: page; page-break-before: always;"></div><h2 id="adding-injection-queries"><a class="header" href="#adding-injection-queries">Adding Injection Queries</a></h2>
 <p>Writing language injection queries allows one to highlight a specific node as a different language.
-In addition to the <a href="http://tree-sitter.github.io/tree-sitter/syntax-highlighting#language-injection">standard</a> language injection options used by tree-sitter, there
+In addition to the <a href="https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#language-injection">standard</a> language injection options used by tree-sitter, there
 are a few Helix specific extensions that allow for more control.</p>
 <p>And example of a simple query that would highlight all strings as bash in Nix:</p>
 <pre><code class="language-scm">((string_expression (string_fragment) @injection.content)
