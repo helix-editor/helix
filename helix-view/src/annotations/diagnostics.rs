@@ -248,9 +248,9 @@ impl<'a> InlineDiagnosticAccumulator<'a> {
     }
 
     pub fn has_multi(&self, width: u16) -> bool {
-        self.stack.last().map_or(false, |&(_, anchor)| {
-            anchor > self.config.max_diagnostic_start(width)
-        })
+        self.stack
+            .last()
+            .is_some_and(|&(_, anchor)| anchor > self.config.max_diagnostic_start(width))
     }
 }
 

@@ -43,7 +43,7 @@ impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
             return false;
         }
         self.get_byte_slice(len - text.len()..)
-            .map_or(false, |end| end == text)
+            .is_some_and(|end| end == text)
     }
 
     fn starts_with(self, text: &str) -> bool {
@@ -52,7 +52,7 @@ impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
             return false;
         }
         self.get_byte_slice(..text.len())
-            .map_or(false, |start| start == text)
+            .is_some_and(|start| start == text)
     }
 
     fn regex_input(self) -> RegexInput<RopeyCursor<'a>> {

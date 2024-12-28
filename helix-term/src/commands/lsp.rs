@@ -1288,7 +1288,7 @@ fn compute_inlay_hints_for_view(
     if !doc.inlay_hints_oudated
         && doc
             .inlay_hints(view_id)
-            .map_or(false, |dih| dih.id == new_doc_inlay_hints_id)
+            .is_some_and(|dih| dih.id == new_doc_inlay_hints_id)
     {
         return None;
     }
