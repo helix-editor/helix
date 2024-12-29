@@ -3,6 +3,7 @@ use std::fmt::Write;
 use helix_core::syntax::config::LanguageServerFeature;
 
 use crate::{
+    document::Mode,
     editor::GutterType,
     graphics::{Style, UnderlineStyle},
     Document, Editor, Theme, View,
@@ -21,7 +22,7 @@ impl GutterType {
         self,
         editor: &'doc Editor,
         doc: &'doc Document,
-        view: &View,
+        view: &'doc View,
         theme: &Theme,
         is_focused: bool,
     ) -> GutterFn<'doc> {
@@ -48,9 +49,9 @@ impl GutterType {
 }
 
 pub fn diagnostic<'doc>(
-    _editor: &'doc Editor,
+    editor: &'doc Editor,
     doc: &'doc Document,
-    _view: &View,
+    view: &'doc View,
     theme: &Theme,
     _is_focused: bool,
 ) -> GutterFn<'doc> {
@@ -62,7 +63,13 @@ pub fn diagnostic<'doc>(
 
     Box::new(
         move |line: usize, _selected: bool, first_visual_line: bool, out: &mut String| {
-            if !first_visual_line {
+            if !first_visual_line
+                || (view
+                    .gutters
+                    .hide_diag_when_inserting
+                    .hide_diagnostics_in_insert_mode
+                    && editor.mode == Mode::Insert)
+            {
                 return None;
             }
             use helix_core::diagnostic::Severity;
@@ -173,7 +180,7 @@ pub fn line_numbers<'doc>(
                 write!(out, "{:>1$}", '~', width).unwrap();
                 Some(linenr)
             } else {
-                use crate::{document::Mode, editor::LineNumber};
+                use crate::editor::LineNumber;
 
                 let relative = line_number == LineNumber::Relative
                     && mode != Mode::Insert
@@ -312,7 +319,7 @@ fn execution_pause_indicator<'doc>(
 pub fn diagnostics_or_breakpoints<'doc>(
     editor: &'doc Editor,
     doc: &'doc Document,
-    view: &View,
+    view: &'doc View,
     theme: &Theme,
     is_focused: bool,
 ) -> GutterFn<'doc> {
@@ -357,7 +364,7 @@ mod tests {
 
     use super::*;
     use crate::document::Document;
-    use crate::editor::{Config, GutterConfig, GutterLineNumbersConfig};
+    use crate::editor::{Config, GutterConfig, GutterDiagnosticsConfig, GutterLineNumbersConfig};
     use crate::graphics::Rect;
     use crate::DocumentId;
     use arc_swap::ArcSwap;
@@ -408,6 +415,9 @@ mod tests {
         let gutters = GutterConfig {
             layout: vec![GutterType::Diagnostics, GutterType::LineNumbers],
             line_numbers: GutterLineNumbersConfig { min_width: 10 },
+            hide_diag_when_inserting: GutterDiagnosticsConfig {
+                hide_diagnostics_in_insert_mode: false,
+            },
         };
 
         let mut view = View::new(DocumentId::default(), gutters);
@@ -431,6 +441,9 @@ mod tests {
         let gutters = GutterConfig {
             layout: vec![GutterType::Diagnostics, GutterType::LineNumbers],
             line_numbers: GutterLineNumbersConfig { min_width: 1 },
+            hide_diag_when_inserting: GutterDiagnosticsConfig {
+                hide_diagnostics_in_insert_mode: false,
+            },
         };
 
         let mut view = View::new(DocumentId::default(), gutters);
