@@ -168,9 +168,10 @@ pub fn languages_all() -> std::io::Result<()> {
         format!(
             "{:column_width$}",
             s.get(..column_width - 2)
-             .map(|s| format!("{}…", s))
-             .unwrap_or_else(|| s.to_string()))
-            .stylize()
+                .map(|s| format!("{}…", s))
+                .unwrap_or_else(|| s.to_string())
+        )
+        .stylize()
     };
     let color = |s: StyledContent<String>, c: Color| if is_terminal { s.with(c) } else { s };
     let bold = |s: StyledContent<String>| if is_terminal { s.bold() } else { s };
