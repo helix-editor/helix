@@ -13,6 +13,7 @@ use crate::{
     },
 };
 
+use arc_swap::access::DynAccess;
 use helix_core::{
     diagnostic::NumberOrString,
     graphemes::{next_grapheme_boundary, prev_grapheme_boundary},
@@ -29,7 +30,7 @@ use helix_view::{
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
-    Document, Editor, Theme, View,
+    theme, Document, Editor, Theme, View,
 };
 use std::{mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc, sync::Arc};
 
@@ -37,6 +38,7 @@ use tui::{buffer::Buffer as Surface, text::Span};
 
 pub struct EditorView {
     pub keymaps: Keymaps,
+    theme_config: Box<dyn DynAccess<Option<theme::Config>>>,
     on_next_key: Option<(OnKeyCallback, OnKeyCallbackKind)>,
     pseudo_pending: Vec<KeyEvent>,
     pub(crate) last_insert: (commands::MappableCommand, Vec<InsertEvent>),
@@ -58,9 +60,13 @@ pub enum InsertEvent {
 }
 
 impl EditorView {
-    pub fn new(keymaps: Keymaps) -> Self {
+    pub fn new(
+        keymaps: Keymaps,
+        theme_config: impl DynAccess<Option<theme::Config>> + 'static,
+    ) -> Self {
         Self {
             keymaps,
+            theme_config: Box::new(theme_config),
             on_next_key: None,
             pseudo_pending: Vec::new(),
             last_insert: (commands::MappableCommand::normal_mode, Vec::new()),
@@ -1526,6 +1532,18 @@ impl Component for EditorView {
                     }
                 }
                 self.terminal_focused = false;
+                EventResult::Consumed(None)
+            }
+            Event::ThemeModeChanged(theme_mode) => {
+                if let Some(theme_config) = self.theme_config.load().as_ref() {
+                    let theme_name = theme_config.choose(Some(*theme_mode));
+                    match context.editor.theme_loader.load(theme_name) {
+                        Ok(theme) => context.editor.set_theme(theme),
+                        Err(err) => {
+                            log::warn!("failed to load theme `{}` - {}", theme_name, err);
+                        }
+                    }
+                }
                 EventResult::Consumed(None)
             }
         }

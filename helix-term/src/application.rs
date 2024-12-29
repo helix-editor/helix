@@ -74,6 +74,9 @@ pub struct Application {
     signals: Signals,
     jobs: Jobs,
     lsp_progress: LspProgressMap,
+
+    /// The theme mode (light/dark) detected from the terminal, if available.
+    theme_mode: Option<theme::Mode>,
 }
 
 #[cfg(feature = "integration")]
@@ -105,15 +108,24 @@ impl Application {
 
         use helix_view::editor::Action;
 
+        #[cfg(not(feature = "integration"))]
+        let backend = CrosstermBackend::new(stdout(), &config.editor);
+
+        #[cfg(feature = "integration")]
+        let backend = TestBackend::new(120, 150);
+
         let mut theme_parent_dirs = vec![helix_loader::config_dir()];
         theme_parent_dirs.extend(helix_loader::runtime_dirs().iter().cloned());
         let theme_loader = std::sync::Arc::new(theme::Loader::new(&theme_parent_dirs));
+
+        let theme_mode = backend.get_theme_mode();
 
         let true_color = config.editor.true_color || crate::true_color();
         let theme = config
             .theme
             .as_ref()
-            .and_then(|theme| {
+            .and_then(|theme_config| {
+                let theme = theme_config.choose(theme_mode);
                 theme_loader
                     .load(theme)
                     .map_err(|e| {
@@ -126,12 +138,6 @@ impl Application {
             .unwrap_or_else(|| theme_loader.default_theme(true_color));
 
         let syn_loader = Arc::new(ArcSwap::from_pointee(lang_loader));
-
-        #[cfg(not(feature = "integration"))]
-        let backend = CrosstermBackend::new(stdout(), &config.editor);
-
-        #[cfg(feature = "integration")]
-        let backend = TestBackend::new(120, 150);
 
         let terminal = Terminal::new(backend)?;
         let area = terminal.size().expect("couldn't get terminal size");
@@ -151,7 +157,10 @@ impl Application {
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
         }));
-        let editor_view = Box::new(ui::EditorView::new(Keymaps::new(keys)));
+        let editor_view = Box::new(ui::EditorView::new(
+            Keymaps::new(keys),
+            Map::new(Arc::clone(&config), |config: &Config| &config.theme),
+        ));
         compositor.push(editor_view);
 
         if args.load_tutor {
@@ -267,6 +276,7 @@ impl Application {
             signals,
             jobs: Jobs::new(),
             lsp_progress: LspProgressMap::new(),
+            theme_mode,
         };
 
         Ok(app)
@@ -434,7 +444,9 @@ impl Application {
         let theme = config
             .theme
             .as_ref()
-            .and_then(|theme| {
+            .and_then(|theme_config| {
+                let theme = theme_config.choose(self.theme_mode);
+
                 self.theme_loader
                     .load(theme)
                     .map_err(|e| {

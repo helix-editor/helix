@@ -2,9 +2,9 @@ use crate::{backend::Backend, buffer::Cell, terminal::Config};
 use crossterm::{
     cursor::{Hide, MoveTo, SetCursorStyle, Show},
     event::{
-        DisableBracketedPaste, DisableFocusChange, DisableMouseCapture, EnableBracketedPaste,
-        EnableFocusChange, EnableMouseCapture, KeyboardEnhancementFlags,
-        PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
+        DisableBracketedPaste, DisableColorSchemeUpdates, DisableFocusChange, DisableMouseCapture,
+        EnableBracketedPaste, EnableColorSchemeUpdates, EnableFocusChange, EnableMouseCapture,
+        KeyboardEnhancementFlags, PopKeyboardEnhancementFlags, PushKeyboardEnhancementFlags,
     },
     execute, queue,
     style::{
@@ -17,6 +17,7 @@ use crossterm::{
 use helix_view::{
     editor::Config as EditorConfig,
     graphics::{Color, CursorKind, Modifier, Rect, UnderlineStyle},
+    theme,
 };
 use once_cell::sync::OnceCell;
 use std::{
@@ -161,7 +162,8 @@ where
         execute!(
             self.buffer,
             terminal::EnterAlternateScreen,
-            EnableFocusChange
+            EnableFocusChange,
+            EnableColorSchemeUpdates,
         )?;
         match execute!(self.buffer, EnableBracketedPaste,) {
             Err(err) if err.kind() == io::ErrorKind::Unsupported => {
@@ -217,6 +219,7 @@ where
         execute!(
             self.buffer,
             DisableFocusChange,
+            DisableColorSchemeUpdates,
             terminal::LeaveAlternateScreen
         )?;
         terminal::disable_raw_mode()
@@ -232,7 +235,12 @@ where
         let _ = execute!(stdout, DisableMouseCapture);
         let _ = execute!(stdout, PopKeyboardEnhancementFlags);
         let _ = execute!(stdout, DisableBracketedPaste);
-        execute!(stdout, DisableFocusChange, terminal::LeaveAlternateScreen)?;
+        execute!(
+            stdout,
+            DisableFocusChange,
+            DisableColorSchemeUpdates,
+            terminal::LeaveAlternateScreen
+        )?;
         terminal::disable_raw_mode()
     }
 
@@ -337,6 +345,29 @@ where
 
     fn flush(&mut self) -> io::Result<()> {
         self.buffer.flush()
+    }
+
+    fn get_theme_mode(&self) -> Option<theme::Mode> {
+        use std::time::Instant;
+
+        let start = Instant::now();
+        let theme_mode = crossterm::terminal::query_terminal_theme_mode()
+            .ok()
+            .flatten()
+            .map(|theme_mode| match theme_mode {
+                crossterm::event::ThemeMode::Light => theme::Mode::Light,
+                crossterm::event::ThemeMode::Dark => theme::Mode::Dark,
+            });
+        let elapsed = Instant::now().duration_since(start).as_millis();
+        if theme_mode.is_some() {
+            log::debug!("detected terminal theme mode in {}ms", elapsed);
+        } else {
+            log::debug!(
+                "failed to detect terminal theme mode (checked in {}ms)",
+                elapsed
+            );
+        }
+        theme_mode
     }
 }
 
