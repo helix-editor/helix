@@ -57,12 +57,6 @@ pub enum InsertEvent {
     RequestCompletion,
 }
 
-impl Default for EditorView {
-    fn default() -> Self {
-        Self::new(Keymaps::default())
-    }
-}
-
 impl EditorView {
     pub fn new(keymaps: Keymaps) -> Self {
         Self {
