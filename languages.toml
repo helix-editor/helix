@@ -882,7 +882,7 @@ name = "python"
 scope = "source.python"
 injection-regex = "py(thon)?"
 file-types = ["py", "pyi", "py3", "pyw", "ptl", "rpy", "cpy", "ipy", "pyt", { glob = ".python_history" }, { glob = ".pythonstartup" }, { glob = ".pythonrc" }, { glob = "SConstruct" }, { glob = "SConscript" }]
-shebangs = ["python"]
+shebangs = ["python", "uv"]
 roots = ["pyproject.toml", "setup.py", "poetry.lock", "pyrightconfig.json"]
 comment-token = "#"
 language-servers = ["ruff", "jedi", "pylsp"]
