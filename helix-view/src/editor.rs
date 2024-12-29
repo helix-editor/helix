@@ -93,6 +93,8 @@ pub struct GutterConfig {
     pub layout: Vec<GutterType>,
     /// Options specific to the "line-numbers" gutter
     pub line_numbers: GutterLineNumbersConfig,
+    /// Hides the diagnostics dots when in insert mode
+    pub hide_diag_when_inserting: GutterDiagnosticsConfig,
 }
 
 impl Default for GutterConfig {
@@ -106,6 +108,7 @@ impl Default for GutterConfig {
                 GutterType::Diff,
             ],
             line_numbers: GutterLineNumbersConfig::default(),
+            hide_diag_when_inserting: GutterDiagnosticsConfig::default(),
         }
     }
 }
@@ -174,6 +177,13 @@ impl Default for GutterLineNumbersConfig {
     fn default() -> Self {
         Self { min_width: 3 }
     }
+}
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct GutterDiagnosticsConfig {
+    /// Hide the diagnostics gutter dots when set to true and in edit mode
+    pub hide_diagnostics_in_insert_mode: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
@@ -422,8 +432,10 @@ pub struct Config {
     /// Display diagnostic below the line they occur.
     pub inline_diagnostics: InlineDiagnosticsConfig,
     pub end_of_line_diagnostics: DiagnosticFilter,
-    // Set to override the default clipboard provider
+    /// Set to override the default clipboard provider
     pub clipboard_provider: ClipboardProvider,
+    /// Set to hide diagnostics when in editing mode
+    pub hide_diag_when_inserting: bool,
     /// Whether to read settings from [EditorConfig](https://editorconfig.org) files. Defaults to
     /// `true`.
     pub editor_config: bool,
@@ -1152,6 +1164,7 @@ impl Default for Config {
             inline_diagnostics: InlineDiagnosticsConfig::default(),
             end_of_line_diagnostics: DiagnosticFilter::Enable(Severity::Hint),
             clipboard_provider: ClipboardProvider::default(),
+            hide_diag_when_inserting: false,
             editor_config: true,
             rainbow_brackets: false,
             kitty_keyboard_protocol: Default::default(),
