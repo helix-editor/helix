@@ -2,6 +2,7 @@ use helix_core::indent::IndentStyle;
 use helix_core::{coords_at_pos, encoding, unicode::width::UnicodeWidthStr, Position};
 use helix_lsp::lsp::DiagnosticSeverity;
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
+use helix_view::icons::ICONS;
 use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     graphics::Rect,
@@ -217,6 +218,7 @@ where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
     use helix_core::diagnostic::Severity;
+
     let (hints, info, warnings, errors) =
         context
             .doc
@@ -232,29 +234,49 @@ where
                 counts
             });
 
-    for sev in &context.editor.config().statusline.diagnostics {
-        match sev {
+    let icons = ICONS.load();
+
+    for severity in &context.editor.config().statusline.diagnostics {
+        match severity {
             Severity::Hint if hints > 0 => {
-                write(context, Span::styled("●", context.editor.theme.get("hint")));
-                write(context, format!(" {} ", hints).into());
+                write(
+                    context,
+                    Span::styled(
+                        icons.diagnostic().hint().to_string(),
+                        context.editor.theme.get("hint"),
+                    ),
+                );
+                write(context, Span::raw(hints.to_string()));
             }
             Severity::Info if info > 0 => {
-                write(context, Span::styled("●", context.editor.theme.get("info")));
-                write(context, format!(" {} ", info).into());
+                write(
+                    context,
+                    Span::styled(
+                        icons.diagnostic().info().to_string(),
+                        context.editor.theme.get("info"),
+                    ),
+                );
+                write(context, Span::raw(info.to_string()));
             }
             Severity::Warning if warnings > 0 => {
                 write(
                     context,
-                    Span::styled("●", context.editor.theme.get("warning")),
+                    Span::styled(
+                        icons.diagnostic().warning().to_string(),
+                        context.editor.theme.get("warning"),
+                    ),
                 );
-                write(context, format!(" {} ", warnings).into());
+                write(context, Span::raw(warnings.to_string()));
             }
             Severity::Error if errors > 0 => {
                 write(
                     context,
-                    Span::styled("●", context.editor.theme.get("error")),
+                    Span::styled(
+                        icons.diagnostic().error().to_string(),
+                        context.editor.theme.get("error"),
+                    ),
                 );
-                write(context, format!(" {} ", errors).into());
+                write(context, Span::raw(errors.to_string()));
             }
             _ => {}
         }
@@ -266,14 +288,17 @@ where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
     use helix_core::diagnostic::Severity;
-    let (hints, info, warnings, errors) = context.editor.diagnostics.values().flatten().fold(
+
+    let (hint, info, warning, error) = context.editor.diagnostics.values().flatten().fold(
         (0u32, 0u32, 0u32, 0u32),
-        |mut counts, (diag, _)| {
-            match diag.severity {
-                // PERF: For large workspace diagnostics, this loop can be very tight.
+        |mut counts, (diagnostic, _)| {
+            match diagnostic.severity {
+                // PERF:
+                // For large workspace diagnostics, this loop can be very tight.
                 //
                 // Most often the diagnostics will be for warnings and errors.
-                // Errors should tend to be fixed fast, leaving warnings as the most common.
+                // Errors should tend to be fixed fast, leaving warnings as the
+                // most common.
                 Some(DiagnosticSeverity::WARNING) => counts.2 += 1,
                 Some(DiagnosticSeverity::ERROR) => counts.3 += 1,
                 Some(DiagnosticSeverity::HINT) => counts.0 += 1,
@@ -285,43 +310,70 @@ where
         },
     );
 
-    let sevs_to_show = &context.editor.config().statusline.workspace_diagnostics;
+    let config = context.editor.config();
 
-    // Avoid showing the " W " if no diagnostic counts will be shown.
-    if !sevs_to_show.iter().any(|sev| match sev {
-        Severity::Hint => hints != 0,
+    let diagnostics = config.statusline.workspace_diagnostics.as_slice();
+
+    // Avoid showing the ` W ` if no diagnostic counts will be shown.
+    if !diagnostics.iter().any(|severity| match severity {
+        Severity::Hint => hint != 0,
         Severity::Info => info != 0,
-        Severity::Warning => warnings != 0,
-        Severity::Error => errors != 0,
+        Severity::Warning => warning != 0,
+        Severity::Error => error != 0,
     }) {
         return;
     }
 
-    write(context, " W ".into());
+    let icons = ICONS.load();
 
-    for sev in sevs_to_show {
-        match sev {
-            Severity::Hint if hints > 0 => {
-                write(context, Span::styled("●", context.editor.theme.get("hint")));
-                write(context, format!(" {} ", hints).into());
+    let icon = icons.ui().workspace();
+    // Special case when the `workspace` is set to `""`:
+    //     - This will remove the default ` W ` so that the rest of the icons are spaced correctly.
+    if !icon.is_empty() {
+        write(context, Span::from(icon));
+    }
+
+    for severity in diagnostics {
+        match severity {
+            Severity::Hint if hint > 0 => {
+                write(
+                    context,
+                    Span::styled(
+                        icons.diagnostic().hint().to_string(),
+                        context.editor.theme.get("hint"),
+                    ),
+                );
+                write(context, Span::raw(hint.to_string()));
             }
             Severity::Info if info > 0 => {
-                write(context, Span::styled("●", context.editor.theme.get("info")));
-                write(context, format!(" {} ", info).into());
-            }
-            Severity::Warning if warnings > 0 => {
                 write(
                     context,
-                    Span::styled("●", context.editor.theme.get("warning")),
+                    Span::styled(
+                        icons.diagnostic().info().to_string(),
+                        context.editor.theme.get("info"),
+                    ),
                 );
-                write(context, format!(" {} ", warnings).into());
+                write(context, Span::raw(info.to_string()));
             }
-            Severity::Error if errors > 0 => {
+            Severity::Warning if warning > 0 => {
                 write(
                     context,
-                    Span::styled("●", context.editor.theme.get("error")),
+                    Span::styled(
+                        icons.diagnostic().warning().to_string(),
+                        context.editor.theme.get("warning"),
+                    ),
                 );
-                write(context, format!(" {} ", errors).into());
+                write(context, Span::raw(warning.to_string()));
+            }
+            Severity::Error if error > 0 => {
+                write(
+                    context,
+                    Span::styled(
+                        icons.diagnostic().error().to_string(),
+                        context.editor.theme.get("error"),
+                    ),
+                );
+                write(context, Span::raw(error.to_string()));
             }
             _ => {}
         }
@@ -438,9 +490,21 @@ fn render_file_type<'a, F>(context: &mut RenderContext<'a>, write: F)
 where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
-    let file_type = context.doc.language_name().unwrap_or(DEFAULT_LANGUAGE_NAME);
+    let theme = context.editor.theme.as_ref();
+    let icons = ICONS.load();
 
-    write(context, format!(" {} ", file_type).into());
+    let lang = context.doc.language_name().unwrap_or(DEFAULT_LANGUAGE_NAME);
+    let path = context.doc.path();
+
+    if let Some(file) = icons.fs().file() {
+        if let Some(path) = path {
+            let icon = file.get_with_style_or_default(path, theme);
+            write(context, Span::from(icon));
+            write(context, Span::from(format!("{lang} ")));
+        }
+    } else {
+        write(context, Span::from(format!(" {lang} ")));
+    }
 }
 
 fn render_file_name<'a, F>(context: &mut RenderContext<'a>, write: F)
@@ -479,25 +543,26 @@ fn render_file_modification_indicator<'a, F>(context: &mut RenderContext<'a>, wr
 where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
-    let title = if context.doc.is_modified() {
-        "[+]"
+    if context.doc.is_modified() {
+        let icons = ICONS.load();
+        let icon = icons.ui().indicator().modified();
+        write(context, Span::from(icon));
     } else {
-        "   "
-    };
-
-    write(context, title.into());
+        write(context, Span::from("   "));
+    }
 }
 
 fn render_read_only_indicator<'a, F>(context: &mut RenderContext<'a>, write: F)
 where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
-    let title = if context.doc.readonly {
-        " [readonly] "
+    if context.doc.readonly {
+        let icons = ICONS.load();
+        let icon = icons.ui().indicator().readonly();
+        write(context, Span::from(icon));
     } else {
-        ""
-    };
-    write(context, title.into());
+        write(context, Span::from(""));
+    }
 }
 
 fn render_file_base_name<'a, F>(context: &mut RenderContext<'a>, write: F)
@@ -520,10 +585,10 @@ fn render_separator<'a, F>(context: &mut RenderContext<'a>, write: F)
 where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
-    let sep = &context.editor.config().statusline.separator;
     let style = context.editor.theme.get("ui.statusline.separator");
-
-    write(context, Span::styled(sep.to_string(), style));
+    let icons = ICONS.load();
+    let icon = icons.ui().statusline().separator();
+    write(context, Span::styled(icon.to_string(), style));
 }
 
 fn render_spacer<'a, F>(context: &mut RenderContext<'a>, write: F)
@@ -537,13 +602,30 @@ fn render_version_control<'a, F>(context: &mut RenderContext<'a>, write: F)
 where
     F: Fn(&mut RenderContext<'a>, Span<'a>) + Copy,
 {
-    let head = context
-        .doc
-        .version_control_head()
-        .unwrap_or_default()
-        .to_string();
+    let head = context.doc.version_control_head().unwrap_or_default();
+    if !head.is_empty() {
+        let icons = ICONS.load();
 
-    write(context, head.into());
+        let theme = context.editor.theme.as_ref();
+        let style = theme
+            .try_get_exact("ui.statusline.version-control")
+            .unwrap_or_default();
+
+        if let Some(icon) = icons.vcs().branch() {
+            let base = theme
+                .try_get_exact("ui.statusline.version-control.branch")
+                .unwrap_or(style);
+
+            write(
+                context,
+                Span::styled(icon.to_string(), base.patch(icon.style())),
+            );
+
+            write(context, Span::styled(format!("{head} "), style));
+        } else {
+            write(context, Span::styled(format!(" {head} "), style));
+        }
+    }
 }
 
 fn render_register<'a, F>(context: &mut RenderContext<'a>, write: F)
