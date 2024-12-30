@@ -46,7 +46,7 @@ pub struct Lsp {
 }
 
 impl Lsp {
-    const DEFAULT: &str = "*";
+    const DEFAULT: &'static str = "*";
 
     pub fn file(&self) -> &str {
         self.file.as_ref().map_or(Self::DEFAULT, |file| file)
@@ -174,7 +174,7 @@ impl Default for Diagnostic {
 }
 
 impl Diagnostic {
-    const DEFAULT: &str = "●";
+    const DEFAULT: &'static str = "●";
 
     pub fn hint(&self) -> &str {
         self.hint.as_ref().map_or(Self::DEFAULT, |hint| hint)
@@ -206,7 +206,7 @@ impl Default for Vcs {
 }
 
 impl Vcs {
-    const DEFAULT: &str = "";
+    const DEFAULT: &'static str = "";
 
     pub fn icon(&self) -> &str {
         self.icon
