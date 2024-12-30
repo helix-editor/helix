@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    Command, Documentation, MarkupKind, PartialResultParams, TagSupport,
+    Command, Documentation, MarkupKind, PartialResultParams, SymbolKind, TagSupport,
     TextDocumentPositionParams, TextDocumentRegistrationOptions, TextEdit, WorkDoneProgressOptions,
     WorkDoneProgressParams,
 };
@@ -53,6 +53,41 @@ impl CompletionItemKind {
     pub const OPERATOR: CompletionItemKind = CompletionItemKind(24);
     pub const TYPE_PARAMETER: CompletionItemKind = CompletionItemKind(25);
 }
+}
+
+impl CompletionItemKind {
+    #[inline]
+    #[must_use]
+    pub const fn as_str(self) -> Option<&'static str> {
+        match self {
+            Self::TEXT => Some("text"),
+            Self::METHOD => SymbolKind::METHOD.as_str(),
+            Self::FUNCTION => SymbolKind::FUNCTION.as_str(),
+            Self::CONSTRUCTOR => SymbolKind::CONSTRUCTOR.as_str(),
+            Self::FIELD => SymbolKind::FIELD.as_str(),
+            Self::VARIABLE => SymbolKind::VARIABLE.as_str(),
+            Self::CLASS => SymbolKind::CLASS.as_str(),
+            Self::INTERFACE => SymbolKind::INTERFACE.as_str(),
+            Self::MODULE => SymbolKind::MODULE.as_str(),
+            Self::PROPERTY => SymbolKind::PROPERTY.as_str(),
+            Self::UNIT => Some("unit"),
+            Self::VALUE => Some("value"),
+            Self::ENUM => SymbolKind::ENUM.as_str(),
+            Self::KEYWORD => Some("keyword"),
+            Self::SNIPPET => Some("snippet"),
+            Self::COLOR => Some("color"),
+            Self::FILE => SymbolKind::FILE.as_str(),
+            Self::REFERENCE => Some("reference"),
+            Self::FOLDER => Some("folder"),
+            Self::ENUM_MEMBER => SymbolKind::ENUM_MEMBER.as_str(),
+            Self::CONSTANT => SymbolKind::CONSTANT.as_str(),
+            Self::STRUCT => SymbolKind::STRUCT.as_str(),
+            Self::EVENT => SymbolKind::EVENT.as_str(),
+            Self::OPERATOR => SymbolKind::OPERATOR.as_str(),
+            Self::TYPE_PARAMETER => SymbolKind::TYPE_PARAMETER.as_str(),
+            _ => None,
+        }
+    }
 }
 
 #[derive(Debug, Eq, PartialEq, Clone, Default, Deserialize, Serialize)]

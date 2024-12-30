@@ -49,6 +49,7 @@
 use helix_core::line_ending::str_is_line_ending;
 use helix_core::unicode::width::UnicodeWidthStr;
 use helix_view::graphics::Style;
+use helix_view::icons::Icon;
 use std::borrow::Cow;
 use unicode_segmentation::UnicodeSegmentation;
 
@@ -97,13 +98,14 @@ impl<'a> Span<'a> {
     /// Span::styled("My text", style);
     /// Span::styled(String::from("My text"), style);
     /// ```
-    pub fn styled<T>(content: T, style: Style) -> Span<'a>
+    pub fn styled<T, S>(content: T, style: S) -> Span<'a>
     where
         T: Into<Cow<'a, str>>,
+        S: Into<Style>,
     {
         Span {
             content: content.into(),
-            style,
+            style: style.into(),
         }
     }
 
@@ -205,6 +207,13 @@ impl<'a> From<&'a str> for Span<'a> {
 impl<'a> From<Cow<'a, str>> for Span<'a> {
     fn from(s: Cow<'a, str>) -> Span<'a> {
         Span::raw(s)
+    }
+}
+
+impl From<Icon> for Span<'_> {
+    #[inline]
+    fn from(icon: Icon) -> Self {
+        Span::styled(icon.to_string(), icon.style())
     }
 }
 

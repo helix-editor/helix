@@ -48,17 +48,18 @@ use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
     editor::{Action, Motion},
     expansion,
+    icons::{Icons, ICONS},
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
     theme::Style,
     tree,
     view::View,
-    Document, DocumentId, Editor, ViewId,
+    Document, DocumentId, Editor, Theme, ViewId,
 };
 
 use anyhow::{anyhow, bail, ensure, Context as _};
-use arc_swap::access::DynAccess;
+use arc_swap::access::{DynAccess, DynGuard};
 use insert::*;
 use movement::Movement;
 
@@ -79,6 +80,7 @@ use std::{
     future::Future,
     io::Read,
     num::NonZeroUsize,
+    sync::Arc,
 };
 
 use std::{
@@ -2561,6 +2563,7 @@ fn make_search_word_bounded(cx: &mut Context) {
     }
 }
 
+#[allow(clippy::too_many_lines)]
 fn global_search(cx: &mut Context) {
     #[derive(Debug)]
     struct FileResult<'a> {
@@ -2584,21 +2587,70 @@ fn global_search(cx: &mut Context) {
     struct GlobalSearchConfig {
         smart_case: bool,
         file_picker_config: helix_view::editor::FilePickerConfig,
-        style: PathStyleConfig,
+        theme: Arc<Theme>,
     }
 
     let config = cx.editor.config();
     let config = GlobalSearchConfig {
         smart_case: config.search.smart_case,
         file_picker_config: config.file_picker.clone(),
-        style: PathStyleConfig::new(&cx.editor.theme),
+        theme: cx.editor.theme.clone(),
     };
 
     let columns = [
         PickerColumn::new("path", |item: &FileResult, config: &GlobalSearchConfig| {
-            config
-                .style
-                .stylize(Some(&item.path), Some(item.line_start))
+            let theme = config.theme.as_ref();
+
+            let path = helix_stdx::path::get_relative_path(item.path.as_ref());
+
+            let directories = path
+                .parent()
+                .filter(|p| !p.as_os_str().is_empty())
+                .map(|p| format!("{}{}", p.display(), std::path::MAIN_SEPARATOR))
+                .unwrap_or_default();
+
+            let filename = item
+                .path
+                .file_name()
+                .expect("global search paths are normalized (can't end in `..`)")
+                .to_string_lossy();
+
+            let mut line = Vec::with_capacity(5);
+
+            let icons: DynGuard<Icons> = ICONS.load();
+
+            if let Some(file) = icons.fs().file() {
+                let name = item.path.file_name().map(|name| name.display());
+                let ext = item.path.extension().map(|ext| ext.display());
+
+                let icon = file.get_or_default(path);
+
+                let style = if icon.is_user_overridden() {
+                    icon.style()
+                } else {
+                    // WARN: Order matters, with `name` needing to be first
+                    // to match exact file names before extensions.
+                    [name.as_ref(), ext.as_ref()]
+                        .into_iter()
+                        .flatten()
+                        .find_map(|scope| file.get_style_from_theme(theme, scope))
+                        .map_or_else(|| icon.style(), |style| icon.style().patch(style))
+                };
+
+                line.push(Span::styled(icon.to_string(), style));
+            }
+
+            line.extend_from_slice(&[
+                Span::styled(directories, theme.get("ui.text.directory")),
+                Span::raw(filename),
+                Span::styled(":", theme.get("punctuation")),
+                Span::styled(
+                    (item.line_start + 1).to_string(),
+                    theme.get("constant.numeric.integer"),
+                ),
+            ]);
+
+            Cell::from(Spans::from(line))
         }),
         PickerColumn::hidden("contents"),
     ];
@@ -3266,51 +3318,8 @@ fn file_explorer_in_current_directory(cx: &mut Context) {
     }
 }
 
-struct PathStyleConfig {
-    directory_style: Style,
-    number_style: Style,
-    colon_style: Style,
-}
-
-impl PathStyleConfig {
-    fn new(theme: &helix_view::Theme) -> Self {
-        Self {
-            directory_style: theme.get("ui.text.directory"),
-            number_style: theme.get("constant.numeric.integer"),
-            colon_style: theme.get("punctuation"),
-        }
-    }
-
-    fn stylize<'a>(&self, path: Option<&'a Path>, line: Option<usize>) -> Cell<'a> {
-        let mut spans = Vec::new();
-        if let Some(path) = path {
-            let directories = path
-                .parent()
-                .filter(|p| !p.as_os_str().is_empty())
-                .map(|p| format!("{}{}", p.display(), std::path::MAIN_SEPARATOR))
-                .unwrap_or_default();
-            spans.push(Span::styled(directories, self.directory_style));
-        }
-        let filename = path.as_ref().map_or(SCRATCH_BUFFER_NAME.into(), |path| {
-            path.file_name()
-                .expect("all document names are normalized (can't end in `..`)")
-                .to_string_lossy()
-        });
-        spans.push(Span::raw(filename));
-        if let Some(line) = line {
-            spans.extend([
-                Span::styled(":", self.colon_style),
-                Span::styled((line + 1).to_string(), self.number_style),
-            ]);
-        }
-
-        Cell::from(Spans::from(spans))
-    }
-}
-
+#[allow(clippy::too_many_lines)]
 fn buffer_picker(cx: &mut Context) {
-    let current = view!(cx.editor).doc;
-
     struct BufferMeta<'a> {
         id: DocumentId,
         path: Option<Cow<'a, Path>>,
@@ -3318,6 +3327,8 @@ fn buffer_picker(cx: &mut Context) {
         is_current: bool,
         focused_at: std::time::Instant,
     }
+
+    let current = view!(cx.editor).doc;
 
     let new_meta = |doc: &Document| BufferMeta {
         id: doc.id(),
@@ -3352,8 +3363,47 @@ fn buffer_picker(cx: &mut Context) {
             }
             flags.into()
         }),
-        PickerColumn::new("path", |meta: &BufferMeta, config: &PathStyleConfig| {
-            config.stylize(meta.path.as_deref(), None)
+        PickerColumn::new("path", |meta: &BufferMeta, theme: &Arc<Theme>| {
+            let path = meta
+                .path
+                .as_deref()
+                .map(helix_stdx::path::get_relative_path);
+
+            let name = path
+                .as_deref()
+                .and_then(Path::to_str)
+                .unwrap_or(SCRATCH_BUFFER_NAME);
+
+            let mut line = Vec::with_capacity(2);
+
+            let icons: DynGuard<Icons> = ICONS.load();
+
+            if let Some(file) = icons.fs().file() {
+                if let Some(path) = meta.path.as_ref() {
+                    let name = path.file_name().map(|name| name.display());
+                    let ext = path.extension().map(|ext| ext.display());
+
+                    let icon = file.get_or_default(path);
+
+                    let style = if icon.is_user_overridden() {
+                        icon.style()
+                    } else {
+                        // WARN: Order matters, with `name` needing to be first
+                        // to match exact file names before extensions.
+                        [name.as_ref(), ext.as_ref()]
+                            .into_iter()
+                            .flatten()
+                            .find_map(|scope| file.get_style_from_theme(theme, scope))
+                            .map_or_else(|| icon.style(), |style| icon.style().patch(style))
+                    };
+
+                    line.push(Span::styled(icon.to_string(), style));
+                }
+            }
+
+            line.push(Span::raw(name.to_string()));
+
+            Cell::from(Spans::from(line))
         }),
     ];
 
@@ -3374,7 +3424,7 @@ fn buffer_picker(cx: &mut Context) {
         columns,
         2,
         items,
-        PathStyleConfig::new(&cx.editor.theme),
+        cx.editor.theme.clone(),
         |cx, meta, action| {
             cx.editor.switch(meta.id, action);
         },
@@ -3388,9 +3438,11 @@ fn buffer_picker(cx: &mut Context) {
         });
         Some((meta.id.into(), lines))
     });
+
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
+#[allow(clippy::too_many_lines)]
 fn jumplist_picker(cx: &mut Context) {
     struct JumpMeta<'a> {
         id: DocumentId,
@@ -3433,8 +3485,55 @@ fn jumplist_picker(cx: &mut Context) {
 
     let columns = [
         ui::PickerColumn::new("id", |item: &JumpMeta, _| item.id.to_string().into()),
-        ui::PickerColumn::new("path", |item: &JumpMeta, config: &PathStyleConfig| {
-            config.stylize(item.path.as_deref(), Some(item.line_start))
+        ui::PickerColumn::new("path", |meta: &JumpMeta, theme: &Arc<Theme>| {
+            let path = meta
+                .path
+                .as_deref()
+                .map(helix_stdx::path::get_relative_path);
+
+            let name = path
+                .as_deref()
+                .and_then(Path::to_str)
+                .unwrap_or(SCRATCH_BUFFER_NAME);
+
+            let mut line = Vec::with_capacity(2);
+
+            let icons: DynGuard<Icons> = ICONS.load();
+
+            if let Some(file) = icons.fs().file() {
+                if let Some(path) = meta.path.as_ref() {
+                    let name = path.file_name().map(|name| name.display());
+                    let ext = path.extension().map(|ext| ext.display());
+
+                    let icon = file.get_or_default(path);
+
+                    let style = if icon.is_user_overridden() {
+                        icon.style()
+                    } else {
+                        // WARN: Order matters, with `name` needing to be first
+                        // to match exact file names before extensions.
+                        [name.as_ref(), ext.as_ref()]
+                            .into_iter()
+                            .flatten()
+                            .find_map(|scope| file.get_style_from_theme(theme, scope))
+                            .map_or_else(|| icon.style(), |style| icon.style().patch(style))
+                    };
+
+                    line.push(Span::styled(icon.to_string(), style));
+                }
+            }
+
+            line.push(Span::raw(name.to_string()));
+
+            line.extend([
+                Span::styled(":", theme.get("punctuation")),
+                Span::styled(
+                    (meta.line_start + 1).to_string(),
+                    theme.get("constant.numeric.integer"),
+                ),
+            ]);
+
+            Cell::from(Spans::from(line))
         }),
         ui::PickerColumn::new("flags", |item: &JumpMeta, _| {
             let mut flags = Vec::new();
@@ -3460,7 +3559,7 @@ fn jumplist_picker(cx: &mut Context) {
                 .rev()
                 .map(|(doc_id, selection)| new_meta(view, *doc_id, selection.clone()))
         }),
-        PathStyleConfig::new(&cx.editor.theme),
+        cx.editor.theme.clone(),
         |cx, meta, action| {
             cx.editor.switch(meta.id, action);
             let config = cx.editor.config();
@@ -3479,6 +3578,7 @@ fn jumplist_picker(cx: &mut Context) {
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
+#[allow(clippy::too_many_lines)]
 fn changed_file_picker(cx: &mut Context) {
     pub struct FileChangeData {
         cwd: PathBuf,
@@ -3504,14 +3604,47 @@ fn changed_file_picker(cx: &mut Context) {
 
     let columns = [
         PickerColumn::new("change", |change: &FileChange, data: &FileChangeData| {
-            match change {
-                FileChange::Untracked { .. } => Span::styled("+ untracked", data.style_untracked),
-                FileChange::Modified { .. } => Span::styled("~ modified", data.style_modified),
-                FileChange::Conflict { .. } => Span::styled("x conflict", data.style_conflict),
-                FileChange::Deleted { .. } => Span::styled("- deleted", data.style_deleted),
-                FileChange::Renamed { .. } => Span::styled("> renamed", data.style_renamed),
-            }
-            .into()
+            let icons: DynGuard<Icons> = ICONS.load();
+
+            let span = match change {
+                FileChange::Untracked { .. } => Span::styled(
+                    match icons.vcs().added() {
+                        Some(icon) => Cow::from(format!("{icon}untracked")),
+                        None => Cow::from("untracked"),
+                    },
+                    data.style_untracked,
+                ),
+                FileChange::Modified { .. } => Span::styled(
+                    match icons.vcs().modified() {
+                        Some(icon) => Cow::from(format!("{icon}modified")),
+                        None => Cow::from("modified"),
+                    },
+                    data.style_modified,
+                ),
+                FileChange::Conflict { .. } => Span::styled(
+                    match icons.vcs().conflict() {
+                        Some(icon) => Cow::from(format!("{icon}conflict")),
+                        None => Cow::from("conflict"),
+                    },
+                    data.style_conflict,
+                ),
+                FileChange::Deleted { .. } => Span::styled(
+                    match icons.vcs().removed() {
+                        Some(icon) => Cow::from(format!("{icon}deleted")),
+                        None => Cow::from("deleted"),
+                    },
+                    data.style_deleted,
+                ),
+                FileChange::Renamed { .. } => Span::styled(
+                    match icons.vcs().renamed() {
+                        Some(icon) => Cow::from(format!("{icon}renamed")),
+                        None => Cow::from("renamed"),
+                    },
+                    data.style_renamed,
+                ),
+            };
+
+            Cell::from(span)
         }),
         PickerColumn::new("path", |change: &FileChange, data: &FileChangeData| {
             let display_path = |path: &PathBuf| {
@@ -3520,7 +3653,8 @@ fn changed_file_picker(cx: &mut Context) {
                     .display()
                     .to_string()
             };
-            match change {
+
+            let path = match change {
                 FileChange::Untracked { path } => display_path(path),
                 FileChange::Modified { path } => display_path(path),
                 FileChange::Conflict { path } => display_path(path),
@@ -3528,8 +3662,9 @@ fn changed_file_picker(cx: &mut Context) {
                 FileChange::Renamed { from_path, to_path } => {
                     format!("{} -> {}", display_path(from_path), display_path(to_path))
                 }
-            }
-            .into()
+            };
+
+            Cell::from(path)
         }),
     ];
 
@@ -3558,6 +3693,7 @@ fn changed_file_picker(cx: &mut Context) {
         },
     )
     .with_preview(|_editor, meta| Some((meta.path().into(), None)));
+
     let injector = picker.injector();
 
     cx.editor
@@ -3570,6 +3706,7 @@ fn changed_file_picker(cx: &mut Context) {
                 true
             }
         });
+
     cx.push_layer(Box::new(overlaid(picker)));
 }
 

@@ -9,6 +9,9 @@ use crate::{
 use helix_core::snippets::{ActiveSnippet, RenderedSnippet, Snippet};
 use helix_core::{self as core, chars, fuzzy::MATCHER, Change, Transaction};
 use helix_lsp::{lsp, util, OffsetEncoding};
+use helix_stdx::stack_format;
+use helix_view::icons::ICONS;
+use helix_view::Theme;
 use helix_view::{
     editor::CompleteAction,
     handlers::lsp::SignatureHelpInvoked,
@@ -20,99 +23,107 @@ use nucleo::{
     pattern::{Atom, AtomKind, CaseMatching, Normalization},
     Config, Utf32Str,
 };
-use tui::text::Spans;
 use tui::{buffer::Buffer as Surface, text::Span};
 
 use std::cmp::Reverse;
+use std::sync::Arc;
 
 impl menu::Item for CompletionItem {
-    type Data = Style;
+    type Data = Arc<Theme>;
 
-    fn format(&self, dir_style: &Self::Data) -> menu::Row<'_> {
+    fn format(&self, theme: &Self::Data) -> menu::Row<'_> {
         let deprecated = match self {
-            CompletionItem::Lsp(LspCompletionItem { item, .. }) => {
+            Self::Lsp(LspCompletionItem { item, .. }) => {
                 item.deprecated.unwrap_or_default()
                     || item
                         .tags
                         .as_ref()
                         .is_some_and(|tags| tags.contains(&lsp::CompletionItemTag::DEPRECATED))
             }
-            CompletionItem::Other(_) => false,
+            Self::Other(_) => false,
         };
 
         let label = match self {
-            CompletionItem::Lsp(LspCompletionItem { item, .. }) => item.label.as_str(),
-            CompletionItem::Other(core::CompletionItem { label, .. }) => label,
+            Self::Lsp(LspCompletionItem { item, .. }) => item.label.as_str(),
+            Self::Other(core::CompletionItem { label, .. }) => label,
         };
 
+        let mut color = None;
+
         let kind = match self {
-            CompletionItem::Lsp(LspCompletionItem { item, .. }) => match item.kind {
-                Some(lsp::CompletionItemKind::TEXT) => "text".into(),
-                Some(lsp::CompletionItemKind::METHOD) => "method".into(),
-                Some(lsp::CompletionItemKind::FUNCTION) => "function".into(),
-                Some(lsp::CompletionItemKind::CONSTRUCTOR) => "constructor".into(),
-                Some(lsp::CompletionItemKind::FIELD) => "field".into(),
-                Some(lsp::CompletionItemKind::VARIABLE) => "variable".into(),
-                Some(lsp::CompletionItemKind::CLASS) => "class".into(),
-                Some(lsp::CompletionItemKind::INTERFACE) => "interface".into(),
-                Some(lsp::CompletionItemKind::MODULE) => "module".into(),
-                Some(lsp::CompletionItemKind::PROPERTY) => "property".into(),
-                Some(lsp::CompletionItemKind::UNIT) => "unit".into(),
-                Some(lsp::CompletionItemKind::VALUE) => "value".into(),
-                Some(lsp::CompletionItemKind::ENUM) => "enum".into(),
-                Some(lsp::CompletionItemKind::KEYWORD) => "keyword".into(),
-                Some(lsp::CompletionItemKind::SNIPPET) => "snippet".into(),
-                Some(lsp::CompletionItemKind::COLOR) => item
-                    .documentation
-                    .as_ref()
-                    .and_then(|docs| {
-                        let text = match docs {
-                            lsp::Documentation::String(text) => text,
-                            lsp::Documentation::MarkupContent(lsp::MarkupContent {
-                                value, ..
-                            }) => value,
-                        };
-                        // Language servers which send Color completion items tend to include a 6
-                        // digit hex code at the end for the color. The extra 1 digit is for the '#'
-                        text.get(text.len().checked_sub(7)?..)
-                    })
-                    .and_then(|c| Color::from_hex(c).ok())
-                    .map_or("color".into(), |color| {
-                        Spans::from(vec![
-                            Span::raw("color "),
-                            Span::styled("■", Style::default().fg(color)),
-                        ])
-                    }),
-                Some(lsp::CompletionItemKind::FILE) => "file".into(),
-                Some(lsp::CompletionItemKind::REFERENCE) => "reference".into(),
-                Some(lsp::CompletionItemKind::FOLDER) => "folder".into(),
-                Some(lsp::CompletionItemKind::ENUM_MEMBER) => "enum_member".into(),
-                Some(lsp::CompletionItemKind::CONSTANT) => "constant".into(),
-                Some(lsp::CompletionItemKind::STRUCT) => "struct".into(),
-                Some(lsp::CompletionItemKind::EVENT) => "event".into(),
-                Some(lsp::CompletionItemKind::OPERATOR) => "operator".into(),
-                Some(lsp::CompletionItemKind::TYPE_PARAMETER) => "type_param".into(),
-                Some(kind) => {
-                    log::error!("Received unknown completion item kind: {:?}", kind);
-                    "".into()
+            Self::Lsp(LspCompletionItem { item, .. }) => {
+                match item.kind.and_then(|kind| kind.as_str()) {
+                    Some("color") => {
+                        if let Some(doc) = item.documentation.as_ref() {
+                            let text = match doc {
+                                lsp::Documentation::String(text) => text,
+                                lsp::Documentation::MarkupContent(lsp::MarkupContent {
+                                    value,
+                                    ..
+                                }) => value,
+                            };
+
+                            // Language servers which send Color completion items
+                            // tend to include a 6 digit hex code at the end for
+                            // the color; the extra 1 digit is for the '#'
+                            if let Some(range) = text.len().checked_sub(7) {
+                                if let Some(hex) = text.get(range..) {
+                                    color = Color::from_hex(hex).ok();
+                                }
+                            }
+                        }
+
+                        Span::from("color")
+                    }
+                    Some(kind) => Span::raw(kind),
+                    None => {
+                        log::error!("Received unknown completion item kind: {:?}", item.kind);
+                        Span::raw("")
+                    }
                 }
-                None => "".into(),
-            },
-            CompletionItem::Other(core::CompletionItem { kind, .. }) => kind.as_ref().into(),
+            }
+            Self::Other(core::CompletionItem { kind, .. }) => Span::from(kind.as_ref()),
         };
+
+        let icons = ICONS.load();
+
+        let name = &kind.content;
+        let is_folder = kind.content == "folder";
 
         let label = Span::styled(
             label,
             if deprecated {
                 Style::default().add_modifier(Modifier::CROSSED_OUT)
-            } else if kind.0[0].content == "folder" {
-                *dir_style
+            } else if is_folder {
+                theme.get("ui.text.directory")
             } else {
                 Style::default()
             },
         );
 
-        menu::Row::new([menu::Cell::from(label), menu::Cell::from(kind)])
+        if let Some(color) = color {
+            menu::Row::new([
+                menu::Cell::from(Span::styled(icons.kind().color().to_string(), color)),
+                menu::Cell::from(label),
+                menu::Cell::from(kind),
+            ])
+        } else if let Some(icon) = icons.kind().get(name) {
+            let style = theme
+                // WARN: `stack_format!` could panic if the string is too long,
+                // but this is expected to not happen, but something to watch for.
+                .try_get_exact(stack_format!("icons.kind.{name}").as_str())
+                .unwrap_or_else(|| icon.style());
+
+            menu::Row::new([
+                // NOTE: As the icon is in its own cell, we don't need any extra
+                // padding, as this is applied automatically.
+                menu::Cell::from(Span::styled(icon.with_padding(0, 1).to_string(), style)),
+                menu::Cell::from(label),
+                menu::Cell::from(kind),
+            ])
+        } else {
+            menu::Row::new([menu::Cell::from(label), menu::Cell::from(kind)])
+        }
     }
 }
 
@@ -133,10 +144,10 @@ impl Completion {
         let preview_completion_insert = editor.config().preview_completion_insert;
         let replace_mode = editor.config().completion_replace;
 
-        let dir_style = editor.theme.get("ui.text.directory");
+        let theme = editor.theme.clone();
 
         // Then create the menu
-        let menu = Menu::new(items, dir_style, move |editor: &mut Editor, item, event| {
+        let menu = Menu::new(items, theme, move |editor: &mut Editor, item, event| {
             let (view, doc) = current!(editor);
 
             macro_rules! language_server {
