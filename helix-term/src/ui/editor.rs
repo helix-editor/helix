@@ -27,6 +27,7 @@ use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
+    icons::ICONS,
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
@@ -254,15 +255,16 @@ impl EditorView {
         surface: &mut Surface,
         theme: &Theme,
     ) {
-        let editor_rulers = &editor.config().rulers;
-        let ruler_theme = theme
+        let config = editor.config();
+
+        let style = theme
             .try_get("ui.virtual.ruler")
             .unwrap_or_else(|| Style::default().bg(Color::Red));
 
         let rulers = doc
             .language_config()
-            .and_then(|config| config.rulers.as_ref())
-            .unwrap_or(editor_rulers);
+            .and_then(|config| config.rulers.as_deref())
+            .unwrap_or_else(|| config.rulers.as_slice());
 
         let view_offset = doc.view_offset(view.id);
 
@@ -273,7 +275,22 @@ impl EditorView {
             .filter_map(|ruler| ruler.checked_sub(1 + view_offset.horizontal_offset as u16))
             .filter(|ruler| ruler < &viewport.width)
             .map(|ruler| viewport.clip_left(ruler).with_width(1))
-            .for_each(|area| surface.set_style(area, ruler_theme))
+            .for_each(|area| {
+                let icons = ICONS.load();
+                // FIX: Ruler doesn't draw to the statusline when bufferline and
+                // breadcrumbs are shown.
+                //
+                // `=area.height` worked when those things are enabled, but when
+                // disabled or not shown, the ruler draws over the statusline.
+                for y in area.y..area.height {
+                    surface.set_string(
+                        area.x,
+                        y,
+                        icons.ui().r#virtual().ruler().to_string(),
+                        style,
+                    );
+                }
+            });
     }
 
     fn viewport_byte_range(
@@ -655,31 +672,32 @@ impl EditorView {
     }
 
     /// Render bufferline at the top
+    #[allow(clippy::too_many_lines)]
     pub fn render_bufferline(editor: &Editor, viewport: Rect, surface: &mut Surface) {
+        let theme = editor.theme.as_ref();
+
         let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
+
         surface.clear_with(
             viewport,
-            editor
-                .theme
+            theme
                 .try_get("ui.bufferline.background")
-                .unwrap_or_else(|| editor.theme.get("ui.statusline")),
+                .unwrap_or_else(|| theme.get("ui.statusline")),
         );
 
-        let bufferline_active = editor
-            .theme
+        let bufferline_active = theme
             .try_get("ui.bufferline.active")
-            .unwrap_or_else(|| editor.theme.get("ui.statusline.active"));
+            .unwrap_or_else(|| theme.get("ui.statusline.active"));
 
-        let bufferline_inactive = editor
-            .theme
+        let bufferline_inactive = theme
             .try_get("ui.bufferline")
-            .unwrap_or_else(|| editor.theme.get("ui.statusline.inactive"));
+            .unwrap_or_else(|| theme.get("ui.statusline.inactive"));
 
         let mut x = viewport.x;
         let current_doc = view!(editor).doc;
 
         for doc in editor.documents() {
-            let fname = doc
+            let name = doc
                 .path()
                 .unwrap_or(&scratch)
                 .file_name()
@@ -687,22 +705,88 @@ impl EditorView {
                 .to_str()
                 .unwrap_or_default();
 
-            let style = if current_doc == doc.id() {
+            let is_active = current_doc == doc.id();
+
+            let base = if is_active {
                 bufferline_active
             } else {
                 bufferline_inactive
             };
 
-            let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
-            let used_width = viewport.x.saturating_sub(x);
-            let rem_width = surface.area.width.saturating_sub(used_width);
+            let path = doc.path();
 
-            x = surface
-                .set_stringn(x, viewport.y, text, rem_width as usize, style)
-                .0;
+            let icons = ICONS.load();
 
-            if x >= surface.area.right() {
-                break;
+            if let Some(path) = path {
+                let name = path.file_name().map(|name| name.display());
+                let ext = path.extension().map(|ext| ext.display());
+
+                if let Some(file) = icons.fs().file() {
+                    if let Some(icon) = file.get(path) {
+                        let style = if icon.is_user_overridden() {
+                            base.patch(icon.style())
+                        } else {
+                            // WARN: Order matters, with `name` needing to be first
+                            // to match exact file names before extensions.
+                            [name, ext]
+                                .into_iter()
+                                .flatten()
+                                .find_map(|scope| file.get_style_from_theme(theme, scope))
+                                .map_or_else(
+                                    || base.patch(icon.style()),
+                                    |style| base.patch(icon.style()).patch(style),
+                                )
+                        };
+
+                        let used = viewport.x.saturating_sub(x);
+                        let remaining = surface.area.width.saturating_sub(used);
+
+                        x = surface
+                            .set_stringn(
+                                x,
+                                viewport.y,
+                                icon.glyph().as_str(),
+                                remaining as usize,
+                                style,
+                            )
+                            .0;
+
+                        if x >= surface.area.right() {
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // PERF:
+            // Rather than using `format!{"{name} "}`, we can save an allocation.
+            for element in [name, " "] {
+                let used = viewport.x.saturating_sub(x);
+                let remaining = surface.area.width.saturating_sub(used);
+
+                x = surface
+                    .set_stringn(x, viewport.y, element, remaining as usize, base)
+                    .0;
+
+                if x >= surface.area.right() {
+                    break;
+                }
+            }
+
+            if doc.is_modified() {
+                let modified = icons.ui().indicator().modified();
+                for element in [modified.glyph().as_str(), " "] {
+                    let used = viewport.x.saturating_sub(x);
+                    let remaining = surface.area.width.saturating_sub(used);
+
+                    x = surface
+                        .set_stringn(x, viewport.y, element, remaining as usize, base)
+                        .0;
+
+                    if x >= surface.area.right() {
+                        break;
+                    }
+                }
             }
         }
     }

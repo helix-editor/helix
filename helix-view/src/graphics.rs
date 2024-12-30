@@ -751,6 +751,20 @@ impl Style {
     }
 }
 
+impl From<Color> for Style {
+    #[inline]
+    fn from(color: Color) -> Self {
+        Self::new().fg(color)
+    }
+}
+
+impl From<Option<Color>> for Style {
+    #[inline]
+    fn from(color: Option<Color>) -> Self {
+        color.map_or_else(Self::default, |color| Self::new().fg(color))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

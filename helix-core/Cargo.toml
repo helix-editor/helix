@@ -22,7 +22,7 @@ helix-parsec = { path = "../helix-parsec" }
 
 ropey.workspace = true
 smallvec = "1.15"
-smartstring = "1.0.1"
+smartstring.workspace = true
 unicode-segmentation.workspace = true
 # unicode-width is changing width definitions
 # that both break our logic and disagree with common

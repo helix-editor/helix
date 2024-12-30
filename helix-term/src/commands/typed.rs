@@ -1,6 +1,7 @@
 use std::fmt::Write;
 use std::io::BufReader;
 use std::ops::{self, Deref};
+use std::sync::Arc;
 
 use crate::job::Job;
 
@@ -1023,6 +1024,7 @@ fn force_cquit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
 
 fn theme(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
     let true_color = cx.editor.config.load().true_color || crate::true_color();
+
     match event {
         PromptEvent::Abort => {
             cx.editor.unset_theme_preview()?;
@@ -1036,9 +1038,9 @@ fn theme(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow
                     if !(true_color || theme.is_16_color()) {
                         bail!("Unsupported theme: theme requires true color support");
                     }
-                    cx.editor.set_theme_preview(theme)?;
-                };
-            };
+                    cx.editor.set_theme_preview(Arc::from(theme))?;
+                }
+            }
         }
         PromptEvent::Validate => {
             if let Some(theme_name) = args.first() {
@@ -1050,14 +1052,14 @@ fn theme(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow
                 if !(true_color || theme.is_16_color()) {
                     bail!("Unsupported theme: theme requires true color support");
                 }
-                cx.editor.set_theme(theme)?;
+                cx.editor.set_theme(Arc::from(theme))?;
             } else {
                 let name = cx.editor.theme.name().to_string();
 
                 cx.editor.set_status(name);
             }
         }
-    };
+    }
 
     Ok(())
 }

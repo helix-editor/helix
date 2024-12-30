@@ -17,6 +17,7 @@ use std::mem::replace;
 #[cfg(test)]
 mod test;
 
+use helix_stdx::string::StackString;
 use unicode_segmentation::{Graphemes, UnicodeSegmentation};
 
 use helix_stdx::rope::{RopeGraphemes, RopeSliceExt};
@@ -147,7 +148,7 @@ pub struct TextFormat {
     pub tab_width: u16,
     pub max_wrap: u16,
     pub max_indent_retain: u16,
-    pub wrap_indicator: Box<str>,
+    pub wrap_indicator: StackString,
     pub wrap_indicator_highlight: Option<Highlight>,
     pub viewport_width: u16,
     pub soft_wrap_at_text_width: bool,
@@ -161,7 +162,7 @@ impl Default for TextFormat {
             tab_width: 4,
             max_wrap: 3,
             max_indent_retain: 4,
-            wrap_indicator: Box::from(" "),
+            wrap_indicator: StackString::from(" "),
             viewport_width: 17,
             wrap_indicator_highlight: None,
             soft_wrap_at_text_width: false,

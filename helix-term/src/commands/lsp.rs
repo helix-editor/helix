@@ -9,7 +9,10 @@ use helix_lsp::{
     Client, LanguageServerId, OffsetEncoding,
 };
 use tokio_stream::StreamExt;
-use tui::{text::Span, widgets::Row};
+use tui::{
+    text::{Span, Spans},
+    widgets::{Cell, Row},
+};
 
 use super::{align_view, push_jump, Align, Context, Editor};
 
@@ -17,13 +20,14 @@ use helix_core::{
     diagnostic::DiagnosticProvider, syntax::config::LanguageServerFeature,
     text_annotations::InlineAnnotation, Selection, Uri,
 };
-use helix_stdx::path;
+use helix_stdx::{path, stack_format};
 use helix_view::{
     document::{DocumentInlayHints, DocumentInlayHintsId},
     editor::Action,
     handlers::lsp::SignatureHelpInvoked,
+    icons::ICONS,
     theme::Style,
-    Document, View,
+    Document, Theme, View,
 };
 
 use crate::{
@@ -32,7 +36,9 @@ use crate::{
     ui::{self, overlay::overlaid, FileLocation, Picker, Popup, PromptEvent},
 };
 
-use std::{cmp::Ordering, collections::HashSet, fmt::Display, future::Future, path::Path};
+use std::{
+    cmp::Ordering, collections::HashSet, fmt::Display, future::Future, path::Path, sync::Arc,
+};
 
 /// Gets the first language server that is attached to a document which supports a specific feature.
 /// If there is no configured language server that supports the feature, this displays a status message.
@@ -159,41 +165,6 @@ fn jump_to_position(
     }
 }
 
-fn display_symbol_kind(kind: lsp::SymbolKind) -> &'static str {
-    match kind {
-        lsp::SymbolKind::FILE => "file",
-        lsp::SymbolKind::MODULE => "module",
-        lsp::SymbolKind::NAMESPACE => "namespace",
-        lsp::SymbolKind::PACKAGE => "package",
-        lsp::SymbolKind::CLASS => "class",
-        lsp::SymbolKind::METHOD => "method",
-        lsp::SymbolKind::PROPERTY => "property",
-        lsp::SymbolKind::FIELD => "field",
-        lsp::SymbolKind::CONSTRUCTOR => "construct",
-        lsp::SymbolKind::ENUM => "enum",
-        lsp::SymbolKind::INTERFACE => "interface",
-        lsp::SymbolKind::FUNCTION => "function",
-        lsp::SymbolKind::VARIABLE => "variable",
-        lsp::SymbolKind::CONSTANT => "constant",
-        lsp::SymbolKind::STRING => "string",
-        lsp::SymbolKind::NUMBER => "number",
-        lsp::SymbolKind::BOOLEAN => "boolean",
-        lsp::SymbolKind::ARRAY => "array",
-        lsp::SymbolKind::OBJECT => "object",
-        lsp::SymbolKind::KEY => "key",
-        lsp::SymbolKind::NULL => "null",
-        lsp::SymbolKind::ENUM_MEMBER => "enummem",
-        lsp::SymbolKind::STRUCT => "struct",
-        lsp::SymbolKind::EVENT => "event",
-        lsp::SymbolKind::OPERATOR => "operator",
-        lsp::SymbolKind::TYPE_PARAMETER => "typeparam",
-        _ => {
-            log::warn!("Unknown symbol kind: {:?}", kind);
-            ""
-        }
-    }
-}
-
 #[derive(Copy, Clone, PartialEq)]
 enum DiagnosticsFormat {
     ShowSourcePath,
@@ -238,6 +209,8 @@ fn diag_picker(
             .cmp(&b.diag.severity.unwrap_or(lsp::DiagnosticSeverity::HINT))
     });
 
+    // TODO: Need to reconcile how to handle the icon
+    // style with these styles.
     let styles = DiagnosticStyles {
         hint: cx.editor.theme.get("hint"),
         info: cx.editor.theme.get("info"),
@@ -249,11 +222,21 @@ fn diag_picker(
         ui::PickerColumn::new(
             "severity",
             |item: &PickerDiagnostic, styles: &DiagnosticStyles| {
+                let icons = ICONS.load();
                 match item.diag.severity {
-                    Some(DiagnosticSeverity::HINT) => Span::styled("HINT", styles.hint),
-                    Some(DiagnosticSeverity::INFORMATION) => Span::styled("INFO", styles.info),
-                    Some(DiagnosticSeverity::WARNING) => Span::styled("WARN", styles.warning),
-                    Some(DiagnosticSeverity::ERROR) => Span::styled("ERROR", styles.error),
+                    Some(DiagnosticSeverity::HINT) => {
+                        Span::styled(format!("{}HINT", icons.diagnostic().hint()), styles.hint)
+                    }
+                    Some(DiagnosticSeverity::INFORMATION) => {
+                        Span::styled(format!("{}INFO", icons.diagnostic().info()), styles.info)
+                    }
+                    Some(DiagnosticSeverity::WARNING) => Span::styled(
+                        format!("{}WARN", icons.diagnostic().warning()),
+                        styles.warning,
+                    ),
+                    Some(DiagnosticSeverity::ERROR) => {
+                        Span::styled(format!("{}ERROR", icons.diagnostic().error()), styles.error)
+                    }
                     _ => Span::raw(""),
                 }
                 .into()
@@ -398,17 +381,41 @@ pub fn symbol_picker(cx: &mut Context) {
 
     cx.jobs.callback(async move {
         let mut symbols = Vec::new();
+
         while let Some(response) = futures.next().await {
             match response {
                 Ok(mut items) => symbols.append(&mut items),
                 Err(err) => log::error!("Error requesting document symbols: {err}"),
             }
         }
-        let call = move |_editor: &mut Editor, compositor: &mut Compositor| {
+
+        let call = move |editor: &mut Editor, compositor: &mut Compositor| {
             let columns = [
-                ui::PickerColumn::new("kind", |item: &SymbolInformationItem, _| {
-                    display_symbol_kind(item.symbol.kind).into()
-                }),
+                ui::PickerColumn::new(
+                    "kind",
+                    |item: &SymbolInformationItem, theme: &Arc<Theme>| {
+                        let name = item.symbol.kind.as_str().unwrap_or_default();
+                        let icons = ICONS.load();
+
+                        let mut line = Vec::new();
+
+                        let style = theme
+                            // WARN: `stack_format!` could panic if the string is too long,
+                            // but this is expected to not happen, but something to watch for.
+                            .try_get_exact(stack_format!("icons.kind.{name}").as_str());
+
+                        if let Some(icon) = icons.kind().get(name) {
+                            line.push(Span::styled(
+                                icon.to_string(),
+                                style.unwrap_or_else(|| icon.style()),
+                            ));
+                        }
+
+                        line.push(Span::raw(name));
+
+                        Cell::from(Spans::from(line))
+                    },
+                ),
                 // Some symbols in the document symbol picker may have a URI that isn't
                 // the current file. It should be rare though, so we concatenate that
                 // URI in with the symbol name in this picker.
@@ -428,7 +435,7 @@ pub fn symbol_picker(cx: &mut Context) {
                 columns,
                 1, // name column
                 symbols,
-                (),
+                editor.theme.clone(),
                 move |cx, item, action| {
                     jump_to_location(cx.editor, &item.location, action);
                 },
@@ -443,10 +450,12 @@ pub fn symbol_picker(cx: &mut Context) {
     });
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn workspace_symbol_picker(cx: &mut Context) {
     use crate::ui::picker::Injector;
 
     let doc = doc!(cx.editor);
+
     if doc
         .language_servers_with_feature(LanguageServerFeature::WorkspaceSymbols)
         .count()
@@ -459,7 +468,9 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
 
     let get_symbols = |pattern: &str, editor: &mut Editor, _data, injector: &Injector<_, _>| {
         let doc = doc!(editor);
+
         let mut seen_language_servers = HashSet::new();
+
         let mut futures: FuturesUnordered<_> = doc
             .language_servers_with_feature(LanguageServerFeature::WorkspaceSymbols)
             .filter(|ls| seen_language_servers.insert(ls.id()))
@@ -523,10 +534,33 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
         }
         .boxed()
     };
+
     let columns = [
-        ui::PickerColumn::new("kind", |item: &SymbolInformationItem, _| {
-            display_symbol_kind(item.symbol.kind).into()
-        }),
+        ui::PickerColumn::new(
+            "kind",
+            |item: &SymbolInformationItem, theme: &Arc<Theme>| {
+                let name = item.symbol.kind.as_str().unwrap_or_default();
+                let icons = ICONS.load();
+
+                let mut line = Vec::new();
+
+                let style = theme
+                    // WARN: `stack_format!` could panic if the string is too long,
+                    // but this is expected to not happen, but something to watch for.
+                    .try_get_exact(stack_format!("icons.kind.{name}").as_str());
+
+                if let Some(icon) = icons.kind().get(name) {
+                    line.push(Span::styled(
+                        icon.to_string(),
+                        style.unwrap_or_else(|| icon.style()),
+                    ));
+                }
+
+                line.push(Span::raw(name));
+
+                Cell::from(Spans::from(line))
+            },
+        ),
         ui::PickerColumn::new("name", |item: &SymbolInformationItem, _| {
             item.symbol.name.as_str().into()
         })
@@ -554,7 +588,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
         columns,
         1, // name column
         [],
-        (),
+        cx.editor.theme.clone(),
         move |cx, item, action| {
             jump_to_location(cx.editor, &item.location, action);
         },

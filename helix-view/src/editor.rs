@@ -601,7 +601,6 @@ pub struct StatusLineConfig {
     pub left: Vec<StatusLineElement>,
     pub center: Vec<StatusLineElement>,
     pub right: Vec<StatusLineElement>,
-    pub separator: String,
     pub mode: ModeConfig,
     pub diagnostics: Vec<Severity>,
     pub workspace_diagnostics: Vec<Severity>,
@@ -627,7 +626,6 @@ impl Default for StatusLineConfig {
                 E::Position,
                 E::FileEncoding,
             ],
-            separator: String::from("│"),
             mode: ModeConfig::default(),
             diagnostics: vec![Severity::Warning, Severity::Error],
             workspace_diagnostics: vec![Severity::Warning, Severity::Error],
@@ -849,14 +847,12 @@ impl std::str::FromStr for GutterType {
 #[serde(default)]
 pub struct WhitespaceConfig {
     pub render: WhitespaceRender,
-    pub characters: WhitespaceCharacters,
 }
 
 impl Default for WhitespaceConfig {
     fn default() -> Self {
         Self {
             render: WhitespaceRender::Basic(WhitespaceRenderValue::None),
-            characters: WhitespaceCharacters::default(),
         }
     }
 }
@@ -979,30 +975,6 @@ where
             ..Default::default()
         }),
         AutoSaveToml::AutoSave(auto_save) => Ok(auto_save),
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
-#[serde(default)]
-pub struct WhitespaceCharacters {
-    pub space: char,
-    pub nbsp: char,
-    pub nnbsp: char,
-    pub tab: char,
-    pub tabpad: char,
-    pub newline: char,
-}
-
-impl Default for WhitespaceCharacters {
-    fn default() -> Self {
-        Self {
-            space: '·',   // U+00B7
-            nbsp: '⍽',    // U+237D
-            nnbsp: '␣',   // U+2423
-            tab: '→',     // U+2192
-            newline: '⏎', // U+23CE
-            tabpad: ' ',
-        }
     }
 }
 
@@ -1216,10 +1188,10 @@ pub struct Editor {
     pub theme_loader: Arc<theme::Loader>,
     /// last_theme is used for theme previews. We store the current theme here,
     /// and if previewing is cancelled, we can return to it.
-    pub last_theme: Option<Theme>,
+    pub last_theme: Option<Arc<Theme>>,
     /// The currently applied editor theme. While previewing a theme, the previewed theme
     /// is set here.
-    pub theme: Theme,
+    pub theme: Arc<Theme>,
 
     /// The primary Selection prior to starting a goto_line_number preview. This is
     /// restored when the preview is aborted, or added to the jumplist when it is
@@ -1352,7 +1324,7 @@ impl Editor {
             selected_register: None,
             macro_recording: None,
             macro_replaying: Vec::new(),
-            theme: theme_loader.default(),
+            theme: Arc::from(theme_loader.default()),
             language_servers,
             diagnostics: Diagnostics::new(),
             diff_providers: DiffProviderRegistry::default(),
@@ -1492,15 +1464,15 @@ impl Editor {
         Ok(())
     }
 
-    pub fn set_theme_preview(&mut self, theme: Theme) -> anyhow::Result<()> {
+    pub fn set_theme_preview(&mut self, theme: Arc<Theme>) -> anyhow::Result<()> {
         self.set_theme_impl(theme, ThemeAction::Preview)
     }
 
-    pub fn set_theme(&mut self, theme: Theme) -> anyhow::Result<()> {
+    pub fn set_theme(&mut self, theme: Arc<Theme>) -> anyhow::Result<()> {
         self.set_theme_impl(theme, ThemeAction::Set)
     }
 
-    fn set_theme_impl(&mut self, theme: Theme, preview: ThemeAction) -> anyhow::Result<()> {
+    fn set_theme_impl(&mut self, theme: Arc<Theme>, preview: ThemeAction) -> anyhow::Result<()> {
         // `ui.selection` is the only scope required to be able to render a theme.
         if theme.find_highlight_exact("ui.selection").is_none() {
             bail!("Invalid theme: `ui.selection` required");
@@ -1512,7 +1484,7 @@ impl Editor {
         match preview {
             ThemeAction::Preview => {
                 let last_theme = std::mem::replace(&mut self.theme, theme);
-                // only insert on first preview: this will be the last theme the user has saved
+                // Only insert on first preview: this will be the last theme the user has saved
                 self.last_theme.get_or_insert(last_theme);
             }
             ThemeAction::Set => {
