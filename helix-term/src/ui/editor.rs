@@ -27,6 +27,7 @@ use helix_view::{
     document::{Mode, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
+    icons::ICONS,
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
@@ -597,7 +598,19 @@ impl EditorView {
                 bufferline_inactive
             };
 
-            let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
+            let icons = ICONS.load();
+
+            let text = if let Some(icon) = icons.mime().get(doc.path(), doc.language_name()) {
+                format!(
+                    " {}  {} {}",
+                    icon.glyph(),
+                    fname,
+                    if doc.is_modified() { "[+] " } else { "" }
+                )
+            } else {
+                format!(" {} {}", fname, if doc.is_modified() { "[+] " } else { "" })
+            };
+
             let used_width = viewport.x.saturating_sub(x);
             let rem_width = surface.area.width.saturating_sub(used_width);
 
