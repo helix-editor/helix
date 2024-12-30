@@ -265,7 +265,13 @@ pub fn breakpoints<'doc>(
                 breakpoint_style
             };
 
-            let sym = if breakpoint.verified { "●" } else { "◯" };
+            let config = editor.config();
+
+            let sym = if breakpoint.verified {
+                config.icons.dap.verified()
+            } else {
+                config.icons.dap.unverified()
+            };
             write!(out, "{}", sym).unwrap();
             Some(style)
         },

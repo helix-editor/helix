@@ -2,14 +2,13 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
-// TODO: Dap: verified ●, unverified ◯
-
 #[derive(Debug, Serialize, Deserialize, Default, PartialEq, Eq, Clone)]
 pub struct Icons {
     pub mime: Mime,
     pub lsp: Lsp,
     pub diagnostic: Diagnostic,
     pub vcs: Vcs,
+    pub dap: Dap,
 }
 
 // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_documentSymbol
@@ -246,5 +245,28 @@ impl Mime {
 
     pub fn lang(&self, mime: &str) -> &str {
         self.mime.get(mime).map_or("*", |mime| mime)
+    }
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Default)]
+pub struct Dap {
+    verified: Option<String>,
+    unverified: Option<String>,
+}
+
+impl Dap {
+    const DEFAULT_VERIFIED: &'static str = "●";
+    const DEFAULT_UNVERIFIED: &'static str = "◯";
+
+    pub fn verified(&self) -> &str {
+        self.verified
+            .as_ref()
+            .map_or(Self::DEFAULT_VERIFIED, |verified| verified)
+    }
+
+    pub fn unverified(&self) -> &str {
+        self.verified
+            .as_ref()
+            .map_or(Self::DEFAULT_UNVERIFIED, |verified| verified)
     }
 }
