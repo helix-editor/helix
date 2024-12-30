@@ -20,6 +20,7 @@ use crate::job::{self, Callback};
 pub use completion::Completion;
 pub use editor::EditorView;
 use helix_stdx::rope;
+use helix_view::icons::ICONS;
 use helix_view::theme::Style;
 pub use markdown::Markdown;
 pub use menu::Menu;
@@ -30,7 +31,8 @@ pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
 
 use helix_view::Editor;
-use tui::text::{Span, Spans};
+use tui::text::{Span, Spans, ToSpan};
+use tui::widgets::Cell;
 
 use std::path::Path;
 use std::{error::Error, path::PathBuf};
@@ -249,7 +251,14 @@ pub fn file_picker(editor: &Editor, root: PathBuf) -> FilePicker {
         "path",
         |item: &PathBuf, data: &FilePickerData| {
             let path = item.strip_prefix(&data.root).unwrap_or(item);
-            let mut spans = Vec::with_capacity(3);
+            let mut spans = Vec::with_capacity(4);
+
+            let icons = ICONS.load();
+
+            if let Some(icon) = icons.fs().from_path(path) {
+                spans.push(icon.to_span_with(|icon| format!("{icon} ")));
+            }
+
             if let Some(dirs) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
                 spans.extend([
                     Span::styled(dirs.to_string_lossy(), data.directory_style),
@@ -310,8 +319,22 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         "path",
         |(path, is_dir): &(PathBuf, bool), (root, directory_style): &(PathBuf, Style)| {
             let name = path.strip_prefix(root).unwrap_or(path).to_string_lossy();
+
+            let icons = ICONS.load();
+
             if *is_dir {
-                Span::styled(format!("{}/", name), *directory_style).into()
+                if let Some(icon) = icons.fs().directory(false) {
+                    Span::styled(format!("{icon} {name}/"), *directory_style).into()
+                } else {
+                    Span::styled(format!("{name}/"), *directory_style).into()
+                }
+            } else if let Some(icon) = icons.fs().from_path(path) {
+                let mut spans = Vec::with_capacity(2);
+
+                spans.push(icon.to_span_with(|icon| format!("{icon} ")));
+                spans.push(Span::raw(name));
+
+                Cell::from(Spans::from(spans))
             } else {
                 name.into()
             }
