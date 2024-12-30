@@ -53,6 +53,7 @@ parking_lot.workspace = true
 thiserror.workspace = true
 
 kstring = "2.0"
+smartstring = { version = "1.0.1", features = ["serde"]}
 
 [target.'cfg(windows)'.dependencies]
 clipboard-win = { version = "5.4", features = ["std"] }

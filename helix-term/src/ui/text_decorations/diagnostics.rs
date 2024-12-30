@@ -9,6 +9,7 @@ use helix_view::annotations::diagnostics::{
     DiagnosticFilter, InlineDiagnosticAccumulator, InlineDiagnosticsConfig,
 };
 
+use helix_view::icons::ICONS;
 use helix_view::theme::Style;
 use helix_view::{Document, Theme};
 
@@ -101,6 +102,24 @@ impl Renderer<'_, '_> {
         let start_col = (col - self.renderer.offset.col) as u16;
         let mut end_col = start_col;
         let mut draw_col = (col + 1) as u16;
+
+        // Draw the diagnostic indicator:
+        if !self.renderer.column_in_bounds(draw_col as usize, 2) {
+            return 0;
+        }
+
+        let icons = ICONS.load();
+
+        let symbol = match diag.severity() {
+            Severity::Hint => icons.diagnostic().hint(),
+            Severity::Info => icons.diagnostic().info(),
+            Severity::Warning => icons.diagnostic().warning(),
+            Severity::Error => icons.diagnostic().error(),
+        };
+
+        self.renderer
+            .set_string(self.renderer.viewport.x + draw_col, row, symbol, style);
+        draw_col += 2;
 
         for line in diag.message.lines() {
             if !self.renderer.column_in_bounds(draw_col as usize, 1) {
