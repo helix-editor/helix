@@ -162,6 +162,19 @@ pub struct Diagnostic {
     error: Option<String>,
 }
 
+// NOTE: #6646 can be achieved by uncommenting this or adding the symbols
+// to the `map_or` default.
+// impl Default for Diagnostic {
+//     fn default() -> Self {
+//         Self {
+//             hint: Some(String::from("○")),
+//             info: Some(String::from("●")),
+//             warning: Some(String::from("▲")),
+//             error: Some(String::from("■")),
+//         }
+//     }
+// }
+
 impl Diagnostic {
     const DEFAULT: &'static str = "●";
 
