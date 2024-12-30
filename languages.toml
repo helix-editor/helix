@@ -4013,7 +4013,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "vento"
-source = { git = "https://github.com/ventojs/tree-sitter-vento", rev = "3321077d7446c1b3b017c294fd56ce028ed817fe" }
+source = { git = "https://github.com/ventojs/tree-sitter-vento", rev = "3b32474bc29584ea214e4e84b47102408263fe0e" }
 
 [[language]]
 name = "nginx"
