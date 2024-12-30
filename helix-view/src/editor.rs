@@ -14,6 +14,7 @@ use crate::{
     tree::{self, Tree},
     Document, DocumentId, View, ViewId,
 };
+use config::Icons;
 use dap::StackFrame;
 use helix_event::dispatch;
 use helix_vcs::DiffProviderRegistry;
@@ -22,6 +23,8 @@ use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
 use helix_lsp::{Call, LanguageServerId};
 use tokio_stream::wrappers::UnboundedReceiverStream;
+
+mod config;
 
 use std::{
     borrow::Cow,
@@ -360,6 +363,8 @@ pub struct Config {
     pub end_of_line_diagnostics: DiagnosticFilter,
     // Set to override the default clipboard provider
     pub clipboard_provider: ClipboardProvider,
+
+    pub icons: Icons,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -1001,6 +1006,7 @@ impl Default for Config {
             inline_diagnostics: InlineDiagnosticsConfig::default(),
             end_of_line_diagnostics: DiagnosticFilter::Disable,
             clipboard_provider: ClipboardProvider::default(),
+            icons: Icons::default(),
         }
     }
 }

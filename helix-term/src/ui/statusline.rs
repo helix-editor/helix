@@ -243,7 +243,13 @@ where
     if warnings > 0 {
         write(
             context,
-            "●".to_string(),
+            context
+                .editor
+                .config()
+                .icons
+                .diagnostic
+                .warning()
+                .to_string(),
             Some(context.editor.theme.get("warning")),
         );
         write(context, format!(" {} ", warnings), None);
@@ -252,7 +258,7 @@ where
     if errors > 0 {
         write(
             context,
-            "●".to_string(),
+            context.editor.config().icons.diagnostic.error().to_string(),
             Some(context.editor.theme.get("error")),
         );
         write(context, format!(" {} ", errors), None);
@@ -285,7 +291,13 @@ where
     if warnings > 0 {
         write(
             context,
-            "●".to_string(),
+            context
+                .editor
+                .config()
+                .icons
+                .diagnostic
+                .warning()
+                .to_string(),
             Some(context.editor.theme.get("warning")),
         );
         write(context, format!(" {} ", warnings), None);
@@ -294,7 +306,7 @@ where
     if errors > 0 {
         write(
             context,
-            "●".to_string(),
+            context.editor.config().icons.diagnostic.error().to_string(),
             Some(context.editor.theme.get("error")),
         );
         write(context, format!(" {} ", errors), None);
@@ -410,9 +422,11 @@ fn render_file_type<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let file_type = context.doc.language_name().unwrap_or(DEFAULT_LANGUAGE_NAME);
+    let mime = &context.editor.config().icons.mime;
 
-    write(context, format!(" {} ", file_type), None);
+    let icon = mime.lang(context.doc.language_name().unwrap_or(DEFAULT_LANGUAGE_NAME));
+
+    write(context, format!(" {} ", icon), None);
 }
 
 fn render_file_name<F>(context: &mut RenderContext, write: F)
@@ -514,13 +528,18 @@ fn render_version_control<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let head = context
-        .doc
-        .version_control_head()
-        .unwrap_or_default()
-        .to_string();
+    let head = context.doc.version_control_head().unwrap_or_default();
 
-    write(context, head, None);
+    let config = context.editor.config();
+    let icon = config.icons.vcs.icon();
+
+    let vcs = if head.is_empty() {
+        format!("{head}")
+    } else {
+        format!("{icon}{head}")
+    };
+
+    write(context, vcs, None);
 }
 
 fn render_register<F>(context: &mut RenderContext, write: F)
