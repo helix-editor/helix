@@ -648,7 +648,7 @@ impl EditorView {
 
             let lang = doc.language_name().unwrap_or(DEFAULT_LANGUAGE_NAME);
             let config = editor.config();
-            let icon = config.icons.mime.lang(lang);
+            let icon = config.icons.mime.get(lang);
 
             let text = format!(
                 " {icon} {}{} ",

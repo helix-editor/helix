@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Serialize, Deserialize, Default, PartialEq, Eq, Clone)]
+#[serde(default)]
 pub struct Icons {
     pub mime: Mime,
     pub lsp: Lsp,
@@ -153,23 +154,12 @@ impl Lsp {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Default)]
 pub struct Diagnostic {
     hint: Option<String>,
     info: Option<String>,
     warning: Option<String>,
     error: Option<String>,
-}
-
-impl Default for Diagnostic {
-    fn default() -> Self {
-        Self {
-            hint: Some(String::from("○")),
-            info: Some(String::from("●")),
-            warning: Some(String::from("▲")),
-            error: Some(String::from("■")),
-        }
-    }
 }
 
 impl Diagnostic {
@@ -191,17 +181,9 @@ impl Diagnostic {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Default)]
 pub struct Vcs {
     icon: Option<String>,
-}
-
-impl Default for Vcs {
-    fn default() -> Self {
-        Self {
-            icon: Some(String::from(" ")),
-        }
-    }
 }
 
 impl Vcs {
@@ -214,37 +196,21 @@ impl Vcs {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Default)]
 pub struct Mime {
     directory: Option<String>,
+    #[serde(flatten)]
     mime: HashMap<String, String>,
-}
-
-impl Default for Mime {
-    fn default() -> Self {
-        Self {
-            directory: None,
-            mime: {
-                let mut mime = HashMap::new();
-                mime.insert(String::from("rust"), String::from("󱘗 "));
-                mime.insert(String::from("markdown"), String::from(" "));
-                mime.insert(String::from("css"), String::from("󰌜 "));
-                mime.insert(String::from("toml"), String::from(" "));
-                mime.insert(String::from("lock"), String::from("󱌼 "));
-                mime.insert(String::from("text"), String::from(" "));
-                mime
-            },
-        }
-    }
 }
 
 impl Mime {
     pub fn directory(&self) -> &str {
-        self.directory.as_ref().map_or("🖿 ", |directory| directory)
+        self.directory.as_ref().map_or("", |directory| directory)
     }
 
-    pub fn lang(&self, mime: &str) -> &str {
-        self.mime.get(mime).map_or("*", |mime| mime)
+    // Returns the symbol that matches the name, if any, otherwise returns the name back.
+    pub fn get<'name, 'mime: 'name>(&'mime self, r#type: &'name str) -> &'name str {
+        self.mime.get(r#type).map_or(r#type, |mime| mime)
     }
 }
 

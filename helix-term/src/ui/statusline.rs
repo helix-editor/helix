@@ -424,7 +424,7 @@ where
 {
     let mime = &context.editor.config().icons.mime;
 
-    let icon = mime.lang(context.doc.language_name().unwrap_or(DEFAULT_LANGUAGE_NAME));
+    let icon = mime.get(context.doc.language_name().unwrap_or(DEFAULT_LANGUAGE_NAME));
 
     write(context, format!(" {} ", icon), None);
 }
@@ -536,7 +536,7 @@ where
     let vcs = if head.is_empty() {
         format!("{head}")
     } else {
-        format!("{icon}{head}")
+        format!("{icon} {head}")
     };
 
     write(context, vcs, None);
