@@ -1,4 +1,4 @@
-use helix_core::{coords_at_pos, encoding, Position};
+use helix_core::{indent::IndentStyle, coords_at_pos, encoding, Position};
 use helix_lsp::lsp::DiagnosticSeverity;
 use helix_view::document::DEFAULT_LANGUAGE_NAME;
 use helix_view::{
@@ -341,11 +341,36 @@ where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
     let position = get_position(context);
-    write(
-        context,
-        format!(" {}:{} ", position.row + 1, position.col + 1),
-        None,
-    );
+    if context.doc.indent_style == IndentStyle::Tabs {
+        let pos = context
+            .doc
+            .selection(context.view.id)
+            .primary()
+            .cursor(context.doc.text().slice(..));
+        let text = context.doc.text().slice(..);
+        let line = text.line(text.char_to_line(pos));
+        let mut col = position.col;
+        let tab_width = context.doc.tab_width();
+        let mut chars_from_last_tab = 0;
+        if col > 0 {
+            for (i, ch) in line.chars().enumerate() {
+                if ch == '\t' {
+                    col += tab_width - chars_from_last_tab % tab_width - 1;
+                    chars_from_last_tab = 0;
+                } else {
+                    chars_from_last_tab += 1;
+                }
+                if i >= position.col - 1 { break }
+            }
+        }
+        write(context, format!(" {}:{}-{} ", position.row + 1, position.col + 1, col + 1), None);
+    } else {
+        write(
+            context,
+            format!(" {}:{} ", position.row + 1, position.col + 1),
+            None,
+        );
+    }
 }
 
 fn render_total_line_numbers<F>(context: &mut RenderContext, write: F)
