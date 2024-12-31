@@ -110,7 +110,7 @@ impl Renderer<'_, '_> {
             (end_col, _) = self.renderer.set_string_truncated(
                 self.renderer.viewport.x + draw_col,
                 row,
-                line,
+                format!("{} {}", self.config.diagnostic_marker, line).as_str(),
                 width.saturating_sub(draw_col) as usize,
                 |_| style,
                 true,
