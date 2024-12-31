@@ -338,7 +338,7 @@ name = "awk"
 source = { git = "https://github.com/Beaglefoot/tree-sitter-awk", rev = "a799bc5da7c2a84bc9a06ba5f3540cf1191e4ee3" }
 
 [[language]]
-name = "proto"
+name = "protobuf"
 scope = "source.proto"
 injection-regex = "proto"
 file-types = ["proto"]
@@ -346,6 +346,7 @@ language-servers = [ "bufls", "pbkit" ]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 2, unit = "  " }
+grammar = "proto"
 
 [[grammar]]
 name = "proto"
