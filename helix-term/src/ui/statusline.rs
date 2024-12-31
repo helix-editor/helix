@@ -422,9 +422,11 @@ fn render_file_type<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let mime = &context.editor.config().icons.mime;
+    let icons = &context.editor.config().icons;
 
-    let icon = mime.get(context.doc.language_name().unwrap_or(DEFAULT_LANGUAGE_NAME));
+    let icon = icons
+        .mime
+        .get(context.doc.language_name().unwrap_or(DEFAULT_LANGUAGE_NAME));
 
     write(context, format!(" {} ", icon), None);
 }
@@ -530,8 +532,8 @@ where
 {
     let head = context.doc.version_control_head().unwrap_or_default();
 
-    let config = context.editor.config();
-    let icon = config.icons.vcs.icon();
+    let icons = &context.editor.config().icons;
+    let icon = icons.vcs.icon();
 
     let vcs = if head.is_empty() {
         format!("{head}")
