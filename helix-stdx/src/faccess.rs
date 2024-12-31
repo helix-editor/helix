@@ -547,10 +547,7 @@ pub fn copy_xattr(src: &Path, dst: &Path) -> io::Result<()> {
     }
 
     let mut attr_buf = vec![0u8; max_val_len];
-    for key in key_list[..size]
-        .split(|&b| b == 0)
-        .filter(|v| !v.is_empty())
-    {
+    for key in key_list[..size].split_inclusive(|&b| b == 0) {
         // Needed on macos
         #[allow(clippy::unnecessary_cast)]
         let conv = unsafe { std::slice::from_raw_parts(key.as_ptr() as *const u8, key.len()) };
