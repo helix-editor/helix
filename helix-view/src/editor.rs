@@ -7,6 +7,7 @@ use crate::{
     events::DocumentFocusLost,
     graphics::{CursorKind, Rect},
     handlers::Handlers,
+    icons,
     info::Info,
     input::KeyEvent,
     register::Registers,
@@ -14,17 +15,15 @@ use crate::{
     tree::{self, Tree},
     Document, DocumentId, View, ViewId,
 };
-use config::Icons;
 use dap::StackFrame;
 use helix_event::dispatch;
 use helix_vcs::DiffProviderRegistry;
+use icons::Icons;
 
 use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
 use helix_lsp::{Call, LanguageServerId};
 use tokio_stream::wrappers::UnboundedReceiverStream;
-
-mod config;
 
 use std::{
     borrow::Cow,
