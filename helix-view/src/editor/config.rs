@@ -2,6 +2,10 @@ use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
+use smartstring::{LazyCompact, SmartString};
+
+type String = SmartString<LazyCompact>;
+
 #[derive(Debug, Serialize, Deserialize, Default, PartialEq, Eq, Clone)]
 #[serde(default)]
 pub struct Icons {
