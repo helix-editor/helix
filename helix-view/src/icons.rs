@@ -391,15 +391,15 @@ impl Mime {
 
     // Returns the symbol that matches the name, if any, otherwise returns the name back.
     #[inline]
-    pub fn get<'name, 'mime: 'name>(&'mime self, r#type: &'name str) -> &'name str {
+    pub fn get<'name, 'mime: 'name>(&'mime self, name: &'name str) -> &'name str {
         if self.enabled {
-            if let Some(symbol) = self.mime.get(r#type) {
+            if let Some(symbol) = self.mime.get(name) {
                 return symbol;
-            } else if let Some(symbol) = MIMES.get(r#type) {
+            } else if let Some(symbol) = MIMES.get(name) {
                 return symbol;
             }
         }
-        r#type
+        name
     }
 }
 
