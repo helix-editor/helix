@@ -15,6 +15,8 @@ pub struct Icons {
 // https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocument_documentSymbol
 #[derive(Debug, Serialize, Deserialize, Default, PartialEq, Eq, Clone)]
 pub struct Lsp {
+    enabled: bool,
+
     file: Option<String>,
     module: Option<String>,
     namespace: Option<String>,
@@ -46,162 +48,221 @@ pub struct Lsp {
 }
 
 impl Lsp {
-    const DEFAULT: &'static str = "*";
-
     #[inline]
     pub fn file(&self) -> &str {
-        self.file.as_ref().map_or(Self::DEFAULT, |file| file)
+        if self.enabled {
+            return self.file.as_ref().map_or("", |file| file);
+        }
+        ""
     }
 
     #[inline]
     pub fn module(&self) -> &str {
-        self.module.as_ref().map_or(Self::DEFAULT, |module| module)
+        if self.enabled {
+            return self.module.as_ref().map_or("", |module| module);
+        }
+        ""
     }
 
     #[inline]
     pub fn namespace(&self) -> &str {
-        self.namespace
-            .as_ref()
-            .map_or(Self::DEFAULT, |namespace| namespace)
+        if self.enabled {
+            return self.namespace.as_ref().map_or("", |namespace| namespace);
+        }
+        ""
     }
 
     #[inline]
     pub fn package(&self) -> &str {
-        self.package
-            .as_ref()
-            .map_or(Self::DEFAULT, |package| package)
+        if self.enabled {
+            return self.package.as_ref().map_or("", |package| package);
+        }
+        ""
     }
 
     #[inline]
     pub fn class(&self) -> &str {
-        self.class.as_ref().map_or(Self::DEFAULT, |class| class)
+        if self.enabled {
+            return self.class.as_ref().map_or("", |class| class);
+        }
+        ""
     }
 
     #[inline]
     pub fn method(&self) -> &str {
-        self.method.as_ref().map_or(Self::DEFAULT, |method| method)
+        if self.enabled {
+            return self.method.as_ref().map_or("", |method| method);
+        }
+        ""
     }
 
     #[inline]
     pub fn property(&self) -> &str {
-        self.property
-            .as_ref()
-            .map_or(Self::DEFAULT, |property| property)
+        if self.enabled {
+            return self.property.as_ref().map_or("", |property| property);
+        }
+        ""
     }
 
     #[inline]
     pub fn field(&self) -> &str {
-        self.field.as_ref().map_or(Self::DEFAULT, |field| field)
+        if self.enabled {
+            return self.field.as_ref().map_or("", |field| field);
+        }
+        ""
     }
 
     #[inline]
     pub fn constructor(&self) -> &str {
-        self.constructor
-            .as_ref()
-            .map_or(Self::DEFAULT, |constructor| constructor)
+        if self.enabled {
+            return self
+                .constructor
+                .as_ref()
+                .map_or("", |constructor| constructor);
+        }
+        ""
     }
 
     #[inline]
     pub fn r#enum(&self) -> &str {
-        self.r#enum.as_ref().map_or(Self::DEFAULT, |r#enum| r#enum)
+        if self.enabled {
+            return self.r#enum.as_ref().map_or("", |r#enum| r#enum);
+        }
+        ""
     }
 
     #[inline]
     pub fn interface(&self) -> &str {
-        self.interface
-            .as_ref()
-            .map_or(Self::DEFAULT, |interface| interface)
+        if self.enabled {
+            return self.interface.as_ref().map_or("", |interface| interface);
+        }
+        ""
     }
 
     #[inline]
     pub fn function(&self) -> &str {
-        self.function
-            .as_ref()
-            .map_or(Self::DEFAULT, |function| function)
+        if self.enabled {
+            return self.function.as_ref().map_or("", |function| function);
+        }
+        ""
     }
 
     #[inline]
     pub fn variable(&self) -> &str {
-        self.variable
-            .as_ref()
-            .map_or(Self::DEFAULT, |variable| variable)
+        if self.enabled {
+            return self.variable.as_ref().map_or("", |variable| variable);
+        }
+        ""
     }
 
     #[inline]
     pub fn constant(&self) -> &str {
-        self.constant
-            .as_ref()
-            .map_or(Self::DEFAULT, |constant| constant)
+        if self.enabled {
+            return self.constant.as_ref().map_or("", |constant| constant);
+        }
+        ""
     }
 
     #[inline]
     pub fn string(&self) -> &str {
-        self.string.as_ref().map_or(Self::DEFAULT, |string| string)
+        if self.enabled {
+            return self.string.as_ref().map_or("", |string| string);
+        }
+        ""
     }
 
     #[inline]
     pub fn number(&self) -> &str {
-        self.number.as_ref().map_or(Self::DEFAULT, |number| number)
+        if self.enabled {
+            return self.number.as_ref().map_or("", |number| number);
+        }
+        ""
     }
 
     #[inline]
     pub fn boolean(&self) -> &str {
-        self.boolean
-            .as_ref()
-            .map_or(Self::DEFAULT, |boolean| boolean)
+        if self.enabled {
+            return self.boolean.as_ref().map_or("", |boolean| boolean);
+        }
+        ""
     }
 
     #[inline]
     pub fn array(&self) -> &str {
-        self.array.as_ref().map_or(Self::DEFAULT, |array| array)
+        if self.enabled {
+            return self.array.as_ref().map_or("", |array| array);
+        }
+        ""
     }
 
     #[inline]
     pub fn object(&self) -> &str {
-        self.object.as_ref().map_or(Self::DEFAULT, |object| object)
+        if self.enabled {
+            return self.object.as_ref().map_or("", |object| object);
+        }
+        ""
     }
 
     #[inline]
     pub fn key(&self) -> &str {
-        self.key.as_ref().map_or(Self::DEFAULT, |key| key)
+        if self.enabled {
+            return self.key.as_ref().map_or("", |key| key);
+        }
+        ""
     }
 
     #[inline]
     pub fn null(&self) -> &str {
-        self.null.as_ref().map_or(Self::DEFAULT, |null| null)
+        if self.enabled {
+            return self.null.as_ref().map_or("󰟢", |null| null);
+        }
+        ""
     }
 
     #[inline]
     pub fn enum_member(&self) -> &str {
-        self.enum_member
-            .as_ref()
-            .map_or(Self::DEFAULT, |enum_member| enum_member)
+        if self.enabled {
+            return self
+                .enum_member
+                .as_ref()
+                .map_or("", |enum_member| enum_member);
+        }
+        ""
     }
 
     #[inline]
     pub fn r#struct(&self) -> &str {
-        self.r#struct
-            .as_ref()
-            .map_or(Self::DEFAULT, |r#struct| r#struct)
+        if self.enabled {
+            return self.r#struct.as_ref().map_or("", |r#struct| r#struct);
+        }
+        ""
     }
 
     #[inline]
     pub fn event(&self) -> &str {
-        self.event.as_ref().map_or(Self::DEFAULT, |event| event)
+        if self.enabled {
+            return self.event.as_ref().map_or("", |event| event);
+        }
+        ""
     }
 
     #[inline]
     pub fn operator(&self) -> &str {
-        self.operator
-            .as_ref()
-            .map_or(Self::DEFAULT, |operator| operator)
+        if self.enabled {
+            return self.operator.as_ref().map_or("", |operator| operator);
+        }
+        ""
     }
 
     #[inline]
     pub fn type_parameter(&self) -> &str {
-        self.type_parameter
-            .as_ref()
-            .map_or(Self::DEFAULT, |type_parameter| type_parameter)
+        if self.enabled {
+            return self
+                .type_parameter
+                .as_ref()
+                .map_or("", |type_parameter| type_parameter);
+        }
+        ""
     }
 }
 
@@ -213,78 +274,128 @@ pub struct Diagnostic {
     error: Option<String>,
 }
 
-// NOTE: #6646 can be achieved by uncommenting this or adding the symbols
-// to the `map_or` default.
-// impl Default for Diagnostic {
-//     fn default() -> Self {
-//         Self {
-//             hint: Some(String::from("○")),
-//             info: Some(String::from("●")),
-//             warning: Some(String::from("▲")),
-//             error: Some(String::from("■")),
-//         }
-//     }
-// }
-
 impl Diagnostic {
-    const DEFAULT: &'static str = "●";
-
     #[inline]
     pub fn hint(&self) -> &str {
-        self.hint.as_ref().map_or(Self::DEFAULT, |hint| hint)
+        self.hint.as_ref().map_or("○", |hint| hint)
     }
 
     #[inline]
     pub fn info(&self) -> &str {
-        self.info.as_ref().map_or(Self::DEFAULT, |info| info)
+        self.info.as_ref().map_or("●", |info| info)
     }
 
     #[inline]
     pub fn warning(&self) -> &str {
-        self.warning
-            .as_ref()
-            .map_or(Self::DEFAULT, |warning| warning)
+        self.warning.as_ref().map_or("▲", |warning| warning)
     }
 
     #[inline]
     pub fn error(&self) -> &str {
-        self.error.as_ref().map_or(Self::DEFAULT, |error| error)
+        self.error.as_ref().map_or("■", |error| error)
     }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Default)]
 pub struct Vcs {
+    enabled: bool,
     icon: Option<String>,
 }
 
 impl Vcs {
-    const DEFAULT: &'static str = "";
-
     #[inline]
     pub fn icon(&self) -> &str {
-        self.icon
-            .as_ref()
-            .map_or(Self::DEFAULT, |icon| icon.as_str())
+        if self.enabled {
+            return self.icon.as_ref().map_or("", |icon| icon.as_str());
+        }
+        ""
     }
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Default)]
 pub struct Mime {
+    enabled: bool,
     directory: Option<String>,
     #[serde(flatten)]
     mime: HashMap<String, String>,
 }
 
+static MIMES: once_cell::sync::Lazy<HashMap<String, String>> = once_cell::sync::Lazy::new(|| {
+    let mut mimes = HashMap::new();
+
+    mimes.insert(String::from("rust"), String::from("󱘗"));
+    mimes.insert(String::from("python"), String::from("󰌠"));
+    mimes.insert(String::from("c"), String::from(""));
+    mimes.insert(String::from("cpp"), String::from(""));
+    mimes.insert(String::from("c-sharp"), String::from("󰌛"));
+    mimes.insert(String::from("d"), String::from(""));
+    mimes.insert(String::from("elixir"), String::from(""));
+    mimes.insert(String::from("fsharp"), String::from(""));
+    mimes.insert(String::from("go"), String::from("󰟓"));
+    mimes.insert(String::from("haskell"), String::from("󰲒"));
+    mimes.insert(String::from("java"), String::from("󰬷"));
+    mimes.insert(String::from("javascript"), String::from("󰌞"));
+    mimes.insert(String::from("kotlin"), String::from("󱈙"));
+    mimes.insert(String::from("html"), String::from("󰌝"));
+    mimes.insert(String::from("css"), String::from("󰌜"));
+    mimes.insert(String::from("typescript"), String::from("󰛦"));
+    mimes.insert(String::from("bash"), String::from(""));
+    mimes.insert(String::from("php"), String::from("󰌟"));
+    mimes.insert(String::from("powershell"), String::from("󰨊"));
+    mimes.insert(String::from("dart"), String::from(""));
+    mimes.insert(String::from("ruby"), String::from("󰴭"));
+    mimes.insert(String::from("swift"), String::from("󰛥"));
+    mimes.insert(String::from("r"), String::from("󰟔"));
+    mimes.insert(String::from("groovy"), String::from(""));
+    mimes.insert(String::from("scala"), String::from(""));
+    mimes.insert(String::from("perl"), String::from(""));
+    mimes.insert(String::from("closure"), String::from(""));
+    mimes.insert(String::from("julia"), String::from(""));
+    mimes.insert(String::from("zig"), String::from(""));
+    mimes.insert(String::from("fortran"), String::from("󱈚"));
+    mimes.insert(String::from("erlang"), String::from(""));
+    mimes.insert(String::from("ocaml"), String::from(""));
+    mimes.insert(String::from("crystal"), String::from(""));
+    mimes.insert(String::from("svelte"), String::from(""));
+    mimes.insert(String::from("gdscript"), String::from(""));
+    mimes.insert(String::from("nim"), String::from(""));
+
+    mimes.insert(String::from("docker"), String::from("󰡨"));
+    mimes.insert(String::from("make"), String::from(""));
+    mimes.insert(String::from("cmake"), String::from(""));
+    mimes.insert(String::from("nix"), String::from(""));
+
+    mimes.insert(String::from("text"), String::from(""));
+    mimes.insert(String::from("markdown"), String::from(""));
+    mimes.insert(String::from("json"), String::from("󰘦"));
+    mimes.insert(String::from("toml"), String::from(""));
+    mimes.insert(String::from("xml"), String::from("󰗀"));
+
+    mimes
+});
+
 impl Mime {
     #[inline]
     pub fn directory(&self) -> &str {
-        self.directory.as_ref().map_or("", |directory| directory)
+        if self.enabled {
+            return self.directory.as_ref().map_or("󰉋", |directory| directory);
+        } else if let Some(directory) = &self.directory {
+            return directory;
+        }
+        ""
     }
 
     // Returns the symbol that matches the name, if any, otherwise returns the name back.
     #[inline]
     pub fn get<'name, 'mime: 'name>(&'mime self, r#type: &'name str) -> &'name str {
-        self.mime.get(r#type).map_or(r#type, |mime| mime)
+        if self.enabled {
+            if let Some(symbol) = self.mime.get(r#type) {
+                return symbol;
+            } else if let Some(symbol) = MIMES.get(r#type) {
+                return symbol;
+            }
+        }
+        r#type
     }
 }
 
@@ -295,20 +406,13 @@ pub struct Dap {
 }
 
 impl Dap {
-    const DEFAULT_VERIFIED: &'static str = "●";
-    const DEFAULT_UNVERIFIED: &'static str = "◯";
-
     #[inline]
     pub fn verified(&self) -> &str {
-        self.verified
-            .as_ref()
-            .map_or(Self::DEFAULT_VERIFIED, |verified| verified)
+        self.verified.as_ref().map_or("●", |verified| verified)
     }
 
     #[inline]
     pub fn unverified(&self) -> &str {
-        self.verified
-            .as_ref()
-            .map_or(Self::DEFAULT_UNVERIFIED, |verified| verified)
+        self.verified.as_ref().map_or("◯", |verified| verified)
     }
 }
