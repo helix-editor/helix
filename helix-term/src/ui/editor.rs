@@ -650,11 +650,16 @@ impl EditorView {
             let config = editor.config();
             let icon = config.icons.mime.get(lang);
 
-            let text = format!(
-                " {icon} {}{} ",
-                fname,
-                if doc.is_modified() { "[+]" } else { "" }
-            );
+            let text = if lang == icon {
+                format!(" {} {}", fname, if doc.is_modified() { "[+] " } else { "" })
+            } else {
+                format!(
+                    " {icon} {} {}",
+                    fname,
+                    if doc.is_modified() { "[+] " } else { "" }
+                )
+            };
+
             let used_width = viewport.x.saturating_sub(x);
             let rem_width = surface.area.width.saturating_sub(used_width);
 
