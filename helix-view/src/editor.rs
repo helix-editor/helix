@@ -362,7 +362,7 @@ pub struct Config {
     pub end_of_line_diagnostics: DiagnosticFilter,
     // Set to override the default clipboard provider
     pub clipboard_provider: ClipboardProvider,
-
+    /// Centralized location for icons that can be used throughout the UI  
     pub icons: Icons,
 }
 
