@@ -118,10 +118,16 @@ where
         return Ok(val);
     };
 
-    if let Some(val) = num.as_f64() {
-        if val.fract() == 0.0 && val >= 0.0 && val <= u64::MAX as f64 {
-            return Ok(val as u64);
-        }
+    // Accept floats as long as they represent positive whole numbers.
+    // The JSONRPC spec says "Numbers SHOULD NOT contain fractional parts" so we should try to
+    // accept them if possible. The JavaScript type system lumps integers and floats together so
+    // some languages may serialize integer IDs as floats with a zeroed fractional part.
+    // See <https://github.com/helix-editor/helix/issues/12367>.
+    if let Some(val) = num
+        .as_f64()
+        .filter(|f| f.is_sign_positive() && f.fract() == 0.0)
+    {
+        return Ok(val as u64);
     }
 
     Err(de::Error::custom(
