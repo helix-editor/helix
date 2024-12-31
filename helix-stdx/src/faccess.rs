@@ -504,47 +504,67 @@ pub fn fchown(fd: impl std::os::fd::AsFd, uid: Option<u32>, gid: Option<u32>) ->
 }
 
 #[cfg(unix)]
-pub fn copy_xattr(from: &Path, to: &Path) -> io::Result<()> {
-    let size = match rustix::fs::listxattr(from, &mut [])? {
+pub fn copy_xattr(src: &Path, dst: &Path) -> io::Result<()> {
+    use std::ffi::CStr;
+
+    if !src.exists() || !dst.exists() {
+        return Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            "src or dst file was not found while copying attributes",
+        ));
+    }
+
+    let size = match rustix::fs::listxattr(src, &mut [])? {
         0 => return Ok(()), // No attributes
         len => len,
     };
 
-    let mut buf = vec![0; size];
-    let read = rustix::fs::listxattr(from, buf.as_mut_slice())?;
+    let mut key_list = vec![0; size];
+    let size = rustix::fs::listxattr(src, key_list.as_mut_slice())?;
+    if key_list.len() != size {
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            format!(
+                "`{}`'s xattr list changed while copying attributes",
+                src.to_string_lossy()
+            ),
+        ));
+    }
 
     // Iterate over null-terminated C-style strings
     // Two loops to avoid multiple allocations
     // Find max-size for attributes
-    let mut max_attr_len = 0;
-    for attr_byte in buf[..read].split(|&b| b == 0) {
-        // handle platforms where c_char is i8
+    let mut max_val_len = 0;
+    for key in key_list[..size].split_inclusive(|&b| b == 0) {
+        // Needed on macos
         #[allow(clippy::unnecessary_cast)]
-        let conv =
-            unsafe { std::slice::from_raw_parts(attr_byte.as_ptr() as *const u8, attr_byte.len()) };
-        let name = std::str::from_utf8(conv)
-            .map_err(|_| std::io::Error::from(std::io::ErrorKind::InvalidData))?;
-        let attr_len = rustix::fs::getxattr(from, name, &mut [])?;
-        max_attr_len = max_attr_len.max(attr_len);
+        let conv = unsafe { std::slice::from_raw_parts(key.as_ptr() as *const u8, key.len()) };
+        let key = CStr::from_bytes_with_nul(conv)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+
+        let attr_len = rustix::fs::getxattr(src, key, &mut [])?;
+        max_val_len = max_val_len.max(attr_len);
     }
 
-    let mut attr_buf = vec![0u8; max_attr_len];
-    for attr_byte in buf[..read].split(|&b| b == 0) {
-        // handle platforms where c_char is i8
+    let mut attr_buf = vec![0u8; max_val_len];
+    for key in key_list[..size]
+        .split(|&b| b == 0)
+        .filter(|v| !v.is_empty())
+    {
+        // Needed on macos
         #[allow(clippy::unnecessary_cast)]
-        let conv =
-            unsafe { std::slice::from_raw_parts(attr_byte.as_ptr() as *const u8, attr_byte.len()) };
-        let name = std::str::from_utf8(conv)
-            .map_err(|_| std::io::Error::from(std::io::ErrorKind::InvalidData))?;
-        let read = rustix::fs::getxattr(from, name, attr_buf.as_mut_slice())?;
+        let conv = unsafe { std::slice::from_raw_parts(key.as_ptr() as *const u8, key.len()) };
+        let key = CStr::from_bytes_with_nul(conv)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+        let read = rustix::fs::getxattr(src, key, attr_buf.as_mut_slice())?;
 
         // If we can't set xattr because it already exists, try to replace it
         if read != 0 {
-            match rustix::fs::setxattr(to, name, &attr_buf[..read], rustix::fs::XattrFlags::CREATE)
+            match rustix::fs::setxattr(dst, key, &attr_buf[..read], rustix::fs::XattrFlags::CREATE)
             {
                 Err(rustix::io::Errno::EXIST) => rustix::fs::setxattr(
-                    to,
-                    name,
+                    dst,
+                    key,
                     &attr_buf[..read],
                     rustix::fs::XattrFlags::REPLACE,
                 )?,
