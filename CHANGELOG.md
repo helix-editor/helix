@@ -20,11 +20,11 @@ Updated languages and queries:
 Packaging:
 -->
 
-# 25.01 (2025-01-01)
+# 25.01 (2025-01-03)
 
-`git log` says there are 164 contributors since 24.07
+`git log` says there are 171 contributors since 24.07
 
-checkpoint <https://github.com/helix-editor/helix/compare/a5a7cff311e909ecab41f840742a5309634aeec3...master>
+checkpoint <https://github.com/helix-editor/helix/compare/4817bfa003163150c9a4553757b4e209e470ecbf...master>
 
 <!-- Breaking changes: -->
 
@@ -63,10 +63,10 @@ Usability improvements:
 * Show LSP `window/showMessage` messages in the statusline (#5535)
 * Support finding workspace directories via `.jj` directories (#11685)
 * Join single-line comments with `join_selections` (`J`) (#11742)
-* Show anonymous syntax tree nodes in `:tree-sitter-subtree` (#11663)
+* Show anonymous syntax tree nodes in `:tree-sitter-subtree` (#11663, 38e8382)
 * Save an undo checkpoint before paste in insert mode (#8121)
 * Only break on ASCII spaces in `:reflow` (#12048)
-* Add a `default-yank-register` config option (#11936)
+* Add a `default-yank-register` config option (#11430)
 * Show a statusline error for `:format` when a formatter is not available (#12183)
 * Change to the home directory with `:cd` with no arguments (#12042)
 * Change default comment token to `#` for unrecognized files (#12080, #12266, bae6a58)
@@ -101,6 +101,9 @@ Fixes:
 * Expand tildes in paths passed to `:read` (#12271)
 * Respect per-language `workspace-lsp-roots` configuration when opening new documents (#12223)
 * Consistently replace line-endings in paste/replace commands (c262fe4)
+* Fix formatting in error statusline messages when inspecting variables in DAP (#12354)
+* Fix invisible printing of headers in `--health` output on light terminals (#12355)
+* Accept integers serialized as floats in the JSONRPC `id` field (#12376)
 
 Themes:
 
@@ -136,6 +139,7 @@ Themes:
 * Add inactive text and update jump label highlights in `dark_plus` (#12289)
 * Sync changes with catppuccin themes (#12304)
 * Add `ui.text.directory` to `nightfox` (#12328)
+* Add `ui.text.directory` to `sunset` (#12328)
 
 New languages:
 
@@ -226,7 +230,12 @@ Updated languages and queries:
 * Add textobjects for Odin (#12302)
 * Update tree-sitter-heex and queries (#12334)
 * Update protobuf highlights (#12339)
-* Switch tree-sitter-query (TSQ) grammar (#12148)
+* Switch tree-sitter-query (TSQ) grammar (#12148, e0bccd2)
+* Add block comment configurations for jinja and nunjucks (#12348)
+* Add `uv` shebang for python (#12360)
+* Update tree-sitter-vento (#12368)
+* Switch Protobuf tree-sitter grammar (#12225)
+* Recognize `hypr/*.conf` as Hyprland (#12384)
 
 Packaging:
 
