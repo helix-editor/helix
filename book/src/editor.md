@@ -31,6 +31,7 @@
 | `line-number` | Line number display: `absolute` simply shows each line's number, while `relative` shows the distance from the current line. When unfocused or in insert mode, `relative` will still show absolute line numbers | `absolute` |
 | `cursorline` | Highlight all lines with a cursor | `false` |
 | `cursorcolumn` | Highlight all columns with a cursor | `false` |
+| `continue-comments` | if helix should automatically add a line comment token if you create a new line inside a comment. | `true` |
 | `gutters` | Gutters to display: Available are `diagnostics` and `diff` and `line-numbers` and `spacer`, note that `diagnostics` also includes other features like breakpoints, 1-width padding will be inserted if gutters is non-empty | `["diagnostics", "spacer", "line-numbers", "spacer", "diff"]` |
 | `auto-completion` | Enable automatic pop up of auto-completion | `true` |
 | `path-completion` | Enable filepath completion. Show files and directories if an existing path at the cursor was recognized, either absolute or relative to the current opened document or current working directory (if the buffer is not yet saved). Defaults to true. | `true` |
@@ -58,7 +59,7 @@
 
 ### `[editor.clipboard-provider]` Section
 
-Helix can be configured wither to use a builtin clipboard configuration or to use
+Helix can be configured either to use a builtin clipboard configuration or to use
 a provided command.
 
 For instance, setting it to use OSC 52 termcodes, the configuration would be:
@@ -440,6 +441,8 @@ fn main() {
 | `prefix-len` | How many horizontal bars `─` are rendered before the diagnostic text.  | `1` |
 | `max-wrap` | Equivalent of the `editor.soft-wrap.max-wrap` option for diagnostics.  | `20` |
 | `max-diagnostics` | Maximum number of diagnostics to render inline for a given line  | `10` |
+
+The allowed values for `cursor-line` and `other-lines` are: `error`, `warning`, `info`, `hint`.
 
 The (first) diagnostic with the highest severity that is not shown inline is rendered at the end of the line (as long as its severity is higher than the `end-of-line-diagnostics` config option):
 

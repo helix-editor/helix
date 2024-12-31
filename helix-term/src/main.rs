@@ -40,8 +40,15 @@ fn main() -> Result<()> {
 
 #[tokio::main]
 async fn main_impl() -> Result<i32> {
-    let help = format!(
-        "\
+    let mut args = Args::parse_args().context("could not parse arguments")?;
+
+    helix_loader::initialize_config_file(args.config_file.clone());
+    helix_loader::initialize_log_file(args.log_file.clone());
+
+    // Help has a higher priority and should be handled separately.
+    if args.display_help {
+        print!(
+            "\
 {} {}
 {}
 {}
@@ -69,21 +76,12 @@ FLAGS:
     -w, --working-dir <path>       Specify an initial working directory
     +N                             Open the first given file at line number N
 ",
-        env!("CARGO_PKG_NAME"),
-        VERSION_AND_GIT_HASH,
-        env!("CARGO_PKG_AUTHORS"),
-        env!("CARGO_PKG_DESCRIPTION"),
-        helix_loader::default_log_file().display(),
-    );
-
-    let mut args = Args::parse_args().context("could not parse arguments")?;
-
-    helix_loader::initialize_config_file(args.config_file.clone());
-    helix_loader::initialize_log_file(args.log_file.clone());
-
-    // Help has a higher priority and should be handled separately.
-    if args.display_help {
-        print!("{}", help);
+            env!("CARGO_PKG_NAME"),
+            VERSION_AND_GIT_HASH,
+            env!("CARGO_PKG_AUTHORS"),
+            env!("CARGO_PKG_DESCRIPTION"),
+            helix_loader::default_log_file().display(),
+        );
         std::process::exit(0);
     }
 

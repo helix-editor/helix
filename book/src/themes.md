@@ -136,7 +136,7 @@ The following is a list of scopes available to use for styling:
 
 #### Syntax highlighting
 
-These keys match [tree-sitter scopes](https://tree-sitter.github.io/tree-sitter/syntax-highlighting#theme).
+These keys match [tree-sitter scopes](https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#highlights).
 
 When determining styling for a highlight, the longest matching theme key will be used. For example, if the highlight is `function.builtin.static`, the key `function.builtin` will be used instead of `function`.
 
@@ -305,6 +305,7 @@ These scopes are used for theming the editor interface:
 | `ui.text.focus`                   | The currently selected line in the picker                                                      |
 | `ui.text.inactive`                | Same as `ui.text` but when the text is inactive (e.g. suggestions)                             |
 | `ui.text.info`                    | The key: command text in `ui.popup.info` boxes                                                 |
+| `ui.text.directory`               | Directory names in prompt completion                                                           |
 | `ui.virtual.ruler`                | Ruler columns (see the [`editor.rulers` config][editor-section])                               |
 | `ui.virtual.whitespace`           | Visible whitespace characters                                                                  |
 | `ui.virtual.indent-guide`         | Vertical indent width guides                                                                   |

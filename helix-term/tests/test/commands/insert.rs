@@ -119,3 +119,128 @@ async fn insert_newline_continue_line_comment() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+/// NOTE: Language is set to markdown to check if the indentation is correct for the new line
+#[tokio::test(flavor = "multi_thread")]
+async fn test_open_above() -> anyhow::Result<()> {
+    // `O` is pressed in the first line
+    test((
+        indoc! {"Helix #[is|]# cool"},
+        ":lang markdown<ret>O",
+        indoc! {"\
+            #[\n|]#
+            Helix is cool
+        "},
+    ))
+    .await?;
+
+    // `O` is pressed in the first line, but the current line has some indentation
+    test((
+        indoc! {"\
+            ··This line has 2 spaces in front of it#[\n|]#
+        "}
+        .replace('·', " "),
+        ":lang markdown<ret>Oa",
+        indoc! {"\
+            ··a#[\n|]#
+            ··This line has 2 spaces in front of it
+        "}
+        .replace('·', " "),
+    ))
+    .await?;
+
+    // `O` is pressed but *not* in the first line
+    test((
+        indoc! {"\
+            I use
+            b#[t|]#w.
+        "},
+        ":lang markdown<ret>Oarch",
+        indoc! {"\
+            I use
+            arch#[\n|]#
+            btw.
+        "},
+    ))
+    .await?;
+
+    // `O` is pressed but *not* in the first line and the line has some indentation
+    test((
+        indoc! {"\
+            I use
+            ····b#[t|]#w.
+        "}
+        .replace("·", " "),
+        ":lang markdown<ret>Ohelix",
+        indoc! {"\
+            I use
+            ····helix#[\n|]#
+            ····btw.
+        "}
+        .replace("·", " "),
+    ))
+    .await?;
+
+    Ok(())
+}
+
+/// NOTE: To make the `open_above` comment-aware, we're setting the language for each test to rust.
+#[tokio::test(flavor = "multi_thread")]
+async fn test_open_above_with_comments() -> anyhow::Result<()> {
+    // `O` is pressed in the first line inside a line comment
+    test((
+        indoc! {"// a commen#[t|]#"},
+        ":lang rust<ret>O",
+        indoc! {"\
+            // #[\n|]#
+            // a comment
+        "},
+    ))
+    .await?;
+
+    // `O` is pressed in the first line inside a line comment, but with indentation
+    test((
+        indoc! {"····// a comm#[e|]#nt"}.replace("·", " "),
+        ":lang rust<ret>O",
+        indoc! {"\
+            ····// #[\n|]#
+            ····// a comment
+        "}
+        .replace("·", " "),
+    ))
+    .await?;
+
+    // `O` is pressed but not in the first line but inside a line comment
+    test((
+        indoc! {"\
+            fn main() { }
+            // yeetus deletus#[\n|]#
+        "},
+        ":lang rust<ret>O",
+        indoc! {"\
+            fn main() { }
+            // #[\n|]#
+            // yeetus deletus
+        "},
+    ))
+    .await?;
+
+    // `O` is pressed but not in the first line but inside a line comment and with indentation
+    test((
+        indoc! {"\
+            fn main() { }
+            ····// yeetus deletus#[\n|]#
+        "}
+        .replace("·", " "),
+        ":lang rust<ret>O",
+        indoc! {"\
+            fn main() { }
+            ····// #[\n|]#
+            ····// yeetus deletus
+        "}
+        .replace("·", " "),
+    ))
+    .await?;
+
+    Ok(())
+}

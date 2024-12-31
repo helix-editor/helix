@@ -89,6 +89,7 @@ hint = { fg = "hint" }
 "ui.text.focus" = { bg = "bg-focus" }
 "ui.text.inactive" = { fg = "comment", modifiers = ["italic"] }
 "ui.text.info" = { bg = "bg-menu", fg = "fg" }
+"ui.text.directory" = { fg = "cyan" }
 "ui.virtual.ruler" = { bg = "fg-gutter" }
 "ui.virtual.whitespace" = { fg = "fg-gutter" }
 "ui.virtual.inlay-hint" = {  bg = "bg-inlay", fg = "teal" }

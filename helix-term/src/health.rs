@@ -1,6 +1,6 @@
 use crate::config::{Config, ConfigLoadError};
 use crossterm::{
-    style::{Color, Print, Stylize},
+    style::{Color, StyledContent, Stylize},
     tty::IsTty,
 };
 use helix_core::config::{default_lang_config, user_lang_config};
@@ -164,25 +164,20 @@ pub fn languages_all() -> std::io::Result<()> {
     let column_width = terminal_cols as usize / headings.len();
     let is_terminal = std::io::stdout().is_tty();
 
-    let column = |item: &str, color: Color| {
-        let mut data = format!(
-            "{:width$}",
-            item.get(..column_width - 2)
+    let fit = |s: &str| -> StyledContent<String> {
+        format!(
+            "{:column_width$}",
+            s.get(..column_width - 2)
                 .map(|s| format!("{}…", s))
-                .unwrap_or_else(|| item.to_string()),
-            width = column_width,
-        );
-        if is_terminal {
-            data = data.stylize().with(color).to_string();
-        }
-
-        // We can't directly use println!() because of
-        // https://github.com/crossterm-rs/crossterm/issues/589
-        let _ = crossterm::execute!(std::io::stdout(), Print(data));
+                .unwrap_or_else(|| s.to_string())
+        )
+        .stylize()
     };
+    let color = |s: StyledContent<String>, c: Color| if is_terminal { s.with(c) } else { s };
+    let bold = |s: StyledContent<String>| if is_terminal { s.bold() } else { s };
 
     for heading in headings {
-        column(heading, Color::White);
+        write!(stdout, "{}", bold(fit(heading)))?;
     }
     writeln!(stdout)?;
 
@@ -192,14 +187,14 @@ pub fn languages_all() -> std::io::Result<()> {
 
     let check_binary = |cmd: Option<&str>| match cmd {
         Some(cmd) => match helix_stdx::env::which(cmd) {
-            Ok(_) => column(&format!("✓ {}", cmd), Color::Green),
-            Err(_) => column(&format!("✘ {}", cmd), Color::Red),
+            Ok(_) => color(fit(&format!("✓ {}", cmd)), Color::Green),
+            Err(_) => color(fit(&format!("✘ {}", cmd)), Color::Red),
         },
-        None => column("None", Color::Yellow),
+        None => color(fit("None"), Color::Yellow),
     };
 
     for lang in &syn_loader_conf.language {
-        column(&lang.language_id, Color::Reset);
+        write!(stdout, "{}", fit(&lang.language_id))?;
 
         let mut cmds = lang.language_servers.iter().filter_map(|ls| {
             syn_loader_conf
@@ -207,28 +202,28 @@ pub fn languages_all() -> std::io::Result<()> {
                 .get(&ls.name)
                 .map(|config| config.command.as_str())
         });
-        check_binary(cmds.next());
+        write!(stdout, "{}", check_binary(cmds.next()))?;
 
         let dap = lang.debugger.as_ref().map(|dap| dap.command.as_str());
-        check_binary(dap);
+        write!(stdout, "{}", check_binary(dap))?;
 
         let formatter = lang
             .formatter
             .as_ref()
             .map(|formatter| formatter.command.as_str());
-        check_binary(formatter);
+        write!(stdout, "{}", check_binary(formatter))?;
 
         for ts_feat in TsFeature::all() {
             match load_runtime_file(&lang.language_id, ts_feat.runtime_filename()).is_ok() {
-                true => column("✓", Color::Green),
-                false => column("✘", Color::Red),
+                true => write!(stdout, "{}", color(fit("✓"), Color::Green))?,
+                false => write!(stdout, "{}", color(fit("✘"), Color::Red))?,
             }
         }
 
         writeln!(stdout)?;
 
         for cmd in cmds {
-            column("", Color::Reset);
+            write!(stdout, "{}", fit(""))?;
             check_binary(Some(cmd));
             writeln!(stdout)?;
         }
@@ -307,11 +302,25 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
             .map(|formatter| formatter.command.to_string()),
     )?;
 
+    probe_parser(lang.grammar.as_ref().unwrap_or(&lang.language_id))?;
+
     for ts_feat in TsFeature::all() {
         probe_treesitter_feature(&lang_str, *ts_feat)?
     }
 
     Ok(())
+}
+
+fn probe_parser(grammar_name: &str) -> std::io::Result<()> {
+    let stdout = std::io::stdout();
+    let mut stdout = stdout.lock();
+
+    write!(stdout, "Tree-sitter parser: ")?;
+
+    match helix_loader::grammar::get_language(grammar_name) {
+        Ok(_) => writeln!(stdout, "{}", "✓".green()),
+        Err(_) => writeln!(stdout, "{}", "None".yellow()),
+    }
 }
 
 /// Display diagnostics about multiple LSPs and DAPs.

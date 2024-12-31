@@ -60,7 +60,7 @@ These configuration keys are available:
 | `shebangs`            | The interpreters from the shebang line, for example `["sh", "bash"]` |
 | `roots`               | A set of marker files to look for when trying to find the workspace root. For example `Cargo.lock`, `yarn.lock` |
 | `auto-format`         | Whether to autoformat this language when saving               |
-| `diagnostic-severity` | Minimal severity of diagnostic for it to be displayed. (Allowed values: `Error`, `Warning`, `Info`, `Hint`) |
+| `diagnostic-severity` | Minimal severity of diagnostic for it to be displayed. (Allowed values: `error`, `warning`, `info`, `hint`) |
 | `comment-tokens`      | The tokens to use as a comment token, either a single token `"//"` or an array `["//", "///", "//!"]` (the first token will be used for commenting). Also configurable as `comment-token` for backwards compatibility|
 | `block-comment-tokens`| The start and end tokens for a multiline comment either an array or single table of `{ start = "/*", end = "*/"}`. The first set of tokens will be used for commenting, any pairs in the array can be uncommented |
 | `indent`              | The indent to use. Has sub keys `unit` (the text inserted into the document when indenting; usually set to N spaces or `"\t"` for tabs) and `tab-width` (the number of spaces rendered for a tab) |
@@ -241,4 +241,4 @@ use-grammars = { except = [ "yaml", "json" ] }
 
 When omitted, all grammars are fetched and built.
 
-[treesitter-language-injection]: https://tree-sitter.github.io/tree-sitter/syntax-highlighting#language-injection
+[treesitter-language-injection]: https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#language-injection

@@ -1,6 +1,3 @@
-;;  Better highlighting by referencing to the definition, for variable references.
-;;  See https://tree-sitter.github.io/tree-sitter/syntax-highlighting#local-variables
-
 (compilation) @local.scope
 (package_declaration) @local.scope
 (package_body) @local.scope
