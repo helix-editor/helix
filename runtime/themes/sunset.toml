@@ -109,9 +109,10 @@ special = "sky"
 "ui.help" = { fg = "text", bg = "block" }
 
 "ui.text" = { fg = "text", bg = "base" }
-"ui.text.focus"    = "sun"
-"ui.text.inactive" = { fg = "cmnt", modifiers = ["italic"] }
-"ui.text.info"     = { bg = "block" }
+"ui.text.directory" = "sky"
+"ui.text.focus"     = "sun"
+"ui.text.inactive"  = { fg = "cmnt", modifiers = ["italic"] }
+"ui.text.info"      = { bg = "block" }
 
 "ui.virtual" = { fg = "block" }
 "ui.virtual.ruler"        = { bg = "block" }
