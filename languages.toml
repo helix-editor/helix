@@ -122,6 +122,7 @@ zls = { command = "zls" }
 blueprint-compiler = { command = "blueprint-compiler", args = ["lsp"] }
 typst-lsp = { command = "typst-lsp" }
 tinymist = { command = "tinymist" }
+ts_query_ls = { command = "ts_query_ls" }
 pkgbuild-language-server = { command = "pkgbuild-language-server" }
 helm_ls = { command = "helm_ls", args = ["serve"] }
 ember-language-server = { command = "ember-language-server", args = ["--stdio"] }
@@ -339,16 +340,17 @@ source = { git = "https://github.com/Beaglefoot/tree-sitter-awk", rev = "a799bc5
 [[language]]
 name = "protobuf"
 scope = "source.proto"
-injection-regex = "protobuf"
+injection-regex = "proto"
 file-types = ["proto"]
 language-servers = [ "bufls", "pbkit" ]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 2, unit = "  " }
+grammar = "proto"
 
 [[grammar]]
-name = "protobuf"
-source = { git = "https://github.com/yusdacra/tree-sitter-protobuf", rev = "19c211a01434d9f03efff99f85e19f967591b175"}
+name = "proto"
+source = { git = "https://github.com/sdoerner/tree-sitter-proto", rev = "778ab6ed18a7fcf82c83805a87d63376c51e80bc"}
 
 [[language]]
 name = "textproto"
@@ -881,7 +883,7 @@ name = "python"
 scope = "source.python"
 injection-regex = "py(thon)?"
 file-types = ["py", "pyi", "py3", "pyw", "ptl", "rpy", "cpy", "ipy", "pyt", { glob = ".python_history" }, { glob = ".pythonstartup" }, { glob = ".pythonrc" }, { glob = "SConstruct" }, { glob = "SConscript" }]
-shebangs = ["python"]
+shebangs = ["python", "uv"]
 roots = ["pyproject.toml", "setup.py", "poetry.lock", "pyrightconfig.json"]
 comment-token = "#"
 language-servers = ["ruff", "jedi", "pylsp"]
@@ -1458,14 +1460,21 @@ language-servers = [ "swipl" ]
 [[language]]
 name = "tsq"
 scope = "source.tsq"
-file-types = ["tsq"]
+file-types = [{ glob = "queries/*.scm" }, { glob = "injections.scm" },  { glob = "highlights.scm" },  { glob = "indents.scm" },  { glob = "textobjects.scm" },  { glob = "locals.scm" },  { glob = "tags.scm" }]
 comment-token = ";"
 injection-regex = "tsq"
+language-servers = ["ts_query_ls"]
+grammar = "query"
 indent = { tab-width = 2, unit = "  " }
 
+[language.auto-pairs]
+'(' = ')'
+'[' = ']'
+'"' = '"'
+
 [[grammar]]
-name = "tsq"
-source = { git = "https://github.com/the-mikedavis/tree-sitter-tsq", rev = "48b5e9f82ae0a4727201626f33a17f69f8e0ff86" }
+name = "query"
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-query", rev = "a6674e279b14958625d7a530cabe06119c7a1532" }
 
 [[language]]
 name = "cmake"
@@ -2069,7 +2078,7 @@ language-servers = [ "elixir-ls" ]
 
 [[grammar]]
 name = "heex"
-source = { git = "https://github.com/phoenixframework/tree-sitter-heex", rev = "2e1348c3cf2c9323e87c2744796cf3f3868aa82a" }
+source = { git = "https://github.com/phoenixframework/tree-sitter-heex", rev = "f6b83f305a755cd49cf5f6a66b2b789be93dc7b9" }
 
 [[language]]
 name = "sql"
@@ -3295,6 +3304,7 @@ injection-regex = "nunjucks"
 file-types = ["njk"]
 indent = { tab-width = 2, unit = "  " }
 grammar = "jinja2"
+block-comment-tokens = { start = "{#", end = "#}" }
 
 [[language]]
 name = "jinja"
@@ -3303,6 +3313,7 @@ injection-regex = "jinja"
 file-types = ["jinja", "jinja2", "j2"]
 indent = { tab-width = 2, unit = "  " }
 grammar = "jinja2"
+block-comment-tokens = { start = "{#", end = "#}" }
 
 [[grammar]]
 name = "jinja2"
@@ -3319,7 +3330,7 @@ text-width = 72
 
 [[grammar]]
 name = "jjdescription"
-source = { git = "https://github.com/kareigu/tree-sitter-jjdescription", rev = "23dd3dd18ee29bdd761642511aa314215801afd8" }
+source = { git = "https://github.com/kareigu/tree-sitter-jjdescription", rev = "d09205b52b5a0165b588a793e366c1116468d86f" }
 
 [[language]]
 name = "jq"
@@ -4003,4 +4014,22 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "vento"
-source = { git = "https://github.com/ventojs/tree-sitter-vento", rev = "3321077d7446c1b3b017c294fd56ce028ed817fe" }
+source = { git = "https://github.com/ventojs/tree-sitter-vento", rev = "3b32474bc29584ea214e4e84b47102408263fe0e" }
+
+[[language]]
+name = "nginx"
+scope = "source.nginx"
+injection-regex = "nginx"
+file-types = [
+  { glob = "sites-available/*.conf" },
+  { glob = "sites-enabled/*.conf" },
+  { glob = "nginx.conf" },
+  { glob = "conf.d/*.conf" } 
+]
+roots = ["nginx.conf"]
+comment-token = "#"
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "nginx"
+source = { git = "https://gitlab.com/joncoole/tree-sitter-nginx", rev = "b4b61db443602b69410ab469c122c01b1e685aa0" }

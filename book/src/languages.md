@@ -241,4 +241,4 @@ use-grammars = { except = [ "yaml", "json" ] }
 
 When omitted, all grammars are fetched and built.
 
-[treesitter-language-injection]: https://tree-sitter.github.io/tree-sitter/syntax-highlighting#language-injection
+[treesitter-language-injection]: https://tree-sitter.github.io/tree-sitter/3-syntax-highlighting.html#language-injection
