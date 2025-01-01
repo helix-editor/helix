@@ -148,6 +148,7 @@ pub struct Document {
     pub inlay_hints_oudated: bool,
 
     path: Option<PathBuf>,
+    relative_path: Option<PathBuf>,
     encoding: &'static encoding::Encoding,
     has_bom: bool,
 
@@ -659,6 +660,7 @@ impl Document {
             id: DocumentId::default(),
             active_snippet: None,
             path: None,
+            relative_path: None,
             encoding,
             has_bom,
             text,
@@ -1171,6 +1173,11 @@ impl Document {
     /// should be used instead
     pub fn set_path(&mut self, path: Option<&Path>) {
         let path = path.map(helix_stdx::path::canonicalize);
+
+        self.relative_path = path
+            .as_ref()
+            .map(helix_stdx::path::get_relative_path)
+            .map(|rel_path| rel_path.to_path_buf());
 
         // if parent doesn't exist we still want to open the document
         // and error out when document is saved
@@ -1868,15 +1875,14 @@ impl Document {
     }
 
     pub fn relative_path(&self) -> Option<Cow<Path>> {
-        self.path
-            .as_deref()
-            .map(helix_stdx::path::get_relative_path)
+        self.relative_path.as_ref().map(|path| path.into())
     }
 
     pub fn display_name(&self) -> Cow<'static, str> {
-        self.relative_path()
-            .map(|path| path.to_string_lossy().to_string().into())
-            .unwrap_or_else(|| SCRATCH_BUFFER_NAME.into())
+        self.relative_path().map_or_else(
+            || SCRATCH_BUFFER_NAME.into(),
+            |path| path.to_string_lossy().to_string().into(),
+        )
     }
 
     // transact(Fn) ?
