@@ -38,7 +38,6 @@ where
 ///
 /// The tilde will only be expanded when present as the first component of the path
 /// and only slash follows it.
-#[inline]
 pub fn expand_tilde<'a, P>(path: P) -> Cow<'a, Path>
 where
     P: Into<Cow<'a, Path>>,
@@ -60,7 +59,6 @@ where
 /// Normalize a path without resolving symlinks.
 // Strategy: start from the first component and move up. Canonicalize previous path,
 // join component, canonicalize new path, strip prefix and join to the final result.
-#[inline]
 pub fn normalize(path: impl AsRef<Path>) -> PathBuf {
     let mut components = path.as_ref().components().peekable();
     let mut ret = if let Some(c @ Component::Prefix(..)) = components.peek().copied() {
@@ -132,7 +130,6 @@ pub fn normalize(path: impl AsRef<Path>) -> PathBuf {
 ///
 /// This function is used instead of [`std::fs::canonicalize`] because we don't want to verify
 /// here if the path exists, just normalize it's components.
-#[inline]
 pub fn canonicalize(path: impl AsRef<Path>) -> PathBuf {
     let path = expand_tilde(path.as_ref());
     let path = if path.is_relative() {
@@ -144,7 +141,6 @@ pub fn canonicalize(path: impl AsRef<Path>) -> PathBuf {
     normalize(path)
 }
 
-#[inline]
 pub fn get_relative_path<'a, P>(path: P) -> Cow<'a, Path>
 where
     P: Into<Cow<'a, Path>>,
@@ -218,7 +214,7 @@ fn path_component_regex(windows: bool) -> String {
     // TODO: support backslash path escape on windows (when using git bash for example)
     let space_escape = if windows { r"[\^`]\s" } else { r"[\\]\s" };
     // partially baesd on what's allowed in an url but with some care to avoid
-    // false positivies (like any kind of brackets or quotes)
+    // false positives (like any kind of brackets or quotes)
     r"[\w@.\-+#$%?!,;~&]|".to_owned() + space_escape
 }
 
