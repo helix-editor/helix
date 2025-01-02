@@ -11,11 +11,6 @@
 
 "_" @constant
 
-[
-  "@"
-  "#"
-] @punctuation.special
-
 ":" @punctuation.delimiter
 
 [
@@ -26,8 +21,6 @@
 ] @punctuation.bracket
 
 "." @operator
-
-(predicate_type) @punctuation.special
 
 (quantifier) @operator
 
@@ -41,16 +34,16 @@
   name: (identifier) @variable.other.member)
 
 (named_node
-  name: (identifier) @variable)
+  name: (identifier) @tag)
 
-(predicate
-  name: (identifier) @function)
+((predicate
+   "#" @function.builtin
+   name: (identifier) @function.builtin @_name
+   type: (predicate_type) @function.builtin)
+ (#any-of? @_name "eq" "match" "any-of" "not-any-of" "is" "is-not" "not-same-line" "not-kind-eq" "set" "select-adjacent" "strip"))
+(predicate name: (identifier) @error)
 
-(anonymous_node
-  (string) @string)
-
-(capture
-  (identifier) @type)
+(capture) @label
 
 (escape_sequence) @constant.character.escape
 
