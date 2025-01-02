@@ -1095,12 +1095,17 @@ fn change_current_directory(
             .editor
             .last_cwd
             .clone()
-            .ok_or(anyhow!("No previous working directory"))?,
+            .ok_or_else(|| anyhow!("No previous working directory"))?,
         Some(input_path) => helix_stdx::path::expand_tilde(Path::new(input_path)).to_path_buf(),
         None => home_dir()?,
     };
 
     cx.editor.last_cwd = helix_stdx::env::set_current_working_dir(dir)?;
+
+    let (_, doc) = current!(cx.editor);
+
+    // Clear the relative path as this will need to be recalculated.
+    doc.relative_path.take();
 
     cx.editor.set_status(format!(
         "Current working directory is now {}",
