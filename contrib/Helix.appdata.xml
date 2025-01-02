@@ -47,6 +47,9 @@
   <content_rating type="oars-1.1" />
 
   <releases>
+    <release version="25.01" date="2025-01-03">
+      <url>https://helix-editor.com/news/release-25-01-highlights/</url>
+    </release>
     <release version="24.07" date="2024-07-14">
       <url>https://github.com/helix-editor/helix/releases/tag/24.07</url>
     </release>
