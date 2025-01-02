@@ -14,7 +14,6 @@ use crate::env::current_working_dir;
 
 /// Replaces users home directory from `path` with tilde `~` if the directory
 /// is available, otherwise returns the path unchanged.
-#[inline]
 pub fn fold_home_dir<'a, P>(path: P) -> Cow<'a, Path>
 where
     P: Into<Cow<'a, Path>>,
@@ -187,7 +186,6 @@ where
 ///     assert_eq!(get_truncated_path("").as_path(), Path::new(""));
 /// ```
 ///
-#[inline]
 pub fn get_truncated_path(path: impl AsRef<Path>) -> PathBuf {
     let cwd = current_working_dir();
     let path = path.as_ref();
@@ -209,7 +207,6 @@ pub fn get_truncated_path(path: impl AsRef<Path>) -> PathBuf {
     ret
 }
 
-#[inline]
 fn path_component_regex(windows: bool) -> String {
     // TODO: support backslash path escape on windows (when using git bash for example)
     let space_escape = if windows { r"[\^`]\s" } else { r"[\\]\s" };
@@ -219,12 +216,10 @@ fn path_component_regex(windows: bool) -> String {
 }
 
 /// Regex for delimited environment captures like `${HOME}`.
-#[inline]
 fn braced_env_regex(windows: bool) -> String {
     r"\$\{(?:".to_owned() + &path_component_regex(windows) + r"|[/:=])+\}"
 }
 
-#[inline]
 fn compile_path_regex(
     prefix: &str,
     postfix: &str,
@@ -263,7 +258,6 @@ fn compile_path_regex(
 }
 
 /// If `src` ends with a path then this function returns the part of the slice.
-#[inline]
 pub fn get_path_suffix(src: RopeSlice<'_>, match_single_file: bool) -> Option<RopeSlice<'_>> {
     let regex = if match_single_file {
         static REGEX: Lazy<Regex> = Lazy::new(|| compile_path_regex("", "$", true, cfg!(windows)));
@@ -279,7 +273,6 @@ pub fn get_path_suffix(src: RopeSlice<'_>, match_single_file: bool) -> Option<Ro
 }
 
 /// Returns an iterator of the **byte** ranges in src that contain a path.
-#[inline]
 pub fn find_paths(
     src: RopeSlice<'_>,
     match_single_file: bool,
@@ -295,7 +288,6 @@ pub fn find_paths(
 }
 
 /// Performs substitution of `~` and environment variables, see [`env::expand`](crate::env::expand) and [`expand_tilde`]
-#[inline]
 pub fn expand<T: AsRef<Path> + ?Sized>(path: &T) -> Cow<'_, Path> {
     let path = path.as_ref();
     let path = expand_tilde(path);
