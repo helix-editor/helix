@@ -3,15 +3,23 @@ use std::fmt::Display;
 use ropey::RopeSlice;
 use tree_sitter::{Node, QueryCursor};
 
-use crate::chars::{categorize_char, char_is_whitespace, CharCategory};
+use crate::chars::{
+    categorize_char, char_is_subword_textobj_delimiter, char_is_whitespace, CharCategory,
+};
 use crate::graphemes::{next_grapheme_boundary, prev_grapheme_boundary};
 use crate::line_ending::rope_is_line_ending;
-use crate::movement::Direction;
+use crate::movement::{is_sub_word_boundary, Direction};
 use crate::syntax::LanguageConfiguration;
 use crate::Range;
 use crate::{surround, Syntax};
 
-fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction, long: bool) -> usize {
+fn find_word_boundary(
+    slice: RopeSlice,
+    mut pos: usize,
+    direction: Direction,
+    long: bool,
+    is_subword: bool,
+) -> usize {
     use CharCategory::{Eol, Whitespace};
 
     let iter = match direction {
@@ -30,11 +38,33 @@ fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction, lo
         Direction::Backward => categorize_char(slice.char(pos)),
     };
 
+    let mut prev_ch = match direction {
+        // if we are at the beginning or end of the document
+        Direction::Forward if pos == 0 => ' ',
+        Direction::Backward if pos == slice.len_chars() => ' ',
+        Direction::Forward => slice.char(pos - 1),
+        Direction::Backward => slice.char(pos),
+    };
+
     for ch in iter {
         match categorize_char(ch) {
             Eol | Whitespace => return pos,
             category => {
-                if !long && category != prev_category && pos != 0 && pos != slice.len_chars() {
+                let matches_short_word = !long
+                    && !is_subword
+                    && category != prev_category
+                    && pos != 0
+                    && pos != slice.len_chars();
+                let matches_subword = is_subword
+                    && match direction {
+                        Direction::Forward => is_sub_word_boundary(prev_ch, ch, Direction::Forward),
+                        Direction::Backward => {
+                            is_sub_word_boundary(prev_ch, ch, Direction::Backward)
+                        }
+                    };
+                if matches_subword {
+                    return pos;
+                } else if matches_short_word {
                     return pos;
                 } else {
                     match direction {
@@ -42,6 +72,7 @@ fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction, lo
                         Direction::Backward => pos = pos.saturating_sub(1),
                     }
                     prev_category = category;
+                    prev_ch = ch;
                 }
             }
         }
@@ -75,13 +106,14 @@ pub fn textobject_word(
     textobject: TextObject,
     _count: usize,
     long: bool,
+    is_subword: bool,
 ) -> Range {
     let pos = range.cursor(slice);
 
-    let word_start = find_word_boundary(slice, pos, Direction::Backward, long);
+    let word_start = find_word_boundary(slice, pos, Direction::Backward, long, is_subword);
     let word_end = match slice.get_char(pos).map(categorize_char) {
         None | Some(CharCategory::Whitespace | CharCategory::Eol) => pos,
-        _ => find_word_boundary(slice, pos + 1, Direction::Forward, long),
+        _ => find_word_boundary(slice, pos + 1, Direction::Forward, long, is_subword),
     };
 
     // Special case.
@@ -89,9 +121,28 @@ pub fn textobject_word(
         return Range::new(word_start, word_end);
     }
 
-    match textobject {
-        TextObject::Inside => Range::new(word_start, word_end),
-        TextObject::Around => {
+    match (textobject, is_subword) {
+        (TextObject::Inside, true) => Range::new(word_start, word_end),
+        (TextObject::Around, true) => {
+            let underscores_count_right = slice
+                .chars_at(word_end)
+                .take_while(|c| char_is_subword_textobj_delimiter(*c))
+                .count();
+
+            if underscores_count_right > 0 {
+                Range::new(word_start, word_end + underscores_count_right)
+            } else {
+                let underscore_count_left = {
+                    let mut iter = slice.chars_at(word_start);
+                    iter.reverse();
+                    iter.take_while(|c| char_is_subword_textobj_delimiter(*c))
+                        .count()
+                };
+                Range::new(word_start - underscore_count_left, word_end)
+            }
+        }
+        (TextObject::Inside, false) => Range::new(word_start, word_end),
+        (TextObject::Around, false) => {
             let whitespace_count_right = slice
                 .chars_at(word_end)
                 .take_while(|c| char_is_whitespace(*c))
@@ -108,7 +159,8 @@ pub fn textobject_word(
                 Range::new(word_start - whitespace_count_left, word_end)
             }
         }
-        TextObject::Movement => unreachable!(),
+        (TextObject::Movement, false) => unreachable!(),
+        (TextObject::Movement, true) => unreachable!(),
     }
 }
 
@@ -401,7 +453,7 @@ mod test {
                 let (pos, objtype, expected_range) = case;
                 // cursor is a single width selection
                 let range = Range::new(pos, pos + 1);
-                let result = textobject_word(slice, range, objtype, 1, false);
+                let result = textobject_word(slice, range, objtype, 1, false, false);
                 assert_eq!(
                     result,
                     expected_range.into(),

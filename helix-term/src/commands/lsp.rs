@@ -1068,7 +1068,7 @@ pub fn rename_symbol(cx: &mut Context) {
             primary_selection
         } else {
             use helix_core::textobject::{textobject_word, TextObject};
-            textobject_word(text, primary_selection, TextObject::Inside, 1, false)
+            textobject_word(text, primary_selection, TextObject::Inside, 1, false, false)
         }
         .fragment(text)
         .into()

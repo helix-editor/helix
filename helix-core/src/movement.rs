@@ -502,7 +502,7 @@ fn is_long_word_boundary(a: char, b: char) -> bool {
     }
 }
 
-fn is_sub_word_boundary(a: char, b: char, dir: Direction) -> bool {
+pub fn is_sub_word_boundary(a: char, b: char, dir: Direction) -> bool {
     match (categorize_char(a), categorize_char(b)) {
         (CharCategory::Word, CharCategory::Word) => {
             if (a == '_') != (b == '_') {
