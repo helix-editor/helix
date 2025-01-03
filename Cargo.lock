@@ -3029,6 +3029,8 @@ dependencies = [
  "helix-loader",
  "helix-term",
  "helix-view",
+ "serde",
+ "threadpool",
  "toml",
 ]
 
