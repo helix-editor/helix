@@ -764,7 +764,13 @@ impl Document {
             use std::process::Stdio;
             let text = self.text().clone();
             let mut process = tokio::process::Command::new(&fmt_cmd);
+            let cwd = std::env::current_dir().unwrap_or(PathBuf::from("."));
+            let file_path = cwd.join(self.display_name().to_string());
+            let doc_path = self.path.clone().unwrap_or(file_path);
+            let doc_dir = doc_path.parent().unwrap_or(cwd.as_path());
+
             process
+                .current_dir(doc_dir)
                 .args(fmt_args)
                 .stdin(Stdio::piped())
                 .stdout(Stdio::piped())
