@@ -25,7 +25,7 @@ use crate::{
     compositor::{Compositor, Event},
     config::Config,
     handlers,
-    job::Jobs,
+    job::{Callback, Jobs},
     keymap::Keymaps,
     ui::{self, overlay::overlaid},
 };
@@ -969,7 +969,47 @@ impl Application {
                         }
 
                         // Remove the language server from the registry.
-                        self.editor.language_servers.remove_by_id(server_id);
+                        let client = self.editor.language_servers.remove_by_id(server_id);
+
+                        if let Some(client) = client {
+                            let name = client.name().to_owned();
+                            let restarts = client.restarts_left();
+                            if let Some(restarts) = restarts.checked_sub(1) {
+                                let job = async move {
+                                    tokio::time::sleep(std::time::Duration::from_secs(1)).await;
+                                    Ok(Callback::Editor(Box::new(move |editor: &mut Editor| {
+                                        let editor_config = &editor.config();
+                                        let (_, doc) = {
+                                            let view = view_mut!(editor);
+                                            let id = view.doc;
+                                            let doc = doc_mut!(editor, &id);
+                                            (view, doc)
+                                        };
+                                        let doc_path = doc.path();
+                                        let Some(lang_config) = doc.language_config() else {
+                                            log::warn!("at LSP restart config is missing");
+                                            return;
+                                        };
+
+                                        match editor.language_servers.start(
+                                            name,
+                                            lang_config,
+                                            doc_path,
+                                            &editor_config.workspace_lsp_roots,
+                                            editor_config.lsp.snippets,
+                                        ) {
+                                            Ok(Some(client)) => client.set_restarts_left(restarts),
+                                            Ok(None) => {}
+                                            Err(err) => {
+                                                log::warn!("failed to restart LSP: {:?}", err);
+                                            }
+                                        }
+                                    })))
+                                };
+
+                                self.jobs.callback(job);
+                            }
+                        }
                     }
                 }
             }
