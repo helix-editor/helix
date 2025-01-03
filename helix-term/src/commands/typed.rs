@@ -1032,10 +1032,11 @@ fn change_current_directory(
 
     cx.editor.last_cwd = helix_stdx::env::set_current_working_dir(dir)?;
 
-    let (_, doc) = current!(cx.editor);
-
-    // Clear the relative path as this will need to be recalculated.
-    doc.relative_path.take();
+    for doc in cx.editor.documents_mut() {
+        // Clear the relative path as this will need to be recalculated
+        // for each document.
+        doc.relative_path.take();
+    }
 
     cx.editor.set_status(format!(
         "Current working directory is now {}",
