@@ -66,6 +66,15 @@ impl DiffProviderRegistry {
             }
         });
     }
+    pub fn get_repo_root(&self, cwd: &Path) -> Arc<PathBuf> {
+        self.providers
+            .iter()
+            .find_map(|provider| match provider.get_repo_root_dir(cwd) {
+                Ok(res) => Some(res),
+                Err(_) => None,
+            })
+            .unwrap_or_else(|| Arc::new(PathBuf::from("/")))
+    }
 }
 
 impl Default for DiffProviderRegistry {
@@ -117,6 +126,14 @@ impl DiffProvider {
             #[cfg(feature = "git")]
             Self::Git => git::for_each_changed_file(cwd, f),
             Self::None => bail!("No diff support compiled in"),
+        }
+    }
+
+    fn get_repo_root_dir(&self, cwd: &Path) -> Result<Arc<PathBuf>> {
+        match self {
+            #[cfg(feature = "git")]
+            DiffProvider::Git => git::get_repo_root_dir(cwd),
+            DiffProvider::None => bail!("No diff support compiled in"),
         }
     }
 }

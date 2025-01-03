@@ -1,8 +1,9 @@
 use anyhow::{bail, Context, Result};
 use arc_swap::ArcSwap;
 use gix::filter::plumbing::driver::apply::Delay;
+use gix::path::env;
 use std::io::Read;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 use gix::bstr::ByteSlice;
@@ -123,6 +124,24 @@ fn open_repo(path: &Path) -> Result<ThreadSafeRepository> {
     )?;
 
     Ok(res)
+}
+
+pub fn get_repo_root_dir(file: &Path) -> Result<Arc<PathBuf>> {
+    debug_assert!(!file.exists() || file.is_file());
+    debug_assert!(file.is_absolute());
+
+    let repo_dir = file.parent().context("file has no parent directory")?;
+    Ok(Arc::new(match open_repo(repo_dir) {
+        Ok(repo) => repo
+            .work_dir()
+            .unwrap_or_else(|| Path::new("/"))
+            .to_path_buf(),
+
+        Err(_) => match env::home_dir() {
+            Some(p) => p,
+            None => PathBuf::from("/"),
+        },
+    }))
 }
 
 /// Emulates the result of running `git status` from the command line.
