@@ -57,6 +57,7 @@ pub struct InlineDiagnosticsConfig {
     pub prefix_len: u16,
     pub max_wrap: u16,
     pub max_diagnostics: usize,
+    pub diagnostic_marker: char,
 }
 
 impl InlineDiagnosticsConfig {
@@ -115,6 +116,7 @@ impl Default for InlineDiagnosticsConfig {
             prefix_len: 1,
             max_wrap: 20,
             max_diagnostics: 10,
+            diagnostic_marker: '●',
         }
     }
 }

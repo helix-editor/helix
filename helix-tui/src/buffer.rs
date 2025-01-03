@@ -320,6 +320,7 @@ impl Buffer {
         style: impl Fn(usize) -> Style, // Map a grapheme's string offset to a style
         ellipsis: bool,
         truncate_start: bool,
+        prefix: Option<char>,
     ) -> (u16, u16) {
         // prevent panic if out of range
         if !self.in_bounds(x, y) || width == 0 {
@@ -329,6 +330,30 @@ impl Buffer {
         let mut index = self.index_of(x, y);
         let mut x_offset = x as usize;
         let width = if ellipsis { width - 1 } else { width };
+        if let Some(prefix_char) = prefix {
+            // encode prefix_char into a small stack buffer
+            let mut buf = [0; 4];
+            let prefix_str = prefix_char.encode_utf8(&mut buf);
+            let prefix_width = prefix_str.width();
+
+            // only draw if it fits in the available space
+            if prefix_width > 0 && prefix_width < width {
+                self.content[index].set_symbol(prefix_str);
+                self.content[index].set_style(style(0));
+
+                // reset the next cells if multi-width
+                for i in index + 1..index + prefix_width {
+                    self.content[i].reset();
+                }
+
+                index += prefix_width;
+                x_offset += prefix_width;
+                self.content[index].set_symbol(" ");
+                self.content[index].set_style(style(0)); // or some offset
+                index += 1;
+                x_offset += 1;
+            }
+        }
         let graphemes = string.grapheme_indices(true);
         let max_offset = min(self.area.right() as usize, width.saturating_add(x as usize));
         if !truncate_start {

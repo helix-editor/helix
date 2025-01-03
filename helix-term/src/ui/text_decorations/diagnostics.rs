@@ -101,6 +101,11 @@ impl Renderer<'_, '_> {
         let start_col = (col - self.renderer.offset.col) as u16;
         let mut end_col = start_col;
         let mut draw_col = (col + 1) as u16;
+        let prefix = if self.config.diagnostic_marker.len_utf8() > 0 {
+            Some(self.config.diagnostic_marker)
+        } else {
+            None
+        };
 
         for line in diag.message.lines() {
             if !self.renderer.column_in_bounds(draw_col as usize, 1) {
@@ -115,6 +120,7 @@ impl Renderer<'_, '_> {
                 |_| style,
                 true,
                 false,
+                prefix,
             );
 
             draw_col = end_col - self.renderer.viewport.x + 2; // double space between lines

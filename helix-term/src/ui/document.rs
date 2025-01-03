@@ -532,6 +532,7 @@ impl<'a> TextRenderer<'a> {
         style: impl Fn(usize) -> Style, // Map a grapheme's string offset to a style
         ellipsis: bool,
         truncate_start: bool,
+        prefix: Option<char>,
     ) -> (u16, u16) {
         if (y as usize) < self.offset.row {
             return (x, y);
@@ -544,6 +545,7 @@ impl<'a> TextRenderer<'a> {
             style,
             ellipsis,
             truncate_start,
+            prefix,
         )
     }
 }
