@@ -484,6 +484,7 @@ pub struct StatusLineConfig {
     pub right: Vec<StatusLineElement>,
     pub separator: String,
     pub mode: ModeConfig,
+    pub render: StatusLineRenderConfig,
 }
 
 impl Default for StatusLineConfig {
@@ -508,6 +509,7 @@ impl Default for StatusLineConfig {
             ],
             separator: String::from("│"),
             mode: ModeConfig::default(),
+            render: StatusLineRenderConfig::PerView,
         }
     }
 }
@@ -528,6 +530,13 @@ impl Default for ModeConfig {
             select: String::from("SEL"),
         }
     }
+}
+
+#[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum StatusLineRenderConfig {
+    Single,
+    PerView,
 }
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]

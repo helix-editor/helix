@@ -25,7 +25,7 @@ use helix_core::{
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
     document::{Mode, SavePoint, SCRATCH_BUFFER_NAME},
-    editor::{CompleteAction, CursorShapeConfig},
+    editor::{CompleteAction, CursorShapeConfig, StatusLineRenderConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
@@ -84,7 +84,10 @@ impl EditorView {
         is_focused: bool,
     ) {
         let inner = view.inner_area(doc);
-        let area = view.area;
+        let area = match editor.config().statusline.render {
+            StatusLineRenderConfig::Single => view.area.clip_bottom(1),
+            StatusLineRenderConfig::PerView => view.area,
+        };
         let theme = &editor.theme;
         let config = editor.config();
 
@@ -219,7 +222,6 @@ impl EditorView {
             for y in area.top()..area.bottom() {
                 surface[(x, y)]
                     .set_symbol(tui::symbols::line::VERTICAL)
-                    //.set_symbol(" ")
                     .set_style(border_style);
             }
         }
@@ -230,15 +232,31 @@ impl EditorView {
             Self::render_diagnostics(doc, view, inner, surface, theme);
         }
 
-        let statusline_area = view
-            .area
-            .clip_top(view.area.height.saturating_sub(1))
-            .clip_bottom(1); // -1 from bottom to remove commandline
+        match editor.config().statusline.render {
+            StatusLineRenderConfig::PerView => {
+                let statusline_area = view
+                    .area
+                    .clip_top(view.area.height.saturating_sub(1))
+                    .clip_bottom(1); // -1 from bottom to remove commandline
 
-        let mut context =
-            statusline::RenderContext::new(editor, doc, view, is_focused, &self.spinners);
+                let mut context =
+                    statusline::RenderContext::new(editor, doc, view, is_focused, &self.spinners);
 
-        statusline::render(&mut context, statusline_area, surface);
+                statusline::render(&mut context, statusline_area, surface);
+            }
+            StatusLineRenderConfig::Single => {
+                // -1 for command line
+                if viewport.bottom() - 1 != view.area.bottom() {
+                    let y = area.bottom();
+                    let border_style = theme.get("ui.window");
+                    for x in area.left()..area.right() {
+                        surface[(x, y)]
+                            .set_symbol(tui::symbols::line::HORIZONTAL)
+                            .set_style(border_style);
+                    }
+                }
+            }
+        };
     }
 
     pub fn render_rulers(
@@ -1560,6 +1578,23 @@ impl Component for EditorView {
         for (view, is_focused) in cx.editor.tree.views() {
             let doc = cx.editor.document(view.doc).unwrap();
             self.render_view(cx.editor, doc, view, area, surface, is_focused);
+        }
+
+        if config.statusline.render == StatusLineRenderConfig::Single {
+            if let Some((view, is_focused)) =
+                cx.editor.tree.views().find(|&(_, is_focused)| is_focused)
+            {
+                let doc = cx.editor.document(view.doc).unwrap();
+                let mut context = statusline::RenderContext::new(
+                    cx.editor,
+                    doc,
+                    view,
+                    is_focused,
+                    &self.spinners,
+                );
+                let statusline_area = area.clip_top(area.height.saturating_sub(2)).clip_bottom(1); // -1 from bottom to remove commandline
+                statusline::render(&mut context, statusline_area, surface);
+            }
         }
 
         if config.auto_info {
