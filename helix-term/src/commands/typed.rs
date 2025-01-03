@@ -187,9 +187,7 @@ fn buffer_gather_paths_impl(editor: &mut Editor, args: &[Cow<str>]) -> Vec<Docum
     for arg in args {
         let doc_id = editor.documents().find_map(|doc| {
             let arg_path = Some(Path::new(arg.as_ref()));
-            if doc.path().map(|p| p.as_path()) == arg_path
-                || doc.relative_path().as_deref() == arg_path
-            {
+            if doc.path().map(|p| p.as_path()) == arg_path || doc.relative_path() == arg_path {
                 Some(doc.id())
             } else {
                 None
@@ -651,11 +649,12 @@ fn force_write_quit(
 /// error, otherwise returns `Ok(())`. If the current document is unmodified,
 /// and there are modified documents, switches focus to one of them.
 pub(super) fn buffers_remaining_impl(editor: &mut Editor) -> anyhow::Result<()> {
-    let (modified_ids, modified_names): (Vec<_>, Vec<_>) = editor
+    let modified_ids: Vec<_> = editor
         .documents()
         .filter(|doc| doc.is_modified())
-        .map(|doc| (doc.id(), doc.display_name()))
-        .unzip();
+        .map(|doc| doc.id())
+        .collect();
+
     if let Some(first) = modified_ids.first() {
         let current = doc!(editor);
         // If the current document is unmodified, and there are modified
@@ -663,6 +662,13 @@ pub(super) fn buffers_remaining_impl(editor: &mut Editor) -> anyhow::Result<()> 
         if !modified_ids.contains(&current.id()) {
             editor.switch(*first, Action::Replace);
         }
+
+        let modified_names: Vec<_> = editor
+            .documents()
+            .filter(|doc| doc.is_modified())
+            .map(|doc| (doc.display_name()))
+            .collect();
+
         bail!(
             "{} unsaved buffer{} remaining: {:?}",
             modified_names.len(),
@@ -1095,12 +1101,18 @@ fn change_current_directory(
             .editor
             .last_cwd
             .clone()
-            .ok_or(anyhow!("No previous working directory"))?,
+            .ok_or_else(|| anyhow!("No previous working directory"))?,
         Some(input_path) => helix_stdx::path::expand_tilde(Path::new(input_path)).to_path_buf(),
         None => home_dir()?,
     };
 
     cx.editor.last_cwd = helix_stdx::env::set_current_working_dir(dir)?;
+
+    for doc in cx.editor.documents_mut() {
+        // Clear the relative path as this will need to be recalculated
+        // for each document.
+        doc.relative_path.take();
+    }
 
     cx.editor.set_status(format!(
         "Current working directory is now {}",
