@@ -1874,22 +1874,19 @@ impl Document {
         self.view_data_mut(view_id).view_position = new_offset;
     }
 
-    pub fn relative_path(&self) -> Option<Cow<Path>> {
+    pub fn relative_path(&self) -> Option<&Path> {
         self.relative_path
             .get_or_init(|| {
                 self.path
                     .as_ref()
                     .map(|path| helix_stdx::path::get_relative_path(path).to_path_buf())
             })
-            .as_ref()
-            .map(|path| path.into())
+            .as_deref()
     }
 
-    pub fn display_name(&self) -> Cow<'static, str> {
-        self.relative_path().map_or_else(
-            || SCRATCH_BUFFER_NAME.into(),
-            |path| path.to_string_lossy().to_string().into(),
-        )
+    pub fn display_name(&self) -> Cow<'_, str> {
+        self.relative_path()
+            .map_or_else(|| SCRATCH_BUFFER_NAME.into(), |path| path.to_string_lossy())
     }
 
     // transact(Fn) ?
