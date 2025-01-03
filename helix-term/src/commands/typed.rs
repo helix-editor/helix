@@ -139,15 +139,18 @@ fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     Ok(())
 }
 
-fn buffer_close_by_ids_impl(
+fn buffer_close_by_ids_impl<'a, T>(
     cx: &mut compositor::Context,
-    doc_ids: &[DocumentId],
+    doc_ids: T,
     force: bool,
-) -> anyhow::Result<()> {
+) -> anyhow::Result<()>
+where
+    T: IntoIterator<Item = &'a DocumentId>,
+{
     cx.block_try_flush_writes()?;
 
     let (modified_ids, modified_names): (Vec<_>, Vec<_>) = doc_ids
-        .iter()
+        .into_iter()
         .filter_map(|&doc_id| {
             if let Err(CloseError::BufferModified(name)) = cx.editor.close_document(doc_id, force) {
                 Some((doc_id, name))
@@ -301,6 +304,46 @@ fn force_buffer_close_all(
 
     let document_ids = buffer_gather_all_impl(cx.editor);
     buffer_close_by_ids_impl(cx, &document_ids, true)
+}
+
+fn buffer_close_hidden(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let mut visible_doc_ids = cx
+        .editor
+        .documents()
+        .map(|doc| doc.id())
+        .collect::<HashSet<_>>();
+    for view in cx.editor.tree.views() {
+        visible_doc_ids.remove(&view.0.doc);
+    }
+    buffer_close_by_ids_impl(cx, &visible_doc_ids, false)
+}
+
+fn force_buffer_close_hidden(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let mut visible_doc_ids = cx
+        .editor
+        .documents()
+        .map(|doc| doc.id())
+        .collect::<HashSet<_>>();
+    for view in cx.editor.tree.views() {
+        visible_doc_ids.remove(&view.0.doc);
+    }
+    buffer_close_by_ids_impl(cx, &visible_doc_ids, true)
 }
 
 fn buffer_next(
@@ -2591,6 +2634,20 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["bca!", "bcloseall!"],
         doc: "Force close all buffers ignoring unsaved changes without quitting.",
         fun: force_buffer_close_all,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "buffer-close-hidden",
+        aliases: &["bch", "bclosehidden"],
+        doc: "Close all buffers that are not visible.",
+        fun: buffer_close_hidden,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "buffer-close-hidden!",
+        aliases: &["bch!", "bclosehidden!"],
+        doc: "Force close all buffers that are not visible ignoring unsaved changes.",
+        fun: force_buffer_close_hidden,
         signature: CommandSignature::none(),
     },
     TypableCommand {
