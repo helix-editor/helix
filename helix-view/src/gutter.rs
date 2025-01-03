@@ -46,7 +46,7 @@ impl GutterType {
 }
 
 pub fn diagnostic<'doc>(
-    _editor: &'doc Editor,
+    editor: &'doc Editor,
     doc: &'doc Document,
     _view: &View,
     theme: &Theme,
@@ -57,6 +57,7 @@ pub fn diagnostic<'doc>(
     let info = theme.get("info");
     let hint = theme.get("hint");
     let diagnostics = &doc.diagnostics;
+    let symbols = editor.config().icons.diagnostic.clone();
 
     Box::new(
         move |line: usize, _selected: bool, first_visual_line: bool, out: &mut String| {
@@ -74,13 +75,14 @@ pub fn diagnostic<'doc>(
                             .any(|ls| ls.id() == d.provider)
                 });
             diagnostics_on_line.max_by_key(|d| d.severity).map(|d| {
-                write!(out, "●").ok();
-                match d.severity {
-                    Some(Severity::Error) => error,
-                    Some(Severity::Warning) | None => warning,
-                    Some(Severity::Info) => info,
-                    Some(Severity::Hint) => hint,
-                }
+                let (style, symbol) = match d.severity {
+                    Some(Severity::Error) => (error, symbols.error()),
+                    Some(Severity::Warning) | None => (warning, symbols.warning()),
+                    Some(Severity::Info) => (info, symbols.info()),
+                    Some(Severity::Hint) => (hint, symbols.hint()),
+                };
+                out.push_str(symbol);
+                style
             })
         },
     )
@@ -272,7 +274,13 @@ pub fn breakpoints<'doc>(
                 breakpoint_style
             };
 
-            let sym = if breakpoint.verified { "●" } else { "◯" };
+            let config = editor.config();
+
+            let sym = if breakpoint.verified {
+                config.icons.dap.verified()
+            } else {
+                config.icons.dap.unverified()
+            };
             write!(out, "{}", sym).unwrap();
             Some(style)
         },
