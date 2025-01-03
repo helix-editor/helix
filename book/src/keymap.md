@@ -274,6 +274,7 @@ This layer is similar to Vim keybindings as Kakoune does not support windows.
 | `J`                    | Swap window downwards                                | `swap_view_down`  |
 | `K`                    | Swap window upwards                                  | `swap_view_up`    |
 | `L`                    | Swap window to the right                             | `swap_view_right` |
+| `z`                    | Toggle zoom for the focused view                     | `toggle_zoom`     |
 
 #### Space mode
 
