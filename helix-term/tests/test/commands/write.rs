@@ -539,6 +539,7 @@ async fn test_symlink_write() -> anyhow::Result<()> {
     let dir = tempfile::tempdir()?;
 
     let mut file = tempfile::NamedTempFile::new_in(&dir)?;
+    // NOTE: This will fail on Windows unless ran in administrator
     let symlink_path = dir.path().join("linked");
     symlink(file.path(), &symlink_path)?;
 
@@ -578,6 +579,7 @@ async fn test_symlink_write_fail() -> anyhow::Result<()> {
 
     let file = helpers::new_readonly_tempfile_in_dir(&dir)?;
     let symlink_path = dir.path().join("linked");
+    // NOTE: This will fail on Windows unless ran in administrator
     symlink(file.path(), &symlink_path)?;
 
     let mut app = helpers::AppBuilder::new()
@@ -622,6 +624,7 @@ async fn test_symlink_write_relative() -> anyhow::Result<()> {
     let mut file = tempfile::NamedTempFile::new_in(&inner_dir)?;
     let symlink_path = dir.path().join("linked");
     let relative_path = std::path::PathBuf::from("b").join(file.path().file_name().unwrap());
+    // NOTE: This will fail on Windows unless ran in administrator
     symlink(relative_path, &symlink_path)?;
 
     let mut app = helpers::AppBuilder::new()
@@ -680,6 +683,36 @@ async fn test_hardlink_write() -> anyhow::Result<()> {
     );
     assert!(helix_stdx::faccess::hardlink_count(&hardlink_path)? > 1);
     assert!(same_file::is_same_file(file.path(), &hardlink_path)?);
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+#[cfg(unix)]
+async fn test_write_ownership() -> anyhow::Result<()> {
+    // GH CI does not possess CAP_CHOWN
+    if option_env!("GITHUB_ACTIONS").is_some() {
+        return Ok(());
+    }
+    use std::os::unix::fs::MetadataExt;
+
+    let mut file = tempfile::NamedTempFile::new()?;
+    let mut app = helpers::AppBuilder::new()
+        .with_file(file.path(), None)
+        .build()?;
+
+    let nobody_uid = 9999;
+    let nogroup_gid = 9999;
+
+    helix_stdx::faccess::fchown(&file.as_file_mut(), Some(nobody_uid), Some(nogroup_gid))?;
+
+    let old_meta = file.as_file().metadata()?;
+
+    test_key_sequence(&mut app, Some("hello:w<ret>"), None, false).await?;
+    reload_file(&mut file).unwrap();
+
+    let new_meta = file.as_file().metadata()?;
+    assert!(old_meta.uid() == new_meta.uid() && old_meta.gid() == new_meta.gid());
 
     Ok(())
 }

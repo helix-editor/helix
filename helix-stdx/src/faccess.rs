@@ -50,13 +50,6 @@ mod imp {
         Ok(())
     }
 
-    fn chown(p: &Path, uid: Option<u32>, gid: Option<u32>) -> io::Result<()> {
-        let uid = uid.map(|n| unsafe { rustix::fs::Uid::from_raw(n) });
-        let gid = gid.map(|n| unsafe { rustix::fs::Gid::from_raw(n) });
-        rustix::fs::chown(p, uid, gid)?;
-        Ok(())
-    }
-
     pub fn copy_metadata(from: &Path, to: &Path) -> io::Result<()> {
         let from_meta = std::fs::metadata(from)?;
         let to_meta = std::fs::metadata(to)?;
@@ -81,13 +74,14 @@ mod imp {
     }
 }
 
-// Licensed under MIT from faccess except for `chown`, `copy_metadata` and `is_acl_inherited`
 #[cfg(windows)]
 mod imp {
 
-    use windows_sys::Win32::Foundation::{CloseHandle, LocalFree, ERROR_SUCCESS, HANDLE};
+    use windows_sys::Win32::Foundation::{
+        CloseHandle, LocalFree, ERROR_SUCCESS, GENERIC_READ, GENERIC_WRITE, HANDLE,
+    };
     use windows_sys::Win32::Security::Authorization::{
-        GetNamedSecurityInfoW, SetNamedSecurityInfoW, SE_FILE_OBJECT,
+        GetNamedSecurityInfoW, SetSecurityInfo, SE_FILE_OBJECT,
     };
     use windows_sys::Win32::Security::{
         AccessCheck, AclSizeInformation, GetAce, GetAclInformation, GetSidIdentifierAuthority,
@@ -100,7 +94,8 @@ mod imp {
     };
     use windows_sys::Win32::Storage::FileSystem::{
         GetFileInformationByHandle, BY_HANDLE_FILE_INFORMATION, FILE_ACCESS_RIGHTS,
-        FILE_ALL_ACCESS, FILE_GENERIC_EXECUTE, FILE_GENERIC_READ, FILE_GENERIC_WRITE,
+        FILE_ALL_ACCESS, FILE_GENERIC_EXECUTE, FILE_GENERIC_READ, FILE_GENERIC_WRITE, WRITE_DAC,
+        WRITE_OWNER,
     };
     use windows_sys::Win32::System::Threading::{GetCurrentThread, OpenThreadToken};
 
@@ -108,8 +103,10 @@ mod imp {
 
     use std::ffi::c_void;
 
+    use std::fs::File;
     use std::os::windows::{ffi::OsStrExt, fs::OpenOptionsExt, io::AsRawHandle};
 
+    // Licensed under MIT from faccess
     struct SecurityDescriptor {
         sd: PSECURITY_DESCRIPTOR,
         owner: PSID,
@@ -128,6 +125,7 @@ mod imp {
     }
 
     impl SecurityDescriptor {
+        // Licensed under MIT from faccess
         fn for_path(p: &Path) -> io::Result<SecurityDescriptor> {
             let path = std::fs::canonicalize(p)?;
             let pathos = path.into_os_string();
@@ -202,6 +200,7 @@ mod imp {
         }
     }
 
+    // Licensed under MIT from faccess
     struct ThreadToken(HANDLE);
     impl Drop for ThreadToken {
         fn drop(&mut self) {
@@ -211,6 +210,7 @@ mod imp {
         }
     }
 
+    // Licensed under MIT from faccess
     impl ThreadToken {
         fn new() -> io::Result<Self> {
             unsafe {
@@ -237,6 +237,7 @@ mod imp {
         }
     }
 
+    // Licensed under MIT from faccess
     // Based roughly on Tcl's NativeAccess()
     // https://github.com/tcltk/tcl/blob/2ee77587e4dc2150deb06b48f69db948b4ab0584/win/tclWinFile.c
     fn eaccess(p: &Path, mut mode: FILE_ACCESS_RIGHTS) -> io::Result<()> {
@@ -330,6 +331,7 @@ mod imp {
         }
     }
 
+    // Licensed under MIT from faccess
     pub fn access(p: &Path, mode: AccessMode) -> io::Result<()> {
         let mut imode = 0;
 
@@ -356,13 +358,8 @@ mod imp {
         }
     }
 
-    fn chown(p: &Path, sd: SecurityDescriptor) -> io::Result<()> {
-        let path = std::fs::canonicalize(p)?;
-        let pathos = path.as_os_str();
-        let mut pathw = Vec::with_capacity(pathos.len() + 1);
-        pathw.extend(pathos.encode_wide());
-        pathw.push(0);
-
+    // SAFETY: It is the caller's responsibility to close the handle
+    fn chown(handle: HANDLE, sd: SecurityDescriptor) -> io::Result<()> {
         let mut owner = std::ptr::null_mut();
         let mut group = std::ptr::null_mut();
         let mut dacl = std::ptr::null();
@@ -387,8 +384,8 @@ mod imp {
         }
 
         let err = unsafe {
-            SetNamedSecurityInfoW(
-                pathw.as_ptr(),
+            SetSecurityInfo(
+                handle,
                 SE_FILE_OBJECT,
                 si,
                 owner,
@@ -405,9 +402,18 @@ mod imp {
         }
     }
 
-    pub fn copy_metadata(from: &Path, to: &Path) -> io::Result<()> {
+    pub fn copy_ownership(from: &Path, to: &Path) -> io::Result<()> {
         let sd = SecurityDescriptor::for_path(from)?;
-        chown(to, sd)?;
+        let to_file = std::fs::OpenOptions::new()
+            .read(true)
+            .access_mode(GENERIC_READ | GENERIC_WRITE | WRITE_OWNER | WRITE_DAC)
+            .open(to)?;
+        chown(to_file.as_raw_handle(), sd)?;
+        Ok(())
+    }
+
+    pub fn copy_metadata(from: &Path, to: &Path) -> io::Result<()> {
+        copy_ownership(from, to)?;
 
         let meta = std::fs::metadata(from)?;
         let perms = meta.permissions();
@@ -417,16 +423,21 @@ mod imp {
         Ok(())
     }
 
-    pub fn hardlink_count(p: &Path) -> std::io::Result<u64> {
-        let file = std::fs::File::open(p)?;
+    fn file_info(p: &Path) -> io::Result<BY_HANDLE_FILE_INFORMATION> {
+        let file = File::open(p)?;
         let handle = file.as_raw_handle();
         let mut info: BY_HANDLE_FILE_INFORMATION = unsafe { std::mem::zeroed() };
 
         if unsafe { GetFileInformationByHandle(handle, &mut info) } == 0 {
-            Err(std::io::Error::last_os_error())
+            Err(io::Error::last_os_error())
         } else {
-            Ok(info.nNumberOfLinks as u64)
+            Ok(info)
         }
+    }
+
+    pub fn hardlink_count(p: &Path) -> io::Result<u64> {
+        let n = file_info(p)?.nNumberOfLinks as u64;
+        Ok(n)
     }
 }
 
@@ -453,14 +464,6 @@ mod imp {
             Err(io::Error::new(io::ErrorKind::NotFound, "Path not found"))
         }
     }
-
-    pub fn copy_metadata(from: &path, to: &Path) -> io::Result<()> {
-        let meta = std::fs::metadata(from)?;
-        let perms = meta.permissions();
-        std::fs::set_permissions(to, perms)?;
-
-        Ok(())
-    }
 }
 
 pub fn readonly(p: &Path) -> bool {
@@ -471,10 +474,102 @@ pub fn readonly(p: &Path) -> bool {
     }
 }
 
+pub fn hardlink_count(p: &Path) -> io::Result<u64> {
+    imp::hardlink_count(p)
+}
+
 pub fn copy_metadata(from: &Path, to: &Path) -> io::Result<()> {
     imp::copy_metadata(from, to)
 }
 
-pub fn hardlink_count(p: &Path) -> io::Result<u64> {
-    imp::hardlink_count(p)
+#[cfg(windows)]
+pub fn copy_ownership(from: &Path, to: &Path) -> io::Result<()> {
+    imp::copy_ownership(from, to)
+}
+
+#[cfg(unix)]
+pub fn chown(p: &Path, uid: Option<u32>, gid: Option<u32>) -> io::Result<()> {
+    let uid = uid.map(|n| unsafe { rustix::fs::Uid::from_raw(n) });
+    let gid = gid.map(|n| unsafe { rustix::fs::Gid::from_raw(n) });
+    rustix::fs::chown(p, uid, gid)?;
+    Ok(())
+}
+
+#[cfg(unix)]
+pub fn fchown(fd: impl std::os::fd::AsFd, uid: Option<u32>, gid: Option<u32>) -> io::Result<()> {
+    let uid = uid.map(|n| unsafe { rustix::fs::Uid::from_raw(n) });
+    let gid = gid.map(|n| unsafe { rustix::fs::Gid::from_raw(n) });
+    rustix::fs::fchown(fd, uid, gid)?;
+    Ok(())
+}
+
+#[cfg(unix)]
+pub fn copy_xattr(src: &Path, dst: &Path) -> io::Result<()> {
+    use std::ffi::CStr;
+
+    if !src.exists() || !dst.exists() {
+        return Err(io::Error::new(
+            io::ErrorKind::NotFound,
+            "src or dst file was not found while copying attributes",
+        ));
+    }
+
+    let size = match rustix::fs::listxattr(src, &mut [])? {
+        0 => return Ok(()), // No attributes
+        len => len,
+    };
+
+    let mut key_list = vec![0; size];
+    let size = rustix::fs::listxattr(src, key_list.as_mut_slice())?;
+    if key_list.len() != size {
+        return Err(io::Error::new(
+            io::ErrorKind::Other,
+            format!(
+                "`{}`'s xattr list changed while copying attributes",
+                src.to_string_lossy()
+            ),
+        ));
+    }
+
+    // Iterate over null-terminated C-style strings
+    // Two loops to avoid multiple allocations
+    // Find max-size for attributes
+    let mut max_val_len = 0;
+    for key in key_list[..size].split_inclusive(|&b| b == 0) {
+        // Needed on macos
+        #[allow(clippy::unnecessary_cast)]
+        let conv = unsafe { std::slice::from_raw_parts(key.as_ptr() as *const u8, key.len()) };
+        let key = CStr::from_bytes_with_nul(conv)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+
+        let attr_len = rustix::fs::getxattr(src, key, &mut [])?;
+        max_val_len = max_val_len.max(attr_len);
+    }
+
+    let mut attr_buf = vec![0u8; max_val_len];
+    for key in key_list[..size].split_inclusive(|&b| b == 0) {
+        // Needed on macos
+        #[allow(clippy::unnecessary_cast)]
+        let conv = unsafe { std::slice::from_raw_parts(key.as_ptr() as *const u8, key.len()) };
+        let key = CStr::from_bytes_with_nul(conv)
+            .map_err(|e| io::Error::new(io::ErrorKind::InvalidData, e))?;
+        let read = rustix::fs::getxattr(src, key, attr_buf.as_mut_slice())?;
+
+        // If we can't set xattr because it already exists, try to replace it
+        if read != 0 {
+            match rustix::fs::setxattr(dst, key, &attr_buf[..read], rustix::fs::XattrFlags::CREATE)
+            {
+                Err(rustix::io::Errno::EXIST) => rustix::fs::setxattr(
+                    dst,
+                    key,
+                    &attr_buf[..read],
+                    rustix::fs::XattrFlags::REPLACE,
+                )?,
+                Err(e) => return Err(e.into()),
+                _ => {}
+            }
+        }
+    }
+
+    Ok(())
 }
