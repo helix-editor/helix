@@ -32,12 +32,6 @@ pub fn char_is_line_ending(ch: char) -> bool {
     LineEnding::from_char(ch).is_some()
 }
 
-/// Determine whether a character is a subword text object delimiter.
-#[inline]
-pub fn char_is_subword_textobj_delimiter(ch: char) -> bool {
-    ch == '_' || ch == '-' || ch == '/'
-}
-
 /// Determine whether a character qualifies as (non-line-break)
 /// whitespace.
 #[inline]
@@ -89,6 +83,12 @@ pub fn char_is_punctuation(ch: char) -> bool {
 #[inline]
 pub fn char_is_word(ch: char) -> bool {
     ch.is_alphanumeric() || ch == '_'
+}
+
+/// Determine whether a character is a subword text object delimiter.
+#[inline]
+pub fn char_is_subword_textobj_delimiter(ch: char) -> bool {
+    ch == '_' || ch == '-' || ch == '/'
 }
 
 #[cfg(test)]
