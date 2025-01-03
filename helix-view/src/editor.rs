@@ -327,6 +327,10 @@ pub struct Config {
     pub terminal: Option<TerminalConfig>,
     /// Column numbers at which to draw the rulers. Defaults to `[]`, meaning no rulers.
     pub rulers: Vec<u16>,
+    /// Set to `bg` to display rulers with background color (default) or `char` to use character from `ruler-char`.
+    pub ruler_style: RulerStyle,
+    /// Character used to draw the rulers when specified
+    pub ruler_char: char,
     #[serde(default)]
     pub whitespace: WhitespaceConfig,
     /// Persistently display open buffers along the top
@@ -649,6 +653,17 @@ impl Default for CursorShapeConfig {
     fn default() -> Self {
         Self([CursorKind::Block; 3])
     }
+}
+
+/// ruler render style
+#[derive(Debug, Default, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub enum RulerStyle {
+    /// Render rulers with background color
+    #[default]
+    Bg,
+    /// Render rulers with character from `ruler-char`
+    Char,
 }
 
 /// bufferline render modes
@@ -980,6 +995,8 @@ impl Default for Config {
             lsp: LspConfig::default(),
             terminal: get_terminal_provider(),
             rulers: Vec::new(),
+            ruler_style: RulerStyle::default(),
+            ruler_char: '│',
             whitespace: WhitespaceConfig::default(),
             bufferline: BufferLine::default(),
             indent_guides: IndentGuidesConfig::default(),
