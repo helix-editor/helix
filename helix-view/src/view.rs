@@ -1,7 +1,7 @@
 use crate::{
     align_view,
     annotations::diagnostics::InlineDiagnostics,
-    document::DocumentInlayHints,
+    document::{DocumentColorSwatches, DocumentInlayHints},
     editor::{GutterConfig, GutterType},
     graphics::Rect,
     handlers::diagnostics::DiagnosticsHandler,
@@ -480,6 +480,17 @@ impl View {
                 .add_inline_annotations(parameter_inlay_hints, parameter_style)
                 .add_inline_annotations(other_inlay_hints, other_style)
                 .add_inline_annotations(padding_after_inlay_hints, None);
+        };
+        if let Some(DocumentColorSwatches {
+            id: _,
+            colors: _,
+            color_swatches,
+            color_swatches_padding,
+        }) = doc.color_swatches.get(&self.id)
+        {
+            text_annotations
+                .add_inline_annotations(color_swatches, None)
+                .add_inline_annotations(color_swatches_padding, None);
         };
         let config = doc.config.load();
         let width = self.inner_width(doc);

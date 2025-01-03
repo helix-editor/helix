@@ -446,6 +446,8 @@ pub struct LspConfig {
     pub display_signature_help_docs: bool,
     /// Display inlay hints
     pub display_inlay_hints: bool,
+    /// Display color swatches
+    pub display_color_swatches: bool,
     /// Whether to enable snippet support
     pub snippets: bool,
     /// Whether to include declaration in the goto reference query
@@ -461,6 +463,7 @@ impl Default for LspConfig {
             auto_signature_help: true,
             display_signature_help_docs: true,
             display_inlay_hints: false,
+            display_color_swatches: true,
             snippets: true,
             goto_reference_include_declaration: true,
         }

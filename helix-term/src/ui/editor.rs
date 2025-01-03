@@ -35,6 +35,8 @@ use std::{mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc, sync::Arc};
 
 use tui::{buffer::Buffer as Surface, text::Span};
 
+use super::text_decorations::ColorSwatch;
+
 pub struct EditorView {
     pub keymaps: Keymaps,
     on_next_key: Option<(OnKeyCallback, OnKeyCallbackKind)>,
@@ -199,6 +201,11 @@ impl EditorView {
             inline_diagnostic_config,
             config.end_of_line_diagnostics,
         ));
+        if let Some(swatches) = doc.color_swatches(view.id) {
+            for (swatch, color) in swatches.color_swatches.iter().zip(swatches.colors.iter()) {
+                decorations.add_decoration(ColorSwatch::new(*color, swatch.char_idx));
+            }
+        }
         render_document(
             surface,
             inner,
@@ -1105,7 +1112,7 @@ impl EditorView {
     }
 
     pub fn handle_idle_timeout(&mut self, cx: &mut commands::Context) -> EventResult {
-        commands::compute_inlay_hints_for_all_views(cx.editor, cx.jobs);
+        commands::compute_lsp_annotations_for_all_views(cx.editor, cx.jobs);
 
         EventResult::Ignored(None)
     }

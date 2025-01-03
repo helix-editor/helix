@@ -353,6 +353,7 @@ impl Client {
                 capabilities.inlay_hint_provider,
                 Some(OneOf::Left(true) | OneOf::Right(InlayHintServerCapabilities::Options(_)))
             ),
+            LanguageServerFeature::ColorProvider => capabilities.color_provider.is_some(),
         }
     }
 
@@ -1112,6 +1113,25 @@ impl Client {
         };
 
         Some(self.call::<lsp::request::InlayHintRequest>(params))
+    }
+
+    pub fn text_document_color_swatches(
+        &self,
+        text_document: lsp::TextDocumentIdentifier,
+        work_done_token: Option<lsp::ProgressToken>,
+    ) -> Option<impl Future<Output = Result<Value>>> {
+        self.capabilities.get().unwrap().color_provider.as_ref()?;
+        let params = lsp::DocumentColorParams {
+            text_document,
+            work_done_progress_params: lsp::WorkDoneProgressParams {
+                work_done_token: work_done_token.clone(),
+            },
+            partial_result_params: helix_lsp_types::PartialResultParams {
+                partial_result_token: work_done_token,
+            },
+        };
+
+        Some(self.call::<lsp::request::DocumentColor>(params))
     }
 
     pub fn text_document_hover(
