@@ -5710,6 +5710,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
         ("f", "Function (tree-sitter)"),
         ("a", "Argument/parameter (tree-sitter)"),
         ("c", "Comment (tree-sitter)"),
+        ("s", "Sub-word"),
         ("T", "Test (tree-sitter)"),
         ("e", "Data structure entry (tree-sitter)"),
         ("m", "Closest surrounding pair (tree-sitter)"),
