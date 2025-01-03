@@ -136,6 +136,7 @@ Themes:
 * Sync changes with catppuccin themes ([#12304](https://github.com/helix-editor/helix/pull/12304))
 * Add `ui.text.directory` to `nightfox` ([#12328](https://github.com/helix-editor/helix/pull/12328))
 * Add `ui.text.directory` to `sunset` ([#12328](https://github.com/helix-editor/helix/pull/12328))
+* Add `diagnostic.unnecessary` to Catppuccin themes ([#12391](https://github.com/helix-editor/helix/pull/12391))
 
 New languages:
 
