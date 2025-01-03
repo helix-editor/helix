@@ -743,6 +743,13 @@ impl Transaction {
         })
     }
 
+    /// Replace text at each selection head.
+    pub fn replace(doc: &Rope, selection: &Selection, text: Tendril) -> Self {
+        Self::change_by_selection(doc, selection, |range| {
+            (range.from(), range.to(), Some(text.clone()))
+        })
+    }
+
     pub fn changes_iter(&self) -> ChangeIterator {
         self.changes.changes_iter()
     }
