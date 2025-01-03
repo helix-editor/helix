@@ -1,15 +1,17 @@
 use crate::{
     commands::{self, OnKeyCallback, OnKeyCallbackKind},
-    compositor::{Component, Context, Event, EventResult},
+    compositor::{Component, Compositor, Context, Event, EventResult},
     events::{OnModeSwitch, PostCommand},
     handlers::completion::CompletionItem,
+    job::{self, Callback},
     key,
     keymap::{KeymapResult, Keymaps},
     ui::{
         document::{render_document, LinePos, TextRenderer},
+        markdown::StyledText,
         statusline,
         text_decorations::{self, Decoration, DecorationManager, InlineDiagnostics},
-        Completion, ProgressSpinners,
+        Completion, Popup, ProgressSpinners,
     },
 };
 
@@ -1582,12 +1584,30 @@ impl Component for EditorView {
                 cx.editor.theme.get("ui.text")
             };
 
-            surface.set_string(
-                area.x,
-                area.y + area.height.saturating_sub(1),
-                status_msg,
-                style,
-            );
+            if status_msg.len() <= area.width.into() {
+                surface.set_string(
+                    area.x,
+                    area.y + area.height.saturating_sub(1),
+                    status_msg,
+                    style,
+                );
+            } else {
+                let status_msg_box = async move {
+                    let call: job::Callback = Callback::EditorCompositor(Box::new(
+                        move |editor: &mut Editor, compositor: &mut Compositor| {
+                            if let Some((contents, _)) = &editor.status_msg {
+                                let contents = StyledText::new(contents.to_string(), style);
+
+                                let popup = Popup::new("hover", contents).auto_close(true);
+                                compositor.replace_or_push("hover", popup);
+                            }
+                        },
+                    ));
+                    Ok(call)
+                };
+
+                cx.jobs.callback(status_msg_box)
+            }
         }
 
         if area.width.saturating_sub(status_msg_width as u16) > key_width {
