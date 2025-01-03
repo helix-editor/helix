@@ -1,5 +1,5 @@
 <!DOCTYPE HTML>
-<html lang="en" class="colibri" dir="ltr">
+<html lang="en" class="colibri sidebar-visible" dir="ltr">
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
@@ -7,7 +7,7 @@
 
 
         <!-- Custom HTML head -->
-        
+
         <meta name="description" content="">
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff">
@@ -31,15 +31,17 @@
         <!-- Custom theme stylesheets -->
         <link rel="stylesheet" href="custom.css">
 
-    </head>
-    <body class="sidebar-visible no-js">
-    <div id="body-container">
+
         <!-- Provide site root to javascript -->
         <script>
             var path_to_root = "";
             var default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? "colibri" : "colibri";
         </script>
-
+        <!-- Start loading toc.js asap -->
+        <script src="toc.js"></script>
+    </head>
+    <body>
+    <div id="body-container">
         <!-- Work around some values being stored in localStorage wrapped in quotes -->
         <script>
             try {
@@ -61,19 +63,16 @@
             var theme;
             try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
             if (theme === null || theme === undefined) { theme = default_theme; }
-            var html = document.querySelector('html');
+            const html = document.documentElement;
             html.classList.remove('colibri')
             html.classList.add(theme);
-            var body = document.querySelector('body');
-            body.classList.remove('no-js')
-            body.classList.add('js');
+            html.classList.add("js");
         </script>
 
         <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
 
         <!-- Hide / unhide sidebar before it is displayed -->
         <script>
-            var body = document.querySelector('body');
             var sidebar = null;
             var sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
             if (document.body.clientWidth >= 1080) {
@@ -83,43 +82,25 @@
                 sidebar = 'hidden';
             }
             sidebar_toggle.checked = sidebar === 'visible';
-            body.classList.remove('sidebar-visible');
-            body.classList.add("sidebar-" + sidebar);
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
         </script>
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
-            <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded affix "><a href="title-page.html">Helix</a></li><li class="chapter-item expanded "><a href="install.html"><strong aria-hidden="true">1.</strong> Installation</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="package-managers.html"><strong aria-hidden="true">1.1.</strong> Package Managers</a></li><li class="chapter-item expanded "><a href="building-from-source.html"><strong aria-hidden="true">1.2.</strong> Building from source</a></li></ol></li><li class="chapter-item expanded "><a href="usage.html"><strong aria-hidden="true">2.</strong> Usage</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="registers.html"><strong aria-hidden="true">2.1.</strong> Registers</a></li><li class="chapter-item expanded "><a href="surround.html"><strong aria-hidden="true">2.2.</strong> Surround</a></li><li class="chapter-item expanded "><a href="textobjects.html"><strong aria-hidden="true">2.3.</strong> Textobjects</a></li><li class="chapter-item expanded "><a href="syntax-aware-motions.html"><strong aria-hidden="true">2.4.</strong> Syntax aware motions</a></li><li class="chapter-item expanded "><a href="keymap.html" class="active"><strong aria-hidden="true">2.5.</strong> Keymap</a></li><li class="chapter-item expanded "><a href="commands.html"><strong aria-hidden="true">2.6.</strong> Commands</a></li><li class="chapter-item expanded "><a href="lang-support.html"><strong aria-hidden="true">2.7.</strong> Language support</a></li></ol></li><li class="chapter-item expanded "><a href="from-vim.html"><strong aria-hidden="true">3.</strong> Migrating from Vim</a></li><li class="chapter-item expanded "><a href="configuration.html"><strong aria-hidden="true">4.</strong> Configuration</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="editor.html"><strong aria-hidden="true">4.1.</strong> Editor</a></li><li class="chapter-item expanded "><a href="themes.html"><strong aria-hidden="true">4.2.</strong> Themes</a></li><li class="chapter-item expanded "><a href="remapping.html"><strong aria-hidden="true">4.3.</strong> Key remapping</a></li><li class="chapter-item expanded "><a href="languages.html"><strong aria-hidden="true">4.4.</strong> Languages</a></li></ol></li><li class="chapter-item expanded "><a href="guides/index.html"><strong aria-hidden="true">5.</strong> Guides</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="guides/adding_languages.html"><strong aria-hidden="true">5.1.</strong> Adding languages</a></li><li class="chapter-item expanded "><a href="guides/textobject.html"><strong aria-hidden="true">5.2.</strong> Adding textobject queries</a></li><li class="chapter-item expanded "><a href="guides/indent.html"><strong aria-hidden="true">5.3.</strong> Adding indent queries</a></li><li class="chapter-item expanded "><a href="guides/injection.html"><strong aria-hidden="true">5.4.</strong> Adding injection queries</a></li></ol></li></ol>
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
             </div>
-            <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
-
-        <!-- Track and set sidebar scroll position -->
-        <script>
-            var sidebarScrollbox = document.querySelector('#sidebar .sidebar-scrollbox');
-            sidebarScrollbox.addEventListener('click', function(e) {
-                if (e.target.tagName === 'A') {
-                    sessionStorage.setItem('sidebar-scroll', sidebarScrollbox.scrollTop);
-                }
-            }, { passive: true });
-            var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
-            sessionStorage.removeItem('sidebar-scroll');
-            if (sidebarScrollTop) {
-                // preserve sidebar scroll position when navigating via links within sidebar
-                sidebarScrollbox.scrollTop = sidebarScrollTop;
-            } else {
-                // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
-                var activeSection = document.querySelector('#sidebar .active');
-                if (activeSection) {
-                    activeSection.scrollIntoView({ block: 'center' });
-                }
-            }
-        </script>
 
         <div id="page-wrapper" class="page-wrapper">
 
             <div class="page">
-                                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar-hover-placeholder"></div>
                 <div id="menu-bar" class="menu-bar sticky">
                     <div class="left-buttons">
                         <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
@@ -334,6 +315,10 @@
 <tr><td><code>Alt-i</code>, <code>Alt-down</code></td><td>Shrink syntax tree object selection (<strong>TS</strong>)</td><td><code>shrink_selection</code></td></tr>
 <tr><td><code>Alt-p</code>, <code>Alt-left</code></td><td>Select previous sibling node in syntax tree (<strong>TS</strong>)</td><td><code>select_prev_sibling</code></td></tr>
 <tr><td><code>Alt-n</code>, <code>Alt-right</code></td><td>Select next sibling node in syntax tree (<strong>TS</strong>)</td><td><code>select_next_sibling</code></td></tr>
+<tr><td><code>Alt-a</code></td><td>Select all sibling nodes in syntax tree (<strong>TS</strong>)</td><td><code>select_all_siblings</code></td></tr>
+<tr><td><code>Alt-I</code>, <code>Alt-Shift-down</code></td><td>Select all children nodes in syntax tree (<strong>TS</strong>)</td><td><code>select_all_children</code></td></tr>
+<tr><td><code>Alt-e</code></td><td>Move to end of parent node in syntax tree (<strong>TS</strong>)</td><td><code>move_parent_node_end</code></td></tr>
+<tr><td><code>Alt-b</code></td><td>Move to start of parent node in syntax tree (<strong>TS</strong>)</td><td><code>move_parent_node_start</code></td></tr>
 </tbody></table>
 </div>
 <h3 id="search"><a class="header" href="#search">Search</a></h3>
@@ -343,7 +328,8 @@
 <tr><td><code>?</code></td><td>Search for previous pattern</td><td><code>rsearch</code></td></tr>
 <tr><td><code>n</code></td><td>Select next search match</td><td><code>search_next</code></td></tr>
 <tr><td><code>N</code></td><td>Select previous search match</td><td><code>search_prev</code></td></tr>
-<tr><td><code>*</code></td><td>Use current selection as the search pattern</td><td><code>search_selection</code></td></tr>
+<tr><td><code>*</code></td><td>Use current selection as the search pattern, automatically wrapping with <code>\b</code> on word boundaries</td><td><code>search_selection_detect_word_boundaries</code></td></tr>
+<tr><td><code>Alt-*</code></td><td>Use current selection as the search pattern</td><td><code>search_selection</code></td></tr>
 </tbody></table>
 </div>
 <h3 id="minor-modes"><a class="header" href="#minor-modes">Minor modes</a></h3>
@@ -445,7 +431,7 @@ useful when you're simply looking over text and not actively editing it.</p>
 <p>Accessed by typing <code>Space</code> in <a href="#normal-mode">normal mode</a>.</p>
 <p>This layer is a kludge of mappings, mostly pickers.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th><th>Command</th></tr></thead><tbody>
-<tr><td><code>f</code></td><td>Open file picker</td><td><code>file_picker</code></td></tr>
+<tr><td><code>f</code></td><td>Open file picker at LSP workspace root</td><td><code>file_picker</code></td></tr>
 <tr><td><code>F</code></td><td>Open file picker at current working directory</td><td><code>file_picker_in_current_directory</code></td></tr>
 <tr><td><code>b</code></td><td>Open buffer picker</td><td><code>buffer_picker</code></td></tr>
 <tr><td><code>j</code></td><td>Open jumplist picker</td><td><code>jumplist_picker</code></td></tr>
@@ -488,8 +474,11 @@ useful when you're simply looking over text and not actively editing it.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>Shift-Tab</code>, <code>Ctrl-p</code>, <code>Up</code></td><td>Previous entry</td></tr>
 <tr><td><code>Tab</code>, <code>Ctrl-n</code>, <code>Down</code></td><td>Next entry</td></tr>
+<tr><td><code>Enter</code></td><td>Close menu and accept completion</td></tr>
+<tr><td><code>Ctrl-c</code></td><td>Close menu and reject completion</td></tr>
 </tbody></table>
 </div>
+<p>Any other keypresses result in the completion being accepted.</p>
 <h5 id="signature-help-popup"><a class="header" href="#signature-help-popup">Signature-help Popup</a></h5>
 <p>Displays the signature of the selected completion item. Remapping currently not supported.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
@@ -585,7 +574,9 @@ mode before pressing <code>n</code> or <code>N</code> makes it possible to keep 
 selection. Toggling it on and off during your iterative searching allows
 you to selectively add search terms to your selections.</p>
 <h2 id="picker"><a class="header" href="#picker">Picker</a></h2>
-<p>Keys to use within picker. Remapping currently not supported.</p>
+<p>Keys to use within picker. Remapping currently not supported.
+See the documentation page on <a href="./pickers.html">pickers</a> for more info.
+<a href="#prompt">Prompt</a> keybinds also work in pickers, except where they conflict with picker keybinds.</p>
 <div class="table-wrapper"><table><thead><tr><th>Key</th><th>Description</th></tr></thead><tbody>
 <tr><td><code>Shift-Tab</code>, <code>Up</code>, <code>Ctrl-p</code></td><td>Previous entry</td></tr>
 <tr><td><code>Tab</code>, <code>Down</code>, <code>Ctrl-n</code></td><td>Next entry</td></tr>
@@ -630,7 +621,7 @@ you to selectively add search terms to your selections.</p>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="syntax-aware-motions.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="pickers.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
@@ -644,7 +635,7 @@ you to selectively add search terms to your selections.</p>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="syntax-aware-motions.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="pickers.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 

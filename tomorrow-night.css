@@ -11,6 +11,7 @@
 /* Tomorrow Red */
 .hljs-variable,
 .hljs-attribute,
+.hljs-attr,
 .hljs-tag,
 .hljs-regexp,
 .ruby .hljs-constant,
@@ -54,6 +55,7 @@
 
 /* Tomorrow Aqua */
 .hljs-title,
+.hljs-section,
 .css .hljs-hexcolor {
   color: #8abeb7;
 }
