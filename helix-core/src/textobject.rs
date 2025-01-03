@@ -62,9 +62,7 @@ fn find_word_boundary(
                             is_sub_word_boundary(prev_ch, ch, Direction::Backward)
                         }
                     };
-                if matches_subword {
-                    return pos;
-                } else if matches_short_word {
+                if matches_subword || matches_short_word {
                     return pos;
                 } else {
                     match direction {
