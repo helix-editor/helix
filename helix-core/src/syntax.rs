@@ -174,6 +174,18 @@ pub struct LanguageConfiguration {
     pub persistent_diagnostic_sources: Vec<String>,
 }
 
+/// The subset of LanguageConfig which can be read from a modeline.
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", deny_unknown_fields)]
+pub struct ModelineConfig {
+    /// the language name (corresponds to language_id in LanguageConfig)
+    pub language: Option<String>,
+    /// the indent settings (only unit is supported in modelines)
+    pub indent: Option<ModelineIndentationConfiguration>,
+    /// the line ending to use (as a literal string)
+    pub line_ending: Option<String>,
+}
+
 #[derive(Debug, PartialEq, Eq, Hash)]
 pub enum FileType {
     /// The extension of the file, either the `Path::extension` or the full
@@ -538,6 +550,12 @@ pub struct DebugAdapterConfig {
 pub struct DebuggerQuirks {
     #[serde(default)]
     pub absolute_paths: bool,
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case")]
+pub struct ModelineIndentationConfiguration {
+    pub unit: String,
 }
 
 #[derive(Debug, Serialize, Deserialize)]
