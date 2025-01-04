@@ -6,6 +6,7 @@ use smartstring::{LazyCompact, SmartString};
 
 type String = SmartString<LazyCompact>;
 
+
 #[derive(Debug, Serialize, Deserialize, Default, PartialEq, Eq, Clone)]
 #[serde(default)]
 pub struct Icons {
@@ -342,6 +343,7 @@ static MIMES: once_cell::sync::Lazy<HashMap<String, String>> = once_cell::sync::
     mimes.insert(String::from("kotlin"), String::from("󱈙"));
     mimes.insert(String::from("html"), String::from("󰌝"));
     mimes.insert(String::from("css"), String::from("󰌜"));
+    mimes.insert(String::from("scss"), String::from("󰌜"));
     mimes.insert(String::from("typescript"), String::from("󰛦"));
     mimes.insert(String::from("bash"), String::from(""));
     mimes.insert(String::from("php"), String::from("󰌟"));
@@ -353,7 +355,7 @@ static MIMES: once_cell::sync::Lazy<HashMap<String, String>> = once_cell::sync::
     mimes.insert(String::from("groovy"), String::from(""));
     mimes.insert(String::from("scala"), String::from(""));
     mimes.insert(String::from("perl"), String::from(""));
-    mimes.insert(String::from("closure"), String::from(""));
+    mimes.insert(String::from("clojure"), String::from(""));
     mimes.insert(String::from("julia"), String::from(""));
     mimes.insert(String::from("zig"), String::from(""));
     mimes.insert(String::from("fortran"), String::from("󱈚"));
@@ -363,17 +365,57 @@ static MIMES: once_cell::sync::Lazy<HashMap<String, String>> = once_cell::sync::
     mimes.insert(String::from("svelte"), String::from(""));
     mimes.insert(String::from("gdscript"), String::from(""));
     mimes.insert(String::from("nim"), String::from(""));
+    mimes.insert(String::from("jsx"), String::from(""));
+    mimes.insert(String::from("tsx"), String::from(""));
+    mimes.insert(String::from("twig"), String::from(""));
+    mimes.insert(String::from("lua"), String::from(""));
+    mimes.insert(String::from("vue"), String::from(""));
+    mimes.insert(String::from("prolog"), String::from(""));
+    mimes.insert(String::from("common-lisp"), String::from(""));
+    mimes.insert(String::from("elm"), String::from(""));
+    mimes.insert(String::from("rescript"), String::from(""));
+    mimes.insert(String::from("solidity"), String::from(""));
+    mimes.insert(String::from("vala"), String::from(""));
+    mimes.insert(String::from("scheme"), String::from(""));
+    mimes.insert(String::from("v"), String::from(""));
+    mimes.insert(String::from("prisma"), String::from(""));
+    mimes.insert(String::from("ada"), String::from(""));
+    mimes.insert(String::from("astro"), String::from(""));
+    mimes.insert(String::from("matlab"), String::from(""));
+    mimes.insert(String::from("rst"), String::from(""));
+    mimes.insert(String::from("opencl"), String::from(""));
+    mimes.insert(String::from("nunjuks"), String::from(""));
+    mimes.insert(String::from("jinja"), String::from(""));
+
+    mimes.insert(String::from("bicep"), String::from(""));
+
+    mimes.insert(String::from("wasm"), String::from(""));
 
     mimes.insert(String::from("docker"), String::from("󰡨"));
+    mimes.insert(String::from("docker-compose"), String::from("󰡨"));
     mimes.insert(String::from("make"), String::from(""));
     mimes.insert(String::from("cmake"), String::from(""));
     mimes.insert(String::from("nix"), String::from(""));
+    mimes.insert(String::from("awk"), String::from(""));
+    mimes.insert(String::from("llvm"), String::from(""));
+    mimes.insert(String::from("llvm-mir"), String::from(""));
+    mimes.insert(String::from("regex"), String::from(""));
+    mimes.insert(String::from("graphql"), String::from(""));
 
     mimes.insert(String::from("text"), String::from(""));
     mimes.insert(String::from("markdown"), String::from(""));
+    mimes.insert(String::from("typst"), String::from(""));
     mimes.insert(String::from("json"), String::from("󰘦"));
     mimes.insert(String::from("toml"), String::from(""));
     mimes.insert(String::from("xml"), String::from("󰗀"));
+    mimes.insert(String::from("latex"), String::from(""));
+    mimes.insert(String::from("git-commit"), String::from(""));
+    mimes.insert(String::from("git-rebase"), String::from(""));
+    mimes.insert(String::from("git-config"), String::from(""));
+    mimes.insert(String::from("todotxt"), String::from(""));
+    mimes.insert(String::from("hyprlang"), String::from(""));
+    mimes.insert(String::from("helm"), String::from(""));
+    mimes.insert(String::from("nginx"), String::from(""));
 
     mimes
 });
