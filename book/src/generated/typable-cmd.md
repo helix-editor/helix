@@ -1,6 +1,7 @@
 | Name | Description |
 | --- | --- |
 | `:quit`, `:q` | Close the current view. |
+| `:echo` | Print the processed input to the editor status |
 | `:quit!`, `:q!` | Force close the current view, ignoring unsaved changes. |
 | `:open`, `:o`, `:edit`, `:e` | Open a file from disk into the current view. |
 | `:buffer-close`, `:bc`, `:bclose` | Close the current buffer. |
