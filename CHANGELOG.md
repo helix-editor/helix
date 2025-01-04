@@ -34,7 +34,7 @@ Features:
 * Continue line comments in `o`/`O` and on `<ret>` in insert mode ([#10996](https://github.com/helix-editor/helix/pull/10996), [#12213](https://github.com/helix-editor/helix/pull/12213), [#12215](https://github.com/helix-editor/helix/pull/12215))
 * Allow configuring and switching clipboard providers at runtime ([#10839](https://github.com/helix-editor/helix/pull/10839), [b855cd0](https://github.com/helix-editor/helix/commit/b855cd0), [467fad5](https://github.com/helix-editor/helix/commit/467fad5), [191b0f0](https://github.com/helix-editor/helix/commit/191b0f0))
 * Add support for path completion ([#2608](https://github.com/helix-editor/helix/pull/2608))
-* Support bindings with the Super (Cwd/Win/Meta) modifier ([#6592](https://github.com/helix-editor/helix/pull/6592))
+* Support bindings with the Super (Cmd/Win/Meta) modifier ([#6592](https://github.com/helix-editor/helix/pull/6592))
 * Support rendering and jumping between tabstops in snippet completions ([#9801](https://github.com/helix-editor/helix/pull/9801))
 * Allow theming directory completions ([#12205](https://github.com/helix-editor/helix/pull/12205), [#12295](https://github.com/helix-editor/helix/pull/12295))
 
