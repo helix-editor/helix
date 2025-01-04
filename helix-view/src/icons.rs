@@ -170,7 +170,7 @@ impl Lsp {
     #[inline]
     pub fn string(&self) -> &str {
         if self.enabled {
-            return self.string.as_ref().map_or("", |string| string);
+            return self.string.as_ref().map_or("", |string| string);
         }
         ""
     }
@@ -178,7 +178,7 @@ impl Lsp {
     #[inline]
     pub fn number(&self) -> &str {
         if self.enabled {
-            return self.number.as_ref().map_or("", |number| number);
+            return self.number.as_ref().map_or("", |number| number);
         }
         ""
     }
@@ -210,7 +210,7 @@ impl Lsp {
     #[inline]
     pub fn key(&self) -> &str {
         if self.enabled {
-            return self.key.as_ref().map_or("", |key| key);
+            return self.key.as_ref().map_or("", |key| key);
         }
         ""
     }
