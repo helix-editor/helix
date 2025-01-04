@@ -585,6 +585,7 @@ impl Component for Prompt {
                     textobject::TextObject::Inside,
                     1,
                     false,
+                    false,
                 );
                 let line = text.slice(range.from()..range.to()).to_string();
                 if !line.is_empty() {
