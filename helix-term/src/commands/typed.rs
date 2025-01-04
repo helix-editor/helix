@@ -3,9 +3,12 @@ use std::io::BufReader;
 use std::ops::Deref;
 
 use crate::job::Job;
+use crate::{aliases, flags};
 
 use super::*;
 
+use alias::Aliases;
+use flag::Flags;
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::{line_ending, shellwords::Shellwords};
@@ -13,25 +16,161 @@ use helix_stdx::path::home_dir;
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
 use serde_json::Value;
+use shellwords::Args;
 use ui::completers::{self, Completer};
 
 #[derive(Clone)]
 pub struct TypableCommand {
     pub name: &'static str,
-    pub aliases: &'static [&'static str],
+    pub aliases: Aliases,
+    pub flags: Flags,
+    pub accepts: Option<&'static str>,
     pub doc: &'static str,
     // params, flags, helper, completer
-    pub fun: fn(&mut compositor::Context, &[Cow<str>], PromptEvent) -> anyhow::Result<()>,
+    pub fun: fn(&mut compositor::Context, Args, Flags, PromptEvent) -> anyhow::Result<()>,
     /// What completion methods, if any, does this command have?
     pub signature: CommandSignature,
 }
 
 impl TypableCommand {
     fn completer_for_argument_number(&self, n: usize) -> &Completer {
-        match self.signature.positional_args.get(n) {
-            Some(completer) => completer,
-            _ => &self.signature.var_args,
+        self.signature
+            .positional_args
+            .get(n)
+            .map_or(&self.signature.var_args, |completer| completer)
+    }
+
+    pub fn flags(&self, name: &str) -> Option<&str> {
+        let alias = self.aliases.get(name)?;
+        alias.flags()
+    }
+
+    fn prompt(&self) -> String {
+        // EXAMPLE:
+        // write [<flags>] <path>: write the current buffer to its file.
+        //
+        // aliases:
+        //     w
+        //     wa -> write --all
+        // flags:
+        //     --no-format        exclude formatting operation when saving.
+        let mut prompt = String::new();
+
+        prompt.push_str(self.name);
+
+        if !self.flags.is_empty() {
+            prompt.push_str(" [<flags>]");
         }
+
+        if let Some(accepts) = self.accepts {
+            write!(prompt, " {accepts}").unwrap();
+        }
+
+        // HACK:
+        // PROBLEM: The prompt can cutoff content at the bottom as the size is not be calculated properly.
+        //
+        // This adds enough spaces to look like it adds a new line after the top line
+        // but if the actual text were to overflow this value, then the text would occupy
+        // this space.
+        //
+        // In practice, when cycling where it may wrap, it just looks like there is always at least one line between
+        // the top line and the rest of the info, whether this is a figurative newline or actual text filling it.
+        if self.doc.len() < 75 {
+            writeln!(prompt, ": {}{}", self.doc, " ".repeat(75 - self.doc.len())).unwrap();
+        } else {
+            writeln!(prompt, ": {}", self.doc).unwrap();
+        }
+
+        if !self.aliases.is_empty() {
+            prompt.push_str("aliases:\n");
+
+            for alias in self.aliases.iter() {
+                if let Some(map) = alias.command {
+                    writeln!(prompt, "    {} -> {map}", alias.name).unwrap();
+                } else {
+                    writeln!(prompt, "    {}", alias.name).unwrap();
+                }
+            }
+        }
+
+        if !self.flags.is_empty() {
+            prompt.push_str("flags:\n");
+
+            let max: usize = self
+                .flags
+                .iter()
+                .map(|flag| {
+                    flag.long.len()
+                        + flag.short.as_ref().map_or(0, |short| short.len())
+                        + flag.accepts.as_ref().map_or(0, |accept| accept.len())
+                })
+                .max()
+                .unwrap_or(0);
+
+            let spaces: usize = 8;
+
+            for flag in &self.flags {
+                if let Some(short) = &flag.short {
+                    if let Some(accepts) = &flag.accepts {
+                        writeln!(
+                            prompt,
+                            "    --{}, -{} {}{:<width$}{}",
+                            flag.long,
+                            short,
+                            accepts,
+                            "",
+                            flag.desc,
+                            width = max
+                                .saturating_sub(flag.long.len() + short.len() + accepts.len())
+                                + spaces
+                        )
+                        .unwrap();
+                    } else {
+                        writeln!(
+                            prompt,
+                            "    --{}, -{}{:<width$}{}",
+                            flag.long,
+                            short,
+                            "",
+                            flag.desc,
+                            width = max.saturating_sub(flag.long.len() + short.len()) + spaces + 1
+                        )
+                        .unwrap();
+                    }
+                } else if let Some(accepts) = &flag.accepts {
+                    writeln!(
+                        prompt,
+                        "    --{} {}{:<width$}{}",
+                        flag.long,
+                        accepts,
+                        "",
+                        flag.desc,
+                        width = max.saturating_sub(flag.long.len() + accepts.len()) + spaces + 3
+                    )
+                    .unwrap();
+                } else {
+                    writeln!(
+                        prompt,
+                        "    --{}{:<width$}{}",
+                        flag.long,
+                        "",
+                        flag.desc,
+                        width = max.saturating_sub(flag.long.len()) + spaces + 4
+                    )
+                    .unwrap();
+                }
+            }
+        }
+
+        // HACK: Makes sure that the text touches the bottom of the prompt window.
+        //
+        // This is a continuation of the hack from earlier as there could be left over spaces,
+        // adding a gap at the bottom.
+        while prompt.ends_with(['\n', '\r', ' ']) {
+            prompt.pop();
+        }
+
+        prompt
     }
 }
 
@@ -67,7 +206,12 @@ impl CommandSignature {
     }
 }
 
-fn quit(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
+fn quit(
+    cx: &mut compositor::Context,
+    args: Args,
+    _flags: Flags,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
     log::debug!("quitting...");
 
     if event != PromptEvent::Validate {
@@ -78,7 +222,7 @@ fn quit(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
 
     // last view and we have unsaved changes
     if cx.editor.tree.views().count() == 1 {
-        buffers_remaining_impl(cx.editor)?
+        buffers_remaining_impl(cx.editor)?;
     }
 
     cx.block_try_flush_writes()?;
@@ -89,7 +233,8 @@ fn quit(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
 
 fn force_quit(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -104,12 +249,46 @@ fn force_quit(
     Ok(())
 }
 
-fn open(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
+fn open(
+    cx: &mut compositor::Context,
+    mut args: Args,
+    flags: Flags,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    ensure!(!args.is_empty(), "wrong argument count");
+    // Flags
+    let mut env: Option<&str> = None;
+
+    flags! {
+        for flags, args => {
+            "env" => env = args.next(),
+        }
+    }
+
+    // If from `--env` disregard other arguments and open
+    if let Some(env) = env {
+        let Ok(path) = std::env::var(env) else {
+            // Assume that error will be because its not found
+            // not because of invalid unicode.
+            bail!("`{env}` was not found")
+        };
+
+        let (path, pos) = args::parse_file(&path);
+        let _ = cx.editor.open(&path, Action::Replace)?;
+        let (view, doc) = current!(cx.editor);
+        let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+        doc.set_selection(view.id, pos);
+        // does not affect opening a buffer without pos
+        align_view(doc, view, Align::Center);
+
+        return Ok(());
+    }
+
+    ensure!(!args.is_empty(), ":open needs at least one argument");
+
     for arg in args {
         let (path, pos) = args::parse_file(arg);
         let path = helix_stdx::path::expand_tilde(path);
@@ -175,7 +354,7 @@ fn buffer_close_by_ids_impl(
     Ok(())
 }
 
-fn buffer_gather_paths_impl(editor: &mut Editor, args: &[Cow<str>]) -> Vec<DocumentId> {
+fn buffer_gather_paths_impl(editor: &mut Editor, args: Args) -> Vec<DocumentId> {
     // No arguments implies current document
     if args.is_empty() {
         let doc_id = view!(editor).doc;
@@ -186,7 +365,7 @@ fn buffer_gather_paths_impl(editor: &mut Editor, args: &[Cow<str>]) -> Vec<Docum
     let mut document_ids = vec![];
     for arg in args {
         let doc_id = editor.documents().find_map(|doc| {
-            let arg_path = Some(Path::new(arg.as_ref()));
+            let arg_path = Some(Path::new(arg));
             if doc.path().map(|p| p.as_path()) == arg_path
                 || doc.relative_path().as_deref() == arg_path
             {
@@ -214,7 +393,8 @@ fn buffer_gather_paths_impl(editor: &mut Editor, args: &[Cow<str>]) -> Vec<Docum
 
 fn buffer_close(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -227,7 +407,8 @@ fn buffer_close(
 
 fn force_buffer_close(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -249,7 +430,8 @@ fn buffer_gather_others_impl(editor: &mut Editor) -> Vec<DocumentId> {
 
 fn buffer_close_others(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -262,7 +444,8 @@ fn buffer_close_others(
 
 fn force_buffer_close_others(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -279,7 +462,8 @@ fn buffer_gather_all_impl(editor: &mut Editor) -> Vec<DocumentId> {
 
 fn buffer_close_all(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -292,7 +476,8 @@ fn buffer_close_all(
 
 fn force_buffer_close_all(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -305,7 +490,8 @@ fn force_buffer_close_all(
 
 fn buffer_next(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -318,7 +504,8 @@ fn buffer_next(
 
 fn buffer_previous(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -331,13 +518,13 @@ fn buffer_previous(
 
 fn write_impl(
     cx: &mut compositor::Context,
-    path: Option<&Cow<str>>,
+    path: Option<&str>,
     force: bool,
+    format: bool,
 ) -> anyhow::Result<()> {
     let config = cx.editor.config();
     let jobs = &mut cx.jobs;
     let (view, doc) = current!(cx.editor);
-    let path = path.map(AsRef::as_ref);
 
     if config.insert_final_newline {
         insert_final_newline(doc, view.id);
@@ -346,7 +533,7 @@ fn write_impl(
     // Save an undo checkpoint for any outstanding changes.
     doc.append_changes_to_history(view);
 
-    let fmt = if config.auto_format {
+    let fmt = if config.auto_format && format {
         doc.auto_format().map(|fmt| {
             let callback = make_format_callback(
                 doc.id(),
@@ -381,61 +568,137 @@ fn insert_final_newline(doc: &mut Document, view_id: ViewId) {
 
 fn write(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    mut args: Args,
+    flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    write_impl(cx, args.first(), false)
-}
+    let (_, doc) = current!(cx.editor);
 
-fn force_write(
-    cx: &mut compositor::Context,
-    args: &[Cow<str>],
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
+    // Flags
+    let mut format = true;
+    let mut force = false;
+    let mut quit = false;
+    let mut all = false;
+    let mut close_buffer = false;
+    let mut update = false;
+
+    flags! {
+        for flags, args => {
+            "all" | "a" => all = true,
+            "quit" | "q" => quit = true,
+            "force" | "f" => force = true,
+            "update" | "u" => update = true,
+            "no-format" => format = false,
+            "close-buffer" => close_buffer = true,
+        }
     }
 
-    write_impl(cx, args.first(), true)
-}
-
-fn write_buffer_close(
-    cx: &mut compositor::Context,
-    args: &[Cow<str>],
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
+    if all {
+        write_all_impl(cx, force, true, format)?;
+    } else if update {
+        if doc.is_modified() {
+            write_impl(cx, args.next(), force, format)?;
+        }
+    } else {
+        write_impl(cx, args.next(), force, format)?;
     }
 
-    write_impl(cx, args.first(), false)?;
-
-    let document_ids = buffer_gather_paths_impl(cx.editor, args);
-    buffer_close_by_ids_impl(cx, &document_ids, false)
-}
-
-fn force_write_buffer_close(
-    cx: &mut compositor::Context,
-    args: &[Cow<str>],
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
+    if quit && !all {
+        cx.block_try_flush_writes()?;
+        self::quit(cx, Args::empty(), flags, event)?;
+    } else if quit && all {
+        quit_all_impl(cx, force)?;
     }
 
-    write_impl(cx, args.first(), true)?;
+    // After `quit` as that would close helix anyways.
+    if close_buffer {
+        let doc_ids = buffer_gather_paths_impl(cx.editor, args);
+        buffer_close_by_ids_impl(cx, &doc_ids, force)?;
+    }
 
-    let document_ids = buffer_gather_paths_impl(cx.editor, args);
-    buffer_close_by_ids_impl(cx, &document_ids, false)
+    Ok(())
 }
+
+// fn force_write(
+//     cx: &mut compositor::Context,
+//     mut args: Args,
+//     flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
+
+//     // Flags
+//     let mut format = true;
+
+//     flags! {
+//         for flags, args => {
+//             "no-format" => format = false,
+//         }
+//     }
+
+//     write_impl(cx, args.next(), true, format)
+// }
+
+// fn write_buffer_close(
+//     cx: &mut compositor::Context,
+//     mut args: Args,
+//     flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
+
+//     // Flags
+//     let mut format = true;
+
+//     flags! {
+//         for flags, args => {
+//             "no-format" => format = false,
+//         }
+//     }
+
+//     write_impl(cx, args.next(), false, format)?;
+//     let document_ids = buffer_gather_paths_impl(cx.editor, args);
+
+//     buffer_close_by_ids_impl(cx, &document_ids, false)
+// }
+
+// fn force_write_buffer_close(
+//     cx: &mut compositor::Context,
+//     mut args: Args,
+//     flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
+
+//     // Flags
+//     let mut format = true;
+
+//     flags! {
+//         for flags, args => {
+//             "no-format" => format = false,
+//         }
+//     }
+
+//     write_impl(cx, args.next(), true, format)?;
+
+//     let document_ids = buffer_gather_paths_impl(cx.editor, args);
+//     buffer_close_by_ids_impl(cx, &document_ids, false)
+// }
 
 fn new_file(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -449,7 +712,8 @@ fn new_file(
 
 fn format(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -468,7 +732,8 @@ fn format(
 
 fn set_indent_style(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    mut args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -489,9 +754,9 @@ fn set_indent_style(
     }
 
     // Attempt to parse argument as an indent style.
-    let style = match args.first() {
+    let style = match args.next() {
         Some(arg) if "tabs".starts_with(&arg.to_lowercase()) => Some(Tabs),
-        Some(Cow::Borrowed("0")) => Some(Tabs),
+        Some("0") => Some(Tabs),
         Some(arg) => arg
             .parse::<u8>()
             .ok()
@@ -510,7 +775,8 @@ fn set_indent_style(
 /// Sets or reports the current document's line ending setting.
 fn set_line_ending(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    mut args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -541,7 +807,7 @@ fn set_line_ending(
     }
 
     let arg = args
-        .first()
+        .next()
         .context("argument missing")?
         .to_ascii_lowercase();
 
@@ -582,14 +848,15 @@ fn set_line_ending(
 }
 fn earlier(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    let uk = args.join(" ").parse::<UndoKind>().map_err(|s| anyhow!(s))?;
+    let uk = args.raw().parse::<UndoKind>().map_err(|s| anyhow!(s))?;
 
     let (view, doc) = current!(cx.editor);
     let success = doc.earlier(view, uk);
@@ -602,14 +869,16 @@ fn earlier(
 
 fn later(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    let uk = args.join(" ").parse::<UndoKind>().map_err(|s| anyhow!(s))?;
+    let uk = args.raw().parse::<UndoKind>().map_err(|s| anyhow!(s))?;
+
     let (view, doc) = current!(cx.editor);
     let success = doc.later(view, uk);
     if !success {
@@ -619,33 +888,55 @@ fn later(
     Ok(())
 }
 
-fn write_quit(
-    cx: &mut compositor::Context,
-    args: &[Cow<str>],
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
+// fn write_quit(
+//     cx: &mut compositor::Context,
+//     mut args: Args,
+//     flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
 
-    write_impl(cx, args.first(), false)?;
-    cx.block_try_flush_writes()?;
-    quit(cx, &[], event)
-}
+//     // Flags
+//     let mut format = true;
 
-fn force_write_quit(
-    cx: &mut compositor::Context,
-    args: &[Cow<str>],
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
+//     flags! {
+//         for flags, args => {
+//             "no-format" => format = false,
+//         }
+//     }
 
-    write_impl(cx, args.first(), true)?;
-    cx.block_try_flush_writes()?;
-    force_quit(cx, &[], event)
-}
+//     write_impl(cx, args.next(), false, format)?;
+
+//     cx.block_try_flush_writes()?;
+//     quit(cx, Args::empty(), flags, event)
+// }
+
+// fn force_write_quit(
+//     cx: &mut compositor::Context,
+//     mut args: Args,
+//     flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
+
+//     // Flags
+//     let mut format = true;
+
+//     flags! {
+//         for flags, args => {
+//             "no-format" => format = false,
+//         }
+//     }
+
+//     write_impl(cx, args.next(), true, format)?;
+
+//     cx.block_try_flush_writes()?;
+//     force_quit(cx, Args::empty(), flags, event)
+// }
 
 /// Results in an error if there are modified buffers remaining and sets editor
 /// error, otherwise returns `Ok(())`. If the current document is unmodified,
@@ -677,6 +968,7 @@ pub fn write_all_impl(
     cx: &mut compositor::Context,
     force: bool,
     write_scratch: bool,
+    format: bool,
 ) -> anyhow::Result<()> {
     let mut errors: Vec<&'static str> = Vec::new();
     let config = cx.editor.config();
@@ -717,7 +1009,7 @@ pub fn write_all_impl(
         // Save an undo checkpoint for any outstanding changes.
         doc.append_changes_to_history(view);
 
-        let fmt = if config.auto_format {
+        let fmt = if config.auto_format && format {
             doc.auto_format().map(|fmt| {
                 let callback = make_format_callback(
                     doc_id,
@@ -744,53 +1036,57 @@ pub fn write_all_impl(
     Ok(())
 }
 
-fn write_all(
-    cx: &mut compositor::Context,
-    _args: &[Cow<str>],
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
+// fn write_all(
+//     cx: &mut compositor::Context,
+//     _args: Args,
+//     _flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
 
-    write_all_impl(cx, false, true)
-}
+//     write_all_impl(cx, false, true, true)
+// }
 
-fn force_write_all(
-    cx: &mut compositor::Context,
-    _args: &[Cow<str>],
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
+// fn force_write_all(
+//     cx: &mut compositor::Context,
+//     _args: Args,
+//     _flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
 
-    write_all_impl(cx, true, true)
-}
+//     write_all_impl(cx, true, true, true)
+// }
 
-fn write_all_quit(
-    cx: &mut compositor::Context,
-    _args: &[Cow<str>],
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
-    write_all_impl(cx, false, true)?;
-    quit_all_impl(cx, false)
-}
+// fn write_all_quit(
+//     cx: &mut compositor::Context,
+//     _args: Args,
+//     _flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
+//     write_all_impl(cx, false, true, true)?;
+//     quit_all_impl(cx, false)
+// }
 
-fn force_write_all_quit(
-    cx: &mut compositor::Context,
-    _args: &[Cow<str>],
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
-    let _ = write_all_impl(cx, true, true);
-    quit_all_impl(cx, true)
-}
+// fn force_write_all_quit(
+//     cx: &mut compositor::Context,
+//     _args: Args,
+//     _flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
+//     let _ = write_all_impl(cx, true, true, true);
+//     quit_all_impl(cx, true)
+// }
 
 fn quit_all_impl(cx: &mut compositor::Context, force: bool) -> anyhow::Result<()> {
     cx.block_try_flush_writes()?;
@@ -809,31 +1105,32 @@ fn quit_all_impl(cx: &mut compositor::Context, force: bool) -> anyhow::Result<()
 
 fn quit_all(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
     quit_all_impl(cx, false)
 }
 
 fn force_quit_all(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
     quit_all_impl(cx, true)
 }
 
 fn cquit(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    mut args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -841,7 +1138,7 @@ fn cquit(
     }
 
     let exit_code = args
-        .first()
+        .next()
         .and_then(|code| code.parse::<i32>().ok())
         .unwrap_or(1);
 
@@ -851,7 +1148,8 @@ fn cquit(
 
 fn force_cquit(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    mut args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -859,7 +1157,7 @@ fn force_cquit(
     }
 
     let exit_code = args
-        .first()
+        .next()
         .and_then(|code| code.parse::<i32>().ok())
         .unwrap_or(1);
     cx.editor.exit_code = exit_code;
@@ -869,7 +1167,8 @@ fn force_cquit(
 
 fn theme(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    mut args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     let true_color = cx.editor.config.load().true_color || crate::true_color();
@@ -881,7 +1180,7 @@ fn theme(
             if args.is_empty() {
                 // Ensures that a preview theme gets cleaned up if the user backspaces until the prompt is empty.
                 cx.editor.unset_theme_preview();
-            } else if let Some(theme_name) = args.first() {
+            } else if let Some(theme_name) = args.next() {
                 if let Ok(theme) = cx.editor.theme_loader.load(theme_name) {
                     if !(true_color || theme.is_16_color()) {
                         bail!("Unsupported theme: theme requires true color support");
@@ -891,7 +1190,7 @@ fn theme(
             };
         }
         PromptEvent::Validate => {
-            if let Some(theme_name) = args.first() {
+            if let Some(theme_name) = args.next() {
                 let theme = cx
                     .editor
                     .theme_loader
@@ -912,170 +1211,241 @@ fn theme(
     Ok(())
 }
 
-fn yank_main_selection_to_clipboard(
+fn yank(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    mut args: Args,
+    flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    yank_primary_selection_impl(cx.editor, '+');
-    Ok(())
-}
+    // Flags
+    let mut join = false;
+    let mut register: Option<char> = cx.editor.selected_register;
+    let mut primary = false;
+    let mut diagnostic = false;
 
-fn yank_joined(
-    cx: &mut compositor::Context,
-    args: &[Cow<str>],
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
+    flags! {
+        for flags, args => {
+            "join" | "j" =>  join = true,
+            "primary" | "p" => primary = true,
+            "clipboard" | "c" => register = Some('*'),
+            "system" | "s" => register = Some('+'),
+            "diagnostic" | "d" => diagnostic = true,
+            "register" | "r" => {
+                 if let Some(arg) = args.next() {
+                     let mut reg = arg.chars();
+                     ensure!(reg.clone().count() == 1, "invalid register was provided");
+                     register = reg.next();
+                 } else {
+                     bail!("`register` flag was used, but nothing was passed to it");
+                 }
+            },
+        }
+    }
+
+    if diagnostic {
+        let (view, doc) = current_ref!(cx.editor);
+        let primary = doc.selection(view.id).primary();
+
+        // Look only for diagnostics that intersect with the primary selection
+        let diag: Vec<_> = doc
+            .diagnostics()
+            .iter()
+            .filter(|d| primary.overlaps(&helix_core::Range::new(d.range.start, d.range.end)))
+            .map(|d| d.message.clone())
+            .collect();
+        let n = diag.len();
+        if n == 0 {
+            bail!("No diagnostics under primary selection");
+        }
+
+        let register = register.unwrap_or('"');
+
+        cx.editor.registers.write(register, diag)?;
+        cx.editor.set_status(format!(
+            "Yanked {n} diagnostic{} to register {register}",
+            if n == 1 { "" } else { "s" }
+        ));
+
         return Ok(());
     }
 
-    ensure!(args.len() <= 1, ":yank-join takes at most 1 argument");
+    if primary && join {
+        bail!("`primary` and `join` were both passed as flags, but are mutually exclusive");
+    }
 
-    let doc = doc!(cx.editor);
-    let default_sep = Cow::Borrowed(doc.line_ending.as_str());
-    let separator = args.first().unwrap_or(&default_sep);
-    let register = cx.editor.selected_register.unwrap_or('"');
-    yank_joined_impl(cx.editor, separator, register);
-    Ok(())
-}
-
-fn yank_joined_to_clipboard(
-    cx: &mut compositor::Context,
-    args: &[Cow<str>],
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
+    if primary {
+        yank_primary_selection_impl(cx.editor, register.unwrap_or('"'));
         return Ok(());
     }
 
-    let doc = doc!(cx.editor);
-    let default_sep = Cow::Borrowed(doc.line_ending.as_str());
-    let separator = args.first().unwrap_or(&default_sep);
-    yank_joined_impl(cx.editor, separator, '+');
-    Ok(())
-}
-
-fn yank_main_selection_to_primary_clipboard(
-    cx: &mut compositor::Context,
-    _args: &[Cow<str>],
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
+    if join {
+        yank_joined_impl(cx.editor, args.rest(), register.unwrap_or('"'));
         return Ok(());
     }
 
-    yank_primary_selection_impl(cx.editor, '*');
+    yank_impl(cx.editor, register.unwrap_or('"'));
+
     Ok(())
 }
 
-fn yank_joined_to_primary_clipboard(
-    cx: &mut compositor::Context,
-    args: &[Cow<str>],
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
+// fn yank_main_selection_to_clipboard(
+//     cx: &mut compositor::Context,
+//     _args: Args,
+//     _flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
+//     yank_primary_selection_impl(cx.editor, '+');
+//     Ok(())
+// }
 
-    let doc = doc!(cx.editor);
-    let default_sep = Cow::Borrowed(doc.line_ending.as_str());
-    let separator = args.first().unwrap_or(&default_sep);
-    yank_joined_impl(cx.editor, separator, '*');
-    Ok(())
-}
+// fn yank_joined(
+//     cx: &mut compositor::Context,
+//     args: Args,
+//     _flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
+//     let register = cx.editor.selected_register.unwrap_or('"');
+//     yank_joined_impl(cx.editor, args.raw(), register);
+//     Ok(())
+// }
+
+// fn yank_joined_to_clipboard(
+//     cx: &mut compositor::Context,
+//     args: Args,
+//     _flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
+//     yank_joined_impl(cx.editor, args.raw(), '+');
+//     Ok(())
+// }
+
+// fn yank_main_selection_to_primary_clipboard(
+//     cx: &mut compositor::Context,
+//     _args: Args,
+//     _flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
+//     yank_primary_selection_impl(cx.editor, '*');
+//     Ok(())
+// }
+
+// fn yank_joined_to_primary_clipboard(
+//     cx: &mut compositor::Context,
+//     args: Args,
+//     _flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
+
+//     yank_joined_impl(cx.editor, args.raw(), '*');
+//     Ok(())
+// }
 
 fn paste_clipboard_after(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
     paste(cx.editor, '+', Paste::After, 1);
     Ok(())
 }
 
 fn paste_clipboard_before(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
     paste(cx.editor, '+', Paste::Before, 1);
     Ok(())
 }
 
 fn paste_primary_clipboard_after(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
     paste(cx.editor, '*', Paste::After, 1);
     Ok(())
 }
 
 fn paste_primary_clipboard_before(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
     paste(cx.editor, '*', Paste::Before, 1);
     Ok(())
 }
 
 fn replace_selections_with_clipboard(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
     replace_with_yanked_impl(cx.editor, '+', 1);
     Ok(())
 }
 
 fn replace_selections_with_primary_clipboard(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
     replace_with_yanked_impl(cx.editor, '*', 1);
     Ok(())
 }
 
 fn show_clipboard_provider(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
     cx.editor
         .set_status(cx.editor.registers.clipboard_provider_name());
     Ok(())
@@ -1083,20 +1453,21 @@ fn show_clipboard_provider(
 
 fn change_current_directory(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    mut args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    let dir = match args.first().map(AsRef::as_ref) {
+    let dir = match args.next() {
         Some("-") => cx
             .editor
             .last_cwd
             .clone()
-            .ok_or(anyhow!("No previous working directory"))?,
-        Some(input_path) => helix_stdx::path::expand_tilde(Path::new(input_path)).to_path_buf(),
+            .ok_or_else(|| anyhow!("No previous working directory"))?,
+        Some(path) => helix_stdx::path::expand_tilde(Path::new(path)).to_path_buf(),
         None => home_dir()?,
     };
 
@@ -1112,7 +1483,8 @@ fn change_current_directory(
 
 fn show_current_directory(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1125,7 +1497,7 @@ fn show_current_directory(
     if cwd.exists() {
         cx.editor.set_status(message);
     } else {
-        cx.editor.set_error(format!("{} (deleted)", message));
+        cx.editor.set_error(format!("{message} (deleted)"));
     }
     Ok(())
 }
@@ -1133,7 +1505,8 @@ fn show_current_directory(
 /// Sets the [`Document`]'s encoding..
 fn set_encoding(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    mut args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1141,7 +1514,7 @@ fn set_encoding(
     }
 
     let doc = doc_mut!(cx.editor);
-    if let Some(label) = args.first() {
+    if let Some(label) = args.next() {
         doc.set_encoding(label)
     } else {
         let encoding = doc.encoding().name().to_owned();
@@ -1153,7 +1526,8 @@ fn set_encoding(
 /// Shows info about the character under the primary cursor.
 fn get_character_info(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1278,7 +1652,8 @@ fn get_character_info(
 /// Reload the [`Document`] from its source file.
 fn reload(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1301,7 +1676,8 @@ fn reload(
 
 fn reload_all(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1358,27 +1734,29 @@ fn reload_all(
     Ok(())
 }
 
-/// Update the [`Document`] if it has been modified.
-fn update(
-    cx: &mut compositor::Context,
-    args: &[Cow<str>],
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
+// /// Update the [`Document`] if it has been modified.
+// fn update(
+//     cx: &mut compositor::Context,
+//     args: Args,
+//     flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
 
-    let (_view, doc) = current!(cx.editor);
-    if doc.is_modified() {
-        write(cx, args, event)
-    } else {
-        Ok(())
-    }
-}
+//     let (_view, doc) = current!(cx.editor);
+//     if doc.is_modified() {
+//         write(cx, args, flags, event)
+//     } else {
+//         Ok(())
+//     }
+// }
 
 fn lsp_workspace_command(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1434,7 +1812,8 @@ fn lsp_workspace_command(
         };
         cx.jobs.callback(callback);
     } else {
-        let command = args.join(" ");
+        let command = args.raw().to_string();
+
         let matches: Vec<_> = ls_id_commands
             .filter(|(_ls_id, c)| *c == &command)
             .collect();
@@ -1468,7 +1847,8 @@ fn lsp_workspace_command(
 
 fn lsp_restart(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1516,7 +1896,8 @@ fn lsp_restart(
 
 fn lsp_stop(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1545,7 +1926,8 @@ fn lsp_stop(
 
 fn tree_sitter_scopes(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1578,7 +1960,8 @@ fn tree_sitter_scopes(
 
 fn tree_sitter_highlight_name(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     fn find_highlight_at_cursor(
@@ -1653,77 +2036,71 @@ fn tree_sitter_highlight_name(
 
 fn vsplit(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
-    }
-
-    if args.is_empty() {
+    } else if args.is_empty() {
         split(cx.editor, Action::VerticalSplit);
     } else {
         for arg in args {
-            cx.editor
-                .open(&PathBuf::from(arg.as_ref()), Action::VerticalSplit)?;
+            cx.editor.open(&PathBuf::from(arg), Action::VerticalSplit)?;
         }
     }
-
     Ok(())
 }
 
 fn hsplit(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
-    }
-
-    if args.is_empty() {
+    } else if args.is_empty() {
         split(cx.editor, Action::HorizontalSplit);
     } else {
         for arg in args {
             cx.editor
-                .open(&PathBuf::from(arg.as_ref()), Action::HorizontalSplit)?;
+                .open(&PathBuf::from(arg), Action::HorizontalSplit)?;
         }
     }
-
     Ok(())
 }
 
 fn vsplit_new(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
     cx.editor.new_file(Action::VerticalSplit);
-
     Ok(())
 }
 
 fn hsplit_new(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
     cx.editor.new_file(Action::HorizontalSplit);
-
     Ok(())
 }
 
 fn debug_eval(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1739,9 +2116,10 @@ fn debug_eval(
         };
 
         // TODO: support no frame_id
-
         let frame_id = debugger.stack_frames[&thread_id][frame].id;
-        let response = helix_lsp::block_on(debugger.eval(args.join(" "), Some(frame_id)))?;
+        let expression = args.raw().to_string();
+
+        let response = helix_lsp::block_on(debugger.eval(expression, Some(frame_id)))?;
         cx.editor.set_status(response.result);
     }
     Ok(())
@@ -1749,45 +2127,38 @@ fn debug_eval(
 
 fn debug_start(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    mut args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
-    let mut args = args.to_owned();
-    let name = match args.len() {
-        0 => None,
-        _ => Some(args.remove(0)),
-    };
-    dap_start_impl(cx, name.as_deref(), None, Some(args))
+    dap_start_impl(cx, args.next(), None, Some(args.map(Into::into).collect()))
 }
 
 fn debug_remote(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    mut args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
-    let mut args = args.to_owned();
-    let address = match args.len() {
-        0 => None,
-        _ => Some(args.remove(0).parse()?),
-    };
-    let name = match args.len() {
-        0 => None,
-        _ => Some(args.remove(0)),
-    };
-    dap_start_impl(cx, name.as_deref(), address, Some(args))
+    let address = args.next().map(|addr| addr.parse()).transpose()?;
+    dap_start_impl(
+        cx,
+        args.next(),
+        address,
+        Some(args.map(Into::into).collect()),
+    )
 }
 
 fn tutor(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1813,7 +2184,7 @@ fn abort_goto_line_number_preview(cx: &mut compositor::Context) {
 
 fn update_goto_line_number_preview(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    mut args: Args,
 ) -> anyhow::Result<()> {
     cx.editor.last_selection.get_or_insert_with(|| {
         let (view, doc) = current!(cx.editor);
@@ -1821,7 +2192,7 @@ fn update_goto_line_number_preview(
     });
 
     let scrolloff = cx.editor.config().scrolloff;
-    let line = args[0].parse::<usize>()?;
+    let line = args.next().unwrap().parse::<usize>()?;
     goto_line_without_jumplist(cx.editor, NonZeroUsize::new(line));
 
     let (view, doc) = current!(cx.editor);
@@ -1832,7 +2203,8 @@ fn update_goto_line_number_preview(
 
 pub(super) fn goto_line_number(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     match event {
@@ -1868,18 +2240,19 @@ pub(super) fn goto_line_number(
 // Fetch the current value of a config option and output as status.
 fn get_option(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    mut args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    if args.len() != 1 {
+    if args.arg_count() != 1 {
         anyhow::bail!("Bad arguments. Usage: `:get key`");
     }
 
-    let key = &args[0].to_lowercase();
+    let key = args.next().unwrap().to_lowercase();
     let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
 
     let config = serde_json::json!(cx.editor.config().deref());
@@ -1894,46 +2267,63 @@ fn get_option(
 /// example to disable smart case search, use `:set search.smart-case false`.
 fn set_option(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    mut args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    if args.len() != 2 {
-        anyhow::bail!("Bad arguments. Usage: `:set key field`");
+    let Some(key) = args.next().map(|arg| arg.to_lowercase()) else {
+        anyhow::bail!("Bad arguments. Usage: `:set key field`, didn't provide `key`");
+    };
+
+    let field = args.rest();
+
+    if field.is_empty() {
+        anyhow::bail!("Bad arguments. Usage: `:set key field`, didn't provide `field`");
     }
-    let (key, arg) = (&args[0].to_lowercase(), &args[1]);
 
-    let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
-    let field_error = |_| anyhow::anyhow!("Could not parse field `{}`", arg);
-
-    let mut config = serde_json::json!(&cx.editor.config().deref());
+    let mut config = serde_json::json!(&*cx.editor.config());
     let pointer = format!("/{}", key.replace('.', "/"));
-    let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
+    let value = config
+        .pointer_mut(&pointer)
+        .ok_or_else(|| anyhow::anyhow!("Unknown key `{key}`"))?;
 
     *value = if value.is_string() {
         // JSON strings require quotes, so we can't .parse() directly
-        Value::String(arg.to_string())
+        Value::String(field.to_string())
     } else {
-        arg.parse().map_err(field_error)?
+        field
+            .parse()
+            .map_err(|err| anyhow::anyhow!("Could not parse field `{field}`: {err}"))?
     };
-    let config = serde_json::from_value(config).map_err(field_error)?;
+
+    let config = serde_json::from_value(config).expect(
+        "`Config` was already deserialized, serialization is just a 'repacking' and should be valid",
+    );
 
     cx.editor
         .config_events
         .0
         .send(ConfigEvent::Update(config))?;
+
+    cx.editor
+        .set_status(format!("'{key}' is now set to {field}"));
+
     Ok(())
 }
 
 /// Toggle boolean config option at runtime. Access nested values by dot
-/// syntax, for example to toggle smart case search, use `:toggle search.smart-
-/// case`.
+/// syntax.
+/// Example:
+/// -  `:toggle search.smart-case` (bool)
+/// -  `:toggle line-number relative absolute` (string)
 fn toggle_option(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    mut args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1943,73 +2333,99 @@ fn toggle_option(
     if args.is_empty() {
         anyhow::bail!("Bad arguments. Usage: `:toggle key [values]?`");
     }
-    let key = &args[0].to_lowercase();
+    let key = args.next().unwrap().to_lowercase();
 
-    let key_error = || anyhow::anyhow!("Unknown key `{}`", key);
-
-    let mut config = serde_json::json!(&cx.editor.config().deref());
+    let mut config = serde_json::json!(&*cx.editor.config());
     let pointer = format!("/{}", key.replace('.', "/"));
-    let value = config.pointer_mut(&pointer).ok_or_else(key_error)?;
+    let value = config
+        .pointer_mut(&pointer)
+        .ok_or_else(|| anyhow::anyhow!("Unknown key `{}`", key))?;
 
     *value = match value {
         Value::Bool(ref value) => {
             ensure!(
-                args.len() == 1,
+                args.next().is_none(),
                 "Bad arguments. For boolean configurations use: `:toggle key`"
             );
             Value::Bool(!value)
         }
         Value::String(ref value) => {
             ensure!(
-                args.len() > 2,
+                // key + arguments
+                args.arg_count() >= 3,
                 "Bad arguments. For string configurations use: `:toggle key val1 val2 ...`",
             );
 
             Value::String(
-                args[1..]
-                    .iter()
+                args.clone()
                     .skip_while(|e| *e != value)
                     .nth(1)
-                    .unwrap_or_else(|| &args[1])
+                    .unwrap_or_else(|| args.nth(1).unwrap())
                     .to_string(),
             )
         }
         Value::Number(ref value) => {
             ensure!(
-                args.len() > 2,
+                // key + arguments
+                args.arg_count() >= 3,
                 "Bad arguments. For number configurations use: `:toggle key val1 val2 ...`",
             );
 
+            let value = value.to_string();
+
             Value::Number(
-                args[1..]
-                    .iter()
-                    .skip_while(|&e| value.to_string() != *e.to_string())
+                args.clone()
+                    .skip_while(|e| *e != value)
                     .nth(1)
-                    .unwrap_or_else(|| &args[1])
+                    .unwrap_or_else(|| args.nth(1).unwrap())
                     .parse()?,
             )
         }
-        Value::Null | Value::Object(_) | Value::Array(_) => {
+        Value::Array(value) => {
+            let mut lists = serde_json::Deserializer::from_str(args.rest()).into_iter::<Value>();
+
+            let (Some(first), Some(second)) =
+                (lists.next().transpose()?, lists.next().transpose()?)
+            else {
+                anyhow::bail!(
+                    "Bad arguments. For list configurations use: `:toggle key [...] [...]`",
+                )
+            };
+
+            match (&first, &second) {
+                (Value::Array(list), Value::Array(_)) => {
+                    if list == value {
+                        second
+                    } else {
+                        first
+                    }
+                }
+                _ => anyhow::bail!("values must be lists"),
+            }
+        }
+        Value::Null | Value::Object(_) => {
             anyhow::bail!("Configuration {key} does not support toggle yet")
         }
     };
 
     let status = format!("'{key}' is now set to {value}");
-    let config = serde_json::from_value(config)
-        .map_err(|err| anyhow::anyhow!("Cannot parse `{:?}`, {}", &args, err))?;
+    let config = serde_json::from_value(config)?;
 
     cx.editor
         .config_events
         .0
         .send(ConfigEvent::Update(config))?;
+
     cx.editor.set_status(status);
+
     Ok(())
 }
 
 /// Change the language of the current buffer at runtime.
 fn language(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    mut args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -2018,21 +2434,22 @@ fn language(
 
     if args.is_empty() {
         let doc = doc!(cx.editor);
-        let language = &doc.language_name().unwrap_or(DEFAULT_LANGUAGE_NAME);
+        let language = doc.language_name().unwrap_or(DEFAULT_LANGUAGE_NAME);
         cx.editor.set_status(language.to_string());
         return Ok(());
     }
 
-    if args.len() != 1 {
+    if args.arg_count() != 1 {
         anyhow::bail!("Bad arguments. Usage: `:set-language language`");
     }
 
     let doc = doc_mut!(cx.editor);
 
-    if args[0] == DEFAULT_LANGUAGE_NAME {
-        doc.set_language(None, None)
+    let language_id = args.next().unwrap();
+    if language_id == DEFAULT_LANGUAGE_NAME {
+        doc.set_language(None, None);
     } else {
-        doc.set_language_by_language_id(&args[0], cx.editor.syn_loader.clone())?;
+        doc.set_language_by_language_id(language_id, cx.editor.syn_loader.clone())?;
     }
     doc.detect_indent_and_line_ending();
 
@@ -2045,31 +2462,31 @@ fn language(
     Ok(())
 }
 
-fn sort(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
-
-    sort_impl(cx, args, false)
-}
-
-fn sort_reverse(
+fn sort(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    mut args: Args,
+    flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    sort_impl(cx, args, true)
+    // Flags
+    let mut reverse = false;
+
+    flags! {
+        for flags, args => {
+            "reverse" | "r" => reverse = true,
+        }
+    }
+
+    sort_impl(cx, reverse);
+
+    Ok(())
 }
 
-fn sort_impl(
-    cx: &mut compositor::Context,
-    _args: &[Cow<str>],
-    reverse: bool,
-) -> anyhow::Result<()> {
+fn sort_impl(cx: &mut compositor::Context, reverse: bool) {
     let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
@@ -2097,13 +2514,12 @@ fn sort_impl(
     doc.apply(&transaction, view.id);
     doc.append_changes_to_history(view);
     view.ensure_cursor_in_view(doc, scrolloff);
-
-    Ok(())
 }
 
 fn reflow(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    mut args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -2119,7 +2535,7 @@ fn reflow(
     //   - The configured text-width for this language in languages.toml
     //   - The configured text-width in the config.toml
     let text_width: usize = args
-        .first()
+        .next()
         .map(|num| num.parse::<usize>())
         .transpose()?
         .or_else(|| doc.language_config().and_then(|config| config.text_width))
@@ -2144,7 +2560,8 @@ fn reflow(
 
 fn tree_sitter_subtree(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -2183,13 +2600,13 @@ fn tree_sitter_subtree(
 
 fn open_config(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
     cx.editor
         .open(&helix_loader::config_file(), Action::Replace)?;
     Ok(())
@@ -2197,13 +2614,13 @@ fn open_config(
 
 fn open_workspace_config(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
     cx.editor
         .open(&helix_loader::workspace_config_file(), Action::Replace)?;
     Ok(())
@@ -2211,20 +2628,21 @@ fn open_workspace_config(
 
 fn open_log(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
     cx.editor.open(&helix_loader::log_file(), Action::Replace)?;
     Ok(())
 }
 
 fn refresh_config(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -2237,76 +2655,96 @@ fn refresh_config(
 
 fn append_output(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
     ensure!(!args.is_empty(), "Shell command required");
-    shell(cx, &args.join(" "), &ShellBehavior::Append);
+    let cmd = helix_core::shellwords::unescape(args.raw());
+    shell(cx, &cmd, &ShellBehavior::Append);
     Ok(())
 }
 
 fn insert_output(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
     ensure!(!args.is_empty(), "Shell command required");
-    shell(cx, &args.join(" "), &ShellBehavior::Insert);
+    let cmd = helix_core::shellwords::unescape(args.raw());
+    shell(cx, &cmd, &ShellBehavior::Insert);
     Ok(())
 }
 
 fn pipe_to(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    args: Args,
+    flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
-    pipe_impl(cx, args, event, &ShellBehavior::Ignore)
+    pipe_impl(cx, args, flags, event, &ShellBehavior::Ignore)
 }
 
-fn pipe(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
-    pipe_impl(cx, args, event, &ShellBehavior::Replace)
+fn pipe(
+    cx: &mut compositor::Context,
+    args: Args,
+    flags: Flags,
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    pipe_impl(cx, args, flags, event, &ShellBehavior::Replace)
 }
 
 fn pipe_impl(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    args: Args,
+    _flags: Flags,
     event: PromptEvent,
     behavior: &ShellBehavior,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
     ensure!(!args.is_empty(), "Shell command required");
-    shell(cx, &args.join(" "), behavior);
+    let cmd = helix_core::shellwords::unescape(args.raw());
+    shell(cx, &cmd, behavior);
     Ok(())
 }
 
 fn run_shell_command(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    mut args: Args,
+    flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
+    // Flags
+    let mut no_popup = false;
+
+    flags! {
+        for flags, args => {
+            "no-popup" => no_popup = true,
+        }
+    }
+
     let shell = cx.editor.config().shell.clone();
-    let args = args.join(" ");
+
+    let args = helix_core::shellwords::unescape(args.rest()).into_owned();
 
     let callback = async move {
         let output = shell_impl_async(&shell, &args, None).await?;
         let call: job::Callback = Callback::EditorCompositor(Box::new(
             move |editor: &mut Editor, compositor: &mut Compositor| {
-                if !output.is_empty() {
+                if !output.is_empty() && !no_popup {
                     let contents = ui::Markdown::new(
                         format!("```sh\n{}\n```", output.trim_end()),
                         editor.syn_loader.clone(),
@@ -2328,7 +2766,8 @@ fn run_shell_command(
 
 fn reset_diff_change(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -2336,10 +2775,8 @@ fn reset_diff_change(
     }
     ensure!(args.is_empty(), ":reset-diff-change takes no arguments");
 
-    let editor = &mut cx.editor;
-    let scrolloff = editor.config().scrolloff;
-
-    let (view, doc) = current!(editor);
+    let scrolloff = cx.editor.config().scrolloff;
+    let (view, doc) = current!(cx.editor);
     let Some(handle) = doc.diff_handle() else {
         bail!("Diff is not available in the current buffer")
     };
@@ -2381,38 +2818,55 @@ fn reset_diff_change(
 
 fn clear_register(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    mut args: Args,
+    flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    ensure!(args.len() <= 1, ":clear-register takes at most 1 argument");
-    if args.is_empty() {
+    ensure!(
+        args.arg_count() == 1,
+        ":clear-register takes a flag or a register"
+    );
+
+    // Flags
+    let mut all = false;
+
+    flags! {
+        for flags, args => {
+            "all" | "a" => all = true,
+        }
+    }
+
+    if all {
         cx.editor.registers.clear();
         cx.editor.set_status("All registers cleared");
         return Ok(());
     }
 
+    let register = args.next().unwrap();
+
     ensure!(
-        args[0].chars().count() == 1,
-        format!("Invalid register {}", args[0])
+        register.chars().count() == 1,
+        format!("Invalid register {register}")
     );
-    let register = args[0].chars().next().unwrap_or_default();
+
+    let register = register.chars().next().unwrap_or_default();
     if cx.editor.registers.remove(register) {
-        cx.editor
-            .set_status(format!("Register {} cleared", register));
+        cx.editor.set_status(format!("Register {register} cleared"));
     } else {
         cx.editor
-            .set_error(format!("Register {} not found", register));
+            .set_error(format!("Register {register} not found"));
     }
     Ok(())
 }
 
 fn redraw(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -2435,67 +2889,76 @@ fn redraw(
 
 fn move_buffer(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    mut args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
 
-    ensure!(args.len() == 1, format!(":move takes one argument"));
-    let doc = doc!(cx.editor);
-    let old_path = doc
+    ensure!(args.arg_count() == 1, format!(":move takes one argument"));
+
+    let old_path = doc!(cx.editor)
         .path()
         .context("Scratch buffer cannot be moved. Use :write instead")?
         .clone();
-    let new_path = args.first().unwrap().to_string();
+
+    let new_path = args.next().unwrap();
+
     if let Err(err) = cx.editor.move_path(&old_path, new_path.as_ref()) {
         bail!("Could not move file: {err}");
     }
     Ok(())
 }
 
-fn yank_diagnostic(
+// fn yank_diagnostic(
+//     cx: &mut compositor::Context,
+//     mut args: Args,
+//     _flags: Flags,
+//     event: PromptEvent,
+// ) -> anyhow::Result<()> {
+//     if event != PromptEvent::Validate {
+//         return Ok(());
+//     }
+
+//     let reg = match args.next() {
+//         Some(s) => {
+//             ensure!(s.chars().count() == 1, format!("Invalid register {s}"));
+//             s.chars().next().unwrap()
+//         }
+//         None => '+',
+//     };
+
+//     let (view, doc) = current_ref!(cx.editor);
+//     let primary = doc.selection(view.id).primary();
+
+//     // Look only for diagnostics that intersect with the primary selection
+//     let diag: Vec<_> = doc
+//         .diagnostics()
+//         .iter()
+//         .filter(|d| primary.overlaps(&helix_core::Range::new(d.range.start, d.range.end)))
+//         .map(|d| d.message.clone())
+//         .collect();
+//     let n = diag.len();
+//     if n == 0 {
+//         bail!("No diagnostics under primary selection");
+//     }
+
+//     cx.editor.registers.write(reg, diag)?;
+//     cx.editor.set_status(format!(
+//         "Yanked {n} diagnostic{} to register {reg}",
+//         if n == 1 { "" } else { "s" }
+//     ));
+//     Ok(())
+// }
+
+fn read(
     cx: &mut compositor::Context,
-    args: &[Cow<str>],
+    mut args: Args,
+    _flags: Flags,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
-
-    let reg = match args.first() {
-        Some(s) => {
-            ensure!(s.chars().count() == 1, format!("Invalid register {s}"));
-            s.chars().next().unwrap()
-        }
-        None => '+',
-    };
-
-    let (view, doc) = current_ref!(cx.editor);
-    let primary = doc.selection(view.id).primary();
-
-    // Look only for diagnostics that intersect with the primary selection
-    let diag: Vec<_> = doc
-        .diagnostics()
-        .iter()
-        .filter(|d| primary.overlaps(&helix_core::Range::new(d.range.start, d.range.end)))
-        .map(|d| d.message.clone())
-        .collect();
-    let n = diag.len();
-    if n == 0 {
-        bail!("No diagnostics under primary selection");
-    }
-
-    cx.editor.registers.write(reg, diag)?;
-    cx.editor.set_status(format!(
-        "Yanked {n} diagnostic{} to register {reg}",
-        if n == 1 { "" } else { "s" }
-    ));
-    Ok(())
-}
-
-fn read(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
@@ -2504,10 +2967,10 @@ fn read(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     let (view, doc) = current!(cx.editor);
 
     ensure!(!args.is_empty(), "file name is expected");
-    ensure!(args.len() == 1, "only the file name is expected");
+    ensure!(args.arg_count() == 1, "only the file name is expected");
 
-    let filename = args.first().unwrap();
-    let path = helix_stdx::path::expand_tilde(PathBuf::from(filename.to_string()));
+    let filename = args.next().unwrap();
+    let path = helix_stdx::path::expand_tilde(Path::new(filename));
 
     ensure!(
         path.exists() && path.is_file(),
@@ -2532,133 +2995,232 @@ fn read(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
 pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "quit",
-        aliases: &["q"],
-        doc: "Close the current view.",
+        aliases: aliases!["q"],
+        flags: flags![],
+        accepts: None,
+        doc: "close the current view.",
         fun: quit,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "quit!",
-        aliases: &["q!"],
-        doc: "Force close the current view, ignoring unsaved changes.",
+        aliases: aliases!["q!"],
+        flags: flags![],
+        accepts: None,
+        doc: "force close the current view, ignoring unsaved changes.",
         fun: force_quit,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "open",
-        aliases: &["o", "edit", "e"],
-        doc: "Open a file from disk into the current view.",
+        aliases: aliases!["o", "edit", "e"],
+        flags: flags![
+            {
+                long: "env",
+                desc: "opens path from environment variable"
+            }
+        ],
+        accepts: Some("<path>"),
+        doc: "open a file from disk into the current view.",
         fun: open,
         signature: CommandSignature::all(completers::filename),
     },
     TypableCommand {
         name: "buffer-close",
-        aliases: &["bc", "bclose"],
-        doc: "Close the current buffer.",
+        aliases: aliases!["bc", "bclose"],
+        flags: flags![],
+        accepts: None,
+        doc: "close the current buffer.",
         fun: buffer_close,
         signature: CommandSignature::all(completers::buffer),
     },
     TypableCommand {
         name: "buffer-close!",
-        aliases: &["bc!", "bclose!"],
-        doc: "Close the current buffer forcefully, ignoring unsaved changes.",
+        aliases: aliases!["bc!", "bclose!"],
+        flags: flags![],
+        accepts: None,
+        doc: "close the current buffer forcefully, ignoring unsaved changes.",
         fun: force_buffer_close,
         signature: CommandSignature::all(completers::buffer)
     },
     TypableCommand {
         name: "buffer-close-others",
-        aliases: &["bco", "bcloseother"],
-        doc: "Close all buffers but the currently focused one.",
+        aliases: aliases!["bco", "bcloseother"],
+        flags: flags![],
+        accepts: None,
+        doc: "close all buffers but the currently focused one.",
         fun: buffer_close_others,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "buffer-close-others!",
-        aliases: &["bco!", "bcloseother!"],
-        doc: "Force close all buffers but the currently focused one.",
+        aliases: aliases!["bco!", "bcloseother!"],
+        flags: flags![],
+        accepts: None,
+        doc: "force close all buffers but the currently focused one.",
         fun: force_buffer_close_others,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "buffer-close-all",
-        aliases: &["bca", "bcloseall"],
-        doc: "Close all buffers without quitting.",
+        aliases: aliases!["bca", "bcloseall"],
+        flags: flags![],
+        accepts: None,
+        doc: "close all buffers without quitting.",
         fun: buffer_close_all,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "buffer-close-all!",
-        aliases: &["bca!", "bcloseall!"],
-        doc: "Force close all buffers ignoring unsaved changes without quitting.",
+        aliases: aliases!["bca!", "bcloseall!"],
+        flags: flags![],
+        accepts: None,
+        doc: "force close all buffers ignoring unsaved changes without quitting.",
         fun: force_buffer_close_all,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "buffer-next",
-        aliases: &["bn", "bnext"],
-        doc: "Goto next buffer.",
+        aliases: aliases!["bn", "bnext"],
+        flags: flags![],
+        accepts: None,
+        doc: "goto next buffer.",
         fun: buffer_next,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "buffer-previous",
-        aliases: &["bp", "bprev"],
-        doc: "Goto previous buffer.",
+        aliases: aliases!["bp", "bprev"],
+        flags: flags![],
+        accepts: None,
+        doc: "goto previous buffer.",
         fun: buffer_previous,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "write",
-        aliases: &["w"],
-        doc: "Write changes to disk. Accepts an optional path (:write some/path.txt)",
+        aliases: aliases![
+            "w",
+            "u" => "write --update",
+            "x" => "write --quit",
+            "wq" => "write --quit",
+            "x!" => "write --quit --force",
+            "wq!" => "write --quit --force",
+            "w!" => "write --force",
+            "wa" => "write --all",
+            "wa!" => "write --all --force",
+            "waq" => "write --all --quit",
+            "wqa" => "write --all --quit",
+            "xa" => "write --all --quit",
+            "waq!" => "write --all --force --quit",
+            "wqa!" => "write --all --force --quit",
+            "xa!" => "write --all --force --quit",
+            "wbc" => "write --close-buffer",
+            "wbc!" => "write --force --close-buffer",
+        ],
+        flags: flags![
+            {
+                long: "all",
+                short: "a",
+                desc: "writes all buffers",
+            },
+            {
+                long: "quit",
+                short: "q",
+                desc: "quit helix after write",
+            },
+            {
+                long: "force",
+                short: "f",
+                desc: "forcefully write changes",
+            },
+            {
+                long: "update",
+                short: "u",
+                desc: "write only modified changes",
+            },
+            {
+                long: "no-format",
+                desc: "skips formatting step when writing",
+            },
+            {
+                long: "close-buffer",
+                desc: "close buffer after writing",
+            },
+        ],
+        accepts: Some("<path>"),
+        doc: "write changes to disk",
         fun: write,
         signature: CommandSignature::positional(&[completers::filename]),
     },
-    TypableCommand {
-        name: "write!",
-        aliases: &["w!"],
-        doc: "Force write changes to disk creating necessary subdirectories. Accepts an optional path (:write! some/path.txt)",
-        fun: force_write,
-        signature: CommandSignature::positional(&[completers::filename]),
-    },
-    TypableCommand {
-        name: "write-buffer-close",
-        aliases: &["wbc"],
-        doc: "Write changes to disk and closes the buffer. Accepts an optional path (:write-buffer-close some/path.txt)",
-        fun: write_buffer_close,
-        signature: CommandSignature::positional(&[completers::filename]),
-    },
-    TypableCommand {
-        name: "write-buffer-close!",
-        aliases: &["wbc!"],
-        doc: "Force write changes to disk creating necessary subdirectories and closes the buffer. Accepts an optional path (:write-buffer-close! some/path.txt)",
-        fun: force_write_buffer_close,
-        signature: CommandSignature::positional(&[completers::filename]),
-    },
+    // TypableCommand {
+    //     name: "write!",
+    //     aliases: aliases!["w!"],
+    //     flags: flags![{
+    //         long: "no-format",
+    //         desc: "skips formatting step when writing",
+    //     }],
+    //     accepts: Some("<path>"),
+    //     doc: "force write changes to disk creating necessary subdirectories.",
+    //     fun: force_write,
+    //     signature: CommandSignature::positional(&[completers::filename]),
+    // },
+    // TypableCommand {
+    //     name: "write-buffer-close",
+    //     aliases: aliases!["wbc"],
+    //     flags: flags![{
+    //         long: "no-format",
+    //         desc: "skips formatting step when writing",
+    //     }],
+    //     accepts: Some("<path>"),
+    //     doc: "write changes to disk and closes the buffer",
+    //     fun: write_buffer_close,
+    //     signature: CommandSignature::positional(&[completers::filename]),
+    // },
+    // TypableCommand {
+    //     name: "write-buffer-close!",
+    //     aliases: aliases!["wbc!"],
+    //     flags: flags![{
+    //         long: "no-format",
+    //         desc: "skips formatting step when writing",
+    //     }],
+    //     accepts: Some("<path>"),
+    //     doc: "force write changes to disk creating necessary subdirectories and closes the buffer",
+    //     fun: force_write_buffer_close,
+    //     signature: CommandSignature::positional(&[completers::filename]),
+    // },
     TypableCommand {
         name: "new",
-        aliases: &["n"],
-        doc: "Create a new scratch buffer.",
+        aliases: aliases!["n"],
+        flags: flags![],
+        accepts: None,
+        doc: "create a new scratch buffer.",
         fun: new_file,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "format",
-        aliases: &["fmt"],
-        doc: "Format the file using an external formatter or language server.",
+        aliases: aliases!["fmt"],
+        flags: flags![],
+        accepts: None,
+        doc: "format the file using an external formatter or language server.",
         fun: format,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "indent-style",
-        aliases: &[],
-        doc: "Set the indentation style for editing. ('t' for tabs or 1-16 for number of spaces.)",
+        aliases: aliases![],
+        flags: flags![],
+        accepts: Some("<indent>|<number>"),
+        doc: "set the indentation style for editing. ('t' for tabs or 1-16 for number of spaces.)",
         fun: set_indent_style,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "line-ending",
-        aliases: &[],
+        aliases: aliases![],
+        flags: flags![],
+        accepts: Some("<ending>"),
         #[cfg(not(feature = "unicode-lines"))]
         doc: "Set the document's default line ending. Options: crlf, lf.",
         #[cfg(feature = "unicode-lines")]
@@ -2668,485 +3230,681 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "earlier",
-        aliases: &["ear"],
-        doc: "Jump back to an earlier point in edit history. Accepts a number of steps or a time span.",
+        aliases: aliases!["ear"],
+        flags: flags![],
+        accepts: Some("<steps>|<timespan>"),
+        doc: "jump back to an earlier point in edit history.",
         fun: earlier,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "later",
-        aliases: &["lat"],
-        doc: "Jump to a later point in edit history. Accepts a number of steps or a time span.",
+        aliases: aliases!["lat"],
+        flags: flags![],
+        accepts: Some("<steps>|<timespan>"),
+        doc: "jump to a later point in edit history.",
         fun: later,
         signature: CommandSignature::none(),
     },
-    TypableCommand {
-        name: "write-quit",
-        aliases: &["wq", "x"],
-        doc: "Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt)",
-        fun: write_quit,
-        signature: CommandSignature::positional(&[completers::filename]),
-    },
-    TypableCommand {
-        name: "write-quit!",
-        aliases: &["wq!", "x!"],
-        doc: "Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt)",
-        fun: force_write_quit,
-        signature: CommandSignature::positional(&[completers::filename]),
-    },
-    TypableCommand {
-        name: "write-all",
-        aliases: &["wa"],
-        doc: "Write changes from all buffers to disk.",
-        fun: write_all,
-        signature: CommandSignature::none(),
-    },
-    TypableCommand {
-        name: "write-all!",
-        aliases: &["wa!"],
-        doc: "Forcefully write changes from all buffers to disk creating necessary subdirectories.",
-        fun: force_write_all,
-        signature: CommandSignature::none(),
-    },
-    TypableCommand {
-        name: "write-quit-all",
-        aliases: &["wqa", "xa"],
-        doc: "Write changes from all buffers to disk and close all views.",
-        fun: write_all_quit,
-        signature: CommandSignature::none(),
-    },
-    TypableCommand {
-        name: "write-quit-all!",
-        aliases: &["wqa!", "xa!"],
-        doc: "Write changes from all buffers to disk and close all views forcefully (ignoring unsaved changes).",
-        fun: force_write_all_quit,
-        signature: CommandSignature::none(),
-    },
+    // TypableCommand {
+    //     name: "write-quit",
+    //     aliases: aliases!["wq", "x"],
+    //     flags: flags![{
+    //         long: "no-format",
+    //         desc: "skips formatting step when writing",
+    //     }],
+    //     accepts: Some("<path>"),
+    //     doc: "write changes to disk and close the current view.",
+    //     fun: write_quit,
+    //     signature: CommandSignature::positional(&[completers::filename]),
+    // },
+    // TypableCommand {
+    //     name: "write-quit!",
+    //     aliases: aliases!["wq!", "x!"],
+    //     flags: flags![{
+    //         long: "no-format",
+    //         desc: "skips formatting step when writing",
+    //     }],
+    //     accepts: Some("<path>"),
+    //     doc: "write changes to disk and close the current view forcefully.",
+    //     fun: force_write_quit,
+    //     signature: CommandSignature::positional(&[completers::filename]),
+    // },
+    // TypableCommand {
+    //     name: "write-all",
+    //     aliases: aliases!["wa"],
+    //     flags: flags![],
+    //     accepts: None,
+    //     doc: "write changes from all buffers to disk.",
+    //     fun: write_all,
+    //     signature: CommandSignature::none(),
+    // },
+    // TypableCommand {
+    //     name: "write-all!",
+    //     aliases: aliases!["wa!"],
+    //     flags: flags![],
+    //     accepts: None,
+    //     doc: "forcefully write changes from all buffers to disk creating necessary subdirectories.",
+    //     fun: force_write_all,
+    //     signature: CommandSignature::none(),
+    // },
+    // TypableCommand {
+    //     name: "write-quit-all",
+    //     aliases: aliases!["wqa", "xa"],
+    //     flags: flags![],
+    //     accepts: None,
+    //     doc: "write changes from all buffers to disk and close all views.",
+    //     fun: write_all_quit,
+    //     signature: CommandSignature::none(),
+    // },
+    // TypableCommand {
+    //     name: "write-quit-all!",
+    //     aliases: aliases!["wqa!", "xa!"],
+    //     flags: flags![],
+    //     accepts: None,
+    //     doc: "write changes from all buffers to disk and close all views forcefully (ignoring unsaved changes).",
+    //     fun: force_write_all_quit,
+    //     signature: CommandSignature::none(),
+    // },
     TypableCommand {
         name: "quit-all",
-        aliases: &["qa"],
-        doc: "Close all views.",
+        aliases: aliases!["qa"],
+        flags: flags![],
+        accepts: None,
+        doc: "close all views.",
         fun: quit_all,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "quit-all!",
-        aliases: &["qa!"],
-        doc: "Force close all views ignoring unsaved changes.",
+        aliases: aliases!["qa!"],
+        flags: flags![],
+        accepts: None,
+        doc: "force close all views ignoring unsaved changes.",
         fun: force_quit_all,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "cquit",
-        aliases: &["cq"],
-        doc: "Quit with exit code (default 1). Accepts an optional integer exit code (:cq 2).",
+        aliases: aliases!["cq"],
+        flags: flags![],
+        accepts: Some("<number>"),
+        doc: "quit with exit code (default 1)",
         fun: cquit,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "cquit!",
-        aliases: &["cq!"],
-        doc: "Force quit with exit code (default 1) ignoring unsaved changes. Accepts an optional integer exit code (:cq! 2).",
+        aliases: aliases!["cq!"],
+        flags: flags![],
+        accepts: Some("<number>"),
+        doc: "force quit with exit code (default 1) ignoring unsaved changes.",
         fun: force_cquit,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "theme",
-        aliases: &[],
-        doc: "Change the editor theme (show current theme if no name specified).",
+        aliases: aliases![],
+        flags: flags![],
+        accepts: Some("<theme>"),
+        doc: "change the editor theme (show current theme if no name specified).",
         fun: theme,
         signature: CommandSignature::positional(&[completers::theme]),
     },
+    // TypableCommand {
+    //     name: "yank-join",
+    //     aliases: aliases![],
+    //     flags: flags![],
+    //     accepts: Some("<separator>"),
+    //     doc: "yank joined selections. a separator can be provided as first argument. default value is newline.",
+    //     fun: yank_joined,
+    //     signature: CommandSignature::none(),
+    // },
     TypableCommand {
-        name: "yank-join",
-        aliases: &[],
-        doc: "Yank joined selections. A separator can be provided as first argument. Default value is newline.",
-        fun: yank_joined,
+        name: "yank",
+        aliases: aliases![
+            "y",
+            "yj" => "yank --join",
+            "yd" => "yank --diagnostic",
+        ],
+        flags: flags![
+            {
+                long: "join",
+                short: "j",
+                desc: "joins selection with optional separator",
+                accepts: "<separator>"
+            },
+            {
+                long: "primary",
+                short: "p",
+                desc: "yanks only the primary selection",
+            },
+            {
+                long: "register",
+                short: "r",
+                desc: "specify the register to yank to",
+                accepts: "<register>",
+            },
+            {
+                long: "clipboard",
+                short: "c",
+                desc: "yanks to the primary (*) clipboard",
+            },
+            {
+                long: "system",
+                short: "s",
+                desc: "yanks to the system (+) clipboard",
+            },
+            {
+                long: "diagnostic",
+                short: "d",
+                desc: "yanks the diagnostic under the primary cursor",
+            },
+        ],
+        accepts: None,
+        doc: "yank selection to clipboard.",
+        fun: yank,
         signature: CommandSignature::none(),
     },
-    TypableCommand {
-        name: "clipboard-yank",
-        aliases: &[],
-        doc: "Yank main selection into system clipboard.",
-        fun: yank_main_selection_to_clipboard,
-        signature: CommandSignature::none(),
-    },
-    TypableCommand {
-        name: "clipboard-yank-join",
-        aliases: &[],
-        doc: "Yank joined selections into system clipboard. A separator can be provided as first argument. Default value is newline.", // FIXME: current UI can't display long doc.
-        fun: yank_joined_to_clipboard,
-        signature: CommandSignature::none(),
-    },
-    TypableCommand {
-        name: "primary-clipboard-yank",
-        aliases: &[],
-        doc: "Yank main selection into system primary clipboard.",
-        fun: yank_main_selection_to_primary_clipboard,
-        signature: CommandSignature::none(),
-    },
-    TypableCommand {
-        name: "primary-clipboard-yank-join",
-        aliases: &[],
-        doc: "Yank joined selections into system primary clipboard. A separator can be provided as first argument. Default value is newline.", // FIXME: current UI can't display long doc.
-        fun: yank_joined_to_primary_clipboard,
-        signature: CommandSignature::none(),
-    },
+    // TypableCommand {
+    //     name: "clipboard-yank",
+    //     aliases: aliases![],
+    //     flags: flags![],
+    //     accepts: None,
+    //     doc: "yank main selection into system clipboard.",
+    //     fun: yank_main_selection_to_clipboard,
+    //     signature: CommandSignature::none(),
+    // },
+    // TypableCommand {
+    //     name: "clipboard-yank-join",
+    //     aliases: aliases![],
+    //     flags: flags![],
+    //     accepts: Some("<separator>"),
+    //     doc: "yank joined selections into system clipboard. a separator can be provided as first argument. default value is newline.", // FIXME: current UI can't display long doc.
+    //     fun: yank_joined_to_clipboard,
+    //     signature: CommandSignature::none(),
+    // },
+    // TypableCommand {
+    //     name: "primary-clipboard-yank",
+    //     aliases: aliases![],
+    //     flags: flags![],
+    //     accepts: None,
+    //     doc: "yank main selection into system primary clipboard.",
+    //     fun: yank_main_selection_to_primary_clipboard,
+    //     signature: CommandSignature::none(),
+    // },
+    // TypableCommand {
+    //     name: "primary-clipboard-yank-join",
+    //     aliases: aliases![],
+    //     flags: flags![],
+    //     accepts: Some("<separator>"),
+    //     doc: "yank joined selections into system primary clipboard. a separator can be provided as first argument. default value is newline.", // FIXME: current UI can't display long doc.
+    //     fun: yank_joined_to_primary_clipboard,
+    //     signature: CommandSignature::none(),
+    // },
     TypableCommand {
         name: "clipboard-paste-after",
-        aliases: &[],
-        doc: "Paste system clipboard after selections.",
+        aliases: aliases![],
+        flags: flags![],
+        accepts: None,
+        doc: "paste system clipboard after selections.",
         fun: paste_clipboard_after,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "clipboard-paste-before",
-        aliases: &[],
-        doc: "Paste system clipboard before selections.",
+        aliases: aliases![],
+        flags: flags![],
+        accepts: None,
+        doc: "paste system clipboard before selections.",
         fun: paste_clipboard_before,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "clipboard-paste-replace",
-        aliases: &[],
-        doc: "Replace selections with content of system clipboard.",
+        aliases: aliases![],
+        flags: flags![],
+        accepts: None,
+        doc: "replace selections with content of system clipboard.",
         fun: replace_selections_with_clipboard,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "primary-clipboard-paste-after",
-        aliases: &[],
-        doc: "Paste primary clipboard after selections.",
+        aliases: aliases![],
+        flags: flags![],
+        accepts: None,
+        doc: "paste primary clipboard after selections.",
         fun: paste_primary_clipboard_after,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "primary-clipboard-paste-before",
-        aliases: &[],
-        doc: "Paste primary clipboard before selections.",
+        aliases: aliases![],
+        flags: flags![],
+        accepts: None,
+        doc: "paste primary clipboard before selections.",
         fun: paste_primary_clipboard_before,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "primary-clipboard-paste-replace",
-        aliases: &[],
-        doc: "Replace selections with content of system primary clipboard.",
+        aliases: aliases![],
+        flags: flags![],
+        accepts: None,
+        doc: "replace selections with content of system primary clipboard.",
         fun: replace_selections_with_primary_clipboard,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "show-clipboard-provider",
-        aliases: &[],
-        doc: "Show clipboard provider name in status bar.",
+        aliases: aliases![],
+        flags: flags![],
+        accepts: None,
+        doc: "show clipboard provider name in status bar.",
         fun: show_clipboard_provider,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "change-current-directory",
-        aliases: &["cd"],
-        doc: "Change the current working directory.",
+        aliases: aliases!["cd"],
+        flags: flags![],
+        accepts: Some("<path>"),
+        doc: "change the current working directory.",
         fun: change_current_directory,
         signature: CommandSignature::positional(&[completers::directory]),
     },
     TypableCommand {
         name: "show-directory",
-        aliases: &["pwd"],
-        doc: "Show the current working directory.",
+        aliases: aliases!["pwd"],
+        flags: flags![],
+        accepts: None,
+        doc: "show the current working directory.",
         fun: show_current_directory,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "encoding",
-        aliases: &[],
-        doc: "Set encoding. Based on `https://encoding.spec.whatwg.org`.",
+        aliases: aliases![],
+        flags: flags![],
+        accepts: Some("<encoding>"),
+        doc: "set encoding. based on `https://encoding.spec.whatwg.org`.",
         fun: set_encoding,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "character-info",
-        aliases: &["char"],
-        doc: "Get info about the character under the primary cursor.",
+        aliases: aliases!["char"],
+        flags: flags![],
+        accepts: None,
+        doc: "get info about the character under the primary cursor.",
         fun: get_character_info,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "reload",
-        aliases: &["rl"],
-        doc: "Discard changes and reload from the source file.",
+        aliases: aliases!["rl"],
+        flags: flags![],
+        accepts: None,
+        doc: "discard changes and reload from the source file.",
         fun: reload,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "reload-all",
-        aliases: &["rla"],
-        doc: "Discard changes and reload all documents from the source files.",
+        aliases: aliases!["rla"],
+        flags: flags![],
+        accepts: None,
+        doc: "discard changes and reload all documents from the source files.",
         fun: reload_all,
         signature: CommandSignature::none(),
     },
-    TypableCommand {
-        name: "update",
-        aliases: &["u"],
-        doc: "Write changes only if the file has been modified.",
-        fun: update,
-        signature: CommandSignature::none(),
-    },
+    // TypableCommand {
+    //     name: "update",
+    //     aliases: aliases!["u"],
+    //     flags: flags![],
+    //     accepts: None,
+    //     doc: "write changes only if the file has been modified.",
+    //     fun: update,
+    //     signature: CommandSignature::none(),
+    // },
     TypableCommand {
         name: "lsp-workspace-command",
-        aliases: &[],
-        doc: "Open workspace command picker",
+        aliases: aliases![],
+        flags: flags![],
+        accepts: None,
+        doc: "open workspace command picker",
         fun: lsp_workspace_command,
         signature: CommandSignature::positional(&[completers::lsp_workspace_command]),
     },
     TypableCommand {
         name: "lsp-restart",
-        aliases: &[],
-        doc: "Restarts the language servers used by the current doc",
+        aliases: aliases![],
+        flags: flags![],
+        accepts: None,
+        doc: "restarts the language servers used by the current doc",
         fun: lsp_restart,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "lsp-stop",
-        aliases: &[],
-        doc: "Stops the language servers that are used by the current doc",
+        aliases: aliases![],
+        flags: flags![],
+        accepts: None,
+        doc: "stops the language servers that are used by the current doc",
         fun: lsp_stop,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "tree-sitter-scopes",
-        aliases: &[],
-        doc: "Display tree sitter scopes, primarily for theming and development.",
+        aliases: aliases![],
+        flags: flags![],
+        accepts: None,
+        doc: "display tree sitter scopes, primarily for theming and development.",
         fun: tree_sitter_scopes,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "tree-sitter-highlight-name",
-        aliases: &[],
-        doc: "Display name of tree-sitter highlight scope under the cursor.",
+        aliases: aliases![],
+        flags: flags![],
+        accepts: None,
+        doc: "display name of tree-sitter highlight scope under the cursor.",
         fun: tree_sitter_highlight_name,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "debug-start",
-        aliases: &["dbg"],
-        doc: "Start a debug session from a given template with given parameters.",
+        aliases: aliases!["dbg"],
+        flags: flags![],
+        accepts: None,
+        doc: "start a debug session from a given template with given parameters.",
         fun: debug_start,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "debug-remote",
-        aliases: &["dbg-tcp"],
-        doc: "Connect to a debug adapter by TCP address and start a debugging session from a given template with given parameters.",
+        aliases: aliases!["dbg-tcp"],
+        flags: flags![],
+        accepts: None,
+        doc: "connect to a debug adapter by TCP address and start a debugging session from a given template with given parameters.",
         fun: debug_remote,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "debug-eval",
-        aliases: &[],
-        doc: "Evaluate expression in current debug context.",
+        aliases: aliases![],
+        flags: flags![],
+        accepts: None,
+        doc: "evaluate expression in current debug context.",
         fun: debug_eval,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "vsplit",
-        aliases: &["vs"],
-        doc: "Open the file in a vertical split.",
+        aliases: aliases!["vs"],
+        flags: flags![],
+        accepts: Some("<path>"),
+        doc: "open the file in a vertical split.",
         fun: vsplit,
         signature: CommandSignature::all(completers::filename)
     },
     TypableCommand {
         name: "vsplit-new",
-        aliases: &["vnew"],
-        doc: "Open a scratch buffer in a vertical split.",
+        aliases: aliases!["vnew"],
+        flags: flags![],
+        accepts: None,
+        doc: "open a scratch buffer in a vertical split.",
         fun: vsplit_new,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "hsplit",
-        aliases: &["hs", "sp"],
-        doc: "Open the file in a horizontal split.",
+        aliases: aliases!["hs", "sp"],
+        flags: flags![],
+        accepts: Some("<path>"),
+        doc: "open the file in a horizontal split.",
         fun: hsplit,
         signature: CommandSignature::all(completers::filename)
     },
     TypableCommand {
         name: "hsplit-new",
-        aliases: &["hnew"],
-        doc: "Open a scratch buffer in a horizontal split.",
+        aliases: aliases!["hnew"],
+        flags: flags![],
+        accepts: None,
+        doc: "open a scratch buffer in a horizontal split.",
         fun: hsplit_new,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "tutor",
-        aliases: &[],
-        doc: "Open the tutorial.",
+        aliases: aliases![],
+        flags: flags![],
+        accepts: None,
+        doc: "open the tutorial.",
         fun: tutor,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "goto",
-        aliases: &["g"],
-        doc: "Goto line number.",
+        aliases: aliases!["g"],
+        flags: flags![],
+        accepts: Some("<number>"),
+        doc: "goto line number.",
         fun: goto_line_number,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "set-language",
-        aliases: &["lang"],
-        doc: "Set the language of current buffer (show current language if no value specified).",
+        aliases: aliases!["lang"],
+        flags: flags![],
+        accepts: Some("<lang>"),
+        doc: "set the language of current buffer (show current language if no value specified).",
         fun: language,
         signature: CommandSignature::positional(&[completers::language]),
     },
     TypableCommand {
         name: "set-option",
-        aliases: &["set"],
-        doc: "Set a config option at runtime.\nFor example to disable smart case search, use `:set search.smart-case false`.",
+        aliases: aliases!["set"],
+        flags: flags![],
+        accepts: Some("<option> <value>"),
+        doc: "set a config option at runtime. for example to disable smart case search, use `:set search.smart-case false`.",
         fun: set_option,
         // TODO: Add support for completion of the options value(s), when appropriate.
         signature: CommandSignature::positional(&[completers::setting]),
     },
     TypableCommand {
         name: "toggle-option",
-        aliases: &["toggle"],
-        doc: "Toggle a boolean config option at runtime.\nFor example to toggle smart case search, use `:toggle search.smart-case`.",
+        aliases: aliases!["toggle"],
+        flags: flags![],
+        accepts: Some("<option>"),
+        doc: "toggle a boolean config option at runtime. for example to toggle smart case search, use `:toggle search.smart-case`.",
         fun: toggle_option,
         signature: CommandSignature::positional(&[completers::setting]),
     },
     TypableCommand {
         name: "get-option",
-        aliases: &["get"],
-        doc: "Get the current value of a config option.",
+        aliases: aliases!["get"],
+        flags: flags![],
+        accepts: Some("<option>"),
+        doc: "get the current value of a config option.",
         fun: get_option,
         signature: CommandSignature::positional(&[completers::setting]),
     },
     TypableCommand {
         name: "sort",
-        aliases: &[],
-        doc: "Sort ranges in selection.",
+        aliases: aliases!["rsort" => "sort --reverse"],
+        flags: flags![
+            {
+                long: "reverse",
+                short: "r",
+                desc: "sort ranges in selection in reverse order"
+            },
+        ],
+        accepts: None,
+        doc: "sort ranges in selection.",
         fun: sort,
         signature: CommandSignature::none(),
     },
     TypableCommand {
-        name: "rsort",
-        aliases: &[],
-        doc: "Sort ranges in selection in reverse order.",
-        fun: sort_reverse,
-        signature: CommandSignature::none(),
-    },
-    TypableCommand {
         name: "reflow",
-        aliases: &[],
-        doc: "Hard-wrap the current selection of lines to a given width.",
+        aliases: aliases![],
+        flags: flags![],
+        accepts: None,
+        doc: "hard-wrap the current selection of lines to a given width.",
         fun: reflow,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "tree-sitter-subtree",
-        aliases: &["ts-subtree"],
-        doc: "Display the smallest tree-sitter subtree that spans the primary selection, primarily for debugging queries.",
+        aliases: aliases!["ts-subtree"],
+        flags: flags![],
+        accepts: None,
+        doc: "display the smallest tree-sitter subtree that spans the primary selection, primarily for debugging queries.",
         fun: tree_sitter_subtree,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "config-reload",
-        aliases: &[],
-        doc: "Refresh user config.",
+        aliases: aliases![],
+        flags: flags![],
+        accepts: None,
+        doc: "refresh user config.",
         fun: refresh_config,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "config-open",
-        aliases: &[],
-        doc: "Open the user config.toml file.",
+        aliases: aliases![],
+        flags: flags![],
+        accepts: None,
+        doc: "open the user config.toml file.",
         fun: open_config,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "config-open-workspace",
-        aliases: &[],
-        doc: "Open the workspace config.toml file.",
+        aliases: aliases![],
+        flags: flags![],
+        accepts: None,
+        doc: "open the workspace config.toml file.",
         fun: open_workspace_config,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "log-open",
-        aliases: &[],
-        doc: "Open the helix log file.",
+        aliases: aliases![],
+        flags: flags![],
+        accepts: None,
+        doc: "open the helix log file.",
         fun: open_log,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "insert-output",
-        aliases: &[],
-        doc: "Run shell command, inserting output before each selection.",
+        aliases: aliases![],
+        flags: flags![],
+        accepts: Some("<cmd>"),
+        doc: "run shell command, inserting output before each selection.",
         fun: insert_output,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "append-output",
-        aliases: &[],
-        doc: "Run shell command, appending output after each selection.",
+        aliases: aliases![],
+        flags: flags![],
+        accepts: Some("<cmd>"),
+        doc: "run shell command, appending output after each selection.",
         fun: append_output,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "pipe",
-        aliases: &[],
-        doc: "Pipe each selection to the shell command.",
+        aliases: aliases![],
+        flags: flags![],
+        accepts: Some("<cmd>"),
+        doc: "pipe each selection to the shell command.",
         fun: pipe,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "pipe-to",
-        aliases: &[],
-        doc: "Pipe each selection to the shell command, ignoring output.",
+        aliases: aliases![],
+        flags: flags![],
+        accepts: Some("<cmd>"),
+        doc: "pipe each selection to the shell command, ignoring output.",
         fun: pipe_to,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "run-shell-command",
-        aliases: &["sh"],
-        doc: "Run a shell command",
+        aliases: aliases!["sh"],
+        flags: flags![
+            {
+                long: "no-popup",
+                desc: "no longer show shell output in popup"
+            }
+        ],
+        accepts: Some("<cmd>"),
+        doc: "run a shell command",
         fun: run_shell_command,
         signature: CommandSignature::all(completers::filename)
     },
     TypableCommand {
         name: "reset-diff-change",
-        aliases: &["diffget", "diffg"],
-        doc: "Reset the diff change at the cursor position.",
+        aliases: aliases!["diffget", "diffg"],
+        flags: flags![],
+        accepts: None,
+        doc: "reset the diff change at the cursor position.",
         fun: reset_diff_change,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "clear-register",
-        aliases: &[],
-        doc: "Clear given register. If no argument is provided, clear all registers.",
+        aliases: aliases![],
+        flags: flags![{
+            long: "all",
+            short: "a",
+            desc: "clears all registers",
+        }],
+        accepts: Some("<register>"),
+        doc: "clear given register.",
         fun: clear_register,
         signature: CommandSignature::all(completers::register),
     },
     TypableCommand {
         name: "redraw",
-        aliases: &[],
-        doc: "Clear and re-render the whole UI",
+        aliases: aliases![],
+        flags: flags![],
+        accepts: None,
+        doc: "clear and re-render the whole UI",
         fun: redraw,
         signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "move",
-        aliases: &["mv"],
-        doc: "Move the current buffer and its corresponding file to a different path",
+        aliases: aliases!["mv"],
+        flags: flags![],
+        accepts: Some("<path>"),
+        doc: "move the current buffer and its corresponding file to a different path",
         fun: move_buffer,
         signature: CommandSignature::positional(&[completers::filename]),
     },
-    TypableCommand {
-        name: "yank-diagnostic",
-        aliases: &[],
-        doc: "Yank diagnostic(s) under primary cursor to register, or clipboard by default",
-        fun: yank_diagnostic,
-        signature: CommandSignature::all(completers::register),
-    },
+    // TypableCommand {
+    //     name: "yank-diagnostic",
+    //     aliases: aliases![],
+    //     flags: flags![],
+    //     accepts: None,
+    //     doc: "yank diagnostic(s) under primary cursor to register, or clipboard by default",
+    //     fun: yank_diagnostic,
+    //     signature: CommandSignature::all(completers::register),
+    // },
     TypableCommand {
         name: "read",
-        aliases: &["r"],
-        doc: "Load a file into buffer",
+        aliases: aliases!["r"],
+        flags: flags![],
+        accepts: Some("<path>"),
+        doc: "load a file into buffer",
         fun: read,
         signature: CommandSignature::positional(&[completers::filename]),
     },
@@ -3158,21 +3916,23 @@ pub static TYPABLE_COMMAND_MAP: Lazy<HashMap<&'static str, &'static TypableComma
             .iter()
             .flat_map(|cmd| {
                 std::iter::once((cmd.name, cmd))
-                    .chain(cmd.aliases.iter().map(move |&alias| (alias, cmd)))
+                    .chain(cmd.aliases.iter().map(move |&alias| (alias.name, cmd)))
             })
             .collect()
     });
 
-#[allow(clippy::unnecessary_unwrap)]
+#[allow(clippy::unnecessary_unwrap, clippy::too_many_lines)]
 pub(super) fn command_mode(cx: &mut Context) {
     let mut prompt = Prompt::new(
         ":".into(),
         Some(':'),
         |editor: &Editor, input: &str| {
             let shellwords = Shellwords::from(input);
-            let words = shellwords.words();
+            let command = shellwords.command();
 
-            if words.is_empty() || (words.len() == 1 && !shellwords.ends_with_whitespace()) {
+            if command.is_empty()
+                || (shellwords.args().next().is_none() && !shellwords.ends_with_whitespace())
+            {
                 fuzzy_match(
                     input,
                     TYPABLE_COMMAND_LIST.iter().map(|command| command.name),
@@ -3184,72 +3944,70 @@ pub(super) fn command_mode(cx: &mut Context) {
             } else {
                 // Otherwise, use the command's completer and the last shellword
                 // as completion input.
-                let (word, word_len) = if words.len() == 1 || shellwords.ends_with_whitespace() {
-                    (&Cow::Borrowed(""), 0)
-                } else {
-                    (words.last().unwrap(), words.last().unwrap().len())
-                };
+                let (word, len) = shellwords
+                    .args()
+                    .last()
+                    .map_or(("", 0), |last| (last, last.len()));
 
-                let argument_number = argument_number_of(&shellwords);
+                TYPABLE_COMMAND_MAP
+                    .get(command)
+                    .map(|tc| tc.completer_for_argument_number(argument_number_of(&shellwords)))
+                    .map_or_else(Vec::new, |completer| {
+                        completer(editor, word)
+                            .into_iter()
+                            .map(|(range, mut file)| {
+                                file.content = shellwords::escape(file.content);
 
-                if let Some(completer) = TYPABLE_COMMAND_MAP
-                    .get(&words[0] as &str)
-                    .map(|tc| tc.completer_for_argument_number(argument_number))
-                {
-                    completer(editor, word)
-                        .into_iter()
-                        .map(|(range, mut file)| {
-                            file.content = shellwords::escape(file.content);
-
-                            // offset ranges to input
-                            let offset = input.len() - word_len;
-                            let range = (range.start + offset)..;
-                            (range, file)
-                        })
-                        .collect()
-                } else {
-                    Vec::new()
-                }
+                                // offset ranges to input
+                                let offset = input.len() - len;
+                                let range = (range.start + offset)..;
+                                (range, file)
+                            })
+                            .collect()
+                    })
             }
         }, // completion
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
-            let parts = input.split_whitespace().collect::<Vec<&str>>();
-            if parts.is_empty() {
+            let shellwords = Shellwords::from(input);
+            let command = shellwords.command();
+
+            if command.is_empty() {
                 return;
             }
 
-            // If command is numeric, interpret as line number and go there.
-            if parts.len() == 1 && parts[0].parse::<usize>().ok().is_some() {
-                if let Err(e) = typed::goto_line_number(cx, &[Cow::from(parts[0])], event) {
-                    cx.editor.set_error(format!("{}", e));
+            // If input is `:NUMBER`, interpret as line number and go there.
+            if command.parse::<usize>().is_ok() {
+                if let Err(err) = typed::goto_line_number(cx, Args::from(command), flags![], event)
+                {
+                    cx.editor.set_error(format!("{err}"));
                 }
                 return;
             }
 
             // Handle typable commands
-            if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(parts[0]) {
-                let shellwords = Shellwords::from(input);
-                let args = shellwords.words();
+            if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(command) {
+                if let Some(flags) = cmd.flags(command) {
+                    // TODO: Maybe shellwords.command should return a (command: &str, rest: &str)?
+                    // Or have a shellwords.split_command that does this.
+                    let args = format!("{flags}{}", input.trim_start_matches(command));
 
-                if let Err(e) = (cmd.fun)(cx, &args[1..], event) {
-                    cx.editor.set_error(format!("{}", e));
+                    if let Err(err) = (cmd.fun)(cx, Args::from(&args), cmd.flags, event) {
+                        cx.editor.set_error(format!("{err}"));
+                    }
+                } else if let Err(err) = (cmd.fun)(cx, shellwords.args(), cmd.flags, event) {
+                    cx.editor.set_error(format!("{err}"));
                 }
             } else if event == PromptEvent::Validate {
-                cx.editor
-                    .set_error(format!("no such command: '{}'", parts[0]));
+                cx.editor.set_error(format!("no such command: '{command}'"));
             }
         },
     );
-    prompt.doc_fn = Box::new(|input: &str| {
-        let part = input.split(' ').next().unwrap_or_default();
 
-        if let Some(typed::TypableCommand { doc, aliases, .. }) =
-            typed::TYPABLE_COMMAND_MAP.get(part)
-        {
-            if aliases.is_empty() {
-                return Some((*doc).into());
-            }
-            return Some(format!("{}\nAliases: {}", doc, aliases.join(", ")).into());
+    prompt.doc_fn = Box::new(|input: &str| {
+        let shellwords = Shellwords::from(input);
+
+        if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(shellwords.command()) {
+            return Some(command.prompt().into());
         }
 
         None
@@ -3261,11 +4019,10 @@ pub(super) fn command_mode(cx: &mut Context) {
 }
 
 fn argument_number_of(shellwords: &Shellwords) -> usize {
-    if shellwords.ends_with_whitespace() {
-        shellwords.words().len().saturating_sub(1)
-    } else {
-        shellwords.words().len().saturating_sub(2)
-    }
+    shellwords
+        .args()
+        .arg_count()
+        .saturating_sub(1 - usize::from(shellwords.ends_with_whitespace()))
 }
 
 #[test]

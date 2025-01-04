@@ -39,8 +39,10 @@ pub fn typable_commands() -> Result<String, DynError> {
     let cmdify = |s: &str| format!("`:{}`", s);
 
     for cmd in TYPABLE_COMMAND_LIST {
+        let alisases = cmd.aliases.iter().map(|alias| &alias.name);
+
         let names = std::iter::once(&cmd.name)
-            .chain(cmd.aliases.iter())
+            .chain(alisases)
             .map(|a| cmdify(a))
             .collect::<Vec<_>>()
             .join(", ");
