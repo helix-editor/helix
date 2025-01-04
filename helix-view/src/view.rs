@@ -2,7 +2,7 @@ use crate::{
     align_view,
     annotations::diagnostics::InlineDiagnostics,
     document::DocumentInlayHints,
-    editor::{GutterConfig, GutterType},
+    editor::{GutterConfig, GutterType, ScrolloffConfig},
     graphics::Rect,
     handlers::diagnostics::DiagnosticsHandler,
     Align, Document, DocumentId, Theme, ViewId,
@@ -224,7 +224,7 @@ impl View {
     pub fn offset_coords_to_in_view(
         &self,
         doc: &Document,
-        scrolloff: usize,
+        scrolloff: ScrolloffConfig,
     ) -> Option<ViewPosition> {
         self.offset_coords_to_in_view_center::<false>(doc, scrolloff)
     }
@@ -232,7 +232,7 @@ impl View {
     pub fn offset_coords_to_in_view_center<const CENTERING: bool>(
         &self,
         doc: &Document,
-        scrolloff: usize,
+        scrolloff: ScrolloffConfig,
     ) -> Option<ViewPosition> {
         let view_offset = doc.get_view_offset(self.id)?;
         let doc_text = doc.text().slice(..);
@@ -246,8 +246,10 @@ impl View {
         } else {
             (
                 // - 1 from the top so we have at least one gap in the middle.
-                scrolloff.min(viewport.height.saturating_sub(1) as usize / 2),
-                scrolloff.min(viewport.height as usize / 2),
+                scrolloff
+                    .vertical
+                    .min(viewport.height.saturating_sub(1) as usize / 2),
+                scrolloff.vertical.min(viewport.height as usize / 2),
             )
         };
         let (scrolloff_left, scrolloff_right) = if CENTERING {
@@ -255,8 +257,11 @@ impl View {
         } else {
             (
                 // - 1 from the left so we have at least one gap in the middle.
-                scrolloff.min(viewport.width.saturating_sub(1) as usize / 2),
-                scrolloff.min(viewport.width as usize / 2),
+                scrolloff
+                    .horizontal
+                    .min(viewport.width.saturating_sub(1) as usize / 2),
+                scrolloff.horizontal.min(viewport.width as usize / 2),
+                // 5, 5,
             )
         };
 
@@ -333,13 +338,13 @@ impl View {
         Some(offset)
     }
 
-    pub fn ensure_cursor_in_view(&self, doc: &mut Document, scrolloff: usize) {
+    pub fn ensure_cursor_in_view(&self, doc: &mut Document, scrolloff: ScrolloffConfig) {
         if let Some(offset) = self.offset_coords_to_in_view_center::<false>(doc, scrolloff) {
             doc.set_view_offset(self.id, offset);
         }
     }
 
-    pub fn ensure_cursor_in_view_center(&self, doc: &mut Document, scrolloff: usize) {
+    pub fn ensure_cursor_in_view_center(&self, doc: &mut Document, scrolloff: ScrolloffConfig) {
         if let Some(offset) = self.offset_coords_to_in_view_center::<true>(doc, scrolloff) {
             doc.set_view_offset(self.id, offset);
         } else {
@@ -347,7 +352,7 @@ impl View {
         }
     }
 
-    pub fn is_cursor_in_view(&mut self, doc: &Document, scrolloff: usize) -> bool {
+    pub fn is_cursor_in_view(&mut self, doc: &Document, scrolloff: ScrolloffConfig) -> bool {
         self.offset_coords_to_in_view(doc, scrolloff).is_none()
     }
 
