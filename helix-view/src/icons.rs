@@ -6,6 +6,9 @@ use smartstring::{LazyCompact, SmartString};
 
 type String = SmartString<LazyCompact>;
 
+// TODO: Vcs { added  , removed  , ignored  , modified  , renamed  }
+// TODO: Snippet {enabled, icon  }
+// TODO: Text/Spellcheck { enabled, icon 󰓆 }
 
 #[derive(Debug, Serialize, Deserialize, Default, PartialEq, Eq, Clone)]
 #[serde(default)]
