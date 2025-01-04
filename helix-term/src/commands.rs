@@ -71,6 +71,7 @@ use std::{
     future::Future,
     io::Read,
     num::NonZeroUsize,
+    sync::Arc,
 };
 
 use std::{
@@ -3147,7 +3148,7 @@ fn jumplist_picker(cx: &mut Context) {
 
 fn changed_file_picker(cx: &mut Context) {
     pub struct FileChangeData {
-        cwd: PathBuf,
+        cwd: Arc<Path>,
         style_untracked: Style,
         style_modified: Style,
         style_conflict: Style,
@@ -3155,7 +3156,7 @@ fn changed_file_picker(cx: &mut Context) {
         style_renamed: Style,
     }
 
-    let cwd = helix_stdx::env::current_working_dir();
+    let cwd: Arc<Path> = Arc::from(helix_stdx::env::current_working_dir().as_path());
     if !cwd.exists() {
         cx.editor
             .set_error("Current working directory does not exist");
@@ -3226,17 +3227,24 @@ fn changed_file_picker(cx: &mut Context) {
     .with_preview(|_editor, meta| Some((meta.path().into(), None)));
     let injector = picker.injector();
 
-    cx.editor
-        .diff_providers
-        .clone()
-        .for_each_changed_file(cwd, move |change| match change {
+    // Helix can be launched without arguments, in which case no diff provider will be loaded since
+    // there is no file to provide infos for.
+    //
+    // This ensures we have one to work with for cwd (and as a bonus it means any file opened
+    // from this picker will have its diff provider already in cache).
+    cx.editor.diff_providers.add(&cwd);
+    cx.editor.diff_providers.clone().for_each_changed_file(
+        cwd.clone(),
+        move |change| match change {
             Ok(change) => injector.push(change).is_ok(),
             Err(err) => {
                 status::report_blocking(err);
                 true
             }
-        });
+        },
+    );
     cx.push_layer(Box::new(overlaid(picker)));
+    cx.editor.diff_providers.remove(&cwd);
 }
 
 pub fn command_palette(cx: &mut Context) {
