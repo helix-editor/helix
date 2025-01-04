@@ -1316,7 +1316,7 @@ file-types = ["tl"]
 comment-tokens = "--"
 block-comment-tokens = { start = "--[[", end = "--]]" }
 roots = [ "tlconfig.lua" ]
-language-servers = [ "teal-lsp" ]
+language-servers = [ "teal-language-server" ]
 
 [[language]]
 name = "svelte"
