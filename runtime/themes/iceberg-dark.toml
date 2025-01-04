@@ -68,6 +68,7 @@
 "ui.cursor.normal" = { bg = "gray" }
 "ui.cursor.primary" = { modifiers = ["reversed"] }
 "ui.cursor.select" = { bg = "gray" }
+"ui.cursorline.primary" = { bg = "linenr_bg" }
 "ui.gutter" = { fg = "linenr_fg", bg = "linenr_bg" }
 "ui.help" = { fg = "background_fg", bg = "cursorlinenr_bg" }
 "ui.linenr" = { fg = "linenr_fg", bg = "linenr_bg" }
