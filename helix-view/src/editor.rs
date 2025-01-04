@@ -9,9 +9,12 @@ use crate::{
     handlers::Handlers,
     info::Info,
     input::KeyEvent,
+    persistence::{self, FileHistoryEntry},
+    regex::EqRegex,
     register::Registers,
     theme::{self, Theme},
     tree::{self, Tree},
+    view::ViewPosition,
     Document, DocumentId, View, ViewId,
 };
 use dap::StackFrame;
@@ -58,6 +61,8 @@ use arc_swap::{
     access::{DynAccess, DynGuard},
     ArcSwap,
 };
+
+use regex::Regex;
 
 pub const DEFAULT_AUTO_SAVE_DELAY: u64 = 3000;
 
@@ -360,6 +365,7 @@ pub struct Config {
     pub end_of_line_diagnostics: DiagnosticFilter,
     // Set to override the default clipboard provider
     pub clipboard_provider: ClipboardProvider,
+    pub persistence: PersistenceConfig,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -944,6 +950,38 @@ pub enum PopupBorderConfig {
     Menu,
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
+pub struct PersistenceConfig {
+    pub old_files: bool,
+    pub commands: bool,
+    pub search: bool,
+    pub clipboard: bool,
+    pub old_files_exclusions: Vec<EqRegex>,
+    pub old_files_trim: usize,
+    pub commands_trim: usize,
+    pub search_trim: usize,
+}
+
+impl Default for PersistenceConfig {
+    fn default() -> Self {
+        Self {
+            old_files: false,
+            commands: false,
+            search: false,
+            clipboard: false,
+            // TODO: any more defaults we should add here?
+            old_files_exclusions: [r".*/\.git/.*", r".*/COMMIT_EDITMSG"]
+                .iter()
+                .map(|s| Regex::new(s).unwrap().into())
+                .collect(),
+            old_files_trim: 100,
+            commands_trim: 100,
+            search_trim: 100,
+        }
+    }
+}
+
 impl Default for Config {
     fn default() -> Self {
         Self {
@@ -1001,6 +1039,7 @@ impl Default for Config {
             inline_diagnostics: InlineDiagnosticsConfig::default(),
             end_of_line_diagnostics: DiagnosticFilter::Disable,
             clipboard_provider: ClipboardProvider::default(),
+            persistence: PersistenceConfig::default(),
         }
     }
 }
@@ -1054,6 +1093,8 @@ pub struct Editor {
     pub debugger: Option<dap::Client>,
     pub debugger_events: SelectAll<UnboundedReceiverStream<dap::Payload>>,
     pub breakpoints: HashMap<PathBuf, Vec<Breakpoint>>,
+
+    pub old_file_locs: HashMap<PathBuf, (ViewPosition, Selection)>,
 
     pub syn_loader: Arc<ArcSwap<syntax::Loader>>,
     pub theme_loader: Arc<theme::Loader>,
@@ -1173,6 +1214,7 @@ impl Editor {
         syn_loader: Arc<ArcSwap<syntax::Loader>>,
         config: Arc<dyn DynAccess<Config>>,
         handlers: Handlers,
+        old_file_locs: HashMap<PathBuf, (ViewPosition, Selection)>,
     ) -> Self {
         let language_servers = helix_lsp::Registry::new(syn_loader.clone());
         let conf = config.load();
@@ -1200,6 +1242,7 @@ impl Editor {
             debugger: None,
             debugger_events: SelectAll::new(),
             breakpoints: HashMap::new(),
+            old_file_locs,
             syn_loader,
             theme_loader,
             last_theme: None,
@@ -1570,6 +1613,7 @@ impl Editor {
     fn replace_document_in_view(&mut self, current_view: ViewId, doc_id: DocumentId) {
         let scrolloff = self.config().scrolloff;
         let view = self.tree.get_mut(current_view);
+        view.doc = doc_id;
 
         view.doc = doc_id;
         let doc = doc_mut!(self, &doc_id);
@@ -1675,6 +1719,7 @@ impl Editor {
                 );
                 // initialize selection for view
                 let doc = doc_mut!(self, &id);
+
                 doc.ensure_view_init(view_id);
                 doc.mark_as_focused();
                 focus_lost
@@ -1746,8 +1791,8 @@ impl Editor {
         let path = helix_stdx::path::canonicalize(path);
         let id = self.document_id_by_path(&path);
 
-        let id = if let Some(id) = id {
-            id
+        let (id, new_doc) = if let Some(id) = id {
+            (id, false)
         } else {
             let mut doc = Document::open(
                 &path,
@@ -1768,18 +1813,73 @@ impl Editor {
             let id = self.new_document(doc);
             self.launch_language_servers(id);
 
-            id
+            (id, true)
         };
 
         self.switch(id, action);
+
+        // Restore file position
+        // This needs to happen after the call to switch, since switch messes with view offsets
+        if new_doc
+            && !self
+                .config()
+                .persistence
+                .old_files_exclusions
+                .iter()
+                .any(|r| r.is_match(&path.to_string_lossy()))
+        {
+            if let Some((view_position, selection)) =
+                self.old_file_locs.get(&path).map(|x| x.to_owned())
+            {
+                let (view, doc) = current!(self);
+
+                let doc_len = doc.text().len_chars();
+                // Don't restore the view and selection if the selection goes beyond the file's end
+                if !selection.ranges().iter().any(|range| range.to() > doc_len) {
+                    doc.set_view_offset(view.id, view_position);
+                    doc.set_selection(view.id, selection);
+                }
+            }
+        }
+
         Ok(id)
     }
 
     pub fn close(&mut self, id: ViewId) {
-        // Remove selections for the closed view on all documents.
+        let mut file_locs = Vec::new();
+
         for doc in self.documents_mut() {
+            // Persist file location history for this view
+            if doc.selections().contains_key(&id) {
+                if let Some(path) = doc.path() {
+                    file_locs.push(FileHistoryEntry::new(
+                        path.clone(),
+                        doc.view_offset(id),
+                        doc.selection(id).clone(),
+                    ));
+                }
+            }
+
+            // Remove selections for the closed view on all documents.
             doc.remove_view(id);
         }
+
+        if self.config().persistence.old_files {
+            for loc in file_locs {
+                if !self
+                    .config()
+                    .persistence
+                    .old_files_exclusions
+                    .iter()
+                    .any(|r| r.is_match(&loc.path.to_string_lossy()))
+                {
+                    persistence::push_file_history(&loc);
+                    self.old_file_locs
+                        .insert(loc.path, (loc.view_position, loc.selection));
+                }
+            }
+        }
+
         self.tree.remove(id);
         self._refresh();
     }
@@ -1801,10 +1901,13 @@ impl Editor {
             tokio::spawn(language_server.text_document_did_close(doc.identifier()));
         }
 
+        #[derive(Debug)]
         enum Action {
             Close(ViewId),
             ReplaceDoc(ViewId, DocumentId),
         }
+
+        let mut file_locs = Vec::new();
 
         let actions: Vec<Action> = self
             .tree
@@ -1813,6 +1916,14 @@ impl Editor {
                 view.remove_document(&doc_id);
 
                 if view.doc == doc_id {
+                    if let Some(path) = doc.path() {
+                        file_locs.push(FileHistoryEntry::new(
+                            path.clone(),
+                            doc.view_offset(view.id),
+                            doc.selection(view.id).clone(),
+                        ));
+                    };
+
                     // something was previously open in the view, switch to previous doc
                     if let Some(prev_doc) = view.docs_access_history.pop() {
                         Some(Action::ReplaceDoc(view.id, prev_doc))
@@ -1825,6 +1936,22 @@ impl Editor {
                 }
             })
             .collect();
+
+        if self.config().persistence.old_files {
+            for loc in file_locs {
+                if !self
+                    .config()
+                    .persistence
+                    .old_files_exclusions
+                    .iter()
+                    .any(|r| r.is_match(&loc.path.to_string_lossy()))
+                {
+                    persistence::push_file_history(&loc);
+                    self.old_file_locs
+                        .insert(loc.path, (loc.view_position, loc.selection));
+                }
+            }
+        }
 
         for action in actions {
             match action {

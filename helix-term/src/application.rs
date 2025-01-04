@@ -13,7 +13,7 @@ use helix_view::{
     editor::{ConfigEvent, EditorEvent},
     events::DiagnosticsDidChange,
     graphics::Rect,
-    theme,
+    persistence, theme,
     tree::Layout,
     Align, Editor,
 };
@@ -25,7 +25,7 @@ use crate::{
     compositor::{Compositor, Event},
     config::Config,
     handlers,
-    job::Jobs,
+    job::{Job, Jobs},
     keymap::Keymaps,
     ui::{self, overlay::overlaid},
 };
@@ -33,7 +33,12 @@ use crate::{
 use log::{debug, error, info, warn};
 #[cfg(not(feature = "integration"))]
 use std::io::stdout;
-use std::{collections::btree_map::Entry, io::stdin, path::Path, sync::Arc};
+use std::{
+    collections::{btree_map::Entry, HashMap},
+    io::stdin,
+    path::Path,
+    sync::Arc,
+};
 
 #[cfg(not(windows))]
 use anyhow::Context;
@@ -138,6 +143,16 @@ impl Application {
         let mut compositor = Compositor::new(area);
         let config = Arc::new(ArcSwap::from_pointee(config));
         let handlers = handlers::setup(config.clone());
+        let persistence_config = config.load().editor.persistence.clone();
+        let old_file_locs = if persistence_config.old_files {
+            HashMap::from_iter(
+                persistence::read_file_history()
+                    .into_iter()
+                    .map(|entry| (entry.path.clone(), (entry.view_position, entry.selection))),
+            )
+        } else {
+            HashMap::new()
+        };
         let mut editor = Editor::new(
             area,
             theme_loader.clone(),
@@ -146,7 +161,28 @@ impl Application {
                 &config.editor
             })),
             handlers,
+            old_file_locs,
         );
+
+        // Should we be doing these in background tasks?
+        if persistence_config.commands {
+            editor
+                .registers
+                .write(':', persistence::read_command_history())
+                .unwrap();
+        }
+        if persistence_config.search {
+            editor
+                .registers
+                .write('/', persistence::read_search_history())
+                .unwrap();
+        }
+        if persistence_config.clipboard {
+            editor
+                .registers
+                .write('"', persistence::read_clipboard_file())
+                .unwrap();
+        }
 
         let keys = Box::new(Map::new(Arc::clone(&config), |config: &Config| {
             &config.keys
@@ -190,7 +226,7 @@ impl Application {
                             None => Action::Load,
                         };
                         let old_id = editor.document_id_by_path(&file);
-                        let doc_id = match editor.open(&file, action) {
+                        match editor.open(&file, action) {
                             // Ignore irregular files during application init.
                             Err(DocumentOpenError::IrregularFile) => {
                                 nr_of_files -= 1;
@@ -200,18 +236,20 @@ impl Application {
                             // We can't open more than 1 buffer for 1 file, in this case we already have opened this file previously
                             Ok(doc_id) if old_id == Some(doc_id) => {
                                 nr_of_files -= 1;
-                                doc_id
                             }
-                            Ok(doc_id) => doc_id,
+                            Ok(_) => (),
                         };
                         // with Action::Load all documents have the same view
                         // NOTE: this isn't necessarily true anymore. If
                         // `--vsplit` or `--hsplit` are used, the file which is
                         // opened last is focused on.
-                        let view_id = editor.tree.focus;
-                        let doc = doc_mut!(editor, &doc_id);
-                        let pos = Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
-                        doc.set_selection(view_id, pos);
+                        if let Some(pos) = pos {
+                            let (view, doc) = current!(editor);
+                            let pos =
+                                Selection::point(pos_at_coords(doc.text().slice(..), pos, true));
+                            doc.set_selection(view.id, pos);
+                            align_view(doc, view, Align::Center);
+                        }
                     }
                 }
 
@@ -224,10 +262,6 @@ impl Application {
                         nr_of_files,
                         if nr_of_files == 1 { "" } else { "s" } // avoid "Loaded 1 files." grammo
                     ));
-                    // align the view to center after all files are loaded,
-                    // does not affect views without pos since it is at the top
-                    let (view, doc) = current!(editor);
-                    align_view(doc, view, Align::Center);
                 }
             } else {
                 editor.new_file(Action::VerticalSplit);
@@ -254,6 +288,38 @@ impl Application {
         ])
         .context("build signal handler")?;
 
+        let jobs = Jobs::new();
+        if persistence_config.old_files {
+            let file_trim = persistence_config.old_files_trim;
+            jobs.add(
+                Job::new(async move {
+                    persistence::trim_file_history(file_trim);
+                    Ok(())
+                })
+                .wait_before_exiting(),
+            );
+        }
+        if persistence_config.commands {
+            let commands_trim = persistence_config.commands_trim;
+            jobs.add(
+                Job::new(async move {
+                    persistence::trim_command_history(commands_trim);
+                    Ok(())
+                })
+                .wait_before_exiting(),
+            );
+        }
+        if persistence_config.search {
+            let search_trim = persistence_config.search_trim;
+            jobs.add(
+                Job::new(async move {
+                    persistence::trim_search_history(search_trim);
+                    Ok(())
+                })
+                .wait_before_exiting(),
+            );
+        }
+
         let app = Self {
             compositor,
             terminal,
@@ -265,7 +331,7 @@ impl Application {
             syn_loader,
 
             signals,
-            jobs: Jobs::new(),
+            jobs,
             lsp_progress: LspProgressMap::new(),
         };
 
