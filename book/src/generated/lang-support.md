@@ -210,7 +210,7 @@
 | tact | ✓ | ✓ | ✓ |  |
 | task | ✓ |  |  |  |
 | tcl | ✓ |  | ✓ |  |
-| teal | ✓ |  |  |  |
+| teal | ✓ |  |  | `teal-language-server` |
 | templ | ✓ |  |  | `templ` |
 | textproto | ✓ | ✓ | ✓ |  |
 | tfvars | ✓ |  | ✓ | `terraform-ls` |
