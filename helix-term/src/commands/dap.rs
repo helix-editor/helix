@@ -109,6 +109,7 @@ fn dap_callback<T, F>(
     jobs.callback(callback);
 }
 
+// TODO: transition to `shellwords::Args` instead of `Option<Vec<Cow>>>`
 pub fn dap_start_impl(
     cx: &mut compositor::Context,
     name: Option<&str>,
@@ -312,6 +313,7 @@ pub fn dap_restart(cx: &mut Context) {
     );
 }
 
+// TODO: transition to `shellwords::Args` instead of `Vec<String>`
 fn debug_parameter_prompt(
     completions: Vec<DebugConfigCompletion>,
     config_name: String,
