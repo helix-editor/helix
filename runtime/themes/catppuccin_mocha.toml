@@ -1,3 +1,5 @@
+# NOTE: For contributors looking to change the theme, please submit the change as a PR in https://github.com/catppuccin/helix
+# Do not directly change this theme in the Helix editor repository, as we frequently sync changes from the catppuccin helix theme repo
 # Syntax highlighting
 # -------------------
 "attribute" = "yellow"
