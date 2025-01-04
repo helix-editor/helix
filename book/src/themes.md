@@ -336,5 +336,6 @@ These scopes are used for theming the editor interface:
 | `diagnostic.error`                | Diagnostics error (editing area)                                                               |
 | `diagnostic.unnecessary`          | Diagnostics with unnecessary tag (editing area)                                                |
 | `diagnostic.deprecated`           | Diagnostics with deprecated tag (editing area)                                                 |
+| `tabstop`                         | Snippet placeholder                                                                            |
 
 [editor-section]: ./configuration.md#editor-section
