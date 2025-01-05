@@ -637,10 +637,9 @@ pub(super) fn buffers_remaining_impl(editor: &mut Editor) -> anyhow::Result<()> 
             editor.switch(*first, Action::Replace);
         }
 
-        let modified_names: Vec<_> = editor
-            .documents()
-            .filter(|doc| doc.is_modified())
-            .map(|doc| (doc.display_name()))
+        let modified_names: Vec<_> = modified_ids
+            .iter()
+            .map(|doc_id| doc!(editor, doc_id).display_name())
             .collect();
 
         bail!(
