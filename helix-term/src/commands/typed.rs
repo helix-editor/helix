@@ -1029,10 +1029,10 @@ fn change_current_directory(
         Some("-") => cx
             .editor
             .get_last_cwd()
-            .map(|path| path.to_path_buf())
+            .map(|path| Cow::Owned(path.to_path_buf()))
             .ok_or_else(|| anyhow!("No previous working directory"))?,
-        Some(path) => helix_stdx::path::expand_tilde(Path::new(path)).to_path_buf(),
-        None => home_dir()?,
+        Some(path) => helix_stdx::path::expand_tilde(Path::new(path)),
+        None => Cow::Owned(home_dir()?),
     };
 
     cx.editor.set_cwd(&dir)?;
