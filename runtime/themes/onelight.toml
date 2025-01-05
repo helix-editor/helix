@@ -91,13 +91,14 @@
 "markup.quote" = { fg = "grey" }
 "markup.raw" = { fg = "brown" }
 "markup.raw.inline" = { fg = "green" }
-"markup.raw.block" = { fg = "grey" }
+"markup.raw.block" = { fg = "brown" }
 
 "diff" = { fg = "red" }
 "diff.plus" = { fg = "green" }
 "diff.minus" = { fg = "red" }
 "diff.delta" = { fg = "cyan" }
 "diff.delta.moved" = { fg = "cyan" }
+"diff.delta.conflict" = {fg = "blue"}
 
 "ui.background" = { bg = "white" }
 "ui.background.separator" = { bg = "white" }
@@ -133,6 +134,7 @@
 "ui.text.focus" = { fg = "red", bg = "grey-300", modifiers = ["bold"] }
 "ui.text.inactive" = { fg = "grey" }
 "ui.text.info" = { fg = "black" }
+"ui.text.directory" = { fg = "blue", underline = { style = "line" } }
 
 "ui.virtual" = { fg = "grey-500" }
 "ui.virtual.ruler" = { bg = "grey-200" }
@@ -159,6 +161,9 @@
 
 "ui.highlight" = { bg = "grey-300" }
 
+"ui.picker.header" = { fg = "purple"}
+"ui.picker.header.active" = { fg = "blue"}
+
 "diagnostic.info" = { underline = { color = "blue", style = "dotted" } }
 "diagnostic.hint" = { underline = { color = "green", style = "dashed" } }
 "diagnostic.warning" = { underline = { color = "yellow", style = "curl" } }
@@ -170,6 +175,8 @@
 "hint" = { fg = "green", modifiers = ["bold"] }
 "warning" = { fg = "yellow", modifiers = ["bold"] }
 "error" = { fg = "red", modifiers = ["bold"] }
+
+"tabstop" = { modifiers = ["italic"], bg = "grey-300" }
 
 [palette]
 white = "#FAFAFA"
