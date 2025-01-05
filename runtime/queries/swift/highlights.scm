@@ -24,6 +24,7 @@
 ] @keyword
 
 (function_declaration (simple_identifier) @function.method)
+(protocol_function_declaration (simple_identifier) @function.method)
 (init_declaration ["init" @constructor])
 (deinit_declaration ["deinit" @constructor])
 
@@ -136,7 +137,7 @@
 ["\"" "\"\"\""] @string
 
 ; Lambda literals
-(lambda_literal "in" @keyword.operator) @variable.parameter
+(lambda_literal "in" @keyword.operator)
 
 ; Basic literals
 [
