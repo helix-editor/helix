@@ -1,12 +1,14 @@
 use crate::keymap;
 use crate::keymap::{merge_keys, KeyTrie};
 use helix_loader::merge_toml_values;
+use helix_view::commands::custom::CustomTypableCommand;
 use helix_view::document::Mode;
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::fmt::Display;
 use std::fs;
 use std::io::Error as IOError;
+use std::sync::Arc;
 use toml::de::Error as TomlError;
 
 #[derive(Debug, Clone, PartialEq)]
@@ -22,6 +24,7 @@ pub struct ConfigRaw {
     pub theme: Option<String>,
     pub keys: Option<HashMap<Mode, KeyTrie>>,
     pub editor: Option<toml::Value>,
+    commands: Option<Commands>,
 }
 
 impl Default for Config {
@@ -65,7 +68,7 @@ impl Config {
         let local_config: Result<ConfigRaw, ConfigLoadError> =
             local.and_then(|file| toml::from_str(&file).map_err(ConfigLoadError::BadConfig));
         let res = match (global_config, local_config) {
-            (Ok(global), Ok(local)) => {
+            (Ok(mut global), Ok(local)) => {
                 let mut keys = keymap::default();
                 if let Some(global_keys) = global.keys {
                     merge_keys(&mut keys, global_keys)
@@ -74,7 +77,7 @@ impl Config {
                     merge_keys(&mut keys, local_keys)
                 }
 
-                let editor = match (global.editor, local.editor) {
+                let mut editor = match (global.editor, local.editor) {
                     (None, None) => helix_view::editor::Config::default(),
                     (None, Some(val)) | (Some(val), None) => {
                         val.try_into().map_err(ConfigLoadError::BadConfig)?
@@ -83,6 +86,26 @@ impl Config {
                         .try_into()
                         .map_err(ConfigLoadError::BadConfig)?,
                 };
+
+                // Merge locally defined commands, overwriting global space commands if encountered
+                if let Some(lcommands) = local.commands {
+                    if let Some(gcommands) = &mut global.commands {
+                        for (name, details) in lcommands.commands {
+                            gcommands.commands.insert(name, details);
+                        }
+                    } else {
+                        global.commands = Some(lcommands);
+                    }
+                }
+
+                // If any commands were defined anywhere, add to editor
+                if let Some(commands) = global.commands {
+                    editor.commands.commands = commands
+                        .commands
+                        .into_iter()
+                        .map(|(name, details)| details.into_custom_command(name))
+                        .collect();
+                }
 
                 Config {
                     theme: local.theme.or(global.theme),
@@ -100,13 +123,25 @@ impl Config {
                 if let Some(keymap) = config.keys {
                     merge_keys(&mut keys, keymap);
                 }
+
+                let mut editor = config.editor.map_or_else(
+                    || Ok(helix_view::editor::Config::default()),
+                    |val| val.try_into().map_err(ConfigLoadError::BadConfig),
+                )?;
+
+                // Add custom commands
+                if let Some(commands) = config.commands {
+                    editor.commands.commands = commands
+                        .commands
+                        .into_iter()
+                        .map(|(name, details)| details.into_custom_command(name))
+                        .collect();
+                }
+
                 Config {
                     theme: config.theme,
                     keys,
-                    editor: config.editor.map_or_else(
-                        || Ok(helix_view::editor::Config::default()),
-                        |val| val.try_into().map_err(ConfigLoadError::BadConfig),
-                    )?,
+                    editor,
                 }
             }
 
@@ -126,13 +161,75 @@ impl Config {
     }
 }
 
+#[derive(Debug, Deserialize, PartialEq, Eq, Clone)]
+struct Commands {
+    #[serde(flatten)]
+    commands: HashMap<String, CommandTomlType>,
+}
+
+#[derive(Debug, Deserialize, PartialEq, Eq, Clone)]
+#[serde(untagged)]
+enum CommandTomlType {
+    Single(String),
+    Multiple(Vec<String>),
+    Detailed {
+        commands: Vec<String>,
+        desc: Option<String>,
+        accepts: Option<String>,
+        completer: Option<String>,
+    },
+}
+
+impl CommandTomlType {
+    fn into_custom_command(self, name: String) -> CustomTypableCommand {
+        let name = name.trim_start_matches(':');
+        match self {
+            Self::Single(command) => CustomTypableCommand {
+                name: Arc::from(name),
+                desc: None,
+                commands: vec![Arc::from(command.trim_start_matches(':'))].into(),
+                accepts: None,
+                completer: None,
+            },
+            Self::Multiple(commands) => CustomTypableCommand {
+                name: Arc::from(name),
+                desc: None,
+                commands: commands
+                    .into_iter()
+                    .map(|command| Arc::from(command.trim_start_matches(':')))
+                    .collect::<Vec<_>>()
+                    .into(),
+                accepts: None,
+                completer: None,
+            },
+            Self::Detailed {
+                commands,
+                desc,
+                accepts,
+                completer,
+            } => CustomTypableCommand {
+                name: Arc::from(name),
+                desc: desc.map(Arc::from),
+                commands: commands
+                    .into_iter()
+                    .map(|command| Arc::from(command.trim_start_matches(':')))
+                    .collect::<Vec<_>>()
+                    .into(),
+                accepts: accepts.map(|accepts| Arc::from(accepts.trim_start_matches(':'))),
+                completer: completer.map(|completer| Arc::from(completer.trim_start_matches(':'))),
+            },
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
+
     use super::*;
 
     impl Config {
-        fn load_test(config: &str) -> Config {
-            Config::load(Ok(config.to_owned()), Err(ConfigLoadError::default())).unwrap()
+        fn load_test(config: &str) -> Result<Config, ConfigLoadError> {
+            Config::load(Ok(config.to_owned()), Err(ConfigLoadError::default()))
         }
     }
 
@@ -166,7 +263,7 @@ mod tests {
         );
 
         assert_eq!(
-            Config::load_test(sample_keymaps),
+            Config::load_test(sample_keymaps).unwrap(),
             Config {
                 keys,
                 ..Default::default()
@@ -177,11 +274,41 @@ mod tests {
     #[test]
     fn keys_resolve_to_correct_defaults() {
         // From serde default
-        let default_keys = Config::load_test("").keys;
+        let default_keys = Config::load_test("").unwrap().keys;
         assert_eq!(default_keys, keymap::default());
 
         // From the Default trait
         let default_keys = Config::default().keys;
         assert_eq!(default_keys, keymap::default());
     }
+
+    #[test]
+    fn should_deserialize_custom_commands() {
+        let config = r#"
+[commands]
+":wq" = [":write", "quit"]
+":w" = ":write --force"
+":wcd!" = { commands = [':write --force %{arg}', ':cd %sh{ %{arg} | path dirname }'], desc = "writes buffer to disk forcefully, then changes to its directory", accepts = "<path>", completer = ":write" }
+"#;
+
+        if let Err(err) = Config::load_test(config) {
+            panic!("{err:#?}")
+        };
+    }
+
+    // TODO: See if this capabiliy till be allowed
+    //     #[test]
+    //     fn should_deserialize_custom_commands_into_keys() {
+    //         let config = r#"
+    // [keys.normal.space]
+    // g = ":lg"
+
+    // [commands]
+    // ":lg" = ""
+    // "#;
+
+    //         if let Err(err) = Config::load_test(config) {
+    //             panic!("{err:#?}")
+    //         };
+    //     }
 }
