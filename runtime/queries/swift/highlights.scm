@@ -92,6 +92,9 @@
    (#match? @type "^[A-Z]"))
 (call_expression (simple_identifier) @keyword (#eq? @keyword "defer")) ; defer { ... }
 
+(navigation_suffix
+  (simple_identifier) @variable.other.member)
+
 (try_operator) @operator
 (try_operator ["try" @keyword])
 
@@ -161,6 +164,7 @@
   "?"
   "+"
   "-"
+  "\\"
   "*"
   "/"
   "%"
