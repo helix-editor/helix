@@ -1028,20 +1028,14 @@ fn change_current_directory(
     let dir = match args.next() {
         Some("-") => cx
             .editor
-            .last_cwd
-            .clone()
+            .get_last_cwd()
+            .map(|path| path.to_path_buf())
             .ok_or_else(|| anyhow!("No previous working directory"))?,
         Some(path) => helix_stdx::path::expand_tilde(Path::new(path)).to_path_buf(),
         None => home_dir()?,
     };
 
-    cx.editor.last_cwd = helix_stdx::env::set_current_working_dir(dir)?;
-
-    for doc in cx.editor.documents_mut() {
-        // Clear the relative path as this will need to be recalculated
-        // for each document.
-        doc.relative_path.take();
-    }
+    cx.editor.set_cwd(&dir)?;
 
     cx.editor.set_status(format!(
         "Current working directory is now {}",

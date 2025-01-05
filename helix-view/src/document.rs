@@ -149,7 +149,7 @@ pub struct Document {
     pub inlay_hints_oudated: bool,
 
     path: Option<PathBuf>,
-    pub relative_path: OnceCell<Option<PathBuf>>,
+    relative_path: OnceCell<Option<PathBuf>>,
     encoding: &'static encoding::Encoding,
     has_bom: bool,
 
@@ -299,6 +299,14 @@ impl fmt::Debug for DocumentInlayHintsId {
         f.debug_struct("DocumentInlayHintsId")
             .field("lines", &(self.first_line..self.last_line))
             .finish()
+    }
+}
+
+impl Editor {
+    pub(crate) fn clear_doc_relative_paths(&mut self) {
+        for doc in self.documents_mut() {
+            doc.relative_path.take();
+        }
     }
 }
 
