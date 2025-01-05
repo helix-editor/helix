@@ -2443,7 +2443,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["o", "edit", "e"],
         doc: "Open a file from disk into the current view.",
         fun: open,
-        signature: CommandSignature::all(completers::filename),
+        signature: CommandSignature::all(completers::filename_excluding_git_ignore),
     },
     TypableCommand {
         name: "buffer-close",
@@ -2506,28 +2506,28 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["w"],
         doc: "Write changes to disk. Accepts an optional path (:write some/path.txt)",
         fun: write,
-        signature: CommandSignature::positional(&[completers::filename]),
+        signature: CommandSignature::positional(&[completers::filename_including_git_ignore]),
     },
     TypableCommand {
         name: "write!",
         aliases: &["w!"],
         doc: "Force write changes to disk creating necessary subdirectories. Accepts an optional path (:write! some/path.txt)",
         fun: force_write,
-        signature: CommandSignature::positional(&[completers::filename]),
+        signature: CommandSignature::positional(&[completers::filename_including_git_ignore]),
     },
     TypableCommand {
         name: "write-buffer-close",
         aliases: &["wbc"],
         doc: "Write changes to disk and closes the buffer. Accepts an optional path (:write-buffer-close some/path.txt)",
         fun: write_buffer_close,
-        signature: CommandSignature::positional(&[completers::filename]),
+        signature: CommandSignature::positional(&[completers::filename_including_git_ignore]),
     },
     TypableCommand {
         name: "write-buffer-close!",
         aliases: &["wbc!"],
         doc: "Force write changes to disk creating necessary subdirectories and closes the buffer. Accepts an optional path (:write-buffer-close! some/path.txt)",
         fun: force_write_buffer_close,
-        signature: CommandSignature::positional(&[completers::filename]),
+        signature: CommandSignature::positional(&[completers::filename_including_git_ignore]),
     },
     TypableCommand {
         name: "new",
@@ -2579,14 +2579,14 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["wq", "x"],
         doc: "Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt)",
         fun: write_quit,
-        signature: CommandSignature::positional(&[completers::filename]),
+        signature: CommandSignature::positional(&[completers::filename_including_git_ignore]),
     },
     TypableCommand {
         name: "write-quit!",
         aliases: &["wq!", "x!"],
         doc: "Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt)",
         fun: force_write_quit,
-        signature: CommandSignature::positional(&[completers::filename]),
+        signature: CommandSignature::positional(&[completers::filename_including_git_ignore]),
     },
     TypableCommand {
         name: "write-all",
@@ -2845,7 +2845,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["vs"],
         doc: "Open the file in a vertical split.",
         fun: vsplit,
-        signature: CommandSignature::all(completers::filename)
+        signature: CommandSignature::all(completers::filename_excluding_git_ignore)
     },
     TypableCommand {
         name: "vsplit-new",
@@ -2859,7 +2859,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["hs", "sp"],
         doc: "Open the file in a horizontal split.",
         fun: hsplit,
-        signature: CommandSignature::all(completers::filename)
+        signature: CommandSignature::all(completers::filename_excluding_git_ignore)
     },
     TypableCommand {
         name: "hsplit-new",
@@ -3000,7 +3000,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["sh"],
         doc: "Run a shell command",
         fun: run_shell_command,
-        signature: CommandSignature::all(completers::filename)
+        signature: CommandSignature::all(completers::filename_including_git_ignore)
     },
     TypableCommand {
         name: "reset-diff-change",
@@ -3028,7 +3028,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["mv"],
         doc: "Move the current buffer and its corresponding file to a different path",
         fun: move_buffer,
-        signature: CommandSignature::positional(&[completers::filename]),
+        signature: CommandSignature::positional(&[completers::filename_including_git_ignore]),
     },
     TypableCommand {
         name: "yank-diagnostic",
@@ -3042,7 +3042,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["r"],
         doc: "Load a file into buffer",
         fun: read,
-        signature: CommandSignature::positional(&[completers::filename]),
+        signature: CommandSignature::positional(&[completers::filename_including_git_ignore]),
     },
 ];
 

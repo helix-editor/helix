@@ -6104,7 +6104,7 @@ fn shell_prompt(cx: &mut Context, prompt: Cow<'static, str>, behavior: ShellBeha
         cx,
         prompt,
         Some('|'),
-        ui::completers::filename,
+        ui::completers::filename_including_git_ignore,
         move |cx, input: &str, event: PromptEvent| {
             if event != PromptEvent::Validate {
                 return;
