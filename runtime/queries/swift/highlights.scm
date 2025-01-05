@@ -4,7 +4,7 @@
   ["\\(" ")"] @punctuation.special)
 
 ["." ";" ":" "," ] @punctuation.delimiter
-["(" ")" "[" "]" "{" "}"] @punctuation.bracket
+["(" ")" "[" "]" "{" "}" "<" ">"] @punctuation.bracket
 
 ; Identifiers
 (attribute) @variable
@@ -136,7 +136,7 @@
 ["\"" "\"\"\""] @string
 
 ; Lambda literals
-(lambda_literal "in" @keyword.operator)
+(lambda_literal "in" @keyword.operator) @variable.parameter
 
 ; Basic literals
 [
@@ -147,7 +147,7 @@
 (integer_literal) @constant.numeric.integer
 (real_literal) @constant.numeric.float
 (boolean_literal) @constant.builtin.boolean
-"nil" @variable.builtin
+"nil" @constant.builtin
 
 "?" @type
 (type_annotation "!" @type)
