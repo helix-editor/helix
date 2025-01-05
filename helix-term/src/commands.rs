@@ -4338,7 +4338,7 @@ fn yank_joined_impl(editor: &mut Editor, separator: &str, register: char) {
         .fragments(text)
         .fold(String::new(), |mut acc, fragment| {
             if !acc.is_empty() {
-                acc.push_str(&helix_core::shellwords::unescape(separator));
+                acc.push_str(&shellwords::unescape(separator));
             }
             acc.push_str(&fragment);
             acc

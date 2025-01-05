@@ -32,7 +32,7 @@ impl TypableCommand {
         self.signature
             .positional_args
             .get(n)
-            .map_or(&self.signature.var_args, |completer| completer)
+            .unwrap_or(&self.signature.var_args)
     }
 }
 
