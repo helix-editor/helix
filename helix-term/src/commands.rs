@@ -30,7 +30,9 @@ use helix_core::{
     object, pos_at_coords,
     regex::{self, Regex},
     search::{self, CharMatcher},
-    selection, shellwords, surround,
+    selection,
+    shellwords::{self, Args},
+    surround,
     syntax::{BlockCommentToken, LanguageServerFeature},
     text_annotations::{Overlay, TextAnnotations},
     textobject,
@@ -207,7 +209,7 @@ use helix_view::{align_view, Align};
 pub enum MappableCommand {
     Typable {
         name: String,
-        args: Vec<String>,
+        args: String,
         doc: String,
     },
     Static {
@@ -242,15 +244,17 @@ impl MappableCommand {
     pub fn execute(&self, cx: &mut Context) {
         match &self {
             Self::Typable { name, args, doc: _ } => {
-                let args: Vec<Cow<str>> = args.iter().map(Cow::from).collect();
                 if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
                     let mut cx = compositor::Context {
                         editor: cx.editor,
                         jobs: cx.jobs,
                         scroll: None,
                     };
-                    if let Err(e) = (command.fun)(&mut cx, &args[..], PromptEvent::Validate) {
-                        cx.editor.set_error(format!("{}", e));
+
+                    if let Err(err) =
+                        (command.fun)(&mut cx, Args::from(args), PromptEvent::Validate)
+                    {
+                        cx.editor.set_error(format!("{err}"));
                     }
                 }
             }
@@ -621,21 +625,15 @@ impl std::str::FromStr for MappableCommand {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some(suffix) = s.strip_prefix(':') {
-            let mut typable_command = suffix.split(' ').map(|arg| arg.trim());
-            let name = typable_command
-                .next()
-                .ok_or_else(|| anyhow!("Expected typable command name"))?;
-            let args = typable_command
-                .map(|s| s.to_owned())
-                .collect::<Vec<String>>();
+            let (name, args) = suffix.split_once(' ').unwrap_or((suffix, ""));
             typed::TYPABLE_COMMAND_MAP
                 .get(name)
                 .map(|cmd| MappableCommand::Typable {
                     name: cmd.name.to_owned(),
                     doc: format!(":{} {:?}", cmd.name, args),
-                    args,
+                    args: args.to_string(),
                 })
-                .ok_or_else(|| anyhow!("No TypableCommand named '{}'", s))
+                .ok_or_else(|| anyhow!("No TypableCommand named '{}'", name))
         } else if let Some(suffix) = s.strip_prefix('@') {
             helix_view::input::parse_macro(suffix).map(|keys| Self::Macro {
                 name: s.to_string(),
@@ -3254,7 +3252,7 @@ pub fn command_palette(cx: &mut Context) {
                     .iter()
                     .map(|cmd| MappableCommand::Typable {
                         name: cmd.name.to_owned(),
-                        args: Vec::new(),
+                        args: String::new(),
                         doc: cmd.doc.to_owned(),
                     }),
             );
@@ -4328,13 +4326,19 @@ fn yank_joined_impl(editor: &mut Editor, separator: &str, register: char) {
     let (view, doc) = current!(editor);
     let text = doc.text().slice(..);
 
+    let separator = if separator.is_empty() {
+        doc.line_ending.as_str()
+    } else {
+        separator
+    };
+
     let selection = doc.selection(view.id);
     let selections = selection.len();
     let joined = selection
         .fragments(text)
         .fold(String::new(), |mut acc, fragment| {
             if !acc.is_empty() {
-                acc.push_str(separator);
+                acc.push_str(&shellwords::unescape(separator));
             }
             acc.push_str(&fragment);
             acc
