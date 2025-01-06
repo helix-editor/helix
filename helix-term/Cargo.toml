@@ -85,5 +85,5 @@ helix-loader = { path = "../helix-loader" }
 [dev-dependencies]
 smallvec = "1.13"
 indoc = "2.0.5"
-tempfile = "3.15.0"
+tempfile.workspace = true
 same-file = "1.0.1"
