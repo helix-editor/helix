@@ -24,6 +24,10 @@ Packaging:
 
 As always, a big thank you to all of the contributors! This release saw changes from 171 contributors.
 
+Breaking changes:
+
+* The `editor.lsp.display-messages` key now controls messages sent with the LSP `window/showMessage` notification rather than progress messages. If you want to enable progress messages you should now enable the `editor.lsp.display-progress-messages` key instead. ([#5535](https://github.com/helix-editor/helix/pull/5535))
+
 Features:
 
 * Big refactor for `Picker`s ([#9647](https://github.com/helix-editor/helix/pull/9647), [#11209](https://github.com/helix-editor/helix/pull/11209), [#11216](https://github.com/helix-editor/helix/pull/11216), [#11211](https://github.com/helix-editor/helix/pull/11211), [#11343](https://github.com/helix-editor/helix/pull/11343), [#11406](https://github.com/helix-editor/helix/pull/11406))
