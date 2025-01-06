@@ -109,7 +109,7 @@ fn open(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
     ensure!(!args.is_empty(), ":open needs at least one argument");
 
     for arg in args {
-        let (path, pos) = args::parse_file(arg);
+        let (path, pos) = args::parse_file(&arg);
         let path = helix_stdx::path::expand_tilde(path);
         // If the path is a directory, open a file picker on that directory and update the status
         // message
@@ -184,7 +184,7 @@ fn buffer_gather_paths_impl(editor: &mut Editor, args: Args) -> Vec<DocumentId> 
     let mut document_ids = vec![];
     for arg in args {
         let doc_id = editor.documents().find_map(|doc| {
-            let arg_path = Some(Path::new(arg));
+            let arg_path = Some(Path::new(arg.as_ref()));
             if doc.path().map(|p| p.as_path()) == arg_path || doc.relative_path() == arg_path {
                 Some(doc.id())
             } else {
@@ -375,7 +375,7 @@ fn write(cx: &mut compositor::Context, mut args: Args, event: PromptEvent) -> an
         return Ok(());
     }
 
-    write_impl(cx, args.next(), false)
+    write_impl(cx, args.next().as_deref(), false)
 }
 
 fn force_write(
@@ -387,7 +387,7 @@ fn force_write(
         return Ok(());
     }
 
-    write_impl(cx, args.next(), true)
+    write_impl(cx, args.next().as_deref(), true)
 }
 
 fn write_buffer_close(
@@ -399,7 +399,7 @@ fn write_buffer_close(
         return Ok(());
     }
 
-    write_impl(cx, args.next(), false)?;
+    write_impl(cx, args.next().as_deref(), false)?;
 
     let document_ids = buffer_gather_paths_impl(cx.editor, args);
     buffer_close_by_ids_impl(cx, &document_ids, false)
@@ -414,7 +414,7 @@ fn force_write_buffer_close(
         return Ok(());
     }
 
-    write_impl(cx, args.next(), true)?;
+    write_impl(cx, args.next().as_deref(), true)?;
 
     let document_ids = buffer_gather_paths_impl(cx.editor, args);
     buffer_close_by_ids_impl(cx, &document_ids, false)
@@ -468,7 +468,7 @@ fn set_indent_style(
     }
 
     // Attempt to parse argument as an indent style.
-    let style = match args.next() {
+    let style = match args.next().as_deref() {
         Some(arg) if "tabs".starts_with(&arg.to_lowercase()) => Some(Tabs),
         Some("0") => Some(Tabs),
         Some(arg) => arg
@@ -600,7 +600,7 @@ fn write_quit(
         return Ok(());
     }
 
-    write_impl(cx, args.next(), false)?;
+    write_impl(cx, args.next().as_deref(), false)?;
     cx.block_try_flush_writes()?;
     quit(cx, Args::empty(), event)
 }
@@ -614,7 +614,7 @@ fn force_write_quit(
         return Ok(());
     }
 
-    write_impl(cx, args.next(), true)?;
+    write_impl(cx, args.next().as_deref(), true)?;
     cx.block_try_flush_writes()?;
     force_quit(cx, Args::empty(), event)
 }
@@ -842,7 +842,7 @@ fn theme(cx: &mut compositor::Context, mut args: Args, event: PromptEvent) -> an
             if args.is_empty() {
                 // Ensures that a preview theme gets cleaned up if the user backspaces until the prompt is empty.
                 cx.editor.unset_theme_preview();
-            } else if let Some(theme_name) = args.next() {
+            } else if let Some(theme_name) = args.next().as_deref() {
                 if let Ok(theme) = cx.editor.theme_loader.load(theme_name) {
                     if !(true_color || theme.is_16_color()) {
                         bail!("Unsupported theme: theme requires true color support");
@@ -852,7 +852,7 @@ fn theme(cx: &mut compositor::Context, mut args: Args, event: PromptEvent) -> an
             };
         }
         PromptEvent::Validate => {
-            if let Some(theme_name) = args.next() {
+            if let Some(theme_name) = args.next().as_deref() {
                 let theme = cx
                     .editor
                     .theme_loader
@@ -1025,7 +1025,9 @@ fn change_current_directory(
         return Ok(());
     }
 
-    let dir = match args.next() {
+    let path = args.next();
+
+    let dir = match path.as_deref() {
         Some("-") => cx
             .editor
             .get_last_cwd()
@@ -1076,7 +1078,7 @@ fn set_encoding(
     }
 
     let doc = doc_mut!(cx.editor);
-    if let Some(label) = args.next() {
+    if let Some(label) = args.next().as_deref() {
         doc.set_encoding(label)
     } else {
         let encoding = doc.encoding().name().to_owned();
@@ -1578,7 +1580,8 @@ fn vsplit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
         split(cx.editor, Action::VerticalSplit);
     } else {
         for arg in args {
-            cx.editor.open(&PathBuf::from(arg), Action::VerticalSplit)?;
+            cx.editor
+                .open(&PathBuf::from(arg.as_ref()), Action::VerticalSplit)?;
         }
     }
     Ok(())
@@ -1592,7 +1595,7 @@ fn hsplit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
     } else {
         for arg in args {
             cx.editor
-                .open(&PathBuf::from(arg), Action::HorizontalSplit)?;
+                .open(&PathBuf::from(arg.as_ref()), Action::HorizontalSplit)?;
         }
     }
     Ok(())
@@ -1645,7 +1648,12 @@ fn debug_start(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-    dap_start_impl(cx, args.next(), None, Some(args.map(Into::into).collect()))
+    dap_start_impl(
+        cx,
+        args.next().as_deref(),
+        None,
+        Some(args.map(Into::into).collect()),
+    )
 }
 
 fn debug_remote(
@@ -1659,7 +1667,7 @@ fn debug_remote(
     let address = args.next().map(|addr| addr.parse()).transpose()?;
     dap_start_impl(
         cx,
-        args.next(),
+        args.next().as_deref(),
         address,
         Some(args.map(Into::into).collect()),
     )
@@ -1859,7 +1867,7 @@ fn toggle_option(
 
             Value::String(
                 args.clone()
-                    .skip_while(|e| *e != value)
+                    .skip_while(|e| e.as_ref() != value)
                     .nth(1)
                     .unwrap_or_else(|| args.nth(1).unwrap())
                     .to_string(),
@@ -1945,7 +1953,8 @@ fn language(
 
     let doc = doc_mut!(cx.editor);
 
-    let language_id = args.next().unwrap();
+    let arg = args.next();
+    let language_id = arg.as_deref().unwrap();
     if language_id == DEFAULT_LANGUAGE_NAME {
         doc.set_language(None, None);
     } else {
@@ -2144,7 +2153,7 @@ fn append_output(
         return Ok(());
     }
     ensure!(!args.is_empty(), "Shell command required");
-    let cmd = helix_core::shellwords::unescape(args.raw());
+    let cmd = helix_core::shellwords::unescape(args.raw(), true);
     shell(cx, &cmd, &ShellBehavior::Append);
     Ok(())
 }
@@ -2158,7 +2167,7 @@ fn insert_output(
         return Ok(());
     }
     ensure!(!args.is_empty(), "Shell command required");
-    let cmd = helix_core::shellwords::unescape(args.raw());
+    let cmd = helix_core::shellwords::unescape(args.raw(), true);
     shell(cx, &cmd, &ShellBehavior::Insert);
     Ok(())
 }
@@ -2181,7 +2190,7 @@ fn pipe_impl(
         return Ok(());
     }
     ensure!(!args.is_empty(), "Shell command required");
-    let cmd = helix_core::shellwords::unescape(args.raw());
+    let cmd = helix_core::shellwords::unescape(args.raw(), true);
     shell(cx, &cmd, behavior);
     Ok(())
 }
@@ -2197,7 +2206,7 @@ fn run_shell_command(
 
     let shell = cx.editor.config().shell.clone();
 
-    let args = helix_core::shellwords::unescape(args.raw()).into_owned();
+    let args = helix_core::shellwords::unescape(args.raw(), true).into_owned();
 
     let callback = async move {
         let output = shell_impl_async(&shell, &args, None).await?;
@@ -2346,7 +2355,8 @@ fn move_buffer(
         .context("Scratch buffer cannot be moved. Use :write instead")?
         .clone();
 
-    let new_path = args.next().unwrap();
+    let path = args.next();
+    let new_path = path.as_deref().unwrap();
 
     if let Err(err) = cx.editor.move_path(&old_path, new_path.as_ref()) {
         bail!("Could not move file: {err}");
@@ -2405,7 +2415,8 @@ fn read(cx: &mut compositor::Context, mut args: Args, event: PromptEvent) -> any
     ensure!(!args.is_empty(), "file name is expected");
     ensure!(args.arg_count() == 1, "only the file name is expected");
 
-    let filename = args.next().unwrap();
+    let path = args.next();
+    let filename = path.as_deref().unwrap();
     let path = helix_stdx::path::expand_tilde(Path::new(filename));
 
     ensure!(
@@ -3085,16 +3096,16 @@ pub(super) fn command_mode(cx: &mut Context) {
             } else {
                 // Otherwise, use the command's completer and the last shellword
                 // as completion input.
-                let (word, len) = shellwords
+                let (len, word) = shellwords
                     .args()
                     .last()
-                    .map_or(("", 0), |last| (last, last.len()));
+                    .map_or((0, Cow::default()), |last| (last.len(), last));
 
                 TYPABLE_COMMAND_MAP
                     .get(command)
                     .map(|tc| tc.completer_for_argument_number(argument_number_of(&shellwords)))
                     .map_or_else(Vec::new, |completer| {
-                        completer(editor, word)
+                        completer(editor, word.as_ref())
                             .into_iter()
                             .map(|(range, mut file)| {
                                 file.content = shellwords::escape(file.content);

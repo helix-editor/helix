@@ -100,12 +100,19 @@ impl<'a> Shellwords<'a> {
     /// assert_eq!(Shellwords::from(":open ").ends_with_whitespace(), true);
     /// assert_eq!(Shellwords::from(":open foo.txt ").ends_with_whitespace(), true);
     /// assert_eq!(Shellwords::from(":open").ends_with_whitespace(), false);
-    /// assert_eq!(Shellwords::from(":open a\\ ").ends_with_whitespace(), true);
+    /// assert_eq!(Shellwords::from(":open a\\ ").ends_with_whitespace(), false);
+    /// assert_eq!(Shellwords::from(":open a\\\t").ends_with_whitespace(), false);
     /// assert_eq!(Shellwords::from(":open a\\ b.txt").ends_with_whitespace(), false);
     /// ```
     #[inline]
     pub fn ends_with_whitespace(&self) -> bool {
-        self.input.ends_with(' ')
+        self.args().last().map_or(
+            self.input.ends_with(' ') || self.input.ends_with('\t'),
+            |last| {
+                !(last.ends_with("\\ ") || last.ends_with("\\\t"))
+                    && (self.input.ends_with(' ') || self.input.ends_with('\t'))
+            },
+        )
     }
 }
 
@@ -172,7 +179,7 @@ impl<'a> Args<'a> {
     /// but a normal `&str`.
     #[inline]
     #[must_use]
-    pub fn peek(&self) -> Option<&str> {
+    pub fn peek(&self) -> Option<Cow<'_, str>> {
         self.clone().next()
     }
 
@@ -203,7 +210,7 @@ impl<'a> Args<'a> {
 }
 
 impl<'a> Iterator for Args<'a> {
-    type Item = &'a str;
+    type Item = Cow<'a, str>;
 
     #[inline]
     #[allow(clippy::too_many_lines)]
@@ -235,10 +242,10 @@ impl<'a> Iterator for Args<'a> {
                     if in_quotes {
                         // Found the proper closing quote, so can return the arg and advance the state along.
                         if bytes[self.idx] == quote {
-                            let arg = Some(&self.input[self.start..self.idx]);
+                            let arg = &self.input[self.start..self.idx];
                             self.idx += 1;
                             self.start = self.idx;
-                            return arg;
+                            return Some(Cow::Borrowed(arg));
                         }
                         // If quote does not match the type of the opening quote, then do nothing and advance.
                         self.idx += 1;
@@ -248,10 +255,10 @@ impl<'a> Iterator for Args<'a> {
                         // This preserves the quote as an arg:
                         // - `file with space`
                         // - `"`
-                        let arg = Some(&self.input[self.idx..]);
+                        let arg = &self.input[self.idx..];
                         self.idx = bytes.len();
                         self.start = bytes.len();
-                        return arg;
+                        return Some(unescape(arg, in_quotes));
                     } else {
                         // Found opening quote.
                         in_quotes = true;
@@ -264,10 +271,10 @@ impl<'a> Iterator for Args<'a> {
                             // - `one` <- previous arg
                             // - `two` <- this step
                             // - ` three` <- next arg
-                            let arg = Some(&self.input[self.start..self.idx]);
+                            let arg = &self.input[self.start..self.idx];
                             self.idx += 1;
                             self.start = self.idx;
-                            return arg;
+                            return Some(unescape(arg, in_quotes));
                         }
 
                         // Advance after quote.
@@ -276,16 +283,16 @@ impl<'a> Iterator for Args<'a> {
                         self.start = self.idx;
                     }
                 }
-                b' ' | b'\t' if !in_quotes => {
+                b' ' | b'\t' if !in_quotes && !is_escaped => {
                     // Found a true whitespace separator that wasn't inside quotes.
 
                     // Check if there is anything to return or if its just advancing over whitespace.
                     // `start` will only be less than `idx` when there is something to return.
                     if self.start < self.idx {
-                        let arg = Some(&self.input[self.start..self.idx]);
+                        let arg = &self.input[self.start..self.idx];
                         self.idx += 1;
                         self.start = self.idx;
-                        return arg;
+                        return Some(unescape(arg, in_quotes));
                     }
 
                     // Advance beyond the whitespace.
@@ -315,9 +322,9 @@ impl<'a> Iterator for Args<'a> {
 
         // Fallback that catches when the loop would have exited but failed to return the arg between start and the end.
         if self.start < bytes.len() {
-            let arg = Some(&self.input[self.start..]);
+            let arg = &self.input[self.start..];
             self.start = bytes.len();
-            return arg;
+            return Some(unescape(arg, in_quotes));
         }
 
         // All args have been parsed.
@@ -423,7 +430,7 @@ pub fn escape(input: Cow<str>) -> Cow<str> {
 /// This function is opinionated, with a clear purpose of handling user input, not a general or generic unescaping utility, and does not unescape sequences like `\\'` or `\\\"`, leaving them as is.
 #[inline]
 #[must_use]
-pub fn unescape(input: &str) -> Cow<'_, str> {
+pub fn unescape(input: &str, ignore_blackslash: bool) -> Cow<'_, str> {
     enum State {
         Normal,
         Escaped,
@@ -468,8 +475,9 @@ pub fn unescape(input: &str) -> Cow<'_, str> {
                         state = State::Unicode;
                         continue;
                     }
+                    ' ' => unescaped.push(' '),
                     // Uncomment if you want to handle '\\' to '\'
-                    // '\\' => unescaped.push('\\'),
+                    '\\' if ignore_blackslash => unescaped.push('\\'),
                     _ => {
                         unescaped.push('\\');
                         unescaped.push(ch);
@@ -515,9 +523,7 @@ mod test {
             "single_word",
             "twó",
             "wörds",
-            r"\three\",
-            r#"\"with\"#,
-            r"escaping\\",
+            r#"\three\ \"with\ escaping\\"#,
         ];
 
         assert_eq!(":o", shellwords.command());
@@ -571,18 +577,29 @@ mod test {
 
     #[test]
     fn should_respect_escaped_quote_in_what_looks_like_non_closed_arg() {
-        let sh = Shellwords::from(r":rename 'should be one \\'argument");
+        let sh = Shellwords::from(r":rename 'should be one \'argument");
         let mut args = sh.args();
-        assert_eq!(r"should be one \\", args.next().unwrap());
-        assert_eq!(r"argument", args.next().unwrap());
+        assert_eq!(r"should be one argument", args.next().unwrap());
     }
 
     #[test]
     fn should_split_args() {
         assert_eq!(Shellwords::from(":o a").args().collect::<Vec<_>>(), &["a"]);
+    }
+
+    #[test]
+    fn should_escape_whitespace() {
         assert_eq!(
-            Shellwords::from(":o a\\ ").args().collect::<Vec<_>>(),
-            &["a\\"]
+            Shellwords::from(r":o a\ ").args().next(),
+            Some(Cow::Borrowed("a "))
+        );
+        // assert_eq!(
+        //     Shellwords::from(":o a\\\t").args().next(),
+        //     Some(Cow::Borrowed("a\t"))
+        // );
+        assert_eq!(
+            Shellwords::from(r":o a\ b.txt").args().next(),
+            Some(Cow::Borrowed("a b.txt"))
         );
     }
 
@@ -599,8 +616,8 @@ mod test {
     fn should_peek_next_arg_and_not_consume() {
         let mut args = Shellwords::from(":o a").args();
 
-        assert_eq!(Some("a"), args.peek());
-        assert_eq!(Some("a"), args.next());
+        assert_eq!(Some(Cow::Borrowed("a")), args.peek());
+        assert_eq!(Some(Cow::Borrowed("a")), args.next());
         assert_eq!(None, args.next());
     }
 
@@ -665,7 +682,7 @@ mod test {
         let shellwords = Shellwords::from(input);
         let mut args = shellwords.args();
         assert_eq!(":set", shellwords.command());
-        assert_eq!(Some("statusline.center"), args.next());
+        assert_eq!(Some(Cow::Borrowed("statusline.center")), args.next());
         assert_eq!(r#"["file-type","file-encoding"]"#, args.rest());
     }
 
@@ -692,13 +709,13 @@ mod test {
     #[test]
     fn should_leave_literal_newline_alone() {
         let result = Args::parse(r"\n").collect::<Vec<_>>();
-        assert_eq!(r"\n", result[0]);
+        assert_eq!("\n", result[0]);
     }
 
     #[test]
     fn should_leave_literal_unicode_alone() {
         let result = Args::parse(r"\u{C}").collect::<Vec<_>>();
-        assert_eq!(r"\u{C}", result[0]);
+        assert_eq!("\u{C}", result[0]);
     }
 
     #[test]
@@ -718,63 +735,63 @@ mod test {
 
     #[test]
     fn should_unescape_newline() {
-        let unescaped = unescape("hello\\nworld");
+        let unescaped = unescape("hello\\nworld", false);
         assert_eq!("hello\nworld", unescaped);
     }
 
     #[test]
     fn should_unescape_tab() {
-        let unescaped = unescape("hello\\tworld");
+        let unescaped = unescape("hello\\tworld", false);
         assert_eq!("hello\tworld", unescaped);
     }
 
     #[test]
     fn should_unescape_unicode() {
-        let unescaped = unescape("hello\\u{1f929}world");
+        let unescaped = unescape("hello\\u{1f929}world", false);
         assert_eq!("hello\u{1f929}world", unescaped, "char: 🤩 ");
         assert_eq!("hello🤩world", unescaped);
     }
 
     #[test]
     fn should_return_original_input_due_to_bad_unicode() {
-        let unescaped = unescape("hello\\u{999999999}world");
+        let unescaped = unescape("hello\\u{999999999}world", false);
         assert_eq!("hello\\u{999999999}world", unescaped);
     }
 
     #[test]
     fn should_not_unescape_slash() {
-        let unescaped = unescape(r"hello\\world");
-        assert_eq!(r"hello\\world", unescaped);
+        let unescaped = unescape(r"hello\\world", true);
+        assert_eq!(r"hello\world", unescaped);
 
-        let unescaped = unescape(r"hello\\\\world");
-        assert_eq!(r"hello\\\\world", unescaped);
+        let unescaped = unescape(r"hello\\\\world", true);
+        assert_eq!(r"hello\\world", unescaped);
     }
 
     #[test]
     fn should_not_unescape_slash_single_quote() {
-        let unescaped = unescape("\\'");
+        let unescaped = unescape("\\'", false);
         assert_eq!(r"\'", unescaped);
     }
 
     #[test]
     fn should_not_unescape_slash_double_quote() {
-        let unescaped = unescape("\\\"");
+        let unescaped = unescape("\\\"", false);
         assert_eq!(r#"\""#, unescaped);
     }
 
     #[test]
     fn should_not_change_anything() {
-        let unescaped = unescape("'");
+        let unescaped = unescape("'", false);
         assert_eq!("'", unescaped);
-        let unescaped = unescape(r#"""#);
+        let unescaped = unescape(r#"""#, false);
         assert_eq!(r#"""#, unescaped);
     }
 
     #[test]
     fn should_only_unescape_newline_not_slash_single_quote() {
-        let unescaped = unescape("\\n\'");
+        let unescaped = unescape("\\n\'", false);
         assert_eq!("\n'", unescaped);
-        let unescaped = unescape("\\n\\'");
+        let unescaped = unescape("\\n\\'", false);
         assert_eq!("\n\\'", unescaped);
     }
 
@@ -783,7 +800,7 @@ mod test {
         // 1f929: 🤩
         let args = Args::parse(r#"'hello\u{1f929} world' '["hello", "\u{1f929}", "world"]'"#)
             .collect::<Vec<_>>();
-        assert_eq!("hello\u{1f929} world", unescape(args[0]));
-        assert_eq!(r#"["hello", "🤩", "world"]"#, unescape(args[1]));
+        assert_eq!("hello\u{1f929} world", unescape(&args[0], false));
+        assert_eq!(r#"["hello", "🤩", "world"]"#, unescape(&args[1], false));
     }
 }
