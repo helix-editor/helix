@@ -360,6 +360,62 @@ pub struct Config {
     pub end_of_line_diagnostics: DiagnosticFilter,
     // Set to override the default clipboard provider
     pub clipboard_provider: ClipboardProvider,
+    pub backup: BackupConfig,
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
+#[serde(rename_all = "kebab-case", default)]
+pub struct BackupConfig {
+    pub kind: BackupKind,
+    #[serde(deserialize_with = "deserialize_non_empty_vec")]
+    pub directories: Vec<PathBuf>,
+    #[serde(deserialize_with = "deserialize_non_empty_str")]
+    pub extension: String,
+}
+
+impl Default for BackupConfig {
+    fn default() -> Self {
+        Self {
+            kind: BackupKind::Auto,
+            directories: vec![helix_loader::state_dir().join("backup")],
+            extension: String::from("bck"),
+        }
+    }
+}
+
+fn deserialize_non_empty_vec<'de, D, T>(deserializer: D) -> Result<Vec<T>, D::Error>
+where
+    D: Deserializer<'de>,
+    T: Deserialize<'de>,
+{
+    use serde::de::Error;
+
+    let vec = Vec::<T>::deserialize(deserializer)?;
+    if vec.is_empty() {
+        return Err(<D::Error as Error>::custom("vector cannot be empty!"));
+    }
+    Ok(vec)
+}
+
+pub fn deserialize_non_empty_str<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    use serde::de::Error;
+
+    let s = String::deserialize(deserializer)?;
+    if s.is_empty() {
+        return Err(<D::Error as Error>::custom("string cannot be empty"));
+    }
+    Ok(s)
+}
+
+#[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
+#[serde(rename_all = "kebab-case")]
+pub enum BackupKind {
+    None,
+    Copy,
+    Auto,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
@@ -1001,6 +1057,7 @@ impl Default for Config {
             inline_diagnostics: InlineDiagnosticsConfig::default(),
             end_of_line_diagnostics: DiagnosticFilter::Disable,
             clipboard_provider: ClipboardProvider::default(),
+            backup: BackupConfig::default(),
         }
     }
 }
