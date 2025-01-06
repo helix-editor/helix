@@ -337,23 +337,21 @@ impl std::str::FromStr for KeyEvent {
             KeyCode::from_str(tokens.pop().ok_or_else(|| anyhow!("Missing key code"))?)
         {
             code
-        } else {
-            if s.ends_with('-') && tokens.last().is_some_and(|t| t.is_empty()) {
-                if s == "-" {
-                    return Ok(KeyEvent {
-                        code: KeyCode::Char('-'),
-                        modifiers: KeyModifiers::empty(),
-                    });
-                } else {
-                    let suggestion = format!("{}-{}", s.trim_end_matches('-'), keys::MINUS);
-                    anyhow::bail!(
-                        "Key '-' cannot be used with modifiers, use '{}' instead",
-                        suggestion
-                    )
-                }
+        } else if s.ends_with('-') && tokens.last().is_some_and(|t| t.is_empty()) {
+            if s == "-" {
+                return Ok(KeyEvent {
+                    code: KeyCode::Char('-'),
+                    modifiers: KeyModifiers::empty(),
+                });
             } else {
-                anyhow::bail!("Invalid key code '{}'", s)
+                let suggestion = format!("{}-{}", s.trim_end_matches('-'), keys::MINUS);
+                anyhow::bail!(
+                    "Key '-' cannot be used with modifiers, use '{}' instead",
+                    suggestion
+                )
             }
+        } else {
+            anyhow::bail!("Invalid key code '{}'", s)
         };
         let mut modifiers = KeyModifiers::empty();
         for token in tokens {
