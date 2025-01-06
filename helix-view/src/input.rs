@@ -361,6 +361,7 @@ impl std::str::FromStr for KeyEvent {
                 "S" => KeyModifiers::SHIFT,
                 "A" => KeyModifiers::ALT,
                 "C" => KeyModifiers::CONTROL,
+                "Meta" | "Cmd" | "Win" => KeyModifiers::SUPER,
                 _ => return Err(anyhow!("Invalid key modifier '{}-'", token)),
             };
 
