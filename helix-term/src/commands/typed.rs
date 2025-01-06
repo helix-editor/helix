@@ -1861,7 +1861,7 @@ fn toggle_option(
                 args.clone()
                     .skip_while(|e| *e != value)
                     .nth(1)
-                    .unwrap_or_else(|| args.nth(1).unwrap())
+                    .unwrap_or_else(|| args.next().unwrap())
                     .to_string(),
             )
         }
@@ -1878,7 +1878,7 @@ fn toggle_option(
                 args.clone()
                     .skip_while(|e| *e != value)
                     .nth(1)
-                    .unwrap_or_else(|| args.nth(1).unwrap())
+                    .unwrap_or_else(|| args.next().unwrap())
                     .parse()?,
             )
         }
