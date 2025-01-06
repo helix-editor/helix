@@ -1347,7 +1347,9 @@ fn open_url(cx: &mut Context, url: Url, action: Action) {
         .unwrap_or_default();
 
     if url.scheme() != "file" {
-        return cx.jobs.callback(crate::open_external_url_callback(url));
+        return cx
+            .jobs
+            .callback(crate::open_external_url_callback(url.as_str()));
     }
 
     let content_type = std::fs::File::open(url.path()).and_then(|file| {
@@ -1360,9 +1362,9 @@ fn open_url(cx: &mut Context, url: Url, action: Action) {
     // we attempt to open binary files - files that can't be open in helix - using external
     // program as well, e.g. pdf files or images
     match content_type {
-        Ok(content_inspector::ContentType::BINARY) => {
-            cx.jobs.callback(crate::open_external_url_callback(url))
-        }
+        Ok(content_inspector::ContentType::BINARY) => cx
+            .jobs
+            .callback(crate::open_external_url_callback(url.as_str())),
         Ok(_) | Err(_) => {
             let path = &rel_path.join(url.path());
             if path.is_dir() {

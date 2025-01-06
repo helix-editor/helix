@@ -106,9 +106,7 @@ impl Handler {
                             log::warn!("LSP client was dropped: {id}");
                             return false;
                         };
-                        let Ok(uri) = lsp::Url::from_file_path(&path) else {
-                            return true;
-                        };
+                        let uri = lsp::Url::from_file_path(&path);
                         log::debug!(
                             "Sending didChangeWatchedFiles notification to client '{}'",
                             client.name()

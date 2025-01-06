@@ -3,27 +3,151 @@
 Language Server Protocol types for Rust.
 
 Based on: <https://microsoft.github.io/language-server-protocol/specification>
-
-This library uses the URL crate for parsing URIs.  Note that there is
-some confusion on the meaning of URLs vs URIs:
-<http://stackoverflow.com/a/28865728/393898>.  According to that
-information, on the classical sense of "URLs", "URLs" are a subset of
-URIs, But on the modern/new meaning of URLs, they are the same as
-URIs.  The important take-away aspect is that the URL crate should be
-able to parse any URI, such as `urn:isbn:0451450523`.
-
-
 */
 #![allow(non_upper_case_globals)]
 #![forbid(unsafe_code)]
 
 use bitflags::bitflags;
 
-use std::{collections::HashMap, fmt::Debug};
+use std::{collections::HashMap, fmt::Debug, path::Path};
 
 use serde::{de, de::Error as Error_, Deserialize, Serialize};
 use serde_json::Value;
-pub use url::Url;
+
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Deserialize, Serialize)]
+pub struct Url(String);
+
+// <https://datatracker.ietf.org/doc/html/rfc3986#section-2.2>, also see
+// <https://github.com/microsoft/vscode-uri/blob/6dec22d7dcc6c63c30343d3a8d56050d0078cb6a/src/uri.ts#L454-L477>
+const RESERVED: &percent_encoding::AsciiSet = &percent_encoding::CONTROLS
+    // GEN_DELIMS
+    .add(b':')
+    .add(b'/')
+    .add(b'?')
+    .add(b'#')
+    .add(b'[')
+    .add(b']')
+    .add(b'@')
+    // SUB_DELIMS
+    .add(b'!')
+    .add(b'$')
+    .add(b'&')
+    .add(b'\'')
+    .add(b'(')
+    .add(b')')
+    .add(b'*')
+    .add(b'+')
+    .add(b',')
+    .add(b';')
+    .add(b'=');
+
+impl Url {
+    #[cfg(any(unix, target_os = "redox", target_os = "wasi"))]
+    pub fn from_file_path<P: AsRef<Path>>(path: P) -> Self {
+        #[cfg(any(unix, target_os = "redox"))]
+        use std::os::unix::prelude::OsStrExt;
+        #[cfg(target_os = "wasi")]
+        use std::os::wasi::prelude::OsStrExt;
+
+        let mut serialization = String::from("file://");
+        // skip the root component
+        for component in path.as_ref().components().skip(1) {
+            serialization.push('/');
+            serialization.extend(percent_encoding::percent_encode(
+                component.as_os_str().as_bytes(),
+                RESERVED,
+            ));
+        }
+        if &serialization == "file://" {
+            // An URL's path must not be empty.
+            serialization.push('/');
+        }
+        Self(serialization)
+    }
+
+    #[cfg(windows)]
+    pub fn from_file_path<P: AsRef<Path>>(path: P) -> Self {
+        from_file_path_windows(path.as_ref())
+    }
+
+    #[cfg_attr(not(windows), allow(dead_code))]
+    fn from_file_path_windows(path: &Path) -> Self {
+        use std::path::{Component, Prefix};
+
+        fn is_windows_drive_letter(segment: &str) -> bool {
+            segment.len() == 2
+                && (segment.as_bytes()[0] as char).is_ascii_alphabetic()
+                && matches!(segment.as_bytes()[1], b':' | b'|')
+        }
+
+        assert!(path.is_absolute());
+        let mut serialization = String::from("file://");
+        let mut components = path.components();
+        let host_start = serialization.len() + 1;
+
+        match components.next() {
+            Some(Component::Prefix(ref p)) => match p.kind() {
+                Prefix::Disk(letter) | Prefix::VerbatimDisk(letter) => {
+                    serialization.push('/');
+                    serialization.push(letter as char);
+                    serialization.push(':');
+                }
+                // TODO: Prefix::UNC | Prefix::VerbatimUNC
+                _ => todo!("support UNC drives"),
+            },
+            _ => unreachable!("absolute windows paths must start with a prefix"),
+        }
+
+        let mut path_only_has_prefix = true;
+        for component in components {
+            if component == Component::RootDir {
+                continue;
+            }
+
+            path_only_has_prefix = false;
+
+            serialization.push('/');
+            serialization.extend(percent_encoding::percent_encode(
+                component.as_os_str().as_encoded_bytes(),
+                RESERVED,
+            ));
+        }
+
+        if serialization.len() > host_start
+            && is_windows_drive_letter(&serialization[host_start..])
+            && path_only_has_prefix
+        {
+            serialization.push('/');
+        }
+
+        Self(serialization)
+    }
+
+    pub fn from_directory_path<P: AsRef<Path>>(path: P) -> Self {
+        let Self(mut serialization) = Self::from_file_path(path);
+        if !serialization.ends_with('/') {
+            serialization.push('/');
+        }
+        Self(serialization)
+    }
+
+    /// Returns the serialized representation of the URL as a `&str`
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+
+    /// Consumes the URL, converting into a `String`.
+    /// Note that the string is the serialized representation of the URL.
+    pub fn into_string(self) -> String {
+        self.0
+    }
+}
+
+impl From<&str> for Url {
+    fn from(value: &str) -> Self {
+        Self(value.to_string())
+    }
+}
 
 // Large enough to contain any enumeration name defined in this crate
 type PascalCaseBuf = [u8; 32];
@@ -2843,14 +2967,14 @@ mod tests {
         test_serialization(
             &WorkspaceEdit {
                 changes: Some(
-                    vec![(Url::parse("file://test").unwrap(), vec![])]
+                    vec![(Url::from("file://test"), vec![])]
                         .into_iter()
                         .collect(),
                 ),
                 document_changes: None,
                 ..Default::default()
             },
-            r#"{"changes":{"file://test/":[]}}"#,
+            r#"{"changes":{"file://test":[]}}"#,
         );
     }
 
