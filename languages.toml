@@ -1940,7 +1940,7 @@ language-servers = [ "kotlin-language-server" ]
 
 [[grammar]]
 name = "kotlin"
-source = { git = "https://github.com/fwcd/tree-sitter-kotlin", rev = "a4f71eb9b8c9b19ded3e0e9470be4b1b77c2b569" }
+source = { git = "https://github.com/fwcd/tree-sitter-kotlin", rev = "c4ddea359a7ff4d92360b2efcd6cfce5dc25afe6" }
 
 [[language]]
 name = "hcl"
