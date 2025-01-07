@@ -3444,10 +3444,9 @@ pub(super) fn command_mode(cx: &mut Context) {
         |editor: &Editor, input: &str| {
             let shellwords = Shellwords::from(input);
             let command = shellwords.command();
-            let args = shellwords.args();
+            let args = Args::from(shellwords.args());
 
-            if command.is_empty()
-                || (shellwords.args().first().is_none() && !shellwords.ends_with_whitespace())
+            if command.is_empty() || (args.first().is_none() && !shellwords.ends_with_whitespace())
             {
                 fuzzy_match(
                     input,
@@ -3483,6 +3482,7 @@ pub(super) fn command_mode(cx: &mut Context) {
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
             let shellwords = Shellwords::from(input);
             let command = shellwords.command();
+            let args = shellwords.args();
 
             if command.is_empty() {
                 return;
@@ -3498,7 +3498,7 @@ pub(super) fn command_mode(cx: &mut Context) {
 
             // Handle typable commands
             if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(command) {
-                let args = match shellwords.args_from_signature(command.signature.parse_mode) {
+                let args = match Args::from_signature(args, command.signature.parse_mode) {
                     Ok(args) => args,
                     Err(err) => {
                         cx.editor.set_error(err.to_string());
@@ -3541,8 +3541,7 @@ pub(super) fn command_mode(cx: &mut Context) {
 }
 
 fn argument_number_of(shellwords: &Shellwords) -> usize {
-    shellwords
-        .args()
+    Args::from(shellwords.args())
         .len()
         .saturating_sub(1 - usize::from(shellwords.ends_with_whitespace()))
 }

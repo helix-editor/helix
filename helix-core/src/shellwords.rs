@@ -83,33 +83,26 @@ impl<'a> Shellwords<'a> {
             .map_or(self.input, |(command, _)| command)
     }
 
+    // #[inline]
+    // #[must_use]
+    // pub fn args(&self) -> Args<'a> {
+    //     let args = self
+    //         .input
+    //         .split_once([' ', '\t'])
+    //         .map_or("", |(_, args)| args);
+
+    //     Args {
+    //         input: args,
+    //         positionals: ArgsParser::from(args).with_unescaping().collect(),
+    //     }
+    // }
+
     #[inline]
     #[must_use]
-    pub fn args(&self) -> Args<'a> {
-        let args = self
-            .input
+    pub fn args(&self) -> &str {
+        self.input
             .split_once([' ', '\t'])
-            .map_or("", |(_, args)| args);
-
-        Args {
-            input: args,
-            positionals: ArgsParser::from(args).with_unescaping().collect(),
-        }
-    }
-
-    #[inline]
-    #[must_use]
-    pub fn args_from_signature(
-        &self,
-        mode: ParseMode,
-        // _flags: impl Iterator<Item = &'a str> + Copy,
-    ) -> anyhow::Result<Args<'a>> {
-        let input = self
-            .input
-            .split_once([' ', '\t'])
-            .map_or("", |(_, args)| args);
-
-        Args::from_signature(input, mode)
+            .map_or("", |(_, args)| args)
     }
 
     #[inline]
@@ -140,7 +133,7 @@ impl<'a> Shellwords<'a> {
     #[inline]
     #[must_use]
     pub fn ends_with_whitespace(&self) -> bool {
-        self.args().raw_parser().last().map_or(
+        ArgsParser::from(self.args()).last().map_or(
             self.input.ends_with(' ') || self.input.ends_with('\t'),
             |last| {
                 if cfg!(windows) {
@@ -161,20 +154,20 @@ pub struct Args<'a> {
 }
 
 impl<'a> Args<'a> {
-    pub fn from_signature(input: &'a str, mode: ParseMode) -> anyhow::Result<Self> {
+    pub fn from_signature(args: &'a str, mode: ParseMode) -> anyhow::Result<Self> {
         // TODO: Extract flags into `HashMap`
         // let mut flags: HashMap<Cow<'_, str>, Cow<'_, str>> = HashMap::new();
         // Remove `with_unescaping` here and then do it down below.
-        let positionals = ArgsParser::from(input).with_unescaping();
+        let positionals = ArgsParser::from(args).with_unescaping();
 
         let args = match mode {
             ParseMode::Literal => Args {
-                input,
-                positionals: vec![unescape(input, false)],
+                input: args,
+                positionals: vec![unescape(args, false)],
                 // TODO: flags: flags,
             },
             ParseMode::Parameters => Args {
-                input,
+                input: args,
                 positionals: positionals.collect(),
                 // TODO: flags: flags,
             },
@@ -280,6 +273,7 @@ impl<'a> Index<RangeFrom<usize>> for Args<'a> {
     }
 }
 
+// NOTE: When created with `from` none but the most basic unescaping happens.
 impl<'a> From<&'a String> for Args<'a> {
     fn from(args: &'a String) -> Self {
         Args {
@@ -751,12 +745,31 @@ mod test {
 
     #[test]
     fn base() {
-        let input = r#":o single_word twó wörds \\three\ \"with\ escaping\\"#;
-        let shellwords = Shellwords::from(input);
-        let args = vec!["single_word", "twó", "wörds", r#"\three "with escaping\"#];
+        let shellwords =
+            Shellwords::from(r#":o single_word twó wörds \\three\ \"with\ escaping\\"#);
 
         assert_eq!(":o", shellwords.command());
-        assert_eq!(args, shellwords.args().as_ref());
+        assert_eq!(
+            r#"single_word twó wörds \\three\ \"with\ escaping\\"#,
+            shellwords.args()
+        );
+    }
+
+    #[test]
+    fn should_split_args_no_slash_unescaping() {
+        let input = r#"single_word twó wörds \\three\ \"with\ escaping\\"#;
+
+        let args: Vec<Cow<'_, str>> = ArgsParser::from(input).collect();
+
+        assert_eq!(
+            vec![
+                "single_word",
+                "twó",
+                "wörds",
+                r#"\\three\ \"with\ escaping\\"#
+            ],
+            args
+        );
     }
 
     #[test]
@@ -777,52 +790,49 @@ mod test {
 
     #[test]
     fn should_support_unicode_args() {
-        assert_eq!(Shellwords::from(":sh echo 𒀀").args(), &["echo", "𒀀"]);
-        assert_eq!(
-            Shellwords::from(":sh echo 𒀀 hello world𒀀").args(),
-            &["echo", "𒀀", "hello", "world𒀀"]
-        );
+        let shellwords = Shellwords::from(":yank-join 𒀀");
+        assert_eq!(":yank-join", shellwords.command());
+        assert_eq!(shellwords.args(), "𒀀");
     }
 
     #[test]
     fn should_preserve_quote_if_last_argument() {
         let shellwords = Shellwords::from(r#":read "file with space.txt"""#);
-        let args = shellwords.args();
-        assert_eq!("file with space.txt", args.first().unwrap());
+        let mut args = ArgsParser::from(shellwords.args());
+
+        assert_eq!("file with space.txt", args.next().unwrap());
         assert_eq!(r#"""#, args.last().unwrap());
     }
 
     #[test]
     fn should_respect_escaped_quote_in_what_looks_like_non_closed_arg() {
-        let sh = Shellwords::from(r":rename 'should be one \'argument");
-        assert_eq!(r"should be one 'argument", sh.args().first().unwrap());
-    }
+        let shellwords = Shellwords::from(r":rename 'should be one \'argument");
+        let mut args = ArgsParser::from(shellwords.args()).with_unescaping();
 
-    #[test]
-    fn should_split_args() {
-        assert_eq!(Shellwords::from(":o a").args(), &["a"]);
+        assert_eq!(r"should be one 'argument", args.next().unwrap());
+        assert_eq!(None, args.next());
     }
 
     #[test]
     fn should_escape_whitespace() {
         assert_eq!(
-            Shellwords::from(r":o a\ ").args().first(),
-            Some(&Cow::from("a "))
+            Some(Cow::from("a ")),
+            ArgsParser::from(r"a\ ").with_unescaping().next(),
         );
         assert_eq!(
-            Shellwords::from(r":o a\t").args().first(),
-            Some(&Cow::from("a\t"))
+            Some(Cow::from("a\t")),
+            ArgsParser::from(r"a\t").with_unescaping().next(),
         );
         assert_eq!(
-            Shellwords::from(r":o a\ b.txt").args().first(),
-            Some(&Cow::from("a b.txt"))
+            Some(Cow::from("a b.txt")),
+            ArgsParser::from(r"a\ b.txt").with_unescaping().next(),
         );
     }
 
     #[test]
     fn should_parse_args_even_with_leading_whitespace() {
         // Three spaces
-        assert_eq!(Shellwords::from(":o   a").args().as_ref(), &["a"]);
+        assert_eq!(Cow::from("a"), Args::from("   a")[0]);
     }
 
     #[test]
@@ -836,10 +846,11 @@ mod test {
 
     #[test]
     fn should_parse_single_quotes_while_respecting_escapes() {
-        let quoted = r#":o 'single_word' 'twó wörds' '' ' ''\\three\' \"with\ escaping\\' 'quote incomplete"#;
-        let shellwords = Shellwords::from(quoted);
-        let result = shellwords.args();
-        let expected = vec![
+        let parser = ArgsParser::from(
+            r#"'single_word' 'twó wörds' '' ' ''\\three\' \"with\ escaping\\' 'quote incomplete"#,
+        )
+        .with_unescaping();
+        let expected = [
             "single_word",
             "twó wörds",
             "",
@@ -847,15 +858,19 @@ mod test {
             r#"\three' "with escaping\"#,
             "quote incomplete",
         ];
-        assert_eq!(expected, result.as_ref());
+
+        for (expected, actual) in expected.into_iter().zip(parser) {
+            assert_eq!(expected, actual);
+        }
     }
 
     #[test]
     fn should_parse_double_quotes_while_respecting_escapes() {
-        let dquoted = r#":o "single_word" "twó wörds" "" "  ""\\three\' \"with\ escaping\\" "dquote incomplete"#;
-        let shellwords = Shellwords::from(dquoted);
-        let result = shellwords.args();
-        let expected = vec![
+        let parser = ArgsParser::from(
+            r#""single_word" "twó wörds" "" "  ""\\three\' \"with\ escaping\\" "dquote incomplete"#,
+        )
+        .with_unescaping();
+        let expected = [
             "single_word",
             "twó wörds",
             "",
@@ -863,15 +878,16 @@ mod test {
             r#"\three' "with escaping\"#,
             "dquote incomplete",
         ];
-        assert_eq!(expected, result.as_ref());
+
+        for (expected, actual) in expected.into_iter().zip(parser) {
+            assert_eq!(expected, actual);
+        }
     }
 
     #[test]
     fn should_respect_escapes_with_mixed_quotes() {
-        let dquoted = r#":o single_word 'twó wörds' "\\three\' \"with\ escaping\\""no space before"'and after' $#%^@ "%^&(%^" ')(*&^%''a\\\\\b' '"#;
-        let shellwords = Shellwords::from(dquoted);
-        let result = shellwords.args();
-        let expected = vec![
+        let parser = ArgsParser::from(r#"single_word 'twó wörds' "\\three\' \"with\ escaping\\""no space before"'and after' $#%^@ "%^&(%^" ')(*&^%''a\\\\\b' '"#).with_unescaping();
+        let expected = [
             "single_word",
             "twó wörds",
             r#"\three' "with escaping\"#,
@@ -885,23 +901,15 @@ mod test {
             // commands where there should only be one input and return an error rather than silently succeed.
             "'",
         ];
-        assert_eq!(expected, result.as_ref());
+
+        for (expected, actual) in expected.into_iter().zip(parser) {
+            assert_eq!(expected, actual);
+        }
     }
 
     #[test]
-    fn should_return_rest_from_raw_parser() {
-        let shellwords =
-            Shellwords::from(r#":set statusline.center ["file-type","file-encoding"]"#);
-        let args = shellwords.args();
-
-        assert_eq!(
-            r#"statusline.center ["file-type","file-encoding"]"#,
-            args.input
-        );
-
-        let mut parser = args.raw_parser();
-
-        assert_eq!(":set", shellwords.command());
+    fn should_return_rest_from_parser() {
+        let mut parser = ArgsParser::from(r#"statusline.center ["file-type","file-encoding"]"#);
 
         assert_eq!(Some("statusline.center"), parser.next().as_deref());
         assert_eq!(r#"["file-type","file-encoding"]"#, parser.rest());
@@ -1024,7 +1032,9 @@ mod test {
     fn should_unescape_args() {
         // 1f929: 🤩
         let args = ArgsParser::parse(r#"'hello\u{1f929} world' '["hello", "\u{1f929}", "world"]'"#)
+            .with_unescaping()
             .collect::<Vec<_>>();
+
         assert_eq!("hello\u{1f929} world", unescape(&args[0], false));
         assert_eq!(r#"["hello", "🤩", "world"]"#, unescape(&args[1], false));
     }
