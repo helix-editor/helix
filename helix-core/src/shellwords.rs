@@ -8,12 +8,6 @@ use std::{
 ///
 /// The `Shellwords` struct takes an input string and allows extracting the command and its arguments.
 ///
-/// # Features
-///
-/// - Parses command and arguments from input strings.
-/// - Supports single, double, and backtick quoted arguments.
-/// - Respects backslash escaping in arguments.
-///
 /// # Examples
 ///
 /// Basic usage:
@@ -33,10 +27,7 @@ use std::{
 /// assert!(shellwords.command().is_empty());
 /// ```
 ///
-/// # Arguments
-///
-/// The `args` method returns an `Args` struct that offers various ways to interact with an arguments
-/// passed in.
+/// Arguments:
 ///
 /// ```
 /// # use helix_core::shellwords::{Shellwords, Args};
@@ -53,27 +44,6 @@ pub struct Shellwords<'a> {
     input: &'a str,
 }
 
-impl<'a> From<&'a str> for Shellwords<'a> {
-    #[inline]
-    fn from(input: &'a str) -> Self {
-        Self { input }
-    }
-}
-
-impl<'a> From<&'a String> for Shellwords<'a> {
-    #[inline]
-    fn from(input: &'a String) -> Self {
-        Self { input }
-    }
-}
-
-impl<'a> From<&'a Cow<'a, str>> for Shellwords<'a> {
-    #[inline]
-    fn from(input: &'a Cow<str>) -> Self {
-        Self { input }
-    }
-}
-
 impl<'a> Shellwords<'a> {
     #[inline]
     #[must_use]
@@ -83,20 +53,7 @@ impl<'a> Shellwords<'a> {
             .map_or(self.input, |(command, _)| command)
     }
 
-    // #[inline]
-    // #[must_use]
-    // pub fn args(&self) -> Args<'a> {
-    //     let args = self
-    //         .input
-    //         .split_once([' ', '\t'])
-    //         .map_or("", |(_, args)| args);
-
-    //     Args {
-    //         input: args,
-    //         positionals: ArgsParser::from(args).with_unescaping().collect(),
-    //     }
-    // }
-
+    /// Returns the ramining text after the command, splitting on horizontal whitespace.
     #[inline]
     #[must_use]
     pub fn args(&self) -> &str {
@@ -105,6 +62,7 @@ impl<'a> Shellwords<'a> {
             .map_or("", |(_, args)| args)
     }
 
+    /// Returns the input that was passed in to create a `Shellwords` instance exactly as is.
     #[inline]
     pub fn input(&self) -> &str {
         self.input
@@ -147,6 +105,38 @@ impl<'a> Shellwords<'a> {
     }
 }
 
+impl<'a> From<&'a str> for Shellwords<'a> {
+    #[inline]
+    fn from(input: &'a str) -> Self {
+        Self { input }
+    }
+}
+
+impl<'a> From<&'a String> for Shellwords<'a> {
+    #[inline]
+    fn from(input: &'a String) -> Self {
+        Self { input }
+    }
+}
+
+impl<'a> From<&'a Cow<'a, str>> for Shellwords<'a> {
+    #[inline]
+    fn from(input: &'a Cow<str>) -> Self {
+        Self { input }
+    }
+}
+
+/// Represents different ways that arguments can be handled when parsing.
+#[derive(Debug, Clone, Copy)]
+pub enum ParseMode {
+    /// Treat the entire input as one positional with minimal processing.
+    /// (I.e. expand `\t` and `\n` but don't split on spaces or handle quotes.)
+    Literal,
+    /// Regular shellwords behavior: split the input into multiple parameters.
+    Parameters,
+}
+
+/// An abstraction for arguments that were passed in to a command.
 #[derive(Debug)]
 pub struct Args<'a> {
     input: &'a str,
@@ -154,6 +144,8 @@ pub struct Args<'a> {
 }
 
 impl<'a> Args<'a> {
+    /// Creates an instance of `Args`, with behavior shaped from a signature.
+    #[inline]
     pub fn from_signature(args: &'a str, mode: ParseMode) -> anyhow::Result<Self> {
         // TODO: Extract flags into `HashMap`
         // let mut flags: HashMap<Cow<'_, str>, Cow<'_, str>> = HashMap::new();
@@ -176,38 +168,52 @@ impl<'a> Args<'a> {
         Ok(args)
     }
 
+    /// Returns the count of how many arguments there are.
+    #[inline]
     pub fn len(&self) -> usize {
         self.positionals.len()
     }
 
+    /// Returns if there were no arguments passed in.
+    #[inline]
     pub fn is_empty(&self) -> bool {
         self.positionals.is_empty()
     }
 
+    /// Returns a reference to an element if one exists at the index.
+    #[inline]
     pub fn get(&self, index: usize) -> Option<&Cow<'_, str>> {
         self.positionals.get(index)
     }
 
+    /// Returns the first argument, if any.
+    #[inline]
     pub fn first(&self) -> Option<&Cow<'_, str>> {
         self.positionals.first()
     }
 
+    /// Returns the last argument, if any.
+    #[inline]
     pub fn last(&self) -> Option<&Cow<'_, str>> {
         self.positionals.last()
     }
 
-    pub fn raw(&self) -> &str {
-        self.input
-    }
-
+    /// Returns an instance of an `ArgsParser` iterator.
+    ///
+    /// For cases that need special handling, this could function as an
+    /// escape hatch to further control the process of parsing out arguments and flags.
+    #[inline]
     pub fn raw_parser(&self) -> ArgsParser<'_> {
         ArgsParser::from(self.input)
     }
 
+    /// Produces an `Iterator` over the arguments that were passed along.
+    #[inline]
     pub fn iter(&self) -> impl Iterator<Item = &Cow<'_, str>> {
         self.positionals.iter()
     }
 
+    /// Represents when there are no arguments.
     #[inline(always)]
     pub fn empty() -> Self {
         Self {
@@ -217,10 +223,42 @@ impl<'a> Args<'a> {
     }
 }
 
+// NOTE: When created with `from`, none but the most basic unescaping happens.
+impl<'a> From<&'a String> for Args<'a> {
+    #[inline]
+    fn from(args: &'a String) -> Self {
+        Args {
+            input: args,
+            positionals: ArgsParser::from(args).collect(),
+        }
+    }
+}
+
+impl<'a> From<&'a str> for Args<'a> {
+    #[inline]
+    fn from(args: &'a str) -> Self {
+        Args {
+            input: args,
+            positionals: ArgsParser::from(args).collect(),
+        }
+    }
+}
+
+impl<'a> From<&'a Cow<'_, str>> for Args<'a> {
+    #[inline]
+    fn from(args: &'a Cow<str>) -> Self {
+        Args {
+            input: args,
+            positionals: ArgsParser::from(args).collect(),
+        }
+    }
+}
+
 impl<'a> IntoIterator for Args<'a> {
     type Item = Cow<'a, str>;
     type IntoIter = std::vec::IntoIter<Cow<'a, str>>;
 
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
         self.positionals.into_iter()
     }
@@ -230,18 +268,21 @@ impl<'a> IntoIterator for &'a Args<'a> {
     type Item = &'a Cow<'a, str>;
     type IntoIter = std::slice::Iter<'a, Cow<'a, str>>;
 
+    #[inline]
     fn into_iter(self) -> Self::IntoIter {
         self.positionals.iter()
     }
 }
 
 impl<'a> AsRef<[Cow<'a, str>]> for Args<'a> {
+    #[inline]
     fn as_ref(&self) -> &[Cow<'a, str>] {
         self.positionals.as_ref()
     }
 }
 
 impl PartialEq<&[&str]> for Args<'_> {
+    #[inline]
     fn eq(&self, other: &&[&str]) -> bool {
         let this = self.positionals.iter();
         let other = other.iter().copied();
@@ -259,6 +300,7 @@ impl PartialEq<&[&str]> for Args<'_> {
 impl<'a> Index<usize> for Args<'a> {
     type Output = str;
 
+    #[inline]
     fn index(&self, index: usize) -> &Self::Output {
         let cow = &self.positionals[index];
         cow.as_ref()
@@ -268,46 +310,10 @@ impl<'a> Index<usize> for Args<'a> {
 impl<'a> Index<RangeFrom<usize>> for Args<'a> {
     type Output = [Cow<'a, str>];
 
+    #[inline]
     fn index(&self, index: RangeFrom<usize>) -> &Self::Output {
         &self.positionals[index]
     }
-}
-
-// NOTE: When created with `from` none but the most basic unescaping happens.
-impl<'a> From<&'a String> for Args<'a> {
-    fn from(args: &'a String) -> Self {
-        Args {
-            input: args,
-            positionals: ArgsParser::from(args).collect(),
-        }
-    }
-}
-
-impl<'a> From<&'a str> for Args<'a> {
-    fn from(args: &'a str) -> Self {
-        Args {
-            input: args,
-            positionals: ArgsParser::from(args).collect(),
-        }
-    }
-}
-
-impl<'a> From<&'a Cow<'_, str>> for Args<'a> {
-    fn from(args: &'a Cow<str>) -> Self {
-        Args {
-            input: args,
-            positionals: ArgsParser::from(args).collect(),
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy)]
-pub enum ParseMode {
-    /// Treat the entire input as one positional with minimal processing.
-    /// (I.e. expand `\t` and `\n` but don't split on spaces or handle quotes.)
-    Literal,
-    /// Regular shellwords behavior: split the input into multiple parameters.
-    Parameters,
 }
 
 /// An iterator over an input string which yields arguments.
@@ -323,7 +329,7 @@ pub struct ArgsParser<'a> {
 
 impl<'a> ArgsParser<'a> {
     #[inline]
-    fn parse(input: &'a str) -> Self {
+    const fn parse(input: &'a str) -> Self {
         Self {
             input,
             idx: 0,
@@ -332,13 +338,14 @@ impl<'a> ArgsParser<'a> {
         }
     }
 
-    fn with_unescaping(mut self) -> Self {
+    #[inline]
+    const fn with_unescaping(mut self) -> Self {
         self.unescape = true;
         self
     }
 
     #[inline]
-    pub fn is_empty(&self) -> bool {
+    pub const fn is_empty(&self) -> bool {
         self.input.is_empty()
     }
 
@@ -346,15 +353,15 @@ impl<'a> ArgsParser<'a> {
     ///
     /// # Examples
     /// ```
-    /// # use helix_core::shellwords::Args;
-    /// let args = Args::from(r#"sed -n "s/test t/not /p""#);
+    /// # use helix_core::shellwords::ArgsParser;
+    /// let args = ArgsParser::from(r#"sed -n "s/test t/not /p""#);
     /// assert_eq!(r#"sed -n "s/test t/not /p""#, args.raw());
     ///
-    /// let args = Args::from(r#"cat "file name with space.txt""#);
+    /// let args = ArgsParser::from(r#"cat "file name with space.txt""#);
     /// assert_eq!(r#"cat "file name with space.txt""#, args.raw());
     /// ```
     #[inline]
-    pub fn raw(&self) -> &str {
+    pub const fn raw(&self) -> &str {
         self.input
     }
 
@@ -382,19 +389,6 @@ impl<'a> ArgsParser<'a> {
     #[must_use]
     pub fn peek(&self) -> Option<Cow<'_, str>> {
         self.clone().next()
-    }
-
-    /// Convenient function to return an empty `Args`.
-    ///
-    /// When used in any iteration, it will always return `None`.
-    #[inline(always)]
-    pub const fn empty() -> Self {
-        Self {
-            input: "",
-            idx: 0,
-            start: 0,
-            unescape: false,
-        }
     }
 }
 
@@ -557,18 +551,21 @@ impl<'a> Iterator for ArgsParser<'a> {
 }
 
 impl<'a> From<&'a String> for ArgsParser<'a> {
+    #[inline]
     fn from(args: &'a String) -> Self {
         ArgsParser::parse(args)
     }
 }
 
 impl<'a> From<&'a str> for ArgsParser<'a> {
+    #[inline]
     fn from(args: &'a str) -> Self {
         ArgsParser::parse(args)
     }
 }
 
 impl<'a> From<&'a Cow<'_, str>> for ArgsParser<'a> {
+    #[inline]
     fn from(args: &'a Cow<str>) -> Self {
         ArgsParser::parse(args)
     }

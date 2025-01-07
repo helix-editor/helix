@@ -609,7 +609,7 @@ fn earlier(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyh
         return Ok(());
     }
 
-    let uk = args.raw().parse::<UndoKind>().map_err(|s| anyhow!(s))?;
+    let uk = args[0].parse::<UndoKind>().map_err(|s| anyhow!(s))?;
 
     let (view, doc) = current!(cx.editor);
     let success = doc.earlier(view, uk);
@@ -625,7 +625,7 @@ fn later(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow
         return Ok(());
     }
 
-    let uk = args.raw().parse::<UndoKind>().map_err(|s| anyhow!(s))?;
+    let uk = args[0].parse::<UndoKind>().map_err(|s| anyhow!(s))?;
 
     let (view, doc) = current!(cx.editor);
     let success = doc.later(view, uk);
@@ -927,7 +927,7 @@ fn yank_joined(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
         return Ok(());
     }
     let register = cx.editor.selected_register.unwrap_or('"');
-    yank_joined_impl(cx.editor, args.raw(), register);
+    yank_joined_impl(cx.editor, &args[0], register);
     Ok(())
 }
 
@@ -939,7 +939,7 @@ fn yank_joined_to_clipboard(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-    yank_joined_impl(cx.editor, args.raw(), '+');
+    yank_joined_impl(cx.editor, &args[0], '+');
     Ok(())
 }
 
@@ -964,7 +964,7 @@ fn yank_joined_to_primary_clipboard(
         return Ok(());
     }
 
-    yank_joined_impl(cx.editor, args.raw(), '*');
+    yank_joined_impl(cx.editor, &args[0], '*');
     Ok(())
 }
 
@@ -1394,7 +1394,7 @@ fn lsp_workspace_command(
         };
         cx.jobs.callback(callback);
     } else {
-        let command = args.raw().to_string();
+        let command = args[0].to_string();
 
         let matches: Vec<_> = ls_id_commands
             .filter(|(_ls_id, c)| *c == &command)
@@ -1667,7 +1667,7 @@ fn debug_eval(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
 
         // TODO: support no frame_id
         let frame_id = debugger.stack_frames[&thread_id][frame].id;
-        let expression = args.raw().to_string();
+        let expression = args[0].to_string();
 
         let response = helix_lsp::block_on(debugger.eval(expression, Some(frame_id)))?;
         cx.editor.set_status(response.result);
