@@ -14,9 +14,9 @@ use serde_json::{to_value, Value};
 use tokio_stream::wrappers::UnboundedReceiverStream;
 use tui::text::Spans;
 
-use std::collections::HashMap;
 use std::future::Future;
 use std::path::PathBuf;
+use std::{borrow::Cow, collections::HashMap};
 
 use anyhow::{anyhow, bail};
 
@@ -112,7 +112,7 @@ fn dap_callback<T, F>(
 // TODO: transition to `shellwords::Args` instead of `Option<Vec<Cow>>>`
 pub fn dap_start_impl(
     cx: &mut compositor::Context,
-    name: Option<&str>,
+    name: Option<&Cow<'_, str>>,
     socket: Option<std::net::SocketAddr>,
     params: Option<Vec<std::borrow::Cow<str>>>,
 ) -> Result<(), anyhow::Error> {
@@ -148,7 +148,7 @@ pub fn dap_start_impl(
 
     // TODO: avoid refetching all of this... pass a config in
     let template = match name {
-        Some(name) => config.templates.iter().find(|t| t.name == name),
+        Some(name) => config.templates.iter().find(|t| t.name == name.as_ref()),
         None => config.templates.first(),
     }
     .ok_or_else(|| anyhow!("No debug config with given name"))?;
@@ -263,7 +263,9 @@ pub fn dap_launch(cx: &mut Context) {
         (),
         |cx, template, _action| {
             if template.completion.is_empty() {
-                if let Err(err) = dap_start_impl(cx, Some(&template.name), None, None) {
+                if let Err(err) =
+                    dap_start_impl(cx, Some(&Cow::from(template.name.clone())), None, None)
+                {
                     cx.editor.set_error(err.to_string());
                 }
             } else {
@@ -375,7 +377,7 @@ fn debug_parameter_prompt(
                 cx.jobs.callback(callback);
             } else if let Err(err) = dap_start_impl(
                 cx,
-                Some(&config_name),
+                Some(&Cow::from(config_name.clone())),
                 None,
                 Some(params.iter().map(|x| x.into()).collect()),
             ) {

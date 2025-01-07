@@ -22,7 +22,7 @@ use std::{
 /// # use helix_core::shellwords::Shellwords;
 /// let shellwords = Shellwords::from(":o helix-core/src/shellwords.rs");
 /// assert_eq!(":o", shellwords.command());
-/// assert_eq!("helix-core/src/shellwords.rs", shellwords.args().next().unwrap());
+/// assert_eq!("helix-core/src/shellwords.rs", shellwords.args().first().unwrap());
 /// ```
 ///
 /// Empty command:
@@ -33,18 +33,20 @@ use std::{
 /// assert!(shellwords.command().is_empty());
 /// ```
 ///
-/// # Iterator
+/// # Arguments
 ///
-/// The `args` method returns a non-allocating iterator, `Args`, over the arguments of the input.
+/// The `args` method returns an `Args` struct that offers various ways to interact with an arguments
+/// passed in.
 ///
 /// ```
 /// # use helix_core::shellwords::Shellwords;
 /// let shellwords = Shellwords::from(":o a b c");
-/// let mut args = shellwords.args();
+/// let mut args = shellwords.args().into_iter();
+///
 /// assert_eq!(Some("a"), args.next().as_deref());
 /// assert_eq!(Some("b"), args.next().as_deref());
 /// assert_eq!(Some("c"), args.next().as_deref());
-/// assert_eq!(None, args.next());
+/// assert_eq!(None, args.next().as_deref());
 /// ```
 #[derive(Clone, Copy)]
 pub struct Shellwords<'a> {
@@ -91,7 +93,7 @@ impl<'a> Shellwords<'a> {
 
         Args {
             input: args,
-            args: ArgsParser::from(args).collect(),
+            positionals: ArgsParser::from(args).with_unescaping().collect(),
         }
     }
 
@@ -123,7 +125,7 @@ impl<'a> Shellwords<'a> {
     #[inline]
     #[must_use]
     pub fn ends_with_whitespace(&self) -> bool {
-        self.args().last().map_or(
+        self.args().raw_parser().last().map_or(
             self.input.ends_with(' ') || self.input.ends_with('\t'),
             |last| {
                 if cfg!(windows) {
@@ -140,28 +142,28 @@ impl<'a> Shellwords<'a> {
 #[derive(Debug)]
 pub struct Args<'a> {
     input: &'a str,
-    args: Vec<Cow<'a, str>>,
+    positionals: Vec<Cow<'a, str>>,
 }
 
 impl Args<'_> {
-    pub fn count(&self) -> usize {
-        self.args.len()
+    pub fn len(&self) -> usize {
+        self.positionals.len()
     }
 
     pub fn is_empty(&self) -> bool {
-        self.args.is_empty()
+        self.positionals.is_empty()
     }
 
-    pub fn get(&self, index: usize) -> Option<&str> {
-        self.args.get(index).map(|arg| arg.as_ref())
+    pub fn get(&self, index: usize) -> Option<&Cow<'_, str>> {
+        self.positionals.get(index)
     }
 
-    pub fn first(&self) -> Option<&str> {
-        self.args.first().map(|first| first.as_ref())
+    pub fn first(&self) -> Option<&Cow<'_, str>> {
+        self.positionals.first()
     }
 
-    pub fn last(&self) -> Option<&str> {
-        self.args.last().map(|last| last.as_ref())
+    pub fn last(&self) -> Option<&Cow<'_, str>> {
+        self.positionals.last()
     }
 
     pub fn raw(&self) -> &str {
@@ -172,15 +174,15 @@ impl Args<'_> {
         ArgsParser::from(self.input)
     }
 
-    pub fn iter(&self) -> std::slice::Iter<'_, Cow<'_, str>> {
-        self.args.iter()
+    pub fn iter(&self) -> impl Iterator<Item = &Cow<'_, str>> {
+        self.positionals.iter()
     }
 
     #[inline(always)]
     pub fn empty() -> Self {
         Self {
             input: "",
-            args: Vec::new(),
+            positionals: Vec::new(),
         }
     }
 }
@@ -190,7 +192,7 @@ impl<'a> IntoIterator for Args<'a> {
     type IntoIter = std::vec::IntoIter<Cow<'a, str>>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.args.into_iter()
+        self.positionals.into_iter()
     }
 }
 
@@ -199,19 +201,19 @@ impl<'a> IntoIterator for &'a Args<'a> {
     type IntoIter = std::slice::Iter<'a, Cow<'a, str>>;
 
     fn into_iter(self) -> Self::IntoIter {
-        self.args.iter()
+        self.positionals.iter()
     }
 }
 
 impl<'a> AsRef<[Cow<'a, str>]> for Args<'a> {
     fn as_ref(&self) -> &[Cow<'a, str>] {
-        self.args.as_ref()
+        self.positionals.as_ref()
     }
 }
 
 impl PartialEq<&[&str]> for Args<'_> {
     fn eq(&self, other: &&[&str]) -> bool {
-        let this = self.args.iter();
+        let this = self.positionals.iter();
         let other = other.iter().copied();
 
         for (left, right) in this.zip(other) {
@@ -228,7 +230,7 @@ impl<'a> Index<usize> for Args<'a> {
     type Output = str;
 
     fn index(&self, index: usize) -> &Self::Output {
-        let cow = &self.args[index];
+        let cow = &self.positionals[index];
         cow.as_ref()
     }
 }
@@ -237,7 +239,7 @@ impl<'a> Index<RangeFrom<usize>> for Args<'a> {
     type Output = [Cow<'a, str>];
 
     fn index(&self, index: RangeFrom<usize>) -> &Self::Output {
-        &self.args[index]
+        &self.positionals[index]
     }
 }
 
@@ -245,7 +247,7 @@ impl<'a> From<&'a String> for Args<'a> {
     fn from(args: &'a String) -> Self {
         Args {
             input: args,
-            args: ArgsParser::from(args).collect(),
+            positionals: ArgsParser::from(args).collect(),
         }
     }
 }
@@ -254,7 +256,7 @@ impl<'a> From<&'a str> for Args<'a> {
     fn from(args: &'a str) -> Self {
         Args {
             input: args,
-            args: ArgsParser::from(args).collect(),
+            positionals: ArgsParser::from(args).collect(),
         }
     }
 }
@@ -263,7 +265,7 @@ impl<'a> From<&'a Cow<'_, str>> for Args<'a> {
     fn from(args: &'a Cow<str>) -> Self {
         Args {
             input: args,
-            args: ArgsParser::from(args).collect(),
+            positionals: ArgsParser::from(args).collect(),
         }
     }
 }
@@ -276,6 +278,7 @@ pub struct ArgsParser<'a> {
     input: &'a str,
     idx: usize,
     start: usize,
+    unescape: bool,
 }
 
 impl<'a> ArgsParser<'a> {
@@ -285,7 +288,13 @@ impl<'a> ArgsParser<'a> {
             input,
             idx: 0,
             start: 0,
+            unescape: false,
         }
+    }
+
+    fn with_unescaping(mut self) -> Self {
+        self.unescape = true;
+        self
     }
 
     #[inline]
@@ -313,8 +322,8 @@ impl<'a> ArgsParser<'a> {
     ///
     /// # Examples
     /// ```
-    /// # use helix_core::shellwords::Args;
-    /// let mut args = Args::from(r#"sed -n "s/test t/not /p""#);
+    /// # use helix_core::shellwords::ArgsParser;
+    /// let mut args = ArgsParser::from(r#"sed -n "s/test t/not /p""#);
     /// assert_eq!("sed", args.next().unwrap());
     /// assert_eq!(r#"-n "s/test t/not /p""#, args.rest());
     /// ```
@@ -344,6 +353,7 @@ impl<'a> ArgsParser<'a> {
             input: "",
             idx: 0,
             start: 0,
+            unescape: false,
         }
     }
 }
@@ -384,7 +394,14 @@ impl<'a> Iterator for ArgsParser<'a> {
                             let arg = &self.input[self.start..self.idx];
                             self.idx += 1;
                             self.start = self.idx;
-                            return Some(unescape(arg, true));
+
+                            let output = if self.unescape {
+                                unescape(arg, true)
+                            } else {
+                                Cow::from(arg)
+                            };
+
+                            return Some(output);
                         }
                         // If quote does not match the type of the opening quote, then do nothing and advance.
                         self.idx += 1;
@@ -397,7 +414,14 @@ impl<'a> Iterator for ArgsParser<'a> {
                         let arg = &self.input[self.idx..];
                         self.idx = bytes.len();
                         self.start = bytes.len();
-                        return Some(unescape(arg, true));
+
+                        let output = if self.unescape {
+                            unescape(arg, true)
+                        } else {
+                            Cow::from(arg)
+                        };
+
+                        return Some(output);
                     } else {
                         // Found opening quote.
                         in_quotes = true;
@@ -413,7 +437,14 @@ impl<'a> Iterator for ArgsParser<'a> {
                             let arg = &self.input[self.start..self.idx];
                             self.idx += 1;
                             self.start = self.idx;
-                            return Some(unescape(arg, true));
+
+                            let output = if self.unescape {
+                                unescape(arg, true)
+                            } else {
+                                Cow::from(arg)
+                            };
+
+                            return Some(output);
                         }
 
                         // Advance after quote.
@@ -431,7 +462,14 @@ impl<'a> Iterator for ArgsParser<'a> {
                         let arg = &self.input[self.start..self.idx];
                         self.idx += 1;
                         self.start = self.idx;
-                        return Some(unescape(arg, true));
+
+                        let output = if self.unescape {
+                            unescape(arg, true)
+                        } else {
+                            Cow::from(arg)
+                        };
+
+                        return Some(output);
                     }
 
                     // Advance beyond the whitespace.
@@ -463,7 +501,14 @@ impl<'a> Iterator for ArgsParser<'a> {
         if self.start < bytes.len() {
             let arg = &self.input[self.start..];
             self.start = bytes.len();
-            return Some(unescape(arg, true));
+
+            let output = if self.unescape {
+                unescape(arg, true)
+            } else {
+                Cow::from(arg)
+            };
+
+            return Some(output);
         }
 
         // All args have been parsed.
@@ -513,9 +558,9 @@ pub fn escape(input: Cow<str>) -> Cow<str> {
 /// This function handles the following escape sequences:
 /// - `\\n` is converted to `\n` (newline)
 /// - `\\t` is converted to `\t` (tab)
-/// - `\\t` is converted to `\t` (tab)
 /// - `\\"` is converted to `"` (double-quote)
 /// - `\\'` is converted to `'` (single-quote)
+/// - `\\ ` is converted to ` ` (space)
 /// - `\\u{...}` is converted to the corresponding Unicode character
 ///
 /// Other escape sequences, such as `\\` followed by any character not listed above, will remain unchanged.
@@ -714,11 +759,17 @@ mod test {
 
     #[test]
     fn should_escape_whitespace() {
-        assert_eq!(Shellwords::from(r":o a\ ").args().first(), Some("a "));
-        assert_eq!(Shellwords::from(r":o a\t").args().first(), Some("a\t"));
+        assert_eq!(
+            Shellwords::from(r":o a\ ").args().first(),
+            Some(&Cow::from("a "))
+        );
+        assert_eq!(
+            Shellwords::from(r":o a\t").args().first(),
+            Some(&Cow::from("a\t"))
+        );
         assert_eq!(
             Shellwords::from(r":o a\ b.txt").args().first(),
-            Some("a b.txt")
+            Some(&Cow::from("a b.txt"))
         );
     }
 
@@ -819,26 +870,31 @@ mod test {
 
     #[test]
     fn should_leave_escaped_quotes() {
-        let input = r#"\" \` \' \"with \'with \`with"#;
-        let result = ArgsParser::parse(input).collect::<Vec<_>>();
-        assert_eq!(r#"""#, result[0]);
-        assert_eq!(r"`", result[1]);
-        assert_eq!(r"'", result[2]);
-        assert_eq!(r#""with"#, result[3]);
-        assert_eq!(r"'with", result[4]);
-        assert_eq!(r"`with", result[5]);
+        let mut args = ArgsParser::parse(r#"\" \` \' \"with \'with \`with"#).with_unescaping();
+        assert_eq!(Some(Cow::from(r#"""#)), args.next());
+        assert_eq!(Some(Cow::from(r"`")), args.next());
+        assert_eq!(Some(Cow::from(r"'")), args.next());
+        assert_eq!(Some(Cow::from(r#""with"#)), args.next());
+        assert_eq!(Some(Cow::from(r"'with")), args.next());
+        assert_eq!(Some(Cow::from(r"`with")), args.next());
     }
 
     #[test]
     fn should_leave_literal_newline_alone() {
-        let result = ArgsParser::parse(r"\n").collect::<Vec<_>>();
-        assert_eq!("\n", result[0]);
+        let mut arg = ArgsParser::parse(r"\n").with_unescaping();
+        assert_eq!(Some(Cow::from("\n")), arg.next());
     }
 
     #[test]
     fn should_leave_literal_unicode_alone() {
-        let result = ArgsParser::parse(r"\u{C}").collect::<Vec<_>>();
-        assert_eq!("\u{C}", result[0]);
+        let mut arg = ArgsParser::parse(r"\u{C}").with_unescaping();
+        assert_eq!(Some(Cow::from("\u{C}")), arg.next());
+    }
+
+    #[test]
+    fn should_escape_literal_unicode() {
+        let mut arg = ArgsParser::parse(r"\u{C}");
+        assert_eq!(Some(Cow::from("\\u{C}")), arg.next());
     }
 
     #[test]
