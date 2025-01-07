@@ -411,6 +411,8 @@ impl MappableCommand {
         insert_at_line_end, "Insert at end of line",
         open_below, "Open new line below selection",
         open_above, "Open new line above selection",
+        open_below_continue_comment, "Open new line below selection and continue comment",
+        open_above_continue_comment, "Open new line above selection and continue comment",
         normal_mode, "Enter normal mode",
         select_mode, "Enter selection extend mode",
         exit_select_mode, "Exit selection mode",
@@ -3466,7 +3468,7 @@ pub enum Open {
     Above,
 }
 
-fn open(cx: &mut Context, open: Open) {
+fn open(cx: &mut Context, open: Open, continue_comment: bool) {
     let count = cx.count();
     enter_insert_mode(cx);
     let (view, doc) = current!(cx.editor);
@@ -3492,7 +3494,7 @@ fn open(cx: &mut Context, open: Open) {
 
         let above_next_new_line_num = next_new_line_num.saturating_sub(1);
 
-        let continue_comment_token = if doc.config.load().continue_comments {
+        let continue_comment_token = if continue_comment && doc.config.load().continue_comments {
             doc.language_config()
                 .and_then(|config| config.comment_tokens.as_ref())
                 .and_then(|tokens| comment::get_comment_token(text, tokens, curr_line_num))
@@ -3576,13 +3578,22 @@ fn open(cx: &mut Context, open: Open) {
 }
 
 // o inserts a new line after each line with a selection
+fn open_below_continue_comment(cx: &mut Context) {
+    open(cx, Open::Below, true)
+}
+
+// O inserts a new line before each line with a selection
+fn open_above_continue_comment(cx: &mut Context) {
+    open(cx, Open::Above, true)
+}
+// o inserts a new line after each line with a selection
 fn open_below(cx: &mut Context) {
-    open(cx, Open::Below)
+    open(cx, Open::Below, false)
 }
 
 // O inserts a new line before each line with a selection
 fn open_above(cx: &mut Context) {
-    open(cx, Open::Above)
+    open(cx, Open::Above, false)
 }
 
 fn normal_mode(cx: &mut Context) {
@@ -4001,7 +4012,7 @@ pub mod insert {
 
             let mut new_text = String::new();
 
-            let continue_comment_token = if doc.config.load().continue_comments && continue_comment
+            let continue_comment_token = if continue_comment && doc.config.load().continue_comments
             {
                 doc.language_config()
                     .and_then(|config| config.comment_tokens.as_ref())
