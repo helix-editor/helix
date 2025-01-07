@@ -3044,12 +3044,11 @@ fn buffer_picker(cx: &mut Context) {
     })
     .with_preview(|editor, meta| {
         let doc = &editor.documents.get(&meta.id)?;
-        let &view_id = doc.selections().keys().next()?;
-        let line = doc
-            .selection(view_id)
-            .primary()
-            .cursor_line(doc.text().slice(..));
-        Some((meta.id.into(), Some((line, line))))
+        let lines = doc.selections().values().next().map(|selection| {
+            let cursor_line = selection.primary().cursor_line(doc.text().slice(..));
+            (cursor_line, cursor_line)
+        });
+        Some((meta.id.into(), lines))
     });
     cx.push_layer(Box::new(overlaid(picker)));
 }
