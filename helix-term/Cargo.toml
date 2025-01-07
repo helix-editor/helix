@@ -59,7 +59,7 @@ content_inspector = "0.2.4"
 thiserror.workspace = true
 
 # opening URLs
-open = "5.3.1"
+open = "5.3.2"
 url = "2.5.4"
 
 # config
@@ -85,5 +85,5 @@ helix-loader = { path = "../helix-loader" }
 [dev-dependencies]
 smallvec = "1.13"
 indoc = "2.0.5"
-tempfile = "3.14.0"
+tempfile.workspace = true
 same-file = "1.0.1"
