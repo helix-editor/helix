@@ -656,7 +656,7 @@ pub fn escape(input: Cow<str>) -> Cow<str> {
 /// This function is opinionated, with a clear purpose of handling user input, not a general or generic unescaping utility, and does not unescape sequences like `\\'` or `\\\"`, leaving them as is.
 #[inline]
 #[must_use]
-pub fn unescape(input: &str, unescape_blackslash: bool) -> Cow<'_, str> {
+fn unescape(input: &str, unescape_blackslash: bool) -> Cow<'_, str> {
     enum State {
         Normal,
         Escaped,

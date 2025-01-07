@@ -2167,8 +2167,7 @@ fn append_output(
         return Ok(());
     }
     ensure!(!args.is_empty(), "Shell command required");
-    let cmd = helix_core::shellwords::unescape(args.raw(), false);
-    shell(cx, &cmd, &ShellBehavior::Append);
+    shell(cx, &args[0], &ShellBehavior::Append);
     Ok(())
 }
 
@@ -2181,8 +2180,7 @@ fn insert_output(
         return Ok(());
     }
     ensure!(!args.is_empty(), "Shell command required");
-    let cmd = helix_core::shellwords::unescape(args.raw(), false);
-    shell(cx, &cmd, &ShellBehavior::Insert);
+    shell(cx, &args[0], &ShellBehavior::Insert);
     Ok(())
 }
 
@@ -2204,8 +2202,7 @@ fn pipe_impl(
         return Ok(());
     }
     ensure!(!args.is_empty(), "Shell command required");
-    let cmd = helix_core::shellwords::unescape(args.raw(), false);
-    shell(cx, &cmd, behavior);
+    shell(cx, &args[0], behavior);
     Ok(())
 }
 
@@ -2220,8 +2217,7 @@ fn run_shell_command(
 
     let shell = cx.editor.config().shell.clone();
 
-    // Shell will have its own rules for escaping backslashes but rust specific things like unicode should be unescaped
-    let args = helix_core::shellwords::unescape(args.raw(), false).into_owned();
+    let args = args[0].to_string();
 
     let callback = async move {
         let output = shell_impl_async(&shell, &args, None).await?;
