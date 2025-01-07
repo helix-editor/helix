@@ -457,6 +457,7 @@ impl MappableCommand {
         smart_tab, "Insert tab if all cursors have all whitespace to their left; otherwise, run a separate command.",
         insert_tab, "Insert tab char",
         insert_newline, "Insert newline char",
+        insert_newline_continue_comment, "Insert newline char and continue comment",
         delete_char_backward, "Delete previous char",
         delete_char_forward, "Delete next char",
         delete_word_backward, "Delete previous word",
@@ -3974,7 +3975,7 @@ pub mod insert {
         doc.apply(&transaction, view.id);
     }
 
-    pub fn insert_newline(cx: &mut Context) {
+    pub fn insert_newline_impl(cx: &mut Context, continue_comment: bool) {
         let (view, doc) = current_ref!(cx.editor);
         let text = doc.text().slice(..);
 
@@ -4000,7 +4001,8 @@ pub mod insert {
 
             let mut new_text = String::new();
 
-            let continue_comment_token = if doc.config.load().continue_comments {
+            let continue_comment_token = if doc.config.load().continue_comments && continue_comment
+            {
                 doc.language_config()
                     .and_then(|config| config.comment_tokens.as_ref())
                     .and_then(|tokens| comment::get_comment_token(text, tokens, current_line))
@@ -4108,6 +4110,14 @@ pub mod insert {
 
         let (view, doc) = current!(cx.editor);
         doc.apply(&transaction, view.id);
+    }
+
+    pub fn insert_newline_continue_comment(cx: &mut Context) {
+        insert_newline_impl(cx, true)
+    }
+
+    pub fn insert_newline(cx: &mut Context) {
+        insert_newline_impl(cx, false)
     }
 
     pub fn delete_char_backward(cx: &mut Context) {
