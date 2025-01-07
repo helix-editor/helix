@@ -158,7 +158,7 @@ impl<'a> Args<'a> {
         // TODO: Extract flags into `HashMap`
         // let mut flags: HashMap<Cow<'_, str>, Cow<'_, str>> = HashMap::new();
         // Remove `with_unescaping` here and then do it down below.
-        let positionals = ArgsParser::from(args).with_unescaping();
+        let positionals = ArgsParser::from(args);
 
         let args = match mode {
             ParseMode::Literal => Args {
@@ -168,7 +168,7 @@ impl<'a> Args<'a> {
             },
             ParseMode::Parameters => Args {
                 input: args,
-                positionals: positionals.collect(),
+                positionals: positionals.with_unescaping().collect(),
                 // TODO: flags: flags,
             },
         };
@@ -753,6 +753,32 @@ mod test {
             r#"single_word twó wörds \\three\ \"with\ escaping\\"#,
             shellwords.args()
         );
+
+        let parser = Args::from(shellwords.args());
+
+        assert_eq!(Cow::from("single_word"), parser[0]);
+        assert_eq!(Cow::from("twó"), parser[1]);
+        assert_eq!(Cow::from("wörds"), parser[2]);
+        assert_eq!(Cow::from(r#"\\three\ \"with\ escaping\\"#), parser[3]);
+    }
+
+    #[test]
+    fn base_with_parser_mode() {
+        let shellwords =
+            Shellwords::from(r#":o single_word twó wörds \\three\ \"with\ escaping\\"#);
+
+        assert_eq!(":o", shellwords.command());
+        assert_eq!(
+            r#"single_word twó wörds \\three\ \"with\ escaping\\"#,
+            shellwords.args()
+        );
+
+        let parser = Args::from_signature(shellwords.args(), ParseMode::Parameters).unwrap();
+
+        assert_eq!(Cow::from("single_word"), parser[0]);
+        assert_eq!(Cow::from("twó"), parser[1]);
+        assert_eq!(Cow::from("wörds"), parser[2]);
+        assert_eq!(Cow::from(r#"\three "with escaping\"#), parser[3]);
     }
 
     #[test]
