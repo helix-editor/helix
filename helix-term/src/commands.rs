@@ -245,15 +245,26 @@ impl MappableCommand {
         match &self {
             Self::Typable { name, args, doc: _ } => {
                 if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
+                    let args = match Args::from_signature(args, command.signature.parse_mode) {
+                        Ok(args) => args,
+                        Err(err) => {
+                            cx.editor.set_error(err.to_string());
+                            return;
+                        }
+                    };
+
+                    if let Err(err) = command.ensure_signature(args.len()) {
+                        cx.editor.set_error(err.to_string());
+                        return;
+                    }
+
                     let mut cx = compositor::Context {
                         editor: cx.editor,
                         jobs: cx.jobs,
                         scroll: None,
                     };
 
-                    if let Err(err) =
-                        (command.fun)(&mut cx, Args::from(args), PromptEvent::Validate)
-                    {
+                    if let Err(err) = (command.fun)(&mut cx, args, PromptEvent::Validate) {
                         cx.editor.set_error(format!("{err}"));
                     }
                 }

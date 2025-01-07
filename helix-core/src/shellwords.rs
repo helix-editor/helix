@@ -98,6 +98,21 @@ impl<'a> Shellwords<'a> {
     }
 
     #[inline]
+    #[must_use]
+    pub fn args_from_signature(
+        &self,
+        mode: ParseMode,
+        // _flags: impl Iterator<Item = &'a str> + Copy,
+    ) -> anyhow::Result<Args<'a>> {
+        let input = self
+            .input
+            .split_once([' ', '\t'])
+            .map_or("", |(_, args)| args);
+
+        Args::from_signature(input, mode)
+    }
+
+    #[inline]
     pub fn input(&self) -> &str {
         self.input
     }
@@ -145,7 +160,29 @@ pub struct Args<'a> {
     positionals: Vec<Cow<'a, str>>,
 }
 
-impl Args<'_> {
+impl<'a> Args<'a> {
+    pub fn from_signature(input: &'a str, mode: ParseMode) -> anyhow::Result<Self> {
+        // TODO: Extract flags into `HashMap`
+        // let mut flags: HashMap<Cow<'_, str>, Cow<'_, str>> = HashMap::new();
+        // Remove `with_unescaping` here and then do it down below.
+        let positionals = ArgsParser::from(input).with_unescaping();
+
+        let args = match mode {
+            ParseMode::Literal => Args {
+                input,
+                positionals: vec![unescape(input, false)],
+                // TODO: flags: flags,
+            },
+            ParseMode::Parameters => Args {
+                input,
+                positionals: positionals.collect(),
+                // TODO: flags: flags,
+            },
+        };
+
+        Ok(args)
+    }
+
     pub fn len(&self) -> usize {
         self.positionals.len()
     }
@@ -268,6 +305,15 @@ impl<'a> From<&'a Cow<'_, str>> for Args<'a> {
             positionals: ArgsParser::from(args).collect(),
         }
     }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum ParseMode {
+    /// Treat the entire input as one positional with minimal processing.
+    /// (I.e. expand `\t` and `\n` but don't split on spaces or handle quotes.)
+    Literal,
+    /// Regular shellwords behavior: split the input into multiple parameters.
+    Parameters,
 }
 
 /// An iterator over an input string which yields arguments.
