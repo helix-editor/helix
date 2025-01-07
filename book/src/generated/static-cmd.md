@@ -112,8 +112,10 @@
 | `last_picker` | Open last picker | normal: `` <space>' ``, select: `` <space>' `` |
 | `insert_at_line_start` | Insert at start of line | normal: `` I ``, select: `` I `` |
 | `insert_at_line_end` | Insert at end of line | normal: `` A ``, select: `` A `` |
-| `open_below` | Open new line below selection | normal: `` o ``, select: `` o `` |
-| `open_above` | Open new line above selection | normal: `` O ``, select: `` O `` |
+| `open_below` | Open new line below selection | normal: `` go ``, select: `` go `` |
+| `open_above` | Open new line above selection | normal: `` gO ``, select: `` gO `` |
+| `open_below_continue_comment` | Open new line below selection and continue comment | normal: `` o ``, select: `` o `` |
+| `open_above_continue_comment` | Open new line above selection and continue comment | normal: `` O ``, select: `` O `` |
 | `normal_mode` | Enter normal mode | normal: `` <esc> ``, select: `` v ``, insert: `` <esc> `` |
 | `select_mode` | Enter selection extend mode | normal: `` v `` |
 | `exit_select_mode` | Exit selection mode | select: `` <esc> `` |
@@ -159,7 +161,8 @@
 | `signature_help` | Show signature help |  |
 | `smart_tab` | Insert tab if all cursors have all whitespace to their left; otherwise, run a separate command. | insert: `` <tab> `` |
 | `insert_tab` | Insert tab char | insert: `` <S-tab> `` |
-| `insert_newline` | Insert newline char | insert: `` <C-j> ``, `` <ret> `` |
+| `insert_newline` | Insert newline char | insert: `` <A-ret> `` |
+| `insert_newline_continue_comment` | Insert newline char and continue comment | insert: `` <C-j> ``, `` <ret> `` |
 | `delete_char_backward` | Delete previous char | insert: `` <C-h> ``, `` <backspace> ``, `` <S-backspace> `` |
 | `delete_char_forward` | Delete next char | insert: `` <C-d> ``, `` <del> `` |
 | `delete_word_backward` | Delete previous word | insert: `` <C-w> ``, `` <A-backspace> `` |

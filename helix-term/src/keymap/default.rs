@@ -59,6 +59,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
             "j" => move_line_down,
             "." => goto_last_modification,
             "w" => goto_word,
+            "o" => open_below,
+            "O" => open_above,
         },
         ":" => command_mode,
 
@@ -67,9 +69,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "a" => append_mode,
         "A" => insert_at_line_end,
         "o" => open_below_continue_comment,
-        "A-o" => open_below,
         "O" => open_above_continue_comment,
-        "A-O" => open_above,
 
         "d" => delete_selection,
         "A-d" => delete_selection_noyank,
