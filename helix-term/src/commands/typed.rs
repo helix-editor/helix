@@ -38,9 +38,16 @@ impl TypableCommand {
     pub fn ensure_signature(&self, count: usize) -> anyhow::Result<()> {
         match self.signature.positionals {
             (0, Some(0)) => ensure!(count == 0, "`:{}` doesn't take any arguments", self.name),
-            (min, Some(max)) => ensure!(
-                (min..max).contains(&count),
-                "`:{}` needs at least `{min}` arguments and at most `{max}`",
+            (min, Some(max)) if min == max => ensure!(
+                (min..=max).contains(&count),
+                "`:{}` needs `{min}` argument{}, got {count}",
+                self.name,
+                if min > 1 { "'s" } else { "" }
+            ),
+            (min, Some(max)) if min == max => ensure!(
+                (min..=max).contains(&count),
+                // TODO: better wording for more cases
+                "`:{}` needs at least `{min}` arguments and at most `{max}`, got {count}",
                 self.name
             ),
             (min, _) => ensure!(
@@ -3167,7 +3174,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "set-language",
         aliases: &["lang"],
         signature: CommandSignature {
-            positionals: (0, Some(1)),
+            positionals: (1, Some(1)),
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::positional(&[completers::language])
          },
@@ -3478,7 +3485,6 @@ pub(super) fn command_mode(cx: &mut Context) {
         move |cx: &mut compositor::Context, input: &str, event: PromptEvent| {
             let shellwords = Shellwords::from(input);
             let command = shellwords.command();
-            let args = shellwords.args();
 
             if command.is_empty() {
                 return;
@@ -3494,17 +3500,20 @@ pub(super) fn command_mode(cx: &mut Context) {
 
             // Handle typable commands
             if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(command) {
-                let args = match Args::from_signature(args, command.signature.parse_mode) {
-                    Ok(args) => args,
-                    Err(err) => {
+                let args =
+                    match Args::from_signature(shellwords.args(), command.signature.parse_mode) {
+                        Ok(args) => args,
+                        Err(err) => {
+                            cx.editor.set_error(err.to_string());
+                            return;
+                        }
+                    };
+
+                if event == PromptEvent::Validate {
+                    if let Err(err) = command.ensure_signature(args.len()) {
                         cx.editor.set_error(err.to_string());
                         return;
                     }
-                };
-
-                if let Err(err) = command.ensure_signature(args.len()) {
-                    cx.editor.set_error(err.to_string());
-                    return;
                 }
 
                 if let Err(err) = (command.fun)(cx, args, event) {
