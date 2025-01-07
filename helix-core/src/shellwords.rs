@@ -22,7 +22,7 @@ use std::{
 /// # use helix_core::shellwords::Shellwords;
 /// let shellwords = Shellwords::from(":o helix-core/src/shellwords.rs");
 /// assert_eq!(":o", shellwords.command());
-/// assert_eq!("helix-core/src/shellwords.rs", shellwords.args().first().unwrap());
+/// assert_eq!("helix-core/src/shellwords.rs", shellwords.args());
 /// ```
 ///
 /// Empty command:
@@ -39,14 +39,14 @@ use std::{
 /// passed in.
 ///
 /// ```
-/// # use helix_core::shellwords::Shellwords;
-/// let shellwords = Shellwords::from(":o a b c");
-/// let mut args = shellwords.args().into_iter();
+/// # use helix_core::shellwords::{Shellwords, Args};
 ///
-/// assert_eq!(Some("a"), args.next().as_deref());
-/// assert_eq!(Some("b"), args.next().as_deref());
-/// assert_eq!(Some("c"), args.next().as_deref());
-/// assert_eq!(None, args.next().as_deref());
+/// let shellwords = Shellwords::from(":o a b c");
+/// let args = Args::from(shellwords.args());
+///
+/// assert_eq!("a", &args[0]);
+/// assert_eq!("b", &args[1]);
+/// assert_eq!("c", &args[2]);
 /// ```
 #[derive(Clone, Copy)]
 pub struct Shellwords<'a> {
@@ -606,54 +606,6 @@ pub fn escape(input: Cow<str>) -> Cow<str> {
 /// Other escape sequences, such as `\\` followed by any character not listed above, will remain unchanged.
 ///
 /// If input is invalid, for example if there is invalid unicode, \u{999999999}, it will return the input as is.
-///
-/// # Examples
-///
-/// Basic usage:
-///
-/// ```
-/// # use helix_core::shellwords::unescape;
-/// let unescaped = unescape(r"hello\nworld", true);
-/// assert_eq!("hello\nworld", unescaped);
-/// ```
-///
-/// Unescaping tabs:
-///
-/// ```
-/// # use helix_core::shellwords::unescape;
-/// let unescaped = unescape(r"hello\tworld", true);
-/// assert_eq!("hello\tworld", unescaped);
-/// ```
-///
-/// Unescaping Unicode characters:
-///
-/// ```
-/// # use helix_core::shellwords::unescape;
-/// let unescaped = unescape(r"hello\u{1f929}world", true);
-/// assert_eq!("hello\u{1f929}world", unescaped);
-/// assert_eq!("hello🤩world", unescaped);
-/// ```
-///
-/// Handling backslashes:
-///
-/// ```
-/// # use helix_core::shellwords::unescape;
-/// let unescaped = unescape(r"hello\\world", true);
-/// assert_eq!(r"hello\world", unescaped);
-///
-/// let unescaped = unescape(r"hello\\world", false);
-/// assert_eq!(r"hello\\world", unescaped);
-///
-/// let unescaped = unescape(r"hello\\\\world", true);
-/// assert_eq!(r"hello\\world", unescaped);
-///
-/// let unescaped = unescape(r"hello\\\\world", false);
-/// assert_eq!(r"hello\\\\world", unescaped);
-/// ```
-///
-/// # Note
-///
-/// This function is opinionated, with a clear purpose of handling user input, not a general or generic unescaping utility, and does not unescape sequences like `\\'` or `\\\"`, leaving them as is.
 #[inline]
 #[must_use]
 fn unescape(input: &str, unescape_blackslash: bool) -> Cow<'_, str> {
