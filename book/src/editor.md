@@ -143,7 +143,8 @@ The following statusline elements can be configured:
 | Key                   | Description                                                 | Default |
 | ---                   | -----------                                                 | ------- |
 | `enable`              | Enables LSP integration. Setting to false will completely disable language servers regardless of language settings.| `true` |
-| `display-messages`    | Display LSP progress messages below statusline[^1]          | `false` |
+| `display-messages`    | Display LSP `window/showMessage` messages below statusline[^1] | `true` |
+| `display-progress-messages` | Display LSP progress messages below statusline[^1]    | `false` |
 | `auto-signature-help` | Enable automatic popup of signature help (parameter hints)  | `true`  |
 | `display-inlay-hints` | Display inlay hints[^2]                                     | `false` |
 | `display-signature-help-docs` | Display docs under signature help popup             | `true`  |
