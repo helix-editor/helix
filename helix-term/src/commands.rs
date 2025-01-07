@@ -4127,6 +4127,26 @@ pub mod insert {
                     return (pos, pos);
                 }
                 let line_start_pos = text.line_to_char(range.cursor_line(text));
+
+                // consider to delete the whole comment part.
+                if doc.config.load().continue_comments {
+                    let curr_line_num =
+                        text.char_to_line(graphemes::prev_grapheme_boundary(text, range.to()));
+
+                    if let Some(continue_comment_token) = doc
+                        .language_config()
+                        .and_then(|config| config.comment_tokens.as_ref())
+                        .and_then(|tokens| comment::get_comment_token(text, tokens, curr_line_num))
+                    {
+                        let start = pos - continue_comment_token.len() - 1;
+
+                        // if we are right after the comment token
+                        if text.slice(start..pos - 1) == continue_comment_token {
+                            return (start, pos);
+                        }
+                    }
+                }
+
                 // consider to delete by indent level if all characters before `pos` are indent units.
                 let fragment = Cow::from(text.slice(line_start_pos..pos));
                 if !fragment.is_empty() && fragment.chars().all(|ch| ch == ' ' || ch == '\t') {
