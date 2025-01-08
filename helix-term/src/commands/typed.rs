@@ -46,15 +46,15 @@ impl TypableCommand {
             ),
             (min, Some(max)) if min == max => ensure!(
                 (min..=max).contains(&count),
-                // TODO: better wording for more cases
-                "`:{}` needs at least `{min}` arguments and at most `{max}`, got {count}",
-                self.name
+                "`:{}` needs at least `{min}` argument{} and at most `{max}`, got `{count}`",
+                self.name,
+                if min > 1 { "'s" } else { "" }
             ),
             (min, _) => ensure!(
                 (min..).contains(&count),
                 "`:{}` needs at least `{min}` argument{}",
                 self.name,
-                if min > 1 { "s" } else { "" }
+                if min > 1 { "'s" } else { "" }
             ),
         }
 
