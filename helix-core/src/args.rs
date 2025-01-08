@@ -259,19 +259,11 @@ impl<'a, const U: bool, const UB: bool> ArgsParser<'a, U, UB> {
     pub fn rest(&self) -> &str {
         &self.input[self.idx..]
     }
-
-    /// Returns a reference to the `next()` value without advancing the iterator.
-    #[inline]
-    #[must_use]
-    #[allow(unused)]
-    fn peek(&self) -> Option<Cow<'_, str>> {
-        self.clone().next()
-    }
 }
 
 impl<'a> ArgsParser<'a, false, false> {
     #[inline]
-    const fn parse(input: &'a str) -> ArgsParser<'a, false, false> {
+    const fn new(input: &'a str) -> ArgsParser<'a, false, false> {
         ArgsParser::<'a, false, false> {
             input,
             idx: 0,
@@ -346,7 +338,7 @@ impl<'a, const U: bool, const UB: bool> Iterator for ArgsParser<'a, U, UB> {
                             self.start = self.idx;
 
                             let output = if self.unescape {
-                                unescape(arg, true)
+                                unescape(arg, self.unescape_blackslash)
                             } else {
                                 Cow::from(arg)
                             };
@@ -366,7 +358,7 @@ impl<'a, const U: bool, const UB: bool> Iterator for ArgsParser<'a, U, UB> {
                         self.start = bytes.len();
 
                         let output = if self.unescape {
-                            unescape(arg, true)
+                            unescape(arg, self.unescape_blackslash)
                         } else {
                             Cow::from(arg)
                         };
@@ -389,7 +381,7 @@ impl<'a, const U: bool, const UB: bool> Iterator for ArgsParser<'a, U, UB> {
                             self.start = self.idx;
 
                             let output = if self.unescape {
-                                unescape(arg, true)
+                                unescape(arg, self.unescape_blackslash)
                             } else {
                                 Cow::from(arg)
                             };
@@ -414,7 +406,7 @@ impl<'a, const U: bool, const UB: bool> Iterator for ArgsParser<'a, U, UB> {
                         self.start = self.idx;
 
                         let output = if self.unescape {
-                            unescape(arg, true)
+                            unescape(arg, self.unescape_blackslash)
                         } else {
                             Cow::from(arg)
                         };
@@ -452,7 +444,7 @@ impl<'a, const U: bool, const UB: bool> Iterator for ArgsParser<'a, U, UB> {
             self.start = bytes.len();
 
             let output = if self.unescape {
-                unescape(arg, true)
+                unescape(arg, self.unescape_blackslash)
             } else {
                 Cow::from(arg)
             };
@@ -468,7 +460,7 @@ impl<'a, const U: bool, const UB: bool> Iterator for ArgsParser<'a, U, UB> {
 impl<'a> From<&'a str> for ArgsParser<'a, false, false> {
     #[inline]
     fn from(args: &'a str) -> Self {
-        ArgsParser::parse(args)
+        ArgsParser::new(args)
     }
 }
 
@@ -564,20 +556,12 @@ mod test {
     }
 
     #[test]
-    fn should_peek_next_arg_and_not_consume() {
-        let mut args = ArgsParser::parse("a");
-
-        assert_eq!(Some(Cow::Borrowed("a")), args.peek());
-        assert_eq!(Some(Cow::Borrowed("a")), args.next());
-        assert_eq!(None, args.next());
-    }
-
-    #[test]
     fn should_parse_single_quotes_while_respecting_escapes() {
         let parser = ArgsParser::from(
             r#"'single_word' 'twó wörds' '' ' ''\\three\' \"with\ escaping\\' 'quote incomplete"#,
         )
-        .with_unescaping();
+        .with_unescaping()
+        .unescape_backslashes();
         let expected = [
             "single_word",
             "twó wörds",
@@ -597,7 +581,8 @@ mod test {
         let parser = ArgsParser::from(
             r#""single_word" "twó wörds" "" "  ""\\three\' \"with\ escaping\\" "dquote incomplete"#,
         )
-        .with_unescaping();
+        .with_unescaping()
+        .unescape_backslashes();
         let expected = [
             "single_word",
             "twó wörds",
@@ -614,7 +599,7 @@ mod test {
 
     #[test]
     fn should_respect_escapes_with_mixed_quotes() {
-        let parser = ArgsParser::from(r#"single_word 'twó wörds' "\\three\' \"with\ escaping\\""no space before"'and after' $#%^@ "%^&(%^" ')(*&^%''a\\\\\b' '"#).with_unescaping();
+        let parser = ArgsParser::from(r#"single_word 'twó wörds' "\\three\' \"with\ escaping\\""no space before"'and after' $#%^@ "%^&(%^" ')(*&^%''a\\\\\b' '"#).with_unescaping().unescape_backslashes();
         let expected = [
             "single_word",
             "twó wörds",
@@ -645,14 +630,14 @@ mod test {
 
     #[test]
     fn should_return_no_args() {
-        let mut args = ArgsParser::parse("");
+        let mut args = ArgsParser::new("");
         assert!(args.next().is_none());
         assert!(args.is_empty());
     }
 
     #[test]
     fn should_leave_escaped_quotes() {
-        let mut args = ArgsParser::parse(r#"\" \` \' \"with \'with \`with"#).with_unescaping();
+        let mut args = ArgsParser::new(r#"\" \` \' \"with \'with \`with"#).with_unescaping();
         assert_eq!(Some(Cow::from(r#"""#)), args.next());
         assert_eq!(Some(Cow::from(r"`")), args.next());
         assert_eq!(Some(Cow::from(r"'")), args.next());
@@ -663,26 +648,26 @@ mod test {
 
     #[test]
     fn should_leave_literal_newline_alone() {
-        let mut arg = ArgsParser::parse(r"\n").with_unescaping();
+        let mut arg = ArgsParser::new(r"\n").with_unescaping();
         assert_eq!(Some(Cow::from("\n")), arg.next());
     }
 
     #[test]
     fn should_leave_literal_unicode_alone() {
-        let mut arg = ArgsParser::parse(r"\u{C}").with_unescaping();
+        let mut arg = ArgsParser::new(r"\u{C}").with_unescaping();
         assert_eq!(Some(Cow::from("\u{C}")), arg.next());
     }
 
     #[test]
     fn should_escape_literal_unicode() {
-        let mut arg = ArgsParser::parse(r"\u{C}");
+        let mut arg = ArgsParser::new(r"\u{C}");
         assert_eq!(Some(Cow::from("\\u{C}")), arg.next());
     }
 
     #[test]
     fn should_unescape_args() {
         // 1f929: 🤩
-        let args = ArgsParser::parse(r#"'hello\u{1f929} world' '["hello", "\u{1f929}", "world"]'"#)
+        let args = ArgsParser::new(r#"'hello\u{1f929} world' '["hello", "\u{1f929}", "world"]'"#)
             .with_unescaping()
             .collect::<Vec<_>>();
 
