@@ -244,18 +244,14 @@ impl MappableCommand {
         match &self {
             Self::Typable { name, args, doc: _ } => {
                 if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
-                    let args = match Args::from_signature(args, command.signature.parse_mode) {
-                        Ok(args) => args,
-                        Err(err) => {
-                            cx.editor.set_error(err.to_string());
-                            return;
-                        }
-                    };
-
-                    if let Err(err) = command.ensure_signature(args.len()) {
-                        cx.editor.set_error(err.to_string());
-                        return;
-                    }
+                    let args =
+                        match Args::from_signature(command.name, &command.signature, args, true) {
+                            Ok(args) => args,
+                            Err(err) => {
+                                cx.editor.set_error(err.to_string());
+                                return;
+                            }
+                        };
 
                     let mut cx = compositor::Context {
                         editor: cx.editor,

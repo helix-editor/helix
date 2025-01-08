@@ -6,6 +6,7 @@ use crate::job::Job;
 
 use super::*;
 
+use helix_core::args::Signature;
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::{
@@ -24,61 +25,20 @@ pub struct TypableCommand {
     pub name: &'static str,
     pub aliases: &'static [&'static str],
     pub doc: &'static str,
-    pub signature: CommandSignature,
+    pub signature: Signature,
     // params, flags, helper, completer
     pub fun: fn(&mut compositor::Context, Args, PromptEvent) -> anyhow::Result<()>,
+    /// What completion methods, if any, does this command have?
+    completer: CommandCompleter,
 }
 
 impl TypableCommand {
     fn completer_for_argument_number(&self, n: usize) -> &Completer {
-        self.signature
-            .completer
+        self.completer
             .positional_args
             .get(n)
-            .unwrap_or(&self.signature.completer.var_args)
+            .unwrap_or(&self.completer.var_args)
     }
-
-    pub fn ensure_signature(&self, count: usize) -> anyhow::Result<()> {
-        match self.signature.positionals {
-            (0, Some(0)) => ensure!(count == 0, "`:{}` doesn't take any arguments", self.name),
-            (min, Some(max)) if min == max => ensure!(
-                (min..=max).contains(&count),
-                "`:{}` needs `{min}` argument{}, got {count}",
-                self.name,
-                if min > 1 { "'s" } else { "" }
-            ),
-            (min, Some(max)) if min == max => ensure!(
-                (min..=max).contains(&count),
-                "`:{}` needs at least `{min}` argument{} and at most `{max}`, got `{count}`",
-                self.name,
-                if min > 1 { "'s" } else { "" }
-            ),
-            (min, _) => ensure!(
-                (min..).contains(&count),
-                "`:{}` needs at least `{min}` argument{}",
-                self.name,
-                if min > 1 { "'s" } else { "" }
-            ),
-        }
-
-        Ok(())
-    }
-}
-
-#[derive(Clone)]
-pub struct CommandSignature {
-    /// The min-max of the amount of positional arguments a command accepts.
-    ///
-    /// - **0**: (0, Some(0))
-    /// - **0-1**: (0, Some(1))
-    /// - **1**: (1, Some(1))
-    /// - **1-10**: (1, Some(10))
-    /// - **Unbounded**: (0, None)
-    positionals: (usize, Option<usize>),
-    pub parse_mode: ParseMode,
-    // TODO: better description with that explains more about the kinds of completers
-    /// What completion methods, if any, does this command have?
-    completer: CommandCompleter,
 }
 
 #[derive(Clone)]
@@ -1853,9 +1813,9 @@ fn toggle_option(
         return Ok(());
     }
 
-    let mut parser = ArgsParser::from(&args[0]);
+    let mut args = ArgsParser::from(&args[0]);
 
-    let key = parser.next().unwrap();
+    let key = args.next().unwrap();
 
     let mut config = serde_json::json!(&*cx.editor.config());
     let pointer = format!("/{}", key.replace('.', "/"));
@@ -1867,42 +1827,36 @@ fn toggle_option(
         Value::Bool(ref value) => Value::Bool(!value),
         Value::String(ref value) => {
             ensure!(
-                // key + arguments
-                parser.clone().count() >= 3,
+                args.clone().count() >= 2,
                 "Bad arguments. For string configurations use: `:toggle key val1 val2 ...`",
             );
 
             Value::String(
-                parser
-                    .clone()
+                args.clone()
                     .skip_while(|e| e.as_ref() != value)
                     .nth(1)
-                    .map(|option| option)
-                    .unwrap_or_else(|| parser.next().unwrap())
+                    .unwrap_or_else(|| args.next().unwrap())
                     .to_string(),
             )
         }
         Value::Number(ref value) => {
             ensure!(
-                // key + arguments
-                parser.clone().count() >= 3,
+                args.clone().count() >= 2,
                 "Bad arguments. For number configurations use: `:toggle key val1 val2 ...`",
             );
 
             let value = value.to_string();
 
             Value::Number(
-                parser
-                    .clone()
+                args.clone()
                     .skip_while(|e| e.as_ref() != value)
                     .nth(1)
-                    .map(|option| option)
-                    .unwrap_or_else(|| parser.next().unwrap())
+                    .unwrap_or_else(|| args.next().unwrap())
                     .parse()?,
             )
         }
         Value::Array(value) => {
-            let mut lists = serde_json::Deserializer::from_str(parser.rest()).into_iter::<Value>();
+            let mut lists = serde_json::Deserializer::from_str(args.rest()).into_iter::<Value>();
 
             let (Some(first), Some(second)) =
                 (lists.next().transpose()?, lists.next().transpose()?)
@@ -2437,979 +2391,979 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "quit",
         aliases: &["q"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none(),
         },
         doc: "Close the current view.",
         fun: quit,
+        completer: CommandCompleter::none(),
     },
     TypableCommand {
         name: "quit!",
         aliases: &["q!"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
         },
         doc: "Force close the current view, ignoring unsaved changes.",
         fun: force_quit,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "open",
         aliases: &["o", "edit", "e"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (1, None),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::all(completers::filename)
         },
         doc: "Open a file from disk into the current view.",
         fun: open,
+        completer: CommandCompleter::all(completers::filename)
     },
     TypableCommand {
         name: "buffer-close",
         aliases: &["bc", "bclose"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::all(completers::buffer)
         },
         doc: "Close the current buffer.",
         fun: buffer_close,
+        completer: CommandCompleter::all(completers::buffer)
     },
     TypableCommand {
         name: "buffer-close!",
         aliases: &["bc!", "bclose!"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::all(completers::buffer)
         },
         doc: "Close the current buffer forcefully, ignoring unsaved changes.",
         fun: force_buffer_close,
+        completer: CommandCompleter::all(completers::buffer)
     },
     TypableCommand {
         name: "buffer-close-others",
         aliases: &["bco", "bcloseother"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
         },
         doc: "Close all buffers but the currently focused one.",
         fun: buffer_close_others,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "buffer-close-others!",
         aliases: &["bco!", "bcloseother!"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
         },
         doc: "Force close all buffers but the currently focused one.",
         fun: force_buffer_close_others,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "buffer-close-all",
         aliases: &["bca", "bcloseall"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
         },
         doc: "Close all buffers without quitting.",
         fun: buffer_close_all,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "buffer-close-all!",
         aliases: &["bca!", "bcloseall!"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
         },
         doc: "Force close all buffers ignoring unsaved changes without quitting.",
         fun: force_buffer_close_all,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "buffer-next",
         aliases: &["bn", "bnext"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
         },
         doc: "Goto next buffer.",
         fun: buffer_next,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "buffer-previous",
         aliases: &["bp", "bprev"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Goto previous buffer.",
         fun: buffer_previous,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "write",
         aliases: &["w"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::positional(&[completers::filename])
          },
         doc: "Write changes to disk. Accepts an optional path (:write some/path.txt)",
         fun: write,
+        completer: CommandCompleter::positional(&[completers::filename])
     },
     TypableCommand {
         name: "write!",
         aliases: &["w!"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::positional(&[completers::filename])
          },
         doc: "Force write changes to disk creating necessary subdirectories. Accepts an optional path (:write! some/path.txt)",
         fun: force_write,
+        completer: CommandCompleter::positional(&[completers::filename])
     },
     TypableCommand {
         name: "write-buffer-close",
         aliases: &["wbc"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::positional(&[completers::filename])
          },
         doc: "Write changes to disk and closes the buffer. Accepts an optional path (:write-buffer-close some/path.txt)",
         fun: write_buffer_close,
+        completer: CommandCompleter::positional(&[completers::filename])
     },
     TypableCommand {
         name: "write-buffer-close!",
         aliases: &["wbc!"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::positional(&[completers::filename])
          },
         doc: "Force write changes to disk creating necessary subdirectories and closes the buffer. Accepts an optional path (:write-buffer-close! some/path.txt)",
         fun: force_write_buffer_close,
+        completer: CommandCompleter::positional(&[completers::filename])
     },
     TypableCommand {
         name: "new",
         aliases: &["n"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Create a new scratch buffer.",
         fun: new_file,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "format",
         aliases: &["fmt"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Format the file using an external formatter or language server.",
         fun: format,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "indent-style",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Set the indentation style for editing. ('t' for tabs or 1-16 for number of spaces.)",
         fun: set_indent_style,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "line-ending",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         #[cfg(not(feature = "unicode-lines"))]
         doc: "Set the document's default line ending. Options: crlf, lf.",
         #[cfg(feature = "unicode-lines")]
         doc: "Set the document's default line ending. Options: crlf, lf, cr, ff, nel.",
         fun: set_line_ending,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "earlier",
         aliases: &["ear"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Jump back to an earlier point in edit history. Accepts a number of steps or a time span.",
         fun: earlier,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "later",
         aliases: &["lat"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Jump to a later point in edit history. Accepts a number of steps or a time span.",
         fun: later,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "write-quit",
         aliases: &["wq", "x"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::positional(&[completers::filename])
          },
         doc: "Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt)",
         fun: write_quit,
+        completer: CommandCompleter::positional(&[completers::filename])
     },
     TypableCommand {
         name: "write-quit!",
         aliases: &["wq!", "x!"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::positional(&[completers::filename])
          },
         doc: "Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt)",
         fun: force_write_quit,
+        completer: CommandCompleter::positional(&[completers::filename])
     },
     TypableCommand {
         name: "write-all",
         aliases: &["wa"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Write changes from all buffers to disk.",
         fun: write_all,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "write-all!",
         aliases: &["wa!"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Forcefully write changes from all buffers to disk creating necessary subdirectories.",
         fun: force_write_all,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "write-quit-all",
         aliases: &["wqa", "xa"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Write changes from all buffers to disk and close all views.",
         fun: write_all_quit,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "write-quit-all!",
         aliases: &["wqa!", "xa!"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Write changes from all buffers to disk and close all views forcefully (ignoring unsaved changes).",
         fun: force_write_all_quit,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "quit-all",
         aliases: &["qa"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Close all views.",
         fun: quit_all,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "quit-all!",
         aliases: &["qa!"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Force close all views ignoring unsaved changes.",
         fun: force_quit_all,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "cquit",
         aliases: &["cq"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
-             completer: CommandCompleter::none()
          },
         doc: "Quit with exit code (default 1). Accepts an optional integer exit code (:cq 2).",
         fun: cquit,
+         completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "cquit!",
         aliases: &["cq!"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Force quit with exit code (default 1) ignoring unsaved changes. Accepts an optional integer exit code (:cq! 2).",
         fun: force_cquit,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "theme",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::positional(&[completers::theme])
          },
         doc: "Change the editor theme (show current theme if no name specified).",
         fun: theme,
+        completer: CommandCompleter::positional(&[completers::theme])
     },
     TypableCommand {
         name: "yank-join",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Yank joined selections. A separator can be provided as first argument. Default value is newline.",
         fun: yank_joined,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "clipboard-yank",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Yank main selection into system clipboard.",
         fun: yank_main_selection_to_clipboard,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "clipboard-yank-join",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Yank joined selections into system clipboard. A separator can be provided as first argument. Default value is newline.", // FIXME: current UI can't display long doc.
         fun: yank_joined_to_clipboard,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "primary-clipboard-yank",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Yank main selection into system primary clipboard.",
         fun: yank_main_selection_to_primary_clipboard,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "primary-clipboard-yank-join",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Yank joined selections into system primary clipboard. A separator can be provided as first argument. Default value is newline.", // FIXME: current UI can't display long doc.
         fun: yank_joined_to_primary_clipboard,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "clipboard-paste-after",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Paste system clipboard after selections.",
         fun: paste_clipboard_after,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "clipboard-paste-before",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Paste system clipboard before selections.",
         fun: paste_clipboard_before,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "clipboard-paste-replace",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Replace selections with content of system clipboard.",
         fun: replace_selections_with_clipboard,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "primary-clipboard-paste-after",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Paste primary clipboard after selections.",
         fun: paste_primary_clipboard_after,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "primary-clipboard-paste-before",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Paste primary clipboard before selections.",
         fun: paste_primary_clipboard_before,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "primary-clipboard-paste-replace",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Replace selections with content of system primary clipboard.",
         fun: replace_selections_with_primary_clipboard,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "show-clipboard-provider",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Show clipboard provider name in status bar.",
         fun: show_clipboard_provider,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "change-current-directory",
         aliases: &["cd"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::positional(&[completers::directory])
          },
         doc: "Change the current working directory.",
         fun: change_current_directory,
+        completer: CommandCompleter::positional(&[completers::directory])
     },
     TypableCommand {
         name: "show-directory",
         aliases: &["pwd"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Show the current working directory.",
         fun: show_current_directory,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "encoding",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Set encoding. Based on `https://encoding.spec.whatwg.org`.",
         fun: set_encoding,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "character-info",
         aliases: &["char"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Get info about the character under the primary cursor.",
         fun: get_character_info,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "reload",
         aliases: &["rl"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Discard changes and reload from the source file.",
         fun: reload,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "reload-all",
         aliases: &["rla"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Discard changes and reload all documents from the source files.",
         fun: reload_all,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "update",
         aliases: &["u"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Write changes only if the file has been modified.",
         fun: update,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "lsp-workspace-command",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::positional(&[completers::lsp_workspace_command])
          },
         doc: "Open workspace command picker",
         fun: lsp_workspace_command,
+        completer: CommandCompleter::positional(&[completers::lsp_workspace_command])
     },
     TypableCommand {
         name: "lsp-restart",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Restarts the language servers used by the current doc",
         fun: lsp_restart,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "lsp-stop",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Stops the language servers that are used by the current doc",
         fun: lsp_stop,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "tree-sitter-scopes",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Display tree sitter scopes, primarily for theming and development.",
         fun: tree_sitter_scopes,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "tree-sitter-highlight-name",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Display name of tree-sitter highlight scope under the cursor.",
         fun: tree_sitter_highlight_name,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "debug-start",
         aliases: &["dbg"],
         // correct postitional ?
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, None),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Start a debug session from a given template with given parameters.",
         fun: debug_start,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "debug-remote",
         aliases: &["dbg-tcp"],
         // correct postitional ?
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, None),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Connect to a debug adapter by TCP address and start a debugging session from a given template with given parameters.",
         fun: debug_remote,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "debug-eval",
         aliases: &[],
         // correct postitional ?
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Evaluate expression in current debug context.",
         fun: debug_eval,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "vsplit",
         aliases: &["vs"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::all(completers::filename)
          },
         doc: "Open the file in a vertical split.",
         fun: vsplit,
+        completer: CommandCompleter::all(completers::filename)
     },
     TypableCommand {
         name: "vsplit-new",
         aliases: &["vnew"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Open a scratch buffer in a vertical split.",
         fun: vsplit_new,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "hsplit",
         aliases: &["hs", "sp"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::all(completers::filename)
          },
         doc: "Open the file in a horizontal split.",
         fun: hsplit,
+        completer: CommandCompleter::all(completers::filename)
     },
     TypableCommand {
         name: "hsplit-new",
         aliases: &["hnew"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Open a scratch buffer in a horizontal split.",
         fun: hsplit_new,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "tutor",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Open the tutorial.",
         fun: tutor,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "goto",
         aliases: &["g"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Goto line number.",
         fun: goto_line_number,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "set-language",
         aliases: &["lang"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::positional(&[completers::language])
          },
         doc: "Set the language of current buffer (show current language if no value specified).",
         fun: language,
+        completer: CommandCompleter::positional(&[completers::language])
     },
     TypableCommand {
         name: "set-option",
         aliases: &["set"],
         // TODO: Add support for completion of the options value(s), when appropriate.
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (2, Some(2)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::positional(&[completers::setting])
          },
         doc: "Set a config option at runtime.\nFor example to disable smart case search, use `:set search.smart-case false`.",
         fun: set_option,
+        completer: CommandCompleter::positional(&[completers::setting])
     },
     TypableCommand {
         name: "toggle-option",
         aliases: &["toggle"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (1, None),
-            parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::positional(&[completers::setting])
+            parse_mode: ParseMode::Literal,
          },
         // TODO: Not just blooleans
         doc: "Toggle a boolean config option at runtime.\nFor example to toggle smart case search, use `:toggle search.smart-case`.",
         fun: toggle_option,
+        completer: CommandCompleter::positional(&[completers::setting])
     },
     TypableCommand {
         name: "get-option",
         aliases: &["get"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::positional(&[completers::setting])
          },
         doc: "Get the current value of a config option.",
         fun: get_option,
+        completer: CommandCompleter::positional(&[completers::setting])
     },
     TypableCommand {
         name: "sort",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Sort ranges in selection.",
         fun: sort,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "rsort",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Sort ranges in selection in reverse order.",
         fun: sort_reverse,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "reflow",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Hard-wrap the current selection of lines to a given width.",
         fun: reflow,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "tree-sitter-subtree",
         aliases: &["ts-subtree"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Display the smallest tree-sitter subtree that spans the primary selection, primarily for debugging queries.",
         fun: tree_sitter_subtree,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "config-reload",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Refresh user config.",
         fun: refresh_config,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "config-open",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Open the user config.toml file.",
         fun: open_config,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "config-open-workspace",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Open the workspace config.toml file.",
         fun: open_workspace_config,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "log-open",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Open the helix log file.",
         fun: open_log,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "insert-output",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Literal,
-            completer: CommandCompleter::none()
          },
         doc: "Run shell command, inserting output before each selection.",
         fun: insert_output,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "append-output",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Literal,
-            completer: CommandCompleter::none()
          },
         doc: "Run shell command, appending output after each selection.",
         fun: append_output,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "pipe",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Literal,
-            completer: CommandCompleter::none()
          },
         doc: "Pipe each selection to the shell command.",
         fun: pipe,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "pipe-to",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Literal,
-            completer: CommandCompleter::none()
          },
         doc: "Pipe each selection to the shell command, ignoring output.",
         fun: pipe_to,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "run-shell-command",
         aliases: &["sh"],
         // TODO: Is this right? path completions?
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Literal,
-            completer: CommandCompleter::all(completers::filename)
          },
         doc: "Run a shell command",
         fun: run_shell_command,
+        completer: CommandCompleter::all(completers::filename)
     },
     TypableCommand {
         name: "reset-diff-change",
         aliases: &["diffget", "diffg"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Reset the diff change at the cursor position.",
         fun: reset_diff_change,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "clear-register",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::all(completers::register)
          },
         doc: "Clear given register. If no argument is provided, clear all registers.",
         fun: clear_register,
+        completer: CommandCompleter::all(completers::register)
     },
     TypableCommand {
         name: "redraw",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
          },
         doc: "Clear and re-render the whole UI",
         fun: redraw,
+        completer: CommandCompleter::none()
     },
     TypableCommand {
         name: "move",
         aliases: &["mv"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::positional(&[completers::filename])
          },
         doc: "Move the current buffer and its corresponding file to a different path",
         fun: move_buffer,
+        completer: CommandCompleter::positional(&[completers::filename])
     },
     TypableCommand {
         name: "yank-diagnostic",
         aliases: &[],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::all(completers::register)
          },
         doc: "Yank diagnostic(s) under primary cursor to register, or clipboard by default",
         fun: yank_diagnostic,
+        completer: CommandCompleter::all(completers::register),
     },
     TypableCommand {
         name: "read",
         aliases: &["r"],
-        signature: CommandSignature {
+        signature: Signature {
             positionals: (1, Some(1)),
             parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::positional(&[completers::filename])
          },
         doc: "Load a file into buffer",
         fun: read,
+        completer: CommandCompleter::positional(&[completers::filename]),
     },
 ];
 
@@ -3485,21 +3439,18 @@ pub(super) fn command_mode(cx: &mut Context) {
 
             // Handle typable commands
             if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(command) {
-                let args =
-                    match Args::from_signature(shellwords.args(), command.signature.parse_mode) {
-                        Ok(args) => args,
-                        Err(err) => {
-                            cx.editor.set_error(err.to_string());
-                            return;
-                        }
-                    };
-
-                if event == PromptEvent::Validate {
-                    if let Err(err) = command.ensure_signature(args.len()) {
+                let args = match Args::from_signature(
+                    command.name,
+                    &command.signature,
+                    shellwords.args(),
+                    event == PromptEvent::Validate,
+                ) {
+                    Ok(args) => args,
+                    Err(err) => {
                         cx.editor.set_error(err.to_string());
                         return;
                     }
-                }
+                };
 
                 if let Err(err) = (command.fun)(cx, args, event) {
                     cx.editor.set_error(format!("{err}"));

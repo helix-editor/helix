@@ -3,6 +3,8 @@ use std::{
     ops::{Index, RangeFrom},
 };
 
+use anyhow::ensure;
+
 use crate::shellwords::unescape;
 
 /// Represents different ways that arguments can be handled when parsing.
@@ -15,6 +17,45 @@ pub enum ParseMode {
     Parameters,
 }
 
+#[derive(Clone)]
+pub struct Signature {
+    /// The min-max of the amount of positional arguments a command accepts.
+    ///
+    /// - **0**: (0, Some(0))
+    /// - **0-1**: (0, Some(1))
+    /// - **1**: (1, Some(1))
+    /// - **1-10**: (1, Some(10))
+    /// - **Unbounded**: (0, None)
+    pub positionals: (usize, Option<usize>),
+    pub parse_mode: ParseMode,
+}
+
+pub fn ensure_signature(name: &str, signature: &Signature, count: usize) -> anyhow::Result<()> {
+    match signature.positionals {
+        (0, Some(0)) => ensure!(count == 0, "`:{}` doesn't take any arguments", name),
+        (min, Some(max)) if min == max => ensure!(
+            (min..=max).contains(&count),
+            "`:{}` needs `{min}` argument{}, got {count}",
+            name,
+            if min > 1 { "'s" } else { "" }
+        ),
+        (min, Some(max)) if min == max => ensure!(
+            (min..=max).contains(&count),
+            "`:{}` needs at least `{min}` argument{} and at most `{max}`, got `{count}`",
+            name,
+            if min > 1 { "'s" } else { "" }
+        ),
+        (min, _) => ensure!(
+            (min..).contains(&count),
+            "`:{}` needs at least `{min}` argument{}",
+            name,
+            if min > 1 { "'s" } else { "" }
+        ),
+    }
+
+    Ok(())
+}
+
 /// An abstraction for arguments that were passed in to a command.
 #[derive(Debug)]
 pub struct Args<'a> {
@@ -24,10 +65,15 @@ pub struct Args<'a> {
 impl<'a> Args<'a> {
     /// Creates an instance of `Args`, with behavior shaped from a signature.
     #[inline]
-    pub fn from_signature(args: &'a str, mode: ParseMode) -> anyhow::Result<Self> {
+    pub fn from_signature(
+        name: &str,
+        signature: &Signature,
+        args: &'a str,
+        validate: bool,
+    ) -> anyhow::Result<Self> {
         let positionals = ArgsParser::from(args);
 
-        let args = match mode {
+        let args = match signature.parse_mode {
             ParseMode::Literal => Args {
                 positionals: vec![unescape(args, false)],
                 // TODO: flags: flags,
@@ -40,6 +86,10 @@ impl<'a> Args<'a> {
                 // TODO: flags: flags,
             },
         };
+
+        if validate {
+            ensure_signature(name, signature, args.len())?;
+        }
 
         Ok(args)
     }
@@ -439,8 +489,13 @@ mod test {
     #[test]
     fn should_honor_parser_mode() {
         let parser = Args::from_signature(
+            "",
+            &Signature {
+                positionals: (0, None),
+                parse_mode: ParseMode::Parameters,
+            },
             r#"single_word twó wörds \\three\ \"with\ escaping\\"#,
-            ParseMode::Parameters,
+            true,
         )
         .unwrap();
 
