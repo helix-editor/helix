@@ -232,7 +232,7 @@ impl<'a, const U: bool, const UB: bool> ArgsParser<'a, U, UB> {
     ///
     /// # Examples
     /// ```
-    /// # use helix_core::shellwords::ArgsParser;
+    /// # use helix_core::args::ArgsParser;
     /// let args = ArgsParser::from(r#"sed -n "s/test t/not /p""#);
     /// assert_eq!(r#"sed -n "s/test t/not /p""#, args.raw());
     ///
@@ -248,7 +248,7 @@ impl<'a, const U: bool, const UB: bool> ArgsParser<'a, U, UB> {
     ///
     /// # Examples
     /// ```
-    /// # use helix_core::shellwords::ArgsParser;
+    /// # use helix_core::args::ArgsParser;
     /// let mut args = ArgsParser::from(r#"sed -n "s/test t/not /p""#);
     /// assert_eq!("sed", args.next().unwrap());
     /// assert_eq!(r#"-n "s/test t/not /p""#, args.rest());

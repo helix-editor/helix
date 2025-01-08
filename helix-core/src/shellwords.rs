@@ -29,7 +29,8 @@ use crate::args::ArgsParser;
 /// Arguments:
 ///
 /// ```
-/// # use helix_core::shellwords::{Shellwords, Args};
+/// # use helix_core::shellwords::Shellwords;
+/// # use helix_core::args::Args;
 ///
 /// let shellwords = Shellwords::from(":o a b c");
 /// let args = Args::from(shellwords.args());
