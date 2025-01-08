@@ -153,6 +153,7 @@ pub fn escape(input: Cow<str>) -> Cow<str> {
 /// - `\\'` is converted to `'` (single-quote)
 /// - `\\ ` is converted to ` ` (space)
 /// - `\\u{...}` is converted to the corresponding Unicode character
+/// - backticks are also converted the same as quotes.
 ///
 /// Other escape sequences, such as `\\` followed by any character not listed above, will remain unchanged.
 ///
