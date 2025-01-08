@@ -23,6 +23,7 @@ use crate::graphemes::{Grapheme, GraphemeStr};
 use crate::syntax::Highlight;
 use crate::text_annotations::TextAnnotations;
 use crate::{movement, Change, LineEnding, Position, Rope, RopeGraphemes, RopeSlice, Tendril};
+use helix_stdx::rope::RopeSliceExt;
 
 /// TODO make Highlight a u32 to reduce the size of this enum to a single word.
 #[derive(Debug, Clone, Copy)]
@@ -150,6 +151,7 @@ pub struct TextFormat {
     pub wrap_indicator_highlight: Option<Highlight>,
     pub viewport_width: u16,
     pub soft_wrap_at_text_width: bool,
+    pub continue_comments: Vec<String>,
 }
 
 // test implementation is basically only used for testing or when softwrap is always disabled
@@ -164,6 +166,7 @@ impl Default for TextFormat {
             viewport_width: 17,
             wrap_indicator_highlight: None,
             soft_wrap_at_text_width: false,
+            continue_comments: Vec::new(),
         }
     }
 }
@@ -434,8 +437,18 @@ impl<'t> DocumentFormatter<'t> {
 
     fn find_indent<'a>(&self, line: usize, doc: RopeSlice<'a>) -> RopeSlice<'a> {
         let line_start = doc.line_to_char(line);
-        let indent_end = movement::skip_while(doc, line_start, |ch| matches!(ch, ' ' | '\t'))
+        let mut indent_end = movement::skip_while(doc, line_start, |ch| matches!(ch, ' ' | '\t'))
             .unwrap_or(line_start);
+        let slice = doc.slice(indent_end..);
+        if let Some(token) = self
+            .text_fmt
+            .continue_comments
+            .iter()
+            .filter(|token| slice.starts_with(token))
+            .max_by_key(|x| x.len())
+        {
+            indent_end += token.chars().count();
+        }
         let indent_end = movement::skip_while(doc, indent_end, |ch| matches!(ch, ' ' | '\t'))
             .unwrap_or(indent_end);
         return doc.slice(line_start..indent_end);
