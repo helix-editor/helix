@@ -210,7 +210,7 @@ impl<'a> Args<'a> {
             }),
             ParseMode::Parameters => Ok(Self {
                 input,
-                positionals: args.with_unescaping().collect(),
+                positionals: args.with_unescaping().unescape_backslashes().collect(),
                 flags: __flags,
             }),
         }
