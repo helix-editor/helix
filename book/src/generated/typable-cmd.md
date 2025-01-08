@@ -11,7 +11,7 @@
 | `:buffer-close-all!`, `:bca!`, `:bcloseall!` | Force close all buffers ignoring unsaved changes without quitting. |
 | `:buffer-next`, `:bn`, `:bnext` | Goto next buffer. |
 | `:buffer-previous`, `:bp`, `:bprev` | Goto previous buffer. |
-| `:write`, `:w` | Write changes to disk. Accepts an optional path (:write some/path.txt) |
+| `:write`, `:w` | write the current buffer to its file or to <path> if specified |
 | `:write!`, `:w!` | Force write changes to disk creating necessary subdirectories. Accepts an optional path (:write! some/path.txt) |
 | `:write-buffer-close`, `:wbc` | Write changes to disk and closes the buffer. Accepts an optional path (:write-buffer-close some/path.txt) |
 | `:write-buffer-close!`, `:wbc!` | Force write changes to disk creating necessary subdirectories and closes the buffer. Accepts an optional path (:write-buffer-close! some/path.txt) |
@@ -69,8 +69,7 @@
 | `:set-option`, `:set` | Set a config option at runtime.<br>For example to disable smart case search, use `:set search.smart-case false`. |
 | `:toggle-option`, `:toggle` | Toggle a boolean config option at runtime.<br>For example to toggle smart case search, use `:toggle search.smart-case`. |
 | `:get-option`, `:get` | Get the current value of a config option. |
-| `:sort` | Sort ranges in selection. |
-| `:rsort` | Sort ranges in selection in reverse order. |
+| `:sort` | sort ranges in selection |
 | `:reflow` | Hard-wrap the current selection of lines to a given width. |
 | `:tree-sitter-subtree`, `:ts-subtree` | Display the smallest tree-sitter subtree that spans the primary selection, primarily for debugging queries. |
 | `:config-reload` | Refresh user config. |
@@ -83,7 +82,7 @@
 | `:pipe-to` | Pipe each selection to the shell command, ignoring output. |
 | `:run-shell-command`, `:sh` | Run a shell command |
 | `:reset-diff-change`, `:diffget`, `:diffg` | Reset the diff change at the cursor position. |
-| `:clear-register` | Clear given register. If no argument is provided, clear all registers. |
+| `:clear-register` | clear given register  |
 | `:redraw` | Clear and re-render the whole UI |
 | `:move`, `:mv` | Move the current buffer and its corresponding file to a different path |
 | `:yank-diagnostic` | Yank diagnostic(s) under primary cursor to register, or clipboard by default |
