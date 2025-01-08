@@ -1001,6 +1001,25 @@ mod test {
     }
 
     #[test]
+    fn should_error_on_unknown_flag() {
+        let shellwords = Shellwords::from(":w --foo");
+        let args = Args::from_signature(
+            shellwords.args(),
+            ParseMode::Parameters,
+            &[Flag {
+                long: "no-format",
+                short: None,
+                desc: "test",
+                accepts: None,
+                completer: None,
+            }],
+        );
+
+        assert_eq!(":w", shellwords.command());
+        assert!(args.is_err());
+    }
+
+    #[test]
     fn should_split_args_no_slash_unescaping() {
         let input = r#"single_word twó wörds \\three\ \"with\ escaping\\"#;
 
