@@ -64,14 +64,13 @@ impl TypableCommand {
 
 #[derive(Clone)]
 pub struct CommandSignature {
-    // TODO: flags: flags![],
-    /// The min-max of the about of arguments a command can take.
+    /// The min-max of the amount of positional arguments a command accepts.
     ///
     /// - **0**: (0, Some(0))
     /// - **0-1**: (0, Some(1))
     /// - **1**: (1, Some(1))
     /// - **1-10**: (1, Some(10))
-    /// - **Unbounded**: (1, None)
+    /// - **Unbounded**: (0, None)
     positionals: (usize, Option<usize>),
     pub parse_mode: ParseMode,
     // TODO: better description with that explains more about the kinds of completers
