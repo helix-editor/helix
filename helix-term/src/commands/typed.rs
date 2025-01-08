@@ -2123,21 +2123,9 @@ fn sort(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
     if event != PromptEvent::Validate {
         return Ok(());
     }
-    sort_impl(cx, args, false)
-}
 
-fn sort_reverse(
-    cx: &mut compositor::Context,
-    args: Args,
-    event: PromptEvent,
-) -> anyhow::Result<()> {
-    if event != PromptEvent::Validate {
-        return Ok(());
-    }
-    sort_impl(cx, args, true)
-}
+    let reverse = args.has_flag("reverse");
 
-fn sort_impl(cx: &mut compositor::Context, _args: Args, reverse: bool) -> anyhow::Result<()> {
     let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
     let text = doc.text().slice(..);
@@ -3565,7 +3553,15 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "sort",
         aliases: &[],
         signature: CommandSignature {
-            flags: &[],
+            flags: &[
+                Flag {
+                    long: "reverse",
+                    short: Some("r"),
+                    desc: "reverses sort order",
+                    accepts: None,
+                    completer: None,
+                }
+            ],
             accepts: None,
             positionals: (0, Some(0)),
             parse_mode: ParseMode::Parameters,
@@ -3573,19 +3569,6 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
          },
         doc: "Sort ranges in selection.",
         fun: sort,
-    },
-    TypableCommand {
-        name: "rsort",
-        aliases: &[],
-        signature: CommandSignature {
-            flags: &[],
-            accepts: None,
-            positionals: (0, Some(0)),
-            parse_mode: ParseMode::Parameters,
-            completer: CommandCompleter::none()
-         },
-        doc: "Sort ranges in selection in reverse order.",
-        fun: sort_reverse,
     },
     TypableCommand {
         name: "reflow",
