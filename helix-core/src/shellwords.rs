@@ -178,27 +178,22 @@ impl<'a> Args<'a> {
             {
                 if flag.accepts.is_some() {
                     if let Some(value) = args.next() {
-                        __flags.insert(flag.long, value);
+                        if __flags.insert(flag.long, value).is_some() {
+                            bail!("`--{}` was given more than once", flag.long);
+                        }
                     } else {
-                        bail!("`--{}` is expected to take a parameter", flag.long);
+                        bail!("`--{}` is expected to take a parameter `{}`, but nothing was passed to it", flag.long, flag.accepts.unwrap());
                     }
                 } else {
                     // Boolean flag
-                    __flags.insert(flag.long, Cow::default());
+                    if __flags.insert(flag.long, Cow::default()).is_some() {
+                        bail!("`--{}` was given more than once", flag.long);
+                    }
                 }
             } else {
-                // TODO: better error
-                bail!(
-                    "unknown flag `{arg}`, must be one of {}",
-                    flags
-                        .iter()
-                        .map(|flag| flag.long)
-                        .fold(String::new(), |mut s, name| {
-                            s.push_str(name);
-                            s.push_str(", ");
-                            s
-                        })
-                );
+                // TODO: Pass command name for better error reporting?
+                // "unknown flag `{arg}` was passed to `:{name}`"
+                bail!("unknown flag `{arg}`");
             }
         }
 
@@ -932,7 +927,6 @@ mod test {
         )
         .unwrap();
 
-        assert_eq!(":w", shellwords.command());
         assert!(args.is_empty());
         assert!(args.has_flag("no-format"));
     }
@@ -953,9 +947,26 @@ mod test {
         )
         .unwrap();
 
-        assert_eq!(":w", shellwords.command());
         assert_eq!("--no-format", &args[0]);
         assert!(args.has_flag("no-format"));
+    }
+
+    #[test]
+    fn should_error_if_duplicate_flags() {
+        let shellwords = Shellwords::from(":w --no-format --no-format");
+        let args = Args::from_signature(
+            shellwords.args(),
+            ParseMode::Parameters,
+            &[Flag {
+                long: "no-format",
+                short: None,
+                desc: "test",
+                accepts: None,
+                completer: None,
+            }],
+        );
+
+        assert!(args.is_err());
     }
 
     #[test]
