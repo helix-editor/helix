@@ -51,8 +51,6 @@ encoding_rs = "0.8"
 
 chrono = { version = "0.4", default-features = false, features = ["alloc", "std"] }
 
-textwrap = "0.16.2"
-
 nucleo.workspace = true
 parking_lot.workspace = true
 globset.workspace = true

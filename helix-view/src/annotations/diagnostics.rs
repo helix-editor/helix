@@ -96,7 +96,7 @@ impl InlineDiagnosticsConfig {
         TextFormat {
             soft_wrap: true,
             tab_width: 4,
-            max_wrap: self.max_wrap.min(width / 4),
+            max_wrap: Some(self.max_wrap.min(width / 4)),
             max_indent_retain: 0,
             wrap_indicator: "".into(),
             wrap_indicator_highlight: None,
