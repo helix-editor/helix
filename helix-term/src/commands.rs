@@ -15,6 +15,7 @@ use tui::text::Span;
 pub use typed::*;
 
 use helix_core::{
+    args::Args,
     char_idx_at_visual_offset,
     chars::char_is_word,
     comment,
@@ -30,9 +31,7 @@ use helix_core::{
     object, pos_at_coords,
     regex::{self, Regex},
     search::{self, CharMatcher},
-    selection,
-    shellwords::{self, Args},
-    surround,
+    selection, surround,
     syntax::{BlockCommentToken, LanguageServerFeature},
     text_annotations::{Overlay, TextAnnotations},
     textobject,

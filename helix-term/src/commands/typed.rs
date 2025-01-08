@@ -8,12 +8,15 @@ use super::*;
 
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
-use helix_core::{line_ending, shellwords::Shellwords};
+use helix_core::{
+    args::{Args, ArgsParser, ParseMode},
+    line_ending,
+    shellwords::Shellwords,
+};
 use helix_stdx::path::home_dir;
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
 use serde_json::Value;
-use shellwords::{Args, ParseMode};
 use ui::completers::{self, Completer};
 
 #[derive(Clone)]
@@ -1801,17 +1804,10 @@ fn set_option(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
         return Ok(());
     }
 
-    let mut parser = args.raw_parser();
+    let mut parser = ArgsParser::from(&args[0]);
 
-    let Some(key) = parser.next().map(|arg| arg.to_lowercase()) else {
-        anyhow::bail!("Bad arguments. Usage: `:set key field`, didn't provide `key`");
-    };
-
+    let key = parser.next().map(|arg| arg.to_lowercase()).unwrap();
     let field = parser.rest();
-
-    if field.is_empty() {
-        anyhow::bail!("Bad arguments. Usage: `:set key field`, didn't provide `field`");
-    }
 
     let mut config = serde_json::json!(&*cx.editor.config());
     let pointer = format!("/{}", key.replace('.', "/"));
@@ -1857,11 +1853,9 @@ fn toggle_option(
         return Ok(());
     }
 
-    if args.is_empty() {
-        anyhow::bail!("Bad arguments. Usage: `:toggle key [values]?`");
-    }
+    let mut parser = ArgsParser::from(&args[0]);
 
-    let key = args[0].to_lowercase();
+    let key = parser.next().unwrap();
 
     let mut config = serde_json::json!(&*cx.editor.config());
     let pointer = format!("/{}", key.replace('.', "/"));
@@ -1870,52 +1864,44 @@ fn toggle_option(
         .ok_or_else(|| anyhow::anyhow!("Unknown key `{}`", key))?;
 
     *value = match value {
-        Value::Bool(ref value) => {
-            ensure!(
-                args.get(1).is_none(),
-                "Bad arguments. For boolean configurations use: `:toggle key`"
-            );
-            Value::Bool(!value)
-        }
+        Value::Bool(ref value) => Value::Bool(!value),
         Value::String(ref value) => {
             ensure!(
                 // key + arguments
-                args.len() >= 3,
+                parser.clone().count() >= 3,
                 "Bad arguments. For string configurations use: `:toggle key val1 val2 ...`",
             );
 
             Value::String(
-                args[1..]
-                    .iter()
+                parser
+                    .clone()
                     .skip_while(|e| e.as_ref() != value)
                     .nth(1)
-                    .map(|option| option.as_ref())
-                    .unwrap_or_else(|| args.get(1).unwrap())
+                    .map(|option| option)
+                    .unwrap_or_else(|| parser.next().unwrap())
                     .to_string(),
             )
         }
         Value::Number(ref value) => {
             ensure!(
                 // key + arguments
-                args.len() >= 3,
+                parser.clone().count() >= 3,
                 "Bad arguments. For number configurations use: `:toggle key val1 val2 ...`",
             );
 
             let value = value.to_string();
 
             Value::Number(
-                args.iter()
+                parser
+                    .clone()
                     .skip_while(|e| e.as_ref() != value)
                     .nth(1)
-                    .map(|option| option.as_ref())
-                    .unwrap_or_else(|| args.get(1).unwrap())
+                    .map(|option| option)
+                    .unwrap_or_else(|| parser.next().unwrap())
                     .parse()?,
             )
         }
         Value::Array(value) => {
-            let mut parser = args.raw_parser();
-            parser.next();
-
             let mut lists = serde_json::Deserializer::from_str(parser.rest()).into_iter::<Value>();
 
             let (Some(first), Some(second)) =
@@ -3470,7 +3456,7 @@ pub(super) fn command_mode(cx: &mut Context) {
                         completer(editor, word)
                             .into_iter()
                             .map(|(range, mut file)| {
-                                file.content = shellwords::escape(file.content);
+                                file.content = helix_core::shellwords::escape(file.content);
 
                                 // offset ranges to input
                                 let offset = input.len() - len;
