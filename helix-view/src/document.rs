@@ -2221,6 +2221,7 @@ impl Document {
                 .and_then(|theme| theme.find_scope_index("ui.virtual.wrap"))
                 .map(Highlight),
             soft_wrap_at_text_width,
+            continue_comments: Vec::new(),
         }
     }
 
