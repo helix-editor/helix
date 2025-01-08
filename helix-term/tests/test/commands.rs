@@ -859,6 +859,61 @@ bla]#",
     .await?;
 
     test((
+        "// #[|This is a really long comment that we want to break onto multiple lines.]#",
+        ":lang rust<ret>:reflow 13<ret>",
+        "// #[|This is a
+// really long
+// comment that
+// we want to
+// break onto
+// multiple
+// lines.]#",
+    ))
+    .await?;
+
+    test((
+        "#[\t// Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod
+\t// tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim
+\t// veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea
+\t// commodo consequat. Duis aute irure dolor in reprehenderit in voluptate
+\t// velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint
+\t// occaecat cupidatat non proident, sunt in culpa qui officia deserunt
+\t// mollit anim id est laborum.
+|]#",
+        ":lang go<ret>:reflow 50<ret>",
+        "#[\t// Lorem ipsum dolor sit amet,
+\t// consectetur adipiscing elit, sed do
+\t// eiusmod
+\t// tempor incididunt ut labore et dolore
+\t// magna aliqua. Ut enim ad minim
+\t// veniam, quis nostrud exercitation
+\t// ullamco laboris nisi ut aliquip ex ea
+\t// commodo consequat. Duis aute irure
+\t// dolor in reprehenderit in voluptate
+\t// velit esse cillum dolore eu fugiat
+\t// nulla pariatur. Excepteur sint
+\t// occaecat cupidatat non proident, sunt
+\t// in culpa qui officia deserunt
+\t// mollit anim id est laborum.
+|]#",
+    ))
+    .await?;
+
+    test((
+        "    // #[|This document has multiple lines that each need wrapping
+
+    /// currently we wrap each line completely separately in order to preserve existing newlines.]#",
+        ":lang rust<ret>:reflow 40<ret>",
+        "    // #[|This document has multiple lines
+    // that each need wrapping
+
+    /// currently we wrap each line
+    /// completely separately in order to
+    /// preserve existing newlines.]#"
+    ))
+    .await?;
+
+    test((
         "#[|Very_long_words_should_not_be_broken_by_hard_wrap]#",
         ":reflow 2<ret>",
         "#[|Very_long_words_should_not_be_broken_by_hard_wrap]#",

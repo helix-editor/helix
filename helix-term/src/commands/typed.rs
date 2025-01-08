@@ -2174,6 +2174,11 @@ fn reflow(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
         wrap_indicator_highlight: None,
         viewport_width: u16::try_from(text_width).unwrap_or(u16::MAX),
         soft_wrap_at_text_width: true,
+        continue_comments: Vec::from(
+            doc.language_config()
+                .and_then(|config| config.comment_tokens.as_deref())
+                .unwrap_or(&[]),
+        ),
     };
     let annotations = TextAnnotations::default();
 
