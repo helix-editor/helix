@@ -80,8 +80,6 @@ fn quit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
         return Ok(());
     }
 
-    ensure!(args.is_empty(), ":quit takes no arguments");
-
     // last view and we have unsaved changes
     if cx.editor.tree.views().count() == 1 {
         buffers_remaining_impl(cx.editor)?;
@@ -98,8 +96,6 @@ fn force_quit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
         return Ok(());
     }
 
-    ensure!(args.is_empty(), ":quit! takes no arguments");
-
     cx.block_try_flush_writes()?;
     cx.editor.close(view!(cx.editor).id);
 
@@ -110,8 +106,6 @@ fn open(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
-    ensure!(!args.is_empty(), ":open needs at least one argument");
 
     for arg in args {
         let (path, pos) = args::parse_file(&arg);
@@ -1709,8 +1703,6 @@ pub(super) fn goto_line_number(
     match event {
         PromptEvent::Abort => abort_goto_line_number_preview(cx),
         PromptEvent::Validate => {
-            ensure!(!args.is_empty(), "Line number required");
-
             // If we are invoked directly via a keybinding, Validate is
             // sent without any prior Update events. Ensure the cursor
             // is moved to the appropriate location.
@@ -2112,7 +2104,6 @@ fn append_output(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-    ensure!(!args.is_empty(), "Shell command required");
     shell(cx, &args[0], &ShellBehavior::Append);
     Ok(())
 }
@@ -2125,7 +2116,6 @@ fn insert_output(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-    ensure!(!args.is_empty(), "Shell command required");
     shell(cx, &args[0], &ShellBehavior::Insert);
     Ok(())
 }
@@ -2147,7 +2137,6 @@ fn pipe_impl(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-    ensure!(!args.is_empty(), "Shell command required");
     shell(cx, &args[0], behavior);
     Ok(())
 }
@@ -2197,7 +2186,6 @@ fn reset_diff_change(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-    ensure!(args.is_empty(), ":reset-diff-change takes no arguments");
 
     let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
@@ -2249,8 +2237,6 @@ fn clear_register(
         return Ok(());
     }
 
-    ensure!(args.len() <= 1, ":clear-register takes at most 1 argument");
-
     if args.is_empty() {
         cx.editor.registers.clear();
         cx.editor.set_status("All registers cleared");
@@ -2297,8 +2283,6 @@ fn move_buffer(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
-    ensure!(args.len() == 1, format!(":move takes one argument"));
 
     let old_path = doc!(cx.editor)
         .path()
@@ -2360,9 +2344,6 @@ fn read(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
 
     let scrolloff = cx.editor.config().scrolloff;
     let (view, doc) = current!(cx.editor);
-
-    ensure!(!args.is_empty(), "file name is expected");
-    ensure!(args.len() == 1, "only the file name is expected");
 
     let path =
         helix_stdx::path::expand_tilde(Path::new(args.first().map(|path| path.as_ref()).unwrap()));
