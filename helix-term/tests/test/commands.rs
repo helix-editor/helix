@@ -820,3 +820,39 @@ async fn macro_play_within_macro_record() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_reflow() -> anyhow::Result<()> {
+    test((
+        "#[|This is a long line bla bla bla]#",
+        ":reflow 5<ret>",
+        "#[|This
+is a
+long
+line
+bla
+bla
+bla]#",
+    ))
+    .await?;
+
+    test((
+        "#[|Very_long_words_should_not_be_broken_by_hard_wrap]#",
+        ":reflow 2<ret>",
+        "#[|Very_long_words_should_not_be_broken_by_hard_wrap]#",
+    ))
+    .await?;
+
+    test((
+        "#[|Spaces             are           removed           when          wrapping]#",
+        ":reflow 2<ret>",
+        "#[|Spaces
+are
+removed
+when
+wrapping]#",
+    ))
+    .await?;
+
+    Ok(())
+}
