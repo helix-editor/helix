@@ -369,7 +369,7 @@ fn buffer_previous(
 
 fn write_impl(
     cx: &mut compositor::Context,
-    path: Option<&Cow<'_, str>>,
+    path: Option<&Cow<str>>,
     force: bool,
 ) -> anyhow::Result<()> {
     let config = cx.editor.config();
