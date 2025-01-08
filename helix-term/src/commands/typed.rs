@@ -63,11 +63,10 @@ impl TypableCommand {
 
     fn prompt(&self) -> String {
         // EXAMPLE:
-        // write [<flags>] <path>: write the current buffer to its file.
+        // write [<flags>] <path>: write the current buffer to its file or to the specified path.
         //
         // aliases:
         //     w
-        //     wa -> write --all
         // flags:
         //     --no-format        exclude formatting operation when saving.
         let mut prompt = String::new();
@@ -2725,7 +2724,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::positional(&[completers::filename])
          },
-        doc: "Write changes to disk. Accepts an optional path (:write some/path.txt)",
+        doc: "write the current buffer to its file or to <path> if specified",
         fun: write,
     },
     TypableCommand {
@@ -3567,7 +3566,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::none()
          },
-        doc: "Sort ranges in selection.",
+        doc: "sort ranges in selection",
         fun: sort,
     },
     TypableCommand {
@@ -3745,7 +3744,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             parse_mode: ParseMode::Parameters,
             completer: CommandCompleter::all(completers::register)
          },
-        doc: "Clear given register. If no argument is provided, clear all registers.",
+        doc: "clear given register ",
         fun: clear_register,
     },
     TypableCommand {
