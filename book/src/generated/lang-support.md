@@ -23,6 +23,7 @@
 | circom | ✓ |  |  | `circom-lsp` |
 | clojure | ✓ |  |  | `clojure-lsp` |
 | cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
+| codeql | ✓ | ✓ |  |  |
 | comment | ✓ |  |  |  |
 | common-lisp | ✓ |  | ✓ | `cl-lsp` |
 | cpon | ✓ |  | ✓ |  |
