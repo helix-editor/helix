@@ -2425,13 +2425,13 @@ fn clear_register(
         return Ok(());
     }
 
-    ensure!(args.len() <= 1, ":clear-register takes at most 1 argument");
-
-    if args.is_empty() {
+    if args.has_flag("all") {
         cx.editor.registers.clear();
         cx.editor.set_status("All registers cleared");
         return Ok(());
     }
+
+    ensure!(args.len() <= 1, ":clear-register takes at most 1 argument");
 
     let register = args.first().unwrap();
 
@@ -3731,7 +3731,15 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "clear-register",
         aliases: &[],
         signature: CommandSignature {
-            flags: &[],
+            flags: &[
+                Flag {
+                    long: "all",
+                    short: Some("a"),
+                    desc: "clears all registers",
+                    accepts: None,
+                    completer: None,
+                }
+            ],
             accepts: Some("<register>"),
             positionals: (0, Some(1)),
             parse_mode: ParseMode::Parameters,
