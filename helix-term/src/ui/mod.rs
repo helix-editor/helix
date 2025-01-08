@@ -303,11 +303,11 @@ pub fn file_browser(root: PathBuf, editor: &Editor) -> Result<FileBrowser, std::
         (root, directory_style),
         move |cx, (path, is_dir): &(PathBuf, bool), action| {
             if *is_dir {
-                let owned_path = path.clone();
+                let new_root = helix_stdx::path::normalize(path);
                 let callback = Box::pin(async move {
                     let call: Callback =
                         Callback::EditorCompositor(Box::new(move |editor, compositor| {
-                            if let Ok(picker) = file_browser(owned_path, editor) {
+                            if let Ok(picker) = file_browser(new_root, editor) {
                                 compositor.push(Box::new(overlay::overlaid(picker)));
                             }
                         }));
