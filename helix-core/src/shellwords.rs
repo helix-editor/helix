@@ -227,29 +227,9 @@ impl<'a> Args<'a> {
 }
 
 // NOTE: When created with `from`, none but the most basic unescaping happens.
-impl<'a> From<&'a String> for Args<'a> {
-    #[inline]
-    fn from(args: &'a String) -> Self {
-        Args {
-            input: args,
-            positionals: ArgsParser::from(args).collect(),
-        }
-    }
-}
-
 impl<'a> From<&'a str> for Args<'a> {
     #[inline]
     fn from(args: &'a str) -> Self {
-        Args {
-            input: args,
-            positionals: ArgsParser::from(args).collect(),
-        }
-    }
-}
-
-impl<'a> From<&'a Cow<'_, str>> for Args<'a> {
-    #[inline]
-    fn from(args: &'a Cow<str>) -> Self {
         Args {
             input: args,
             positionals: ArgsParser::from(args).collect(),
@@ -577,23 +557,9 @@ impl<'a, const U: bool, const UB: bool> Iterator for ArgsParser<'a, U, UB> {
     }
 }
 
-impl<'a> From<&'a String> for ArgsParser<'a, false, false> {
-    #[inline]
-    fn from(args: &'a String) -> Self {
-        ArgsParser::parse(args)
-    }
-}
-
 impl<'a> From<&'a str> for ArgsParser<'a, false, false> {
     #[inline]
     fn from(args: &'a str) -> Self {
-        ArgsParser::parse(args)
-    }
-}
-
-impl<'a> From<&'a Cow<'_, str>> for ArgsParser<'a, false, false> {
-    #[inline]
-    fn from(args: &'a Cow<str>) -> Self {
         ArgsParser::parse(args)
     }
 }
