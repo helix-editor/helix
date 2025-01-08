@@ -160,7 +160,10 @@ impl<'a> Args<'a> {
             },
             ParseMode::Parameters => Args {
                 input: args,
-                positionals: positionals.with_unescaping().collect(),
+                positionals: positionals
+                    .with_unescaping()
+                    .unescape_backslashes()
+                    .collect(),
                 // TODO: flags: flags,
             },
         };
@@ -203,7 +206,7 @@ impl<'a> Args<'a> {
     /// For cases that need special handling, this could function as an
     /// escape hatch to further control the process of parsing out arguments and flags.
     #[inline]
-    pub fn raw_parser(&self) -> ArgsParser<'_> {
+    pub fn raw_parser(&self) -> ArgsParser<'_, false, false> {
         ArgsParser::from(self.input)
     }
 
@@ -320,30 +323,15 @@ impl<'a> Index<RangeFrom<usize>> for Args<'a> {
 ///
 /// Splits on whitespace, but respects quoted substrings (using double quotes, single quotes, or backticks).
 #[derive(Debug, Clone)]
-pub struct ArgsParser<'a> {
+pub struct ArgsParser<'a, const U: bool, const UB: bool> {
     input: &'a str,
     idx: usize,
     start: usize,
     unescape: bool,
+    unescape_blackslash: bool,
 }
 
-impl<'a> ArgsParser<'a> {
-    #[inline]
-    const fn parse(input: &'a str) -> Self {
-        Self {
-            input,
-            idx: 0,
-            start: 0,
-            unescape: false,
-        }
-    }
-
-    #[inline]
-    const fn with_unescaping(mut self) -> Self {
-        self.unescape = true;
-        self
-    }
-
+impl<'a, const U: bool, const UB: bool> ArgsParser<'a, U, UB> {
     #[inline]
     pub const fn is_empty(&self) -> bool {
         self.input.is_empty()
@@ -392,7 +380,46 @@ impl<'a> ArgsParser<'a> {
     }
 }
 
-impl<'a> Iterator for ArgsParser<'a> {
+impl<'a> ArgsParser<'a, false, false> {
+    #[inline]
+    const fn parse(input: &'a str) -> ArgsParser<'a, false, false> {
+        ArgsParser::<'a, false, false> {
+            input,
+            idx: 0,
+            start: 0,
+            unescape: false,
+            unescape_blackslash: false,
+        }
+    }
+
+    #[inline]
+    #[must_use]
+    pub const fn with_unescaping(self) -> ArgsParser<'a, true, false> {
+        ArgsParser::<'a, true, false> {
+            input: self.input,
+            idx: self.idx,
+            start: self.start,
+            unescape: true,
+            unescape_blackslash: self.unescape_blackslash,
+        }
+    }
+}
+
+impl<'a> ArgsParser<'a, true, false> {
+    #[inline]
+    #[must_use]
+    pub const fn unescape_backslashes(self) -> ArgsParser<'a, true, true> {
+        ArgsParser::<'a, true, true> {
+            input: self.input,
+            idx: self.idx,
+            start: self.start,
+            unescape: self.unescape,
+            unescape_blackslash: true,
+        }
+    }
+}
+
+impl<'a, const U: bool, const UB: bool> Iterator for ArgsParser<'a, U, UB> {
     type Item = Cow<'a, str>;
 
     #[inline]
@@ -550,21 +577,21 @@ impl<'a> Iterator for ArgsParser<'a> {
     }
 }
 
-impl<'a> From<&'a String> for ArgsParser<'a> {
+impl<'a> From<&'a String> for ArgsParser<'a, false, false> {
     #[inline]
     fn from(args: &'a String) -> Self {
         ArgsParser::parse(args)
     }
 }
 
-impl<'a> From<&'a str> for ArgsParser<'a> {
+impl<'a> From<&'a str> for ArgsParser<'a, false, false> {
     #[inline]
     fn from(args: &'a str) -> Self {
         ArgsParser::parse(args)
     }
 }
 
-impl<'a> From<&'a Cow<'_, str>> for ArgsParser<'a> {
+impl<'a> From<&'a Cow<'_, str>> for ArgsParser<'a, false, false> {
     #[inline]
     fn from(args: &'a Cow<str>) -> Self {
         ArgsParser::parse(args)
