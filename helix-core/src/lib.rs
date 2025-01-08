@@ -32,7 +32,6 @@ pub mod text_annotations;
 pub mod textobject;
 mod transaction;
 pub mod uri;
-pub mod wrap;
 
 pub mod unicode {
     pub use unicode_general_category as category;

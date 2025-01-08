@@ -24,7 +24,7 @@ use helix_stdx::rope::{RopeGraphemes, RopeSliceExt};
 use crate::graphemes::{Grapheme, GraphemeStr};
 use crate::syntax::Highlight;
 use crate::text_annotations::TextAnnotations;
-use crate::{Position, RopeSlice};
+use crate::{movement, Change, LineEnding, Position, Rope, RopeSlice, Tendril};
 
 /// TODO make Highlight a u32 to reduce the size of this enum to a single word.
 #[derive(Debug, Clone, Copy)]
@@ -146,7 +146,7 @@ impl<'a> GraphemeWithSource<'a> {
 pub struct TextFormat {
     pub soft_wrap: bool,
     pub tab_width: u16,
-    pub max_wrap: u16,
+    pub max_wrap: Option<u16>,
     pub max_indent_retain: u16,
     pub wrap_indicator: Box<str>,
     pub wrap_indicator_highlight: Option<Highlight>,
@@ -160,7 +160,7 @@ impl Default for TextFormat {
         TextFormat {
             soft_wrap: false,
             tab_width: 4,
-            max_wrap: 3,
+            max_wrap: Some(3),
             max_indent_retain: 4,
             wrap_indicator: Box::from(" "),
             viewport_width: 17,
@@ -386,16 +386,22 @@ impl<'t> DocumentFormatter<'t> {
                             .peek_grapheme(col, char_pos)
                             .is_some_and(|grapheme| grapheme.is_newline() || grapheme.is_eof()) => {
                 }
-                Ordering::Equal if word_width > self.text_fmt.max_wrap as usize => return,
-                Ordering::Greater if word_width > self.text_fmt.max_wrap as usize => {
+                Ordering::Equal
+                    if word_width > self.text_fmt.max_wrap.map_or(usize::MAX, usize::from) =>
+                {
+                    return;
+                }
+                Ordering::Greater
+                    if word_width > self.text_fmt.max_wrap.map_or(usize::MAX, usize::from) =>
+                {
                     self.peeked_grapheme = self.word_buf.pop();
                     return;
                 }
-                Ordering::Equal | Ordering::Greater => {
+                Ordering::Equal | Ordering::Greater if self.visual_pos.col > 0 => {
                     word_width = self.wrap_word();
                     col = self.visual_pos.col + word_width;
                 }
-                Ordering::Less => (),
+                _ => (),
             }
 
             let Some(grapheme) = self.next_grapheme(col, char_pos) else {
@@ -427,6 +433,47 @@ impl<'t> DocumentFormatter<'t> {
     /// returns the visual position at the end of the last yielded grapheme
     pub fn next_visual_pos(&self) -> Position {
         self.visual_pos
+    }
+
+    fn find_indent<'a>(&self, line: usize, doc: RopeSlice<'a>) -> RopeSlice<'a> {
+        let line_start = doc.line_to_char(line);
+        let indent_end = movement::skip_while(doc, line_start, |ch| matches!(ch, ' ' | '\t'))
+            .unwrap_or(line_start);
+        let indent_end = movement::skip_while(doc, indent_end, |ch| matches!(ch, ' ' | '\t'))
+            .unwrap_or(indent_end);
+        return doc.slice(line_start..indent_end);
+    }
+
+    /// consumes the iterator and hard-wraps the input where soft wraps would
+    /// have been applied. It probably only makes sense to call this method if
+    /// soft_wrap is true.
+    pub fn reflow(&mut self, doc: &Rope, line_ending: LineEnding) -> Vec<Change> {
+        let slice = doc.slice(..);
+        let mut current_line = self.visual_pos.row;
+        let mut changes = Vec::new();
+        while let Some(grapheme) = self.next() {
+            if !grapheme.is_whitespace() && grapheme.visual_pos.row != current_line {
+                let indent = Tendril::from(format!(
+                    "{}{}",
+                    line_ending.as_str(),
+                    self.find_indent(doc.char_to_line(grapheme.char_idx - 1), slice)
+                ));
+                let mut whitespace_start = grapheme.char_idx;
+                let mut whitespace_end = grapheme.char_idx;
+                while whitespace_start > 0 && slice.char(whitespace_start - 1) == ' ' {
+                    whitespace_start -= 1;
+                }
+                while whitespace_end < slice.chars().len() && slice.char(whitespace_end) == ' ' {
+                    whitespace_end += 1;
+                }
+                changes.push((whitespace_start, whitespace_end, Some(indent)));
+                current_line = grapheme.visual_pos.row;
+            }
+            if grapheme.raw == Grapheme::Newline {
+                current_line += 1;
+            }
+        }
+        changes
     }
 }
 

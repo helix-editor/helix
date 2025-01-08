@@ -6,7 +6,7 @@ impl TextFormat {
         TextFormat {
             soft_wrap: softwrap,
             tab_width: 2,
-            max_wrap: 3,
+            max_wrap: Some(3),
             max_indent_retain: 4,
             wrap_indicator: ".".into(),
             wrap_indicator_highlight: None,
