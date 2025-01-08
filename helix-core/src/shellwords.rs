@@ -1,5 +1,5 @@
 use ahash::{HashMap, HashMapExt};
-use anyhow::bail;
+use anyhow::{bail, Context};
 use smartstring::{LazyCompact, SmartString};
 use std::{
     borrow::Cow,
@@ -823,49 +823,113 @@ impl<'a> FlagValue<'a> for std::path::PathBuf {
 
 impl FlagValue<'_> for i8 {
     fn from_str(value: &str) -> anyhow::Result<Self> {
-        Ok(value.parse()?)
+        value
+            .parse()
+            .with_context(|| format!("failed to convert `{value}` to `i8`"))
     }
 }
 
 impl FlagValue<'_> for u8 {
     fn from_str(value: &str) -> anyhow::Result<Self> {
-        Ok(value.parse()?)
+        value
+            .parse()
+            .with_context(|| format!("failed to convert `{value}` to `u8`"))
+    }
+}
+
+impl FlagValue<'_> for i16 {
+    fn from_str(value: &str) -> anyhow::Result<Self> {
+        value
+            .parse()
+            .with_context(|| format!("failed to convert `{value}` to `i16`"))
+    }
+}
+
+impl FlagValue<'_> for u16 {
+    fn from_str(value: &str) -> anyhow::Result<Self> {
+        value
+            .parse()
+            .with_context(|| format!("failed to convert `{value}` to `u16`"))
     }
 }
 
 impl FlagValue<'_> for i32 {
     fn from_str(value: &str) -> anyhow::Result<Self> {
-        Ok(value.parse()?)
+        value
+            .parse()
+            .with_context(|| format!("failed to convert `{value}` to `i32`"))
     }
 }
 
 impl FlagValue<'_> for u32 {
     fn from_str(value: &str) -> anyhow::Result<Self> {
-        Ok(value.parse()?)
+        value
+            .parse()
+            .with_context(|| format!("failed to convert `{value}` to `u32`"))
     }
 }
 
 impl FlagValue<'_> for i64 {
     fn from_str(value: &str) -> anyhow::Result<Self> {
-        Ok(value.parse()?)
+        value
+            .parse()
+            .with_context(|| format!("failed to convert `{value}` to `i64`"))
     }
 }
 
 impl FlagValue<'_> for u64 {
     fn from_str(value: &str) -> anyhow::Result<Self> {
-        Ok(value.parse()?)
+        value
+            .parse()
+            .with_context(|| format!("failed to convert `{value}` to `u64`"))
     }
 }
 
 impl FlagValue<'_> for i128 {
     fn from_str(value: &str) -> anyhow::Result<Self> {
-        Ok(value.parse()?)
+        value
+            .parse()
+            .with_context(|| format!("failed to convert `{value}` to `i128`"))
     }
 }
 
 impl FlagValue<'_> for u128 {
     fn from_str(value: &str) -> anyhow::Result<Self> {
-        Ok(value.parse()?)
+        value
+            .parse()
+            .with_context(|| format!("failed to convert `{value}` to `u128`"))
+    }
+}
+
+impl FlagValue<'_> for usize {
+    fn from_str(value: &str) -> anyhow::Result<Self> {
+        value
+            .parse()
+            .with_context(|| format!("failed to convert `{value}` to `usize`"))
+    }
+}
+
+impl FlagValue<'_> for isize {
+    fn from_str(value: &str) -> anyhow::Result<Self> {
+        value
+            .parse()
+            .with_context(|| format!("failed to convert `{value}` to `isize`"))
+    }
+}
+
+impl FlagValue<'_> for f32 {
+    fn from_str(value: &str) -> anyhow::Result<Self> {
+        value
+            .parse()
+            .with_context(|| format!("failed to convert `{value}` to `f32`"))
+    }
+}
+
+impl FlagValue<'_> for f64 {
+    fn from_str(value: &str) -> anyhow::Result<Self> {
+        value
+            .parse()
+            .with_context(|| format!("failed to convert `{value}` to `f64`"))
     }
 }
 
