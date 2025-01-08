@@ -82,7 +82,7 @@ fn quit(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyhow
 
     // last view and we have unsaved changes
     if cx.editor.tree.views().count() == 1 {
-        buffers_remaining_impl(cx.editor)?;
+        buffers_remaining_impl(cx.editor)?
     }
 
     cx.block_try_flush_writes()?;
@@ -582,7 +582,6 @@ fn later(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow
     }
 
     let uk = args[0].parse::<UndoKind>().map_err(|s| anyhow!(s))?;
-
     let (view, doc) = current!(cx.editor);
     let success = doc.later(view, uk);
     if !success {
@@ -1053,7 +1052,7 @@ fn show_current_directory(
     if cwd.exists() {
         cx.editor.set_status(message);
     } else {
-        cx.editor.set_error(format!("{message} (deleted)"));
+        cx.editor.set_error(format!("{} (deleted)", message));
     }
     Ok(())
 }
@@ -1351,7 +1350,6 @@ fn lsp_workspace_command(
         cx.jobs.callback(callback);
     } else {
         let command = args[0].to_string();
-
         let matches: Vec<_> = ls_id_commands
             .filter(|(_ls_id, c)| *c == &command)
             .collect();
@@ -1567,7 +1565,9 @@ fn tree_sitter_highlight_name(
 fn vsplit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
-    } else if args.is_empty() {
+    }
+
+    if args.is_empty() {
         split(cx.editor, Action::VerticalSplit);
     } else {
         for arg in args {
@@ -1575,13 +1575,16 @@ fn vsplit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
                 .open(&PathBuf::from(arg.as_ref()), Action::VerticalSplit)?;
         }
     }
+
     Ok(())
 }
 
 fn hsplit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
-    } else if args.is_empty() {
+    }
+
+    if args.is_empty() {
         split(cx.editor, Action::HorizontalSplit);
     } else {
         for arg in args {
@@ -1589,6 +1592,7 @@ fn hsplit(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
                 .open(&PathBuf::from(arg.as_ref()), Action::HorizontalSplit)?;
         }
     }
+
     Ok(())
 }
 
@@ -1604,7 +1608,9 @@ fn hsplit_new(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> 
     if event != PromptEvent::Validate {
         return Ok(());
     }
+
     cx.editor.new_file(Action::HorizontalSplit);
+
     Ok(())
 }
 
@@ -1622,9 +1628,9 @@ fn debug_eval(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> a
         };
 
         // TODO: support no frame_id
+
         let frame_id = debugger.stack_frames[&thread_id][frame].id;
         let expression = args[0].to_string();
-
         let response = helix_lsp::block_on(debugger.eval(expression, Some(frame_id)))?;
         cx.editor.set_status(response.result);
     }
@@ -1638,7 +1644,6 @@ fn debug_start(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
 
     let name = args.first();
     let params = args.iter().cloned().collect();
-
     dap_start_impl(cx, name, None, Some(params))
 }
 
@@ -1881,9 +1886,7 @@ fn toggle_option(
         .config_events
         .0
         .send(ConfigEvent::Update(config))?;
-
     cx.editor.set_status(status);
-
     Ok(())
 }
 
@@ -1906,11 +1909,10 @@ fn language(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> any
 
     let doc = doc_mut!(cx.editor);
 
-    let language_id = &args[0];
-    if language_id == DEFAULT_LANGUAGE_NAME {
+    if &args[0] == DEFAULT_LANGUAGE_NAME {
         doc.set_language(None, None);
     } else {
-        doc.set_language_by_language_id(language_id, cx.editor.syn_loader.clone())?;
+        doc.set_language_by_language_id(&args[0], cx.editor.syn_loader.clone())?;
     }
     doc.detect_indent_and_line_ending();
 
@@ -2243,11 +2245,11 @@ fn clear_register(
         return Ok(());
     }
 
-    let register = args.first().unwrap();
+    let register = &args[0];
 
     ensure!(
         register.chars().count() == 1,
-        format!("Invalid register {register}")
+        format!("Invalid register {}", register)
     );
 
     let register = register.chars().next().unwrap_or_default();
@@ -2255,7 +2257,7 @@ fn clear_register(
         cx.editor.set_status(format!("Register {register} cleared"));
     } else {
         cx.editor
-            .set_error(format!("Register {register} not found"));
+            .set_error(format!("Register {} not found", register));
     }
     Ok(())
 }
@@ -2288,9 +2290,7 @@ fn move_buffer(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
         .path()
         .context("Scratch buffer cannot be moved. Use :write instead")?
         .clone();
-
     let new_path = &args[0];
-
     if let Err(err) = cx.editor.move_path(&old_path, new_path.as_ref()) {
         bail!("Could not move file: {err}");
     }

@@ -112,7 +112,7 @@ fn dap_callback<T, F>(
 // TODO: transition to `shellwords::Args` instead of `Option<Vec<Cow>>>`
 pub fn dap_start_impl(
     cx: &mut compositor::Context,
-    name: Option<&Cow<'_, str>>,
+    name: Option<&Cow<str>>,
     socket: Option<std::net::SocketAddr>,
     params: Option<Vec<std::borrow::Cow<str>>>,
 ) -> Result<(), anyhow::Error> {

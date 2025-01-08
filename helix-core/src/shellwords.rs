@@ -141,7 +141,7 @@ pub fn escape(input: Cow<str>) -> Cow<str> {
             buf
         }))
     } else {
-        Cow::Owned(format!("\"{input}\""))
+        Cow::Owned(format!("\"{}\"", input))
     }
 }
 
