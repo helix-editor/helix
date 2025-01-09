@@ -380,9 +380,10 @@ impl<'t> DocumentFormatter<'t> {
                 // by a newline/eof character here.
                 Ordering::Equal
                     if self.text_fmt.soft_wrap_at_text_width
-                        && self.peek_grapheme(col, char_pos).map_or(false, |grapheme| {
-                            grapheme.is_newline() || grapheme.is_eof()
-                        }) => {}
+                        && self
+                            .peek_grapheme(col, char_pos)
+                            .is_some_and(|grapheme| grapheme.is_newline() || grapheme.is_eof()) => {
+                }
                 Ordering::Equal if word_width > self.text_fmt.max_wrap as usize => return,
                 Ordering::Greater if word_width > self.text_fmt.max_wrap as usize => {
                     self.peeked_grapheme = self.word_buf.pop();
