@@ -8,13 +8,22 @@ use anyhow::ensure;
 use crate::shellwords::unescape;
 
 /// Represents different ways that arguments can be handled when parsing.
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ParseMode {
-    /// Treat the entire input as one positional with minimal processing.
-    /// (I.e. expand `\t` and `\n` but don't split on spaces or handle quotes.)
+    /// Treat the input as is, with no splitting or processing.
+    Raw,
+    /// Splits on whitespace while respected quoted substrings.
+    ///
+    /// Return value includes the start and end quotes.
+    RawParams,
+    /// Treat the entire input as one positional with minimal processing (I.e. expand `\t` and `\n` but don't split on spaces or handle quotes).
     Literal,
-    /// Regular shellwords behavior: split the input into multiple parameters.
-    Parameters,
+    /// Treat the entire input as one positional with full processing (I.e. expand `\t`, `\n` and also `\\`).
+    LiteralUnescapeBackslash,
+    /// Split the input into multiple parameters, while escaping literals (`\n`, `\t`, `\u{C}`, etc.), but not backslashes.
+    LiteralParams,
+    /// Split the input into multiple parameters, while escaping literals (`\n`, `\t`, `\u{C}`, etc.), including backslashes.
+    LiteralParamsUnescapeBackslash,
 }
 
 #[derive(Clone)]
@@ -71,27 +80,15 @@ impl<'a> Args<'a> {
         args: &'a str,
         validate: bool,
     ) -> anyhow::Result<Self> {
-        let positionals = ArgsParser::from(args);
-
-        let args = match signature.parse_mode {
-            ParseMode::Literal => Args {
-                positionals: vec![unescape(args, false)],
-                // TODO: flags: flags,
-            },
-            ParseMode::Parameters => Args {
-                positionals: positionals
-                    .with_unescaping()
-                    .unescape_backslashes()
-                    .collect(),
-                // TODO: flags: flags,
-            },
-        };
+        let positionals = ArgsParser::from(args)
+            .with_mode(signature.parse_mode)
+            .collect();
 
         if validate {
             ensure_signature(name, signature, args.len())?;
         }
 
-        Ok(args)
+        Ok(Args { positionals })
     }
 
     /// Returns the count of how many arguments there are.
@@ -214,16 +211,38 @@ impl<'a> Index<RangeFrom<usize>> for Args<'a> {
 ///
 /// Splits on whitespace, but respects quoted substrings (using double quotes, single quotes, or backticks).
 #[derive(Debug, Clone)]
-pub struct ArgsParser<'a, const U: bool, const UB: bool> {
+pub struct ArgsParser<'a> {
     input: &'a str,
     idx: usize,
     start: usize,
-    unescape: bool,
-    unescape_blackslash: bool,
+    mode: ParseMode,
 }
 
-impl<'a, const U: bool, const UB: bool> ArgsParser<'a, U, UB> {
+impl<'a> ArgsParser<'a> {
     #[inline]
+    const fn new(input: &'a str) -> ArgsParser<'a> {
+        Self {
+            input,
+            idx: 0,
+            start: 0,
+            mode: ParseMode::RawParams,
+        }
+    }
+
+    #[inline]
+    #[must_use]
+    pub fn with_mode(mut self, mode: ParseMode) -> ArgsParser<'a> {
+        self.mode = mode;
+        self
+    }
+
+    #[inline]
+    pub fn set_mode(&mut self, mode: ParseMode) {
+        self.mode = mode;
+    }
+
+    #[inline]
+    #[must_use]
     pub const fn is_empty(&self) -> bool {
         self.input.is_empty()
     }
@@ -261,51 +280,34 @@ impl<'a, const U: bool, const UB: bool> ArgsParser<'a, U, UB> {
     }
 }
 
-impl<'a> ArgsParser<'a, false, false> {
-    #[inline]
-    const fn new(input: &'a str) -> ArgsParser<'a, false, false> {
-        ArgsParser::<'a, false, false> {
-            input,
-            idx: 0,
-            start: 0,
-            unescape: false,
-            unescape_blackslash: false,
-        }
-    }
-
-    #[inline]
-    #[must_use]
-    pub const fn with_unescaping(self) -> ArgsParser<'a, true, false> {
-        ArgsParser::<'a, true, false> {
-            input: self.input,
-            idx: self.idx,
-            start: self.start,
-            unescape: true,
-            unescape_blackslash: self.unescape_blackslash,
-        }
-    }
-}
-
-impl<'a> ArgsParser<'a, true, false> {
-    #[inline]
-    #[must_use]
-    pub const fn unescape_backslashes(self) -> ArgsParser<'a, true, true> {
-        ArgsParser::<'a, true, true> {
-            input: self.input,
-            idx: self.idx,
-            start: self.start,
-            unescape: self.unescape,
-            unescape_blackslash: true,
-        }
-    }
-}
-
-impl<'a, const U: bool, const UB: bool> Iterator for ArgsParser<'a, U, UB> {
+impl<'a> Iterator for ArgsParser<'a> {
     type Item = Cow<'a, str>;
 
     #[inline]
     #[allow(clippy::too_many_lines)]
     fn next(&mut self) -> Option<Self::Item> {
+        match self.mode {
+            ParseMode::Raw => {
+                self.start = self.input.len();
+                self.idx = self.input.len();
+
+                return Some(Cow::from(self.input));
+            }
+            ParseMode::Literal => {
+                self.start = self.input.len();
+                self.idx = self.input.len();
+
+                return Some(unescape(self.input, false));
+            }
+            ParseMode::LiteralUnescapeBackslash => {
+                self.start = self.input.len();
+                self.idx = self.input.len();
+
+                return Some(unescape(self.input, true));
+            }
+            _ => {}
+        }
+
         // The parser loop is split into three main blocks to handle different types of input processing:
         //
         // 1. Quote block:
@@ -335,12 +337,22 @@ impl<'a, const U: bool, const UB: bool> Iterator for ArgsParser<'a, U, UB> {
                         if bytes[self.idx] == quote {
                             let arg = &self.input[self.start..self.idx];
                             self.idx += 1;
+                            let old_start = self.start;
                             self.start = self.idx;
 
-                            let output = if self.unescape {
-                                unescape(arg, self.unescape_blackslash)
-                            } else {
-                                Cow::from(arg)
+                            let output = match self.mode {
+                                ParseMode::RawParams => {
+                                    // Include start and end quotes in return value
+                                    Cow::from(&self.input[old_start - 1..=self.idx])
+                                }
+                                ParseMode::LiteralParams => unescape(arg, false),
+                                ParseMode::LiteralParamsUnescapeBackslash => unescape(arg, true),
+                                _ => {
+                                    unreachable!(
+                                        "other variants are returned early at start of `next` {:?}",
+                                        self.mode
+                                    )
+                                }
                             };
 
                             return Some(output);
@@ -357,10 +369,16 @@ impl<'a, const U: bool, const UB: bool> Iterator for ArgsParser<'a, U, UB> {
                         self.idx = bytes.len();
                         self.start = bytes.len();
 
-                        let output = if self.unescape {
-                            unescape(arg, self.unescape_blackslash)
-                        } else {
-                            Cow::from(arg)
+                        let output = match self.mode {
+                            ParseMode::RawParams => Cow::from(arg),
+                            ParseMode::LiteralParams => unescape(arg, false),
+                            ParseMode::LiteralParamsUnescapeBackslash => unescape(arg, true),
+                            _ => {
+                                unreachable!(
+                                    "other variants are returned early at start of `next` {:?}",
+                                    self.mode
+                                )
+                            }
                         };
 
                         return Some(output);
@@ -380,10 +398,16 @@ impl<'a, const U: bool, const UB: bool> Iterator for ArgsParser<'a, U, UB> {
                             self.idx += 1;
                             self.start = self.idx;
 
-                            let output = if self.unescape {
-                                unescape(arg, self.unescape_blackslash)
-                            } else {
-                                Cow::from(arg)
+                            let output = match self.mode {
+                                ParseMode::RawParams => Cow::from(arg),
+                                ParseMode::LiteralParams => unescape(arg, false),
+                                ParseMode::LiteralParamsUnescapeBackslash => unescape(arg, true),
+                                _ => {
+                                    unreachable!(
+                                        "other variants are returned early at start of `next` {:?}",
+                                        self.mode
+                                    )
+                                }
                             };
 
                             return Some(output);
@@ -405,10 +429,16 @@ impl<'a, const U: bool, const UB: bool> Iterator for ArgsParser<'a, U, UB> {
                         self.idx += 1;
                         self.start = self.idx;
 
-                        let output = if self.unescape {
-                            unescape(arg, self.unescape_blackslash)
-                        } else {
-                            Cow::from(arg)
+                        let output = match self.mode {
+                            ParseMode::RawParams => Cow::from(arg),
+                            ParseMode::LiteralParams => unescape(arg, false),
+                            ParseMode::LiteralParamsUnescapeBackslash => unescape(arg, true),
+                            _ => {
+                                unreachable!(
+                                    "other variants are returned early at start of `next` {:?}",
+                                    self.mode
+                                )
+                            }
                         };
 
                         return Some(output);
@@ -441,13 +471,22 @@ impl<'a, const U: bool, const UB: bool> Iterator for ArgsParser<'a, U, UB> {
         // Fallback that catches when the loop would have exited but failed to return the arg between start and the end.
         if self.start < bytes.len() {
             let arg = &self.input[self.start..];
-            self.start = bytes.len();
 
-            let output = if self.unescape {
-                unescape(arg, self.unescape_blackslash)
-            } else {
-                Cow::from(arg)
+            let output = match self.mode {
+                ParseMode::RawParams => {
+                    Cow::from(&self.input[self.start - usize::from(in_quotes)..])
+                }
+                ParseMode::LiteralParams => unescape(arg, false),
+                ParseMode::LiteralParamsUnescapeBackslash => unescape(arg, true),
+                _ => {
+                    unreachable!(
+                        "other variants are returned early at start of `next` {:?}",
+                        self.mode
+                    )
+                }
             };
+
+            self.start = bytes.len();
 
             return Some(output);
         }
@@ -457,7 +496,7 @@ impl<'a, const U: bool, const UB: bool> Iterator for ArgsParser<'a, U, UB> {
     }
 }
 
-impl<'a> From<&'a str> for ArgsParser<'a, false, false> {
+impl<'a> From<&'a str> for ArgsParser<'a> {
     #[inline]
     fn from(args: &'a str) -> Self {
         ArgsParser::new(args)
@@ -484,7 +523,7 @@ mod test {
             "",
             &Signature {
                 positionals: (0, None),
-                parse_mode: ParseMode::Parameters,
+                parse_mode: ParseMode::LiteralParamsUnescapeBackslash,
             },
             r#"single_word twó wörds \\three\ \"with\ escaping\\"#,
             true,
@@ -499,9 +538,8 @@ mod test {
 
     #[test]
     fn should_split_args_no_slash_unescaping() {
-        let input = r#"single_word twó wörds \\three\ \"with\ escaping\\"#;
-
-        let args: Vec<Cow<'_, str>> = ArgsParser::from(input).collect();
+        let args: Vec<Cow<'_, str>> =
+            ArgsParser::from(r#"single_word twó wörds \\three\ \"with\ escaping\\"#).collect();
 
         assert_eq!(
             vec![
@@ -521,14 +559,16 @@ mod test {
 
     #[test]
     fn should_preserve_quote_if_last_argument() {
-        let mut args = ArgsParser::from(r#" "file with space.txt"""#);
+        let mut args =
+            ArgsParser::from(r#" "file with space.txt"""#).with_mode(ParseMode::LiteralParams);
         assert_eq!("file with space.txt", args.next().unwrap());
         assert_eq!(r#"""#, args.last().unwrap());
     }
 
     #[test]
     fn should_respect_escaped_quote_in_what_looks_like_non_closed_arg() {
-        let mut args = ArgsParser::from(r"'should be one \'argument").with_unescaping();
+        let mut args =
+            ArgsParser::from(r"'should be one \'argument").with_mode(ParseMode::LiteralParams);
         assert_eq!(r"should be one 'argument", args.next().unwrap());
         assert_eq!(None, args.next());
     }
@@ -537,15 +577,21 @@ mod test {
     fn should_escape_whitespace() {
         assert_eq!(
             Some(Cow::from("a ")),
-            ArgsParser::from(r"a\ ").with_unescaping().next(),
+            ArgsParser::from(r"a\ ")
+                .with_mode(ParseMode::Literal)
+                .next(),
         );
         assert_eq!(
             Some(Cow::from("a\t")),
-            ArgsParser::from(r"a\t").with_unescaping().next(),
+            ArgsParser::from(r"a\t")
+                .with_mode(ParseMode::Literal)
+                .next(),
         );
         assert_eq!(
             Some(Cow::from("a b.txt")),
-            ArgsParser::from(r"a\ b.txt").with_unescaping().next(),
+            ArgsParser::from(r"a\ b.txt")
+                .with_mode(ParseMode::Literal)
+                .next(),
         );
     }
 
@@ -560,8 +606,7 @@ mod test {
         let parser = ArgsParser::from(
             r#"'single_word' 'twó wörds' '' ' ''\\three\' \"with\ escaping\\' 'quote incomplete"#,
         )
-        .with_unescaping()
-        .unescape_backslashes();
+        .with_mode(ParseMode::LiteralParamsUnescapeBackslash);
         let expected = [
             "single_word",
             "twó wörds",
@@ -581,8 +626,7 @@ mod test {
         let parser = ArgsParser::from(
             r#""single_word" "twó wörds" "" "  ""\\three\' \"with\ escaping\\" "dquote incomplete"#,
         )
-        .with_unescaping()
-        .unescape_backslashes();
+        .with_mode(ParseMode::LiteralParamsUnescapeBackslash);
         let expected = [
             "single_word",
             "twó wörds",
@@ -599,7 +643,8 @@ mod test {
 
     #[test]
     fn should_respect_escapes_with_mixed_quotes() {
-        let parser = ArgsParser::from(r#"single_word 'twó wörds' "\\three\' \"with\ escaping\\""no space before"'and after' $#%^@ "%^&(%^" ')(*&^%''a\\\\\b' '"#).with_unescaping().unescape_backslashes();
+        let args = ArgsParser::from(r#"single_word 'twó wörds' "\\three\' \"with\ escaping\\""no space before"'and after' $#%^@ "%^&(%^" ')(*&^%''a\\\\\b' '"#)
+            .with_mode(ParseMode::LiteralParamsUnescapeBackslash);
         let expected = [
             "single_word",
             "twó wörds",
@@ -615,7 +660,7 @@ mod test {
             "'",
         ];
 
-        for (expected, actual) in expected.into_iter().zip(parser) {
+        for (expected, actual) in expected.into_iter().zip(args) {
             assert_eq!(expected, actual);
         }
     }
@@ -637,7 +682,8 @@ mod test {
 
     #[test]
     fn should_leave_escaped_quotes() {
-        let mut args = ArgsParser::new(r#"\" \` \' \"with \'with \`with"#).with_unescaping();
+        let mut args =
+            ArgsParser::new(r#"\" \` \' \"with \'with \`with"#).with_mode(ParseMode::LiteralParams);
         assert_eq!(Some(Cow::from(r#"""#)), args.next());
         assert_eq!(Some(Cow::from(r"`")), args.next());
         assert_eq!(Some(Cow::from(r"'")), args.next());
@@ -648,19 +694,19 @@ mod test {
 
     #[test]
     fn should_leave_literal_newline_alone() {
-        let mut arg = ArgsParser::new(r"\n").with_unescaping();
+        let mut arg = ArgsParser::new(r"\n").with_mode(ParseMode::LiteralParams);
         assert_eq!(Some(Cow::from("\n")), arg.next());
     }
 
     #[test]
     fn should_leave_literal_unicode_alone() {
-        let mut arg = ArgsParser::new(r"\u{C}").with_unescaping();
+        let mut arg = ArgsParser::new(r"\u{C}").with_mode(ParseMode::LiteralParams);
         assert_eq!(Some(Cow::from("\u{C}")), arg.next());
     }
 
     #[test]
     fn should_escape_literal_unicode() {
-        let mut arg = ArgsParser::new(r"\u{C}");
+        let mut arg = ArgsParser::new(r"\u{C}").with_mode(ParseMode::RawParams);
         assert_eq!(Some(Cow::from("\\u{C}")), arg.next());
     }
 
@@ -668,10 +714,36 @@ mod test {
     fn should_unescape_args() {
         // 1f929: 🤩
         let args = ArgsParser::new(r#"'hello\u{1f929} world' '["hello", "\u{1f929}", "world"]'"#)
-            .with_unescaping()
+            .with_mode(ParseMode::LiteralParams)
             .collect::<Vec<_>>();
 
         assert_eq!("hello\u{1f929} world", unescape(&args[0], false));
         assert_eq!(r#"["hello", "🤩", "world"]"#, unescape(&args[1], false));
+    }
+
+    #[test]
+    fn should_parse_a_slash_b_correctly() {
+        let args = ArgsParser::new(r"a\b")
+            .with_mode(ParseMode::LiteralParams)
+            .collect::<Vec<_>>();
+
+        assert_eq!(r"a\b", &args[0]);
+    }
+
+    #[test]
+    fn should_end_in_unterminated_quotes() {
+        let mut args = ArgsParser::new(r#"a.txt "b "#);
+        let last = args.by_ref().last();
+
+        assert_eq!(Some(Cow::from(r#""b "#)), last);
+    }
+
+    #[test]
+    fn should_end_with_raw_escaped_space() {
+        let mut args = ArgsParser::new(r"helix-term\src\commands\typed.rs\ ");
+        assert_eq!(
+            Some(Cow::from(r"helix-term\src\commands\typed.rs\ ")),
+            args.next()
+        );
     }
 }
