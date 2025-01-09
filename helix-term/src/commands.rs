@@ -1301,7 +1301,7 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
             .line_to_byte(text.byte_to_line(pos) + 1)
             .min(pos + 1000);
         let search_range = text.slice(search_start..search_end);
-        // we also allow paths that are next to the cursor (can be ambigous but
+        // we also allow paths that are next to the cursor (can be ambiguous but
         // rarely so in practice) so that gf on quoted/braced path works (not sure about this
         // but apparently that is how gf has worked historically in helix)
         let path = find_paths(search_range, true)
@@ -2501,7 +2501,7 @@ fn global_search(cx: &mut Context) {
                             // search the buffer instead of the file because it's faster
                             // and captures new edits without requiring a save
                             if searcher.multi_line_with_matcher(&matcher) {
-                                // in this case a continous buffer is required
+                                // in this case a continuous buffer is required
                                 // convert the rope to a string
                                 let text = doc.to_string();
                                 searcher.search_slice(&matcher, text.as_bytes(), sink)
@@ -6491,7 +6491,7 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
     let mut cursor_rev = Range::point(cursor);
     if text.get_char(cursor).is_some_and(|c| !c.is_whitespace()) {
         let cursor_word_end = movement::move_next_word_end(text, cursor_fwd, 1);
-        //  single grapheme words need a specical case
+        //  single grapheme words need a special case
         if cursor_word_end.anchor == cursor {
             cursor_fwd = cursor_word_end;
         }
