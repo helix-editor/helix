@@ -138,6 +138,7 @@
  "calldata"
  "constant"
  (immutable)
+ "transient"
 ] @keyword.storage.modifier
 
 [
