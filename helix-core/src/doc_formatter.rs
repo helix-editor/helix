@@ -370,8 +370,8 @@ impl<'t> DocumentFormatter<'t> {
             match col.cmp(&(self.text_fmt.viewport_width as usize)) {
                 // The EOF char and newline chars are always selectable in helix. That means
                 // that wrapping happens "too-early" if a word fits a line perfectly. This
-                // is intentional so that all selectable graphemes are always visisble (and
-                // therefore the cursor never dissapears). However if the user manually set a
+                // is intentional so that all selectable graphemes are always visible (and
+                // therefore the cursor never disappears). However if the user manually set a
                 // lower softwrap width then this is undesirable. Just increasing the viewport-
                 // width by one doesn't work because if a line is wrapped multiple times then
                 // some words may extend past the specified width.
