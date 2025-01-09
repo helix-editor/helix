@@ -2493,7 +2493,7 @@ fn global_search(cx: &mut Context) {
                         let doc = documents.iter().find(|&(doc_path, _)| {
                             doc_path
                                 .as_ref()
-                                .map_or(false, |doc_path| doc_path == entry.path())
+                                .is_some_and(|doc_path| doc_path == entry.path())
                         });
 
                         let result = if let Some((_, doc)) = doc {
@@ -4066,7 +4066,7 @@ pub mod insert {
                 let on_auto_pair = doc
                     .auto_pairs(cx.editor)
                     .and_then(|pairs| pairs.get(prev))
-                    .map_or(false, |pair| pair.open == prev && pair.close == curr);
+                    .is_some_and(|pair| pair.open == prev && pair.close == curr);
 
                 let local_offs = if let Some(token) = continue_comment_token {
                     new_text.reserve_exact(line_ending.len() + indent.len() + token.len() + 1);

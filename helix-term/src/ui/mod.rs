@@ -363,7 +363,7 @@ pub mod completers {
         git_ignore: bool,
     ) -> Vec<Completion> {
         filename_impl(editor, input, git_ignore, |entry| {
-            let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
+            let is_dir = entry.file_type().is_some_and(|entry| entry.is_dir());
 
             if is_dir {
                 FileMatch::AcceptIncomplete
@@ -414,7 +414,7 @@ pub mod completers {
         git_ignore: bool,
     ) -> Vec<Completion> {
         filename_impl(editor, input, git_ignore, |entry| {
-            let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
+            let is_dir = entry.file_type().is_some_and(|entry| entry.is_dir());
 
             if is_dir {
                 FileMatch::Accept
