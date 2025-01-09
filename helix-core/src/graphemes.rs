@@ -12,7 +12,7 @@ use std::ops::Deref;
 use std::ptr::NonNull;
 use std::{slice, str};
 
-use crate::chars::{char_is_whitespace, char_is_word};
+use crate::chars;
 use crate::LineEnding;
 
 #[inline]
@@ -64,7 +64,7 @@ impl<'a> Grapheme<'a> {
     }
 
     pub fn is_whitespace(&self) -> bool {
-        !matches!(&self, Grapheme::Other { g } if !g.chars().all(char_is_whitespace))
+        !matches!(&self, Grapheme::Other { g } if !g.chars().all(chars::char_is_whitespace))
     }
 
     // TODO currently word boundaries are used for softwrapping.
@@ -72,7 +72,7 @@ impl<'a> Grapheme<'a> {
     // This could however be improved in the future by considering unicode
     // character classes but
     pub fn is_word_boundary(&self) -> bool {
-        !matches!(&self, Grapheme::Other { g,.. } if g.chars().all(char_is_word))
+        !matches!(&self, Grapheme::Other { g,.. } if g.chars().all(|c| chars::char_is_word(c) || chars::char_is_punctuation(c)))
     }
 }
 
