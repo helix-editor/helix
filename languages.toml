@@ -38,6 +38,7 @@ elm-language-server = { command = "elm-language-server" }
 elp = { command = "elp", args = ["server"] }
 elvish = { command = "elvish", args = ["-lsp"] }
 erlang-ls = { command = "erlang_ls" }
+fish-lsp = { command = "fish-lsp", args = ["start"], environment = { fish_lsp_show_client_popups = "false" } }
 forc = { command = "forc", args = ["lsp"] }
 forth-lsp = { command = "forth-lsp" }
 fortls = { command = "fortls", args = ["--lowercase_intrinsics"] }
@@ -391,13 +392,14 @@ injection-regex = "fish"
 file-types = ["fish"]
 shebangs = ["fish"]
 comment-token = "#"
+language-servers = ["fish-lsp"]
 indent = { tab-width = 4, unit = "    " }
 auto-format = true
 formatter = { command = "fish_indent" }
 
 [[grammar]]
 name = "fish"
-source = { git = "https://github.com/ram02z/tree-sitter-fish", rev = "84436cf24c2b3176bfbb220922a0fdbd0141e406" }
+source = { git = "https://github.com/ram02z/tree-sitter-fish", rev = "a78aef9abc395c600c38a037ac779afc7e3cc9e0" }
 
 [[language]]
 name = "mint"
