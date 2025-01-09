@@ -137,6 +137,7 @@
  "storage"
  "calldata"
  "constant"
+ (immutable)
 ] @keyword.storage.modifier
 
 [
