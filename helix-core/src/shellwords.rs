@@ -192,11 +192,18 @@ pub(super) fn unescape(input: &str, unescape_blackslash: bool) -> Cow<'_, str> {
         match state {
             State::Normal => match ch {
                 '\\' => {
+                    // Special case if last `char` encountered is a `\`
+                    if idx + 1 == input.len() {
+                        unescaped.push('\\');
+                        break;
+                    }
+
                     if !is_escaped {
                         // PERF: As not every separator will be escaped, we use `String::new` as that has no initial
                         // allocation. If an escape is found, then we reserve capacity thats the len of the separator,
                         // as the new unescaped string will be at least that long.
                         unescaped.reserve(input.len());
+
                         if idx > 0 {
                             // First time finding an escape, so all prior chars can be added to the new unescaped
                             // version if its not the very first char found.
@@ -363,5 +370,11 @@ mod test {
         assert_eq!("\n'", unescaped);
         let unescaped = unescape(r"\\n\\'", true);
         assert_eq!(r"\n\'", unescaped);
+    }
+
+    #[test]
+    fn should_have_final_char_be_backslash() {
+        assert_eq!(Cow::from(r"helix-term\"), unescape(r"helix-term\", false));
+        assert_eq!(Cow::from(r".git\info\"), unescape(r".git\info\", false));
     }
 }

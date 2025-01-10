@@ -761,13 +761,12 @@ mod test {
     #[test]
     fn should_remain_in_bounds_when_raw_params_parsing_path() {
         let mut args = ArgsParser::from(r#""C:\\Users\\Helix\\AppData\\Local\\Temp\\.tmp3Dugy8""#);
-        let result = args.next();
 
         assert_eq!(
             Some(Cow::from(
                 r#""C:\\Users\\Helix\\AppData\\Local\\Temp\\.tmp3Dugy8""#
             )),
-            result
+            args.next()
         );
     }
 }
