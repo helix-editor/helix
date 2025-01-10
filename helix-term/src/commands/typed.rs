@@ -3511,11 +3511,16 @@ mod tests {
 
         for case in cases {
             let shellwords = Shellwords::from(case.0);
+            let mut parser = ArgsParser::from(shellwords.args()).with_mode(ParseMode::RawParams);
+            let args: Vec<_> = parser.by_ref().collect();
+
             assert_eq!(
                 case.1,
-                argument_number_of(&shellwords, Args::from(shellwords.args()).len()),
-                "`{}`",
+                argument_number_of(&shellwords, args.len()),
+                "`{}`: {:?}\n{:#?}",
                 case.0,
+                parser,
+                args
             );
         }
     }

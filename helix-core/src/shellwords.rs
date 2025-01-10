@@ -1,7 +1,7 @@
 use smartstring::{LazyCompact, SmartString};
 use std::borrow::Cow;
 
-use crate::args::ArgsParser;
+use crate::args::{ArgsParser, ParseMode};
 
 /// A utility for parsing shell-like command lines.
 ///
@@ -30,14 +30,9 @@ use crate::args::ArgsParser;
 ///
 /// ```
 /// # use helix_core::shellwords::Shellwords;
-/// # use helix_core::args::Args;
 ///
 /// let shellwords = Shellwords::from(":o a b c");
-/// let args = Args::from(shellwords.args());
-///
-/// assert_eq!("a", &args[0]);
-/// assert_eq!("b", &args[1]);
-/// assert_eq!("c", &args[2]);
+/// assert_eq!("a b c", shellwords.args());
 /// ```
 #[derive(Clone, Copy)]
 pub struct Shellwords<'a> {
@@ -92,30 +87,35 @@ impl<'a> Shellwords<'a> {
     #[inline]
     #[must_use]
     pub fn ends_with_whitespace(&self) -> bool {
-        ArgsParser::from(self.args()).last().map_or(
-            self.input.ends_with(' ') || self.input.ends_with('\t'),
-            |last| {
-                if cfg!(windows) {
-                    let ends_with_whitespace =
-                        self.input.ends_with(' ') || self.input.ends_with('\t');
-                    let last_starts_with_quote =
-                        last.starts_with('"') && !last.starts_with('\'') && !last.starts_with('`');
+        ArgsParser::from(self.args())
+            .with_mode(ParseMode::RawParams)
+            .last()
+            .map_or(
+                self.input.ends_with(' ') || self.input.ends_with('\t'),
+                |last| {
+                    if cfg!(windows) {
+                        let ends_with_whitespace =
+                            self.input.ends_with(' ') || self.input.ends_with('\t');
+                        let last_starts_with_quote = last.starts_with('"')
+                            || last.starts_with('\'')
+                            || last.starts_with('`');
 
-                    ends_with_whitespace && !last_starts_with_quote
-                } else {
-                    let ends_with_escaped_whitespace =
-                        last.ends_with("\\ ") || last.ends_with("\\\t");
-                    let end_with_whitespace =
-                        self.input.ends_with(' ') || self.input.ends_with('\t');
-                    let last_starts_with_quotes =
-                        last.starts_with('"') && !last.starts_with('\'') && !last.starts_with('`');
-                    let ends_in_true_whitespace =
-                        !ends_with_escaped_whitespace && end_with_whitespace;
+                        ends_with_whitespace && !last_starts_with_quote
+                    } else {
+                        let ends_with_escaped_whitespace =
+                            last.ends_with("\\ ") || last.ends_with("\\\t");
+                        let end_with_whitespace =
+                            self.input.ends_with(' ') || self.input.ends_with('\t');
+                        let last_starts_with_quote = last.starts_with('"')
+                            || last.starts_with('\'')
+                            || last.starts_with('`');
+                        let ends_in_true_whitespace =
+                            !ends_with_escaped_whitespace && end_with_whitespace;
 
-                    ends_in_true_whitespace && !last_starts_with_quotes
-                }
-            },
-        )
+                        ends_in_true_whitespace && !last_starts_with_quote
+                    }
+                },
+            )
     }
 }
 
@@ -394,5 +394,11 @@ mod test {
             Cow::from(r"helix-term\"),
             unescape(r"helix-term\\", false, true)
         );
+    }
+
+    #[test]
+    fn should_end_in_whitespace() {
+        assert!(!Shellwords::from(r#":option "abc "#).ends_with_whitespace());
+        assert!(!Shellwords::from(":option abc").ends_with_whitespace());
     }
 }

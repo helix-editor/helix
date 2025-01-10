@@ -220,6 +220,7 @@ pub struct ArgsParser<'a> {
     idx: usize,
     start: usize,
     mode: ParseMode,
+    is_finished: bool,
 }
 
 impl<'a> ArgsParser<'a> {
@@ -229,7 +230,8 @@ impl<'a> ArgsParser<'a> {
             input,
             idx: 0,
             start: 0,
-            mode: ParseMode::RawParams,
+            mode: ParseMode::Raw,
+            is_finished: false,
         }
     }
 
@@ -271,8 +273,8 @@ impl<'a> ArgsParser<'a> {
     ///
     /// # Examples
     /// ```
-    /// # use helix_core::args::ArgsParser;
-    /// let mut args = ArgsParser::from(r#"sed -n "s/test t/not /p""#);
+    /// # use helix_core::args::{ArgsParser, ParseMode};
+    /// let mut args = ArgsParser::from(r#"sed -n "s/test t/not /p""#).with_mode(ParseMode::RawParams);
     /// assert_eq!("sed", args.next().unwrap());
     /// assert_eq!(r#"-n "s/test t/not /p""#, args.rest());
     /// ```
@@ -290,28 +292,38 @@ impl<'a> Iterator for ArgsParser<'a> {
     #[inline]
     #[allow(clippy::too_many_lines)]
     fn next(&mut self) -> Option<Self::Item> {
+        // Special case so that `ArgsParser::new("")` and `Args::from("")` result in no iterations
+        // being done, and `ArgsParser::new("").count == 0` and `Args::from("").is_empty` is `true`.
+        if self.input.is_empty() {
+            return None;
+        }
+
         match self.mode {
-            ParseMode::Raw => {
+            ParseMode::Raw if !self.is_finished => {
                 self.start = self.input.len();
                 self.idx = self.input.len();
+                self.is_finished = true;
 
                 return Some(Cow::from(self.input));
             }
-            ParseMode::Literal => {
+            ParseMode::Literal if !self.is_finished => {
                 self.start = self.input.len();
                 self.idx = self.input.len();
+                self.is_finished = true;
 
                 return Some(unescape(self.input, true, false));
             }
-            ParseMode::LiteralUnescapeBackslash => {
+            ParseMode::LiteralUnescapeBackslash if !self.is_finished => {
                 self.start = self.input.len();
                 self.idx = self.input.len();
+                self.is_finished = true;
 
                 return Some(unescape(self.input, true, true));
             }
-            ParseMode::UnescapeBackslash => {
+            ParseMode::UnescapeBackslash if !self.is_finished => {
                 self.start = self.input.len();
                 self.idx = self.input.len();
+                self.is_finished = true;
 
                 return Some(unescape(self.input, false, true));
             }
@@ -544,12 +556,16 @@ mod test {
 
     #[test]
     fn should_parse_arguments_with_no_unescaping() {
-        let parser = Args::from(r#"single_word twó wörds \\three\ \"with\ escaping\\"#);
+        let mut parser = ArgsParser::from(r#"single_word twó wörds \\three\ \"with\ escaping\\"#)
+            .with_mode(ParseMode::RawParams);
 
-        assert_eq!(Cow::from("single_word"), parser[0]);
-        assert_eq!(Cow::from("twó"), parser[1]);
-        assert_eq!(Cow::from("wörds"), parser[2]);
-        assert_eq!(Cow::from(r#"\\three\ \"with\ escaping\\"#), parser[3]);
+        assert_eq!(Cow::from("single_word"), parser.next().unwrap());
+        assert_eq!(Cow::from("twó"), parser.next().unwrap());
+        assert_eq!(Cow::from("wörds"), parser.next().unwrap());
+        assert_eq!(
+            Cow::from(r#"\\three\ \"with\ escaping\\"#),
+            parser.next().unwrap()
+        );
     }
 
     #[test]
@@ -574,7 +590,9 @@ mod test {
     #[test]
     fn should_split_args_no_slash_unescaping() {
         let args: Vec<Cow<'_, str>> =
-            ArgsParser::from(r#"single_word twó wörds \\three\ \"with\ escaping\\"#).collect();
+            ArgsParser::from(r#"single_word twó wörds \\three\ \"with\ escaping\\"#)
+                .with_mode(ParseMode::RawParams)
+                .collect();
 
         assert_eq!(
             vec![
@@ -589,7 +607,13 @@ mod test {
 
     #[test]
     fn should_have_empty_args() {
-        assert!(Args::from("").is_empty(),);
+        let args = Args::from("");
+        let mut parser = ArgsParser::new("");
+
+        assert!(args.first().is_none());
+        assert!(args.is_empty());
+        assert!(parser.next().is_none());
+        assert!(parser.is_empty());
     }
 
     #[test]
@@ -632,8 +656,9 @@ mod test {
 
     #[test]
     fn should_parse_args_even_with_leading_whitespace() {
+        let mut parser = ArgsParser::new("   a").with_mode(ParseMode::RawParams);
         // Three spaces
-        assert_eq!(Cow::from("a"), Args::from("   a")[0]);
+        assert_eq!(Cow::from("a"), parser.next().unwrap());
     }
 
     #[test]
@@ -702,17 +727,11 @@ mod test {
 
     #[test]
     fn should_return_rest_from_parser() {
-        let mut parser = ArgsParser::from(r#"statusline.center ["file-type","file-encoding"]"#);
+        let mut parser = ArgsParser::from(r#"statusline.center ["file-type","file-encoding"]"#)
+            .with_mode(ParseMode::RawParams);
 
         assert_eq!(Some("statusline.center"), parser.next().as_deref());
         assert_eq!(r#"["file-type","file-encoding"]"#, parser.rest());
-    }
-
-    #[test]
-    fn should_return_no_args() {
-        let mut args = ArgsParser::new("");
-        assert!(args.next().is_none());
-        assert!(args.is_empty());
     }
 
     #[test]
@@ -770,7 +789,7 @@ mod test {
 
     #[test]
     fn should_end_in_unterminated_quotes() {
-        let mut args = ArgsParser::new(r#"a.txt "b "#);
+        let mut args = ArgsParser::new(r#"a.txt "b "#).with_mode(ParseMode::RawParams);
         let last = args.by_ref().last();
 
         assert_eq!(Some(Cow::from(r#""b "#)), last);
