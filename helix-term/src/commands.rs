@@ -2449,6 +2449,7 @@ fn global_search(cx: &mut Context) {
                 .parents(config.file_picker_config.parents)
                 .ignore(config.file_picker_config.ignore)
                 .follow_links(config.file_picker_config.follow_symlinks)
+                .require_git(config.file_picker_config.require_git)
                 .git_ignore(config.file_picker_config.git_ignore)
                 .git_global(config.file_picker_config.git_global)
                 .git_exclude(config.file_picker_config.git_exclude)
