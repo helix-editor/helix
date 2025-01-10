@@ -311,6 +311,8 @@
 ((identifier) @type
   (#match? @type "^[A-Z]"))
 
+(never_type "!" @type)
+
 ; -------
 ; Functions
 ; -------
@@ -417,6 +419,10 @@
   "..="
   "'"
 ] @operator
+
+[
+  "?"
+] @operator.special
 
 ; -------
 ; Paths
