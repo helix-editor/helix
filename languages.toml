@@ -21,6 +21,7 @@ cl-lsp = { command = "cl-lsp", args = [ "stdio" ] }
 clangd = { command = "clangd" }
 clojure-lsp = { command = "clojure-lsp" }
 cmake-language-server = { command = "cmake-language-server" }
+codeql = { command = "codeql", args = ["execute", "language-server", "--check-errors=ON_CHANGE"] }
 crystalline = { command = "crystalline", args = ["--stdio"] }
 cs = { command = "cs", args = ["launch", "--contrib", "smithy-language-server", "--", "0"] }
 csharp-ls = { command = "csharp-ls" }
@@ -4033,3 +4034,18 @@ indent = { tab-width = 4, unit = "    " }
 [[grammar]]
 name = "nginx"
 source = { git = "https://gitlab.com/joncoole/tree-sitter-nginx", rev = "b4b61db443602b69410ab469c122c01b1e685aa0" }
+
+[[language]]
+name = "codeql"
+scope = "source.ql"
+file-types = ["ql", "qll"]
+comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
+indent = { tab-width = 2, unit = "  " }
+injection-regex = "codeql"
+grammar = "ql"
+language-servers = ["codeql"]
+
+[[grammar]]
+name = "ql"
+source = { git = "https://github.com/tree-sitter/tree-sitter-ql", rev = "1fd627a4e8bff8c24c11987474bd33112bead857" }
