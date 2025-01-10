@@ -206,6 +206,17 @@ jobs:
           mv "$APP-$VERSION-$ARCH.AppImage" \
               "$APP-$VERSION-$ARCH.AppImage.zsync" dist
 
+      - name: Build Deb
+        shell: bash
+        if: matrix.build == 'x86_64-linux'
+        run: |
+          cargo install cargo-deb
+          mkdir -p target/release
+          cp target/${{ matrix.target }}/release/hx target/release/
+          cargo deb --no-build
+          mkdir -p dist
+          mv target/debian/*.deb dist/
+
       - name: Build archive
         shell: bash
         run: |
@@ -265,6 +276,7 @@ jobs:
 
               if [[ "$platform" = "x86_64-linux" ]]; then
                   mv bins-$platform/helix-*.AppImage* dist/
+                  mv bins-$platform/*.deb dist/
               fi
 
               if [ "$exe" = "" ]; then

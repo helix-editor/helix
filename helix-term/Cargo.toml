@@ -13,9 +13,7 @@ repository.workspace = true
 homepage.workspace = true
 
 [package.metadata.deb]
-# generate a .deb in target/debian/ with the command:
-# cargo build --profile opt --locked
-# cargo deb --no-build
+# generate a .deb in target/debian/ with the command: cargo deb --no-build
 name = "helix"
 assets = [
   { source = "target/release/hx", dest = "/usr/lib/helix/", mode = "755" },
