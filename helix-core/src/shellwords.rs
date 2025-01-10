@@ -93,26 +93,24 @@ impl<'a> Shellwords<'a> {
             .map_or(
                 self.input.ends_with(' ') || self.input.ends_with('\t'),
                 |last| {
+                    let input_ends_with_whitespace =
+                        self.input.ends_with(' ') || self.input.ends_with('\t');
+                    let last_starts_with_quote =
+                        last.starts_with('"') || last.starts_with('\'') || last.starts_with('`');
+                    let last_ends_with_quote =
+                        last.ends_with('"') || last.ends_with('\'') || last.ends_with('`');
+                    let last_is_in_unterminated_quote =
+                        last_starts_with_quote && !last_ends_with_quote;
+
                     if cfg!(windows) {
-                        let ends_with_whitespace =
-                            self.input.ends_with(' ') || self.input.ends_with('\t');
-                        let last_starts_with_quote = last.starts_with('"')
-                            || last.starts_with('\'')
-                            || last.starts_with('`');
-
-                        ends_with_whitespace && !last_starts_with_quote
+                        input_ends_with_whitespace && !last_is_in_unterminated_quote
                     } else {
-                        let ends_with_escaped_whitespace =
+                        let last_with_escaped_whitespace =
                             last.ends_with("\\ ") || last.ends_with("\\\t");
-                        let end_with_whitespace =
-                            self.input.ends_with(' ') || self.input.ends_with('\t');
-                        let last_starts_with_quote = last.starts_with('"')
-                            || last.starts_with('\'')
-                            || last.starts_with('`');
                         let ends_in_true_whitespace =
-                            !ends_with_escaped_whitespace && end_with_whitespace;
+                            !last_with_escaped_whitespace && input_ends_with_whitespace;
 
-                        ends_in_true_whitespace && !last_starts_with_quote
+                        ends_in_true_whitespace && !last_is_in_unterminated_quote
                     }
                 },
             )
@@ -400,5 +398,6 @@ mod test {
     fn should_end_in_whitespace() {
         assert!(!Shellwords::from(r#":option "abc "#).ends_with_whitespace());
         assert!(!Shellwords::from(":option abc").ends_with_whitespace());
+        assert!(Shellwords::from(r#":option "helix-term\a b.txt" "#).ends_with_whitespace());
     }
 }
