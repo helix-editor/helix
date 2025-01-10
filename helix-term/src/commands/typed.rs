@@ -782,6 +782,7 @@ fn quit_all(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> an
     if event != PromptEvent::Validate {
         return Ok(());
     }
+
     quit_all_impl(cx, false)
 }
 
@@ -793,6 +794,7 @@ fn force_quit_all(
     if event != PromptEvent::Validate {
         return Ok(());
     }
+
     quit_all_impl(cx, true)
 }
 
@@ -873,6 +875,7 @@ fn yank_main_selection_to_clipboard(
     if event != PromptEvent::Validate {
         return Ok(());
     }
+
     yank_primary_selection_impl(cx.editor, '+');
     Ok(())
 }
@@ -906,6 +909,7 @@ fn yank_main_selection_to_primary_clipboard(
     if event != PromptEvent::Validate {
         return Ok(());
     }
+
     yank_primary_selection_impl(cx.editor, '*');
     Ok(())
 }
@@ -931,6 +935,7 @@ fn paste_clipboard_after(
     if event != PromptEvent::Validate {
         return Ok(());
     }
+
     paste(cx.editor, '+', Paste::After, 1);
     Ok(())
 }
@@ -943,6 +948,7 @@ fn paste_clipboard_before(
     if event != PromptEvent::Validate {
         return Ok(());
     }
+
     paste(cx.editor, '+', Paste::Before, 1);
     Ok(())
 }
@@ -955,6 +961,7 @@ fn paste_primary_clipboard_after(
     if event != PromptEvent::Validate {
         return Ok(());
     }
+
     paste(cx.editor, '*', Paste::After, 1);
     Ok(())
 }
@@ -967,6 +974,7 @@ fn paste_primary_clipboard_before(
     if event != PromptEvent::Validate {
         return Ok(());
     }
+
     paste(cx.editor, '*', Paste::Before, 1);
     Ok(())
 }
@@ -979,6 +987,7 @@ fn replace_selections_with_clipboard(
     if event != PromptEvent::Validate {
         return Ok(());
     }
+
     replace_with_yanked_impl(cx.editor, '+', 1);
     Ok(())
 }
@@ -991,6 +1000,7 @@ fn replace_selections_with_primary_clipboard(
     if event != PromptEvent::Validate {
         return Ok(());
     }
+
     replace_with_yanked_impl(cx.editor, '*', 1);
     Ok(())
 }
@@ -1003,6 +1013,7 @@ fn show_clipboard_provider(
     if event != PromptEvent::Validate {
         return Ok(());
     }
+
     cx.editor
         .set_status(cx.editor.registers.clipboard_provider_name());
     Ok(())
@@ -1600,7 +1611,9 @@ fn vsplit_new(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> 
     if event != PromptEvent::Validate {
         return Ok(());
     }
+
     cx.editor.new_file(Action::VerticalSplit);
+
     Ok(())
 }
 
@@ -1929,6 +1942,7 @@ fn sort(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyhow:
     if event != PromptEvent::Validate {
         return Ok(());
     }
+
     sort_impl(cx, args, false)
 }
 
@@ -1940,6 +1954,7 @@ fn sort_reverse(
     if event != PromptEvent::Validate {
         return Ok(());
     }
+
     sort_impl(cx, args, true)
 }
 
@@ -2059,6 +2074,7 @@ fn open_config(
     if event != PromptEvent::Validate {
         return Ok(());
     }
+
     cx.editor
         .open(&helix_loader::config_file(), Action::Replace)?;
     Ok(())
@@ -2072,6 +2088,7 @@ fn open_workspace_config(
     if event != PromptEvent::Validate {
         return Ok(());
     }
+
     cx.editor
         .open(&helix_loader::workspace_config_file(), Action::Replace)?;
     Ok(())
@@ -2081,6 +2098,7 @@ fn open_log(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> an
     if event != PromptEvent::Validate {
         return Ok(());
     }
+
     cx.editor.open(&helix_loader::log_file(), Action::Replace)?;
     Ok(())
 }
