@@ -418,11 +418,8 @@
   ".."
   "..="
   "'"
-] @operator
-
-[
   "?"
-] @operator.special
+] @operator
 
 ; -------
 ; Paths
@@ -458,8 +455,6 @@
 ; -------
 ; Remaining Identifiers
 ; -------
-
-"?" @special
 
 (type_identifier) @type
 (identifier) @variable
