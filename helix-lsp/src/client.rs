@@ -17,7 +17,7 @@ use parking_lot::Mutex;
 use serde::Deserialize;
 use serde_json::Value;
 use std::sync::{
-    atomic::{AtomicU64, Ordering},
+    atomic::{AtomicU64, AtomicU8, Ordering},
     Arc,
 };
 use std::{collections::HashMap, path::PathBuf};
@@ -59,6 +59,7 @@ pub struct Client {
     initialize_notify: Arc<Notify>,
     /// workspace folders added while the server is still initializing
     req_timeout: u64,
+    restarts_left: AtomicU8,
 }
 
 impl Client {
@@ -231,6 +232,7 @@ impl Client {
             root_uri,
             workspace_folders: Mutex::new(workspace_folders),
             initialize_notify: initialize_notify.clone(),
+            restarts_left: AtomicU8::new(2),
         };
 
         Ok((client, server_rx, initialize_notify))
@@ -242,6 +244,14 @@ impl Client {
 
     pub fn id(&self) -> LanguageServerId {
         self.id
+    }
+
+    pub fn set_restarts_left(&self, x: u8) {
+        self.restarts_left.store(x, Ordering::Relaxed);
+    }
+
+    pub fn restarts_left(&self) -> u8 {
+        self.restarts_left.load(Ordering::Relaxed)
     }
 
     fn next_request_id(&self) -> jsonrpc::Id {

@@ -571,10 +571,10 @@ impl Registry {
         self.inner.get(id)
     }
 
-    pub fn remove_by_id(&mut self, id: LanguageServerId) {
+    pub fn remove_by_id(&mut self, id: LanguageServerId) -> Option<Arc<Client>> {
         let Some(client) = self.inner.remove(id) else {
-            log::debug!("client was already removed");
-            return;
+            log::error!("client was already removed");
+            return None;
         };
         self.file_event_handler.remove_client(id);
         let instances = self
@@ -585,22 +585,23 @@ impl Registry {
         if instances.is_empty() {
             self.inner_by_name.remove(client.name());
         }
+        Some(client)
     }
 
-    fn start_client(
+    pub fn start(
         &mut self,
         name: String,
         ls_config: &LanguageConfiguration,
         doc_path: Option<&std::path::PathBuf>,
         root_dirs: &[PathBuf],
         enable_snippets: bool,
-    ) -> Result<Arc<Client>, StartupError> {
+    ) -> Result<Option<Arc<Client>>, Error> {
         let syn_loader = self.syn_loader.load();
         let config = syn_loader
             .language_server_configs()
             .get(&name)
             .ok_or_else(|| anyhow::anyhow!("Language server '{name}' not defined"))?;
-        let id = self.inner.try_insert_with_key(|id| {
+        match self.inner.try_insert_with_key(|id| {
             start_client(
                 id,
                 name,
@@ -614,8 +615,11 @@ impl Registry {
                 self.incoming.push(UnboundedReceiverStream::new(client.1));
                 client.0
             })
-        })?;
-        Ok(self.inner[id].clone())
+        }) {
+            Ok(id) => Ok(Some(self.inner[id].clone())),
+            Err(StartupError::NoRequiredRootFound) => Ok(None),
+            Err(StartupError::Error(err)) => Err(err),
+        }
     }
 
     /// If this method is called, all documents that have a reference to language servers used by the language config have to refresh their language servers,
@@ -646,16 +650,18 @@ impl Registry {
                         });
                     }
                 }
-                let client = match self.start_client(
-                    name.clone(),
-                    language_config,
-                    doc_path,
-                    root_dirs,
-                    enable_snippets,
-                ) {
+                let client = match self
+                    .start(
+                        name.clone(),
+                        language_config,
+                        doc_path,
+                        root_dirs,
+                        enable_snippets,
+                    )
+                    .transpose()?
+                {
                     Ok(client) => client,
-                    Err(StartupError::NoRequiredRootFound) => return None,
-                    Err(StartupError::Error(err)) => return Some(Err(err)),
+                    Err(err) => return Some(Err(err)),
                 };
                 self.inner_by_name
                     .insert(name.to_owned(), vec![client.clone()]);
@@ -710,23 +716,22 @@ impl Registry {
                         return Some((name.to_owned(), Ok(client.clone())));
                     }
                 }
-                match self.start_client(
-                    name.clone(),
-                    language_config,
-                    doc_path,
-                    root_dirs,
-                    enable_snippets,
-                ) {
-                    Ok(client) => {
-                        self.inner_by_name
-                            .entry(name.to_owned())
-                            .or_default()
-                            .push(client.clone());
-                        Some((name.clone(), Ok(client)))
-                    }
-                    Err(StartupError::NoRequiredRootFound) => None,
-                    Err(StartupError::Error(err)) => Some((name.to_owned(), Err(err))),
+                let client = self
+                    .start(
+                        name.clone(),
+                        language_config,
+                        doc_path,
+                        root_dirs,
+                        enable_snippets,
+                    )
+                    .transpose()?;
+                if let Ok(client) = &client {
+                    self.inner_by_name
+                        .entry(name.to_owned())
+                        .or_default()
+                        .push(client.clone());
                 }
+                Some((name.to_owned(), client))
             },
         )
     }
