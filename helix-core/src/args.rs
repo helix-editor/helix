@@ -80,12 +80,12 @@ impl<'a> Args<'a> {
         args: &'a str,
         validate: bool,
     ) -> anyhow::Result<Self> {
-        let positionals = ArgsParser::from(args)
+        let positionals: Vec<_> = ArgsParser::from(args)
             .with_mode(signature.parse_mode)
             .collect();
 
         if validate {
-            ensure_signature(name, signature, args.len())?;
+            ensure_signature(name, signature, positionals.len())?;
         }
 
         Ok(Args { positionals })
@@ -335,18 +335,29 @@ impl<'a> Iterator for ArgsParser<'a> {
                     if in_quotes {
                         // Found the proper closing quote, so can return the arg and advance the state along.
                         if bytes[self.idx] == quote {
-                            let arg = &self.input[self.start..self.idx];
-                            self.idx += 1;
-                            let old_start = self.start;
-                            self.start = self.idx;
-
                             let output = match self.mode {
                                 ParseMode::RawParams => {
                                     // Include start and end quotes in return value
-                                    Cow::from(&self.input[old_start - 1..=self.idx])
+                                    let arg = &self.input[self.start - 1..=self.idx];
+                                    self.idx += 1;
+                                    self.start = self.idx;
+                                    Cow::from(arg)
                                 }
-                                ParseMode::LiteralParams => unescape(arg, false),
-                                ParseMode::LiteralParamsUnescapeBackslash => unescape(arg, true),
+                                ParseMode::LiteralParams => {
+                                    let arg = &self.input[self.start..self.idx];
+                                    self.idx += 1;
+                                    self.start = self.idx;
+
+                                    unescape(arg, false)
+                                }
+
+                                ParseMode::LiteralParamsUnescapeBackslash => {
+                                    let arg = &self.input[self.start..self.idx];
+                                    self.idx += 1;
+                                    self.start = self.idx;
+
+                                    unescape(arg, true)
+                                }
                                 _ => {
                                     unreachable!(
                                         "other variants are returned early at start of `next` {:?}",
@@ -744,6 +755,19 @@ mod test {
         assert_eq!(
             Some(Cow::from(r"helix-term\src\commands\typed.rs\ ")),
             args.next()
+        );
+    }
+
+    #[test]
+    fn should_remain_in_bounds_when_raw_params_parsing_path() {
+        let mut args = ArgsParser::from(r#""C:\\Users\\Helix\\AppData\\Local\\Temp\\.tmp3Dugy8""#);
+        let result = args.next();
+
+        assert_eq!(
+            Some(Cow::from(
+                r#""C:\\Users\\Helix\\AppData\\Local\\Temp\\.tmp3Dugy8""#
+            )),
+            result
         );
     }
 }

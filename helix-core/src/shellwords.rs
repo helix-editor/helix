@@ -78,6 +78,7 @@ impl<'a> Shellwords<'a> {
     /// assert_eq!(Shellwords::from(":open ").ends_with_whitespace(), true);
     /// assert_eq!(Shellwords::from(":open foo.txt ").ends_with_whitespace(), true);
     /// assert_eq!(Shellwords::from(":open").ends_with_whitespace(), false);
+    /// assert_eq!(Shellwords::from(r#":open "a "#).ends_with_whitespace(), false);
     /// assert_eq!(Shellwords::from(":open a\\ b.txt").ends_with_whitespace(), false);
     /// #[cfg(windows)]
     /// assert_eq!(Shellwords::from(":open a\\\t").ends_with_whitespace(), true);
@@ -95,10 +96,23 @@ impl<'a> Shellwords<'a> {
             self.input.ends_with(' ') || self.input.ends_with('\t'),
             |last| {
                 if cfg!(windows) {
-                    self.input.ends_with(' ') || self.input.ends_with('\t')
+                    let ends_with_whitespace =
+                        self.input.ends_with(' ') || self.input.ends_with('\t');
+                    let last_starts_with_quote =
+                        last.starts_with('"') && !last.starts_with('\'') && !last.starts_with('`');
+
+                    ends_with_whitespace && !last_starts_with_quote
                 } else {
-                    !(last.ends_with("\\ ") || last.ends_with("\\\t"))
-                        && (self.input.ends_with(' ') || self.input.ends_with('\t'))
+                    let ends_with_escaped_whitespace =
+                        last.ends_with("\\ ") || last.ends_with("\\\t");
+                    let end_with_whitespace =
+                        self.input.ends_with(' ') || self.input.ends_with('\t');
+                    let last_starts_with_quotes =
+                        last.starts_with('"') && !last.starts_with('\'') && !last.starts_with('`');
+                    let ends_in_true_whitespace =
+                        !ends_with_escaped_whitespace && end_with_whitespace;
+
+                    ends_in_true_whitespace && !last_starts_with_quotes
                 }
             },
         )
