@@ -7,6 +7,45 @@
 (char) @constant.character
 (string) @string
 
+(exp_apply
+ (exp_name
+  (variable) @function.builtin
+   (#any-of? @function.builtin
+    "fst"
+    "snd"
+    "const"
+    "id"
+    "flip"
+    "curry"
+    "uncurry"
+    "not"
+    "elem"
+    "map"
+    "filter"
+    "foldl"
+    "foldr"
+    "head"
+    "tail"
+    "last"
+    "init"
+    "length"
+    "null"
+    "reverse"
+    "zip"
+    "unzip"
+    "take"
+    "drop"
+    "splitAt"
+    "cycle"
+    "replicate"
+    "repeat"
+    "iterate"
+    "scanl"
+    "scanr")
+  )
+)
+
+
 (con_unit) @constant.builtin ; unit, as in ()
 
 (comment) @comment
