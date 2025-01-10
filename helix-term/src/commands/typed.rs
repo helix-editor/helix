@@ -3086,9 +3086,9 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         signature: CommandSignature::none(),
     },
     TypableCommand {
-        name: "language-config-open",
+        name: "languages-config-open",
         aliases: &["lsp-config"],
-        doc: "Open the configuration for language servers",
+        doc: "Open the languages.toml file.",
         fun: open_language_config,
         signature: CommandSignature::none(),
     },
