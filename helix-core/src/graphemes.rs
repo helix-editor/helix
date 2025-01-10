@@ -64,7 +64,7 @@ impl<'a> Grapheme<'a> {
     }
 
     pub fn is_whitespace(&self) -> bool {
-        !matches!(&self, Grapheme::Other { g } if !g.chars().all(char_is_whitespace))
+        !matches!(&self, Grapheme::Other { g } if !g.chars().next().is_some_and(char_is_whitespace))
     }
 
     // TODO currently word boundaries are used for softwrapping.
@@ -72,7 +72,7 @@ impl<'a> Grapheme<'a> {
     // This could however be improved in the future by considering unicode
     // character classes but
     pub fn is_word_boundary(&self) -> bool {
-        !matches!(&self, Grapheme::Other { g,.. } if g.chars().all(char_is_word))
+        !matches!(&self, Grapheme::Other { g,.. } if g.chars().next().is_some_and(char_is_word))
     }
 }
 
