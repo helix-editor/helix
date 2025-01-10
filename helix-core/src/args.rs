@@ -16,6 +16,10 @@ pub enum ParseMode {
     ///
     /// Return value includes the start and end quotes.
     RawParams,
+    /// Treat the entire input as one positional that only unescapes backslashes (I.e. resolve `\\` to `\` but not `\t` or `\n`).
+    UnescapeBackslash,
+    /// Split the input into multiple parameters, while escaping backslashes (`\\` to `\`), but not other literals.
+    UnescapeBackslashParams,
     /// Treat the entire input as one positional with minimal processing (I.e. expand `\t` and `\n` but don't split on spaces or handle quotes).
     Literal,
     /// Treat the entire input as one positional with full processing (I.e. expand `\t`, `\n` and also `\\`).
@@ -23,7 +27,7 @@ pub enum ParseMode {
     /// Split the input into multiple parameters, while escaping literals (`\n`, `\t`, `\u{C}`, etc.), but not backslashes.
     LiteralParams,
     /// Split the input into multiple parameters, while escaping literals (`\n`, `\t`, `\u{C}`, etc.), including backslashes.
-    LiteralParamsUnescapeBackslash,
+    LiteralUnescapeBackslashParams,
 }
 
 #[derive(Clone)]
@@ -297,13 +301,19 @@ impl<'a> Iterator for ArgsParser<'a> {
                 self.start = self.input.len();
                 self.idx = self.input.len();
 
-                return Some(unescape(self.input, false));
+                return Some(unescape(self.input, true, false));
             }
             ParseMode::LiteralUnescapeBackslash => {
                 self.start = self.input.len();
                 self.idx = self.input.len();
 
-                return Some(unescape(self.input, true));
+                return Some(unescape(self.input, true, true));
+            }
+            ParseMode::UnescapeBackslash => {
+                self.start = self.input.len();
+                self.idx = self.input.len();
+
+                return Some(unescape(self.input, false, true));
             }
             _ => {}
         }
@@ -348,15 +358,22 @@ impl<'a> Iterator for ArgsParser<'a> {
                                     self.idx += 1;
                                     self.start = self.idx;
 
-                                    unescape(arg, false)
+                                    unescape(arg, true, false)
                                 }
 
-                                ParseMode::LiteralParamsUnescapeBackslash => {
+                                ParseMode::LiteralUnescapeBackslashParams => {
                                     let arg = &self.input[self.start..self.idx];
                                     self.idx += 1;
                                     self.start = self.idx;
 
-                                    unescape(arg, true)
+                                    unescape(arg, true, true)
+                                }
+                                ParseMode::UnescapeBackslashParams => {
+                                    let arg = &self.input[self.start..self.idx];
+                                    self.idx += 1;
+                                    self.start = self.idx;
+
+                                    unescape(arg, false, true)
                                 }
                                 _ => {
                                     unreachable!(
@@ -382,8 +399,9 @@ impl<'a> Iterator for ArgsParser<'a> {
 
                         let output = match self.mode {
                             ParseMode::RawParams => Cow::from(arg),
-                            ParseMode::LiteralParams => unescape(arg, false),
-                            ParseMode::LiteralParamsUnescapeBackslash => unescape(arg, true),
+                            ParseMode::LiteralParams => unescape(arg, true, false),
+                            ParseMode::LiteralUnescapeBackslashParams => unescape(arg, true, true),
+                            ParseMode::UnescapeBackslashParams => unescape(arg, false, true),
                             _ => {
                                 unreachable!(
                                     "other variants are returned early at start of `next` {:?}",
@@ -411,8 +429,12 @@ impl<'a> Iterator for ArgsParser<'a> {
 
                             let output = match self.mode {
                                 ParseMode::RawParams => Cow::from(arg),
-                                ParseMode::LiteralParams => unescape(arg, false),
-                                ParseMode::LiteralParamsUnescapeBackslash => unescape(arg, true),
+                                ParseMode::LiteralParams => unescape(arg, true, false),
+                                ParseMode::LiteralUnescapeBackslashParams => {
+                                    unescape(arg, true, true)
+                                }
+
+                                ParseMode::UnescapeBackslashParams => unescape(arg, false, true),
                                 _ => {
                                     unreachable!(
                                         "other variants are returned early at start of `next` {:?}",
@@ -442,8 +464,9 @@ impl<'a> Iterator for ArgsParser<'a> {
 
                         let output = match self.mode {
                             ParseMode::RawParams => Cow::from(arg),
-                            ParseMode::LiteralParams => unescape(arg, false),
-                            ParseMode::LiteralParamsUnescapeBackslash => unescape(arg, true),
+                            ParseMode::LiteralParams => unescape(arg, true, false),
+                            ParseMode::LiteralUnescapeBackslashParams => unescape(arg, true, true),
+                            ParseMode::UnescapeBackslashParams => unescape(arg, false, true),
                             _ => {
                                 unreachable!(
                                     "other variants are returned early at start of `next` {:?}",
@@ -487,8 +510,9 @@ impl<'a> Iterator for ArgsParser<'a> {
                 ParseMode::RawParams => {
                     Cow::from(&self.input[self.start - usize::from(in_quotes)..])
                 }
-                ParseMode::LiteralParams => unescape(arg, false),
-                ParseMode::LiteralParamsUnescapeBackslash => unescape(arg, true),
+                ParseMode::LiteralParams => unescape(arg, true, false),
+                ParseMode::LiteralUnescapeBackslashParams => unescape(arg, true, true),
+                ParseMode::UnescapeBackslashParams => unescape(arg, false, true),
                 _ => {
                     unreachable!(
                         "other variants are returned early at start of `next` {:?}",
@@ -534,7 +558,7 @@ mod test {
             "",
             &Signature {
                 positionals: (0, None),
-                parse_mode: ParseMode::LiteralParamsUnescapeBackslash,
+                parse_mode: ParseMode::LiteralUnescapeBackslashParams,
             },
             r#"single_word twó wörds \\three\ \"with\ escaping\\"#,
             true,
@@ -617,7 +641,7 @@ mod test {
         let parser = ArgsParser::from(
             r#"'single_word' 'twó wörds' '' ' ''\\three\' \"with\ escaping\\' 'quote incomplete"#,
         )
-        .with_mode(ParseMode::LiteralParamsUnescapeBackslash);
+        .with_mode(ParseMode::LiteralUnescapeBackslashParams);
         let expected = [
             "single_word",
             "twó wörds",
@@ -637,7 +661,7 @@ mod test {
         let parser = ArgsParser::from(
             r#""single_word" "twó wörds" "" "  ""\\three\' \"with\ escaping\\" "dquote incomplete"#,
         )
-        .with_mode(ParseMode::LiteralParamsUnescapeBackslash);
+        .with_mode(ParseMode::LiteralUnescapeBackslashParams);
         let expected = [
             "single_word",
             "twó wörds",
@@ -655,7 +679,7 @@ mod test {
     #[test]
     fn should_respect_escapes_with_mixed_quotes() {
         let args = ArgsParser::from(r#"single_word 'twó wörds' "\\three\' \"with\ escaping\\""no space before"'and after' $#%^@ "%^&(%^" ')(*&^%''a\\\\\b' '"#)
-            .with_mode(ParseMode::LiteralParamsUnescapeBackslash);
+            .with_mode(ParseMode::LiteralUnescapeBackslashParams);
         let expected = [
             "single_word",
             "twó wörds",
@@ -728,8 +752,11 @@ mod test {
             .with_mode(ParseMode::LiteralParams)
             .collect::<Vec<_>>();
 
-        assert_eq!("hello\u{1f929} world", unescape(&args[0], false));
-        assert_eq!(r#"["hello", "🤩", "world"]"#, unescape(&args[1], false));
+        assert_eq!("hello\u{1f929} world", unescape(&args[0], true, false));
+        assert_eq!(
+            r#"["hello", "🤩", "world"]"#,
+            unescape(&args[1], true, false)
+        );
     }
 
     #[test]
@@ -766,6 +793,27 @@ mod test {
             Some(Cow::from(
                 r#""C:\\Users\\Helix\\AppData\\Local\\Temp\\.tmp3Dugy8""#
             )),
+            args.next()
+        );
+    }
+
+    #[test]
+    fn should_only_unescape_backslash() {
+        let mut args = ArgsParser::from(r"C:\\Users\\Helix\\AppData\\Local\\Temp\\.tmp3Dugy8")
+            .with_mode(ParseMode::UnescapeBackslash);
+
+        assert_eq!(
+            Some(Cow::from(r"C:\Users\Helix\AppData\Local\Temp\.tmp3Dugy8")),
+            args.next()
+        );
+    }
+    #[test]
+    fn should_only_unescape_backslash_params() {
+        let mut args = ArgsParser::from(r#""C:\\Users\\Helix\\AppData\\Local\\Temp\\.tmp3Dugy8""#)
+            .with_mode(ParseMode::UnescapeBackslashParams);
+
+        assert_eq!(
+            Some(Cow::from(r"C:\Users\Helix\AppData\Local\Temp\.tmp3Dugy8")),
             args.next()
         );
     }

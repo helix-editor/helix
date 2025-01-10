@@ -175,7 +175,11 @@ pub fn escape(input: Cow<str>) -> Cow<str> {
 /// If input is invalid, for example if there is invalid unicode, \u{999999999}, it will return the input as is.
 #[inline]
 #[must_use]
-pub(super) fn unescape(input: &str, unescape_blackslash: bool) -> Cow<'_, str> {
+pub(super) fn unescape(
+    input: &str,
+    unescape_literals: bool,
+    unescape_blackslash: bool,
+) -> Cow<'_, str> {
     enum State {
         Normal,
         Escaped,
@@ -221,13 +225,13 @@ pub(super) fn unescape(input: &str, unescape_blackslash: bool) -> Cow<'_, str> {
             },
             State::Escaped => {
                 match ch {
-                    'n' => unescaped.push('\n'),
-                    't' => unescaped.push('\t'),
-                    ' ' => unescaped.push(' '),
-                    '\'' => unescaped.push('\''),
-                    '"' => unescaped.push('"'),
-                    '`' => unescaped.push('`'),
-                    'u' => {
+                    'n' if unescape_literals => unescaped.push('\n'),
+                    't' if unescape_literals => unescaped.push('\t'),
+                    ' ' if unescape_literals => unescaped.push(' '),
+                    '\'' if unescape_literals => unescaped.push('\''),
+                    '"' if unescape_literals => unescaped.push('"'),
+                    '`' if unescape_literals => unescaped.push('`'),
+                    'u' if unescape_literals => {
                         state = State::Unicode;
                         continue;
                     }
@@ -312,69 +316,83 @@ mod test {
 
     #[test]
     fn should_unescape_newline() {
-        let unescaped = unescape("hello\\nworld", true);
+        let unescaped = unescape("hello\\nworld", true, true);
         assert_eq!("hello\nworld", unescaped);
     }
 
     #[test]
     fn should_unescape_tab() {
-        let unescaped = unescape("hello\\tworld", true);
+        let unescaped = unescape("hello\\tworld", true, true);
         assert_eq!("hello\tworld", unescaped);
     }
 
     #[test]
     fn should_unescape_unicode() {
-        let unescaped = unescape("hello\\u{1f929}world", true);
+        let unescaped = unescape("hello\\u{1f929}world", true, true);
         assert_eq!("hello\u{1f929}world", unescaped, "char: 🤩 ");
         assert_eq!("hello🤩world", unescaped);
     }
 
     #[test]
     fn should_return_original_input_due_to_bad_unicode() {
-        let unescaped = unescape("hello\\u{999999999}world", true);
+        let unescaped = unescape("hello\\u{999999999}world", true, true);
         assert_eq!("hello\\u{999999999}world", unescaped);
     }
 
     #[test]
     fn should_not_unescape_slash() {
-        let unescaped = unescape(r"hello\\world", true);
+        let unescaped = unescape(r"hello\\world", true, true);
         assert_eq!(r"hello\world", unescaped);
 
-        let unescaped = unescape(r"hello\\\\world", true);
+        let unescaped = unescape(r"hello\\\\world", true, true);
         assert_eq!(r"hello\\world", unescaped);
     }
 
     #[test]
     fn should_unescape_slash_single_quote() {
-        let unescaped = unescape(r"\\'", true);
+        let unescaped = unescape(r"\\'", true, true);
         assert_eq!(r"\'", unescaped);
     }
 
     #[test]
     fn should_unescape_slash_double_quote() {
-        let unescaped = unescape(r#"\\\""#, true);
+        let unescaped = unescape(r#"\\\""#, true, true);
         assert_eq!(r#"\""#, unescaped);
     }
 
     #[test]
     fn should_not_change_anything() {
-        let unescaped = unescape("'", true);
+        let unescaped = unescape("'", true, true);
         assert_eq!("'", unescaped);
-        let unescaped = unescape(r#"""#, true);
+        let unescaped = unescape(r#"""#, true, true);
         assert_eq!(r#"""#, unescaped);
     }
 
     #[test]
     fn should_only_unescape_newline_not_slash_single_quote() {
-        let unescaped = unescape("\\n\'", true);
+        let unescaped = unescape("\\n\'", true, true);
         assert_eq!("\n'", unescaped);
-        let unescaped = unescape(r"\\n\\'", true);
+        let unescaped = unescape(r"\\n\\'", true, true);
         assert_eq!(r"\n\'", unescaped);
     }
 
     #[test]
     fn should_have_final_char_be_backslash() {
-        assert_eq!(Cow::from(r"helix-term\"), unescape(r"helix-term\", false));
-        assert_eq!(Cow::from(r".git\info\"), unescape(r".git\info\", false));
+        assert_eq!(
+            Cow::from(r"helix-term\"),
+            unescape(r"helix-term\", true, false)
+        );
+        assert_eq!(
+            Cow::from(r".git\info\"),
+            unescape(r".git\info\", true, false)
+        );
+    }
+
+    #[test]
+    fn should_only_unescape_backslash() {
+        assert_eq!(
+            Cow::from(r"helix-term\"),
+            unescape(r"helix-term\\", false, true)
+        );
     }
 }
