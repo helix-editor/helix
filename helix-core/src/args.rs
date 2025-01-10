@@ -836,4 +836,15 @@ mod test {
             args.next()
         );
     }
+
+    #[test]
+    fn should_not_parse_blackslash_t_into_tab() {
+        let mut parser = ArgsParser::new(r"helix-term\src\commands\typed")
+            .with_mode(ParseMode::UnescapeBackslashParams);
+
+        assert_eq!(
+            Some(Cow::from(r"helix-term\src\commands\typed")),
+            parser.next()
+        );
+    }
 }

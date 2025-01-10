@@ -2414,7 +2414,10 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["o", "edit", "e"],
         signature: Signature {
             positionals: (1, None),
+            #[cfg(unix)]
             parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            #[cfg(windows)]
+            parse_mode: ParseMode::UnescapeBackslashParams,
         },
         doc: "Open a file from disk into the current view.",
         fun: open,
@@ -2513,7 +2516,10 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["w"],
         signature: Signature {
             positionals: (0, Some(1)),
+            #[cfg(unix)]
             parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            #[cfg(windows)]
+            parse_mode: ParseMode::UnescapeBackslashParams,
          },
         doc: "Write changes to disk. Accepts an optional path (:write some/path.txt)",
         fun: write,
@@ -2524,7 +2530,10 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["w!"],
         signature: Signature {
             positionals: (0, Some(1)),
+            #[cfg(unix)]
             parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            #[cfg(windows)]
+            parse_mode: ParseMode::UnescapeBackslashParams,
          },
         doc: "Force write changes to disk creating necessary subdirectories. Accepts an optional path (:write! some/path.txt)",
         fun: force_write,
@@ -2535,7 +2544,10 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["wbc"],
         signature: Signature {
             positionals: (0, Some(1)),
+            #[cfg(unix)]
             parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            #[cfg(windows)]
+            parse_mode: ParseMode::UnescapeBackslashParams,
          },
         doc: "Write changes to disk and closes the buffer. Accepts an optional path (:write-buffer-close some/path.txt)",
         fun: write_buffer_close,
@@ -2546,7 +2558,10 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["wbc!"],
         signature: Signature {
             positionals: (0, Some(1)),
+            #[cfg(unix)]
             parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            #[cfg(windows)]
+            parse_mode: ParseMode::UnescapeBackslashParams,
          },
         doc: "Force write changes to disk creating necessary subdirectories and closes the buffer. Accepts an optional path (:write-buffer-close! some/path.txt)",
         fun: force_write_buffer_close,
@@ -2626,7 +2641,10 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["wq", "x"],
         signature: Signature {
             positionals: (0, Some(1)),
+            #[cfg(unix)]
             parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            #[cfg(windows)]
+            parse_mode: ParseMode::UnescapeBackslashParams,
          },
         doc: "Write changes to disk and close the current view. Accepts an optional path (:wq some/path.txt)",
         fun: write_quit,
@@ -2637,7 +2655,10 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["wq!", "x!"],
         signature: Signature {
             positionals: (0, Some(1)),
+            #[cfg(unix)]
             parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            #[cfg(windows)]
+            parse_mode: ParseMode::UnescapeBackslashParams,
          },
         doc: "Write changes to disk and close the current view forcefully. Accepts an optional path (:wq! some/path.txt)",
         fun: force_write_quit,
@@ -2879,7 +2900,10 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["cd"],
         signature: Signature {
             positionals: (1, Some(1)),
+            #[cfg(unix)]
             parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            #[cfg(windows)]
+            parse_mode: ParseMode::UnescapeBackslashParams,
          },
         doc: "Change the current working directory.",
         fun: change_current_directory,
@@ -3047,7 +3071,10 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["vs"],
         signature: Signature {
             positionals: (0, Some(1)),
+            #[cfg(unix)]
             parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            #[cfg(windows)]
+            parse_mode: ParseMode::UnescapeBackslashParams,
          },
         doc: "Open the file in a vertical split.",
         fun: vsplit,
@@ -3069,7 +3096,10 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["hs", "sp"],
         signature: Signature {
             positionals: (0, Some(1)),
+            #[cfg(unix)]
             parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            #[cfg(windows)]
+            parse_mode: ParseMode::UnescapeBackslashParams,
          },
         doc: "Open the file in a horizontal split.",
         fun: hsplit,
@@ -3336,7 +3366,10 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["mv"],
         signature: Signature {
             positionals: (1, Some(1)),
+            #[cfg(unix)]
             parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            #[cfg(windows)]
+            parse_mode: ParseMode::UnescapeBackslashParams,
          },
         doc: "Move the current buffer and its corresponding file to a different path",
         fun: move_buffer,
@@ -3358,7 +3391,10 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["r"],
         signature: Signature {
             positionals: (1, Some(1)),
+            #[cfg(unix)]
             parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            #[cfg(windows)]
+            parse_mode: ParseMode::UnescapeBackslashParams,
          },
         doc: "Load a file into buffer",
         fun: read,
