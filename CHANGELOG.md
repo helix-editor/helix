@@ -20,6 +20,40 @@ Updated languages and queries:
 Packaging:
 -->
 
+# 25.01.1 (2025-01-..)
+
+checkpoint <https://github.com/helix-editor/helix/compare/9721144e03a6c4e221c86408d34ce929972a36a5...master>
+
+Usability improvements:
+
+* Run external formatters from the document's directory (#12315)
+
+Fixes:
+
+* Fix blank buffer picker preview on doc with no views (917174e)
+* Fix `join_selections` behavior on tabs (#12452)
+
+Themes:
+
+* Update `onelight` (#12399)
+* Add cursorline color to iceberg themes (#12404)
+
+New languages:
+
+* CodeQL (#12470)
+
+Updated languages and queries:
+
+* Fix Teal LSP name (#12395)
+* Highlight `:` in Rust as a delimiter (#12408)
+* Update Swift highlights (#12409)
+* Highlight JSX attributes as `@attribute` (#12416)
+* Improve markdown heading highlights (#12417)
+
+Packaging:
+
+* `--version` now prints a leading zero for single-digit months, for example `25.01` (03f35af)
+
 # 25.01 (2025-01-03)
 
 As always, a big thank you to all of the contributors! This release saw changes from 171 contributors.
