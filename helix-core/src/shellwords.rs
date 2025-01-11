@@ -395,7 +395,7 @@ mod test {
     }
 
     #[test]
-    fn should_end_in_whitespace() {
+    fn should_check_end_in_whitespace_correctly() {
         assert!(!Shellwords::from(r#":option "abc "#).ends_with_whitespace());
         assert!(!Shellwords::from(":option abc").ends_with_whitespace());
         assert!(Shellwords::from(r#":option "helix-term\a b.txt" "#).ends_with_whitespace());
