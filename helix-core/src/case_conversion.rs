@@ -12,7 +12,7 @@ pub fn simple_case_conversion(
     }
 }
 
-pub fn complex_case_conversion(
+pub fn smart_case_conversion(
     text: impl Iterator<Item = char>,
     buf: &mut Tendril,
     capitalize_first: bool,
@@ -112,15 +112,15 @@ pub fn into_snake_case(text: impl Iterator<Item = char>, buf: &mut Tendril) {
 }
 
 pub fn into_title_case(text: impl Iterator<Item = char>, buf: &mut Tendril) {
-    complex_case_conversion(text, buf, true, Some(' '));
+    smart_case_conversion(text, buf, true, Some(' '));
 }
 
 pub fn into_camel_case(text: impl Iterator<Item = char>, buf: &mut Tendril) {
-    complex_case_conversion(text, buf, false, None);
+    smart_case_conversion(text, buf, false, None);
 }
 
 pub fn into_pascal_case(text: impl Iterator<Item = char>, buf: &mut Tendril) {
-    complex_case_conversion(text, buf, true, None);
+    smart_case_conversion(text, buf, true, None);
 }
 
 fn to_case<I>(text: I, to_case_with: fn(I, &mut Tendril)) -> Tendril
