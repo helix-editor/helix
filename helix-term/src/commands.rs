@@ -5850,7 +5850,7 @@ fn surround_delete(cx: &mut Context) {
 
         let surround_ch = match (event.code, event.char()) {
             (KeyCode::Enter, _) => Some('\n'), // special case for <ret>
-            (_, Some('m')) => None, // m selects closest pair
+            (_, Some('m')) => None,            // m selects closest pair
             (_, Some(ch)) => Some(ch),
             _ => return,
         };
