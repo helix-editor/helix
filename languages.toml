@@ -488,6 +488,8 @@ name = "jsonc"
 scope = "source.json"
 injection-regex = "jsonc"
 file-types = ["jsonc", { glob = "tsconfig.json" }]
+comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
 grammar = "json"
 language-servers = [ "vscode-json-language-server" ]
 auto-format = true
