@@ -418,7 +418,6 @@
   ".."
   "..="
   "'"
-  "?"
 ] @operator
 
 ; -------
@@ -455,6 +454,8 @@
 ; -------
 ; Remaining Identifiers
 ; -------
+
+"?" @special
 
 (type_identifier) @type
 (identifier) @variable
