@@ -176,9 +176,10 @@ pub fn find_nth_pairs_pos(
 
     let (open, close) = if open == close {
         if Some(open) == text.get_char(pos) {
-            // In this case, the Cursor is directly on the match char. There is still hope to find a matching char.
-
-            if let Some(final_attempt) = syntax
+            // Cursor is directly on match character for which the opening and closing pairs are the same. For instance: ", ', `
+            //
+            // This is potentially ambiguous
+            syntax
                 .map_or_else(
                     || match_brackets::find_matching_bracket_plaintext(text.slice(..), pos),
                     |syntax| {
@@ -187,24 +188,18 @@ pub fn find_nth_pairs_pos(
                 )
                 .map(|matching_pair_pos| {
                     if matching_pair_pos > pos {
-                        (pos, matching_pair_pos)
+                        (Some(pos), Some(matching_pair_pos))
                     } else {
-                        (matching_pair_pos, pos)
+                        (Some(matching_pair_pos), Some(pos))
                     }
                 })
-            {
-                return Ok(final_attempt);
-            };
-
-            // Cursor is directly on match char. We return no match
-            // because there's no way to know which side of the char
-            // we should be searching on.
-            return Err(Error::CursorOnAmbiguousPair);
+                .ok_or(Error::CursorOnAmbiguousPair)?
+        } else {
+            (
+                search::find_nth_prev(text, open, pos, n),
+                search::find_nth_next(text, close, pos, n),
+            )
         }
-        (
-            search::find_nth_prev(text, open, pos, n),
-            search::find_nth_next(text, close, pos, n),
-        )
     } else {
         (
             find_nth_open_pair(text, open, close, pos, n),
