@@ -311,6 +311,8 @@
 ((identifier) @type
   (#match? @type "^[A-Z]"))
 
+(never_type "!" @type)
+
 ; -------
 ; Functions
 ; -------
@@ -453,6 +455,7 @@
 ; Remaining Identifiers
 ; -------
 
+; We do not style ? as an operator on purpose as it allows styling ? differently, as many highlighters do. @operator.special might have been a better scope, but @special is already documented so the change would break themes (including the intent of the default theme)
 "?" @special
 
 (type_identifier) @type
