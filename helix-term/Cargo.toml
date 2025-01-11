@@ -46,7 +46,7 @@ arc-swap = { version = "1.7.1" }
 termini = "1"
 
 # Logging
-fern = "0.6"
+fern = "0.7"
 chrono = { version = "0.4", default-features = false, features = ["clock"] }
 log = "0.4"
 
@@ -57,11 +57,11 @@ ignore = "0.4"
 pulldown-cmark = { version = "0.12", default-features = false }
 # file type detection
 content_inspector = "0.2.4"
-thiserror = "1.0"
+thiserror.workspace = true
 
 # opening URLs
-open = "5.3.0"
-url = "2.5.2"
+open = "5.3.2"
+url = "2.5.4"
 
 # config
 toml = "0.8"
@@ -80,7 +80,7 @@ steel-doc = { git = "https://github.com/mattwparas/steel.git", version = "0.6.0"
 
 [target.'cfg(not(windows))'.dependencies]  # https://github.com/vorner/signal-hook/issues/100
 signal-hook-tokio = { version = "0.3", features = ["futures-v0_3"] }
-libc = "0.2.159"
+libc = "0.2.169"
 
 [target.'cfg(target_os = "macos")'.dependencies]
 crossterm = { version = "0.28", features = ["event-stream", "use-dev-tty", "libc"] }
@@ -91,5 +91,5 @@ helix-loader = { path = "../helix-loader" }
 [dev-dependencies]
 smallvec = "1.13"
 indoc = "2.0.5"
-tempfile = "3.13.0"
+tempfile.workspace = true
 same-file = "1.0.1"

@@ -144,6 +144,7 @@ fn status(repo: &Repository, f: impl Fn(Result<FileChange>) -> bool) -> Result<(
             copies: None,
             percentage: Some(0.5),
             limit: 1000,
+            ..Default::default()
         }));
 
     // No filtering based on path
@@ -198,7 +199,7 @@ fn find_file_in_commit(repo: &Repository, commit: &Commit, file: &Path) -> Resul
     let rel_path = file.strip_prefix(repo_dir)?;
     let tree = commit.tree()?;
     let tree_entry = tree
-        .lookup_entry_by_path(rel_path, &mut Vec::new())?
+        .lookup_entry_by_path(rel_path)?
         .context("file is untracked")?;
     match tree_entry.mode().kind() {
         // not a file, everything is new, do not show diff

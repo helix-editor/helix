@@ -8,6 +8,7 @@ use super::*;
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::{line_ending, shellwords::Shellwords};
+use helix_stdx::path::home_dir;
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
 use serde_json::Value;
@@ -187,9 +188,7 @@ fn buffer_gather_paths_impl(editor: &mut Editor, args: &[Cow<str>]) -> Vec<Docum
     for arg in args {
         let doc_id = editor.documents().find_map(|doc| {
             let arg_path = Some(Path::new(arg.as_ref()));
-            if doc.path().map(|p| p.as_path()) == arg_path
-                || doc.relative_path().as_deref() == arg_path
-            {
+            if doc.path().map(|p| p.as_path()) == arg_path || doc.relative_path() == arg_path {
                 Some(doc.id())
             } else {
                 None
@@ -457,13 +456,15 @@ fn format(
     }
 
     let (view, doc) = current!(cx.editor);
-    if let Some(format) = doc.format() {
-        let callback = make_format_callback(doc.id(), doc.version(), view.id, format, None);
-        cx.jobs.callback(callback);
-    }
+    let format = doc.format().context(
+        "A formatter isn't available, and no language server provides formatting capabilities",
+    )?;
+    let callback = make_format_callback(doc.id(), doc.version(), view.id, format, None);
+    cx.jobs.callback(callback);
 
     Ok(())
 }
+
 fn set_indent_style(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -649,13 +650,14 @@ fn force_write_quit(
 /// error, otherwise returns `Ok(())`. If the current document is unmodified,
 /// and there are modified documents, switches focus to one of them.
 pub(super) fn buffers_remaining_impl(editor: &mut Editor) -> anyhow::Result<()> {
-    let (modified_ids, modified_names): (Vec<_>, Vec<_>) = editor
+    let modified_ids: Vec<_> = editor
         .documents()
         .filter(|doc| doc.is_modified())
         // Named scratch documents should not be included here
         .filter(|doc| doc.name.is_none())
-        .map(|doc| (doc.id(), doc.display_name()))
-        .unzip();
+        .map(|doc| doc.id())
+        .collect();
+
     if let Some(first) = modified_ids.first() {
         let current = doc!(editor);
         // If the current document is unmodified, and there are modified
@@ -663,6 +665,12 @@ pub(super) fn buffers_remaining_impl(editor: &mut Editor) -> anyhow::Result<()> 
         if !modified_ids.contains(&current.id()) {
             editor.switch(*first, Action::Replace);
         }
+
+        let modified_names: Vec<_> = modified_ids
+            .iter()
+            .map(|doc_id| doc!(editor, doc_id).display_name())
+            .collect();
+
         bail!(
             "{} unsaved buffer{} remaining: {:?}",
             modified_names.len(),
@@ -1104,7 +1112,7 @@ fn show_clipboard_provider(
     }
 
     cx.editor
-        .set_status(cx.editor.registers.clipboard_provider_name().to_string());
+        .set_status(cx.editor.registers.clipboard_provider_name());
     Ok(())
 }
 
@@ -1117,18 +1125,23 @@ fn change_current_directory(
         return Ok(());
     }
 
-    let dir = args
-        .first()
-        .context("target directory not provided")?
-        .as_ref();
-    let dir = helix_stdx::path::expand_tilde(Path::new(dir));
+    let dir = match args.first().map(AsRef::as_ref) {
+        Some("-") => cx
+            .editor
+            .get_last_cwd()
+            .map(|path| Cow::Owned(path.to_path_buf()))
+            .ok_or_else(|| anyhow!("No previous working directory"))?,
+        Some(path) => helix_stdx::path::expand_tilde(Path::new(path)),
+        None => Cow::Owned(home_dir()?),
+    };
 
-    helix_stdx::env::set_current_working_dir(dir)?;
+    cx.editor.set_cwd(&dir)?;
 
     cx.editor.set_status(format!(
         "Current working directory is now {}",
         helix_stdx::env::current_working_dir().display()
     ));
+
     Ok(())
 }
 
@@ -2562,7 +2575,8 @@ fn read(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     ensure!(args.len() == 1, "only the file name is expected");
 
     let filename = args.first().unwrap();
-    let path = PathBuf::from(filename.to_string());
+    let path = helix_stdx::path::expand_tilde(PathBuf::from(filename.to_string()));
+
     ensure!(
         path.exists() && path.is_file(),
         "path is not a file: {:?}",
@@ -2701,7 +2715,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "format",
         aliases: &["fmt"],
-        doc: "Format the file using the LSP formatter.",
+        doc: "Format the file using an external formatter or language server.",
         fun: format,
         signature: CommandSignature::none(),
     },
@@ -3264,8 +3278,8 @@ pub(super) fn command_mode(cx: &mut Context) {
                 {
                     completer(editor, word)
                         .into_iter()
-                        .map(|(range, file)| {
-                            let file = shellwords::escape(file);
+                        .map(|(range, mut file)| {
+                            file.content = shellwords::escape(file.content);
 
                             // offset ranges to input
                             let offset = input.len() - word_len;

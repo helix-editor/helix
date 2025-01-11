@@ -228,7 +228,7 @@ impl<T: Item> Menu<T> {
 }
 
 impl<T: Item + PartialEq> Menu<T> {
-    pub fn replace_option(&mut self, old_option: &T, new_option: T) {
+    pub fn replace_option(&mut self, old_option: &impl PartialEq<T>, new_option: T) {
         for option in &mut self.options {
             if old_option == option {
                 *option = new_option;
@@ -346,10 +346,6 @@ impl<T: Item + 'static> Component for Menu<T> {
 
         let win_height = area.height as usize;
 
-        const fn div_ceil(a: usize, b: usize) -> usize {
-            (a + b - 1) / b
-        }
-
         let rows = options
             .iter()
             .map(|option| option.format(&self.editor_data));
@@ -390,7 +386,7 @@ impl<T: Item + 'static> Component for Menu<T> {
 
         let scroll_style = theme.get("ui.menu.scroll");
         if !fits {
-            let scroll_height = div_ceil(win_height.pow(2), len).min(win_height);
+            let scroll_height = win_height.pow(2).div_ceil(len).min(win_height);
             let scroll_line = (win_height - scroll_height) * scroll
                 / std::cmp::max(1, len.saturating_sub(win_height));
 

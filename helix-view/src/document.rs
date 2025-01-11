@@ -7,11 +7,13 @@ use helix_core::auto_pairs::AutoPairs;
 use helix_core::chars::char_is_word;
 use helix_core::doc_formatter::TextFormat;
 use helix_core::encoding::Encoding;
+use helix_core::snippets::{ActiveSnippet, SnippetRenderCtx};
 use helix_core::syntax::{Highlight, LanguageServerFeature};
 use helix_core::text_annotations::{InlineAnnotation, Overlay};
 use helix_lsp::util::lsp_pos_to_pos;
 use helix_stdx::faccess::{copy_metadata, readonly};
 use helix_vcs::{DiffHandle, DiffProviderRegistry};
+use once_cell::sync::OnceCell;
 use thiserror;
 
 use ::parking_lot::Mutex;
@@ -135,6 +137,7 @@ pub struct Document {
     text: Rope,
     selections: HashMap<ViewId, Selection>,
     view_data: HashMap<ViewId, ViewData>,
+    pub active_snippet: Option<ActiveSnippet>,
 
     /// Inlay hints annotations for the document, by view.
     ///
@@ -146,6 +149,7 @@ pub struct Document {
     pub inlay_hints_oudated: bool,
 
     path: Option<PathBuf>,
+    relative_path: OnceCell<Option<PathBuf>>,
     encoding: &'static encoding::Encoding,
     has_bom: bool,
 
@@ -297,6 +301,14 @@ impl fmt::Debug for DocumentInlayHintsId {
         f.debug_struct("DocumentInlayHintsId")
             .field("lines", &(self.first_line..self.last_line))
             .finish()
+    }
+}
+
+impl Editor {
+    pub(crate) fn clear_doc_relative_paths(&mut self) {
+        for doc in self.documents_mut() {
+            doc.relative_path.take();
+        }
     }
 }
 
@@ -657,7 +669,9 @@ impl Document {
 
         Self {
             id: DocumentId::default(),
+            active_snippet: None,
             path: None,
+            relative_path: OnceCell::new(),
             encoding,
             has_bom,
             text,
@@ -763,7 +777,13 @@ impl Document {
         {
             use std::process::Stdio;
             let text = self.text().clone();
+
             let mut process = tokio::process::Command::new(&fmt_cmd);
+
+            if let Some(doc_dir) = self.path.as_ref().and_then(|path| path.parent()) {
+                process.current_dir(doc_dir);
+            }
+
             process
                 .args(fmt_args)
                 .stdin(Stdio::piped())
@@ -1172,6 +1192,10 @@ impl Document {
     pub fn set_path(&mut self, path: Option<&Path>) {
         let path = path.map(helix_stdx::path::canonicalize);
 
+        // `take` to remove any prior relative path that may have existed.
+        // This will get set in `relative_path()`.
+        self.relative_path.take();
+
         // if parent doesn't exist we still want to open the document
         // and error out when document is saved
         self.path = path;
@@ -1415,6 +1439,8 @@ impl Document {
             doc: self,
             view: view_id,
             old_text: &old_doc,
+            changes,
+            ghost_transaction: !emit_lsp_notification,
         });
 
         // if specified, the current selection should instead be replaced by transaction.selection
@@ -1716,6 +1742,12 @@ impl Document {
         self.version
     }
 
+    pub fn path_completion_enabled(&self) -> bool {
+        self.language_config()
+            .and_then(|lang_config| lang_config.path_completion)
+            .unwrap_or_else(|| self.config.load().path_completion)
+    }
+
     /// maintains the order as configured in the language_servers TOML array
     pub fn language_servers(&self) -> impl Iterator<Item = &helix_lsp::Client> {
         self.language_config().into_iter().flat_map(move |config| {
@@ -1859,13 +1891,17 @@ impl Document {
         self.view_data_mut(view_id).view_position = new_offset;
     }
 
-    pub fn relative_path(&self) -> Option<Cow<Path>> {
-        self.path
+    pub fn relative_path(&self) -> Option<&Path> {
+        self.relative_path
+            .get_or_init(|| {
+                self.path
+                    .as_ref()
+                    .map(|path| helix_stdx::path::get_relative_path(path).to_path_buf())
+            })
             .as_deref()
-            .map(helix_stdx::path::get_relative_path)
     }
 
-    pub fn display_name(&self) -> Cow<'static, str> {
+    pub fn display_name(&self) -> Cow<'_, str> {
         self.relative_path()
             .map(|path| path.to_string_lossy().to_string().into())
             .or_else(|| self.name.as_ref().map(|x| Cow::Owned(x.clone())))
@@ -2046,6 +2082,16 @@ impl Document {
         match &self.language {
             Some(lang) => lang.as_ref().auto_pairs.as_ref().or(global_config),
             None => global_config,
+        }
+    }
+
+    pub fn snippet_ctx(&self) -> SnippetRenderCtx {
+        SnippetRenderCtx {
+            // TODO snippet variable resolution
+            resolve_var: Box::new(|_| None),
+            tab_width: self.tab_width(),
+            indent_style: self.indent_style,
+            line_ending: self.line_ending.as_str(),
         }
     }
 

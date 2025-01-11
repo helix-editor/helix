@@ -1804,7 +1804,7 @@ steel::custom_reference!(Context<'a>);
 fn get_themes(cx: &mut Context) -> Vec<String> {
     ui::completers::theme(cx.editor, "")
         .into_iter()
-        .map(|x| x.1.to_string())
+        .map(|x| x.1.content.to_string())
         .collect()
 }
 

@@ -346,7 +346,7 @@ pub struct RopeGraphemes<'a> {
     cursor: GraphemeCursor,
 }
 
-impl<'a> fmt::Debug for RopeGraphemes<'a> {
+impl fmt::Debug for RopeGraphemes<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RopeGraphemes")
             .field("text", &self.text)
@@ -358,7 +358,7 @@ impl<'a> fmt::Debug for RopeGraphemes<'a> {
     }
 }
 
-impl<'a> RopeGraphemes<'a> {
+impl RopeGraphemes<'_> {
     #[must_use]
     pub fn new(slice: RopeSlice) -> RopeGraphemes {
         let mut chunks = slice.chunks();
@@ -423,7 +423,7 @@ pub struct RevRopeGraphemes<'a> {
     cursor: GraphemeCursor,
 }
 
-impl<'a> fmt::Debug for RevRopeGraphemes<'a> {
+impl fmt::Debug for RevRopeGraphemes<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("RevRopeGraphemes")
             .field("text", &self.text)
@@ -435,7 +435,7 @@ impl<'a> fmt::Debug for RevRopeGraphemes<'a> {
     }
 }
 
-impl<'a> RevRopeGraphemes<'a> {
+impl RevRopeGraphemes<'_> {
     #[must_use]
     pub fn new(slice: RopeSlice) -> RevRopeGraphemes {
         let (mut chunks, mut cur_chunk_start, _, _) = slice.chunks_at_byte(slice.len_bytes());
@@ -542,7 +542,7 @@ impl<'a> From<&'a str> for GraphemeStr<'a> {
     }
 }
 
-impl<'a> From<String> for GraphemeStr<'a> {
+impl From<String> for GraphemeStr<'_> {
     fn from(g: String) -> Self {
         let len = g.len();
         let ptr = Box::into_raw(g.into_bytes().into_boxed_slice()) as *mut u8;

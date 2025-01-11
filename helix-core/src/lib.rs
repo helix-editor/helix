@@ -1,8 +1,10 @@
 pub use encoding_rs as encoding;
 
 pub mod auto_pairs;
+pub mod case_conversion;
 pub mod chars;
 pub mod comment;
+pub mod completion;
 pub mod config;
 pub mod diagnostic;
 pub mod diff;
@@ -21,6 +23,7 @@ mod position;
 pub mod search;
 pub mod selection;
 pub mod shellwords;
+pub mod snippets;
 pub mod surround;
 pub mod syntax;
 pub mod test;
@@ -65,6 +68,7 @@ pub use selection::{Range, Selection};
 pub use smallvec::{smallvec, SmallVec};
 pub use syntax::Syntax;
 
+pub use completion::CompletionItem;
 pub use diagnostic::Diagnostic;
 
 pub use line_ending::{LineEnding, NATIVE_LINE_ENDING};
