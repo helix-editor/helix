@@ -63,6 +63,14 @@
  (#any-of? @type.enum.variant.builtin "Some" "None" "Ok" "Err"))
 
 
+(call_expression
+  (identifier) @function.builtin
+  (#any-of? @function.builtin
+    "drop"
+    "size_of"
+    "size_of_val"
+    "align_of"
+    "align_of_val"))
 
 ((type_identifier) @type.builtin
  (#any-of?
