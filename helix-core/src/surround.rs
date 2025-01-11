@@ -178,7 +178,7 @@ pub fn find_nth_pairs_pos(
         if Some(open) == text.get_char(pos) {
             // Cursor is directly on match character for which the opening and closing pairs are the same. For instance: ", ', `
             //
-            // This is potentially ambiguous
+            // This is potentially ambiguous, because there's no way to know which side of the char we should be searching on.
             syntax
                 .map_or_else(
                     || match_brackets::find_matching_bracket_plaintext(text.slice(..), pos),
