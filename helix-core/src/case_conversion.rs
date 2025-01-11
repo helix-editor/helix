@@ -7,9 +7,7 @@ pub fn simple_case_conversion(
     buf: &mut Tendril,
     transform_char: impl Fn(&char) -> char,
 ) {
-    for c in text {
-        buf.push(transform_char(&c))
-    }
+    *buf = text.map(|ch| transform_char(&ch)).collect();
 }
 
 pub fn smart_case_conversion(
