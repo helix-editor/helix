@@ -1672,9 +1672,10 @@ fn debug_remote(
     }
 
     let address = args.first().map(|addr| addr.parse()).transpose()?;
-    let params = args.iter().cloned().collect();
+    let name = args.get(1);
+    let params = args.clone().into_iter().collect();
 
-    dap_start_impl(cx, args.get(1), address, Some(params))
+    dap_start_impl(cx, name, address, Some(params))
 }
 
 fn tutor(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyhow::Result<()> {

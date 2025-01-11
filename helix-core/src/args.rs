@@ -76,7 +76,7 @@ pub fn ensure_signature(name: &str, signature: &Signature, count: usize) -> anyh
 }
 
 /// An abstraction for arguments that were passed in to a command.
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Args<'a> {
     positionals: Vec<Cow<'a, str>>,
 }
