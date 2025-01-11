@@ -22,7 +22,7 @@ pub fn smart_case_conversion(
     separator: Option<char>,
 ) {
     let mut should_capitalize_current = capitalize_first;
-    let mut prev: Option<char> = None;
+    let mut prev = None;
 
     let add_separator_if_needed = |prev: Option<char>, buf: &mut Tendril| {
         if let Some(separator) = separator {
@@ -61,7 +61,7 @@ pub fn separator_case_conversion(
     buf: &mut Tendril,
     separator: char,
 ) {
-    let mut prev: Option<char> = None;
+    let mut prev = None;
 
     for current in chars.skip_while(|ch| ch.is_whitespace()) {
         if !current.is_alphanumeric() {
