@@ -13,7 +13,7 @@ pub fn simple_case_conversion(
 }
 
 pub fn smart_case_conversion(
-    text: impl Iterator<Item = char>,
+    chars: impl Iterator<Item = char>,
     buf: &mut Tendril,
     capitalize_first: bool,
     separator: Option<char>,
@@ -21,34 +21,37 @@ pub fn smart_case_conversion(
     let mut should_capitalize_current = capitalize_first;
     let mut prev: Option<char> = None;
 
-    for c in text.skip_while(|ch| ch.is_whitespace()) {
-        if c.is_alphanumeric() {
+    for current in chars.skip_while(|ch| ch.is_whitespace()) {
+        let mut maybe_add_separator = || {
             if let Some(separator) = separator {
-                if prev.is_some_and(|p| p != separator)
-                    && prev.is_some_and(|p| p.is_lowercase())
-                    && c.is_uppercase()
-                {
+                // We do not want to add a separator when the previous char is not a separator
+                // For example, snake__case is invalid
+                if prev.is_some_and(|ch| ch != separator) {
                     buf.push(separator);
                 }
             }
-            if prev.is_some_and(|p| p.is_lowercase()) && c.is_uppercase() {
+        };
+
+        if current.is_alphanumeric() {
+            // "camelCase" => transition at 'l' -> 'C'
+            let has_camel_transition =
+                current.is_uppercase() && prev.is_some_and(|ch| ch.is_lowercase());
+
+            if has_camel_transition {
+                maybe_add_separator();
                 should_capitalize_current = true;
             }
             if should_capitalize_current {
-                buf.push(c.to_ascii_uppercase());
+                buf.push(current.to_ascii_uppercase());
                 should_capitalize_current = false;
             } else {
-                buf.extend(c.to_lowercase());
+                buf.push(current.to_ascii_lowercase());
             }
         } else {
             should_capitalize_current = true;
-            if let Some(separator) = separator {
-                if prev.is_some_and(|p| p != separator) {
-                    buf.push(separator);
-                }
-            }
+            maybe_add_separator();
         }
-        prev = Some(c);
+        prev = Some(current);
     }
 
     *buf = buf.trim_end().into();
