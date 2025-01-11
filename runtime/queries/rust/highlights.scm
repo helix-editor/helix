@@ -455,6 +455,7 @@
 ; Remaining Identifiers
 ; -------
 
+; This is deliberate and allows styling ? differently, as many highlighters do. @operator.special might have been a better scope, but @special is already documented so the change would break themes (including the intent of the default theme)
 "?" @special
 
 (type_identifier) @type
