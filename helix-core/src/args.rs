@@ -83,6 +83,9 @@ pub struct Args<'a> {
 
 impl<'a> Args<'a> {
     /// Creates an instance of `Args`, with behavior shaped from a signature.
+    ///
+    /// When validate is `true` then it will check if the signature matches
+    /// the number of arguments that the command is expecting.
     #[inline]
     pub fn from_signature(
         name: &str,
@@ -90,15 +93,18 @@ impl<'a> Args<'a> {
         args: &'a str,
         validate: bool,
     ) -> anyhow::Result<Self> {
-        let positionals: Vec<_> = ArgsParser::from(args)
-            .with_mode(signature.parse_mode)
-            .collect();
+        // Checking with a `Params` mode means that the number of arguments can be counted and validated
+        // even if the actual parse type is `Raw`, `Literal` or `UnescapeBackslash`, which only yield
+        // a single item otherwise.
+        let args = ArgsParser::from(args).with_mode(ParseMode::RawParams);
 
         if validate {
-            ensure_signature(name, signature, positionals.len())?;
+            ensure_signature(name, signature, args.clone().count())?;
         }
 
-        Ok(Args { positionals })
+        Ok(Args {
+            positionals: args.with_mode(signature.parse_mode).collect(),
+        })
     }
 
     /// Returns the count of how many arguments there are.
