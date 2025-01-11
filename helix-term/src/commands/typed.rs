@@ -3164,7 +3164,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         // TODO: Add support for completion of the options value(s), when appropriate.
         signature: Signature {
             positionals: (2, Some(2)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Set a config option at runtime.\nFor example to disable smart case search, use `:set search.smart-case false`.",
         fun: set_option,
@@ -3175,7 +3175,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["toggle"],
         signature: Signature {
             positionals: (1, None),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         // TODO: Not just blooleans
         doc: "Toggle a boolean config option at runtime.\nFor example to toggle smart case search, use `:toggle search.smart-case`.",
