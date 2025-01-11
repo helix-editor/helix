@@ -2394,7 +2394,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["q"],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
         },
         doc: "Close the current view.",
         fun: quit,
@@ -2405,7 +2405,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["q!"],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
         },
         doc: "Force close the current view, ignoring unsaved changes.",
         fun: force_quit,
@@ -2429,8 +2429,11 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "buffer-close",
         aliases: &["bc", "bclose"],
         signature: Signature {
-            positionals: (0, Some(1)),
+            positionals: (0, None),
+            #[cfg(unix)]
             parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            #[cfg(windows)]
+            parse_mode: ParseMode::UnescapeBackslashParams,
         },
         doc: "Close the current buffer.",
         fun: buffer_close,
@@ -2440,8 +2443,11 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         name: "buffer-close!",
         aliases: &["bc!", "bclose!"],
         signature: Signature {
-            positionals: (0, Some(1)),
+            positionals: (0, None),
+            #[cfg(unix)]
             parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            #[cfg(windows)]
+            parse_mode: ParseMode::UnescapeBackslashParams,
         },
         doc: "Close the current buffer forcefully, ignoring unsaved changes.",
         fun: force_buffer_close,
@@ -2452,7 +2458,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["bco", "bcloseother"],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
         },
         doc: "Close all buffers but the currently focused one.",
         fun: buffer_close_others,
@@ -2463,7 +2469,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["bco!", "bcloseother!"],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
         },
         doc: "Force close all buffers but the currently focused one.",
         fun: force_buffer_close_others,
@@ -2474,7 +2480,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["bca", "bcloseall"],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
         },
         doc: "Close all buffers without quitting.",
         fun: buffer_close_all,
@@ -2485,7 +2491,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["bca!", "bcloseall!"],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
         },
         doc: "Force close all buffers ignoring unsaved changes without quitting.",
         fun: force_buffer_close_all,
@@ -2496,7 +2502,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["bn", "bnext"],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
         },
         doc: "Goto next buffer.",
         fun: buffer_next,
@@ -2507,7 +2513,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["bp", "bprev"],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Goto previous buffer.",
         fun: buffer_previous,
@@ -2574,7 +2580,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["n"],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Create a new scratch buffer.",
         fun: new_file,
@@ -2585,7 +2591,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["fmt"],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Format the file using an external formatter or language server.",
         fun: format,
@@ -2596,7 +2602,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(1)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Set the indentation style for editing. ('t' for tabs or 1-16 for number of spaces.)",
         fun: set_indent_style,
@@ -2607,7 +2613,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (1, Some(1)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         #[cfg(not(feature = "unicode-lines"))]
         doc: "Set the document's default line ending. Options: crlf, lf.",
@@ -2621,7 +2627,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["ear"],
         signature: Signature {
             positionals: (1, Some(1)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Jump back to an earlier point in edit history. Accepts a number of steps or a time span.",
         fun: earlier,
@@ -2632,7 +2638,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["lat"],
         signature: Signature {
             positionals: (1, Some(1)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Jump to a later point in edit history. Accepts a number of steps or a time span.",
         fun: later,
@@ -2682,7 +2688,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["wa!"],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Forcefully write changes from all buffers to disk creating necessary subdirectories.",
         fun: force_write_all,
@@ -2693,7 +2699,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["wqa", "xa"],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Write changes from all buffers to disk and close all views.",
         fun: write_all_quit,
@@ -2704,7 +2710,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["wqa!", "xa!"],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Write changes from all buffers to disk and close all views forcefully (ignoring unsaved changes).",
         fun: force_write_all_quit,
@@ -2715,7 +2721,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["qa"],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Close all views.",
         fun: quit_all,
@@ -2726,7 +2732,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["qa!"],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Force close all views ignoring unsaved changes.",
         fun: force_quit_all,
@@ -2737,7 +2743,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["cq"],
         signature: Signature {
             positionals: (0, Some(1)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Quit with exit code (default 1). Accepts an optional integer exit code (:cq 2).",
         fun: cquit,
@@ -2748,7 +2754,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["cq!"],
         signature: Signature {
             positionals: (0, Some(1)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Force quit with exit code (default 1) ignoring unsaved changes. Accepts an optional integer exit code (:cq! 2).",
         fun: force_cquit,
@@ -2759,7 +2765,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (1, Some(1)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Change the editor theme (show current theme if no name specified).",
         fun: theme,
@@ -2770,7 +2776,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(1)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::Literal,
          },
         doc: "Yank joined selections. A separator can be provided as first argument. Default value is newline.",
         fun: yank_joined,
@@ -2781,7 +2787,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Yank main selection into system clipboard.",
         fun: yank_main_selection_to_clipboard,
@@ -2792,7 +2798,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::Literal,
          },
         doc: "Yank joined selections into system clipboard. A separator can be provided as first argument. Default value is newline.", // FIXME: current UI can't display long doc.
         fun: yank_joined_to_clipboard,
@@ -2803,7 +2809,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Yank main selection into system primary clipboard.",
         fun: yank_main_selection_to_primary_clipboard,
@@ -2814,7 +2820,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(1)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::Literal,
          },
         doc: "Yank joined selections into system primary clipboard. A separator can be provided as first argument. Default value is newline.", // FIXME: current UI can't display long doc.
         fun: yank_joined_to_primary_clipboard,
@@ -2825,7 +2831,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Paste system clipboard after selections.",
         fun: paste_clipboard_after,
@@ -2836,7 +2842,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Paste system clipboard before selections.",
         fun: paste_clipboard_before,
@@ -2847,7 +2853,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Replace selections with content of system clipboard.",
         fun: replace_selections_with_clipboard,
@@ -2858,7 +2864,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Paste primary clipboard after selections.",
         fun: paste_primary_clipboard_after,
@@ -2869,7 +2875,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Paste primary clipboard before selections.",
         fun: paste_primary_clipboard_before,
@@ -2880,7 +2886,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Replace selections with content of system primary clipboard.",
         fun: replace_selections_with_primary_clipboard,
@@ -2891,7 +2897,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Show clipboard provider name in status bar.",
         fun: show_clipboard_provider,
@@ -2916,7 +2922,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["pwd"],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Show the current working directory.",
         fun: show_current_directory,
@@ -2927,7 +2933,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (1, Some(1)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Set encoding. Based on `https://encoding.spec.whatwg.org`.",
         fun: set_encoding,
@@ -2938,7 +2944,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["char"],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Get info about the character under the primary cursor.",
         fun: get_character_info,
@@ -2949,7 +2955,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["rl"],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Discard changes and reload from the source file.",
         fun: reload,
@@ -2960,7 +2966,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["rla"],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Discard changes and reload all documents from the source files.",
         fun: reload_all,
@@ -2971,7 +2977,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["u"],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Write changes only if the file has been modified.",
         fun: update,
@@ -2982,7 +2988,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Open workspace command picker",
         fun: lsp_workspace_command,
@@ -2993,7 +2999,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Restarts the language servers used by the current doc",
         fun: lsp_restart,
@@ -3004,7 +3010,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Stops the language servers that are used by the current doc",
         fun: lsp_stop,
@@ -3015,7 +3021,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Display tree sitter scopes, primarily for theming and development.",
         fun: tree_sitter_scopes,
@@ -3026,7 +3032,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Display name of tree-sitter highlight scope under the cursor.",
         fun: tree_sitter_highlight_name,
@@ -3038,7 +3044,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         // correct postitional ?
         signature: Signature {
             positionals: (0, None),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::RawParams,
          },
         doc: "Start a debug session from a given template with given parameters.",
         fun: debug_start,
@@ -3050,7 +3056,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         // correct postitional ?
         signature: Signature {
             positionals: (0, None),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::RawParams,
          },
         doc: "Connect to a debug adapter by TCP address and start a debugging session from a given template with given parameters.",
         fun: debug_remote,
@@ -3062,7 +3068,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         // correct postitional ?
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Evaluate expression in current debug context.",
         fun: debug_eval,
@@ -3087,7 +3093,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["vnew"],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Open a scratch buffer in a vertical split.",
         fun: vsplit_new,
@@ -3112,7 +3118,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["hnew"],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Open a scratch buffer in a horizontal split.",
         fun: hsplit_new,
@@ -3123,7 +3129,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Open the tutorial.",
         fun: tutor,
@@ -3134,7 +3140,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["g"],
         signature: Signature {
             positionals: (1, Some(1)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Goto line number.",
         fun: goto_line_number,
@@ -3145,7 +3151,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["lang"],
         signature: Signature {
             positionals: (1, Some(1)),
-            parse_mode: ParseMode::RawParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Set the language of current buffer (show current language if no value specified).",
         fun: language,
@@ -3168,7 +3174,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["toggle"],
         signature: Signature {
             positionals: (1, None),
-            parse_mode: ParseMode::Literal,
+            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
          },
         // TODO: Not just blooleans
         doc: "Toggle a boolean config option at runtime.\nFor example to toggle smart case search, use `:toggle search.smart-case`.",
@@ -3180,7 +3186,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["get"],
         signature: Signature {
             positionals: (1, Some(1)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Get the current value of a config option.",
         fun: get_option,
@@ -3191,7 +3197,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Sort ranges in selection.",
         fun: sort,
@@ -3202,7 +3208,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Sort ranges in selection in reverse order.",
         fun: sort_reverse,
@@ -3213,7 +3219,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Hard-wrap the current selection of lines to a given width.",
         fun: reflow,
@@ -3224,7 +3230,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["ts-subtree"],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Display the smallest tree-sitter subtree that spans the primary selection, primarily for debugging queries.",
         fun: tree_sitter_subtree,
@@ -3235,7 +3241,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Refresh user config.",
         fun: refresh_config,
@@ -3246,7 +3252,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Open the user config.toml file.",
         fun: open_config,
@@ -3257,7 +3263,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Open the workspace config.toml file.",
         fun: open_workspace_config,
@@ -3268,7 +3274,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Open the helix log file.",
         fun: open_log,
@@ -3335,7 +3341,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["diffget", "diffg"],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Reset the diff change at the cursor position.",
         fun: reset_diff_change,
@@ -3346,7 +3352,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(1)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Clear given register. If no argument is provided, clear all registers.",
         fun: clear_register,
@@ -3357,7 +3363,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(0)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Clear and re-render the whole UI",
         fun: redraw,
@@ -3382,7 +3388,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         signature: Signature {
             positionals: (0, Some(1)),
-            parse_mode: ParseMode::LiteralUnescapeBackslashParams,
+            parse_mode: ParseMode::default(),
          },
         doc: "Yank diagnostic(s) under primary cursor to register, or clipboard by default",
         fun: yank_diagnostic,

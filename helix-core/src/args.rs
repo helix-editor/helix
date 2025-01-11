@@ -30,6 +30,12 @@ pub enum ParseMode {
     LiteralUnescapeBackslashParams,
 }
 
+impl ParseMode {
+    pub const fn default() -> Self {
+        Self::Raw
+    }
+}
+
 #[derive(Clone)]
 pub struct Signature {
     /// The min-max of the amount of positional arguments a command accepts.
