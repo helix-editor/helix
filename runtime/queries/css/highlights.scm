@@ -52,6 +52,9 @@
  (from)
  (important)
  (to)
+ (keyword_query)
+ (keyframes_name)
+ (unit)
 ] @keyword
 
 [
