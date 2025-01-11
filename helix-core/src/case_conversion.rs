@@ -35,21 +35,25 @@ pub fn smart_case_conversion(
     };
 
     for current in chars.skip_while(|ch| ch.is_whitespace()) {
-        if current.is_alphanumeric() {
-            if has_camel_transition(prev, current) {
-                add_separator_if_needed(prev, buf);
-                should_capitalize_current = true;
-            }
-            if should_capitalize_current {
-                buf.push(current.to_ascii_uppercase());
-                should_capitalize_current = false;
-            } else {
-                buf.push(current.to_ascii_lowercase());
-            }
-        } else {
+        if !current.is_alphanumeric() {
             should_capitalize_current = true;
             add_separator_if_needed(prev, buf);
+            prev = Some(current);
+            continue;
         }
+
+        if has_camel_transition(prev, current) {
+            add_separator_if_needed(prev, buf);
+            should_capitalize_current = true;
+        }
+
+        if should_capitalize_current {
+            buf.push(current.to_ascii_uppercase());
+            should_capitalize_current = false;
+        } else {
+            buf.push(current.to_ascii_lowercase());
+        }
+
         prev = Some(current);
     }
 
