@@ -4328,15 +4328,11 @@ fn yank_impl(editor: &mut Editor, register: char) {
     }
 }
 
-fn yank_joined_impl(editor: &mut Editor, separator: &str, register: char) {
+fn yank_joined_impl(editor: &mut Editor, separator: Option<&str>, register: char) {
     let (view, doc) = current!(editor);
     let text = doc.text().slice(..);
 
-    let separator = if separator.is_empty() {
-        doc.line_ending.as_str()
-    } else {
-        separator
-    };
+    let separator = separator.unwrap_or(doc.line_ending.as_str());
 
     let selection = doc.selection(view.id);
     let selections = selection.len();
@@ -4360,10 +4356,10 @@ fn yank_joined_impl(editor: &mut Editor, separator: &str, register: char) {
 }
 
 fn yank_joined(cx: &mut Context) {
-    let separator = doc!(cx.editor).line_ending.as_str();
+    let line_ending = doc!(cx.editor).line_ending.as_str();
     yank_joined_impl(
         cx.editor,
-        separator,
+        Some(line_ending),
         cx.register
             .unwrap_or(cx.editor.config().default_yank_register),
     );
@@ -4372,13 +4368,13 @@ fn yank_joined(cx: &mut Context) {
 
 fn yank_joined_to_clipboard(cx: &mut Context) {
     let line_ending = doc!(cx.editor).line_ending;
-    yank_joined_impl(cx.editor, line_ending.as_str(), '+');
+    yank_joined_impl(cx.editor, Some(line_ending.as_str()), '+');
     exit_select_mode(cx);
 }
 
 fn yank_joined_to_primary_clipboard(cx: &mut Context) {
     let line_ending = doc!(cx.editor).line_ending;
-    yank_joined_impl(cx.editor, line_ending.as_str(), '*');
+    yank_joined_impl(cx.editor, Some(line_ending.as_str()), '*');
     exit_select_mode(cx);
 }
 

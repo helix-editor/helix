@@ -885,7 +885,8 @@ fn yank_joined(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> 
         return Ok(());
     }
     let register = cx.editor.selected_register.unwrap_or('"');
-    yank_joined_impl(cx.editor, &args[0], register);
+    let separator = args.first().map(|sep| sep.as_ref());
+    yank_joined_impl(cx.editor, separator, register);
     Ok(())
 }
 
@@ -897,7 +898,8 @@ fn yank_joined_to_clipboard(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-    yank_joined_impl(cx.editor, &args[0], '+');
+    let separator = args.first().map(|sep| sep.as_ref());
+    yank_joined_impl(cx.editor, separator, '+');
     Ok(())
 }
 
@@ -922,8 +924,8 @@ fn yank_joined_to_primary_clipboard(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-
-    yank_joined_impl(cx.editor, &args[0], '*');
+    let separator = args.first().map(|sep| sep.as_ref());
+    yank_joined_impl(cx.editor, separator, '*');
     Ok(())
 }
 
