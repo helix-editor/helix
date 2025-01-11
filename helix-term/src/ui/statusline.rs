@@ -451,13 +451,14 @@ fn render_file_modification_indicator<F>(context: &mut RenderContext, write: F)
 where
     F: Fn(&mut RenderContext, String, Option<Style>) + Copy,
 {
-    let title = (if context.doc.is_modified() {
-        "[+]"
-    } else {
-        "   "
-    })
-    .to_string();
-
+    let is_modified = context.doc.is_modified();
+    let externally_modified = context.doc.externally_modified;
+    let title = match (is_modified, externally_modified) {
+        (true, true) => "[!]",
+        (true, false) => "[+]",
+        (false, true) => "[-]",
+        (false, false) => "   ",
+    }.to_string();
     write(context, title, None);
 }
 

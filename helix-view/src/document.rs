@@ -187,7 +187,7 @@ pub struct Document {
     pub(crate) modified_since_accessed: bool,
     // Whether the file was modified by another process after it was last opened or saved.
     // Just a heuristic, and may be stale.
-    pub(crate) externally_modified: bool,
+    pub externally_modified: bool,
 
     pub(crate) diagnostics: Vec<Diagnostic>,
     pub(crate) language_servers: HashMap<LanguageServerName, Arc<Client>>,
