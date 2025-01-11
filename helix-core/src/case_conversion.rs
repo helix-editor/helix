@@ -19,24 +19,24 @@ pub fn smart_case_conversion(
     let mut should_capitalize_current = capitalize_first;
     let mut prev: Option<char> = None;
 
-    for current in chars.skip_while(|ch| ch.is_whitespace()) {
-        let mut maybe_add_separator = || {
-            if let Some(separator) = separator {
-                // We do not want to add a separator when the previous char is not a separator
-                // For example, snake__case is invalid
-                if prev.is_some_and(|ch| ch != separator) {
-                    buf.push(separator);
-                }
+    let add_separator_if_needed = |prev: Option<char>, buf: &mut Tendril| {
+        if let Some(separator) = separator {
+            // We do not want to add a separator when the previous char is not a separator
+            // For example, snake__case is invalid
+            if prev.is_some_and(|ch| ch != separator) {
+                buf.push(separator);
             }
-        };
+        }
+    };
 
+    for current in chars.skip_while(|ch| ch.is_whitespace()) {
         if current.is_alphanumeric() {
             // "camelCase" => transition at 'l' -> 'C'
             let has_camel_transition =
                 current.is_uppercase() && prev.is_some_and(|ch| ch.is_lowercase());
 
             if has_camel_transition {
-                maybe_add_separator();
+                add_separator_if_needed(prev, buf);
                 should_capitalize_current = true;
             }
             if should_capitalize_current {
@@ -47,7 +47,7 @@ pub fn smart_case_conversion(
             }
         } else {
             should_capitalize_current = true;
-            maybe_add_separator();
+            add_separator_if_needed(prev, buf);
         }
         prev = Some(current);
     }
