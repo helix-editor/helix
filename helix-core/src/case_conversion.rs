@@ -10,6 +10,11 @@ pub fn simple_case_conversion(
     *buf = text.map(|ch| transform_char(&ch)).collect();
 }
 
+/// Whether there is a camelCase transition, such as at 'l' -> 'C'
+fn has_camel_transition(prev: Option<char>, current: char) -> bool {
+    current.is_uppercase() && prev.is_some_and(|ch| ch.is_lowercase())
+}
+
 pub fn smart_case_conversion(
     chars: impl Iterator<Item = char>,
     buf: &mut Tendril,
@@ -31,11 +36,7 @@ pub fn smart_case_conversion(
 
     for current in chars.skip_while(|ch| ch.is_whitespace()) {
         if current.is_alphanumeric() {
-            // "camelCase" => transition at 'l' -> 'C'
-            let has_camel_transition =
-                current.is_uppercase() && prev.is_some_and(|ch| ch.is_lowercase());
-
-            if has_camel_transition {
+            if has_camel_transition(prev, current) {
                 add_separator_if_needed(prev, buf);
                 should_capitalize_current = true;
             }
@@ -62,25 +63,23 @@ pub fn separator_case_conversion(
 ) {
     let mut prev: Option<char> = None;
 
-    for c in text.skip_while(|ch| ch.is_whitespace()) {
-        if !c.is_alphanumeric() {
-            prev = Some(c);
+    for current in text.skip_while(|ch| ch.is_whitespace()) {
+        if !current.is_alphanumeric() {
+            prev = Some(current);
             continue;
         }
 
-        // "camelCase" => transition at 'l' -> 'C'
-        let has_camel_transition = prev.is_some_and(|p| p.is_lowercase()) && c.is_uppercase();
         // "email@somewhere" => transition at 'l' -> '@'
         // first character must not be separator, e.g. @emailSomewhere should not become -email-somewhere
         let has_alphanum_transition = !prev.is_some_and(|p| p.is_alphanumeric()) && !buf.is_empty();
 
-        if has_camel_transition || has_alphanum_transition {
+        if has_camel_transition(prev, current) || has_alphanum_transition {
             buf.push(separator);
         }
 
-        buf.push(c.to_ascii_lowercase());
+        buf.push(current.to_ascii_lowercase());
 
-        prev = Some(c);
+        prev = Some(current);
     }
 }
 
