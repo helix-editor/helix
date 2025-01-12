@@ -2127,6 +2127,23 @@ impl Editor {
         .map(|_| ())
     }
 
+    fn handle_external_modification(&mut self, event: &ExternalModificationEvent) {
+        let mut is_modified = false;
+        if let Some(doc) = self.document_mut(event.doc_id) {
+            doc.externally_modified = event.was_modified;
+            is_modified = doc.is_modified();
+        }
+        // Set the status if a conflict is detected.
+        if is_modified && event.was_modified {
+            let tree = &self.tree;
+            if let Some(focused_doc_id) = tree.try_get(tree.focus).map(|view| view.doc) {
+                if focused_doc_id == event.doc_id {
+                    self.set_status("file externally modified; :write! or :reload");
+                }
+            }
+        }
+    }
+
     pub async fn wait_event(&mut self) -> EditorEvent {
         // the loop only runs once or twice and would be better implemented with a recursion + const generic
         // however due to limitations with async functions that can not be implemented right now
@@ -2148,9 +2165,7 @@ impl Editor {
                     return EditorEvent::DebuggerEvent(event)
                 }
                 Some(event) = self.external_modification_events.1.recv() => {
-                    if let Some(doc) = self.document_mut(event.doc_id) {
-                        doc.externally_modified = event.was_modified;
-                    }
+                    self.handle_external_modification(&event);
                     return EditorEvent::ExternalModification(event)
                 }
 
