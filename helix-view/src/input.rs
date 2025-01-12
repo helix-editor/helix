@@ -117,7 +117,7 @@ impl MouseClicks {
     }
 
     fn is_triple_click(&mut self, char_idx: usize) -> bool {
-        Some(char_idx) == self.clicks[1] && Some(char_idx) == self.clicks[0]
+        Some(char_idx) == self.clicks[0] && Some(char_idx) == self.clicks[1]
     }
 
     fn is_double_click(&mut self, char_idx: usize) -> bool {
