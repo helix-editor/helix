@@ -14,13 +14,12 @@ use crate::{
 };
 
 use helix_core::{
-    chars::CharCategory,
     diagnostic::NumberOrString,
     graphemes::{next_grapheme_boundary, prev_grapheme_boundary},
     movement::Direction,
     syntax::{self, HighlightEvent},
     text_annotations::TextAnnotations,
-    textobject::find_word_boundary,
+    textobject::find_word_boundaries,
     unicode::width::UnicodeWidthStr,
     visual_offset_from_block, Change, Position, Range, Selection, Transaction,
 };
@@ -1200,15 +1199,7 @@ impl EditorView {
                             }
                         }
                         MouseClick::Double => {
-                            let word_start =
-                                find_word_boundary(text, pos, Direction::Backward, false);
-                            let word_end = match text
-                                .get_char(pos)
-                                .map(helix_core::chars::categorize_char)
-                            {
-                                None | Some(CharCategory::Whitespace | CharCategory::Eol) => pos,
-                                _ => find_word_boundary(text, pos + 1, Direction::Forward, false),
-                            };
+                            let (word_start, word_end) = find_word_boundaries(text, pos, false);
 
                             Selection::single(word_start, word_end)
                         }

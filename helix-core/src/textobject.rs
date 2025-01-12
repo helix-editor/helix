@@ -11,12 +11,7 @@ use crate::syntax::LanguageConfiguration;
 use crate::Range;
 use crate::{surround, Syntax};
 
-pub fn find_word_boundary(
-    slice: RopeSlice,
-    mut pos: usize,
-    direction: Direction,
-    long: bool,
-) -> usize {
+fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction, long: bool) -> usize {
     use CharCategory::{Eol, Whitespace};
 
     let iter = match direction {
@@ -73,6 +68,16 @@ impl Display for TextObject {
     }
 }
 
+pub fn find_word_boundaries(slice: RopeSlice, pos: usize, is_long: bool) -> (usize, usize) {
+    let word_start = find_word_boundary(slice, pos, Direction::Backward, is_long);
+    let word_end = match slice.get_char(pos).map(categorize_char) {
+        None | Some(CharCategory::Whitespace | CharCategory::Eol) => pos,
+        _ => find_word_boundary(slice, pos + 1, Direction::Forward, is_long),
+    };
+
+    (word_start, word_end)
+}
+
 // count doesn't do anything yet
 pub fn textobject_word(
     slice: RopeSlice,
@@ -83,11 +88,7 @@ pub fn textobject_word(
 ) -> Range {
     let pos = range.cursor(slice);
 
-    let word_start = find_word_boundary(slice, pos, Direction::Backward, long);
-    let word_end = match slice.get_char(pos).map(categorize_char) {
-        None | Some(CharCategory::Whitespace | CharCategory::Eol) => pos,
-        _ => find_word_boundary(slice, pos + 1, Direction::Forward, long),
-    };
+    let (word_start, word_end) = find_word_boundaries(slice, pos, long);
 
     // Special case.
     if word_start == word_end {
