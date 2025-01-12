@@ -27,9 +27,9 @@ use helix_core::{
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
     document::{Mode, SavePoint, SCRATCH_BUFFER_NAME},
-    editor::{CompleteAction, CursorShapeConfig, MouseClick},
+    editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
-    input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
+    input::{KeyEvent, MouseButton, MouseClick, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
@@ -1180,11 +1180,11 @@ impl EditorView {
                     let doc = doc_mut!(editor, &view!(editor, view_id).doc);
                     let text = doc.text().slice(..);
 
-                    match editor.mouse_clicks.register_click(pos) {
+                    let selection = match editor.mouse_clicks.register_click(pos) {
                         MouseClick::Single => {
                             if modifiers == KeyModifiers::ALT {
                                 let selection = doc.selection(view_id).clone();
-                                doc.set_selection(view_id, selection.push(Range::point(pos)));
+                                selection.push(Range::point(pos))
                             } else if editor.mode == Mode::Select {
                                 // Discards non-primary selections for consistent UX with normal mode
                                 let primary = doc.selection(view_id).primary().put_cursor(
@@ -1193,12 +1193,10 @@ impl EditorView {
                                     true,
                                 );
                                 editor.mouse_down_range = Some(primary);
-                                doc.set_selection(
-                                    view_id,
-                                    Selection::single(primary.anchor, primary.head),
-                                );
+
+                                Selection::single(primary.anchor, primary.head)
                             } else {
-                                doc.set_selection(view_id, Selection::point(pos));
+                                Selection::point(pos)
                             }
                         }
                         MouseClick::Double => {
@@ -1212,15 +1210,18 @@ impl EditorView {
                                 _ => find_word_boundary(text, pos + 1, Direction::Forward, false),
                             };
 
-                            doc.set_selection(view_id, Selection::single(word_start, word_end));
+                            Selection::single(word_start, word_end)
                         }
                         MouseClick::Triple => {
                             let current_line = text.char_to_line(pos);
                             let from = text.line_to_char(current_line);
                             let to = text.line_to_char(current_line + 1);
-                            doc.set_selection(view_id, Selection::single(from, to));
+
+                            Selection::single(from, to)
                         }
-                    }
+                    };
+
+                    doc.set_selection(view_id, selection);
 
                     if view_id != prev_view_id {
                         self.clear_completion(editor);

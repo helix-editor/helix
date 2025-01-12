@@ -59,6 +59,75 @@ pub enum MouseButton {
     /// Middle mouse button.
     Middle,
 }
+
+/// Tracks the character positions where the mouse was last clicked
+///
+/// If we double click, select that word
+/// If we triple click, select full line
+#[derive(Debug)]
+pub struct MouseClicks {
+    clicks: [Option<usize>; 2],
+    count: usize,
+}
+
+pub enum MouseClick {
+    Single,
+    Double,
+    Triple,
+}
+
+impl MouseClicks {
+    pub fn new() -> Self {
+        Self {
+            clicks: [None, None],
+            count: 0,
+        }
+    }
+
+    /// Registers a click for a certain character, and returns the type of this click
+    pub fn register_click(&mut self, char_idx: usize) -> MouseClick {
+        let click_type = if self.is_triple_click(char_idx) {
+            MouseClick::Triple
+        } else if self.is_double_click(char_idx) {
+            MouseClick::Double
+        } else {
+            MouseClick::Single
+        };
+
+        match self.count {
+            0 => {
+                self.clicks[0] = Some(char_idx);
+                self.count = 1;
+            }
+            1 => {
+                self.clicks[1] = Some(char_idx);
+                self.count = 2;
+            }
+            2 => {
+                self.clicks[0] = self.clicks[1];
+                self.clicks[1] = Some(char_idx);
+            }
+            _ => unreachable!("Mouse click count will never exceed 2"),
+        };
+
+        click_type
+    }
+
+    fn is_triple_click(&mut self, pos: usize) -> bool {
+        Some(pos) == self.clicks[0] && Some(pos) == self.clicks[1]
+    }
+
+    fn is_double_click(&mut self, pos: usize) -> bool {
+        Some(pos) == self.clicks[1] && Some(pos) != self.clicks[0]
+    }
+}
+
+impl Default for MouseClicks {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Represents a key event.
 // We use a newtype here because we want to customize Deserialize and Display.
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Hash)]

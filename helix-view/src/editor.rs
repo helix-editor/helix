@@ -8,7 +8,7 @@ use crate::{
     graphics::{CursorKind, Rect},
     handlers::Handlers,
     info::Info,
-    input::KeyEvent,
+    input::{KeyEvent, MouseClicks},
     register::Registers,
     theme::{self, Theme},
     tree::{self, Tree},
@@ -79,68 +79,6 @@ where
             .try_into()
             .map_err(|_| serde::ser::Error::custom("duration value overflowed u64"))?,
     )
-}
-
-/// Tracks the character positions where the mouse was last clicked
-///
-/// If we double click, select that word
-/// If we triple click, select full line
-#[derive(Debug)]
-pub struct MouseClicks {
-    clicks: [Option<usize>; 2],
-    count: usize,
-}
-
-pub enum MouseClick {
-    Single,
-    Double,
-    Triple,
-}
-
-impl MouseClicks {
-    fn new() -> Self {
-        Self {
-            clicks: [None, None],
-            count: 0,
-        }
-    }
-
-    /// Registers a click for a certain character, and returns the type of this click
-    pub fn register_click(&mut self, char_idx: usize) -> MouseClick {
-        let click_type = if self.is_triple_click(char_idx) {
-            MouseClick::Triple
-        } else if self.is_double_click(char_idx) {
-            MouseClick::Double
-        } else {
-            MouseClick::Single
-        };
-
-        match self.count {
-            0 => {
-                self.clicks[0] = Some(char_idx);
-                self.count = 1;
-            }
-            1 => {
-                self.clicks[1] = Some(char_idx);
-                self.count = 2;
-            }
-            2 => {
-                self.clicks[0] = self.clicks[1];
-                self.clicks[1] = Some(char_idx);
-            }
-            _ => unreachable!("Mouse click count will never exceed 2"),
-        };
-
-        click_type
-    }
-
-    fn is_triple_click(&mut self, pos: usize) -> bool {
-        Some(pos) == self.clicks[0] && Some(pos) == self.clicks[1]
-    }
-
-    fn is_double_click(&mut self, pos: usize) -> bool {
-        Some(pos) == self.clicks[1] && Some(pos) != self.clicks[0]
-    }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
