@@ -4011,7 +4011,7 @@ pub mod insert {
             let (from, to, local_offs) = if let Some(idx) =
                 text.slice(line_start..pos).last_non_whitespace_char()
             {
-                let first_trailing_whitespace_char = (line_start + idx + 1).min(pos);
+                let first_trailing_whitespace_char = (line_start + idx + 1 + global_offs).min(pos);
                 let line = text.line(current_line);
 
                 let indent = match line.first_non_whitespace_char() {
@@ -4070,7 +4070,9 @@ pub mod insert {
                     // Note that `first_trailing_whitespace_char` is at least `pos` so the
                     // unsigned subtraction (`pos - first_trailing_whitespace_char`) cannot
                     // underflow.
-                    local_offs as isize - (pos - first_trailing_whitespace_char) as isize,
+                    local_offs as isize
+                        - (pos + if ranges.is_empty() { 0 } else { 1 }
+                            - first_trailing_whitespace_char) as isize,
                 )
             } else {
                 // If the current line is all whitespace, insert a line ending at the beginning of
