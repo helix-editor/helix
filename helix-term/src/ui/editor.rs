@@ -25,7 +25,7 @@ use helix_core::{
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
     document::{Mode, SavePoint, SCRATCH_BUFFER_NAME},
-    editor::{CompleteAction, CursorShapeConfig},
+    editor::{CompleteAction, CursorShapeConfig, MouseClick},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
@@ -1174,47 +1174,51 @@ impl EditorView {
                 let editor = &mut cxt.editor;
 
                 if let Some((pos, view_id)) = pos_and_view(editor, row, column, true) {
+                    let click_type = editor.mouse_clicks.register_click(pos);
+
                     let message;
                     let prev_view_id = view!(editor).id;
                     let doc = doc_mut!(editor, &view!(editor, view_id).doc);
 
-                    if editor.mouse_clicks.is_triple_click(pos) {
-                        message = format!("triple click: {:?}, {}", editor.mouse_clicks, pos);
+                    match click_type {
+                        MouseClick::Triple => {
+                            message = format!("triple click: {:?}, {}", editor.mouse_clicks, pos);
+                        }
+                        MouseClick::Double => {
+                            message = format!("double click: {:?}, {}", editor.mouse_clicks, pos);
+                        }
+                        MouseClick::Single => {
+                            if modifiers == KeyModifiers::ALT {
+                                let selection = doc.selection(view_id).clone();
+                                doc.set_selection(view_id, selection.push(Range::point(pos)));
+                                message = format!(
+                                    "(alt) single click: {:?}, {}",
+                                    editor.mouse_clicks, pos
+                                );
+                            } else if editor.mode == Mode::Select {
+                                // Discards non-primary selections for consistent UX with normal mode
+                                let primary = doc.selection(view_id).primary().put_cursor(
+                                    doc.text().slice(..),
+                                    pos,
+                                    true,
+                                );
+                                message = format!(
+                                    "(select) single click: {:?}, {}",
+                                    editor.mouse_clicks, pos
+                                );
 
-                        // let text = doc.text().slice(..);
+                                editor.mouse_down_range = Some(primary);
+                                doc.set_selection(
+                                    view_id,
+                                    Selection::single(primary.anchor, primary.head),
+                                );
+                            } else {
+                                message =
+                                    format!("single click: {:?}, {}", editor.mouse_clicks, pos);
 
-                        // let (start_line, end_line) =
-                        //     Range::point(triple_click_idx).line_range(text);
-
-                        // let start = text.line_to_char(start_line);
-                        // let end = text.line_to_char(
-                        //     (end_line + 1) // newline of end_line
-                        //         .min(text.len_lines()),
-                        // );
-
-                        // doc.set_selection(view_id, Selection::single(start, end))
-                    } else if editor.mouse_clicks.is_double_click(pos) {
-                        message = format!("double click: {:?}, {}", editor.mouse_clicks, pos);
-                    } else if modifiers == KeyModifiers::ALT {
-                        let selection = doc.selection(view_id).clone();
-                        doc.set_selection(view_id, selection.push(Range::point(pos)));
-                        message = format!("(alt) single click: {:?}, {}", editor.mouse_clicks, pos);
-                    } else if editor.mode == Mode::Select {
-                        // Discards non-primary selections for consistent UX with normal mode
-                        let primary = doc.selection(view_id).primary().put_cursor(
-                            doc.text().slice(..),
-                            pos,
-                            true,
-                        );
-                        message =
-                            format!("(select) single click: {:?}, {}", editor.mouse_clicks, pos);
-
-                        editor.mouse_down_range = Some(primary);
-                        doc.set_selection(view_id, Selection::single(primary.anchor, primary.head));
-                    } else {
-                        message = format!("single click: {:?}, {}", editor.mouse_clicks, pos);
-
-                        doc.set_selection(view_id, Selection::point(pos));
+                                doc.set_selection(view_id, Selection::point(pos));
+                            }
+                        }
                     }
 
                     if view_id != prev_view_id {
@@ -1223,7 +1227,6 @@ impl EditorView {
 
                     editor.focus(view_id);
                     editor.ensure_cursor_in_view(view_id);
-                    editor.mouse_clicks.register_click(pos);
 
                     editor.set_status(message);
 

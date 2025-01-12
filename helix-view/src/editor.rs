@@ -91,6 +91,12 @@ pub struct MouseClicks {
     count: usize,
 }
 
+pub enum MouseClick {
+    Single,
+    Double,
+    Triple,
+}
+
 impl MouseClicks {
     fn new() -> Self {
         Self {
@@ -99,7 +105,15 @@ impl MouseClicks {
         }
     }
 
-    pub fn register_click(&mut self, char_idx: usize) {
+    pub fn register_click(&mut self, char_idx: usize) -> MouseClick {
+        let click_type = if self.is_triple_click(char_idx) {
+            MouseClick::Triple
+        } else if self.is_double_click(char_idx) {
+            MouseClick::Double
+        } else {
+            MouseClick::Single
+        };
+
         match self.count {
             0 => {
                 self.clicks[0] = Some(char_idx);
@@ -113,15 +127,17 @@ impl MouseClicks {
                 self.clicks[0] = self.clicks[1];
                 self.clicks[1] = Some(char_idx);
             }
-            _ => unreachable!("Mouse click count should never exceed 2"),
-        }
+            _ => unreachable!("Mouse click count will never exceed 2"),
+        };
+
+        click_type
     }
 
-    pub fn is_triple_click(&mut self, pos: usize) -> bool {
+    fn is_triple_click(&mut self, pos: usize) -> bool {
         Some(pos) == self.clicks[0] && Some(pos) == self.clicks[1]
     }
 
-    pub fn is_double_click(&mut self, pos: usize) -> bool {
+    fn is_double_click(&mut self, pos: usize) -> bool {
         Some(pos) == self.clicks[1] && Some(pos) != self.clicks[0]
     }
 }
