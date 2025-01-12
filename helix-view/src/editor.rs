@@ -105,6 +105,7 @@ impl MouseClicks {
         }
     }
 
+    /// Registers a click for a certain character, and returns the type of this click
     pub fn register_click(&mut self, char_idx: usize) -> MouseClick {
         let click_type = if self.is_triple_click(char_idx) {
             MouseClick::Triple

@@ -1174,27 +1174,16 @@ impl EditorView {
                 let editor = &mut cxt.editor;
 
                 if let Some((pos, view_id)) = pos_and_view(editor, row, column, true) {
-                    let click_type = editor.mouse_clicks.register_click(pos);
-
-                    let message;
                     let prev_view_id = view!(editor).id;
                     let doc = doc_mut!(editor, &view!(editor, view_id).doc);
 
-                    match click_type {
-                        MouseClick::Triple => {
-                            message = format!("triple click: {:?}, {}", editor.mouse_clicks, pos);
-                        }
-                        MouseClick::Double => {
-                            message = format!("double click: {:?}, {}", editor.mouse_clicks, pos);
-                        }
+                    match editor.mouse_clicks.register_click(pos) {
+                        MouseClick::Triple => {}
+                        MouseClick::Double => {}
                         MouseClick::Single => {
                             if modifiers == KeyModifiers::ALT {
                                 let selection = doc.selection(view_id).clone();
                                 doc.set_selection(view_id, selection.push(Range::point(pos)));
-                                message = format!(
-                                    "(alt) single click: {:?}, {}",
-                                    editor.mouse_clicks, pos
-                                );
                             } else if editor.mode == Mode::Select {
                                 // Discards non-primary selections for consistent UX with normal mode
                                 let primary = doc.selection(view_id).primary().put_cursor(
@@ -1202,20 +1191,12 @@ impl EditorView {
                                     pos,
                                     true,
                                 );
-                                message = format!(
-                                    "(select) single click: {:?}, {}",
-                                    editor.mouse_clicks, pos
-                                );
-
                                 editor.mouse_down_range = Some(primary);
                                 doc.set_selection(
                                     view_id,
                                     Selection::single(primary.anchor, primary.head),
                                 );
                             } else {
-                                message =
-                                    format!("single click: {:?}, {}", editor.mouse_clicks, pos);
-
                                 doc.set_selection(view_id, Selection::point(pos));
                             }
                         }
@@ -1227,8 +1208,6 @@ impl EditorView {
 
                     editor.focus(view_id);
                     editor.ensure_cursor_in_view(view_id);
-
-                    editor.set_status(message);
 
                     return EventResult::Consumed(None);
                 }
