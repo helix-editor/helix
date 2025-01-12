@@ -458,7 +458,8 @@ where
         (true, false) => "[+]",
         (false, true) => "[-]",
         (false, false) => "   ",
-    }.to_string();
+    }
+    .to_string();
     write(context, title, None);
 }
 

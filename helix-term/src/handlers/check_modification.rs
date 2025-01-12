@@ -1,9 +1,6 @@
 use std::{
     collections::HashSet,
-    sync::{
-        Arc,
-        Mutex,
-    },
+    sync::{Arc, Mutex},
     time::Duration,
 };
 
@@ -11,14 +8,13 @@ use anyhow::Ok;
 
 use helix_event::{register_hook, send_blocking};
 use helix_view::{
-    DocumentId,
     events::DocumentDidChange,
     handlers::{CheckModificationEvent, Handlers},
+    DocumentId,
 };
 use tokio::time::Instant;
 
 use crate::job;
-
 
 /// CheckModificationHandler reacts to user changes in the editor by checking if there
 /// has been an external change on the filesystem for the same file since the last save.
@@ -76,7 +72,7 @@ pub(super) fn register_hooks(handlers: &Handlers) {
         send_blocking(
             &tx,
             CheckModificationEvent {
-                doc_id: event.doc.id()
+                doc_id: event.doc.id(),
             },
         );
         Ok(())

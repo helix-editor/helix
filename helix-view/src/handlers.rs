@@ -18,7 +18,7 @@ pub enum AutoSaveEvent {
 /// external modifications.
 #[derive(Debug)]
 pub struct CheckModificationEvent {
-    pub doc_id: DocumentId
+    pub doc_id: DocumentId,
 }
 
 pub struct Handlers {

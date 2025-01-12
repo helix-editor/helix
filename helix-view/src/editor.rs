@@ -1105,7 +1105,7 @@ pub struct Editor {
 
     external_modification_events: (
         UnboundedSender<ExternalModificationEvent>,
-        UnboundedReceiver<ExternalModificationEvent>
+        UnboundedReceiver<ExternalModificationEvent>,
     ),
 }
 
@@ -1483,7 +1483,10 @@ impl Editor {
             // to edit.  The most likely problem is lacking read ACLs, in which case we
             // can't reload anyway.
             let _ = was_modified.await.map(|was_modified| {
-                tx.send(ExternalModificationEvent { doc_id, was_modified })
+                tx.send(ExternalModificationEvent {
+                    doc_id,
+                    was_modified,
+                })
             });
         });
     }
@@ -2296,8 +2299,10 @@ fn try_restore_indent(doc: &mut Document, view: &mut View) {
     }
 }
 
-async fn check_external_modification(path: Option<PathBuf>, last_saved_time: SystemTime)
-    -> anyhow::Result<bool> {
+async fn check_external_modification(
+    path: Option<PathBuf>,
+    last_saved_time: SystemTime,
+) -> anyhow::Result<bool> {
     if let Some(path) = path {
         let metadata = tokio::fs::metadata(&path).await?;
         let mtime = metadata.modified()?;
