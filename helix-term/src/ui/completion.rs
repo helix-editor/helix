@@ -92,8 +92,9 @@ impl menu::Item for CompletionItem {
                                 value, ..
                             }) => value,
                         };
-                        Color::from_hex(text)
+                        text.get(text.len() - 7..)
                     })
+                    .and_then(Color::from_hex)
                     .map_or("color".into(), |color| {
                         Spans::from(vec![
                             Span::raw("color "),
