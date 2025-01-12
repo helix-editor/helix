@@ -94,6 +94,7 @@ regols = { command = "regols" }
 rescript-language-server = { command = "rescript-language-server", args = ["--stdio"] }
 robotframework_ls = { command = "robotframework_ls" }
 ruff = { command = "ruff", args = ["server"] }
+ruby-lsp = { command = "ruby-lsp" }
 serve-d = { command = "serve-d" }
 slint-lsp = { command = "slint-lsp", args = [] }
 solargraph = { command = "solargraph", args = ["stdio"] }
@@ -974,7 +975,7 @@ file-types = [
 ]
 shebangs = ["ruby"]
 comment-token = "#"
-language-servers = [ "solargraph" ]
+language-servers = [ "ruby-lsp", "solargraph" ]
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
