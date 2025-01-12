@@ -1105,7 +1105,12 @@ fn change_current_directory(
         None => Cow::Owned(home_dir()?),
     };
 
-    cx.editor.set_cwd(&dir)?;
+    cx.editor.set_cwd(&dir).map_err(|err| {
+        anyhow!(
+            "Could not change working directory to '{}': {err}",
+            dir.display()
+        )
+    })?;
 
     cx.editor.set_status(format!(
         "Current working directory is now {}",
