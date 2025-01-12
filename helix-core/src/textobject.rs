@@ -11,7 +11,12 @@ use crate::syntax::LanguageConfiguration;
 use crate::Range;
 use crate::{surround, Syntax};
 
-fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction, long: bool) -> usize {
+pub fn find_word_boundary(
+    slice: RopeSlice,
+    mut pos: usize,
+    direction: Direction,
+    long: bool,
+) -> usize {
     use CharCategory::{Eol, Whitespace};
 
     let iter = match direction {

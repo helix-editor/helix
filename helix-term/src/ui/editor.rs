@@ -14,11 +14,13 @@ use crate::{
 };
 
 use helix_core::{
+    chars::CharCategory,
     diagnostic::NumberOrString,
     graphemes::{next_grapheme_boundary, prev_grapheme_boundary},
     movement::Direction,
     syntax::{self, HighlightEvent},
     text_annotations::TextAnnotations,
+    textobject::find_word_boundary,
     unicode::width::UnicodeWidthStr,
     visual_offset_from_block, Change, Position, Range, Selection, Transaction,
 };
@@ -1176,10 +1178,9 @@ impl EditorView {
                 if let Some((pos, view_id)) = pos_and_view(editor, row, column, true) {
                     let prev_view_id = view!(editor).id;
                     let doc = doc_mut!(editor, &view!(editor, view_id).doc);
+                    let text = doc.text().slice(..);
 
                     match editor.mouse_clicks.register_click(pos) {
-                        MouseClick::Triple => {}
-                        MouseClick::Double => {}
                         MouseClick::Single => {
                             if modifiers == KeyModifiers::ALT {
                                 let selection = doc.selection(view_id).clone();
@@ -1199,6 +1200,25 @@ impl EditorView {
                             } else {
                                 doc.set_selection(view_id, Selection::point(pos));
                             }
+                        }
+                        MouseClick::Double => {
+                            let word_start =
+                                find_word_boundary(text, pos, Direction::Backward, false);
+                            let word_end = match text
+                                .get_char(pos)
+                                .map(helix_core::chars::categorize_char)
+                            {
+                                None | Some(CharCategory::Whitespace | CharCategory::Eol) => pos,
+                                _ => find_word_boundary(text, pos + 1, Direction::Forward, false),
+                            };
+
+                            doc.set_selection(view_id, Selection::single(word_start, word_end));
+                        }
+                        MouseClick::Triple => {
+                            let current_line = text.char_to_line(pos);
+                            let from = text.line_to_char(current_line);
+                            let to = text.line_to_char(current_line + 1);
+                            doc.set_selection(view_id, Selection::single(from, to));
                         }
                     }
 
