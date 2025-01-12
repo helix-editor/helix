@@ -1,6 +1,40 @@
 use super::*;
 
 #[tokio::test(flavor = "multi_thread")]
+async fn insert_newline_many_selections() -> anyhow::Result<()> {
+    test((
+        indoc! {"\
+            id #(|1)#,Item #(|1)#,cost #(|1)#,location #(|1)#
+            id #(|2)#,Item #(|2)#,cost #(|2)#,location #(|2)#
+            id #(|1)##(|0)#,Item #(|1)##(|0)#,cost #(|1)##(|0)#,location #(|1)##[|0]#"},
+        "i<ret>",
+        indoc! {"\
+            id
+            #(|1)#,Item 
+            #(|1)#,cost 
+            #(|1)#,location 
+            #(|1)#
+            id 
+            #(|2)#,Item 
+            #(|2)#,cost 
+            #(|2)#,location 
+            #(|2)#
+            id 
+            #(|1)#
+            #(|0)#,Item 
+            #(|1)#
+            #(|0)#,cost 
+            #(|1)#
+            #(|0)#,location 
+            #(|1)#
+            #[|0]#"},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn insert_newline_trim_trailing_whitespace() -> anyhow::Result<()> {
     // Trailing whitespace is trimmed.
     test((
