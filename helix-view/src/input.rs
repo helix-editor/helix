@@ -84,10 +84,14 @@ impl MouseClicks {
         }
     }
 
-    /// Registers a click for a certain character, and returns the type of this click
+    /// Registers a click for a certain character index, and returns the type of this click
     pub fn register_click(&mut self, char_idx: usize) -> MouseClick {
         let click_type = if self.is_triple_click(char_idx) {
-            MouseClick::Triple
+            self.clicks = [None, None];
+            self.count = 0;
+
+            return MouseClick::Triple;
+            // MouseClick::Triple
         } else if self.is_double_click(char_idx) {
             MouseClick::Double
         } else {
@@ -107,18 +111,18 @@ impl MouseClicks {
                 self.clicks[0] = self.clicks[1];
                 self.clicks[1] = Some(char_idx);
             }
-            _ => unreachable!("Mouse click count will never exceed 2"),
+            _ => unreachable!(),
         };
 
         click_type
     }
 
     fn is_triple_click(&mut self, char_idx: usize) -> bool {
-        Some(char_idx) == self.clicks[0] && Some(char_idx) == self.clicks[1]
+        Some(char_idx) == self.clicks[1] && Some(char_idx) == self.clicks[0]
     }
 
     fn is_double_click(&mut self, char_idx: usize) -> bool {
-        Some(char_idx) == self.clicks[1] && Some(char_idx) != self.clicks[0]
+        Some(char_idx) == self.clicks[0] && Some(char_idx) != self.clicks[1]
     }
 }
 
