@@ -218,6 +218,10 @@ impl<T: Item> Menu<T> {
         })
     }
 
+    pub fn set_editor_data(&mut self, editor_data: T::Data) {
+        self.editor_data = editor_data;
+    }
+
     pub fn is_empty(&self) -> bool {
         self.matches.is_empty()
     }

@@ -7,7 +7,7 @@ use crate::{
 };
 use helix_view::{
     document::SavePoint,
-    editor::CompleteAction,
+    editor::{CompleteAction, CompletionItemKindStyle},
     handlers::lsp::SignatureHelpInvoked,
     theme::{Color, Modifier, Style},
     ViewId,
@@ -17,7 +17,7 @@ use tui::{
     text::{Span, Spans},
 };
 
-use std::{borrow::Cow, sync::Arc};
+use std::{borrow::Cow, collections::HashMap, sync::Arc};
 
 use helix_core::{
     self as core, chars,
@@ -30,8 +30,45 @@ use crate::ui::{menu, Markdown, Menu, Popup, PromptEvent};
 
 use helix_lsp::{lsp, util, OffsetEncoding};
 
+pub struct CompletionData {
+    completion_item_kinds: Arc<HashMap<&'static str, CompletionItemKindStyle>>,
+    default_style: Style,
+}
+
+const fn completion_item_kind_name(kind: Option<lsp::CompletionItemKind>) -> Option<&'static str> {
+    match kind {
+        Some(lsp::CompletionItemKind::TEXT) => Some("text"),
+        Some(lsp::CompletionItemKind::METHOD) => Some("method"),
+        Some(lsp::CompletionItemKind::FUNCTION) => Some("function"),
+        Some(lsp::CompletionItemKind::CONSTRUCTOR) => Some("constructor"),
+        Some(lsp::CompletionItemKind::FIELD) => Some("field"),
+        Some(lsp::CompletionItemKind::VARIABLE) => Some("variable"),
+        Some(lsp::CompletionItemKind::CLASS) => Some("class"),
+        Some(lsp::CompletionItemKind::INTERFACE) => Some("interface"),
+        Some(lsp::CompletionItemKind::MODULE) => Some("module"),
+        Some(lsp::CompletionItemKind::PROPERTY) => Some("property"),
+        Some(lsp::CompletionItemKind::UNIT) => Some("unit"),
+        Some(lsp::CompletionItemKind::VALUE) => Some("value"),
+        Some(lsp::CompletionItemKind::ENUM) => Some("enum"),
+        Some(lsp::CompletionItemKind::KEYWORD) => Some("keyword"),
+        Some(lsp::CompletionItemKind::SNIPPET) => Some("snippet"),
+        Some(lsp::CompletionItemKind::COLOR) => Some("color"),
+        Some(lsp::CompletionItemKind::FILE) => Some("file"),
+        Some(lsp::CompletionItemKind::REFERENCE) => Some("reference"),
+        Some(lsp::CompletionItemKind::FOLDER) => Some("folder"),
+        Some(lsp::CompletionItemKind::ENUM_MEMBER) => Some("enum-member"),
+        Some(lsp::CompletionItemKind::CONSTANT) => Some("constant"),
+        Some(lsp::CompletionItemKind::STRUCT) => Some("struct"),
+        Some(lsp::CompletionItemKind::EVENT) => Some("event"),
+        Some(lsp::CompletionItemKind::OPERATOR) => Some("operator"),
+        Some(lsp::CompletionItemKind::TYPE_PARAMETER) => Some("type-parameter"),
+        _ => None,
+    }
+}
+
 impl menu::Item for CompletionItem {
-    type Data = Style;
+    type Data = CompletionData;
+
     fn sort_text(&self, data: &Self::Data) -> Cow<str> {
         self.filter_text(data)
     }
@@ -49,7 +86,7 @@ impl menu::Item for CompletionItem {
         }
     }
 
-    fn format(&self, dir_style: &Self::Data) -> menu::Row {
+    fn format(&self, data: &Self::Data) -> menu::Row {
         let deprecated = match self {
             CompletionItem::Lsp(LspCompletionItem { item, .. }) => {
                 item.deprecated.unwrap_or_default()
@@ -65,71 +102,91 @@ impl menu::Item for CompletionItem {
             CompletionItem::Other(core::CompletionItem { label, .. }) => label,
         };
 
-        let kind = match self {
-            CompletionItem::Lsp(LspCompletionItem { item, .. }) => match item.kind {
-                Some(lsp::CompletionItemKind::TEXT) => "text".into(),
-                Some(lsp::CompletionItemKind::METHOD) => "method".into(),
-                Some(lsp::CompletionItemKind::FUNCTION) => "function".into(),
-                Some(lsp::CompletionItemKind::CONSTRUCTOR) => "constructor".into(),
-                Some(lsp::CompletionItemKind::FIELD) => "field".into(),
-                Some(lsp::CompletionItemKind::VARIABLE) => "variable".into(),
-                Some(lsp::CompletionItemKind::CLASS) => "class".into(),
-                Some(lsp::CompletionItemKind::INTERFACE) => "interface".into(),
-                Some(lsp::CompletionItemKind::MODULE) => "module".into(),
-                Some(lsp::CompletionItemKind::PROPERTY) => "property".into(),
-                Some(lsp::CompletionItemKind::UNIT) => "unit".into(),
-                Some(lsp::CompletionItemKind::VALUE) => "value".into(),
-                Some(lsp::CompletionItemKind::ENUM) => "enum".into(),
-                Some(lsp::CompletionItemKind::KEYWORD) => "keyword".into(),
-                Some(lsp::CompletionItemKind::SNIPPET) => "snippet".into(),
-                Some(lsp::CompletionItemKind::COLOR) => item
-                    .documentation
-                    .as_ref()
-                    .and_then(|docs| {
-                        let text = match docs {
-                            lsp::Documentation::String(text) => text,
-                            lsp::Documentation::MarkupContent(lsp::MarkupContent {
-                                value, ..
-                            }) => value,
-                        };
-                        Color::from_hex(text)
-                    })
-                    .map_or("color".into(), |color| {
-                        Spans::from(vec![
-                            Span::raw("color "),
-                            Span::styled("■", Style::default().fg(color)),
-                        ])
-                    }),
-                Some(lsp::CompletionItemKind::FILE) => "file".into(),
-                Some(lsp::CompletionItemKind::REFERENCE) => "reference".into(),
-                Some(lsp::CompletionItemKind::FOLDER) => "folder".into(),
-                Some(lsp::CompletionItemKind::ENUM_MEMBER) => "enum_member".into(),
-                Some(lsp::CompletionItemKind::CONSTANT) => "constant".into(),
-                Some(lsp::CompletionItemKind::STRUCT) => "struct".into(),
-                Some(lsp::CompletionItemKind::EVENT) => "event".into(),
-                Some(lsp::CompletionItemKind::OPERATOR) => "operator".into(),
-                Some(lsp::CompletionItemKind::TYPE_PARAMETER) => "type_param".into(),
-                Some(kind) => {
-                    log::error!("Received unknown completion item kind: {:?}", kind);
-                    "".into()
-                }
-                None => "".into(),
-            },
-            CompletionItem::Other(core::CompletionItem { kind, .. }) => kind.as_ref().into(),
-        };
-
-        let label = Span::styled(
+        let label_cell = menu::Cell::from(Span::styled(
             label,
             if deprecated {
                 Style::default().add_modifier(Modifier::CROSSED_OUT)
-            } else if kind.0[0].content == "folder" {
-                *dir_style
             } else {
                 Style::default()
             },
-        );
+        ));
 
-        menu::Row::new([menu::Cell::from(label), menu::Cell::from(kind)])
+        let kind_cell = match self {
+            // Special case: Handle COLOR completion item kind by putting a preview of the color
+            // provided by the lsp server. For example colors given by the tailwind LSP server
+            //
+            // We just add a little square previewing the color.
+            CompletionItem::Lsp(LspCompletionItem { item, .. })
+                if item.kind == Some(lsp::CompletionItemKind::COLOR) =>
+            {
+                menu::Cell::from(
+                    item.documentation
+                        .as_ref()
+                        .and_then(|docs| {
+                            let text = match docs {
+                                lsp::Documentation::String(text) => text,
+                                lsp::Documentation::MarkupContent(lsp::MarkupContent {
+                                    value,
+                                    ..
+                                }) => value,
+                            };
+                            Color::from_hex(text)
+                        })
+                        .map_or("color".into(), |color| {
+                            Spans::from(vec![
+                                Span::raw("color "),
+                                Span::styled("■", Style::default().fg(color)),
+                            ])
+                        }),
+                )
+            }
+            // Otherwise, handle the styling of the item kind as usual.
+            CompletionItem::Lsp(LspCompletionItem { item, .. }) => {
+                // If the user specified a custom kind text, use that. It will cause an allocation
+                // though it should not have much impact since its pretty short strings
+                let kind_name = completion_item_kind_name(item.kind).unwrap_or_else(|| {
+                    log::error!("Got invalid LSP completion item kind: {:?}", item.kind);
+                    ""
+                });
+
+                if let Some(kind_style) = data.completion_item_kinds.get(kind_name) {
+                    let style = kind_style.style.unwrap_or(data.default_style);
+                    if let Some(text) = kind_style.text.as_ref() {
+                        menu::Cell::from(Span::styled(text.clone(), style))
+                    } else {
+                        menu::Cell::from(Span::styled(kind_name, style))
+                    }
+                } else {
+                    menu::Cell::from(Span::styled(kind_name, data.default_style))
+                }
+            }
+            CompletionItem::Other(core::CompletionItem { kind, .. }) => {
+                let kind = match kind.as_ref() {
+                    // This is for path completion source.
+                    // Got this from helix-term/src/handlers/completion/path.rs
+                    // On unix these are all just **file** descriptors
+                    #[cfg(unix)]
+                    "block" | "socket" | "char_device" | "fifo" => "file",
+
+                    // NOTE: Whenever you add a new completion source, you may want to add overrides
+                    // here if you wish to.
+                    x => x, // otherwise keep untouched.
+                };
+
+                if let Some(kind_style) = data.completion_item_kinds.get(kind) {
+                    let style = kind_style.style.unwrap_or(data.default_style);
+                    if let Some(text) = kind_style.text.as_ref() {
+                        menu::Cell::from(Span::styled(text.clone(), style))
+                    } else {
+                        menu::Cell::from(Span::styled(kind, style))
+                    }
+                } else {
+                    menu::Cell::from(Span::styled(kind, data.default_style))
+                }
+            }
+        };
+
+        menu::Row::new([label_cell, kind_cell])
     }
 }
 
@@ -155,11 +212,13 @@ impl Completion {
         let replace_mode = editor.config().completion_replace;
         // Sort completion items according to their preselect status (given by the LSP server)
         items.sort_by_key(|item| !item.preselect());
-
-        let dir_style = editor.theme.get("ui.text.directory");
+        let data = CompletionData {
+            completion_item_kinds: Arc::clone(&editor.completion_item_kind_styles),
+            default_style: editor.theme.get("ui.completion.kind"),
+        };
 
         // Then create the menu
-        let menu = Menu::new(items, dir_style, move |editor: &mut Editor, item, event| {
+        let menu = Menu::new(items, data, move |editor: &mut Editor, item, event| {
             let (view, doc) = current!(editor);
 
             macro_rules! language_server {
