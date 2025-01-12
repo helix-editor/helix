@@ -61,17 +61,17 @@ jobs:
         build: [x86_64-linux, x86_64-macos, x86_64-windows] #, x86_64-win-gnu, win32-msvc
         include:
         - build: x86_64-linux
-          os: ubuntu-latest
+          os: ubuntu-22.04
           rust: stable
           target: x86_64-unknown-linux-gnu
           cross: false
         - build: aarch64-linux
-          os: ubuntu-latest
+          os: ubuntu-22.04
           rust: stable
           target: aarch64-unknown-linux-gnu
           cross: true
         # - build: riscv64-linux
-        #   os: ubuntu-latest
+        #   os: ubuntu-22.04
         #   rust: stable
         #   target: riscv64gc-unknown-linux-gnu
         #   cross: true

@@ -4780,7 +4780,7 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
         changes.reserve(lines.len());
 
         let first_line_idx = slice.line_to_char(start);
-        let first_line_idx = skip_while(slice, first_line_idx, |ch| matches!(ch, ' ' | 't'))
+        let first_line_idx = skip_while(slice, first_line_idx, |ch| matches!(ch, ' ' | '\t'))
             .unwrap_or(first_line_idx);
         let first_line = slice.slice(first_line_idx..);
         let mut current_comment_token = comment_tokens

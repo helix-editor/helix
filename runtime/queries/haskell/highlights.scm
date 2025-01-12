@@ -7,6 +7,255 @@
 (char) @constant.character
 (string) @string
 
+(exp_apply
+ (exp_name
+  (variable) @function.builtin
+   (#any-of? @function.builtin
+    ; built in functions from the Haskell prelude (https://hackage.haskell.org/package/base-4.21.0.0/docs/Prelude.html)
+    ; basic data types
+    "not"
+    "maybe"
+    "either"
+
+    ; tuples
+    "fst"
+    "snd"
+    "curry"
+    "uncurry"
+
+    ; Ord
+    "compare"
+    "min"
+    "max"
+
+    ; Enum
+    "succ"
+    "pred"
+    "toEnum"
+    "fromEnum"
+    "enumFrom"
+    "enumFromThen"
+    "enumFromThenTo"
+
+    ; Num
+    "negate"
+    "abs"
+    "signum"
+    "fromInteger"
+
+    ; Real
+    "toRational"
+
+    ; Integral
+    "quot"
+    "rem"
+    "div"
+    "mod"
+    "quotRem"
+    "divMod"
+    "toInteger"
+
+    ; Fractional
+    "recip"
+    "fromRational"
+
+    ; Floating
+    "exp"
+    "log"
+    "sqrt"
+    "logBase"
+    "sin"
+    "cos"
+    "tan"
+    "asin"
+    "acos"
+    "atan"
+    "sinh"
+    "cosh"
+    "tanh"
+    "asinh"
+    "acosh"
+    "atanh"
+
+    ; RealFrac
+    "properFraction"
+    "truncate"
+    "round"
+    "ceiling"
+    "floor"
+
+    ; RealFloat
+    "floatRadix"
+    "floatDigits"
+    "floatRange"
+    "decodeFloat"
+    "encodeFloat"
+    "exponent"
+    "significand"
+    "scaleFloat"
+    "isNaN"
+    "isInfinite"
+    "isDenormalized"
+    "isNegativeZero"
+    "isIEEE"
+    "atan2"
+
+    ; Numeric functions
+    "subtract"
+    "even"
+    "odd"
+    "gcd"
+    "lcm"
+    "fromIntegral"
+    "realToFrac"
+
+    ; Monoid
+    "mempty"
+    "mconcat"
+    "mappend"
+
+    ; Functor
+    "fmap"
+
+    ; Applicative
+    "liftA2"
+    "pure"
+    
+    ; Monad
+    "return"
+
+    ; MonadFail
+    "fail"
+    "mapM_"
+    "sequence_"
+
+    ; Foldable
+    "foldMap"
+    "foldr"
+    "foldl"
+    "foldl'"
+    "foldr1"
+    "foldl1"
+    "elem"
+    "maximum"
+    "minimum"
+    "sum"
+    "product"
+
+    ; Traversable
+    "traverse"
+    "sequenceA"
+    "mapM"
+    "sequence"
+
+    ; miscellaneous
+    "id"
+    "const"
+    "flip"
+    "until"
+    "asTypeOf"
+    "error"
+    "errorWithoutStackTrace"
+    "undefined"
+
+    ; List
+    "map"
+    "filter"
+    "head"
+    "last"
+    "tail"
+    "init"
+    "null"
+    "length"
+    "reverse"
+
+    ; Foldable
+    "and"
+    "or"
+    "any"
+    "all"
+    "concat"
+    "concatMap"
+
+    ; Building lists
+    "scanl"
+    "scanl1"
+    "scanr"
+    "scanr1"
+
+    ; Infinite lists
+    "iterate"
+    "repeat"
+    "replicate"
+    "cycle"
+
+    ; Sublists
+    "take"
+    "drop"
+    "takeWhile"
+    "dropWhile"
+    "span"
+    "break"
+    "splitAt"
+
+    ; Searching lists
+    "notElem"
+    "lookup"
+
+    ; zipping and unzipping
+    "zip"
+    "zip3"
+    "zipWith"
+    "zipWith3"
+    "unzip"
+    "unzip3"
+
+    ; String
+    "lines"
+    "words"
+    "unlines"
+    "unwords"
+
+    ; Converting to String
+    "show"
+    "showList"
+    "shows"
+    "showChar"
+    "showString"
+    "showParen"
+
+    ; Converting from String
+    "readsPrec"
+    "readList"
+    "reads"
+    "readParen"
+    "read"
+    "lex"
+
+    ; Input and output
+    "putChar"
+    "putStr"
+    "putStrLn"
+    "print"
+    "getChar"
+    "getLine"
+    "getContents"
+    "interact"
+
+    ; Files 
+    "readFile"
+    "writeFile"
+    "appendFile"
+    "readIO"
+    "readLn"
+
+    ; Exception handling
+    "ioError"
+    "userError")
+  )
+)
+
+
 (con_unit) @constant.builtin ; unit, as in ()
 
 (comment) @comment

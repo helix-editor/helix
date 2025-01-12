@@ -665,6 +665,14 @@ async fn test_join_selections_comment() -> anyhow::Result<()> {
     ))
     .await?;
 
+    test((
+        "#[|\t// Join comments
+\t// with indent]#",
+        ":lang go<ret>J",
+        "#[|\t// Join comments with indent]#",
+    ))
+    .await?;
+
     Ok(())
 }
 
