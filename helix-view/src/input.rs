@@ -71,8 +71,11 @@ pub struct MouseClicks {
 }
 
 pub enum MouseClick {
+    /// A single click
     Single,
+    /// A click where the same character was pressed 2 times in a row
     Double,
+    /// A click where the same character pressed 3 times in a row
     Triple,
 }
 
