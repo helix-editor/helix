@@ -1109,7 +1109,8 @@ pub struct Editor {
     ),
 }
 
-struct ExternalModificationEvent {
+#[derive(Debug)]
+pub struct ExternalModificationEvent {
     doc_id: DocumentId,
     was_modified: bool,
 }
@@ -1122,6 +1123,7 @@ pub enum EditorEvent {
     ConfigEvent(ConfigEvent),
     LanguageServerMessage((LanguageServerId, Call)),
     DebuggerEvent(dap::Payload),
+    ExternalModification(ExternalModificationEvent),
     IdleTimer,
     Redraw,
 }
@@ -2149,6 +2151,7 @@ impl Editor {
                     if let Some(doc) = self.document_mut(event.doc_id) {
                         doc.externally_modified = event.was_modified;
                     }
+                    return EditorEvent::ExternalModification(event)
                 }
 
                 _ = helix_event::redraw_requested() => {
