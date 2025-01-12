@@ -92,6 +92,7 @@ impl menu::Item for CompletionItem {
                                 value, ..
                             }) => value,
                         };
+                        // LSPs which send Color completion items include a 6 digit hex code at the end for the color. The extra 1 digit is for the '#'
                         text.get(text.len() - 7..)
                     })
                     .and_then(Color::from_hex)
