@@ -46,50 +46,6 @@ pub struct EditorView {
     terminal_focused: bool,
 }
 
-/// Tracks the character positions where the mouse was last clicked
-///
-/// If we double click, select that word
-/// If we triple click, select full line
-struct MouseClicks {
-    clicks: [Option<usize>; 2],
-    count: usize,
-}
-
-impl MouseClicks {
-    fn new() -> Self {
-        Self {
-            clicks: [None, None],
-            count: 0,
-        }
-    }
-
-    fn register_click(&mut self, char_idx: usize) {
-        match self.count {
-            0 => {
-                self.clicks[0] = Some(char_idx);
-                self.count = 1;
-            }
-            1 => {
-                self.clicks[1] = Some(char_idx);
-                self.count = 2;
-            }
-            2 => {
-                self.clicks[0] = self.clicks[1];
-                self.clicks[1] = Some(char_idx);
-            }
-            _ => unreachable!("Mouse click count should never exceed 2"),
-        }
-    }
-
-    fn has_double_click(&mut self) -> Option<usize> {
-        self.clicks[0].filter(|first_click| Some(first_click) != self.clicks[1].as_ref())
-    }
-
-    fn has_single_click(&mut self) -> Option<usize> {
-        self.clicks[1]
-    }
-}
-
 #[derive(Debug, Clone)]
 pub enum InsertEvent {
     Key(KeyEvent),
@@ -1218,12 +1174,31 @@ impl EditorView {
                 let editor = &mut cxt.editor;
 
                 if let Some((pos, view_id)) = pos_and_view(editor, row, column, true) {
+                    let message;
                     let prev_view_id = view!(editor).id;
                     let doc = doc_mut!(editor, &view!(editor, view_id).doc);
 
-                    if modifiers == KeyModifiers::ALT {
+                    if editor.mouse_clicks.is_triple_click(pos) {
+                        message = format!("triple click: {:?}, {}", editor.mouse_clicks, pos);
+
+                        // let text = doc.text().slice(..);
+
+                        // let (start_line, end_line) =
+                        //     Range::point(triple_click_idx).line_range(text);
+
+                        // let start = text.line_to_char(start_line);
+                        // let end = text.line_to_char(
+                        //     (end_line + 1) // newline of end_line
+                        //         .min(text.len_lines()),
+                        // );
+
+                        // doc.set_selection(view_id, Selection::single(start, end))
+                    } else if editor.mouse_clicks.is_double_click(pos) {
+                        message = format!("double click: {:?}, {}", editor.mouse_clicks, pos);
+                    } else if modifiers == KeyModifiers::ALT {
                         let selection = doc.selection(view_id).clone();
                         doc.set_selection(view_id, selection.push(Range::point(pos)));
+                        message = format!("(alt) single click: {:?}, {}", editor.mouse_clicks, pos);
                     } else if editor.mode == Mode::Select {
                         // Discards non-primary selections for consistent UX with normal mode
                         let primary = doc.selection(view_id).primary().put_cursor(
@@ -1231,9 +1206,14 @@ impl EditorView {
                             pos,
                             true,
                         );
+                        message =
+                            format!("(select) single click: {:?}, {}", editor.mouse_clicks, pos);
+
                         editor.mouse_down_range = Some(primary);
                         doc.set_selection(view_id, Selection::single(primary.anchor, primary.head));
                     } else {
+                        message = format!("single click: {:?}, {}", editor.mouse_clicks, pos);
+
                         doc.set_selection(view_id, Selection::point(pos));
                     }
 
@@ -1243,6 +1223,9 @@ impl EditorView {
 
                     editor.focus(view_id);
                     editor.ensure_cursor_in_view(view_id);
+                    editor.mouse_clicks.register_click(pos);
+
+                    editor.set_status(message);
 
                     return EventResult::Consumed(None);
                 }

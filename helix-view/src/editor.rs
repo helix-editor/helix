@@ -81,6 +81,51 @@ where
     )
 }
 
+/// Tracks the character positions where the mouse was last clicked
+///
+/// If we double click, select that word
+/// If we triple click, select full line
+#[derive(Debug)]
+pub struct MouseClicks {
+    clicks: [Option<usize>; 2],
+    count: usize,
+}
+
+impl MouseClicks {
+    fn new() -> Self {
+        Self {
+            clicks: [None, None],
+            count: 0,
+        }
+    }
+
+    pub fn register_click(&mut self, char_idx: usize) {
+        match self.count {
+            0 => {
+                self.clicks[0] = Some(char_idx);
+                self.count = 1;
+            }
+            1 => {
+                self.clicks[1] = Some(char_idx);
+                self.count = 2;
+            }
+            2 => {
+                self.clicks[0] = self.clicks[1];
+                self.clicks[1] = Some(char_idx);
+            }
+            _ => unreachable!("Mouse click count should never exceed 2"),
+        }
+    }
+
+    pub fn is_triple_click(&mut self, pos: usize) -> bool {
+        Some(pos) == self.clicks[0] && Some(pos) == self.clicks[1]
+    }
+
+    pub fn is_double_click(&mut self, pos: usize) -> bool {
+        Some(pos) == self.clicks[1] && Some(pos) != self.clicks[0]
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", default, deny_unknown_fields)]
 pub struct GutterConfig {
@@ -1101,6 +1146,8 @@ pub struct Editor {
 
     pub mouse_down_range: Option<Range>,
     pub cursor_cache: CursorCache,
+
+    pub mouse_clicks: MouseClicks,
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
@@ -1223,6 +1270,7 @@ impl Editor {
             handlers,
             mouse_down_range: None,
             cursor_cache: CursorCache::default(),
+            mouse_clicks: MouseClicks::new(),
         }
     }
 
