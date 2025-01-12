@@ -91,7 +91,6 @@ impl MouseClicks {
             self.count = 0;
 
             return MouseClick::Triple;
-            // MouseClick::Triple
         } else if self.is_double_click(char_idx) {
             MouseClick::Double
         } else {
