@@ -34,7 +34,7 @@ impl CheckModificationHandler {
 
 // Strike a balance between spamming stat syscalls and informing the user relatively soon
 // after they start making changes that there's a conflict.
-const DEBOUNCE_INTERVAL: Duration = Duration::from_secs(2);
+const DEBOUNCE_INTERVAL: Duration = Duration::from_millis(500);
 
 impl helix_event::AsyncHook for CheckModificationHandler {
     type Event = CheckModificationEvent;
