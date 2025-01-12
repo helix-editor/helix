@@ -46,6 +46,50 @@ pub struct EditorView {
     terminal_focused: bool,
 }
 
+/// Tracks the character positions where the mouse was last clicked
+///
+/// If we double click, select that word
+/// If we triple click, select full line
+struct MouseClicks {
+    clicks: [Option<usize>; 2],
+    count: usize,
+}
+
+impl MouseClicks {
+    fn new() -> Self {
+        Self {
+            clicks: [None, None],
+            count: 0,
+        }
+    }
+
+    fn register_click(&mut self, char_idx: usize) {
+        match self.count {
+            0 => {
+                self.clicks[0] = Some(char_idx);
+                self.count = 1;
+            }
+            1 => {
+                self.clicks[1] = Some(char_idx);
+                self.count = 2;
+            }
+            2 => {
+                self.clicks[0] = self.clicks[1];
+                self.clicks[1] = Some(char_idx);
+            }
+            _ => unreachable!("Mouse click count should never exceed 2"),
+        }
+    }
+
+    fn has_double_click(&mut self) -> Option<usize> {
+        self.clicks[0].filter(|first_click| Some(first_click) != self.clicks[1].as_ref())
+    }
+
+    fn has_single_click(&mut self) -> Option<usize> {
+        self.clicks[1]
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum InsertEvent {
     Key(KeyEvent),
