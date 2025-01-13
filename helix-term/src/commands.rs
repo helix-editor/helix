@@ -3990,7 +3990,7 @@ pub mod insert {
         //
         // We need to store this because the "selection" is the same across the entire iteration, but
         // as we iterate over it we are adding extra characters that we need to keep track of.
-        let change = |global_offset: &mut usize, range: &Range| {
+        let change = |global_offset: &mut isize, range: &Range| {
             // if iter_count >= 2 {
             //     return None;
             // }
@@ -4029,8 +4029,8 @@ pub mod insert {
                     text.char(last_nonwhitespace_char_idx),
                 );
                 let first_trailing_whitespace_char_idx =
-                    (line_start_idx + last_nonwhitespace_char_idx + 1 + *global_offset)
-                        .min(cursor_position);
+                    ((line_start_idx + last_nonwhitespace_char_idx) as isize + 1 + *global_offset)
+                        .min(cursor_position as isize);
 
                 // the char_idx should ALSO be taking into account that we may well have added an extra newline earlier
 
@@ -4131,24 +4131,27 @@ pub mod insert {
                     // unsigned subtraction (`pos - first_trailing_whitespace_char`) cannot
                     // underflow.
                     local_offset as isize
-                        - (cursor_position - first_trailing_whitespace_char_idx) as isize,
+                        - (cursor_position as isize - first_trailing_whitespace_char_idx),
                     local_offset,
                     cursor_position,
                     first_trailing_whitespace_char_idx
                 );
 
                 (
-                    first_trailing_whitespace_char_idx, // from
-                    cursor_position,                    // to
-                    new_text,                           // what to replace the range with
+                    first_trailing_whitespace_char_idx as usize, // from
+                    cursor_position,                             // to
+                    new_text,                                    // what to replace the range with
                     // Note that `first_trailing_whitespace_char` is at least `pos` so the
                     // unsigned subtraction (`pos - first_trailing_whitespace_char`) cannot
                     // underflow.
                     local_offset as isize
-                        - (cursor_position - first_trailing_whitespace_char_idx) as isize,
+                        - (cursor_position as isize - first_trailing_whitespace_char_idx),
                 )
             };
 
+            // if offset is negative it means we removed whitespace characters.
+            //
+            // so lets shift to the left?
             let (from, to, new_text, local_offset) = text
                 .slice(line_start_idx..cursor_position)
                 .last_non_whitespace_char()
@@ -4167,16 +4170,11 @@ pub mod insert {
                     compute_change,
                 );
 
-            // 2025-01-13T21:04:47.641 helix_term::commands::insert [ERROR] 67"\n"0
-            // 2025-01-13T21:04:47.641 helix_term::commands::insert [ERROR] 2525"\n"1
-            // 2025-01-13T21:04:47.641 helix_term::commands::insert [ERROR] 4646"\n"1
-            // 2025-01-13T21:04:47.642 helix_term::commands::insert [ERROR] 6767"\n"1
-            // 2025-01-13T21:04:47.642 helix_term::commands::insert [ERROR] 8080"\n"1
-            // 2025-01-13T21:04:47.642 helix_term::commands::insert [ERROR] 9393"\n"1
-
             // log::error!("{:#?}{:#?}{:#?}{:#?}", from, to, new_text, local_offs);
 
             let is_append = range.cursor(text) > range.anchor;
+
+            // NOTE: we also need to factor in how much whitespace we remove in the beginning
 
             // log::error!("---------------------{} @ {}", *global_offset, local_offset);
 
@@ -4184,16 +4182,27 @@ pub mod insert {
                 // When appending, we move the range to the right by the amount of characters we've inserted in previous iterations
                 // And extend the range to the right by how many characters we've inserted in this iteration
                 Range::new(
-                    range.anchor + *global_offset,
-                    (range.head + *global_offset) + local_offset as usize,
+                    (range.anchor as isize + *global_offset).try_into().unwrap(),
+                    ((range.head as isize + *global_offset) + local_offset)
+                        .try_into()
+                        .unwrap(),
                 )
             } else {
-                let slide_right_by = *global_offset + local_offset as usize;
+                // let slide_right_by = *global_offset as isize + local_offset;
 
                 // log::error!("---------------------{} @ {}", *global_offset, local_offset);
 
                 // When inserting, slide the range to the right
-                Range::new(range.anchor + slide_right_by, range.head + slide_right_by)
+                Range::new(
+                    // these conversion need to be awkward like this since both local and global offsets can be negative
+                    // if we actually do remove whitespace
+                    ((range.anchor as isize + local_offset) + *global_offset)
+                        .try_into()
+                        .unwrap(),
+                    ((range.head as isize + local_offset) + *global_offset)
+                        .try_into()
+                        .unwrap(),
+                )
             };
 
             // TODO: range replace or extend
@@ -4201,7 +4210,7 @@ pub mod insert {
             // can be used with cx.mode to do replace or extend on most changes
             ranges.push(new_range);
 
-            *global_offset += new_text.chars().count();
+            *global_offset += new_text.chars().count() as isize;
 
             // iter_count += 1;
 
