@@ -21,9 +21,9 @@ keywords = ["language", "server", "lsp", "vscode", "lsif"]
 license = "MIT"
 
 [dependencies]
-bitflags = "2.6.0"
+bitflags = "2.7.0"
 serde = { version = "1.0.217", features = ["derive"] }
-serde_json = "1.0.134"
+serde_json = "1.0.135"
 serde_repr = "0.1"
 url = {version = "2.5.4", features = ["serde"]}
 
