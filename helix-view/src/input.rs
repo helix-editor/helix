@@ -67,7 +67,7 @@ pub enum MouseButton {
 #[derive(Debug)]
 pub struct MouseClicks {
     clicks: [Option<usize>; 2],
-    count: usize,
+    count: u8,
 }
 
 pub enum MouseClick {
