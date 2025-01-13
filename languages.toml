@@ -144,7 +144,6 @@ paramName = "All"
 paramType = true
 await = true
 
-
 [language-server.gopls]
 command = "gopls"
 
@@ -162,7 +161,6 @@ command = "golangci-lint-langserver"
 [language-server.golangci-lint-lsp.config]
 command = ["golangci-lint", "run", "--out-format", "json", "--issues-exit-code=1"]
 
-
 [language-server.rust-analyzer]
 command = "rust-analyzer"
 
@@ -173,7 +171,6 @@ inlayHints.closureReturnTypeHints.enable = "with_block"
 inlayHints.discriminantHints.enable = "fieldless"
 inlayHints.lifetimeElisionHints.enable = "skip_trivial"
 inlayHints.typeHints.hideClosureInitialization = false
-
 
 [language-server.typescript-language-server]
 command = "typescript-language-server"
@@ -1154,7 +1151,6 @@ text-width = 100
 [[grammar]]
 name = "lean"
 source = { git = "https://github.com/Julian/tree-sitter-lean", rev = "d98426109258b266e1e92358c5f11716d2e8f638" }
-
 
 [[language]]
 name = "lpf"
@@ -2577,7 +2573,6 @@ comment-token = "--"
 indent = { tab-width = 3, unit = "   " }
 language-servers = ["ada-language-server"]
 
-
 [[grammar]]
 name = "ada"
 source = { git = "https://github.com/briot/tree-sitter-ada", rev = "ba0894efa03beb70780156b91e28c716b7a4764d" }
@@ -2748,7 +2743,6 @@ indent = { tab-width = 2, unit = "  " }
 name = "xml"
 source = { git = "https://github.com/RenjiSann/tree-sitter-xml", rev = "48a7c2b6fb9d515577e115e6788937e837815651" }
 
-
 [[language]]
 name = "dtd"
 scope = "source.dtd"
@@ -2900,7 +2894,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "matlab"
-source = { git = "https://github.com/acristoffers/tree-sitter-matlab", rev = "6071891a8c39600203eba20513666cf93b4d650a" }
+source = { git = "https://github.com/acristoffers/tree-sitter-matlab", rev = "b0a0198b182574cd3ca0447264c83331901b9338" }
 
 [[language]]
 name = "ponylang"
@@ -3958,12 +3952,12 @@ block-comment-tokens = [
 language-servers = [ "spade-language-server" ]
 indent = { tab-width = 4, unit = "    " }
 
-[language.auto-pairs] 
-'(' = ')' 
-'{' = '}' 
-'[' = ']' 
-'"' = '"' 
-'<' = '>' 
+[language.auto-pairs]
+'(' = ')'
+'{' = '}'
+'[' = ']'
+'"' = '"'
+'<' = '>'
 
 [[grammar]]
 name = "spade"
@@ -4027,7 +4021,7 @@ file-types = [
   { glob = "sites-available/*.conf" },
   { glob = "sites-enabled/*.conf" },
   { glob = "nginx.conf" },
-  { glob = "conf.d/*.conf" } 
+  { glob = "conf.d/*.conf" }
 ]
 roots = ["nginx.conf"]
 comment-token = "#"
