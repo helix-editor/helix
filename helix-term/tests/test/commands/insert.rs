@@ -55,8 +55,7 @@ async fn insert_newline_many_selections() -> anyhow::Result<()> {
 
             #(||)# 〈infnan〉 i 
             #(||)# + i 
-            #[||]# - i"}
-        .replace('·', " "),
+            #[||]# - i"},
     ))
     .await?;
 
