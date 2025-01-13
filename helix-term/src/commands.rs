@@ -5623,10 +5623,32 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
     cx.on_next_key(move |cx, event| {
         cx.editor.autoinfo = None;
 
-        if let Some(ch) = event
-            .char()
-            .or((event.code == KeyCode::Enter).then_some('\n'))
-        {
+        if event.code == KeyCode::Enter {
+            let textobject = move |editor: &mut Editor| {
+                let (view, doc) = current!(editor);
+                let text = doc.text().slice(..);
+                let line_ending = doc.line_ending.as_str();
+
+                let selection = doc.selection(view.id).clone().transform(|range| {
+                    let line_idx = range.cursor_line(text);
+                    let line_start = text.line_to_char(line_idx);
+                    let line_end = text.line_to_char(line_idx + 1);
+
+                    let (from, to) = match objtype {
+                        textobject::TextObject::Around => (
+                            line_start.saturating_sub(line_ending.len()),
+                            line_end + line_ending.len() - 1,
+                        ),
+                        textobject::TextObject::Inside => (line_start, line_end),
+                        textobject::TextObject::Movement => unreachable!(),
+                    };
+
+                    Range::new(from, to)
+                });
+                doc.set_selection(view.id, selection);
+            };
+            cx.editor.apply_motion(textobject);
+        } else if let Some(ch) = event.char() {
             let textobject = move |editor: &mut Editor| {
                 let (view, doc) = current!(editor);
                 let text = doc.text().slice(..);
