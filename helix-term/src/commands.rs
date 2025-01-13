@@ -5631,13 +5631,24 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
 
                 let selection = doc.selection(view.id).clone().transform(|range| {
                     let line_idx = range.cursor_line(text);
-                    let line_start = text.line_to_char(line_idx);
-                    let line_end = text.line_to_char(line_idx + 1);
+
+                    // count = 1 => this line
+                    // count = 2 => this line, 1 line above and 1 line below (3 total)
+                    // count = 3 => this line, 2 lines above and 2 lines below (5 total)
+                    // etc.
+                    let vertical_offset = count - 1;
+
+                    let from_line_idx = line_idx.saturating_sub(vertical_offset);
+                    let to_line_idx = (line_idx + vertical_offset).min(text.len_lines() - 1);
+
+                    let line_start = text.line_to_char(from_line_idx);
+                    // The beginning of the next line -1 is the same as the last character in the current line
+                    let line_end = text.line_to_char(to_line_idx + 1).saturating_sub(1);
 
                     let (from, to) = match objtype {
                         textobject::TextObject::Around => (
                             line_start.saturating_sub(line_ending.len()),
-                            line_end + line_ending.len() - 1,
+                            line_end + line_ending.len(),
                         ),
                         textobject::TextObject::Inside => (line_start, line_end),
                         textobject::TextObject::Movement => unreachable!(),
