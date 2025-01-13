@@ -3982,6 +3982,11 @@ pub mod insert {
         let selection = doc.selection(view.id).clone();
         let mut ranges = SmallVec::with_capacity(selection.len());
 
+        // The global offset stores how many characters (comment tokens, end of line chars, etc.)
+        // we have currently inserted
+        //
+        // We need to store this because the "selection" is the same across the entire iteration, but
+        // as we iterate over it we are adding extra characters that we need to keep track of.
         let change = |global_offsets: &mut usize, range: &Range| {
             let cursor_position = range.cursor(text);
 
@@ -3992,8 +3997,8 @@ pub mod insert {
 
             let current_char = contents.get_char(cursor_position).unwrap_or(' ');
 
-            let current_line = text.char_to_line(cursor_position);
-            let line_start = text.line_to_char(current_line);
+            let current_line_number = text.char_to_line(cursor_position);
+            let line_start_idx = text.line_to_char(current_line_number);
 
             let continue_comment_token = doc
                 .config
@@ -4002,21 +4007,23 @@ pub mod insert {
                 .then_some(
                     doc.language_config()
                         .and_then(|config| config.comment_tokens.as_ref())
-                        .and_then(|tokens| comment::get_comment_token(text, tokens, current_line)),
+                        .and_then(|tokens| {
+                            comment::get_comment_token(text, tokens, current_line_number)
+                        }),
                 )
                 .flatten();
 
             let eol = doc.line_ending.as_str();
 
-            let another_fn = |last_nonwhitespace_char_idx: usize| {
+            let compute_change = |last_nonwhitespace_char_idx: usize| {
                 let first_trailing_whitespace_char =
-                    (line_start + last_nonwhitespace_char_idx + 1 + *global_offsets)
+                    (line_start_idx + last_nonwhitespace_char_idx + 1 + *global_offsets)
                         .min(cursor_position);
 
-                let line = text.line(current_line);
+                let current_line = text.line(current_line_number);
 
                 let indent = continue_comment_token
-                    .and(line.first_non_whitespace_char())
+                    .and(current_line.first_non_whitespace_char())
                     .map_or(
                         indent::indent_for_newline(
                             doc.language_config(),
@@ -4025,79 +4032,85 @@ pub mod insert {
                             &doc.indent_style,
                             doc.tab_width(),
                             text,
-                            current_line,
+                            current_line_number,
                             cursor_position,
-                            current_line,
+                            current_line_number,
                         ),
-                        |pos| line.slice(..pos).to_string(),
+                        |pos| current_line.slice(..pos).to_string(),
                     );
 
-                // If we are between pairs (such as brackets), we want to
-                // insert an additional line which is indented one level
-                // more and place the cursor there
-                let on_auto_pair = doc
+                let is_on_pair = doc
                     .auto_pairs(cx.editor)
                     .and_then(|pairs| pairs.get(prev_char))
                     .map_or(false, |pair| {
                         pair.open == prev_char && pair.close == current_char
                     });
 
-                let base_addition = format!("{}{}", eol, indent);
+                let new_text = format!("{}{}", eol, indent);
 
-                let (local_offs, new_text) = if let Some(comment_token) = continue_comment_token {
-                    let with_comment_token = format!("{}{}", base_addition, comment_token);
+                let new_text = if let Some(comment_token) = continue_comment_token {
+                    format!("{}{}", new_text, comment_token)
 
-                    (with_comment_token.len(), with_comment_token)
-                } else if on_auto_pair {
-                    let with_sub_indent = format!(
-                        "{}{}{}{}",
-                        eol,
-                        indent,
-                        doc.indent_style.as_str(),
-                        base_addition
-                    );
-
-                    (with_sub_indent.len(), with_sub_indent)
+                // If we are between pairs, we want to
+                // insert an additional line which is indented one level
+                // more and place the cursor there
+                //
+                // for instance:
+                // (|) => (
+                //   |
+                // )
+                } else if is_on_pair {
+                    format!("{}{}{}{}", eol, indent, doc.indent_style.as_str(), new_text)
                 } else {
-                    (base_addition.len(), base_addition)
+                    new_text
                 };
 
+                // Local offsets store how many characters we have inserted in the current iteration.
+                let local_offsets = new_text.len();
+
                 (
-                    first_trailing_whitespace_char,
-                    cursor_position,
-                    new_text,
+                    first_trailing_whitespace_char, // from
+                    cursor_position,                // to
+                    new_text,                       // what to replace the range with
                     // Note that `first_trailing_whitespace_char` is at least `pos` so the
                     // unsigned subtraction (`pos - first_trailing_whitespace_char`) cannot
                     // underflow.
                     // local_offs as isize - (pos - first_trailing_whitespace_char) as isize,
-                    local_offs as isize,
+                    local_offsets as isize,
                 )
             };
 
             let (from, to, new_text, local_offs) = text
-                .slice(line_start..cursor_position)
+                .slice(line_start_idx..cursor_position)
                 .last_non_whitespace_char()
                 .map_or(
                     // Entire line is just whitespace
                     //
                     // Simply insert an eol at the start of the line
-                    (line_start, line_start, eol.to_string(), eol.len() as isize),
+                    (
+                        line_start_idx,
+                        line_start_idx,
+                        eol.to_string(),
+                        eol.len() as isize,
+                    ),
                     // At least 1 non-whitespace character between the beginning of the line and the cursor position
-                    another_fn,
+                    compute_change,
                 );
 
-            let new_range = if range.cursor(text) > range.anchor {
-                // when appending, extend the range by local_offs
+            let is_append = range.cursor(text) > range.anchor;
+
+            let new_range = if is_append {
+                // When appending, we move the range to the right by the amount of characters we've inserted in previous iterations
+                // And extend the range to the right by how many characters we've inserted in this iteration
                 Range::new(
                     range.anchor + *global_offsets,
-                    (range.head as isize + local_offs) as usize + *global_offsets,
+                    (range.head + *global_offsets) + local_offs as usize,
                 )
             } else {
-                // when inserting, slide the range by local_offs
-                Range::new(
-                    (range.anchor as isize + local_offs) as usize + *global_offsets,
-                    (range.head as isize + local_offs) as usize + *global_offsets,
-                )
+                let slide_amount = *global_offsets + local_offs as usize;
+
+                // When inserting, slide the range to the right
+                Range::new(range.anchor + slide_amount, range.head + slide_amount)
             };
 
             // TODO: range replace or extend
