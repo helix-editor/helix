@@ -2,7 +2,6 @@ use super::*;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn insert_newline_many_selections() -> anyhow::Result<()> {
-    // From https://github.com/helix-editor/helix/issues/12495
     test((
         indoc! {"\
             id #(|1)#,Item #(|1)#,cost #(|1)#,location #(|1)#
@@ -32,7 +31,6 @@ async fn insert_newline_many_selections() -> anyhow::Result<()> {
     ))
     .await?;
 
-    // From https://github.com/helix-editor/helix/issues/12461
     test((
         indoc! {"\
             real R〉 #(||)# 〈real R〉 @ 〈real R〉
