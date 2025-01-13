@@ -4070,9 +4070,7 @@ pub mod insert {
                     // Note that `first_trailing_whitespace_char` is at least `pos` so the
                     // unsigned subtraction (`pos - first_trailing_whitespace_char`) cannot
                     // underflow.
-                    local_offs as isize
-                        - (pos + if ranges.is_empty() { 0 } else { 1 }
-                            - first_trailing_whitespace_char) as isize,
+                    local_offs as isize - (pos - first_trailing_whitespace_char) as isize,
                 )
             } else {
                 // If the current line is all whitespace, insert a line ending at the beginning of
@@ -4082,6 +4080,8 @@ pub mod insert {
 
                 (line_start, line_start, new_text.chars().count() as isize)
             };
+
+            let local_offs = local_offs - if ranges.is_empty() { 0 } else { 1 };
 
             let new_range = if range.cursor(text) > range.anchor {
                 // when appending, extend the range by local_offs
