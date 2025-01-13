@@ -3983,12 +3983,17 @@ pub mod insert {
         // These will be used to restore the same primary selection as how we started.
         let mut ranges = SmallVec::with_capacity(selection.len());
 
+        // let mut iter_count = 0;
+
         // The global offset stores how many characters (comment tokens, end of line chars, etc.)
         // we have currently inserted
         //
         // We need to store this because the "selection" is the same across the entire iteration, but
         // as we iterate over it we are adding extra characters that we need to keep track of.
         let change = |global_offset: &mut usize, range: &Range| {
+            // if iter_count >= 2 {
+            //     return None;
+            // }
             let cursor_position = range.cursor(text);
 
             let char_before_cursor = cursor_position
@@ -4017,9 +4022,24 @@ pub mod insert {
             let eol = doc.line_ending.as_str();
 
             let compute_change = |last_nonwhitespace_char_idx: usize| {
-                let first_trailing_whitespace_char =
+                // log::error!("compute_change");
+                log::error!(
+                    "last nonwhitespace: {:?}, char: {:?}",
+                    last_nonwhitespace_char_idx,
+                    text.char(last_nonwhitespace_char_idx),
+                );
+                let first_trailing_whitespace_char_idx =
                     (line_start_idx + last_nonwhitespace_char_idx + 1 + *global_offset)
                         .min(cursor_position);
+
+                // the char_idx should ALSO be taking into account that we may well have added an extra newline earlier
+
+                // log::error!(
+                //     "first trailing: {:?}, char: {:#?}, line: {:#?}",
+                //     first_trailing_whitespace_char_idx,
+                //     text.char(first_trailing_whitespace_char_idx),
+                //     text.char_to_line(first_trailing_whitespace_char_idx)
+                // );
 
                 let current_line = text.line(current_line_number);
 
@@ -4082,56 +4102,108 @@ pub mod insert {
                     new_text.len()
                 };
 
-                (
-                    first_trailing_whitespace_char, // from
-                    cursor_position,                // to
-                    new_text,                       // what to replace the range with
+                // when first_trailing_whitespace_char_idx != cursor_position , we are deleting whitespace.
+                //
+                // So e.g. we could be changing 6..7 into '\n'. Deletes 1 chars of whitespace and adds 1.
+                //
+                // But the problem is that when we are removing 2 whitespace chars or more, e.g. 6..8, then
+                // cursor_position = 8
+                // first_trailing = 6
+                // 8 - 6 = 2
+                //
+                // Then local_offset (1) - 2 = -1
+                //
+                // Negative is REALLY bad and causes all kinds of problems, and panics
+
+                // at some point THIS becomes negative which is very bad:
+                // local_offset as isize
+                //     - (cursor_position - first_trailing_whitespace_char_idx) as isize,
+                //
+                // and then we attempt to add positive with negative and everything becomes really, really bad
+
+                log::error!(
+                    "Changing {:?}..{:?} to {:#?}, offset {:#?}, local_offset {:#?}, \
+                    cursor_position: {:#?}, first_trailing_whitespace_char_idx: {:#?}",
+                    first_trailing_whitespace_char_idx, // from
+                    cursor_position,                    // to
+                    new_text,                           // what to replace the range with
                     // Note that `first_trailing_whitespace_char` is at least `pos` so the
                     // unsigned subtraction (`pos - first_trailing_whitespace_char`) cannot
                     // underflow.
                     local_offset as isize
-                        - (cursor_position - first_trailing_whitespace_char) as isize,
+                        - (cursor_position - first_trailing_whitespace_char_idx) as isize,
+                    local_offset,
+                    cursor_position,
+                    first_trailing_whitespace_char_idx
+                );
+
+                (
+                    first_trailing_whitespace_char_idx, // from
+                    cursor_position,                    // to
+                    new_text,                           // what to replace the range with
+                    // Note that `first_trailing_whitespace_char` is at least `pos` so the
+                    // unsigned subtraction (`pos - first_trailing_whitespace_char`) cannot
+                    // underflow.
+                    local_offset as isize
+                        - (cursor_position - first_trailing_whitespace_char_idx) as isize,
                 )
             };
 
-            let (from, to, new_text, local_offs) = text
+            let (from, to, new_text, local_offset) = text
                 .slice(line_start_idx..cursor_position)
                 .last_non_whitespace_char()
                 .map_or(
                     // Entire line is just whitespace
                     //
                     // Simply insert an eol at the start of the line
-                    (
-                        line_start_idx,
-                        line_start_idx,
-                        eol.to_string(),
-                        eol.len() as isize,
-                    ),
-                    // At least 1 non-whitespace character between the beginning of the line and the cursor position
+                    {
+                        (
+                            line_start_idx,
+                            line_start_idx,
+                            eol.to_string(),
+                            eol.len() as isize,
+                        )
+                    }, // At least 1 non-whitespace character between the beginning of the line and the cursor position
                     compute_change,
                 );
 
+            // 2025-01-13T21:04:47.641 helix_term::commands::insert [ERROR] 67"\n"0
+            // 2025-01-13T21:04:47.641 helix_term::commands::insert [ERROR] 2525"\n"1
+            // 2025-01-13T21:04:47.641 helix_term::commands::insert [ERROR] 4646"\n"1
+            // 2025-01-13T21:04:47.642 helix_term::commands::insert [ERROR] 6767"\n"1
+            // 2025-01-13T21:04:47.642 helix_term::commands::insert [ERROR] 8080"\n"1
+            // 2025-01-13T21:04:47.642 helix_term::commands::insert [ERROR] 9393"\n"1
+
+            // log::error!("{:#?}{:#?}{:#?}{:#?}", from, to, new_text, local_offs);
+
             let is_append = range.cursor(text) > range.anchor;
+
+            // log::error!("---------------------{} @ {}", *global_offset, local_offset);
 
             let new_range = if is_append {
                 // When appending, we move the range to the right by the amount of characters we've inserted in previous iterations
                 // And extend the range to the right by how many characters we've inserted in this iteration
                 Range::new(
                     range.anchor + *global_offset,
-                    (range.head + *global_offset) + local_offs as usize,
+                    (range.head + *global_offset) + local_offset as usize,
                 )
             } else {
-                let slide_amount = *global_offset + local_offs as usize;
+                let slide_right_by = *global_offset + local_offset as usize;
+
+                // log::error!("---------------------{} @ {}", *global_offset, local_offset);
 
                 // When inserting, slide the range to the right
-                Range::new(range.anchor + slide_amount, range.head + slide_amount)
+                Range::new(range.anchor + slide_right_by, range.head + slide_right_by)
             };
 
             // TODO: range replace or extend
             // range.replace(|range| range.is_empty(), head); -> fn extend if cond true, new head pos
             // can be used with cx.mode to do replace or extend on most changes
             ranges.push(new_range);
+
             *global_offset += new_text.chars().count();
+
+            // iter_count += 1;
 
             Some((from, to, Some(new_text.into())))
         };
