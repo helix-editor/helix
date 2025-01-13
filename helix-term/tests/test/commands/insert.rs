@@ -1,85 +1,6 @@
 use super::*;
 
 #[tokio::test(flavor = "multi_thread")]
-async fn insert_newline_append_many_selections() -> anyhow::Result<()> {
-    test((
-        indoc! {"\
-        #(|o)#ne
-        #(|t)#wo
-        #[|t]#hree"},
-        "a<ret>",
-        indoc! {"\
-        \n#(|o)#ne
-
-        #(|t)#wo
-
-        #[|t]#hree"},
-    ))
-    .await?;
-
-    test((
-        indoc! {"\
-            id #(|1)#,Item #(|1)#,cost #(|1)#,location #(|1)#
-            id #(|2)#,Item #(|2)#,cost #(|2)#,location #(|2)#
-            id #(|1)##(|0)#,Item #(|1)##(|0)#,cost #(|1)##(|0)#,location #(|1)##[|0]#"},
-        "a<ret>",
-        indoc! {"\
-            id·
-            #(|1)#,Item·
-            #(|1)#,cost·
-            #(|1)#,location·
-            #(|1)#
-            id·
-            #(|2)#,Item·
-            #(|2)#,cost·
-            #(|2)#,location·
-            #(|2)#
-            id·
-            #(|1)#
-            #(|0)#,Item·
-            #(|1)#
-            #(|0)#,cost·
-            #(|1)#
-            #(|0)#,location·
-            #(|1)#
-            #[|0]#"}
-        .replace('·', " "),
-    ))
-    .await?;
-
-    test((
-        indoc! {"\
-            real R〉 #(||)# 〈real R〉 @ 〈real R〉
-            #(||)# 〈real R〉 + 〈ureal R〉 i #(||)# 〈real R〉 - 〈ureal R〉 i
-            #(||)# 〈real R〉 + i #(||)# 〈real R〉 - i #(||)# 〈real R〉 〈infnan〉 i
-            #(||)# + 〈ureal R〉 i #(||)# - 〈ureal R〉 i
-            #(||)# 〈infnan〉 i #(||)# + i #[||]# - i"},
-        "a<ret>",
-        indoc! {"\
-            real R〉·
-            #(||)# 〈real R〉 @ 〈real R〉
-
-            #(||)# 〈real R〉 + 〈ureal R〉 i·
-            #(||)# 〈real R〉 - 〈ureal R〉 i
-
-            #(||)# 〈real R〉 + i·
-            #(||)# 〈real R〉 - i·
-            #(||)# 〈real R〉 〈infnan〉 i
-
-            #(||)# + 〈ureal R〉 i·
-            #(||)# - 〈ureal R〉 i
-
-            #(||)# 〈infnan〉 i·
-            #(||)# + i·
-            #[||]# - i"}
-        .replace('·', " "),
-    ))
-    .await?;
-
-    Ok(())
-}
-
-#[tokio::test(flavor = "multi_thread")]
 async fn insert_newline_many_selections() -> anyhow::Result<()> {
     test((
         indoc! {"\
@@ -103,26 +24,25 @@ async fn insert_newline_many_selections() -> anyhow::Result<()> {
             id #(|1)##(|0)#,Item #(|1)##(|0)#,cost #(|1)##(|0)#,location #(|1)##[|0]#"},
         "i<ret>",
         indoc! {"\
-            id·
-            #(|1)#,Item·
-            #(|1)#,cost·
-            #(|1)#,location·
+            id
+            #(|1)#,Item
+            #(|1)#,cost
+            #(|1)#,location
             #(|1)#
-            id·
-            #(|2)#,Item·
-            #(|2)#,cost·
-            #(|2)#,location·
+            id
+            #(|2)#,Item
+            #(|2)#,cost
+            #(|2)#,location
             #(|2)#
-            id·
+            id
             #(|1)#
-            #(|0)#,Item·
+            #(|0)#,Item
             #(|1)#
-            #(|0)#,cost·
+            #(|0)#,cost
             #(|1)#
-            #(|0)#,location·
+            #(|0)#,location
             #(|1)#
-            #[|0]#"}
-        .replace('·', " "),
+            #[|0]#"},
     ))
     .await?;
 
@@ -135,23 +55,22 @@ async fn insert_newline_many_selections() -> anyhow::Result<()> {
             #(||)# 〈infnan〉 i #(||)# + i #[||]# - i"},
         "i<ret>",
         indoc! {"\
-            real R〉·
+            real R〉
             #(||)# 〈real R〉 @ 〈real R〉
 
-            #(||)# 〈real R〉 + 〈ureal R〉 i·
+            #(||)# 〈real R〉 + 〈ureal R〉 i
             #(||)# 〈real R〉 - 〈ureal R〉 i
 
-            #(||)# 〈real R〉 + i·
-            #(||)# 〈real R〉 - i·
+            #(||)# 〈real R〉 + i
+            #(||)# 〈real R〉 - i
             #(||)# 〈real R〉 〈infnan〉 i
 
-            #(||)# + 〈ureal R〉 i·
+            #(||)# + 〈ureal R〉 i
             #(||)# - 〈ureal R〉 i
 
-            #(||)# 〈infnan〉 i·
-            #(||)# + i·
-            #[||]# - i"}
-        .replace('·', " "),
+            #(||)# 〈infnan〉 i
+            #(||)# + i
+            #[||]# - i"},
     ))
     .await?;
 

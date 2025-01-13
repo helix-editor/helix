@@ -3983,7 +3983,7 @@ pub mod insert {
         let mut ranges = SmallVec::with_capacity(selection.len());
 
         // TODO: this is annoying, but we need to do it to properly calculate pos after edits
-        let mut global_offs = 1;
+        let mut global_offs = 0;
 
         let mut transaction = Transaction::change_by_selection(contents, &selection, |range| {
             let pos = range.cursor(text);
@@ -4085,13 +4085,13 @@ pub mod insert {
                 // when appending, extend the range by local_offs
                 Range::new(
                     range.anchor + global_offs,
-                    (range.head as isize + local_offs - 1) as usize + global_offs,
+                    (range.head as isize + local_offs) as usize + global_offs,
                 )
             } else {
                 // when inserting, slide the range by local_offs
                 Range::new(
-                    (range.anchor as isize + local_offs - 1) as usize + global_offs,
-                    (range.head as isize + local_offs - 1) as usize + global_offs,
+                    (range.anchor as isize + local_offs) as usize + global_offs,
+                    (range.head as isize + local_offs) as usize + global_offs,
                 )
             };
 
