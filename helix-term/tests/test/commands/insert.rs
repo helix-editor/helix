@@ -2,6 +2,7 @@ use super::*;
 
 #[tokio::test(flavor = "multi_thread")]
 async fn insert_newline_many_selections() -> anyhow::Result<()> {
+    // From https://github.com/helix-editor/helix/issues/12495
     test((
         indoc! {"\
             id #(|1)#,Item #(|1)#,cost #(|1)#,location #(|1)#
@@ -28,6 +29,36 @@ async fn insert_newline_many_selections() -> anyhow::Result<()> {
             #(|0)#,location 
             #(|1)#
             #[|0]#"},
+    ))
+    .await?;
+
+    // From https://github.com/helix-editor/helix/issues/12461
+    test((
+        indoc! {"\
+            real R〉 #(||)# 〈real R〉 @ 〈real R〉
+            #(||)# 〈real R〉 + 〈ureal R〉 i #(||)# 〈real R〉 - 〈ureal R〉 i
+            #(||)# 〈real R〉 + i #(||)# 〈real R〉 - i #(||)# 〈real R〉 〈infnan〉 i
+            #(||)# + 〈ureal R〉 i #(||)# - 〈ureal R〉 i
+            #(||)# 〈infnan〉 i #(||)# + i #[||]# - i"},
+        "i<ret>",
+        indoc! {"\
+            real R〉
+            #(||)# 〈real R〉 @ 〈real R〉
+
+            #(||)# 〈real R〉 + 〈ureal R〉 i 
+            #(||)# 〈real R〉 - 〈ureal R〉 i
+
+            #(||)# 〈real R〉 + i 
+            #(||)# 〈real R〉 - i 
+            #(||)# 〈real R〉 〈infnan〉 i
+
+            #(||)# + 〈ureal R〉 i 
+            #(||)# - 〈ureal R〉 i
+
+            #(||)# 〈infnan〉 i 
+            #(||)# + i 
+            #[||]# - i"}
+        .replace('·', " "),
     ))
     .await?;
 
