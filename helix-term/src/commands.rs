@@ -3982,116 +3982,120 @@ pub mod insert {
         let selection = doc.selection(view.id).clone();
         let mut ranges = SmallVec::with_capacity(selection.len());
 
-        // TODO: this is annoying, but we need to do it to properly calculate pos after edits
-        let mut global_offs = 0;
+        let change = |global_offsets: &mut usize, range: &Range| {
+            let cursor_position = range.cursor(text);
 
-        let mut transaction = Transaction::change_by_selection(contents, &selection, |range| {
-            let pos = range.cursor(text);
+            let prev_char = cursor_position
+                .checked_sub(1)
+                .map(|idx| contents.char(idx))
+                .unwrap_or(' ');
 
-            let prev = if pos == 0 {
-                ' '
-            } else {
-                contents.char(pos - 1)
-            };
-            let curr = contents.get_char(pos).unwrap_or(' ');
+            let current_char = contents.get_char(cursor_position).unwrap_or(' ');
 
-            let current_line = text.char_to_line(pos);
+            let current_line = text.char_to_line(cursor_position);
             let line_start = text.line_to_char(current_line);
 
-            let mut new_text = String::new();
-
-            let continue_comment_token = if doc.config.load().continue_comments {
-                doc.language_config()
-                    .and_then(|config| config.comment_tokens.as_ref())
-                    .and_then(|tokens| comment::get_comment_token(text, tokens, current_line))
-            } else {
-                None
-            };
-
-            let (from, to, local_offs) = if let Some(idx) =
-                text.slice(line_start..pos).last_non_whitespace_char()
-            {
-                let first_trailing_whitespace_char = (line_start + idx + 1 + global_offs).min(pos);
-                let line = text.line(current_line);
-
-                let indent = match line.first_non_whitespace_char() {
-                    Some(pos) if continue_comment_token.is_some() => line.slice(..pos).to_string(),
-                    _ => indent::indent_for_newline(
-                        doc.language_config(),
-                        doc.syntax(),
-                        &doc.config.load().indent_heuristic,
-                        &doc.indent_style,
-                        doc.tab_width(),
-                        text,
-                        current_line,
-                        pos,
-                        current_line,
-                    ),
-                };
-
-                // If we are between pairs (such as brackets), we want to
-                // insert an additional line which is indented one level
-                // more and place the cursor there
-                let on_auto_pair = doc
-                    .auto_pairs(cx.editor)
-                    .and_then(|pairs| pairs.get(prev))
-                    .map_or(false, |pair| pair.open == prev && pair.close == curr);
-
-                let local_offs = if let Some(token) = continue_comment_token {
-                    new_text.push_str(doc.line_ending.as_str());
-                    new_text.push_str(&indent);
-                    new_text.push_str(token);
-                    new_text.push(' ');
-                    new_text.chars().count()
-                } else if on_auto_pair {
-                    // line where the cursor will be
-                    let inner_indent = indent.clone() + doc.indent_style.as_str();
-                    new_text.reserve_exact(2 + indent.len() + inner_indent.len());
-                    new_text.push_str(doc.line_ending.as_str());
-                    new_text.push_str(&inner_indent);
-
-                    // line where the matching pair will be
-                    let local_offs = new_text.chars().count();
-                    new_text.push_str(doc.line_ending.as_str());
-                    new_text.push_str(&indent);
-
-                    local_offs
-                } else {
-                    new_text.reserve_exact(1 + indent.len());
-                    new_text.push_str(doc.line_ending.as_str());
-                    new_text.push_str(&indent);
-
-                    new_text.chars().count()
-                };
-
-                (
-                    first_trailing_whitespace_char,
-                    pos,
-                    // Note that `first_trailing_whitespace_char` is at least `pos` so the
-                    // unsigned subtraction (`pos - first_trailing_whitespace_char`) cannot
-                    // underflow.
-                    local_offs as isize - (pos - first_trailing_whitespace_char) as isize,
+            let continue_comment_token = doc
+                .config
+                .load()
+                .continue_comments
+                .then_some(
+                    doc.language_config()
+                        .and_then(|config| config.comment_tokens.as_ref())
+                        .and_then(|tokens| comment::get_comment_token(text, tokens, current_line)),
                 )
-            } else {
-                // If the current line is all whitespace, insert a line ending at the beginning of
-                // the current line. This makes the current line empty and the new line contain the
-                // indentation of the old line.
-                new_text.push_str(doc.line_ending.as_str());
+                .flatten();
 
-                (line_start, line_start, new_text.chars().count() as isize)
-            };
+            let line_ending = doc.line_ending.as_str();
+
+            let (from, to, new_text, local_offs) = text
+                .slice(line_start..cursor_position)
+                .last_non_whitespace_char()
+                .map_or(
+                    (
+                        line_start,
+                        line_start,
+                        line_ending.to_string(),
+                        line_ending.len() as isize,
+                    ),
+                    |idx| {
+                        let first_trailing_whitespace_char =
+                            (line_start + idx + 1 + *global_offsets).min(cursor_position);
+
+                        let line = text.line(current_line);
+
+                        let indent = continue_comment_token
+                            .and(line.first_non_whitespace_char())
+                            .map_or(
+                                indent::indent_for_newline(
+                                    doc.language_config(),
+                                    doc.syntax(),
+                                    &doc.config.load().indent_heuristic,
+                                    &doc.indent_style,
+                                    doc.tab_width(),
+                                    text,
+                                    current_line,
+                                    cursor_position,
+                                    current_line,
+                                ),
+                                |pos| line.slice(..pos).to_string(),
+                            );
+
+                        // If we are between pairs (such as brackets), we want to
+                        // insert an additional line which is indented one level
+                        // more and place the cursor there
+                        let on_auto_pair = doc
+                            .auto_pairs(cx.editor)
+                            .and_then(|pairs| pairs.get(prev_char))
+                            .map_or(false, |pair| {
+                                pair.open == prev_char && pair.close == current_char
+                            });
+
+                        let base_addition = format!("{}{}", line_ending, indent);
+
+                        let (local_offs, new_text) =
+                            if let Some(comment_token) = continue_comment_token {
+                                let next_et = format!("{}{}", base_addition, comment_token);
+
+                                (next_et.len(), next_et)
+                            } else if on_auto_pair {
+                                let next_et = format!(
+                                    "{}{}{}{}",
+                                    line_ending,
+                                    indent,
+                                    doc.indent_style.as_str(),
+                                    base_addition
+                                );
+
+                                (next_et.len(), next_et)
+                            } else {
+                                (base_addition.len(), base_addition)
+                            };
+
+                        (
+                            first_trailing_whitespace_char,
+                            cursor_position,
+                            new_text,
+                            // Note that `first_trailing_whitespace_char` is at least `pos` so the
+                            // unsigned subtraction (`pos - first_trailing_whitespace_char`) cannot
+                            // underflow.
+                            // local_offs as isize - (pos - first_trailing_whitespace_char) as isize,
+                            local_offs as isize,
+                        )
+                    },
+                );
 
             let new_range = if range.cursor(text) > range.anchor {
                 // when appending, extend the range by local_offs
                 Range::new(
-                    range.anchor + global_offs,
-                    (range.head as isize + local_offs) as usize + global_offs,
+                    range.anchor + *global_offsets,
+                    (range.head as isize + local_offs) as usize + *global_offsets,
                 )
             } else {
                 // when inserting, slide the range by local_offs
                 Range::new(
-                    (range.anchor as isize + local_offs) as usize + global_offs,
-                    (range.head as isize + local_offs) as usize + global_offs,
+                    (range.anchor as isize + local_offs) as usize + *global_offsets,
+                    (range.head as isize + local_offs) as usize + *global_offsets,
                 )
             };
 
@@ -4099,12 +4103,13 @@ pub mod insert {
             // range.replace(|range| range.is_empty(), head); -> fn extend if cond true, new head pos
             // can be used with cx.mode to do replace or extend on most changes
             ranges.push(new_range);
-            global_offs += new_text.chars().count();
+            *global_offsets += new_text.len();
 
-            (from, to, Some(new_text.into()))
-        });
+            Some((from, to, Some(new_text.into())))
+        };
 
-        transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
+        let transaction = Transaction::change(contents, selection.iter().scan(0, change))
+            .with_selection(Selection::new(ranges, selection.primary_index()));
 
         let (view, doc) = current!(cx.editor);
         doc.apply(&transaction, view.id);
