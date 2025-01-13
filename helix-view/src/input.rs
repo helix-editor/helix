@@ -107,8 +107,8 @@ impl MouseClicks {
                 self.count = 2;
             }
             2 => {
-                self.clicks[0] = self.clicks[1];
-                self.clicks[1] = Some(char_idx);
+                self.clicks[1] = self.clicks[0];
+                self.clicks[0] = Some(char_idx);
             }
             _ => unreachable!(),
         };
