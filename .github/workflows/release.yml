@@ -252,6 +252,7 @@ jobs:
           set -ex
 
           source="$(pwd)"
+          tag=${GITHUB_REF_NAME//\//}
           mkdir -p runtime/grammars/sources
           tar xJf grammars/grammars.tar.xz -C runtime/grammars/sources
           rm -rf grammars
@@ -259,7 +260,6 @@ jobs:
           cd "$(mktemp -d)"
           mv $source/bins-* .
           mkdir dist
-          tag=${GITHUB_REF_NAME//\//}
 
           for dir in bins-* ; do
               platform=${dir#"bins-"}

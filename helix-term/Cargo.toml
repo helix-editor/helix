@@ -17,7 +17,7 @@ homepage.workspace = true
 name = "helix"
 assets = [
   { source = "target/release/hx", dest = "/usr/lib/helix/", mode = "755" },
-  { source = "../contrib/hx", dest = "/usr/bin/", mode = "755" },
+  { source = "../contrib/hx_launcher.sh", dest = "/usr/bin/hx", mode = "755" },
   { source = "../runtime/*", dest = "/usr/lib/helix/runtime/", mode = "644" },
   { source = "../runtime/grammars/*", dest = "/usr/lib/helix/runtime/grammars/", mode = "644" }, # to avoid sources/
   { source = "../runtime/queries/**/*", dest = "/usr/lib/helix/runtime/queries/", mode = "644" },
