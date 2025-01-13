@@ -1,4 +1,3 @@
-use std::fmt::Write;
 use std::io::BufReader;
 use std::ops::Deref;
 
@@ -14,6 +13,8 @@ use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
 use serde_json::Value;
 use ui::completers::{self, Completer};
+
+use std::fmt::Write;
 
 #[derive(Clone)]
 pub struct TypableCommand {
@@ -45,21 +46,21 @@ pub struct CommandSignature {
 }
 
 impl CommandSignature {
-    const fn none() -> Self {
+    pub const fn none() -> Self {
         Self {
             positional_args: &[],
             var_args: completers::none,
         }
     }
 
-    const fn positional(completers: &'static [Completer]) -> Self {
+    pub const fn positional(completers: &'static [Completer]) -> Self {
         Self {
             positional_args: completers,
             var_args: completers::none,
         }
     }
 
-    const fn all(completer: Completer) -> Self {
+    pub const fn all(completer: Completer) -> Self {
         Self {
             positional_args: &[],
             var_args: completer,
@@ -652,6 +653,8 @@ pub(super) fn buffers_remaining_impl(editor: &mut Editor) -> anyhow::Result<()> 
     let modified_ids: Vec<_> = editor
         .documents()
         .filter(|doc| doc.is_modified())
+        // Named scratch documents should not be included here
+        .filter(|doc| doc.name.is_none())
         .map(|doc| doc.id())
         .collect();
 
@@ -698,7 +701,13 @@ pub fn write_all_impl(
             if !doc.is_modified() {
                 return None;
             }
-            if doc.path().is_none() {
+
+            // This is a named buffer. We'll skip it in the saves for now
+            if doc.name.is_some() {
+                return None;
+            }
+
+            if doc.path().is_none() && doc.name.is_none() {
                 if write_scratch {
                     errors.push("cannot write a buffer without a filename");
                 }
@@ -887,21 +896,42 @@ fn theme(
                 // Ensures that a preview theme gets cleaned up if the user backspaces until the prompt is empty.
                 cx.editor.unset_theme_preview();
             } else if let Some(theme_name) = args.first() {
-                if let Ok(theme) = cx.editor.theme_loader.load(theme_name) {
+                // if let Ok(theme) = cx.editor.theme_loader.load(theme_name) {
+                //     if !(true_color || theme.is_16_color()) {
+                //         bail!("Unsupported theme: theme requires true color support");
+                //     }
+                //     cx.editor.set_theme_preview(theme);
+                // };
+
+                if let Ok(theme) = cx.editor.theme_loader.load(theme_name).or_else(|_| {
+                    cx.editor
+                        .user_defined_themes
+                        .get(theme_name.as_ref())
+                        .ok_or_else(|| anyhow::anyhow!("Could not load theme"))
+                        .cloned()
+                }) {
                     if !(true_color || theme.is_16_color()) {
                         bail!("Unsupported theme: theme requires true color support");
                     }
                     cx.editor.set_theme_preview(theme);
-                };
+                }
             };
         }
         PromptEvent::Validate => {
             if let Some(theme_name) = args.first() {
-                let theme = cx
-                    .editor
-                    .theme_loader
-                    .load(theme_name)
-                    .map_err(|err| anyhow::anyhow!("Could not load theme: {}", err))?;
+                let theme = cx.editor.theme_loader.load(theme_name).or_else(|_| {
+                    cx.editor
+                        .user_defined_themes
+                        .get(theme_name.as_ref())
+                        .ok_or_else(|| anyhow::anyhow!("Could not load theme"))
+                        .cloned()
+                })?;
+
+                // let theme = cx
+                //     .editor
+                //     .theme_loader
+                //     .load(theme_name)
+                //     .map_err(|err| anyhow::anyhow!("Could not load theme: {}", err))?;
                 if !(true_color || theme.is_16_color()) {
                     bail!("Unsupported theme: theme requires true color support");
                 }
@@ -2300,6 +2330,39 @@ fn pipe_impl(
     Ok(())
 }
 
+fn run_shell_command_text(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let shell = cx.editor.config().shell.clone();
+    let args = args.join(" ");
+
+    let callback = async move {
+        let output = shell_impl_async(&shell, &args, None).await?;
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                if !output.is_empty() {
+                    let contents = ui::Text::new(format!("{}", output));
+                    let popup = Popup::new("shell", contents).position(Some(
+                        helix_core::Position::new(editor.cursor().0.unwrap_or_default().row, 2),
+                    ));
+                    compositor.replace_or_push("shell", popup);
+                }
+                editor.set_status("Command succeeded");
+            },
+        ));
+        Ok(call)
+    };
+    cx.jobs.callback(callback);
+
+    Ok(())
+}
+
 fn run_shell_command(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -2650,7 +2713,9 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["n"],
         doc: "Create a new scratch buffer.",
         fun: new_file,
-        signature: CommandSignature::none(),
+        // TODO: This seems to complete with a filename, but doesn't use that filename to
+        //       set the path of the newly created buffer.
+        signature: CommandSignature::positional(&[completers::filename]),
     },
     TypableCommand {
         name: "format",
@@ -3119,6 +3184,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         signature: CommandSignature::all(completers::filename)
     },
     TypableCommand {
+        name: "run-shell-command-text",
+        aliases: &["sh"],
+        doc: "Run a shell command",
+        fun: run_shell_command_text,
+        signature: CommandSignature::all(completers::filename)
+    },
+    TypableCommand {
         name: "reset-diff-change",
         aliases: &["diffget", "diffg"],
         doc: "Reset the diff change at the cursor position.",
@@ -3185,7 +3257,10 @@ pub(super) fn command_mode(cx: &mut Context) {
             if words.is_empty() || (words.len() == 1 && !shellwords.ends_with_whitespace()) {
                 fuzzy_match(
                     input,
-                    TYPABLE_COMMAND_LIST.iter().map(|command| command.name),
+                    TYPABLE_COMMAND_LIST
+                        .iter()
+                        .map(|command| Cow::from(command.name))
+                        .chain(crate::commands::engine::ScriptingEngine::available_commands()),
                     false,
                 )
                 .into_iter()
@@ -3236,13 +3311,63 @@ pub(super) fn command_mode(cx: &mut Context) {
                 return;
             }
 
+            // TODO: @Matt - Add completion for added scripting commands here
             // Handle typable commands
+
+            // Register callback functions here - if the prompt event is validate,
+            // Grab the function run and run through the hooks.
             if let Some(cmd) = typed::TYPABLE_COMMAND_MAP.get(parts[0]) {
                 let shellwords = Shellwords::from(input);
                 let args = shellwords.words();
-
                 if let Err(e) = (cmd.fun)(cx, &args[1..], event) {
                     cx.editor.set_error(format!("{}", e));
+                }
+
+                if event == PromptEvent::Validate {
+                    let mappable_command = MappableCommand::Typable {
+                        name: cmd.name.to_string(),
+                        args: Vec::new(),
+                        doc: "".to_string(),
+                    };
+
+                    let mut ctx = Context {
+                        register: None,
+                        count: None,
+                        editor: cx.editor,
+                        callback: Vec::new(),
+                        on_next_key_callback: None,
+                        jobs: cx.jobs,
+                    };
+
+                    // // TODO: Figure this out?
+                    helix_event::dispatch(crate::events::PostCommand {
+                        command: &mappable_command,
+                        cx: &mut ctx,
+                    });
+                }
+            } else if ScriptingEngine::call_typed_command(cx, input, &parts, event) {
+                // Engine handles the other cases
+                if event == PromptEvent::Validate {
+                    let mappable_command = MappableCommand::Typable {
+                        name: input.to_string(),
+                        args: Vec::new(),
+                        doc: "".to_string(),
+                    };
+
+                    let mut ctx = Context {
+                        register: None,
+                        count: None,
+                        editor: cx.editor,
+                        callback: Vec::new(),
+                        on_next_key_callback: None,
+                        jobs: cx.jobs,
+                    };
+
+                    // // TODO: Figure this out?
+                    helix_event::dispatch(crate::events::PostCommand {
+                        command: &mappable_command,
+                        cx: &mut ctx,
+                    });
                 }
             } else if event == PromptEvent::Validate {
                 cx.editor
@@ -3260,6 +3385,8 @@ pub(super) fn command_mode(cx: &mut Context) {
                 return Some((*doc).into());
             }
             return Some(format!("{}\nAliases: {}", doc, aliases.join(", ")).into());
+        } else if let Some(doc) = ScriptingEngine::get_doc_for_identifier(part) {
+            return Some(doc.into());
         }
 
         None

@@ -1,4 +1,5 @@
 pub(crate) mod dap;
+pub(crate) mod engine;
 pub(crate) mod lsp;
 pub(crate) mod typed;
 
@@ -11,7 +12,16 @@ use helix_stdx::{
 };
 use helix_vcs::{FileChange, Hunk};
 pub use lsp::*;
-use tui::text::Span;
+
+pub use engine::ScriptingEngine;
+
+#[cfg(feature = "steel")]
+pub use engine::steel::{helix_module_file, steel_init_file};
+
+use tui::{
+    text::Span,
+    widgets::{Cell, Row},
+};
 pub use typed::*;
 
 use helix_core::{
@@ -243,6 +253,7 @@ impl MappableCommand {
         match &self {
             Self::Typable { name, args, doc: _ } => {
                 let args: Vec<Cow<str>> = args.iter().map(Cow::from).collect();
+                // TODO: Swap the order to allow overriding the existing commands?
                 if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
                     let mut cx = compositor::Context {
                         editor: cx.editor,
@@ -252,6 +263,8 @@ impl MappableCommand {
                     if let Err(e) = (command.fun)(&mut cx, &args[..], PromptEvent::Validate) {
                         cx.editor.set_error(format!("{}", e));
                     }
+                } else {
+                    ScriptingEngine::call_function_by_name(cx, name, args);
                 }
             }
             Self::Static { fun, .. } => (fun)(cx),
@@ -288,6 +301,14 @@ impl MappableCommand {
             Self::Typable { doc, .. } => doc,
             Self::Static { doc, .. } => doc,
             Self::Macro { name, .. } => name,
+        }
+    }
+
+    pub(crate) fn doc_mut(&mut self) -> Option<&mut String> {
+        if let Self::Typable { doc, .. } = self {
+            Some(doc)
+        } else {
+            None
         }
     }
 
@@ -633,7 +654,14 @@ impl std::str::FromStr for MappableCommand {
                 .map(|cmd| MappableCommand::Typable {
                     name: cmd.name.to_owned(),
                     doc: format!(":{} {:?}", cmd.name, args),
-                    args,
+                    args: args.clone(),
+                })
+                .or_else(|| {
+                    Some(MappableCommand::Typable {
+                        name: name.to_owned(),
+                        args,
+                        doc: "Undocumented plugin command".to_string(),
+                    })
                 })
                 .ok_or_else(|| anyhow!("No TypableCommand named '{}'", s))
         } else if let Some(suffix) = s.strip_prefix('@') {
@@ -2992,6 +3020,7 @@ fn buffer_picker(cx: &mut Context) {
     struct BufferMeta {
         id: DocumentId,
         path: Option<PathBuf>,
+        name: Option<String>,
         is_modified: bool,
         is_current: bool,
         focused_at: std::time::Instant,
@@ -3000,6 +3029,7 @@ fn buffer_picker(cx: &mut Context) {
     let new_meta = |doc: &Document| BufferMeta {
         id: doc.id(),
         path: doc.path().cloned(),
+        name: doc.name.clone(),
         is_modified: doc.is_modified(),
         is_current: doc.id() == current,
         focused_at: doc.focused_at,
@@ -3934,6 +3964,18 @@ pub mod insert {
         }
 
         helix_event::dispatch(PostInsertChar { c, cx });
+    }
+
+    pub fn insert_string(cx: &mut Context, string: String) {
+        let (view, doc) = current!(cx.editor);
+
+        let indent = Tendril::from(string);
+        let transaction = Transaction::insert(
+            doc.text(),
+            &doc.selection(view.id).clone().cursors(doc.text().slice(..)),
+            indent,
+        );
+        doc.apply(&transaction, view.id);
     }
 
     pub fn smart_tab(cx: &mut Context) {
