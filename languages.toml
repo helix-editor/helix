@@ -1295,7 +1295,7 @@ formatter = { command = "dune", args = ["format-dune-file"] }
 name = "lua"
 injection-regex = "lua"
 scope = "source.lua"
-file-types = ["lua"]
+file-types = ["lua", "rockspec"]
 shebangs = ["lua", "luajit"]
 roots = [".luarc.json", ".luacheckrc", ".stylua.toml", "selene.toml", ".git"]
 comment-token = "--"
