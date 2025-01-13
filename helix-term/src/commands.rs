@@ -4006,83 +4006,84 @@ pub mod insert {
                 )
                 .flatten();
 
-            let line_ending = doc.line_ending.as_str();
+            let eol = doc.line_ending.as_str();
+
+            let another_fn = |last_nonwhitespace_char_idx: usize| {
+                let first_trailing_whitespace_char =
+                    (line_start + last_nonwhitespace_char_idx + 1 + *global_offsets)
+                        .min(cursor_position);
+
+                let line = text.line(current_line);
+
+                let indent = continue_comment_token
+                    .and(line.first_non_whitespace_char())
+                    .map_or(
+                        indent::indent_for_newline(
+                            doc.language_config(),
+                            doc.syntax(),
+                            &doc.config.load().indent_heuristic,
+                            &doc.indent_style,
+                            doc.tab_width(),
+                            text,
+                            current_line,
+                            cursor_position,
+                            current_line,
+                        ),
+                        |pos| line.slice(..pos).to_string(),
+                    );
+
+                // If we are between pairs (such as brackets), we want to
+                // insert an additional line which is indented one level
+                // more and place the cursor there
+                let on_auto_pair = doc
+                    .auto_pairs(cx.editor)
+                    .and_then(|pairs| pairs.get(prev_char))
+                    .map_or(false, |pair| {
+                        pair.open == prev_char && pair.close == current_char
+                    });
+
+                let base_addition = format!("{}{}", eol, indent);
+
+                let (local_offs, new_text) = if let Some(comment_token) = continue_comment_token {
+                    let with_comment_token = format!("{}{}", base_addition, comment_token);
+
+                    (with_comment_token.len(), with_comment_token)
+                } else if on_auto_pair {
+                    let with_sub_indent = format!(
+                        "{}{}{}{}",
+                        eol,
+                        indent,
+                        doc.indent_style.as_str(),
+                        base_addition
+                    );
+
+                    (with_sub_indent.len(), with_sub_indent)
+                } else {
+                    (base_addition.len(), base_addition)
+                };
+
+                (
+                    first_trailing_whitespace_char,
+                    cursor_position,
+                    new_text,
+                    // Note that `first_trailing_whitespace_char` is at least `pos` so the
+                    // unsigned subtraction (`pos - first_trailing_whitespace_char`) cannot
+                    // underflow.
+                    // local_offs as isize - (pos - first_trailing_whitespace_char) as isize,
+                    local_offs as isize,
+                )
+            };
 
             let (from, to, new_text, local_offs) = text
                 .slice(line_start..cursor_position)
                 .last_non_whitespace_char()
                 .map_or(
-                    (
-                        line_start,
-                        line_start,
-                        line_ending.to_string(),
-                        line_ending.len() as isize,
-                    ),
-                    |idx| {
-                        let first_trailing_whitespace_char =
-                            (line_start + idx + 1 + *global_offsets).min(cursor_position);
-
-                        let line = text.line(current_line);
-
-                        let indent = continue_comment_token
-                            .and(line.first_non_whitespace_char())
-                            .map_or(
-                                indent::indent_for_newline(
-                                    doc.language_config(),
-                                    doc.syntax(),
-                                    &doc.config.load().indent_heuristic,
-                                    &doc.indent_style,
-                                    doc.tab_width(),
-                                    text,
-                                    current_line,
-                                    cursor_position,
-                                    current_line,
-                                ),
-                                |pos| line.slice(..pos).to_string(),
-                            );
-
-                        // If we are between pairs (such as brackets), we want to
-                        // insert an additional line which is indented one level
-                        // more and place the cursor there
-                        let on_auto_pair = doc
-                            .auto_pairs(cx.editor)
-                            .and_then(|pairs| pairs.get(prev_char))
-                            .map_or(false, |pair| {
-                                pair.open == prev_char && pair.close == current_char
-                            });
-
-                        let base_addition = format!("{}{}", line_ending, indent);
-
-                        let (local_offs, new_text) =
-                            if let Some(comment_token) = continue_comment_token {
-                                let next_et = format!("{}{}", base_addition, comment_token);
-
-                                (next_et.len(), next_et)
-                            } else if on_auto_pair {
-                                let next_et = format!(
-                                    "{}{}{}{}",
-                                    line_ending,
-                                    indent,
-                                    doc.indent_style.as_str(),
-                                    base_addition
-                                );
-
-                                (next_et.len(), next_et)
-                            } else {
-                                (base_addition.len(), base_addition)
-                            };
-
-                        (
-                            first_trailing_whitespace_char,
-                            cursor_position,
-                            new_text,
-                            // Note that `first_trailing_whitespace_char` is at least `pos` so the
-                            // unsigned subtraction (`pos - first_trailing_whitespace_char`) cannot
-                            // underflow.
-                            // local_offs as isize - (pos - first_trailing_whitespace_char) as isize,
-                            local_offs as isize,
-                        )
-                    },
+                    // Entire line is just whitespace
+                    //
+                    // Simply insert an eol at the start of the line
+                    (line_start, line_start, eol.to_string(), eol.len() as isize),
+                    // At least 1 non-whitespace character between the beginning of the line and the cursor position
+                    another_fn,
                 );
 
             let new_range = if range.cursor(text) > range.anchor {
