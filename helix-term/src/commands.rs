@@ -5622,7 +5622,11 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
 
     cx.on_next_key(move |cx, event| {
         cx.editor.autoinfo = None;
-        if let Some(ch) = event.char() {
+
+        if let Some(ch) = event
+            .char()
+            .or((event.code == KeyCode::Enter).then_some('\n'))
+        {
             let textobject = move |editor: &mut Editor| {
                 let (view, doc) = current!(editor);
                 let text = doc.text().slice(..);
