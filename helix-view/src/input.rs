@@ -61,9 +61,6 @@ pub enum MouseButton {
 }
 
 /// Tracks the character positions where the mouse was last clicked
-///
-/// If we double click, select that word
-/// If we triple click, select full line
 #[derive(Debug)]
 pub struct MouseClicks {
     clicks: [Option<usize>; 2],

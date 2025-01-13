@@ -1205,10 +1205,10 @@ impl EditorView {
                         }
                         MouseClick::Triple => {
                             let current_line = text.char_to_line(pos);
-                            let from = text.line_to_char(current_line);
-                            let to = text.line_to_char(current_line + 1);
+                            let line_start = text.line_to_char(current_line);
+                            let line_end = text.line_to_char(current_line + 1);
 
-                            Selection::single(from, to)
+                            Selection::single(line_start, line_end)
                         }
                     };
 
