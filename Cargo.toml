@@ -43,6 +43,7 @@ nucleo = "0.5.0"
 slotmap = "1.0.7"
 thiserror = "2.0"
 tempfile = "3.15.0"
+bitflags = "2.7"
 
 [workspace.package]
 version = "25.1.0"
