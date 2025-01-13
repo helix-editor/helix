@@ -3980,6 +3980,7 @@ pub mod insert {
 
         let contents = doc.text();
         let selection = doc.selection(view.id).clone();
+        // These will be used to restore the same primary selection as how we started.
         let mut ranges = SmallVec::with_capacity(selection.len());
 
         // The global offset stores how many characters (comment tokens, end of line chars, etc.)
@@ -3987,20 +3988,20 @@ pub mod insert {
         //
         // We need to store this because the "selection" is the same across the entire iteration, but
         // as we iterate over it we are adding extra characters that we need to keep track of.
-        let change = |global_offsets: &mut usize, range: &Range| {
+        let change = |global_offset: &mut usize, range: &Range| {
             let cursor_position = range.cursor(text);
 
-            let prev_char = cursor_position
+            let char_before_cursor = cursor_position
                 .checked_sub(1)
                 .map(|idx| contents.char(idx))
                 .unwrap_or(' ');
 
-            let current_char = contents.get_char(cursor_position).unwrap_or(' ');
+            let char_at_cursor = contents.get_char(cursor_position).unwrap_or(' ');
 
             let current_line_number = text.char_to_line(cursor_position);
             let line_start_idx = text.line_to_char(current_line_number);
 
-            let continue_comment_token = doc
+            let comment_token = doc
                 .config
                 .load()
                 .continue_comments
@@ -4017,12 +4018,12 @@ pub mod insert {
 
             let compute_change = |last_nonwhitespace_char_idx: usize| {
                 let first_trailing_whitespace_char =
-                    (line_start_idx + last_nonwhitespace_char_idx + 1 + *global_offsets)
+                    (line_start_idx + last_nonwhitespace_char_idx + 1 + *global_offset)
                         .min(cursor_position);
 
                 let current_line = text.line(current_line_number);
 
-                let indent = continue_comment_token
+                let indent = comment_token
                     .and(current_line.first_non_whitespace_char())
                     .map_or(
                         indent::indent_for_newline(
@@ -4041,32 +4042,45 @@ pub mod insert {
 
                 let is_on_pair = doc
                     .auto_pairs(cx.editor)
-                    .and_then(|pairs| pairs.get(prev_char))
+                    .and_then(|pairs| pairs.get(char_before_cursor))
                     .map_or(false, |pair| {
-                        pair.open == prev_char && pair.close == current_char
+                        pair.open == char_before_cursor && pair.close == char_at_cursor
                     });
 
-                let new_text = format!("{}{}", eol, indent);
+                // We always insert at least this text, but we can also have some additions
+                let base_text = format!("{}{}", eol, indent);
 
-                let new_text = if let Some(comment_token) = continue_comment_token {
-                    format!("{}{}", new_text, comment_token)
+                let old_len = base_text.len();
 
-                // If we are between pairs, we want to
-                // insert an additional line which is indented one level
-                // more and place the cursor there
-                //
-                // for instance:
-                // (|) => (
-                //   |
-                // )
+                let new_text = if let Some(comment_token) = comment_token {
+                    format!("{}{} ", base_text, comment_token)
                 } else if is_on_pair {
-                    format!("{}{}{}{}", eol, indent, doc.indent_style.as_str(), new_text)
+                    // If we are between pairs, we want to
+                    // insert an additional line which is indented one level
+                    // more and place the cursor there
+                    //
+                    // for instance:
+                    // (|) => (
+                    //   |
+                    // )
+                    format!(
+                        "{}{}{}{}",
+                        eol,
+                        indent,
+                        doc.indent_style.as_str(),
+                        // --> cursor will be here <--
+                        base_text
+                    )
                 } else {
-                    new_text
+                    base_text
                 };
 
                 // Local offsets store how many characters we have inserted in the current iteration.
-                let local_offsets = new_text.len();
+                let local_offset = if is_on_pair {
+                    new_text.len() - old_len
+                } else {
+                    new_text.len()
+                };
 
                 (
                     first_trailing_whitespace_char, // from
@@ -4075,8 +4089,8 @@ pub mod insert {
                     // Note that `first_trailing_whitespace_char` is at least `pos` so the
                     // unsigned subtraction (`pos - first_trailing_whitespace_char`) cannot
                     // underflow.
-                    // local_offs as isize - (pos - first_trailing_whitespace_char) as isize,
-                    local_offsets as isize,
+                    local_offset as isize
+                        - (cursor_position - first_trailing_whitespace_char) as isize,
                 )
             };
 
@@ -4103,11 +4117,11 @@ pub mod insert {
                 // When appending, we move the range to the right by the amount of characters we've inserted in previous iterations
                 // And extend the range to the right by how many characters we've inserted in this iteration
                 Range::new(
-                    range.anchor + *global_offsets,
-                    (range.head + *global_offsets) + local_offs as usize,
+                    range.anchor + *global_offset,
+                    (range.head + *global_offset) + local_offs as usize,
                 )
             } else {
-                let slide_amount = *global_offsets + local_offs as usize;
+                let slide_amount = *global_offset + local_offs as usize;
 
                 // When inserting, slide the range to the right
                 Range::new(range.anchor + slide_amount, range.head + slide_amount)
@@ -4117,7 +4131,7 @@ pub mod insert {
             // range.replace(|range| range.is_empty(), head); -> fn extend if cond true, new head pos
             // can be used with cx.mode to do replace or extend on most changes
             ranges.push(new_range);
-            *global_offsets += new_text.len();
+            *global_offset += new_text.chars().count();
 
             Some((from, to, Some(new_text.into())))
         };
