@@ -281,6 +281,7 @@ fn diag_picker(
     }
 
     Picker::new(
+        Some("Diagnostics"),
         columns,
         primary_column,
         flat_diag,
@@ -405,6 +406,7 @@ pub fn symbol_picker(cx: &mut Context) {
             ];
 
             let picker = Picker::new(
+                Some("Document Symbols"),
                 columns,
                 1, // name column
                 symbols,
@@ -516,6 +518,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
     ];
 
     let picker = Picker::new(
+        Some("Workspace Symbols"),
         columns,
         1, // name column
         [],
@@ -854,6 +857,7 @@ impl Display for ApplyEditErrorKind {
 
 /// Precondition: `locations` should be non-empty.
 fn goto_impl(
+    title: &str,
     editor: &mut Editor,
     compositor: &mut Compositor,
     locations: Vec<Location>,
@@ -880,9 +884,16 @@ fn goto_impl(
                 },
             )];
 
-            let picker = Picker::new(columns, 0, locations, cwdir, move |cx, location, action| {
-                jump_to_location(cx.editor, location, offset_encoding, action)
-            })
+            let picker = Picker::new(
+                Some(title),
+                columns,
+                0,
+                locations,
+                cwdir,
+                move |cx, location, action| {
+                    jump_to_location(cx.editor, location, offset_encoding, action)
+                },
+            )
             .with_preview(move |_editor, location| location_to_file_location(location));
             compositor.push(Box::new(overlaid(picker)));
         }
@@ -928,7 +939,13 @@ where
             if items.is_empty() {
                 editor.set_error("No definition found.");
             } else {
-                goto_impl(editor, compositor, items, offset_encoding);
+                goto_impl(
+                    "Goto Implementation",
+                    editor,
+                    compositor,
+                    items,
+                    offset_encoding,
+                );
             }
         },
     );
@@ -996,7 +1013,7 @@ pub fn goto_reference(cx: &mut Context) {
             if items.is_empty() {
                 editor.set_error("No references found.");
             } else {
-                goto_impl(editor, compositor, items, offset_encoding);
+                goto_impl("Goto Reference", editor, compositor, items, offset_encoding);
             }
         },
     );

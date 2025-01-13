@@ -268,6 +268,7 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     /// An event handler for syntax highlighting the currently previewed file.
     preview_highlight_handler: Sender<Arc<Path>>,
     dynamic_query_handler: Option<Sender<DynamicQueryChange>>,
+    title: Option<String>,
 }
 
 impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
@@ -296,6 +297,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
     }
 
     pub fn new<C, O, F>(
+        title: Option<&str>,
         columns: C,
         primary_column: usize,
         options: O,
@@ -321,6 +323,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             inject_nucleo_item(&injector, &columns, item, &editor_data);
         }
         Self::with(
+            title,
             matcher,
             columns,
             primary_column,
@@ -331,12 +334,14 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
     }
 
     pub fn with_stream(
+        title: Option<&str>,
         matcher: Nucleo<T>,
         primary_column: usize,
         injector: Injector<T, D>,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
     ) -> Self {
         Self::with(
+            title,
             matcher,
             injector.columns,
             primary_column,
@@ -347,6 +352,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
     }
 
     fn with(
+        title: Option<&str>,
         matcher: Nucleo<T>,
         columns: Arc<[Column<T, D>]>,
         default_column: usize,
@@ -389,6 +395,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             file_fn: None,
             preview_highlight_handler: PreviewHighlightHandler::<T, D>::default().spawn(),
             dynamic_query_handler: None,
+            title: title.map(|title| title.into()),
         }
     }
 
@@ -674,12 +681,14 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         let background = cx.editor.theme.get("ui.background");
         surface.clear_with(area, background);
 
-        const BLOCK: Block<'_> = Block::bordered();
+        let block: Block<'_> = self.title.as_ref().map_or(Block::bordered(), |title| {
+            Block::bordered().title(title.to_string())
+        });
 
         // calculate the inner area inside the box
-        let inner = BLOCK.inner(area);
+        let inner = block.inner(area);
 
-        BLOCK.render(area, surface);
+        block.render(area, surface);
 
         // -- Render the input bar:
 
@@ -988,7 +997,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
 
 impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I, D> {
     fn render(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        // +---------+ +---------+
+        // +--title--+ +---------+
         // |prompt   | |preview  |
         // +---------+ |         |
         // |picker   | |         |
