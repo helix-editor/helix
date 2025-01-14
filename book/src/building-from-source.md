@@ -165,18 +165,9 @@ sed -i "s|Terminal=true|Terminal=false|g" ~/.local/share/applications/Helix.desk
 
 ### Building the Deb package
 
-#### Provided Deb limitation
-
-The .deb package should be provided on the release page. But because the CI
-build is currently using Ubuntu 22.04 (this can change in the future, find the
-real image version in the .github/workflows/release.yml) the `.deb` has a certain
-libc6 version dependency. You can find it within the specific `.deb` details.
-Currently libc6 (>= 2.34). That is why you can't use this deb on systems older than
-Ubuntu 22.04, Mint 21, or Debian 12.
-
-#### Build locally
-
-If you build the `.deb` locally, the above dependency will not apply.
+The `.deb` provided on the release page (built in CI) may use a libc version greater
+than what your Debian / Ubuntu / Mint uses. In this case you can build the `.deb`
+from source and this higher dependency will not apply.
 
 Install `cargo-deb`, the tool we use to build the `.deb`
 
@@ -184,14 +175,8 @@ Install `cargo-deb`, the tool we use to build the `.deb`
 cargo install cargo-deb
 ```
 
-Get the source code
-
-```sh
-git clone https://github.com/helix-editor/helix
-cd helix
-```
-
-The bellow will first build the release binary, and later package it in the `.deb` file, in one command.
+After you clone and enter the repository (viz. above), the command bellow will first
+build the release binary, and later package it into the `.deb` file, in one command.
 
 ```sh
 cargo deb -- --locked
@@ -200,7 +185,7 @@ cargo deb -- --locked
 > 💡 This locks you into the `--release` profile. But you can also build helix in any way you like.
 > As long as you leave a `target/release/hx` file, it will get packaged with `cargo deb --no-build` 
 
-> 💡 Don't worry about the
+> 💡 Don't worry about the repeated
 > ```
 > warning: Failed to find dependency specification
 > ```
