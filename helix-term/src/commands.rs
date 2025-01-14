@@ -3976,6 +3976,122 @@ pub mod insert {
 
     pub fn insert_newline(cx: &mut Context) {
         let (view, doc) = current_ref!(cx.editor);
+        let contents = doc.text();
+        let text = contents.slice(..);
+        let selection = doc.selection(view.id).clone();
+
+        let remove_whitespace =
+            Transaction::change_by_selection(contents, &selection, |range: &Range| {
+                // step 1 is we remove the whitespace before each cursor
+                // until either we find a non-whitespace character OR we hit the beginning of the line
+                let cursor_position = range.cursor(text);
+                let cursor_line_number = text.char_to_line(cursor_position);
+                let line_start_idx = text.line_to_char(cursor_line_number);
+                let leading_whitespace_start = text
+                    .slice(line_start_idx..cursor_position)
+                    .last_non_whitespace_char()
+                    .map_or(
+                        // in this case, the entire line is just whitespace
+                        // so we remove until the beginning of the line
+                        line_start_idx,
+                        // the "idx" is local to the specific range we've sliced
+                        // So we need to correctly offset it by the total position in the document
+                        // +1 is to make sure we do not remove any characters
+                        |idx| idx + line_start_idx + 1,
+                    );
+
+                // step 2 is to get the separate "parts" to include in our final replacement
+                let char_at_cursor = contents.get_char(cursor_position).unwrap_or(' ');
+                let char_before_cursor = cursor_position
+                    .checked_sub(1)
+                    .map(|idx| contents.char(idx))
+                    .unwrap_or(' ');
+
+                let is_on_pair = doc
+                    .auto_pairs(cx.editor)
+                    .and_then(|pairs| pairs.get(char_before_cursor))
+                    .map_or(false, |pair| {
+                        pair.open == char_before_cursor && pair.close == char_at_cursor
+                    });
+
+                let comment_token = doc
+                    .config
+                    .load()
+                    .continue_comments
+                    .then_some(
+                        doc.language_config()
+                            .and_then(|config| config.comment_tokens.as_ref())
+                            .and_then(|tokens| {
+                                comment::get_comment_token(text, tokens, cursor_line_number)
+                            }),
+                    )
+                    .flatten();
+
+                let newline = doc.line_ending.as_str();
+
+                let cursor_line = text.line(cursor_line_number);
+
+                let indent = comment_token
+                    .and(cursor_line.first_non_whitespace_char())
+                    .map_or(
+                        indent::indent_for_newline(
+                            doc.language_config(),
+                            doc.syntax(),
+                            &doc.config.load().indent_heuristic,
+                            &doc.indent_style,
+                            doc.tab_width(),
+                            text,
+                            cursor_line_number,
+                            cursor_position,
+                            cursor_line_number,
+                        ),
+                        |first_non_whitespace_char| {
+                            cursor_line.slice(..first_non_whitespace_char).to_string()
+                        },
+                    );
+
+                // part 3 is to actually replace the whitespace with our text
+                let replacement_text = if let Some(comment_token) = comment_token {
+                    format!("{}{}{} ", newline, indent, comment_token)
+                } else if is_on_pair {
+                    // If we are between pairs, we want to
+                    // insert an additional line which is indented one level
+                    // more and place the cursor there
+                    //
+                    // for instance:
+                    // (|) => (
+                    //   |
+                    // )
+                    format!(
+                        "{}{}{}{}{}",
+                        newline,
+                        indent,
+                        doc.indent_style.as_str(),
+                        // --> cursor will be here <--
+                        newline,
+                        indent
+                    )
+                } else {
+                    format!("{}{}", newline, indent)
+                };
+
+                (
+                    leading_whitespace_start,              // from
+                    cursor_position,                       // to
+                    Some(Tendril::from(replacement_text)), // replacement
+                )
+            });
+
+        // let insert_newlines = Transaction::insert(contents, &selection, Tendril::from("\n"));
+
+        // .with_selection(Selection::new(ranges, selection.primary_index()));
+
+        let (view, doc) = current!(cx.editor);
+        doc.apply(&remove_whitespace, view.id);
+    }
+
+    pub fn insert_newline_old(cx: &mut Context) {
+        let (view, doc) = current_ref!(cx.editor);
         let text = doc.text().slice(..);
 
         let contents = doc.text();
@@ -3991,9 +4107,6 @@ pub mod insert {
         // We need to store this because the "selection" is the same across the entire iteration, but
         // as we iterate over it we are adding extra characters that we need to keep track of.
         let change = |global_offset: &mut isize, range: &Range| {
-            // if iter_count >= 2 {
-            //     return None;
-            // }
             let cursor_position = range.cursor(text);
 
             let char_before_cursor = cursor_position
@@ -4121,21 +4234,21 @@ pub mod insert {
                 //
                 // and then we attempt to add positive with negative and everything becomes really, really bad
 
-                log::error!(
-                    "Changing {:?}..{:?} to {:#?}, offset {:#?}, local_offset {:#?}, \
-                    cursor_position: {:#?}, first_trailing_whitespace_char_idx: {:#?}",
-                    first_trailing_whitespace_char_idx, // from
-                    cursor_position,                    // to
-                    new_text,                           // what to replace the range with
-                    // Note that `first_trailing_whitespace_char` is at least `pos` so the
-                    // unsigned subtraction (`pos - first_trailing_whitespace_char`) cannot
-                    // underflow.
-                    local_offset as isize
-                        - (cursor_position as isize - first_trailing_whitespace_char_idx),
-                    local_offset,
-                    cursor_position,
-                    first_trailing_whitespace_char_idx
-                );
+                // log::error!(
+                //     "Changing {:?}..{:?} to {:#?}, offset {:#?}, local_offset {:#?}, \
+                //     cursor_position: {:#?}, first_trailing_whitespace_char_idx: {:#?}",
+                //     first_trailing_whitespace_char_idx, // from
+                //     cursor_position,                    // to
+                //     new_text,                           // what to replace the range with
+                //     // Note that `first_trailing_whitespace_char` is at least `pos` so the
+                //     // unsigned subtraction (`pos - first_trailing_whitespace_char`) cannot
+                //     // underflow.
+                //     local_offset as isize
+                //         - (cursor_position as isize - first_trailing_whitespace_char_idx),
+                //     local_offset,
+                //     cursor_position,
+                //     first_trailing_whitespace_char_idx
+                // );
 
                 (
                     first_trailing_whitespace_char_idx as usize, // from
@@ -4170,7 +4283,10 @@ pub mod insert {
                     compute_change,
                 );
 
-            // log::error!("{:#?}{:#?}{:#?}{:#?}", from, to, new_text, local_offs);
+            log::error!("{:#?}..={:#?}{:#?}{:#?}", from, to, new_text, local_offset);
+
+            // HACK:
+            // if from != to and ranges.is_empty(), take the local_offset from above and thenk
 
             let is_append = range.cursor(text) > range.anchor;
 
