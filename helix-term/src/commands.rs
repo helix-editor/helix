@@ -4029,13 +4029,16 @@ pub mod insert {
                     .language_config()
                     .and_then(|config| config.comment_tokens.as_ref())
                     .and_then(|tokens| comment::get_comment_token(text, tokens, cursor_line_number))
-                    .filter(|comment_token| {
+                    .filter(|_| {
+                        let is_cursor_at_beginning = text
+                            .slice(line_start_idx..=cursor_position)
+                            .first_non_whitespace_char()
+                            .map(|x| x + line_start_idx == cursor_position)
+                            .unwrap_or_default();
+
                         doc.config.load().continue_comments
-                            // Special case: Adding a newline at the beginning of the line if it starts with a comment token should not create another comment token
-                            && !cursor_line
-                                .to_string()
-                                .trim_start()
-                                .starts_with(comment_token)
+                            // Special case: Adding a newline at the beginning of the line should not create another comment token
+                            && !is_cursor_at_beginning
                     });
 
                 let newline = doc.line_ending.as_str();
