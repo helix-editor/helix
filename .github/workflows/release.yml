@@ -147,14 +147,6 @@ jobs:
         if: "!matrix.skip_tests"
         run: ${{ env.CARGO }} test --release --locked --target ${{ matrix.target }} --workspace
 
-      - name: Set profile.release.strip = true
-        shell: bash
-        run: |
-          cat >> .cargo/config.toml <<EOF
-          [profile.release]
-          strip = true
-          EOF
-
       - name: Build release binary
         run: ${{ env.CARGO }} build --release --locked --target ${{ matrix.target }}
 
