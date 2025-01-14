@@ -4061,9 +4061,6 @@ roots = ["gren.json"]
 comment-tokens = "--"
 block-comment-tokens = { start = "{-", end = "-}" }
 indent = { tab-width = 4, unit = "    " }
-grammar = "gren"
-auto-format = false
-language-servers = []
 
 [[grammar]]
 name = "gren"

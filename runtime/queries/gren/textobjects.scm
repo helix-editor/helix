@@ -37,14 +37,6 @@
 
 (value_declaration
   (function_declaration_left
-    (tuple_pattern
-      (pattern) @parameter.inside
-    ) @parameter.around
-  )
-)
-
-(value_declaration
-  (function_declaration_left
     (record_pattern
       (lower_pattern
         (lower_case_identifier) @parameter.inside
