@@ -4023,22 +4023,22 @@ pub mod insert {
                         pair.open == char_before_cursor && pair.close == char_at_cursor
                     });
 
+                let cursor_line = text.line(cursor_line_number);
+
                 let comment_token = doc
-                    .config
-                    .load()
-                    .continue_comments
-                    .then_some(
-                        doc.language_config()
-                            .and_then(|config| config.comment_tokens.as_ref())
-                            .and_then(|tokens| {
-                                comment::get_comment_token(text, tokens, cursor_line_number)
-                            }),
-                    )
-                    .flatten();
+                    .language_config()
+                    .and_then(|config| config.comment_tokens.as_ref())
+                    .and_then(|tokens| comment::get_comment_token(text, tokens, cursor_line_number))
+                    .filter(|comment_token| {
+                        doc.config.load().continue_comments
+                            // Special case: Adding a newline at the beginning of the line if it starts with a comment token should not create another comment token
+                            && !cursor_line
+                                .to_string()
+                                .trim_start()
+                                .starts_with(comment_token)
+                    });
 
                 let newline = doc.line_ending.as_str();
-
-                let cursor_line = text.line(cursor_line_number);
 
                 // This is the indent that was already present before
                 // inserted anything, for instance:
