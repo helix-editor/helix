@@ -3979,6 +3979,7 @@ pub mod insert {
         let contents = doc.text();
         let text = contents.slice(..);
         let selection = doc.selection(view.id).clone();
+        let mut ranges = SmallVec::with_capacity(selection.len());
 
         let remove_whitespace =
             Transaction::change_by_selection(contents, &selection, |range: &Range| {
@@ -4058,10 +4059,13 @@ pub mod insert {
                     // insert an additional line which is indented one level
                     // more and place the cursor there
                     //
-                    // for instance:
-                    // (|) => (
+                    // for instance, with cursor at |:
+                    // if true {|} + <enter> will become:
+                    // if true {
                     //   |
-                    // )
+                    // }
+                    //
+                    // We need to manually control the range because when we have is_on_pair, we do not want to place the cursor at the end of the inserted text, but rather somewhere in the middle. So we need to be able to offset individual selections from their origin
                     format!(
                         "{}{}{}{}{}",
                         newline,
@@ -4075,16 +4079,17 @@ pub mod insert {
                     format!("{}{}", newline, indent)
                 };
 
+                // the Range does not have any effect on what text is being removed / added.
+                // It only affects cursor selection positions.
+                ranges.push(Range::new(leading_whitespace_start, cursor_position));
+
                 (
                     leading_whitespace_start,              // from
                     cursor_position,                       // to
                     Some(Tendril::from(replacement_text)), // replacement
                 )
-            });
-
-        // let insert_newlines = Transaction::insert(contents, &selection, Tendril::from("\n"));
-
-        // .with_selection(Selection::new(ranges, selection.primary_index()));
+            })
+            .with_selection(Selection::new(ranges, selection.primary_index()));
 
         let (view, doc) = current!(cx.editor);
         doc.apply(&remove_whitespace, view.id);
