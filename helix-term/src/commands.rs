@@ -3984,8 +3984,8 @@ pub mod insert {
 
         let remove_whitespace =
             Transaction::change_by_selection(contents, &selection, |range: &Range| {
-                // step 1 is we remove the whitespace before each cursor
-                // until either we find a non-whitespace character OR we hit the beginning of the line
+                // step 1: Remove leading whitespace before each cursor until
+                // the first non-whitespace character or the beginning of the line
                 let cursor_position = range.cursor(text);
                 let cursor_line_number = text.char_to_line(cursor_position);
                 let line_start_idx = text.line_to_char(cursor_line_number);
@@ -4002,7 +4002,7 @@ pub mod insert {
                         |idx| idx + line_start_idx + 1,
                     );
 
-                // step 2 is to get the separate "parts" to include in our final replacement
+                // step 2: Get the separate parts to include in our final replacement
                 let char_at_cursor = contents.get_char(cursor_position).unwrap_or(' ');
                 let char_before_cursor = cursor_position
                     .checked_sub(1)
@@ -4052,7 +4052,7 @@ pub mod insert {
                         },
                     );
 
-                // part 3 is to actually replace the whitespace with our text
+                // part 3: Assemble all the parts together into a single tendril
                 let replacement_text = if let Some(comment_token) = comment_token {
                     format!("{}{}{} ", newline, existing_indent, comment_token)
                 } else if is_on_pair {
