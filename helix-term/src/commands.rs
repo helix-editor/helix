@@ -4033,6 +4033,13 @@ pub mod insert {
 
                 let cursor_line = text.line(cursor_line_number);
 
+                // This is the indent that was already present before
+                // inserted anything, for instance:
+                //
+                // for i in 0..100 {
+                //     if true {|}
+                // ^^^^
+                // }
                 let existing_indent = comment_token
                     .and(cursor_line.first_non_whitespace_char())
                     .map_or(
@@ -4056,7 +4063,7 @@ pub mod insert {
                 let replacement_text = if let Some(comment_token) = comment_token {
                     format!("{}{}{} ", newline, existing_indent, comment_token)
                 } else if is_on_pair {
-                    // In all other cases, we want to have our cursor be after our inserted text.
+                    // In all other cases, we want to have our cursor be after the inserted text.
                     // However, in this case we want to place our cursor in the middle. See below for more info.
                     offsets_in_all_iterations -=
                         newline.len() as isize + existing_indent.len() as isize;
@@ -4074,34 +4081,10 @@ pub mod insert {
                     format!(
                         "{}{}{}{}{}",
                         newline,
-                        // This is the indent that was already present, before the cursor:
-                        //
-                        // for i in 0..100 {
-                        //     if true {
-                        // ^^^^
-                        //         |
-                        //     }
-                        // }
                         existing_indent,
-                        // This is the indent that we are adding ourselves:
-                        //
-                        // for i in 0..100 {
-                        //     if true {
-                        //         |
-                        //     ^^^^
-                        //     }
-                        // }
                         doc.indent_style.as_str(),
                         // --> cursor will be here <--
                         newline,
-                        // This is the indent that was already present, after the cursor:
-                        //
-                        // for i in 0..100 {
-                        //     if true {
-                        //         |
-                        //     }
-                        // ^^^^
-                        // }
                         existing_indent
                     )
                 } else {
