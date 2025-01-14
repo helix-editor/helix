@@ -3979,7 +3979,14 @@ pub mod insert {
         let contents = doc.text();
         let text = contents.slice(..);
         let selection = doc.selection(view.id).clone();
+
         let mut ranges = SmallVec::with_capacity(selection.len());
+
+        // Keep track of how many chars we insert and delete so we can
+        // put each selection in the correct place.
+        //
+        // Each callback to change_by_selection gets access to the original text,
+        // which can change as we iterate
         let mut offsets_in_all_iterations = 0;
 
         let remove_whitespace =
@@ -4067,6 +4074,10 @@ pub mod insert {
                     // However, in this case we want to place our cursor in the middle. See below for more info.
                     offsets_in_all_iterations -=
                         newline.len() as isize + existing_indent.len() as isize;
+
+                    // In other cases all we have to do is restore the indentation, but here we also
+                    // increase it by 1 level
+                    let extra_indent = doc.indent_style.as_str();
                     // If we are between pairs, we want to
                     // insert an additional line which is indented one level
                     // more and place the cursor there
@@ -4074,7 +4085,8 @@ pub mod insert {
                     // for instance, with cursor at |:
                     // if true {|} + <enter> will become:
                     // if true {
-                    //   |
+                    //     |
+                    // ^^^^ <- additional indent
                     // }
                     //
                     // We need to manually control the range because when we have is_on_pair, we do not want to place the cursor at the end of the inserted text, but rather somewhere in the middle. So we need to be able to offset individual selections from their origin
@@ -4082,7 +4094,7 @@ pub mod insert {
                         "{}{}{}{}{}",
                         newline,
                         existing_indent,
-                        doc.indent_style.as_str(),
+                        extra_indent,
                         // --> cursor will be here <--
                         newline,
                         existing_indent
