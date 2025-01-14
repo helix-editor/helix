@@ -4052,7 +4052,7 @@ pub mod insert {
                         },
                     );
 
-                // part 3: Assemble all the parts together into a single tendril
+                // part 3: Assemble all the parts together
                 let replacement_text = if let Some(comment_token) = comment_token {
                     format!("{}{}{} ", newline, existing_indent, comment_token)
                 } else if is_on_pair {
@@ -4108,7 +4108,7 @@ pub mod insert {
                     format!("{}{}", newline, existing_indent)
                 };
 
-                // step 4: calculate the new ranges for each newline added.
+                // step 4: Calculate the new ranges for each newline added.
 
                 // this cannot underflow as we cannot remove negative amounts of whitespace
                 let removed_whitespace_amount = cursor_position - leading_whitespace_start;
@@ -4129,18 +4129,28 @@ pub mod insert {
                     .try_into(),
                     (range.head as isize + offsets_in_all_iterations).try_into(),
                 ) else {
-                    panic!(
-                        "extremely unlikely for the amount of characters\
-                         inserted to exceed isize::MAX"
+                    // NOTE: Extremely unlikely path, as the amount of changed characters would have to exceed isize::MAX
+                    // In this hypothetical case, we just don't do anything.
+                    log::error!(
+                        "Did not expect to see this many characters changed \
+                        on newline insert: {offsets_in_all_iterations}"
+                    );
+                    offsets_in_all_iterations -= offset_this_iteration;
+                    ranges.push(Range::new(range.from(), range.to()));
+                    return (
+                        range.from(),
+                        range.to(),
+                        Some(Tendril::from(
+                            text.slice(range.from()..=range.to()).to_string(),
+                        )),
                     );
                 };
-
-                log::error!("start: {range_start}, end: {range_end}");
 
                 // the Range does not have any effect on what text is being removed / added.
                 // It only affects cursor selection positions.
                 ranges.push(Range::new(range_start, range_end));
 
+                // Step 5: Replace the range of leading whitespace with our new text
                 (
                     leading_whitespace_start,              // from
                     cursor_position,                       // to
