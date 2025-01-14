@@ -184,7 +184,7 @@
 | robot | ✓ |  |  | `robotframework_ls` |
 | ron | ✓ |  | ✓ |  |
 | rst | ✓ |  |  |  |
-| ruby | ✓ | ✓ | ✓ | `solargraph` |
+| ruby | ✓ | ✓ | ✓ | `ruby-lsp`, `solargraph` |
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
 | sage | ✓ | ✓ |  |  |
 | scala | ✓ | ✓ | ✓ | `metals` |
