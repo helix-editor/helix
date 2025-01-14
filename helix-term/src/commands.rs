@@ -3982,6 +3982,15 @@ pub mod insert {
 
         let mut ranges = SmallVec::with_capacity(selection.len());
 
+        let config = doc.config.load();
+        let newline = doc.line_ending.as_str();
+        let extra_indent = doc.indent_style.as_str();
+        let should_continue_comments = config.continue_comments;
+        let comment_tokens = doc
+            .language_config()
+            .and_then(|config| config.comment_tokens.as_ref());
+        let auto_pairs = doc.auto_pairs(cx.editor);
+
         // Keep track of how many chars we insert and delete so we can
         // put each selection in the correct place when the transaction is completed
         //
@@ -3991,8 +4000,8 @@ pub mod insert {
 
         let transaction =
             Transaction::change_by_selection(contents, &selection, |range: &Range| {
-                // step 1: Remove leading whitespace before each cursor until
-                // the first non-whitespace character or the beginning of the line
+                // step 1: Get the range of leading whitespace before each cursor
+                // until the first non-whitespace character or the beginning of the line
                 let cursor_pos = range.cursor(text);
                 let cursor_line_number = text.char_to_line(cursor_pos);
                 let line_start_char_pos = text.line_to_char(cursor_line_number);
@@ -4017,8 +4026,7 @@ pub mod insert {
                     .map(|pos| contents.char(pos))
                     .unwrap_or(' ');
 
-                let is_on_pair = doc
-                    .auto_pairs(cx.editor)
+                let is_on_pair = auto_pairs
                     .and_then(|pairs| pairs.get(char_before_cursor))
                     .map_or(false, |pair| {
                         pair.open == char_before_cursor && pair.close == char_at_cursor
@@ -4026,30 +4034,24 @@ pub mod insert {
 
                 let cursor_line = text.line(cursor_line_number);
 
-                let comment_token = doc
-                    .language_config()
-                    .and_then(|config| config.comment_tokens.as_ref())
+                let comment_token = comment_tokens
                     .and_then(|tokens| comment::get_comment_token(text, tokens, cursor_line_number))
                     .filter(|_| {
+                        // Adding a newline at the beginning of
+                        // the line should not create another comment token,
+                        // but rather move the whole line
                         let is_cursor_at_beginning = text
                             .slice(line_start_char_pos..=cursor_pos)
                             .first_non_whitespace_char()
                             .map(|x| x + line_start_char_pos == cursor_pos)
                             .unwrap_or_default();
 
-                        doc.config.load().continue_comments
-                            // Special case: Adding a newline at the beginning of the line should not create another comment token
-                            && !is_cursor_at_beginning
+                        should_continue_comments && !is_cursor_at_beginning
                     });
 
-                let newline = doc.line_ending.as_str();
-
-                // This is the indent that was already present before
-                // we inserted anything, for instance:
-                //
                 // for i in 0..100 {
                 //     if true {|}
-                // ^^^^
+                // ^^^^ <- the existing indent which was already present
                 // }
                 let existing_indent = comment_token
                     .and(cursor_line.first_non_whitespace_char())
@@ -4057,7 +4059,7 @@ pub mod insert {
                         indent::indent_for_newline(
                             doc.language_config(),
                             doc.syntax(),
-                            &doc.config.load().indent_heuristic,
+                            &config.indent_heuristic,
                             &doc.indent_style,
                             doc.tab_width(),
                             text,
@@ -4075,13 +4077,11 @@ pub mod insert {
                     format!("{}{}{} ", newline, existing_indent, comment_token)
                 } else if is_on_pair {
                     // In all other cases, we want to have our cursor be after the inserted text.
-                    // However, in this case we want to place our cursor in the middle. See below for more info.
+                    // However, when we are on autopairs we want to place our cursor in the middle.
+                    // See below for more info.
                     offsets_in_all_iterations -=
                         newline.len() as isize + existing_indent.len() as isize;
 
-                    // In other cases all we have to do is restore the indentation, but here we also
-                    // increase it by 1 level
-                    let extra_indent = doc.indent_style.as_str();
                     // If we are between pairs, we want to
                     // insert an additional line which is indented one level
                     // more and place the cursor there
@@ -4090,7 +4090,7 @@ pub mod insert {
                     // if true {|} + <enter> will become:
                     // if true {
                     //     |
-                    // ^^^^ <- additional indent
+                    // ^^^^ <- extra indent, which we add
                     // }
                     //
                     // We need to manually control the range because when we have is_on_pair, we do not want to place the cursor at the end of the inserted text, but rather somewhere in the middle. So we need to be able to offset individual selections from their origin
@@ -4101,6 +4101,8 @@ pub mod insert {
                         extra_indent,
                         // --> cursor will be here <--
                         newline,
+                        // In other cases all we have to do is restore the indentation, but here we also
+                        // increase it by 1 level
                         existing_indent
                     )
                 } else {
@@ -4108,10 +4110,12 @@ pub mod insert {
                 };
 
                 // step 4: Calculate the new ranges for each newline added.
+                // We need to factor in how many characters we've added in this iteration,
+                // as well as all the characters added in previous iterations.
 
                 // this cannot underflow as we cannot remove negative amounts of whitespace
                 let removed_whitespace_amount = cursor_pos - leading_whitespace_start;
-                // total "diff" for this iteration. Can be negative if the amount of whitespace
+                // total diff for this iteration. Can be negative if the amount of whitespace
                 // we remove is more than how many chars we insert.
                 let offset_this_iteration =
                     replacement_text.len() as isize - removed_whitespace_amount as isize;
@@ -4129,12 +4133,12 @@ pub mod insert {
                     (range.head as isize + offsets_in_all_iterations).try_into(),
                 ) else {
                     // NOTE: Extremely unlikely path, as the amount of changed characters would have to exceed isize::MAX
-                    // In this hypothetical case, we just don't do anything.
+                    // In this hypothetical case, we just skip.
+                    offsets_in_all_iterations -= offset_this_iteration;
                     log::error!(
                         "Did not expect to see this many characters changed \
                         on newline insert: {offsets_in_all_iterations}"
                     );
-                    offsets_in_all_iterations -= offset_this_iteration;
                     ranges.push(Range::new(range.from(), range.to()));
                     return (
                         range.from(),
