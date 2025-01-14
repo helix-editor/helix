@@ -3980,6 +3980,7 @@ pub mod insert {
         let text = contents.slice(..);
         let selection = doc.selection(view.id).clone();
         let mut ranges = SmallVec::with_capacity(selection.len());
+        let mut offsets_in_all_iterations = 0;
 
         let remove_whitespace =
             Transaction::change_by_selection(contents, &selection, |range: &Range| {
@@ -4103,9 +4104,29 @@ pub mod insert {
                     format!("{}{}", newline, existing_indent)
                 };
 
+                // step 4: calculate the new ranges for each newline added.
+
+                // this cannot underflow as we cannot remove negative amounts of whitespace
+                let removed_whitespace_amount = cursor_position - leading_whitespace_start;
+                // total "diff" for this iteration. Can be negative if the amount of whitespace
+                // we remove is more than how many chars we insert.
+                let offset_this_iteration =
+                    replacement_text.len() as isize - removed_whitespace_amount as isize;
+
+                offsets_in_all_iterations += offset_this_iteration;
+
+                let (Ok(range_start), Ok(range_end)) = (
+                    (range.anchor as isize + offsets_in_all_iterations).try_into(),
+                    (range.head as isize + offsets_in_all_iterations).try_into(),
+                ) else {
+                    panic!("extremely unlikely for the amount of characters inserted to exceed isize::MAX");
+                };
+
+                log::error!("start: {range_start}, end: {range_end}");
+
                 // the Range does not have any effect on what text is being removed / added.
                 // It only affects cursor selection positions.
-                ranges.push(Range::new(leading_whitespace_start, cursor_position));
+                ranges.push(Range::new(range_start, range_end));
 
                 (
                     leading_whitespace_start,              // from
