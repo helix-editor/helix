@@ -1106,6 +1106,26 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                     return close_fn(self);
                 }
             }
+            alt!('p') => {
+                if let Some(register) = self.prompt.history_register() {
+                    self.prompt.change_history(
+                        ctx,
+                        register,
+                        ui::prompt::CompletionDirection::Backward,
+                    );
+                    self.handle_prompt_change(true);
+                }
+            }
+            alt!('n') => {
+                if let Some(register) = self.prompt.history_register() {
+                    self.prompt.change_history(
+                        ctx,
+                        register,
+                        ui::prompt::CompletionDirection::Forward,
+                    );
+                    self.handle_prompt_change(true);
+                }
+            }
             ctrl!('s') => {
                 if let Some(option) = self.selection() {
                     (self.callback_fn)(ctx, option, Action::HorizontalSplit);

@@ -456,6 +456,8 @@ See the documentation page on [pickers](./pickers.md) for more info.
 | `PageDown`, `Ctrl-d`         | Page down                                                  |
 | `Home`                       | Go to first entry                                          |
 | `End`                        | Go to last entry                                           |
+| `Alt-p`                      | Select previous history                                    |
+| `Alt-n`                      | Select next history                                        |
 | `Enter`                      | Open selected                                              |
 | `Alt-Enter`                  | Open selected in the background without closing the picker |
 | `Ctrl-s`                     | Open horizontally                                          |
