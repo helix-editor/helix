@@ -162,3 +162,54 @@ file. For example, to use `kitty`:
 sed -i "s|Exec=hx %F|Exec=kitty hx %F|g" ~/.local/share/applications/Helix.desktop
 sed -i "s|Terminal=true|Terminal=false|g" ~/.local/share/applications/Helix.desktop
 ```
+
+### Building the Deb package
+
+#### Provided Deb limitation
+
+The .deb package should be provided on the release page. But because the CI
+build is currently using Ubuntu 22.04 (this can change in the future, find the
+real image version in the .github/workflows/release.yml) the `.deb` has a certain
+libc6 version dependency. You can find it within the specific `.deb` details.
+Currently libc6 (>= 2.34). That is why you can't use this deb on systems older than
+Ubuntu 22.04, Mint 21, or Debian 12.
+
+#### Build locally
+
+If you build the `.deb` locally, the above dependency will not apply.
+
+Install `cargo-deb`, the tool we use to build the `.deb`
+
+```sh
+cargo install cargo-deb
+```
+
+Get the source code
+
+```sh
+git clone https://github.com/helix-editor/helix
+cd helix
+```
+
+The bellow will first build the release binary, and later package it in the `.deb` file, in one command.
+
+```sh
+cargo deb -- --locked
+```
+
+> 💡 This locks you into the `--release` profile. But you can also build helix in any way you like.
+> As long as you leave a `target/release/hx` file, it will get packaged with `cargo deb --no-build` 
+
+> 💡 Don't worry about the
+> ```
+> warning: Failed to find dependency specification
+> ```
+> warnings. Cargo deb just reports which packaged files it didn't derive dependencies for. But
+> so far the dependency deriving seams very good, even if some of the grammar files are skipped.
+
+You can find the resulted `.deb` in `target/debian/`. It should contain everything it needs, including the
+
+- completions for bash, fish, zsh
+- .desktop file
+- icon (though desktop environments might use their own since the name of the package is correctly `helix`)
+- launcher to the binary with the runtime
