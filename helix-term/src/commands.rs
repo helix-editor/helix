@@ -3983,13 +3983,13 @@ pub mod insert {
         let mut ranges = SmallVec::with_capacity(selection.len());
 
         // Keep track of how many chars we insert and delete so we can
-        // put each selection in the correct place.
+        // put each selection in the correct place when the transaction is completed
         //
-        // Each callback to change_by_selection gets access to the original text,
-        // which can change as we iterate
+        // Each callback to change_by_selection gets access to the original text.
+        // As we iterate, we mutate the text, but each callback only knows about the original, unmodified text.
         let mut offsets_in_all_iterations = 0;
 
-        let remove_whitespace =
+        let transaction =
             Transaction::change_by_selection(contents, &selection, |range: &Range| {
                 // step 1: Remove leading whitespace before each cursor until
                 // the first non-whitespace character or the beginning of the line
@@ -4158,7 +4158,7 @@ pub mod insert {
             .with_selection(Selection::new(ranges, selection.primary_index()));
 
         let (view, doc) = current!(cx.editor);
-        doc.apply(&remove_whitespace, view.id);
+        doc.apply(&transaction, view.id);
     }
 
     pub fn delete_char_backward(cx: &mut Context) {
