@@ -3993,27 +3993,28 @@ pub mod insert {
             Transaction::change_by_selection(contents, &selection, |range: &Range| {
                 // step 1: Remove leading whitespace before each cursor until
                 // the first non-whitespace character or the beginning of the line
-                let cursor_position = range.cursor(text);
-                let cursor_line_number = text.char_to_line(cursor_position);
+                let cursor_pos = range.cursor(text);
+                let cursor_line_number = text.char_to_line(cursor_pos);
                 let line_start_char_pos = text.line_to_char(cursor_line_number);
                 let leading_whitespace_start = text
-                    .slice(line_start_char_pos..cursor_position)
+                    .slice(line_start_char_pos..cursor_pos)
                     .last_non_whitespace_char()
                     .map_or(
                         // in this case, the entire line is just whitespace
                         // so we remove until the beginning of the line
                         line_start_char_pos,
-                        // the "idx" is local to the specific range we've sliced
+                        // the position is local to the specific range we've sliced
                         // So we need to correctly offset it by the total position in the document
                         // +1 is to make sure we do not remove any characters
-                        |idx| idx + line_start_char_pos + 1,
+                        |pos| pos + line_start_char_pos + 1,
                     );
 
-                // step 2: Get the separate parts to include in our final replacement
-                let char_at_cursor = contents.get_char(cursor_position).unwrap_or(' ');
-                let char_before_cursor = cursor_position
+                // step 2: Get the separate parts to include in our final replacement,
+                // such as the comment token, indentation and newlines
+                let char_at_cursor = contents.get_char(cursor_pos).unwrap_or(' ');
+                let char_before_cursor = cursor_pos
                     .checked_sub(1)
-                    .map(|idx| contents.char(idx))
+                    .map(|pos| contents.char(pos))
                     .unwrap_or(' ');
 
                 let is_on_pair = doc
@@ -4031,9 +4032,9 @@ pub mod insert {
                     .and_then(|tokens| comment::get_comment_token(text, tokens, cursor_line_number))
                     .filter(|_| {
                         let is_cursor_at_beginning = text
-                            .slice(line_start_char_pos..=cursor_position)
+                            .slice(line_start_char_pos..=cursor_pos)
                             .first_non_whitespace_char()
-                            .map(|x| x + line_start_char_pos == cursor_position)
+                            .map(|x| x + line_start_char_pos == cursor_pos)
                             .unwrap_or_default();
 
                         doc.config.load().continue_comments
@@ -4044,7 +4045,7 @@ pub mod insert {
                 let newline = doc.line_ending.as_str();
 
                 // This is the indent that was already present before
-                // inserted anything, for instance:
+                // we inserted anything, for instance:
                 //
                 // for i in 0..100 {
                 //     if true {|}
@@ -4061,7 +4062,7 @@ pub mod insert {
                             doc.tab_width(),
                             text,
                             cursor_line_number,
-                            cursor_position,
+                            cursor_pos,
                             cursor_line_number,
                         ),
                         |first_non_whitespace_char| {
@@ -4109,7 +4110,7 @@ pub mod insert {
                 // step 4: Calculate the new ranges for each newline added.
 
                 // this cannot underflow as we cannot remove negative amounts of whitespace
-                let removed_whitespace_amount = cursor_position - leading_whitespace_start;
+                let removed_whitespace_amount = cursor_pos - leading_whitespace_start;
                 // total "diff" for this iteration. Can be negative if the amount of whitespace
                 // we remove is more than how many chars we insert.
                 let offset_this_iteration =
@@ -4151,7 +4152,7 @@ pub mod insert {
                 // Step 5: Replace the range of leading whitespace with our new text
                 (
                     leading_whitespace_start,              // from
-                    cursor_position,                       // to
+                    cursor_pos,                            // to
                     Some(Tendril::from(replacement_text)), // replacement
                 )
             })
