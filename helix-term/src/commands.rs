@@ -4032,7 +4032,7 @@ pub mod insert {
 
                 let cursor_line = text.line(cursor_line_number);
 
-                let indent = comment_token
+                let existing_indent = comment_token
                     .and(cursor_line.first_non_whitespace_char())
                     .map_or(
                         indent::indent_for_newline(
@@ -4053,7 +4053,7 @@ pub mod insert {
 
                 // part 3 is to actually replace the whitespace with our text
                 let replacement_text = if let Some(comment_token) = comment_token {
-                    format!("{}{}{} ", newline, indent, comment_token)
+                    format!("{}{}{} ", newline, existing_indent, comment_token)
                 } else if is_on_pair {
                     // If we are between pairs, we want to
                     // insert an additional line which is indented one level
@@ -4069,14 +4069,38 @@ pub mod insert {
                     format!(
                         "{}{}{}{}{}",
                         newline,
-                        indent,
+                        // This is the indent that was already present, before the cursor:
+                        //
+                        // for i in 0..100 {
+                        //     if true {
+                        // ^^^^
+                        //         |
+                        //     }
+                        // }
+                        existing_indent,
+                        // This is the indent that we are adding ourselves:
+                        //
+                        // for i in 0..100 {
+                        //     if true {
+                        //         |
+                        //     ^^^^
+                        //     }
+                        // }
                         doc.indent_style.as_str(),
                         // --> cursor will be here <--
                         newline,
-                        indent
+                        // This is the indent that was already present, after the cursor:
+                        //
+                        // for i in 0..100 {
+                        //     if true {
+                        //         |
+                        //     }
+                        // ^^^^
+                        // }
+                        existing_indent
                     )
                 } else {
-                    format!("{}{}", newline, indent)
+                    format!("{}{}", newline, existing_indent)
                 };
 
                 // the Range does not have any effect on what text is being removed / added.
