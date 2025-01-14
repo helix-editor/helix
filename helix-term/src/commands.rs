@@ -4056,6 +4056,9 @@ pub mod insert {
                 let replacement_text = if let Some(comment_token) = comment_token {
                     format!("{}{}{} ", newline, existing_indent, comment_token)
                 } else if is_on_pair {
+                    // In all other cases, we want to have our cursor be after our inserted text.
+                    // However, in this case we want to place our cursor in the middle. See below for more info.
+                    offsets_in_all_iterations -= newline.len() as isize + existing_indent.len() as isize;
                     // If we are between pairs, we want to
                     // insert an additional line which is indented one level
                     // more and place the cursor there
