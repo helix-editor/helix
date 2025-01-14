@@ -4051,3 +4051,17 @@ language-servers = ["codeql"]
 [[grammar]]
 name = "ql"
 source = { git = "https://github.com/tree-sitter/tree-sitter-ql", rev = "1fd627a4e8bff8c24c11987474bd33112bead857" }
+
+[[language]]
+name = "gren"
+scope = "source.gren"
+injection-regex = "gren"
+file-types = ["gren"]
+roots = ["gren.json"]
+comment-tokens = "--"
+block-comment-tokens = { start = "{-", end = "-}" }
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "gren"
+source = { git = "https://github.com/MaeBrooks/tree-sitter-gren", rev = "76554f4f2339f5a24eed19c58f2079b51c694152" }
