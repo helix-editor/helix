@@ -4074,7 +4074,7 @@ pub mod insert {
 
                 // part 3: Assemble all the parts together
                 let replacement_text = if let Some(comment_token) = comment_token {
-                    format!("{}{}{} ", newline, existing_indent, comment_token)
+                    [newline, &existing_indent, comment_token, " "].join("")
                 } else if is_on_pair {
                     // In all other cases, we want to have our cursor be after the inserted text.
                     // However, when we are on autopairs we want to place our cursor in the middle.
@@ -4094,19 +4094,19 @@ pub mod insert {
                     // }
                     //
                     // We need to manually control the range because when we have is_on_pair, we do not want to place the cursor at the end of the inserted text, but rather somewhere in the middle. So we need to be able to offset individual selections from their origin
-                    format!(
-                        "{}{}{}{}{}",
+                    [
                         newline,
-                        existing_indent,
+                        &existing_indent,
                         extra_indent,
                         // --> cursor will be here <--
                         newline,
                         // In other cases all we have to do is restore the indentation, but here we also
                         // increase it by 1 level
-                        existing_indent
-                    )
+                        &existing_indent,
+                    ]
+                    .join("")
                 } else {
-                    format!("{}{}", newline, existing_indent)
+                    [newline, &existing_indent].join("")
                 };
 
                 // step 4: Calculate the new ranges for each newline added.
