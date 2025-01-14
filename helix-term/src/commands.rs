@@ -3995,18 +3995,18 @@ pub mod insert {
                 // the first non-whitespace character or the beginning of the line
                 let cursor_position = range.cursor(text);
                 let cursor_line_number = text.char_to_line(cursor_position);
-                let line_start_idx = text.line_to_char(cursor_line_number);
+                let line_start_char_pos = text.line_to_char(cursor_line_number);
                 let leading_whitespace_start = text
-                    .slice(line_start_idx..cursor_position)
+                    .slice(line_start_char_pos..cursor_position)
                     .last_non_whitespace_char()
                     .map_or(
                         // in this case, the entire line is just whitespace
                         // so we remove until the beginning of the line
-                        line_start_idx,
+                        line_start_char_pos,
                         // the "idx" is local to the specific range we've sliced
                         // So we need to correctly offset it by the total position in the document
                         // +1 is to make sure we do not remove any characters
-                        |idx| idx + line_start_idx + 1,
+                        |idx| idx + line_start_char_pos + 1,
                     );
 
                 // step 2: Get the separate parts to include in our final replacement
@@ -4031,9 +4031,9 @@ pub mod insert {
                     .and_then(|tokens| comment::get_comment_token(text, tokens, cursor_line_number))
                     .filter(|_| {
                         let is_cursor_at_beginning = text
-                            .slice(line_start_idx..=cursor_position)
+                            .slice(line_start_char_pos..=cursor_position)
                             .first_non_whitespace_char()
-                            .map(|x| x + line_start_idx == cursor_position)
+                            .map(|x| x + line_start_char_pos == cursor_position)
                             .unwrap_or_default();
 
                         doc.config.load().continue_comments
