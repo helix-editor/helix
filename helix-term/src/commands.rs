@@ -4058,7 +4058,8 @@ pub mod insert {
                 } else if is_on_pair {
                     // In all other cases, we want to have our cursor be after our inserted text.
                     // However, in this case we want to place our cursor in the middle. See below for more info.
-                    offsets_in_all_iterations -= newline.len() as isize + existing_indent.len() as isize;
+                    offsets_in_all_iterations -=
+                        newline.len() as isize + existing_indent.len() as isize;
                     // If we are between pairs, we want to
                     // insert an additional line which is indented one level
                     // more and place the cursor there
@@ -4118,11 +4119,20 @@ pub mod insert {
 
                 offsets_in_all_iterations += offset_this_iteration;
 
+                // whether we are inserting or appending
+                let is_append = range.cursor(text) > range.anchor;
+
                 let (Ok(range_start), Ok(range_end)) = (
-                    (range.anchor as isize + offsets_in_all_iterations).try_into(),
+                    (range.anchor as isize + offsets_in_all_iterations
+                        // if we are appending, our anchor will always be in the same place as when we started the append
+                        - if is_append { offset_this_iteration } else { 0 })
+                    .try_into(),
                     (range.head as isize + offsets_in_all_iterations).try_into(),
                 ) else {
-                    panic!("extremely unlikely for the amount of characters inserted to exceed isize::MAX");
+                    panic!(
+                        "extremely unlikely for the amount of characters\
+                         inserted to exceed isize::MAX"
+                    );
                 };
 
                 log::error!("start: {range_start}, end: {range_end}");
