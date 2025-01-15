@@ -68,7 +68,7 @@
 
 ; Invocations
 (emit_statement name: (_) @type)
-(revert_statement error: (_) @type)
+(revert_statement error: (expression (identifier) @type))
 (modifier_invocation . (_) @function)
 
 (call_expression . (_(member_expression property: (_) @function.method)))
