@@ -28,7 +28,7 @@ The following third party repositories are available:
 Install the Debian package from the release page.
 
 If you are running a system older than Ubuntu 22.04, Mint 21, or Debian 12, you can build the `.deb` file locally
-[from source](https://docs.helix-editor.com/building-from-source.html#building-the-deb-package).
+[from source](https://docs.helix-editor.com/building-from-source.html#building-the-debian-package).
 
 ### Ubuntu (PPA)
 
