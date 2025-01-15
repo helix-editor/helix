@@ -175,8 +175,8 @@ Install `cargo-deb`, the tool used for building the `.deb` file:
 cargo install cargo-deb
 ```
 
-After you clone and enter the repository (viz. above), the command bellow will first
-build the release binary, and later package it into the `.deb` file, in one command.
+After cloning and entering the Helix repository as previously described,
+use the following command to build the release binary and package it into a `.deb` file in a single step.
 
 ```sh
 cargo deb -- --locked
