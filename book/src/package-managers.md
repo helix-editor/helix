@@ -1,7 +1,8 @@
 ## Package managers
 
 - [Linux](#linux)
-  - [Ubuntu](#ubuntu)
+  - [Ubuntu/Debian](#ubuntudebian)
+  - [Ubuntu (PPA)](#ubuntu-ppa)
   - [Fedora/RHEL](#fedorarhel)
   - [Arch Linux extra](#arch-linux-extra)
   - [NixOS](#nixos)

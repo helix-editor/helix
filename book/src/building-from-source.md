@@ -7,6 +7,7 @@
   - [Note to packagers](#note-to-packagers)
 - [Validating the installation](#validating-the-installation)
 - [Configure the desktop shortcut](#configure-the-desktop-shortcut)
+- [Building the Debian package](#building-the-debian-package)
 
 Requirements:
 
