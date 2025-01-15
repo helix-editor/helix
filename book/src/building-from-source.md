@@ -163,11 +163,11 @@ sed -i "s|Exec=hx %F|Exec=kitty hx %F|g" ~/.local/share/applications/Helix.deskt
 sed -i "s|Terminal=true|Terminal=false|g" ~/.local/share/applications/Helix.desktop
 ```
 
-### Building the Deb package
+### Building the Debian package
 
-The `.deb` provided on the release page (built in CI) may use a libc version greater
-than what your Debian / Ubuntu / Mint uses. In this case you can build the `.deb`
-from source and this higher dependency will not apply.
+If the `.deb` file provided on the release page uses a `libc` version higher
+than that used by your Debian, Ubuntu, or Mint system, you can build the package
+from source to match your system's dependencies.
 
 Install `cargo-deb`, the tool we use to build the `.deb`
 
