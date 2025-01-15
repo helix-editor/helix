@@ -67,7 +67,7 @@
 ((identifier) @constant (#match? @constant "^[A-Z][A-Z_]+$"))
 
 ; Invocations
-(emit_statement name: (_) @type)
+(emit_statement name: (expression (identifier) @type))
 (revert_statement error: (expression (identifier) @type))
 (modifier_invocation . (_) @function)
 
