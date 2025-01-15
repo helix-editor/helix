@@ -23,6 +23,7 @@
 | circom | ✓ |  |  | `circom-lsp` |
 | clojure | ✓ |  |  | `clojure-lsp` |
 | cmake | ✓ | ✓ | ✓ | `cmake-language-server` |
+| codeql | ✓ | ✓ |  | `codeql` |
 | comment | ✓ |  |  |  |
 | common-lisp | ✓ |  | ✓ | `cl-lsp` |
 | cpon | ✓ |  | ✓ |  |
@@ -80,6 +81,7 @@
 | gowork | ✓ |  |  | `gopls` |
 | gpr | ✓ |  |  | `ada_language_server` |
 | graphql | ✓ | ✓ |  | `graphql-lsp` |
+| gren | ✓ | ✓ |  |  |
 | groovy | ✓ |  |  |  |
 | gts | ✓ | ✓ | ✓ | `typescript-language-server`, `vscode-eslint-language-server`, `ember-language-server` |
 | hare | ✓ |  |  |  |

@@ -3044,12 +3044,11 @@ fn buffer_picker(cx: &mut Context) {
     })
     .with_preview(|editor, meta| {
         let doc = &editor.documents.get(&meta.id)?;
-        let &view_id = doc.selections().keys().next()?;
-        let line = doc
-            .selection(view_id)
-            .primary()
-            .cursor_line(doc.text().slice(..));
-        Some((meta.id.into(), Some((line, line))))
+        let lines = doc.selections().values().next().map(|selection| {
+            let cursor_line = selection.primary().cursor_line(doc.text().slice(..));
+            (cursor_line, cursor_line)
+        });
+        Some((meta.id.into(), lines))
     });
     cx.push_layer(Box::new(overlaid(picker)));
 }
@@ -3475,6 +3474,7 @@ fn open(cx: &mut Context, open: Open) {
     let text = doc.text().slice(..);
     let contents = doc.text();
     let selection = doc.selection(view.id);
+    let mut offs = 0;
 
     let mut ranges = SmallVec::with_capacity(selection.len());
 
@@ -3551,7 +3551,7 @@ fn open(cx: &mut Context, open: Open) {
         let text = text.repeat(count);
 
         // calculate new selection ranges
-        let pos = above_next_line_end_index + above_next_line_end_width;
+        let pos = offs + above_next_line_end_index + above_next_line_end_width;
         let comment_len = continue_comment_token
             .map(|token| token.len() + 1) // `+ 1` for the extra space added
             .unwrap_or_default();
@@ -3563,6 +3563,9 @@ fn open(cx: &mut Context, open: Open) {
                 pos + (i * (1 + indent_len + comment_len)) + indent_len + comment_len,
             ));
         }
+
+        // update the offset for the next range
+        offs += text.chars().count();
 
         (
             above_next_line_end_index,
@@ -4781,7 +4784,7 @@ fn join_selections_impl(cx: &mut Context, select_space: bool) {
         changes.reserve(lines.len());
 
         let first_line_idx = slice.line_to_char(start);
-        let first_line_idx = skip_while(slice, first_line_idx, |ch| matches!(ch, ' ' | 't'))
+        let first_line_idx = skip_while(slice, first_line_idx, |ch| matches!(ch, ' ' | '\t'))
             .unwrap_or(first_line_idx);
         let first_line = slice.slice(first_line_idx..);
         let mut current_comment_token = comment_tokens

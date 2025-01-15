@@ -184,6 +184,127 @@ async fn test_open_above() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn test_open_above_with_multiple_cursors() -> anyhow::Result<()> {
+    // the primary cursor is also in the top line
+    test((
+        indoc! {"#[H|]#elix
+            #(i|)#s
+            #(c|)#ool"},
+        "O",
+        indoc! {
+            "#[\n|]#
+            Helix
+            #(\n|)#
+            is
+            #(\n|)#
+            cool
+            "
+        },
+    ))
+    .await?;
+
+    // now with some additional indentation
+    test((
+        indoc! {"····#[H|]#elix
+            ····#(i|)#s
+            ····#(c|)#ool"}
+        .replace("·", " "),
+        ":indent-style 4<ret>O",
+        indoc! {
+            "····#[\n|]#
+            ····Helix
+            ····#(\n|)#
+            ····is
+            ····#(\n|)#
+            ····cool
+            "
+        }
+        .replace("·", " "),
+    ))
+    .await?;
+
+    // the first line is within a comment, the second not.
+    // However, if we open above, the first newly added line should start within a comment
+    // while the other should be a normal line
+    test((
+        indoc! {"fn main() {
+                // #[VIP|]# comment
+                l#(e|)#t yes = false;
+            }"},
+        ":lang rust<ret>O",
+        indoc! {"fn main() {
+                // #[\n|]#
+                // VIP comment
+                #(\n|)#
+                let yes = false;
+            }"},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_open_below_with_multiple_cursors() -> anyhow::Result<()> {
+    // the primary cursor is also in the top line
+    test((
+        indoc! {"#[H|]#elix
+            #(i|)#s
+            #(c|)#ool"},
+        "o",
+        indoc! {"Helix
+            #[\n|]#
+            is
+            #(\n|)#
+            cool
+            #(\n|)#
+            "
+        },
+    ))
+    .await?;
+
+    // now with some additional indentation
+    test((
+        indoc! {"····#[H|]#elix
+            ····#(i|)#s
+            ····#(c|)#ool"}
+        .replace("·", " "),
+        ":indent-style 4<ret>o",
+        indoc! {
+            "····Helix
+            ····#[\n|]#
+            ····is
+            ····#(\n|)#
+            ····cool
+            ····#(\n|)#
+            "
+        }
+        .replace("·", " "),
+    ))
+    .await?;
+
+    // the first line is within a comment, the second not.
+    // However, if we open below, the first newly added line should start within a comment
+    // while the other should be a normal line
+    test((
+        indoc! {"fn main() {
+                // #[VIP|]# comment
+                l#(e|)#t yes = false;
+            }"},
+        ":lang rust<ret>o",
+        indoc! {"fn main() {
+                // VIP comment
+                // #[\n|]#
+                let yes = false;
+                #(\n|)#
+            }"},
+    ))
+    .await?;
+
+    Ok(())
+}
+
 /// NOTE: To make the `open_above` comment-aware, we're setting the language for each test to rust.
 #[tokio::test(flavor = "multi_thread")]
 async fn test_open_above_with_comments() -> anyhow::Result<()> {
