@@ -3991,6 +3991,8 @@ pub mod insert {
         let mut global_offs = 0;
 
         let mut transaction = Transaction::change_by_selection(contents, &selection, |range| {
+            // Tracks the number of trailing whitespace characters deleted by this selection.
+            let mut chars_deleted = 0;
             let pos = range.cursor(text);
 
             let prev = if pos == 0 {
@@ -4069,13 +4071,14 @@ pub mod insert {
                     new_text.chars().count()
                 };
 
+                // Note that `first_trailing_whitespace_char` is at least `pos` so this unsigned
+                // subtraction cannot underflow.
+                chars_deleted = pos - first_trailing_whitespace_char;
+
                 (
                     first_trailing_whitespace_char,
                     pos,
-                    // Note that `first_trailing_whitespace_char` is at least `pos` so the
-                    // unsigned subtraction (`pos - first_trailing_whitespace_char`) cannot
-                    // underflow.
-                    local_offs as isize - (pos - first_trailing_whitespace_char) as isize,
+                    local_offs as isize - chars_deleted as isize,
                 )
             } else {
                 // If the current line is all whitespace, insert a line ending at the beginning of
@@ -4089,14 +4092,14 @@ pub mod insert {
             let new_range = if range.cursor(text) > range.anchor {
                 // when appending, extend the range by local_offs
                 Range::new(
-                    range.anchor + global_offs,
-                    (range.head as isize + local_offs) as usize + global_offs,
+                    (range.anchor as isize + global_offs) as usize,
+                    (range.head as isize + local_offs + global_offs) as usize,
                 )
             } else {
                 // when inserting, slide the range by local_offs
                 Range::new(
-                    (range.anchor as isize + local_offs) as usize + global_offs,
-                    (range.head as isize + local_offs) as usize + global_offs,
+                    (range.anchor as isize + local_offs + global_offs) as usize,
+                    (range.head as isize + local_offs + global_offs) as usize,
                 )
             };
 
@@ -4104,7 +4107,7 @@ pub mod insert {
             // range.replace(|range| range.is_empty(), head); -> fn extend if cond true, new head pos
             // can be used with cx.mode to do replace or extend on most changes
             ranges.push(new_range);
-            global_offs += new_text.chars().count();
+            global_offs += new_text.chars().count() as isize - chars_deleted as isize;
 
             (from, to, Some(new_text.into()))
         });

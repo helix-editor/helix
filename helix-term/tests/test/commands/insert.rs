@@ -1,6 +1,107 @@
 use super::*;
 
 #[tokio::test(flavor = "multi_thread")]
+async fn insert_newline_many_selections() -> anyhow::Result<()> {
+    test((
+        indoc! {"\
+            #(|o)#ne
+            #(|t)#wo
+            #[|t]#hree
+            "},
+        "i<ret>",
+        indoc! {"\
+            \n#(|o)#ne
+
+            #(|t)#wo
+
+            #[|t]#hree
+            "},
+    ))
+    .await?;
+
+    // In this case the global offset that adjusts selections for inserted and deleted text
+    // should become negative because more text is deleted than is inserted.
+    test((
+        indoc! {"\
+            #[|🏴‍☠️]#          #(|🏴‍☠️)#          #(|🏴‍☠️)#
+            #(|🏴‍☠️)#          #(|🏴‍☠️)#          #(|🏴‍☠️)#
+            "},
+        "i<ret>",
+        indoc! {"\
+            \n#[|🏴‍☠️]#
+            #(|🏴‍☠️)#
+            #(|🏴‍☠️)#
+
+            #(|🏴‍☠️)#
+            #(|🏴‍☠️)#
+            #(|🏴‍☠️)#
+            "},
+    ))
+    .await?;
+
+    // <https://github.com/helix-editor/helix/issues/12495>
+    test((
+        indoc! {"\
+            id #(|1)#,Item #(|1)#,cost #(|1)#,location #(|1)#
+            id #(|2)#,Item #(|2)#,cost #(|2)#,location #(|2)#
+            id #(|1)##(|0)#,Item #(|1)##(|0)#,cost #(|1)##(|0)#,location #(|1)##[|0]#"},
+        "i<ret>",
+        indoc! {"\
+            id
+            #(|1)#,Item
+            #(|1)#,cost
+            #(|1)#,location
+            #(|1)#
+            id
+            #(|2)#,Item
+            #(|2)#,cost
+            #(|2)#,location
+            #(|2)#
+            id
+            #(|1)#
+            #(|0)#,Item
+            #(|1)#
+            #(|0)#,cost
+            #(|1)#
+            #(|0)#,location
+            #(|1)#
+            #[|0]#"},
+    ))
+    .await?;
+
+    // <https://github.com/helix-editor/helix/issues/12461>
+    test((
+        indoc! {"\
+            real R〉 #(||)# 〈real R〉 @ 〈real R〉
+            #(||)# 〈real R〉 + 〈ureal R〉 i #(||)# 〈real R〉 - 〈ureal R〉 i
+            #(||)# 〈real R〉 + i #(||)# 〈real R〉 - i #(||)# 〈real R〉 〈infnan〉 i
+            #(||)# + 〈ureal R〉 i #(||)# - 〈ureal R〉 i
+            #(||)# 〈infnan〉 i #(||)# + i #[||]# - i"},
+        "i<ret>",
+        indoc! {"\
+            real R〉
+            #(||)# 〈real R〉 @ 〈real R〉
+
+            #(||)# 〈real R〉 + 〈ureal R〉 i
+            #(||)# 〈real R〉 - 〈ureal R〉 i
+
+            #(||)# 〈real R〉 + i
+            #(||)# 〈real R〉 - i
+            #(||)# 〈real R〉 〈infnan〉 i
+
+            #(||)# + 〈ureal R〉 i
+            #(||)# - 〈ureal R〉 i
+
+            #(||)# 〈infnan〉 i
+            #(||)# + i
+            #[||]# - i"},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn insert_newline_trim_trailing_whitespace() -> anyhow::Result<()> {
     // Trailing whitespace is trimmed.
     test((
@@ -112,6 +213,33 @@ async fn insert_newline_continue_line_comment() -> anyhow::Result<()> {
         indoc! {"\
             //·hello
             //·#[|·]#····world
+            "}
+        .replace('·', " "),
+    ))
+    .await?;
+
+    // Comment continuation should work on multiple selections.
+    // <https://github.com/helix-editor/helix/issues/12539>
+    test((
+        indoc! {"\
+            ///·Docs#[|·]#
+            pub·struct·A;
+
+            ///·Docs#(|·)#
+            pub·struct·B;
+            "}
+        .replace('·', " "),
+        ":lang rust<ret>i<ret><ret>",
+        indoc! {"\
+            ///·Docs
+            ///
+            ///·#[|·]#
+            pub·struct·A;
+
+            ///·Docs
+            ///
+            ///·#(|·)#
+            pub·struct·B;
             "}
         .replace('·', " "),
     ))
