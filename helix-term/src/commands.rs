@@ -3980,8 +3980,10 @@ pub mod insert {
     }
 
     pub fn insert_newline(cx: &mut Context) {
+        let config = cx.editor.config();
         let (view, doc) = current_ref!(cx.editor);
         let text = doc.text().slice(..);
+        let line_ending = doc.line_ending.as_str();
 
         let contents = doc.text();
         let selection = doc.selection(view.id).clone();
@@ -3989,6 +3991,14 @@ pub mod insert {
 
         // TODO: this is annoying, but we need to do it to properly calculate pos after edits
         let mut global_offs = 0;
+        let mut new_text = String::new();
+
+        let continue_comment_tokens = if config.continue_comments {
+            doc.language_config()
+                .and_then(|config| config.comment_tokens.as_ref())
+        } else {
+            None
+        };
 
         let mut transaction = Transaction::change_by_selection(contents, &selection, |range| {
             // Tracks the number of trailing whitespace characters deleted by this selection.
@@ -4005,15 +4015,8 @@ pub mod insert {
             let current_line = text.char_to_line(pos);
             let line_start = text.line_to_char(current_line);
 
-            let mut new_text = String::new();
-
-            let continue_comment_token = if doc.config.load().continue_comments {
-                doc.language_config()
-                    .and_then(|config| config.comment_tokens.as_ref())
-                    .and_then(|tokens| comment::get_comment_token(text, tokens, current_line))
-            } else {
-                None
-            };
+            let continue_comment_token = continue_comment_tokens
+                .and_then(|tokens| comment::get_comment_token(text, tokens, current_line));
 
             let (from, to, local_offs) = if let Some(idx) =
                 text.slice(line_start..pos).last_non_whitespace_char()
@@ -4026,7 +4029,7 @@ pub mod insert {
                     _ => indent::indent_for_newline(
                         doc.language_config(),
                         doc.syntax(),
-                        &doc.config.load().indent_heuristic,
+                        &config.indent_heuristic,
                         &doc.indent_style,
                         doc.tab_width(),
                         text,
@@ -4045,7 +4048,8 @@ pub mod insert {
                     .map_or(false, |pair| pair.open == prev && pair.close == curr);
 
                 let local_offs = if let Some(token) = continue_comment_token {
-                    new_text.push_str(doc.line_ending.as_str());
+                    new_text.reserve_exact(line_ending.len() + indent.len() + token.len() + 1);
+                    new_text.push_str(line_ending);
                     new_text.push_str(&indent);
                     new_text.push_str(token);
                     new_text.push(' ');
@@ -4053,19 +4057,20 @@ pub mod insert {
                 } else if on_auto_pair {
                     // line where the cursor will be
                     let inner_indent = indent.clone() + doc.indent_style.as_str();
-                    new_text.reserve_exact(2 + indent.len() + inner_indent.len());
-                    new_text.push_str(doc.line_ending.as_str());
+                    new_text
+                        .reserve_exact(line_ending.len() * 2 + indent.len() + inner_indent.len());
+                    new_text.push_str(line_ending);
                     new_text.push_str(&inner_indent);
 
                     // line where the matching pair will be
                     let local_offs = new_text.chars().count();
-                    new_text.push_str(doc.line_ending.as_str());
+                    new_text.push_str(line_ending);
                     new_text.push_str(&indent);
 
                     local_offs
                 } else {
-                    new_text.reserve_exact(1 + indent.len());
-                    new_text.push_str(doc.line_ending.as_str());
+                    new_text.reserve_exact(line_ending.len() + indent.len());
+                    new_text.push_str(line_ending);
                     new_text.push_str(&indent);
 
                     new_text.chars().count()
@@ -4084,7 +4089,7 @@ pub mod insert {
                 // If the current line is all whitespace, insert a line ending at the beginning of
                 // the current line. This makes the current line empty and the new line contain the
                 // indentation of the old line.
-                new_text.push_str(doc.line_ending.as_str());
+                new_text.push_str(line_ending);
 
                 (line_start, line_start, new_text.chars().count() as isize)
             };
@@ -4108,8 +4113,10 @@ pub mod insert {
             // can be used with cx.mode to do replace or extend on most changes
             ranges.push(new_range);
             global_offs += new_text.chars().count() as isize - chars_deleted as isize;
+            let tendril = Tendril::from(&new_text);
+            new_text.clear();
 
-            (from, to, Some(new_text.into()))
+            (from, to, Some(tendril))
         });
 
         transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
