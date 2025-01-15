@@ -3976,191 +3976,148 @@ pub mod insert {
 
     pub fn insert_newline(cx: &mut Context) {
         let (view, doc) = current_ref!(cx.editor);
-        let contents = doc.text();
-        let text = contents.slice(..);
-        let selection = doc.selection(view.id).clone();
+        let text = doc.text().slice(..);
 
+        let contents = doc.text();
+        let selection = doc.selection(view.id).clone();
         let mut ranges = SmallVec::with_capacity(selection.len());
 
-        let config = doc.config.load();
-        let newline = doc.line_ending.as_str();
-        let extra_indent = doc.indent_style.as_str();
-        let should_continue_comments = config.continue_comments;
-        let comment_tokens = doc
-            .language_config()
-            .and_then(|config| config.comment_tokens.as_ref());
-        let auto_pairs = doc.auto_pairs(cx.editor);
+        // TODO: this is annoying, but we need to do it to properly calculate pos after edits
+        let mut global_offs: isize = 0;
+        let mut chars_deleted: isize = 0;
 
-        // Keep track of how many chars we insert and delete so we can
-        // put each selection in the correct place when the transaction is completed
-        //
-        // Each callback to change_by_selection gets access to the original text.
-        // As we iterate, we mutate the text, but each callback only knows about the original, unmodified text.
-        let mut offsets_in_all_iterations = 0;
+        let mut transaction = Transaction::change_by_selection(contents, &selection, |range| {
+            let pos = range.cursor(text);
 
-        let transaction =
-            Transaction::change_by_selection(contents, &selection, |range: &Range| {
-                // step 1: Get the range of leading whitespace before each cursor
-                // until the first non-whitespace character or the beginning of the line
-                let cursor_pos = range.cursor(text);
-                let cursor_line_number = text.char_to_line(cursor_pos);
-                let line_start_char_pos = text.line_to_char(cursor_line_number);
-                let leading_whitespace_start = text
-                    .slice(line_start_char_pos..cursor_pos)
-                    .last_non_whitespace_char()
-                    .map_or(
-                        // in this case, the entire line is just whitespace
-                        // so we remove until the beginning of the line
-                        line_start_char_pos,
-                        // the position is local to the specific range we've sliced
-                        // So we need to correctly offset it by the total position in the document
-                        // +1 is to make sure we do not remove any characters
-                        |pos| pos + line_start_char_pos + 1,
-                    );
+            let prev = if pos == 0 {
+                ' '
+            } else {
+                contents.char(pos - 1)
+            };
+            let curr = contents.get_char(pos).unwrap_or(' ');
 
-                // step 2: Get the separate parts to include in our final replacement,
-                // such as the comment token, indentation and newlines
-                let char_at_cursor = contents.get_char(cursor_pos).unwrap_or(' ');
-                let char_before_cursor = cursor_pos
-                    .checked_sub(1)
-                    .map(|pos| contents.char(pos))
-                    .unwrap_or(' ');
+            let current_line = text.char_to_line(pos);
+            let line_start = text.line_to_char(current_line);
 
-                let is_on_pair = auto_pairs
-                    .and_then(|pairs| pairs.get(char_before_cursor))
-                    .map_or(false, |pair| {
-                        pair.open == char_before_cursor && pair.close == char_at_cursor
-                    });
+            let mut new_text = String::new();
 
-                let cursor_line = text.line(cursor_line_number);
+            let continue_comment_token = if doc.config.load().continue_comments {
+                doc.language_config()
+                    .and_then(|config| config.comment_tokens.as_ref())
+                    .and_then(|tokens| comment::get_comment_token(text, tokens, current_line))
+            } else {
+                None
+            };
 
-                let comment_token = comment_tokens
-                    .and_then(|tokens| comment::get_comment_token(text, tokens, cursor_line_number))
-                    .filter(|_| {
-                        // Adding a newline at the beginning of
-                        // the line should not create another comment token,
-                        // but rather move the whole line
-                        let is_cursor_at_beginning = text
-                            .slice(line_start_char_pos..=cursor_pos)
-                            .first_non_whitespace_char()
-                            .map(|x| x + line_start_char_pos == cursor_pos)
-                            .unwrap_or_default();
+            let (from, to, local_offs) = if let Some(idx) =
+                text.slice(line_start..pos).last_non_whitespace_char()
+            {
+                let first_trailing_whitespace_char =
+                    (line_start as isize + idx as isize + 1 + global_offs).min(pos as isize);
+                chars_deleted += pos as isize - first_trailing_whitespace_char;
+                let line = text.line(current_line);
 
-                        should_continue_comments && !is_cursor_at_beginning
-                    });
+                let indent = match line.first_non_whitespace_char() {
+                    Some(pos) if continue_comment_token.is_some() => line.slice(..pos).to_string(),
+                    _ => indent::indent_for_newline(
+                        doc.language_config(),
+                        doc.syntax(),
+                        &doc.config.load().indent_heuristic,
+                        &doc.indent_style,
+                        doc.tab_width(),
+                        text,
+                        current_line,
+                        pos,
+                        current_line,
+                    ),
+                };
 
-                // for i in 0..100 {
-                //     if true {|}
-                // ^^^^ <- the existing indent which was already present
-                // }
-                let existing_indent = comment_token
-                    .and(cursor_line.first_non_whitespace_char())
-                    .map_or(
-                        indent::indent_for_newline(
-                            doc.language_config(),
-                            doc.syntax(),
-                            &config.indent_heuristic,
-                            &doc.indent_style,
-                            doc.tab_width(),
-                            text,
-                            cursor_line_number,
-                            cursor_pos,
-                            cursor_line_number,
-                        ),
-                        |first_non_whitespace_char| {
-                            cursor_line.slice(..first_non_whitespace_char).to_string()
-                        },
-                    );
+                // If we are between pairs (such as brackets), we want to
+                // insert an additional line which is indented one level
+                // more and place the cursor there
+                let on_auto_pair = doc
+                    .auto_pairs(cx.editor)
+                    .and_then(|pairs| pairs.get(prev))
+                    .map_or(false, |pair| pair.open == prev && pair.close == curr);
 
-                // part 3: Assemble all the parts together
-                let replacement_text = if let Some(comment_token) = comment_token {
-                    [newline, &existing_indent, comment_token, " "].concat()
-                } else if is_on_pair {
-                    // In all other cases, we want to have our cursor be after the inserted text.
-                    // However, when we are on autopairs we want to place our cursor in the middle.
-                    // See below for more info.
-                    offsets_in_all_iterations -=
-                        newline.len() as isize + existing_indent.len() as isize;
+                let local_offs = if let Some(token) = continue_comment_token {
+                    new_text.push_str(doc.line_ending.as_str());
+                    new_text.push_str(&indent);
+                    new_text.push_str(token);
+                    new_text.push(' ');
+                    new_text.chars().count()
+                } else if on_auto_pair {
+                    // line where the cursor will be
+                    let inner_indent = indent.clone() + doc.indent_style.as_str();
+                    new_text.reserve_exact(2 + indent.len() + inner_indent.len());
+                    new_text.push_str(doc.line_ending.as_str());
+                    new_text.push_str(&inner_indent);
 
-                    // If we are between pairs, we want to
-                    // insert an additional line which is indented one level
-                    // more and place the cursor there
-                    //
-                    // for instance, with cursor at |:
-                    // if true {|} + <enter> will become:
-                    // if true {
-                    //     |
-                    // ^^^^ <- extra indent, which we add
-                    // }
-                    //
-                    // We need to manually control the range because when we have is_on_pair, we do not want to place the cursor at the end of the inserted text, but rather somewhere in the middle. So we need to be able to offset individual selections from their origin
-                    [
-                        newline,
-                        &existing_indent,
-                        extra_indent,
-                        // --> cursor will be here <--
-                        newline,
-                        // In other cases all we have to do is restore the indentation, but here we also
-                        // increase it by 1 level
-                        &existing_indent,
-                    ]
-                    .concat()
+                    // line where the matching pair will be
+                    let local_offs = new_text.chars().count();
+                    new_text.push_str(doc.line_ending.as_str());
+                    new_text.push_str(&indent);
+
+                    local_offs
                 } else {
-                    [newline, &existing_indent].concat()
+                    new_text.reserve_exact(1 + indent.len());
+                    new_text.push_str(doc.line_ending.as_str());
+                    new_text.push_str(&indent);
+
+                    new_text.chars().count()
                 };
 
-                // step 4: Calculate the new ranges for each newline added.
-                // We need to factor in how many characters we've added in this iteration,
-                // as well as all the characters added in previous iterations.
-
-                // this cannot underflow as we cannot remove negative amounts of whitespace
-                let removed_whitespace_amount = cursor_pos - leading_whitespace_start;
-                // total diff for this iteration. Can be negative if the amount of whitespace
-                // we remove is more than how many chars we insert.
-                let offset_this_iteration =
-                    replacement_text.len() as isize - removed_whitespace_amount as isize;
-
-                offsets_in_all_iterations += offset_this_iteration;
-
-                // whether we are inserting or appending
-                let is_append = range.cursor(text) > range.anchor;
-
-                let (Ok(range_start), Ok(range_end)) = (
-                    (range.anchor as isize + offsets_in_all_iterations
-                        // if we are appending, our anchor will always be in the same place as when we started the append
-                        - if is_append { offset_this_iteration } else { 0 })
-                    .try_into(),
-                    (range.head as isize + offsets_in_all_iterations).try_into(),
-                ) else {
-                    // NOTE: Extremely unlikely path, as the amount of changed characters would have to exceed isize::MAX
-                    // In this hypothetical case, we just skip.
-                    offsets_in_all_iterations -= offset_this_iteration;
-                    log::error!(
-                        "Did not expect to see this many characters changed \
-                        on newline insert: {offsets_in_all_iterations}"
-                    );
-                    ranges.push(Range::new(range.from(), range.to()));
-                    return (
-                        range.from(),
-                        range.to(),
-                        Some(Tendril::from(
-                            text.slice(range.from()..=range.to()).to_string(),
-                        )),
-                    );
-                };
-
-                // the Range does not have any effect on what text is being removed / added.
-                // It only affects cursor selection positions.
-                ranges.push(Range::new(range_start, range_end));
-
-                // Step 5: Replace the range of leading whitespace with our new text
                 (
-                    leading_whitespace_start,              // from
-                    cursor_pos,                            // to
-                    Some(Tendril::from(replacement_text)), // replacement
+                    first_trailing_whitespace_char,
+                    pos,
+                    // Note that `first_trailing_whitespace_char` is at least `pos` so the
+                    // unsigned subtraction (`pos - first_trailing_whitespace_char`) cannot
+                    // underflow.
+                    local_offs as isize - (pos as isize - first_trailing_whitespace_char),
                 )
-            })
-            .with_selection(Selection::new(ranges, selection.primary_index()));
+            } else {
+                // If the current line is all whitespace, insert a line ending at the beginning of
+                // the current line. This makes the current line empty and the new line contain the
+                // indentation of the old line.
+                new_text.push_str(doc.line_ending.as_str());
+
+                (
+                    line_start as isize,
+                    line_start,
+                    new_text.chars().count() as isize,
+                )
+            };
+
+            let (range_start, range_end) = if range.cursor(text) > range.anchor {
+                // when appending, extend the range by local_offs
+                (
+                    range.anchor as isize + global_offs,
+                    (range.head as isize + local_offs) + global_offs,
+                )
+            } else {
+                // when inserting, slide the range by local_offs
+                (
+                    (range.anchor as isize + local_offs) + global_offs,
+                    (range.head as isize + local_offs) + global_offs,
+                )
+            };
+
+            const MESSAGE: &str = "Unlikely to change more than isize::MAX characters";
+
+            // TODO: range replace or extend
+            // range.replace(|range| range.is_empty(), head); -> fn extend if cond true, new head pos
+            // can be used with cx.mode to do replace or extend on most changes
+            ranges.push(Range::new(
+                range_start.try_into().expect(MESSAGE),
+                range_end.try_into().expect(MESSAGE),
+            ));
+            log::error!("{global_offs}{}{chars_deleted}", new_text.chars().count());
+            global_offs += new_text.chars().count() as isize - chars_deleted;
+
+            (from.try_into().expect(MESSAGE), to, Some(new_text.into()))
+        });
+
+        transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
 
         let (view, doc) = current!(cx.editor);
         doc.apply(&transaction, view.id);
