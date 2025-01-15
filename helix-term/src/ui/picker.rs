@@ -446,10 +446,8 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             Direction::Forward => {
                 if self.cursor == last {
                     self.cursor = 0
-                } else if self.cursor.saturating_add(amount) > last {
-                    self.cursor = last;
                 } else {
-                    self.cursor = self.cursor.saturating_add(amount);
+                    self.cursor = self.cursor.saturating_add(amount).min(last);
                 }
             }
             Direction::Backward => {
