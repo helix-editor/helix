@@ -6,8 +6,8 @@ use std::{
 };
 
 use futures_util::{future::BoxFuture, FutureExt as _};
-use helix_core as core;
 use helix_core::Transaction;
+use helix_core::{self as core, Selection};
 use helix_event::TaskHandle;
 use helix_stdx::path::{self, canonicalize, fold_home_dir, get_path_suffix};
 use helix_view::Document;
@@ -16,20 +16,22 @@ use url::Url;
 use super::item::CompletionItem;
 
 pub(crate) fn path_completion(
-    cursor: usize,
-    text: core::Rope,
+    selection: Selection,
     doc: &Document,
     handle: TaskHandle,
 ) -> Option<BoxFuture<'static, anyhow::Result<Vec<CompletionItem>>>> {
+    let text = doc.text().clone();
+    let cursor = selection.primary().cursor(text.slice(..));
+
     if !doc.path_completion_enabled() {
         return None;
     }
 
-    let cur_line = text.char_to_line(cursor);
-    let start = text.line_to_char(cur_line).max(cursor.saturating_sub(1000));
-    let line_until_cursor = text.slice(start..cursor);
+    let (dir_path, typed_file_name) = {
+        let cur_line = text.char_to_line(cursor);
+        let start = text.line_to_char(cur_line).max(cursor.saturating_sub(1000));
+        let line_until_cursor = text.slice(start..cursor);
 
-    let (dir_path, typed_file_name) =
         get_path_suffix(line_until_cursor, false).and_then(|matched_path| {
             let matched_path = Cow::from(matched_path);
             let path: Cow<_> = if matched_path.starts_with("file://") {
@@ -61,7 +63,8 @@ pub(crate) fn path_completion(
                     )
                 })
             }
-        })?;
+        })?
+    };
 
     if handle.is_canceled() {
         return None;
@@ -93,10 +96,10 @@ pub(crate) fn path_completion(
                     .map(|f| f.len())
                     .unwrap_or_default();
 
-                let transaction = Transaction::change(
-                    &text,
-                    std::iter::once((cursor - edit_diff, cursor, Some((&file_name).into()))),
-                );
+                let transaction = Transaction::change_by_selection(&text, &selection, |range| {
+                    let cursor = range.cursor(text.slice(..));
+                    (cursor - edit_diff, cursor, Some((&file_name).into()))
+                });
 
                 Some(CompletionItem::Other(core::CompletionItem {
                     kind: Cow::Borrowed(kind),
