@@ -169,7 +169,7 @@ If the `.deb` file provided on the release page uses a `libc` version higher
 than that used by your Debian, Ubuntu, or Mint system, you can build the package
 from source to match your system's dependencies.
 
-Install `cargo-deb`, the tool we use to build the `.deb`
+Install `cargo-deb`, the tool used for building the `.deb` file:
 
 ```sh
 cargo install cargo-deb
