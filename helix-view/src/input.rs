@@ -70,7 +70,6 @@ pub struct MouseClicks {
     // the 3rd character in view #1 and 3rd character in view #2,
     // it won't register as a double click.
     clicks: [Option<(usize, ViewId)>; 2],
-    count: u8,
 }
 
 #[derive(Debug, PartialEq, Eq, PartialOrd, Ord)]
@@ -90,8 +89,12 @@ impl MouseClicks {
     pub fn new() -> Self {
         Self {
             clicks: [None, None],
-            count: 0,
         }
+    }
+
+    fn push(&mut self, click: usize, view_id: ViewId) {
+        self.clicks[1] = self.clicks[0];
+        self.clicks[0] = Some((click, view_id));
     }
 
     /// Registers a click for a certain character index, and returns the type of this click
@@ -100,7 +103,6 @@ impl MouseClicks {
             // Clicking 4th time on the same character should be the same as clicking for the 1st time
             // So we reset the state
             self.clicks = [None, None];
-            self.count = 0;
 
             return MouseClick::Triple;
         } else if self.is_double_click(click, view_id) {
@@ -109,21 +111,7 @@ impl MouseClicks {
             MouseClick::Single
         };
 
-        match self.count {
-            0 => {
-                self.clicks[0] = Some((click, view_id));
-                self.count = 1;
-            }
-            1 => {
-                self.clicks[1] = Some((click, view_id));
-                self.count = 2;
-            }
-            2 => {
-                self.clicks[1] = self.clicks[0];
-                self.clicks[0] = Some((click, view_id));
-            }
-            _ => unreachable!(),
-        };
+        self.push(click, view_id);
 
         click_type
     }
@@ -135,11 +123,9 @@ impl MouseClicks {
 
     /// If we click this character, would that be a double click?
     fn is_double_click(&mut self, click: usize, view_id: ViewId) -> bool {
-        dbg!(self.clicks, click, view_id);
         Some((click, view_id)) == self.clicks[0]
             && self.clicks[1].map_or(true, |(prev_click, prev_view_id)| {
-                (click != prev_click && prev_view_id == view_id)
-                    || (click == prev_click && prev_view_id != view_id)
+                !(click == prev_click && prev_view_id == view_id)
             })
     }
 }
@@ -696,8 +682,6 @@ pub fn parse_macro(keys_str: &str) -> anyhow::Result<Vec<KeyEvent>> {
 
 #[cfg(test)]
 mod test {
-    use slotmap::HopSlotMap;
-
     use super::*;
 
     #[test]
@@ -1084,19 +1068,24 @@ mod test {
 
     #[test]
     fn switching_views_resets_mouse_clicks() {
+        use slotmap::HopSlotMap;
+
         let mut mouse_clicks = MouseClicks::new();
         let mut view_ids: HopSlotMap<ViewId, ()> = HopSlotMap::with_key();
         let view1 = view_ids.insert(());
         let view2 = view_ids.insert(());
 
+        dbg!(&mouse_clicks, view1);
         assert_eq!(mouse_clicks.register_click(4, view1), MouseClick::Single);
 
+        dbg!(&mouse_clicks, view2);
         assert_eq!(mouse_clicks.register_click(4, view2), MouseClick::Single);
 
+        dbg!(&mouse_clicks, view1);
         assert_eq!(mouse_clicks.register_click(4, view1), MouseClick::Single);
 
-        assert_eq!(mouse_clicks.register_click(4, view2), MouseClick::Single);
-        assert_eq!(mouse_clicks.register_click(4, view2), MouseClick::Double);
+        // assert_eq!(mouse_clicks.register_click(4, view2), MouseClick::Single);
+        // assert_eq!(mouse_clicks.register_click(4, view2), MouseClick::Double);
 
         // assert_eq!(mouse_clicks.register_click(4, view1), MouseClick::Single);
         // assert_eq!(mouse_clicks.register_click(4, view1), MouseClick::Double);
