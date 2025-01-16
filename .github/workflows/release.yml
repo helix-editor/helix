@@ -148,7 +148,7 @@ jobs:
         run: ${{ env.CARGO }} test --release --locked --target ${{ matrix.target }} --workspace
 
       - name: Build release binary
-        run: ${{ env.CARGO }} build --release --locked --target ${{ matrix.target }}
+        run: ${{ env.CARGO }} build --profile opt --locked --target ${{ matrix.target }}
 
       - name: Build AppImage
         shell: bash
@@ -175,7 +175,7 @@ jobs:
 
           mkdir -p "$APP.AppDir"/usr/{bin,lib/helix}
 
-          cp "target/${{ matrix.target }}/release/hx" "$APP.AppDir/usr/bin/hx"
+          cp "target/${{ matrix.target }}/opt/hx" "$APP.AppDir/usr/bin/hx"
           rm -rf runtime/grammars/sources
           cp -r runtime "$APP.AppDir/usr/lib/helix/runtime"
 
@@ -204,7 +204,7 @@ jobs:
         run: |
           cargo install cargo-deb
           mkdir -p target/release
-          cp target/${{ matrix.target }}/release/hx target/release/
+          cp target/${{ matrix.target }}/opt/hx target/release/
           cargo deb --no-build
           mkdir -p dist
           mv target/debian/*.deb dist/
@@ -214,9 +214,9 @@ jobs:
         run: |
           mkdir -p dist
           if [ "${{ matrix.os }}" = "windows-2019" ]; then
-            cp "target/${{ matrix.target }}/release/hx.exe" "dist/"
+            cp "target/${{ matrix.target }}/opt/hx.exe" "dist/"
           else
-            cp "target/${{ matrix.target }}/release/hx" "dist/"
+            cp "target/${{ matrix.target }}/opt/hx" "dist/"
           fi
           if [ -d runtime/grammars/sources ]; then
             rm -rf runtime/grammars/sources
