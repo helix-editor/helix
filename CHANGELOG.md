@@ -22,7 +22,7 @@ Packaging:
 
 # 25.01.1 (2025-01-..)
 
-checkpoint <https://github.com/helix-editor/helix/compare/9721144e03a6c4e221c86408d34ce929972a36a5...master>
+checkpoint <https://github.com/helix-editor/helix/compare/29dda1403f8072d7c82d61baa7736e75a33e823a...master>
 
 Usability improvements:
 
@@ -32,15 +32,20 @@ Fixes:
 
 * Fix blank buffer picker preview on doc with no views (917174e)
 * Fix `join_selections` behavior on tabs (#12452)
+* Fix recognition for color LSP completion hex codes for some language servers (#12501)
+* Fix offsets to selections updated by `open_below`/`open_above` (`o`/`O`) in multi-cursor scenarios (#12465)
+* Fix offsets to selections updated by `insert_newline` when trimming whitespace in multi-cursor scenarios (4bd17e5)
 
 Themes:
 
 * Update `onelight` (#12399)
 * Add cursorline color to iceberg themes (#12404)
+* Update `special`, `ui.text.directory` and `ui.virtual.wrap` in `dark_plus` (#12530)
 
 New languages:
 
 * CodeQL (#12470)
+* Gren (#12525)
 
 Updated languages and queries:
 
@@ -49,10 +54,19 @@ Updated languages and queries:
 * Update Swift highlights (#12409)
 * Highlight JSX attributes as `@attribute` (#12416)
 * Improve markdown heading highlights (#12417)
+* Add comment tokens configuration for JSONC (b26903c)
+* Highlight the never type `!` as a type in Rust (#12485)
+* Expand builtin function highlights for ECMA languages, Rust and Haskell (#12488)
+* Recognize `.clang-tidy` as YAML (#12498)
+* Update MATLAB grammar and indent queries (#12518)
+* Recognize `rockspec` as Lua (#12516)
+* Add `///` to Dart comment tokens configuration (99d33c7)
+* Update Solidity grammar and queries (#12457)
 
 Packaging:
 
 * `--version` now prints a leading zero for single-digit months, for example `25.01` (03f35af)
+* Pin the Ubuntu GitHub Actions runners used for releases to `ubuntu-22.04` (#12464)
 
 # 25.01 (2025-01-03)
 
