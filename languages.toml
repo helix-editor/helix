@@ -1666,6 +1666,18 @@ name = "markdown_inline"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-markdown", rev = "62516e8c78380e3b51d5b55727995d2c511436d8", subpath = "tree-sitter-markdown-inline" }
 
 [[language]]
+name = "djot"
+scope = "source.djot"
+injection-regex = "dj|djot"
+file-types = ["dj", "djot"]
+indent = { tab-width = 2, unit = "  " }
+block-comment-tokens = { start = "{%", end = "%}" }
+
+[[grammar]]
+name = "djot"
+source = { git = "https://github.com/treeman/tree-sitter-djot", rev = "886601b67d1f4690173a4925c214343c30704d32" }
+
+[[language]]
 name = "dart"
 scope = "source.dart"
 file-types = ["dart"]
