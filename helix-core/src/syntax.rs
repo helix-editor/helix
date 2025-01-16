@@ -36,12 +36,12 @@ use helix_loader::grammar::{get_language, load_runtime_file};
 
 pub use tree_cursor::TreeCursor;
 
-fn deserialize_regex<'de, D>(deserializer: D) -> Result<Option<Regex>, D::Error>
+fn deserialize_regex<'de, D>(deserializer: D) -> Result<Option<rope::Regex>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
     Option::<String>::deserialize(deserializer)?
-        .map(|buf| Regex::new(&buf).map_err(serde::de::Error::custom))
+        .map(|buf| rope::Regex::new(&buf).map_err(serde::de::Error::custom))
         .transpose()
 }
 
@@ -135,7 +135,7 @@ pub struct LanguageConfiguration {
 
     // content_regex
     #[serde(default, skip_serializing, deserialize_with = "deserialize_regex")]
-    pub injection_regex: Option<Regex>,
+    pub injection_regex: Option<rope::Regex>,
     // first_line_regex
     //
     #[serde(skip)]
@@ -1003,12 +1003,12 @@ impl Loader {
 
     /// Unlike language_config_for_language_id, which only returns Some for an exact id, this
     /// function will perform a regex match on the given string to find the closest language match.
-    pub fn language_config_for_name(&self, name: &str) -> Option<Arc<LanguageConfiguration>> {
+    pub fn language_config_for_name(&self, slice: RopeSlice) -> Option<Arc<LanguageConfiguration>> {
         let mut best_match_length = 0;
         let mut best_match_position = None;
         for (i, configuration) in self.language_configs.iter().enumerate() {
             if let Some(injection_regex) = &configuration.injection_regex {
-                if let Some(mat) = injection_regex.find(name) {
+                if let Some(mat) = injection_regex.find(slice.regex_input()) {
                     let length = mat.end() - mat.start();
                     if length > best_match_length {
                         best_match_position = Some(i);
@@ -1027,12 +1027,17 @@ impl Loader {
     ) -> Option<Arc<LanguageConfiguration>> {
         match capture {
             InjectionLanguageMarker::LanguageId(id) => self.language_config_for_language_id(id),
-            InjectionLanguageMarker::Name(string) => self.language_config_for_name(string),
-            InjectionLanguageMarker::Filename(file) => self.language_config_for_file_name(file),
-            InjectionLanguageMarker::Shebang(shebang) => self
-                .language_config_ids_by_shebang
-                .get(shebang)
-                .and_then(|&id| self.language_configs.get(id).cloned()),
+            InjectionLanguageMarker::Name(name) => self.language_config_for_name(*name),
+            InjectionLanguageMarker::Filename(file) => {
+                let path_str: Cow<str> = (*file).into();
+                self.language_config_for_file_name(Path::new(path_str.as_ref()))
+            }
+            InjectionLanguageMarker::Shebang(shebang) => {
+                let shebang_str: Cow<str> = (*shebang).into();
+                self.language_config_ids_by_shebang
+                    .get(shebang_str.as_ref())
+                    .and_then(|&id| self.language_configs.get(id).cloned())
+            }
         }
     }
 
@@ -2031,12 +2036,13 @@ impl HighlightConfiguration {
         for capture in query_match.captures {
             let index = Some(capture.index);
             if index == self.injection_language_capture_index {
-                let name = byte_range_to_str(capture.node.byte_range(), source);
-                injection_capture = Some(InjectionLanguageMarker::Name(name));
+                injection_capture = Some(InjectionLanguageMarker::Name(
+                    source.byte_slice(capture.node.byte_range()),
+                ));
             } else if index == self.injection_filename_capture_index {
-                let name = byte_range_to_str(capture.node.byte_range(), source);
-                let path = Path::new(name.as_ref()).to_path_buf();
-                injection_capture = Some(InjectionLanguageMarker::Filename(path.into()));
+                injection_capture = Some(InjectionLanguageMarker::Filename(
+                    source.byte_slice(capture.node.byte_range()),
+                ));
             } else if index == self.injection_shebang_capture_index {
                 let node_slice = source.byte_slice(capture.node.byte_range());
 
@@ -2055,7 +2061,7 @@ impl HighlightConfiguration {
                     .captures_iter(lines.regex_input())
                     .map(|cap| {
                         let cap = lines.byte_slice(cap.get_group(1).unwrap().range());
-                        InjectionLanguageMarker::Shebang(cap.into())
+                        InjectionLanguageMarker::Shebang(cap)
                     })
                     .next()
             } else if index == self.injection_content_capture_index {
@@ -2533,9 +2539,9 @@ pub enum InjectionLanguageMarker<'a> {
     /// looked up by finding the language config that sets an `language_id`, this variant contains
     /// text from the document being highlighted, so the text is checked against each language's
     /// `injection_regex`.
-    Name(Cow<'a, str>),
-    Filename(Cow<'a, Path>),
-    Shebang(String),
+    Name(RopeSlice<'a>),
+    Filename(RopeSlice<'a>),
+    Shebang(RopeSlice<'a>),
 }
 
 const SHEBANG: &str = r"#!\s*(?:\S*[/\\](?:env\s+(?:\-\S+\s+)*)?)?([^\s\.\d]+)";
