@@ -82,9 +82,8 @@ pub enum MouseClick {
     Triple,
 }
 
-/// Stores information about the state of the mouse clicks on specific character indexes
-///
-/// Stores the positions of the 2 most recently clicked characters
+/// A fixed-size queue of length 2, storing the most recently clicked characters
+/// as well as the views for which they were clicked.
 impl MouseClicks {
     pub fn new() -> Self {
         Self {
@@ -92,7 +91,8 @@ impl MouseClicks {
         }
     }
 
-    fn push(&mut self, click: usize, view_id: ViewId) {
+    /// Add a click to the beginning of the queue, discarding the last click
+    fn insert(&mut self, click: usize, view_id: ViewId) {
         self.clicks[1] = self.clicks[0];
         self.clicks[0] = Some((click, view_id));
     }
@@ -111,7 +111,7 @@ impl MouseClicks {
             MouseClick::Single
         };
 
-        self.push(click, view_id);
+        self.insert(click, view_id);
 
         click_type
     }
