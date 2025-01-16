@@ -1068,10 +1068,8 @@ mod test {
 
     #[test]
     fn switching_views_resets_mouse_clicks() {
-        use slotmap::HopSlotMap;
-
         let mut mouse_clicks = MouseClicks::new();
-        let mut view_ids: HopSlotMap<ViewId, ()> = HopSlotMap::with_key();
+        let mut view_ids = slotmap::HopSlotMap::with_key();
         let view1 = view_ids.insert(());
         let view2 = view_ids.insert(());
 
