@@ -172,6 +172,7 @@
 </li>
 <li><a href="#validating-the-installation">Validating the installation</a></li>
 <li><a href="#configure-the-desktop-shortcut">Configure the desktop shortcut</a></li>
+<li><a href="#building-the-debian-package">Building the Debian package</a></li>
 </ul>
 <p>Requirements:</p>
 <p>Clone the Helix GitHub repository into a directory of your choice. The
@@ -295,6 +296,35 @@ file. For example, to use <code>kitty</code>:</p>
 <pre><code class="language-sh">sed -i "s|Exec=hx %F|Exec=kitty hx %F|g" ~/.local/share/applications/Helix.desktop
 sed -i "s|Terminal=true|Terminal=false|g" ~/.local/share/applications/Helix.desktop
 </code></pre>
+<h3 id="building-the-debian-package"><a class="header" href="#building-the-debian-package">Building the Debian package</a></h3>
+<p>If the <code>.deb</code> file provided on the release page uses a <code>libc</code> version higher
+than that used by your Debian, Ubuntu, or Mint system, you can build the package
+from source to match your system's dependencies.</p>
+<p>Install <code>cargo-deb</code>, the tool used for building the <code>.deb</code> file:</p>
+<pre><code class="language-sh">cargo install cargo-deb
+</code></pre>
+<p>After cloning and entering the Helix repository as previously described,
+use the following command to build the release binary and package it into a <code>.deb</code> file in a single step.</p>
+<pre><code class="language-sh">cargo deb -- --locked
+</code></pre>
+<blockquote>
+<p>💡 This locks you into the <code>--release</code> profile. But you can also build helix in any way you like.
+As long as you leave a <code>target/release/hx</code> file, it will get packaged with <code>cargo deb --no-build</code></p>
+</blockquote>
+<blockquote>
+<p>💡 Don't worry about the repeated</p>
+<pre><code>warning: Failed to find dependency specification
+</code></pre>
+<p>warnings. Cargo deb just reports which packaged files it didn't derive dependencies for. But
+so far the dependency deriving seams very good, even if some of the grammar files are skipped.</p>
+</blockquote>
+<p>You can find the resulted <code>.deb</code> in <code>target/debian/</code>. It should contain everything it needs, including the</p>
+<ul>
+<li>completions for bash, fish, zsh</li>
+<li>.desktop file</li>
+<li>icon (though desktop environments might use their own since the name of the package is correctly <code>helix</code>)</li>
+<li>launcher to the binary with the runtime</li>
+</ul>
 
                     </main>
 
