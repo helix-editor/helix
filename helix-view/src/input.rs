@@ -127,12 +127,12 @@ impl MouseClicks {
         click_type
     }
 
-    /// Whether the character indexed was pressed 3 times in a row
+    /// If we click this character, would that be a triple click?
     fn is_triple_click(&mut self, char_idx: usize, view_id: ViewId) -> bool {
         Some((char_idx, view_id)) == self.clicks[0] && Some((char_idx, view_id)) == self.clicks[1]
     }
 
-    /// The 2 most recent clicks were on the same character, and the 1 click before that was on a different character
+    /// If we click this character, would that be a double click?
     fn is_double_click(&mut self, char_idx: usize, view_id: ViewId) -> bool {
         Some((char_idx, view_id)) == self.clicks[0] && Some((char_idx, view_id)) != self.clicks[1]
     }
