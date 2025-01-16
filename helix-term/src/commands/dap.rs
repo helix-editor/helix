@@ -52,7 +52,6 @@ fn thread_picker(
                 }),
             ];
             let picker = Picker::new(
-                None,
                 columns,
                 0,
                 threads,
@@ -257,7 +256,6 @@ pub fn dap_launch(cx: &mut Context) {
     )];
 
     cx.push_layer(Box::new(overlaid(Picker::new(
-        None,
         columns,
         0,
         templates,
@@ -731,7 +729,7 @@ pub fn dap_switch_stack_frame(cx: &mut Context) {
     let columns = [ui::PickerColumn::new("frame", |item: &StackFrame, _| {
         item.name.as_str().into() // TODO: include thread_states in the label
     })];
-    let picker = Picker::new(None, columns, 0, frames, (), move |cx, frame, _action| {
+    let picker = Picker::new(columns, 0, frames, (), move |cx, frame, _action| {
         let debugger = debugger!(cx.editor);
         // TODO: this should be simpler to find
         let pos = debugger.stack_frames[&thread_id]

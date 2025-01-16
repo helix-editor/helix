@@ -1429,7 +1429,6 @@ fn lsp_workspace_command(
                         },
                     )];
                     let picker = ui::Picker::new(
-                        Some("LSP Commands"),
                         columns,
                         0,
                         commands,
@@ -1437,7 +1436,8 @@ fn lsp_workspace_command(
                         move |cx, (ls_id, command), _action| {
                             execute_lsp_command(cx.editor, *ls_id, command.clone());
                         },
-                    );
+                    )
+                    .with_title("LSP Commands");
                     compositor.push(Box::new(overlaid(picker)))
                 },
             ));

@@ -281,7 +281,6 @@ fn diag_picker(
     }
 
     Picker::new(
-        Some("Diagnostics"),
         columns,
         primary_column,
         flat_diag,
@@ -294,6 +293,7 @@ fn diag_picker(
         },
     )
     .with_preview(move |_editor, diag| location_to_file_location(&diag.location))
+    .with_title("Diagnostics")
     .truncate_start(false)
 }
 
@@ -406,7 +406,6 @@ pub fn symbol_picker(cx: &mut Context) {
             ];
 
             let picker = Picker::new(
-                Some("Document Symbols"),
                 columns,
                 1, // name column
                 symbols,
@@ -416,6 +415,7 @@ pub fn symbol_picker(cx: &mut Context) {
                 },
             )
             .with_preview(move |_editor, item| location_to_file_location(&item.location))
+            .with_title("Document Symbols")
             .truncate_start(false);
 
             compositor.push(Box::new(overlaid(picker)))
@@ -518,7 +518,6 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
     ];
 
     let picker = Picker::new(
-        Some("Workspace Symbols"),
         columns,
         1, // name column
         [],
@@ -529,6 +528,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
     )
     .with_preview(|_editor, item| location_to_file_location(&item.location))
     .with_dynamic_query(get_symbols, None)
+    .with_title("Workspace Symbols")
     .truncate_start(false);
 
     cx.push_layer(Box::new(overlaid(picker)));
@@ -884,17 +884,11 @@ fn goto_impl(
                 },
             )];
 
-            let picker = Picker::new(
-                Some(title),
-                columns,
-                0,
-                locations,
-                cwdir,
-                move |cx, location, action| {
-                    jump_to_location(cx.editor, location, offset_encoding, action)
-                },
-            )
-            .with_preview(move |_editor, location| location_to_file_location(location));
+            let picker = Picker::new(columns, 0, locations, cwdir, move |cx, location, action| {
+                jump_to_location(cx.editor, location, offset_encoding, action)
+            })
+            .with_preview(move |_editor, location| location_to_file_location(location))
+            .with_title(title);
             compositor.push(Box::new(overlaid(picker)));
         }
     }

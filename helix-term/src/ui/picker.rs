@@ -297,7 +297,6 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
     }
 
     pub fn new<C, O, F>(
-        title: Option<&str>,
         columns: C,
         primary_column: usize,
         options: O,
@@ -323,7 +322,6 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             inject_nucleo_item(&injector, &columns, item, &editor_data);
         }
         Self::with(
-            title,
             matcher,
             columns,
             primary_column,
@@ -334,14 +332,12 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
     }
 
     pub fn with_stream(
-        title: Option<&str>,
         matcher: Nucleo<T>,
         primary_column: usize,
         injector: Injector<T, D>,
         callback_fn: impl Fn(&mut Context, &T, Action) + 'static,
     ) -> Self {
         Self::with(
-            title,
             matcher,
             injector.columns,
             primary_column,
@@ -352,7 +348,6 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
     }
 
     fn with(
-        title: Option<&str>,
         matcher: Nucleo<T>,
         columns: Arc<[Column<T, D>]>,
         default_column: usize,
@@ -395,7 +390,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             file_fn: None,
             preview_highlight_handler: PreviewHighlightHandler::<T, D>::default().spawn(),
             dynamic_query_handler: None,
-            title: title.map(|title| title.into()),
+            title: None,
         }
     }
 
@@ -412,6 +407,11 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
 
     pub fn truncate_start(mut self, truncate_start: bool) -> Self {
         self.truncate_start = truncate_start;
+        self
+    }
+
+    pub fn with_title(mut self, title: &str) -> Self {
+        self.title = Some(title.to_string());
         self
     }
 
