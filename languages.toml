@@ -816,7 +816,7 @@ roots = ["tspconfig.yaml"]
 auto-format = true
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
-language-servers = ["typespec"]
+language-servers = [ "typespec" ]
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
@@ -889,7 +889,7 @@ file-types = ["py", "pyi", "py3", "pyw", "ptl", "rpy", "cpy", "ipy", "pyt", { gl
 shebangs = ["python", "uv"]
 roots = ["pyproject.toml", "setup.py", "poetry.lock", "pyrightconfig.json"]
 comment-token = "#"
-language-servers = ["ruff", "jedi", "pylsp"]
+language-servers = [ "ruff", "jedi", "pylsp" ]
 # TODO: pyls needs utf-8 offsets
 indent = { tab-width = 4, unit = "    " }
 
@@ -1466,7 +1466,7 @@ scope = "source.tsq"
 file-types = [{ glob = "queries/*.scm" }, { glob = "injections.scm" },  { glob = "highlights.scm" },  { glob = "indents.scm" },  { glob = "textobjects.scm" },  { glob = "locals.scm" },  { glob = "tags.scm" }]
 comment-token = ";"
 injection-regex = "tsq"
-language-servers = ["ts_query_ls"]
+language-servers = [ "ts_query_ls" ]
 grammar = "query"
 indent = { tab-width = 2, unit = "  " }
 
@@ -2253,7 +2253,7 @@ injection-regex = "meson"
 file-types = [{ glob = "meson.build" }, { glob = "meson.options" }, { glob = "meson_options.txt" }]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
-language-servers = ["mesonlsp"]
+language-servers = [ "mesonlsp" ]
 
 [[grammar]]
 name = "meson"
@@ -2575,7 +2575,7 @@ file-types = ["adb", "ads"]
 roots = ["alire.toml"]
 comment-token = "--"
 indent = { tab-width = 3, unit = "   " }
-language-servers = ["ada-language-server"]
+language-servers = [ "ada-language-server" ]
 
 
 [[grammar]]
@@ -3252,7 +3252,7 @@ comment-token = "//"
 block-comment-tokens = { start = "(*", end = "*)" }
 indent = { tab-width = 4, unit = "    " }
 auto-format = true
-language-servers = ["fsharp-ls"]
+language-servers = [ "fsharp-ls" ]
 
 [[grammar]]
 name = "fsharp"
@@ -3286,7 +3286,7 @@ injection-regex = "typ(st)?"
 file-types = ["typst", "typ"]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
-language-servers = ["tinymist", "typst-lsp"]
+language-servers = [ "tinymist", "typst-lsp" ]
 indent = { tab-width = 2, unit = "  " }
 
 [language.auto-pairs]
@@ -3341,7 +3341,7 @@ scope = "source.jq"
 injection-regex = "jq"
 file-types = ["jq"]
 comment-token = "#"
-language-servers = ["jq-lsp"]
+language-servers = [ "jq-lsp" ]
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
@@ -3516,7 +3516,7 @@ injection-regex = "koka"
 file-types = ["kk"]
 comment-token = "//"
 indent = { tab-width = 8, unit = "  " }
-language-servers = ["koka"]
+language-servers = [ "koka" ]
 
 [[grammar]]
 name = "koka"
@@ -3616,7 +3616,7 @@ roots = ["hyprland.conf"]
 file-types = [ { glob = "hypr/*.conf" }]
 comment-token = "#"
 grammar = "hyprlang"
-language-servers = ["hyprls"]
+language-servers = [ "hyprls" ]
 
 [[grammar]]
 name = "hyprlang"
@@ -3665,7 +3665,7 @@ grammar = "gotmpl"
 scope = "source.helm"
 roots = ["Chart.yaml"]
 comment-token = "#"
-language-servers = ["helm_ls"]
+language-servers = [ "helm_ls" ]
 file-types = [ { glob = "templates/*.yaml" }, { glob = "templates/*.yml" }, { glob = "templates/_*.tpl"}, { glob = "templates/NOTES.txt" } ]
 
 [[language]]
@@ -3676,7 +3676,7 @@ file-types = [{ glob = "{app,addon}/{components,templates}/*.hbs" }]
 block-comment-tokens = { start = "{{!", end = "}}" }
 roots = ["package.json", "ember-cli-build.js"]
 grammar = "glimmer"
-language-servers = ["ember-language-server"]
+language-servers = [ "ember-language-server" ]
 formatter = { command = "prettier", args = ['--parser', 'glimmer'] }
 
 [language.auto-pairs]
@@ -3722,7 +3722,7 @@ file-types = [
 ]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
-language-servers = ["earthlyls"]
+language-servers = [ "earthlyls" ]
 
 [[grammar]]
 name = "earthfile"
@@ -3790,7 +3790,7 @@ file-types = ["pest"]
 comment-tokens = ["//", "///", "//!"]
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 4, unit = "    " }
-language-servers = ["pest-language-server"]
+language-servers = [ "pest-language-server" ]
 
 [language.auto-pairs]
 '(' = ')'
@@ -3896,7 +3896,7 @@ roots            = ["package.json"]
 comment-tokens   = "//"
 indent           = { tab-width = 4, unit = "    " }
 auto-format      = false
-language-servers = ["circom-lsp"]
+language-servers = [ "circom-lsp" ]
 
 [[grammar]]
 name   = "circom"
@@ -3909,7 +3909,7 @@ roots = ["Snakefile", "config.yaml", "environment.yaml", "workflow/"]
 file-types = ["smk", { glob = "Snakefile" } ]
 comment-tokens = ["#", "##"]
 indent = { tab-width = 2, unit = "  " }
-language-servers = ["pylsp" ]
+language-servers = [ "pylsp"  ]
 
 [language.formatter]
 command = "snakefmt"
@@ -3935,7 +3935,7 @@ source = { git = "https://github.com/elliotfontaine/tree-sitter-cylc", rev = "30
 name = "quint"
 scope = "source.quint"
 file-types = ["qnt"]
-language-servers = ["quint-language-server"]
+language-servers = [ "quint-language-server" ]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 2, unit = "  " }
@@ -3988,7 +3988,7 @@ file-types = ["koto"]
 comment-token = "#"
 block-comment-tokens = ["#-", "-#"]
 indent = { tab-width = 2, unit = "  " }
-language-servers = ["koto-ls"]
+language-servers = [ "koto-ls" ]
 
 [[grammar]]
 name = "koto"
@@ -4002,7 +4002,7 @@ file-types = ["gpr"]
 roots = ["alire.toml"]
 comment-token = "--"
 indent = { tab-width = 3, unit = "   " }
-language-servers = ["ada-gpr-language-server"]
+language-servers = [ "ada-gpr-language-server" ]
 
 [[grammar]]
 name = "gpr"
@@ -4046,7 +4046,7 @@ block-comment-tokens = { start = "/*", end = "*/" }
 indent = { tab-width = 2, unit = "  " }
 injection-regex = "codeql"
 grammar = "ql"
-language-servers = ["codeql"]
+language-servers = [ "codeql" ]
 
 [[grammar]]
 name = "ql"
