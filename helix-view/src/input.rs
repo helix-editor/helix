@@ -61,9 +61,14 @@ pub enum MouseButton {
     Middle,
 }
 
-/// Tracks the character positions where the mouse was last clicked
+/// Tracks the character positions and views where we last saw a mouse click
 #[derive(Debug)]
 pub struct MouseClicks {
+    /// The last 2 clicks on specific characters in the editor:
+    /// (character index clicked, view id)
+    // We store the view id to ensure that if we click on
+    // the 3rd character in view #1 and 3rd character in view #2,
+    // it won't register as a double click.
     clicks: [Option<(usize, ViewId)>; 2],
     count: u8,
 }
