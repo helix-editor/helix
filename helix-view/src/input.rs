@@ -1075,20 +1075,17 @@ mod test {
         let view1 = view_ids.insert(());
         let view2 = view_ids.insert(());
 
-        dbg!(&mouse_clicks, view1);
         assert_eq!(mouse_clicks.register_click(4, view1), MouseClick::Single);
 
-        dbg!(&mouse_clicks, view2);
         assert_eq!(mouse_clicks.register_click(4, view2), MouseClick::Single);
 
-        dbg!(&mouse_clicks, view1);
         assert_eq!(mouse_clicks.register_click(4, view1), MouseClick::Single);
 
-        // assert_eq!(mouse_clicks.register_click(4, view2), MouseClick::Single);
-        // assert_eq!(mouse_clicks.register_click(4, view2), MouseClick::Double);
+        assert_eq!(mouse_clicks.register_click(4, view2), MouseClick::Single);
+        assert_eq!(mouse_clicks.register_click(4, view2), MouseClick::Double);
 
-        // assert_eq!(mouse_clicks.register_click(4, view1), MouseClick::Single);
-        // assert_eq!(mouse_clicks.register_click(4, view1), MouseClick::Double);
-        // assert_eq!(mouse_clicks.register_click(4, view1), MouseClick::Triple);
+        assert_eq!(mouse_clicks.register_click(4, view1), MouseClick::Single);
+        assert_eq!(mouse_clicks.register_click(4, view1), MouseClick::Double);
+        assert_eq!(mouse_clicks.register_click(4, view1), MouseClick::Triple);
     }
 }
