@@ -5,6 +5,7 @@ use serde::de::{self, Deserialize, Deserializer};
 use std::fmt;
 
 pub use crate::keyboard::{KeyCode, KeyModifiers, MediaKeyCode, ModifierKeyCode};
+use crate::ViewId;
 
 #[derive(Debug, PartialOrd, PartialEq, Eq, Clone, Hash)]
 pub enum Event {
@@ -63,12 +64,12 @@ pub enum MouseButton {
 /// Tracks the character positions where the mouse was last clicked
 #[derive(Debug)]
 pub struct MouseClicks {
-    clicks: [Option<usize>; 2],
+    clicks: [Option<(usize, ViewId)>; 2],
     count: u8,
 }
 
 pub enum MouseClick {
-    /// A single click
+    /// A click where the pressed character is different to the character previously pressed
     Single,
     /// A click where the same character was pressed 2 times in a row
     Double,
@@ -76,6 +77,9 @@ pub enum MouseClick {
     Triple,
 }
 
+/// Stores information about the state of the mouse clicks on specific character indexes
+///
+/// Stores the positions of the 2 most recently clicked characters
 impl MouseClicks {
     pub fn new() -> Self {
         Self {
@@ -85,13 +89,15 @@ impl MouseClicks {
     }
 
     /// Registers a click for a certain character index, and returns the type of this click
-    pub fn register_click(&mut self, char_idx: usize) -> MouseClick {
-        let click_type = if self.is_triple_click(char_idx) {
+    pub fn register_click(&mut self, char_idx: usize, view_id: ViewId) -> MouseClick {
+        let click_type = if self.is_triple_click(char_idx, view_id) {
+            // Clicking 4th time on the same character should be the same as clicking for the 1st time
+            // So we reset the state
             self.clicks = [None, None];
             self.count = 0;
 
             return MouseClick::Triple;
-        } else if self.is_double_click(char_idx) {
+        } else if self.is_double_click(char_idx, view_id) {
             MouseClick::Double
         } else {
             MouseClick::Single
@@ -99,16 +105,16 @@ impl MouseClicks {
 
         match self.count {
             0 => {
-                self.clicks[0] = Some(char_idx);
+                self.clicks[0] = Some((char_idx, view_id));
                 self.count = 1;
             }
             1 => {
-                self.clicks[1] = Some(char_idx);
+                self.clicks[1] = Some((char_idx, view_id));
                 self.count = 2;
             }
             2 => {
                 self.clicks[1] = self.clicks[0];
-                self.clicks[0] = Some(char_idx);
+                self.clicks[0] = Some((char_idx, view_id));
             }
             _ => unreachable!(),
         };
@@ -116,12 +122,14 @@ impl MouseClicks {
         click_type
     }
 
-    fn is_triple_click(&mut self, char_idx: usize) -> bool {
-        Some(char_idx) == self.clicks[0] && Some(char_idx) == self.clicks[1]
+    /// Whether the character indexed was pressed 3 times in a row
+    fn is_triple_click(&mut self, char_idx: usize, view_id: ViewId) -> bool {
+        Some((char_idx, view_id)) == self.clicks[0] && Some((char_idx, view_id)) == self.clicks[1]
     }
 
-    fn is_double_click(&mut self, char_idx: usize) -> bool {
-        Some(char_idx) == self.clicks[0] && Some(char_idx) != self.clicks[1]
+    /// The 2 most recent clicks were on the same character, and the 1 click before that was on a different character
+    fn is_double_click(&mut self, char_idx: usize, view_id: ViewId) -> bool {
+        Some((char_idx, view_id)) == self.clicks[0] && Some((char_idx, view_id)) != self.clicks[1]
     }
 }
 

@@ -1179,7 +1179,7 @@ impl EditorView {
                     let doc = doc_mut!(editor, &view!(editor, view_id).doc);
                     let text = doc.text().slice(..);
 
-                    let selection = match editor.mouse_clicks.register_click(pos) {
+                    let selection = match editor.mouse_clicks.register_click(pos, view_id) {
                         MouseClick::Single => {
                             if modifiers == KeyModifiers::ALT {
                                 let selection = doc.selection(view_id).clone();
