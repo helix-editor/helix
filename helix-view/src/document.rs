@@ -1101,14 +1101,21 @@ impl Document {
     /// configured in `languages.toml`, with a fallback to tabs if it isn't specified. Line ending
     /// is likewise auto-detected, and will remain unchanged if no line endings were detected.
     pub fn detect_indent_and_line_ending(&mut self, modeline: &Modeline) {
-        self.indent_style = modeline
-            .indent_style()
-            .or_else(|| auto_detect_indent_style(&self.text))
-            .unwrap_or_else(|| {
+        let detect_indent_style = || {
+            auto_detect_indent_style(&self.text).unwrap_or_else(|| {
                 self.language_config()
                     .and_then(|config| config.indent.as_ref())
                     .map_or(DEFAULT_INDENT, |config| IndentStyle::from_str(&config.unit))
-            });
+            })
+        };
+        self.indent_style = match modeline.indent_style() {
+            Some(IndentStyle::Spaces(0)) => match detect_indent_style() {
+                IndentStyle::Tabs => IndentStyle::Spaces(self.tab_width().try_into().unwrap_or(4)),
+                IndentStyle::Spaces(n) => IndentStyle::Spaces(n),
+            },
+            Some(style) => style,
+            None => detect_indent_style(),
+        };
         if let Some(line_ending) = modeline
             .line_ending()
             .or_else(|| auto_detect_line_ending(&self.text))
