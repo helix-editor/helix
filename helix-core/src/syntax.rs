@@ -1026,6 +1026,7 @@ impl Loader {
         capture: &InjectionLanguageMarker,
     ) -> Option<Arc<LanguageConfiguration>> {
         match capture {
+            InjectionLanguageMarker::LanguageId(id) => self.language_config_for_language_id(id),
             InjectionLanguageMarker::Name(string) => self.language_config_for_name(string),
             InjectionLanguageMarker::Filename(file) => self.language_config_for_file_name(file),
             InjectionLanguageMarker::Shebang(shebang) => self
@@ -2085,8 +2086,8 @@ impl HighlightConfiguration {
                 "injection.language" if injection_capture.is_none() => {
                     injection_capture = prop
                         .value
-                        .as_ref()
-                        .map(|s| InjectionLanguageMarker::Name(s.as_ref().into()));
+                        .as_deref()
+                        .map(InjectionLanguageMarker::LanguageId);
                 }
 
                 // By default, injections do not include the *children* of an
@@ -2521,6 +2522,17 @@ impl Iterator for HighlightIter<'_> {
 
 #[derive(Debug, Clone)]
 pub enum InjectionLanguageMarker<'a> {
+    /// The language is specified by `LanguageConfiguration`'s `language_id` field.
+    ///
+    /// This marker is used when a pattern sets the `injection.language` property, for example
+    /// `(#set! injection.language "rust")`.
+    LanguageId(&'a str),
+    /// The language is specified in the document and captured by `@injection.language`.
+    ///
+    /// This is used for markdown code fences for example. While the `LanguageId` variant can be
+    /// looked up by finding the language config that sets an `language_id`, this variant contains
+    /// text from the document being highlighted, so the text is checked against each language's
+    /// `injection_regex`.
     Name(Cow<'a, str>),
     Filename(Cow<'a, Path>),
     Shebang(String),
