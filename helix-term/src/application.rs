@@ -1,6 +1,6 @@
 use arc_swap::{access::Map, ArcSwap};
 use futures_util::Stream;
-use helix_core::{diagnostic::Severity, pos_at_coords, syntax, Selection};
+use helix_core::{diagnostic::Severity, modeline::Modeline, pos_at_coords, syntax, Selection};
 use helix_lsp::{
     lsp::{self, notification::Notification},
     util::lsp_range_to_range,
@@ -416,7 +416,8 @@ impl Application {
         self.syn_loader.store(Arc::new(lang_loader));
         self.editor.syn_loader = self.syn_loader.clone();
         for document in self.editor.documents.values_mut() {
-            document.detect_language(self.syn_loader.clone());
+            let modeline = Modeline::parse(document.text().slice(..));
+            document.detect_language(self.syn_loader.clone(), &modeline);
             let diagnostics = Editor::doc_diagnostics(
                 &self.editor.language_servers,
                 &self.editor.diagnostics,

@@ -42,6 +42,19 @@ impl IndentStyle {
     }
 
     #[inline]
+    pub fn from_option_str(indent: &str) -> Option<Self> {
+        match indent {
+            arg if "tabs".starts_with(&arg.to_lowercase()) => Some(IndentStyle::Tabs),
+            "0" => Some(IndentStyle::Tabs),
+            arg => arg
+                .parse::<u8>()
+                .ok()
+                .filter(|n| (1..=MAX_INDENT).contains(n))
+                .map(IndentStyle::Spaces),
+        }
+    }
+
+    #[inline]
     pub fn as_str(&self) -> &'static str {
         match *self {
             IndentStyle::Tabs => "\t",
