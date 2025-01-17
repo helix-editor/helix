@@ -51,7 +51,7 @@ macro_rules! language_server_with_feature {
         match language_server {
             Some(language_server) => language_server,
             None => {
-                $editor.set_status(format!(
+                $editor.set_error(format!(
                     "No configured language server supports {}",
                     $feature
                 ));
