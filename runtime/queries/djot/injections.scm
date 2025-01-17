@@ -1,5 +1,8 @@
-((content) @injection.content
+(comment (content) @injection.content
  (#set! injection.language "comment"))
+
+(math (content) @injection.content
+  (#set! injection.language "latex") (#set! injection.include-unnamed-children))
 
 (code_block
   (language) @injection.language
@@ -11,6 +14,6 @@
   (content) @injection.content (#set! injection.include-unnamed-children))
 
 (raw_inline
-  (content) @injection.content
+  (content) @injection.content (#set! injection.include-unnamed-children)
   (raw_inline_attribute
-    (language) @injection.language) (#set! injection.include-unnamed-children))
+    (language) @injection.language))
