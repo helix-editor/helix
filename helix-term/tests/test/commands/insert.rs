@@ -10,8 +10,8 @@ async fn change_line_above_comment() -> anyhow::Result<()> {
         "},
         ":lang rust<ret>c",
         indoc! {"\
-        #[|]#
-        // a comment
+        #[
+        |]#// a comment
         "},
     ))
     .await?;
