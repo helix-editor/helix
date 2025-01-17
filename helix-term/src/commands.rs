@@ -3475,6 +3475,7 @@ pub enum CommentContinuation {
 fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation) {
     let count = cx.count();
     enter_insert_mode(cx);
+    let config = cx.editor.config();
     let (view, doc) = current!(cx.editor);
 
     let text = doc.text().slice(..);
@@ -3483,6 +3484,14 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
     let mut offs = 0;
 
     let mut ranges = SmallVec::with_capacity(selection.len());
+
+    let continue_comment_tokens =
+        if comment_continuation == CommentContinuation::Enabled && config.continue_comments {
+            doc.language_config()
+                .and_then(|config| config.comment_tokens.as_ref())
+        } else {
+            None
+        };
 
     let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
         // the line number, where the cursor is currently
@@ -3499,15 +3508,8 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
 
         let above_next_new_line_num = next_new_line_num.saturating_sub(1);
 
-        let continue_comment_token = if comment_continuation == CommentContinuation::Enabled
-            && doc.config.load().continue_comments
-        {
-            doc.language_config()
-                .and_then(|config| config.comment_tokens.as_ref())
-                .and_then(|tokens| comment::get_comment_token(text, tokens, curr_line_num))
-        } else {
-            None
-        };
+        let continue_comment_token = continue_comment_tokens
+            .and_then(|tokens| comment::get_comment_token(text, tokens, curr_line_num));
 
         // Index to insert newlines after, as well as the char width
         // to use to compensate for those inserted newlines.
@@ -3526,7 +3528,7 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
             _ => indent::indent_for_newline(
                 doc.language_config(),
                 doc.syntax(),
-                &doc.config.load().indent_heuristic,
+                &config.indent_heuristic,
                 &doc.indent_style,
                 doc.tab_width(),
                 text,
