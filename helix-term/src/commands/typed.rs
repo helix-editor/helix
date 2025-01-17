@@ -1535,14 +1535,25 @@ fn lsp_stop(
 
     let ls_shutdown_names = doc!(cx.editor)
         .language_servers()
-        .map(|ls| ls.name().to_string());
+        .map(|ls| ls.name().to_string())
+        .collect();
 
     let ls_shutdown_names: Vec<_> = if args.is_empty() {
-        ls_shutdown_names.collect()
-    } else {
         ls_shutdown_names
-            .filter(|ls| args.contains(&Cow::Borrowed(ls)))
-            .collect()
+    } else {
+        let (valid, invalid): (Vec<_>, Vec<_>) = args
+            .iter()
+            .map(|m| m.to_string())
+            .partition(|ls| ls_shutdown_names.contains(ls));
+
+        log::error!("{valid:?}, {invalid:?}");
+
+        if !invalid.is_empty() {
+            let s = if invalid.len() == 1 { "" } else { "s" };
+            bail!("Unknown language server{s}: {}", invalid.join(", "));
+        };
+
+        valid
     };
 
     for ls_name in &ls_shutdown_names {
