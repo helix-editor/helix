@@ -3986,7 +3986,7 @@ pub mod insert {
         let line_ending = doc.line_ending.as_str();
 
         let contents = doc.text();
-        let selection = doc.selection(view.id).clone();
+        let selection = doc.selection(view.id);
         let mut ranges = SmallVec::with_capacity(selection.len());
 
         // TODO: this is annoying, but we need to do it to properly calculate pos after edits
@@ -4000,7 +4000,7 @@ pub mod insert {
             None
         };
 
-        let mut transaction = Transaction::change_by_selection(contents, &selection, |range| {
+        let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
             // Tracks the number of trailing whitespace characters deleted by this selection.
             let mut chars_deleted = 0;
             let pos = range.cursor(text);
