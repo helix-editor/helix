@@ -22,13 +22,12 @@ default-members = [
 
 [profile.release]
 lto = "thin"
-# debug = true
 
 [profile.opt]
 inherits = "release"
 lto = "fat"
 codegen-units = 1
-# strip = "debuginfo" # TODO: or strip = true
+strip = true
 opt-level = 3
 
 [profile.integration]

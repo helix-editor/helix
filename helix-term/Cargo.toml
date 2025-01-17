@@ -12,6 +12,24 @@ categories.workspace = true
 repository.workspace = true
 homepage.workspace = true
 
+[package.metadata.deb]
+# generate a .deb in target/debian/ with the command: cargo deb --no-build
+name = "helix"
+assets = [
+  { source = "target/release/hx", dest = "/usr/lib/helix/", mode = "755" },
+  { source = "../contrib/hx_launcher.sh", dest = "/usr/bin/hx", mode = "755" },
+  { source = "../runtime/*", dest = "/usr/lib/helix/runtime/", mode = "644" },
+  { source = "../runtime/grammars/*", dest = "/usr/lib/helix/runtime/grammars/", mode = "644" }, # to avoid sources/
+  { source = "../runtime/queries/**/*", dest = "/usr/lib/helix/runtime/queries/", mode = "644" },
+  { source = "../runtime/themes/**/*", dest = "/usr/lib/helix/runtime/themes/", mode = "644" },
+  { source = "../README.md", dest = "/usr/share/doc/helix/", mode = "644" },
+  { source = "../contrib/completion/hx.bash", dest = "/usr/share/bash-completion/completions/hx", mode = "644" },
+  { source = "../contrib/completion/hx.fish", dest = "/usr/share/fish/vendor_completions.d/hx.fish", mode = "644" },
+  { source = "../contrib/completion/hx.zsh", dest = "/usr/share/zsh/vendor-completions/_hx", mode = "644" },
+  { source = "../contrib/Helix.desktop", dest = "/usr/share/applications/Helix.desktop", mode = "644" },
+  { source = "../contrib/helix.png", dest = "/usr/share/icons/hicolor/256x256/apps/helix.png", mode = "644" },
+]
+
 [features]
 default = ["git"]
 unicode-lines = ["helix-core/unicode-lines", "helix-view/unicode-lines"]
