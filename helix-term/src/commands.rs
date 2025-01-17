@@ -2792,7 +2792,7 @@ fn delete_selection_impl(cx: &mut Context, op: Operation, yank: YankAction) {
         }
         Operation::Change => {
             if only_whole_lines {
-                open_above(cx);
+                open(cx, Open::Above, CommentContinuation::Disabled);
             } else {
                 enter_insert_mode(cx);
             }
@@ -3471,9 +3471,16 @@ pub enum Open {
     Above,
 }
 
-fn open(cx: &mut Context, open: Open) {
+#[derive(PartialEq)]
+pub enum CommentContinuation {
+    Enabled,
+    Disabled,
+}
+
+fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation) {
     let count = cx.count();
     enter_insert_mode(cx);
+    let config = cx.editor.config();
     let (view, doc) = current!(cx.editor);
 
     let text = doc.text().slice(..);
@@ -3482,6 +3489,14 @@ fn open(cx: &mut Context, open: Open) {
     let mut offs = 0;
 
     let mut ranges = SmallVec::with_capacity(selection.len());
+
+    let continue_comment_tokens =
+        if comment_continuation == CommentContinuation::Enabled && config.continue_comments {
+            doc.language_config()
+                .and_then(|config| config.comment_tokens.as_ref())
+        } else {
+            None
+        };
 
     let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
         // the line number, where the cursor is currently
@@ -3498,13 +3513,8 @@ fn open(cx: &mut Context, open: Open) {
 
         let above_next_new_line_num = next_new_line_num.saturating_sub(1);
 
-        let continue_comment_token = if doc.config.load().continue_comments {
-            doc.language_config()
-                .and_then(|config| config.comment_tokens.as_ref())
-                .and_then(|tokens| comment::get_comment_token(text, tokens, curr_line_num))
-        } else {
-            None
-        };
+        let continue_comment_token = continue_comment_tokens
+            .and_then(|tokens| comment::get_comment_token(text, tokens, curr_line_num));
 
         // Index to insert newlines after, as well as the char width
         // to use to compensate for those inserted newlines.
@@ -3523,7 +3533,7 @@ fn open(cx: &mut Context, open: Open) {
             _ => indent::indent_for_newline(
                 doc.language_config(),
                 doc.syntax(),
-                &doc.config.load().indent_heuristic,
+                &config.indent_heuristic,
                 &doc.indent_style,
                 doc.tab_width(),
                 text,
@@ -3586,12 +3596,12 @@ fn open(cx: &mut Context, open: Open) {
 
 // o inserts a new line after each line with a selection
 fn open_below(cx: &mut Context) {
-    open(cx, Open::Below)
+    open(cx, Open::Below, CommentContinuation::Enabled)
 }
 
 // O inserts a new line before each line with a selection
 fn open_above(cx: &mut Context) {
-    open(cx, Open::Above)
+    open(cx, Open::Above, CommentContinuation::Enabled)
 }
 
 fn normal_mode(cx: &mut Context) {

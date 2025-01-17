@@ -1,6 +1,25 @@
 use super::*;
 
 #[tokio::test(flavor = "multi_thread")]
+async fn change_line_above_comment() -> anyhow::Result<()> {
+    // <https://github.com/helix-editor/helix/issues/12570>
+    test((
+        indoc! {"\
+        #[fn main() {}
+        |]#// a comment
+        "},
+        ":lang rust<ret>c",
+        indoc! {"\
+        #[
+        |]#// a comment
+        "},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn insert_newline_many_selections() -> anyhow::Result<()> {
     test((
         indoc! {"\
