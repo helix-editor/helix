@@ -2792,7 +2792,7 @@ fn delete_selection_impl(cx: &mut Context, op: Operation, yank: YankAction) {
         }
         Operation::Change => {
             if only_whole_lines {
-                open(cx, Open::Above, CommentToken::DontAdd);
+                open(cx, Open::Above, CommentContinuation::Disabled);
             } else {
                 enter_insert_mode(cx);
             }
@@ -3467,12 +3467,12 @@ pub enum Open {
 }
 
 #[derive(PartialEq)]
-pub enum CommentToken {
-    Add,
-    DontAdd,
+pub enum CommentContinuation {
+    Enabled,
+    Disabled,
 }
 
-fn open(cx: &mut Context, open: Open, comment_token: CommentToken) {
+fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation) {
     let count = cx.count();
     enter_insert_mode(cx);
     let (view, doc) = current!(cx.editor);
@@ -3499,14 +3499,15 @@ fn open(cx: &mut Context, open: Open, comment_token: CommentToken) {
 
         let above_next_new_line_num = next_new_line_num.saturating_sub(1);
 
-        let continue_comment_token =
-            if comment_token == CommentToken::Add && doc.config.load().continue_comments {
-                doc.language_config()
-                    .and_then(|config| config.comment_tokens.as_ref())
-                    .and_then(|tokens| comment::get_comment_token(text, tokens, curr_line_num))
-            } else {
-                None
-            };
+        let continue_comment_token = if comment_continuation == CommentContinuation::Enabled
+            && doc.config.load().continue_comments
+        {
+            doc.language_config()
+                .and_then(|config| config.comment_tokens.as_ref())
+                .and_then(|tokens| comment::get_comment_token(text, tokens, curr_line_num))
+        } else {
+            None
+        };
 
         // Index to insert newlines after, as well as the char width
         // to use to compensate for those inserted newlines.
@@ -3588,12 +3589,12 @@ fn open(cx: &mut Context, open: Open, comment_token: CommentToken) {
 
 // o inserts a new line after each line with a selection
 fn open_below(cx: &mut Context) {
-    open(cx, Open::Below, CommentToken::Add)
+    open(cx, Open::Below, CommentContinuation::Enabled)
 }
 
 // O inserts a new line before each line with a selection
 fn open_above(cx: &mut Context) {
-    open(cx, Open::Above, CommentToken::Add)
+    open(cx, Open::Above, CommentContinuation::Enabled)
 }
 
 fn normal_mode(cx: &mut Context) {
