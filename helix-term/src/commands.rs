@@ -3438,14 +3438,19 @@ async fn make_format_callback(
         let doc = doc_mut!(editor, &doc_id);
         let view = view_mut!(editor, view_id);
 
-        if let Ok(format) = format {
-            if doc.version() == doc_version {
-                doc.apply(&format, view.id);
-                doc.append_changes_to_history(view);
-                doc.detect_indent_and_line_ending();
-                view.ensure_cursor_in_view(doc, scrolloff);
-            } else {
-                log::info!("discarded formatting changes because the document changed");
+        match format {
+            Ok(format) => {
+                if doc.version() == doc_version {
+                    doc.apply(&format, view.id);
+                    doc.append_changes_to_history(view);
+                    doc.detect_indent_and_line_ending();
+                    view.ensure_cursor_in_view(doc, scrolloff);
+                } else {
+                    log::info!("discarded formatting changes because the document changed");
+                }
+            }
+            Err(err) => {
+                log::info!("failed to format '{}': {err}", doc.display_name());
             }
         }
 

@@ -772,6 +772,11 @@ impl Document {
                 ))
             })
         {
+            log::debug!(
+                "formatting '{}' with command '{}', args {fmt_args:?}",
+                self.display_name(),
+                fmt_cmd.display(),
+            );
             use std::process::Stdio;
             let text = self.text().clone();
 
