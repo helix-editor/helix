@@ -690,7 +690,7 @@ impl EditorView {
         let active_buffertab_center =
             (active_buffertab.width as f64 / 2.).floor() as i32 + active_buffertab.x;
 
-        let right_of_center = active_buffertab_center as i32 - viewport_center as i32;
+        let right_of_center = active_buffertab_center - viewport_center;
 
         // If the active tab falls on the right, we have to move it left by some amount.
         // For easthetics, I've chosen to have the rightmost tab not to scroll further left
@@ -727,7 +727,6 @@ impl EditorView {
                     tab.text = tab
                         .text
                         .graphemes(true)
-                        .into_iter()
                         .skip((tab.width as i32 - new_width) as usize)
                         .collect();
 
@@ -744,7 +743,7 @@ impl EditorView {
             }
 
             // Actually put the string on the screen
-            let _ = surface
+            surface
                 .set_stringn(
                     tab.x as _,
                     viewport.y,
@@ -762,11 +761,11 @@ impl EditorView {
             .unwrap_or_else(|| editor.theme.get("ui.bufferline"));
 
         if mark_underflow {
-            let _ = surface.set_string(viewport.left(), viewport.top(), " < ", markers);
+            surface.set_string(viewport.left(), viewport.top(), " < ", markers);
         }
 
         if mark_overflow {
-            let _ = surface.set_string(viewport.right() - 3, viewport.top(), " > ", markers);
+            surface.set_string(viewport.right() - 3, viewport.top(), " > ", markers);
         }
     }
 
