@@ -1526,7 +1526,7 @@ fn lsp_restart(
 
 fn lsp_stop(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1535,8 +1535,15 @@ fn lsp_stop(
 
     let ls_shutdown_names = doc!(cx.editor)
         .language_servers()
-        .map(|ls| ls.name().to_string())
-        .collect::<Vec<_>>();
+        .map(|ls| ls.name().to_string());
+
+    let ls_shutdown_names: Vec<_> = if args.is_empty() {
+        ls_shutdown_names.collect()
+    } else {
+        ls_shutdown_names
+            .filter(|ls| args.contains(&Cow::Borrowed(ls)))
+            .collect()
+    };
 
     for ls_name in &ls_shutdown_names {
         cx.editor.language_servers.stop(ls_name);
