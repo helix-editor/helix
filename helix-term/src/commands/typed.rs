@@ -1546,8 +1546,6 @@ fn lsp_stop(
             .map(|m| m.to_string())
             .partition(|ls| ls_shutdown_names.contains(ls));
 
-        log::error!("{valid:?}, {invalid:?}");
-
         if !invalid.is_empty() {
             let s = if invalid.len() == 1 { "" } else { "s" };
             bail!("Unknown language server{s}: {}", invalid.join(", "));
