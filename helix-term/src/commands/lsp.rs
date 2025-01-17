@@ -535,10 +535,6 @@ pub fn diagnostics_picker(cx: &mut Context) {
     let doc = doc!(cx.editor);
     if let Some(uri) = doc.uri() {
         if let Some(diagnostics) = cx.editor.diagnostics.get(&uri).cloned() {
-            if diagnostics.is_empty() {
-                cx.editor.set_status("No diagnostics");
-                return;
-            }
             let picker = diag_picker(
                 cx,
                 [(uri, diagnostics)].into(),
