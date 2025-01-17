@@ -339,6 +339,17 @@ pub mod completers {
         }
     }
 
+    pub fn language_servers(editor: &Editor, input: &str) -> Vec<Completion> {
+        let language_servers = doc!(editor)
+            .language_servers()
+            .map(|ls| ls.name().to_string());
+
+        fuzzy_match(input, language_servers, false)
+            .into_iter()
+            .map(|(name, _)| ((0..), Span::raw(name)))
+            .collect()
+    }
+
     pub fn setting(_editor: &Editor, input: &str) -> Vec<Completion> {
         static KEYS: Lazy<Vec<String>> = Lazy::new(|| {
             let mut keys = Vec::new();

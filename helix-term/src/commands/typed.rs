@@ -2924,9 +2924,9 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "lsp-stop",
         aliases: &[],
-        doc: "Stops the language servers that are used by the current doc",
+        doc: "Stops the given language servers, or all language servers that are used by the current file if no arguments are supplied",
         fun: lsp_stop,
-        signature: CommandSignature::none(),
+        signature: CommandSignature::all(completers::language_servers),
     },
     TypableCommand {
         name: "tree-sitter-scopes",
