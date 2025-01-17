@@ -3542,11 +3542,9 @@ fn open(cx: &mut Context, open: Open, changes: Option<Vec<String>>) {
 
         let mut add_comment_token = |text: &mut String| {
             if let Some(changes) = &changes {
-                log::error!("yay");
                 let deleted_content = changes
                     .get(i)
                     .expect("Change always deletes at least some characters");
-                log::error!("deleted_content: {deleted_content}");
 
                 let token = doc
                     .language_config()
@@ -3558,38 +3556,40 @@ fn open(cx: &mut Context, open: Open, changes: Option<Vec<String>>) {
                             .filter(|token| deleted_content.trim_start().starts_with(*token))
                             .max_by_key(|token| token.len())
                     });
-                log::error!("token: {token:?}");
 
                 if let Some(token) = token {
+                    let old_len = text.len();
                     text.push_str(token);
                     text.push(' ');
                     added_comment = true;
+                    return text.len() - old_len;
                 }
             } else if let Some(token) = continue_comment_token {
+                let old_len = text.len();
                 text.push_str(token);
                 text.push(' ');
                 added_comment = true;
+                return text.len() - old_len;
             };
+
+            0
         };
 
-        if open == Open::Above && next_new_line_num == 0 {
+        let comment_len = if open == Open::Above && next_new_line_num == 0 {
             text.push_str(&indent);
-            add_comment_token(&mut text);
+            let comment_len = add_comment_token(&mut text);
             text.push_str(doc.line_ending.as_str());
+            comment_len
         } else {
             text.push_str(doc.line_ending.as_str());
             text.push_str(&indent);
-            add_comment_token(&mut text);
-        }
+            add_comment_token(&mut text)
+        };
 
         let text = text.repeat(count);
 
         // calculate new selection ranges
         let pos = offs + above_next_line_end_index + above_next_line_end_width;
-        let comment_len = continue_comment_token
-            .filter(|_| changes.is_none() || added_comment)
-            .map(|token| token.len() + 1) // `+ 1` for the extra space added
-            .unwrap_or_default();
         for i in 0..count {
             // pos                    -> beginning of reference line,
             // + (i * (1+indent_len + comment_len)) -> beginning of i'th line from pos (possibly including comment token)
