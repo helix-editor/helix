@@ -1571,7 +1571,6 @@ impl Component for EditorView {
 
         let key_width = 15u16; // for showing pending keys
         let mut status_msg_width = 0;
-
         // render status msg
         if let Some((status_msg, severity)) = &cx.editor.status_msg {
             status_msg_width = status_msg.width();

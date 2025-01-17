@@ -3473,7 +3473,7 @@ pub enum Open {
     Above,
 }
 
-fn open(cx: &mut Context, open: Open, hello: Option<Vec<String>>) {
+fn open(cx: &mut Context, open: Open, changes: Option<Vec<String>>) {
     let count = cx.count();
     enter_insert_mode(cx);
     let (view, doc) = current!(cx.editor);
@@ -3486,10 +3486,6 @@ fn open(cx: &mut Context, open: Open, hello: Option<Vec<String>>) {
     let mut ranges = SmallVec::with_capacity(selection.len());
 
     let change = |(i, range): (usize, &Range)| {
-        let deleted_content = hello.as_ref().and_then(|m| m.get(i));
-        if let Some(deleted_content) = deleted_content {
-            log::error!("{deleted_content}");
-        }
         // the line number, where the cursor is currently
         let curr_line_num = text.char_to_line(match open {
             Open::Below => graphemes::prev_grapheme_boundary(text, range.to()),
@@ -3542,13 +3538,37 @@ fn open(cx: &mut Context, open: Open, hello: Option<Vec<String>>) {
         let indent_len = indent.len();
         let mut text = String::with_capacity(1 + indent_len);
 
-        let add_comment_token = |text: &mut String| {
-            if let Some(token) = continue_comment_token {
-                if hello.is_some() {
-                } else {
+        let mut added_comment = false;
+
+        let mut add_comment_token = |text: &mut String| {
+            if let Some(changes) = &changes {
+                log::error!("yay");
+                let deleted_content = changes
+                    .get(i)
+                    .expect("Change always deletes at least some characters");
+                log::error!("deleted_content: {deleted_content}");
+
+                let token = doc
+                    .language_config()
+                    .and_then(|config| config.comment_tokens.as_ref())
+                    .inspect(|m| log::error!("comment tokens: {m:?}"))
+                    .and_then(|tokens| {
+                        tokens
+                            .iter()
+                            .filter(|token| deleted_content.trim_start().starts_with(*token))
+                            .max_by_key(|token| token.len())
+                    });
+                log::error!("token: {token:?}");
+
+                if let Some(token) = token {
                     text.push_str(token);
                     text.push(' ');
+                    added_comment = true;
                 }
+            } else if let Some(token) = continue_comment_token {
+                text.push_str(token);
+                text.push(' ');
+                added_comment = true;
             };
         };
 
@@ -3567,6 +3587,7 @@ fn open(cx: &mut Context, open: Open, hello: Option<Vec<String>>) {
         // calculate new selection ranges
         let pos = offs + above_next_line_end_index + above_next_line_end_width;
         let comment_len = continue_comment_token
+            .filter(|_| changes.is_none() || added_comment)
             .map(|token| token.len() + 1) // `+ 1` for the extra space added
             .unwrap_or_default();
         for i in 0..count {
