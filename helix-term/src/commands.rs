@@ -2780,9 +2780,16 @@ fn delete_selection_impl(cx: &mut Context, op: Operation, yank: YankAction) {
         }
     }
 
+    let text = doc.text();
+
+    let mut deleted_text = vec![];
+
     // delete the selection
-    let transaction =
-        Transaction::delete_by_selection(doc.text(), selection, |range| (range.from(), range.to()));
+    let transaction = Transaction::delete_by_selection(text, selection, |range| {
+        let cursor_line = range.cursor_line(text.slice(..));
+        deleted_text.push(text.line(cursor_line).to_string());
+        (range.from(), range.to())
+    });
     doc.apply(&transaction, view.id);
 
     match op {
@@ -2792,7 +2799,7 @@ fn delete_selection_impl(cx: &mut Context, op: Operation, yank: YankAction) {
         }
         Operation::Change => {
             if only_whole_lines {
-                open_above(cx);
+                open(cx, Open::Above, Some(deleted_text));
             } else {
                 enter_insert_mode(cx);
             }
@@ -3466,7 +3473,7 @@ pub enum Open {
     Above,
 }
 
-fn open(cx: &mut Context, open: Open) {
+fn open(cx: &mut Context, open: Open, hello: Option<Vec<String>>) {
     let count = cx.count();
     enter_insert_mode(cx);
     let (view, doc) = current!(cx.editor);
@@ -3478,7 +3485,11 @@ fn open(cx: &mut Context, open: Open) {
 
     let mut ranges = SmallVec::with_capacity(selection.len());
 
-    let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
+    let change = |(i, range): (usize, &Range)| {
+        let deleted_content = hello.as_ref().and_then(|m| m.get(i));
+        if let Some(deleted_content) = deleted_content {
+            log::error!("{deleted_content}");
+        }
         // the line number, where the cursor is currently
         let curr_line_num = text.char_to_line(match open {
             Open::Below => graphemes::prev_grapheme_boundary(text, range.to()),
@@ -3531,21 +3542,24 @@ fn open(cx: &mut Context, open: Open) {
         let indent_len = indent.len();
         let mut text = String::with_capacity(1 + indent_len);
 
+        let add_comment_token = |text: &mut String| {
+            if let Some(token) = continue_comment_token {
+                if hello.is_some() {
+                } else {
+                    text.push_str(token);
+                    text.push(' ');
+                }
+            };
+        };
+
         if open == Open::Above && next_new_line_num == 0 {
             text.push_str(&indent);
-            if let Some(token) = continue_comment_token {
-                text.push_str(token);
-                text.push(' ');
-            }
+            add_comment_token(&mut text);
             text.push_str(doc.line_ending.as_str());
         } else {
             text.push_str(doc.line_ending.as_str());
             text.push_str(&indent);
-
-            if let Some(token) = continue_comment_token {
-                text.push_str(token);
-                text.push(' ');
-            }
+            add_comment_token(&mut text);
         }
 
         let text = text.repeat(count);
@@ -3572,7 +3586,9 @@ fn open(cx: &mut Context, open: Open) {
             above_next_line_end_index,
             Some(text.into()),
         )
-    });
+    };
+
+    let mut transaction = Transaction::change(contents, selection.iter().enumerate().map(change));
 
     transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
 
@@ -3581,12 +3597,12 @@ fn open(cx: &mut Context, open: Open) {
 
 // o inserts a new line after each line with a selection
 fn open_below(cx: &mut Context) {
-    open(cx, Open::Below)
+    open(cx, Open::Below, None)
 }
 
 // O inserts a new line before each line with a selection
 fn open_above(cx: &mut Context) {
-    open(cx, Open::Above)
+    open(cx, Open::Above, None)
 }
 
 fn normal_mode(cx: &mut Context) {
