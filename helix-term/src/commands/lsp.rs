@@ -534,13 +534,23 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
 pub fn diagnostics_picker(cx: &mut Context) {
     let doc = doc!(cx.editor);
     if let Some(uri) = doc.uri() {
-        let diagnostics = cx.editor.diagnostics.get(&uri).cloned().unwrap_or_default();
-        let picker = diag_picker(
-            cx,
-            [(uri, diagnostics)].into(),
-            DiagnosticsFormat::HideSourcePath,
-        );
-        cx.push_layer(Box::new(overlaid(picker)));
+        if let Some(diagnostics) = cx.editor.diagnostics.get(&uri).cloned() {
+            if diagnostics.is_empty() {
+                cx.editor.set_status("No diagnostics")
+            }
+            let picker = diag_picker(
+                cx,
+                [(uri, diagnostics)].into(),
+                DiagnosticsFormat::HideSourcePath,
+            );
+            cx.push_layer(Box::new(overlaid(picker)));
+        } else {
+            cx.editor
+                .set_error("No configured language server supports diagnostics")
+        };
+    } else {
+        // this happens for example, when we are in a [scratch] buffer
+        cx.editor.set_error("Invalid buffer path")
     }
 }
 
