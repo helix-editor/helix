@@ -2792,7 +2792,7 @@ fn delete_selection_impl(cx: &mut Context, op: Operation, yank: YankAction) {
         }
         Operation::Change => {
             if only_whole_lines {
-                open_above(cx);
+                open(cx, Open::Above, false);
             } else {
                 enter_insert_mode(cx);
             }
@@ -3466,7 +3466,7 @@ pub enum Open {
     Above,
 }
 
-fn open(cx: &mut Context, open: Open) {
+fn open(cx: &mut Context, open: Open, add_comment_tokens: bool) {
     let count = cx.count();
     enter_insert_mode(cx);
     let (view, doc) = current!(cx.editor);
@@ -3493,7 +3493,7 @@ fn open(cx: &mut Context, open: Open) {
 
         let above_next_new_line_num = next_new_line_num.saturating_sub(1);
 
-        let continue_comment_token = if doc.config.load().continue_comments {
+        let continue_comment_token = if add_comment_tokens && doc.config.load().continue_comments {
             doc.language_config()
                 .and_then(|config| config.comment_tokens.as_ref())
                 .and_then(|tokens| comment::get_comment_token(text, tokens, curr_line_num))
@@ -3581,12 +3581,12 @@ fn open(cx: &mut Context, open: Open) {
 
 // o inserts a new line after each line with a selection
 fn open_below(cx: &mut Context) {
-    open(cx, Open::Below)
+    open(cx, Open::Below, true)
 }
 
 // O inserts a new line before each line with a selection
 fn open_above(cx: &mut Context) {
-    open(cx, Open::Above)
+    open(cx, Open::Above, true)
 }
 
 fn normal_mode(cx: &mut Context) {
