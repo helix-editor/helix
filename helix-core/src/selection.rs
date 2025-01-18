@@ -764,18 +764,27 @@ pub fn keep_or_remove_matches(
     selection: &Selection,
     regex: &rope::Regex,
     remove: bool,
-) -> Option<Selection> {
+) -> (Option<Selection>, Vec<usize>) {
+    let mut to_remove = vec![];
     let result: SmallVec<_> = selection
         .iter()
-        .filter(|range| regex.is_match(text.regex_input_at(range.from()..range.to())) ^ remove)
+        .enumerate()
+        .filter(|(i, range)| {
+            let keep = regex.is_match(text.regex_input_at(range.from()..range.to())) ^ remove;
+            if !keep {
+                to_remove.push(*i);
+            }
+            keep
+        })
+        .map(|(_, range)| range)
         .copied()
         .collect();
 
     // TODO: figure out a new primary index
     if !result.is_empty() {
-        return Some(Selection::new(result, 0));
+        return (Some(Selection::new(result, 0)), to_remove);
     }
-    None
+    (None, to_remove)
 }
 
 // TODO: support to split on capture #N instead of whole match

@@ -155,6 +155,19 @@ impl Registers {
         }
     }
 
+    pub fn remove_search_result(&mut self, idx: usize) {
+        let idx = self.search_result_count() - idx - 1;
+        for i in 0..=9 {
+            if let Some(entry) = self.inner.get_mut(&search_register_name(i)) {
+                entry.remove(idx);
+            }
+        }
+    }
+
+    pub fn search_result_count(&self) -> usize {
+        self.inner.get(&'&').map(|v| v.len()).unwrap_or(0)
+    }
+
     pub fn first<'a>(&'a self, name: char, editor: &'a Editor) -> Option<Cow<'a, str>> {
         self.read(name, editor).and_then(|mut values| values.next())
     }

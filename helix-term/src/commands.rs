@@ -4883,12 +4883,20 @@ fn keep_or_remove_selections_impl(cx: &mut Context, remove: bool) {
             }
             let text = doc.text().slice(..);
 
-            if let Some(selection) =
-                selection::keep_or_remove_matches(text, doc.selection(view.id), &regex, remove)
-            {
+            let selection = doc.selection(view.id);
+            let should_update_search_results =
+                selection.len() == cx.editor.registers.search_result_count();
+            let (selection, to_remove) =
+                selection::keep_or_remove_matches(text, selection, &regex, remove);
+            if let Some(selection) = selection {
                 doc.set_selection(view.id, selection);
             } else {
                 cx.editor.set_error("no selections remaining");
+            }
+            if should_update_search_results {
+                for idx in to_remove.into_iter().rev() {
+                    cx.editor.registers.remove_search_result(idx);
+                }
             }
         },
     )
@@ -4928,6 +4936,9 @@ fn remove_primary_selection(cx: &mut Context) {
         return;
     }
     let index = selection.primary_index();
+    if selection.len() == cx.editor.registers.search_result_count() {
+        cx.editor.registers.remove_search_result(index);
+    }
     let selection = selection.clone().remove(index);
 
     doc.set_selection(view.id, selection);
