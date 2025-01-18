@@ -2087,12 +2087,7 @@ fn sort_impl(
     let selection = doc.selection(view.id);
 
     if selection.len() == 1 {
-        let (start, end) = selection.line_ranges(text).nth(0).unwrap();
-        let single_selection_spans_multiple_lines = start != end;
-        if single_selection_spans_multiple_lines {
-            cx.editor.set_warning("Sorting a single selection does nothing. Hint: use `split_selection_on_newline` mapped to <A-s> first, and then sort");
-        }
-
+        cx.editor.set_warning("Sorting requires multiple selections. Hint: split selection first");
         return Ok(());
     }
 
