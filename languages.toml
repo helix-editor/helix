@@ -1734,7 +1734,7 @@ grammar = "yaml"
 [[language]]
 name = "git-commit"
 scope = "git.commitmsg"
-file-types = [{ glob = "COMMIT_EDITMSG" }]
+file-types = [{ glob = "COMMIT_EDITMSG" }, { glob = "MERGE_MSG" }]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 rulers = [51, 73]
