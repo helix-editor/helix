@@ -219,7 +219,7 @@
 (quotation_marks) @markup.quote
 
 ; INFO: `term` only matches on definition list items -- other list items won't be highlighted.
-(list_item (term) @type)
+(list_item (term) @constructor)
 
 [
   (ellipsis)
