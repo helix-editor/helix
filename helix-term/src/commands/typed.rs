@@ -2281,6 +2281,14 @@ fn pipe_to(
     pipe_impl(cx, args, event, &ShellBehavior::Ignore)
 }
 
+fn pipe_append(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
+    pipe_impl(cx, args, event, &ShellBehavior::PipeAppend) 
+}
+
+fn pipe_inline_append(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
+    pipe_impl(cx, args, event, &ShellBehavior::PipeInlineAppend)
+}
+
 fn pipe(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
     pipe_impl(cx, args, event, &ShellBehavior::Replace)
 }
@@ -3095,6 +3103,20 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Run shell command, appending output after each selection.",
         fun: append_output,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "pipe-inline-append", 
+        aliases: &[],
+        doc: "Pipe selection to shell command and append the output inline after cursor position",
+        fun: pipe_inline_append,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "pipe-append", 
+        aliases: &[],
+        doc: "Pipe selection to shell command and append the output after the selection",
+        fun: pipe_append,
         signature: CommandSignature::none(),
     },
     TypableCommand {
