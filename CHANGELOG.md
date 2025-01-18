@@ -20,9 +20,9 @@ Updated languages and queries:
 Packaging:
 -->
 
-# 25.01.1 (2025-01-..)
+# 25.01.1 (2025-01-19)
 
-checkpoint <https://github.com/helix-editor/helix/compare/29dda1403f8072d7c82d61baa7736e75a33e823a...master>
+checkpoint <https://github.com/helix-editor/helix/compare/2c09a35ccf28b2e69402c094c396960b86e73ec8...master>
 
 Usability improvements:
 
@@ -35,6 +35,8 @@ Fixes:
 * Fix recognition for color LSP completion hex codes for some language servers (#12501)
 * Fix offsets to selections updated by `open_below`/`open_above` (`o`/`O`) in multi-cursor scenarios (#12465)
 * Fix offsets to selections updated by `insert_newline` when trimming whitespace in multi-cursor scenarios (4bd17e5)
+* Fix panic in path completion from resolving variables like `${HOME:-$HOME}` (#12556)
+* Prevent line comment continuation when using `change_selection` (`c`) on a line above a comment (#12575)
 
 Themes:
 
@@ -62,11 +64,14 @@ Updated languages and queries:
 * Recognize `rockspec` as Lua (#12516)
 * Add `///` to Dart comment tokens configuration (99d33c7)
 * Update Solidity grammar and queries (#12457)
+* Update Spade grammar and queries (#12583)
+* Re-enable Hare fetching and building by default (#11507)
 
 Packaging:
 
 * `--version` now prints a leading zero for single-digit months, for example `25.01` (03f35af)
 * Pin the Ubuntu GitHub Actions runners used for releases to `ubuntu-22.04` (#12464)
+* Produce a Debian package (`.deb` file) in the release GitHub Actions workflow (#12453)
 
 # 25.01 (2025-01-03)
 
