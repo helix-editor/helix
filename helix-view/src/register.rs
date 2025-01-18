@@ -155,6 +155,20 @@ impl Registers {
         }
     }
 
+    pub fn insert_search_result(&mut self, idx: usize, search_results: Vec<String>) {
+        let idx = self.search_result_count() - idx;
+        let len = search_results.len();
+        for (i, value) in search_results.into_iter().enumerate() {
+            let entry = self.inner.entry(search_register_name(i)).or_default();
+            entry.insert(idx, value);
+        }
+        for i in len..=9 {
+            if let Some(entry) = self.inner.get_mut(&search_register_name(i)) {
+                entry.insert(idx, String::new());
+            }
+        }
+    }
+
     pub fn remove_search_result(&mut self, idx: usize) {
         let idx = self.search_result_count() - idx - 1;
         for i in 0..=9 {
