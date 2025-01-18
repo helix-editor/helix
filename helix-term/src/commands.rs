@@ -2012,10 +2012,11 @@ fn select_regex(cx: &mut Context) {
                 return;
             }
             let text = doc.text().slice(..);
-            if let Some(selection) =
+            if let Some((selection, captures)) =
                 selection::select_on_matches(text, doc.selection(view.id), &regex)
             {
                 doc.set_selection(view.id, selection);
+                cx.editor.registers.write_search_results(captures);
             } else {
                 cx.editor.set_error("nothing selected");
             }
