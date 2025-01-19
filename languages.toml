@@ -2828,6 +2828,8 @@ file-types = [
   "network",
   { glob = ".editorconfig" },
   { glob = ".npmrc" },
+  { glob = "ghostty/config" },
+  { glob = "hgrc" },
   { glob = "npmrc" },
   { glob = "rclone.conf" },
   "properties",
@@ -2840,7 +2842,7 @@ indent = { tab-width = 4, unit = "\t" }
 
 [[grammar]]
 name = "ini"
-source = { git = "https://github.com/justinmk/tree-sitter-ini", rev = "4d247fb876b4ae6b347687de4a179511bf67fcbc" }
+source = { git = "https://github.com/justinmk/tree-sitter-ini", rev = "1b0498a89a1a4c0a3705846699f0b0bad887dd04" }
 
 [[language]]
 name = "inko"
