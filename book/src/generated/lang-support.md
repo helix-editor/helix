@@ -236,7 +236,7 @@
 | vhs | ✓ |  |  |  |
 | vue | ✓ |  |  | `vue-language-server` |
 | wast | ✓ |  |  |  |
-| wat | ✓ |  |  |  |
+| wat | ✓ |  |  | `wat_server` |
 | webc | ✓ |  |  |  |
 | wgsl | ✓ |  |  | `wgsl_analyzer` |
 | wit | ✓ |  | ✓ |  |
