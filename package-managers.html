@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Migrating from Vim</title>
+        <title>Package Managers</title>
 
 
         <!-- Custom HTML head -->
@@ -131,7 +131,7 @@
                         <a href="https://github.com/helix-editor/helix" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
                         </a>
-                        <a href="https://github.com/helix-editor/helix/edit/master/book/src/from-vim.md" title="Suggest an edit" aria-label="Suggest an edit">
+                        <a href="https://github.com/helix-editor/helix/edit/master/book/src/package-managers.md" title="Suggest an edit" aria-label="Suggest an edit">
                             <i id="git-edit-button" class="fa fa-edit"></i>
                         </a>
 
@@ -160,27 +160,131 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="migrating-from-vim"><a class="header" href="#migrating-from-vim">Migrating from Vim</a></h1>
-<p>Helix's editing model is strongly inspired from Vim and Kakoune, and a notable
-difference from Vim (and the most striking similarity to Kakoune) is that Helix
-follows the <code>selection → action</code> model. This means that whatever you are
-going to act on (a word, a paragraph, a line, etc.) is selected first and the
-action itself (delete, change, yank, etc.) comes second. A cursor is simply a
-single width selection.</p>
-<p>See also Kakoune's <a href="https://github.com/mawww/kakoune/wiki/Migrating-from-Vim">Migrating from Vim</a> and Helix's <a href="https://github.com/helix-editor/helix/wiki/Migrating-from-Vim">Migrating from Vim</a>.</p>
+                        <h2 id="package-managers"><a class="header" href="#package-managers">Package managers</a></h2>
+<ul>
+<li><a href="#linux">Linux</a>
+<ul>
+<li><a href="#ubuntudebian">Ubuntu/Debian</a></li>
+<li><a href="#ubuntu-ppa">Ubuntu (PPA)</a></li>
+<li><a href="#fedorarhel">Fedora/RHEL</a></li>
+<li><a href="#arch-linux-extra">Arch Linux extra</a></li>
+<li><a href="#nixos">NixOS</a></li>
+<li><a href="#flatpak">Flatpak</a></li>
+<li><a href="#snap">Snap</a></li>
+<li><a href="#appimage">AppImage</a></li>
+</ul>
+</li>
+<li><a href="#macos">macOS</a>
+<ul>
+<li><a href="#homebrew-core">Homebrew Core</a></li>
+<li><a href="#macports">MacPorts</a></li>
+</ul>
+</li>
+<li><a href="#windows">Windows</a>
+<ul>
+<li><a href="#winget">Winget</a></li>
+<li><a href="#scoop">Scoop</a></li>
+<li><a href="#chocolatey">Chocolatey</a></li>
+<li><a href="#msys2">MSYS2</a></li>
+</ul>
+</li>
+</ul>
+<p><a href="https://repology.org/project/helix-editor/versions"><img src="https://repology.org/badge/vertical-allrepos/helix-editor.svg" alt="Packaging status" /></a></p>
+<h2 id="linux"><a class="header" href="#linux">Linux</a></h2>
+<p>The following third party repositories are available:</p>
+<h3 id="ubuntudebian"><a class="header" href="#ubuntudebian">Ubuntu/Debian</a></h3>
+<p>Install the Debian package from the release page.</p>
+<p>If you are running a system older than Ubuntu 22.04, Mint 21, or Debian 12, you can build the <code>.deb</code> file locally
+<a href="./building-from-source.html#building-the-debian-package">from source</a>.</p>
+<h3 id="ubuntu-ppa"><a class="header" href="#ubuntu-ppa">Ubuntu (PPA)</a></h3>
+<p>Add the <code>PPA</code> for Helix:</p>
+<pre><code class="language-sh">sudo add-apt-repository ppa:maveonair/helix-editor
+sudo apt update
+sudo apt install helix
+</code></pre>
+<h3 id="fedorarhel"><a class="header" href="#fedorarhel">Fedora/RHEL</a></h3>
+<pre><code class="language-sh">sudo dnf install helix
+</code></pre>
+<h3 id="arch-linux-extra"><a class="header" href="#arch-linux-extra">Arch Linux extra</a></h3>
+<p>Releases are available in the <code>extra</code> repository:</p>
+<pre><code class="language-sh">sudo pacman -S helix
+</code></pre>
 <blockquote>
-<p>TODO: Mention textobjects, surround, registers</p>
+<p>💡 When installed from the <code>extra</code> repository, run Helix with <code>helix</code> instead of <code>hx</code>.</p>
+<p>For example:</p>
+<pre><code class="language-sh">helix --health
+</code></pre>
+<p>to check health</p>
 </blockquote>
+<p>Additionally, a <a href="https://aur.archlinux.org/packages/helix-git/">helix-git</a> package is available
+in the AUR, which builds the master branch.</p>
+<h3 id="nixos"><a class="header" href="#nixos">NixOS</a></h3>
+<p>Helix is available in <a href="https://github.com/nixos/nixpkgs">nixpkgs</a> through the <code>helix</code> attribute,
+the unstable channel usually carries the latest release.</p>
+<p>Helix is also available as a <a href="https://wiki.nixos.org/wiki/Flakes">flake</a> in the project
+root. Use <code>nix develop</code> to spin up a reproducible development shell. Outputs are
+cached for each push to master using <a href="https://www.cachix.org/">Cachix</a>. The
+flake is configured to automatically make use of this cache assuming the user
+accepts the new settings on first use.</p>
+<p>If you are using a version of Nix without flakes enabled,
+<a href="https://docs.cachix.org/installation">install Cachix CLI</a> and use
+<code>cachix use helix</code> to configure Nix to use cached outputs when possible.</p>
+<h3 id="flatpak"><a class="header" href="#flatpak">Flatpak</a></h3>
+<p>Helix is available on <a href="https://flathub.org/en-GB/apps/com.helix_editor.Helix">Flathub</a>:</p>
+<pre><code class="language-sh">flatpak install flathub com.helix_editor.Helix
+flatpak run com.helix_editor.Helix
+</code></pre>
+<h3 id="snap"><a class="header" href="#snap">Snap</a></h3>
+<p>Helix is available on <a href="https://snapcraft.io/helix">Snapcraft</a> and can be installed with:</p>
+<pre><code class="language-sh">snap install --classic helix
+</code></pre>
+<p>This will install Helix as both <code>/snap/bin/helix</code> and <code>/snap/bin/hx</code>, so make sure <code>/snap/bin</code> is in your <code>PATH</code>.</p>
+<h3 id="appimage"><a class="header" href="#appimage">AppImage</a></h3>
+<p>Install Helix using the Linux <a href="https://appimage.org/">AppImage</a> format.
+Download the official Helix AppImage from the <a href="https://github.com/helix-editor/helix/releases/latest">latest releases</a> page.</p>
+<pre><code class="language-sh">chmod +x helix-*.AppImage # change permission for executable mode
+./helix-*.AppImage # run helix
+</code></pre>
+<p>You can optionally <a href="./building-from-source.html#configure-the-desktop-shortcut">add the <code>.desktop</code> file</a>. Helix must be installed in <code>PATH</code> with the name <code>hx</code>. For example:</p>
+<pre><code class="language-sh">mkdir -p "$HOME/.local/bin"
+mv helix-*.AppImage "$HOME/.local/bin/hx"
+</code></pre>
+<p>and make sure <code>~/.local/bin</code> is in your <code>PATH</code>.</p>
+<h2 id="macos"><a class="header" href="#macos">macOS</a></h2>
+<h3 id="homebrew-core"><a class="header" href="#homebrew-core">Homebrew Core</a></h3>
+<pre><code class="language-sh">brew install helix
+</code></pre>
+<h3 id="macports"><a class="header" href="#macports">MacPorts</a></h3>
+<pre><code class="language-sh">sudo port install helix
+</code></pre>
+<h2 id="windows"><a class="header" href="#windows">Windows</a></h2>
+<p>Install on Windows using <a href="https://learn.microsoft.com/en-us/windows/package-manager/winget/">Winget</a>, <a href="https://scoop.sh/">Scoop</a>, <a href="https://chocolatey.org/">Chocolatey</a>
+or <a href="https://msys2.org/">MSYS2</a>.</p>
+<h3 id="winget"><a class="header" href="#winget">Winget</a></h3>
+<p>Windows Package Manager winget command-line tool is by default available on Windows 11 and modern versions of Windows 10 as a part of the App Installer.
+You can get <a href="https://www.microsoft.com/p/app-installer/9nblggh4nns1#activetab=pivot:overviewtab">App Installer from the Microsoft Store</a>. If it's already installed, make sure it is updated with the latest version.</p>
+<pre><code class="language-sh">winget install Helix.Helix
+</code></pre>
+<h3 id="scoop"><a class="header" href="#scoop">Scoop</a></h3>
+<pre><code class="language-sh">scoop install helix
+</code></pre>
+<h3 id="chocolatey"><a class="header" href="#chocolatey">Chocolatey</a></h3>
+<pre><code class="language-sh">choco install helix
+</code></pre>
+<h3 id="msys2"><a class="header" href="#msys2">MSYS2</a></h3>
+<p>For 64-bit Windows 8.1 or above:</p>
+<pre><code class="language-sh">pacman -S mingw-w64-ucrt-x86_64-helix
+</code></pre>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="lang-support.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="install.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="configuration.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="building-from-source.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -190,11 +294,11 @@ single width selection.</p>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="lang-support.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="install.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="configuration.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="building-from-source.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>

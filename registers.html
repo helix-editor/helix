@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Migrating from Vim</title>
+        <title>Registers</title>
 
 
         <!-- Custom HTML head -->
@@ -131,7 +131,7 @@
                         <a href="https://github.com/helix-editor/helix" title="Git repository" aria-label="Git repository">
                             <i id="git-repository-button" class="fa fa-github"></i>
                         </a>
-                        <a href="https://github.com/helix-editor/helix/edit/master/book/src/from-vim.md" title="Suggest an edit" aria-label="Suggest an edit">
+                        <a href="https://github.com/helix-editor/helix/edit/master/book/src/registers.md" title="Suggest an edit" aria-label="Suggest an edit">
                             <i id="git-edit-button" class="fa fa-edit"></i>
                         </a>
 
@@ -160,27 +160,63 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="migrating-from-vim"><a class="header" href="#migrating-from-vim">Migrating from Vim</a></h1>
-<p>Helix's editing model is strongly inspired from Vim and Kakoune, and a notable
-difference from Vim (and the most striking similarity to Kakoune) is that Helix
-follows the <code>selection → action</code> model. This means that whatever you are
-going to act on (a word, a paragraph, a line, etc.) is selected first and the
-action itself (delete, change, yank, etc.) comes second. A cursor is simply a
-single width selection.</p>
-<p>See also Kakoune's <a href="https://github.com/mawww/kakoune/wiki/Migrating-from-Vim">Migrating from Vim</a> and Helix's <a href="https://github.com/helix-editor/helix/wiki/Migrating-from-Vim">Migrating from Vim</a>.</p>
-<blockquote>
-<p>TODO: Mention textobjects, surround, registers</p>
-</blockquote>
+                        <h2 id="registers"><a class="header" href="#registers">Registers</a></h2>
+<ul>
+<li><a href="#user-defined-registers">User-defined registers</a></li>
+<li><a href="#default-registers">Default registers</a></li>
+<li><a href="#special-registers">Special registers</a></li>
+</ul>
+<p>In Helix, registers are storage locations for text and other data, such as the
+result of a search. Registers can be used to cut, copy, and paste text, similar
+to the clipboard in other text editors. Usage is similar to Vim, with <code>"</code> being
+used to select a register.</p>
+<h3 id="user-defined-registers"><a class="header" href="#user-defined-registers">User-defined registers</a></h3>
+<p>Helix allows you to create your own named registers for storing text, for
+example:</p>
+<ul>
+<li><code>"ay</code> - Yank the current selection to register <code>a</code>.</li>
+<li><code>"op</code> - Paste the text in register <code>o</code> after the selection.</li>
+</ul>
+<p>If a register is selected before invoking a change or delete command, the selection will be stored in the register and the action will be carried out:</p>
+<ul>
+<li><code>"hc</code> - Store the selection in register <code>h</code> and then change it (delete and enter insert mode).</li>
+<li><code>"md</code> - Store the selection in register <code>m</code> and delete it.</li>
+</ul>
+<h3 id="default-registers"><a class="header" href="#default-registers">Default registers</a></h3>
+<p>Commands that use registers, like yank (<code>y</code>), use a default register if none is specified.
+These registers are used as defaults:</p>
+<div class="table-wrapper"><table><thead><tr><th>Register character</th><th>Contains</th></tr></thead><tbody>
+<tr><td><code>/</code></td><td>Last search</td></tr>
+<tr><td><code>:</code></td><td>Last executed command</td></tr>
+<tr><td><code>"</code></td><td>Last yanked text</td></tr>
+<tr><td><code>@</code></td><td>Last recorded macro</td></tr>
+</tbody></table>
+</div>
+<h3 id="special-registers"><a class="header" href="#special-registers">Special registers</a></h3>
+<p>Some registers have special behavior when read from and written to.</p>
+<div class="table-wrapper"><table><thead><tr><th>Register character</th><th>When read</th><th>When written</th></tr></thead><tbody>
+<tr><td><code>_</code></td><td>No values are returned</td><td>All values are discarded</td></tr>
+<tr><td><code>#</code></td><td>Selection indices (first selection is <code>1</code>, second is <code>2</code>, etc.)</td><td>This register is not writable</td></tr>
+<tr><td><code>.</code></td><td>Contents of the current selections</td><td>This register is not writable</td></tr>
+<tr><td><code>%</code></td><td>Name of the current file</td><td>This register is not writable</td></tr>
+<tr><td><code>+</code></td><td>Reads from the system clipboard</td><td>Joins and yanks to the system clipboard</td></tr>
+<tr><td><code>*</code></td><td>Reads from the primary clipboard</td><td>Joins and yanks to the primary clipboard</td></tr>
+</tbody></table>
+</div>
+<p>When yanking multiple selections to the clipboard registers, the selections
+are joined with newlines. Pasting from these registers will paste multiple
+selections if the clipboard was last yanked to by the Helix session. Otherwise
+the clipboard contents are pasted as one selection.</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="lang-support.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="usage.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="configuration.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="surround.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -190,11 +226,11 @@ single width selection.</p>
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="lang-support.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="usage.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="configuration.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="surround.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
