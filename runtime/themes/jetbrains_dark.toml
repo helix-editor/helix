@@ -47,6 +47,7 @@ tag = "red213"
 "ui.menu.selected" = { bg = "blue110" }
 "ui.menu.scroll" = { fg = "blue81", bg = "blue48" }
 "ui.selection" = { bg = "blue131" }
+"ui.selection.primary" = { bg = "blue173" }
 "ui.cursorline.primary" = { bg = "blue46" }
 "ui.cursorline.secondary" = { bg = "blue46" }
 "ui.cursorcolumn.primary" = { bg = "blue46" }
