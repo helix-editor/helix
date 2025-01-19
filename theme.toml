@@ -63,11 +63,13 @@ tabstop = { modifiers = ["italic"], bg = "bossanova" }
 
 "ui.virtual.indent-guide" = { fg = "comet" }
 
-"ui.selection" = { bg = "#481173" }
+"ui.selection" = { bg = "#540099" }
 "ui.selection.primary" = { bg = "#540099" }
 # TODO: namespace ui.cursor as ui.selection.cursor?
-"ui.cursor.select" = { bg = "delta" }
-"ui.cursor.insert" = { bg = "white" }
+"ui.cursor.normal" = { bg = "blueberry" }
+"ui.cursor.select" = { bg = "blueberry" }
+"ui.cursor.insert" = { bg = "blueberry" }
+"ui.cursor.primary.normal" = { bg = "delta" }
 "ui.cursor.primary.select" = { bg = "delta" }
 "ui.cursor.primary.insert" = { bg = "white" }
 "ui.cursor.match" = { fg = "#212121", bg = "#6C6999" }
@@ -112,3 +114,4 @@ honey = "#efba5d"
 apricot = "#f47868"
 lightning = "#ffcd1c"
 delta = "#6F44F0"
+blueberry = "#55339E"
