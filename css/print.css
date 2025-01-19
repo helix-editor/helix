@@ -7,8 +7,8 @@
 }
 
 #page-wrapper.page-wrapper {
-    transform: none !important;
-    margin-inline-start: 0px;
+    transform: none;
+    margin-left: 0px;
     overflow-y: initial;
 }
 
@@ -23,7 +23,11 @@
 }
 
 code {
-    direction: ltr !important;
+    background-color: #666666;
+    border-radius: 5px;
+
+    /* Force background to be printed in Chrome */
+    -webkit-print-color-adjust: exact;
 }
 
 pre > .buttons {
