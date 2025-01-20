@@ -8,7 +8,7 @@
 | awk | ✓ | ✓ |  | `awk-language-server` |
 | bash | ✓ | ✓ | ✓ | `bash-language-server` |
 | bass | ✓ |  |  | `bass` |
-| beancount | ✓ |  |  |  |
+| beancount | ✓ |  |  | `beancount-language-server` |
 | bibtex | ✓ |  |  | `texlab` |
 | bicep | ✓ |  |  | `bicep-langserver` |
 | bitbake | ✓ |  |  | `bitbake-language-server` |
