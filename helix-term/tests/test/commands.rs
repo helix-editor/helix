@@ -10,15 +10,16 @@ mod write;
 async fn after_the_final_char() -> anyhow::Result<()> {
     // <https://github.com/helix-editor/helix/issues/12609>
     test((
-        indoc! {"#[|+|]#\
-            one
+        indoc! {"\
+            #[o|]#ne
             two
             three"},
-        "*",
-        indoc! {"#[|+|]#\
+        "gej*h",
+        indoc! {"\
             one
             two
-            three"},
+            three#[
+            |]#"},
     ))
     .await?;
 

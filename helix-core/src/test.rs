@@ -12,10 +12,6 @@ use unicode_segmentation::UnicodeSegmentation;
 /// `#[` for primary selection with head after anchor followed by `|]#`.
 /// `#(` for secondary selection with head after anchor followed by `|)#`.
 ///
-/// If the test strings starts with `#[|+|]#` or `#(|+|)#` then an additional
-/// point selection is created *after* the last character. This is
-/// because Helix also allows placing a single-width selection there.
-///
 /// If the selection contains any LF or CRLF sequences, which are immediately
 /// followed by the same grapheme, then the subsequent one is removed. This is
 /// to allow representing having the cursor over the end of the line.
@@ -27,8 +23,8 @@ use unicode_segmentation::UnicodeSegmentation;
 /// use smallvec::smallvec;
 ///
 /// assert_eq!(
-///     print("#(|+|)##[a|]#b#(|c)#"),
-///     ("abc".to_owned(), Selection::new(smallvec![Range::new(0, 1), Range::new(3, 2), Range::new(3, 3)], 0))
+///     print("#[a|]#b#(|c)#"),
+///     ("abc".to_owned(), Selection::new(smallvec![Range::new(0, 1), Range::new(3, 2)], 0))
 /// );
 /// ```
 ///
@@ -40,14 +36,6 @@ use unicode_segmentation::UnicodeSegmentation;
 pub fn print(s: &str) -> (String, Selection) {
     let mut primary_idx = None;
     let mut ranges = SmallVec::new();
-
-    let (s, final_selection, final_is_primary) = if let Some(primary) = s.strip_prefix("#[|+|]#") {
-        (primary, true, true)
-    } else if let Some(non_primary) = s.strip_prefix("#(|+|)#") {
-        (non_primary, true, false)
-    } else {
-        (s, false, false)
-    };
 
     let mut iter = UnicodeSegmentation::graphemes(s, true).peekable();
     let mut left = String::with_capacity(s.len());
@@ -133,16 +121,6 @@ pub fn print(s: &str) -> (String, Selection) {
         } else {
             panic!("missing end `|{}#` {:?} {:?}", close_pair, left, s);
         }
-    }
-
-    if final_selection {
-        if final_is_primary {
-            if primary_idx.is_some() {
-                panic!("primary `#[` already appeared {:?}", left);
-            }
-            primary_idx = Some(ranges.len());
-        }
-        ranges.push(Range::point(s.len()))
     }
 
     let primary = match primary_idx {
