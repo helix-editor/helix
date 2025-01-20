@@ -67,14 +67,17 @@ pub fn print(s: &str) -> (String, Selection) {
         }
 
         // We're at the end of the string, add an extra single range if the syntax matches.
-        if iter.next_if_eq(&"+").is_some() && iter.peek().is_none() {
-            let wher = left.chars().count();
-
-            if is_primary {
-                primary_idx = Some(ranges.len())
+        if iter.next_if_eq(&"+").is_some() {
+            if iter.next_if_eq(&"\n").is_some() && iter.peek().is_none() {
+                if is_primary {
+                    primary_idx = Some(ranges.len())
+                }
+                ranges.push(Range::point(left.chars().count()));
+                break;
+            } else {
+                left.push('+');
+                continue;
             }
-            ranges.push(Range::point(wher + 1));
-            break;
         }
 
         let head_at_beg = iter.next_if_eq(&"|").is_some();
