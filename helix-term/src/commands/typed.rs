@@ -3329,7 +3329,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Loads the specified split or the default one if not name is provided.",
         fun: load_splits,
-        completer: CommandCompleter::none(),
+        completer: CommandCompleter::all(completers::splits),
         signature: Signature {
             positionals: (0, None),
             ..Signature::DEFAULT
