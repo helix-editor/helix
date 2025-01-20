@@ -45,7 +45,7 @@ tempfile = "3.15.0"
 bitflags = "2.7"
 
 [workspace.package]
-version = "25.1.0"
+version = "25.1.1"
 edition = "2021"
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
 categories = ["editor"]
