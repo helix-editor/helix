@@ -68,7 +68,11 @@ pub fn print(s: &str) -> (String, Selection) {
 
         // We're at the end of the string, add an extra single range if the syntax matches.
         if iter.next_if_eq(&"+").is_some() {
-            if iter.next_if_eq(&"\n").is_some() && iter.peek().is_none() {
+            // Check for test string ending in either \n or \r\n for Windows
+            if (iter.next_if_eq(&"\n").is_some()
+                || (iter.next_if_eq(&"\r").is_some() && iter.next_if_eq(&"\n").is_some()))
+                && iter.peek().is_none()
+            {
                 if is_primary {
                     primary_idx = Some(ranges.len())
                 }
