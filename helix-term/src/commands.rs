@@ -2271,6 +2271,9 @@ fn search_selection_detect_word_boundaries(cx: &mut Context) {
 
 fn search_selection_impl(cx: &mut Context, detect_word_boundaries: bool) {
     fn is_at_word_start(text: RopeSlice, index: usize) -> bool {
+        if index == text.len_chars() {
+            return false;
+        }
         let ch = text.char(index);
         if index == 0 {
             return char_is_word(ch);
