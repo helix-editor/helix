@@ -36,7 +36,6 @@ use unicode_segmentation::UnicodeSegmentation;
 pub fn print(s: &str) -> (String, Selection) {
     let mut primary_idx = None;
     let mut ranges = SmallVec::new();
-
     let mut iter = UnicodeSegmentation::graphemes(s, true).peekable();
     let mut left = String::with_capacity(s.len());
 
