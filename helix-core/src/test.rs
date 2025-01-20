@@ -12,6 +12,10 @@ use unicode_segmentation::UnicodeSegmentation;
 /// `#[` for primary selection with head after anchor followed by `|]#`.
 /// `#(` for secondary selection with head after anchor followed by `|)#`.
 ///
+/// If the test string ends with `#[+`, or `#(+` then an additional
+/// point selection is created *after* the last character. This is
+/// because Helix also allows placing a single-width selection there.
+///
 /// If the selection contains any LF or CRLF sequences, which are immediately
 /// followed by the same grapheme, then the subsequent one is removed. This is
 /// to allow representing having the cursor over the end of the line.
@@ -23,8 +27,8 @@ use unicode_segmentation::UnicodeSegmentation;
 /// use smallvec::smallvec;
 ///
 /// assert_eq!(
-///     print("#[a|]#b#(|c)#"),
-///     ("abc".to_owned(), Selection::new(smallvec![Range::new(0, 1), Range::new(3, 2)], 0))
+///     print("#[a|]#b#(|c)##(+"),
+///     ("abc".to_owned(), Selection::new(smallvec![Range::new(0, 1), Range::new(3, 2), Range::new(4, 4)], 0))
 /// );
 /// ```
 ///
@@ -60,6 +64,17 @@ pub fn print(s: &str) -> (String, Selection) {
 
         if is_primary && primary_idx.is_some() {
             panic!("primary `#[` already appeared {:?} {:?}", left, s);
+        }
+
+        // We're at the end of the string, add an extra single range if the syntax matches.
+        if iter.next_if_eq(&"+").is_some() && iter.peek().is_none() {
+            let wher = left.chars().count();
+
+            if is_primary {
+                primary_idx = Some(ranges.len())
+            }
+            ranges.push(Range::point(wher + 1));
+            break;
         }
 
         let head_at_beg = iter.next_if_eq(&"|").is_some();
