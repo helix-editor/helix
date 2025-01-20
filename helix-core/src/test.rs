@@ -12,7 +12,7 @@ use unicode_segmentation::UnicodeSegmentation;
 /// `#[` for primary selection with head after anchor followed by `|]#`.
 /// `#(` for secondary selection with head after anchor followed by `|)#`.
 ///
-/// If the test string ends with `#[+`, or `#(+` then an additional
+/// If the test string ends with `#[+\n`, or `#(+\n` then an additional
 /// point selection is created *after* the last character. This is
 /// because Helix also allows placing a single-width selection there.
 ///
@@ -27,8 +27,8 @@ use unicode_segmentation::UnicodeSegmentation;
 /// use smallvec::smallvec;
 ///
 /// assert_eq!(
-///     print("#[a|]#b#(|c)##(+"),
-///     ("abc".to_owned(), Selection::new(smallvec![Range::new(0, 1), Range::new(3, 2), Range::new(4, 4)], 0))
+///     print("#[a|]#b#(|c)##(+\n"),
+///     ("abc".to_owned(), Selection::new(smallvec![Range::new(0, 1), Range::new(3, 2), Range::new(3, 3)], 0))
 /// );
 /// ```
 ///
