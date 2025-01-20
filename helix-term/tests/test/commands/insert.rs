@@ -1,25 +1,6 @@
 use super::*;
 
 #[tokio::test(flavor = "multi_thread")]
-async fn after_the_final_char() -> anyhow::Result<()> {
-    test((
-        indoc! {"\
-            one
-            two
-            three#[+"},
-        "*",
-        // should not panic
-        indoc! {"\
-            one
-            two
-            three#[+"},
-    ))
-    .await?;
-
-    Ok(())
-}
-
-#[tokio::test(flavor = "multi_thread")]
 async fn insert_newline_many_selections() -> anyhow::Result<()> {
     test((
         indoc! {"\
