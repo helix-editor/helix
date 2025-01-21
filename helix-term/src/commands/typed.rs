@@ -1478,7 +1478,7 @@ fn lsp_workspace_command(
 
 fn lsp_restart(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1491,12 +1491,43 @@ fn lsp_restart(
         .language_config()
         .context("LSP not defined for the current document")?;
 
-    cx.editor.language_servers.restart(
-        config,
-        doc.path(),
-        &editor_config.workspace_lsp_roots,
-        editor_config.lsp.snippets,
-    )?;
+    let valid_ls_names: Vec<_> = doc
+        .language_servers()
+        .map(|ls| ls.name().to_string())
+        .collect();
+
+    let restarted_ls_names = if args.is_empty() {
+        cx.editor.language_servers.restart_all_servers(
+            config,
+            doc.path(),
+            &editor_config.workspace_lsp_roots,
+            editor_config.lsp.snippets,
+        )?;
+
+        valid_ls_names
+    } else {
+        let (valid, invalid): (Vec<_>, Vec<_>) = args
+            .iter()
+            .map(|m| m.to_string())
+            .partition(|ls| valid_ls_names.contains(ls));
+
+        if !invalid.is_empty() {
+            let s = if invalid.len() == 1 { "" } else { "s" };
+            bail!("Unknown language server{s}: {}", invalid.join(", "));
+        };
+
+        for server in valid.iter() {
+            cx.editor.language_servers.restart_server(
+                server,
+                config,
+                doc.path(),
+                &editor_config.workspace_lsp_roots,
+                editor_config.lsp.snippets,
+            );
+        }
+
+        valid
+    };
 
     // This collect is needed because refresh_language_server would need to re-borrow editor.
     let document_ids_to_refresh: Vec<DocumentId> = cx
@@ -1505,10 +1536,9 @@ fn lsp_restart(
         .filter_map(|doc| match doc.language_config() {
             Some(config)
                 if config.language_servers.iter().any(|ls| {
-                    config
-                        .language_servers
+                    restarted_ls_names
                         .iter()
-                        .any(|restarted_ls| restarted_ls.name == ls.name)
+                        .any(|restarted_ls| restarted_ls == &ls.name)
                 }) =>
             {
                 Some(doc.id())
@@ -2926,9 +2956,9 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "lsp-restart",
         aliases: &[],
-        doc: "Restarts the language servers used by the current doc",
+        doc: "Restarts the given language servers, or all language servers that are used by the current file if no arguments are supplied",
         fun: lsp_restart,
-        signature: CommandSignature::none(),
+        signature: CommandSignature::all(completers::language_servers),
     },
     TypableCommand {
         name: "lsp-stop",
