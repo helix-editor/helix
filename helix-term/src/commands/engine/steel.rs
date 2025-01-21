@@ -1,11 +1,11 @@
-use arc_swap::ArcSwapAny;
+use arc_swap::{ArcSwap, ArcSwapAny};
 use crossterm::event::{Event, KeyCode, KeyModifiers};
 use helix_core::{
     diagnostic::Severity,
     extensions::steel_implementations::{rope_module, SteelRopeSlice},
     find_workspace, graphemes,
     shellwords::Shellwords,
-    syntax::{AutoPairConfig, SoftWrap},
+    syntax::{self, AutoPairConfig, IndentationConfiguration, LanguageConfiguration, SoftWrap},
     Range, Selection, Tendril,
 };
 use helix_event::register_hook;
@@ -17,6 +17,7 @@ use helix_view::{
         GutterConfig, IndentGuidesConfig, LineEndingConfig, LineNumber, LspConfig, SearchConfig,
         SmartTabConfig, StatusLineConfig, TerminalConfig, WhitespaceConfig,
     },
+    events::DocumentFocusLost,
     extension::document_id_to_usize,
     input::KeyEvent,
     theme::Color,
@@ -876,10 +877,6 @@ fn languages_api(engine: &mut Engine, generate_sources: bool) {
     todo!()
 }
 
-// fn test(ctx: &mut Context) {
-//     ctx.editor.syn_loader.load()
-// }
-
 // TODO:
 // This isn't the best API since it pretty much requires deserializing
 // the whole theme model each time. While its not _horrible_, it is
@@ -1106,8 +1103,9 @@ impl super::PluginSystem for SteelScriptingEngine {
         &self,
         cx: &mut Context,
         configuration: Arc<ArcSwapAny<Arc<Config>>>,
+        language_configuration: Arc<ArcSwap<syntax::Loader>>,
     ) {
-        run_initialization_script(cx, configuration);
+        run_initialization_script(cx, configuration, language_configuration);
     }
 
     fn handle_keymap_event(
@@ -1431,15 +1429,71 @@ pub fn steel_init_file() -> PathBuf {
     preferred_config_path("init.scm")
 }
 
-#[derive(Clone)]
 struct HelixConfiguration {
     configuration: Arc<ArcSwapAny<Arc<Config>>>,
+    language_configuration: Arc<ArcSwap<helix_core::syntax::Loader>>,
+}
+
+#[derive(Clone)]
+struct IndividualLanguageConfiguration {
+    config: LanguageConfiguration,
+}
+
+impl Custom for IndividualLanguageConfiguration {}
+
+impl IndividualLanguageConfiguration {
+    pub fn set_indentation_config(&mut self, tab_width: usize, unit: String) {
+        self.config.indent = Some(IndentationConfiguration { tab_width, unit });
+    }
+
+    // Apply end of line configuration on doc open?
+    // pub fn set_end_of_line(&mut self) {
+    //     self.
+    // }
 }
 
 impl Custom for HelixConfiguration {}
+
 // impl Custom for LineNumber {}
 
 impl HelixConfiguration {
+    fn store_language_configuration(&self, language_config: syntax::Loader) {
+        self.language_configuration.store(Arc::new(language_config))
+    }
+
+    fn get_individual_language_config_for_filename(
+        &self,
+        file_name: &str,
+    ) -> Option<IndividualLanguageConfiguration> {
+        self.language_configuration
+            .load()
+            .language_config_for_file_name(std::path::Path::new(file_name))
+            .map(|config| IndividualLanguageConfiguration {
+                config: (*config).clone(),
+            })
+    }
+
+    // Update the language config - this does not immediately flush it
+    // to the actual config.
+    fn update_individual_language_config(&mut self, config: IndividualLanguageConfiguration) {
+        // TODO: Try to opportunistically load the ref counts
+        // of the inner values - if the documents haven't been opened yet, we
+        // don't need to clone the _whole_ loader.
+        let mut loader = (*(*self.language_configuration.load())).clone();
+        let config = config.config;
+
+        for lconfig in loader.language_configs_mut() {
+            if &lconfig.language_id == &config.language_id {
+                if let Some(inner) = Arc::get_mut(lconfig) {
+                    *inner = config;
+                } else {
+                    *lconfig = Arc::new(config);
+                }
+                break;
+            }
+        }
+    }
+
     fn load_config(&self) -> Config {
         (*self.configuration.load().clone()).clone()
     }
@@ -1743,7 +1797,11 @@ fn get_doc_for_global(engine: &mut Engine, ident: &str) -> Option<String> {
 
 /// Run the initialization script located at `$helix_config/init.scm`
 /// This runs the script in the global environment, and does _not_ load it as a module directly
-fn run_initialization_script(cx: &mut Context, configuration: Arc<ArcSwapAny<Arc<Config>>>) {
+fn run_initialization_script(
+    cx: &mut Context,
+    configuration: Arc<ArcSwapAny<Arc<Config>>>,
+    language_configuration: Arc<ArcSwap<syntax::Loader>>,
+) {
     log::info!("Loading init.scm...");
 
     let helix_module_path = helix_module_file();
@@ -1755,9 +1813,12 @@ fn run_initialization_script(cx: &mut Context, configuration: Arc<ArcSwapAny<Arc
         // now we can just access it and signal a refresh of the config when we need to.
         guard.update_value(
             "*helix.config*",
-            HelixConfiguration { configuration }
-                .into_steelval()
-                .unwrap(),
+            HelixConfiguration {
+                configuration,
+                language_configuration,
+            }
+            .into_steelval()
+            .unwrap(),
         );
 
         let res = guard.run_with_reference(
@@ -1903,7 +1964,6 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
     match event_kind.as_str() {
         "on-mode-switch" => {
             register_hook!(move |event: &mut OnModeSwitch<'_, '_>| {
-                // if enter_engine(|x| x.global_exists(&function_name)) {
                 if let Err(e) = enter_engine(|guard| {
                     let minimized_event = OnModeSwitchEvent {
                         old_mode: event.old_mode,
@@ -1913,8 +1973,7 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                     guard.with_mut_reference(event.cx).consume(|engine, args| {
                         let context = args[0].clone();
                         engine.update_value("*helix.cx*", context);
-
-                        let mut args = vec![minimized_event.into_steelval().unwrap()];
+                        let mut args = [minimized_event.into_steelval().unwrap()];
                         // engine.call_function_by_name_with_args(&function_name, args)
                         engine.call_function_with_args_from_mut_slice(
                             rooted.value().clone(),
@@ -1924,7 +1983,6 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                 }) {
                     event.cx.editor.set_error(e.to_string());
                 }
-                // }
 
                 Ok(())
             });
@@ -1933,17 +1991,11 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
         }
         "post-insert-char" => {
             register_hook!(move |event: &mut PostInsertChar<'_, '_>| {
-                // if enter_engine(|x| x.global_exists(&function_name)) {
                 if let Err(e) = enter_engine(|guard| {
                     guard.with_mut_reference(event.cx).consume(|engine, args| {
                         let context = args[0].clone();
                         engine.update_value("*helix.cx*", context);
-
-                        // args.push(event.c.into());
-                        // engine.call_function_by_name_with_args(&function_name, vec![event.c.into()])
-
-                        let mut args = vec![event.c.into()];
-
+                        let mut args = [event.c.into()];
                         engine.call_function_with_args_from_mut_slice(
                             rooted.value().clone(),
                             &mut args,
@@ -1952,7 +2004,6 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                 }) {
                     event.cx.editor.set_error(e.to_string());
                 }
-                // }
 
                 Ok(())
             });
@@ -1962,36 +2013,66 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
         // Register hook - on save?
         "post-command" => {
             register_hook!(move |event: &mut PostCommand<'_, '_>| {
-                // if enter_engine(|x| x.global_exists(&function_name)) {
                 if let Err(e) = enter_engine(|guard| {
                     guard.with_mut_reference(event.cx).consume(|engine, args| {
                         let context = args[0].clone();
                         engine.update_value("*helix.cx*", context);
-
-                        let mut args = vec![event.command.name().into_steelval().unwrap()];
-
+                        let mut args = [event.command.name().into_steelval().unwrap()];
                         engine.call_function_with_args_from_mut_slice(
                             rooted.value().clone(),
                             &mut args,
                         )
-
-                        // args.push(event.command.clone().into_steelval().unwrap());
-                        // engine.call_function_by_name_with_args(
-                        //     &function_name,
-                        //     // Name?
-                        //     vec![event.command.name().into_steelval().unwrap()],
-                        // )
                     })
                 }) {
                     event.cx.editor.set_error(e.to_string());
                 }
-                // }
 
                 Ok(())
             });
 
             Ok(SteelVal::Void).into()
         }
+
+        "document-focus-lost" => {
+            // TODO: Pass the information from the event in here - the doc id
+            // is probably the most helpful so that way we can look the document up
+            // and act accordingly?
+            register_hook!(move |event: &mut DocumentFocusLost<'_>| {
+                let cloned_func = rooted.value().clone();
+
+                let callback = move |editor: &mut Editor,
+                                     _compositor: &mut Compositor,
+                                     jobs: &mut job::Jobs| {
+                    let mut ctx = Context {
+                        register: None,
+                        count: None,
+                        editor,
+                        callback: Vec::new(),
+                        on_next_key_callback: None,
+                        jobs,
+                    };
+                    enter_engine(|guard| {
+                        if let Err(e) = guard
+                            .with_mut_reference::<Context, Context>(&mut ctx)
+                            .consume(move |engine, args| {
+                                let context = args[0].clone();
+                                engine.update_value("*helix.cx*", context);
+                                // TODO: Do something with this error!
+                                engine.call_function_with_args(cloned_func.clone(), Vec::new())
+                            })
+                        {
+                            present_error_inside_engine_context(&mut ctx, guard, e);
+                        }
+                    })
+                };
+                job::dispatch_blocking_jobs(callback);
+
+                Ok(())
+            });
+
+            Ok(SteelVal::Void).into()
+        }
+
         // Unimplemented!
         // "document-did-change" => {
         //     todo!()

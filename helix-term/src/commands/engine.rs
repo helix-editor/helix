@@ -1,4 +1,5 @@
-use arc_swap::ArcSwapAny;
+use arc_swap::{ArcSwap, ArcSwapAny};
+use helix_core::syntax;
 use helix_view::{document::Mode, input::KeyEvent};
 
 use std::{borrow::Cow, sync::Arc};
@@ -64,9 +65,17 @@ impl ScriptingEngine {
     pub fn run_initialization_script(
         cx: &mut Context,
         configuration: Arc<ArcSwapAny<Arc<Config>>>,
+        language_configuration: Arc<ArcSwap<syntax::Loader>>,
     ) {
         for kind in PLUGIN_PRECEDENCE {
-            manual_dispatch!(kind, run_initialization_script(cx, configuration.clone()))
+            manual_dispatch!(
+                kind,
+                run_initialization_script(
+                    cx,
+                    configuration.clone(),
+                    language_configuration.clone()
+                )
+            )
         }
     }
 
@@ -159,6 +168,7 @@ pub trait PluginSystem {
         &self,
         _cx: &mut Context,
         _configuration: Arc<ArcSwapAny<Arc<Config>>>,
+        _language_configuration: Arc<ArcSwap<syntax::Loader>>,
     ) {
     }
 

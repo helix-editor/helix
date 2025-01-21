@@ -1926,8 +1926,6 @@ impl Editor {
         // if leaving the view: mode should reset and the cursor should be
         // within view
         if prev_id != view_id {
-            log::info!("Changing focus: {:?}", view_id);
-
             // TODO: Consult map for modes to change given file type?
 
             self.enter_normal_mode();
