@@ -3088,28 +3088,28 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Run shell command, inserting output before each selection.",
         fun: insert_output,
-        signature: CommandSignature::none(),
+        signature: CommandSignature::all(completers::filename)
     },
     TypableCommand {
         name: "append-output",
         aliases: &[],
         doc: "Run shell command, appending output after each selection.",
         fun: append_output,
-        signature: CommandSignature::none(),
+        signature: CommandSignature::all(completers::filename)
     },
     TypableCommand {
         name: "pipe",
         aliases: &[],
         doc: "Pipe each selection to the shell command.",
         fun: pipe,
-        signature: CommandSignature::none(),
+        signature: CommandSignature::all(completers::filename)
     },
     TypableCommand {
         name: "pipe-to",
         aliases: &[],
         doc: "Pipe each selection to the shell command, ignoring output.",
         fun: pipe_to,
-        signature: CommandSignature::none(),
+        signature: CommandSignature::all(completers::filename)
     },
     TypableCommand {
         name: "run-shell-command",
