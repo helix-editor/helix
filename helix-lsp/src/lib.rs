@@ -659,31 +659,6 @@ impl Registry {
         Some(Ok(client))
     }
 
-    /// If this method is called, all documents that have a reference to language servers used by the language config have to refresh their language servers,
-    /// as it could be that language servers of these documents were stopped by this method.
-    /// See helix_view::editor::Editor::refresh_language_servers
-    pub fn restart_all_servers(
-        &mut self,
-        language_config: &LanguageConfiguration,
-        doc_path: Option<&std::path::PathBuf>,
-        root_dirs: &[PathBuf],
-        enable_snippets: bool,
-    ) -> Result<Vec<Arc<Client>>> {
-        language_config
-            .language_servers
-            .iter()
-            .filter_map(|server| {
-                self.restart_server(
-                    &server.name,
-                    language_config,
-                    doc_path,
-                    root_dirs,
-                    enable_snippets,
-                )
-            })
-            .collect()
-    }
-
     pub fn stop(&mut self, name: &str) {
         if let Some(clients) = self.inner_by_name.get_mut(name) {
             // Drain the clients vec so that the entry in `inner_by_name` remains

@@ -1476,6 +1476,31 @@ fn lsp_workspace_command(
     Ok(())
 }
 
+/// Returns all language servers used by the current document if no servers are supplied
+/// If servers are supplied, do a check to make sure that all of the servers exist
+fn valid_lang_servers(doc: &Document, servers: &[Cow<str>]) -> anyhow::Result<Vec<String>> {
+    let valid_ls_names = doc
+        .language_servers()
+        .map(|ls| ls.name().to_string())
+        .collect();
+
+    if servers.is_empty() {
+        Ok(valid_ls_names)
+    } else {
+        let (valid, invalid): (Vec<_>, Vec<_>) = servers
+            .iter()
+            .map(|m| m.to_string())
+            .partition(|ls| valid_ls_names.contains(ls));
+
+        if !invalid.is_empty() {
+            let s = if invalid.len() == 1 { "" } else { "s" };
+            bail!("Unknown language server{s}: {}", invalid.join(", "));
+        };
+
+        Ok(valid)
+    }
+}
+
 fn lsp_restart(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -1486,48 +1511,22 @@ fn lsp_restart(
     }
 
     let editor_config = cx.editor.config.load();
-    let (_view, doc) = current!(cx.editor);
+    let doc = doc!(cx.editor);
     let config = doc
         .language_config()
         .context("LSP not defined for the current document")?;
 
-    let valid_ls_names: Vec<_> = doc
-        .language_servers()
-        .map(|ls| ls.name().to_string())
-        .collect();
+    let ls_restart_names = valid_lang_servers(doc, args)?;
 
-    let restarted_ls_names = if args.is_empty() {
-        cx.editor.language_servers.restart_all_servers(
+    for server in ls_restart_names.iter() {
+        cx.editor.language_servers.restart_server(
+            server,
             config,
             doc.path(),
             &editor_config.workspace_lsp_roots,
             editor_config.lsp.snippets,
-        )?;
-
-        valid_ls_names
-    } else {
-        let (valid, invalid): (Vec<_>, Vec<_>) = args
-            .iter()
-            .map(|m| m.to_string())
-            .partition(|ls| valid_ls_names.contains(ls));
-
-        if !invalid.is_empty() {
-            let s = if invalid.len() == 1 { "" } else { "s" };
-            bail!("Unknown language server{s}: {}", invalid.join(", "));
-        };
-
-        for server in valid.iter() {
-            cx.editor.language_servers.restart_server(
-                server,
-                config,
-                doc.path(),
-                &editor_config.workspace_lsp_roots,
-                editor_config.lsp.snippets,
-            );
-        }
-
-        valid
-    };
+        );
+    }
 
     // This collect is needed because refresh_language_server would need to re-borrow editor.
     let document_ids_to_refresh: Vec<DocumentId> = cx
@@ -1536,7 +1535,7 @@ fn lsp_restart(
         .filter_map(|doc| match doc.language_config() {
             Some(config)
                 if config.language_servers.iter().any(|ls| {
-                    restarted_ls_names
+                    ls_restart_names
                         .iter()
                         .any(|restarted_ls| restarted_ls == &ls.name)
                 }) =>
@@ -1562,27 +1561,9 @@ fn lsp_stop(
     if event != PromptEvent::Validate {
         return Ok(());
     }
+    let doc = doc!(cx.editor);
 
-    let ls_shutdown_names = doc!(cx.editor)
-        .language_servers()
-        .map(|ls| ls.name().to_string())
-        .collect();
-
-    let ls_shutdown_names: Vec<_> = if args.is_empty() {
-        ls_shutdown_names
-    } else {
-        let (valid, invalid): (Vec<_>, Vec<_>) = args
-            .iter()
-            .map(|m| m.to_string())
-            .partition(|ls| ls_shutdown_names.contains(ls));
-
-        if !invalid.is_empty() {
-            let s = if invalid.len() == 1 { "" } else { "s" };
-            bail!("Unknown language server{s}: {}", invalid.join(", "));
-        };
-
-        valid
-    };
+    let ls_shutdown_names = valid_lang_servers(doc, args)?;
 
     for ls_name in &ls_shutdown_names {
         cx.editor.language_servers.stop(ls_name);
