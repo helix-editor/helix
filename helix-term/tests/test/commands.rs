@@ -7,6 +7,26 @@ mod movement;
 mod write;
 
 #[tokio::test(flavor = "multi_thread")]
+async fn after_the_final_char() -> anyhow::Result<()> {
+    // <https://github.com/helix-editor/helix/issues/12609>
+    test((
+        indoc! {"\
+            #[o|]#ne
+            two
+            three"},
+        "gej*h",
+        indoc! {"\
+            one
+            two
+            three#[
+            |]#"},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_selection_duplication() -> anyhow::Result<()> {
     // Forward
     test((

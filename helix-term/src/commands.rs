@@ -2271,6 +2271,12 @@ fn search_selection_detect_word_boundaries(cx: &mut Context) {
 
 fn search_selection_impl(cx: &mut Context, detect_word_boundaries: bool) {
     fn is_at_word_start(text: RopeSlice, index: usize) -> bool {
+        // This can happen when the cursor is at the last character in
+        // the document +1 (ge + j), in this case text.char(index) will panic as
+        // it will index out of bounds. See https://github.com/helix-editor/helix/issues/12609
+        if index == text.len_chars() {
+            return false;
+        }
         let ch = text.char(index);
         if index == 0 {
             return char_is_word(ch);
