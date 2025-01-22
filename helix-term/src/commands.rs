@@ -2,6 +2,7 @@ pub(crate) mod dap;
 pub(crate) mod lsp;
 pub(crate) mod typed;
 
+use crate::keymap::ReverseKeymap;
 pub use dap::*;
 use futures_util::FutureExt;
 use helix_event::status;
@@ -3247,12 +3248,17 @@ fn changed_file_picker(cx: &mut Context) {
 pub fn command_palette(cx: &mut Context) {
     let register = cx.register;
     let count = cx.count;
-
     cx.callback.push(Box::new(
         move |compositor: &mut Compositor, cx: &mut compositor::Context| {
-            let keymap = compositor.find::<ui::EditorView>().unwrap().keymaps.map()
-                [&cx.editor.mode]
-                .reverse_map();
+            let editor_view = compositor.find::<ui::EditorView>().unwrap();
+
+            // REVIEW: should this be moved outside the fn?
+            #[derive(Clone)]
+            struct CommandWithMode {
+                command: MappableCommand,
+                mode: Mode,
+                bindings: String,
+            }
 
             let commands = MappableCommand::STATIC_COMMAND_LIST.iter().cloned().chain(
                 typed::TYPABLE_COMMAND_LIST
@@ -3264,63 +3270,98 @@ pub fn command_palette(cx: &mut Context) {
                     }),
             );
 
+            let commands_with_modes: Vec<CommandWithMode> = vec![
+                (
+                    Mode::Normal,
+                    editor_view.keymaps.map()[&Mode::Normal].reverse_map(),
+                ),
+                (
+                    Mode::Select,
+                    editor_view.keymaps.map()[&Mode::Select].reverse_map(),
+                ),
+                (
+                    Mode::Insert,
+                    editor_view.keymaps.map()[&Mode::Insert].reverse_map(),
+                ),
+            ]
+            .into_iter()
+            .flat_map(|(mode, keymap)| {
+                commands.clone().filter_map(move |cmd| {
+                    keymap.get(cmd.name()).map(|bindings| {
+                        let binding_str = bindings.iter().fold(String::new(), |mut acc, bind| {
+                            if !acc.is_empty() {
+                                acc.push(' ');
+                            }
+                            for key in bind {
+                                acc.push_str(&key.key_sequence_format());
+                            }
+                            acc
+                        });
+
+                        CommandWithMode {
+                            command: cmd.clone(),
+                            mode,
+                            bindings: binding_str,
+                        }
+                    })
+                })
+            })
+            .collect();
+
             let columns = [
-                ui::PickerColumn::new("name", |item, _| match item {
-                    MappableCommand::Typable { name, .. } => format!(":{name}").into(),
-                    MappableCommand::Static { name, .. } => (*name).into(),
-                    MappableCommand::Macro { .. } => {
-                        unreachable!("macros aren't included in the command palette")
+                ui::PickerColumn::new("mode", |item: &CommandWithMode, _: &ReverseKeymap| {
+                    match item.mode {
+                        Mode::Normal => "Normal",
+                        Mode::Select => "Select",
+                        Mode::Insert => "Insert",
+                    }
+                    .into()
+                }),
+                ui::PickerColumn::new("name", |item: &CommandWithMode, _: &ReverseKeymap| {
+                    match &item.command {
+                        MappableCommand::Typable { name, .. } => format!(":{name}").into(),
+                        MappableCommand::Static { name, .. } => (*name).into(),
+                        MappableCommand::Macro { .. } => {
+                            unreachable!("macros aren't included in the command palette")
+                        }
                     }
                 }),
-                ui::PickerColumn::new(
-                    "bindings",
-                    |item: &MappableCommand, keymap: &crate::keymap::ReverseKeymap| {
-                        keymap
-                            .get(item.name())
-                            .map(|bindings| {
-                                bindings.iter().fold(String::new(), |mut acc, bind| {
-                                    if !acc.is_empty() {
-                                        acc.push(' ');
-                                    }
-                                    for key in bind {
-                                        acc.push_str(&key.key_sequence_format());
-                                    }
-                                    acc
-                                })
-                            })
-                            .unwrap_or_default()
-                            .into()
-                    },
-                ),
-                ui::PickerColumn::new("doc", |item: &MappableCommand, _| item.doc().into()),
+                ui::PickerColumn::new("bindings", |item: &CommandWithMode, _: &ReverseKeymap| {
+                    item.bindings.clone().into()
+                }),
+                ui::PickerColumn::new("doc", |item: &CommandWithMode, _: &ReverseKeymap| {
+                    item.command.doc().into()
+                }),
             ];
 
-            let picker = Picker::new(columns, 0, commands, keymap, move |cx, command, _action| {
-                let mut ctx = Context {
-                    register,
-                    count,
-                    editor: cx.editor,
-                    callback: Vec::new(),
-                    on_next_key_callback: None,
-                    jobs: cx.jobs,
-                };
-                let focus = view!(ctx.editor).id;
-
-                command.execute(&mut ctx);
-
-                if ctx.editor.tree.contains(focus) {
-                    let config = ctx.editor.config();
-                    let mode = ctx.editor.mode();
-                    let view = view_mut!(ctx.editor, focus);
-                    let doc = doc_mut!(ctx.editor, &view.doc);
-
-                    view.ensure_cursor_in_view(doc, config.scrolloff);
-
-                    if mode != Mode::Insert {
-                        doc.append_changes_to_history(view);
+            let picker = Picker::new(
+                columns,
+                0,
+                commands_with_modes,
+                editor_view.keymaps.map()[&cx.editor.mode].reverse_map(),
+                move |cx, command_with_mode: &CommandWithMode, _action| {
+                    let mut ctx = Context {
+                        register,
+                        count,
+                        editor: cx.editor,
+                        callback: Vec::new(),
+                        on_next_key_callback: None,
+                        jobs: cx.jobs,
+                    };
+                    let focus = view!(ctx.editor).id;
+                    command_with_mode.command.execute(&mut ctx);
+                    if ctx.editor.tree.contains(focus) {
+                        let config = ctx.editor.config();
+                        let mode = ctx.editor.mode();
+                        let view = view_mut!(ctx.editor, focus);
+                        let doc = doc_mut!(ctx.editor, &view.doc);
+                        view.ensure_cursor_in_view(doc, config.scrolloff);
+                        if mode != Mode::Insert {
+                            doc.append_changes_to_history(view);
+                        }
                     }
-                }
-            });
+                },
+            );
             compositor.push(Box::new(overlaid(picker)));
         },
     ));
