@@ -361,7 +361,18 @@ mod test {
                 Text(")".into()),
             ]),
             parse("match(${1:Arg1})")
-        )
+        );
+        assert_eq!(
+            Ok(vec![
+                Text("sizeof(".into()),
+                Placeholder {
+                    tabstop: 0,
+                    value: vec![Text("expression-or-type".into())],
+                },
+                Text(")".into()),
+            ]),
+            parse("sizeof(${0:expression-or-type})")
+        );
     }
 
     #[test]
