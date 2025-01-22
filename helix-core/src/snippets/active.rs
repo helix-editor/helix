@@ -10,6 +10,7 @@ use crate::snippets::render::{RenderedSnippet, Tabstop};
 use crate::snippets::TabstopIdx;
 use crate::{Assoc, ChangeSet, Selection, Transaction};
 
+#[derive(Debug)]
 pub struct ActiveSnippet {
     ranges: Vec<Range>,
     active_tabstops: HashSet<TabstopIdx>,
@@ -38,7 +39,15 @@ impl ActiveSnippet {
             active_tabstops: HashSet::new(),
             current_tabstop: TabstopIdx(0),
         };
-        (snippet.tabstops.len() != 1).then_some(snippet)
+        (!snippet.is_empty()).then_some(snippet)
+    }
+
+    /// Checks whether a snippet has only a `$0` tabstop.
+    ///
+    /// When a snippet only has the `$0` tabstop (with no placeholder), it doesn't need any
+    /// interactivity: there's no need to jump between tabstops or replace placeholders.
+    fn is_empty(&self) -> bool {
+        self.tabstops.len() == 1 && !self.tabstops[0].has_placeholder()
     }
 
     pub fn is_valid(&self, new_selection: &Selection) -> bool {
@@ -251,5 +260,20 @@ mod tests {
         assert!(edit.apply(&mut doc));
         snippet.map(edit.changes());
         assert!(!snippet.is_valid(&Selection::point(4)))
+    }
+
+    #[test]
+    fn tabstop_zero_with_placeholder() {
+        let snippet = Snippet::parse("sizeof(${0:expression-or-type})").unwrap();
+        let mut doc = Rope::from("\n");
+        let (transaction, _, snippet) = snippet.render(
+            &doc,
+            &Selection::point(0),
+            |_| (0, 0),
+            &mut SnippetRenderCtx::test_ctx(),
+        );
+        assert!(transaction.apply(&mut doc));
+        assert_eq!(doc, "sizeof(expression-or-type)\n");
+        assert!(ActiveSnippet::new(snippet).is_some());
     }
 }
