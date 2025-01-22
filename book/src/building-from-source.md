@@ -146,7 +146,8 @@ provided `.desktop` and icon files to their correct folders:
 
 ```sh
 cp contrib/Helix.desktop -- "$HOME/.local/share/applications"
-xdg-icon-resource install --novendor --size 256 contrib/helix.png
+cp contrib/helix.png -- "$HOME/.icons" # or "$HOME/.local/share/icons"
+#xdg-icon-resource install --novendor --size 256 contrib/helix.png
 ```
 
 To use another terminal than the system default, you can modify the `.desktop`
