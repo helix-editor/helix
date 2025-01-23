@@ -29,11 +29,13 @@ pub type DocFn = Box<dyn Fn(&str) -> Option<Cow<str>>>;
 pub struct Prompt {
     prompt: Cow<'static, str>,
     line: String,
-    line_area: Rect,
     cursor: usize,
+    // Fields used for Component callbacks and rendering:
+    line_area: Rect,
     anchor: usize,
     truncate_start: bool,
     truncate_end: bool,
+    // ---
     completion: Vec<Completion>,
     selection: Option<usize>,
     history_register: Option<char>,
@@ -85,8 +87,8 @@ impl Prompt {
         Self {
             prompt,
             line: String::new(),
-            line_area: Rect::default(),
             cursor: 0,
+            line_area: Rect::default(),
             anchor: 0,
             truncate_start: false,
             truncate_end: false,
@@ -331,7 +333,6 @@ impl Prompt {
     pub fn clear(&mut self, editor: &Editor) {
         self.line.clear();
         self.cursor = 0;
-
         self.recalculate_completion(editor);
     }
 
@@ -405,7 +406,6 @@ impl Prompt {
         let selected_color = theme.get("ui.menu.selected");
         let suggestion_color = theme.get("ui.text.inactive");
         let background = theme.get("ui.background");
-
         // completion
 
         let max_len = self
