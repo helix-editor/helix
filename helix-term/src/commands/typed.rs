@@ -1519,13 +1519,16 @@ fn lsp_restart(
     let ls_restart_names = valid_lang_servers(doc, args)?;
 
     for server in ls_restart_names.iter() {
-        cx.editor.language_servers.restart_server(
-            server,
-            config,
-            doc.path(),
-            &editor_config.workspace_lsp_roots,
-            editor_config.lsp.snippets,
-        );
+        cx.editor
+            .language_servers
+            .restart_server(
+                server,
+                config,
+                doc.path(),
+                &editor_config.workspace_lsp_roots,
+                editor_config.lsp.snippets,
+            )
+            .transpose()?;
     }
 
     // This collect is needed because refresh_language_server would need to re-borrow editor.
