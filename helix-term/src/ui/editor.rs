@@ -873,7 +873,7 @@ impl EditorView {
 
         let key_result = self.keymaps.get(mode, event);
 
-        #[cfg(feature = "scancode")]
+        #[cfg(scancode)]
         let key_result = {
             if !matches!(
                 key_result,
@@ -970,7 +970,7 @@ impl EditorView {
     }
 
     fn command_mode(&mut self, mode: Mode, cxt: &mut commands::Context, event: KeyEvent) {
-        #[cfg(feature = "scancode")]
+        #[cfg(scancode)]
         // dont use scancode on macros replaying
         let event = if cxt.editor.macro_replaying.is_empty() {
             cxt.editor.scancode_apply(event)
