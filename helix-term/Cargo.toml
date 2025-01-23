@@ -35,7 +35,8 @@ default = ["git"]
 unicode-lines = ["helix-core/unicode-lines", "helix-view/unicode-lines"]
 integration = ["helix-event/integration_test"]
 git = ["helix-vcs/git"]
-scancode = ["helix-view/scancode"]
+scancode-query = ["helix-view/scancode-query"]
+scancode-evdev = ["helix-view/scancode-evdev"]
 
 [[bin]]
 name = "hx"
