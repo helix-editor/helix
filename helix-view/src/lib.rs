@@ -14,7 +14,7 @@ pub mod info;
 pub mod input;
 pub mod keyboard;
 pub mod register;
-#[cfg(feature = "scancode")]
+#[cfg(scancode)]
 pub mod scancode;
 pub mod theme;
 pub mod tree;

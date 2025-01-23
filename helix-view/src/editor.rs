@@ -21,7 +21,7 @@ use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
 use helix_lsp::{Call, LanguageServerId};
 
-#[cfg(feature = "scancode")]
+#[cfg(scancode)]
 use crate::scancode::{deserialize_scancode, KeyboardState, ScanCodeMap};
 
 use tokio_stream::wrappers::UnboundedReceiverStream;
@@ -435,7 +435,7 @@ pub struct Config {
     /// Whether to enable Kitty Keyboard Protocol
     pub kitty_keyboard_protocol: KittyKeyboardProtocolConfig,
     pub buffer_picker: BufferPickerConfig,
-    #[cfg(feature = "scancode")]
+    #[cfg(scancode)]
     #[serde(skip_serializing, deserialize_with = "deserialize_scancode")]
     pub scancode: ScanCodeMap,
 }
@@ -1161,7 +1161,7 @@ impl Default for Config {
             rainbow_brackets: false,
             kitty_keyboard_protocol: Default::default(),
             buffer_picker: BufferPickerConfig::default(),
-            #[cfg(feature = "scancode")]
+            #[cfg(scancode)]
             scancode: ScanCodeMap::default(),
         }
     }
@@ -1265,7 +1265,7 @@ pub struct Editor {
 
     pub mouse_down_range: Option<Range>,
     pub cursor_cache: CursorCache,
-    #[cfg(feature = "scancode")]
+    #[cfg(scancode)]
     pub keyboard_state: KeyboardState,
 }
 
@@ -1390,7 +1390,7 @@ impl Editor {
             mouse_down_range: None,
             cursor_cache: CursorCache::default(),
             dir_stack: VecDeque::with_capacity(DIR_STACK_CAP),
-            #[cfg(feature = "scancode")]
+            #[cfg(scancode)]
             keyboard_state: KeyboardState::new(),
         }
     }
@@ -2448,7 +2448,7 @@ impl Editor {
         view.ensure_cursor_in_view_center(doc, self.config.load().scrolloff);
     }
 
-    #[cfg(feature = "scancode")]
+    #[cfg(scancode)]
     pub fn scancode_apply(&mut self, event: KeyEvent) -> KeyEvent {
         self.config()
             .scancode
