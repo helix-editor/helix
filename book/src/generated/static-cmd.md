@@ -100,6 +100,9 @@
 | `file_picker` | Open file picker | normal: `` <space>f ``, select: `` <space>f `` |
 | `file_picker_in_current_buffer_directory` | Open file picker at current buffer's directory |  |
 | `file_picker_in_current_directory` | Open file picker at current working directory | normal: `` <space>F ``, select: `` <space>F `` |
+| `file_browser` | Open file browser in workspace root | normal: `` <space>e ``, select: `` <space>e `` |
+| `file_browser_in_current_buffer_directory` | Open file browser at current buffer's directory | normal: `` <space>E ``, select: `` <space>E `` |
+| `file_browser_in_current_directory` | Open file browser at current working directory |  |
 | `code_action` | Perform code action | normal: `` <space>a ``, select: `` <space>a `` |
 | `buffer_picker` | Open buffer picker | normal: `` <space>b ``, select: `` <space>b `` |
 | `jumplist_picker` | Open jumplist picker | normal: `` <space>j ``, select: `` <space>j `` |
