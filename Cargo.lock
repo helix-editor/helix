@@ -1454,6 +1454,7 @@ dependencies = [
  "helix-vcs",
  "helix-view",
  "ignore",
+ "indexmap",
  "indoc",
  "libc",
  "log",
