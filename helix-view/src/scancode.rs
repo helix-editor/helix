@@ -4,22 +4,17 @@ use anyhow;
 use serde::{Deserialize, Deserializer};
 use std::collections::HashMap;
 
-use keyboard_query::{DeviceQuery, DeviceState};
-
 type ScanCodeKeyCodeMap = HashMap<u16, (KeyCode, Option<KeyCode>)>;
-
-pub struct KeyboardState {
-    device_state: DeviceState,
-    previous_codes: Vec<u16>,
-}
 
 #[derive(Debug, Default, PartialEq, Eq, Clone)]
 pub struct ScanCodeMap {
-    // {<name>: {<code>: (char, shifted char)}}
+    // {<code>: (char, shifted char)}
     map: ScanCodeKeyCodeMap,
     modifiers: Vec<u16>,
     shift_modifiers: Vec<u16>,
 }
+
+pub use keyboard_state::KeyboardState;
 
 impl Default for KeyboardState {
     fn default() -> Self {
@@ -27,28 +22,128 @@ impl Default for KeyboardState {
     }
 }
 
-impl KeyboardState {
-    pub fn new() -> Self {
-        Self {
-            previous_codes: Vec::new(),
-            device_state: DeviceState::new(),
-        }
+#[cfg(feature = "scancode-query")]
+mod keyboard_state {
+    use keyboard_query::{DeviceQuery, DeviceState};
+
+    pub struct KeyboardState {
+        device_state: DeviceState,
+        previous_codes: Vec<u16>,
     }
 
-    pub fn get_keys(&mut self) -> (Vec<u16>, Vec<u16>) {
-        // detect new pressed keys to sync with crossterm sequential key parsing
-        let codes = self.device_state.get_keys();
-        let new_codes = if codes.len() <= 1 {
-            codes.clone()
-        } else {
-            codes
-                .clone()
-                .into_iter()
-                .filter(|c| !self.previous_codes.contains(c))
-                .collect()
-        };
-        self.previous_codes = codes.clone();
-        (codes, new_codes)
+    impl KeyboardState {
+        pub fn new() -> Self {
+            Self {
+                previous_codes: Vec::new(),
+                device_state: DeviceState::new(),
+            }
+        }
+
+        pub fn get_scancodes(&mut self) -> Vec<u16> {
+            let codes = self.device_state.get_keys();
+            let new_codes = if codes.len() <= 1 {
+                codes.clone()
+            } else {
+                codes
+                    .clone()
+                    .into_iter()
+                    .filter(|c| !self.previous_codes.contains(c))
+                    .collect()
+            };
+            self.previous_codes = codes.clone();
+            new_codes
+        }
+    }
+}
+
+#[cfg(feature = "scancode-evdev")]
+mod keyboard_state {
+    use evdev::{Device, KeyCode};
+    use std::sync::atomic::{AtomicU16, Ordering};
+    use std::sync::Arc;
+
+    pub struct KeyboardState {
+        codes: [Arc<AtomicU16>; 2],
+        _handle: std::thread::JoinHandle<()>,
+    }
+
+    fn is_keyboard(device: &Device) -> bool {
+        device
+            .supported_keys()
+            .map_or(false, |keys| keys.contains(KeyCode::KEY_ENTER))
+    }
+
+    impl KeyboardState {
+        pub fn new() -> Self {
+            let key1 = Arc::new(AtomicU16::new(0));
+            let key2 = Arc::new(AtomicU16::new(0));
+
+            let k1 = Arc::clone(&key1);
+            let k2 = Arc::clone(&key2);
+
+            let _handle = std::thread::spawn(move || {
+                // Try to find last keyboard input device
+                // TODO how to find actual system input device?
+                // TODO get input device path from config
+                let now = std::time::Instant::now();
+                let Some((device_path, mut device)) = evdev::enumerate()
+                    .filter(|(_, dev)| is_keyboard(dev))
+                    .last()
+                else {
+                    log::warn!("No keyboard devices found");
+                    return;
+                };
+                log::info!(
+                    "Listen last keyboard input device '{}' (spend {}ms): {}",
+                    device_path.display(),
+                    now.elapsed().as_millis(),
+                    device.name().unwrap_or_default()
+                );
+
+                // evdev constants
+                const KEY_STATE_RELEASE: i32 = 0;
+                let mut codes: [u16; 2] = [0, 0];
+                loop {
+                    let Ok(stream) = device.fetch_events() else {
+                        log::error!("Failed to fetch devices events");
+                        continue;
+                    };
+                    for event in stream {
+                        if evdev::EventType::KEY != event.event_type() {
+                            continue;
+                        };
+                        let scancode: u16 = event.code();
+                        if event.value() == KEY_STATE_RELEASE {
+                            // reset state
+                            codes = match (codes[0] == scancode, codes[1] == scancode) {
+                                (true, false) => [0, codes[1]],
+                                (false, true) => [0, codes[0]],
+                                _ => [0, 0],
+                            }
+                        } else {
+                            // don't repeat
+                            if !codes.contains(&scancode) {
+                                codes = [codes[1], scancode];
+                            }
+                        }
+                        k1.store(codes[0], Ordering::Relaxed);
+                        k2.store(codes[1], Ordering::Relaxed);
+                    }
+                }
+            });
+
+            Self {
+                _handle,
+                codes: [key1, key2],
+            }
+        }
+
+        pub fn get_scancodes(&mut self) -> [u16; 2] {
+            [
+                self.codes[1].swap(0, Ordering::Relaxed),
+                self.codes[0].swap(0, Ordering::Relaxed),
+            ]
+        }
     }
 }
 
@@ -87,17 +182,13 @@ impl ScanCodeMap {
     }
 
     pub fn apply(&self, event: KeyEvent, keyboard: &mut KeyboardState) -> KeyEvent {
-        let (scancodes, new_codes) = keyboard.get_keys();
-        if new_codes.is_empty() {
+        let codes = keyboard.get_scancodes();
+        if codes.is_empty() {
             return event;
         }
 
         // get fist non modifier key code
-        let Some(scancode) = new_codes
-            .iter()
-            .find(|c| !self.modifiers.contains(c))
-            .cloned()
-        else {
+        let Some(scancode) = codes.iter().find(|c| !self.modifiers.contains(c)).cloned() else {
             return event;
         };
 
@@ -109,7 +200,7 @@ impl ScanCodeMap {
 
         let mut is_shifted = false;
         for c in &self.shift_modifiers {
-            if scancodes.contains(c) {
+            if codes.contains(c) {
                 is_shifted = true;
                 break;
             }
@@ -130,7 +221,9 @@ impl ScanCodeMap {
         };
 
         log::trace!(
-            "Scancodes: {scancodes:?} Scancode: {scancode:?} (key: {key:?}, shifted key: {shifted_key:?}) Is shifted: {is_shifted} Event source {event_before:?} New Event {event:?}"
+            "{:?} map to {:?} by scancode {codes:?} (code: {scancode}, key: {key:?}, shifted key: {shifted_key:?})",
+            event_before.code,
+            event.code,
         );
 
         event
@@ -249,6 +342,7 @@ mod defaults {
     }
 
     fn qwerty() -> (&'static str, ScanCodeKeyCodeMap) {
+        // https://github.com/emberian/evdev/blob/8feea0685b0acb8153e394ffc393cf560d30a16f/src/scancodes.rs#L30
         (
             "qwerty",
             HashMap::from_iter([
@@ -321,15 +415,16 @@ mod defaults {
                 entry!(66, "F8"),
                 entry!(67, "F9"),
                 entry!(68, "F10"),
+                entry!(74, "-"),
+                entry!(78, "+"),
+                // Not processes by Helix
                 // entry!(69, "numlock"),
                 // entry!(70, "scrolllock"),
                 // entry!(71, "home"),
                 // entry!(72, "up"),
                 // entry!(73, "pageup"),
-                entry!(74, "-"),
                 // entry!(75, "left"),
                 // entry!(77, "right"),
-                entry!(78, "+"),
                 // entry!(79, "end"),
                 // entry!(80, "down"),
                 // entry!(81, "pagedown"),
