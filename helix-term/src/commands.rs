@@ -5754,7 +5754,8 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
     cx.editor.autoinfo = Some(Info::new(title, &help_text));
 }
 
-static SURROUND_HELP_TEXT: [(&str, &str); 5] = [
+static SURROUND_HELP_TEXT: [(&str, &str); 6] = [
+    ("m", "Nearest matching pair"),
     ("( or )", "Parentheses"),
     ("{ or }", "Curly braces"),
     ("< or >", "Angled brackets"),
