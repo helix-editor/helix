@@ -618,7 +618,7 @@ impl Registry {
         Ok(self.inner[id].clone())
     }
 
-    /// If this method is called, all documents that have a reference to language server have to refresh their language servers,
+    /// If this method is called, all documents that have a reference to the language server have to refresh their language servers,
     /// See helix_view::editor::Editor::refresh_language_servers
     pub fn restart_server(
         &mut self,
