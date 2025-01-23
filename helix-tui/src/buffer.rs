@@ -307,6 +307,63 @@ impl Buffer {
     }
 
     /// Print at most the first `width` characters of a string if enough space is available
+    /// until the end of the line.
+    /// If `ellipsis` is true appends a `…` at the end of truncated lines.
+    /// If `truncate_start` is `true`, adds a `…` at the beginning of truncated lines.
+    #[allow(clippy::too_many_arguments)]
+    pub fn set_string_anchored(
+        &mut self,
+        x: u16,
+        y: u16,
+        truncate_start: bool,
+        truncate_end: bool,
+        string: &str,
+        width: usize,
+        style: impl Fn(usize) -> Style, // Map a grapheme's string offset to a style
+    ) -> (u16, u16) {
+        // prevent panic if out of range
+        if !self.in_bounds(x, y) || width == 0 {
+            return (x, y);
+        }
+
+        let max_offset = min(
+            self.area.right() as usize - 1,
+            width.saturating_add(x as usize),
+        );
+        let mut start_index = self.index_of(x, y);
+        let mut end_index = self.index_of(max_offset as u16, y);
+
+        if truncate_end {
+            self.content[end_index].set_symbol("…");
+            end_index -= 1;
+        }
+
+        if truncate_start {
+            self.content[start_index].set_symbol("…");
+            start_index += 1;
+        }
+
+        let graphemes = string.grapheme_indices(true);
+
+        for (byte_offset, s) in graphemes.skip(truncate_start as usize) {
+            if start_index > end_index {
+                break;
+            }
+
+            self.content[start_index].set_symbol(s);
+            self.content[start_index].set_style(style(byte_offset));
+
+            for i in start_index + 1..end_index {
+                self.content[i].reset();
+            }
+
+            start_index += s.width();
+        }
+
+        (x, y)
+    }
+
+    /// Print at most the first `width` characters of a string if enough space is available
     /// until the end of the line. If `ellipsis` is true appends a `…` at the end of
     /// truncated lines. If `truncate_start` is `true`, truncate the beginning of the string
     /// instead of the end.
