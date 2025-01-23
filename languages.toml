@@ -129,6 +129,7 @@ pkgbuild-language-server = { command = "pkgbuild-language-server" }
 helm_ls = { command = "helm_ls", args = ["serve"] }
 ember-language-server = { command = "ember-language-server", args = ["--stdio"] }
 teal-language-server = { command = "teal-language-server" }
+wasm-language-tools = { command = "wat_server" }
 
 [language-server.ansible-language-server]
 command = "ansible-language-server"
@@ -2614,6 +2615,7 @@ scope = "source.wat"
 comment-token = ";;"
 block-comment-tokens = { start = "(;", end = ";)" }
 file-types = ["wat"]
+language-servers = ["wasm-language-tools"]
 
 [[grammar]]
 name = "wat"
