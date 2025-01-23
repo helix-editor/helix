@@ -340,13 +340,11 @@ pub mod completers {
     }
 
     pub fn language_servers(editor: &Editor, input: &str) -> Vec<Completion> {
-        let language_servers = doc!(editor)
-            .language_servers()
-            .map(|ls| ls.name().to_string());
+        let language_servers = doc!(editor).language_servers().map(|ls| ls.name());
 
         fuzzy_match(input, language_servers, false)
             .into_iter()
-            .map(|(name, _)| ((0..), Span::raw(name)))
+            .map(|(name, _)| ((0..), Span::raw(name.to_string())))
             .collect()
     }
 
