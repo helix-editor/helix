@@ -204,6 +204,10 @@
 
 (type_cast_expression "as" @keyword.operator)
 
+((generic_type
+    type: (type_identifier) @keyword)
+ (#eq? @keyword "use"))
+
 [
   (crate)
   (super)
@@ -241,6 +245,7 @@
 [
   "static"
   "const"
+  "raw"
   "ref"
   "move"
   "dyn"
