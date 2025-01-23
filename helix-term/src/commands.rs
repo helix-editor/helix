@@ -5754,7 +5754,8 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
     cx.editor.autoinfo = Some(Info::new(title, &help_text));
 }
 
-static SURROUND_HELP_TEXT: [(&str, &str); 5] = [
+static SURROUND_HELP_TEXT: [(&str, &str); 6] = [
+    ("m", "Closest matching pair"),
     ("( or )", "Parentheses"),
     ("{ or }", "Curly braces"),
     ("< or >", "Angled brackets"),
@@ -5881,11 +5882,14 @@ fn surround_delete(cx: &mut Context) {
     let count = cx.count();
     cx.on_next_key(move |cx, event| {
         cx.editor.autoinfo = None;
-        let surround_ch = match event.char() {
-            Some('m') => None, // m selects the closest surround pair
-            Some(ch) => Some(ch),
-            None => return,
+
+        let surround_ch = match (event.code, event.char()) {
+            (KeyCode::Enter, _) => Some('\n'), // special case for <ret>
+            (_, Some('m')) => None,            // m selects closest pair
+            (_, Some(ch)) => Some(ch),
+            _ => return,
         };
+
         let (view, doc) = current!(cx.editor);
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id);
