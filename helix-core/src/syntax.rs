@@ -1008,9 +1008,9 @@ impl Loader {
     /// function will perform a regex match on the given string to find the closest language match.
     pub fn language_config_for_name(&self, slice: RopeSlice) -> Option<Arc<LanguageConfiguration>> {
         // PERF: If the name matches up with the id, then this saves the need to do expensive regex.
-        let shortcircut = self.language_config_for_language_id(slice);
-        if shortcircut.is_some() {
-            return shortcircut;
+        let shortcircuit = self.language_config_for_language_id(slice);
+        if shortcircuit.is_some() {
+            return shortcircuit;
         }
 
         // If the name did not match up with a known id, then match on injection regex.
