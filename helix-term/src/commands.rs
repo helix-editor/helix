@@ -393,9 +393,9 @@ impl MappableCommand {
         file_picker, "Open file picker",
         file_picker_in_current_buffer_directory, "Open file picker at current buffer's directory",
         file_picker_in_current_directory, "Open file picker at current working directory",
-        file_browser, "Open file browser in workspace root",
-        file_browser_in_current_buffer_directory, "Open file browser at current buffer's directory",
-        file_browser_in_current_directory, "Open file browser at current working directory",
+        file_explorer, "Open file explorer in workspace root",
+        file_explorer_in_current_buffer_directory, "Open file explorer at current buffer's directory",
+        file_explorer_in_current_directory, "Open file explorer at current working directory",
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
         jumplist_picker, "Open jumplist picker",
@@ -2995,19 +2995,19 @@ fn file_picker_in_current_directory(cx: &mut Context) {
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
-fn file_browser(cx: &mut Context) {
+fn file_explorer(cx: &mut Context) {
     let root = find_workspace().0;
     if !root.exists() {
         cx.editor.set_error("Workspace directory does not exist");
         return;
     }
 
-    if let Ok(picker) = ui::file_browser(root, cx.editor) {
+    if let Ok(picker) = ui::file_explorer(root, cx.editor) {
         cx.push_layer(Box::new(overlaid(picker)));
     }
 }
 
-fn file_browser_in_current_buffer_directory(cx: &mut Context) {
+fn file_explorer_in_current_buffer_directory(cx: &mut Context) {
     let doc_dir = doc!(cx.editor)
         .path()
         .and_then(|path| path.parent().map(|path| path.to_path_buf()));
@@ -3023,18 +3023,18 @@ fn file_browser_in_current_buffer_directory(cx: &mut Context) {
                 return;
             }
             cx.editor.set_error(
-                "Current buffer has no parent, opening file browser in current working directory",
+                "Current buffer has no parent, opening file explorer in current working directory",
             );
             cwd
         }
     };
 
-    if let Ok(picker) = ui::file_browser(path, cx.editor) {
+    if let Ok(picker) = ui::file_explorer(path, cx.editor) {
         cx.push_layer(Box::new(overlaid(picker)));
     }
 }
 
-fn file_browser_in_current_directory(cx: &mut Context) {
+fn file_explorer_in_current_directory(cx: &mut Context) {
     let cwd = helix_stdx::env::current_working_dir();
     if !cwd.exists() {
         cx.editor
@@ -3042,7 +3042,7 @@ fn file_browser_in_current_directory(cx: &mut Context) {
         return;
     }
 
-    if let Ok(picker) = ui::file_browser(cwd, cx.editor) {
+    if let Ok(picker) = ui::file_explorer(cwd, cx.editor) {
         cx.push_layer(Box::new(overlaid(picker)));
     }
 }

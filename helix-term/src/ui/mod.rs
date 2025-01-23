@@ -279,9 +279,9 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
     picker
 }
 
-type FileBrowser = Picker<(PathBuf, bool), (PathBuf, Style)>;
+type FileExplorer = Picker<(PathBuf, bool), (PathBuf, Style)>;
 
-pub fn file_browser(root: PathBuf, editor: &Editor) -> Result<FileBrowser, std::io::Error> {
+pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std::io::Error> {
     let directory_style = editor.theme.get("ui.text.directory");
     let directory_content = directory_content(&root)?;
 
@@ -307,7 +307,7 @@ pub fn file_browser(root: PathBuf, editor: &Editor) -> Result<FileBrowser, std::
                 let callback = Box::pin(async move {
                     let call: Callback =
                         Callback::EditorCompositor(Box::new(move |editor, compositor| {
-                            if let Ok(picker) = file_browser(new_root, editor) {
+                            if let Ok(picker) = file_explorer(new_root, editor) {
                                 compositor.push(Box::new(overlay::overlaid(picker)));
                             }
                         }));
