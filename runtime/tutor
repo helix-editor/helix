@@ -411,9 +411,8 @@
  --> This is an error-free line with words to move around in.
 
  Note: This works the same in Select mode.
- Note: Another related command is Alt-; which flips direction of
-       selection (flips selection cursor and anchor).
-
+ Note: Another related command is Alt-; which flips the direction
+       of the selection (flips the selection's cursor and anchor).
 
 
 
