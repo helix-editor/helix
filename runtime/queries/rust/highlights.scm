@@ -30,6 +30,8 @@
   (string_literal)
   (raw_string_literal)
 ] @string
+(outer_doc_comment_marker "/" @comment)
+(inner_doc_comment_marker "!" @comment)
 [
   (line_comment)
   (block_comment)
