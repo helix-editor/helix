@@ -1014,7 +1014,7 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
             key!(Esc) | ctrl!('c') => return close_fn(self),
             alt!(Enter) => {
                 if let Some(option) = self.selection() {
-                    (self.callback_fn)(ctx, option, Action::Load);
+                    (self.callback_fn)(ctx, option, Action::Replace);
                 }
             }
             key!(Enter) => {
