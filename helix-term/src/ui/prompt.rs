@@ -734,8 +734,9 @@ impl Component for Prompt {
             .clip_left(self.prompt.len() as u16)
             .clip_right(if self.prompt.len() > 0 { 0 } else { 2 });
 
+        let anchor = self.anchor.min(self.line.len().saturating_sub(1));
         let mut col = area.left() as usize
-            + UnicodeWidthStr::width(&self.line[self.anchor..self.cursor.max(self.anchor)]);
+            + UnicodeWidthStr::width(&self.line[anchor..self.cursor.max(anchor)]);
 
         // ensure the cursor does not go beyond elipses
         if self.truncate_end && self.cursor - self.anchor >= self.line_area.width as usize {
