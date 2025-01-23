@@ -174,8 +174,7 @@
 
 (for_expression
   "for" @keyword.control.repeat)
-((identifier) @keyword.control
-  (#match? @keyword.control "^yield$"))
+(gen_block "gen" @keyword.control)
 
 "in" @keyword.control
 
@@ -196,6 +195,7 @@
   "continue"
   "return"
   "await"
+  "yield"
 ] @keyword.control.return
 
 "use" @keyword.control.import
