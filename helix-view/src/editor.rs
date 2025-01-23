@@ -22,7 +22,7 @@ use futures_util::stream::select_all::SelectAll;
 use futures_util::{future, StreamExt};
 use helix_lsp::{Call, LanguageServerId};
 
-#[cfg(feature = "scancode")]
+#[cfg(scancode)]
 use crate::scancode::{deserialize_scancode, KeyboardState, ScanCodeMap};
 
 use tokio_stream::wrappers::UnboundedReceiverStream;
@@ -364,7 +364,7 @@ pub struct Config {
     pub end_of_line_diagnostics: DiagnosticFilter,
     // Set to override the default clipboard provider
     pub clipboard_provider: ClipboardProvider,
-    #[cfg(feature = "scancode")]
+    #[cfg(scancode)]
     #[serde(skip_serializing, deserialize_with = "deserialize_scancode")]
     pub scancode: ScanCodeMap,
 }
@@ -1009,7 +1009,7 @@ impl Default for Config {
             inline_diagnostics: InlineDiagnosticsConfig::default(),
             end_of_line_diagnostics: DiagnosticFilter::Disable,
             clipboard_provider: ClipboardProvider::default(),
-            #[cfg(feature = "scancode")]
+            #[cfg(scancode)]
             scancode: ScanCodeMap::default(),
         }
     }
@@ -1111,7 +1111,7 @@ pub struct Editor {
 
     pub mouse_down_range: Option<Range>,
     pub cursor_cache: CursorCache,
-    #[cfg(feature = "scancode")]
+    #[cfg(scancode)]
     pub keyboard_state: KeyboardState,
 }
 
@@ -1235,7 +1235,7 @@ impl Editor {
             handlers,
             mouse_down_range: None,
             cursor_cache: CursorCache::default(),
-            #[cfg(feature = "scancode")]
+            #[cfg(scancode)]
             keyboard_state: KeyboardState::new(),
         }
     }
@@ -2231,7 +2231,7 @@ impl Editor {
         self.last_cwd.as_deref()
     }
 
-    #[cfg(feature = "scancode")]
+    #[cfg(scancode)]
     pub fn scancode_apply(&mut self, event: KeyEvent) -> KeyEvent {
         self.config()
             .scancode

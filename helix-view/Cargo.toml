@@ -14,7 +14,8 @@ homepage.workspace = true
 default = []
 term = ["crossterm"]
 unicode-lines = []
-scancode = ["keyboard_query"]
+scancode-query = ["keyboard_query"]
+scancode-evdev = ["evdev"]
 
 [dependencies]
 helix-stdx = { path = "../helix-stdx" }
@@ -54,6 +55,7 @@ parking_lot = "0.12.3"
 thiserror.workspace = true
 
 keyboard_query = { version = "0.1.0", optional = true }
+evdev = { version = "0.13", optional = true }
 
 [target.'cfg(windows)'.dependencies]
 clipboard-win = { version = "5.4", features = ["std"] }
