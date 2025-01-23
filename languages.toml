@@ -12,6 +12,7 @@ angular = {command = "ngserver", args = ["--stdio", "--tsProbeLocations", ".", "
 awk-language-server = { command = "awk-language-server" }
 bash-language-server = { command = "bash-language-server", args = ["start"] }
 bass = { command = "bass", args = ["--lsp"] }
+beancount-language-server = { command = "beancount-language-server" }
 bicep-langserver = { command = "bicep-langserver" }
 bitbake-language-server = { command = "bitbake-language-server" }
 bufls = { command = "bufls", args = ["serve"] }
@@ -1231,6 +1232,7 @@ injection-regex = "beancount"
 file-types = ["beancount", "bean"]
 comment-token = ";"
 indent = { tab-width = 2, unit = "  " }
+language-servers = [ "beancount-language-server" ]
 
 [[grammar]]
 name = "beancount"
