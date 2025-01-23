@@ -17,7 +17,7 @@ bitbake-language-server = { command = "bitbake-language-server" }
 bufls = { command = "bufls", args = ["serve"] }
 cairo-language-server = { command = "cairo-language-server", args = [] }
 circom-lsp = { command = "circom-lsp" }
-cl-lsp = { command = "cl-lsp", args = [ "stdio" ] }
+cl-lsp = { command = "cl-lsp" }
 clangd = { command = "clangd" }
 clojure-lsp = { command = "clojure-lsp" }
 cmake-language-server = { command = "cmake-language-server" }
