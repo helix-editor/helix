@@ -209,12 +209,23 @@ fn diag_picker(
 ) -> DiagnosticsPicker {
     // TODO: drop current_path comparison and instead use workspace: bool flag?
 
+    let mut title: Vec<Span> = vec!["Diagnostics".into()];
+
+    let mut errors_count = 0;
+    let mut warnings_count = 0;
+
     // flatten the map to a vec of (url, diag) pairs
     let mut flat_diag = Vec::new();
     for (uri, diags) in diagnostics {
         flat_diag.reserve(diags.len());
 
         for (diag, ls) in diags {
+            match diag.severity {
+                Some(DiagnosticSeverity::ERROR) => errors_count += 1,
+                Some(DiagnosticSeverity::WARNING) => warnings_count += 1,
+                _ => (),
+            }
+
             if let Some(ls) = cx.editor.language_server_by_id(ls) {
                 flat_diag.push(PickerDiagnostic {
                     location: Location {
@@ -234,6 +245,23 @@ fn diag_picker(
         warning: cx.editor.theme.get("warning"),
         error: cx.editor.theme.get("error"),
     };
+
+    if warnings_count != 0 || errors_count != 0 {
+        title.push(": ".into());
+    }
+
+    if warnings_count != 0 {
+        title.push(Span::styled("● ", styles.warning));
+        title.push(warnings_count.to_string().into());
+    }
+
+    if errors_count != 0 {
+        if warnings_count != 0 {
+            title.push(" ".into())
+        }
+        title.push(Span::styled("● ", styles.error));
+        title.push(errors_count.to_string().into());
+    }
 
     let mut columns = vec![
         ui::PickerColumn::new(
@@ -293,7 +321,7 @@ fn diag_picker(
         },
     )
     .with_preview(move |_editor, diag| location_to_file_location(&diag.location))
-    .with_title("Diagnostics".into())
+    .with_title(title.into())
     .truncate_start(false)
 }
 
