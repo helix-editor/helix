@@ -325,7 +325,8 @@ pub fn file_browser(root: PathBuf, editor: &Editor) -> Result<FileBrowser, std::
             }
         },
     )
-    .with_preview(|_editor, (path, _is_dir)| Some((path.as_path().into(), None)));
+    .with_preview(|_editor, (path, _is_dir)| Some((path.as_path().into(), None)))
+    .with_title("File Browser");
 
     Ok(picker)
 }
