@@ -5844,6 +5844,7 @@ fn surround_replace(cx: &mut Context) {
         );
 
         cx.on_next_key(move |cx, event| {
+            cx.editor.autoinfo = None;
             let (view, doc) = current!(cx.editor);
             let to = match event.char() {
                 Some(to) => to,
