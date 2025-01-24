@@ -285,6 +285,15 @@ type FileBrowser = Picker<(PathBuf, bool), (PathBuf, Style)>;
 pub fn file_browser(root: PathBuf, editor: &Editor) -> Result<FileBrowser, std::io::Error> {
     let directory_style = editor.theme.get("ui.text.directory");
     let directory_content = directory_content(&root)?;
+    let path = helix_stdx::path::get_relative_path(&root);
+    let path = if path.to_string_lossy() == "" {
+        // If helix's current working directory is the same as the `root`,
+        // then `path` will be an empty string. So we don't want to
+        // render the unnecessary ": "
+        "".to_string()
+    } else {
+        format!(": {}", path.display())
+    };
 
     let columns = [PickerColumn::new(
         "path",
@@ -301,7 +310,7 @@ pub fn file_browser(root: PathBuf, editor: &Editor) -> Result<FileBrowser, std::
         columns,
         0,
         directory_content,
-        (root, directory_style),
+        (root.clone(), directory_style),
         move |cx, (path, is_dir): &(PathBuf, bool), action| {
             if *is_dir {
                 let new_root = helix_stdx::path::normalize(path);
@@ -326,7 +335,7 @@ pub fn file_browser(root: PathBuf, editor: &Editor) -> Result<FileBrowser, std::
         },
     )
     .with_preview(|_editor, (path, _is_dir)| Some((path.as_path().into(), None)))
-    .with_title("File Browser");
+    .with_title(&format!("File Explorer{path}"));
 
     Ok(picker)
 }
