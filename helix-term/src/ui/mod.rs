@@ -254,7 +254,7 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         }
     })
     .with_preview(|_editor, path| Some((path.as_path().into(), None)))
-    .with_title("Files");
+    .with_title("Files".into());
     let injector = picker.injector();
     let timeout = std::time::Instant::now() + std::time::Duration::from_millis(30);
 
@@ -285,15 +285,16 @@ type FileBrowser = Picker<(PathBuf, bool), (PathBuf, Style)>;
 pub fn file_browser(root: PathBuf, editor: &Editor) -> Result<FileBrowser, std::io::Error> {
     let directory_style = editor.theme.get("ui.text.directory");
     let directory_content = directory_content(&root)?;
+    let mut title: Vec<tui::text::Span> = vec!["File Explorer".into()];
     let path = helix_stdx::path::get_relative_path(&root);
-    let path = if path.to_string_lossy() == "" {
-        // If helix's current working directory is the same as the `root`,
-        // then `path` will be an empty string. So we don't want to
-        // render the unnecessary ": "
-        "".to_string()
-    } else {
-        format!(": {}", path.display())
-    };
+
+    // if Helix's working directory is the same as the File Explorer's
+    // working directory, then we don't want to render a
+    // File Explorer: <empty>, but rather only render the picker title
+    if path.to_string_lossy() != "" {
+        title.push(": ".into());
+        title.push(Span::styled(path.display().to_string(), directory_style));
+    }
 
     let columns = [PickerColumn::new(
         "path",
@@ -335,7 +336,7 @@ pub fn file_browser(root: PathBuf, editor: &Editor) -> Result<FileBrowser, std::
         },
     )
     .with_preview(|_editor, (path, _is_dir)| Some((path.as_path().into(), None)))
-    .with_title(&format!("File Explorer{path}"));
+    .with_title(title.into());
 
     Ok(picker)
 }
