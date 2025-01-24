@@ -5871,6 +5871,11 @@ fn surround_replace(cx: &mut Context) {
             doc.apply(&transaction, view.id);
             exit_select_mode(cx);
         });
+
+        cx.editor.autoinfo = Some(Info::new(
+            "Replace with a pair of",
+            &SURROUND_HELP_TEXT[1..],
+        ));
     });
 
     cx.editor.autoinfo = Some(Info::new(
