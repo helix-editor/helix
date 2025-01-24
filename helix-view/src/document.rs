@@ -717,10 +717,7 @@ impl Document {
         config: Arc<dyn DynAccess<Config>>,
     ) -> Result<Self, DocumentOpenError> {
         // If the path is not a regular file (e.g.: /dev/random) it should not be opened.
-        if path
-            .metadata()
-            .map_or(false, |metadata| !metadata.is_file())
-        {
+        if path.metadata().is_ok_and(|metadata| !metadata.is_file()) {
             return Err(DocumentOpenError::IrregularFile);
         }
 
@@ -2004,8 +2001,8 @@ impl Document {
         };
 
         let ends_at_word =
-            start != end && end != 0 && text.get_char(end - 1).map_or(false, char_is_word);
-        let starts_at_word = start != end && text.get_char(start).map_or(false, char_is_word);
+            start != end && end != 0 && text.get_char(end - 1).is_some_and(char_is_word);
+        let starts_at_word = start != end && text.get_char(start).is_some_and(char_is_word);
 
         Some(Diagnostic {
             range: Range { start, end },
@@ -2038,7 +2035,7 @@ impl Document {
             self.clear_diagnostics(language_server_id);
         } else {
             self.diagnostics.retain(|d| {
-                if language_server_id.map_or(false, |id| id != d.provider) {
+                if language_server_id.is_some_and(|id| id != d.provider) {
                     return true;
                 }
 

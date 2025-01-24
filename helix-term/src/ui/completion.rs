@@ -53,9 +53,10 @@ impl menu::Item for CompletionItem {
         let deprecated = match self {
             CompletionItem::Lsp(LspCompletionItem { item, .. }) => {
                 item.deprecated.unwrap_or_default()
-                    || item.tags.as_ref().map_or(false, |tags| {
-                        tags.contains(&lsp::CompletionItemTag::DEPRECATED)
-                    })
+                    || item
+                        .tags
+                        .as_ref()
+                        .is_some_and(|tags| tags.contains(&lsp::CompletionItemTag::DEPRECATED))
             }
             CompletionItem::Other(_) => false,
         };

@@ -1,7 +1,7 @@
 # Language support configuration.
 # See the languages documentation: https://docs.helix-editor.com/master/languages.html
 
-use-grammars = { except = [ "wren", "gemini" ] }
+use-grammars = { except = [ "hare", "wren", "gemini" ] }
 
 [language-server]
 
@@ -12,12 +12,13 @@ angular = {command = "ngserver", args = ["--stdio", "--tsProbeLocations", ".", "
 awk-language-server = { command = "awk-language-server" }
 bash-language-server = { command = "bash-language-server", args = ["start"] }
 bass = { command = "bass", args = ["--lsp"] }
+beancount-language-server = { command = "beancount-language-server" }
 bicep-langserver = { command = "bicep-langserver" }
 bitbake-language-server = { command = "bitbake-language-server" }
 bufls = { command = "bufls", args = ["serve"] }
 cairo-language-server = { command = "cairo-language-server", args = [] }
 circom-lsp = { command = "circom-lsp" }
-cl-lsp = { command = "cl-lsp", args = [ "stdio" ] }
+cl-lsp = { command = "cl-lsp" }
 clangd = { command = "clangd" }
 clojure-lsp = { command = "clojure-lsp" }
 cmake-language-server = { command = "cmake-language-server" }
@@ -37,6 +38,7 @@ elm-language-server = { command = "elm-language-server" }
 elp = { command = "elp", args = ["server"] }
 elvish = { command = "elvish", args = ["-lsp"] }
 erlang-ls = { command = "erlang_ls" }
+fish-lsp = { command = "fish-lsp", args = ["start"], environment = { fish_lsp_show_client_popups = "false" } }
 forc = { command = "forc", args = ["lsp"] }
 forth-lsp = { command = "forth-lsp" }
 fortls = { command = "fortls", args = ["--lowercase_intrinsics"] }
@@ -94,6 +96,7 @@ regols = { command = "regols" }
 rescript-language-server = { command = "rescript-language-server", args = ["--stdio"] }
 robotframework_ls = { command = "robotframework_ls" }
 ruff = { command = "ruff", args = ["server"] }
+ruby-lsp = { command = "ruby-lsp" }
 serve-d = { command = "serve-d" }
 slint-lsp = { command = "slint-lsp", args = [] }
 solargraph = { command = "solargraph", args = ["stdio"] }
@@ -128,6 +131,7 @@ pkgbuild-language-server = { command = "pkgbuild-language-server" }
 helm_ls = { command = "helm_ls", args = ["serve"] }
 ember-language-server = { command = "ember-language-server", args = ["--stdio"] }
 teal-language-server = { command = "teal-language-server" }
+wasm-language-tools = { command = "wat_server" }
 
 [language-server.ansible-language-server]
 command = "ansible-language-server"
@@ -296,7 +300,7 @@ args = { attachCommands = [ "platform select remote-gdb-server", "platform conne
 
 [[grammar]]
 name = "rust"
-source = { git = "https://github.com/tree-sitter/tree-sitter-rust", rev = "9c84af007b0f144954adb26b3f336495cbb320a7" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-rust", rev = "1f63b33efee17e833e0ea29266dd3d713e27e321" }
 
 [[language]]
 name = "sway"
@@ -388,13 +392,14 @@ injection-regex = "fish"
 file-types = ["fish"]
 shebangs = ["fish"]
 comment-token = "#"
+language-servers = ["fish-lsp"]
 indent = { tab-width = 4, unit = "    " }
 auto-format = true
 formatter = { command = "fish_indent" }
 
 [[grammar]]
 name = "fish"
-source = { git = "https://github.com/ram02z/tree-sitter-fish", rev = "84436cf24c2b3176bfbb220922a0fdbd0141e406" }
+source = { git = "https://github.com/ram02z/tree-sitter-fish", rev = "a78aef9abc395c600c38a037ac779afc7e3cc9e0" }
 
 [[language]]
 name = "mint"
@@ -487,7 +492,7 @@ source = { git = "https://github.com/tree-sitter/tree-sitter-json", rev = "73076
 name = "jsonc"
 scope = "source.json"
 injection-regex = "jsonc"
-file-types = ["jsonc", { glob = "tsconfig.json" }]
+file-types = ["jsonc", { glob = "tsconfig.json" }, { glob = "bun.lock" }]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
 grammar = "json"
@@ -974,7 +979,7 @@ file-types = [
 ]
 shebangs = ["ruby"]
 comment-token = "#"
-language-servers = [ "solargraph" ]
+language-servers = [ "ruby-lsp", "solargraph" ]
 indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
@@ -1229,6 +1234,7 @@ injection-regex = "beancount"
 file-types = ["beancount", "bean"]
 comment-token = ";"
 indent = { tab-width = 2, unit = "  " }
+language-servers = [ "beancount-language-server" ]
 
 [[grammar]]
 name = "beancount"
@@ -1449,7 +1455,7 @@ args = { console = "internalConsole", attachCommands = [ "platform select remote
 
 [[grammar]]
 name = "zig"
-source = { git = "https://github.com/maxxnino/tree-sitter-zig", rev = "0d08703e4c3f426ec61695d7617415fff97029bd" }
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-zig", rev = "eb7d58c2dc4fbeea4745019dee8df013034ae66b" }
 
 [[language]]
 name = "prolog"
@@ -1762,7 +1768,7 @@ scope = "source.gitrebase"
 file-types = [{ glob = "git-rebase-todo" }]
 injection-regex = "git-rebase"
 comment-token = "#"
-indent = { tab-width = 2, unit = "y" }
+indent = { tab-width = 2, unit = "\t" }
 
 [[grammar]]
 name = "git-rebase"
@@ -2613,6 +2619,7 @@ scope = "source.wat"
 comment-token = ";;"
 block-comment-tokens = { start = "(;", end = ";)" }
 file-types = ["wat"]
+language-servers = ["wasm-language-tools"]
 
 [[grammar]]
 name = "wat"
@@ -2821,6 +2828,8 @@ file-types = [
   "network",
   { glob = ".editorconfig" },
   { glob = ".npmrc" },
+  { glob = "ghostty/config" },
+  { glob = "hgrc" },
   { glob = "npmrc" },
   { glob = "rclone.conf" },
   "properties",
@@ -2833,7 +2842,7 @@ indent = { tab-width = 4, unit = "\t" }
 
 [[grammar]]
 name = "ini"
-source = { git = "https://github.com/justinmk/tree-sitter-ini", rev = "4d247fb876b4ae6b347687de4a179511bf67fcbc" }
+source = { git = "https://github.com/justinmk/tree-sitter-ini", rev = "1b0498a89a1a4c0a3705846699f0b0bad887dd04" }
 
 [[language]]
 name = "inko"

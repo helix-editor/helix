@@ -8,7 +8,7 @@
 | awk | ✓ | ✓ |  | `awk-language-server` |
 | bash | ✓ | ✓ | ✓ | `bash-language-server` |
 | bass | ✓ |  |  | `bass` |
-| beancount | ✓ |  |  |  |
+| beancount | ✓ |  |  | `beancount-language-server` |
 | bibtex | ✓ |  |  | `texlab` |
 | bicep | ✓ |  |  | `bicep-langserver` |
 | bitbake | ✓ |  |  | `bitbake-language-server` |
@@ -56,7 +56,7 @@
 | erlang | ✓ | ✓ |  | `erlang_ls`, `elp` |
 | esdl | ✓ |  |  |  |
 | fidl | ✓ |  |  |  |
-| fish | ✓ | ✓ | ✓ |  |
+| fish | ✓ | ✓ | ✓ | `fish-lsp` |
 | forth | ✓ |  |  | `forth-lsp` |
 | fortran | ✓ |  | ✓ | `fortls` |
 | fsharp | ✓ |  |  | `fsautocomplete` |
@@ -185,7 +185,7 @@
 | robot | ✓ |  |  | `robotframework_ls` |
 | ron | ✓ |  | ✓ |  |
 | rst | ✓ |  |  |  |
-| ruby | ✓ | ✓ | ✓ | `solargraph` |
+| ruby | ✓ | ✓ | ✓ | `ruby-lsp`, `solargraph` |
 | rust | ✓ | ✓ | ✓ | `rust-analyzer` |
 | sage | ✓ | ✓ |  |  |
 | scala | ✓ | ✓ | ✓ | `metals` |
@@ -236,7 +236,7 @@
 | vhs | ✓ |  |  |  |
 | vue | ✓ |  |  | `vue-language-server` |
 | wast | ✓ |  |  |  |
-| wat | ✓ |  |  |  |
+| wat | ✓ |  |  | `wat_server` |
 | webc | ✓ |  |  |  |
 | wgsl | ✓ |  |  | `wgsl_analyzer` |
 | wit | ✓ |  | ✓ |  |

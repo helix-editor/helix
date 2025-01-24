@@ -1476,9 +1476,34 @@ fn lsp_workspace_command(
     Ok(())
 }
 
+/// Returns all language servers used by the current document if no servers are supplied
+/// If servers are supplied, do a check to make sure that all of the servers exist
+fn valid_lang_servers(doc: &Document, servers: &[Cow<str>]) -> anyhow::Result<Vec<String>> {
+    let valid_ls_names = doc
+        .language_servers()
+        .map(|ls| ls.name().to_string())
+        .collect();
+
+    if servers.is_empty() {
+        Ok(valid_ls_names)
+    } else {
+        let (valid, invalid): (Vec<_>, Vec<_>) = servers
+            .iter()
+            .map(|m| m.to_string())
+            .partition(|ls| valid_ls_names.contains(ls));
+
+        if !invalid.is_empty() {
+            let s = if invalid.len() == 1 { "" } else { "s" };
+            bail!("Unknown language server{s}: {}", invalid.join(", "));
+        };
+
+        Ok(valid)
+    }
+}
+
 fn lsp_restart(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1486,17 +1511,25 @@ fn lsp_restart(
     }
 
     let editor_config = cx.editor.config.load();
-    let (_view, doc) = current!(cx.editor);
+    let doc = doc!(cx.editor);
     let config = doc
         .language_config()
         .context("LSP not defined for the current document")?;
 
-    cx.editor.language_servers.restart(
-        config,
-        doc.path(),
-        &editor_config.workspace_lsp_roots,
-        editor_config.lsp.snippets,
-    )?;
+    let ls_restart_names = valid_lang_servers(doc, args)?;
+
+    for server in ls_restart_names.iter() {
+        cx.editor
+            .language_servers
+            .restart_server(
+                server,
+                config,
+                doc.path(),
+                &editor_config.workspace_lsp_roots,
+                editor_config.lsp.snippets,
+            )
+            .transpose()?;
+    }
 
     // This collect is needed because refresh_language_server would need to re-borrow editor.
     let document_ids_to_refresh: Vec<DocumentId> = cx
@@ -1505,10 +1538,9 @@ fn lsp_restart(
         .filter_map(|doc| match doc.language_config() {
             Some(config)
                 if config.language_servers.iter().any(|ls| {
-                    config
-                        .language_servers
+                    ls_restart_names
                         .iter()
-                        .any(|restarted_ls| restarted_ls.name == ls.name)
+                        .any(|restarted_ls| restarted_ls == &ls.name)
                 }) =>
             {
                 Some(doc.id())
@@ -1526,17 +1558,15 @@ fn lsp_restart(
 
 fn lsp_stop(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
+    let doc = doc!(cx.editor);
 
-    let ls_shutdown_names = doc!(cx.editor)
-        .language_servers()
-        .map(|ls| ls.name().to_string())
-        .collect::<Vec<_>>();
+    let ls_shutdown_names = valid_lang_servers(doc, args)?;
 
     for ls_name in &ls_shutdown_names {
         cx.editor.language_servers.stop(ls_name);
@@ -2910,16 +2940,16 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "lsp-restart",
         aliases: &[],
-        doc: "Restarts the language servers used by the current doc",
+        doc: "Restarts the given language servers, or all language servers that are used by the current file if no arguments are supplied",
         fun: lsp_restart,
-        signature: CommandSignature::none(),
+        signature: CommandSignature::all(completers::language_servers),
     },
     TypableCommand {
         name: "lsp-stop",
         aliases: &[],
-        doc: "Stops the language servers that are used by the current doc",
+        doc: "Stops the given language servers, or all language servers that are used by the current file if no arguments are supplied",
         fun: lsp_stop,
-        signature: CommandSignature::none(),
+        signature: CommandSignature::all(completers::language_servers),
     },
     TypableCommand {
         name: "tree-sitter-scopes",

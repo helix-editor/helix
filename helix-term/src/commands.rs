@@ -393,6 +393,9 @@ impl MappableCommand {
         file_picker, "Open file picker",
         file_picker_in_current_buffer_directory, "Open file picker at current buffer's directory",
         file_picker_in_current_directory, "Open file picker at current working directory",
+        file_explorer, "Open file explorer in workspace root",
+        file_explorer_in_current_buffer_directory, "Open file explorer at current buffer's directory",
+        file_explorer_in_current_directory, "Open file explorer at current working directory",
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
         jumplist_picker, "Open jumplist picker",
@@ -1301,7 +1304,7 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
             .line_to_byte(text.byte_to_line(pos) + 1)
             .min(pos + 1000);
         let search_range = text.slice(search_start..search_end);
-        // we also allow paths that are next to the cursor (can be ambigous but
+        // we also allow paths that are next to the cursor (can be ambiguous but
         // rarely so in practice) so that gf on quoted/braced path works (not sure about this
         // but apparently that is how gf has worked historically in helix)
         let path = find_paths(search_range, true)
@@ -2271,6 +2274,12 @@ fn search_selection_detect_word_boundaries(cx: &mut Context) {
 
 fn search_selection_impl(cx: &mut Context, detect_word_boundaries: bool) {
     fn is_at_word_start(text: RopeSlice, index: usize) -> bool {
+        // This can happen when the cursor is at the last character in
+        // the document +1 (ge + j), in this case text.char(index) will panic as
+        // it will index out of bounds. See https://github.com/helix-editor/helix/issues/12609
+        if index == text.len_chars() {
+            return false;
+        }
         let ch = text.char(index);
         if index == 0 {
             return char_is_word(ch);
@@ -2487,7 +2496,7 @@ fn global_search(cx: &mut Context) {
                         let doc = documents.iter().find(|&(doc_path, _)| {
                             doc_path
                                 .as_ref()
-                                .map_or(false, |doc_path| doc_path == entry.path())
+                                .is_some_and(|doc_path| doc_path == entry.path())
                         });
 
                         let result = if let Some((_, doc)) = doc {
@@ -2495,7 +2504,7 @@ fn global_search(cx: &mut Context) {
                             // search the buffer instead of the file because it's faster
                             // and captures new edits without requiring a save
                             if searcher.multi_line_with_matcher(&matcher) {
-                                // in this case a continous buffer is required
+                                // in this case a continuous buffer is required
                                 // convert the rope to a string
                                 let text = doc.to_string();
                                 searcher.search_slice(&matcher, text.as_bytes(), sink)
@@ -2984,6 +2993,58 @@ fn file_picker_in_current_directory(cx: &mut Context) {
     }
     let picker = ui::file_picker(cwd, &cx.editor.config());
     cx.push_layer(Box::new(overlaid(picker)));
+}
+
+fn file_explorer(cx: &mut Context) {
+    let root = find_workspace().0;
+    if !root.exists() {
+        cx.editor.set_error("Workspace directory does not exist");
+        return;
+    }
+
+    if let Ok(picker) = ui::file_explorer(root, cx.editor) {
+        cx.push_layer(Box::new(overlaid(picker)));
+    }
+}
+
+fn file_explorer_in_current_buffer_directory(cx: &mut Context) {
+    let doc_dir = doc!(cx.editor)
+        .path()
+        .and_then(|path| path.parent().map(|path| path.to_path_buf()));
+
+    let path = match doc_dir {
+        Some(path) => path,
+        None => {
+            let cwd = helix_stdx::env::current_working_dir();
+            if !cwd.exists() {
+                cx.editor.set_error(
+                    "Current buffer has no parent and current working directory does not exist",
+                );
+                return;
+            }
+            cx.editor.set_error(
+                "Current buffer has no parent, opening file explorer in current working directory",
+            );
+            cwd
+        }
+    };
+
+    if let Ok(picker) = ui::file_explorer(path, cx.editor) {
+        cx.push_layer(Box::new(overlaid(picker)));
+    }
+}
+
+fn file_explorer_in_current_directory(cx: &mut Context) {
+    let cwd = helix_stdx::env::current_working_dir();
+    if !cwd.exists() {
+        cx.editor
+            .set_error("Current working directory does not exist");
+        return;
+    }
+
+    if let Ok(picker) = ui::file_explorer(cwd, cx.editor) {
+        cx.push_layer(Box::new(overlaid(picker)));
+    }
 }
 
 fn buffer_picker(cx: &mut Context) {
@@ -4060,7 +4121,7 @@ pub mod insert {
                 let on_auto_pair = doc
                     .auto_pairs(cx.editor)
                     .and_then(|pairs| pairs.get(prev))
-                    .map_or(false, |pair| pair.open == prev && pair.close == curr);
+                    .is_some_and(|pair| pair.open == prev && pair.close == curr);
 
                 let local_offs = if let Some(token) = continue_comment_token {
                     new_text.reserve_exact(line_ending.len() + indent.len() + token.len() + 1);
@@ -6485,7 +6546,7 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
     let mut cursor_rev = Range::point(cursor);
     if text.get_char(cursor).is_some_and(|c| !c.is_whitespace()) {
         let cursor_word_end = movement::move_next_word_end(text, cursor_fwd, 1);
-        //  single grapheme words need a specical case
+        //  single grapheme words need a special case
         if cursor_word_end.anchor == cursor {
             cursor_fwd = cursor_word_end;
         }

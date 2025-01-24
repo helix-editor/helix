@@ -20,6 +20,7 @@ use crate::job::{self, Callback};
 pub use completion::Completion;
 pub use editor::EditorView;
 use helix_stdx::rope;
+use helix_view::theme::Style;
 pub use markdown::Markdown;
 pub use menu::Menu;
 pub use picker::{Column as PickerColumn, FileLocation, Picker};
@@ -29,7 +30,9 @@ pub use spinner::{ProgressSpinners, Spinner};
 pub use text::Text;
 
 use helix_view::Editor;
+use tui::text::Span;
 
+use std::path::Path;
 use std::{error::Error, path::PathBuf};
 
 struct Utf8PathBuf {
@@ -276,6 +279,74 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
     picker
 }
 
+type FileExplorer = Picker<(PathBuf, bool), (PathBuf, Style)>;
+
+pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std::io::Error> {
+    let directory_style = editor.theme.get("ui.text.directory");
+    let directory_content = directory_content(&root)?;
+
+    let columns = [PickerColumn::new(
+        "path",
+        |(path, is_dir): &(PathBuf, bool), (root, directory_style): &(PathBuf, Style)| {
+            let name = path.strip_prefix(root).unwrap_or(path).to_string_lossy();
+            if *is_dir {
+                Span::styled(format!("{}/", name), *directory_style).into()
+            } else {
+                name.into()
+            }
+        },
+    )];
+    let picker = Picker::new(
+        columns,
+        0,
+        directory_content,
+        (root, directory_style),
+        move |cx, (path, is_dir): &(PathBuf, bool), action| {
+            if *is_dir {
+                let new_root = helix_stdx::path::normalize(path);
+                let callback = Box::pin(async move {
+                    let call: Callback =
+                        Callback::EditorCompositor(Box::new(move |editor, compositor| {
+                            if let Ok(picker) = file_explorer(new_root, editor) {
+                                compositor.push(Box::new(overlay::overlaid(picker)));
+                            }
+                        }));
+                    Ok(call)
+                });
+                cx.jobs.callback(callback);
+            } else if let Err(e) = cx.editor.open(path, action) {
+                let err = if let Some(err) = e.source() {
+                    format!("{}", err)
+                } else {
+                    format!("unable to open \"{}\"", path.display())
+                };
+                cx.editor.set_error(err);
+            }
+        },
+    )
+    .with_preview(|_editor, (path, _is_dir)| Some((path.as_path().into(), None)));
+
+    Ok(picker)
+}
+
+fn directory_content(path: &Path) -> Result<Vec<(PathBuf, bool)>, std::io::Error> {
+    let mut content: Vec<_> = std::fs::read_dir(path)?
+        .flatten()
+        .map(|entry| {
+            (
+                entry.path(),
+                entry.file_type().is_ok_and(|file_type| file_type.is_dir()),
+            )
+        })
+        .collect();
+
+    content.sort_by(|(path1, is_dir1), (path2, is_dir2)| (!is_dir1, path1).cmp(&(!is_dir2, path2)));
+    if path.parent().is_some() {
+        content.insert(0, (path.join(".."), true));
+    }
+    Ok(content)
+}
+
 pub mod completers {
     use super::Utf8PathBuf;
     use crate::ui::prompt::Completion;
@@ -339,6 +410,15 @@ pub mod completers {
         }
     }
 
+    pub fn language_servers(editor: &Editor, input: &str) -> Vec<Completion> {
+        let language_servers = doc!(editor).language_servers().map(|ls| ls.name());
+
+        fuzzy_match(input, language_servers, false)
+            .into_iter()
+            .map(|(name, _)| ((0..), Span::raw(name.to_string())))
+            .collect()
+    }
+
     pub fn setting(_editor: &Editor, input: &str) -> Vec<Completion> {
         static KEYS: Lazy<Vec<String>> = Lazy::new(|| {
             let mut keys = Vec::new();
@@ -363,7 +443,7 @@ pub mod completers {
         git_ignore: bool,
     ) -> Vec<Completion> {
         filename_impl(editor, input, git_ignore, |entry| {
-            let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
+            let is_dir = entry.file_type().is_some_and(|entry| entry.is_dir());
 
             if is_dir {
                 FileMatch::AcceptIncomplete
@@ -414,7 +494,7 @@ pub mod completers {
         git_ignore: bool,
     ) -> Vec<Completion> {
         filename_impl(editor, input, git_ignore, |entry| {
-            let is_dir = entry.file_type().map_or(false, |entry| entry.is_dir());
+            let is_dir = entry.file_type().is_some_and(|entry| entry.is_dir());
 
             if is_dir {
                 FileMatch::Accept
