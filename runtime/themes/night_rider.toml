@@ -1,0 +1,118 @@
+# Author: Adapted from Night Rider VS Code theme
+# Palette from Night Rider VS Code theme
+
+# Diagnostic Styles
+warning = { fg = "#FF709D", modifiers = ["dim"] }
+error = { fg = "#FF6E9C", modifiers = ["dim"] }
+info = { fg = "#7EA7FB", modifiers = ["dim"] }
+hint = { fg = "#7EA7F3", modifiers = ["dim"] }
+
+"diagnostic.warning" = { underline = { color = "#FF709D", style = "curl" } }
+"diagnostic.error" = { underline = { color = "#FF6E9C", style = "curl" } }
+"diagnostic.info" = { underline = { color = "#7EA7FB", style = "curl" } }
+"diagnostic.hint" = { underline = { color = "#7EA7F3", style = "curl" } }
+"diagnostic.unnecessary" = { modifiers = ["dim"] }
+"diagnostic.deprecated" = { modifiers = ["crossed_out"] }
+
+# UI
+'ui.background' = { fg = "#D6DEEB", bg = "#1E1C3F" }
+'ui.window' = { fg = "#615F91" }
+'ui.gutter' = { bg = "#1A1837" }
+'ui.text' = { fg = "#D6DEEB" }
+'ui.text.focus' = { fg = "#D6DEEB" }
+'ui.text.info' = { fg = "#D6DEEB" }
+'ui.cursor' = { fg = "#1E1C3F", bg = "#7EA7FB" }
+'ui.cursor.primary' = { fg = "#1E1C3F", bg = "#ECC48D" }
+'ui.cursor.match' = { bg = "#2D2C5D", modifiers = ["underlined"] }
+'ui.selection' = { bg = "#2D2C5D", modifiers = ["dim"] }
+'ui.linenr' = { fg = "#696292", bg = "#1E1C3F" }
+'ui.linenr.selected' = { fg = "#D6DEEB", bg = "#1E1C3F" }
+'ui.statusline' = { fg = "#D6DEEB", bg = "#1E1C3F" }
+'ui.statusline.inactive' = { fg = "#615F91", bg = "#1E1C3F" }
+'ui.statusline.normal' = { bg = "#637777" }
+'ui.statusline.insert' = { bg = "#F78C6C" }
+'ui.statusline.select' = { bg = "#82AAFF" }  # Bleu
+'ui.menu' = { fg = "#D6DEEB", bg = "#2D2C5D" }
+'ui.menu.selected' = { fg = "#D6DEEB", bg = "#C792EA" }  # Violet
+'ui.popup' = { fg = "#D6DEEB", bg = "#222246" }
+'ui.popup.info' = { fg = "#ECC48D", bg = "#222246" }
+'ui.help' = { fg = "#ECC48D", bg = "#222246" }
+'ui.virtual.ruler' = { bg = "#696292" }
+'ui.virtual.whitespace' = { fg = "#696292" }
+'ui.cursorline.primary' = { bg = "#222246" }
+
+# Syntax
+'type' = { fg = "#82AAFF" }  # Bleu
+'constructor' = { fg = "#82AAFF" }  # Bleu
+'constant' = { fg = "#D6DEEB" }  # Gris clair
+'constant.builtin' = { fg = "#7FDBCA" }  # Bleu clair
+'constant.character.escape' = { fg = "#F78C6C" }  # Orange
+'string' = { fg = "#ADDB67" }  # Vert brillant
+'string.regexp' = { fg = "#ADDB67" }  # Vert brillant
+'string.special.url' = { fg = "#ADDB67", modifiers = ["underlined"] }  # Vert brillant
+'comment' = { fg = "#637777", modifiers = ["italic"] }  # Gris
+'comment.block.documentation' = { fg = "#637777" }  # Gris
+'variable' = { fg = "#D8618E" }  # Rose clair
+'variable.builtin' = { fg = "#7EA7FB", modifiers = ["italic"] }  # Bleu
+'label' = { fg = "#D6DEEB" }  # Gris clair
+'punctuation' = { fg = "#D6DEEB" }  # Gris clair
+'punctuation.special' = { fg = "#C792EA" }  # Violet
+'keyword' = { fg = "#C792EA" }  # Violet (pour fn, def, etc.)
+'keyword.control.import' = { fg = "#82AAFF", modifiers = ["italic"] }  # Bleu
+'keyword.control.return' = { fg = "#C792EA", modifiers = ["italic"] }  # Violet
+'keyword.control.exception' = { fg = "#FF5874" }  # Rouge
+'operator' = { fg = "#C792EA" }  # Violet
+'function' = { fg = "#82AAFF" }  # Bleu (pour les méthodes)
+'function.macro' = { fg = "#F78C6C" }  # Orange
+'function.special' = { fg = "#C792EA" }  # Violet
+'tag' = { fg = "#82AAFF" }  # Bleu
+'namespace' = { fg = "#F78C6C" }  # Orange
+'special' = { fg = "#D6DEEB" }  # Gris clair
+'module' = { fg = "#D6DEEB" }  # Gris clair
+'attribute' = { fg = "#7FDBCA" }  # Bleu clair
+
+# Markup
+'markup.heading' = { fg = "#82AAFF", modifiers = ["bold"] }  # Bleu
+'markup.heading.marker' = { fg = "#696292", modifiers = ["dim"] }  # Gris
+'markup.heading.1' = { fg = "#82AAFF", modifiers = ["bold"] }  # Bleu
+'markup.heading.2' = { fg = "#7FDBCA", modifiers = ["bold"] }  # Bleu clair
+'markup.heading.3' = { fg = "#82AAFF", modifiers = ["bold"] }  # Bleu
+'markup.heading.4' = { fg = "#C792EA", modifiers = ["bold"] }  # Violet
+'markup.heading.5' = { fg = "#F78C6C", modifiers = ["bold"] }  # Orange
+'markup.heading.6' = { fg = "#637777", modifiers = ["bold"] }  # Gris
+'markup.list' = { fg = "#C792EA" }  # Violet
+'markup.bold' = { fg = "#D6DEEB", modifiers = ["bold"] }  # Gris clair
+'markup.italic' = { fg = "#D6DEEB", modifiers = ["italic"] }  # Gris clair
+'markup.strikethrough' = { fg = "#D6DEEB", modifiers = ["crossed_out"] }  # Gris clair
+'markup.link' = { fg = "#C792EA", modifiers = ["underlined"] }  # Violet
+'markup.link.url' = { fg = "#637777", modifiers = ["underlined"] }  # Gris
+'markup.quote' = { fg = "#82AAFF", modifiers = ["italic"] }  # Bleu
+'markup.raw' = { fg = "#ECC48D", bg = "#222246" }  # Jaune
+
+# Diff
+'diff.plus' = { fg = "#82AAFF" }  # Bleu
+'diff.minus' = { fg = "#FF5874" }  # Rouge
+'diff.delta' = { fg = "#82AAFF" }  # Bleu
+'diff.delta.moved' = { fg = "#82AAFF", modifiers = ["italic"] }  # Bleu
+
+# Palette
+[palette]
+background = "#1E1C3F"
+background2 = "#222246"
+foreground = "#D6DEEB"
+selection = "#2D2C5D"
+
+slate = "#637777"
+red = "#FF5874"
+peach = "#F78C6C"
+gold = "#ECC48D"
+pink = "#C792EA"
+green = "#ADDB67"  # Vert brillant
+blue = "#82AAFF"
+paleblue = "#7FDBCA"
+
+# Greys are named after their value.
+grey2 = "#222222"
+grey4 = "#444444"
+grey7 = "#777777"
+greyE = "#EEEEEE"
