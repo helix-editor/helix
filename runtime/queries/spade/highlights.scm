@@ -56,13 +56,11 @@
 ] @keyword.import
 
 [
-    "$if"
-    "$else"
-    "$config"
+    "gen"
 ] @keyword.directive
 
-((comptime_if  ["{" "}"] @keyword.directive))
-((comptime_else  ["{" "}"] @keyword.directive))
+((gen_if_expression  ["if" "else"] @keyword.directive))
+((naked_gen_if_expression  ["if" "else"] @keyword.directive))
 
 ((attribute) ["#" "[" "]"] @punctuation.delimiter)
 

@@ -40,7 +40,7 @@ fn main() -> Result<()> {
 
 #[tokio::main]
 async fn main_impl() -> Result<i32> {
-    let mut args = Args::parse_args().context("could not parse arguments")?;
+    let args = Args::parse_args().context("could not parse arguments")?;
 
     helix_loader::initialize_config_file(args.config_file.clone());
     helix_loader::initialize_log_file(args.log_file.clone());
@@ -114,10 +114,6 @@ FLAGS:
 
     setup_logging(args.verbosity).context("failed to initialize logging")?;
 
-    // Before setting the working directory, resolve all the paths in args.files
-    for (path, _) in &mut args.files {
-        *path = helix_stdx::path::canonicalize(&*path);
-    }
     // NOTE: Set the working directory early so the correct configuration is loaded. Be aware that
     // Application::new() depends on this logic so it must be updated if this changes.
     if let Some(path) = &args.working_directory {

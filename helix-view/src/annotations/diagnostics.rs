@@ -178,7 +178,7 @@ impl<'a> InlineDiagnosticAccumulator<'a> {
         horizontal_off: usize,
     ) -> bool {
         // TODO: doing the cursor tracking here works well but is somewhat
-        // duplicate effort/tedious maybe centralize this somehwere?
+        // duplicate effort/tedious maybe centralize this somewhere?
         // In the DocFormatter?
         if grapheme.char_idx == self.cursor {
             self.cursor_line = true;
@@ -248,9 +248,9 @@ impl<'a> InlineDiagnosticAccumulator<'a> {
     }
 
     pub fn has_multi(&self, width: u16) -> bool {
-        self.stack.last().map_or(false, |&(_, anchor)| {
-            anchor > self.config.max_diagnostic_start(width)
-        })
+        self.stack
+            .last()
+            .is_some_and(|&(_, anchor)| anchor > self.config.max_diagnostic_start(width))
     }
 }
 

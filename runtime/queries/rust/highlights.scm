@@ -30,6 +30,8 @@
   (string_literal)
   (raw_string_literal)
 ] @string
+(outer_doc_comment_marker "/" @comment)
+(inner_doc_comment_marker "!" @comment)
 [
   (line_comment)
   (block_comment)
@@ -63,6 +65,14 @@
  (#any-of? @type.enum.variant.builtin "Some" "None" "Ok" "Err"))
 
 
+(call_expression
+  (identifier) @function.builtin
+  (#any-of? @function.builtin
+    "drop"
+    "size_of"
+    "size_of_val"
+    "align_of"
+    "align_of_val"))
 
 ((type_identifier) @type.builtin
  (#any-of?
@@ -113,6 +123,7 @@
   "."
   ";"
   ","
+  ":"
 ] @punctuation.delimiter
 
 [
@@ -165,8 +176,7 @@
 
 (for_expression
   "for" @keyword.control.repeat)
-((identifier) @keyword.control
-  (#match? @keyword.control "^yield$"))
+(gen_block "gen" @keyword.control)
 
 "in" @keyword.control
 
@@ -187,6 +197,7 @@
   "continue"
   "return"
   "await"
+  "yield"
 ] @keyword.control.return
 
 "use" @keyword.control.import
@@ -194,6 +205,10 @@
 (use_as_clause "as" @keyword.control.import)
 
 (type_cast_expression "as" @keyword.operator)
+
+((generic_type
+    type: (type_identifier) @keyword)
+ (#eq? @keyword "use"))
 
 [
   (crate)
@@ -232,6 +247,7 @@
 [
   "static"
   "const"
+  "raw"
   "ref"
   "move"
   "dyn"
@@ -309,6 +325,8 @@
 
 ((identifier) @type
   (#match? @type "^[A-Z]"))
+
+(never_type "!" @type)
 
 ; -------
 ; Functions
@@ -452,6 +470,7 @@
 ; Remaining Identifiers
 ; -------
 
+; We do not style ? as an operator on purpose as it allows styling ? differently, as many highlighters do. @operator.special might have been a better scope, but @special is already documented so the change would break themes (including the intent of the default theme)
 "?" @special
 
 (type_identifier) @type

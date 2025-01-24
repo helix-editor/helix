@@ -16,8 +16,31 @@
  (#match? @variable.builtin "^(arguments|module|console|window|document)$")
  (#is-not? local))
 
-((identifier) @function.builtin
- (#eq? @function.builtin "require")
+(call_expression
+ (identifier) @function.builtin
+ (#any-of? @function.builtin
+  "eval"
+  "fetch"
+  "isFinite"
+  "isNaN"
+  "parseFloat"
+  "parseInt"
+  "decodeURI"
+  "decodeURIComponent"
+  "encodeURI"
+  "encodeURIComponent"
+  "require"
+  "alert"
+  "prompt"
+  "btoa"
+  "atob"
+  "confirm"
+  "structuredClone"
+  "setTimeout"
+  "clearTimeout"
+  "setInterval"
+  "clearInterval"
+  "queueMicrotask")
  (#is-not? local))
 
 ; Function and method definitions

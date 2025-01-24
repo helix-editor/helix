@@ -500,10 +500,7 @@ impl ThemePalette {
                         let modifiers = value.as_array().ok_or("Modifiers should be an array")?;
 
                         for modifier in modifiers {
-                            if modifier
-                                .as_str()
-                                .map_or(false, |modifier| modifier == "underlined")
-                            {
+                            if modifier.as_str() == Some("underlined") {
                                 *style = style.underline_style(UnderlineStyle::Line);
                             } else {
                                 *style = style.add_modifier(Self::parse_modifier(modifier)?);

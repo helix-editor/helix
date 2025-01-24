@@ -25,7 +25,7 @@ Inspired by [Kakoune](http://kakoune.org/), Helix follows the `selection → act
 
 ## Multiple selections
 
-Also inspired by Kakoune, multiple selections are a core mode of interaction in Helix. For example, the standard way of replacing multiple instance of a word is to first select all instances (so there is one selection per instance) and then use the change action (`c`) to edit them all at the same time.
+Also inspired by Kakoune, multiple selections are a core mode of interaction in Helix. For example, the standard way of replacing multiple instances of a word is to first select all instances (so there is one selection per instance) and then use the change action (`c`) to edit them all at the same time.
 
 ## Motions
 

@@ -178,9 +178,16 @@ impl Snippet {
         &mut self,
         idx: usize,
         parent: Option<TabstopIdx>,
-        default: Vec<parser::SnippetElement>,
+        mut default: Vec<parser::SnippetElement>,
     ) -> TabstopIdx {
         let idx = TabstopIdx::elaborate(idx);
+        if idx == LAST_TABSTOP_IDX && !default.is_empty() {
+            // Older versions of clangd for example may send a snippet like `${0:placeholder}`
+            // which is considered by VSCode to be a misuse of the `$0` tabstop.
+            log::warn!("Discarding placeholder text for the `$0` tabstop ({default:?}). \
+                The `$0` tabstop signifies the final cursor position and should not include placeholder text.");
+            default.clear();
+        }
         let default = self.elaborate(default, Some(idx));
         self.tabstops.push(Tabstop {
             idx,

@@ -104,8 +104,35 @@ impl std::error::Error for Error {}
 #[serde(untagged)]
 pub enum Id {
     Null,
-    Num(u64),
+    Num(#[serde(deserialize_with = "deserialize_jsonrpc_id_num")] u64),
     Str(String),
+}
+
+fn deserialize_jsonrpc_id_num<'de, D>(deserializer: D) -> Result<u64, D::Error>
+where
+    D: serde::Deserializer<'de>,
+{
+    let num = serde_json::Number::deserialize(deserializer)?;
+
+    if let Some(val) = num.as_u64() {
+        return Ok(val);
+    };
+
+    // Accept floats as long as they represent positive whole numbers.
+    // The JSONRPC spec says "Numbers SHOULD NOT contain fractional parts" so we should try to
+    // accept them if possible. The JavaScript type system lumps integers and floats together so
+    // some languages may serialize integer IDs as floats with a zeroed fractional part.
+    // See <https://github.com/helix-editor/helix/issues/12367>.
+    if let Some(val) = num
+        .as_f64()
+        .filter(|f| f.is_sign_positive() && f.fract() == 0.0)
+    {
+        return Ok(val as u64);
+    }
+
+    Err(de::Error::custom(
+        "number must be integer or float representing a whole number in valid u64 range",
+    ))
 }
 
 impl std::fmt::Display for Id {
@@ -373,6 +400,22 @@ fn serialize_skip_none_params() {
 
     let serialized = serde_json::to_string(&n).unwrap();
     assert_eq!(serialized, r#"{"jsonrpc":"2.0","method":"exit"}"#);
+}
+
+#[test]
+fn id_deserialize() {
+    use serde_json;
+
+    let id = r#"8"#;
+    let deserialized: Id = serde_json::from_str(id).unwrap();
+    assert_eq!(deserialized, Id::Num(8));
+
+    let id = r#"4.0"#;
+    let deserialized: Id = serde_json::from_str(id).unwrap();
+    assert_eq!(deserialized, Id::Num(4));
+
+    let id = r#"0.01"#;
+    assert!(serde_json::from_str::<Id>(id).is_err());
 }
 
 #[test]

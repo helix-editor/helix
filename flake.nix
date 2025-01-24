@@ -138,6 +138,8 @@
               cp contrib/helix.png $out/share/icons/hicolor/256x256/apps
               installShellCompletion contrib/completion/hx.{bash,fish,zsh}
             '';
+            # set git revision for nix flake builds, see 'git_hash' in helix-loader/build.rs
+            HELIX_NIX_BUILD_REV = self.rev or self.dirtyRev or null;
           });
         helix = makeOverridableHelix self.packages.${system}.helix-unwrapped {};
         default = self.packages.${system}.helix;

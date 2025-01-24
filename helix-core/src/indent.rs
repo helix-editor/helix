@@ -456,7 +456,7 @@ struct IndentQueryResult<'a> {
 fn get_node_start_line(node: Node, new_line_byte_pos: Option<usize>) -> usize {
     let mut node_line = node.start_position().row;
     // Adjust for the new line that will be inserted
-    if new_line_byte_pos.map_or(false, |pos| node.start_byte() >= pos) {
+    if new_line_byte_pos.is_some_and(|pos| node.start_byte() >= pos) {
         node_line += 1;
     }
     node_line
@@ -464,7 +464,7 @@ fn get_node_start_line(node: Node, new_line_byte_pos: Option<usize>) -> usize {
 fn get_node_end_line(node: Node, new_line_byte_pos: Option<usize>) -> usize {
     let mut node_line = node.end_position().row;
     // Adjust for the new line that will be inserted (with a strict inequality since end_byte is exclusive)
-    if new_line_byte_pos.map_or(false, |pos| node.end_byte() > pos) {
+    if new_line_byte_pos.is_some_and(|pos| node.end_byte() > pos) {
         node_line += 1;
     }
     node_line
