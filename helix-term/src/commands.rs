@@ -5809,7 +5809,8 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
     cx.editor.autoinfo = Some(Info::new(title, &help_text));
 }
 
-static SURROUND_HELP_TEXT: [(&str, &str); 5] = [
+static SURROUND_HELP_TEXT: [(&str, &str); 6] = [
+    ("m", "Nearest matching pair"),
     ("( or )", "Parentheses"),
     ("{ or }", "Curly braces"),
     ("< or >", "Angled brackets"),
@@ -5862,12 +5863,16 @@ fn surround_add(cx: &mut Context) {
         exit_select_mode(cx);
     });
 
-    cx.editor.autoinfo = Some(Info::new("Surround selections with", &SURROUND_HELP_TEXT));
+    cx.editor.autoinfo = Some(Info::new(
+        "Surround selections with",
+        &SURROUND_HELP_TEXT[1..],
+    ));
 }
 
 fn surround_replace(cx: &mut Context) {
     let count = cx.count();
     cx.on_next_key(move |cx, event| {
+        cx.editor.autoinfo = None;
         let surround_ch = match event.char() {
             Some('m') => None, // m selects the closest surround pair
             Some(ch) => Some(ch),
@@ -5923,7 +5928,10 @@ fn surround_replace(cx: &mut Context) {
             exit_select_mode(cx);
         });
 
-        cx.editor.autoinfo = Some(Info::new("Replace with a pair of", &SURROUND_HELP_TEXT));
+        cx.editor.autoinfo = Some(Info::new(
+            "Replace with a pair of",
+            &SURROUND_HELP_TEXT[1..],
+        ));
     });
 
     cx.editor.autoinfo = Some(Info::new(
