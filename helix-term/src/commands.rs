@@ -2575,7 +2575,7 @@ fn global_search(cx: &mut Context) {
     })
     .with_history_register(Some(reg))
     .with_dynamic_query(get_files, Some(275))
-    .with_title("Global Search".into());
+    .with_title("Search".into());
 
     cx.push_layer(Box::new(overlaid(picker)));
 }
