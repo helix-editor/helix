@@ -3380,7 +3380,7 @@ pub fn command_palette(cx: &mut Context) {
                     }
                 }
             })
-            .with_title("Commands".into());
+            .with_title("Command Palette".into());
             compositor.push(Box::new(overlaid(picker)));
         },
     ));
