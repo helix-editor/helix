@@ -361,7 +361,20 @@ mod test {
                 Text(")".into()),
             ]),
             parse("match(${1:Arg1})")
-        )
+        );
+        // The `$0` tabstop should not have placeholder text. The parser should handle this case
+        // normally and then the placeholder text should be discarded during elaboration.
+        assert_eq!(
+            Ok(vec![
+                Text("sizeof(".into()),
+                Placeholder {
+                    tabstop: 0,
+                    value: vec![Text("expression-or-type".into())],
+                },
+                Text(")".into()),
+            ]),
+            parse("sizeof(${0:expression-or-type})")
+        );
     }
 
     #[test]

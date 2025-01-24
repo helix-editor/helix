@@ -85,7 +85,7 @@ impl Client {
             .and_then(|root| lsp::Url::from_file_path(root).ok());
 
         if self.root_path == root.unwrap_or(workspace)
-            || root_uri.as_ref().map_or(false, |root_uri| {
+            || root_uri.as_ref().is_some_and(|root_uri| {
                 self.workspace_folders
                     .lock()
                     .iter()

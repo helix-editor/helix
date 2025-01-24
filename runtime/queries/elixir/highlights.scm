@@ -35,7 +35,7 @@
           quoted_end: _ @comment.block.documentation) @comment.block.documentation
         (boolean) @comment.block.documentation
       ]))
-  (#match? @comment.block.documentation.__attribute__ "^(moduledoc|typedoc|doc)$"))
+  (#any-of? @comment.block.documentation.__attribute__ "moduledoc" "typedoc" "doc"))
 
 ; * module attribute
 (unary_operator
@@ -114,13 +114,13 @@
   (sigil_name) @__name__
   quoted_start: _ @string
   quoted_end: _ @string
-  (#match? @__name__ "^[sS]$")) @string
+  (#any-of? @__name__ "s" "S")) @string
 
 (sigil
   (sigil_name) @__name__
   quoted_start: _ @string.regexp
   quoted_end: _ @string.regexp
-  (#match? @__name__ "^[rR]$")) @string.regexp
+  (#any-of? @__name__ "r" "R")) @string.regexp
 
 (sigil
   (sigil_name) @__name__
@@ -132,12 +132,12 @@
 ; * definition keyword
 (call
   target: (identifier) @keyword
-  (#match? @keyword "^(def|defdelegate|defexception|defguard|defguardp|defimpl|defmacro|defmacrop|defmodule|defn|defnp|defoverridable|defp|defprotocol|defstruct)$"))
+  (#any-of? @keyword "def" "defdelegate" "defexception" "defguard" "defguardp" "defimpl" "defmacro" "defmacrop" "defmodule" "defn" "defnp" "defoverridable" "defp" "defprotocol" "defstruct"))
 
 ; * kernel or special forms keyword
 (call
   target: (identifier) @keyword
-  (#match? @keyword "^(alias|case|cond|else|for|if|import|quote|raise|receive|require|reraise|super|throw|try|unless|unquote|unquote_splicing|use|with)$"))
+  (#any-of? @keyword "alias" "case" "cond" "else" "for" "if" "import" "quote" "raise" "receive" "require" "reraise" "super" "throw" "try" "unless" "unquote" "unquote_splicing" "use" "with"))
 
 ; * function call
 (call
@@ -159,7 +159,7 @@
         left: (identifier) @function
         operator: "when")
     ])
-  (#match? @keyword "^(def|defdelegate|defguard|defguardp|defmacro|defmacrop|defn|defnp|defp)$"))
+  (#any-of? @keyword "def" "defdelegate" "defguard" "defguardp" "defmacro" "defmacrop" "defn" "defnp" "defp"))
 
 ; * pipe into identifier (definition)
 (call
@@ -168,7 +168,7 @@
     (binary_operator
       operator: "|>"
       right: (identifier) @variable))
-  (#match? @keyword "^(def|defdelegate|defguard|defguardp|defmacro|defmacrop|defn|defnp|defp)$"))
+  (#any-of? @keyword "def" "defdelegate" "defguard" "defguardp" "defmacro" "defmacrop" "defn" "defnp" "defp"))
 
 ; * pipe into identifier (function call)
 (binary_operator
@@ -180,7 +180,7 @@
 ; * special
 (
   (identifier) @constant.builtin
-  (#match? @constant.builtin "^(__MODULE__|__DIR__|__ENV__|__CALLER__|__STACKTRACE__)$")
+  (#any-of? @constant.builtin "__MODULE__" "__DIR__" "__ENV__" "__CALLER__" "__STACKTRACE__")
 )
 
 ; * unused

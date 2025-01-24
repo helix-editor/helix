@@ -20,6 +20,59 @@ Updated languages and queries:
 Packaging:
 -->
 
+# 25.01.1 (2025-01-19)
+
+25.01.1 is a patch release focusing on fixing bugs and panics from changes in 25.01.
+
+Usability improvements:
+
+* Run external formatters from the document's directory ([#12315](https://github.com/helix-editor/helix/pull/12315))
+
+Fixes:
+
+* Fix blank buffer picker preview on doc with no views ([917174e](https://github.com/helix-editor/helix/commit/917174e))
+* Fix `join_selections` behavior on tabs ([#12452](https://github.com/helix-editor/helix/pull/12452))
+* Fix recognition for color LSP completion hex codes for some language servers ([#12501](https://github.com/helix-editor/helix/pull/12501))
+* Fix offsets to selections updated by `open_below`/`open_above` (`o`/`O`) in multi-cursor scenarios ([#12465](https://github.com/helix-editor/helix/pull/12465))
+* Fix offsets to selections updated by `insert_newline` when trimming whitespace in multi-cursor scenarios ([4bd17e5](https://github.com/helix-editor/helix/commit/4bd17e5))
+* Fix panic in path completion from resolving variables like `${HOME:-$HOME}` ([#12556](https://github.com/helix-editor/helix/pull/12556))
+* Prevent line comment continuation when using `change_selection` (`c`) on a line above a comment ([#12575](https://github.com/helix-editor/helix/pull/12575))
+
+Themes:
+
+* Update `onelight` ([#12399](https://github.com/helix-editor/helix/pull/12399))
+* Add cursorline color to iceberg themes ([#12404](https://github.com/helix-editor/helix/pull/12404))
+* Update `special`, `ui.text.directory` and `ui.virtual.wrap` in `dark_plus` ([#12530](https://github.com/helix-editor/helix/pull/12530))
+
+New languages:
+
+* CodeQL ([#12470](https://github.com/helix-editor/helix/pull/12470))
+* Gren ([#12525](https://github.com/helix-editor/helix/pull/12525))
+
+Updated languages and queries:
+
+* Fix Teal LSP name ([#12395](https://github.com/helix-editor/helix/pull/12395))
+* Highlight `:` in Rust as a delimiter ([#12408](https://github.com/helix-editor/helix/pull/12408))
+* Update Swift highlights ([#12409](https://github.com/helix-editor/helix/pull/12409))
+* Highlight JSX attributes as `@attribute` ([#12416](https://github.com/helix-editor/helix/pull/12416))
+* Improve markdown heading highlights ([#12417](https://github.com/helix-editor/helix/pull/12417))
+* Add comment tokens configuration for JSONC ([b26903c](https://github.com/helix-editor/helix/commit/b26903c))
+* Highlight the never type `!` as a type in Rust ([#12485](https://github.com/helix-editor/helix/pull/12485))
+* Expand builtin function highlights for ECMA languages, Rust and Haskell ([#12488](https://github.com/helix-editor/helix/pull/12488))
+* Recognize `.clang-tidy` as YAML ([#12498](https://github.com/helix-editor/helix/pull/12498))
+* Update MATLAB grammar and indent queries ([#12518](https://github.com/helix-editor/helix/pull/12518))
+* Recognize `rockspec` as Lua ([#12516](https://github.com/helix-editor/helix/pull/12516))
+* Add `///` to Dart comment tokens configuration ([99d33c7](https://github.com/helix-editor/helix/commit/99d33c7))
+* Update Solidity grammar and queries ([#12457](https://github.com/helix-editor/helix/pull/12457))
+* Update Spade grammar and queries ([#12583](https://github.com/helix-editor/helix/pull/12583))
+* Re-enable Hare fetching and building by default ([#11507](https://github.com/helix-editor/helix/pull/11507))
+
+Packaging:
+
+* `--version` now prints a leading zero for single-digit months, for example `25.01` (03f35af)
+* Pin the Ubuntu GitHub Actions runners used for releases to `ubuntu-22.04` ([#12464](https://github.com/helix-editor/helix/pull/12464))
+* Produce a Debian package (`.deb` file) in the release GitHub Actions workflow ([#12453](https://github.com/helix-editor/helix/pull/12453))
+
 # 25.01 (2025-01-03)
 
 As always, a big thank you to all of the contributors! This release saw changes from 171 contributors.
