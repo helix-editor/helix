@@ -237,8 +237,17 @@ impl Transport {
     ) -> Result<()> {
         let mut recv_buffer = String::new();
         loop {
-            let msg = Self::recv_server_message(&mut server_stdout, &mut recv_buffer).await?;
-            transport.process_server_message(&client_tx, msg).await?;
+            match Self::recv_server_message(&mut server_stdout, &mut recv_buffer).await {
+                Ok(msg) => {
+                    transport.process_server_message(&client_tx, msg).await?;
+                    Ok(())
+                }
+                Err(Error::Parse(err)) => {
+                    error!("ignoring unparseable message: <- {:?}", err);
+                    Ok(())
+                }
+                Err(err) => Err(err),
+            }?;
         }
     }
 
