@@ -34,6 +34,42 @@ pub trait RopeSliceExt<'a>: Sized {
     /// }
     /// ```
     fn byte_to_next_char(self, byte_idx: usize) -> usize;
+    /// Finds the closest byte index not exceeding `byte_idx` which lies on a character boundary.
+    ///
+    /// If `byte_idx` already lies on a character boundary then it is returned as-is. When
+    /// `byte_idx` lies between two character boundaries, this function returns the byte index of
+    /// the lesser / earlier / left-hand-side boundary.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use ropey::RopeSlice;
+    /// # use helix_stdx::rope::RopeSliceExt;
+    /// let text = RopeSlice::from("⌚"); // three bytes: e2 8c 9a
+    /// assert_eq!(text.floor_char_boundary(0), 0);
+    /// assert_eq!(text.floor_char_boundary(1), 0);
+    /// assert_eq!(text.floor_char_boundary(2), 0);
+    /// assert_eq!(text.floor_char_boundary(3), 3);
+    /// ```
+    fn floor_char_boundary(self, byte_idx: usize) -> usize;
+    /// Finds the closest byte index not below `byte_idx` which lies on a character boundary.
+    ///
+    /// If `byte_idx` already lies on a character boundary then it is returned as-is. When
+    /// `byte_idx` lies between two character boundaries, this function returns the byte index of
+    /// the greater / later / right-hand-side boundary.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use ropey::RopeSlice;
+    /// # use helix_stdx::rope::RopeSliceExt;
+    /// let text = RopeSlice::from("⌚"); // three bytes: e2 8c 9a
+    /// assert_eq!(text.ceil_char_boundary(0), 0);
+    /// assert_eq!(text.ceil_char_boundary(1), 3);
+    /// assert_eq!(text.ceil_char_boundary(2), 3);
+    /// assert_eq!(text.ceil_char_boundary(3), 3);
+    /// ```
+    fn ceil_char_boundary(self, byte_idx: usize) -> usize;
 }
 
 impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
@@ -103,6 +139,35 @@ impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
             is_utf8_char_boundary(chunk.as_bytes().get(byte_idx).copied().unwrap_or(0));
         chunk_char_off + byte_to_char_idx(chunk, byte_idx) + !is_char_boundary as usize
     }
+
+    // These two are adapted from std's `round_char_boundary` functions:
+
+    fn floor_char_boundary(self, byte_idx: usize) -> usize {
+        if byte_idx >= self.len_bytes() {
+            self.len_bytes()
+        } else {
+            let offset = self
+                .bytes_at(byte_idx + 1)
+                .reversed()
+                .take(4)
+                .position(is_utf8_char_boundary)
+                // A char can only be four bytes long so we are guaranteed to find a boundary.
+                .unwrap();
+
+            byte_idx - offset
+        }
+    }
+
+    fn ceil_char_boundary(self, byte_idx: usize) -> usize {
+        if byte_idx > self.len_bytes() {
+            self.len_bytes()
+        } else {
+            let upper_bound = self.len_bytes().min(byte_idx + 4);
+            self.bytes_at(byte_idx)
+                .position(is_utf8_char_boundary)
+                .map_or(upper_bound, |pos| pos + byte_idx)
+        }
+    }
 }
 
 // copied from std
@@ -146,5 +211,15 @@ mod tests {
     #[test]
     fn ends_with() {
         assert!(RopeSlice::from("asdf").ends_with("f"));
+    }
+
+    #[test]
+    fn floor_ceil_char_boundary() {
+        let ascii = RopeSlice::from("ascii");
+        // When the given index lies on a character boundary, the index should not change.
+        for byte_idx in 0..=ascii.len_bytes() {
+            assert_eq!(ascii.floor_char_boundary(byte_idx), byte_idx);
+            assert_eq!(ascii.ceil_char_boundary(byte_idx), byte_idx);
+        }
     }
 }
