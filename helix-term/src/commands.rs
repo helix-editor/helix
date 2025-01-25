@@ -1295,15 +1295,16 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         .unwrap_or_default();
 
     let paths: Vec<_> = if selections.len() == 1 && primary.len() == 1 {
-        let mut pos = primary.cursor(text.slice(..));
-        pos = text.char_to_byte(pos);
+        let lookaround = 1000;
+        let pos = primary.cursor(text.slice(..));
+        let pos_line = text.char_to_line(pos);
         let search_start = text
-            .line_to_byte(text.byte_to_line(pos))
-            .max(pos.saturating_sub(1000));
-        let search_end = text
-            .line_to_byte(text.byte_to_line(pos) + 1)
-            .min(pos + 1000);
-        let search_range = text.byte_slice(search_start..search_end);
+            .line_to_char(pos_line)
+            .max(pos.saturating_sub(lookaround));
+        let search_end = text.line_to_char(pos_line + 1).min(pos + lookaround);
+        let search_range = text.slice(search_start..search_end);
+        let pos = text.char_to_byte(pos);
+        let search_start = text.char_to_byte(search_start);
         // we also allow paths that are next to the cursor (can be ambiguous but
         // rarely so in practice) so that gf on quoted/braced path works (not sure about this
         // but apparently that is how gf has worked historically in helix)
