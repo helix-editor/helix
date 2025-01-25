@@ -257,14 +257,14 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
     })
     .with_preview(|_editor, path| Some((path.as_path().into(), None)));
     let injector = picker.injector();
-    let timeout = Instant::now() + std::time::Duration::from_millis(30);
+    let timeout = std::time::Instant::now() + std::time::Duration::from_millis(30);
 
     let mut hit_timeout = false;
     for file in &mut files {
         if injector.push(file).is_err() {
             break;
         }
-        if Instant::now() >= timeout {
+        if std::time::Instant::now() >= timeout {
             hit_timeout = true;
             break;
         }
