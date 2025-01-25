@@ -34,6 +34,7 @@ use tui::text::Span;
 
 use std::path::Path;
 use std::{error::Error, path::PathBuf};
+use ignore::WalkBuilder;
 
 struct Utf8PathBuf {
     path: String,
@@ -188,7 +189,7 @@ pub fn raw_regex_prompt(
 type FilePicker = Picker<PathBuf, PathBuf>;
 
 pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePicker {
-    use ignore::{types::TypesBuilder, WalkBuilder};
+    use ignore::{types::TypesBuilder};
     use std::time::Instant;
 
     let now = Instant::now();
@@ -205,9 +206,10 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         .git_ignore(config.file_picker.git_ignore)
         .git_global(config.file_picker.git_global)
         .git_exclude(config.file_picker.git_exclude)
-        .sort_by_file_name(|name1, name2| name1.cmp(name2))
         .max_depth(config.file_picker.max_depth)
         .filter_entry(move |entry| filter_picker_entry(entry, &absolute_root, dedup_symlinks));
+
+    sorting(&mut walk_builder, config.file_picker.disable_sorting);
 
     walk_builder.add_custom_ignore_filename(helix_loader::config_dir().join("ignore"));
     walk_builder.add_custom_ignore_filename(".helix/ignore");
@@ -255,14 +257,14 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
     })
     .with_preview(|_editor, path| Some((path.as_path().into(), None)));
     let injector = picker.injector();
-    let timeout = std::time::Instant::now() + std::time::Duration::from_millis(30);
+    let timeout = Instant::now() + std::time::Duration::from_millis(30);
 
     let mut hit_timeout = false;
     for file in &mut files {
         if injector.push(file).is_err() {
             break;
         }
-        if std::time::Instant::now() >= timeout {
+        if Instant::now() >= timeout {
             hit_timeout = true;
             break;
         }
@@ -277,6 +279,14 @@ pub fn file_picker(root: PathBuf, config: &helix_view::editor::Config) -> FilePi
         });
     }
     picker
+}
+
+fn sorting(walk_builder: &mut WalkBuilder, is_sorting_disabled: bool) -> &mut WalkBuilder {
+    if is_sorting_disabled {
+        return walk_builder;
+    }
+
+    walk_builder.sort_by_file_name(|name1, name2| name1.cmp(name2))
 }
 
 type FileExplorer = Picker<(PathBuf, bool), (PathBuf, Style)>;
