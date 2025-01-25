@@ -1303,7 +1303,7 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         let search_end = text
             .line_to_byte(text.byte_to_line(pos) + 1)
             .min(pos + 1000);
-        let search_range = text.slice(search_start..search_end);
+        let search_range = text.byte_slice(search_start..search_end);
         // we also allow paths that are next to the cursor (can be ambiguous but
         // rarely so in practice) so that gf on quoted/braced path works (not sure about this
         // but apparently that is how gf has worked historically in helix)
