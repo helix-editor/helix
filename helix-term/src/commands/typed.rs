@@ -2087,8 +2087,7 @@ fn sort_impl(
     let selection = doc.selection(view.id);
 
     if selection.len() == 1 {
-        cx.editor.set_warning("Sorting requires multiple selections. Hint: split selection first");
-        return Ok(());
+        bail!("Sorting requires multiple selections. Hint: split selection first");
     }
 
     let mut fragments: Vec<_> = selection
