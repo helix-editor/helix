@@ -1039,7 +1039,7 @@ pub fn hover(cx: &mut Context) {
 
     cx.callback(
         join(futures),
-        move |editor, compositor, response: Vec<Option<(String, lsp::Hover)>>| {
+        move |editor, compositor, response: Vec<(String, Option<lsp::Hover>)>| {
             fn marked_string_to_markdown(contents: lsp::MarkedString) -> String {
                 match contents {
                     lsp::MarkedString::String(contents) => contents,
@@ -1055,7 +1055,7 @@ pub fn hover(cx: &mut Context) {
 
             let contents = response
                 .into_iter()
-                .flatten()
+                .filter_map(|(name, hover)| hover.map(|hover| (name, hover)))
                 .map(|(name, hover)| {
                     let content = match hover.contents {
                         lsp::HoverContents::Scalar(contents) => marked_string_to_markdown(contents),
