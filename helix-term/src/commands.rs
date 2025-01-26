@@ -3561,8 +3561,8 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
         let is_not_shebang = curr_line_num > 0
             || line
                 .as_str()
-                .map(|line| SHEBANG_REGEX.captures(line).is_some())
-                .unwrap_or(false);
+                .map(|line| SHEBANG_REGEX.captures(line).is_none())
+                .unwrap_or(true);
 
         if is_not_shebang
             && comment_continuation == CommentContinuation::Enabled
@@ -4095,8 +4095,8 @@ pub mod insert {
             let is_not_shebang = curr_line_num > 0
                 || line
                     .as_str()
-                    .map(|line| SHEBANG_REGEX.captures(line).is_some())
-                    .unwrap_or(false);
+                    .map(|line| SHEBANG_REGEX.captures(line).is_none())
+                    .unwrap_or(true);
 
             if is_not_shebang && config.continue_comments {
                 doc.language_config()
