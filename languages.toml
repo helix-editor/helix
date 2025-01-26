@@ -9,6 +9,7 @@ als = { command = "als" }
 ada-language-server = { command = "ada_language_server" }
 ada-gpr-language-server = {command = "ada_language_server", args = ["--language-gpr"]}
 angular = {command = "ngserver", args = ["--stdio", "--tsProbeLocations", ".", "--ngProbeLocations", ".",]}
+asm-lsp = { command = "asm-lsp" }
 awk-language-server = { command = "awk-language-server" }
 bash-language-server = { command = "bash-language-server", args = ["start"] }
 bass = { command = "bass", args = ["--lsp"] }
@@ -3049,6 +3050,7 @@ file-types = ["asm", "S", "nasm"]
 injection-regex = "n?asm"
 comment-token = ";"
 indent = { tab-width = 8, unit = "        " }
+language-servers = ["asm-lsp"]
 
 [[grammar]]
 name = "nasm"
@@ -3061,6 +3063,7 @@ file-types = ["s"]
 injection-regex = "gas"
 comment-token = "#"
 indent = { tab-width = 8, unit = "        " }
+language-servers = ["asm-lsp"]
 
 [[grammar]]
 name = "gas"
