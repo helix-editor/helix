@@ -1027,7 +1027,7 @@ pub fn hover(cx: &mut Context) {
         .language_servers_with_feature(LanguageServerFeature::Hover)
         .filter(|ls| seen_language_servers.insert(ls.id()))
         .map(|language_server| {
-            let lsp_name = language_server.name().to_string();
+            let server_name = language_server.name().to_string();
             // TODO: factor out a doc.position_identifier() that returns lsp::TextDocumentPositionIdentifier
             let pos = doc.position(view.id, language_server.offset_encoding());
             let request = language_server
@@ -1037,7 +1037,7 @@ pub fn hover(cx: &mut Context) {
             async move {
                 let json = request.await?;
                 let response = serde_json::from_value::<Option<lsp::Hover>>(json)?;
-                anyhow::Ok((lsp_name, response))
+                anyhow::Ok((server_name, response))
             }
         })
         .collect();
@@ -1045,9 +1045,9 @@ pub fn hover(cx: &mut Context) {
     cx.jobs.callback(async move {
         let mut hovers: Vec<(String, lsp::Hover)> = Vec::new();
 
-        while let Some((lsp_name, hover)) = futures.try_next().await? {
+        while let Some((server_name, hover)) = futures.try_next().await? {
             if let Some(hover) = hover {
-                hovers.push((lsp_name, hover));
+                hovers.push((server_name, hover));
             }
         }
 
