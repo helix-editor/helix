@@ -2,7 +2,7 @@ use futures_util::{stream::FuturesOrdered, FutureExt};
 use helix_lsp::{
     block_on,
     lsp::{
-        self, CodeAction, CodeActionOrCommand, CodeActionTriggerKind, DiagnosticSeverity, Hover,
+        self, CodeAction, CodeActionOrCommand, CodeActionTriggerKind, DiagnosticSeverity,
         NumberOrString,
     },
     util::{diagnostic_to_lsp_diagnostic, lsp_range_to_range, range_to_lsp_range},
@@ -1009,6 +1009,8 @@ pub fn signature_help(cx: &mut Context) {
 }
 
 pub fn hover(cx: &mut Context) {
+    use ui::lsp::hover::Hover;
+
     let (view, doc) = current!(cx.editor);
     if doc
         .language_servers_with_feature(LanguageServerFeature::Hover)
@@ -1043,7 +1045,7 @@ pub fn hover(cx: &mut Context) {
         .collect();
 
     cx.jobs.callback(async move {
-        let mut hovers: Vec<(String, Hover)> = Vec::new();
+        let mut hovers: Vec<(String, lsp::Hover)> = Vec::new();
 
         while let Some((lsp_name, hover)) = futures.try_next().await? {
             if let Some(hover) = hover {
@@ -1058,9 +1060,9 @@ pub fn hover(cx: &mut Context) {
             }
 
             // create new popup
-            let contents = ui::lsp::hover::Hover::new(hovers, editor.syn_loader.clone());
-            let popup = Popup::new(ui::lsp::hover::Hover::ID, contents).auto_close(true);
-            compositor.replace_or_push(ui::lsp::hover::Hover::ID, popup);
+            let contents = Hover::new(hovers, editor.syn_loader.clone());
+            let popup = Popup::new(Hover::ID, contents).auto_close(true);
+            compositor.replace_or_push(Hover::ID, popup);
         };
         Ok(Callback::EditorCompositor(Box::new(call)))
     });
