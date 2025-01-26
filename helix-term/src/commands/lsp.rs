@@ -1009,48 +1009,70 @@ pub fn signature_help(cx: &mut Context) {
 }
 
 pub fn hover(cx: &mut Context) {
+    async fn join(
+        iter: Vec<(
+            String,
+            impl Future<Output = helix_lsp::Result<serde_json::Value>>,
+        )>,
+    ) -> helix_lsp::Result<serde_json::Value> {
+        let mut vec = Vec::new();
+
+        for (name, future) in iter {
+            vec.push(serde_json::json!([name, future.await?]));
+        }
+
+        Ok(serde_json::Value::Array(vec))
+    }
+
     let (view, doc) = current!(cx.editor);
 
-    // TODO support multiple language servers (merge UI somehow)
-    let language_server =
-        language_server_with_feature!(cx.editor, doc, LanguageServerFeature::Hover);
+    let language_servers = doc.language_servers_with_feature(LanguageServerFeature::Hover);
     // TODO: factor out a doc.position_identifier() that returns lsp::TextDocumentPositionIdentifier
-    let pos = doc.position(view.id, language_server.offset_encoding());
-    let future = language_server
-        .text_document_hover(doc.identifier(), pos, None)
-        .unwrap();
+    let futures = language_servers
+        .map(|ls| {
+            let pos = doc.position(view.id, ls.offset_encoding());
+            let hover = ls.text_document_hover(doc.identifier(), pos, None).unwrap();
+            let name = ls.name().to_owned();
+            (name, hover)
+        })
+        .collect();
 
     cx.callback(
-        future,
-        move |editor, compositor, response: Option<lsp::Hover>| {
-            if let Some(hover) = response {
-                // hover.contents / .range <- used for visualizing
-
-                fn marked_string_to_markdown(contents: lsp::MarkedString) -> String {
-                    match contents {
-                        lsp::MarkedString::String(contents) => contents,
-                        lsp::MarkedString::LanguageString(string) => {
-                            if string.language == "markdown" {
-                                string.value
-                            } else {
-                                format!("```{}\n{}\n```", string.language, string.value)
-                            }
+        join(futures),
+        move |editor, compositor, response: Vec<Option<(String, lsp::Hover)>>| {
+            fn marked_string_to_markdown(contents: lsp::MarkedString) -> String {
+                match contents {
+                    lsp::MarkedString::String(contents) => contents,
+                    lsp::MarkedString::LanguageString(string) => {
+                        if string.language == "markdown" {
+                            string.value
+                        } else {
+                            format!("```{}\n{}\n```", string.language, string.value)
                         }
                     }
                 }
+            }
 
-                let contents = match hover.contents {
-                    lsp::HoverContents::Scalar(contents) => marked_string_to_markdown(contents),
-                    lsp::HoverContents::Array(contents) => contents
-                        .into_iter()
-                        .map(marked_string_to_markdown)
-                        .collect::<Vec<_>>()
-                        .join("\n\n"),
-                    lsp::HoverContents::Markup(contents) => contents.value,
-                };
+            let contents = response
+                .into_iter()
+                .flatten()
+                .map(|(name, hover)| {
+                    let content = match hover.contents {
+                        lsp::HoverContents::Scalar(contents) => marked_string_to_markdown(contents),
+                        lsp::HoverContents::Array(contents) => contents
+                            .into_iter()
+                            .map(marked_string_to_markdown)
+                            .collect::<Vec<_>>()
+                            .join("\n\n"),
+                        lsp::HoverContents::Markup(contents) => contents.value,
+                    };
+                    // TODO: maybe apply a style to the name?
+                    format!("{name}\n\n{content}")
+                })
+                .collect::<Vec<_>>()
+                .join("\n\n---\n\n");
 
-                // skip if contents empty
-
+            if !contents.is_empty() {
                 let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
                 let popup = Popup::new("hover", contents).auto_close(true);
                 compositor.replace_or_push("hover", popup);
