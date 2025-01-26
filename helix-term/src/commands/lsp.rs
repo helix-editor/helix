@@ -1009,54 +1009,61 @@ pub fn signature_help(cx: &mut Context) {
 }
 
 pub fn hover(cx: &mut Context) {
+    use ui::lsp::hover::Hover;
+
     let (view, doc) = current!(cx.editor);
+    if doc
+        .language_servers_with_feature(LanguageServerFeature::Hover)
+        .count()
+        == 0
+    {
+        cx.editor
+            .set_error("No configured language server supports hover");
+        return;
+    }
 
-    // TODO support multiple language servers (merge UI somehow)
-    let language_server =
-        language_server_with_feature!(cx.editor, doc, LanguageServerFeature::Hover);
-    // TODO: factor out a doc.position_identifier() that returns lsp::TextDocumentPositionIdentifier
-    let pos = doc.position(view.id, language_server.offset_encoding());
-    let future = language_server
-        .text_document_hover(doc.identifier(), pos, None)
-        .unwrap();
+    let mut seen_language_servers = HashSet::new();
+    let mut futures: FuturesOrdered<_> = doc
+        .language_servers_with_feature(LanguageServerFeature::Hover)
+        .filter(|ls| seen_language_servers.insert(ls.id()))
+        .map(|language_server| {
+            let server_name = language_server.name().to_string();
+            // TODO: factor out a doc.position_identifier() that returns lsp::TextDocumentPositionIdentifier
+            let pos = doc.position(view.id, language_server.offset_encoding());
+            let request = language_server
+                .text_document_hover(doc.identifier(), pos, None)
+                .unwrap();
 
-    cx.callback(
-        future,
-        move |editor, compositor, response: Option<lsp::Hover>| {
-            if let Some(hover) = response {
-                // hover.contents / .range <- used for visualizing
-
-                fn marked_string_to_markdown(contents: lsp::MarkedString) -> String {
-                    match contents {
-                        lsp::MarkedString::String(contents) => contents,
-                        lsp::MarkedString::LanguageString(string) => {
-                            if string.language == "markdown" {
-                                string.value
-                            } else {
-                                format!("```{}\n{}\n```", string.language, string.value)
-                            }
-                        }
-                    }
-                }
-
-                let contents = match hover.contents {
-                    lsp::HoverContents::Scalar(contents) => marked_string_to_markdown(contents),
-                    lsp::HoverContents::Array(contents) => contents
-                        .into_iter()
-                        .map(marked_string_to_markdown)
-                        .collect::<Vec<_>>()
-                        .join("\n\n"),
-                    lsp::HoverContents::Markup(contents) => contents.value,
-                };
-
-                // skip if contents empty
-
-                let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
-                let popup = Popup::new("hover", contents).auto_close(true);
-                compositor.replace_or_push("hover", popup);
+            async move {
+                let json = request.await?;
+                let response = serde_json::from_value::<Option<lsp::Hover>>(json)?;
+                anyhow::Ok((server_name, response))
             }
-        },
-    );
+        })
+        .collect();
+
+    cx.jobs.callback(async move {
+        let mut hovers: Vec<(String, lsp::Hover)> = Vec::new();
+
+        while let Some((server_name, hover)) = futures.try_next().await? {
+            if let Some(hover) = hover {
+                hovers.push((server_name, hover));
+            }
+        }
+
+        let call = move |editor: &mut Editor, compositor: &mut Compositor| {
+            if hovers.is_empty() {
+                editor.set_status("No hover results available.");
+                return;
+            }
+
+            // create new popup
+            let contents = Hover::new(hovers, editor.syn_loader.clone());
+            let popup = Popup::new(Hover::ID, contents).auto_close(true);
+            compositor.replace_or_push(Hover::ID, popup);
+        };
+        Ok(Callback::EditorCompositor(Box::new(call)))
+    });
 }
 
 pub fn rename_symbol(cx: &mut Context) {
