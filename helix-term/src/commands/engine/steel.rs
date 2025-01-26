@@ -17,7 +17,7 @@ use helix_view::{
         GutterConfig, IndentGuidesConfig, LineEndingConfig, LineNumber, LspConfig, SearchConfig,
         SmartTabConfig, StatusLineConfig, TerminalConfig, WhitespaceConfig,
     },
-    events::DocumentFocusLost,
+    events::{DocumentFocusLost, SelectionDidChange},
     extension::document_id_to_usize,
     input::KeyEvent,
     theme::Color,
@@ -1103,6 +1103,7 @@ impl super::PluginSystem for SteelScriptingEngine {
         &self,
         cx: &mut Context,
         configuration: Arc<ArcSwapAny<Arc<Config>>>,
+        // Just apply... all the configurations at once?
         language_configuration: Arc<ArcSwap<syntax::Loader>>,
     ) {
         run_initialization_script(cx, configuration, language_configuration);
@@ -2066,6 +2067,46 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                     })
                 };
                 job::dispatch_blocking_jobs(callback);
+
+                Ok(())
+            });
+
+            Ok(SteelVal::Void).into()
+        }
+
+        "selection-did-change" => {
+            // TODO: Pass the information from the event in here - the doc id
+            // is probably the most helpful so that way we can look the document up
+            // and act accordingly?
+            register_hook!(move |event: &mut SelectionDidChange<'_>| {
+                // let cloned_func = rooted.value().clone();
+
+                // let callback = move |editor: &mut Editor,
+                //                      _compositor: &mut Compositor,
+                //                      jobs: &mut job::Jobs| {
+                //     let mut ctx = Context {
+                //         register: None,
+                //         count: None,
+                //         editor,
+                //         callback: Vec::new(),
+                //         on_next_key_callback: None,
+                //         jobs,
+                //     };
+                //     enter_engine(|guard| {
+                //         if let Err(e) = guard
+                //             .with_mut_reference::<Context, Context>(&mut ctx)
+                //             .consume(move |engine, args| {
+                //                 let context = args[0].clone();
+                //                 engine.update_value("*helix.cx*", context);
+                //                 // TODO: Do something with this error!
+                //                 engine.call_function_with_args(cloned_func.clone(), Vec::new())
+                //             })
+                //         {
+                //             present_error_inside_engine_context(&mut ctx, guard, e);
+                //         }
+                //     })
+                // };
+                // job::dispatch_blocking_jobs(callback);
 
                 Ok(())
             });
