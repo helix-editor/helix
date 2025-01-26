@@ -1017,10 +1017,8 @@ pub fn hover(cx: &mut Context) {
         .count()
         == 0
     {
-        cx.editor.set_status(format!(
-            "No configured language server supports {}",
-            LanguageServerFeature::Hover
-        ));
+        cx.editor
+            .set_error("No configured language server supports hover");
         return;
     }
 
