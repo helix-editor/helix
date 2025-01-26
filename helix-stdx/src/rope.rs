@@ -3,7 +3,6 @@ use std::ops::{Bound, RangeBounds};
 pub use regex_cursor::engines::meta::{Builder as RegexBuilder, Regex};
 pub use regex_cursor::regex_automata::util::syntax::Config;
 use regex_cursor::{Input as RegexInput, RopeyCursor};
-use ropey::str_utils::byte_to_char_idx;
 use ropey::RopeSlice;
 
 pub trait RopeSliceExt<'a>: Sized {
@@ -17,23 +16,6 @@ pub trait RopeSliceExt<'a>: Sized {
     fn regex_input_at<R: RangeBounds<usize>>(self, char_range: R) -> RegexInput<RopeyCursor<'a>>;
     fn first_non_whitespace_char(self) -> Option<usize>;
     fn last_non_whitespace_char(self) -> Option<usize>;
-    /// returns the char idx of `byte_idx`, if `byte_idx` is a char boundary
-    /// this function behaves the same as `byte_to_char` but if `byte_idx` is
-    /// not a valid char boundary (so within a char) this will return the next
-    /// char index.
-    ///
-    /// # Example
-    ///
-    /// ```
-    /// # use ropey::RopeSlice;
-    /// # use helix_stdx::rope::RopeSliceExt;
-    /// let text = RopeSlice::from("😆");
-    /// for i in 1..text.len_bytes() {
-    ///     assert_eq!(text.byte_to_char(i), 0);
-    ///     assert_eq!(text.byte_to_next_char(i), 1);
-    /// }
-    /// ```
-    fn byte_to_next_char(self, byte_idx: usize) -> usize;
     /// Finds the closest byte index not exceeding `byte_idx` which lies on a character boundary.
     ///
     /// If `byte_idx` already lies on a character boundary then it is returned as-is. When
@@ -130,16 +112,6 @@ impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
             .map(|pos| self.len_chars() - pos - 1)
     }
 
-    /// returns the char idx of `byte_idx`, if `byte_idx` is
-    /// a char boundary this function behaves the same as `byte_to_char`
-    fn byte_to_next_char(self, mut byte_idx: usize) -> usize {
-        let (chunk, chunk_byte_off, chunk_char_off, _) = self.chunk_at_byte(byte_idx);
-        byte_idx -= chunk_byte_off;
-        let is_char_boundary =
-            is_utf8_char_boundary(chunk.as_bytes().get(byte_idx).copied().unwrap_or(0));
-        chunk_char_off + byte_to_char_idx(chunk, byte_idx) + !is_char_boundary as usize
-    }
-
     // These two are adapted from std's `round_char_boundary` functions:
 
     fn floor_char_boundary(self, byte_idx: usize) -> usize {
@@ -184,26 +156,6 @@ mod tests {
     use crate::rope::RopeSliceExt;
 
     #[test]
-    fn next_char_at_byte() {
-        for i in 0..=6 {
-            assert_eq!(RopeSlice::from("foobar").byte_to_next_char(i), i);
-        }
-        for char_idx in 0..10 {
-            let len = "😆".len();
-            assert_eq!(
-                RopeSlice::from("😆😆😆😆😆😆😆😆😆😆").byte_to_next_char(char_idx * len),
-                char_idx
-            );
-            for i in 1..=len {
-                assert_eq!(
-                    RopeSlice::from("😆😆😆😆😆😆😆😆😆😆").byte_to_next_char(char_idx * len + i),
-                    char_idx + 1
-                );
-            }
-        }
-    }
-
-    #[test]
     fn starts_with() {
         assert!(RopeSlice::from("asdf").starts_with("a"));
     }
@@ -220,6 +172,30 @@ mod tests {
         for byte_idx in 0..=ascii.len_bytes() {
             assert_eq!(ascii.floor_char_boundary(byte_idx), byte_idx);
             assert_eq!(ascii.ceil_char_boundary(byte_idx), byte_idx);
+        }
+
+        // This is a polyfill of a method of this trait which was replaced by ceil_char_boundary.
+        // It returns the _character index_ of the given byte index, rounding up if it does not
+        // already lie on a character boundary.
+        fn byte_to_next_char(slice: RopeSlice, byte_idx: usize) -> usize {
+            slice.byte_to_char(slice.ceil_char_boundary(byte_idx))
+        }
+
+        for i in 0..=6 {
+            assert_eq!(byte_to_next_char(RopeSlice::from("foobar"), i), i);
+        }
+        for char_idx in 0..10 {
+            let len = "😆".len();
+            assert_eq!(
+                byte_to_next_char(RopeSlice::from("😆😆😆😆😆😆😆😆😆😆"), char_idx * len),
+                char_idx
+            );
+            for i in 1..=len {
+                assert_eq!(
+                    byte_to_next_char(RopeSlice::from("😆😆😆😆😆😆😆😆😆😆"), char_idx * len + i),
+                    char_idx + 1
+                );
+            }
         }
     }
 }
