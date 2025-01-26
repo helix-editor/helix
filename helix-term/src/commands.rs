@@ -1286,7 +1286,7 @@ fn goto_file_vsplit(cx: &mut Context) {
 /// Goto files in selection.
 fn goto_file_impl(cx: &mut Context, action: Action) {
     let (view, doc) = current_ref!(cx.editor);
-    let text = doc.text();
+    let text = doc.text().slice(..);
     let selections = doc.selection(view.id);
     let primary = selections.primary();
     let rel_path = doc
@@ -1295,14 +1295,15 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         .unwrap_or_default();
 
     let paths: Vec<_> = if selections.len() == 1 && primary.len() == 1 {
-        let mut pos = primary.cursor(text.slice(..));
-        pos = text.char_to_byte(pos);
+        // Cap the search at roughly 1k bytes around the cursor.
+        let lookaround = 1000;
+        let pos = text.char_to_byte(primary.cursor(text));
         let search_start = text
             .line_to_byte(text.byte_to_line(pos))
-            .max(pos.saturating_sub(1000));
+            .max(text.floor_char_boundary(pos.saturating_sub(lookaround)));
         let search_end = text
             .line_to_byte(text.byte_to_line(pos) + 1)
-            .min(pos + 1000);
+            .min(text.ceil_char_boundary(pos + lookaround));
         let search_range = text.byte_slice(search_start..search_end);
         // we also allow paths that are next to the cursor (can be ambiguous but
         // rarely so in practice) so that gf on quoted/braced path works (not sure about this
@@ -1312,12 +1313,12 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
             .find(|range| pos <= search_start + range.end)
             .map(|range| Cow::from(search_range.byte_slice(range)));
         log::debug!("goto_file auto-detected path: {path:?}");
-        let path = path.unwrap_or_else(|| primary.fragment(text.slice(..)));
+        let path = path.unwrap_or_else(|| primary.fragment(text));
         vec![path.into_owned()]
     } else {
         // Otherwise use each selection, trimmed.
         selections
-            .fragments(text.slice(..))
+            .fragments(text)
             .map(|sel| sel.trim().to_owned())
             .filter(|sel| !sel.is_empty())
             .collect()
