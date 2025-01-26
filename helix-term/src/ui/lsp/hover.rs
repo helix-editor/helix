@@ -5,23 +5,21 @@ use helix_core::syntax;
 use helix_lsp::lsp;
 use helix_view::graphics::{Margin, Rect, Style};
 use helix_view::input::Event;
+use once_cell::sync::OnceCell;
 use tui::buffer::Buffer;
 use tui::widgets::{BorderType, Paragraph, Widget, Wrap};
 
-use crate::compositor::{Component, Compositor, Context, EventResult};
+use crate::compositor::{Component, Context, EventResult};
 
 use crate::alt;
 use crate::ui::Markdown;
-
-use crate::ui::Popup;
 
 pub struct Hover {
     hovers: Vec<(String, lsp::Hover)>,
     active_index: usize,
     config_loader: Arc<ArcSwap<syntax::Loader>>,
 
-    header: Option<Markdown>,
-    contents: Option<Markdown>,
+    content: OnceCell<(Option<Markdown>, Markdown)>,
 }
 
 impl Hover {
@@ -31,69 +29,42 @@ impl Hover {
         hovers: Vec<(String, lsp::Hover)>,
         config_loader: Arc<ArcSwap<syntax::Loader>>,
     ) -> Self {
-        let mut hover = Self {
+        Self {
             hovers,
             active_index: usize::default(),
             config_loader,
-            header: None,
-            contents: None,
-        };
-        hover.set_index(hover.active_index);
-        hover
+            content: OnceCell::new(),
+        }
     }
 
-    fn prepare_markdowns(&mut self) {
-        let Some((lsp_name, hover)) = self.hovers.get(self.active_index) else {
-            log::info!(
-                "prepare_markdowns: failed \nindex:{}\ncount:{}",
-                self.active_index,
-                self.hovers.len()
+    fn content(&self) -> &(Option<Markdown>, Markdown) {
+        self.content.get_or_init(|| {
+            let (server_name, hover) = &self.hovers[self.active_index];
+            // Only render the header when there is more than one hover response.
+            let header = (self.hovers.len() > 1).then(|| {
+                Markdown::new(
+                    format!(
+                        "**[{}/{}] {}**",
+                        self.active_index + 1,
+                        self.hovers.len(),
+                        server_name
+                    ),
+                    self.config_loader.clone(),
+                )
+            });
+            let body = Markdown::new(
+                hover_contents_to_string(&hover.contents),
+                self.config_loader.clone(),
             );
-            return;
-        };
-        self.header = Some(Markdown::new(
-            format!(
-                "**[{}/{}] {}**",
-                self.active_index + 1,
-                self.hovers.len(),
-                lsp_name
-            ),
-            self.config_loader.clone(),
-        ));
-        let contents = hover_contents_to_string(&hover.contents);
-        self.contents = Some(Markdown::new(contents, self.config_loader.clone()));
-    }
-
-    pub fn set_hover(&mut self, hovers: Vec<(String, lsp::Hover)>) {
-        self.hovers = hovers;
-        self.set_index(usize::default());
+            (header, body)
+        })
     }
 
     fn set_index(&mut self, index: usize) {
+        assert!((0..self.hovers.len()).contains(&index));
         self.active_index = index;
-        self.prepare_markdowns();
-    }
-
-    pub fn next_hover(&mut self) {
-        let index = if self.active_index < self.hovers.len() - 1 {
-            self.active_index + 1
-        } else {
-            usize::default()
-        };
-        self.set_index(index);
-    }
-
-    pub fn previous_hover(&mut self) {
-        let index = if self.active_index > 0 {
-            self.active_index - 1
-        } else {
-            self.hovers.len() - 1
-        };
-        self.set_index(index);
-    }
-
-    pub fn visible_popup(compositor: &mut Compositor) -> Option<&mut Popup<Self>> {
-        compositor.find_id::<Popup<Self>>(Self::ID)
+        // Reset the cached markdown:
+        self.content.take();
     }
 }
 
@@ -108,13 +79,10 @@ impl Component for Hover {
         let margin = Margin::all(1);
         let area = area.inner(margin);
 
-        let (Some(header), Some(contents)) = (self.header.as_ref(), self.contents.as_ref()) else {
-            log::info!("markdown not ready");
-            return;
-        };
+        let (header, contents) = self.content();
 
         // show header and border only when more than one results
-        if self.hovers.len() > 1 {
+        if let Some(header) = header {
             // header LSP Name
             let header = header.parse(Some(&cx.editor.theme));
             let header = Paragraph::new(&header);
@@ -148,14 +116,16 @@ impl Component for Hover {
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
         let max_text_width = viewport.0.saturating_sub(PADDING_HORIZONTAL).clamp(10, 120);
 
-        let (Some(header), Some(contents)) = (self.header.as_ref(), self.contents.as_ref()) else {
-            log::info!("markdown not ready");
-            return None;
-        };
+        let (header, contents) = self.content();
 
-        let header = header.parse(None);
-        let (header_width, _header_height) =
-            crate::ui::text::required_size(&header, max_text_width);
+        let header_width = header
+            .as_ref()
+            .map(|header| {
+                let header = header.parse(None);
+                let (width, _height) = crate::ui::text::required_size(&header, max_text_width);
+                width
+            })
+            .unwrap_or_default();
 
         let contents = contents.parse(None);
         let (content_width, content_height) =
@@ -178,11 +148,15 @@ impl Component for Hover {
 
         match event {
             alt!('p') => {
-                self.previous_hover();
+                let index = self
+                    .active_index
+                    .checked_sub(1)
+                    .unwrap_or(self.hovers.len() - 1);
+                self.set_index(index);
                 EventResult::Consumed(None)
             }
             alt!('n') => {
-                self.next_hover();
+                self.set_index((self.active_index + 1) % self.hovers.len());
                 EventResult::Consumed(None)
             }
             _ => EventResult::Ignored(None),
