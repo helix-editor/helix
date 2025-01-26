@@ -4,6 +4,7 @@ pub use regex_cursor::engines::meta::{Builder as RegexBuilder, Regex};
 pub use regex_cursor::regex_automata::util::syntax::Config;
 use regex_cursor::{Input as RegexInput, RopeyCursor};
 use ropey::RopeSlice;
+use unicode_segmentation::{GraphemeCursor, GraphemeIncomplete};
 
 pub trait RopeSliceExt<'a>: Sized {
     fn ends_with(self, text: &str) -> bool;
@@ -52,6 +53,75 @@ pub trait RopeSliceExt<'a>: Sized {
     /// assert_eq!(text.ceil_char_boundary(3), 3);
     /// ```
     fn ceil_char_boundary(self, byte_idx: usize) -> usize;
+    /// Checks whether the given `byte_idx` lies on a character boundary.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use ropey::RopeSlice;
+    /// # use helix_stdx::rope::RopeSliceExt;
+    /// let text = RopeSlice::from("⌚"); // three bytes: e2 8c 9a
+    /// assert!(text.is_char_boundary(0));
+    /// assert!(!text.is_char_boundary(1));
+    /// assert!(!text.is_char_boundary(2));
+    /// assert!(text.is_char_boundary(3));
+    /// ```
+    #[allow(clippy::wrong_self_convention)]
+    fn is_char_boundary(self, byte_idx: usize) -> bool;
+    /// Finds the closest byte index not exceeding `byte_idx` which lies on a grapheme cluster
+    /// boundary.
+    ///
+    /// If `byte_idx` already lies on a grapheme cluster boundary then it is returned as-is. When
+    /// `byte_idx` lies between two grapheme cluster boundaries, this function returns the byte
+    /// index of the lesser / earlier / left-hand-side boundary.
+    ///
+    /// `byte_idx` does not need to be aligned to a character boundary.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use ropey::RopeSlice;
+    /// # use helix_stdx::rope::RopeSliceExt;
+    /// let text = RopeSlice::from("\r\n"); // U+000D U+000A, hex: 0d 0a
+    /// assert_eq!(text.floor_grapheme_boundary(0), 0);
+    /// assert_eq!(text.floor_grapheme_boundary(1), 0);
+    /// assert_eq!(text.floor_grapheme_boundary(2), 2);
+    /// ```
+    fn floor_grapheme_boundary(self, byte_idx: usize) -> usize;
+    /// Finds the closest byte index not exceeding `byte_idx` which lies on a grapheme cluster
+    /// boundary.
+    ///
+    /// If `byte_idx` already lies on a grapheme cluster boundary then it is returned as-is. When
+    /// `byte_idx` lies between two grapheme cluster boundaries, this function returns the byte
+    /// index of the greater / later / right-hand-side boundary.
+    ///
+    /// `byte_idx` does not need to be aligned to a character boundary.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use ropey::RopeSlice;
+    /// # use helix_stdx::rope::RopeSliceExt;
+    /// let text = RopeSlice::from("\r\n"); // U+000D U+000A, hex: 0d 0a
+    /// assert_eq!(text.ceil_grapheme_boundary(0), 0);
+    /// assert_eq!(text.ceil_grapheme_boundary(1), 2);
+    /// assert_eq!(text.ceil_grapheme_boundary(2), 2);
+    /// ```
+    fn ceil_grapheme_boundary(self, byte_idx: usize) -> usize;
+    /// Checks whether the `byte_idx` lies on a grapheme cluster boundary.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use ropey::RopeSlice;
+    /// # use helix_stdx::rope::RopeSliceExt;
+    /// let text = RopeSlice::from("\r\n"); // U+000D U+000A, hex: 0d 0a
+    /// assert!(text.is_grapheme_boundary(0));
+    /// assert!(!text.is_grapheme_boundary(1));
+    /// assert!(text.is_grapheme_boundary(2));
+    /// ```
+    #[allow(clippy::wrong_self_convention)]
+    fn is_grapheme_boundary(self, byte_idx: usize) -> bool;
 }
 
 impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
@@ -112,7 +182,7 @@ impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
             .map(|pos| self.len_chars() - pos - 1)
     }
 
-    // These two are adapted from std's `round_char_boundary` functions:
+    // These three are adapted from std:
 
     fn floor_char_boundary(self, byte_idx: usize) -> usize {
         if byte_idx >= self.len_bytes() {
@@ -138,6 +208,101 @@ impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
             self.bytes_at(byte_idx)
                 .position(is_utf8_char_boundary)
                 .map_or(upper_bound, |pos| pos + byte_idx)
+        }
+    }
+
+    fn is_char_boundary(self, byte_idx: usize) -> bool {
+        if byte_idx == 0 {
+            return true;
+        }
+
+        if byte_idx >= self.len_bytes() {
+            byte_idx == self.len_bytes()
+        } else {
+            is_utf8_char_boundary(self.bytes_at(byte_idx).next().unwrap())
+        }
+    }
+
+    fn floor_grapheme_boundary(self, mut byte_idx: usize) -> usize {
+        if byte_idx >= self.len_bytes() {
+            return self.len_bytes();
+        }
+
+        byte_idx = self.ceil_char_boundary(byte_idx + 1);
+
+        let (mut chunk, mut chunk_byte_idx, _, _) = self.chunk_at_byte(byte_idx);
+
+        let mut cursor = GraphemeCursor::new(byte_idx, self.len_bytes(), true);
+
+        loop {
+            match cursor.prev_boundary(chunk, chunk_byte_idx) {
+                Ok(None) => return 0,
+                Ok(Some(boundary)) => return boundary,
+                Err(GraphemeIncomplete::PrevChunk) => {
+                    let (ch, ch_byte_idx, _, _) = self.chunk_at_byte(chunk_byte_idx - 1);
+                    chunk = ch;
+                    chunk_byte_idx = ch_byte_idx;
+                }
+                Err(GraphemeIncomplete::PreContext(n)) => {
+                    let ctx_chunk = self.chunk_at_byte(n - 1).0;
+                    cursor.provide_context(ctx_chunk, n - ctx_chunk.len());
+                }
+                _ => unreachable!(),
+            }
+        }
+    }
+
+    fn ceil_grapheme_boundary(self, mut byte_idx: usize) -> usize {
+        if byte_idx >= self.len_bytes() {
+            return self.len_bytes();
+        }
+
+        if byte_idx == 0 {
+            return 0;
+        }
+
+        byte_idx = self.floor_char_boundary(byte_idx - 1);
+
+        let (mut chunk, mut chunk_byte_idx, _, _) = self.chunk_at_byte(byte_idx);
+
+        let mut cursor = GraphemeCursor::new(byte_idx, self.len_bytes(), true);
+
+        loop {
+            match cursor.next_boundary(chunk, chunk_byte_idx) {
+                Ok(None) => return self.len_bytes(),
+                Ok(Some(boundary)) => return boundary,
+                Err(GraphemeIncomplete::NextChunk) => {
+                    chunk_byte_idx += chunk.len();
+                    chunk = self.chunk_at_byte(chunk_byte_idx).0;
+                }
+                Err(GraphemeIncomplete::PreContext(n)) => {
+                    let ctx_chunk = self.chunk_at_byte(n - 1).0;
+                    cursor.provide_context(ctx_chunk, n - ctx_chunk.len());
+                }
+                _ => unreachable!(),
+            }
+        }
+    }
+
+    fn is_grapheme_boundary(self, byte_idx: usize) -> bool {
+        // The byte must lie on a character boundary to lie on a grapheme cluster boundary.
+        if !self.is_char_boundary(byte_idx) {
+            return false;
+        }
+
+        let (chunk, chunk_byte_idx, _, _) = self.chunk_at_byte(byte_idx);
+
+        let mut cursor = GraphemeCursor::new(byte_idx, self.len_bytes(), true);
+
+        loop {
+            match cursor.is_boundary(chunk, chunk_byte_idx) {
+                Ok(n) => return n,
+                Err(GraphemeIncomplete::PreContext(n)) => {
+                    let (ctx_chunk, ctx_byte_start, _, _) = self.chunk_at_byte(n - 1);
+                    cursor.provide_context(ctx_chunk, ctx_byte_start);
+                }
+                Err(_) => unreachable!(),
+            }
         }
     }
 }
@@ -166,12 +331,13 @@ mod tests {
     }
 
     #[test]
-    fn floor_ceil_char_boundary() {
+    fn char_boundaries() {
         let ascii = RopeSlice::from("ascii");
         // When the given index lies on a character boundary, the index should not change.
         for byte_idx in 0..=ascii.len_bytes() {
             assert_eq!(ascii.floor_char_boundary(byte_idx), byte_idx);
             assert_eq!(ascii.ceil_char_boundary(byte_idx), byte_idx);
+            assert!(ascii.is_char_boundary(byte_idx));
         }
 
         // This is a polyfill of a method of this trait which was replaced by ceil_char_boundary.
@@ -196,6 +362,46 @@ mod tests {
                     char_idx + 1
                 );
             }
+        }
+    }
+
+    #[test]
+    fn grapheme_boundaries() {
+        let ascii = RopeSlice::from("ascii");
+        // When the given index lies on a grapheme boundary, the index should not change.
+        for byte_idx in 0..=ascii.len_bytes() {
+            assert_eq!(ascii.floor_char_boundary(byte_idx), byte_idx);
+            assert_eq!(ascii.ceil_char_boundary(byte_idx), byte_idx);
+            assert!(ascii.is_grapheme_boundary(byte_idx));
+        }
+
+        // 🏴‍☠️: U+1F3F4 U+200D U+2620 U+FE0F
+        // 13 bytes, hex: f0 9f 8f b4 + e2 80 8d + e2 98 a0 + ef b8 8f
+        let g = RopeSlice::from("🏴‍☠️\r\n");
+        let emoji_len = "🏴‍☠️".len();
+        let end = g.len_bytes();
+
+        for byte_idx in 0..emoji_len {
+            assert_eq!(g.floor_grapheme_boundary(byte_idx), 0);
+        }
+        for byte_idx in emoji_len..end {
+            assert_eq!(g.floor_grapheme_boundary(byte_idx), emoji_len);
+        }
+        assert_eq!(g.floor_grapheme_boundary(end), end);
+
+        assert_eq!(g.ceil_grapheme_boundary(0), 0);
+        for byte_idx in 1..=emoji_len {
+            assert_eq!(g.ceil_grapheme_boundary(byte_idx), emoji_len);
+        }
+        for byte_idx in emoji_len + 1..=end {
+            assert_eq!(g.ceil_grapheme_boundary(byte_idx), end);
+        }
+
+        assert!(g.is_grapheme_boundary(0));
+        assert!(g.is_grapheme_boundary(emoji_len));
+        assert!(g.is_grapheme_boundary(end));
+        for byte_idx in (1..emoji_len).chain(emoji_len + 1..end) {
+            assert!(!g.is_grapheme_boundary(byte_idx));
         }
     }
 }

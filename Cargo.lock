@@ -1427,6 +1427,7 @@ dependencies = [
  "ropey",
  "rustix",
  "tempfile",
+ "unicode-segmentation",
  "which",
  "windows-sys 0.59.0",
 ]

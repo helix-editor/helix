@@ -20,6 +20,7 @@ regex-cursor = "0.1.4"
 bitflags.workspace = true
 once_cell = "1.19"
 regex-automata = "0.4.9"
+unicode-segmentation.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_Security", "Win32_Security_Authorization", "Win32_Storage_FileSystem", "Win32_System_Threading"] }
