@@ -110,6 +110,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "[" => { "Left bracket"
             "d" => goto_prev_diag,
             "D" => goto_first_diag,
+            "q" => goto_prev_error,
+            "Q" => goto_first_error,
             "g" => goto_prev_change,
             "G" => goto_first_change,
             "f" => goto_prev_function,
@@ -124,6 +126,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "]" => { "Right bracket"
             "d" => goto_next_diag,
             "D" => goto_last_diag,
+            "q" => goto_next_error,
+            "Q" => goto_last_error,
             "g" => goto_next_change,
             "G" => goto_last_change,
             "f" => goto_next_function,

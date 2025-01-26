@@ -18,6 +18,7 @@ use helix_core::{
     char_idx_at_visual_offset,
     chars::char_is_word,
     comment,
+    diagnostic::Severity,
     doc_formatter::TextFormat,
     encoding, find_workspace,
     graphemes::{self, next_grapheme_boundary, RevRopeGraphemes},
@@ -35,8 +36,8 @@ use helix_core::{
     text_annotations::{Overlay, TextAnnotations},
     textobject,
     unicode::width::UnicodeWidthChar,
-    visual_offset_from_block, Deletion, LineEnding, Position, Range, Rope, RopeGraphemes,
-    RopeReader, RopeSlice, Selection, SmallVec, Syntax, Tendril, Transaction,
+    visual_offset_from_block, Deletion, Diagnostic, LineEnding, Position, Range, Rope,
+    RopeGraphemes, RopeReader, RopeSlice, Selection, SmallVec, Syntax, Tendril, Transaction,
 };
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
@@ -437,6 +438,10 @@ impl MappableCommand {
         goto_last_diag, "Goto last diagnostic",
         goto_next_diag, "Goto next diagnostic",
         goto_prev_diag, "Goto previous diagnostic",
+        goto_first_error, "Goto first error",
+        goto_last_error, "Goto last error",
+        goto_next_error, "Goto next error",
+        goto_prev_error, "Goto previous error",
         goto_next_change, "Goto next change",
         goto_prev_change, "Goto previous change",
         goto_first_change, "Goto first change",
@@ -3787,22 +3792,71 @@ fn exit_select_mode(cx: &mut Context) {
     }
 }
 
-fn goto_first_diag(cx: &mut Context) {
+fn goto_first_or_last_diag_impl(cx: &mut Context, direction: Direction, min_severity: Severity) {
     let (view, doc) = current!(cx.editor);
-    let selection = match doc.diagnostics().first() {
-        Some(diag) => Selection::single(diag.range.start, diag.range.end),
-        None => return,
+
+    let is_severe = |diag: &&Diagnostic| diag.severity.unwrap_or(Severity::Hint) >= min_severity;
+
+    let diagnostic = match direction {
+        Direction::Forward => doc.diagnostics().iter().find(is_severe),
+        Direction::Backward => doc.diagnostics().iter().rfind(is_severe),
     };
+
+    let Some(diagnostic) = diagnostic else {
+        return;
+    };
+
+    let selection = match direction {
+        Direction::Forward => Selection::single(diagnostic.range.start, diagnostic.range.end),
+        Direction::Backward => Selection::single(diagnostic.range.end, diagnostic.range.start),
+    };
+
     doc.set_selection(view.id, selection);
     view.diagnostics_handler
         .immediately_show_diagnostic(doc, view.id);
 }
 
+fn goto_first_diag(cx: &mut Context) {
+    goto_first_or_last_diag_impl(cx, Direction::Forward, Severity::Hint)
+}
 fn goto_last_diag(cx: &mut Context) {
+    goto_first_or_last_diag_impl(cx, Direction::Backward, Severity::Hint)
+}
+fn goto_first_error(cx: &mut Context) {
+    goto_first_or_last_diag_impl(cx, Direction::Forward, Severity::Error)
+}
+fn goto_last_error(cx: &mut Context) {
+    goto_first_or_last_diag_impl(cx, Direction::Backward, Severity::Error)
+}
+
+fn goto_next_or_prev_diag_impl(cx: &mut Context, direction: Direction, min_severity: Severity) {
     let (view, doc) = current!(cx.editor);
-    let selection = match doc.diagnostics().last() {
-        Some(diag) => Selection::single(diag.range.start, diag.range.end),
-        None => return,
+
+    let is_severe = |diag: &&Diagnostic| diag.severity.unwrap_or(Severity::Hint) >= min_severity;
+
+    let cursor_pos = doc
+        .selection(view.id)
+        .primary()
+        .cursor(doc.text().slice(..));
+
+    let diagnostic = match direction {
+        Direction::Forward => doc
+            .diagnostics()
+            .iter()
+            .find(|diag| is_severe(diag) && (cursor_pos < diag.range.end - 1)),
+        Direction::Backward => doc
+            .diagnostics()
+            .iter()
+            .rfind(|diag| is_severe(diag) && (cursor_pos > diag.range.start)),
+    };
+
+    let Some(diagnostic) = diagnostic else {
+        return goto_first_or_last_diag_impl(cx, direction, min_severity);
+    };
+
+    let selection = match direction {
+        Direction::Forward => Selection::single(diagnostic.range.start, diagnostic.range.end),
+        Direction::Backward => Selection::single(diagnostic.range.end, diagnostic.range.start),
     };
     doc.set_selection(view.id, selection);
     view.diagnostics_handler
@@ -3810,59 +3864,19 @@ fn goto_last_diag(cx: &mut Context) {
 }
 
 fn goto_next_diag(cx: &mut Context) {
-    let motion = move |editor: &mut Editor| {
-        let (view, doc) = current!(editor);
-
-        let cursor_pos = doc
-            .selection(view.id)
-            .primary()
-            .cursor(doc.text().slice(..));
-
-        let diag = doc
-            .diagnostics()
-            .iter()
-            .find(|diag| diag.range.start > cursor_pos)
-            .or_else(|| doc.diagnostics().first());
-
-        let selection = match diag {
-            Some(diag) => Selection::single(diag.range.start, diag.range.end),
-            None => return,
-        };
-        doc.set_selection(view.id, selection);
-        view.diagnostics_handler
-            .immediately_show_diagnostic(doc, view.id);
-    };
-
-    cx.editor.apply_motion(motion);
+    goto_next_or_prev_diag_impl(cx, Direction::Forward, Severity::Hint)
 }
 
 fn goto_prev_diag(cx: &mut Context) {
-    let motion = move |editor: &mut Editor| {
-        let (view, doc) = current!(editor);
+    goto_next_or_prev_diag_impl(cx, Direction::Backward, Severity::Hint)
+}
 
-        let cursor_pos = doc
-            .selection(view.id)
-            .primary()
-            .cursor(doc.text().slice(..));
+fn goto_next_error(cx: &mut Context) {
+    goto_next_or_prev_diag_impl(cx, Direction::Forward, Severity::Error)
+}
 
-        let diag = doc
-            .diagnostics()
-            .iter()
-            .rev()
-            .find(|diag| diag.range.start < cursor_pos)
-            .or_else(|| doc.diagnostics().last());
-
-        let selection = match diag {
-            // NOTE: the selection is reversed because we're jumping to the
-            // previous diagnostic.
-            Some(diag) => Selection::single(diag.range.end, diag.range.start),
-            None => return,
-        };
-        doc.set_selection(view.id, selection);
-        view.diagnostics_handler
-            .immediately_show_diagnostic(doc, view.id);
-    };
-    cx.editor.apply_motion(motion)
+fn goto_prev_error(cx: &mut Context) {
+    goto_next_or_prev_diag_impl(cx, Direction::Backward, Severity::Error)
 }
 
 fn goto_first_change(cx: &mut Context) {
