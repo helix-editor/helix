@@ -30,6 +30,8 @@
   (string_literal)
   (raw_string_literal)
 ] @string
+(outer_doc_comment_marker "/" @comment)
+(inner_doc_comment_marker "!" @comment)
 [
   (line_comment)
   (block_comment)
@@ -174,8 +176,7 @@
 
 (for_expression
   "for" @keyword.control.repeat)
-((identifier) @keyword.control
-  (#match? @keyword.control "^yield$"))
+(gen_block "gen" @keyword.control)
 
 "in" @keyword.control
 
@@ -196,6 +197,7 @@
   "continue"
   "return"
   "await"
+  "yield"
 ] @keyword.control.return
 
 "use" @keyword.control.import
@@ -203,6 +205,10 @@
 (use_as_clause "as" @keyword.control.import)
 
 (type_cast_expression "as" @keyword.operator)
+
+((generic_type
+    type: (type_identifier) @keyword)
+ (#eq? @keyword "use"))
 
 [
   (crate)
@@ -241,6 +247,7 @@
 [
   "static"
   "const"
+  "raw"
   "ref"
   "move"
   "dyn"

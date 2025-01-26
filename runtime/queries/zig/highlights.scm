@@ -1,220 +1,11 @@
-[
-  (container_doc_comment)
-  (doc_comment)
-] @comment.documentation
+; Comments
 
-[
-  (line_comment)
-] @comment.line
+((comment) @comment.block.documentation
+  (#match? @comment.block.documentation "^//!"))
 
-;; assume TitleCase is a type
-(
-  [
-    variable_type_function: (IDENTIFIER)
-    field_access: (IDENTIFIER)
-    parameter: (IDENTIFIER)
-  ] @type
-  (#match? @type "^[A-Z]([a-z]+[A-Za-z0-9]*)+$")
-)
+(comment) @comment.line
 
-;; assume camelCase is a function
-(
-  [
-    variable_type_function: (IDENTIFIER)
-    field_access: (IDENTIFIER)
-    parameter: (IDENTIFIER)
-  ] @function
-  (#match? @function "^[a-z]+([A-Z][a-z0-9]*)+$")
-)
-
-;; assume all CAPS_1 is a constant
-(
-  [
-    variable_type_function: (IDENTIFIER)
-    field_access: (IDENTIFIER)
-  ] @constant
-  (#match? @constant "^[A-Z][A-Z_0-9]+$")
-)
-
-;; _
-(
-  (IDENTIFIER) @variable.builtin
-  (#eq? @variable.builtin "_")
-)
-
-;; C Pointers [*c]T
-(PtrTypeStart "c" @variable.builtin)
-
-[
-  variable: (IDENTIFIER)
-  variable_type_function: (IDENTIFIER)
-] @variable
-
-parameter: (IDENTIFIER) @variable.parameter
-
-[
-  field_member: (IDENTIFIER)
-  field_access: (IDENTIFIER)
-] @variable.other.member
-
-[
-  function_call: (IDENTIFIER)
-  function: (IDENTIFIER)
-] @function
-
-exception: "!" @keyword.control.exception
-
-field_constant: (IDENTIFIER) @constant
-
-(BUILTINIDENTIFIER) @function.builtin
-
-((BUILTINIDENTIFIER) @keyword.control.import
-  (#any-of? @keyword.control.import "@import" "@cImport"))
-
-(INTEGER) @constant.numeric.integer
-
-(FLOAT) @constant.numeric.float
-
-[
-  (LINESTRING)
-  (STRINGLITERALSINGLE)
-] @string
-
-(CHAR_LITERAL) @constant.character
-(EscapeSequence) @constant.character.escape
-(FormatSequence) @string.special
-
-[
-  "anytype"
-  "anyframe"
-  (BuildinTypeExpr)
-] @type.builtin
-
-(BreakLabel (IDENTIFIER) @label)
-(BlockLabel (IDENTIFIER) @label)
-
-[
-  "true"
-  "false"
-] @constant.builtin.boolean
-
-[
-  "undefined"
-  "unreachable"
-  "null"
-] @constant.builtin
-
-[
-  "else"
-  "if"
-  "switch"
-] @keyword.control.conditional
-
-[
-  "for"
-  "while"
-] @keyword.control.repeat
-
-[
-  "or"
-  "and"
-  "orelse"
-] @keyword.operator
-
-[
-  "enum"
-] @type.enum
-
-[
-  "struct"
-  "union"
-  "packed"
-  "opaque"
-  "export"
-  "extern"
-  "linksection"
-] @keyword.storage.type
-
-[
-  "const"
-  "var"
-  "threadlocal"
-  "allowzero"
-  "volatile"
-  "align"
-] @keyword.storage.modifier
-
-[
-  "try"
-  "error"
-  "catch"
-] @keyword.control.exception
-
-[
-  "fn"
-] @keyword.function
-
-[
-  "test"
-] @keyword
-
-[
-  "pub"
-  "usingnamespace"
-] @keyword.control.import
-
-[
-  "return"
-  "break"
-  "continue"
-] @keyword.control.return
-
-[
-  "defer"
-  "errdefer"
-  "async"
-  "nosuspend"
-  "await"
-  "suspend"
-  "resume"
-] @function.macro
-
-[
-  "comptime"
-  "inline"
-  "noinline"
-  "asm"
-  "callconv"
-  "noalias"
-] @keyword.directive
-
-[
-  (CompareOp)
-  (BitwiseOp)
-  (BitShiftOp)
-  (AdditionOp)
-  (AssignOp)
-  (MultiplyOp)
-  (PrefixOp)
-  "*"
-  "**"
-  "->"
-  ".?"
-  ".*"
-  "?"
-] @operator
-
-[
-  ";"
-  "."
-  ","
-  ":"
-] @punctuation.delimiter
-
-[
-  ".."
-  "..."
-] @punctuation.special
+; Punctuation
 
 [
   "["
@@ -223,9 +14,280 @@ field_constant: (IDENTIFIER) @constant
   ")"
   "{"
   "}"
-  (Payload "|")
-  (PtrPayload "|")
-  (PtrIndexPayload "|")
 ] @punctuation.bracket
 
-(ERROR) @keyword.control.exception
+[
+  ";"
+  "."
+  ","
+  ":"
+  "=>"
+  "->"
+] @punctuation.delimiter
+
+(payload "|" @punctuation.bracket)
+
+; Literals
+
+(character) @constant.character
+
+[
+  (string)
+  (multiline_string)
+] @string
+
+(integer) @constant.numeric.integer
+
+(float) @constant.numeric.float
+
+(boolean) @constant.builtin.boolean
+
+(escape_sequence) @constant.character.escape
+
+; Operator
+
+[
+  "="
+  "*="
+  "*%="
+  "*|="
+  "/="
+  "%="
+  "+="
+  "+%="
+  "+|="
+  "-="
+  "-%="
+  "-|="
+  "<<="
+  "<<|="
+  ">>="
+  "&="
+  "^="
+  "|="
+  "!"
+  "~"
+  "-"
+  "-%"
+  "&"
+  "=="
+  "!="
+  ">"
+  ">="
+  "<="
+  "<"
+  "&"
+  "^"
+  "|"
+  "<<"
+  ">>"
+  "<<|"
+  "+"
+  "++"
+  "+%"
+  "-%"
+  "+|"
+  "-|"
+  "*"
+  "/"
+  "%"
+  "**"
+  "*%"
+  "*|"
+  "||"
+  ".*"
+  ".?"
+  "?"
+  ".."
+] @operator
+
+; Keywords
+
+[
+  "asm"
+  "test"
+] @keyword
+
+[
+  "error"
+  "const"
+  "var"
+  "struct"
+  "union"
+  "enum"
+  "opaque"
+] @keyword.storage.type
+
+; todo: keyword.coroutine
+[
+  "async"
+  "await"
+  "suspend"
+  "nosuspend"
+  "resume"
+] @keyword
+
+"fn" @keyword.function
+
+[
+  "and"
+  "or"
+  "orelse"
+] @keyword.operator
+
+[
+  "try"
+  "unreachable"
+  "return"
+] @keyword.control.return
+
+[
+  "if"
+  "else"
+  "switch"
+  "catch"
+] @keyword.control.conditional
+
+[
+  "for"
+  "while"
+  "break"
+  "continue"
+] @keyword.control.repeat
+
+[
+  "usingnamespace"
+  "export"
+] @keyword.control.import
+
+[
+  "defer"
+  "errdefer"
+] @keyword.control.exception
+
+[
+  "volatile"
+  "allowzero"
+  "noalias"
+  "addrspace"
+  "align"
+  "callconv"
+  "linksection"
+  "pub"
+  "inline"
+  "noinline"
+  "extern"
+  "comptime"
+  "packed"
+  "threadlocal"
+] @keyword.storage.modifier
+
+; Builtins
+
+[
+  "c"
+  "..."
+] @variable.builtin
+
+((identifier) @variable.builtin
+  (#eq? @variable.builtin "_"))
+
+(calling_convention
+  (identifier) @variable.builtin)
+
+; Modules
+
+(variable_declaration
+  (identifier) @variable ; TODO: module
+  (builtin_function
+    (builtin_identifier) @keyword.control.import
+    (#any-of? @keyword.control.import "@import" "@cImport")))
+
+; Functions
+
+(call_expression
+  function: (field_expression
+    member: (identifier) @function.method))
+
+(call_expression
+  function: (identifier) @function)
+
+(function_declaration
+  name: (identifier) @function)
+
+(builtin_identifier) @function.builtin
+
+; Fields
+
+(field_initializer
+  .
+  (identifier) @variable.other.member)
+
+(field_expression
+  (_)
+  member: (identifier) @variable.other.member)
+
+(container_field
+  name: (identifier) @variable.other.member)
+
+(initializer_list
+  (assignment_expression
+      left: (field_expression
+              .
+              member: (identifier) @variable.other.member)))
+
+; Labels
+
+(block_label (identifier) @label)
+
+(break_label (identifier) @label)
+
+; Constants
+
+((identifier) @constant
+  (#match? @constant "^[A-Z][A-Z_0-9]+$"))
+
+[
+  "null"
+  "undefined"
+] @constant.builtin
+
+(field_expression
+  .
+  member: (identifier) @constant)
+
+(enum_declaration
+  (container_field
+    type: (identifier) @constant))
+
+; Types
+
+(parameter
+  type: (identifier) @type)
+
+((identifier) @type
+  (#lua-match? @type "^[A-Z_][a-zA-Z0-9_]*"))
+
+(variable_declaration
+  (identifier) @type
+  "="
+  [
+    (struct_declaration)
+    (enum_declaration)
+    (union_declaration)
+    (opaque_declaration)
+  ])
+
+[
+  (builtin_type)
+  "anyframe"
+] @type.builtin
+
+; Parameters
+
+(parameter
+  name: (identifier) @variable.parameter)
+
+; Variables
+
+(identifier) @variable
