@@ -2143,7 +2143,7 @@ impl Document {
         TextFormat {
             soft_wrap: enable_soft_wrap && viewport_width > 10,
             tab_width,
-            max_wrap: max_wrap.min(viewport_width / 4),
+            max_wrap: Some(max_wrap.min(viewport_width / 4)),
             max_indent_retain: max_indent_retain.min(viewport_width * 2 / 5),
             // avoid spinning forever when the window manager
             // sets the size to something tiny
@@ -2153,6 +2153,7 @@ impl Document {
                 .and_then(|theme| theme.find_scope_index("ui.virtual.wrap"))
                 .map(Highlight),
             soft_wrap_at_text_width,
+            continue_comments: Vec::new(),
         }
     }
 
