@@ -132,6 +132,7 @@ pub struct Markdown {
 impl Markdown {
     const TEXT_STYLE: &'static str = "ui.text";
     const BLOCK_STYLE: &'static str = "markup.raw.inline";
+    const RULE_STYLE: &'static str = "punctuation.special";
     const HEADING_STYLES: [&'static str; 6] = [
         "markup.heading.1",
         "markup.heading.2",
@@ -148,6 +149,14 @@ impl Markdown {
             config_loader,
         }
     }
+
+    /// Hello world.
+    ///
+    /// - One
+    /// - Two
+    ///   - Three
+    /// - Four
+    fn foo() {}
 
     pub fn parse(&self, theme: Option<&Theme>) -> tui::text::Text<'_> {
         fn push_line<'a>(spans: &mut Vec<Span<'a>>, lines: &mut Vec<Spans<'a>>) {
@@ -178,6 +187,7 @@ impl Markdown {
         let get_theme = |key: &str| -> Style { theme.map(|t| t.get(key)).unwrap_or_default() };
         let text_style = get_theme(Self::TEXT_STYLE);
         let code_style = get_theme(Self::BLOCK_STYLE);
+        let rule_style = get_theme(Self::RULE_STYLE);
         let heading_styles: Vec<Style> = Self::HEADING_STYLES
             .iter()
             .map(|key| get_theme(key))
@@ -314,7 +324,7 @@ impl Markdown {
                     }
                 }
                 Event::Rule => {
-                    lines.push(Spans::from(Span::styled("---", code_style)));
+                    lines.push(Spans::from(Span::styled("───", rule_style)));
                     lines.push(Spans::default());
                 }
                 // TaskListMarker(bool) true if checked
