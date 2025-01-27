@@ -81,13 +81,13 @@ pub fn highlighted_code_block<'a>(
         let style_selection_primary = get_theme("ui.selection.primary");
         let style_text = get_theme("ui.text");
 
-        let mut ranges2 = HashSet::new();
-        let mut cursors = HashSet::new();
+        let mut selection_positions = HashSet::new();
+        let mut cursors_positions = HashSet::new();
         let primary_idx = selections.primary_index();
 
         for range in selections.iter() {
-            ranges2.extend(range.from()..range.to());
-            cursors.insert(if range.head > range.anchor {
+            selection_positions.extend(range.from()..range.to());
+            cursors_positions.insert(if range.head > range.anchor {
                 range.head.saturating_sub(1)
             } else {
                 range.head
@@ -98,12 +98,14 @@ pub fn highlighted_code_block<'a>(
 
         while let Some((idx, ch)) = chars.next() {
             if ch == '\r' && chars.peek().is_some_and(|(_, ch)| *ch == '\n') {
-                // We'll handle the newline next iteration
+                // We're on a line break. We already have the
+                // code to handle newlines in place, so we can just
+                // handle the newline on the next iteration
                 continue;
             }
 
-            let is_cursor = cursors.contains(&idx);
-            let is_selection = ranges2.contains(&idx);
+            let is_cursor = cursors_positions.contains(&idx);
+            let is_selection = selection_positions.contains(&idx);
 
             let style = if is_cursor {
                 if idx == primary_idx {
