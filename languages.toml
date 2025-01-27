@@ -4078,6 +4078,8 @@ indent = { tab-width = 4, unit = "    " }
 name = "gren"
 source = { git = "https://github.com/MaeBrooks/tree-sitter-gren", rev = "76554f4f2339f5a24eed19c58f2079b51c694152" }
 
+# this is just a dummy language, it's entry simply needs to exist
+# but it doesn't matter what these values are as we are using a custom renderer
 [[language]]
 name = "helix"
 scope = "source.helix"
@@ -4086,4 +4088,4 @@ file-types = ["helix"]
 
 [[grammar]]
 name = "helix"
-source = { path = "/home/e/a/tree-sitter-helix" }
+source = { git = "https://github.com/MaeBrooks/tree-sitter-gren", rev = "76554f4f2339f5a24eed19c58f2079b51c694152" }
