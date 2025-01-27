@@ -5,14 +5,14 @@ use tui::{
     text::{Span, Spans, Text},
 };
 
-use std::{cmp::Ordering, collections::HashSet, sync::Arc};
+use std::{collections::HashSet, sync::Arc};
 
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 
 use helix_core::{
     syntax::{self, HighlightEvent, InjectionLanguageMarker, Syntax},
     test::print,
-    Rope, RopeSlice,
+    RopeSlice,
 };
 use helix_view::{
     graphics::{Margin, Rect, Style},
