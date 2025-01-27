@@ -20,7 +20,7 @@ use helix_core::{
     comment,
     doc_formatter::TextFormat,
     encoding, find_workspace,
-    graphemes::{self, next_grapheme_boundary, RevRopeGraphemes},
+    graphemes::{self, next_grapheme_boundary},
     history::UndoKind,
     increment,
     indent::{self, IndentStyle},
@@ -35,8 +35,8 @@ use helix_core::{
     text_annotations::{Overlay, TextAnnotations},
     textobject,
     unicode::width::UnicodeWidthChar,
-    visual_offset_from_block, Deletion, LineEnding, Position, Range, Rope, RopeGraphemes,
-    RopeReader, RopeSlice, Selection, SmallVec, Syntax, Tendril, Transaction,
+    visual_offset_from_block, Deletion, LineEnding, Position, Range, Rope, RopeReader, RopeSlice,
+    Selection, SmallVec, Syntax, Tendril, Transaction,
 };
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
@@ -1681,10 +1681,12 @@ fn replace(cx: &mut Context) {
         if let Some(ch) = ch {
             let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
                 if !range.is_empty() {
-                    let text: Tendril =
-                        RopeGraphemes::new(doc.text().slice(range.from()..range.to()))
-                            .map(|_g| ch)
-                            .collect();
+                    let text: Tendril = doc
+                        .text()
+                        .slice(range.from()..range.to())
+                        .graphemes()
+                        .map(|_g| ch)
+                        .collect();
                     (range.from(), range.to(), Some(text))
                 } else {
                     // No change.
@@ -6574,7 +6576,9 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
             // madeup of word characters. The latter condition is needed because
             // move_next_word_end simply treats a sequence of characters from
             // the same char class as a word so `=<` would also count as a word.
-            let add_label = RevRopeGraphemes::new(text.slice(..cursor_fwd.head))
+            let add_label = text
+                .slice(..cursor_fwd.head)
+                .graphemes_rev()
                 .take(2)
                 .take_while(|g| g.chars().all(char_is_word))
                 .count()
@@ -6600,7 +6604,9 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
             // madeup of word characters. The latter condition is needed because
             // move_prev_word_start simply treats a sequence of characters from
             // the same char class as a word so `=<` would also count as a word.
-            let add_label = RopeGraphemes::new(text.slice(cursor_rev.head..))
+            let add_label = text
+                .slice(cursor_rev.head..)
+                .graphemes()
                 .take(2)
                 .take_while(|g| g.chars().all(char_is_word))
                 .count()

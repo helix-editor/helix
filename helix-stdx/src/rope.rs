@@ -1,8 +1,10 @@
+use std::fmt;
 use std::ops::{Bound, RangeBounds};
 
 pub use regex_cursor::engines::meta::{Builder as RegexBuilder, Regex};
 pub use regex_cursor::regex_automata::util::syntax::Config;
 use regex_cursor::{Input as RegexInput, RopeyCursor};
+use ropey::iter::Chunks;
 use ropey::RopeSlice;
 use unicode_segmentation::{GraphemeCursor, GraphemeIncomplete};
 
@@ -122,6 +124,33 @@ pub trait RopeSliceExt<'a>: Sized {
     /// ```
     #[allow(clippy::wrong_self_convention)]
     fn is_grapheme_boundary(self, byte_idx: usize) -> bool;
+    /// Returns an iterator over the grapheme clusters in the slice.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use ropey::RopeSlice;
+    /// # use helix_stdx::rope::RopeSliceExt;
+    /// let text = RopeSlice::from("😶‍🌫️🏴‍☠️🖼️");
+    /// let graphemes: Vec<_> = text.graphemes().collect();
+    /// assert_eq!(graphemes.as_slice(), &["😶‍🌫️", "🏴‍☠️", "🖼️"]);
+    /// ```
+    fn graphemes(self) -> RopeGraphemes<'a>;
+    /// Returns an iterator over the grapheme clusters in the slice, reversed.
+    ///
+    /// The returned iterator starts at the end of the slice and ends at the beginning of the
+    /// slice.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # use ropey::RopeSlice;
+    /// # use helix_stdx::rope::RopeSliceExt;
+    /// let text = RopeSlice::from("😶‍🌫️🏴‍☠️🖼️");
+    /// let graphemes: Vec<_> = text.graphemes_rev().collect();
+    /// assert_eq!(graphemes.as_slice(), &["🖼️", "🏴‍☠️", "😶‍🌫️"]);
+    /// ```
+    fn graphemes_rev(self) -> RevRopeGraphemes<'a>;
 }
 
 impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
@@ -305,6 +334,32 @@ impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
             }
         }
     }
+
+    fn graphemes(self) -> RopeGraphemes<'a> {
+        let mut chunks = self.chunks();
+        let first_chunk = chunks.next().unwrap_or("");
+        RopeGraphemes {
+            text: self,
+            chunks,
+            cur_chunk: first_chunk,
+            cur_chunk_start: 0,
+            cursor: GraphemeCursor::new(0, self.len_bytes(), true),
+        }
+    }
+
+    fn graphemes_rev(self) -> RevRopeGraphemes<'a> {
+        let (mut chunks, mut cur_chunk_start, _, _) = self.chunks_at_byte(self.len_bytes());
+        chunks.reverse();
+        let first_chunk = chunks.next().unwrap_or("");
+        cur_chunk_start -= first_chunk.len();
+        RevRopeGraphemes {
+            text: self,
+            chunks,
+            cur_chunk: first_chunk,
+            cur_chunk_start,
+            cursor: GraphemeCursor::new(self.len_bytes(), self.len_bytes(), true),
+        }
+    }
 }
 
 // copied from std
@@ -312,6 +367,130 @@ impl<'a> RopeSliceExt<'a> for RopeSlice<'a> {
 const fn is_utf8_char_boundary(b: u8) -> bool {
     // This is bit magic equivalent to: b < 128 || b >= 192
     (b as i8) >= -0x40
+}
+
+/// An iterator over the graphemes of a `RopeSlice`.
+#[derive(Clone)]
+pub struct RopeGraphemes<'a> {
+    text: RopeSlice<'a>,
+    chunks: Chunks<'a>,
+    cur_chunk: &'a str,
+    cur_chunk_start: usize,
+    cursor: GraphemeCursor,
+}
+
+impl fmt::Debug for RopeGraphemes<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RopeGraphemes")
+            .field("text", &self.text)
+            .field("chunks", &self.chunks)
+            .field("cur_chunk", &self.cur_chunk)
+            .field("cur_chunk_start", &self.cur_chunk_start)
+            // .field("cursor", &self.cursor)
+            .finish()
+    }
+}
+
+impl<'a> Iterator for RopeGraphemes<'a> {
+    type Item = RopeSlice<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let a = self.cursor.cur_cursor();
+        let b;
+        loop {
+            match self
+                .cursor
+                .next_boundary(self.cur_chunk, self.cur_chunk_start)
+            {
+                Ok(None) => {
+                    return None;
+                }
+                Ok(Some(n)) => {
+                    b = n;
+                    break;
+                }
+                Err(GraphemeIncomplete::NextChunk) => {
+                    self.cur_chunk_start += self.cur_chunk.len();
+                    self.cur_chunk = self.chunks.next().unwrap_or("");
+                }
+                Err(GraphemeIncomplete::PreContext(idx)) => {
+                    let (chunk, byte_idx, _, _) = self.text.chunk_at_byte(idx.saturating_sub(1));
+                    self.cursor.provide_context(chunk, byte_idx);
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        if a < self.cur_chunk_start {
+            Some(self.text.byte_slice(a..b))
+        } else {
+            let a2 = a - self.cur_chunk_start;
+            let b2 = b - self.cur_chunk_start;
+            Some((&self.cur_chunk[a2..b2]).into())
+        }
+    }
+}
+
+/// An iterator over the graphemes of a `RopeSlice` in reverse.
+#[derive(Clone)]
+pub struct RevRopeGraphemes<'a> {
+    text: RopeSlice<'a>,
+    chunks: Chunks<'a>,
+    cur_chunk: &'a str,
+    cur_chunk_start: usize,
+    cursor: GraphemeCursor,
+}
+
+impl fmt::Debug for RevRopeGraphemes<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("RevRopeGraphemes")
+            .field("text", &self.text)
+            .field("chunks", &self.chunks)
+            .field("cur_chunk", &self.cur_chunk)
+            .field("cur_chunk_start", &self.cur_chunk_start)
+            // .field("cursor", &self.cursor)
+            .finish()
+    }
+}
+
+impl<'a> Iterator for RevRopeGraphemes<'a> {
+    type Item = RopeSlice<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let a = self.cursor.cur_cursor();
+        let b;
+        loop {
+            match self
+                .cursor
+                .prev_boundary(self.cur_chunk, self.cur_chunk_start)
+            {
+                Ok(None) => {
+                    return None;
+                }
+                Ok(Some(n)) => {
+                    b = n;
+                    break;
+                }
+                Err(GraphemeIncomplete::PrevChunk) => {
+                    self.cur_chunk = self.chunks.next().unwrap_or("");
+                    self.cur_chunk_start -= self.cur_chunk.len();
+                }
+                Err(GraphemeIncomplete::PreContext(idx)) => {
+                    let (chunk, byte_idx, _, _) = self.text.chunk_at_byte(idx.saturating_sub(1));
+                    self.cursor.provide_context(chunk, byte_idx);
+                }
+                _ => unreachable!(),
+            }
+        }
+
+        if a >= self.cur_chunk_start + self.cur_chunk.len() {
+            Some(self.text.byte_slice(b..a))
+        } else {
+            let a2 = a - self.cur_chunk_start;
+            let b2 = b - self.cur_chunk_start;
+            Some((&self.cur_chunk[b2..a2]).into())
+        }
+    }
 }
 
 #[cfg(test)]
