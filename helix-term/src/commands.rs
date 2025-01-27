@@ -6488,6 +6488,7 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
         let alphabet = &cx.editor.config().jump_label_alphabet;
         let Some(i) = event
             .char()
+            .filter(|_| event.modifiers.is_empty())
             .and_then(|ch| alphabet.iter().position(|&it| it == ch))
         else {
             doc_mut!(cx.editor, &doc).remove_jump_labels(view);
