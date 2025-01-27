@@ -7,7 +7,7 @@ use tui::{
 
 use std::sync::Arc;
 
-use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
+use pulldown_cmark::{Alignment, CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 
 use helix_core::{
     syntax::{self, HighlightEvent, InjectionLanguageMarker, Syntax},
@@ -159,6 +159,7 @@ impl Markdown {
 
         let mut options = Options::empty();
         options.insert(Options::ENABLE_STRIKETHROUGH);
+        options.insert(Options::ENABLE_TABLES);
         let parser = Parser::new_ext(&self.contents, options);
 
         // TODO: if possible, render links as terminal hyperlinks: https://gist.github.com/egmontkob/eb114294efbcd5adb1944c9f3cb5feda
@@ -200,7 +201,8 @@ impl Markdown {
             _ => Some(event),
         });
 
-        for event in parser {
+        let mut events = parser.into_iter();
+        while let Some(event) = events.next() {
             match event {
                 Event::Start(Tag::List(list)) => {
                     // if the list stack is not empty this is a sub list, in that
@@ -240,6 +242,14 @@ impl Markdown {
                     let prefix = get_indent(list_stack.len()) + bullet.as_str();
                     spans.push(Span::from(prefix));
                 }
+                Event::Start(Tag::Table(alignments)) => Self::parse_table(
+                    &mut events,
+                    alignments,
+                    text_style,
+                    code_style,
+                    heading_styles[0],
+                    &mut lines,
+                ),
                 Event::Start(tag) => {
                     tags.push(tag);
                     if spans.is_empty() && !list_stack.is_empty() {
@@ -337,6 +347,123 @@ impl Markdown {
         }
 
         Text::from(lines)
+    }
+
+    fn parse_table<'a>(
+        events: &mut impl Iterator<Item = Event<'a>>,
+        alignments: Vec<Alignment>,
+        text_style: Style,
+        code_style: Style,
+        table_style: Style,
+        lines: &mut Vec<Spans<'a>>,
+    ) {
+        let mut tags = Vec::new();
+        let mut current_cell = Vec::new();
+        let mut current_row = Vec::new();
+        let mut rows = Vec::new();
+
+        for event in events {
+            match event {
+                Event::Start(Tag::TableCell) => (),
+                Event::End(TagEnd::TableCell) => {
+                    let cell = std::mem::take(&mut current_cell);
+                    current_row.push(Spans::from(cell));
+                }
+                Event::Start(Tag::TableHead | Tag::TableRow) => (),
+                Event::End(TagEnd::TableHead | TagEnd::TableRow) => {
+                    let row = std::mem::take(&mut current_row);
+                    rows.push(row);
+                }
+                Event::End(TagEnd::Table) => {
+                    // determine the max width of each column
+                    let mut widths = vec![0; alignments.len()];
+                    for row in &rows {
+                        for (i, cell) in row.iter().enumerate() {
+                            widths[i] = std::cmp::max(widths[i], cell.width());
+                        }
+                    }
+
+                    // pad each cell to the max width of it's column
+                    for row in &mut rows {
+                        for (i, cell) in row.iter_mut().enumerate() {
+                            let padding = widths[i] - cell.width();
+                            if padding != 0 {
+                                match alignments[i] {
+                                    Alignment::None | Alignment::Left => {
+                                        cell.0.push(Span::styled(" ".repeat(padding), text_style))
+                                    }
+                                    Alignment::Center => {
+                                        let left_padding = padding / 2;
+                                        let right_padding = padding - left_padding;
+                                        cell.0.insert(
+                                            0,
+                                            Span::styled(" ".repeat(left_padding), text_style),
+                                        );
+                                        cell.0.push(Span::styled(
+                                            " ".repeat(right_padding),
+                                            text_style,
+                                        ));
+                                    }
+                                    Alignment::Right => cell
+                                        .0
+                                        .insert(0, Span::styled(" ".repeat(padding), text_style)),
+                                }
+                            }
+                        }
+                    }
+
+                    // add separator after header
+                    rows.insert(
+                        1,
+                        widths
+                            .iter()
+                            .map(|width| Spans::from(Span::styled("-".repeat(*width), table_style)))
+                            .collect::<Vec<_>>(),
+                    );
+
+                    // add pipes and spacing to each row and then push the lines
+                    for mut row in rows {
+                        let mut spans = vec![Span::styled("| ", table_style)];
+                        let last = row.pop().expect("row should be non-empty");
+
+                        for span in row {
+                            spans.extend(span.0);
+                            spans.push(Span::styled(" | ", table_style))
+                        }
+
+                        spans.extend(last.0);
+                        spans.push(Span::styled(" |", table_style));
+
+                        lines.push(Spans::from(spans));
+                    }
+
+                    // add empty line after table
+                    lines.push(Spans::default());
+                    break;
+                }
+                Event::Text(text) => {
+                    let style = match tags.last() {
+                        Some(Tag::Emphasis) => text_style.add_modifier(Modifier::ITALIC),
+                        Some(Tag::Strong) => text_style.add_modifier(Modifier::BOLD),
+                        Some(Tag::Strikethrough) => text_style.add_modifier(Modifier::CROSSED_OUT),
+                        _ => text_style,
+                    };
+                    current_cell.push(Span::styled(text, style));
+                }
+                Event::Code(text) | Event::Html(text) => {
+                    current_cell.push(Span::styled(text, code_style));
+                }
+                Event::Start(tag) => {
+                    tags.push(tag);
+                }
+                Event::End(_) => {
+                    tags.pop();
+                }
+                _ => {
+                    log::warn!("unhandled markdown event in table {:?}", event);
+                }
+            }
+        }
     }
 }
 
