@@ -3,7 +3,7 @@ use std::fmt::Display;
 
 use crate::editor::Action;
 use crate::events::DiagnosticsDidChange;
-use crate::Editor;
+use crate::{DocumentId, Editor};
 use helix_core::Uri;
 use helix_lsp::util::generate_transaction_from_edits;
 use helix_lsp::{lsp, LanguageServerId, OffsetEncoding};
@@ -20,6 +20,10 @@ pub enum SignatureHelpEvent {
     ReTrigger,
     Cancel,
     RequestComplete { open: bool },
+}
+
+pub struct PullDiagnosticsEvent {
+    pub document_id: DocumentId,
 }
 
 #[derive(Debug)]
@@ -280,6 +284,7 @@ impl Editor {
         uri: Uri,
         version: Option<i32>,
         mut diagnostics: Vec<lsp::Diagnostic>,
+        report_id: Option<String>,
     ) {
         let doc = self
             .documents
@@ -356,6 +361,10 @@ impl Editor {
                 diagnostic_of_language_server_and_not_in_unchanged_sources,
             );
             doc.replace_diagnostics(diagnostics, &unchanged_diag_sources, Some(server_id));
+
+            if report_id.is_some() {
+                doc.previous_diagnostic_id = report_id;
+            }
 
             let doc = doc.id();
             helix_event::dispatch(DiagnosticsDidChange { editor: self, doc });
