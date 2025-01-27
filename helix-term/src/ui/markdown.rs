@@ -152,17 +152,6 @@ impl Markdown {
         }
     }
 
-    /// Hello world.
-    ///
-    /// - One
-    /// - Two
-    /// - Three
-    ///
-    /// 1. One
-    /// 2. Two
-    /// 3. Three
-    fn foo() {}
-
     pub fn parse(&self, theme: Option<&Theme>) -> tui::text::Text<'_> {
         fn push_line<'a>(spans: &mut Vec<Span<'a>>, lines: &mut Vec<Spans<'a>>) {
             let spans = std::mem::take(spans);
