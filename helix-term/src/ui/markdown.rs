@@ -72,6 +72,8 @@ pub fn highlighted_code_block<'a>(
             Box::new(highlight_iter)
         };
 
+    // Apply custom rendering rules to Helix code blocks.
+    // These render selections as if in the real editor.
     if language == "helix" {
         let (text, selections) = print(text);
 
