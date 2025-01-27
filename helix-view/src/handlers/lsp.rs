@@ -30,6 +30,12 @@ pub enum SignatureHelpEvent {
     RequestComplete { open: bool },
 }
 
+pub struct PullDiagnosticsEvent {
+    pub document_id: DocumentId,
+}
+
+pub struct PullAllDocumentsDiagnosticsEvent {}
+
 #[derive(Debug)]
 pub struct ApplyEditError {
     pub kind: ApplyEditErrorKind,
