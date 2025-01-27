@@ -1,3 +1,11 @@
+/// ```helix
+/// #(|hello world)#
+/// #(|hello world)#
+/// #[hello world|]#
+/// #(|hello world)#
+/// ```
+fn a() {}
+
 use crate::{
     commands::{self, OnKeyCallback, OnKeyCallbackKind},
     compositor::{Component, Context, Event, EventResult},
