@@ -5,13 +5,14 @@ use tui::{
     text::{Span, Spans, Text},
 };
 
-use std::sync::Arc;
+use std::{cmp::Ordering, collections::HashSet, sync::Arc};
 
 use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, TagEnd};
 
 use helix_core::{
     syntax::{self, HighlightEvent, InjectionLanguageMarker, Syntax},
-    RopeSlice,
+    test::print,
+    Rope, RopeSlice,
 };
 use helix_view::{
     graphics::{Margin, Rect, Style},
@@ -71,42 +72,89 @@ pub fn highlighted_code_block<'a>(
             Box::new(highlight_iter)
         };
 
-    let mut highlights = Vec::new();
-    for event in highlight_iter {
-        match event {
-            HighlightEvent::HighlightStart(span) => {
-                highlights.push(span);
-            }
-            HighlightEvent::HighlightEnd => {
-                highlights.pop();
-            }
-            HighlightEvent::Source { start, end } => {
-                let style = highlights
-                    .iter()
-                    .fold(text_style, |acc, span| acc.patch(theme.highlight(span.0)));
+    if language == "helix" {
+        let (text, selections) = print(text);
+        // let text = Rope::from(text).slice(..);
 
-                let mut slice = &text[start..end];
-                // TODO: do we need to handle all unicode line endings
-                // here, or is just '\n' okay?
-                while let Some(end) = slice.find('\n') {
-                    // emit span up to newline
-                    let text = &slice[..end];
-                    let text = text.replace('\t', "    "); // replace tabs
-                    let span = Span::styled(text, style);
-                    spans.push(span);
+        let style_cursor = get_theme("ui.cursor");
+        let style_cursor_primary = get_theme("ui.cursor.primary");
+        let style_selection = get_theme("ui.selection");
+        let style_selection_primary = get_theme("ui.selection.primary");
+        let style_text = get_theme("ui.text");
 
-                    // truncate slice to after newline
-                    slice = &slice[end + 1..];
+        let mut ranges2 = HashSet::new();
+        let mut cursors = HashSet::new();
+        let primary_idx = selections.primary_index();
 
-                    // make a new line
-                    let spans = std::mem::take(&mut spans);
-                    lines.push(Spans::from(spans));
+        for range in selections.iter() {
+            ranges2.extend(range.from()..range.to());
+            cursors.insert(if range.head > range.anchor {
+                range.head.saturating_sub(1)
+            } else {
+                range.head
+            });
+        }
+
+        for (idx, ch) in text.chars().enumerate() {
+            let is_cursor = cursors.contains(&idx);
+            let is_selection = ranges2.contains(&idx);
+
+            let style = if is_cursor {
+                if idx == primary_idx {
+                    style_cursor_primary
+                } else {
+                    style_cursor
                 }
+            } else if is_selection {
+                if idx == primary_idx {
+                    style_selection_primary
+                } else {
+                    style_selection
+                }
+            } else {
+                style_text
+            };
 
-                // if there's anything left, emit it too
-                if !slice.is_empty() {
-                    let span = Span::styled(slice.replace('\t', "    "), style);
-                    spans.push(span);
+            spans.push(Span::styled(ch.to_string(), style));
+        }
+    } else {
+        let mut highlights = Vec::new();
+        for event in highlight_iter {
+            match event {
+                HighlightEvent::HighlightStart(span) => {
+                    highlights.push(span);
+                }
+                HighlightEvent::HighlightEnd => {
+                    highlights.pop();
+                }
+                HighlightEvent::Source { start, end } => {
+                    let style = highlights
+                        .iter()
+                        .fold(text_style, |acc, span| acc.patch(theme.highlight(span.0)));
+
+                    let mut slice = &text[start..end];
+                    // TODO: do we need to handle all unicode line endings
+                    // here, or is just '\n' okay?
+                    while let Some(end) = slice.find('\n') {
+                        // emit span up to newline
+                        let text = &slice[..end];
+                        let text = text.replace('\t', "    "); // replace tabs
+                        let span = Span::styled(text, style);
+                        spans.push(span);
+
+                        // truncate slice to after newline
+                        slice = &slice[end + 1..];
+
+                        // make a new line
+                        let spans = std::mem::take(&mut spans);
+                        lines.push(Spans::from(spans));
+                    }
+
+                    // if there's anything left, emit it too
+                    if !slice.is_empty() {
+                        let span = Span::styled(slice.replace('\t', "    "), style);
+                        spans.push(span);
+                    }
                 }
             }
         }
