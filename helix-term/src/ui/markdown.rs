@@ -74,7 +74,6 @@ pub fn highlighted_code_block<'a>(
 
     if language == "helix" {
         let (text, selections) = print(text);
-        // let text = Rope::from(text).slice(..);
 
         let style_cursor = get_theme("ui.cursor");
         let style_cursor_primary = get_theme("ui.cursor.primary");
@@ -95,7 +94,14 @@ pub fn highlighted_code_block<'a>(
             });
         }
 
-        for (idx, ch) in text.chars().enumerate() {
+        let mut chars = text.chars().enumerate().peekable();
+
+        while let Some((idx, ch)) = chars.next() {
+            if ch == '\r' && chars.peek().is_some_and(|(_, ch)| *ch == '\n') {
+                // We'll handle the newline next iteration
+                continue;
+            }
+
             let is_cursor = cursors.contains(&idx);
             let is_selection = ranges2.contains(&idx);
 
