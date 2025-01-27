@@ -115,7 +115,12 @@ pub fn highlighted_code_block<'a>(
                 style_text
             };
 
-            spans.push(Span::styled(ch.to_string(), style));
+            if ch == '\n' {
+                lines.push(Spans::from(spans));
+                spans = vec![];
+            } else {
+                spans.push(Span::styled(ch.to_string(), style));
+            }
         }
     } else {
         let mut highlights = Vec::new();
