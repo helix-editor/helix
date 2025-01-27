@@ -94,6 +94,10 @@ impl EditorView {
         let text_annotations = view.text_annotations(doc, Some(theme));
         let mut decorations = DecorationManager::default();
 
+        if config.zebra_stripe {
+            decorations.add_decoration(Self::zebra_stripe(view, theme));
+        }
+
         if is_focused && config.cursorline {
             decorations.add_decoration(Self::cursorline(doc, view, theme));
         }
@@ -770,6 +774,20 @@ impl EditorView {
             Rect::new(viewport.right() - width, viewport.y + 1, width, height),
             surface,
         );
+    }
+
+    pub fn zebra_stripe(view: &View, theme: &Theme) -> impl Decoration {
+        let style = theme.get("ui.background.zebra-stripe");
+        let viewport = view.area;
+
+        move |renderer: &mut TextRenderer, pos: LinePos| {
+            if pos.doc_line % 2 == 1 {
+                return;
+            }
+
+            let area = Rect::new(viewport.x, pos.visual_line, viewport.width, 1);
+            renderer.set_style(area, style);
+        }
     }
 
     /// Apply the highlighting on the lines where a cursor is active
