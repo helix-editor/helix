@@ -3824,8 +3824,7 @@ fn goto_next_diag(cx: &mut Context) {
         let diag = doc
             .diagnostics()
             .iter()
-            .find(|diag| diag.range.start > cursor_pos)
-            .or_else(|| doc.diagnostics().first());
+            .find(|diag| diag.range.start > cursor_pos);
 
         let selection = match diag {
             Some(diag) => Selection::single(diag.range.start, diag.range.end),
@@ -3852,8 +3851,7 @@ fn goto_prev_diag(cx: &mut Context) {
             .diagnostics()
             .iter()
             .rev()
-            .find(|diag| diag.range.start < cursor_pos)
-            .or_else(|| doc.diagnostics().last());
+            .find(|diag| diag.range.start < cursor_pos);
 
         let selection = match diag {
             // NOTE: the selection is reversed because we're jumping to the
