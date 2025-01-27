@@ -141,6 +141,7 @@ impl Markdown {
         "markup.heading.6",
     ];
     const INDENT: &'static str = "  ";
+    const TABLE_STYLE: &'static str = "punctuation.special";
 
     pub fn new(contents: String, config_loader: Arc<ArcSwap<syntax::Loader>>) -> Self {
         Self {
@@ -179,6 +180,7 @@ impl Markdown {
         let get_theme = |key: &str| -> Style { theme.map(|t| t.get(key)).unwrap_or_default() };
         let text_style = get_theme(Self::TEXT_STYLE);
         let code_style = get_theme(Self::BLOCK_STYLE);
+        let table_style = get_theme(Self::TABLE_STYLE);
         let heading_styles: Vec<Style> = Self::HEADING_STYLES
             .iter()
             .map(|key| get_theme(key))
@@ -247,7 +249,7 @@ impl Markdown {
                     alignments,
                     text_style,
                     code_style,
-                    heading_styles[0],
+                    table_style,
                     &mut lines,
                 ),
                 Event::Start(tag) => {
@@ -417,22 +419,32 @@ impl Markdown {
                         1,
                         widths
                             .iter()
-                            .map(|width| Spans::from(Span::styled("-".repeat(*width), table_style)))
+                            .map(|width| Spans::from(Span::styled("─".repeat(*width), table_style)))
                             .collect::<Vec<_>>(),
                     );
+                    // ┼
 
                     // add pipes and spacing to each row and then push the lines
-                    for mut row in rows {
-                        let mut spans = vec![Span::styled("| ", table_style)];
+                    for (row_idx, mut row) in rows.into_iter().enumerate() {
+                        let mut spans = vec![Span::styled(
+                            if row_idx == 1 { "├─" } else { "│ " },
+                            table_style,
+                        )];
                         let last = row.pop().expect("row should be non-empty");
 
                         for span in row {
                             spans.extend(span.0);
-                            spans.push(Span::styled(" | ", table_style))
+                            spans.push(Span::styled(
+                                if row_idx == 1 { "─┼─" } else { " │ " },
+                                table_style,
+                            ))
                         }
 
                         spans.extend(last.0);
-                        spans.push(Span::styled(" |", table_style));
+                        spans.push(Span::styled(
+                            if row_idx == 1 { "─┤" } else { " │" },
+                            table_style,
+                        ));
 
                         lines.push(Spans::from(spans));
                     }
