@@ -25,7 +25,7 @@ use helix_core::{
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
     document::{Mode, SavePoint, SCRATCH_BUFFER_NAME},
-    editor::{CompleteAction, CursorShapeConfig},
+    editor::{CompleteAction, CursorShapeConfig, RulerStyle},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
@@ -199,6 +199,9 @@ impl EditorView {
             inline_diagnostic_config,
             config.end_of_line_diagnostics,
         ));
+
+        Self::render_rulers(editor, doc, view, inner, surface, theme);
+
         render_document(
             surface,
             inner,
@@ -210,7 +213,6 @@ impl EditorView {
             theme,
             decorations,
         );
-        Self::render_rulers(editor, doc, view, inner, surface, theme);
 
         // if we're not at the edge of the screen, draw a right border
         if viewport.right() != view.area.right() {
@@ -250,8 +252,16 @@ impl EditorView {
         theme: &Theme,
     ) {
         let editor_rulers = &editor.config().rulers;
+        let ruler_style = &editor.config().ruler_style;
+        let ruler_char = editor.config().ruler_char.to_string();
+
+        let theme_key = match ruler_style {
+            RulerStyle::Bg => "ui.virtual.ruler",
+            RulerStyle::Char => "ui.virtual.ruler.char",
+        };
+
         let ruler_theme = theme
-            .try_get("ui.virtual.ruler")
+            .try_get(theme_key)
             .unwrap_or_else(|| Style::default().bg(Color::Red));
 
         let rulers = doc
@@ -268,7 +278,18 @@ impl EditorView {
             .filter_map(|ruler| ruler.checked_sub(1 + view_offset.horizontal_offset as u16))
             .filter(|ruler| ruler < &viewport.width)
             .map(|ruler| viewport.clip_left(ruler).with_width(1))
-            .for_each(|area| surface.set_style(area, ruler_theme))
+            .for_each(|area| {
+                match ruler_style {
+                    RulerStyle::Bg => {
+                        surface.set_style(area, ruler_theme);
+                    }
+                    RulerStyle::Char => {
+                        for y in area.y..area.height {
+                            surface.set_string(area.x, y, &ruler_char, ruler_theme);
+                        }
+                    }
+                }
+            })
     }
 
     fn viewport_byte_range(
