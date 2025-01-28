@@ -4079,10 +4079,10 @@ name = "gren"
 source = { git = "https://github.com/MaeBrooks/tree-sitter-gren", rev = "76554f4f2339f5a24eed19c58f2079b51c694152" }
 
 [[language]]
-name = "helix"
-scope = "source.helix"
-injection-regex = "helix"
-file-types = ["helix"]
+name = "multicursor"
+scope = "source.multicursor"
+injection-regex = "multicursor"
+file-types = ["multicursor"]
 
 [[grammar]]
 name = "helix"
