@@ -5,7 +5,14 @@ use smallvec::SmallVec;
 use std::cmp::Reverse;
 use unicode_segmentation::UnicodeSegmentation;
 
-/// Convert annotated test string to test string and selection.
+#[derive(Debug)]
+pub enum ParseSelectionError {
+    MoreThanOnePrimary(String),
+    MissingClosingPair(String),
+    MissingPrimary(String),
+}
+
+/// Convert string annotated with selections to string and selection.
 ///
 /// `#[|` for primary selection with head before anchor followed by `]#`.
 /// `#(|` for secondary selection with head before anchor followed by `)#`.
@@ -19,21 +26,15 @@ use unicode_segmentation::UnicodeSegmentation;
 /// # Examples
 ///
 /// ```
-/// use helix_core::{Range, Selection, test::print};
+/// use helix_core::{Range, Selection, test::parse_selection_string};
 /// use smallvec::smallvec;
 ///
 /// assert_eq!(
-///     print("#[a|]#b#(|c)#"),
+///     parse_selection_string("#[a|]#b#(|c)#").unwrap(),
 ///     ("abc".to_owned(), Selection::new(smallvec![Range::new(0, 1), Range::new(3, 2)], 0))
 /// );
 /// ```
-///
-/// # Panics
-///
-/// Panics when missing primary or appeared more than once.
-/// Panics when missing head or anchor.
-/// Panics when head come after head or anchor come after anchor.
-pub fn print(s: &str) -> (String, Selection) {
+pub fn parse_selection_string(s: &str) -> Result<(String, Selection), ParseSelectionError> {
     let mut primary_idx = None;
     let mut ranges = SmallVec::new();
     let mut iter = UnicodeSegmentation::graphemes(s, true).peekable();
@@ -59,7 +60,10 @@ pub fn print(s: &str) -> (String, Selection) {
         };
 
         if is_primary && primary_idx.is_some() {
-            panic!("primary `#[` already appeared {:?} {:?}", left, s);
+            return Err(ParseSelectionError::MoreThanOnePrimary(format!(
+                "{:?} {:?}",
+                left, s
+            )));
         }
 
         let head_at_beg = iter.next_if_eq(&"|").is_some();
@@ -116,19 +120,30 @@ pub fn print(s: &str) -> (String, Selection) {
         }
 
         if head_at_beg {
-            panic!("missing end `{}#` {:?} {:?}", close_pair, left, s);
+            return Err(ParseSelectionError::MissingClosingPair(format!(
+                "Missing end `{}#` {:?} {:?}",
+                close_pair, left, s
+            )));
         } else {
-            panic!("missing end `|{}#` {:?} {:?}", close_pair, left, s);
+            return Err(ParseSelectionError::MissingClosingPair(format!(
+                "Missing end `|{}#` {:?} {:?}",
+                close_pair, left, s
+            )));
         }
     }
 
     let primary = match primary_idx {
         Some(i) => i,
-        None => panic!("missing primary `#[|]#` {:?}", s),
+        None => {
+            return Err(ParseSelectionError::MissingPrimary(format!(
+                "Missing primary `#[|]#` {:?}",
+                s
+            )));
+        }
     };
 
     let selection = Selection::new(ranges, primary);
-    (left, selection)
+    Ok((left, selection))
 }
 
 /// Convert test string and selection to annotated test string.
@@ -187,27 +202,27 @@ mod test {
     fn print_single() {
         assert_eq!(
             (String::from("hello"), Selection::single(1, 0)),
-            print("#[|h]#ello")
+            parse_selection_string("#[|h]#ello").unwrap()
         );
         assert_eq!(
             (String::from("hello"), Selection::single(0, 1)),
-            print("#[h|]#ello")
+            parse_selection_string("#[h|]#ello").unwrap()
         );
         assert_eq!(
             (String::from("hello"), Selection::single(4, 0)),
-            print("#[|hell]#o")
+            parse_selection_string("#[|hell]#o").unwrap()
         );
         assert_eq!(
             (String::from("hello"), Selection::single(0, 4)),
-            print("#[hell|]#o")
+            parse_selection_string("#[hell|]#o").unwrap()
         );
         assert_eq!(
             (String::from("hello"), Selection::single(5, 0)),
-            print("#[|hello]#")
+            parse_selection_string("#[|hello]#").unwrap()
         );
         assert_eq!(
             (String::from("hello"), Selection::single(0, 5)),
-            print("#[hello|]#")
+            parse_selection_string("#[hello|]#").unwrap()
         );
     }
 
@@ -221,7 +236,7 @@ mod test {
                     0
                 )
             ),
-            print("#[|h]#ell#(|o)#")
+            parse_selection_string("#[|h]#ell#(|o)#").unwrap()
         );
         assert_eq!(
             (
@@ -231,7 +246,7 @@ mod test {
                     0
                 )
             ),
-            print("#[h|]#ell#(o|)#")
+            parse_selection_string("#[h|]#ell#(o|)#").unwrap()
         );
         assert_eq!(
             (
@@ -241,7 +256,7 @@ mod test {
                     0
                 )
             ),
-            print("#[|he]#l#(|lo)#")
+            parse_selection_string("#[|he]#l#(|lo)#").unwrap()
         );
         assert_eq!(
             (
@@ -255,7 +270,7 @@ mod test {
                     0
                 )
             ),
-            print("hello#[|\r\n]#hello#(|\r\n)#hello#(|\r\n)#")
+            parse_selection_string("hello#[|\r\n]#hello#(|\r\n)#hello#(|\r\n)#").unwrap()
         );
     }
 
@@ -263,23 +278,23 @@ mod test {
     fn print_multi_byte_code_point() {
         assert_eq!(
             (String::from("„“"), Selection::single(1, 0)),
-            print("#[|„]#“")
+            parse_selection_string("#[|„]#“").unwrap()
         );
         assert_eq!(
             (String::from("„“"), Selection::single(2, 1)),
-            print("„#[|“]#")
+            parse_selection_string("„#[|“]#").unwrap()
         );
         assert_eq!(
             (String::from("„“"), Selection::single(0, 1)),
-            print("#[„|]#“")
+            parse_selection_string("#[„|]#“").unwrap()
         );
         assert_eq!(
             (String::from("„“"), Selection::single(1, 2)),
-            print("„#[“|]#")
+            parse_selection_string("„#[“|]#").unwrap()
         );
         assert_eq!(
             (String::from("they said „hello“"), Selection::single(11, 10)),
-            print("they said #[|„]#hello“")
+            parse_selection_string("they said #[|„]#hello“").unwrap()
         );
     }
 
@@ -290,7 +305,7 @@ mod test {
                 String::from("hello 👨‍👩‍👧‍👦 goodbye"),
                 Selection::single(13, 6)
             ),
-            print("hello #[|👨‍👩‍👧‍👦]# goodbye")
+            parse_selection_string("hello #[|👨‍👩‍👧‍👦]# goodbye").unwrap()
         );
     }
 

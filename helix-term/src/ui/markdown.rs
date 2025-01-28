@@ -11,7 +11,7 @@ use pulldown_cmark::{CodeBlockKind, Event, HeadingLevel, Options, Parser, Tag, T
 
 use helix_core::{
     syntax::{self, HighlightEvent, InjectionLanguageMarker, Syntax},
-    test::print,
+    test::parse_selection_string,
     RopeSlice,
 };
 use helix_view::{
@@ -40,11 +40,14 @@ pub fn highlighted_code_block<'a>(
     let mut lines = Vec::new();
 
     let get_theme = |key: &str| -> Style { theme.map(|t| t.get(key)).unwrap_or_default() };
+    let code_style = get_theme(Markdown::BLOCK_STYLE);
 
     // Apply custom rendering rules to Helix code blocks.
     // These render selections as if in the real editor.
     if language == "helix" {
-        let (text, selections) = print(text);
+        let Ok((text, selections)) = parse_selection_string(text) else {
+            return styled_multiline_text(text, code_style);
+        };
 
         let style_cursor = get_theme("ui.cursor");
         let style_cursor_primary = get_theme("ui.cursor.primary");
@@ -103,7 +106,6 @@ pub fn highlighted_code_block<'a>(
         }
     } else {
         let text_style = get_theme(Markdown::TEXT_STYLE);
-        let code_style = get_theme(Markdown::BLOCK_STYLE);
 
         let theme = match theme {
             Some(t) => t,

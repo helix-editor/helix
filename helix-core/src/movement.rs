@@ -2050,7 +2050,7 @@ mod test {
         ];
 
         for (before, expected) in tests {
-            let (s, selection) = crate::test::print(before);
+            let (s, selection) = crate::test::parse_selection_string(before).unwrap();
             let text = Rope::from(s.as_str());
             let selection =
                 selection.transform(|r| move_prev_paragraph(text.slice(..), r, 1, Movement::Move));
@@ -2073,7 +2073,7 @@ mod test {
         ];
 
         for (before, expected) in tests {
-            let (s, selection) = crate::test::print(before);
+            let (s, selection) = crate::test::parse_selection_string(before).unwrap();
             let text = Rope::from(s.as_str());
             let selection =
                 selection.transform(|r| move_prev_paragraph(text.slice(..), r, 2, Movement::Move));
@@ -2096,7 +2096,7 @@ mod test {
         ];
 
         for (before, expected) in tests {
-            let (s, selection) = crate::test::print(before);
+            let (s, selection) = crate::test::parse_selection_string(before).unwrap();
             let text = Rope::from(s.as_str());
             let selection = selection
                 .transform(|r| move_prev_paragraph(text.slice(..), r, 1, Movement::Extend));
@@ -2138,7 +2138,7 @@ mod test {
         ];
 
         for (before, expected) in tests {
-            let (s, selection) = crate::test::print(before);
+            let (s, selection) = crate::test::parse_selection_string(before).unwrap();
             let text = Rope::from(s.as_str());
             let selection =
                 selection.transform(|r| move_next_paragraph(text.slice(..), r, 1, Movement::Move));
@@ -2161,7 +2161,7 @@ mod test {
         ];
 
         for (before, expected) in tests {
-            let (s, selection) = crate::test::print(before);
+            let (s, selection) = crate::test::parse_selection_string(before).unwrap();
             let text = Rope::from(s.as_str());
             let selection =
                 selection.transform(|r| move_next_paragraph(text.slice(..), r, 2, Movement::Move));
@@ -2184,7 +2184,7 @@ mod test {
         ];
 
         for (before, expected) in tests {
-            let (s, selection) = crate::test::print(before);
+            let (s, selection) = crate::test::parse_selection_string(before).unwrap();
             let text = Rope::from(s.as_str());
             let selection = selection
                 .transform(|r| move_next_paragraph(text.slice(..), r, 1, Movement::Extend));

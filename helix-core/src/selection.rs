@@ -1202,7 +1202,7 @@ mod test {
 
     #[test]
     fn selection_line_ranges() {
-        let (text, selection) = crate::test::print(
+        let (text, selection) = crate::test::parse_selection_string(
             r#"                                           L0
             #[|these]# line #(|ranges)# are #(|merged)#   L1
                                                           L2
@@ -1218,7 +1218,8 @@ mod test {
             adjacent #(|ranges)#                          L12
             are merged #(|the same way)#                  L13
             "#,
-        );
+        )
+        .unwrap();
         let rope = Rope::from_str(&text);
         assert_eq!(
             vec![(1, 1), (3, 3), (5, 6), (8, 10), (12, 13)],

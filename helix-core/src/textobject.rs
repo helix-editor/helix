@@ -435,7 +435,7 @@ mod test {
         ];
 
         for (before, expected) in tests {
-            let (s, selection) = crate::test::print(before);
+            let (s, selection) = crate::test::parse_selection_string(before).unwrap();
             let text = Rope::from(s.as_str());
             let selection = selection
                 .transform(|r| textobject_paragraph(text.slice(..), r, TextObject::Inside, 1));
@@ -458,7 +458,7 @@ mod test {
         ];
 
         for (before, expected) in tests {
-            let (s, selection) = crate::test::print(before);
+            let (s, selection) = crate::test::parse_selection_string(before).unwrap();
             let text = Rope::from(s.as_str());
             let selection = selection
                 .transform(|r| textobject_paragraph(text.slice(..), r, TextObject::Inside, 2));
@@ -489,7 +489,7 @@ mod test {
         ];
 
         for (before, expected) in tests {
-            let (s, selection) = crate::test::print(before);
+            let (s, selection) = crate::test::parse_selection_string(before);
             let text = Rope::from(s.as_str());
             let selection = selection
                 .transform(|r| textobject_paragraph(text.slice(..), r, TextObject::Around, 1));
