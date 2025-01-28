@@ -61,7 +61,7 @@ pub fn parse_selection_string(s: &str) -> Result<(String, Selection), ParseSelec
 
         if is_primary && primary_idx.is_some() {
             return Err(ParseSelectionError::MoreThanOnePrimary(format!(
-                "{:?} {:?}",
+                "Can only have 1 primary selection: {:?} {:?}",
                 left, s
             )));
         }
@@ -121,12 +121,12 @@ pub fn parse_selection_string(s: &str) -> Result<(String, Selection), ParseSelec
 
         if head_at_beg {
             return Err(ParseSelectionError::MissingClosingPair(format!(
-                "Missing end `{}#` {:?} {:?}",
+                "Missing end `{}#`: {:?} {:?}",
                 close_pair, left, s
             )));
         } else {
             return Err(ParseSelectionError::MissingClosingPair(format!(
-                "Missing end `|{}#` {:?} {:?}",
+                "Missing end `|{}#`: {:?} {:?}",
                 close_pair, left, s
             )));
         }
@@ -136,7 +136,7 @@ pub fn parse_selection_string(s: &str) -> Result<(String, Selection), ParseSelec
         Some(i) => i,
         None => {
             return Err(ParseSelectionError::MissingPrimary(format!(
-                "Missing primary `#[|]#` {:?}",
+                "Missing primary `#[|]#:` {:?}",
                 s
             )));
         }
