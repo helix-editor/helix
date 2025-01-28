@@ -2,9 +2,10 @@ use crate::{
     annotations::diagnostics::{DiagnosticFilter, InlineDiagnosticsConfig},
     clipboard::ClipboardProvider,
     document::{
-        DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
+        DocumentOpenError, DocumentSavedEvent, DocumentSavedEventFuture, DocumentSavedEventResult,
+        Mode, SavePoint,
     },
-    events::DocumentFocusLost,
+    events::{DocumentClosed, DocumentFocusLost, DocumentOpened, DocumentSaved},
     graphics::{CursorKind, Rect},
     handlers::Handlers,
     info::Info,
@@ -1784,6 +1785,11 @@ impl Editor {
             let id = self.new_document(doc);
             self.launch_language_servers(id);
 
+            dispatch(DocumentOpened {
+                editor: self,
+                doc: id,
+            });
+
             id
         };
 
@@ -1874,6 +1880,11 @@ impl Editor {
 
         self._refresh();
 
+        dispatch(DocumentClosed {
+            editor: self,
+            doc: doc_id,
+        });
+
         Ok(())
     }
 
@@ -1910,6 +1921,11 @@ impl Editor {
             .map_err(|err| anyhow!("failed to send save event: {}", err))?;
 
         self.write_count += 1;
+
+        dispatch(DocumentSaved {
+            editor: self,
+            doc: doc_id,
+        });
 
         Ok(())
     }

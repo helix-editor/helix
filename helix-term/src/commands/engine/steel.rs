@@ -17,7 +17,7 @@ use helix_view::{
         GutterConfig, IndentGuidesConfig, LineEndingConfig, LineNumber, LspConfig, SearchConfig,
         SmartTabConfig, StatusLineConfig, TerminalConfig, WhitespaceConfig,
     },
-    events::{DocumentFocusLost, SelectionDidChange},
+    events::{DocumentFocusLost, DocumentOpened, SelectionDidChange},
     extension::document_id_to_usize,
     input::KeyEvent,
     theme::Color,
@@ -590,6 +590,22 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
 
     module.register_fn("get-config-option-value", get_option_value);
 
+    module.register_fn("set-configuration-for-file!", set_configuration_for_file);
+
+    module
+        .register_fn(
+            "get-language-config",
+            HelixConfiguration::get_language_config,
+        )
+        .register_fn(
+            "get-language-config-by-filename",
+            HelixConfiguration::get_individual_language_config_for_filename,
+        )
+        .register_fn(
+            "set-language-config!",
+            HelixConfiguration::update_individual_language_config,
+        );
+
     module
         .register_fn("raw-file-picker", || FilePickerConfig::default())
         .register_fn("register-file-picker", HelixConfiguration::file_picker)
@@ -710,6 +726,14 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
 (provide get-config-option-value)
 (define (get-config-option-value arg)
     (helix.get-config-option-value *helix.cx* arg))
+"#,
+        ));
+
+        builtin_configuration_module.push_str(&format!(
+            r#"
+(provide set-configuration-for-file!)
+(define (set-configuration-for-file! path config)
+    (helix.set-configuration-for-file! *helix.cx* path config))
 "#,
         ));
 
@@ -847,6 +871,10 @@ fn load_configuration_api(engine: &mut Engine, generate_sources: bool) {
             "keybindings",
             "inline-diagnostics-cursor-line-enable",
             "inline-diagnostics-end-of-line-enable",
+            // language configuration functions
+            "get-language-config",
+            "get-language-config-by-filename",
+            "set-language-config!",
         ];
 
         for func in functions {
@@ -1449,26 +1477,60 @@ impl IndividualLanguageConfiguration {
 
     // Apply end of line configuration on doc open?
     // pub fn set_end_of_line(&mut self) {
-    //     self.
+    // self.config.end
     // }
 }
 
 impl Custom for HelixConfiguration {}
 
-// impl Custom for LineNumber {}
+// Set the configuration for an individual file.
+fn update_configuration_for_file(ctx: &mut Context, doc: DocumentId) {
+    if let Some(document) = ctx.editor.documents.get_mut(&doc) {
+        let path = document.path().unwrap();
+        let config_for_file = ctx
+            .editor
+            .syn_loader
+            .load()
+            .language_config_for_file_name(path);
+
+        document.language = config_for_file;
+    }
+}
+
+fn set_configuration_for_file(
+    ctx: &mut Context,
+    file_name: SteelString,
+    configuration: IndividualLanguageConfiguration,
+) {
+    if let Some(document) = ctx.editor.document_by_path_mut(file_name.as_str()) {
+        document.language = Some(Arc::new(configuration.config));
+    }
+}
 
 impl HelixConfiguration {
     fn store_language_configuration(&self, language_config: syntax::Loader) {
         self.language_configuration.store(Arc::new(language_config))
     }
 
-    fn get_individual_language_config_for_filename(
+    fn get_language_config(
         &self,
-        file_name: &str,
+        language: SteelString,
     ) -> Option<IndividualLanguageConfiguration> {
         self.language_configuration
             .load()
-            .language_config_for_file_name(std::path::Path::new(file_name))
+            .language_config_for_language_id(language.as_str())
+            .map(|config| IndividualLanguageConfiguration {
+                config: (*config).clone(),
+            })
+    }
+
+    fn get_individual_language_config_for_filename(
+        &self,
+        file_name: SteelString,
+    ) -> Option<IndividualLanguageConfiguration> {
+        self.language_configuration
+            .load()
+            .language_config_for_file_name(std::path::Path::new(file_name.as_str()))
             .map(|config| IndividualLanguageConfiguration {
                 config: (*config).clone(),
             })
@@ -1494,6 +1556,11 @@ impl HelixConfiguration {
             }
         }
     }
+
+    // // Refresh configuration for a specific file
+    // fn refresh_language_configuration(&mut self) {
+    //     todo!()
+    // }
 
     fn load_config(&self) -> Config {
         (*self.configuration.load().clone()).clone()
@@ -2040,6 +2107,7 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
             // and act accordingly?
             register_hook!(move |event: &mut DocumentFocusLost<'_>| {
                 let cloned_func = rooted.value().clone();
+                let doc_id = event.doc;
 
                 let callback = move |editor: &mut Editor,
                                      _compositor: &mut Compositor,
@@ -2058,8 +2126,13 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
                             .consume(move |engine, args| {
                                 let context = args[0].clone();
                                 engine.update_value("*helix.cx*", context);
+                                let mut args = [doc_id.into_steelval().unwrap()];
+
                                 // TODO: Do something with this error!
-                                engine.call_function_with_args(cloned_func.clone(), Vec::new())
+                                engine.call_function_with_args_from_mut_slice(
+                                    cloned_func.clone(),
+                                    &mut args,
+                                )
                             })
                         {
                             present_error_inside_engine_context(&mut ctx, guard, e);
@@ -2079,34 +2152,39 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
             // is probably the most helpful so that way we can look the document up
             // and act accordingly?
             register_hook!(move |event: &mut SelectionDidChange<'_>| {
-                // let cloned_func = rooted.value().clone();
+                let cloned_func = rooted.value().clone();
+                let view_id = event.view;
 
-                // let callback = move |editor: &mut Editor,
-                //                      _compositor: &mut Compositor,
-                //                      jobs: &mut job::Jobs| {
-                //     let mut ctx = Context {
-                //         register: None,
-                //         count: None,
-                //         editor,
-                //         callback: Vec::new(),
-                //         on_next_key_callback: None,
-                //         jobs,
-                //     };
-                //     enter_engine(|guard| {
-                //         if let Err(e) = guard
-                //             .with_mut_reference::<Context, Context>(&mut ctx)
-                //             .consume(move |engine, args| {
-                //                 let context = args[0].clone();
-                //                 engine.update_value("*helix.cx*", context);
-                //                 // TODO: Do something with this error!
-                //                 engine.call_function_with_args(cloned_func.clone(), Vec::new())
-                //             })
-                //         {
-                //             present_error_inside_engine_context(&mut ctx, guard, e);
-                //         }
-                //     })
-                // };
-                // job::dispatch_blocking_jobs(callback);
+                let callback = move |editor: &mut Editor,
+                                     _compositor: &mut Compositor,
+                                     jobs: &mut job::Jobs| {
+                    let mut ctx = Context {
+                        register: None,
+                        count: None,
+                        editor,
+                        callback: Vec::new(),
+                        on_next_key_callback: None,
+                        jobs,
+                    };
+                    enter_engine(|guard| {
+                        if let Err(e) = guard
+                            .with_mut_reference::<Context, Context>(&mut ctx)
+                            .consume(move |engine, args| {
+                                let context = args[0].clone();
+                                engine.update_value("*helix.cx*", context);
+                                // TODO: Reuse this allocation
+                                let mut args = [view_id.into_steelval().unwrap()];
+                                engine.call_function_with_args_from_mut_slice(
+                                    cloned_func.clone(),
+                                    &mut args,
+                                )
+                            })
+                        {
+                            present_error_inside_engine_context(&mut ctx, guard, e);
+                        }
+                    })
+                };
+                job::dispatch_blocking_jobs(callback);
 
                 Ok(())
             });
@@ -2114,13 +2192,50 @@ fn register_hook(event_kind: String, callback_fn: SteelVal) -> steel::UnRecovera
             Ok(SteelVal::Void).into()
         }
 
-        // Unimplemented!
-        // "document-did-change" => {
-        //     todo!()
-        // }
-        // "selection-did-change" => {
-        //     todo!()
-        // }
+        "document-opened" => {
+            // TODO: Share this code with the above since most of it is
+            // exactly the same
+            register_hook!(move |event: &mut DocumentOpened<'_>| {
+                let cloned_func = rooted.value().clone();
+                let doc_id = event.doc;
+
+                let callback = move |editor: &mut Editor,
+                                     _compositor: &mut Compositor,
+                                     jobs: &mut job::Jobs| {
+                    let mut ctx = Context {
+                        register: None,
+                        count: None,
+                        editor,
+                        callback: Vec::new(),
+                        on_next_key_callback: None,
+                        jobs,
+                    };
+                    enter_engine(|guard| {
+                        if let Err(e) = guard
+                            .with_mut_reference::<Context, Context>(&mut ctx)
+                            .consume(move |engine, args| {
+                                let context = args[0].clone();
+                                engine.update_value("*helix.cx*", context);
+                                // TODO: Reuse this allocation if possible
+                                let mut args = [doc_id.into_steelval().unwrap()];
+                                engine.call_function_with_args_from_mut_slice(
+                                    cloned_func.clone(),
+                                    &mut args,
+                                )
+                            })
+                        {
+                            present_error_inside_engine_context(&mut ctx, guard, e);
+                        }
+                    })
+                };
+                job::dispatch_blocking_jobs(callback);
+
+                Ok(())
+            });
+
+            Ok(SteelVal::Void).into()
+        }
+
         _ => steelerr!(Generic => "Unable to register hook: Unknown event type: {}", event_kind)
             .into(),
     }
