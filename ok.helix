@@ -1,0 +1,15 @@
+Regular selection, with cursor on the right:
+
+#(hello world|)#
+
+Regular selection, with cursor on the left:
+
+#(|hello world)#
+
+Primary selection, with cursor on the right:
+
+#[hello world|]#
+
+Primary selection, with cursor on the left:
+
+#[|hello world]#
