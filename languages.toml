@@ -4086,4 +4086,4 @@ file-types = ["helix"]
 
 [[grammar]]
 name = "helix"
-source = { git = "https://github.com/nik-rev/tree-sitter-helix", rev = "e452003505a02ccaeb9d159907af3b6998847355" }
+source = { git = "https://github.com/nik-rev/tree-sitter-multicursor", rev = "5449de20df54adb3862cec85663ee386ef969fbd" }
