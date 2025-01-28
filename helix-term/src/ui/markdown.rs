@@ -28,7 +28,30 @@ fn styled_multiline_text<'a>(text: &str, style: Style) -> Text<'a> {
         .collect();
     Text::from(spans)
 }
-
+/// `copy_selection_on_prev_line`
+///
+/// Copies the current primary selection to the first previous line long enough to accomodate it.
+///
+/// # Examples
+///
+/// The selection is copied from line 2 to line 1.
+///
+/// Before:
+///
+/// ```helix
+/// This is text #[|on line 1]#.
+/// This is text #(|on line 1)#.
+/// This is text on line 2.
+/// ```
+///
+/// Command: `C`
+///
+/// After:
+///
+/// ```helix
+/// This is text #(|on line 1)#.
+/// This is text #[|on line 2]#.
+/// ```
 pub fn highlighted_code_block<'a>(
     text: &str,
     language: &str,
@@ -62,7 +85,7 @@ pub fn highlighted_code_block<'a>(
 
         let mut selection_positions = HashSet::new();
         let mut cursors_positions = HashSet::new();
-        let primary_idx = selections.primary_index();
+        let primary = selections.primary();
 
         for range in selections.iter() {
             selection_positions.extend(range.from()..range.to());
@@ -76,6 +99,7 @@ pub fn highlighted_code_block<'a>(
         let mut chars = text.chars().enumerate().peekable();
 
         while let Some((idx, ch)) = chars.next() {
+            // handle \r\n line break.
             if ch == '\r' && chars.peek().is_some_and(|(_, ch)| *ch == '\n') {
                 // We're on a line break. We already have the
                 // code to handle newlines in place, so we can just
@@ -85,15 +109,16 @@ pub fn highlighted_code_block<'a>(
 
             let is_cursor = cursors_positions.contains(&idx);
             let is_selection = selection_positions.contains(&idx);
+            let is_primary = idx <= primary.to() && idx >= primary.from();
 
             let style = if is_cursor {
-                if idx == primary_idx {
+                if is_primary {
                     style_cursor_primary
                 } else {
                     style_cursor
                 }
             } else if is_selection {
-                if idx == primary_idx {
+                if is_primary {
                     style_selection_primary
                 } else {
                     style_selection
