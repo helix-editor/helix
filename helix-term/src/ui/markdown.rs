@@ -41,9 +41,9 @@ pub fn highlighted_code_block<'a>(
 
     let get_theme = |key: &str| -> Style { theme.map(|t| t.get(key)).unwrap_or_default() };
 
-    // Apply custom rendering rules to Helix code blocks.
+    // Apply custom rendering rules to multicursor code blocks.
     // These render selections as if in the real editor.
-    if language == "helix" {
+    if language == "multicursor" {
         let (text, selections) = match parse_selection_string(text) {
             Ok(value) => value,
             Err(err) => {
