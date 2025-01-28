@@ -414,37 +414,36 @@ impl Markdown {
                         }
                     }
 
-                    // add separator after header
-                    rows.insert(
-                        1,
-                        widths
-                            .iter()
-                            .map(|width| Spans::from(Span::styled("─".repeat(*width), table_style)))
-                            .collect::<Vec<_>>(),
-                    );
-                    // ┼
+                    // add separator at top, after header, and at end
+                    let horizontal_bar = widths
+                        .iter()
+                        .copied()
+                        .map(|width| Spans::from(Span::styled("─".repeat(width), table_style)))
+                        .collect::<Vec<_>>();
+                    rows.insert(0, horizontal_bar.clone());
+                    rows.insert(2, horizontal_bar.clone());
+                    rows.push(horizontal_bar);
 
                     // add pipes and spacing to each row and then push the lines
+                    let num_rows = rows.len();
                     for (row_idx, mut row) in rows.into_iter().enumerate() {
-                        let mut spans = vec![Span::styled(
-                            if row_idx == 1 { "├─" } else { "│ " },
-                            table_style,
-                        )];
+                        let (left, middle, right) = match row_idx {
+                            0 => ("┌─", "─┬─", "─┐"),
+                            2 => ("├─", "─┼─", "─┤"),
+                            x if x == num_rows - 1 => ("└─", "─┴─", "─┘"),
+                            _ => ("│ ", " │ ", " │"),
+                        };
+
+                        let mut spans = vec![Span::styled(left, table_style)];
                         let last = row.pop().expect("row should be non-empty");
 
                         for span in row {
                             spans.extend(span.0);
-                            spans.push(Span::styled(
-                                if row_idx == 1 { "─┼─" } else { " │ " },
-                                table_style,
-                            ))
+                            spans.push(Span::styled(middle, table_style))
                         }
 
                         spans.extend(last.0);
-                        spans.push(Span::styled(
-                            if row_idx == 1 { "─┤" } else { " │" },
-                            table_style,
-                        ));
+                        spans.push(Span::styled(right, table_style));
 
                         lines.push(Spans::from(spans));
                     }
