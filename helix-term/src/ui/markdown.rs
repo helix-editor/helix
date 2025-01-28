@@ -40,13 +40,18 @@ pub fn highlighted_code_block<'a>(
     let mut lines = Vec::new();
 
     let get_theme = |key: &str| -> Style { theme.map(|t| t.get(key)).unwrap_or_default() };
-    let code_style = get_theme(Markdown::BLOCK_STYLE);
 
     // Apply custom rendering rules to Helix code blocks.
     // These render selections as if in the real editor.
     if language == "helix" {
-        let Ok((text, selections)) = parse_selection_string(text) else {
-            return styled_multiline_text(text, code_style);
+        let (text, selections) = match parse_selection_string(text) {
+            Ok(value) => value,
+            Err(err) => {
+                return styled_multiline_text(
+                    &format!("Could not parse selection: {err:#?}"),
+                    get_theme("error"),
+                )
+            }
         };
 
         let style_cursor = get_theme("ui.cursor");
@@ -106,6 +111,7 @@ pub fn highlighted_code_block<'a>(
         }
     } else {
         let text_style = get_theme(Markdown::TEXT_STYLE);
+        let code_style = get_theme(Markdown::BLOCK_STYLE);
 
         let theme = match theme {
             Some(t) => t,
