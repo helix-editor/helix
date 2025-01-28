@@ -4085,5 +4085,5 @@ injection-regex = "multicursor"
 file-types = ["multicursor"]
 
 [[grammar]]
-name = "helix"
-source = { git = "https://github.com/nik-rev/tree-sitter-multicursor", rev = "5449de20df54adb3862cec85663ee386ef969fbd" }
+name = "multicursor"
+source = { git = "https://github.com/nik-rev/tree-sitter-multicursor", rev = "f6f868ecfe3de2fb2cd815cb40be55493f699a49" }
