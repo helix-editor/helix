@@ -206,13 +206,14 @@ pub fn textobject_pair_surround(
     textobject: TextObject,
     ch: char,
     find_type: FindType,
+    count: usize,
 ) -> Range {
     textobject_pair_surround_impl(
         syntax,
         slice,
         range,
         textobject,
-        FindVariant::Char((ch, find_type)),
+        FindVariant::Char((ch, find_type, count)),
     )
 }
 
@@ -233,7 +234,7 @@ pub fn textobject_pair_surround_closest(
 }
 
 enum FindVariant {
-    Char((char, FindType)),
+    Char((char, FindType, usize)),
     Closest(usize),
 }
 
@@ -245,8 +246,8 @@ fn textobject_pair_surround_impl(
     find_variant: FindVariant,
 ) -> Range {
     let pair_pos = match find_variant {
-        FindVariant::Char((ch, find_type)) => {
-            surround::find_nth_pairs_pos(slice, ch, range, find_type)
+        FindVariant::Char((ch, find_type, count)) => {
+            surround::find_nth_pairs_pos(slice, ch, range, find_type, count)
         }
         FindVariant::Closest(count) => {
             surround::find_nth_closest_pairs_pos(syntax, slice, range, count)
@@ -603,7 +604,8 @@ mod test {
                     Range::point(pos),
                     objtype,
                     ch,
-                    FindType::Surround(count),
+                    FindType::Surround,
+                    count,
                 );
                 assert_eq!(
                     result,
