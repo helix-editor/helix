@@ -6292,9 +6292,9 @@ fn textobject_surrounding_pair(
                 None => FindType::Surround,
                 Some(Direction::Forward) => FindType::Next,
                 Some(Direction::Backward) => FindType::Prev,
-            }(count);
+            };
             let mut range = textobject::textobject_pair_surround(
-                syntax, text, range, textobject, pair_char, find_type,
+                syntax, text, range, textobject, pair_char, find_type, count,
             );
             if let Some(direction) = direction {
                 range = range.with_direction(direction);
