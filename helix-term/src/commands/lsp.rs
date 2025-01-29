@@ -61,14 +61,19 @@ macro_rules! language_server_with_feature {
     }};
 }
 
-/// A wrapper around `lsp::Location` that swaps out the LSP URI for `helix_core::Uri`.
+/// A wrapper around `lsp::Location` that swaps out the LSP URI for `helix_core::Uri` and adds
+/// the server's  offset encoding.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Location {
     uri: Uri,
     range: lsp::Range,
+    offset_encoding: OffsetEncoding,
 }
 
-fn lsp_location_to_location(location: lsp::Location) -> Option<Location> {
+fn lsp_location_to_location(
+    location: lsp::Location,
+    offset_encoding: OffsetEncoding,
+) -> Option<Location> {
     let uri = match location.uri.try_into() {
         Ok(uri) => uri,
         Err(err) => {
@@ -79,13 +84,13 @@ fn lsp_location_to_location(location: lsp::Location) -> Option<Location> {
     Some(Location {
         uri,
         range: location.range,
+        offset_encoding,
     })
 }
 
 struct SymbolInformationItem {
     location: Location,
     symbol: lsp::SymbolInformation,
-    offset_encoding: OffsetEncoding,
 }
 
 struct DiagnosticStyles {
@@ -98,7 +103,6 @@ struct DiagnosticStyles {
 struct PickerDiagnostic {
     location: Location,
     diag: lsp::Diagnostic,
-    offset_encoding: OffsetEncoding,
 }
 
 fn location_to_file_location(location: &Location) -> Option<FileLocation> {
@@ -110,12 +114,7 @@ fn location_to_file_location(location: &Location) -> Option<FileLocation> {
     Some((path.into(), line))
 }
 
-fn jump_to_location(
-    editor: &mut Editor,
-    location: &Location,
-    offset_encoding: OffsetEncoding,
-    action: Action,
-) {
+fn jump_to_location(editor: &mut Editor, location: &Location, action: Action) {
     let (view, doc) = current!(editor);
     push_jump(view, doc);
 
@@ -124,7 +123,13 @@ fn jump_to_location(
         editor.set_error(err);
         return;
     };
-    jump_to_position(editor, path, location.range, offset_encoding, action);
+    jump_to_position(
+        editor,
+        path,
+        location.range,
+        location.offset_encoding,
+        action,
+    );
 }
 
 fn jump_to_position(
@@ -220,9 +225,9 @@ fn diag_picker(
                     location: Location {
                         uri: uri.clone(),
                         range: diag.range,
+                        offset_encoding: ls.offset_encoding(),
                     },
                     diag,
-                    offset_encoding: ls.offset_encoding(),
                 });
             }
         }
@@ -286,7 +291,7 @@ fn diag_picker(
         flat_diag,
         styles,
         move |cx, diag, action| {
-            jump_to_location(cx.editor, &diag.location, diag.offset_encoding, action);
+            jump_to_location(cx.editor, &diag.location, action);
             let (view, doc) = current!(cx.editor);
             view.diagnostics_handler
                 .immediately_show_diagnostic(doc, view.id);
@@ -314,10 +319,10 @@ pub fn symbol_picker(cx: &mut Context) {
                 location: lsp::Location::new(file.uri.clone(), symbol.selection_range),
                 container_name: None,
             },
-            offset_encoding,
             location: Location {
                 uri: uri.clone(),
                 range: symbol.selection_range,
+                offset_encoding,
             },
         });
         for child in symbol.children.into_iter().flatten() {
@@ -355,9 +360,9 @@ pub fn symbol_picker(cx: &mut Context) {
                             location: Location {
                                 uri: doc_uri.clone(),
                                 range: symbol.location.range,
+                                offset_encoding,
                             },
                             symbol,
-                            offset_encoding,
                         })
                         .collect(),
                     lsp::DocumentSymbolResponse::Nested(symbols) => {
@@ -410,7 +415,7 @@ pub fn symbol_picker(cx: &mut Context) {
                 symbols,
                 (),
                 move |cx, item, action| {
-                    jump_to_location(cx.editor, &item.location, item.offset_encoding, action);
+                    jump_to_location(cx.editor, &item.location, action);
                 },
             )
             .with_preview(move |_editor, item| location_to_file_location(&item.location))
@@ -467,9 +472,9 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
                                     location: Location {
                                         uri,
                                         range: symbol.location.range,
+                                        offset_encoding,
                                     },
                                     symbol,
-                                    offset_encoding,
                                 })
                             })
                             .collect();
@@ -521,7 +526,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
         [],
         (),
         move |cx, item, action| {
-            jump_to_location(cx.editor, &item.location, item.offset_encoding, action);
+            jump_to_location(cx.editor, &item.location, action);
         },
     )
     .with_preview(|_editor, item| location_to_file_location(&item.location))
@@ -853,17 +858,12 @@ impl Display for ApplyEditErrorKind {
 }
 
 /// Precondition: `locations` should be non-empty.
-fn goto_impl(
-    editor: &mut Editor,
-    compositor: &mut Compositor,
-    locations: Vec<Location>,
-    offset_encoding: OffsetEncoding,
-) {
+fn goto_impl(editor: &mut Editor, compositor: &mut Compositor, locations: Vec<Location>) {
     let cwdir = helix_stdx::env::current_working_dir();
 
     match locations.as_slice() {
         [location] => {
-            jump_to_location(editor, location, offset_encoding, Action::Replace);
+            jump_to_location(editor, location, Action::Replace);
         }
         [] => unreachable!("`locations` should be non-empty for `goto_impl`"),
         _locations => {
@@ -880,30 +880,35 @@ fn goto_impl(
                 },
             )];
 
-            let picker = Picker::new(columns, 0, locations, cwdir, move |cx, location, action| {
-                jump_to_location(cx.editor, location, offset_encoding, action)
+            let picker = Picker::new(columns, 0, locations, cwdir, |cx, location, action| {
+                jump_to_location(cx.editor, location, action)
             })
-            .with_preview(move |_editor, location| location_to_file_location(location));
+            .with_preview(|_editor, location| location_to_file_location(location));
             compositor.push(Box::new(overlaid(picker)));
         }
     }
 }
 
-fn to_locations(definitions: Option<lsp::GotoDefinitionResponse>) -> Vec<Location> {
+fn to_locations(
+    definitions: Option<lsp::GotoDefinitionResponse>,
+    offset_encoding: OffsetEncoding,
+) -> Vec<Location> {
     match definitions {
         Some(lsp::GotoDefinitionResponse::Scalar(location)) => {
-            lsp_location_to_location(location).into_iter().collect()
+            lsp_location_to_location(location, offset_encoding)
+                .into_iter()
+                .collect()
         }
         Some(lsp::GotoDefinitionResponse::Array(locations)) => locations
             .into_iter()
-            .flat_map(lsp_location_to_location)
+            .flat_map(|location| lsp_location_to_location(location, offset_encoding))
             .collect(),
         Some(lsp::GotoDefinitionResponse::Link(locations)) => locations
             .into_iter()
             .map(|location_link| {
                 lsp::Location::new(location_link.target_uri, location_link.target_range)
             })
-            .flat_map(lsp_location_to_location)
+            .flat_map(|location| lsp_location_to_location(location, offset_encoding))
             .collect(),
         None => Vec::new(),
     }
@@ -924,11 +929,11 @@ where
     cx.callback(
         future,
         move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
-            let items = to_locations(response);
+            let items = to_locations(response, offset_encoding);
             if items.is_empty() {
                 editor.set_error("No definition found.");
             } else {
-                goto_impl(editor, compositor, items, offset_encoding);
+                goto_impl(editor, compositor, items);
             }
         },
     );
@@ -991,12 +996,12 @@ pub fn goto_reference(cx: &mut Context) {
             let items: Vec<Location> = response
                 .into_iter()
                 .flatten()
-                .flat_map(lsp_location_to_location)
+                .flat_map(|location| lsp_location_to_location(location, offset_encoding))
                 .collect();
             if items.is_empty() {
                 editor.set_error("No references found.");
             } else {
-                goto_impl(editor, compositor, items, offset_encoding);
+                goto_impl(editor, compositor, items);
             }
         },
     );
