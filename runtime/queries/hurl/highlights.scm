@@ -1,7 +1,10 @@
 [
   "[QueryStringParams]"
+  "[Query]"
   "[FormParams]"
+  "[Form]"
   "[MultipartFormData]"
+  "[Multipart]"
   "[Cookies]"
   "[Captures]"
   "[Asserts]"
