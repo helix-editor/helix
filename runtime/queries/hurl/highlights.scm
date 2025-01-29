@@ -119,6 +119,9 @@
   "isBoolean"
   "isString"
   "isCollection"
+  "isNumber"
+  "isIsoDate"
+  "isEmpty"
 ] @keyword.operator
 
 (integer) @constant.numeric.integer
