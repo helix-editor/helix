@@ -915,23 +915,41 @@ where
     F: Future<Output = helix_lsp::Result<serde_json::Value>> + 'static + Send,
 {
     let (view, doc) = current!(cx.editor);
+    let mut futures: FuturesOrdered<_> = doc
+        .language_servers_with_feature(feature)
+        .map(|language_server| {
+            let offset_encoding = language_server.offset_encoding();
+            let pos = doc.position(view.id, offset_encoding);
+            let future = request_provider(language_server, pos, doc.identifier()).unwrap();
 
-    let language_server = language_server_with_feature!(cx.editor, doc, feature);
-    let offset_encoding = language_server.offset_encoding();
-    let pos = doc.position(view.id, offset_encoding);
-    let future = request_provider(language_server, pos, doc.identifier()).unwrap();
+            async move {
+                let json = future.await?;
+                let response = serde_json::from_value::<Option<lsp::GotoDefinitionResponse>>(json)?;
+                anyhow::Ok((response, offset_encoding))
+            }
+        })
+        .collect();
 
-    cx.callback(
-        future,
-        move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
-            let items = to_locations(response);
+    cx.jobs.callback(async move {
+        let mut items: Vec<Location> = Vec::new();
+        let mut offset_encoding = OffsetEncoding::default();
+
+        while let Some((location, encoding)) = futures.try_next().await? {
+            items = to_locations(location);
+            offset_encoding = encoding;
+            if !items.is_empty() {
+                break;
+            }
+        }
+        let call = move |editor: &mut Editor, compositor: &mut Compositor| {
             if items.is_empty() {
                 editor.set_error("No definition found.");
             } else {
                 goto_impl(editor, compositor, items, offset_encoding);
             }
-        },
-    );
+        };
+        Ok(Callback::EditorCompositor(Box::new(call)))
+    });
 }
 
 pub fn goto_declaration(cx: &mut Context) {
