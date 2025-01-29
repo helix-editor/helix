@@ -777,10 +777,10 @@ impl FallbackCommand {
 
     #[rustfmt::skip]
     static_fallback_commands!(
-        select_textobject_inside_surrounding_pair, "Select inside any character pair (tree-sitter)",
-        select_textobject_around_surrounding_pair, "Select around any character pair (tree-sitter)",
-        select_textobject_inside_prev_pair, "Select inside previous character pair (tree-sitter)",
-        select_textobject_inside_next_pair, "Select inside next character pair (tree-sitter)",
+        select_textobject_inside_surrounding_pair, "Select inside any character pair",
+        select_textobject_around_surrounding_pair, "Select around any character pair",
+        select_textobject_inside_prev_pair, "Select inside previous character pair",
+        select_textobject_inside_next_pair, "Select inside next character pair",
     );
 }
 
