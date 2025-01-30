@@ -83,6 +83,11 @@ pub fn register_dynamic_hook(
     registry::with_mut(|reg| reg.register_dynamic_hook(name, hook, id))
 }
 
+/// Unregister a named hook
+pub fn unregister_hook<E: Event>(name: &'static str) -> bool {
+    registry::with_mut(|registry| registry.unregister_hook::<E>(name))
+}
+
 pub fn dispatch(e: impl Event) {
     registry::with(|registry| registry.dispatch(e));
 }
