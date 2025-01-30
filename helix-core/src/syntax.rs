@@ -2779,7 +2779,7 @@ pub struct NodeSearch {
     /// How many times we've encountede the node
     pub appearances_count: usize,
     /// We've already found the node that we're searching for.
-    pub continue_searching: bool,
+    pub found_node: bool,
 }
 
 impl NodeSearch {
@@ -2789,7 +2789,7 @@ impl NodeSearch {
             node_kind,
             count_so_far: 0,
             appearances_count: 0,
-            continue_searching: true,
+            found_node: false,
         }
     }
 }
@@ -2830,7 +2830,7 @@ fn pretty_print_tree_impl(
                 let formatted_str = format!($($args)*);
                 fmt.push_str(&formatted_str);
                 if let Some(node_search) = node_search {
-                    if node_search.continue_searching {
+                    if !node_search.found_node {
                         node_search.count_so_far += formatted_str.len();
                     }
                 }
@@ -2860,7 +2860,7 @@ fn pretty_print_tree_impl(
             // it may not be the exact same one
             if node_search.position == node_search.appearances_count {
                 // we've found the node which we're looking for
-                node_search.continue_searching = false;
+                node_search.found_node = true;
                 // we need this check because with anonymous nodes
                 // we're also adding 2 double quotes around them
                 // so we need to account for that when creating the selection.
@@ -2868,7 +2868,7 @@ fn pretty_print_tree_impl(
                     node_search.node_kind = format!("\"{kind}\"");
                 };
             }
-            if node_search.continue_searching {
+            if !node_search.found_node {
                 node_search.appearances_count += 1;
             }
         }
@@ -2900,7 +2900,7 @@ fn pretty_print_tree_impl(
 
     // We didn't find our node.
     if let Some(node_search) = node_search {
-        if node_search.continue_searching {
+        if !node_search.found_node {
             return Ok(None);
         }
     }
