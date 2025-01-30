@@ -2148,9 +2148,6 @@ fn find_position_of_node<'tree>(
     None
 }
 
-// This is a basic implementation for viewing the entire tree sitter tree of a file
-// In the future, this command could be updated such that it opens a buffer which automatically highlights the tree sitter sub-tree of where we currently have our cursor
-// And vice-versa: Moving cursor across nodes in the tree sitter tree will need to also move the cursor across the original file
 fn tree_sitter_tree(
     cx: &mut compositor::Context,
     _args: Args,
