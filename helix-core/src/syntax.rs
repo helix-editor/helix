@@ -2794,8 +2794,8 @@ impl NodeSearch {
     }
 }
 
-pub fn pretty_print_tree<W: fmt::Write>(
-    fmt: &mut W,
+pub fn pretty_print_tree(
+    fmt: &mut String,
     node: Node,
     node_search: &mut Option<&mut NodeSearch>,
 ) -> Result<Option<(usize, usize)>, fmt::Error> {
@@ -2812,8 +2812,8 @@ pub fn pretty_print_tree<W: fmt::Write>(
 }
 
 #[allow(clippy::too_many_arguments)]
-fn pretty_print_tree_impl<W: fmt::Write>(
-    fmt: &mut W,
+fn pretty_print_tree_impl(
+    fmt: &mut String,
     cursor: &mut tree_sitter::TreeCursor,
     depth: usize,
     node_search: &mut Option<&mut NodeSearch>,
@@ -2824,23 +2824,34 @@ fn pretty_print_tree_impl<W: fmt::Write>(
     let node = cursor.node();
     let visible = node_is_visible(&node);
 
+    macro_rules! add_str {
+        ($($args:tt)*) => {
+            {
+                let formatted_str = format!($($args)*);
+                fmt.push_str(&formatted_str);
+                if let Some(node_search) = node_search {
+                    if node_search.continue_searching {
+                        node_search.count_so_far += formatted_str.len();
+                    }
+                }
+            }
+        };
+    }
+
     if visible {
         let indentation_columns = depth * 2;
-        write!(fmt, "{:indentation_columns$}", "")?;
-        if let Some(ref mut node_search) = node_search {
-            node_search.count_so_far += depth * 2;
-        }
+
+        add_str!("{:indentation_columns$}", "");
 
         if let Some(field_name) = cursor.field_name() {
-            write!(fmt, "{}: ", field_name)?;
-            if let Some(node_search) = node_search {
-                node_search.count_so_far += field_name.len() + 1 + 1;
-            }
+            add_str!("{}: ", field_name);
         }
 
         let kind = node.kind();
-        write!(fmt, "({}", kind)?;
+        add_str!("({}", kind);
+
         if let Some(node_search) = node_search {
+            // we're at the node_kind which we are looking for
             if kind == node_search.node_kind {
                 if node_search.position == node_search.appearances_count {
                     node_search.continue_searching = false;
@@ -2849,31 +2860,17 @@ fn pretty_print_tree_impl<W: fmt::Write>(
                     node_search.appearances_count += 1;
                 }
             }
-
-            if node_search.continue_searching {
-                node_search.count_so_far += 1 + kind.len()
-            }
         }
     } else {
         let node = format_anonymous_node_kind(node.kind());
-        write!(fmt, " \"{}\"", node)?;
-        if let Some(node_search) = node_search {
-            if node_search.continue_searching {
-                node_search.count_so_far += 1 + 1 + node.len() + 1;
-            }
-        }
+        add_str!(" \"{}\"", node);
     }
 
     // Handle children.
     if cursor.goto_first_child() {
         loop {
             if node_is_visible(&cursor.node()) {
-                fmt.write_char('\n')?;
-                if let Some(node_search) = node_search {
-                    if node_search.continue_searching {
-                        node_search.count_so_far += 1;
-                    }
-                }
+                add_str!("\n");
             }
 
             pretty_print_tree_impl(fmt, cursor, depth + 1, node_search)?;
@@ -2890,18 +2887,15 @@ fn pretty_print_tree_impl<W: fmt::Write>(
     }
 
     if visible {
-        fmt.write_char(')')?;
-        if let Some(node_search) = node_search {
-            if node_search.continue_searching {
-                node_search.count_so_far += 1;
-            }
-        }
+        add_str!(")");
     }
 
     Ok(node_search.as_ref().map(|node_search| {
         (
+            node_search
+                .count_so_far
+                .saturating_sub(node_search.node_kind.len()),
             node_search.count_so_far,
-            node_search.count_so_far + node_search.node_kind.len(),
         )
     }))
 }
