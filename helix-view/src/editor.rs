@@ -4,7 +4,7 @@ use crate::{
     document::{
         DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
     },
-    events::{DocumentDidSave, DocumentFocusLost},
+    events::DocumentFocusLost,
     graphics::{CursorKind, Rect},
     handlers::Handlers,
     info::Info,
@@ -1891,11 +1891,6 @@ impl Editor {
             .ok_or_else(|| anyhow::format_err!("saves are closed for this document!"))?
             .send(stream::once(Box::pin(future)))
             .map_err(|err| anyhow!("failed to send save event: {}", err))?;
-
-        helix_event::dispatch(DocumentDidSave {
-            editor: self,
-            doc: doc_id,
-        });
 
         self.write_count += 1;
 

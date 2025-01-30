@@ -2,7 +2,7 @@ use std::fmt::Write;
 use std::io::BufReader;
 use std::ops::{self, Deref};
 
-use crate::events::{OnModeSwitch, PostCommand, PostInsertChar};
+use crate::events::PostCommand;
 use crate::job::Job;
 
 use super::*;
@@ -2234,9 +2234,13 @@ fn tree_sitter_tree(
         Ok(())
     }
 
+    // Initially create the tree
     update_tree(cx.editor, false)?;
 
-    helix_event::register_hook!(move |e: &mut DocumentDidSave<'_>| { update_tree(e.editor, true) });
+    // Update it until the user closes it
+    helix_event::register_hook!(move |e: &mut PostCommand<'_, '_>| {
+        update_tree(e.cx.editor, true)
+    });
 
     Ok(())
 }
