@@ -68,6 +68,7 @@ fn dynamic() {
     let count1 = count.clone();
     let count2 = count.clone();
     register_dynamic_hook(
+        None,
         move || {
             count1.fetch_add(2, Ordering::Relaxed);
             Ok(())
@@ -76,6 +77,7 @@ fn dynamic() {
     )
     .unwrap();
     register_dynamic_hook(
+        None,
         move || {
             count2.fetch_add(3, Ordering::Relaxed);
             Ok(())

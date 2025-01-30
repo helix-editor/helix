@@ -68,17 +68,19 @@ pub fn register_event<E: Event + 'static>() {
 /// express that kind of constraint for a generic type with the Rust type system
 /// as of this writing.
 pub unsafe fn register_hook_raw<E: Event>(
+    name: Option<&'static str>,
     hook: impl Fn(&mut E) -> Result<()> + 'static + Send + Sync,
 ) {
-    registry::with_mut(|registry| registry.register_hook(hook))
+    registry::with_mut(|registry| registry.register_hook(name, hook))
 }
 
 /// Register a hook solely by event name
 pub fn register_dynamic_hook(
+    name: Option<&'static str>,
     hook: impl Fn() -> Result<()> + 'static + Send + Sync,
     id: &str,
 ) -> Result<()> {
-    registry::with_mut(|reg| reg.register_dynamic_hook(hook, id))
+    registry::with_mut(|reg| reg.register_dynamic_hook(name, hook, id))
 }
 
 pub fn dispatch(e: impl Event) {
@@ -138,7 +140,7 @@ macro_rules! register_hook {
     // Safety: this is safe because we fully control the type of the event here and
     // ensure all lifetime arguments are fully generic and the correct number of lifetime arguments
     // is present
-    (move |$event:ident: &mut $event_ty: ident<$($lt: lifetime),*>| $body: expr) => {
+    (move |$name:expr, $event:ident: &mut $event_ty: ident<$($lt: lifetime),*>| $body: expr) => {
         let val = move |$event: &mut $event_ty<$($lt),*>| $body;
         unsafe {
             // Lifetimes are a bit of a pain. We want to allow events being
@@ -187,7 +189,31 @@ macro_rules! register_hook {
                     panic!("invalid type alias");
                 }
             };
-            $crate::register_hook_raw::<$crate::events!(@replace_lt $event_ty, $('static, $lt),*)>(val);
+            $crate::register_hook_raw::<$crate::events!(@replace_lt $event_ty, $('static, $lt),*)>(Some($name), val);
+        }
+    };
+    (move |$event:ident: &mut $event_ty: ident<$($lt: lifetime),*>| $body: expr) => {
+        let val = move |$event: &mut $event_ty<$($lt),*>| $body;
+        unsafe {
+            #[allow(unused)]
+            const ASSERT: () = {
+                if <$event_ty as $crate::Event>::LIFETIMES != 0 + $crate::events!(@sum $(1, $lt),*){
+                    panic!("invalid type alias");
+                }
+            };
+            $crate::register_hook_raw::<$crate::events!(@replace_lt $event_ty, $('static, $lt),*)>(None, val);
+        }
+    };
+    (move |$name:expr, $event:ident: &mut $event_ty: ident| $body: expr) => {
+        let val = move |$event: &mut $event_ty| $body;
+        unsafe {
+            #[allow(unused)]
+            const ASSERT: () = {
+                if <$event_ty as $crate::Event>::LIFETIMES != 0{
+                    panic!("invalid type alias");
+                }
+            };
+            $crate::register_hook_raw::<$event_ty>(Some($expr), val);
         }
     };
     (move |$event:ident: &mut $event_ty: ident| $body: expr) => {
@@ -199,7 +225,7 @@ macro_rules! register_hook {
                     panic!("invalid type alias");
                 }
             };
-            $crate::register_hook_raw::<$event_ty>(val);
+            $crate::register_hook_raw::<$event_ty>(None, val);
         }
     };
 }
