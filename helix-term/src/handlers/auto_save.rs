@@ -100,7 +100,7 @@ fn request_auto_save(editor: &mut Editor) {
 
 pub(super) fn register_hooks(handlers: &Handlers) {
     let tx = handlers.auto_save.clone();
-    register_hook!(move |event: &mut DocumentDidChange<'_>| {
+    register_hook!(move |None, event: &mut DocumentDidChange<'_>| {
         let config = event.doc.config.load();
         if config.auto_save.after_delay.enable {
             send_blocking(
@@ -114,7 +114,7 @@ pub(super) fn register_hooks(handlers: &Handlers) {
     });
 
     let tx = handlers.auto_save.clone();
-    register_hook!(move |event: &mut OnModeSwitch<'_, '_>| {
+    register_hook!(move |None, event: &mut OnModeSwitch<'_, '_>| {
         if event.old_mode == Mode::Insert {
             send_blocking(&tx, AutoSaveEvent::LeftInsertMode)
         }

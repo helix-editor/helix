@@ -17,13 +17,13 @@ fn smoke_test() {
     // setup hooks
     let res1: Arc<Mutex<String>> = Arc::default();
     let acc = Arc::clone(&res1);
-    register_hook!(move |event: &mut Event1| {
+    register_hook!(move |None, event: &mut Event1| {
         acc.lock().push_str(&event.content);
         Ok(())
     });
     let res2: Arc<AtomicUsize> = Arc::default();
     let acc = Arc::clone(&res2);
-    register_hook!(move |event: &mut Event2| {
+    register_hook!(move |None, event: &mut Event2| {
         acc.fetch_add(event.content, Ordering::Relaxed);
         Ok(())
     });

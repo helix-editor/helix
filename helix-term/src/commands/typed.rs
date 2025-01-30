@@ -2127,17 +2127,14 @@ fn find_position_of_node<'tree>(
 ) -> Option<usize> {
     let range = node.range();
 
-    // Check if the cursor position is within the current node's range.
     if cursor_pos <= range.end_byte && cursor_pos >= range.start_byte && node.child_count() == 0 {
         return Some(seen.len());
     }
 
-    // If the node's kind matches the target, add it to the `seen` vector.
     if node.kind() == node_kind {
         seen.push(node);
     }
 
-    // Traverse the children of the current node using a cursor.
     let mut cursor = node.walk();
     for child in node.children(&mut cursor) {
         if let Some(result) = find_position_of_node(node_kind, child, cursor_pos, seen) {
@@ -2146,12 +2143,6 @@ fn find_position_of_node<'tree>(
     }
 
     None
-}
-
-fn untree(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyhow::Result<()> {
-    helix_event::unregister_hook::<PostCommand>("tree-sitter-tree");
-
-    Ok(())
 }
 
 fn tree_sitter_tree(
@@ -2170,7 +2161,7 @@ fn tree_sitter_tree(
             cx.editor.tree_sitter_tree_document_id = None;
             let _ = cx.editor.close_document(tree_doc_id, true);
 
-            // helix_event::unregister_hook::<PostCommand>("tree-sitter-tree");
+            helix_event::unregister_hook::<PostCommand>("tree-sitter-tree");
             return Ok(());
         }
     }
@@ -2276,7 +2267,7 @@ fn tree_sitter_tree(
     update_tree(cx.editor, false)?;
 
     // Update it until the user closes it
-    helix_event::register_hook!(move |e: &mut PostCommand<'_, '_>| {
+    helix_event::register_hook!(move |None, e: &mut PostCommand<'_, '_>| {
         update_tree(e.cx.editor, true)
     });
 
@@ -3493,13 +3484,6 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["ts-tree"],
         doc: "Display tree-sitter tree that spans the full document, primarily for debugging queries.",
         fun: tree_sitter_tree,
-        signature: CommandSignature::none(),
-    },
-    TypableCommand {
-        name: "untree",
-        aliases: &[],
-        doc: "delete me",
-        fun: untree,
         signature: CommandSignature::none(),
     },
     TypableCommand {

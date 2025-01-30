@@ -194,19 +194,7 @@ macro_rules! register_hook {
                     panic!("invalid type alias");
                 }
             };
-            $crate::register_hook_raw::<$crate::events!(@replace_lt $event_ty, $('static, $lt),*)>(Some($name), val);
-        }
-    };
-    (move |$event:ident: &mut $event_ty: ident<$($lt: lifetime),*>| $body: expr) => {
-        let val = move |$event: &mut $event_ty<$($lt),*>| $body;
-        unsafe {
-            #[allow(unused)]
-            const ASSERT: () = {
-                if <$event_ty as $crate::Event>::LIFETIMES != 0 + $crate::events!(@sum $(1, $lt),*){
-                    panic!("invalid type alias");
-                }
-            };
-            $crate::register_hook_raw::<$crate::events!(@replace_lt $event_ty, $('static, $lt),*)>(None, val);
+            $crate::register_hook_raw::<$crate::events!(@replace_lt $event_ty, $('static, $lt),*)>($name, val);
         }
     };
     (move |$name:expr, $event:ident: &mut $event_ty: ident| $body: expr) => {
@@ -218,19 +206,7 @@ macro_rules! register_hook {
                     panic!("invalid type alias");
                 }
             };
-            $crate::register_hook_raw::<$event_ty>(Some($expr), val);
-        }
-    };
-    (move |$event:ident: &mut $event_ty: ident| $body: expr) => {
-        let val = move |$event: &mut $event_ty| $body;
-        unsafe {
-            #[allow(unused)]
-            const ASSERT: () = {
-                if <$event_ty as $crate::Event>::LIFETIMES != 0{
-                    panic!("invalid type alias");
-                }
-            };
-            $crate::register_hook_raw::<$event_ty>(None, val);
+            $crate::register_hook_raw::<$event_ty>($name, val);
         }
     };
 }
