@@ -144,6 +144,8 @@ pub struct Document {
     /// To know if they're up-to-date, check the `id` field in `DocumentInlayHints`.
     pub(crate) inlay_hints: HashMap<ViewId, DocumentInlayHints>,
     pub(crate) jump_labels: HashMap<ViewId, Vec<Overlay>>,
+    /// Used to highlight specific text in the document that may be of interest
+    pub(crate) highlights: HashMap<ViewId, Vec<Overlay>>,
     /// Set to `true` when the document is updated, reset to `false` on the next inlay hints
     /// update from the LSP
     pub inlay_hints_oudated: bool,
@@ -698,6 +700,7 @@ impl Document {
             focused_at: std::time::Instant::now(),
             readonly: false,
             jump_labels: HashMap::new(),
+            highlights: HashMap::new(),
         }
     }
 
@@ -1287,6 +1290,7 @@ impl Document {
         self.selections.remove(&view_id);
         self.inlay_hints.remove(&view_id);
         self.jump_labels.remove(&view_id);
+        self.highlights.remove(&view_id);
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
@@ -2162,6 +2166,14 @@ impl Document {
 
     pub fn remove_jump_labels(&mut self, view_id: ViewId) {
         self.jump_labels.remove(&view_id);
+    }
+
+    pub fn set_highlights(&mut self, view_id: ViewId, labels: Vec<Overlay>) {
+        self.highlights.insert(view_id, labels);
+    }
+
+    pub fn remove_highlights(&mut self, view_id: ViewId) {
+        self.highlights.remove(&view_id);
     }
 
     /// Get the inlay hints for this document and `view_id`.

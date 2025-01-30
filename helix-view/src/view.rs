@@ -452,6 +452,13 @@ impl View {
             text_annotations.add_overlay(labels, style);
         }
 
+        if let Some(highlights) = doc.highlights.get(&self.id) {
+            let style = theme
+                .and_then(|t| t.find_scope_index("ui.selection"))
+                .map(Highlight);
+            text_annotations.add_overlay(highlights, style);
+        }
+
         if let Some(DocumentInlayHints {
             id: _,
             type_inlay_hints,
