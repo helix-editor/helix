@@ -2165,6 +2165,15 @@ fn tree_sitter_tree(
         };
 
         let (view, doc) = current!(editor);
+
+        let id = doc.id();
+
+        // Only update the tree sitter document if, and only if we are editing
+        // the document that spawned the tree sitter document
+        if is_update && editor.tree_sitter_tree_document_id.unwrap().1 != id {
+            return Ok(());
+        }
+
         let text = doc.text();
         let syntax = doc.syntax();
         let cursor_idx = doc.selection(view.id).primary().cursor(text.slice(..));
@@ -2191,7 +2200,9 @@ fn tree_sitter_tree(
                         .as_mut(),
                 )?;
 
-                if let Some(tree_sitter_tree_document_id) = editor.tree_sitter_tree_document_id {
+                if let Some((tree_sitter_tree_document_id, _spawner_id)) =
+                    editor.tree_sitter_tree_document_id
+                {
                     if editor
                         .close_document(tree_sitter_tree_document_id, true)
                         .is_err()
@@ -2200,9 +2211,12 @@ fn tree_sitter_tree(
                     };
                 };
 
-                editor.tree_sitter_tree_document_id = Some(editor.new_file_from_document(
-                    Action::VerticalSplit,
-                    Document::from(Rope::from(contents), None, editor.config.clone()),
+                editor.tree_sitter_tree_document_id = Some((
+                    editor.new_file_from_document(
+                        Action::VerticalSplit,
+                        Document::from(Rope::from(contents), None, editor.config.clone()),
+                    ),
+                    id,
                 ));
 
                 let (view, tree_sitter_tree_document) = current!(editor);
