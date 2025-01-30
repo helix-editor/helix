@@ -2780,6 +2780,8 @@ pub struct NodeSearch {
     pub appearances_count: usize,
     /// We've already found the node that we're searching for.
     pub continue_searching: bool,
+    /// The node_kind is an anonymous node
+    pub is_anonymous: bool,
 }
 
 impl NodeSearch {
@@ -2790,6 +2792,7 @@ impl NodeSearch {
             count_so_far: 0,
             appearances_count: 0,
             continue_searching: true,
+            is_anonymous: false,
         }
     }
 }
@@ -2838,6 +2841,7 @@ fn pretty_print_tree_impl(
         };
     }
 
+    let kind = node.kind();
     if visible {
         let indentation_columns = depth * 2;
 
@@ -2847,23 +2851,30 @@ fn pretty_print_tree_impl(
             add_str!("{}: ", field_name);
         }
 
-        let kind = node.kind();
         add_str!("({}", kind);
+    } else {
+        let node = format_anonymous_node_kind(kind);
+        add_str!(" \"{}\"", node);
+    }
 
-        if let Some(node_search) = node_search {
-            // we're at the node_kind which we are looking for
-            if kind == node_search.node_kind {
-                if node_search.position == node_search.appearances_count {
-                    node_search.continue_searching = false;
-                }
-                if node_search.continue_searching {
-                    node_search.appearances_count += 1;
-                }
+    if let Some(node_search) = node_search {
+        if kind == node_search.node_kind {
+            // we're at the node_kind which we are looking for, but
+            // it may not be the exact same one
+            if node_search.position == node_search.appearances_count {
+                // we've found the node which we're looking for
+                node_search.continue_searching = false;
+                // we need this check because with anonymous nodes
+                // we're also adding 2 double quotes around them
+                // so we need to account for that when creating the selection.
+                if !visible {
+                    node_search.is_anonymous = true;
+                };
+            }
+            if node_search.continue_searching {
+                node_search.appearances_count += 1;
             }
         }
-    } else {
-        let node = format_anonymous_node_kind(node.kind());
-        add_str!(" \"{}\"", node);
     }
 
     // Handle children.
@@ -2894,7 +2905,9 @@ fn pretty_print_tree_impl(
         (
             node_search
                 .count_so_far
-                .saturating_sub(node_search.node_kind.len()),
+                .saturating_sub(node_search.node_kind.len())
+                // need to account for double quotes added around anonymous nodes
+                .saturating_sub(if node_search.is_anonymous { 2 } else { 0 }),
             node_search.count_so_far,
         )
     }))
