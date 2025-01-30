@@ -9,7 +9,7 @@ const lol = () => "hello world";
 const another_fn = () => "hello world";
 const lol = () => "hello world";
 
-class Lol {}
+let hmm = `${4 + 4}`;
 
 const another_fn = () => "hello world";
 const lol = () => "hello world";

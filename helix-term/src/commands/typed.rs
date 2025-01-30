@@ -2207,9 +2207,10 @@ fn tree_sitter_tree(
                 .set_language_by_language_id("tsq", cx.editor.syn_loader.clone())?;
 
             if let Some((lower, upper)) = position {
-                cx.editor.set_status(format!("{lower}, {upper}"));
-                // tree_sitter_tree_document.set_selection(view.id, Range::new(lower, upper).into());
+                // cx.editor.set_status(format!("{lower}, {upper}"));
+                tree_sitter_tree_document.set_selection(view.id, Range::new(lower, upper).into());
             }
+            align_view(tree_sitter_tree_document, view, Align::Center);
         }
     }
 
@@ -2257,18 +2258,20 @@ fn tree_sitter_tree(
                     Document::from(Rope::from(contents), None, e.editor.config.clone()),
                 ));
 
-                let (_view, tree_sitter_tree_document) = current!(e.editor);
+                let (view, tree_sitter_tree_document) = current!(e.editor);
 
                 tree_sitter_tree_document
                     .set_language_by_language_id("tsq", e.editor.syn_loader.clone())?;
 
                 if let Some((lower, upper)) = position {
-                    e.editor.set_status(format!("{lower}, {upper}"));
-                    // tree_sitter_tree_document
-                    //     .set_selection(view.id, Range::new(lower, upper).into());
-                }
+                    // e.editor.set_status(format!("{lower}, {upper}"));
+                    tree_sitter_tree_document
+                        .set_selection(view.id, Range::new(lower, upper).into());
+                };
 
-                e.editor.focus_prev();
+                align_view(tree_sitter_tree_document, view, Align::Center);
+
+                // e.editor.focus_prev();
             }
         }
 
