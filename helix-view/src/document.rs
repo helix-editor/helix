@@ -198,6 +198,7 @@ pub struct Document {
     pub focused_at: std::time::Instant,
 
     pub readonly: bool,
+    pub unmodifiable: bool,
 }
 
 /// Inlay hints for a single `(Document, View)` combo.
@@ -699,6 +700,7 @@ impl Document {
             version_control_head: None,
             focused_at: std::time::Instant::now(),
             readonly: false,
+            unmodifiable: false,
             jump_labels: HashMap::new(),
             highlights: HashMap::new(),
         }
@@ -1299,8 +1301,13 @@ impl Document {
         transaction: &Transaction,
         view_id: ViewId,
         emit_lsp_notification: bool,
+        bypass_unmodifiable: bool,
     ) -> bool {
         use helix_core::Assoc;
+
+        if self.unmodifiable && !bypass_unmodifiable {
+            return false;
+        }
 
         let old_doc = self.text().clone();
         let changes = transaction.changes();
@@ -1473,11 +1480,16 @@ impl Document {
         true
     }
 
+    pub fn unmodifiable(&mut self) {
+        self.unmodifiable = true;
+    }
+
     fn apply_inner(
         &mut self,
         transaction: &Transaction,
         view_id: ViewId,
         emit_lsp_notification: bool,
+        bypass_unmodifiable: bool,
     ) -> bool {
         // store the state just before any changes are made. This allows us to undo to the
         // state just before a transaction was applied.
@@ -1488,7 +1500,12 @@ impl Document {
             });
         }
 
-        let success = self.apply_impl(transaction, view_id, emit_lsp_notification);
+        let success = self.apply_impl(
+            transaction,
+            view_id,
+            emit_lsp_notification,
+            bypass_unmodifiable,
+        );
 
         if !transaction.changes().is_empty() {
             // Compose this transaction with the previous one
@@ -1500,14 +1517,24 @@ impl Document {
     }
     /// Apply a [`Transaction`] to the [`Document`] to change its text.
     pub fn apply(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
-        self.apply_inner(transaction, view_id, true)
+        self.apply_inner(transaction, view_id, true, false)
+    }
+
+    /// Apply a [`Transaction`] to the [`Document`] to change its text,
+    /// allowing application even if the document is unmodifiable.
+    pub fn apply_bypass_unmodifiable(
+        &mut self,
+        transaction: &Transaction,
+        view_id: ViewId,
+    ) -> bool {
+        self.apply_inner(transaction, view_id, true, true)
     }
 
     /// Apply a [`Transaction`] to the [`Document`] to change its text
     /// without notifying the language servers. This is useful for temporary transactions
     /// that must not influence the server.
     pub fn apply_temporary(&mut self, transaction: &Transaction, view_id: ViewId) -> bool {
-        self.apply_inner(transaction, view_id, false)
+        self.apply_inner(transaction, view_id, false, false)
     }
 
     fn undo_redo_impl(&mut self, view: &mut View, undo: bool) -> bool {
@@ -1519,7 +1546,7 @@ impl Document {
         let mut history = self.history.take();
         let txn = if undo { history.undo() } else { history.redo() };
         let success = if let Some(txn) = txn {
-            self.apply_impl(txn, view.id, true)
+            self.apply_impl(txn, view.id, true, false)
         } else {
             false
         };
@@ -1590,7 +1617,7 @@ impl Document {
 
         let savepoint_ref = self.savepoints.remove(savepoint_idx);
         let mut revert = savepoint.revert.lock();
-        self.apply_inner(&revert, view.id, emit_lsp_notification);
+        self.apply_inner(&revert, view.id, emit_lsp_notification, false);
         *revert = Transaction::new(self.text()).with_selection(self.selection(view.id).clone());
         self.savepoints.push(savepoint_ref)
     }
@@ -1608,7 +1635,7 @@ impl Document {
         };
         let mut success = false;
         for txn in txns {
-            if self.apply_impl(&txn, view.id, true) {
+            if self.apply_impl(&txn, view.id, true, false) {
                 success = true;
             }
         }

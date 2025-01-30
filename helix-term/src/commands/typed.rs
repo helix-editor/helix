@@ -2154,36 +2154,32 @@ fn tree_sitter_tree(
         return Ok(());
     }
 
-    // Turn off the tree sitter tree if it's already open at
-    // the exact same document
-    if let Some((tree_doc_id, spawner_id)) = cx.editor.tree_sitter_tree_document_id {
-        if spawner_id == doc!(cx.editor).id() {
-            cx.editor.tree_sitter_tree_document_id = None;
-            let _ = cx.editor.close_document(tree_doc_id, true);
-
-            helix_event::unregister_hook::<PostCommand>("tree-sitter-tree");
-            return Ok(());
-        }
-    }
-
     // Update or create the tree.
     fn update_tree(editor: &mut Editor, is_update: bool) -> anyhow::Result<()> {
-        // The user closed the document. No need to do any kind of work
+        // The user closed the document. Stop.
         if is_update && editor.tree_sitter_tree_document_id.is_none() {
+            helix_event::unregister_hook::<PostCommand>("tree-sitter-tree");
             return Ok(());
         };
 
-        let was_insert = editor.mode == Mode::Insert;
-
         let (view, doc) = current!(editor);
 
-        let id = doc.id();
-
-        // Only update the tree sitter document if, and only if we are editing
-        // the document that spawned the tree sitter document
-        if is_update && editor.tree_sitter_tree_document_id.unwrap().1 != id {
-            return Ok(());
+        if let Some((_tree_doc_id, tree_view_id)) = editor.tree_sitter_tree_document_id {
+            if view.id == tree_view_id {
+                // Do not update the tree sitter document if the current document is the
+                // tree sitter document. This will cause the tree sitter document
+                // to create a syntax tree for itself, and this process will continue
+                // until Helix will disable syntax highlighting for the file.
+                return Ok(());
+            }
         }
+
+        // if let Some((tree_doc_id, _tree_view_id)) = editor.tree_sitter_tree_document_id.as_ref() {
+        //     if editor.document(tree_doc_id.clone()).is_none() {
+        //         editor.tree_sitter_tree_document_id = None;
+        //         return Ok(());
+        //     };
+        // }
 
         let text = doc.text();
         let syntax = doc.syntax();
@@ -2212,52 +2208,70 @@ fn tree_sitter_tree(
                         .as_mut(),
                 )?;
 
-                if let Some((tree_sitter_tree_document_id, _spawner_id)) =
-                    editor.tree_sitter_tree_document_id
-                {
-                    if editor
-                        .close_document(tree_sitter_tree_document_id, true)
-                        .is_err()
-                    {
-                        bail!("Could not close the previous tree sitter tree document")
-                    };
-                };
+                let contents = contents.to_string();
 
-                editor.tree_sitter_tree_document_id = Some((
-                    editor.new_file_from_document(
+                if editor.tree_sitter_tree_document_id.is_none() && !is_update {
+                    let tree_id = editor.new_file_from_document(
                         Action::VerticalSplit,
-                        Document::from(Rope::from(contents), None, editor.config.clone()),
-                    ),
-                    id,
-                ));
+                        Document::from(
+                            Rope::from(contents.clone()),
+                            None,
+                            Arc::clone(&editor.config),
+                        ),
+                    );
 
-                let (view, tree_sitter_tree_document) = current!(editor);
+                    let (view, doc) = current!(editor);
 
-                tree_sitter_tree_document
-                    .set_language_by_language_id("tsq", editor.syn_loader.clone())?;
+                    doc.set_language_by_language_id("tsq", Arc::clone(&editor.syn_loader))?;
+                    doc.unmodifiable();
 
-                if let Some((lower, upper, kind)) = position {
-                    tree_sitter_tree_document
-                        .set_selection(view.id, Range::new(lower, upper).into());
-                    tree_sitter_tree_document.set_highlights(
-                        view.id,
-                        kind.chars()
-                            .zip(lower..upper)
-                            .map(|(ch, idx)| Overlay::new(idx, ch.to_string()))
-                            .collect(),
-                    )
-                };
+                    editor.tree_sitter_tree_document_id = Some((tree_id, view.id));
 
-                align_view(tree_sitter_tree_document, view, Align::Center);
+                    editor.focus_prev();
+                }
 
-                editor.focus_prev();
+                if let Some((tree_doc, tree_doc_view_id)) = editor.tree_sitter_tree_document_id {
+                    let tree_view = editor.tree.get(tree_doc_view_id).clone();
+                    let tree_doc = editor.document_mut(tree_doc);
+                    if let Some(tree_doc) = tree_doc {
+                        let selection = Selection::new(
+                            vec![Range::new(0, tree_doc.text().len_chars())].into(),
+                            0,
+                        );
+                        if let Some((lower, upper, kind)) = position {
+                            let transaction = Transaction::change(
+                                tree_doc.text(),
+                                selection.iter().map(|range| {
+                                    (
+                                        range.from(),
+                                        range.to(),
+                                        // TODO: remove this clone
+                                        Some(Tendril::from(contents.clone())),
+                                    )
+                                }),
+                            )
+                            .with_selection(Range::new(lower, upper).into());
 
-                if was_insert {
-                    editor.mode = Mode::Insert;
+                            tree_doc.apply_bypass_unmodifiable(&transaction, tree_doc_view_id);
+
+                            tree_doc.set_highlights(
+                                tree_doc_view_id,
+                                kind.chars()
+                                    .zip(lower..upper)
+                                    .map(|(ch, idx)| Overlay::new(idx, ch.to_string()))
+                                    .collect(),
+                            );
+
+                            align_view(tree_doc, &tree_view, Align::Center);
+                        };
+                    } else {
+                        // User closed the document
+                        editor.tree_sitter_tree_document_id = None;
+                    }
                 }
             }
         } else {
-            bail!("No tree-sitter grammar found for this file")
+            bail!("No tree-sitter grammar found for this file");
         }
 
         Ok(())
