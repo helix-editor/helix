@@ -199,6 +199,8 @@ pub struct Document {
 
     pub readonly: bool,
     pub unmodifiable: bool,
+
+    pub is_tree_sitter_tree: bool,
 }
 
 /// Inlay hints for a single `(Document, View)` combo.
@@ -703,6 +705,7 @@ impl Document {
             unmodifiable: false,
             jump_labels: HashMap::new(),
             highlights: HashMap::new(),
+            is_tree_sitter_tree: false,
         }
     }
 
@@ -1303,11 +1306,11 @@ impl Document {
         emit_lsp_notification: bool,
         bypass_unmodifiable: bool,
     ) -> bool {
-        use helix_core::Assoc;
-
         if self.unmodifiable && !bypass_unmodifiable {
             return false;
         }
+
+        use helix_core::Assoc;
 
         let old_doc = self.text().clone();
         let changes = transaction.changes();
@@ -1491,6 +1494,9 @@ impl Document {
         emit_lsp_notification: bool,
         bypass_unmodifiable: bool,
     ) -> bool {
+        if self.unmodifiable && !bypass_unmodifiable {
+            return false;
+        }
         // store the state just before any changes are made. This allows us to undo to the
         // state just before a transaction was applied.
         if self.changes.is_empty() && !transaction.changes().is_empty() {
@@ -1928,7 +1934,20 @@ impl Document {
 
     pub fn display_name(&self) -> Cow<'_, str> {
         self.relative_path()
-            .map_or_else(|| SCRATCH_BUFFER_NAME.into(), |path| path.to_string_lossy())
+            .map_or_else(|| self.default_name().into(), |path| path.to_string_lossy())
+    }
+
+    /// Fallback name for the document when the path cannot be determined
+    pub fn default_name(&self) -> String {
+        if self.is_tree_sitter_tree {
+            "[tree-sitter-tree]".to_owned()
+        } else {
+            SCRATCH_BUFFER_NAME.to_owned()
+        }
+    }
+
+    pub fn tree_sitter_tree(&mut self) {
+        self.is_tree_sitter_tree = true;
     }
 
     // transact(Fn) ?

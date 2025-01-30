@@ -2914,7 +2914,14 @@ fn ensure_selections_forward(cx: &mut Context) {
 }
 
 fn enter_insert_mode(cx: &mut Context) {
-    cx.editor.mode = Mode::Insert;
+    let doc = doc!(cx.editor);
+
+    if doc.unmodifiable {
+        cx.editor
+            .set_error("File is unmodifiable. Refusing to enter Insert mode.")
+    } else {
+        cx.editor.mode = Mode::Insert;
+    }
 }
 
 // inserts at the start of each selection
@@ -3067,6 +3074,7 @@ fn buffer_picker(cx: &mut Context) {
         is_modified: bool,
         is_current: bool,
         focused_at: std::time::Instant,
+        default_name: String,
     }
 
     let new_meta = |doc: &Document| BufferMeta {
@@ -3075,6 +3083,7 @@ fn buffer_picker(cx: &mut Context) {
         is_modified: doc.is_modified(),
         is_current: doc.id() == current,
         focused_at: doc.focused_at,
+        default_name: doc.default_name(),
     };
 
     let mut items = cx
@@ -3106,7 +3115,7 @@ fn buffer_picker(cx: &mut Context) {
                 .map(helix_stdx::path::get_relative_path);
             path.as_deref()
                 .and_then(Path::to_str)
-                .unwrap_or(SCRATCH_BUFFER_NAME)
+                .unwrap_or(&meta.default_name)
                 .to_string()
                 .into()
         }),
@@ -3132,6 +3141,7 @@ fn jumplist_picker(cx: &mut Context) {
         selection: Selection,
         text: String,
         is_current: bool,
+        default_name: String,
     }
 
     for (view, _) in cx.editor.tree.views_mut() {
@@ -3157,6 +3167,7 @@ fn jumplist_picker(cx: &mut Context) {
             selection,
             text,
             is_current: view.doc == doc_id,
+            default_name: doc.map_or(SCRATCH_BUFFER_NAME.into(), |d| d.default_name()),
         }
     };
 
@@ -3169,7 +3180,7 @@ fn jumplist_picker(cx: &mut Context) {
                 .map(helix_stdx::path::get_relative_path);
             path.as_deref()
                 .and_then(Path::to_str)
-                .unwrap_or(SCRATCH_BUFFER_NAME)
+                .unwrap_or(&item.default_name)
                 .to_string()
                 .into()
         }),

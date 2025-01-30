@@ -2297,6 +2297,7 @@ fn tree_sitter_tree(
 
                     doc.set_language_by_language_id("tsq", Arc::clone(&editor.syn_loader))?;
                     doc.unmodifiable();
+                    doc.tree_sitter_tree();
 
                     editor.tree_sitter_tree_document_id = Some((tree_id, view.id));
 
