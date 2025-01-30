@@ -1035,6 +1035,7 @@ pub struct Editor {
     pub tree: Tree,
     pub next_document_id: DocumentId,
     pub documents: BTreeMap<DocumentId, Document>,
+    /// The document ID of the tree sitter tree document
     pub tree_sitter_tree_document_id: Option<DocumentId>,
 
     // We Flatten<> to resolve the inner DocumentSavedEventFuture. For that we need a stream of streams, hence the Once<>.
@@ -1917,8 +1918,6 @@ impl Editor {
                 let doc = doc_mut!(self, &view.doc);
                 view.sync_changes(doc);
             }
-            // Clear the tree sitter tree if it exists
-            self.tree_sitter_tree_document_id = None;
             let view = view!(self, view_id);
             let doc = doc_mut!(self, &view.doc);
             doc.mark_as_focused();
