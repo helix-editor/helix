@@ -2157,14 +2157,14 @@ fn tree_sitter_tree(
     // Update or create the tree.
     fn update_tree(editor: &mut Editor, is_update: bool) -> anyhow::Result<()> {
         // The user closed the document. Stop.
-        if is_update && editor.tree_sitter_tree_document_id.is_none() {
+        if is_update && editor.tree_sitter_tree.is_none() {
             helix_event::unregister_hook::<PostCommand>("tree-sitter-tree");
             return Ok(());
         };
 
         let (view, doc) = current!(editor);
 
-        if let Some((_tree_doc_id, tree_view_id)) = editor.tree_sitter_tree_document_id {
+        if let Some((_tree_doc_id, tree_view_id)) = editor.tree_sitter_tree {
             if view.id == tree_view_id {
                 // Do not update the tree sitter document if the current document is the
                 // tree sitter document. This will cause the tree sitter document
@@ -2210,7 +2210,7 @@ fn tree_sitter_tree(
 
                 let contents = contents.to_string();
 
-                if editor.tree_sitter_tree_document_id.is_none() && !is_update {
+                if editor.tree_sitter_tree.is_none() && !is_update {
                     let tree_id = editor.new_file_from_document(
                         Action::VerticalSplit,
                         Document::from(
@@ -2226,12 +2226,12 @@ fn tree_sitter_tree(
                     doc.unmodifiable();
                     doc.tree_sitter_tree();
 
-                    editor.tree_sitter_tree_document_id = Some((tree_id, view.id));
+                    editor.tree_sitter_tree = Some((tree_id, view.id));
 
                     editor.focus_prev();
                 }
 
-                if let Some((tree_doc, tree_doc_view_id)) = editor.tree_sitter_tree_document_id {
+                if let Some((tree_doc, tree_doc_view_id)) = editor.tree_sitter_tree {
                     let tree_view = editor.tree.get(tree_doc_view_id).clone();
                     let tree_doc = editor.document_mut(tree_doc);
                     if let Some(tree_doc) = tree_doc {
@@ -2267,7 +2267,7 @@ fn tree_sitter_tree(
                         };
                     } else {
                         // User closed the document
-                        editor.tree_sitter_tree_document_id = None;
+                        editor.tree_sitter_tree = None;
                     }
                 }
             }

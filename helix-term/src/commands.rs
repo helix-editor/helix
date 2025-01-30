@@ -2972,7 +2972,7 @@ fn ensure_selections_forward(cx: &mut Context) {
 fn enter_insert_mode(cx: &mut Context) {
     let doc = doc!(cx.editor);
 
-    if doc.unmodifiable {
+    if !doc.modifiable {
         cx.editor
             .set_error("File is unmodifiable. Refusing to enter Insert mode.")
     } else {
