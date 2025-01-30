@@ -2898,6 +2898,13 @@ fn pretty_print_tree_impl(
         add_str!(")");
     }
 
+    // We didn't find our node.
+    if let Some(node_search) = node_search {
+        if node_search.continue_searching {
+            return Ok(None);
+        }
+    }
+
     Ok(node_search.as_ref().map(|node_search| {
         (
             node_search
