@@ -1093,7 +1093,7 @@ thread_local! {
 
 #[derive(Debug)]
 pub struct Syntax {
-    pub layers: HopSlotMap<LayerId, LanguageLayer>,
+    layers: HopSlotMap<LayerId, LanguageLayer>,
     root: LayerId,
     loader: Arc<ArcSwap<Loader>>,
 }
@@ -2706,79 +2706,17 @@ fn format_anonymous_node_kind(kind: &str) -> Cow<str> {
 }
 
 /// If supplied, can help map document coordinates to generated tree coordinates
-///
-/// To map a given character position in the document to a (lower, upper) position
-/// in the generated pretty tree:
-///
-/// 1. let `i` be the character position in the document
-/// 2. obtain a flat list of all the node kinds of a node's children.
-///
-///    For instance the following tree:
-///
-///    ```
-///    (source_file
-///      (some_node
-///        (another_node))
-///      (some_node
-///        (function
-///          (declaration
-///            (another_node))
-///          (some_node))
-///      (some_node)))
-///    ```
-///
-///    Can be placed into a flat list as follows:
-///
-///    ```
-///    [source_file, some_node, another_node, some_node, function, declaration, another_node, some_node, some_node]
-///    ```
-///
-/// 3. let `kind` be the kind of the node that `i` is at. Let's assume it is `some_node`
-///
-///    Remove all items from the flat list of kinds of nodes which are not `kind`:
-///
-///    [some_node, some_node, some_node, some_node]
-///
-/// 4. let `m` be the index position of `some_node` that `i` corresponds to. Assuming:
-///
-///    [some_node, some_node, some_node, some_node]
-///                  ^ `i`
-///
-///    in which case `m` would be 2.
-///
-///    The `m`th node of `kind` is the one we'll be looking for.
-///
-/// 5. Call the [`pretty_print_tree`] function, passing in `m` and `kind`.
-///
-///    Which will then return the corresponding character range in the source tree:
-///
-///    ```
-///    (source_file
-///      (some_node
-///        (another_node))
-///      (some_node
-///       ^ lower ^ upper
-///        (function
-///          (declaration
-///            (another_node))
-///          (some_node))
-///      (some_node)))
-///    ```
 pub struct NodeSearch {
     /// The index position of the node
     pub position: usize,
     /// The kind of the node that we're searching for
     pub node_kind: String,
     /// While we're building the tree, each character that we add
-    /// we will track in this field. Once we find the node for which
-    /// we're searching for, this is going to be the lower bound for
-    /// which the cursor position maps to the pretty-printed tree
-    ///
-    /// To get the upper bound: count_so_far + node_kind.len()
+    /// we will track in this field.
     pub count_so_far: usize,
-    /// How many times we've encountede the node
+    /// How many times we've encountered the node
     pub appearances_count: usize,
-    /// We've already found the node that we're searching for.
+    /// Have we found the node? In which case we don't need to continue adding chars.
     pub found_node: bool,
 }
 
@@ -2818,9 +2756,6 @@ fn pretty_print_tree_impl(
     depth: usize,
     node_search: &mut Option<&mut NodeSearch>,
 ) -> Result<Option<(usize, usize, String)>, fmt::Error> {
-    // When we are writing, take note of how many characters we're adding
-    // While trying to pretty-print this tree, we're also searching for
-    // the position of the cursor TODO: improve this wording so it makes more sense
     let node = cursor.node();
     let visible = node_is_visible(&node);
 
@@ -2898,22 +2833,18 @@ fn pretty_print_tree_impl(
         add_str!(")");
     }
 
-    // We didn't find our node.
-    if let Some(node_search) = node_search {
-        if !node_search.found_node {
-            return Ok(None);
-        }
-    }
-
-    Ok(node_search.as_ref().map(|node_search| {
-        (
-            node_search
-                .count_so_far
-                .saturating_sub(node_search.node_kind.len()),
-            node_search.count_so_far,
-            node_search.node_kind.clone(),
-        )
-    }))
+    Ok(node_search
+        .as_ref()
+        .filter(|node_search| node_search.found_node)
+        .map(|node_search| {
+            (
+                node_search
+                    .count_so_far
+                    .saturating_sub(node_search.node_kind.len()),
+                node_search.count_so_far,
+                node_search.node_kind.clone(),
+            )
+        }))
 }
 
 #[cfg(test)]
