@@ -2147,7 +2147,7 @@ fn find_position_of_node<'tree>(
 
 fn tree_sitter_tree(
     cx: &mut compositor::Context,
-    _args: Args,
+    _args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
