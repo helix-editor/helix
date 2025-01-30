@@ -2,6 +2,7 @@ use std::fmt::Write;
 use std::io::BufReader;
 use std::ops::{self, Deref};
 
+use crate::events::{OnModeSwitch, PostCommand, PostInsertChar};
 use crate::job::Job;
 
 use super::*;
@@ -2121,7 +2122,7 @@ fn reflow(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
 // And vice-versa: Moving cursor across nodes in the tree sitter tree will need to also move the cursor across the original file
 fn tree_sitter_tree(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    _args: Args,
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -2160,6 +2161,101 @@ fn tree_sitter_tree(
                 .set_language_by_language_id("tsq", cx.editor.syn_loader.clone())?
         }
     }
+
+    helix_event::register_hook!(move |e: &mut DocumentDidSave<'_>| {
+        // the current document that is being edited.
+        let doc = doc!(e.editor);
+        let text = doc.text();
+        let syntax = doc.syntax();
+
+        if let Some(syntax) = syntax {
+            let from = 0;
+            let to = text.len_chars();
+
+            if let Some(selected_node) = syntax.descendant_for_byte_range(from, to) {
+                let mut contents = String::new();
+                helix_core::syntax::pretty_print_tree(&mut contents, selected_node)?;
+
+                if let Some(tree_sitter_tree_document_id) = e.editor.tree_sitter_tree_document_id {
+                    if e.editor
+                        .close_document(tree_sitter_tree_document_id, true)
+                        .is_err()
+                    {
+                        bail!("Could not close the previous tree sitter tree document")
+                    };
+                };
+
+                // let _ =
+                //     e.cx.editor
+                //         .close_document(tree_sitter_, true);
+
+                e.editor.tree_sitter_tree_document_id = Some(e.editor.new_file_from_document(
+                    Action::VerticalSplit,
+                    Document::from(Rope::from(contents), None, e.editor.config.clone()),
+                ));
+
+                let tree_sitter_tree_document = doc_mut!(e.editor);
+
+                tree_sitter_tree_document
+                    .set_language_by_language_id("tsq", e.editor.syn_loader.clone())?;
+
+                e.editor.focus_prev();
+
+                // if let Some(tree_sitter_tree_document_id) = cx.editor.tree_sitter_tree_document_id {
+                //     if cx
+                //         .editor
+                //         .close_document(tree_sitter_tree_document_id, true)
+                //         .is_err()
+                //     {
+                //         bail!("Could not close the previous tree sitter tree document")
+                //     };
+                // };
+
+                // cx.editor.tree_sitter_tree_document_id = Some(cx.editor.new_file_from_document(
+                //     Action::VerticalSplit,
+                //     Document::from(Rope::from(contents), None, cx.editor.config.clone()),
+                // ));
+
+                // let tree_sitter_tree_document = doc_mut!(cx.editor);
+
+                // tree_sitter_tree_document
+                //     .set_language_by_language_id("tsq", cx.editor.syn_loader.clone())?
+            }
+        }
+
+        Ok(())
+    });
+
+    // if let Some(syntax) = doc.syntax() {
+    //     let text = doc.text();
+    //     let from = 0;
+    //     let to = text.len_chars();
+
+    //     if let Some(selected_node) = syntax.descendant_for_byte_range(from, to) {
+    //         let mut contents = String::new();
+    //         helix_core::syntax::pretty_print_tree(&mut contents, selected_node)?;
+
+    //         if let Some(tree_sitter_tree_document_id) = cx.editor.tree_sitter_tree_document_id {
+    //             if cx
+    //                 .editor
+    //                 .close_document(tree_sitter_tree_document_id, true)
+    //                 .is_err()
+    //             {
+    //                 bail!("Could not close the previous tree sitter tree document")
+    //             };
+    //         };
+
+    //         cx.editor.tree_sitter_tree_document_id = Some(cx.editor.new_file_from_document(
+    //             Action::VerticalSplit,
+    //             Document::from(Rope::from(contents), None, cx.editor.config.clone()),
+    //         ));
+
+    //         let tree_sitter_tree_document = doc_mut!(cx.editor);
+
+    //         tree_sitter_tree_document
+    //             .set_language_by_language_id("tsq", cx.editor.syn_loader.clone())?
+    //     }
+    // }
 
     Ok(())
 }

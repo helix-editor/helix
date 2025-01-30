@@ -4,7 +4,7 @@ use crate::{
     document::{
         DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
     },
-    events::DocumentFocusLost,
+    events::{DocumentDidSave, DocumentFocusLost},
     graphics::{CursorKind, Rect},
     handlers::Handlers,
     info::Info,
@@ -1691,7 +1691,7 @@ impl Editor {
     }
 
     /// Generate an id for a new document and register it.
-    fn new_document(&mut self, mut doc: Document) -> DocumentId {
+    pub fn new_document(&mut self, mut doc: Document) -> DocumentId {
         let id = self.next_document_id;
         // Safety: adding 1 from 1 is fine, probably impossible to reach usize max
         self.next_document_id =
@@ -1891,6 +1891,11 @@ impl Editor {
             .ok_or_else(|| anyhow::format_err!("saves are closed for this document!"))?
             .send(stream::once(Box::pin(future)))
             .map_err(|err| anyhow!("failed to send save event: {}", err))?;
+
+        helix_event::dispatch(DocumentDidSave {
+            editor: self,
+            doc: doc_id,
+        });
 
         self.write_count += 1;
 
