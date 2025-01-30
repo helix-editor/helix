@@ -2,20 +2,19 @@ use std::fmt::Write;
 use std::io::BufReader;
 use std::ops::Deref;
 
-use crate::events::{OnModeSwitch, PostCommand, PostInsertChar};
+use crate::events::PostCommand;
 use crate::job::Job;
 
 use super::*;
 
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
-use helix_core::syntax::{NodeSearch, TreeCursor};
+use helix_core::syntax::NodeSearch;
 use helix_core::tree_sitter::Node;
 use helix_core::{line_ending, shellwords::Shellwords};
 use helix_stdx::path::home_dir;
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
-use helix_view::events::{DocumentDidChange, DocumentDidSave};
 use serde_json::Value;
 use ui::completers::{self, Completer};
 
@@ -2307,9 +2306,13 @@ fn tree_sitter_tree(
         Ok(())
     }
 
+    // Initially create the tree
     update_tree(cx.editor, false)?;
 
-    helix_event::register_hook!(move |e: &mut DocumentDidSave<'_>| { update_tree(e.editor, true) });
+    // Update it until the user closes it
+    helix_event::register_hook!(move |e: &mut PostCommand<'_, '_>| {
+        update_tree(e.cx.editor, true)
+    });
 
     Ok(())
 }
