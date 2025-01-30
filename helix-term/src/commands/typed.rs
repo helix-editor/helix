@@ -2160,73 +2160,14 @@ fn tree_sitter_tree(
         return Ok(());
     }
 
-    let (view, doc) = current!(cx.editor);
+    // Update or create the tree.
+    fn update_tree(editor: &mut Editor, is_update: bool) -> anyhow::Result<()> {
+        // The user closed the document. No need to do any kind of work
+        if is_update && editor.tree_sitter_tree_document_id.is_none() {
+            return Ok(());
+        };
 
-    if let Some(syntax) = doc.syntax() {
-        let text = doc.text();
-        let from = 0;
-        let to = text.len_chars();
-        let cursor_idx = doc.selection(view.id).primary().cursor(text.slice(..));
-
-        if let (Some(selected_node), Some(node_at_cursor)) = (
-            syntax.descendant_for_byte_range(from, to),
-            syntax.descendant_for_byte_range(cursor_idx, cursor_idx),
-        ) {
-            let kind = node_at_cursor.kind();
-            let appearance_count =
-                find_position_of_node(kind, selected_node, cursor_idx, &mut vec![]);
-
-            let mut contents = String::new();
-
-            let position = helix_core::syntax::pretty_print_tree(
-                &mut contents,
-                selected_node,
-                &mut appearance_count
-                    .map(|count| NodeSearch::new(count, kind.to_owned()))
-                    .as_mut(),
-            )?;
-
-            if let Some(tree_sitter_tree_document_id) = cx.editor.tree_sitter_tree_document_id {
-                if cx
-                    .editor
-                    .close_document(tree_sitter_tree_document_id, true)
-                    .is_err()
-                {
-                    bail!("Could not close the previous tree sitter tree document")
-                };
-            };
-
-            cx.editor.tree_sitter_tree_document_id = Some(cx.editor.new_file_from_document(
-                Action::VerticalSplit,
-                Document::from(Rope::from(contents), None, cx.editor.config.clone()),
-            ));
-
-            let (view, tree_sitter_tree_document) = current!(cx.editor);
-
-            tree_sitter_tree_document
-                .set_language_by_language_id("tsq", cx.editor.syn_loader.clone())?;
-
-            if let Some((lower, upper, kind)) = position {
-                tree_sitter_tree_document.set_selection(view.id, Range::new(lower, upper).into());
-                tree_sitter_tree_document.set_highlights(
-                    view.id,
-                    kind.chars()
-                        .zip(lower..upper)
-                        .map(|(ch, idx)| Overlay::new(idx, ch.to_string()))
-                        .collect(),
-                )
-            };
-
-            align_view(tree_sitter_tree_document, view, Align::Center);
-
-            cx.editor.focus_prev();
-        }
-    }
-
-    helix_event::register_hook!(move |e: &mut DocumentDidSave<'_>| {
-        // the current document that is being edited.
-        let (view, doc) = current!(e.editor);
-
+        let (view, doc) = current!(editor);
         let text = doc.text();
         let syntax = doc.syntax();
         let cursor_idx = doc.selection(view.id).primary().cursor(text.slice(..));
@@ -2242,8 +2183,8 @@ fn tree_sitter_tree(
                 let kind = node_at_cursor.kind();
                 let appearance_count =
                     find_position_of_node(kind, selected_node, cursor_idx, &mut vec![]);
+
                 let mut contents = String::new();
-                // let mut cursor = syntax.walk();
 
                 let position = helix_core::syntax::pretty_print_tree(
                     &mut contents,
@@ -2253,8 +2194,8 @@ fn tree_sitter_tree(
                         .as_mut(),
                 )?;
 
-                if let Some(tree_sitter_tree_document_id) = e.editor.tree_sitter_tree_document_id {
-                    if e.editor
+                if let Some(tree_sitter_tree_document_id) = editor.tree_sitter_tree_document_id {
+                    if editor
                         .close_document(tree_sitter_tree_document_id, true)
                         .is_err()
                     {
@@ -2262,15 +2203,15 @@ fn tree_sitter_tree(
                     };
                 };
 
-                e.editor.tree_sitter_tree_document_id = Some(e.editor.new_file_from_document(
+                editor.tree_sitter_tree_document_id = Some(editor.new_file_from_document(
                     Action::VerticalSplit,
-                    Document::from(Rope::from(contents), None, e.editor.config.clone()),
+                    Document::from(Rope::from(contents), None, editor.config.clone()),
                 ));
 
-                let (view, tree_sitter_tree_document) = current!(e.editor);
+                let (view, tree_sitter_tree_document) = current!(editor);
 
                 tree_sitter_tree_document
-                    .set_language_by_language_id("tsq", e.editor.syn_loader.clone())?;
+                    .set_language_by_language_id("tsq", editor.syn_loader.clone())?;
 
                 if let Some((lower, upper, kind)) = position {
                     tree_sitter_tree_document
@@ -2286,43 +2227,16 @@ fn tree_sitter_tree(
 
                 align_view(tree_sitter_tree_document, view, Align::Center);
 
-                e.editor.focus_prev();
+                editor.focus_prev();
             }
         }
 
         Ok(())
-    });
+    }
 
-    // if let Some(syntax) = doc.syntax() {
-    //     let text = doc.text();
-    //     let from = 0;
-    //     let to = text.len_chars();
+    update_tree(cx.editor, false)?;
 
-    //     if let Some(selected_node) = syntax.descendant_for_byte_range(from, to) {
-    //         let mut contents = String::new();
-    //         helix_core::syntax::pretty_print_tree(&mut contents, selected_node)?;
-
-    //         if let Some(tree_sitter_tree_document_id) = cx.editor.tree_sitter_tree_document_id {
-    //             if cx
-    //                 .editor
-    //                 .close_document(tree_sitter_tree_document_id, true)
-    //                 .is_err()
-    //             {
-    //                 bail!("Could not close the previous tree sitter tree document")
-    //             };
-    //         };
-
-    //         cx.editor.tree_sitter_tree_document_id = Some(cx.editor.new_file_from_document(
-    //             Action::VerticalSplit,
-    //             Document::from(Rope::from(contents), None, cx.editor.config.clone()),
-    //         ));
-
-    //         let tree_sitter_tree_document = doc_mut!(cx.editor);
-
-    //         tree_sitter_tree_document
-    //             .set_language_by_language_id("tsq", cx.editor.syn_loader.clone())?
-    //     }
-    // }
+    helix_event::register_hook!(move |e: &mut DocumentDidSave<'_>| { update_tree(e.editor, true) });
 
     Ok(())
 }
