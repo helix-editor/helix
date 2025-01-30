@@ -2182,6 +2182,8 @@ fn tree_sitter_tree(
             return Ok(());
         };
 
+        let was_insert = editor.mode == Mode::Insert;
+
         let (view, doc) = current!(editor);
 
         let id = doc.id();
@@ -2194,6 +2196,7 @@ fn tree_sitter_tree(
 
         let text = doc.text();
         let syntax = doc.syntax();
+
         let cursor_idx = doc.selection(view.id).primary().cursor(text.slice(..));
 
         if let Some(syntax) = syntax {
@@ -2257,6 +2260,10 @@ fn tree_sitter_tree(
                 align_view(tree_sitter_tree_document, view, Align::Center);
 
                 editor.focus_prev();
+
+                if was_insert {
+                    editor.mode = Mode::Insert;
+                }
             }
         } else {
             bail!("No tree-sitter grammar found for this file")
