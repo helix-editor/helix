@@ -2157,6 +2157,16 @@ fn tree_sitter_tree(
         return Ok(());
     }
 
+    // Turn off the tree sitter tree if it's already open at
+    // the exact same document
+    if let Some((tree_doc_id, spawner_id)) = cx.editor.tree_sitter_tree_document_id {
+        if spawner_id == doc!(cx.editor).id() {
+            cx.editor.tree_sitter_tree_document_id = None;
+            let _ = cx.editor.close_document(tree_doc_id, true);
+            return Ok(());
+        }
+    }
+
     // Update or create the tree.
     fn update_tree(editor: &mut Editor, is_update: bool) -> anyhow::Result<()> {
         // The user closed the document. No need to do any kind of work
@@ -2240,6 +2250,8 @@ fn tree_sitter_tree(
 
                 editor.focus_prev();
             }
+        } else {
+            bail!("No tree-sitter grammar found for this file")
         }
 
         Ok(())
