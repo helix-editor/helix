@@ -903,7 +903,7 @@ where
             let future = request_provider(language_server, pos, doc.identifier()).unwrap();
             async move {
                 let json = future.await?;
-                let response: lsp::GotoDefinitionResponse = serde_json::from_value(json)?;
+                let response: Option<lsp::GotoDefinitionResponse> = serde_json::from_value(json)?;
                 anyhow::Ok((response, offset_encoding))
             }
         })
@@ -913,17 +913,17 @@ where
         let mut locations = Vec::new();
         while let Some((response, offset_encoding)) = futures.try_next().await? {
             match response {
-                lsp::GotoDefinitionResponse::Scalar(lsp_location) => {
+                Some(lsp::GotoDefinitionResponse::Scalar(lsp_location)) => {
                     locations.extend(lsp_location_to_location(lsp_location, offset_encoding));
                 }
-                lsp::GotoDefinitionResponse::Array(lsp_locations) => {
+                Some(lsp::GotoDefinitionResponse::Array(lsp_locations)) => {
                     locations.extend(
                         lsp_locations.into_iter().flat_map(|location| {
                             lsp_location_to_location(location, offset_encoding)
                         }),
                     );
                 }
-                lsp::GotoDefinitionResponse::Link(lsp_locations) => {
+                Some(lsp::GotoDefinitionResponse::Link(lsp_locations)) => {
                     locations.extend(
                         lsp_locations
                             .into_iter()
@@ -938,6 +938,7 @@ where
                             }),
                     );
                 }
+                None => (),
             }
         }
         let call = move |editor: &mut Editor, compositor: &mut Compositor| {
@@ -1002,7 +1003,7 @@ pub fn goto_reference(cx: &mut Context) {
                 .unwrap();
             async move {
                 let json = future.await?;
-                let locations: Vec<lsp::Location> = serde_json::from_value(json)?;
+                let locations: Option<Vec<lsp::Location>> = serde_json::from_value(json)?;
                 anyhow::Ok((locations, offset_encoding))
             }
         })
@@ -1014,6 +1015,7 @@ pub fn goto_reference(cx: &mut Context) {
             locations.extend(
                 lsp_locations
                     .into_iter()
+                    .flatten()
                     .flat_map(|location| lsp_location_to_location(location, offset_encoding)),
             );
         }
