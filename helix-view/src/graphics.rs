@@ -342,6 +342,7 @@ impl FromStr for UnderlineStyle {
     }
 }
 
+#[cfg(feature = "term")]
 impl From<UnderlineStyle> for crossterm::style::Attribute {
     fn from(style: UnderlineStyle) -> Self {
         match style {
