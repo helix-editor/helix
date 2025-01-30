@@ -2166,6 +2166,11 @@ fn tree_sitter_tree(
 
         if let Some((_tree_doc_id, tree_view_id)) = editor.tree_sitter_tree {
             if view.id == tree_view_id {
+                // Reset the tree sitter document's highlights if we focus
+                // the document, since we have a visual selection which highlights the same
+                // region. But these highlights are useful to highlight a piece of
+                // text while that document is not focused.
+                doc.set_highlights(view.id, vec![]);
                 // Do not update the tree sitter document if the current document is the
                 // tree sitter document. This will cause the tree sitter document
                 // to create a syntax tree for itself, and this process will continue
