@@ -71,6 +71,15 @@ impl Registry {
         }
     }
 
+    pub fn unregister_hook<E: Event>(&mut self, name: &'static str) -> bool {
+        let Some((_vec_hooks, map_hooks)) = self.handlers.get_mut(E::ID) else {
+            log::error!("Tried to unregister a hook for an unknown event {}", E::ID);
+            return false;
+        };
+
+        map_hooks.remove(name).is_some()
+    }
+
     pub fn register_dynamic_hook(
         &mut self,
         name: Option<&'static str>,

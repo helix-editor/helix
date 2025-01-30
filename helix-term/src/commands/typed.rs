@@ -2148,6 +2148,12 @@ fn find_position_of_node<'tree>(
     None
 }
 
+fn untree(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyhow::Result<()> {
+    helix_event::unregister_hook::<PostCommand>("tree-sitter-tree");
+
+    Ok(())
+}
+
 fn tree_sitter_tree(
     cx: &mut compositor::Context,
     _args: Args,
@@ -2163,6 +2169,8 @@ fn tree_sitter_tree(
         if spawner_id == doc!(cx.editor).id() {
             cx.editor.tree_sitter_tree_document_id = None;
             let _ = cx.editor.close_document(tree_doc_id, true);
+
+            // helix_event::unregister_hook::<PostCommand>("tree-sitter-tree");
             return Ok(());
         }
     }
@@ -2261,7 +2269,7 @@ fn tree_sitter_tree(
     update_tree(cx.editor, false)?;
 
     // Update it until the user closes it
-    helix_event::register_hook!(move |"ga", e: &mut PostCommand<'_, '_>| {
+    helix_event::register_hook!(move |e: &mut PostCommand<'_, '_>| {
         update_tree(e.cx.editor, true)
     });
 
@@ -3478,6 +3486,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["ts-tree"],
         doc: "Display tree-sitter tree that spans the full document, primarily for debugging queries.",
         fun: tree_sitter_tree,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "untree",
+        aliases: &[],
+        doc: "delete me",
+        fun: untree,
         signature: CommandSignature::none(),
     },
     TypableCommand {
