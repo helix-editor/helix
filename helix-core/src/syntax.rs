@@ -2705,37 +2705,165 @@ fn format_anonymous_node_kind(kind: &str) -> Cow<str> {
     }
 }
 
-pub fn pretty_print_tree<W: fmt::Write>(fmt: &mut W, node: Node) -> fmt::Result {
-    if node.child_count() == 0 {
-        if node_is_visible(&node) {
-            write!(fmt, "({})", node.kind())
-        } else {
-            write!(fmt, "\"{}\"", format_anonymous_node_kind(node.kind()))
+/// If supplied, can help map document coordinates to generated tree coordinates
+///
+/// To map a given character position in the document to a (lower, upper) position
+/// in the generated pretty tree:
+///
+/// 1. let `i` be the character position in the document
+/// 2. obtain a flat list of all the node kinds of a node's children.
+///
+///    For instance the following tree:
+///
+///    ```
+///    (source_file
+///      (some_node
+///        (another_node))
+///      (some_node
+///        (function
+///          (declaration
+///            (another_node))
+///          (some_node))
+///      (some_node)))
+///    ```
+///
+///    Can be placed into a flat list as follows:
+///
+///    ```
+///    [source_file, some_node, another_node, some_node, function, declaration, another_node, some_node, some_node]
+///    ```
+///
+/// 3. let `kind` be the kind of the node that `i` is at. Let's assume it is `some_node`
+///
+///    Remove all items from the flat list of kinds of nodes which are not `kind`:
+///
+///    [some_node, some_node, some_node, some_node]
+///
+/// 4. let `m` be the index position of `some_node` that `i` corresponds to. Assuming:
+///
+///    [some_node, some_node, some_node, some_node]
+///                  ^ `i`
+///
+///    in which case `m` would be 2.
+///
+///    The `m`th node of `kind` is the one we'll be looking for.
+///
+/// 5. Call the [`pretty_print_tree`] function, passing in `m` and `kind`.
+///
+///    Which will then return the corresponding character range in the source tree:
+///
+///    ```
+///    (source_file
+///      (some_node
+///        (another_node))
+///      (some_node
+///       ^ lower ^ upper
+///        (function
+///          (declaration
+///            (another_node))
+///          (some_node))
+///      (some_node)))
+///    ```
+pub struct NodeSearch {
+    /// The index position of the node
+    pub position: usize,
+    /// The kind of the node that we're searching for
+    pub node_kind: String,
+    /// While we're building the tree, each character that we add
+    /// we will track in this field. Once we find the node for which
+    /// we're searching for, this is going to be the lower bound for
+    /// which the cursor position maps to the pretty-printed tree
+    ///
+    /// To get the upper bound: count_so_far + node_kind.len()
+    pub count_so_far: usize,
+    /// How many times we've encountede the node
+    pub appearances_count: usize,
+    /// We've already found the node that we're searching for.
+    pub continue_searching: bool,
+}
+
+impl NodeSearch {
+    pub fn new(position: usize, node_kind: String) -> Self {
+        Self {
+            position,
+            node_kind,
+            count_so_far: 0,
+            appearances_count: 0,
+            continue_searching: true,
         }
-    } else {
-        pretty_print_tree_impl(fmt, &mut node.walk(), 0)
     }
 }
 
+pub fn pretty_print_tree<W: fmt::Write>(
+    fmt: &mut W,
+    node: Node,
+    node_search: &mut Option<&mut NodeSearch>,
+) -> Result<usize, fmt::Error> {
+    if node.child_count() == 0 {
+        if node_is_visible(&node) {
+            write!(fmt, "({})", node.kind())?;
+        } else {
+            write!(fmt, "\"{}\"", format_anonymous_node_kind(node.kind()))?;
+        };
+        Ok(0)
+    } else {
+        pretty_print_tree_impl(fmt, &mut node.walk(), 0, node_search)
+    }
+}
+
+#[allow(clippy::too_many_arguments)]
 fn pretty_print_tree_impl<W: fmt::Write>(
     fmt: &mut W,
     cursor: &mut tree_sitter::TreeCursor,
     depth: usize,
-) -> fmt::Result {
+    node_search: &mut Option<&mut NodeSearch>,
+) -> Result<usize, fmt::Error> {
+    // When we are writing, take note of how many characters we're adding
+    // While trying to pretty-print this tree, we're also searching for
+    // the position of the cursor TODO: improve this wording so it makes more sense
     let node = cursor.node();
     let visible = node_is_visible(&node);
 
     if visible {
         let indentation_columns = depth * 2;
         write!(fmt, "{:indentation_columns$}", "")?;
+        if let Some(ref mut node_search) = node_search {
+            node_search.count_so_far += depth * 2;
+        }
 
         if let Some(field_name) = cursor.field_name() {
             write!(fmt, "{}: ", field_name)?;
+            if let Some(node_search) = node_search {
+                node_search.count_so_far += field_name.len() + 1 + 1;
+            }
         }
 
-        write!(fmt, "({}", node.kind())?;
+        let kind = node.kind();
+        if let Some(node_search) = node_search {
+            if kind == node_search.node_kind {
+                if node_search.position == node_search.appearances_count {
+                    node_search.continue_searching = false;
+                }
+                if node_search.continue_searching {
+                    node_search.appearances_count += 1;
+                }
+            }
+
+            write!(fmt, "({}", kind)?;
+            if node_search.continue_searching {
+                node_search.count_so_far += 1 + kind.len()
+            }
+        } else {
+            write!(fmt, "({}", kind)?;
+        }
     } else {
-        write!(fmt, " \"{}\"", format_anonymous_node_kind(node.kind()))?;
+        let node = format_anonymous_node_kind(node.kind());
+        write!(fmt, " \"{}\"", node)?;
+        if let Some(node_search) = node_search {
+            if node_search.continue_searching {
+                node_search.count_so_far += 1 + 1 + node.len() + 1;
+            }
+        }
     }
 
     // Handle children.
@@ -2743,9 +2871,14 @@ fn pretty_print_tree_impl<W: fmt::Write>(
         loop {
             if node_is_visible(&cursor.node()) {
                 fmt.write_char('\n')?;
+                if let Some(node_search) = node_search {
+                    if node_search.continue_searching {
+                        node_search.count_so_far += 1;
+                    }
+                }
             }
 
-            pretty_print_tree_impl(fmt, cursor, depth + 1)?;
+            pretty_print_tree_impl(fmt, cursor, depth + 1, node_search)?;
 
             if !cursor.goto_next_sibling() {
                 break;
@@ -2760,9 +2893,18 @@ fn pretty_print_tree_impl<W: fmt::Write>(
 
     if visible {
         fmt.write_char(')')?;
+        if let Some(node_search) = node_search {
+            if node_search.continue_searching {
+                node_search.count_so_far += 1;
+            }
+        }
     }
 
-    Ok(())
+    if let Some(node_search) = node_search {
+        Ok(node_search.count_so_far)
+    } else {
+        Ok(0)
+    }
 }
 
 #[cfg(test)]
@@ -2986,7 +3128,7 @@ mod test {
             .unwrap();
 
         let mut output = String::new();
-        pretty_print_tree(&mut output, root).unwrap();
+        pretty_print_tree(&mut output, root, &mut None).unwrap();
 
         assert_eq!(expected, output);
     }
