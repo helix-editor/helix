@@ -2261,7 +2261,7 @@ fn tree_sitter_tree(
     update_tree(cx.editor, false)?;
 
     // Update it until the user closes it
-    helix_event::register_hook!(move |e: &mut PostCommand<'_, '_>| {
+    helix_event::register_hook!(move |"ga", e: &mut PostCommand<'_, '_>| {
         update_tree(e.cx.editor, true)
     });
 
