@@ -1917,6 +1917,8 @@ impl Editor {
                 let doc = doc_mut!(self, &view.doc);
                 view.sync_changes(doc);
             }
+            // Clear the tree sitter tree if it exists
+            self.tree_sitter_tree_document_id = None;
             let view = view!(self, view_id);
             let doc = doc_mut!(self, &view.doc);
             doc.mark_as_focused();
