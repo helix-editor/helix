@@ -1035,8 +1035,10 @@ pub struct Editor {
     pub tree: Tree,
     pub next_document_id: DocumentId,
     pub documents: BTreeMap<DocumentId, Document>,
-    /// The document ID of the tree sitter tree document
-    pub tree_sitter_tree_document_id: Option<DocumentId>,
+    /// The document ID of the tree sitter tree document, and
+    /// the document ID of the document that the :tree-sitter-tree
+    /// command was invoked from
+    pub tree_sitter_tree_document_id: Option<(DocumentId, DocumentId)>,
 
     // We Flatten<> to resolve the inner DocumentSavedEventFuture. For that we need a stream of streams, hence the Once<>.
     // https://stackoverflow.com/a/66875668
