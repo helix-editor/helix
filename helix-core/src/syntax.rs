@@ -2839,6 +2839,7 @@ fn pretty_print_tree_impl<W: fmt::Write>(
         }
 
         let kind = node.kind();
+        write!(fmt, "({}", kind)?;
         if let Some(node_search) = node_search {
             if kind == node_search.node_kind {
                 if node_search.position == node_search.appearances_count {
@@ -2849,12 +2850,9 @@ fn pretty_print_tree_impl<W: fmt::Write>(
                 }
             }
 
-            write!(fmt, "({}", kind)?;
             if node_search.continue_searching {
                 node_search.count_so_far += 1 + kind.len()
             }
-        } else {
-            write!(fmt, "({}", kind)?;
         }
     } else {
         let node = format_anonymous_node_kind(node.kind());
