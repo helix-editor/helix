@@ -1021,6 +1021,8 @@ file-types = [
   { glob = ".bash_logout" },
   { glob = ".bash_profile" },
   { glob = ".bashrc" },
+  { glob = ".envrc" },
+  { glob = ".envrc.*" },
   { glob = ".profile" },
   { glob = ".zshenv" },
   { glob = ".zlogin" },
@@ -2799,7 +2801,7 @@ source = { git = "https://github.com/hh9527/tree-sitter-wit", rev = "c917790ab9a
 [[language]]
 name = "env"
 scope = "source.env"
-file-types = [{ glob = ".env" }, { glob = ".env.*" }, { glob = ".envrc" }, { glob = ".envrc.*" }]
+file-types = [{ glob = ".env" }, { glob = ".env.*" }]
 injection-regex = "env"
 comment-token = "#"
 indent = { tab-width = 4, unit = "\t" }
