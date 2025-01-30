@@ -198,7 +198,7 @@ pub struct Document {
     pub focused_at: std::time::Instant,
 
     pub readonly: bool,
-    pub unmodifiable: bool,
+    pub modifiable: bool,
 
     pub is_tree_sitter_tree: bool,
 }
@@ -702,7 +702,7 @@ impl Document {
             version_control_head: None,
             focused_at: std::time::Instant::now(),
             readonly: false,
-            unmodifiable: false,
+            modifiable: true,
             jump_labels: HashMap::new(),
             highlights: HashMap::new(),
             is_tree_sitter_tree: false,
@@ -1306,7 +1306,7 @@ impl Document {
         emit_lsp_notification: bool,
         bypass_unmodifiable: bool,
     ) -> bool {
-        if self.unmodifiable && !bypass_unmodifiable {
+        if !self.modifiable && !bypass_unmodifiable {
             return false;
         }
 
@@ -1335,7 +1335,7 @@ impl Document {
         // unmodifiable files are never modified. If we modify them,
         // we act as if the entire buffer was replaced by a different
         // one with different content.
-        if !self.unmodifiable {
+        if self.modifiable {
             self.modified_since_accessed = true;
         }
         self.version += 1;
@@ -1489,7 +1489,7 @@ impl Document {
     }
 
     pub fn unmodifiable(&mut self) {
-        self.unmodifiable = true;
+        self.modifiable = false;
     }
 
     fn apply_inner(
@@ -1499,7 +1499,7 @@ impl Document {
         emit_lsp_notification: bool,
         bypass_unmodifiable: bool,
     ) -> bool {
-        if self.unmodifiable && !bypass_unmodifiable {
+        if !self.modifiable && !bypass_unmodifiable {
             return false;
         }
         // store the state just before any changes are made. This allows us to undo to the
@@ -1702,7 +1702,7 @@ impl Document {
         // Unmodifiable files are never modified.
         // We act as if they are simply replaced by
         // a different file, if we do modify them internally
-        if self.unmodifiable {
+        if !self.modifiable {
             return false;
         }
         let history = self.history.take();
