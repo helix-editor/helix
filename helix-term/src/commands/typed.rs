@@ -3482,7 +3482,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "tree-sitter-tree",
         aliases: &["ts-tree"],
-        doc: "Display tree-sitter tree that spans the full document, primarily for debugging queries.",
+        doc: "Display the full tree-sitter tree that spans the full document, primarily for debugging queries.",
         fun: tree_sitter_tree,
         signature: CommandSignature::none(),
     },
