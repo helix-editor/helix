@@ -2798,14 +2798,14 @@ pub fn pretty_print_tree<W: fmt::Write>(
     fmt: &mut W,
     node: Node,
     node_search: &mut Option<&mut NodeSearch>,
-) -> Result<usize, fmt::Error> {
+) -> Result<Option<(usize, usize)>, fmt::Error> {
     if node.child_count() == 0 {
         if node_is_visible(&node) {
             write!(fmt, "({})", node.kind())?;
         } else {
             write!(fmt, "\"{}\"", format_anonymous_node_kind(node.kind()))?;
         };
-        Ok(0)
+        Ok(None)
     } else {
         pretty_print_tree_impl(fmt, &mut node.walk(), 0, node_search)
     }
@@ -2817,7 +2817,7 @@ fn pretty_print_tree_impl<W: fmt::Write>(
     cursor: &mut tree_sitter::TreeCursor,
     depth: usize,
     node_search: &mut Option<&mut NodeSearch>,
-) -> Result<usize, fmt::Error> {
+) -> Result<Option<(usize, usize)>, fmt::Error> {
     // When we are writing, take note of how many characters we're adding
     // While trying to pretty-print this tree, we're also searching for
     // the position of the cursor TODO: improve this wording so it makes more sense
@@ -2900,11 +2900,12 @@ fn pretty_print_tree_impl<W: fmt::Write>(
         }
     }
 
-    if let Some(node_search) = node_search {
-        Ok(node_search.count_so_far)
-    } else {
-        Ok(0)
-    }
+    Ok(node_search.as_ref().map(|node_search| {
+        (
+            node_search.count_so_far,
+            node_search.count_so_far + node_search.node_kind.len(),
+        )
+    }))
 }
 
 #[cfg(test)]
