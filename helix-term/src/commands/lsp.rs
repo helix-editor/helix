@@ -985,38 +985,47 @@ pub fn goto_implementation(cx: &mut Context) {
 
 pub fn goto_reference(cx: &mut Context) {
     let config = cx.editor.config();
-    let (view, doc) = current!(cx.editor);
+    let (view, doc) = current_ref!(cx.editor);
 
-    // TODO could probably support multiple language servers,
-    // not sure if there's a real practical use case for this though
-    let language_server =
-        language_server_with_feature!(cx.editor, doc, LanguageServerFeature::GotoReference);
-    let offset_encoding = language_server.offset_encoding();
-    let pos = doc.position(view.id, offset_encoding);
-    let future = language_server
-        .goto_reference(
-            doc.identifier(),
-            pos,
-            config.lsp.goto_reference_include_declaration,
-            None,
-        )
-        .unwrap();
+    let mut futures: FuturesOrdered<_> = doc
+        .language_servers_with_feature(LanguageServerFeature::GotoReference)
+        .map(|language_server| {
+            let offset_encoding = language_server.offset_encoding();
+            let pos = doc.position(view.id, offset_encoding);
+            let future = language_server
+                .goto_reference(
+                    doc.identifier(),
+                    pos,
+                    config.lsp.goto_reference_include_declaration,
+                    None,
+                )
+                .unwrap();
+            async move {
+                let json = future.await?;
+                let locations: Vec<lsp::Location> = serde_json::from_value(json)?;
+                anyhow::Ok((locations, offset_encoding))
+            }
+        })
+        .collect();
 
-    cx.callback(
-        future,
-        move |editor, compositor, response: Option<Vec<lsp::Location>>| {
-            let items: Vec<Location> = response
-                .into_iter()
-                .flatten()
-                .flat_map(|location| lsp_location_to_location(location, offset_encoding))
-                .collect();
-            if items.is_empty() {
+    cx.jobs.callback(async move {
+        let mut locations = Vec::new();
+        while let Some((lsp_locations, offset_encoding)) = futures.try_next().await? {
+            locations.extend(
+                lsp_locations
+                    .into_iter()
+                    .flat_map(|location| lsp_location_to_location(location, offset_encoding)),
+            );
+        }
+        let call = move |editor: &mut Editor, compositor: &mut Compositor| {
+            if locations.is_empty() {
                 editor.set_error("No references found.");
             } else {
-                goto_impl(editor, compositor, items);
+                goto_impl(editor, compositor, locations);
             }
-        },
-    );
+        };
+        Ok(Callback::EditorCompositor(Box::new(call)))
+    });
 }
 
 pub fn signature_help(cx: &mut Context) {
