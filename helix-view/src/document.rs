@@ -1332,7 +1332,12 @@ impl Document {
             return true;
         }
 
-        self.modified_since_accessed = true;
+        // unmodifiable files are never modified. If we modify them,
+        // we act as if the entire buffer was replaced by a different
+        // one with different content.
+        if !self.unmodifiable {
+            self.modified_since_accessed = true;
+        }
         self.version += 1;
 
         for selection in self.selections.values_mut() {
@@ -1694,6 +1699,12 @@ impl Document {
 
     /// If there are unsaved modifications.
     pub fn is_modified(&self) -> bool {
+        // Unmodifiable files are never modified.
+        // We act as if they are simply replaced by
+        // a different file, if we do modify them internally
+        if self.unmodifiable {
+            return false;
+        }
         let history = self.history.take();
         let current_revision = history.current_revision();
         self.history.set(history);
