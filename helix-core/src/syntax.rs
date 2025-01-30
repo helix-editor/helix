@@ -2780,8 +2780,6 @@ pub struct NodeSearch {
     pub appearances_count: usize,
     /// We've already found the node that we're searching for.
     pub continue_searching: bool,
-    /// The node_kind is an anonymous node
-    pub is_anonymous: bool,
 }
 
 impl NodeSearch {
@@ -2792,7 +2790,6 @@ impl NodeSearch {
             count_so_far: 0,
             appearances_count: 0,
             continue_searching: true,
-            is_anonymous: false,
         }
     }
 }
@@ -2801,7 +2798,7 @@ pub fn pretty_print_tree(
     fmt: &mut String,
     node: Node,
     node_search: &mut Option<&mut NodeSearch>,
-) -> Result<Option<(usize, usize)>, fmt::Error> {
+) -> Result<Option<(usize, usize, String)>, fmt::Error> {
     if node.child_count() == 0 {
         if node_is_visible(&node) {
             write!(fmt, "({})", node.kind())?;
@@ -2820,7 +2817,7 @@ fn pretty_print_tree_impl(
     cursor: &mut tree_sitter::TreeCursor,
     depth: usize,
     node_search: &mut Option<&mut NodeSearch>,
-) -> Result<Option<(usize, usize)>, fmt::Error> {
+) -> Result<Option<(usize, usize, String)>, fmt::Error> {
     // When we are writing, take note of how many characters we're adding
     // While trying to pretty-print this tree, we're also searching for
     // the position of the cursor TODO: improve this wording so it makes more sense
@@ -2868,7 +2865,7 @@ fn pretty_print_tree_impl(
                 // we're also adding 2 double quotes around them
                 // so we need to account for that when creating the selection.
                 if !visible {
-                    node_search.is_anonymous = true;
+                    node_search.node_kind = format!("\"{kind}\"");
                 };
             }
             if node_search.continue_searching {
@@ -2905,10 +2902,9 @@ fn pretty_print_tree_impl(
         (
             node_search
                 .count_so_far
-                .saturating_sub(node_search.node_kind.len())
-                // need to account for double quotes added around anonymous nodes
-                .saturating_sub(if node_search.is_anonymous { 2 } else { 0 }),
+                .saturating_sub(node_search.node_kind.len()),
             node_search.count_so_far,
+            node_search.node_kind.clone(),
         )
     }))
 }
