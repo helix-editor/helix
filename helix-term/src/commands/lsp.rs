@@ -889,54 +889,66 @@ fn goto_impl(editor: &mut Editor, compositor: &mut Compositor, locations: Vec<Lo
     }
 }
 
-fn to_locations(
-    definitions: Option<lsp::GotoDefinitionResponse>,
-    offset_encoding: OffsetEncoding,
-) -> Vec<Location> {
-    match definitions {
-        Some(lsp::GotoDefinitionResponse::Scalar(location)) => {
-            lsp_location_to_location(location, offset_encoding)
-                .into_iter()
-                .collect()
-        }
-        Some(lsp::GotoDefinitionResponse::Array(locations)) => locations
-            .into_iter()
-            .flat_map(|location| lsp_location_to_location(location, offset_encoding))
-            .collect(),
-        Some(lsp::GotoDefinitionResponse::Link(locations)) => locations
-            .into_iter()
-            .map(|location_link| {
-                lsp::Location::new(location_link.target_uri, location_link.target_range)
-            })
-            .flat_map(|location| lsp_location_to_location(location, offset_encoding))
-            .collect(),
-        None => Vec::new(),
-    }
-}
-
 fn goto_single_impl<P, F>(cx: &mut Context, feature: LanguageServerFeature, request_provider: P)
 where
     P: Fn(&Client, lsp::Position, lsp::TextDocumentIdentifier) -> Option<F>,
     F: Future<Output = helix_lsp::Result<serde_json::Value>> + 'static + Send,
 {
-    let (view, doc) = current!(cx.editor);
+    let (view, doc) = current_ref!(cx.editor);
+    let mut futures: FuturesOrdered<_> = doc
+        .language_servers_with_feature(feature)
+        .map(|language_server| {
+            let offset_encoding = language_server.offset_encoding();
+            let pos = doc.position(view.id, offset_encoding);
+            let future = request_provider(language_server, pos, doc.identifier()).unwrap();
+            async move {
+                let json = future.await?;
+                let response: lsp::GotoDefinitionResponse = serde_json::from_value(json)?;
+                anyhow::Ok((response, offset_encoding))
+            }
+        })
+        .collect();
 
-    let language_server = language_server_with_feature!(cx.editor, doc, feature);
-    let offset_encoding = language_server.offset_encoding();
-    let pos = doc.position(view.id, offset_encoding);
-    let future = request_provider(language_server, pos, doc.identifier()).unwrap();
-
-    cx.callback(
-        future,
-        move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
-            let items = to_locations(response, offset_encoding);
-            if items.is_empty() {
+    cx.jobs.callback(async move {
+        let mut locations = Vec::new();
+        while let Some((response, offset_encoding)) = futures.try_next().await? {
+            match response {
+                lsp::GotoDefinitionResponse::Scalar(lsp_location) => {
+                    locations.extend(lsp_location_to_location(lsp_location, offset_encoding));
+                }
+                lsp::GotoDefinitionResponse::Array(lsp_locations) => {
+                    locations.extend(
+                        lsp_locations.into_iter().flat_map(|location| {
+                            lsp_location_to_location(location, offset_encoding)
+                        }),
+                    );
+                }
+                lsp::GotoDefinitionResponse::Link(lsp_locations) => {
+                    locations.extend(
+                        lsp_locations
+                            .into_iter()
+                            .map(|location_link| {
+                                lsp::Location::new(
+                                    location_link.target_uri,
+                                    location_link.target_range,
+                                )
+                            })
+                            .flat_map(|location| {
+                                lsp_location_to_location(location, offset_encoding)
+                            }),
+                    );
+                }
+            }
+        }
+        let call = move |editor: &mut Editor, compositor: &mut Compositor| {
+            if locations.is_empty() {
                 editor.set_error("No definition found.");
             } else {
-                goto_impl(editor, compositor, items);
+                goto_impl(editor, compositor, locations);
             }
-        },
-    );
+        };
+        Ok(Callback::EditorCompositor(Box::new(call)))
+    });
 }
 
 pub fn goto_declaration(cx: &mut Context) {
