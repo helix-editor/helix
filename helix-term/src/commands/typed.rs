@@ -2117,6 +2117,37 @@ fn reflow(cx: &mut compositor::Context, args: Args, event: PromptEvent) -> anyho
     Ok(())
 }
 
+/// Performs a depth-first search on a tree-sitter `Node` to find nodes of a specified kind,
+/// returning the position of the first match if the cursor position is within a node's range.
+fn find_position_of_node<'tree>(
+    node_kind: &str,
+    node: Node<'tree>,
+    cursor_pos: usize,
+    seen: &mut Vec<Node<'tree>>,
+) -> Option<usize> {
+    let range = node.range();
+
+    // Check if the cursor position is within the current node's range.
+    if cursor_pos <= range.end_byte && cursor_pos >= range.start_byte && node.child_count() == 0 {
+        return Some(seen.len());
+    }
+
+    // If the node's kind matches the target, add it to the `seen` vector.
+    if node.kind() == node_kind {
+        seen.push(node);
+    }
+
+    // Traverse the children of the current node using a cursor.
+    let mut cursor = node.walk();
+    for child in node.children(&mut cursor) {
+        if let Some(result) = find_position_of_node(node_kind, child, cursor_pos, seen) {
+            return Some(result);
+        }
+    }
+
+    None
+}
+
 // This is a basic implementation for viewing the entire tree sitter tree of a file
 // In the future, this command could be updated such that it opens a buffer which automatically highlights the tree sitter sub-tree of where we currently have our cursor
 // And vice-versa: Moving cursor across nodes in the tree sitter tree will need to also move the cursor across the original file
@@ -2129,16 +2160,31 @@ fn tree_sitter_tree(
         return Ok(());
     }
 
-    let doc = doc!(cx.editor);
+    let (view, doc) = current!(cx.editor);
 
     if let Some(syntax) = doc.syntax() {
         let text = doc.text();
         let from = 0;
         let to = text.len_chars();
+        let cursor_idx = doc.selection(view.id).primary().cursor(text.slice(..));
 
-        if let Some(selected_node) = syntax.descendant_for_byte_range(from, to) {
+        if let (Some(selected_node), Some(node_at_cursor)) = (
+            syntax.descendant_for_byte_range(from, to),
+            syntax.descendant_for_byte_range(cursor_idx, cursor_idx),
+        ) {
+            let kind = node_at_cursor.kind();
+            let appearance_count =
+                find_position_of_node(kind, selected_node, cursor_idx, &mut vec![]);
+
             let mut contents = String::new();
-            helix_core::syntax::pretty_print_tree(&mut contents, selected_node, &mut None)?;
+
+            let position = helix_core::syntax::pretty_print_tree(
+                &mut contents,
+                selected_node,
+                &mut appearance_count
+                    .map(|count| NodeSearch::new(count, kind.to_owned()))
+                    .as_mut(),
+            )?;
 
             if let Some(tree_sitter_tree_document_id) = cx.editor.tree_sitter_tree_document_id {
                 if cx
@@ -2155,10 +2201,15 @@ fn tree_sitter_tree(
                 Document::from(Rope::from(contents), None, cx.editor.config.clone()),
             ));
 
-            let tree_sitter_tree_document = doc_mut!(cx.editor);
+            let (view, tree_sitter_tree_document) = current!(cx.editor);
 
             tree_sitter_tree_document
-                .set_language_by_language_id("tsq", cx.editor.syn_loader.clone())?
+                .set_language_by_language_id("tsq", cx.editor.syn_loader.clone())?;
+
+            if let Some((lower, upper)) = position {
+                cx.editor.set_status(format!("{lower}, {upper}"));
+                // tree_sitter_tree_document.set_selection(view.id, Range::new(lower, upper).into());
+            }
         }
     }
 
@@ -2166,32 +2217,31 @@ fn tree_sitter_tree(
         // the current document that is being edited.
         let (view, doc) = current!(e.editor);
 
-        let primary_idx = doc.selection(view.id).primary_index();
-
         let text = doc.text();
         let syntax = doc.syntax();
+        let cursor_idx = doc.selection(view.id).primary().cursor(text.slice(..));
 
         if let Some(syntax) = syntax {
             let from = 0;
             let to = text.len_chars();
 
-            if let Some(selected_node) = syntax.descendant_for_byte_range(from, to) {
+            if let (Some(selected_node), Some(node_at_cursor)) = (
+                syntax.descendant_for_byte_range(from, to),
+                syntax.descendant_for_byte_range(cursor_idx, cursor_idx),
+            ) {
+                let kind = node_at_cursor.kind();
+                let appearance_count =
+                    find_position_of_node(kind, selected_node, cursor_idx, &mut vec![]);
                 let mut contents = String::new();
-                // TODO: get a FLAT LIST of every single tree sitter node
-                // Then, find the node that our cursor is at
-                // Filter the flat list such that it only has names of nodes that our cursor
-                // is at
-                //
-                // Then get the index position of our tree sitter node
-                //
-                // !!!!!!!!!!!!!!!!!
-                panic!();
+                // let mut cursor = syntax.walk();
 
-                helix_core::syntax::pretty_print_tree(&mut contents, selected_node, &mut None)?;
-
-                let mut cursor = syntax.walk();
-
-                cursor.reset_to_byte_range(primary_idx, primary_idx);
+                let position = helix_core::syntax::pretty_print_tree(
+                    &mut contents,
+                    selected_node,
+                    &mut appearance_count
+                        .map(|count| NodeSearch::new(count, kind.to_owned()))
+                        .as_mut(),
+                )?;
 
                 if let Some(tree_sitter_tree_document_id) = e.editor.tree_sitter_tree_document_id {
                     if e.editor
@@ -2202,41 +2252,23 @@ fn tree_sitter_tree(
                     };
                 };
 
-                // let _ =
-                //     e.cx.editor
-                //         .close_document(tree_sitter_, true);
-
                 e.editor.tree_sitter_tree_document_id = Some(e.editor.new_file_from_document(
                     Action::VerticalSplit,
                     Document::from(Rope::from(contents), None, e.editor.config.clone()),
                 ));
 
-                let tree_sitter_tree_document = doc_mut!(e.editor);
+                let (_view, tree_sitter_tree_document) = current!(e.editor);
 
                 tree_sitter_tree_document
                     .set_language_by_language_id("tsq", e.editor.syn_loader.clone())?;
 
+                if let Some((lower, upper)) = position {
+                    e.editor.set_status(format!("{lower}, {upper}"));
+                    // tree_sitter_tree_document
+                    //     .set_selection(view.id, Range::new(lower, upper).into());
+                }
+
                 e.editor.focus_prev();
-
-                // if let Some(tree_sitter_tree_document_id) = cx.editor.tree_sitter_tree_document_id {
-                //     if cx
-                //         .editor
-                //         .close_document(tree_sitter_tree_document_id, true)
-                //         .is_err()
-                //     {
-                //         bail!("Could not close the previous tree sitter tree document")
-                //     };
-                // };
-
-                // cx.editor.tree_sitter_tree_document_id = Some(cx.editor.new_file_from_document(
-                //     Action::VerticalSplit,
-                //     Document::from(Rope::from(contents), None, cx.editor.config.clone()),
-                // ));
-
-                // let tree_sitter_tree_document = doc_mut!(cx.editor);
-
-                // tree_sitter_tree_document
-                //     .set_language_by_language_id("tsq", cx.editor.syn_loader.clone())?
             }
         }
 
