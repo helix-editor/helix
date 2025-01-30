@@ -2138,7 +2138,7 @@ fn tree_sitter_tree(
 
         if let Some(selected_node) = syntax.descendant_for_byte_range(from, to) {
             let mut contents = String::new();
-            helix_core::syntax::pretty_print_tree(&mut contents, selected_node)?;
+            helix_core::syntax::pretty_print_tree(&mut contents, selected_node, &mut None)?;
 
             if let Some(tree_sitter_tree_document_id) = cx.editor.tree_sitter_tree_document_id {
                 if cx
@@ -2164,7 +2164,10 @@ fn tree_sitter_tree(
 
     helix_event::register_hook!(move |e: &mut DocumentDidSave<'_>| {
         // the current document that is being edited.
-        let doc = doc!(e.editor);
+        let (view, doc) = current!(e.editor);
+
+        let primary_idx = doc.selection(view.id).primary_index();
+
         let text = doc.text();
         let syntax = doc.syntax();
 
@@ -2174,7 +2177,21 @@ fn tree_sitter_tree(
 
             if let Some(selected_node) = syntax.descendant_for_byte_range(from, to) {
                 let mut contents = String::new();
-                helix_core::syntax::pretty_print_tree(&mut contents, selected_node)?;
+                // TODO: get a FLAT LIST of every single tree sitter node
+                // Then, find the node that our cursor is at
+                // Filter the flat list such that it only has names of nodes that our cursor
+                // is at
+                //
+                // Then get the index position of our tree sitter node
+                //
+                // !!!!!!!!!!!!!!!!!
+                panic!();
+
+                helix_core::syntax::pretty_print_tree(&mut contents, selected_node, &mut None)?;
+
+                let mut cursor = syntax.walk();
+
+                cursor.reset_to_byte_range(primary_idx, primary_idx);
 
                 if let Some(tree_sitter_tree_document_id) = e.editor.tree_sitter_tree_document_id {
                     if e.editor
@@ -2278,7 +2295,7 @@ fn tree_sitter_subtree(
         let to = text.char_to_byte(primary_selection.to());
         if let Some(selected_node) = syntax.descendant_for_byte_range(from, to) {
             let mut contents = String::from("```tsq\n");
-            helix_core::syntax::pretty_print_tree(&mut contents, selected_node)?;
+            helix_core::syntax::pretty_print_tree(&mut contents, selected_node, &mut None)?;
             contents.push_str("\n```");
 
             let callback = async move {
