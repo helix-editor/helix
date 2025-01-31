@@ -328,7 +328,7 @@ fn signature_help_post_insert_char_hook(
 
 pub(super) fn register_hooks(handlers: &Handlers) {
     let tx = handlers.signature_hints.clone();
-    register_hook!(move |None, event: &mut OnModeSwitch<'_, '_>| {
+    register_hook!(move |event: &mut OnModeSwitch<'_, '_>| {
         match (event.old_mode, event.new_mode) {
             (Mode::Insert, _) => {
                 send_blocking(&tx, SignatureHelpEvent::Cancel);
@@ -347,12 +347,12 @@ pub(super) fn register_hooks(handlers: &Handlers) {
     });
 
     let tx = handlers.signature_hints.clone();
-    register_hook!(move |None, event: &mut PostInsertChar<'_, '_>| {
+    register_hook!(move |event: &mut PostInsertChar<'_, '_>| {
         signature_help_post_insert_char_hook(&tx, event)
     });
 
     let tx = handlers.signature_hints.clone();
-    register_hook!(move |None, event: &mut DocumentDidChange<'_>| {
+    register_hook!(move |event: &mut DocumentDidChange<'_>| {
         if event.doc.config.load().lsp.auto_signature_help && !event.ghost_transaction {
             send_blocking(&tx, SignatureHelpEvent::ReTrigger);
         }
@@ -360,7 +360,7 @@ pub(super) fn register_hooks(handlers: &Handlers) {
     });
 
     let tx = handlers.signature_hints.clone();
-    register_hook!(move |None, event: &mut SelectionDidChange<'_>| {
+    register_hook!(move |event: &mut SelectionDidChange<'_>| {
         if event.doc.config.load().lsp.auto_signature_help {
             send_blocking(&tx, SignatureHelpEvent::ReTrigger);
         }

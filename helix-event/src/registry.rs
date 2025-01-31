@@ -13,16 +13,9 @@ use parking_lot::RwLock;
 use crate::hook::ErasedHook;
 use crate::runtime_local;
 
-type Hooks = (Vec<ErasedHook>, HashMap<&'static str, ErasedHook>);
-
 pub struct Registry {
     events: HashMap<&'static str, TypeId, ahash::RandomState>,
-    /// A map from events to a tuple of hook collections
-    /// The first collection of hooks is a vector. It allows
-    /// hooks to be inserted, but they cannot be deactivated later
-    /// The second collection is a hashmap. Hooks can be inserted
-    /// with a specific name, and later removed as well.
-    handlers: HashMap<&'static str, Hooks, ahash::RandomState>,
+    handlers: HashMap<&'static str, Vec<ErasedHook>, ahash::RandomState>,
 }
 
 impl Registry {
@@ -41,7 +34,7 @@ impl Registry {
             }
             Entry::Vacant(ent) => {
                 ent.insert(ty);
-                self.handlers.insert(E::ID, (Vec::new(), HashMap::new()));
+                self.handlers.insert(E::ID, Vec::new());
             }
         }
     }
@@ -55,7 +48,6 @@ impl Registry {
     /// right now.
     pub unsafe fn register_hook<E: Event>(
         &mut self,
-        name: Option<&'static str>,
         hook: impl Fn(&mut E) -> Result<()> + 'static + Send + Sync,
     ) {
         // ensure event type ids match so we can rely on them always matching
@@ -68,26 +60,11 @@ impl Registry {
             "Tried to register invalid hook for event {id}"
         );
         let hook = ErasedHook::new(hook);
-        let handler = self.handlers.get_mut(id).unwrap();
-        if let Some(name) = name {
-            handler.1.insert(name, hook);
-        } else {
-            handler.0.push(hook);
-        }
-    }
-
-    pub fn unregister_hook<E: Event>(&mut self, name: &'static str) -> bool {
-        let Some((_vec_hooks, map_hooks)) = self.handlers.get_mut(E::ID) else {
-            log::error!("Tried to unregister a hook for an unknown event {}", E::ID);
-            return false;
-        };
-
-        map_hooks.remove(name).is_some()
+        self.handlers.get_mut(id).unwrap().push(hook);
     }
 
     pub fn register_dynamic_hook(
         &mut self,
-        name: Option<&'static str>,
         hook: impl Fn() -> Result<()> + 'static + Send + Sync,
         id: &str,
     ) -> Result<()> {
@@ -96,18 +73,12 @@ impl Registry {
             bail!("Tried to register handler for unknown event {id}");
         };
         let hook = ErasedHook::new_dynamic(hook);
-        let handler = self.handlers.get_mut(id).unwrap();
-        if let Some(name) = name {
-            handler.1.insert(name, hook);
-        } else {
-            handler.0.push(hook);
-        }
-
+        self.handlers.get_mut(id).unwrap().push(hook);
         Ok(())
     }
 
     pub fn dispatch<E: Event>(&self, mut event: E) {
-        let Some((vec_hooks, map_hooks)) = self.handlers.get(E::ID) else {
+        let Some(hooks) = self.handlers.get(E::ID) else {
             log::error!("Dispatched unknown event {}", E::ID);
             return;
         };
@@ -120,7 +91,7 @@ impl Registry {
             E::ID
         );
 
-        for hook in vec_hooks.iter().chain(map_hooks.values()) {
+        for hook in hooks {
             // safety: event type is the same
             if let Err(err) = unsafe { hook.call(&mut event) } {
                 log::error!("{} hook failed: {err:#?}", E::ID);
