@@ -1,5 +1,5 @@
 (comment (content) @injection.content
- (#set! injection.language "comment"))
+  (#set! injection.language "comment"))
 
 (math (content) @injection.content
   (#set! injection.language "latex") (#set! injection.include-unnamed-children))
