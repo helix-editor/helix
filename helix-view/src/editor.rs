@@ -1160,6 +1160,7 @@ impl Action {
     }
 }
 
+#[derive(Debug)]
 /// Error thrown on failed document closed
 pub enum CloseError {
     /// Document doesn't exist
