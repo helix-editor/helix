@@ -100,13 +100,11 @@ impl Component for Hover {
 
         // hover content
         let contents = contents.parse(Some(&cx.editor.theme));
-        let contents_area = area
-            .clip_top(if self.hovers.len() > 1 {
-                HEADER_HEIGHT + SEPARATOR_HEIGHT
-            } else {
-                0
-            })
-            .clip_bottom(u16::from(cx.editor.popup_border()));
+        let contents_area = area.clip_top(if self.hovers.len() > 1 {
+            HEADER_HEIGHT + SEPARATOR_HEIGHT
+        } else {
+            0
+        });
         let contents_para = Paragraph::new(&contents)
             .wrap(Wrap { trim: false })
             .scroll((cx.scroll.unwrap_or_default() as u16, 0));
