@@ -504,6 +504,7 @@ impl MappableCommand {
         hover, "Show docs for item under cursor",
         toggle_comments, "Comment/uncomment selections",
         toggle_line_comments, "Line comment/uncomment selections",
+        testing1234, "a",
         toggle_block_comments, "Block comment/uncomment selections",
         rotate_selections_forward, "Rotate selections forward",
         rotate_selections_backward, "Rotate selections backward",
@@ -5177,6 +5178,13 @@ fn toggle_comments(cx: &mut Context) {
         // not block commented at all and don't have any tokens
         comment::toggle_line_comments(doc, selection, line_token)
     })
+}
+
+fn testing1234(cx: &mut Context) {
+    let doc = doc!(cx.editor);
+    let syntax = doc.syntax();
+
+    log::error!("{syntax:#?}");
 }
 
 fn toggle_line_comments(cx: &mut Context) {
