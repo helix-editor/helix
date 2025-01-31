@@ -756,7 +756,7 @@ impl LanguageConfiguration {
             let language = get_language(self.grammar.as_deref().unwrap_or(&self.language_id))
                 .map_err(|err| {
                     log::error!(
-                        "Failed to load tree-sitter parser for language {:?}: {}",
+                        "Failed to load tree-sitter parser for language {:?}: {:#}",
                         self.language_id,
                         err
                     )
