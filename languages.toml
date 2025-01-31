@@ -1334,6 +1334,8 @@ scope = "source.svelte"
 injection-regex = "svelte"
 file-types = ["svelte"]
 indent = { tab-width = 2, unit = "  " }
+comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "svelteserver" ]
 
 [[grammar]]
