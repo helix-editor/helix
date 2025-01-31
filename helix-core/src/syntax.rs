@@ -15,7 +15,7 @@ use bitflags::bitflags;
 use globset::GlobSet;
 use hashbrown::raw::RawTable;
 use helix_stdx::rope::{self, RopeSliceExt};
-use slotmap::{DefaultKey as LayerId, HopSlotMap};
+use slotmap::{DefaultKey as LayerId, DefaultKey as LanguageId, HopSlotMap};
 
 use std::{
     borrow::Cow,
@@ -92,8 +92,10 @@ pub struct Configuration {
 #[derive(Debug, Serialize, Deserialize)]
 #[serde(rename_all = "kebab-case", deny_unknown_fields)]
 pub struct LanguageConfiguration {
+    #[serde(skip)]
+    language_id: LanguageId,
     #[serde(rename = "name")]
-    pub language_id: String, // c-sharp, rust, tsx
+    pub language_name: String, // c-sharp, rust, tsx
     #[serde(rename = "language-id")]
     // see the table under https://microsoft.github.io/language-server-protocol/specifications/lsp/3.17/specification/#textDocumentItem
     pub language_server_language_id: Option<String>, // csharp, rust, typescriptreact, for the language-server
@@ -743,32 +745,33 @@ pub fn read_query(language: &str, filename: &str) -> String {
 
 impl LanguageConfiguration {
     fn initialize_highlight(&self, scopes: &[String]) -> Option<Arc<HighlightConfiguration>> {
-        let highlights_query = read_query(&self.language_id, "highlights.scm");
+        let highlights_query = read_query(&self.language_name, "highlights.scm");
         // always highlight syntax errors
         // highlights_query += "\n(ERROR) @error";
 
-        let injections_query = read_query(&self.language_id, "injections.scm");
-        let locals_query = read_query(&self.language_id, "locals.scm");
+        let injections_query = read_query(&self.language_name, "injections.scm");
+        let locals_query = read_query(&self.language_name, "locals.scm");
 
         if highlights_query.is_empty() {
             None
         } else {
-            let language = get_language(self.grammar.as_deref().unwrap_or(&self.language_id))
+            let language = get_language(self.grammar.as_deref().unwrap_or(&self.language_name))
                 .map_err(|err| {
                     log::error!(
                         "Failed to load tree-sitter parser for language {:?}: {:#}",
-                        self.language_id,
+                        self.language_name,
                         err
                     )
                 })
                 .ok()?;
             let config = HighlightConfiguration::new(
+                self.language_id,
                 language,
                 &highlights_query,
                 &injections_query,
                 &locals_query,
             )
-            .map_err(|err| log::error!("Could not parse queries for language {:?}. Are your grammars out of sync? Try running 'hx --grammar fetch' and 'hx --grammar build'. This query could not be parsed: {:?}", self.language_id, err))
+            .map_err(|err| log::error!("Could not parse queries for language {:?}. Are your grammars out of sync? Try running 'hx --grammar fetch' and 'hx --grammar build'. This query could not be parsed: {:?}", self.language_name, err))
             .ok()?;
 
             config.configure(scopes);
@@ -812,7 +815,7 @@ impl LanguageConfiguration {
     }
 
     fn load_query(&self, kind: &str) -> Option<Query> {
-        let query_text = read_query(&self.language_id, kind);
+        let query_text = read_query(&self.language_name, kind);
         if query_text.is_empty() {
             return None;
         }
@@ -822,7 +825,7 @@ impl LanguageConfiguration {
                 log::error!(
                     "Failed to parse {} queries for {}: {}",
                     kind,
-                    self.language_id,
+                    self.language_name,
                     e
                 )
             })
@@ -862,11 +865,11 @@ pub struct SoftWrap {
 #[derive(Debug)]
 struct FileTypeGlob {
     glob: globset::Glob,
-    language_id: usize,
+    language_id: LanguageId,
 }
 
 impl FileTypeGlob {
-    fn new(glob: globset::Glob, language_id: usize) -> Self {
+    fn new(glob: globset::Glob, language_id: LanguageId) -> Self {
         Self { glob, language_id }
     }
 }
@@ -890,7 +893,7 @@ impl FileTypeGlobMatcher {
         })
     }
 
-    fn language_id_for_path(&self, path: &Path) -> Option<&usize> {
+    fn language_id_for_path(&self, path: &Path) -> Option<&LanguageId> {
         self.matcher
             .matches(path)
             .iter()
@@ -905,10 +908,10 @@ impl FileTypeGlobMatcher {
 #[derive(Debug)]
 pub struct Loader {
     // highlight_names ?
-    language_configs: Vec<Arc<LanguageConfiguration>>,
-    language_config_ids_by_extension: HashMap<String, usize>, // Vec<usize>
+    language_configs: HopSlotMap<LanguageId, Arc<LanguageConfiguration>>,
+    language_config_ids_by_extension: HashMap<String, LanguageId>, // Vec<LanguageId>
     language_config_ids_glob_matcher: FileTypeGlobMatcher,
-    language_config_ids_by_shebang: HashMap<String, usize>,
+    language_config_ids_by_shebang: HashMap<String, LanguageId>,
 
     language_server_configs: HashMap<String, LanguageServerConfiguration>,
 
@@ -919,14 +922,17 @@ pub type LoaderError = globset::Error;
 
 impl Loader {
     pub fn new(config: Configuration) -> Result<Self, LoaderError> {
-        let mut language_configs = Vec::new();
+        let mut language_configs = HopSlotMap::new();
         let mut language_config_ids_by_extension = HashMap::new();
         let mut language_config_ids_by_shebang = HashMap::new();
         let mut file_type_globs = Vec::new();
 
-        for config in config.language {
-            // get the next id
-            let language_id = language_configs.len();
+        for mut config in config.language {
+            let language_id = language_configs.insert_with_key(|id| {
+                config.language_id = id;
+                Arc::new(config)
+            });
+            let config = &language_configs[language_id];
 
             for file_type in &config.file_types {
                 // entry().or_insert(Vec::new).push(language_id);
@@ -942,8 +948,6 @@ impl Loader {
             for shebang in &config.shebangs {
                 language_config_ids_by_shebang.insert(shebang.clone(), language_id);
             }
-
-            language_configs.push(Arc::new(config));
         }
 
         Ok(Self {
@@ -989,18 +993,18 @@ impl Loader {
 
     pub fn language_config_for_scope(&self, scope: &str) -> Option<Arc<LanguageConfiguration>> {
         self.language_configs
-            .iter()
+            .values()
             .find(|config| config.scope == scope)
             .cloned()
     }
 
-    pub fn language_config_for_language_id(
+    pub fn language_config_for_language_name(
         &self,
-        id: impl PartialEq<String>,
+        name: impl PartialEq<String>,
     ) -> Option<Arc<LanguageConfiguration>> {
         self.language_configs
-            .iter()
-            .find(|config| id.eq(&config.language_id))
+            .values()
+            .find(|config| name.eq(&config.language_name))
             .cloned()
     }
 
@@ -1008,7 +1012,7 @@ impl Loader {
     /// function will perform a regex match on the given string to find the closest language match.
     pub fn language_config_for_name(&self, slice: RopeSlice) -> Option<Arc<LanguageConfiguration>> {
         // PERF: If the name matches up with the id, then this saves the need to do expensive regex.
-        let shortcircuit = self.language_config_for_language_id(slice);
+        let shortcircuit = self.language_config_for_language_name(slice);
         if shortcircuit.is_some() {
             return shortcircuit;
         }
@@ -1017,12 +1021,12 @@ impl Loader {
 
         let mut best_match_length = 0;
         let mut best_match_position = None;
-        for (i, configuration) in self.language_configs.iter().enumerate() {
+        for (id, configuration) in self.language_configs.iter() {
             if let Some(injection_regex) = &configuration.injection_regex {
                 if let Some(mat) = injection_regex.find(slice.regex_input()) {
                     let length = mat.end() - mat.start();
                     if length > best_match_length {
-                        best_match_position = Some(i);
+                        best_match_position = Some(id);
                         best_match_length = length;
                     }
                 }
@@ -1037,7 +1041,7 @@ impl Loader {
         capture: &InjectionLanguageMarker,
     ) -> Option<Arc<LanguageConfiguration>> {
         match capture {
-            InjectionLanguageMarker::LanguageId(id) => self.language_config_for_language_id(*id),
+            InjectionLanguageMarker::LanguageId(id) => self.language_config_for_language_name(*id),
             InjectionLanguageMarker::Name(name) => self.language_config_for_name(*name),
             InjectionLanguageMarker::Filename(file) => {
                 let path_str: Cow<str> = (*file).into();
@@ -1053,7 +1057,7 @@ impl Loader {
     }
 
     pub fn language_configs(&self) -> impl Iterator<Item = &Arc<LanguageConfiguration>> {
-        self.language_configs.iter()
+        self.language_configs.values()
     }
 
     pub fn language_server_configs(&self) -> &HashMap<String, LanguageServerConfiguration> {
@@ -1066,7 +1070,7 @@ impl Loader {
         // Reconfigure existing grammars
         for config in self
             .language_configs
-            .iter()
+            .values()
             .filter(|cfg| cfg.is_highlight_initialized())
         {
             config.reconfigure(&self.scopes());
@@ -1423,6 +1427,13 @@ impl Syntax {
 
             Ok(())
         })
+    }
+
+    pub fn layer_config(&self, layer_id: LayerId) -> Arc<LanguageConfiguration> {
+        let loader = &self.loader.load();
+        let language_id = self.layers[layer_id].config.language_id;
+
+        Arc::clone(&loader.language_configs[language_id])
     }
 
     pub fn tree(&self) -> &Tree {
@@ -1795,6 +1806,7 @@ pub enum HighlightEvent {
 #[derive(Debug)]
 pub struct HighlightConfiguration {
     pub language: Grammar,
+    pub language_id: LanguageId,
     pub query: Query,
     injections_query: Query,
     combined_injections_patterns: Vec<usize>,
@@ -1891,6 +1903,7 @@ impl HighlightConfiguration {
     ///
     /// Returns a `HighlightConfiguration` that can then be used with the `highlight` method.
     pub fn new(
+        language_id: LanguageId,
         language: Grammar,
         highlights_query: &str,
         injection_query: &str,
@@ -1968,6 +1981,7 @@ impl HighlightConfiguration {
         let highlight_indices = ArcSwap::from_pointee(vec![None; query.capture_names().len()]);
         Ok(Self {
             language,
+            language_id,
             query,
             injections_query,
             combined_injections_patterns,
@@ -2795,7 +2809,8 @@ mod test {
         let textobject = TextObjectQuery { query };
         let mut cursor = QueryCursor::new();
 
-        let config = HighlightConfiguration::new(language, "", "", "").unwrap();
+        let config =
+            HighlightConfiguration::new(LanguageId::default(), language, "", "", "").unwrap();
         let syntax = Syntax::new(
             source.slice(..),
             Arc::new(config),
@@ -2860,6 +2875,7 @@ mod test {
 
         let language = get_language("rust").unwrap();
         let config = HighlightConfiguration::new(
+            LanguageId::default(),
             language,
             &std::fs::read_to_string("../runtime/grammars/sources/rust/queries/highlights.scm")
                 .unwrap(),
@@ -2971,7 +2987,8 @@ mod test {
         .unwrap();
         let language = get_language(language_name).unwrap();
 
-        let config = HighlightConfiguration::new(language, "", "", "").unwrap();
+        let config =
+            HighlightConfiguration::new(LanguageId::default(), language, "", "", "").unwrap();
         let syntax = Syntax::new(
             source.slice(..),
             Arc::new(config),
