@@ -1,17 +1,11 @@
 [
   (module)
+  (exposing)
   (backslash)
   (as)
   (port)
-  (exposing)
-  (infix)
   "|"
 ] @keyword
-
-[
-  "let"
-  "in"
-] @keyword.control
 
 (import) @keyword.control.import
 
@@ -26,6 +20,9 @@
 [
   (type)
   (alias)
+  (infix)
+  "let"
+  "in"
 ] @keyword.storage.type
 
 [
