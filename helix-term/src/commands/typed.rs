@@ -2158,138 +2158,174 @@ fn tree_sitter_tree(
     fn update_tree(editor: &mut Editor, is_update: bool) -> anyhow::Result<()> {
         // The user closed the document. Stop.
         if is_update && editor.tree_sitter_tree.is_none() {
-            helix_event::unregister_hook::<PostCommand>("tree-sitter-tree");
+            // helix_event::unregister_hook::<PostCommand>("tree-sitter-tree");
             return Ok(());
         };
+
+        // The document or view doesn't actually exist.
+        if let Some((tree_doc_id, tree_view_id)) = editor.tree_sitter_tree {
+            let mut should_close = false;
+            if editor.document(tree_doc_id).is_none() {
+                if editor.tree.contains(tree_view_id) {
+                    editor.close(tree_view_id);
+                    editor.tree_sitter_tree = None;
+                } else {
+                    editor.tree_sitter_tree = None;
+                }
+                should_close = true;
+                editor.tree_sitter_tree = None;
+            }
+
+            if !editor.tree.contains(tree_view_id) {
+                if editor.document(tree_doc_id).is_none() {
+                    editor.tree_sitter_tree = None;
+                } else {
+                    let _ = editor.close_document(tree_doc_id, true);
+                    editor.tree_sitter_tree = None;
+                }
+                should_close = true;
+            }
+
+            if should_close {
+                // for some reason this line of code makes the program freeze ... ?
+                // helix_event::unregister_hook::<PostCommand>("tree-sitter-tree");
+                return Ok(());
+            }
+        }
 
         let (view, doc) = current!(editor);
 
         if let Some((_tree_doc_id, tree_view_id)) = editor.tree_sitter_tree {
+            // The current document is the tree sitter document.
             if view.id == tree_view_id {
                 // Reset the tree sitter document's highlights if we focus
                 // the document, since we have a visual selection which highlights the same
                 // region. But these highlights are useful to highlight a piece of
                 // text while that document is not focused.
                 doc.set_highlights(view.id, vec![]);
-                // Do not update the tree sitter document if the current document is the
-                // tree sitter document. This will cause the tree sitter document
+                // Do not update the tree sitter document. That would cause it
                 // to create a syntax tree for itself, and this process will continue
                 // until Helix will disable syntax highlighting for the file.
                 return Ok(());
             }
         }
 
-        // if let Some((tree_doc_id, _tree_view_id)) = editor.tree_sitter_tree_document_id.as_ref() {
-        //     if editor.document(tree_doc_id.clone()).is_none() {
-        //         editor.tree_sitter_tree_document_id = None;
-        //         return Ok(());
-        //     };
-        // }
-
         let text = doc.text();
-        let syntax = doc.syntax();
+        let syntax = doc
+            .syntax()
+            .context("No tree-sitter grammar found for this file")?;
 
         let cursor_idx = doc.selection(view.id).primary().cursor(text.slice(..));
+        let from = 0;
+        let to = text.len_chars();
 
-        if let Some(syntax) = syntax {
-            let from = 0;
-            let to = text.len_chars();
+        if let (Some(selected_node), Some(node_at_cursor)) = (
+            syntax.descendant_for_byte_range(from, to),
+            syntax.descendant_for_byte_range(cursor_idx, cursor_idx),
+        ) {
+            let kind = node_at_cursor.kind();
+            let appearance_count =
+                find_position_of_node(kind, selected_node, cursor_idx, &mut vec![]);
 
-            if let (Some(selected_node), Some(node_at_cursor)) = (
-                syntax.descendant_for_byte_range(from, to),
-                syntax.descendant_for_byte_range(cursor_idx, cursor_idx),
-            ) {
-                let kind = node_at_cursor.kind();
-                let appearance_count =
-                    find_position_of_node(kind, selected_node, cursor_idx, &mut vec![]);
+            let mut syntax_tree = String::new();
 
-                let mut contents = String::new();
+            let position = helix_core::syntax::pretty_print_tree(
+                &mut syntax_tree,
+                selected_node,
+                &mut appearance_count
+                    .map(|count| NodeSearch::new(count, kind.to_owned()))
+                    .as_mut(),
+            )?;
 
-                let position = helix_core::syntax::pretty_print_tree(
-                    &mut contents,
-                    selected_node,
-                    &mut appearance_count
-                        .map(|count| NodeSearch::new(count, kind.to_owned()))
-                        .as_mut(),
-                )?;
+            // Create the tree first on the invokation of the command
+            if editor.tree_sitter_tree.is_none() && !is_update {
+                let tree_id = editor.new_file_from_document(
+                    Action::VerticalSplit,
+                    Document::from(
+                        Rope::from(syntax_tree.clone()),
+                        None,
+                        Arc::clone(&editor.config),
+                    ),
+                );
 
-                let contents = contents.to_string();
+                let (view, doc) = current!(editor);
 
-                if editor.tree_sitter_tree.is_none() && !is_update {
-                    let tree_id = editor.new_file_from_document(
-                        Action::VerticalSplit,
-                        Document::from(
-                            Rope::from(contents.clone()),
-                            None,
-                            Arc::clone(&editor.config),
-                        ),
-                    );
+                doc.set_language_by_language_id("tsq", Arc::clone(&editor.syn_loader))?;
+                doc.unmodifiable();
+                doc.tree_sitter_tree();
 
-                    let (view, doc) = current!(editor);
+                editor.tree_sitter_tree = Some((tree_id, view.id));
 
-                    doc.set_language_by_language_id("tsq", Arc::clone(&editor.syn_loader))?;
-                    doc.unmodifiable();
-                    doc.tree_sitter_tree();
+                // Creating the new tree-sitter buffer will switch us
+                // to it, so we're switching it back to the buffer
+                // which was focused previously
+                editor.focus_prev();
+            }
 
-                    editor.tree_sitter_tree = Some((tree_id, view.id));
+            if let Some((tree_doc_id, tree_doc_view_id)) = editor.tree_sitter_tree {
+                let tree_view = editor.tree.try_get(tree_doc_view_id).cloned();
+                let tree_doc = editor.document_mut(tree_doc_id);
+                if let Some(tree_doc) = tree_doc {
+                    // We replace the entire file's syntax tree with our
+                    // updated syntax tree
+                    let whole_file = Range::new(0, tree_doc.text().len_chars());
+                    let selection = Selection::new(vec![whole_file].into(), 0);
 
-                    editor.focus_prev();
-                }
+                    if let Some((node_start, node_end, node_kind)) = position {
+                        let transaction = Transaction::change(
+                            tree_doc.text(),
+                            selection.iter().map(|range| {
+                                (
+                                    range.from(),
+                                    range.to(),
+                                    // TODO: remove this clone
+                                    Some(Tendril::from(syntax_tree.clone())),
+                                )
+                            }),
+                        )
+                        .with_selection(Range::new(node_start, node_end).into());
 
-                if let Some((tree_doc, tree_doc_view_id)) = editor.tree_sitter_tree {
-                    let tree_view = editor.tree.get(tree_doc_view_id).clone();
-                    let tree_doc = editor.document_mut(tree_doc);
-                    if let Some(tree_doc) = tree_doc {
-                        let selection = Selection::new(
-                            vec![Range::new(0, tree_doc.text().len_chars())].into(),
-                            0,
+                        // panic happens here, but why?
+                        tree_doc.apply_bypass_unmodifiable(&transaction, tree_doc_view_id);
+
+                        // Highlight the node in the syntax tree where
+                        // our cursor lies. This is needed even though we have
+                        // a selection there of the same size.
+                        //
+                        // The selection cannot be seen while the buffer isn't focused, but the
+                        // highlight can.
+                        tree_doc.set_highlights(
+                            tree_doc_view_id,
+                            node_kind
+                                .chars()
+                                .zip(node_start..node_end)
+                                .map(|(ch, idx)| Overlay::new(idx, ch.to_string()))
+                                .collect(),
                         );
-                        if let Some((lower, upper, kind)) = position {
-                            let transaction = Transaction::change(
-                                tree_doc.text(),
-                                selection.iter().map(|range| {
-                                    (
-                                        range.from(),
-                                        range.to(),
-                                        // TODO: remove this clone
-                                        Some(Tendril::from(contents.clone())),
-                                    )
-                                }),
-                            )
-                            .with_selection(Range::new(lower, upper).into());
 
-                            tree_doc.apply_bypass_unmodifiable(&transaction, tree_doc_view_id);
-
-                            tree_doc.set_highlights(
-                                tree_doc_view_id,
-                                kind.chars()
-                                    .zip(lower..upper)
-                                    .map(|(ch, idx)| Overlay::new(idx, ch.to_string()))
-                                    .collect(),
-                            );
-
-                            align_view(tree_doc, &tree_view, Align::Center);
-                        };
-                    } else {
-                        // User closed the document
-                        editor.tree_sitter_tree = None;
-                    }
+                        if let Some(view) = tree_view {
+                            align_view(tree_doc, &view, Align::Center);
+                        }
+                    };
+                } else {
+                    // User closed the document
+                    editor.tree_sitter_tree = None;
                 }
             }
-        } else {
-            bail!("No tree-sitter grammar found for this file");
         }
 
         Ok(())
     }
 
-    // Initially create the tree
+    // Create the tree
     update_tree(cx.editor, false)?;
 
     // Update it until the user closes it
-    helix_event::register_hook!(move |None, e: &mut PostCommand<'_, '_>| {
-        update_tree(e.cx.editor, true)
-    });
+    helix_event::register_hook!(
+        move |Some("tree-sitter-tree"), e: &mut PostCommand<'_, '_>| {
+            update_tree(e.cx.editor, true)
+        }
+    );
 
     Ok(())
 }
