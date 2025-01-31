@@ -13,6 +13,12 @@
   (link_destination)
 ] @markup.link.url
 
+(inline_link_destination
+  [
+    "("
+    ")"
+  ] @punctuation.bracket)
+
 (link_reference_definition (link_label) @markup.link.label)
 
 (link_reference_definition
@@ -21,21 +27,9 @@
     "]"
   ] @punctuation.bracket)
 
-(image_description
-  [
-    "["
-    "]"
-  ] @punctuation.bracket)
-
 (image_description) @label
 
-(inline_image
-  [
-    "!["
-    "]"
-  ] @punctuation.bracket)
-
-(collapsed_reference_image
+(image_description
   [
     "!["
     "]"
@@ -45,7 +39,6 @@
 
 (full_reference_image
   [
-    "!["
     "["
     "]"
   ] @punctuation.bracket)
@@ -70,11 +63,7 @@
 
 (link_reference_definition ":" @punctuation.delimiter)
 
-(inline_link_destination
-  [
-    "("
-    ")"
-  ] @punctuation.bracket)
+(inline_link (inline_link_destination) @markup.link.url)
 
 (autolink
   [
@@ -120,27 +109,31 @@
     "]"
   ] @punctuation.bracket)
 
-(comment
-  [
-    "{"
-    "}"
-    "%"
-  ] @comment.block)
+(inline_comment) @comment.line
 
-; INFO: djot only has block-scoped comments.
 (comment) @comment.block
-
-(raw_inline) @markup.raw
 
 (verbatim) @markup.raw
 
+(raw_inline) @markup.raw
+
 (math) @markup.raw
 
-([
+[
   (emphasis_begin)
   (emphasis_end)
   (strong_begin)
   (strong_end)
+  (superscript_begin)
+  (superscript_end)
+  (subscript_begin)
+  (subscript_end)
+  (highlighted_begin)
+  (highlighted_end)
+  (insert_begin)
+  (insert_end)
+  (delete_begin)
+  (delete_end)
   (verbatim_marker_begin)
   (verbatim_marker_end)
   (math_marker)
@@ -149,41 +142,7 @@
   (raw_inline_attribute)
   (raw_inline_marker_begin)
   (raw_inline_marker_end)
-] @punctuation.bracket)
-
-(subscript
-  [
-    "~"
-    "{~"
-    "~}"
-  ] @punctuation.bracket)
-
-(superscript
-  [
-    "^"
-    "{^"
-    "^}"
-  ] @punctuation.bracket)
-
-(delete
-  [
-    "{-"
-    "-}"
-  ] @punctuation.bracket)
-
-(insert
-  [
-    "{+"
-    "+}"
-  ] @punctuation.bracket)
-
-; NOTE: We need to target tokens specifically because `{=` etc can exist as fallback symbols in
-; regular text, which we don't want to highlight or conceal.
-(highlighted
-  [
-    "{="
-    "=}"
-  ] @punctuation.bracket)
+] @punctuation.bracket
 
 ; TEMP: Scope not available, with no appropriate alternative.
 (subscript) @markup.subscript
@@ -199,43 +158,42 @@
 
 (delete) @markup.strikethrough
 
-; INFO: This applies to emojis.
 (symbol) @string.special.symbol
 
 (strong) @markup.bold
 
 (emphasis) @markup.italic
 
-(backslash_escape) @constant.character.escape
-
-(hard_line_break) @constant.character.escape
+[
+  (hard_line_break)
+  (backslash_escape)
+] @constant.character.escape
 
 ((quotation_marks) @constant.character.escape
   (#any-of? @constant.character.escape "\\\"" "\\'"))
 
-; NOTE: Opting for this over the @punctuation.bracket used for things like
-; {-delete-} to emphasise the semantic significance of specified opening/closing
-; quotation marks.
 (quotation_marks) @markup.quote
 
-; INFO: `term` only matches on definition list items -- other list items won't be highlighted.
 (list_item (term) @constructor)
 
 [
   (ellipsis)
   (en_dash)
   (em_dash)
+  (quotation_marks)
 ] @punctuation.special
 
-(checked 
+(checked
   [
-   "x"
-   "X"
+    "x"
+    "X"
   ] @constant.builtin.boolean) @markup.list.checked
 
-(list_marker_task (checked)) @markup.list.checked
+(list_marker_task
+  (checked)) @markup.list.checked
 
-(list_marker_task (unchecked)) @markup.list.unchecked
+(list_marker_task
+  (unchecked)) @markup.list.unchecked
 
 [
   (list_marker_decimal_period)
@@ -274,9 +232,10 @@
 
 (table_header) @markup.heading
 
-(block_quote) @markup.quote
-
-(block_quote_marker) @markup.quote
+[
+  (block_quote)
+  (block_quote_marker)
+] @markup.quote
 
 (language_marker) @punctuation.delimiter
 
@@ -294,6 +253,7 @@
 [
   (code_block)
   (raw_block)
+  (frontmatter)
 ] @markup.raw.block
 
 [
@@ -303,9 +263,28 @@
 
 (thematic_break) @special
 
-(heading1 (marker) @markup.heading.marker) @markup.heading.1
-(heading2 (marker) @markup.heading.marker) @markup.heading.2
-(heading3 (marker) @markup.heading.marker) @markup.heading.3
-(heading4 (marker) @markup.heading.marker) @markup.heading.4
-(heading5 (marker) @markup.heading.marker) @markup.heading.5
-(heading6 (marker) @markup.heading.marker) @markup.heading.6
+((heading
+  (marker) @markup.heading.marker) @markup.heading.1
+  (#eq? @markup.heading.marker "# "))
+
+((heading
+  (marker) @markup.heading.marker) @markup.heading.2
+  (#eq? @markup.heading.marker "## "))
+
+((heading
+  (marker) @markup.heading.marker) @markup.heading.3
+  (#eq? @markup.heading.marker "### "))
+
+((heading
+  (marker) @markup.heading.marker) @markup.heading.4
+  (#eq? @markup.heading.marker "##### "))
+
+((heading
+  (marker) @markup.heading.marker) @markup.heading.5
+  (#eq? @markup.heading.marker "###### "))
+
+((heading
+  (marker) @markup.heading.marker) @markup.heading.6
+  (#eq? @markup.heading.marker "####### "))
+
+(heading) @markup.heading
