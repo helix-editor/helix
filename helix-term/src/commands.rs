@@ -3514,6 +3514,10 @@ async fn make_format_callback(
                 }
             }
             Err(err) => {
+                if write.is_none() {
+                    editor.set_error(err.to_string());
+                    return;
+                }
                 log::info!("failed to format '{}': {err}", doc.display_name());
             }
         }
