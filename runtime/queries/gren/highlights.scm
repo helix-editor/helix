@@ -1,33 +1,40 @@
-; Keywords
 [
-    "if"
-    "then"
-    "else"
-    "let"
-    "in"
- ] @keyword.control
-(when) @keyword.control
-(is) @keyword.control
+  (module)
+  (backslash)
+  (as)
+  (port)
+  (exposing)
+  (infix)
+  "|"
+] @keyword
 
-(colon) @keyword.operator
-(backslash) @keyword
-(as) @keyword
-(port) @keyword
-(exposing) @keyword
-(alias) @keyword
-(infix) @keyword
+[
+  "let"
+  "in"
+] @keyword.control
 
-(arrow) @keyword.operator
-(dot) @keyword.operator
+(import) @keyword.control.import
 
-(type_annotation(lower_case_identifier) @function)
-(port_annotation(lower_case_identifier) @function)
-(file (value_declaration (function_declaration_left(lower_case_identifier) @function)))
+[
+  "if"
+  "then"
+  "else"
+  (when)
+  (is)
+] @keyword.control.conditional
 
-(field name: (lower_case_identifier) @attribute)
-(field_access_expr(lower_case_identifier) @attribute)
+[
+  (type)
+  (alias)
+] @keyword.storage.type
 
-(operator_identifier) @keyword.operator
+[
+  (colon)
+  (arrow)
+  (dot)
+  (operator_identifier)
+] @operator
+
 (eq) @keyword.operator.assignment
 
 [
@@ -39,24 +46,26 @@
   "}"
 ] @punctuation.bracket
 
-"|" @keyword
 "," @punctuation.delimiter
 
-[
-  "|>"
-] @keyword
+; functions
 
+(type_annotation(lower_case_identifier) @function)
+(port_annotation(lower_case_identifier) @function)
+(file (value_declaration (function_declaration_left(lower_case_identifier) @function)))
 
-(import) @keyword.control.import
-(module) @keyword.other
+; types
 
-(number_constant_expr) @constant.numeric
-
-(type) @type
+(field name: (lower_case_identifier) @variable.other.member)
+(field_type name: (lower_case_identifier) @variable.other.member)
+(field_access_expr(lower_case_identifier) @variable.other.member)
 
 (type_declaration(upper_case_identifier) @type)
-(type_ref) @type
+(type_declaration typeName: (lower_type_name (lower_case_identifier)) @type.parameter)
+((type_ref) @type)
 (type_alias_declaration name: (upper_case_identifier) @type)
+(type_alias_declaration typeVariable: (lower_type_name (lower_case_identifier)) @type.parameter)
+(type_variable (lower_case_identifier) @type.parameter)
 
 (union_pattern constructor: (upper_case_qid (upper_case_identifier) @label (dot) (upper_case_identifier) @variable.other.member)) 
 (union_pattern constructor: (upper_case_qid (upper_case_identifier) @variable.other.member)) 
@@ -70,12 +79,11 @@
 (line_comment) @comment
 (block_comment) @comment
 
+; numbers
+(number_constant_expr) @constant.numeric
+
 ; strings
 (string_escape) @constant.character.escape
 
-(open_quote) @string
-(close_quote) @string
-(regular_string_part) @string
-
-(open_char) @constant.character
-(close_char) @constant.character
+(string_constant_expr) @string
+(char_constant_expr) @constant.character
