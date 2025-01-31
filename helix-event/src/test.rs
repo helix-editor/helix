@@ -17,13 +17,13 @@ fn smoke_test() {
     // setup hooks
     let res1: Arc<Mutex<String>> = Arc::default();
     let acc = Arc::clone(&res1);
-    register_hook!(move |None, event: &mut Event1| {
+    register_hook!(move |event: &mut Event1| {
         acc.lock().push_str(&event.content);
         Ok(())
     });
     let res2: Arc<AtomicUsize> = Arc::default();
     let acc = Arc::clone(&res2);
-    register_hook!(move |None, event: &mut Event2| {
+    register_hook!(move |event: &mut Event2| {
         acc.fetch_add(event.content, Ordering::Relaxed);
         Ok(())
     });
@@ -68,7 +68,6 @@ fn dynamic() {
     let count1 = count.clone();
     let count2 = count.clone();
     register_dynamic_hook(
-        None,
         move || {
             count1.fetch_add(2, Ordering::Relaxed);
             Ok(())
@@ -77,7 +76,6 @@ fn dynamic() {
     )
     .unwrap();
     register_dynamic_hook(
-        None,
         move || {
             count2.fetch_add(3, Ordering::Relaxed);
             Ok(())

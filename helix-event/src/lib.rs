@@ -68,24 +68,17 @@ pub fn register_event<E: Event + 'static>() {
 /// express that kind of constraint for a generic type with the Rust type system
 /// as of this writing.
 pub unsafe fn register_hook_raw<E: Event>(
-    name: Option<&'static str>,
     hook: impl Fn(&mut E) -> Result<()> + 'static + Send + Sync,
 ) {
-    registry::with_mut(|registry| registry.register_hook(name, hook))
+    registry::with_mut(|registry| registry.register_hook(hook))
 }
 
 /// Register a hook solely by event name
 pub fn register_dynamic_hook(
-    name: Option<&'static str>,
     hook: impl Fn() -> Result<()> + 'static + Send + Sync,
     id: &str,
 ) -> Result<()> {
-    registry::with_mut(|reg| reg.register_dynamic_hook(name, hook, id))
-}
-
-/// Unregister a named hook
-pub fn unregister_hook<E: Event>(name: &'static str) -> bool {
-    registry::with_mut(|registry| registry.unregister_hook::<E>(name))
+    registry::with_mut(|reg| reg.register_dynamic_hook(hook, id))
 }
 
 pub fn dispatch(e: impl Event) {
@@ -145,7 +138,7 @@ macro_rules! register_hook {
     // Safety: this is safe because we fully control the type of the event here and
     // ensure all lifetime arguments are fully generic and the correct number of lifetime arguments
     // is present
-    (move |$name:expr, $event:ident: &mut $event_ty: ident<$($lt: lifetime),*>| $body: expr) => {
+    (move |$event:ident: &mut $event_ty: ident<$($lt: lifetime),*>| $body: expr) => {
         let val = move |$event: &mut $event_ty<$($lt),*>| $body;
         unsafe {
             // Lifetimes are a bit of a pain. We want to allow events being
@@ -194,10 +187,10 @@ macro_rules! register_hook {
                     panic!("invalid type alias");
                 }
             };
-            $crate::register_hook_raw::<$crate::events!(@replace_lt $event_ty, $('static, $lt),*)>($name, val);
+            $crate::register_hook_raw::<$crate::events!(@replace_lt $event_ty, $('static, $lt),*)>(val);
         }
     };
-    (move |$name:expr, $event:ident: &mut $event_ty: ident| $body: expr) => {
+    (move |$event:ident: &mut $event_ty: ident| $body: expr) => {
         let val = move |$event: &mut $event_ty| $body;
         unsafe {
             #[allow(unused)]
@@ -206,7 +199,7 @@ macro_rules! register_hook {
                     panic!("invalid type alias");
                 }
             };
-            $crate::register_hook_raw::<$event_ty>($name, val);
+            $crate::register_hook_raw::<$event_ty>(val);
         }
     };
 }

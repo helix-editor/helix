@@ -2158,7 +2158,6 @@ fn tree_sitter_tree(
     fn update_tree(editor: &mut Editor, is_update: bool) -> anyhow::Result<()> {
         // The user closed the document. Stop.
         if is_update && editor.tree_sitter_tree.is_none() {
-            // helix_event::unregister_hook::<PostCommand>("tree-sitter-tree");
             return Ok(());
         };
 
@@ -2187,8 +2186,6 @@ fn tree_sitter_tree(
             }
 
             if should_close {
-                // for some reason this line of code makes the program freeze ... ?
-                // helix_event::unregister_hook::<PostCommand>("tree-sitter-tree");
                 return Ok(());
             }
         }
@@ -2321,11 +2318,9 @@ fn tree_sitter_tree(
     update_tree(cx.editor, false)?;
 
     // Update it until the user closes it
-    helix_event::register_hook!(
-        move |Some("tree-sitter-tree"), e: &mut PostCommand<'_, '_>| {
-            update_tree(e.cx.editor, true)
-        }
-    );
+    helix_event::register_hook!(move |e: &mut PostCommand<'_, '_>| {
+        update_tree(e.cx.editor, true)
+    });
 
     Ok(())
 }
