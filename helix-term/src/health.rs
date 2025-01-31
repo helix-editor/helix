@@ -183,7 +183,7 @@ pub fn languages_all() -> std::io::Result<()> {
 
     syn_loader_conf
         .language
-        .sort_unstable_by_key(|l| l.language_id.clone());
+        .sort_unstable_by_key(|l| l.language_name.clone());
 
     let check_binary = |cmd: Option<&str>| match cmd {
         Some(cmd) => match helix_stdx::env::which(cmd) {
@@ -194,7 +194,7 @@ pub fn languages_all() -> std::io::Result<()> {
     };
 
     for lang in &syn_loader_conf.language {
-        write!(stdout, "{}", fit(&lang.language_id))?;
+        write!(stdout, "{}", fit(&lang.language_name))?;
 
         let mut cmds = lang.language_servers.iter().filter_map(|ls| {
             syn_loader_conf
@@ -214,7 +214,7 @@ pub fn languages_all() -> std::io::Result<()> {
         write!(stdout, "{}", check_binary(formatter))?;
 
         for ts_feat in TsFeature::all() {
-            match load_runtime_file(&lang.language_id, ts_feat.runtime_filename()).is_ok() {
+            match load_runtime_file(&lang.language_name, ts_feat.runtime_filename()).is_ok() {
                 true => write!(stdout, "{}", color(fit("✓"), Color::Green))?,
                 false => write!(stdout, "{}", color(fit("✘"), Color::Red))?,
             }
@@ -257,7 +257,7 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
     let lang = match syn_loader_conf
         .language
         .iter()
-        .find(|l| l.language_id == lang_str)
+        .find(|l| l.language_name == lang_str)
     {
         Some(l) => l,
         None => {
@@ -266,8 +266,11 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
             let suggestions: Vec<&str> = syn_loader_conf
                 .language
                 .iter()
-                .filter(|l| l.language_id.starts_with(lang_str.chars().next().unwrap()))
-                .map(|l| l.language_id.as_str())
+                .filter(|l| {
+                    l.language_name
+                        .starts_with(lang_str.chars().next().unwrap())
+                })
+                .map(|l| l.language_name.as_str())
                 .collect();
             if !suggestions.is_empty() {
                 let suggestions = suggestions.join(", ");
@@ -301,7 +304,7 @@ pub fn language(lang_str: String) -> std::io::Result<()> {
             .map(|formatter| formatter.command.to_string()),
     )?;
 
-    probe_parser(lang.grammar.as_ref().unwrap_or(&lang.language_id))?;
+    probe_parser(lang.grammar.as_ref().unwrap_or(&lang.language_name))?;
 
     for ts_feat in TsFeature::all() {
         probe_treesitter_feature(&lang_str, *ts_feat)?

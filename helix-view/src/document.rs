@@ -1232,7 +1232,7 @@ impl Document {
     ) -> anyhow::Result<()> {
         let language_config = (*config_loader)
             .load()
-            .language_config_for_language_id(language_id)
+            .language_config_for_language_name(language_id)
             .ok_or_else(|| anyhow!("invalid language id: {}", language_id))?;
         self.set_language(Some(language_config), Some(config_loader));
         Ok(())
@@ -1714,7 +1714,7 @@ impl Document {
     pub fn language_name(&self) -> Option<&str> {
         self.language
             .as_ref()
-            .map(|language| language.language_id.as_str())
+            .map(|language| language.language_name.as_str())
     }
 
     /// Language ID for the document. Either the `language-id`,
