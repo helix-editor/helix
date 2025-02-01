@@ -5204,7 +5204,10 @@ fn toggle_line_comments(cx: &mut Context) {
         cx,
         Box::new(
             |doc_line_token, doc_block_tokens, rope, selection, mut get_comment_tokens| {
+                // when we add comment tokens, we want to extend our selection to
+                // also include the added tokens.
                 let mut selections = SmallVec::new();
+                let mut added_chars = 0;
                 let transaction = Transaction::change(
                     rope,
                     selection.iter().flat_map(|range| {
@@ -5223,12 +5226,13 @@ fn toggle_line_comments(cx: &mut Context) {
                             let default_block_tokens = &[BlockCommentToken::default()];
                             let block_comment_tokens = block_tokens.unwrap_or(default_block_tokens);
                             let ranges = &comment::split_lines_of_range(rope.slice(..), range);
-                            let (changes, should_select) =
-                                comment::toggle_block_comments(rope, ranges, block_comment_tokens);
-                            if should_select {
-                                selections.extend(ranges.clone());
-                            };
-                            changes
+                            comment::toggle_block_comments(
+                                rope,
+                                ranges,
+                                block_comment_tokens,
+                                &mut selections,
+                                &mut added_chars,
+                            )
                         } else {
                             comment::toggle_line_comments(rope, range, line_token)
                         }
@@ -5246,7 +5250,10 @@ fn toggle_block_comments(cx: &mut Context) {
         cx,
         Box::new(
             |doc_line_token, doc_block_tokens, rope, selection, mut get_injected_tokens| {
+                // when we add comment tokens, we want to extend our selection to
+                // also include the added tokens.
                 let mut selections = SmallVec::new();
+                let mut added_chars = 0;
                 let transaction = Transaction::change(
                     rope,
                     selection.iter().flat_map(|range| {
@@ -5266,15 +5273,14 @@ fn toggle_block_comments(cx: &mut Context) {
                         } else {
                             let default_block_tokens = &[BlockCommentToken::default()];
                             let block_comment_tokens = block_tokens.unwrap_or(default_block_tokens);
-                            let (changes, should_select) = comment::toggle_block_comments(
+                            let ranges = vec![*range];
+                            comment::toggle_block_comments(
                                 rope,
-                                &vec![*range],
+                                &ranges,
                                 block_comment_tokens,
-                            );
-                            if should_select {
-                                selections.push(*range);
-                            };
-                            changes
+                                &mut selections,
+                                &mut added_chars,
+                            )
                         }
                     }),
                 );

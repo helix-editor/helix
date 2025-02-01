@@ -302,16 +302,33 @@ pub fn toggle_block_comments(
     doc: &Rope,
     ranges: &Vec<Range>,
     tokens: &[BlockCommentToken],
-) -> (Vec<Change>, bool) {
+    selections: &mut SmallVec<[Range; 1]>,
+    added_chars: &mut usize,
+) -> Vec<Change> {
     let text = doc.slice(..);
     let (commented, comment_changes) = find_block_comments(tokens, text, ranges);
-    let (changes, _ranges) =
+    let (changes, new_ranges) =
         create_block_comment_transaction(doc, ranges, commented, comment_changes);
     if commented {
-        // changes = changes.with_selection(Selection::new(ranges, selection.primary_index()));
-        (changes, false)
+        changes
     } else {
-        (changes, true)
+        // when we add comment tokens, we want to extend our selection to
+        // also include the added tokens.
+        for (i, range) in new_ranges.iter().enumerate() {
+            // will not panic because we're never removing or
+            // creating ranges. Only shifting / increasing size
+            // of existing ranges to accomodate the newly added
+            // comment tokens.
+            let old_range = ranges[i];
+            // Will not underflow because the new range must always be
+            // at least the same size as the old range, since we're
+            // adding comment token characters, never removing.
+            let range = Range::new(range.from() + *added_chars, range.to() + *added_chars);
+            selections.push(range);
+            *added_chars += range.len() - old_range.len();
+        }
+
+        changes
     }
 }
 
@@ -446,8 +463,13 @@ mod test {
             );
 
             // comment
-            let changes =
-                toggle_block_comments(&doc, &vec![range], &[BlockCommentToken::default()]).0;
+            let changes = toggle_block_comments(
+                &doc,
+                &vec![range],
+                &[BlockCommentToken::default()],
+                &mut SmallVec::new(),
+                &mut 0,
+            );
             let transaction = Transaction::change(&doc, changes.into_iter());
             transaction.apply(&mut doc);
 
@@ -455,8 +477,13 @@ mod test {
 
             // uncomment
             let range = Range::new(0, doc.len_chars());
-            let changes =
-                toggle_block_comments(&doc, &vec![range], &[BlockCommentToken::default()]).0;
+            let changes = toggle_block_comments(
+                &doc,
+                &vec![range],
+                &[BlockCommentToken::default()],
+                &mut SmallVec::new(),
+                &mut 0,
+            );
             let transaction = Transaction::change(&doc, changes.into_iter());
             transaction.apply(&mut doc);
             assert_eq!(doc, "1\n2\n3");
@@ -464,8 +491,13 @@ mod test {
             // don't panic when there is just a space in comment
             doc = Rope::from("/* */");
             let range = Range::new(0, doc.len_chars());
-            let changes =
-                toggle_block_comments(&doc, &vec![range], &[BlockCommentToken::default()]).0;
+            let changes = toggle_block_comments(
+                &doc,
+                &vec![range],
+                &[BlockCommentToken::default()],
+                &mut SmallVec::new(),
+                &mut 0,
+            );
             let transaction = Transaction::change(&doc, changes.into_iter());
             transaction.apply(&mut doc);
             assert_eq!(doc, "");
