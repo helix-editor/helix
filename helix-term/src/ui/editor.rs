@@ -31,7 +31,7 @@ use helix_view::{
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc, sync::Arc};
+use std::{mem::take, num::NonZeroUsize, rc::Rc, sync::Arc};
 
 use tui::{buffer::Buffer as Surface, text::Span};
 
@@ -609,7 +609,6 @@ impl EditorView {
 
     /// Render bufferline at the top
     pub fn render_bufferline(editor: &Editor, viewport: Rect, surface: &mut Surface) {
-        let scratch = PathBuf::from(SCRATCH_BUFFER_NAME); // default filename to use for scratch buffer
         surface.clear_with(
             viewport,
             editor
@@ -632,13 +631,23 @@ impl EditorView {
         let current_doc = view!(editor).doc;
 
         for doc in editor.documents() {
-            let fname = doc
+            let name = doc
                 .path()
-                .unwrap_or(&scratch)
-                .file_name()
-                .unwrap_or_default()
-                .to_str()
-                .unwrap_or_default();
+                .and_then(|p| {
+                    if editor.config().expand_bufferline && current_doc == doc.id() {
+                        let working_directory = helix_stdx::env::current_working_dir();
+                        let relative_path = pathdiff::diff_paths(p.as_path(), &working_directory);
+                        if let Some(rel_path) = relative_path {
+                            return if rel_path.starts_with("..") {
+                                p.to_str().map(|s| s.to_owned())
+                            } else {
+                                rel_path.to_str().map(|s| s.to_owned())
+                            };
+                        }
+                    }
+                    p.file_name().and_then(|s| s.to_str()).map(|s| s.to_owned())
+                })
+                .unwrap_or(SCRATCH_BUFFER_NAME.to_owned());
 
             let style = if current_doc == doc.id() {
                 bufferline_active
@@ -646,7 +655,7 @@ impl EditorView {
                 bufferline_inactive
             };
 
-            let text = format!(" {}{} ", fname, if doc.is_modified() { "[+]" } else { "" });
+            let text = format!(" {}{} ", name, if doc.is_modified() { "[+]" } else { "" });
             let used_width = viewport.x.saturating_sub(x);
             let rem_width = surface.area.width.saturating_sub(used_width);
 
