@@ -351,6 +351,92 @@ mod test {
     use ropey::Rope;
 
     #[test]
+    fn test_textobject_subword() {
+        // (text, [(char position, textobject, final range), ...])
+        let tests = &[
+            (
+                "cursor at beginning of doc",
+                vec![(0, Inside, (0, 6)), (0, Around, (0, 6))],
+            ),
+            (
+                "cursor at middle of word",
+                vec![
+                    (13, Inside, (10, 16)),
+                    (11, Inside, (10, 16)),
+                    (12, Inside, (10, 16)),
+                    (13, Around, (10, 16)),
+                    (11, Around, (10, 16)),
+                    (12, Around, (10, 16)),
+                ],
+            ),
+            (
+                "cursor on camelCase",
+                vec![
+                    (15, Inside, (15, 19)),
+                    (14, Inside, (10, 15)),
+                    (15, Around, (15, 19)),
+                    (14, Around, (10, 15)),
+                ],
+            ),
+            (
+                "cursor on kebab-case",
+                vec![
+                    (12, Inside, (10, 15)),
+                    (12, Around, (10, 16)),
+                    (15, Inside, (15, 16)),
+                    (15, Around, (15, 16)),
+                ],
+            ),
+            (
+                "cursor on snake_case",
+                vec![
+                    (12, Inside, (10, 15)),
+                    (12, Around, (10, 16)),
+                    (15, Inside, (15, 16)),
+                    (15, Around, (15, 16)),
+                ],
+            ),
+            (
+                "cursor on path/with/slashes",
+                vec![
+                    (11, Inside, (10, 14)),
+                    (11, Around, (10, 15)),
+                    (14, Inside, (14, 15)),
+                    (14, Around, (14, 15)),
+                    (16, Inside, (15, 19)),
+                    (16, Around, (15, 20)),
+                ],
+            ),
+            (
+                "cursor at end of doc",
+                vec![
+                    (19, Inside, (17, 20)),
+                    (19, Around, (17, 20)),
+                    (17, Inside, (17, 20)),
+                    (17, Around, (17, 20)),
+                ],
+            ),
+        ];
+
+        for (sample, scenario) in tests {
+            let doc = Rope::from(*sample);
+            let slice = doc.slice(..);
+            for &case in scenario {
+                let (pos, objtype, expected_range) = case;
+                let range = Range::new(pos, pos + 1);
+                let result = textobject_word(slice, range, objtype, 1, Word::Sub);
+                assert_eq!(
+                    result,
+                    expected_range.into(),
+                    "\nCase failed: {:?} - {:?}",
+                    sample,
+                    case
+                );
+            }
+        }
+    }
+
+    #[test]
     fn test_textobject_word() {
         // (text, [(char position, textobject, final range), ...])
         let tests = &[
