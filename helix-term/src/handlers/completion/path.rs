@@ -6,7 +6,7 @@ use std::{
 };
 
 use futures_util::{future::BoxFuture, FutureExt as _};
-use helix_core::{self as core, Selection, Transaction};
+use helix_core::{self as core, completion::CompletionProvider, Selection, Transaction};
 use helix_event::TaskHandle;
 use helix_stdx::path::{self, canonicalize, fold_home_dir, get_path_suffix};
 use helix_view::Document;
@@ -103,6 +103,7 @@ pub(crate) fn path_completion(
                     label: file_name.into(),
                     transaction,
                     documentation,
+                    provider: CompletionProvider::Path,
                 }))
             })
             .collect::<Vec<_>>()
