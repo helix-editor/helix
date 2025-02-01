@@ -10,6 +10,7 @@ use helix_stdx::{
     rope::{self, RopeSliceExt},
 };
 use helix_vcs::{FileChange, Hunk};
+use libc::NF_IP6_PRI_CONNTRACK_DEFRAG;
 pub use lsp::*;
 use tui::{
     text::{Span, Spans},
@@ -5187,6 +5188,7 @@ fn toggle_comments(cx: &mut Context) {
                 return Transaction::change(
                     doc,
                     selection.iter().flat_map(|range| {
+                        let text = doc.slice(..);
                         let (injected_line_tokens, injected_block_tokens) =
                             get_comment_tokens(range.from(), range.to());
 
@@ -5201,87 +5203,58 @@ fn toggle_comments(cx: &mut Context) {
                         log::error!("{line_token:?}, {block_tokens:?}");
 
                         // only have line tokens
-                        if line_token.is_some() {
+                        if line_token.is_some() && block_tokens.is_none() {
                             return comment::toggle_line_comments(doc, range, line_token);
                         }
 
-                        vec![]
+                        let split_lines = comment::split_lines_of_range(text, range);
 
-                        // todo!();
+                        let default_block_tokens = &[BlockCommentToken::default()];
+                        let block_comment_tokens = block_tokens.unwrap_or(default_block_tokens);
+
+                        let (line_commented, line_comment_changes) =
+                            comment::find_block_comments(block_comment_tokens, text, &split_lines);
+
+                        // block commented by line would also be block commented so check this first
+                        if line_commented {
+                            return comment::create_block_comment_transaction(
+                                doc,
+                                &split_lines,
+                                line_commented,
+                                line_comment_changes,
+                            )
+                            .0;
+                        }
+
+                        let (block_commented, comment_changes) =
+                            comment::find_block_comments(block_comment_tokens, text, &vec![*range]);
+
+                        // check if selection has block comments
+                        if block_commented {
+                            return comment::create_block_comment_transaction(
+                                doc,
+                                &vec![*range],
+                                block_commented,
+                                comment_changes,
+                            )
+                            .0;
+                        };
+
+                        // not commented and only have block comment tokens
+                        if line_token.is_none() && block_tokens.is_some() {
+                            return comment::create_block_comment_transaction(
+                                doc,
+                                &split_lines,
+                                line_commented,
+                                line_comment_changes,
+                            )
+                            .0;
+                        }
+
+                        // not block commented at all and don't have any tokens
+                        comment::toggle_line_comments(doc, range, line_token)
                     }),
                 );
-
-                // Transaction::change_by_selection(doc, selection, |range| {
-
-                // let default_block_tokens = &[BlockCommentToken::default()];
-
-                // let block_tokens = block_tokens.unwrap_or(default_block_tokens);
-
-                // log::error!("{line_token:?}, {block_tokens:?}");
-
-                // if line_tokens.is_some() && block_tokens.is_none() {
-
-                // }
-                // });
-
-                // // only have line comment tokens
-                // if line_token.is_some() && block_tokens.is_none() {
-                //     return comment::toggle_line_comments(
-                //         doc,
-                //         selection,
-                //         line_token,
-                //         get_comment_tokens,
-                //     );
-                // }
-
-                // todo!();
-
-                // let split_lines = comment::split_lines_of_selection(text, selection);
-
-                // let default_block_tokens = &[BlockCommentToken::default()];
-                // let block_comment_tokens = block_tokens.unwrap_or(default_block_tokens);
-
-                // let (line_commented, line_comment_changes) =
-                //     comment::find_block_comments(block_comment_tokens, text, &split_lines);
-
-                // // block commented by line would also be block commented so check this first
-                // if line_commented {
-                //     return comment::create_block_comment_transaction(
-                //         doc,
-                //         &split_lines,
-                //         line_commented,
-                //         line_comment_changes,
-                //     )
-                //     .0;
-                // }
-
-                // let (block_commented, comment_changes) =
-                //     comment::find_block_comments(block_comment_tokens, text, selection);
-
-                // // check if selection has block comments
-                // if block_commented {
-                //     return comment::create_block_comment_transaction(
-                //         doc,
-                //         selection,
-                //         block_commented,
-                //         comment_changes,
-                //     )
-                //     .0;
-                // }
-
-                // // not commented and only have block comment tokens
-                // if line_token.is_none() && block_tokens.is_some() {
-                //     return comment::create_block_comment_transaction(
-                //         doc,
-                //         &split_lines,
-                //         line_commented,
-                //         line_comment_changes,
-                //     )
-                //     .0;
-                // }
-
-                // // not block commented at all and don't have any tokens
-                // comment::toggle_line_comments(doc, selection, line_token, lol_fn)
             },
         ),
     )
