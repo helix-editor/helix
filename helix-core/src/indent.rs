@@ -8,7 +8,7 @@ use crate::{
     graphemes::{grapheme_width, tab_width_at},
     syntax::{IndentationHeuristic, LanguageConfiguration, RopeProvider, Syntax},
     tree_sitter::Node,
-    Position, Rope, RopeGraphemes, RopeSlice, Tendril,
+    Position, Rope, RopeSlice, Tendril,
 };
 
 /// Enum representing indentation style.
@@ -200,7 +200,7 @@ pub fn indent_level_for_line(line: RopeSlice, tab_width: usize, indent_width: us
 /// Create a string of tabs & spaces that has the same visual width as the given RopeSlice (independent of the tab width).
 fn whitespace_with_same_width(text: RopeSlice) -> String {
     let mut s = String::new();
-    for grapheme in RopeGraphemes::new(text) {
+    for grapheme in text.graphemes() {
         if grapheme == "\t" {
             s.push('\t');
         } else {
@@ -456,7 +456,7 @@ struct IndentQueryResult<'a> {
 fn get_node_start_line(node: Node, new_line_byte_pos: Option<usize>) -> usize {
     let mut node_line = node.start_position().row;
     // Adjust for the new line that will be inserted
-    if new_line_byte_pos.map_or(false, |pos| node.start_byte() >= pos) {
+    if new_line_byte_pos.is_some_and(|pos| node.start_byte() >= pos) {
         node_line += 1;
     }
     node_line
@@ -464,7 +464,7 @@ fn get_node_start_line(node: Node, new_line_byte_pos: Option<usize>) -> usize {
 fn get_node_end_line(node: Node, new_line_byte_pos: Option<usize>) -> usize {
     let mut node_line = node.end_position().row;
     // Adjust for the new line that will be inserted (with a strict inequality since end_byte is exclusive)
-    if new_line_byte_pos.map_or(false, |pos| node.end_byte() > pos) {
+    if new_line_byte_pos.is_some_and(|pos| node.end_byte() > pos) {
         node_line += 1;
     }
     node_line

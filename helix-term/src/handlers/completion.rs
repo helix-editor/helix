@@ -26,7 +26,7 @@ use crate::events::{OnModeSwitch, PostCommand, PostInsertChar};
 use crate::job::{dispatch, dispatch_blocking};
 use crate::keymap::MappableCommand;
 use crate::ui::editor::InsertEvent;
-use crate::ui::lsp::SignatureHelp;
+use crate::ui::lsp::signature_help::SignatureHelp;
 use crate::ui::{self, Popup};
 
 use super::Handlers;
@@ -184,7 +184,8 @@ fn request_completion(
     }
 
     let text = doc.text();
-    let cursor = doc.selection(view.id).primary().cursor(text.slice(..));
+    let selection = doc.selection(view.id);
+    let cursor = selection.primary().cursor(text.slice(..));
     if trigger.view != view.id || trigger.doc != doc.id() || cursor < trigger.pos {
         return;
     }
@@ -265,7 +266,7 @@ fn request_completion(
             }
             .boxed()
         })
-        .chain(path_completion(cursor, text.clone(), doc, handle.clone()))
+        .chain(path_completion(selection.clone(), doc, handle.clone()))
         .collect();
 
     let future = async move {

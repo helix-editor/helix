@@ -53,9 +53,10 @@ impl menu::Item for CompletionItem {
         let deprecated = match self {
             CompletionItem::Lsp(LspCompletionItem { item, .. }) => {
                 item.deprecated.unwrap_or_default()
-                    || item.tags.as_ref().map_or(false, |tags| {
-                        tags.contains(&lsp::CompletionItemTag::DEPRECATED)
-                    })
+                    || item
+                        .tags
+                        .as_ref()
+                        .is_some_and(|tags| tags.contains(&lsp::CompletionItemTag::DEPRECATED))
             }
             CompletionItem::Other(_) => false,
         };
@@ -92,8 +93,11 @@ impl menu::Item for CompletionItem {
                                 value, ..
                             }) => value,
                         };
-                        Color::from_hex(text)
+                        // Language servers which send Color completion items tend to include a 6
+                        // digit hex code at the end for the color. The extra 1 digit is for the '#'
+                        text.get(text.len().checked_sub(7)?..)
                     })
+                    .and_then(Color::from_hex)
                     .map_or("color".into(), |color| {
                         Spans::from(vec![
                             Span::raw("color "),

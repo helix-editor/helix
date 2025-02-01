@@ -4,10 +4,12 @@ use std::{
     ops::{Add, AddAssign, Sub, SubAssign},
 };
 
+use helix_stdx::rope::RopeSliceExt;
+
 use crate::{
     chars::char_is_line_ending,
     doc_formatter::{DocumentFormatter, TextFormat},
-    graphemes::{ensure_grapheme_boundary_prev, grapheme_width, RopeGraphemes},
+    graphemes::{ensure_grapheme_boundary_prev, grapheme_width},
     line_ending::line_end_char_index,
     text_annotations::TextAnnotations,
     RopeSlice,
@@ -101,7 +103,7 @@ pub fn coords_at_pos(text: RopeSlice, pos: usize) -> Position {
 
     let line_start = text.line_to_char(line);
     let pos = ensure_grapheme_boundary_prev(text, pos);
-    let col = RopeGraphemes::new(text.slice(line_start..pos)).count();
+    let col = text.slice(line_start..pos).graphemes().count();
 
     Position::new(line, col)
 }
@@ -126,7 +128,7 @@ pub fn visual_coords_at_pos(text: RopeSlice, pos: usize, tab_width: usize) -> Po
 
     let mut col = 0;
 
-    for grapheme in RopeGraphemes::new(text.slice(line_start..pos)) {
+    for grapheme in text.slice(line_start..pos).graphemes() {
         if grapheme == "\t" {
             col += tab_width - (col % tab_width);
         } else {
@@ -275,7 +277,7 @@ pub fn pos_at_coords(text: RopeSlice, coords: Position, limit_before_line_ending
     };
 
     let mut col_char_offset = 0;
-    for (i, g) in RopeGraphemes::new(text.slice(line_start..line_end)).enumerate() {
+    for (i, g) in text.slice(line_start..line_end).graphemes().enumerate() {
         if i == col {
             break;
         }
@@ -306,7 +308,7 @@ pub fn pos_at_visual_coords(text: RopeSlice, coords: Position, tab_width: usize)
 
     let mut col_char_offset = 0;
     let mut cols_remaining = col;
-    for grapheme in RopeGraphemes::new(text.slice(line_start..line_end)) {
+    for grapheme in text.slice(line_start..line_end).graphemes() {
         let grapheme_width = if grapheme == "\t" {
             tab_width - ((col - cols_remaining) % tab_width)
         } else {

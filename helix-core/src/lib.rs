@@ -54,7 +54,6 @@ pub type Tendril = SmartString<smartstring::LazyCompact>;
 #[doc(inline)]
 pub use {regex, tree_sitter};
 
-pub use graphemes::RopeGraphemes;
 pub use position::{
     char_idx_at_visual_offset, coords_at_pos, pos_at_coords, softwrapped_dimensions,
     visual_offset_from_anchor, visual_offset_from_block, Position, VisualOffsetError,

@@ -717,10 +717,7 @@ impl Document {
         config: Arc<dyn DynAccess<Config>>,
     ) -> Result<Self, DocumentOpenError> {
         // If the path is not a regular file (e.g.: /dev/random) it should not be opened.
-        if path
-            .metadata()
-            .map_or(false, |metadata| !metadata.is_file())
-        {
+        if path.metadata().is_ok_and(|metadata| !metadata.is_file()) {
             return Err(DocumentOpenError::IrregularFile);
         }
 
@@ -772,9 +769,20 @@ impl Document {
                 ))
             })
         {
+            log::debug!(
+                "formatting '{}' with command '{}', args {fmt_args:?}",
+                self.display_name(),
+                fmt_cmd.display(),
+            );
             use std::process::Stdio;
             let text = self.text().clone();
+
             let mut process = tokio::process::Command::new(&fmt_cmd);
+
+            if let Some(doc_dir) = self.path.as_ref().and_then(|path| path.parent()) {
+                process.current_dir(doc_dir);
+            }
+
             process
                 .args(fmt_args)
                 .stdin(Stdio::piped())
@@ -1993,8 +2001,8 @@ impl Document {
         };
 
         let ends_at_word =
-            start != end && end != 0 && text.get_char(end - 1).map_or(false, char_is_word);
-        let starts_at_word = start != end && text.get_char(start).map_or(false, char_is_word);
+            start != end && end != 0 && text.get_char(end - 1).is_some_and(char_is_word);
+        let starts_at_word = start != end && text.get_char(start).is_some_and(char_is_word);
 
         Some(Diagnostic {
             range: Range { start, end },
@@ -2027,7 +2035,7 @@ impl Document {
             self.clear_diagnostics(language_server_id);
         } else {
             self.diagnostics.retain(|d| {
-                if language_server_id.map_or(false, |id| id != d.provider) {
+                if language_server_id.is_some_and(|id| id != d.provider) {
                     return true;
                 }
 
@@ -2187,7 +2195,6 @@ pub enum FormatterError {
     BrokenStdin,
     WaitForOutputFailed,
     InvalidUtf8Output,
-    DiskReloadError(String),
     NonZeroExitStatus(Option<String>),
 }
 
@@ -2202,7 +2209,6 @@ impl Display for FormatterError {
             Self::BrokenStdin => write!(f, "Could not write to formatter stdin"),
             Self::WaitForOutputFailed => write!(f, "Waiting for formatter output failed"),
             Self::InvalidUtf8Output => write!(f, "Invalid UTF-8 formatter output"),
-            Self::DiskReloadError(error) => write!(f, "Error reloading file from disk: {}", error),
             Self::NonZeroExitStatus(Some(output)) => write!(f, "Formatter error: {}", output),
             Self::NonZeroExitStatus(None) => {
                 write!(f, "Formatter exited with non zero exit status")
