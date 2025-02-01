@@ -303,9 +303,9 @@ pub fn create_block_comment_transaction(
 #[must_use]
 pub fn toggle_block_comments(
     doc: &Rope,
-    selection: &Selection,
+    ranges: &Vec<Range>,
     tokens: &[BlockCommentToken],
-) -> Transaction {
+) -> Vec<Change> {
     todo!()
     // let text = doc.slice(..);
     // let (commented, comment_changes) = find_block_comments(tokens, text, selection);
@@ -390,7 +390,7 @@ mod test {
             range = range.map(transaction.changes());
 
             assert_eq!(doc, "  1\n\n  2\n  3");
-            assert!(range.len() == 1); // to ignore the selection unused warning
+            assert_eq!(range, range); // to ignore the selection unused warning
         }
 
         #[test]
@@ -404,92 +404,95 @@ mod test {
             range = range.map(transaction.changes());
 
             assert_eq!(doc, "  1\n\n  2\n  3");
-            assert!(range.len() == 1); // to ignore the selection unused warning
+            assert_eq!(range, range); // to ignore the selection unused warning
         }
 
-        //     #[test]
-        //     fn uncomment_0_margin_comments_with_no_space() {
-        //         let mut doc = Rope::from("#");
-        //         let mut selection = Selection::single(0, doc.len_chars() - 1);
+        #[test]
+        fn uncomment_0_margin_comments_with_no_space() {
+            let mut doc = Rope::from("#");
+            let mut range = Range::new(0, doc.len_chars() - 1);
 
-        //         let transaction = toggle_line_comments(&doc, &selection, None);
-        //         transaction.apply(&mut doc);
-        //         selection = selection.map(transaction.changes());
-        //         assert_eq!(doc, "");
-        //         assert!(selection.len() == 1); // to ignore the selection unused warning
-        //     }
-        // }
+            let changes = toggle_line_comments(&doc, &range, None);
+            let transaction = Transaction::change(&doc, changes.into_iter());
+            transaction.apply(&mut doc);
+            range = range.map(transaction.changes());
+            assert_eq!(doc, "");
+            assert_eq!(range, range); // to ignore the selection unused warning
+        }
 
-        // #[test]
-        // fn test_find_block_comments() {
-        //     // three lines 5 characters.
-        //     let mut doc = Rope::from("1\n2\n3");
-        //     // select whole document
-        //     let selection = Selection::single(0, doc.len_chars());
+        #[test]
+        fn test_find_block_comments() {
+            // three lines 5 characters.
+            let mut doc = Rope::from("1\n2\n3");
+            // select whole document
+            let range = Range::new(0, doc.len_chars());
 
-        //     let text = doc.slice(..);
+            let text = doc.slice(..);
 
-        //     let res = find_block_comments(&[BlockCommentToken::default()], text, &selection);
+            let res = find_block_comments(&[BlockCommentToken::default()], text, &vec![range]);
 
-        //     assert_eq!(
-        //         res,
-        //         (
-        //             false,
-        //             vec![CommentChange::Uncommented {
-        //                 range: Range::new(0, 5),
-        //                 start_pos: 0,
-        //                 end_pos: 4,
-        //                 start_token: "/*".to_string(),
-        //                 end_token: "*/".to_string(),
-        //             }]
-        //         )
-        //     );
+            assert_eq!(
+                res,
+                (
+                    false,
+                    vec![CommentChange::Uncommented {
+                        range: Range::new(0, 5),
+                        start_pos: 0,
+                        end_pos: 4,
+                        start_token: "/*".to_string(),
+                        end_token: "*/".to_string(),
+                    }]
+                )
+            );
 
-        //     // comment
-        //     let transaction = toggle_block_comments(&doc, &selection, &[BlockCommentToken::default()]);
-        //     transaction.apply(&mut doc);
+            // // comment
+            // let transaction = toggle_block_comments(&doc, &range, &[BlockCommentToken::default()]);
+            // transaction.apply(&mut doc);
 
-        //     assert_eq!(doc, "/* 1\n2\n3 */");
+            // assert_eq!(doc, "/* 1\n2\n3 */");
 
-        //     // uncomment
-        //     let selection = Selection::single(0, doc.len_chars());
-        //     let transaction = toggle_block_comments(&doc, &selection, &[BlockCommentToken::default()]);
-        //     transaction.apply(&mut doc);
-        //     assert_eq!(doc, "1\n2\n3");
+            // // uncomment
+            // let selection = Selection::single(0, doc.len_chars());
+            // let transaction =
+            //     toggle_block_comments(&doc, &selection, &[BlockCommentToken::default()]);
+            // transaction.apply(&mut doc);
+            // assert_eq!(doc, "1\n2\n3");
 
-        //     // don't panic when there is just a space in comment
-        //     doc = Rope::from("/* */");
-        //     let selection = Selection::single(0, doc.len_chars());
-        //     let transaction = toggle_block_comments(&doc, &selection, &[BlockCommentToken::default()]);
-        //     transaction.apply(&mut doc);
-        //     assert_eq!(doc, "");
-        // }
+            // // don't panic when there is just a space in comment
+            // doc = Rope::from("/* */");
+            // let selection = Selection::single(0, doc.len_chars());
+            // let transaction =
+            //     toggle_block_comments(&doc, &selection, &[BlockCommentToken::default()]);
+            // transaction.apply(&mut doc);
+            // assert_eq!(doc, "");
+        }
 
-        // /// Test, if `get_comment_tokens` works, even if the content of the file includes chars, whose
-        // /// byte size unequal the amount of chars
-        // #[test]
-        // fn test_get_comment_with_char_boundaries() {
-        //     let rope = Rope::from("··");
-        //     let tokens = ["//", "///"];
+        /// Test, if `get_comment_tokens` works, even if the content of the file includes chars, whose
+        /// byte size unequal the amount of chars
+        #[test]
+        fn test_get_comment_with_char_boundaries() {
+            let rope = Rope::from("··");
+            let tokens = ["//", "///"];
 
-        //     assert_eq!(
-        //         super::get_comment_token(rope.slice(..), tokens.as_slice(), 0),
-        //         None
-        //     );
-        // }
+            assert_eq!(
+                super::get_comment_token(rope.slice(..), tokens.as_slice(), 0),
+                None
+            );
+        }
 
-        // /// Test for `get_comment_token`.
-        // ///
-        // /// Assuming the comment tokens are stored as `["///", "//"]`, `get_comment_token` should still
-        // /// return `///` instead of `//` if the user is in a doc-comment section.
-        // #[test]
-        // fn test_use_longest_comment() {
-        //     let text = Rope::from("    /// amogus");
-        //     let tokens = ["///", "//"];
+        /// Test for `get_comment_token`.
+        ///
+        /// Assuming the comment tokens are stored as `["///", "//"]`, `get_comment_token` should still
+        /// return `///` instead of `//` if the user is in a doc-comment section.
+        #[test]
+        fn test_use_longest_comment() {
+            let text = Rope::from("    /// amogus ඞ");
+            let tokens = ["///", "//"];
 
-        //     assert_eq!(
-        //         super::get_comment_token(text.slice(..), tokens.as_slice(), 0),
-        //         Some("///")
-        //     );
+            assert_eq!(
+                super::get_comment_token(text.slice(..), tokens.as_slice(), 0),
+                Some("///")
+            );
+        }
     }
 }
