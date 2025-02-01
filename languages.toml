@@ -480,6 +480,18 @@ file-types = [
   "ldtk",
   "ldtkl",
   { glob = ".swift-format" },
+  "sublime-build",
+  "sublime-color-scheme",
+  "sublime-commands",
+  "sublime-completions",
+  "sublime-keymap",
+  "sublime-macro",
+  "sublime-menu",
+  "sublime-mousemap",
+  "sublime-project",
+  "sublime-settings",
+  "sublime-theme",
+  "sublime-workspace"
 ]
 language-servers = [ "vscode-json-language-server" ]
 auto-format = true
@@ -1359,7 +1371,15 @@ source = { git = "https://github.com/ikatyang/tree-sitter-vue", rev = "91fe27547
 [[language]]
 name = "yaml"
 scope = "source.yaml"
-file-types = ["yml", "yaml", { glob = ".prettierrc" }, { glob = ".clangd" }, { glob = ".clang-format" }, { glob = ".clang-tidy" }]
+file-types = [
+  "yml",
+  "yaml",
+  { glob = ".prettierrc" },
+  { glob = ".clangd" },
+  { glob = ".clang-format" },
+  { glob = ".clang-tidy" },
+  "sublime-syntax"
+]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 language-servers = [ "yaml-language-server", "ansible-language-server" ]
@@ -2741,7 +2761,8 @@ file-types = [
   "xoml",
   "musicxml",
   "glif",
-  "ui"
+  "ui",
+  "sublime-snippet"
 ]
 block-comment-tokens = { start = "<!--", end = "-->" }
 indent = { tab-width = 2, unit = "  " }
