@@ -4,7 +4,8 @@
 use smallvec::SmallVec;
 
 use crate::{
-    syntax::BlockCommentToken, Change, Range, Rope, RopeSlice, Selection, Tendril, Transaction,
+    syntax::{BlockCommentToken, InjectionLanguageMarker},
+    Change, Range, Rope, RopeSlice, Selection, Tendril, Transaction,
 };
 use helix_stdx::rope::RopeSliceExt;
 use std::borrow::Cow;
@@ -77,8 +78,20 @@ fn find_line_comment(
     (commented, to_change, min, margin)
 }
 
+// for a given range and syntax, determine if there are additional tokens to consider
+pub type InjectedTokens = fn(
+    range: Range,
+    syntax: Option<&crate::Syntax>,
+    rope: RopeSlice,
+) -> (Option<Vec<String>>, Option<Vec<BlockCommentToken>>);
+
 #[must_use]
-pub fn toggle_line_comments(doc: &Rope, selection: &Selection, token: Option<&str>) -> Transaction {
+pub fn toggle_line_comments(
+    doc: &Rope,
+    selection: &Selection,
+    token: Option<&str>,
+    lol_fn: InjectedTokens,
+) -> Transaction {
     let text = doc.slice(..);
 
     let token = token.unwrap_or(DEFAULT_COMMENT_TOKEN);
