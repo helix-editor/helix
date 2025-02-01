@@ -189,7 +189,6 @@ impl EditorView {
                 primary_cursor,
             });
         }
-
         let config = doc.config.load();
 
         if config.enable_diagnostics {
