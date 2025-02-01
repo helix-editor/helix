@@ -2161,31 +2161,21 @@ fn tree_sitter_tree(
             return Ok(());
         };
 
-        // The document or view doesn't actually exist.
+        // The document or view doesn't actually exist, and
+        // editor.tree_sitter_tree is incorrect. Abort.
         if let Some((tree_doc_id, tree_view_id)) = editor.tree_sitter_tree {
-            let mut should_close = false;
-            if editor.document(tree_doc_id).is_none() {
-                if editor.tree.contains(tree_view_id) {
+            let document_exists = editor.document(tree_doc_id).is_some();
+            let view_exists = editor.tree.contains(tree_view_id);
+
+            if !document_exists || !view_exists {
+                // Only 1 of view or the document exists. Close the one that's
+                // open to prevent errors.
+                if view_exists {
                     editor.close(tree_view_id);
-                    editor.tree_sitter_tree = None;
-                } else {
-                    editor.tree_sitter_tree = None;
-                }
-                should_close = true;
-                editor.tree_sitter_tree = None;
-            }
-
-            if !editor.tree.contains(tree_view_id) {
-                if editor.document(tree_doc_id).is_none() {
-                    editor.tree_sitter_tree = None;
-                } else {
+                } else if document_exists {
                     let _ = editor.close_document(tree_doc_id, true);
-                    editor.tree_sitter_tree = None;
                 }
-                should_close = true;
-            }
-
-            if should_close {
+                editor.tree_sitter_tree = None;
                 return Ok(());
             }
         }
@@ -2194,15 +2184,16 @@ fn tree_sitter_tree(
 
         if let Some((_tree_doc_id, tree_view_id)) = editor.tree_sitter_tree {
             // The current document is the tree sitter document.
+            // Do not compute the tree-sitter-tree for the tree-sitter-tree
+            // That will lead to problems
             if view.id == tree_view_id {
                 // Reset the tree sitter document's highlights if we focus
                 // the document, since we have a visual selection which highlights the same
-                // region. But these highlights are useful to highlight a piece of
-                // text while that document is not focused.
+                // region.
+                //
+                // However, these highlights are useful to highlight a piece of
+                // text while that document is not focused. Therefore we keep them.
                 doc.set_highlights(view.id, vec![]);
-                // Do not update the tree sitter document. That would cause it
-                // to create a syntax tree for itself, and this process will continue
-                // until Helix will disable syntax highlighting for the file.
                 return Ok(());
             }
         }
@@ -2213,28 +2204,29 @@ fn tree_sitter_tree(
             .context("No tree-sitter grammar found for this file")?;
 
         let cursor_idx = doc.selection(view.id).primary().cursor(text.slice(..));
+
         let from = 0;
         let to = text.len_chars();
 
-        if let (Some(selected_node), Some(node_at_cursor)) = (
+        if let (Some(full_file_node), Some(node_at_cursor)) = (
             syntax.descendant_for_byte_range(from, to),
             syntax.descendant_for_byte_range(cursor_idx, cursor_idx),
         ) {
             let kind = node_at_cursor.kind();
             let appearance_count =
-                find_position_of_node(kind, selected_node, cursor_idx, &mut vec![]);
+                find_position_of_node(kind, full_file_node, cursor_idx, &mut vec![]);
 
             let mut syntax_tree = String::new();
 
             let position = helix_core::syntax::pretty_print_tree(
                 &mut syntax_tree,
-                selected_node,
+                full_file_node,
                 &mut appearance_count
                     .map(|count| NodeSearch::new(count, kind.to_owned()))
                     .as_mut(),
             )?;
 
-            // Create the tree first on the invokation of the command
+            // Create the tree only on the first invokation of the command
             if editor.tree_sitter_tree.is_none() && !is_update {
                 let tree_id = editor.new_file_from_document(
                     Action::VerticalSplit,
@@ -2263,26 +2255,19 @@ fn tree_sitter_tree(
                 let tree_view = editor.tree.try_get(tree_doc_view_id).cloned();
                 let tree_doc = editor.document_mut(tree_doc_id);
                 if let Some(tree_doc) = tree_doc {
-                    // We replace the entire file's syntax tree with our
-                    // updated syntax tree
-                    let whole_file = Range::new(0, tree_doc.text().len_chars());
-                    let selection = Selection::new(vec![whole_file].into(), 0);
-
                     if let Some((node_start, node_end, node_kind)) = position {
+                        // We replace the entire file's syntax tree with our
+                        // updated syntax tree
                         let transaction = Transaction::change(
                             tree_doc.text(),
-                            selection.iter().map(|range| {
-                                (
-                                    range.from(),
-                                    range.to(),
-                                    // TODO: remove this clone
-                                    Some(Tendril::from(syntax_tree.clone())),
-                                )
-                            }),
+                            std::iter::once((
+                                0,
+                                tree_doc.text().len_chars(),
+                                Some(Tendril::from(syntax_tree)),
+                            )),
                         )
                         .with_selection(Range::new(node_start, node_end).into());
 
-                        // panic happens here, but why?
                         tree_doc.apply_bypass_unmodifiable(&transaction, tree_doc_view_id);
 
                         // Highlight the node in the syntax tree where
