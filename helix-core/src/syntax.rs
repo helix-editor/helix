@@ -2717,7 +2717,7 @@ pub struct NodeSearch {
     /// How many times we've encountered the node
     pub appearances_count: usize,
     /// Have we found the node? In which case we don't need to continue adding chars.
-    pub found_node: bool,
+    pub is_found: bool,
 }
 
 impl NodeSearch {
@@ -2727,7 +2727,7 @@ impl NodeSearch {
             node_kind,
             count_so_far: 0,
             appearances_count: 0,
-            found_node: false,
+            is_found: false,
         }
     }
 }
@@ -2765,7 +2765,7 @@ fn pretty_print_tree_impl(
                 let formatted_str = format!($($args)*);
                 fmt.push_str(&formatted_str);
                 if let Some(node_search) = node_search {
-                    if !node_search.found_node {
+                    if !node_search.is_found {
                         node_search.count_so_far += formatted_str.len();
                     }
                 }
@@ -2795,7 +2795,7 @@ fn pretty_print_tree_impl(
             // it may not be the exact same one
             if node_search.position == node_search.appearances_count {
                 // we've found the node which we're looking for
-                node_search.found_node = true;
+                node_search.is_found = true;
                 // we need this check because with anonymous nodes
                 // we're also adding 2 double quotes around them
                 // so we need to account for that when creating the selection.
@@ -2803,7 +2803,7 @@ fn pretty_print_tree_impl(
                     node_search.node_kind = format!("\"{kind}\"");
                 };
             }
-            if !node_search.found_node {
+            if !node_search.is_found {
                 node_search.appearances_count += 1;
             }
         }
@@ -2835,7 +2835,7 @@ fn pretty_print_tree_impl(
 
     Ok(node_search
         .as_ref()
-        .filter(|node_search| node_search.found_node)
+        .filter(|node_search| node_search.is_found)
         .map(|node_search| {
             (
                 node_search
