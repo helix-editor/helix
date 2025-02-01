@@ -334,6 +334,7 @@ pub enum LanguageServerFeature {
     Diagnostics,
     RenameSymbol,
     InlayHints,
+    DocumentColors,
 }
 
 impl Display for LanguageServerFeature {
@@ -357,6 +358,7 @@ impl Display for LanguageServerFeature {
             Diagnostics => "diagnostics",
             RenameSymbol => "rename-symbol",
             InlayHints => "inlay-hints",
+            DocumentColors => "document-colors",
         };
         write!(f, "{feature}",)
     }
@@ -756,7 +758,7 @@ impl LanguageConfiguration {
             let language = get_language(self.grammar.as_deref().unwrap_or(&self.language_id))
                 .map_err(|err| {
                     log::error!(
-                        "Failed to load tree-sitter parser for language {:?}: {}",
+                        "Failed to load tree-sitter parser for language {:?}: {:#}",
                         self.language_id,
                         err
                     )
@@ -994,16 +996,27 @@ impl Loader {
             .cloned()
     }
 
-    pub fn language_config_for_language_id(&self, id: &str) -> Option<Arc<LanguageConfiguration>> {
+    pub fn language_config_for_language_id(
+        &self,
+        id: impl PartialEq<String>,
+    ) -> Option<Arc<LanguageConfiguration>> {
         self.language_configs
             .iter()
-            .find(|config| config.language_id == id)
+            .find(|config| id.eq(&config.language_id))
             .cloned()
     }
 
-    /// Unlike language_config_for_language_id, which only returns Some for an exact id, this
+    /// Unlike `language_config_for_language_id`, which only returns Some for an exact id, this
     /// function will perform a regex match on the given string to find the closest language match.
     pub fn language_config_for_name(&self, slice: RopeSlice) -> Option<Arc<LanguageConfiguration>> {
+        // PERF: If the name matches up with the id, then this saves the need to do expensive regex.
+        let shortcircuit = self.language_config_for_language_id(slice);
+        if shortcircuit.is_some() {
+            return shortcircuit;
+        }
+
+        // If the name did not match up with a known id, then match on injection regex.
+
         let mut best_match_length = 0;
         let mut best_match_position = None;
         for (i, configuration) in self.language_configs.iter().enumerate() {
@@ -1026,7 +1039,7 @@ impl Loader {
         capture: &InjectionLanguageMarker,
     ) -> Option<Arc<LanguageConfiguration>> {
         match capture {
-            InjectionLanguageMarker::LanguageId(id) => self.language_config_for_language_id(id),
+            InjectionLanguageMarker::LanguageId(id) => self.language_config_for_language_id(*id),
             InjectionLanguageMarker::Name(name) => self.language_config_for_name(*name),
             InjectionLanguageMarker::Filename(file) => {
                 let path_str: Cow<str> = (*file).into();
@@ -2491,15 +2504,17 @@ impl Iterator for HighlightIter<'_> {
                 }
             }
 
-            // Once a highlighting pattern is found for the current node, skip over
-            // any later highlighting patterns that also match this node. Captures
+            // Use the last capture found for the current node, skipping over any
+            // highlight patterns that also match this node. Captures
             // for a given node are ordered by pattern index, so these subsequent
             // captures are guaranteed to be for highlighting, not injections or
             // local variables.
             while let Some((next_match, next_capture_index)) = captures.peek() {
                 let next_capture = next_match.captures[*next_capture_index];
                 if next_capture.node == capture.node {
-                    captures.next();
+                    match_.remove();
+                    capture = next_capture;
+                    match_ = captures.next().unwrap().0;
                 } else {
                     break;
                 }

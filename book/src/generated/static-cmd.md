@@ -100,9 +100,9 @@
 | `file_picker` | Open file picker | normal: `` <space>f ``, select: `` <space>f `` |
 | `file_picker_in_current_buffer_directory` | Open file picker at current buffer's directory |  |
 | `file_picker_in_current_directory` | Open file picker at current working directory | normal: `` <space>F ``, select: `` <space>F `` |
-| `file_browser` | Open file browser in workspace root | normal: `` <space>e ``, select: `` <space>e `` |
-| `file_browser_in_current_buffer_directory` | Open file browser at current buffer's directory | normal: `` <space>E ``, select: `` <space>E `` |
-| `file_browser_in_current_directory` | Open file browser at current working directory |  |
+| `file_explorer` | Open file explorer in workspace root | normal: `` <space>e ``, select: `` <space>e `` |
+| `file_explorer_in_current_buffer_directory` | Open file explorer at current buffer's directory | normal: `` <space>E ``, select: `` <space>E `` |
+| `file_explorer_in_current_directory` | Open file explorer at current working directory |  |
 | `code_action` | Perform code action | normal: `` <space>a ``, select: `` <space>a `` |
 | `buffer_picker` | Open buffer picker | normal: `` <space>b ``, select: `` <space>b `` |
 | `jumplist_picker` | Open jumplist picker | normal: `` <space>j ``, select: `` <space>j `` |
@@ -239,6 +239,7 @@
 | `wonly` | Close windows except current | normal: `` <C-w>o ``, `` <space>wo ``, `` <C-w><C-o> ``, `` <space>w<C-o> ``, select: `` <C-w>o ``, `` <space>wo ``, `` <C-w><C-o> ``, `` <space>w<C-o> `` |
 | `select_register` | Select register | normal: `` " ``, select: `` " `` |
 | `insert_register` | Insert register | insert: `` <C-r> `` |
+| `copy_between_registers` | Copy between two registers |  |
 | `align_view_middle` | Align view middle | normal: `` Zm ``, `` zm ``, select: `` Zm ``, `` zm `` |
 | `align_view_top` | Align view top | normal: `` Zt ``, `` zt ``, select: `` Zt ``, `` zt `` |
 | `align_view_center` | Align view center | normal: `` Zc ``, `` Zz ``, `` zc ``, `` zz ``, select: `` Zc ``, `` Zz ``, `` zc ``, `` zz `` |

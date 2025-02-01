@@ -349,15 +349,20 @@ impl Buffer {
             if start_index > end_index {
                 break;
             }
+            let width = s.width();
+            if width == 0 {
+                continue;
+            }
 
             self.content[start_index].set_symbol(s);
             self.content[start_index].set_style(style(byte_offset));
 
-            for i in start_index + 1..end_index {
+            // Reset following cells if multi-width (they would be hidden by the grapheme):
+            for i in start_index + 1..start_index + width {
                 self.content[i].reset();
             }
 
-            start_index += s.width();
+            start_index += width;
         }
 
         (x, y)

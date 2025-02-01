@@ -4,7 +4,7 @@ use crate::{
     document::{
         DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
     },
-    events::DocumentFocusLost,
+    events::{DocumentDidClose, DocumentDidOpen, DocumentFocusLost},
     graphics::{CursorKind, Rect},
     handlers::Handlers,
     info::Info,
@@ -45,6 +45,7 @@ use anyhow::{anyhow, bail, Error};
 pub use helix_core::diagnostic::Severity;
 use helix_core::{
     auto_pairs::AutoPairs,
+    diagnostic::DiagnosticProvider,
     syntax::{self, AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
     Change, LineEnding, Position, Range, Selection, Uri, NATIVE_LINE_ENDING,
 };
@@ -342,6 +343,12 @@ pub struct Config {
     pub default_line_ending: LineEndingConfig,
     /// Whether to automatically insert a trailing line-ending on write if missing. Defaults to `true`.
     pub insert_final_newline: bool,
+    /// Whether to automatically remove all trailing line-endings after the final one on write.
+    /// Defaults to `false`.
+    pub trim_final_newlines: bool,
+    /// Whether to automatically remove all whitespace characters preceding line-endings on write.
+    /// Defaults to `false`.
+    pub trim_trailing_whitespace: bool,
     /// Enables smart tab
     pub smart_tab: Option<SmartTabConfig>,
     /// Draw border around popups.
@@ -360,10 +367,13 @@ pub struct Config {
     pub end_of_line_diagnostics: DiagnosticFilter,
     // Set to override the default clipboard provider
     pub clipboard_provider: ClipboardProvider,
+    /// Whether to read settings from [EditorConfig](https://editorconfig.org) files. Defaults to
+    /// `true`.
+    pub editor_config: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
-#[serde(rename_all = "kebab-case", default)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
 pub struct SmartTabConfig {
     pub enable: bool,
     pub supersede_menu: bool,
@@ -446,6 +456,8 @@ pub struct LspConfig {
     pub display_signature_help_docs: bool,
     /// Display inlay hints
     pub display_inlay_hints: bool,
+    /// Display document color swatches
+    pub display_color_swatches: bool,
     /// Whether to enable snippet support
     pub snippets: bool,
     /// Whether to include declaration in the goto reference query
@@ -463,6 +475,7 @@ impl Default for LspConfig {
             display_inlay_hints: false,
             snippets: true,
             goto_reference_include_declaration: true,
+            display_color_swatches: true,
         }
     }
 }
@@ -994,6 +1007,8 @@ impl Default for Config {
             workspace_lsp_roots: Vec::new(),
             default_line_ending: LineEndingConfig::default(),
             insert_final_newline: true,
+            trim_final_newlines: false,
+            trim_trailing_whitespace: false,
             smart_tab: Some(SmartTabConfig::default()),
             popup_border: PopupBorderConfig::None,
             indent_heuristic: IndentationHeuristic::default(),
@@ -1001,6 +1016,7 @@ impl Default for Config {
             inline_diagnostics: InlineDiagnosticsConfig::default(),
             end_of_line_diagnostics: DiagnosticFilter::Disable,
             clipboard_provider: ClipboardProvider::default(),
+            editor_config: true,
         }
     }
 }
@@ -1029,6 +1045,8 @@ pub struct Breakpoint {
 
 use futures_util::stream::{Flatten, Once};
 
+type Diagnostics = BTreeMap<Uri, Vec<(lsp::Diagnostic, DiagnosticProvider)>>;
+
 pub struct Editor {
     /// Current editing mode.
     pub mode: Mode,
@@ -1048,7 +1066,7 @@ pub struct Editor {
     pub macro_recording: Option<(char, Vec<KeyEvent>)>,
     pub macro_replaying: Vec<char>,
     pub language_servers: helix_lsp::Registry,
-    pub diagnostics: BTreeMap<Uri, Vec<(lsp::Diagnostic, LanguageServerId)>>,
+    pub diagnostics: Diagnostics,
     pub diff_providers: DiffProviderRegistry,
 
     pub debugger: Option<dap::Client>,
@@ -1195,7 +1213,7 @@ impl Editor {
             macro_replaying: Vec::new(),
             theme: theme_loader.default(),
             language_servers,
-            diagnostics: BTreeMap::new(),
+            diagnostics: Diagnostics::new(),
             diff_providers: DiffProviderRegistry::default(),
             debugger: None,
             debugger_events: SelectAll::new(),
@@ -1395,7 +1413,7 @@ impl Editor {
                 continue;
             };
             let edit = match helix_lsp::block_on(request) {
-                Ok(edit) => edit,
+                Ok(edit) => edit.unwrap_or_default(),
                 Err(err) => {
                     log::error!("invalid willRename response: {err:?}");
                     continue;
@@ -1416,9 +1434,7 @@ impl Editor {
             if !ls.is_initialized() {
                 continue;
             }
-            if let Some(notification) = ls.did_rename(old_path, &new_path, is_dir) {
-                tokio::spawn(notification);
-            };
+            ls.did_rename(old_path, &new_path, is_dir);
         }
         self.language_servers
             .file_event_handler
@@ -1441,7 +1457,7 @@ impl Editor {
             }
             // if we are open in LSPs send did_close notification
             for language_server in doc.language_servers() {
-                tokio::spawn(language_server.text_document_did_close(doc.identifier()));
+                language_server.text_document_did_close(doc.identifier());
             }
         }
         // we need to clear the list of language servers here so that
@@ -1450,6 +1466,7 @@ impl Editor {
         // we have fully unregistered this document from its LS
         doc.language_servers.clear();
         doc.set_path(Some(path));
+        doc.detect_editor_config();
         self.refresh_doc_language(doc_id)
     }
 
@@ -1457,6 +1474,7 @@ impl Editor {
         let loader = self.syn_loader.clone();
         let doc = doc_mut!(self, &doc_id);
         doc.detect_language(loader);
+        doc.detect_editor_config();
         doc.detect_indent_and_line_ending();
         self.refresh_language_servers(doc_id);
         let doc = doc_mut!(self, &doc_id);
@@ -1522,7 +1540,7 @@ impl Editor {
             });
 
         for (_, language_server) in doc_language_servers_not_in_registry {
-            tokio::spawn(language_server.text_document_did_close(doc.identifier()));
+            language_server.text_document_did_close(doc.identifier());
         }
 
         let language_servers_not_in_doc = language_servers.iter().filter(|(name, ls)| {
@@ -1533,12 +1551,12 @@ impl Editor {
 
         for (_, language_server) in language_servers_not_in_doc {
             // TODO: this now races with on_init code if the init happens too quickly
-            tokio::spawn(language_server.text_document_did_open(
+            language_server.text_document_did_open(
                 doc_url.clone(),
                 doc.version(),
                 doc.text(),
                 language_id.clone(),
-            ));
+            );
         }
 
         doc.language_servers = language_servers;
@@ -1768,10 +1786,16 @@ impl Editor {
             let id = self.new_document(doc);
             self.launch_language_servers(id);
 
+            helix_event::dispatch(DocumentDidOpen {
+                editor: self,
+                doc: id,
+            });
+
             id
         };
 
         self.switch(id, action);
+
         Ok(id)
     }
 
@@ -1785,21 +1809,17 @@ impl Editor {
     }
 
     pub fn close_document(&mut self, doc_id: DocumentId, force: bool) -> Result<(), CloseError> {
-        let doc = match self.documents.get_mut(&doc_id) {
+        let doc = match self.documents.get(&doc_id) {
             Some(doc) => doc,
             None => return Err(CloseError::DoesNotExist),
         };
         if !force && doc.is_modified() {
             return Err(CloseError::BufferModified(doc.display_name().into_owned()));
         }
+        let doc = self.documents.remove(&doc_id).unwrap();
 
         // This will also disallow any follow-up writes
         self.saves.remove(&doc_id);
-
-        for language_server in doc.language_servers() {
-            // TODO: track error
-            tokio::spawn(language_server.text_document_did_close(doc.identifier()));
-        }
 
         enum Action {
             Close(ViewId),
@@ -1837,8 +1857,6 @@ impl Editor {
             }
         }
 
-        self.documents.remove(&doc_id);
-
         // If the document we removed was visible in all views, we will have no more views. We don't
         // want to close the editor just for a simple buffer close, so we need to create a new view
         // containing either an existing document, or a brand new document.
@@ -1857,6 +1875,8 @@ impl Editor {
         }
 
         self._refresh();
+
+        helix_event::dispatch(DocumentDidClose { editor: self, doc });
 
         Ok(())
     }
@@ -1996,7 +2016,7 @@ impl Editor {
     /// Returns all supported diagnostics for the document
     pub fn doc_diagnostics<'a>(
         language_servers: &'a helix_lsp::Registry,
-        diagnostics: &'a BTreeMap<Uri, Vec<(lsp::Diagnostic, LanguageServerId)>>,
+        diagnostics: &'a Diagnostics,
         document: &Document,
     ) -> impl Iterator<Item = helix_core::Diagnostic> + 'a {
         Editor::doc_diagnostics_with_filter(language_servers, diagnostics, document, |_, _| true)
@@ -2006,9 +2026,9 @@ impl Editor {
     /// filtered by `filter` which is invocated with the raw `lsp::Diagnostic` and the language server id it came from
     pub fn doc_diagnostics_with_filter<'a>(
         language_servers: &'a helix_lsp::Registry,
-        diagnostics: &'a BTreeMap<Uri, Vec<(lsp::Diagnostic, LanguageServerId)>>,
+        diagnostics: &'a Diagnostics,
         document: &Document,
-        filter: impl Fn(&lsp::Diagnostic, LanguageServerId) -> bool + 'a,
+        filter: impl Fn(&lsp::Diagnostic, &DiagnosticProvider) -> bool + 'a,
     ) -> impl Iterator<Item = helix_core::Diagnostic> + 'a {
         let text = document.text().clone();
         let language_config = document.language.clone();
@@ -2016,8 +2036,9 @@ impl Editor {
             .uri()
             .and_then(|uri| diagnostics.get(&uri))
             .map(|diags| {
-                diags.iter().filter_map(move |(diagnostic, lsp_id)| {
-                    let ls = language_servers.get_by_id(*lsp_id)?;
+                diags.iter().filter_map(move |(diagnostic, provider)| {
+                    let server_id = provider.language_server_id()?;
+                    let ls = language_servers.get_by_id(server_id)?;
                     language_config
                         .as_ref()
                         .and_then(|c| {
@@ -2027,12 +2048,12 @@ impl Editor {
                             })
                         })
                         .and_then(|_| {
-                            if filter(diagnostic, *lsp_id) {
+                            if filter(diagnostic, provider) {
                                 Document::lsp_diagnostic_to_diagnostic(
                                     &text,
                                     language_config.as_deref(),
                                     diagnostic,
-                                    *lsp_id,
+                                    provider.clone(),
                                     ls.offset_encoding(),
                                 )
                             } else {

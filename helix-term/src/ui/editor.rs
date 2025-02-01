@@ -24,14 +24,14 @@ use helix_core::{
 };
 use helix_view::{
     annotations::diagnostics::DiagnosticFilter,
-    document::{Mode, SavePoint, SCRATCH_BUFFER_NAME},
+    document::{Mode, SCRATCH_BUFFER_NAME},
     editor::{CompleteAction, CursorShapeConfig},
     graphics::{Color, CursorKind, Modifier, Rect, Style},
     input::{KeyEvent, MouseButton, MouseEvent, MouseEventKind},
     keyboard::{KeyCode, KeyModifiers},
     Document, Editor, Theme, View,
 };
-use std::{mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc, sync::Arc};
+use std::{mem::take, num::NonZeroUsize, path::PathBuf, rc::Rc};
 
 use tui::{buffer::Buffer as Surface, text::Span};
 
@@ -176,6 +176,8 @@ impl EditorView {
             );
         }
 
+        Self::render_rulers(editor, doc, view, inner, surface, theme);
+
         let primary_cursor = doc
             .selection(view.id)
             .primary()
@@ -210,7 +212,6 @@ impl EditorView {
             theme,
             decorations,
         );
-        Self::render_rulers(editor, doc, view, inner, surface, theme);
 
         // if we're not at the edge of the screen, draw a right border
         if viewport.right() != view.area.right() {
@@ -1049,12 +1050,11 @@ impl EditorView {
     pub fn set_completion(
         &mut self,
         editor: &mut Editor,
-        savepoint: Arc<SavePoint>,
         items: Vec<CompletionItem>,
         trigger_offset: usize,
         size: Rect,
     ) -> Option<Rect> {
-        let mut completion = Completion::new(editor, savepoint, items, trigger_offset);
+        let mut completion = Completion::new(editor, items, trigger_offset);
 
         if completion.is_empty() {
             // skip if we got no completion results
@@ -1073,6 +1073,8 @@ impl EditorView {
     pub fn clear_completion(&mut self, editor: &mut Editor) -> Option<OnKeyCallback> {
         self.completion = None;
         let mut on_next_key: Option<OnKeyCallback> = None;
+        editor.handlers.completions.request_controller.restart();
+        editor.handlers.completions.active_completions.clear();
         if let Some(last_completion) = editor.last_completion.take() {
             match last_completion {
                 CompleteAction::Triggered => (),
@@ -1521,7 +1523,12 @@ impl Component for EditorView {
             }
             Event::FocusLost => {
                 if context.editor.config().auto_save.focus_lost {
-                    if let Err(e) = commands::typed::write_all_impl(context, false, false) {
+                    let options = commands::WriteAllOptions {
+                        force: false,
+                        write_scratch: false,
+                        auto_format: false,
+                    };
+                    if let Err(e) = commands::typed::write_all_impl(context, options) {
                         context.editor.set_error(format!("{}", e));
                     }
                 }

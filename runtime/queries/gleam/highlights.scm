@@ -1,3 +1,7 @@
+; Variables
+(identifier) @variable
+(discard) @comment.unused
+
 ; Comments
 (module_comment) @comment
 (statement_comment) @comment
@@ -71,10 +75,6 @@
 ; Reserved identifiers
 ((identifier) @error
  (#any-of? @error "auto" "delegate" "derive" "else" "implement" "macro" "test" "echo"))
-
-; Variables
-(identifier) @variable
-(discard) @comment.unused
 
 ; Keywords
 [

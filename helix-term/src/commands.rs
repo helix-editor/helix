@@ -11,16 +11,19 @@ use helix_stdx::{
 };
 use helix_vcs::{FileChange, Hunk};
 pub use lsp::*;
-use tui::text::Span;
+use tui::{
+    text::{Span, Spans},
+    widgets::Cell,
+};
 pub use typed::*;
 
 use helix_core::{
     char_idx_at_visual_offset,
     chars::char_is_word,
-    comment,
+    command_line, comment,
     doc_formatter::TextFormat,
     encoding, find_workspace,
-    graphemes::{self, next_grapheme_boundary, RevRopeGraphemes},
+    graphemes::{self, next_grapheme_boundary},
     history::UndoKind,
     increment,
     indent::{self, IndentStyle},
@@ -30,13 +33,13 @@ use helix_core::{
     object, pos_at_coords,
     regex::{self, Regex},
     search::{self, CharMatcher},
-    selection, shellwords, surround,
+    selection, surround,
     syntax::{BlockCommentToken, LanguageServerFeature},
     text_annotations::{Overlay, TextAnnotations},
     textobject,
     unicode::width::UnicodeWidthChar,
-    visual_offset_from_block, Deletion, LineEnding, Position, Range, Rope, RopeGraphemes,
-    RopeReader, RopeSlice, Selection, SmallVec, Syntax, Tendril, Transaction,
+    visual_offset_from_block, Deletion, LineEnding, Position, Range, Rope, RopeReader, RopeSlice,
+    Selection, SmallVec, Syntax, Tendril, Transaction,
 };
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
@@ -55,7 +58,6 @@ use insert::*;
 use movement::Movement;
 
 use crate::{
-    args,
     compositor::{self, Component, Compositor},
     filter_picker_entry,
     job::Callback,
@@ -64,6 +66,7 @@ use crate::{
 
 use crate::job::{self, Jobs};
 use std::{
+    char::{ToLowercase, ToUppercase},
     cmp::Ordering,
     collections::{HashMap, HashSet},
     error::Error,
@@ -143,10 +146,10 @@ impl Context<'_> {
     #[inline]
     pub fn callback<T, F>(
         &mut self,
-        call: impl Future<Output = helix_lsp::Result<serde_json::Value>> + 'static + Send,
+        call: impl Future<Output = helix_lsp::Result<T>> + 'static + Send,
         callback: F,
     ) where
-        T: for<'de> serde::Deserialize<'de> + Send + 'static,
+        T: Send + 'static,
         F: FnOnce(&mut Editor, &mut Compositor, T) + Send + 'static,
     {
         self.jobs.callback(make_job_callback(call, callback));
@@ -172,16 +175,15 @@ impl Context<'_> {
 
 #[inline]
 fn make_job_callback<T, F>(
-    call: impl Future<Output = helix_lsp::Result<serde_json::Value>> + 'static + Send,
+    call: impl Future<Output = helix_lsp::Result<T>> + 'static + Send,
     callback: F,
 ) -> std::pin::Pin<Box<impl Future<Output = Result<Callback, anyhow::Error>>>>
 where
-    T: for<'de> serde::Deserialize<'de> + Send + 'static,
+    T: Send + 'static,
     F: FnOnce(&mut Editor, &mut Compositor, T) + Send + 'static,
 {
     Box::pin(async move {
-        let json = call.await?;
-        let response = serde_json::from_value(json)?;
+        let response = call.await?;
         let call: job::Callback = Callback::EditorCompositor(Box::new(
             move |editor: &mut Editor, compositor: &mut Compositor| {
                 callback(editor, compositor, response)
@@ -207,7 +209,7 @@ use helix_view::{align_view, Align};
 pub enum MappableCommand {
     Typable {
         name: String,
-        args: Vec<String>,
+        args: String,
         doc: String,
     },
     Static {
@@ -242,16 +244,19 @@ impl MappableCommand {
     pub fn execute(&self, cx: &mut Context) {
         match &self {
             Self::Typable { name, args, doc: _ } => {
-                let args: Vec<Cow<str>> = args.iter().map(Cow::from).collect();
                 if let Some(command) = typed::TYPABLE_COMMAND_MAP.get(name.as_str()) {
                     let mut cx = compositor::Context {
                         editor: cx.editor,
                         jobs: cx.jobs,
                         scroll: None,
                     };
-                    if let Err(e) = (command.fun)(&mut cx, &args[..], PromptEvent::Validate) {
+                    if let Err(e) =
+                        typed::execute_command(&mut cx, command, args, PromptEvent::Validate)
+                    {
                         cx.editor.set_error(format!("{}", e));
                     }
+                } else {
+                    cx.editor.set_error(format!("no such command: '{name}'"));
                 }
             }
             Self::Static { fun, .. } => (fun)(cx),
@@ -393,9 +398,9 @@ impl MappableCommand {
         file_picker, "Open file picker",
         file_picker_in_current_buffer_directory, "Open file picker at current buffer's directory",
         file_picker_in_current_directory, "Open file picker at current working directory",
-        file_browser, "Open file browser in workspace root",
-        file_browser_in_current_buffer_directory, "Open file browser at current buffer's directory",
-        file_browser_in_current_directory, "Open file browser at current working directory",
+        file_explorer, "Open file explorer in workspace root",
+        file_explorer_in_current_buffer_directory, "Open file explorer at current buffer's directory",
+        file_explorer_in_current_directory, "Open file explorer at current working directory",
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
         jumplist_picker, "Open jumplist picker",
@@ -532,6 +537,7 @@ impl MappableCommand {
         wonly, "Close windows except current",
         select_register, "Select register",
         insert_register, "Insert register",
+        copy_between_registers, "Copy between two registers",
         align_view_middle, "Align view middle",
         align_view_top, "Align view top",
         align_view_center, "Align view center",
@@ -624,19 +630,21 @@ impl std::str::FromStr for MappableCommand {
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         if let Some(suffix) = s.strip_prefix(':') {
-            let mut typable_command = suffix.split(' ').map(|arg| arg.trim());
-            let name = typable_command
-                .next()
-                .ok_or_else(|| anyhow!("Expected typable command name"))?;
-            let args = typable_command
-                .map(|s| s.to_owned())
-                .collect::<Vec<String>>();
+            let (name, args, _) = command_line::split(suffix);
+            ensure!(!name.is_empty(), "Expected typable command name");
             typed::TYPABLE_COMMAND_MAP
                 .get(name)
-                .map(|cmd| MappableCommand::Typable {
-                    name: cmd.name.to_owned(),
-                    doc: format!(":{} {:?}", cmd.name, args),
-                    args,
+                .map(|cmd| {
+                    let doc = if args.is_empty() {
+                        cmd.doc.to_string()
+                    } else {
+                        format!(":{} {:?}", cmd.name, args)
+                    };
+                    MappableCommand::Typable {
+                        name: cmd.name.to_owned(),
+                        doc,
+                        args: args.to_string(),
+                    }
                 })
                 .ok_or_else(|| anyhow!("No TypableCommand named '{}'", s))
         } else if let Some(suffix) = s.strip_prefix('@') {
@@ -1286,7 +1294,7 @@ fn goto_file_vsplit(cx: &mut Context) {
 /// Goto files in selection.
 fn goto_file_impl(cx: &mut Context, action: Action) {
     let (view, doc) = current_ref!(cx.editor);
-    let text = doc.text();
+    let text = doc.text().slice(..);
     let selections = doc.selection(view.id);
     let primary = selections.primary();
     let rel_path = doc
@@ -1295,15 +1303,16 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         .unwrap_or_default();
 
     let paths: Vec<_> = if selections.len() == 1 && primary.len() == 1 {
-        let mut pos = primary.cursor(text.slice(..));
-        pos = text.char_to_byte(pos);
+        // Cap the search at roughly 1k bytes around the cursor.
+        let lookaround = 1000;
+        let pos = text.char_to_byte(primary.cursor(text));
         let search_start = text
             .line_to_byte(text.byte_to_line(pos))
-            .max(pos.saturating_sub(1000));
+            .max(text.floor_char_boundary(pos.saturating_sub(lookaround)));
         let search_end = text
             .line_to_byte(text.byte_to_line(pos) + 1)
-            .min(pos + 1000);
-        let search_range = text.slice(search_start..search_end);
+            .min(text.ceil_char_boundary(pos + lookaround));
+        let search_range = text.byte_slice(search_start..search_end);
         // we also allow paths that are next to the cursor (can be ambiguous but
         // rarely so in practice) so that gf on quoted/braced path works (not sure about this
         // but apparently that is how gf has worked historically in helix)
@@ -1312,12 +1321,12 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
             .find(|range| pos <= search_start + range.end)
             .map(|range| Cow::from(search_range.byte_slice(range)));
         log::debug!("goto_file auto-detected path: {path:?}");
-        let path = path.unwrap_or_else(|| primary.fragment(text.slice(..)));
+        let path = path.unwrap_or_else(|| primary.fragment(text));
         vec![path.into_owned()]
     } else {
         // Otherwise use each selection, trimmed.
         selections
-            .fragments(text.slice(..))
+            .fragments(text)
             .map(|sel| sel.trim().to_owned())
             .filter(|sel| !sel.is_empty())
             .collect()
@@ -1332,7 +1341,7 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         let path = path::expand(&sel);
         let path = &rel_path.join(path);
         if path.is_dir() {
-            let picker = ui::file_picker(path.into(), &cx.editor.config());
+            let picker = ui::file_picker(cx.editor, path.into());
             cx.push_layer(Box::new(overlaid(picker)));
         } else if let Err(e) = cx.editor.open(path, action) {
             cx.editor.set_error(format!("Open file failed: {:?}", e));
@@ -1369,7 +1378,7 @@ fn open_url(cx: &mut Context, url: Url, action: Action) {
         Ok(_) | Err(_) => {
             let path = &rel_path.join(url.path());
             if path.is_dir() {
-                let picker = ui::file_picker(path.into(), &cx.editor.config());
+                let picker = ui::file_picker(cx.editor, path.into());
                 cx.push_layer(Box::new(overlaid(picker)));
             } else if let Err(e) = cx.editor.open(path, action) {
                 cx.editor.set_error(format!("Open file failed: {:?}", e));
@@ -1680,10 +1689,12 @@ fn replace(cx: &mut Context) {
         if let Some(ch) = ch {
             let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
                 if !range.is_empty() {
-                    let text: Tendril =
-                        RopeGraphemes::new(doc.text().slice(range.from()..range.to()))
-                            .map(|_g| ch)
-                            .collect();
+                    let text: Tendril = doc
+                        .text()
+                        .slice(range.from()..range.to())
+                        .graphemes()
+                        .map(|_g| ch)
+                        .collect();
                     (range.from(), range.to(), Some(text))
                 } else {
                     // No change.
@@ -1713,17 +1724,48 @@ where
     exit_select_mode(cx);
 }
 
+enum CaseSwitcher {
+    Upper(ToUppercase),
+    Lower(ToLowercase),
+    Keep(Option<char>),
+}
+
+impl Iterator for CaseSwitcher {
+    type Item = char;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self {
+            CaseSwitcher::Upper(upper) => upper.next(),
+            CaseSwitcher::Lower(lower) => lower.next(),
+            CaseSwitcher::Keep(ch) => ch.take(),
+        }
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        match self {
+            CaseSwitcher::Upper(upper) => upper.size_hint(),
+            CaseSwitcher::Lower(lower) => lower.size_hint(),
+            CaseSwitcher::Keep(ch) => {
+                let n = if ch.is_some() { 1 } else { 0 };
+                (n, Some(n))
+            }
+        }
+    }
+}
+
+impl ExactSizeIterator for CaseSwitcher {}
+
 fn switch_case(cx: &mut Context) {
     switch_case_impl(cx, |string| {
         string
             .chars()
             .flat_map(|ch| {
                 if ch.is_lowercase() {
-                    ch.to_uppercase().collect()
+                    CaseSwitcher::Upper(ch.to_uppercase())
                 } else if ch.is_uppercase() {
-                    ch.to_lowercase().collect()
+                    CaseSwitcher::Lower(ch.to_lowercase())
                 } else {
-                    vec![ch]
+                    CaseSwitcher::Keep(Some(ch))
                 }
             })
             .collect()
@@ -2393,18 +2435,42 @@ fn global_search(cx: &mut Context) {
     struct GlobalSearchConfig {
         smart_case: bool,
         file_picker_config: helix_view::editor::FilePickerConfig,
+        directory_style: Style,
+        number_style: Style,
+        colon_style: Style,
     }
 
     let config = cx.editor.config();
     let config = GlobalSearchConfig {
         smart_case: config.search.smart_case,
         file_picker_config: config.file_picker.clone(),
+        directory_style: cx.editor.theme.get("ui.text.directory"),
+        number_style: cx.editor.theme.get("constant.numeric.integer"),
+        colon_style: cx.editor.theme.get("punctuation"),
     };
 
     let columns = [
-        PickerColumn::new("path", |item: &FileResult, _| {
+        PickerColumn::new("path", |item: &FileResult, config: &GlobalSearchConfig| {
             let path = helix_stdx::path::get_relative_path(&item.path);
-            format!("{}:{}", path.to_string_lossy(), item.line_num + 1).into()
+
+            let directories = path
+                .parent()
+                .filter(|p| !p.as_os_str().is_empty())
+                .map(|p| format!("{}{}", p.display(), std::path::MAIN_SEPARATOR))
+                .unwrap_or_default();
+
+            let filename = item
+                .path
+                .file_name()
+                .expect("global search paths are normalized (can't end in `..`)")
+                .to_string_lossy();
+
+            Cell::from(Spans::from(vec![
+                Span::styled(directories, config.directory_style),
+                Span::raw(filename),
+                Span::styled(":", config.colon_style),
+                Span::styled((item.line_num + 1).to_string(), config.number_style),
+            ]))
         }),
         PickerColumn::hidden("contents"),
     ];
@@ -2964,7 +3030,7 @@ fn file_picker(cx: &mut Context) {
         cx.editor.set_error("Workspace directory does not exist");
         return;
     }
-    let picker = ui::file_picker(root, &cx.editor.config());
+    let picker = ui::file_picker(cx.editor, root);
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
@@ -2981,7 +3047,7 @@ fn file_picker_in_current_buffer_directory(cx: &mut Context) {
         }
     };
 
-    let picker = ui::file_picker(path, &cx.editor.config());
+    let picker = ui::file_picker(cx.editor, path);
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
@@ -2992,23 +3058,23 @@ fn file_picker_in_current_directory(cx: &mut Context) {
             .set_error("Current working directory does not exist");
         return;
     }
-    let picker = ui::file_picker(cwd, &cx.editor.config());
+    let picker = ui::file_picker(cx.editor, cwd);
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
-fn file_browser(cx: &mut Context) {
+fn file_explorer(cx: &mut Context) {
     let root = find_workspace().0;
     if !root.exists() {
         cx.editor.set_error("Workspace directory does not exist");
         return;
     }
 
-    if let Ok(picker) = ui::file_browser(root, cx.editor) {
+    if let Ok(picker) = ui::file_explorer(root, cx.editor) {
         cx.push_layer(Box::new(overlaid(picker)));
     }
 }
 
-fn file_browser_in_current_buffer_directory(cx: &mut Context) {
+fn file_explorer_in_current_buffer_directory(cx: &mut Context) {
     let doc_dir = doc!(cx.editor)
         .path()
         .and_then(|path| path.parent().map(|path| path.to_path_buf()));
@@ -3024,18 +3090,18 @@ fn file_browser_in_current_buffer_directory(cx: &mut Context) {
                 return;
             }
             cx.editor.set_error(
-                "Current buffer has no parent, opening file browser in current working directory",
+                "Current buffer has no parent, opening file explorer in current working directory",
             );
             cwd
         }
     };
 
-    if let Ok(picker) = ui::file_browser(path, cx.editor) {
+    if let Ok(picker) = ui::file_explorer(path, cx.editor) {
         cx.push_layer(Box::new(overlaid(picker)));
     }
 }
 
-fn file_browser_in_current_directory(cx: &mut Context) {
+fn file_explorer_in_current_directory(cx: &mut Context) {
     let cwd = helix_stdx::env::current_working_dir();
     if !cwd.exists() {
         cx.editor
@@ -3043,7 +3109,7 @@ fn file_browser_in_current_directory(cx: &mut Context) {
         return;
     }
 
-    if let Ok(picker) = ui::file_browser(cwd, cx.editor) {
+    if let Ok(picker) = ui::file_explorer(cwd, cx.editor) {
         cx.push_layer(Box::new(overlaid(picker)));
     }
 }
@@ -3318,7 +3384,7 @@ pub fn command_palette(cx: &mut Context) {
                     .iter()
                     .map(|cmd| MappableCommand::Typable {
                         name: cmd.name.to_owned(),
-                        args: Vec::new(),
+                        args: String::new(),
                         doc: cmd.doc.to_owned(),
                     }),
             );
@@ -3516,6 +3582,10 @@ async fn make_format_callback(
                 }
             }
             Err(err) => {
+                if write.is_none() {
+                    editor.set_error(err.to_string());
+                    return;
+                }
                 log::info!("failed to format '{}': {err}", doc.display_name());
             }
         }
@@ -3826,8 +3896,7 @@ fn goto_next_diag(cx: &mut Context) {
         let diag = doc
             .diagnostics()
             .iter()
-            .find(|diag| diag.range.start > cursor_pos)
-            .or_else(|| doc.diagnostics().first());
+            .find(|diag| diag.range.start > cursor_pos);
 
         let selection = match diag {
             Some(diag) => Selection::single(diag.range.start, diag.range.end),
@@ -3854,8 +3923,7 @@ fn goto_prev_diag(cx: &mut Context) {
             .diagnostics()
             .iter()
             .rev()
-            .find(|diag| diag.range.start < cursor_pos)
-            .or_else(|| doc.diagnostics().last());
+            .find(|diag| diag.range.start < cursor_pos);
 
         let selection = match diag {
             // NOTE: the selection is reversed because we're jumping to the
@@ -4841,7 +4909,10 @@ fn format_selections(cx: &mut Context) {
         )
         .unwrap();
 
-    let edits = tokio::task::block_in_place(|| helix_lsp::block_on(future)).unwrap_or_default();
+    let edits = tokio::task::block_in_place(|| helix_lsp::block_on(future))
+        .ok()
+        .flatten()
+        .unwrap_or_default();
 
     let transaction =
         helix_lsp::util::generate_transaction_from_edits(doc.text(), edits, offset_encoding);
@@ -5536,20 +5607,26 @@ fn wonly(cx: &mut Context) {
 }
 
 fn select_register(cx: &mut Context) {
-    cx.editor.autoinfo = Some(Info::from_registers(&cx.editor.registers));
+    cx.editor.autoinfo = Some(Info::from_registers(
+        "Select register",
+        &cx.editor.registers,
+    ));
     cx.on_next_key(move |cx, event| {
+        cx.editor.autoinfo = None;
         if let Some(ch) = event.char() {
-            cx.editor.autoinfo = None;
             cx.editor.selected_register = Some(ch);
         }
     })
 }
 
 fn insert_register(cx: &mut Context) {
-    cx.editor.autoinfo = Some(Info::from_registers(&cx.editor.registers));
+    cx.editor.autoinfo = Some(Info::from_registers(
+        "Insert register",
+        &cx.editor.registers,
+    ));
     cx.on_next_key(move |cx, event| {
+        cx.editor.autoinfo = None;
         if let Some(ch) = event.char() {
-            cx.editor.autoinfo = None;
             cx.register = Some(ch);
             paste(
                 cx.editor,
@@ -5560,6 +5637,47 @@ fn insert_register(cx: &mut Context) {
             );
         }
     })
+}
+
+fn copy_between_registers(cx: &mut Context) {
+    cx.editor.autoinfo = Some(Info::from_registers(
+        "Copy from register",
+        &cx.editor.registers,
+    ));
+    cx.on_next_key(move |cx, event| {
+        cx.editor.autoinfo = None;
+
+        let Some(source) = event.char() else {
+            return;
+        };
+
+        let Some(values) = cx.editor.registers.read(source, cx.editor) else {
+            cx.editor.set_error(format!("register {source} is empty"));
+            return;
+        };
+        let values: Vec<_> = values.map(|value| value.to_string()).collect();
+
+        cx.editor.autoinfo = Some(Info::from_registers(
+            "Copy into register",
+            &cx.editor.registers,
+        ));
+        cx.on_next_key(move |cx, event| {
+            cx.editor.autoinfo = None;
+
+            let Some(dest) = event.char() else {
+                return;
+            };
+
+            let n_values = values.len();
+            match cx.editor.registers.write(dest, values) {
+                Ok(_) => cx.editor.set_status(format!(
+                    "yanked {n_values} value{} from register {source} to {dest}",
+                    if n_values == 1 { "" } else { "s" }
+                )),
+                Err(err) => cx.editor.set_error(err.to_string()),
+            }
+        });
+    });
 }
 
 fn align_view_top(cx: &mut Context) {
@@ -5814,7 +5932,8 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
     cx.editor.autoinfo = Some(Info::new(title, &help_text));
 }
 
-static SURROUND_HELP_TEXT: [(&str, &str); 5] = [
+static SURROUND_HELP_TEXT: [(&str, &str); 6] = [
+    ("m", "Nearest matching pair"),
     ("( or )", "Parentheses"),
     ("{ or }", "Curly braces"),
     ("< or >", "Angled brackets"),
@@ -5867,12 +5986,16 @@ fn surround_add(cx: &mut Context) {
         exit_select_mode(cx);
     });
 
-    cx.editor.autoinfo = Some(Info::new("Surround selections with", &SURROUND_HELP_TEXT));
+    cx.editor.autoinfo = Some(Info::new(
+        "Surround selections with",
+        &SURROUND_HELP_TEXT[1..],
+    ));
 }
 
 fn surround_replace(cx: &mut Context) {
     let count = cx.count();
     cx.on_next_key(move |cx, event| {
+        cx.editor.autoinfo = None;
         let surround_ch = match event.char() {
             Some('m') => None, // m selects the closest surround pair
             Some(ch) => Some(ch),
@@ -5928,7 +6051,10 @@ fn surround_replace(cx: &mut Context) {
             exit_select_mode(cx);
         });
 
-        cx.editor.autoinfo = Some(Info::new("Replace with a pair of", &SURROUND_HELP_TEXT));
+        cx.editor.autoinfo = Some(Info::new(
+            "Replace with a pair of",
+            &SURROUND_HELP_TEXT[1..],
+        ));
     });
 
     cx.editor.autoinfo = Some(Info::new(
@@ -6484,6 +6610,7 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
         let alphabet = &cx.editor.config().jump_label_alphabet;
         let Some(i) = event
             .char()
+            .filter(|_| event.modifiers.is_empty())
             .and_then(|ch| alphabet.iter().position(|&it| it == ch))
         else {
             doc_mut!(cx.editor, &doc).remove_jump_labels(view);
@@ -6500,6 +6627,7 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
             let alphabet = &cx.editor.config().jump_label_alphabet;
             let Some(inner) = event
                 .char()
+                .filter(|_| event.modifiers.is_empty())
                 .and_then(|ch| alphabet.iter().position(|&it| it == ch))
             else {
                 return;
@@ -6568,7 +6696,9 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
             // madeup of word characters. The latter condition is needed because
             // move_next_word_end simply treats a sequence of characters from
             // the same char class as a word so `=<` would also count as a word.
-            let add_label = RevRopeGraphemes::new(text.slice(..cursor_fwd.head))
+            let add_label = text
+                .slice(..cursor_fwd.head)
+                .graphemes_rev()
                 .take(2)
                 .take_while(|g| g.chars().all(char_is_word))
                 .count()
@@ -6594,7 +6724,9 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
             // madeup of word characters. The latter condition is needed because
             // move_prev_word_start simply treats a sequence of characters from
             // the same char class as a word so `=<` would also count as a word.
-            let add_label = RopeGraphemes::new(text.slice(cursor_rev.head..))
+            let add_label = text
+                .slice(cursor_rev.head..)
+                .graphemes()
                 .take(2)
                 .take_while(|g| g.chars().all(char_is_word))
                 .count()
