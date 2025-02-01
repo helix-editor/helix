@@ -1097,7 +1097,7 @@ thread_local! {
 
 #[derive(Debug)]
 pub struct Syntax {
-    layers: HopSlotMap<LayerId, LanguageLayer>,
+    pub layers: HopSlotMap<LayerId, LanguageLayer>,
     root: LayerId,
     loader: Arc<ArcSwap<Loader>>,
 }
