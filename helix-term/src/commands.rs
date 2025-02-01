@@ -5145,7 +5145,10 @@ fn toggle_comments_impl<'a>(
                             ts_range.start_byte <= start && ts_range.end_byte >= end;
                         if is_encompassing {
                             let this_gap = ts_range.end_byte - ts_range.start_byte;
-                            if this_gap < min_gap {
+                            if this_gap < min_gap
+                                // ignore the "comment" language
+                                && syntax.layer_config(layer_id).language_name != "comment"
+                            {
                                 best_fit = Some(layer_id);
                                 min_gap = this_gap;
                             }
@@ -5181,32 +5184,45 @@ fn toggle_comments(cx: &mut Context) {
         cx,
         Box::new(
             |doc_line_token, doc_block_tokens, doc, selection, mut get_comment_tokens| {
-                let text = doc.slice(..);
+                return Transaction::change(
+                    doc,
+                    selection.iter().flat_map(|range| {
+                        let (injected_line_tokens, injected_block_tokens) =
+                            get_comment_tokens(range.from(), range.to());
 
-                Transaction::change_by_selection(doc, selection, |range| {
-                    let (injected_line_tokens, injected_block_tokens) =
-                        get_comment_tokens(range.from(), range.to());
+                        let line_token = injected_line_tokens
+                            .as_ref()
+                            .and_then(|lt| lt.first())
+                            .map(|lt| lt.as_str())
+                            .or(doc_line_token);
 
-                    let line_token = injected_line_tokens
-                        .as_ref()
-                        .and_then(|lt| lt.first())
-                        .map(|lt| lt.as_str())
-                        .unwrap_or(doc_line_token.unwrap_or(DEFAULT_COMMENT_TOKEN));
+                        let block_tokens = injected_block_tokens.as_deref().or(doc_block_tokens);
 
-                    let default_block_tokens = &[BlockCommentToken::default()];
+                        log::error!("{line_token:?}, {block_tokens:?}");
 
-                    let block_tokens = injected_block_tokens
-                        .as_deref()
-                        .unwrap_or(doc_block_tokens.unwrap_or(default_block_tokens));
+                        // only have line tokens
+                        if line_token.is_some() {
+                            return comment::toggle_line_comments(doc, range, line_token);
+                        }
 
-                    log::error!("{line_token:?}, {block_tokens:?}");
+                        vec![]
 
-                    todo!();
+                        // todo!();
+                    }),
+                );
 
-                    // if line_tokens.is_some() && block_tokens.is_none() {
+                // Transaction::change_by_selection(doc, selection, |range| {
 
-                    // }
-                });
+                // let default_block_tokens = &[BlockCommentToken::default()];
+
+                // let block_tokens = block_tokens.unwrap_or(default_block_tokens);
+
+                // log::error!("{line_token:?}, {block_tokens:?}");
+
+                // if line_tokens.is_some() && block_tokens.is_none() {
+
+                // }
+                // });
 
                 // // only have line comment tokens
                 // if line_token.is_some() && block_tokens.is_none() {
@@ -5218,7 +5234,7 @@ fn toggle_comments(cx: &mut Context) {
                 //     );
                 // }
 
-                todo!();
+                // todo!();
 
                 // let split_lines = comment::split_lines_of_selection(text, selection);
 
