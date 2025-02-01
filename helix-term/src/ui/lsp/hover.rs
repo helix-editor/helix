@@ -15,8 +15,7 @@ use crate::ui::Markdown;
 
 pub struct Hover {
     active_index: usize,
-    contents: Vec<(Option<String>, String)>,
-    config_loader: Arc<ArcSwap<syntax::Loader>>,
+    contents: Vec<(Option<Markdown>, Markdown)>,
 }
 
 impl Hover {
@@ -32,8 +31,13 @@ impl Hover {
             .enumerate()
             .map(|(idx, (server_name, hover))| {
                 let header = (n_hovers > 1)
-                    .then(|| format!("**[{}/{}] {}**\n", idx + 1, n_hovers, server_name));
-                let body = hover_contents_to_string(hover.contents);
+                    .then(|| format!("**[{}/{}] {}**\n", idx + 1, n_hovers, server_name))
+                    .map(|h| Markdown::new(h, Arc::clone(&config_loader)));
+
+                let body = Markdown::new(
+                    hover_contents_to_string(hover.contents),
+                    Arc::clone(&config_loader),
+                );
 
                 (header, body)
             })
@@ -42,7 +46,6 @@ impl Hover {
         Self {
             active_index: usize::default(),
             contents,
-            config_loader,
         }
     }
 
@@ -50,24 +53,17 @@ impl Hover {
         self.contents.len() > 1
     }
 
-    fn content(&self) -> (Option<Markdown>, Markdown) {
-        let (header, body) = &self.contents[self.active_index];
-
-        (
-            header
-                .clone()
-                .map(|header| Markdown::new(header, Arc::clone(&self.config_loader))),
-            Markdown::new(body.to_owned(), Arc::clone(&self.config_loader)),
-        )
+    fn content_markdown(&self) -> &(Option<Markdown>, Markdown) {
+        &self.contents[self.active_index]
     }
 
-    pub fn string_content(&self) -> String {
+    pub fn content_string(&self) -> String {
         self.contents
             .iter()
             .map(|(header, body)| {
-                let header = header.clone().unwrap_or_default();
+                let header: String = header.iter().map(|a| a.contents.clone()).collect();
 
-                format!("{header}{body}")
+                format!("{}{}", header, body.contents)
             })
             .collect::<Vec<String>>()
             .join("\n\n---\n\n")
@@ -91,7 +87,7 @@ impl Component for Hover {
         let margin = Margin::all(1);
         let area = area.inner(margin);
 
-        let (header, contents) = self.content();
+        let (header, contents) = self.content_markdown();
 
         // show header and border only when more than one results
         if let Some(header) = header {
@@ -126,7 +122,7 @@ impl Component for Hover {
     fn required_size(&mut self, viewport: (u16, u16)) -> Option<(u16, u16)> {
         let max_text_width = viewport.0.saturating_sub(PADDING_HORIZONTAL).clamp(10, 120);
 
-        let (header, contents) = self.content();
+        let (header, contents) = self.content_markdown();
 
         let header_width = header
             .as_ref()

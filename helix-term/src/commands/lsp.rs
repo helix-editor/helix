@@ -1102,7 +1102,7 @@ fn hover_impl(cx: &mut Context, hover_action: HoverDisplay) {
                     editor.new_file_from_document(
                         Action::VerticalSplit,
                         Document::from(
-                            Rope::from(hover.string_content()),
+                            Rope::from(hover.content_string()),
                             None,
                             Arc::clone(&editor.config),
                         ),
