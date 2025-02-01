@@ -1,3 +1,4 @@
+use completion::{CompletionEvent, CompletionHandler};
 use helix_event::send_blocking;
 use tokio::sync::mpsc::Sender;
 
@@ -17,7 +18,7 @@ pub enum AutoSaveEvent {
 
 pub struct Handlers {
     // only public because most of the actual implementation is in helix-term right now :/
-    pub completions: Sender<completion::CompletionEvent>,
+    pub completions: CompletionHandler,
     pub signature_hints: Sender<lsp::SignatureHelpEvent>,
     pub auto_save: Sender<AutoSaveEvent>,
 }
@@ -25,14 +26,11 @@ pub struct Handlers {
 impl Handlers {
     /// Manually trigger completion (c-x)
     pub fn trigger_completions(&self, trigger_pos: usize, doc: DocumentId, view: ViewId) {
-        send_blocking(
-            &self.completions,
-            completion::CompletionEvent::ManualTrigger {
-                cursor: trigger_pos,
-                doc,
-                view,
-            },
-        );
+        self.completions.event(CompletionEvent::ManualTrigger {
+            cursor: trigger_pos,
+            doc,
+            view,
+        });
     }
 
     pub fn trigger_signature_help(&self, invocation: SignatureHelpInvoked, editor: &Editor) {
