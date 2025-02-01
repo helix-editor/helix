@@ -5117,7 +5117,7 @@ fn toggle_comments_impl<'a>(
     exit_select_mode(cx);
 }
 
-/// commenting behavior, for each line in selection:
+/// commenting behavior, for each range in selection:
 /// 1. only line comment tokens -> line comment
 /// 2. each line block commented -> uncomment all lines
 /// 3. whole selection block commented -> uncomment selection
@@ -5127,11 +5127,11 @@ fn toggle_comments(cx: &mut Context) {
     toggle_comments_impl(
         cx,
         Box::new(
-            |doc_line_token, doc_block_tokens, doc, selection, mut get_comment_tokens| {
-                return Transaction::change(
-                    doc,
+            |doc_line_token, doc_block_tokens, rope, selection, mut get_comment_tokens| {
+                Transaction::change(
+                    rope,
                     selection.iter().flat_map(|range| {
-                        let text = doc.slice(..);
+                        let text = rope.slice(..);
                         let (injected_line_tokens, injected_block_tokens) =
                             get_comment_tokens(range.from(), range.to());
 
@@ -5143,11 +5143,9 @@ fn toggle_comments(cx: &mut Context) {
 
                         let block_tokens = injected_block_tokens.as_deref().or(doc_block_tokens);
 
-                        log::error!("{line_token:?}, {block_tokens:?}");
-
                         // only have line tokens
                         if line_token.is_some() && block_tokens.is_none() {
-                            return comment::toggle_line_comments(doc, range, line_token);
+                            return comment::toggle_line_comments(rope, range, line_token);
                         }
 
                         let split_lines = comment::split_lines_of_range(text, range);
@@ -5161,7 +5159,7 @@ fn toggle_comments(cx: &mut Context) {
                         // block commented by line would also be block commented so check this first
                         if line_commented {
                             return comment::create_block_comment_transaction(
-                                doc,
+                                rope,
                                 &split_lines,
                                 line_commented,
                                 line_comment_changes,
@@ -5175,7 +5173,7 @@ fn toggle_comments(cx: &mut Context) {
                         // check if selection has block comments
                         if block_commented {
                             return comment::create_block_comment_transaction(
-                                doc,
+                                rope,
                                 &vec![*range],
                                 block_commented,
                                 comment_changes,
@@ -5186,7 +5184,7 @@ fn toggle_comments(cx: &mut Context) {
                         // not commented and only have block comment tokens
                         if line_token.is_none() && block_tokens.is_some() {
                             return comment::create_block_comment_transaction(
-                                doc,
+                                rope,
                                 &split_lines,
                                 line_commented,
                                 line_comment_changes,
@@ -5195,9 +5193,9 @@ fn toggle_comments(cx: &mut Context) {
                         }
 
                         // not block commented at all and don't have any tokens
-                        comment::toggle_line_comments(doc, range, line_token)
+                        comment::toggle_line_comments(rope, range, line_token)
                     }),
-                );
+                )
             },
         ),
     )
@@ -5206,36 +5204,74 @@ fn toggle_comments(cx: &mut Context) {
 fn toggle_line_comments(cx: &mut Context) {
     toggle_comments_impl(
         cx,
-        Box::new(|a, b, doc, selection, comment_fn| {
-            todo!();
-            // if line_token.is_none() && block_tokens.is_some() {
-            //     let default_block_tokens = &[BlockCommentToken::default()];
-            //     let block_comment_tokens = block_tokens.unwrap_or(default_block_tokens);
-            //     comment::toggle_block_comments(
-            //         doc,
-            //         &comment::split_lines_of_selection(doc.slice(..), selection),
-            //         block_comment_tokens,
-            //     )
-            // } else {
-            //     comment::toggle_line_comments(doc, selection, line_token)
-            // }
-        }),
+        Box::new(
+            |doc_line_token, doc_block_tokens, rope, selection, mut get_comment_tokens| {
+                Transaction::change(
+                    rope,
+                    selection.iter().flat_map(|range| {
+                        let (injected_line_tokens, injected_block_tokens) =
+                            get_comment_tokens(range.from(), range.to());
+
+                        let line_token = injected_line_tokens
+                            .as_ref()
+                            .and_then(|token| token.first())
+                            .map(|token| token.as_str())
+                            .or(doc_line_token);
+
+                        let block_tokens = injected_block_tokens.as_deref().or(doc_block_tokens);
+
+                        if line_token.is_none() && block_tokens.is_some() {
+                            let default_block_tokens = &[BlockCommentToken::default()];
+                            let block_comment_tokens = block_tokens.unwrap_or(default_block_tokens);
+                            comment::toggle_block_comments(
+                                rope,
+                                &comment::split_lines_of_range(rope.slice(..), range),
+                                block_comment_tokens,
+                            )
+                        } else {
+                            comment::toggle_line_comments(rope, range, line_token)
+                        }
+                    }),
+                )
+            },
+        ),
     );
 }
 
 fn toggle_block_comments(cx: &mut Context) {
     toggle_comments_impl(
         cx,
-        Box::new(|a, b, doc, selection, comment_fn| {
-            todo!();
-            // if line_token.is_some() && block_tokens.is_none() {
-            //     comment::toggle_line_comments(doc, selection, line_token)
-            // } else {
-            //     let default_block_tokens = &[BlockCommentToken::default()];
-            //     let block_comment_tokens = block_tokens.unwrap_or(default_block_tokens);
-            //     comment::toggle_block_comments(doc, selection, block_comment_tokens)
-            // }
-        }),
+        Box::new(
+            |doc_line_token, doc_block_tokens, rope, selection, mut get_comment_tokens| {
+                Transaction::change(
+                    rope,
+                    selection.iter().flat_map(|range| {
+                        let (injected_line_tokens, injected_block_tokens) =
+                            get_comment_tokens(range.from(), range.to());
+
+                        let line_token = injected_line_tokens
+                            .as_ref()
+                            .and_then(|token| token.first())
+                            .map(|token| token.as_str())
+                            .or(doc_line_token);
+
+                        let block_tokens = injected_block_tokens.as_deref().or(doc_block_tokens);
+
+                        if line_token.is_some() && block_tokens.is_none() {
+                            comment::toggle_line_comments(rope, range, line_token)
+                        } else {
+                            let default_block_tokens = &[BlockCommentToken::default()];
+                            let block_comment_tokens = block_tokens.unwrap_or(default_block_tokens);
+                            comment::toggle_block_comments(
+                                rope,
+                                &vec![*range],
+                                block_comment_tokens,
+                            )
+                        }
+                    }),
+                )
+            },
+        ),
     );
 }
 
