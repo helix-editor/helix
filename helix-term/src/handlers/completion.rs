@@ -12,7 +12,7 @@ use helix_lsp::lsp;
 use helix_lsp::util::pos_to_lsp_pos;
 use helix_stdx::rope::RopeSliceExt;
 use helix_view::document::{Mode, SavePoint};
-use helix_view::handlers::lsp::CompletionEvent;
+use helix_view::handlers::completion::CompletionEvent;
 use helix_view::{DocumentId, Editor, ViewId};
 use path::path_completion;
 use tokio::sync::mpsc::Sender;
