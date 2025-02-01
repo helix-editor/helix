@@ -18,9 +18,9 @@ default = ["crossterm"]
 helix-view = { path = "../helix-view", features = ["term"] }
 helix-core = { path = "../helix-core" }
 
-bitflags = "2.6"
+bitflags.workspace = true
 cassowary = "0.3"
-unicode-segmentation = "1.12"
+unicode-segmentation.workspace = true
 crossterm = { version = "0.28", optional = true }
 termini = "1.0"
 serde = { version = "1", "optional" = true, features = ["derive"]}

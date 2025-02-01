@@ -8,6 +8,7 @@ use helix_view::keyboard::KeyCode;
 use std::sync::Arc;
 use std::{borrow::Cow, ops::RangeFrom};
 use tui::buffer::Buffer as Surface;
+use tui::text::Span;
 use tui::widgets::{Block, Widget};
 
 use helix_core::{
@@ -19,7 +20,8 @@ use helix_view::{
 };
 
 type PromptCharHandler = Box<dyn Fn(&mut Prompt, char, &Context)>;
-pub type Completion = (RangeFrom<usize>, Cow<'static, str>);
+
+pub type Completion = (RangeFrom<usize>, Span<'static>);
 type CompletionFn = Box<dyn FnMut(&Editor, &str) -> Vec<Completion>>;
 type CallbackFn = Box<dyn FnMut(&mut Context, &str, PromptEvent)>;
 pub type DocFn = Box<dyn Fn(&str) -> Option<Cow<str>>>;
@@ -28,6 +30,12 @@ pub struct Prompt {
     prompt: Cow<'static, str>,
     line: String,
     cursor: usize,
+    // Fields used for Component callbacks and rendering:
+    line_area: Rect,
+    anchor: usize,
+    truncate_start: bool,
+    truncate_end: bool,
+    // ---
     completion: Vec<Completion>,
     selection: Option<usize>,
     history_register: Option<char>,
@@ -80,6 +88,10 @@ impl Prompt {
             prompt,
             line: String::new(),
             cursor: 0,
+            line_area: Rect::default(),
+            anchor: 0,
+            truncate_start: false,
+            truncate_end: false,
             completion: Vec::new(),
             selection: None,
             history_register,
@@ -233,15 +245,7 @@ impl Prompt {
                 position
             }
             Movement::StartOfLine => 0,
-            Movement::EndOfLine => {
-                let mut cursor =
-                    GraphemeCursor::new(self.line.len().saturating_sub(1), self.line.len(), false);
-                if let Ok(Some(pos)) = cursor.next_boundary(&self.line, 0) {
-                    pos
-                } else {
-                    self.cursor
-                }
-            }
+            Movement::EndOfLine => self.line.len(),
             Movement::None => self.cursor,
         }
     }
@@ -382,7 +386,7 @@ impl Prompt {
 
         let (range, item) = &self.completion[index];
 
-        self.line.replace_range(range.clone(), item);
+        self.line.replace_range(range.clone(), &item.content);
 
         self.move_end();
     }
@@ -395,7 +399,7 @@ impl Prompt {
 const BASE_WIDTH: u16 = 30;
 
 impl Prompt {
-    pub fn render_prompt(&self, area: Rect, surface: &mut Surface, cx: &mut Context) {
+    pub fn render_prompt(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
         let theme = &cx.editor.theme;
         let prompt_color = theme.get("ui.text");
         let completion_color = theme.get("ui.menu");
@@ -407,7 +411,7 @@ impl Prompt {
         let max_len = self
             .completion
             .iter()
-            .map(|(_, completion)| completion.len() as u16)
+            .map(|(_, completion)| completion.content.len() as u16)
             .max()
             .unwrap_or(BASE_WIDTH)
             .max(BASE_WIDTH);
@@ -415,7 +419,8 @@ impl Prompt {
         let cols = std::cmp::max(1, area.width / max_len);
         let col_width = (area.width.saturating_sub(cols)) / cols;
 
-        let height = ((self.completion.len() as u16 + cols - 1) / cols)
+        let height = (self.completion.len() as u16)
+            .div_ceil(cols)
             .min(10) // at most 10 rows (or less)
             .min(area.height.saturating_sub(1));
 
@@ -445,18 +450,22 @@ impl Prompt {
             for (i, (_range, completion)) in
                 self.completion.iter().enumerate().skip(offset).take(items)
             {
-                let color = if Some(i) == self.selection {
-                    selected_color // TODO: just invert bg
+                let is_selected = Some(i) == self.selection;
+
+                let completion_item_style = if is_selected {
+                    selected_color
                 } else {
-                    completion_color
+                    completion_color.patch(completion.style)
                 };
+
                 surface.set_stringn(
                     area.x + col * (1 + col_width),
                     area.y + row,
-                    completion,
+                    &completion.content,
                     col_width.saturating_sub(1) as usize,
-                    color,
+                    completion_item_style,
                 );
+
                 row += 1;
                 if row > area.height - 1 {
                     row = 0;
@@ -500,11 +509,20 @@ impl Prompt {
         // render buffer text
         surface.set_string(area.x, area.y + line, &self.prompt, prompt_color);
 
-        let line_area = area.clip_left(self.prompt.len() as u16).clip_top(line);
+        self.line_area = area
+            .clip_left(self.prompt.len() as u16)
+            .clip_top(line)
+            .clip_right(2);
+
         if self.line.is_empty() {
             // Show the most recently entered value as a suggestion.
             if let Some(suggestion) = self.first_history_completion(cx.editor) {
-                surface.set_string(line_area.x, line_area.y, suggestion, suggestion_color);
+                surface.set_string(
+                    self.line_area.x,
+                    self.line_area.y,
+                    suggestion,
+                    suggestion_color,
+                );
             }
         } else if let Some((language, loader)) = self.language.as_ref() {
             let mut text: ui::text::Text = crate::ui::markdown::highlighted_code_block(
@@ -515,9 +533,34 @@ impl Prompt {
                 None,
             )
             .into();
-            text.render(line_area, surface, cx);
+            text.render(self.line_area, surface, cx);
         } else {
-            surface.set_string(line_area.x, line_area.y, self.line.clone(), prompt_color);
+            if self.line.len() < self.line_area.width as usize {
+                self.anchor = 0;
+            } else if self.cursor < self.anchor {
+                self.anchor = self.cursor;
+            } else if self.cursor - self.anchor > self.line_area.width as usize {
+                self.anchor = self.cursor - self.line_area.width as usize;
+            }
+
+            self.truncate_start = self.anchor > 0;
+            self.truncate_end = self.line.len() - self.anchor > self.line_area.width as usize;
+
+            // if we keep inserting characters just before the end elipsis, we move the anchor
+            // so that those new characters are displayed
+            if self.truncate_end && self.cursor - self.anchor >= self.line_area.width as usize {
+                self.anchor += 1;
+            }
+
+            surface.set_string_anchored(
+                self.line_area.x,
+                self.line_area.y,
+                self.truncate_start,
+                self.truncate_end,
+                &self.line.as_str()[self.anchor..],
+                self.line_area.width as usize - self.truncate_end as usize,
+                |_| prompt_color,
+            );
         }
     }
 }
@@ -687,14 +730,27 @@ impl Component for Prompt {
     }
 
     fn cursor(&self, area: Rect, editor: &Editor) -> (Option<Position>, CursorKind) {
+        let area = area
+            .clip_left(self.prompt.len() as u16)
+            .clip_right(if self.prompt.len() > 0 { 0 } else { 2 });
+
+        let anchor = self.anchor.min(self.line.len().saturating_sub(1));
+        let mut col = area.left() as usize
+            + UnicodeWidthStr::width(&self.line[anchor..self.cursor.max(anchor)]);
+
+        // ensure the cursor does not go beyond elipses
+        if self.truncate_end && self.cursor - self.anchor >= self.line_area.width as usize {
+            col -= 1;
+        }
+
+        if self.truncate_start && self.cursor == self.anchor {
+            col += 1;
+        }
+
         let line = area.height as usize - 1;
+
         (
-            Some(Position::new(
-                area.y as usize + line,
-                area.x as usize
-                    + self.prompt.len()
-                    + UnicodeWidthStr::width(&self.line[..self.cursor]),
-            )),
+            Some(Position::new(area.y as usize + line, col)),
             editor.config().cursor_shape.from_mode(Mode::Insert),
         )
     }

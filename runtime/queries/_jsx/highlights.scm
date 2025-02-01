@@ -25,7 +25,7 @@
 ; Attributes
 ; ----------
 
-(jsx_attribute (property_identifier) @variable.other.member)
+(jsx_attribute (property_identifier) @attribute)
 
 ; Punctuation
 ; -----------

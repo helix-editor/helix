@@ -27,7 +27,7 @@ pub struct Context<'a> {
     pub jobs: &'a mut Jobs,
 }
 
-impl<'a> Context<'a> {
+impl Context<'_> {
     /// Waits on all pending jobs, and then tries to flush all pending write
     /// operations for all documents.
     pub fn block_try_flush_writes(&mut self) -> anyhow::Result<()> {
@@ -137,9 +137,12 @@ impl Compositor {
     }
 
     pub fn handle_event(&mut self, event: &Event, cx: &mut Context) -> bool {
-        // If it is a key event and a macro is being recorded, push the key event to the recording.
+        // If it is a key event, a macro is being recorded, and a macro isn't being replayed,
+        // push the key event to the recording.
         if let (Event::Key(key), Some((_, keys))) = (event, &mut cx.editor.macro_recording) {
-            keys.push(*key);
+            if cx.editor.macro_replaying.is_empty() {
+                keys.push(*key);
+            }
         }
 
         let mut callbacks = Vec::new();

@@ -1,10 +1,9 @@
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use url::Url;
 
 use crate::{
     DynamicRegistrationClientCapabilities, PartialResultParams, Range, SymbolKind, SymbolTag,
-    TextDocumentPositionParams, WorkDoneProgressOptions, WorkDoneProgressParams,
+    TextDocumentPositionParams, Url, WorkDoneProgressOptions, WorkDoneProgressParams,
 };
 
 pub type CallHierarchyClientCapabilities = DynamicRegistrationClientCapabilities;

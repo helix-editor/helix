@@ -122,10 +122,11 @@ mod external {
                 Self::Tmux
             } else if binary_exists("pbcopy") && binary_exists("pbpaste") {
                 Self::Pasteboard
-            } else if cfg!(feature = "term") {
-                Self::Termcode
             } else {
-                Self::None
+                #[cfg(feature = "term")]
+                return Self::Termcode;
+                #[cfg(not(feature = "term"))]
+                return Self::None;
             }
         }
 

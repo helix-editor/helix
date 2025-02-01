@@ -391,8 +391,8 @@
  --> 6) Sugar is sweet,
  --> 7) And so are you.
 
- Note : X works similarly to x although it doesn't extend to
-      subsequent lines. X on an empty line does nothing.
+ Note: X works similarly to x although it doesn't extend to
+       subsequent lines. X on an empty line does nothing.
 
 =================================================================
 =                   3.8 COLLAPSING SELECTIONS                   =
@@ -411,8 +411,8 @@
  --> This is an error-free line with words to move around in.
 
  Note: This works the same in Select mode.
- Note: Another related command is Alt-; which flips selections.
-
+ Note: Another related command is Alt-; which flips the direction
+       of the selection (flips the selection's cursor and anchor).
 
 
 

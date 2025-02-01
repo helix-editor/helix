@@ -7,6 +7,7 @@ use std::{
 
 use once_cell::sync::Lazy;
 
+// We keep the CWD as a static so that we can access it in places where we don't have access to the Editor
 static CWD: RwLock<Option<PathBuf>> = RwLock::new(None);
 
 // Get the current working directory.
@@ -36,12 +37,12 @@ pub fn current_working_dir() -> PathBuf {
     cwd
 }
 
-pub fn set_current_working_dir(path: impl AsRef<Path>) -> std::io::Result<()> {
+pub fn set_current_working_dir(path: impl AsRef<Path>) -> std::io::Result<Option<PathBuf>> {
     let path = crate::path::canonicalize(path);
     std::env::set_current_dir(&path)?;
     let mut cwd = CWD.write().unwrap();
-    *cwd = Some(path);
-    Ok(())
+
+    Ok(cwd.replace(path))
 }
 
 pub fn env_var_is_set(env_var_name: &str) -> bool {
@@ -102,6 +103,12 @@ fn expand_impl(src: &OsStr, mut resolve: impl FnMut(&OsStr) -> Option<OsString>)
         let mat = captures.get_match().unwrap();
         let pattern_id = mat.pattern().as_usize();
         let mut range = mat.range();
+        // A pattern may match multiple times on a single variable, for example `${HOME:-$HOME}`:
+        // `${HOME:-` matches and also the default value (`$HOME`). Skip past any variables which
+        // have already been expanded.
+        if range.start < pos {
+            continue;
+        }
         let var = &bytes[captures.get_group(1).unwrap().range()];
         let default = if pattern_id != 5 {
             let Some(bracket_pos) = find_brace_end(&bytes[range.end..]) else {
@@ -202,6 +209,7 @@ mod tests {
         assert_env_expand!(env, "bar/$FOO/baz", "bar/foo/baz");
         assert_env_expand!(env, "bar/${FOO}/baz", "bar/foo/baz");
         assert_env_expand!(env, "baz/${BAR:-bar}/foo", "baz/bar/foo");
+        assert_env_expand!(env, "baz/${FOO:-$FOO}/foo", "baz/foo/foo");
         assert_env_expand!(env, "baz/${BAR:=bar}/foo", "baz/bar/foo");
         assert_env_expand!(env, "baz/${BAR-bar}/foo", "baz/bar/foo");
         assert_env_expand!(env, "baz/${BAR=bar}/foo", "baz/bar/foo");

@@ -1,0 +1,102 @@
+# Vintage Theme for the Helix Editor
+# Author: rojebd<roniellberrios@gmail.com>
+# Repo: https://github.com/rojebd/vintage
+# This theme is vintage inspired
+# Info: I made this theme one afternoon because my bus was late and I stayed home :)
+
+attribute = "#a7bf67" 
+keyword = "#A4A2B4"  
+"keyword.directive" = "light-gray" 
+namespace = "#7095bf" 
+punctuation = "white" 
+"punctuation.delimeter" = "white" 
+operator = "muddy" 
+special = "pink" 
+"variable.other.member" = "green" 
+variable = "green" 
+"variable.parameter" = "light-green" 
+"variable.builtin" = "light-green" 
+type = "#efbe4c" 
+"type.builtin" = "#efbe4c" 
+constructor = "#c19ef7" 
+function = "muddy" 
+"function.macro" = "muddy" 
+"function.builtin" = "#db985e" 
+tag = "#d37a78" 
+comment = "light-gray" 
+constant = "#A5C4D4" 
+"constant.builtin" = "bright-yellow" 
+string = "#d6a560" 
+"constant.numeric" = "#b577b0" 
+"constant.character.escape" = "#c95c56" 
+label = "#abcc8a" 
+
+"markup.heading" = "bright-pink" 
+"markup.bold" = { fg = "markdown-bold", modifiers = ["bold"] } 
+"markup.italic" = { fg = "markdown-italic", modifiers = ["italic"] } 
+"markup.strikethrough" = { fg = "bright-pink", modifiers = ["crossed_out", "bold"] } 
+"markup.link.url" = { fg = "blueish", modifiers = ["underlined"] } 
+"markup.link.text" = "orange" 
+"markup.raw" = "gray" 
+
+"diff.plus" =  { fg = "bright-green", modifiers = ["bold"] }
+"diff.minus" = { fg = "redish",       modifiers = ["bold"] }
+"diff.delta" = { fg = "blueish",      modifiers = ["bold"] }
+
+"ui.background" = { bg = "background" } 
+"ui.background.separator" = { fg = "white" } 
+"ui.linenr" = { fg = "#747575" } 
+"ui.linenr.selected" = { fg = "#c7dddd" } 
+"ui.statusline" = { fg = "black", bg = "gray" } 
+"ui.statusline.inactive" = { fg = "gray", bg = "#3c3836" } 
+"ui.popup" = { bg = "#3b3b3d" } 
+"ui.window" = { fg = "yellow" } 
+"ui.help" = { bg = "#35353a", fg = "light-gray" } 
+
+"ui.text" = { fg = "light-gray" } 
+"ui.text.focus" = { fg = "#83c679" } 
+"ui.text.inactive" = "#93a56f" 
+"ui.virtual" = { fg = "yellow" } 
+"ui.virtual.indent-guide" = { fg = "#5b5b5a" } 
+"ui.virtual.ruler" = { bg = "#363638" }
+
+"ui.selection" = { fg = "white", bg = "gray" } 
+"ui.selection.primary" = { fg = "white", bg = "gray" } 
+"ui.cursor.match" = { fg = "white", bg = "gray" } 
+"ui.cursor" = { modifiers = ["reversed"] } 
+"ui.cursorline.primary" = { bg = "#3b3b3f" } 
+
+"ui.debug" = { fg = "#634450" } 
+"ui.debug.breakpoint" = { fg = "redish" } 
+"ui.debug.active" = { fg = "blueish" } 
+"ui.menu" = { fg = "gray", bg = "black" } 
+"ui.menu.selected" = { fg = "black", bg = "gray" } 
+
+"diagnostic.hint" = { underline = { color = "bright-yellow", style = "curl" } } 
+"diagnostic.info" = { underline = { color = "bright-yellow", style = "curl" } }  
+"diagnostic.warning" = { underline = { color = "bright-yellow", style = "curl" } } 
+"diagnostic.error" = { underline = { color = "bright-pink", style = "curl" } } 
+
+warning = "bright-yellow" 
+error = "bright-pink" 
+info = "bright-yellow" 
+hint = "bright-yellow" 
+
+[palette]
+bright-pink = "#DE6468"
+background = "#1f1f21"
+green = "#778e61"
+light-green = "#9B9B7A"
+brown = "#BAA587"
+pink = "#D9AE94"
+yellow = "#F1DCA7"
+bright-yellow = "#FFCB69"
+orange = "#E8AC65"
+muddy = "#D08C60"
+markdown-italic = "#80a552"
+markdown-bold = "#6faa75"
+dark-brown = "#B58463"
+purple-ish = "#997B66"
+bright-green = "#4F6F52"
+blueish = "#3876BF"
+redish = "#B80000"

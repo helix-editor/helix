@@ -280,7 +280,7 @@ fn build_theme_values(
     for (name, style_value) in values {
         let mut style = Style::default();
         if let Err(err) = palette.parse_style(&mut style, style_value) {
-            warnings.push(err);
+            warnings.push(format!("Failed to parse style for key {name:?}. {err}"));
         }
 
         // these are used both as UI and as highlights
@@ -500,10 +500,7 @@ impl ThemePalette {
                         let modifiers = value.as_array().ok_or("Modifiers should be an array")?;
 
                         for modifier in modifiers {
-                            if modifier
-                                .as_str()
-                                .map_or(false, |modifier| modifier == "underlined")
-                            {
+                            if modifier.as_str() == Some("underlined") {
                                 *style = style.underline_style(UnderlineStyle::Line);
                             } else {
                                 *style = style.add_modifier(Self::parse_modifier(modifier)?);

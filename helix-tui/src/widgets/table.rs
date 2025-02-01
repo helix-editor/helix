@@ -34,7 +34,7 @@ pub struct Cell<'a> {
     style: Style,
 }
 
-impl<'a> Cell<'a> {
+impl Cell<'_> {
     /// Set the `Style` of this cell.
     pub fn style(mut self, style: Style) -> Self {
         self.style = style;
@@ -351,7 +351,7 @@ impl TableState {
 }
 
 // impl<'a> StatefulWidget for Table<'a> {
-impl<'a> Table<'a> {
+impl Table<'_> {
     // type State = TableState;
 
     pub fn render_table(
@@ -486,7 +486,7 @@ fn render_cell(buf: &mut Buffer, cell: &Cell, area: Rect, truncate: bool) {
     }
 }
 
-impl<'a> Widget for Table<'a> {
+impl Widget for Table<'_> {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let mut state = TableState::default();
         Table::render_table(self, area, buf, &mut state, false);
