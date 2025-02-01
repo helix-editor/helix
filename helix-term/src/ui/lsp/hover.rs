@@ -64,24 +64,8 @@ impl Hover {
     pub fn string_content(&self) -> String {
         self.contents
             .iter()
-            // <<<<<<< HEAD
             .map(|(header, body)| {
                 let header = header.clone().unwrap_or_default();
-                // =======
-                // .enumerate()
-                // .map(|(server_count, (server_name, hover))| {
-                //     let header = (self.hovers.len() > 1)
-                //         .then(|| {
-                //             format!(
-                //                 "**[{}/{}] {}**\n",
-                //                 server_count + 1,
-                //                 self.hovers.len(),
-                //                 server_name
-                //             )
-                //         })
-                //         .unwrap_or_default();
-                //     let body = hover_contents_to_string(&hover.contents);
-                // >>>>>>> bdec3d21 (fix: correct language server number in preview string)
 
                 format!("{header}{body}")
             })
