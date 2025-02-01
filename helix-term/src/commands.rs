@@ -5101,7 +5101,7 @@ pub type CommentTransactionFn<'a> = Box<
             Option<&[BlockCommentToken]>,
             &Rope,
             &Selection,
-            comment::GetCommentTokens<'a>,
+            comment::GetInjectedTokens<'a>,
         ) -> Transaction
         + 'a,
 >;
@@ -5115,7 +5115,7 @@ fn toggle_comments_impl<'a>(
     let rope = doc.text();
     let selection = doc.selection(view.id);
 
-    // The default comment tokens to fallback to if no comment tokens are found for the injection layer.
+    // The comment tokens to fallback to if no comment tokens are found for the injection layer.
     let doc_line_token: Option<&str> = doc
         .language_config()
         .and_then(|lc| lc.comment_tokens.as_ref())
@@ -5194,8 +5194,8 @@ fn toggle_comments(cx: &mut Context) {
 
                         let line_token = injected_line_tokens
                             .as_ref()
-                            .and_then(|lt| lt.first())
-                            .map(|lt| lt.as_str())
+                            .and_then(|token| token.first())
+                            .map(|token| token.as_str())
                             .or(doc_line_token);
 
                         let block_tokens = injected_block_tokens.as_deref().or(doc_block_tokens);
@@ -5271,7 +5271,7 @@ fn toggle_line_comments(cx: &mut Context) {
 
                         let line_token = injected_line_tokens
                             .as_ref()
-                            .and_then(|token| token.first())
+                            .and_then(|tokens| tokens.first())
                             .map(|token| token.as_str())
                             .or(doc_line_token);
 
@@ -5299,12 +5299,12 @@ fn toggle_block_comments(cx: &mut Context) {
     toggle_comments_impl(
         cx,
         Box::new(
-            |doc_line_token, doc_block_tokens, rope, selection, mut get_comment_tokens| {
+            |doc_line_token, doc_block_tokens, rope, selection, mut get_injected_tokens| {
                 Transaction::change(
                     rope,
                     selection.iter().flat_map(|range| {
                         let (injected_line_tokens, injected_block_tokens) =
-                            get_comment_tokens(range.from(), range.to());
+                            get_injected_tokens(range.from(), range.to());
 
                         let line_token = injected_line_tokens
                             .as_ref()

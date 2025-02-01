@@ -80,7 +80,7 @@ fn find_line_comment(
 }
 
 // for a given range and syntax, determine if there are additional tokens to consider
-pub type GetCommentTokens<'a> =
+pub type GetInjectedTokens<'a> =
     Box<dyn FnMut(usize, usize) -> (Option<Vec<String>>, Option<Vec<BlockCommentToken>>) + 'a>;
 
 #[must_use]
@@ -306,15 +306,14 @@ pub fn toggle_block_comments(
     ranges: &Vec<Range>,
     tokens: &[BlockCommentToken],
 ) -> Vec<Change> {
-    todo!()
-    // let text = doc.slice(..);
-    // let (commented, comment_changes) = find_block_comments(tokens, text, selection);
-    // let (mut transaction, ranges) =
-    //     create_block_comment_transaction(doc, selection, commented, comment_changes);
+    let text = doc.slice(..);
+    let (commented, comment_changes) = find_block_comments(tokens, text, ranges);
+    let (changes, _ranges) =
+        create_block_comment_transaction(doc, ranges, commented, comment_changes);
     // if !commented {
-    //     transaction = transaction.with_selection(Selection::new(ranges, selection.primary_index()));
+    //     changes = changes.with_selection(Selection::new(ranges, selection.primary_index()));
     // }
-    // transaction
+    changes
 }
 
 pub fn split_lines_of_range(text: RopeSlice, range: &Range) -> Vec<Range> {
@@ -445,26 +444,30 @@ mod test {
                 )
             );
 
-            // // comment
-            // let transaction = toggle_block_comments(&doc, &range, &[BlockCommentToken::default()]);
-            // transaction.apply(&mut doc);
+            // comment
+            let changes =
+                toggle_block_comments(&doc, &vec![range], &[BlockCommentToken::default()]);
+            let transaction = Transaction::change(&doc, changes.into_iter());
+            transaction.apply(&mut doc);
 
-            // assert_eq!(doc, "/* 1\n2\n3 */");
+            assert_eq!(doc, "/* 1\n2\n3 */");
 
-            // // uncomment
-            // let selection = Selection::single(0, doc.len_chars());
-            // let transaction =
-            //     toggle_block_comments(&doc, &selection, &[BlockCommentToken::default()]);
-            // transaction.apply(&mut doc);
-            // assert_eq!(doc, "1\n2\n3");
+            // uncomment
+            let range = Range::new(0, doc.len_chars());
+            let changes =
+                toggle_block_comments(&doc, &vec![range], &[BlockCommentToken::default()]);
+            let transaction = Transaction::change(&doc, changes.into_iter());
+            transaction.apply(&mut doc);
+            assert_eq!(doc, "1\n2\n3");
 
-            // // don't panic when there is just a space in comment
-            // doc = Rope::from("/* */");
-            // let selection = Selection::single(0, doc.len_chars());
-            // let transaction =
-            //     toggle_block_comments(&doc, &selection, &[BlockCommentToken::default()]);
-            // transaction.apply(&mut doc);
-            // assert_eq!(doc, "");
+            // don't panic when there is just a space in comment
+            doc = Rope::from("/* */");
+            let range = Range::new(0, doc.len_chars());
+            let changes =
+                toggle_block_comments(&doc, &vec![range], &[BlockCommentToken::default()]);
+            let transaction = Transaction::change(&doc, changes.into_iter());
+            transaction.apply(&mut doc);
+            assert_eq!(doc, "");
         }
 
         /// Test, if `get_comment_tokens` works, even if the content of the file includes chars, whose
