@@ -32,7 +32,7 @@ impl Hover {
             .enumerate()
             .map(|(idx, (server_name, hover))| {
                 let header = (n_hovers > 1)
-                    .then(|| format!("**[{}/{}] {}**", idx + 1, n_hovers, server_name));
+                    .then(|| format!("**[{}/{}] {}**\n", idx + 1, n_hovers, server_name));
                 let body = hover_contents_to_string(hover.contents);
 
                 (header, body)
@@ -71,6 +71,7 @@ impl Hover {
             })
             .collect::<Vec<String>>()
             .join("\n\n---\n\n")
+            + "\n"
     }
 
     fn set_index(&mut self, index: usize) {
