@@ -994,16 +994,27 @@ impl Loader {
             .cloned()
     }
 
-    pub fn language_config_for_language_id(&self, id: &str) -> Option<Arc<LanguageConfiguration>> {
+    pub fn language_config_for_language_id(
+        &self,
+        id: impl PartialEq<String>,
+    ) -> Option<Arc<LanguageConfiguration>> {
         self.language_configs
             .iter()
-            .find(|config| config.language_id == id)
+            .find(|config| id.eq(&config.language_id))
             .cloned()
     }
 
-    /// Unlike language_config_for_language_id, which only returns Some for an exact id, this
+    /// Unlike `language_config_for_language_id`, which only returns Some for an exact id, this
     /// function will perform a regex match on the given string to find the closest language match.
     pub fn language_config_for_name(&self, slice: RopeSlice) -> Option<Arc<LanguageConfiguration>> {
+        // PERF: If the name matches up with the id, then this saves the need to do expensive regex.
+        let shortcircuit = self.language_config_for_language_id(slice);
+        if shortcircuit.is_some() {
+            return shortcircuit;
+        }
+
+        // If the name did not match up with a known id, then match on injection regex.
+
         let mut best_match_length = 0;
         let mut best_match_position = None;
         for (i, configuration) in self.language_configs.iter().enumerate() {
@@ -1026,7 +1037,7 @@ impl Loader {
         capture: &InjectionLanguageMarker,
     ) -> Option<Arc<LanguageConfiguration>> {
         match capture {
-            InjectionLanguageMarker::LanguageId(id) => self.language_config_for_language_id(id),
+            InjectionLanguageMarker::LanguageId(id) => self.language_config_for_language_id(*id),
             InjectionLanguageMarker::Name(name) => self.language_config_for_name(*name),
             InjectionLanguageMarker::Filename(file) => {
                 let path_str: Cow<str> = (*file).into();

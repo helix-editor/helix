@@ -363,7 +363,7 @@ pub struct Config {
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
-#[serde(rename_all = "kebab-case", default)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
 pub struct SmartTabConfig {
     pub enable: bool,
     pub supersede_menu: bool,

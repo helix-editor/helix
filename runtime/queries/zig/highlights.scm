@@ -203,6 +203,13 @@
     (builtin_identifier) @keyword.control.import
     (#any-of? @keyword.control.import "@import" "@cImport")))
 
+(variable_declaration
+  (identifier) @variable ; TODO: module
+  (field_expression
+    object: (builtin_function
+      (builtin_identifier) @keyword.control.import
+      (#any-of? @keyword.control.import "@import" "@cImport"))))
+
 ; Functions
 
 (call_expression
@@ -222,6 +229,10 @@
 (field_initializer
   .
   (identifier) @variable.other.member)
+
+(field_expression
+  (_)
+  member: (identifier) @type (#match? @type "^[A-Z_][a-zA-Z0-9_]*"))
 
 (field_expression
   (_)
@@ -266,7 +277,7 @@
   type: (identifier) @type)
 
 ((identifier) @type
-  (#lua-match? @type "^[A-Z_][a-zA-Z0-9_]*"))
+  (#match? @type "^[A-Z_][a-zA-Z0-9_]*"))
 
 (variable_declaration
   (identifier) @type

@@ -222,8 +222,8 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "space" => { "Space"
             "f" => file_picker,
             "F" => file_picker_in_current_directory,
-            "e" => file_browser,
-            "E" => file_browser_in_current_buffer_directory,
+            "e" => file_explorer,
+            "E" => file_explorer_in_current_buffer_directory,
             "b" => buffer_picker,
             "j" => jumplist_picker,
             "s" => symbol_picker,

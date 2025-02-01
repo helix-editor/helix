@@ -60,10 +60,11 @@
 | forth | ✓ |  |  | `forth-lsp` |
 | fortran | ✓ |  | ✓ | `fortls` |
 | fsharp | ✓ |  |  | `fsautocomplete` |
-| gas | ✓ | ✓ |  |  |
+| gas | ✓ | ✓ |  | `asm-lsp` |
 | gdscript | ✓ | ✓ | ✓ |  |
 | gemini | ✓ |  |  |  |
 | gherkin | ✓ |  |  |  |
+| ghostty | ✓ |  |  |  |
 | git-attributes | ✓ |  |  |  |
 | git-commit | ✓ | ✓ |  |  |
 | git-config | ✓ | ✓ |  |  |
@@ -140,7 +141,7 @@
 | mojo | ✓ | ✓ | ✓ | `magic` |
 | move | ✓ |  |  |  |
 | msbuild | ✓ |  | ✓ |  |
-| nasm | ✓ | ✓ |  |  |
+| nasm | ✓ | ✓ |  | `asm-lsp` |
 | nestedtext | ✓ | ✓ | ✓ |  |
 | nginx | ✓ |  |  |  |
 | nickel | ✓ |  | ✓ | `nls` |

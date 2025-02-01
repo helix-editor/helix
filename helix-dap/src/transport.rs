@@ -1,4 +1,4 @@
-use crate::{Error, Event, Result};
+use crate::{Error, Result};
 use anyhow::Context;
 use log::{error, info, warn};
 use serde::{Deserialize, Serialize};
@@ -32,11 +32,17 @@ pub struct Response {
     pub body: Option<Value>,
 }
 
+#[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
+pub struct Event {
+    pub event: String,
+    pub body: Option<Value>,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(tag = "type", rename_all = "camelCase")]
 pub enum Payload {
     // type = "event"
-    Event(Box<Event>),
+    Event(Event),
     // type = "response"
     Response(Response),
     // type = "request"

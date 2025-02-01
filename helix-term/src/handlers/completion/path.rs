@@ -72,6 +72,11 @@ pub(crate) fn path_completion(
             return Vec::new();
         };
 
+        let edit_diff = typed_file_name
+            .as_ref()
+            .map(|s| s.chars().count())
+            .unwrap_or_default();
+
         read_dir
             .filter_map(Result::ok)
             .filter_map(|dir_entry| {
@@ -87,11 +92,6 @@ pub(crate) fn path_completion(
 
                 let kind = path_kind(&md);
                 let documentation = path_documentation(&md, &dir_path.join(&file_name), kind);
-
-                let edit_diff = typed_file_name
-                    .as_ref()
-                    .map(|f| f.len())
-                    .unwrap_or_default();
 
                 let transaction = Transaction::change_by_selection(&text, &selection, |range| {
                     let cursor = range.cursor(text.slice(..));

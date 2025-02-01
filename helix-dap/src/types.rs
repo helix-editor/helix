@@ -759,33 +759,30 @@ pub mod requests {
 pub mod events {
     use super::*;
 
-    #[derive(Debug, Clone, Serialize, Deserialize)]
-    #[serde(rename_all = "camelCase")]
-    #[serde(tag = "event", content = "body")]
-    // seq is omitted as unused and is not sent by some implementations
-    pub enum Event {
-        Initialized(Option<DebuggerCapabilities>),
-        Stopped(Stopped),
-        Continued(Continued),
-        Exited(Exited),
-        Terminated(Option<Terminated>),
-        Thread(Thread),
-        Output(Output),
-        Breakpoint(Breakpoint),
-        Module(Module),
-        LoadedSource(LoadedSource),
-        Process(Process),
-        Capabilities(Capabilities),
-        // ProgressStart(),
-        // ProgressUpdate(),
-        // ProgressEnd(),
-        // Invalidated(),
-        Memory(Memory),
+    pub trait Event {
+        type Body: serde::de::DeserializeOwned + serde::Serialize;
+        const EVENT: &'static str;
+    }
+
+    #[derive(Debug)]
+    pub enum Initialized {}
+
+    impl Event for Initialized {
+        type Body = Option<DebuggerCapabilities>;
+        const EVENT: &'static str = "initialized";
+    }
+
+    #[derive(Debug)]
+    pub enum Stopped {}
+
+    impl Event for Stopped {
+        type Body = StoppedBody;
+        const EVENT: &'static str = "stopped";
     }
 
     #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
-    pub struct Stopped {
+    pub struct StoppedBody {
         pub reason: String,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub description: Option<String>,
@@ -801,37 +798,77 @@ pub mod events {
         pub hit_breakpoint_ids: Option<Vec<usize>>,
     }
 
+    #[derive(Debug)]
+    pub enum Continued {}
+
+    impl Event for Continued {
+        type Body = ContinuedBody;
+        const EVENT: &'static str = "continued";
+    }
+
     #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
-    pub struct Continued {
+    pub struct ContinuedBody {
         pub thread_id: ThreadId,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub all_threads_continued: Option<bool>,
     }
 
-    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
-    #[serde(rename_all = "camelCase")]
-    pub struct Exited {
-        pub exit_code: usize,
+    #[derive(Debug)]
+    pub enum Exited {}
+
+    impl Event for Exited {
+        type Body = ExitedBody;
+        const EVENT: &'static str = "exited";
     }
 
     #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
-    pub struct Terminated {
+    pub struct ExitedBody {
+        pub exit_code: usize,
+    }
+
+    #[derive(Debug)]
+    pub enum Terminated {}
+
+    impl Event for Terminated {
+        type Body = Option<TerminatedBody>;
+        const EVENT: &'static str = "terminated";
+    }
+
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct TerminatedBody {
         #[serde(skip_serializing_if = "Option::is_none")]
         pub restart: Option<Value>,
     }
 
-    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
-    #[serde(rename_all = "camelCase")]
-    pub struct Thread {
-        pub reason: String,
-        pub thread_id: ThreadId,
+    #[derive(Debug)]
+    pub enum Thread {}
+
+    impl Event for Thread {
+        type Body = ThreadBody;
+        const EVENT: &'static str = "thread";
     }
 
     #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
-    pub struct Output {
+    pub struct ThreadBody {
+        pub reason: String,
+        pub thread_id: ThreadId,
+    }
+
+    #[derive(Debug)]
+    pub enum Output {}
+
+    impl Event for Output {
+        type Body = OutputBody;
+        const EVENT: &'static str = "output";
+    }
+
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct OutputBody {
         pub output: String,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub category: Option<String>,
@@ -849,30 +886,62 @@ pub mod events {
         pub data: Option<Value>,
     }
 
+    #[derive(Debug)]
+    pub enum Breakpoint {}
+
+    impl Event for Breakpoint {
+        type Body = BreakpointBody;
+        const EVENT: &'static str = "breakpoint";
+    }
+
     #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
-    pub struct Breakpoint {
+    pub struct BreakpointBody {
         pub reason: String,
         pub breakpoint: super::Breakpoint,
     }
 
+    #[derive(Debug)]
+    pub enum Module {}
+
+    impl Event for Module {
+        type Body = ModuleBody;
+        const EVENT: &'static str = "module";
+    }
+
     #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
-    pub struct Module {
+    pub struct ModuleBody {
         pub reason: String,
         pub module: super::Module,
     }
 
-    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
-    #[serde(rename_all = "camelCase")]
-    pub struct LoadedSource {
-        pub reason: String,
-        pub source: super::Source,
+    #[derive(Debug)]
+    pub enum LoadedSource {}
+
+    impl Event for LoadedSource {
+        type Body = LoadedSourceBody;
+        const EVENT: &'static str = "loadedSource";
     }
 
     #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
-    pub struct Process {
+    pub struct LoadedSourceBody {
+        pub reason: String,
+        pub source: super::Source,
+    }
+
+    #[derive(Debug)]
+    pub enum Process {}
+
+    impl Event for Process {
+        type Body = ProcessBody;
+        const EVENT: &'static str = "process";
+    }
+
+    #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
+    #[serde(rename_all = "camelCase")]
+    pub struct ProcessBody {
         pub name: String,
         #[serde(skip_serializing_if = "Option::is_none")]
         pub system_process_id: Option<usize>,
@@ -884,39 +953,55 @@ pub mod events {
         pub pointer_size: Option<usize>,
     }
 
+    #[derive(Debug)]
+    pub enum Capabilities {}
+
+    impl Event for Capabilities {
+        type Body = CapabilitiesBody;
+        const EVENT: &'static str = "capabilities";
+    }
+
     #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
-    pub struct Capabilities {
+    pub struct CapabilitiesBody {
         pub capabilities: super::DebuggerCapabilities,
     }
 
     // #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     // #[serde(rename_all = "camelCase")]
-    // pub struct Invalidated {
+    // pub struct InvalidatedBody {
     // pub areas: Vec<InvalidatedArea>,
     // pub thread_id: Option<ThreadId>,
     // pub stack_frame_id: Option<usize>,
     // }
 
+    #[derive(Debug)]
+    pub enum Memory {}
+
+    impl Event for Memory {
+        type Body = MemoryBody;
+        const EVENT: &'static str = "memory";
+    }
+
     #[derive(Debug, PartialEq, Eq, Clone, Deserialize, Serialize)]
     #[serde(rename_all = "camelCase")]
-    pub struct Memory {
+    pub struct MemoryBody {
         pub memory_reference: String,
         pub offset: usize,
         pub count: usize,
     }
+}
 
-    #[test]
-    fn test_deserialize_module_id_from_number() {
-        let raw = r#"{"id": 0, "name": "Name"}"#;
-        let module: super::Module = serde_json::from_str(raw).expect("Error!");
-        assert_eq!(module.id, "0");
-    }
+#[test]
+fn test_deserialize_module_id_from_number() {
+    let raw = r#"{"id": 0, "name": "Name"}"#;
+    let module: Module = serde_json::from_str(raw).expect("Error!");
+    assert_eq!(module.id, "0");
+}
 
-    #[test]
-    fn test_deserialize_module_id_from_string() {
-        let raw = r#"{"id": "0", "name": "Name"}"#;
-        let module: super::Module = serde_json::from_str(raw).expect("Error!");
-        assert_eq!(module.id, "0");
-    }
+#[test]
+fn test_deserialize_module_id_from_string() {
+    let raw = r#"{"id": "0", "name": "Name"}"#;
+    let module: Module = serde_json::from_str(raw).expect("Error!");
+    assert_eq!(module.id, "0");
 }

@@ -74,7 +74,7 @@ Either set the `HELIX_RUNTIME` environment variable to point to the runtime file
 Cmd:
 
 ```sh
-setx HELIX_RUNTIME "%userprofile%\source\repos\helix\runtime"
+setx HELIX_RUNTIME "%userprofile%\src\helix\runtime"
 ```
 
 > 💡 `%userprofile%` resolves to your user directory like

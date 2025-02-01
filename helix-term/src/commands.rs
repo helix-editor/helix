@@ -20,7 +20,7 @@ use helix_core::{
     comment,
     doc_formatter::TextFormat,
     encoding, find_workspace,
-    graphemes::{self, next_grapheme_boundary, RevRopeGraphemes},
+    graphemes::{self, next_grapheme_boundary},
     history::UndoKind,
     increment,
     indent::{self, IndentStyle},
@@ -35,8 +35,8 @@ use helix_core::{
     text_annotations::{Overlay, TextAnnotations},
     textobject,
     unicode::width::UnicodeWidthChar,
-    visual_offset_from_block, Deletion, LineEnding, Position, Range, Rope, RopeGraphemes,
-    RopeReader, RopeSlice, Selection, SmallVec, Syntax, Tendril, Transaction,
+    visual_offset_from_block, Deletion, LineEnding, Position, Range, Rope, RopeReader, RopeSlice,
+    Selection, SmallVec, Syntax, Tendril, Transaction,
 };
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
@@ -393,9 +393,9 @@ impl MappableCommand {
         file_picker, "Open file picker",
         file_picker_in_current_buffer_directory, "Open file picker at current buffer's directory",
         file_picker_in_current_directory, "Open file picker at current working directory",
-        file_browser, "Open file browser in workspace root",
-        file_browser_in_current_buffer_directory, "Open file browser at current buffer's directory",
-        file_browser_in_current_directory, "Open file browser at current working directory",
+        file_explorer, "Open file explorer in workspace root",
+        file_explorer_in_current_buffer_directory, "Open file explorer at current buffer's directory",
+        file_explorer_in_current_directory, "Open file explorer at current working directory",
         code_action, "Perform code action",
         buffer_picker, "Open buffer picker",
         jumplist_picker, "Open jumplist picker",
@@ -633,10 +633,17 @@ impl std::str::FromStr for MappableCommand {
                 .collect::<Vec<String>>();
             typed::TYPABLE_COMMAND_MAP
                 .get(name)
-                .map(|cmd| MappableCommand::Typable {
-                    name: cmd.name.to_owned(),
-                    doc: format!(":{} {:?}", cmd.name, args),
-                    args,
+                .map(|cmd| {
+                    let doc = if args.is_empty() {
+                        cmd.doc.to_string()
+                    } else {
+                        format!(":{} {:?}", cmd.name, args)
+                    };
+                    MappableCommand::Typable {
+                        name: cmd.name.to_owned(),
+                        doc,
+                        args,
+                    }
                 })
                 .ok_or_else(|| anyhow!("No TypableCommand named '{}'", s))
         } else if let Some(suffix) = s.strip_prefix('@') {
@@ -1286,7 +1293,7 @@ fn goto_file_vsplit(cx: &mut Context) {
 /// Goto files in selection.
 fn goto_file_impl(cx: &mut Context, action: Action) {
     let (view, doc) = current_ref!(cx.editor);
-    let text = doc.text();
+    let text = doc.text().slice(..);
     let selections = doc.selection(view.id);
     let primary = selections.primary();
     let rel_path = doc
@@ -1295,15 +1302,16 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
         .unwrap_or_default();
 
     let paths: Vec<_> = if selections.len() == 1 && primary.len() == 1 {
-        let mut pos = primary.cursor(text.slice(..));
-        pos = text.char_to_byte(pos);
+        // Cap the search at roughly 1k bytes around the cursor.
+        let lookaround = 1000;
+        let pos = text.char_to_byte(primary.cursor(text));
         let search_start = text
             .line_to_byte(text.byte_to_line(pos))
-            .max(pos.saturating_sub(1000));
+            .max(text.floor_char_boundary(pos.saturating_sub(lookaround)));
         let search_end = text
             .line_to_byte(text.byte_to_line(pos) + 1)
-            .min(pos + 1000);
-        let search_range = text.slice(search_start..search_end);
+            .min(text.ceil_char_boundary(pos + lookaround));
+        let search_range = text.byte_slice(search_start..search_end);
         // we also allow paths that are next to the cursor (can be ambiguous but
         // rarely so in practice) so that gf on quoted/braced path works (not sure about this
         // but apparently that is how gf has worked historically in helix)
@@ -1312,12 +1320,12 @@ fn goto_file_impl(cx: &mut Context, action: Action) {
             .find(|range| pos <= search_start + range.end)
             .map(|range| Cow::from(search_range.byte_slice(range)));
         log::debug!("goto_file auto-detected path: {path:?}");
-        let path = path.unwrap_or_else(|| primary.fragment(text.slice(..)));
+        let path = path.unwrap_or_else(|| primary.fragment(text));
         vec![path.into_owned()]
     } else {
         // Otherwise use each selection, trimmed.
         selections
-            .fragments(text.slice(..))
+            .fragments(text)
             .map(|sel| sel.trim().to_owned())
             .filter(|sel| !sel.is_empty())
             .collect()
@@ -1680,10 +1688,12 @@ fn replace(cx: &mut Context) {
         if let Some(ch) = ch {
             let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
                 if !range.is_empty() {
-                    let text: Tendril =
-                        RopeGraphemes::new(doc.text().slice(range.from()..range.to()))
-                            .map(|_g| ch)
-                            .collect();
+                    let text: Tendril = doc
+                        .text()
+                        .slice(range.from()..range.to())
+                        .graphemes()
+                        .map(|_g| ch)
+                        .collect();
                     (range.from(), range.to(), Some(text))
                 } else {
                     // No change.
@@ -2996,19 +3006,19 @@ fn file_picker_in_current_directory(cx: &mut Context) {
     cx.push_layer(Box::new(overlaid(picker)));
 }
 
-fn file_browser(cx: &mut Context) {
+fn file_explorer(cx: &mut Context) {
     let root = find_workspace().0;
     if !root.exists() {
         cx.editor.set_error("Workspace directory does not exist");
         return;
     }
 
-    if let Ok(picker) = ui::file_browser(root, cx.editor) {
+    if let Ok(picker) = ui::file_explorer(root, cx.editor) {
         cx.push_layer(Box::new(overlaid(picker)));
     }
 }
 
-fn file_browser_in_current_buffer_directory(cx: &mut Context) {
+fn file_explorer_in_current_buffer_directory(cx: &mut Context) {
     let doc_dir = doc!(cx.editor)
         .path()
         .and_then(|path| path.parent().map(|path| path.to_path_buf()));
@@ -3024,18 +3034,18 @@ fn file_browser_in_current_buffer_directory(cx: &mut Context) {
                 return;
             }
             cx.editor.set_error(
-                "Current buffer has no parent, opening file browser in current working directory",
+                "Current buffer has no parent, opening file explorer in current working directory",
             );
             cwd
         }
     };
 
-    if let Ok(picker) = ui::file_browser(path, cx.editor) {
+    if let Ok(picker) = ui::file_explorer(path, cx.editor) {
         cx.push_layer(Box::new(overlaid(picker)));
     }
 }
 
-fn file_browser_in_current_directory(cx: &mut Context) {
+fn file_explorer_in_current_directory(cx: &mut Context) {
     let cwd = helix_stdx::env::current_working_dir();
     if !cwd.exists() {
         cx.editor
@@ -3043,7 +3053,7 @@ fn file_browser_in_current_directory(cx: &mut Context) {
         return;
     }
 
-    if let Ok(picker) = ui::file_browser(cwd, cx.editor) {
+    if let Ok(picker) = ui::file_explorer(cwd, cx.editor) {
         cx.push_layer(Box::new(overlaid(picker)));
     }
 }
@@ -3516,6 +3526,10 @@ async fn make_format_callback(
                 }
             }
             Err(err) => {
+                if write.is_none() {
+                    editor.set_error(err.to_string());
+                    return;
+                }
                 log::info!("failed to format '{}': {err}", doc.display_name());
             }
         }
@@ -3826,8 +3840,7 @@ fn goto_next_diag(cx: &mut Context) {
         let diag = doc
             .diagnostics()
             .iter()
-            .find(|diag| diag.range.start > cursor_pos)
-            .or_else(|| doc.diagnostics().first());
+            .find(|diag| diag.range.start > cursor_pos);
 
         let selection = match diag {
             Some(diag) => Selection::single(diag.range.start, diag.range.end),
@@ -3854,8 +3867,7 @@ fn goto_prev_diag(cx: &mut Context) {
             .diagnostics()
             .iter()
             .rev()
-            .find(|diag| diag.range.start < cursor_pos)
-            .or_else(|| doc.diagnostics().last());
+            .find(|diag| diag.range.start < cursor_pos);
 
         let selection = match diag {
             // NOTE: the selection is reversed because we're jumping to the
@@ -5814,7 +5826,8 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
     cx.editor.autoinfo = Some(Info::new(title, &help_text));
 }
 
-static SURROUND_HELP_TEXT: [(&str, &str); 5] = [
+static SURROUND_HELP_TEXT: [(&str, &str); 6] = [
+    ("m", "Nearest matching pair"),
     ("( or )", "Parentheses"),
     ("{ or }", "Curly braces"),
     ("< or >", "Angled brackets"),
@@ -5867,12 +5880,16 @@ fn surround_add(cx: &mut Context) {
         exit_select_mode(cx);
     });
 
-    cx.editor.autoinfo = Some(Info::new("Surround selections with", &SURROUND_HELP_TEXT));
+    cx.editor.autoinfo = Some(Info::new(
+        "Surround selections with",
+        &SURROUND_HELP_TEXT[1..],
+    ));
 }
 
 fn surround_replace(cx: &mut Context) {
     let count = cx.count();
     cx.on_next_key(move |cx, event| {
+        cx.editor.autoinfo = None;
         let surround_ch = match event.char() {
             Some('m') => None, // m selects the closest surround pair
             Some(ch) => Some(ch),
@@ -5928,7 +5945,10 @@ fn surround_replace(cx: &mut Context) {
             exit_select_mode(cx);
         });
 
-        cx.editor.autoinfo = Some(Info::new("Replace with a pair of", &SURROUND_HELP_TEXT));
+        cx.editor.autoinfo = Some(Info::new(
+            "Replace with a pair of",
+            &SURROUND_HELP_TEXT[1..],
+        ));
     });
 
     cx.editor.autoinfo = Some(Info::new(
@@ -6484,6 +6504,7 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
         let alphabet = &cx.editor.config().jump_label_alphabet;
         let Some(i) = event
             .char()
+            .filter(|_| event.modifiers.is_empty())
             .and_then(|ch| alphabet.iter().position(|&it| it == ch))
         else {
             doc_mut!(cx.editor, &doc).remove_jump_labels(view);
@@ -6500,6 +6521,7 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
             let alphabet = &cx.editor.config().jump_label_alphabet;
             let Some(inner) = event
                 .char()
+                .filter(|_| event.modifiers.is_empty())
                 .and_then(|ch| alphabet.iter().position(|&it| it == ch))
             else {
                 return;
@@ -6568,7 +6590,9 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
             // madeup of word characters. The latter condition is needed because
             // move_next_word_end simply treats a sequence of characters from
             // the same char class as a word so `=<` would also count as a word.
-            let add_label = RevRopeGraphemes::new(text.slice(..cursor_fwd.head))
+            let add_label = text
+                .slice(..cursor_fwd.head)
+                .graphemes_rev()
                 .take(2)
                 .take_while(|g| g.chars().all(char_is_word))
                 .count()
@@ -6594,7 +6618,9 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
             // madeup of word characters. The latter condition is needed because
             // move_prev_word_start simply treats a sequence of characters from
             // the same char class as a word so `=<` would also count as a word.
-            let add_label = RopeGraphemes::new(text.slice(cursor_rev.head..))
+            let add_label = text
+                .slice(cursor_rev.head..)
+                .graphemes()
                 .take(2)
                 .take_while(|g| g.chars().all(char_is_word))
                 .count()

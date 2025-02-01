@@ -72,9 +72,10 @@ punctuation = "fg-dim"
 
 "ui.popup" = { fg = "fg-main", bg = "bg-dim" }
 "ui.window" = { fg = "fg-dim" }
-"ui.help" = { fg = "fg-main", bg = "bg-dim" }
+"ui.help" = { fg = "fg-main", bg = "bg-active" }
 "ui.gutter" = { bg = "bg-dim" }
 "ui.text" = "fg-main"
+"ui.text.directory" = "blue"
 "ui.text.focus" = { fg = "fg-main", bg = "bg-completion", modifiers = ["bold"] }
 "ui.text.inactive" = { fg = "fg-dim" }
 "ui.virtual" = "bg-active"

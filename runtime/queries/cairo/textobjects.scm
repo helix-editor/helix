@@ -1,6 +1,9 @@
 (function_item
   body: (_) @function.inside) @function.around
 
+(closure_expression
+  body: (_) @function.inside) @function.around
+
 (struct_item
   body: (_) @class.inside) @class.around
 
@@ -14,6 +17,9 @@
   body: (_) @class.inside) @class.around
 
 (parameters 
+  ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
+
+(closure_parameters
   ((_) @parameter.inside . ","? @parameter.around) @parameter.around)
 
 (type_parameters
