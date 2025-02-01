@@ -654,6 +654,141 @@ async fn test_join_selections_space() -> anyhow::Result<()> {
 }
 
 #[tokio::test(flavor = "multi_thread")]
+async fn test_injected_comments() -> anyhow::Result<()> {
+    // Uncomment inner injection
+    test((
+        indoc! {r#"\
+            <p>C-c on this line should use the HTML comment token(s).</p>
+            <script type="text/javascript">
+              // C-c#[| on this line s]#hould use the javascript comment token(s).
+              foo();
+            </script>
+        "#},
+        ":lang html<ret><C-c>",
+        indoc! {r#"\
+            <p>C-c on this line should use the HTML comment token(s).</p>
+            <script type="text/javascript">
+              C-c#[| on this line s]#hould use the javascript comment token(s).
+              foo();
+            </script>
+        "#},
+    ))
+    .await?;
+
+    // Comment inner injection
+    test((
+        indoc! {r#"\
+            <p>C-c on this line should use the HTML comment token(s).</p>
+            <script type="text/javascript">
+              C-c#[| on this line s]#hould use the javascript comment token(s).
+              foo();
+            </script>
+        "#},
+        ":lang html<ret><C-c>",
+        indoc! {r#"\
+            <p>C-c on this line should use the HTML comment token(s).</p>
+            <script type="text/javascript">
+              // C-c#[| on this line s]#hould use the javascript comment token(s).
+              foo();
+            </script>
+        "#},
+    ))
+    .await?;
+
+    // Comments two different injection layers with different comments
+    test((
+        indoc! {r#"\
+            <p>C-c #[|on this line ]#should use the HTML comment token(s).</p>
+            <script type="text/javascript">
+              C-c #(|on this line )#should use the javascript comment token(s).
+              foo();
+            </script>
+        "#},
+        ":lang html<ret><C-c>",
+        indoc! {r#"\
+            <!-- <p>C-c #[|on this line ]#should use the HTML comment token(s).</p> -->
+            <script type="text/javascript">
+              // C-c #(|on this line )#should use the javascript comment token(s).
+              foo();
+            </script>
+        "#},
+    ))
+    .await?;
+
+    // Uncomments two different injection layers with different comments
+    test((
+        indoc! {r#"\
+            <!-- <p>C-c #[|on this line ]#should use the HTML comment token(s).</p> -->
+            <script type="text/javascript">
+              // C-c #(|on this line )#should use the javascript comment token(s).
+              foo();
+            </script>
+        "#},
+        ":lang html<ret><C-c>",
+        indoc! {r#"\
+            <p>C-c #[|on this line ]#should use the HTML comment token(s).</p>
+            <script type="text/javascript">
+              C-c #(|on this line )#should use the javascript comment token(s).
+              foo();
+            </script>
+        "#},
+    ))
+    .await?;
+
+    // Works with multiple selections
+    test((
+        indoc! {r#"\
+            <p>C-c #(|on this line )#should use the HTML comment token(s).</p>
+            <script type="text/javascript">
+              // C-c #[|on this line ]#should use the javascript comment token(s).
+              foo();
+            </script>
+        "#},
+        ":lang html<ret><C-c>",
+        indoc! {r#"\
+            <!-- <p>C-c #(|on this line )#should use the HTML comment token(s).</p> -->
+            <script type="text/javascript">
+              C-c #[|on this line ]#should use the javascript comment token(s).
+              foo();
+            </script>
+        "#},
+    ))
+    .await?;
+
+    // Works with nested injection layers: html, js then css
+    test((
+        indoc! {r#"\
+            <!-- <p>C-c #(|on this line)# should use the HTML comment token(s).</p> -->
+            <script type="text/javascript">
+              // C-c #(|on this line)# should use the javascript comment token(s).
+              foo();
+              css`
+                h#[tml {
+                  background-color: |]#red;
+                }
+              `
+            </script>
+        "#},
+        ":lang html<ret><C-c>",
+        indoc! {r#"\
+            <p>C-c #(|on this line)# should use the HTML comment token(s).</p>
+            <script type="text/javascript">
+              C-c #(|on this line)# should use the javascript comment token(s).
+              foo();
+              css`
+                /* h#[tml { */
+                  /* background-color: |]#red; */
+                }
+              `
+            </script>
+        "#},
+    ))
+    .await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
 async fn test_join_selections_comment() -> anyhow::Result<()> {
     test((
         indoc! {"\
