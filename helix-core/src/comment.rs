@@ -37,24 +37,19 @@ pub fn get_comment_token<'a, S: AsRef<str>>(
 ///     - Column of existing tokens, if the lines are commented; column to place tokens at otherwise.
 /// - The margin to the right of the comment tokens
 ///     - Defaults to `1`. If any existing comment token is not followed by a space, changes to `0`.
-fn find_line_comment<'a>(
+fn find_line_comment(
+    token: &str,
     text: RopeSlice,
-    lines: impl IntoIterator<
-        Item = (
-            // line number
-            usize,
-            // token for this line
-            &'a str,
-        ),
-    >,
+    lines: impl IntoIterator<Item = usize>,
 ) -> (bool, Vec<usize>, usize, usize) {
     let mut commented = true;
     let mut to_change = Vec::new();
     let mut min = usize::MAX; // minimum col for first_non_whitespace_char
     let mut margin = 1;
+    let token_len = token.chars().count();
 
-    for (line, token) in lines {
-        let token_len = token.chars().count();
+    for line in lines {
+        log::error!("{line}");
         let line_slice = text.line(line);
         if let Some(pos) = line_slice.first_non_whitespace_char() {
             let len = line_slice.len_chars();
@@ -89,50 +84,41 @@ pub type GetCommentTokens<'a> =
     Box<dyn FnMut(usize, usize) -> (Option<Vec<String>>, Option<Vec<BlockCommentToken>>) + 'a>;
 
 #[must_use]
-pub fn toggle_line_comments(
-    doc: &Rope,
-    selection: &Selection,
-    token: Option<&str>,
-    lol_fn: GetCommentTokens,
-) -> Transaction {
-    todo!();
-    // let text = doc.slice(..);
+pub fn toggle_line_comments(doc: &Rope, range: &Range, token: Option<&str>) -> Vec<Change> {
+    let text = doc.slice(..);
 
-    // let token = token.unwrap_or(DEFAULT_COMMENT_TOKEN);
-    // let comment = Tendril::from(format!("{} ", token));
+    let token = token.unwrap_or(DEFAULT_COMMENT_TOKEN);
+    let comment = Tendril::from(format!("{} ", token));
 
-    // let mut lines: Vec<(usize, &str)> = Vec::with_capacity(selection.len());
+    let start = text.char_to_line(range.from());
+    let end = text.char_to_line(range.to());
 
-    // let mut min_next_line = 0;
-    // for selection in selection {
-    //     let (start, end) = selection.line_range(text);
-    //     let start = start.clamp(min_next_line, text.len_lines());
-    //     let end = (end + 1).min(text.len_lines());
+    let start = start.clamp(0, text.len_lines());
+    let end = (end + 1).min(text.len_lines());
 
-    //     let start_byte = text.line_to_byte(start);
-    //     let end_byte = text.line_to_byte(start);
+    // let start_byte = text.line_to_byte(start);
+    // let end_byte = text.line_to_byte(start);
 
-    //     let tokens = lines.extend(start..end);
-    //     min_next_line = end;
-    // }
+    let mut lines = vec![];
+    lines.extend(start..end);
 
-    // let (commented, to_change, min, margin) = find_line_comment(token, text, lines);
+    let (commented, to_change, min, margin) = find_line_comment(token, text, lines);
 
-    // let mut changes: Vec<Change> = Vec::with_capacity(to_change.len());
+    let mut changes: Vec<Change> = Vec::with_capacity(to_change.len());
 
-    // for line in to_change {
-    //     let pos = text.line_to_char(line) + min;
+    for line in to_change {
+        let pos = text.line_to_char(line) + min;
 
-    //     if !commented {
-    //         // comment line
-    //         changes.push((pos, pos, Some(comment.clone())));
-    //     } else {
-    //         // uncomment line
-    //         changes.push((pos, pos + token.len() + margin, None));
-    //     }
-    // }
+        if !commented {
+            // comment line
+            changes.push((pos, pos, Some(comment.clone())));
+        } else {
+            // uncomment line
+            changes.push((pos, pos + token.len() + margin, None));
+        }
+    }
 
-    // Transaction::change(doc, changes.into_iter())
+    changes
 }
 
 #[derive(Debug, PartialEq, Eq)]
