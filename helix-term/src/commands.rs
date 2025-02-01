@@ -3134,7 +3134,7 @@ fn buffer_picker(cx: &mut Context) {
         is_modified: bool,
         is_current: bool,
         focused_at: std::time::Instant,
-        default_name: String,
+        default_name: &'static str,
     }
 
     let new_meta = |doc: &Document| BufferMeta {
@@ -3175,7 +3175,7 @@ fn buffer_picker(cx: &mut Context) {
                 .map(helix_stdx::path::get_relative_path);
             path.as_deref()
                 .and_then(Path::to_str)
-                .unwrap_or(&meta.default_name)
+                .unwrap_or(meta.default_name)
                 .to_string()
                 .into()
         }),
@@ -3201,7 +3201,7 @@ fn jumplist_picker(cx: &mut Context) {
         selection: Selection,
         text: String,
         is_current: bool,
-        default_name: String,
+        default_name: &'static str,
     }
 
     for (view, _) in cx.editor.tree.views_mut() {
@@ -3227,7 +3227,7 @@ fn jumplist_picker(cx: &mut Context) {
             selection,
             text,
             is_current: view.doc == doc_id,
-            default_name: doc.map_or(SCRATCH_BUFFER_NAME.into(), |d| d.default_name()),
+            default_name: doc.map_or(SCRATCH_BUFFER_NAME, |d| d.default_name()),
         }
     };
 
@@ -3240,7 +3240,7 @@ fn jumplist_picker(cx: &mut Context) {
                 .map(helix_stdx::path::get_relative_path);
             path.as_deref()
                 .and_then(Path::to_str)
-                .unwrap_or(&item.default_name)
+                .unwrap_or(item.default_name)
                 .to_string()
                 .into()
         }),

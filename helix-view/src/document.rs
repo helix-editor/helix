@@ -54,6 +54,7 @@ const DEFAULT_INDENT: IndentStyle = IndentStyle::Tabs;
 pub const DEFAULT_LANGUAGE_NAME: &str = "text";
 
 pub const SCRATCH_BUFFER_NAME: &str = "[scratch]";
+pub const TREE_SITTER_TREE_BUFFER_NAME: &str = "[tree-sitter-tree]";
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq, Hash)]
 pub enum Mode {
@@ -1949,11 +1950,11 @@ impl Document {
     }
 
     /// Fallback name for the document when the path cannot be determined
-    pub fn default_name(&self) -> String {
+    pub fn default_name(&self) -> &'static str {
         if self.is_tree_sitter_tree {
-            "[tree-sitter-tree]".to_owned()
+            TREE_SITTER_TREE_BUFFER_NAME
         } else {
-            SCRATCH_BUFFER_NAME.to_owned()
+            SCRATCH_BUFFER_NAME
         }
     }
 
