@@ -5910,7 +5910,7 @@ fn surround_replace(cx: &mut Context) {
                 sorted_pos.iter().map(|&pos| {
                     let mut t = Tendril::new();
                     t.push_str(pos.1);
-                    (pos.0, pos.0 + 1, Some(t))
+                    (pos.0, pos.0 + pos.1.len(), Some(t))
                 }),
             );
             doc.set_selection(view.id, selection);
