@@ -3,10 +3,7 @@
 
 use smallvec::SmallVec;
 
-use crate::{
-    syntax::{BlockCommentToken, InjectionLanguageMarker},
-    Change, Range, Rope, RopeSlice, Selection, Tendril, Transaction,
-};
+use crate::{syntax::BlockCommentToken, Change, Range, Rope, RopeSlice, Tendril};
 use helix_stdx::rope::RopeSliceExt;
 use std::borrow::Cow;
 
@@ -230,8 +227,8 @@ pub fn find_block_comments(
 
 #[must_use]
 pub fn create_block_comment_transaction(
-    doc: &Rope,
-    ranges: &Vec<Range>,
+    _doc: &Rope,
+    ranges: &[Range],
     commented: bool,
     comment_changes: Vec<CommentChange>,
 ) -> (Vec<Change>, SmallVec<[Range; 1]>) {
@@ -305,15 +302,17 @@ pub fn toggle_block_comments(
     doc: &Rope,
     ranges: &Vec<Range>,
     tokens: &[BlockCommentToken],
-) -> Vec<Change> {
+) -> (Vec<Change>, bool) {
     let text = doc.slice(..);
     let (commented, comment_changes) = find_block_comments(tokens, text, ranges);
     let (changes, _ranges) =
         create_block_comment_transaction(doc, ranges, commented, comment_changes);
-    // if !commented {
-    //     changes = changes.with_selection(Selection::new(ranges, selection.primary_index()));
-    // }
-    changes
+    if commented {
+        // changes = changes.with_selection(Selection::new(ranges, selection.primary_index()));
+        (changes, false)
+    } else {
+        (changes, true)
+    }
 }
 
 pub fn split_lines_of_range(text: RopeSlice, range: &Range) -> Vec<Range> {
@@ -361,6 +360,8 @@ mod test {
 
     // TODO: account for uncommenting with uneven comment indentation
     mod toggle_line_comment {
+        use crate::Transaction;
+
         use super::*;
 
         #[test]
@@ -446,7 +447,7 @@ mod test {
 
             // comment
             let changes =
-                toggle_block_comments(&doc, &vec![range], &[BlockCommentToken::default()]);
+                toggle_block_comments(&doc, &vec![range], &[BlockCommentToken::default()]).0;
             let transaction = Transaction::change(&doc, changes.into_iter());
             transaction.apply(&mut doc);
 
@@ -455,7 +456,7 @@ mod test {
             // uncomment
             let range = Range::new(0, doc.len_chars());
             let changes =
-                toggle_block_comments(&doc, &vec![range], &[BlockCommentToken::default()]);
+                toggle_block_comments(&doc, &vec![range], &[BlockCommentToken::default()]).0;
             let transaction = Transaction::change(&doc, changes.into_iter());
             transaction.apply(&mut doc);
             assert_eq!(doc, "1\n2\n3");
@@ -464,7 +465,7 @@ mod test {
             doc = Rope::from("/* */");
             let range = Range::new(0, doc.len_chars());
             let changes =
-                toggle_block_comments(&doc, &vec![range], &[BlockCommentToken::default()]);
+                toggle_block_comments(&doc, &vec![range], &[BlockCommentToken::default()]).0;
             let transaction = Transaction::change(&doc, changes.into_iter());
             transaction.apply(&mut doc);
             assert_eq!(doc, "");
