@@ -722,7 +722,7 @@ impl Application {
                         // This might not be required by the spec but Neovim does this as well, so it's
                         // probably a good idea for compatibility.
                         if let Some(config) = language_server.config() {
-                            tokio::spawn(language_server.did_change_configuration(config.clone()));
+                            language_server.did_change_configuration(config.clone());
                         }
 
                         let docs = self
@@ -740,12 +740,12 @@ impl Application {
                             let language_id =
                                 doc.language_id().map(ToOwned::to_owned).unwrap_or_default();
 
-                            tokio::spawn(language_server.text_document_did_open(
+                            language_server.text_document_did_open(
                                 url,
                                 doc.version(),
                                 doc.text(),
                                 language_id,
-                            ));
+                            );
                         }
                     }
                     Notification::PublishDiagnostics(mut params) => {
@@ -1131,7 +1131,13 @@ impl Application {
                     }
                 };
 
-                tokio::spawn(language_server!().reply(id, reply));
+                let language_server = language_server!();
+                if let Err(err) = language_server.reply(id.clone(), reply) {
+                    log::error!(
+                        "Failed to send reply to server '{}' request {id}: {err}",
+                        language_server.name()
+                    );
+                }
             }
             Call::Invalid { id } => log::error!("LSP invalid method call id={:?}", id),
         }

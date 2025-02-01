@@ -170,7 +170,7 @@ impl Client {
             // and that we can therefore reuse the client (but are done now)
             return;
         }
-        tokio::spawn(self.did_change_workspace(vec![workspace_for_uri(root_uri)], Vec::new()));
+        self.did_change_workspace(vec![workspace_for_uri(root_uri)], Vec::new())
     }
 
     #[allow(clippy::type_complexity, clippy::too_many_arguments)]
@@ -456,29 +456,36 @@ impl Client {
     }
 
     /// Send a RPC notification to the language server.
-    pub fn notify<R: lsp::notification::Notification>(
-        &self,
-        params: R::Params,
-    ) -> impl Future<Output = Result<()>>
+    pub fn notify<R: lsp::notification::Notification>(&self, params: R::Params)
     where
         R::Params: serde::Serialize,
     {
         let server_tx = self.server_tx.clone();
 
-        async move {
-            let params = serde_json::to_value(params)?;
+        let params = match serde_json::to_value(params) {
+            Ok(params) => params,
+            Err(err) => {
+                log::error!(
+                    "Failed to serialize params for notification '{}' for server '{}': {err}",
+                    R::METHOD,
+                    self.name,
+                );
+                return;
+            }
+        };
 
-            let notification = jsonrpc::Notification {
-                jsonrpc: Some(jsonrpc::Version::V2),
-                method: R::METHOD.to_string(),
-                params: Self::value_into_params(params),
-            };
+        let notification = jsonrpc::Notification {
+            jsonrpc: Some(jsonrpc::Version::V2),
+            method: R::METHOD.to_string(),
+            params: Self::value_into_params(params),
+        };
 
-            server_tx
-                .send(Payload::Notification(notification))
-                .map_err(|e| Error::Other(e.into()))?;
-
-            Ok(())
+        if let Err(err) = server_tx.send(Payload::Notification(notification)) {
+            log::error!(
+                "Failed to send notification '{}' to server '{}': {err}",
+                R::METHOD,
+                self.name
+            );
         }
     }
 
@@ -487,31 +494,29 @@ impl Client {
         &self,
         id: jsonrpc::Id,
         result: core::result::Result<Value, jsonrpc::Error>,
-    ) -> impl Future<Output = Result<()>> {
+    ) -> Result<()> {
         use jsonrpc::{Failure, Output, Success, Version};
 
         let server_tx = self.server_tx.clone();
 
-        async move {
-            let output = match result {
-                Ok(result) => Output::Success(Success {
-                    jsonrpc: Some(Version::V2),
-                    id,
-                    result: serde_json::to_value(result)?,
-                }),
-                Err(error) => Output::Failure(Failure {
-                    jsonrpc: Some(Version::V2),
-                    id,
-                    error,
-                }),
-            };
+        let output = match result {
+            Ok(result) => Output::Success(Success {
+                jsonrpc: Some(Version::V2),
+                id,
+                result,
+            }),
+            Err(error) => Output::Failure(Failure {
+                jsonrpc: Some(Version::V2),
+                id,
+                error,
+            }),
+        };
 
-            server_tx
-                .send(Payload::Response(output))
-                .map_err(|e| Error::Other(e.into()))?;
+        server_tx
+            .send(Payload::Response(output))
+            .map_err(|e| Error::Other(e.into()))?;
 
-            Ok(())
-        }
+        Ok(())
     }
 
     // -------------------------------------------------------------------------------------------
@@ -693,7 +698,7 @@ impl Client {
         self.request::<lsp::request::Shutdown>(()).await
     }
 
-    pub fn exit(&self) -> impl Future<Output = Result<()>> {
+    pub fn exit(&self) {
         self.notify::<lsp::notification::Exit>(())
     }
 
@@ -701,7 +706,8 @@ impl Client {
     /// early if server responds with an error.
     pub async fn shutdown_and_exit(&self) -> Result<()> {
         self.shutdown().await?;
-        self.exit().await
+        self.exit();
+        Ok(())
     }
 
     /// Forcefully shuts down the language server ignoring any errors.
@@ -709,24 +715,21 @@ impl Client {
         if let Err(e) = self.shutdown().await {
             log::warn!("language server failed to terminate gracefully - {}", e);
         }
-        self.exit().await
+        self.exit();
+        Ok(())
     }
 
     // -------------------------------------------------------------------------------------------
     // Workspace
     // -------------------------------------------------------------------------------------------
 
-    pub fn did_change_configuration(&self, settings: Value) -> impl Future<Output = Result<()>> {
+    pub fn did_change_configuration(&self, settings: Value) {
         self.notify::<lsp::notification::DidChangeConfiguration>(
             lsp::DidChangeConfigurationParams { settings },
         )
     }
 
-    pub fn did_change_workspace(
-        &self,
-        added: Vec<WorkspaceFolder>,
-        removed: Vec<WorkspaceFolder>,
-    ) -> impl Future<Output = Result<()>> {
+    pub fn did_change_workspace(&self, added: Vec<WorkspaceFolder>, removed: Vec<WorkspaceFolder>) {
         self.notify::<DidChangeWorkspaceFolders>(DidChangeWorkspaceFoldersParams {
             event: WorkspaceFoldersChangeEvent { added, removed },
         })
@@ -766,12 +769,7 @@ impl Client {
         })
     }
 
-    pub fn did_rename(
-        &self,
-        old_path: &Path,
-        new_path: &Path,
-        is_dir: bool,
-    ) -> Option<impl Future<Output = std::result::Result<(), Error>>> {
+    pub fn did_rename(&self, old_path: &Path, new_path: &Path, is_dir: bool) -> Option<()> {
         let capabilities = self.file_operations_intests();
         if !capabilities.did_rename.has_interest(new_path, is_dir) {
             return None;
@@ -789,7 +787,8 @@ impl Client {
             old_uri: url_from_path(old_path)?,
             new_uri: url_from_path(new_path)?,
         }];
-        Some(self.notify::<lsp::notification::DidRenameFiles>(lsp::RenameFilesParams { files }))
+        self.notify::<lsp::notification::DidRenameFiles>(lsp::RenameFilesParams { files });
+        Some(())
     }
 
     // -------------------------------------------------------------------------------------------
@@ -802,7 +801,7 @@ impl Client {
         version: i32,
         doc: &Rope,
         language_id: String,
-    ) -> impl Future<Output = Result<()>> {
+    ) {
         self.notify::<lsp::notification::DidOpenTextDocument>(lsp::DidOpenTextDocumentParams {
             text_document: lsp::TextDocumentItem {
                 uri,
@@ -929,7 +928,7 @@ impl Client {
         old_text: &Rope,
         new_text: &Rope,
         changes: &ChangeSet,
-    ) -> Option<impl Future<Output = Result<()>>> {
+    ) -> Option<()> {
         let capabilities = self.capabilities.get().unwrap();
 
         // Return early if the server does not support document sync.
@@ -961,18 +960,14 @@ impl Client {
             kind => unimplemented!("{:?}", kind),
         };
 
-        Some(self.notify::<lsp::notification::DidChangeTextDocument>(
-            lsp::DidChangeTextDocumentParams {
-                text_document,
-                content_changes: changes,
-            },
-        ))
+        self.notify::<lsp::notification::DidChangeTextDocument>(lsp::DidChangeTextDocumentParams {
+            text_document,
+            content_changes: changes,
+        });
+        Some(())
     }
 
-    pub fn text_document_did_close(
-        &self,
-        text_document: lsp::TextDocumentIdentifier,
-    ) -> impl Future<Output = Result<()>> {
+    pub fn text_document_did_close(&self, text_document: lsp::TextDocumentIdentifier) {
         self.notify::<lsp::notification::DidCloseTextDocument>(lsp::DidCloseTextDocumentParams {
             text_document,
         })
@@ -984,7 +979,7 @@ impl Client {
         &self,
         text_document: lsp::TextDocumentIdentifier,
         text: &Rope,
-    ) -> Option<impl Future<Output = Result<()>>> {
+    ) -> Option<()> {
         let capabilities = self.capabilities.get().unwrap();
 
         let include_text = match &capabilities.text_document_sync.as_ref()? {
@@ -1002,12 +997,11 @@ impl Client {
             lsp::TextDocumentSyncCapability::Kind(..) => false,
         };
 
-        Some(self.notify::<lsp::notification::DidSaveTextDocument>(
-            lsp::DidSaveTextDocumentParams {
-                text_document,
-                text: include_text.then_some(text.into()),
-            },
-        ))
+        self.notify::<lsp::notification::DidSaveTextDocument>(lsp::DidSaveTextDocumentParams {
+            text_document,
+            text: include_text.then_some(text.into()),
+        });
+        Some(())
     }
 
     pub fn completion(
@@ -1540,10 +1534,7 @@ impl Client {
         Some(self.call::<lsp::request::ExecuteCommand>(params))
     }
 
-    pub fn did_change_watched_files(
-        &self,
-        changes: Vec<lsp::FileEvent>,
-    ) -> impl Future<Output = std::result::Result<(), Error>> {
+    pub fn did_change_watched_files(&self, changes: Vec<lsp::FileEvent>) {
         self.notify::<lsp::notification::DidChangeWatchedFiles>(lsp::DidChangeWatchedFilesParams {
             changes,
         })

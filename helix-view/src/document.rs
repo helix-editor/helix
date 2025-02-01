@@ -1056,13 +1056,8 @@ impl Document {
                 if !language_server.is_initialized() {
                     continue;
                 }
-                if let Some(notification) = identifier
-                    .clone()
-                    .and_then(|id| language_server.text_document_did_save(id, &text))
-                {
-                    if let Err(err) = notification.await {
-                        log::error!("Failed to send textDocument/didSave: {err}");
-                    }
+                if let Some(id) = identifier.clone() {
+                    language_server.text_document_did_save(id, &text);
                 }
             }
 
@@ -1462,16 +1457,12 @@ impl Document {
             // TODO: move to hook
             // emit lsp notification
             for language_server in self.language_servers() {
-                let notify = language_server.text_document_did_change(
+                let _ = language_server.text_document_did_change(
                     self.versioned_identifier(),
                     &old_doc,
                     self.text(),
                     changes,
                 );
-
-                if let Some(notify) = notify {
-                    tokio::spawn(notify);
-                }
             }
         }
 
