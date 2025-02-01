@@ -61,7 +61,10 @@ impl Hover {
         self.contents
             .iter()
             .map(|(header, body)| {
-                let header: String = header.iter().map(|a| a.contents.clone()).collect();
+                let header: String = header
+                    .iter()
+                    .map(|header| header.contents.clone())
+                    .collect();
 
                 format!("{}{}", header, body.contents)
             })
