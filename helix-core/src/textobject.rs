@@ -15,8 +15,12 @@ use crate::{surround, Syntax};
 
 #[derive(PartialEq, Copy, Clone)]
 pub enum Word {
+    /// A WORD, which is always delimited by whitespace
     Long,
+    /// A word, which is made up from alphanumeric characters and undescores
     Short,
+    /// A subword, which is like [`Word::Short`] but also treats `-`, `/` and
+    /// camelCase transitions as delimiters
     Sub,
 }
 
