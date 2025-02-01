@@ -1334,6 +1334,8 @@ scope = "source.svelte"
 injection-regex = "svelte"
 file-types = ["svelte"]
 indent = { tab-width = 2, unit = "  " }
+comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "svelteserver" ]
 
 [[grammar]]
@@ -2199,7 +2201,7 @@ language-servers = [ "cairo-language-server" ]
 
 [[grammar]]
 name = "cairo"
-source = { git = "https://github.com/starkware-libs/tree-sitter-cairo", rev = "e3a0212261c125cb38248458cd856c0ffee2b398" }
+source = { git = "https://github.com/starkware-libs/tree-sitter-cairo", rev = "4c6a25680546761b80a710ead1dd34e76c203125" }
 
 [[language]]
 name = "cpon"
@@ -2829,7 +2831,6 @@ file-types = [
   "network",
   { glob = ".editorconfig" },
   { glob = ".npmrc" },
-  { glob = "ghostty/config" },
   { glob = "hgrc" },
   { glob = "npmrc" },
   { glob = "rclone.conf" },
@@ -4087,3 +4088,14 @@ file-types = ["multicursor"]
 [[grammar]]
 name = "multicursor"
 source = { git = "https://github.com/nik-rev/tree-sitter-multicursor", rev = "f6f868ecfe3de2fb2cd815cb40be55493f699a49" }
+
+[[language]]
+name = "ghostty"
+scope = "source.ghostty"
+file-types = [{ glob = "ghostty/config" }]
+comment-tokens = "#"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "ghostty"
+source = { git = "https://github.com/bezhermoso/tree-sitter-ghostty" , rev = "8438a93b44367e962b2ea3a3b6511885bebd196a" }

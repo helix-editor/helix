@@ -61,14 +61,19 @@ macro_rules! language_server_with_feature {
     }};
 }
 
-/// A wrapper around `lsp::Location` that swaps out the LSP URI for `helix_core::Uri`.
+/// A wrapper around `lsp::Location` that swaps out the LSP URI for `helix_core::Uri` and adds
+/// the server's  offset encoding.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Location {
     uri: Uri,
     range: lsp::Range,
+    offset_encoding: OffsetEncoding,
 }
 
-fn lsp_location_to_location(location: lsp::Location) -> Option<Location> {
+fn lsp_location_to_location(
+    location: lsp::Location,
+    offset_encoding: OffsetEncoding,
+) -> Option<Location> {
     let uri = match location.uri.try_into() {
         Ok(uri) => uri,
         Err(err) => {
@@ -79,13 +84,13 @@ fn lsp_location_to_location(location: lsp::Location) -> Option<Location> {
     Some(Location {
         uri,
         range: location.range,
+        offset_encoding,
     })
 }
 
 struct SymbolInformationItem {
     location: Location,
     symbol: lsp::SymbolInformation,
-    offset_encoding: OffsetEncoding,
 }
 
 struct DiagnosticStyles {
@@ -98,7 +103,6 @@ struct DiagnosticStyles {
 struct PickerDiagnostic {
     location: Location,
     diag: lsp::Diagnostic,
-    offset_encoding: OffsetEncoding,
 }
 
 fn location_to_file_location(location: &Location) -> Option<FileLocation> {
@@ -110,12 +114,7 @@ fn location_to_file_location(location: &Location) -> Option<FileLocation> {
     Some((path.into(), line))
 }
 
-fn jump_to_location(
-    editor: &mut Editor,
-    location: &Location,
-    offset_encoding: OffsetEncoding,
-    action: Action,
-) {
+fn jump_to_location(editor: &mut Editor, location: &Location, action: Action) {
     let (view, doc) = current!(editor);
     push_jump(view, doc);
 
@@ -124,7 +123,13 @@ fn jump_to_location(
         editor.set_error(err);
         return;
     };
-    jump_to_position(editor, path, location.range, offset_encoding, action);
+    jump_to_position(
+        editor,
+        path,
+        location.range,
+        location.offset_encoding,
+        action,
+    );
 }
 
 fn jump_to_position(
@@ -220,9 +225,9 @@ fn diag_picker(
                     location: Location {
                         uri: uri.clone(),
                         range: diag.range,
+                        offset_encoding: ls.offset_encoding(),
                     },
                     diag,
-                    offset_encoding: ls.offset_encoding(),
                 });
             }
         }
@@ -286,7 +291,7 @@ fn diag_picker(
         flat_diag,
         styles,
         move |cx, diag, action| {
-            jump_to_location(cx.editor, &diag.location, diag.offset_encoding, action);
+            jump_to_location(cx.editor, &diag.location, action);
             let (view, doc) = current!(cx.editor);
             view.diagnostics_handler
                 .immediately_show_diagnostic(doc, view.id);
@@ -314,10 +319,10 @@ pub fn symbol_picker(cx: &mut Context) {
                 location: lsp::Location::new(file.uri.clone(), symbol.selection_range),
                 container_name: None,
             },
-            offset_encoding,
             location: Location {
                 uri: uri.clone(),
                 range: symbol.selection_range,
+                offset_encoding,
             },
         });
         for child in symbol.children.into_iter().flatten() {
@@ -355,9 +360,9 @@ pub fn symbol_picker(cx: &mut Context) {
                             location: Location {
                                 uri: doc_uri.clone(),
                                 range: symbol.location.range,
+                                offset_encoding,
                             },
                             symbol,
-                            offset_encoding,
                         })
                         .collect(),
                     lsp::DocumentSymbolResponse::Nested(symbols) => {
@@ -410,7 +415,7 @@ pub fn symbol_picker(cx: &mut Context) {
                 symbols,
                 (),
                 move |cx, item, action| {
-                    jump_to_location(cx.editor, &item.location, item.offset_encoding, action);
+                    jump_to_location(cx.editor, &item.location, action);
                 },
             )
             .with_preview(move |_editor, item| location_to_file_location(&item.location))
@@ -467,9 +472,9 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
                                     location: Location {
                                         uri,
                                         range: symbol.location.range,
+                                        offset_encoding,
                                     },
                                     symbol,
-                                    offset_encoding,
                                 })
                             })
                             .collect();
@@ -521,7 +526,7 @@ pub fn workspace_symbol_picker(cx: &mut Context) {
         [],
         (),
         move |cx, item, action| {
-            jump_to_location(cx.editor, &item.location, item.offset_encoding, action);
+            jump_to_location(cx.editor, &item.location, action);
         },
     )
     .with_preview(|_editor, item| location_to_file_location(&item.location))
@@ -853,17 +858,12 @@ impl Display for ApplyEditErrorKind {
 }
 
 /// Precondition: `locations` should be non-empty.
-fn goto_impl(
-    editor: &mut Editor,
-    compositor: &mut Compositor,
-    locations: Vec<Location>,
-    offset_encoding: OffsetEncoding,
-) {
+fn goto_impl(editor: &mut Editor, compositor: &mut Compositor, locations: Vec<Location>) {
     let cwdir = helix_stdx::env::current_working_dir();
 
     match locations.as_slice() {
         [location] => {
-            jump_to_location(editor, location, offset_encoding, Action::Replace);
+            jump_to_location(editor, location, Action::Replace);
         }
         [] => unreachable!("`locations` should be non-empty for `goto_impl`"),
         _locations => {
@@ -880,32 +880,12 @@ fn goto_impl(
                 },
             )];
 
-            let picker = Picker::new(columns, 0, locations, cwdir, move |cx, location, action| {
-                jump_to_location(cx.editor, location, offset_encoding, action)
+            let picker = Picker::new(columns, 0, locations, cwdir, |cx, location, action| {
+                jump_to_location(cx.editor, location, action)
             })
-            .with_preview(move |_editor, location| location_to_file_location(location));
+            .with_preview(|_editor, location| location_to_file_location(location));
             compositor.push(Box::new(overlaid(picker)));
         }
-    }
-}
-
-fn to_locations(definitions: Option<lsp::GotoDefinitionResponse>) -> Vec<Location> {
-    match definitions {
-        Some(lsp::GotoDefinitionResponse::Scalar(location)) => {
-            lsp_location_to_location(location).into_iter().collect()
-        }
-        Some(lsp::GotoDefinitionResponse::Array(locations)) => locations
-            .into_iter()
-            .flat_map(lsp_location_to_location)
-            .collect(),
-        Some(lsp::GotoDefinitionResponse::Link(locations)) => locations
-            .into_iter()
-            .map(|location_link| {
-                lsp::Location::new(location_link.target_uri, location_link.target_range)
-            })
-            .flat_map(lsp_location_to_location)
-            .collect(),
-        None => Vec::new(),
     }
 }
 
@@ -914,24 +894,62 @@ where
     P: Fn(&Client, lsp::Position, lsp::TextDocumentIdentifier) -> Option<F>,
     F: Future<Output = helix_lsp::Result<serde_json::Value>> + 'static + Send,
 {
-    let (view, doc) = current!(cx.editor);
+    let (view, doc) = current_ref!(cx.editor);
+    let mut futures: FuturesOrdered<_> = doc
+        .language_servers_with_feature(feature)
+        .map(|language_server| {
+            let offset_encoding = language_server.offset_encoding();
+            let pos = doc.position(view.id, offset_encoding);
+            let future = request_provider(language_server, pos, doc.identifier()).unwrap();
+            async move {
+                let json = future.await?;
+                let response: Option<lsp::GotoDefinitionResponse> = serde_json::from_value(json)?;
+                anyhow::Ok((response, offset_encoding))
+            }
+        })
+        .collect();
 
-    let language_server = language_server_with_feature!(cx.editor, doc, feature);
-    let offset_encoding = language_server.offset_encoding();
-    let pos = doc.position(view.id, offset_encoding);
-    let future = request_provider(language_server, pos, doc.identifier()).unwrap();
-
-    cx.callback(
-        future,
-        move |editor, compositor, response: Option<lsp::GotoDefinitionResponse>| {
-            let items = to_locations(response);
-            if items.is_empty() {
+    cx.jobs.callback(async move {
+        let mut locations = Vec::new();
+        while let Some((response, offset_encoding)) = futures.try_next().await? {
+            match response {
+                Some(lsp::GotoDefinitionResponse::Scalar(lsp_location)) => {
+                    locations.extend(lsp_location_to_location(lsp_location, offset_encoding));
+                }
+                Some(lsp::GotoDefinitionResponse::Array(lsp_locations)) => {
+                    locations.extend(
+                        lsp_locations.into_iter().flat_map(|location| {
+                            lsp_location_to_location(location, offset_encoding)
+                        }),
+                    );
+                }
+                Some(lsp::GotoDefinitionResponse::Link(lsp_locations)) => {
+                    locations.extend(
+                        lsp_locations
+                            .into_iter()
+                            .map(|location_link| {
+                                lsp::Location::new(
+                                    location_link.target_uri,
+                                    location_link.target_range,
+                                )
+                            })
+                            .flat_map(|location| {
+                                lsp_location_to_location(location, offset_encoding)
+                            }),
+                    );
+                }
+                None => (),
+            }
+        }
+        let call = move |editor: &mut Editor, compositor: &mut Compositor| {
+            if locations.is_empty() {
                 editor.set_error("No definition found.");
             } else {
-                goto_impl(editor, compositor, items, offset_encoding);
+                goto_impl(editor, compositor, locations);
             }
-        },
-    );
+        };
+        Ok(Callback::EditorCompositor(Box::new(call)))
+    });
 }
 
 pub fn goto_declaration(cx: &mut Context) {
@@ -968,38 +986,48 @@ pub fn goto_implementation(cx: &mut Context) {
 
 pub fn goto_reference(cx: &mut Context) {
     let config = cx.editor.config();
-    let (view, doc) = current!(cx.editor);
+    let (view, doc) = current_ref!(cx.editor);
 
-    // TODO could probably support multiple language servers,
-    // not sure if there's a real practical use case for this though
-    let language_server =
-        language_server_with_feature!(cx.editor, doc, LanguageServerFeature::GotoReference);
-    let offset_encoding = language_server.offset_encoding();
-    let pos = doc.position(view.id, offset_encoding);
-    let future = language_server
-        .goto_reference(
-            doc.identifier(),
-            pos,
-            config.lsp.goto_reference_include_declaration,
-            None,
-        )
-        .unwrap();
+    let mut futures: FuturesOrdered<_> = doc
+        .language_servers_with_feature(LanguageServerFeature::GotoReference)
+        .map(|language_server| {
+            let offset_encoding = language_server.offset_encoding();
+            let pos = doc.position(view.id, offset_encoding);
+            let future = language_server
+                .goto_reference(
+                    doc.identifier(),
+                    pos,
+                    config.lsp.goto_reference_include_declaration,
+                    None,
+                )
+                .unwrap();
+            async move {
+                let json = future.await?;
+                let locations: Option<Vec<lsp::Location>> = serde_json::from_value(json)?;
+                anyhow::Ok((locations, offset_encoding))
+            }
+        })
+        .collect();
 
-    cx.callback(
-        future,
-        move |editor, compositor, response: Option<Vec<lsp::Location>>| {
-            let items: Vec<Location> = response
-                .into_iter()
-                .flatten()
-                .flat_map(lsp_location_to_location)
-                .collect();
-            if items.is_empty() {
+    cx.jobs.callback(async move {
+        let mut locations = Vec::new();
+        while let Some((lsp_locations, offset_encoding)) = futures.try_next().await? {
+            locations.extend(
+                lsp_locations
+                    .into_iter()
+                    .flatten()
+                    .flat_map(|location| lsp_location_to_location(location, offset_encoding)),
+            );
+        }
+        let call = move |editor: &mut Editor, compositor: &mut Compositor| {
+            if locations.is_empty() {
                 editor.set_error("No references found.");
             } else {
-                goto_impl(editor, compositor, items, offset_encoding);
+                goto_impl(editor, compositor, locations);
             }
-        },
-    );
+        };
+        Ok(Callback::EditorCompositor(Box::new(call)))
+    });
 }
 
 pub fn signature_help(cx: &mut Context) {

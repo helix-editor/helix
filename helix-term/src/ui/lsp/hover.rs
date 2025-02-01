@@ -5,7 +5,6 @@ use helix_core::syntax;
 use helix_lsp::lsp;
 use helix_view::graphics::{Margin, Rect, Style};
 use helix_view::input::Event;
-use once_cell::sync::OnceCell;
 use tui::buffer::Buffer;
 use tui::widgets::{BorderType, Paragraph, Widget, Wrap};
 
@@ -15,11 +14,8 @@ use crate::alt;
 use crate::ui::Markdown;
 
 pub struct Hover {
-    hovers: Vec<(String, lsp::Hover)>,
     active_index: usize,
-    config_loader: Arc<ArcSwap<syntax::Loader>>,
-
-    content: OnceCell<(Option<Markdown>, Markdown)>,
+    contents: Vec<(Option<Markdown>, Markdown)>,
 }
 
 impl Hover {
@@ -29,42 +25,42 @@ impl Hover {
         hovers: Vec<(String, lsp::Hover)>,
         config_loader: Arc<ArcSwap<syntax::Loader>>,
     ) -> Self {
+        let n_hovers = hovers.len();
+        let contents = hovers
+            .into_iter()
+            .enumerate()
+            .map(|(idx, (server_name, hover))| {
+                let header = (n_hovers > 1).then(|| {
+                    Markdown::new(
+                        format!("**[{}/{}] {}**", idx + 1, n_hovers, server_name),
+                        config_loader.clone(),
+                    )
+                });
+                let body = Markdown::new(
+                    hover_contents_to_string(hover.contents),
+                    config_loader.clone(),
+                );
+                (header, body)
+            })
+            .collect();
+
         Self {
-            hovers,
             active_index: usize::default(),
-            config_loader,
-            content: OnceCell::new(),
+            contents,
         }
     }
 
+    fn has_header(&self) -> bool {
+        self.contents.len() > 1
+    }
+
     fn content(&self) -> &(Option<Markdown>, Markdown) {
-        self.content.get_or_init(|| {
-            let (server_name, hover) = &self.hovers[self.active_index];
-            // Only render the header when there is more than one hover response.
-            let header = (self.hovers.len() > 1).then(|| {
-                Markdown::new(
-                    format!(
-                        "**[{}/{}] {}**",
-                        self.active_index + 1,
-                        self.hovers.len(),
-                        server_name
-                    ),
-                    self.config_loader.clone(),
-                )
-            });
-            let body = Markdown::new(
-                hover_contents_to_string(&hover.contents),
-                self.config_loader.clone(),
-            );
-            (header, body)
-        })
+        &self.contents[self.active_index]
     }
 
     fn set_index(&mut self, index: usize) {
-        assert!((0..self.hovers.len()).contains(&index));
+        assert!((0..self.contents.len()).contains(&index));
         self.active_index = index;
-        // Reset the cached markdown:
-        self.content.take();
     }
 }
 
@@ -100,13 +96,11 @@ impl Component for Hover {
 
         // hover content
         let contents = contents.parse(Some(&cx.editor.theme));
-        let contents_area = area
-            .clip_top(if self.hovers.len() > 1 {
-                HEADER_HEIGHT + SEPARATOR_HEIGHT
-            } else {
-                0
-            })
-            .clip_bottom(u16::from(cx.editor.popup_border()));
+        let contents_area = area.clip_top(if self.has_header() {
+            HEADER_HEIGHT + SEPARATOR_HEIGHT
+        } else {
+            0
+        });
         let contents_para = Paragraph::new(&contents)
             .wrap(Wrap { trim: false })
             .scroll((cx.scroll.unwrap_or_default() as u16, 0));
@@ -132,7 +126,7 @@ impl Component for Hover {
             crate::ui::text::required_size(&contents, max_text_width);
 
         let width = PADDING_HORIZONTAL + header_width.max(content_width);
-        let height = if self.hovers.len() > 1 {
+        let height = if self.has_header() {
             PADDING_TOP + HEADER_HEIGHT + SEPARATOR_HEIGHT + content_height + PADDING_BOTTOM
         } else {
             PADDING_TOP + content_height + PADDING_BOTTOM
@@ -151,12 +145,12 @@ impl Component for Hover {
                 let index = self
                     .active_index
                     .checked_sub(1)
-                    .unwrap_or(self.hovers.len() - 1);
+                    .unwrap_or(self.contents.len() - 1);
                 self.set_index(index);
                 EventResult::Consumed(None)
             }
             alt!('n') => {
-                self.set_index((self.active_index + 1) % self.hovers.len());
+                self.set_index((self.active_index + 1) % self.contents.len());
                 EventResult::Consumed(None)
             }
             _ => EventResult::Ignored(None),
@@ -164,13 +158,13 @@ impl Component for Hover {
     }
 }
 
-fn hover_contents_to_string(contents: &lsp::HoverContents) -> String {
-    fn marked_string_to_markdown(contents: &lsp::MarkedString) -> String {
+fn hover_contents_to_string(contents: lsp::HoverContents) -> String {
+    fn marked_string_to_markdown(contents: lsp::MarkedString) -> String {
         match contents {
-            lsp::MarkedString::String(contents) => contents.clone(),
+            lsp::MarkedString::String(contents) => contents,
             lsp::MarkedString::LanguageString(string) => {
                 if string.language == "markdown" {
-                    string.value.clone()
+                    string.value
                 } else {
                     format!("```{}\n{}\n```", string.language, string.value)
                 }
@@ -180,10 +174,10 @@ fn hover_contents_to_string(contents: &lsp::HoverContents) -> String {
     match contents {
         lsp::HoverContents::Scalar(contents) => marked_string_to_markdown(contents),
         lsp::HoverContents::Array(contents) => contents
-            .iter()
+            .into_iter()
             .map(marked_string_to_markdown)
             .collect::<Vec<_>>()
             .join("\n\n"),
-        lsp::HoverContents::Markup(contents) => contents.value.clone(),
+        lsp::HoverContents::Markup(contents) => contents.value,
     }
 }

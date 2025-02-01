@@ -20,7 +20,7 @@ use helix_core::{
     comment,
     doc_formatter::TextFormat,
     encoding, find_workspace,
-    graphemes::{self, next_grapheme_boundary, RevRopeGraphemes},
+    graphemes::{self, next_grapheme_boundary},
     history::UndoKind,
     increment,
     indent::{self, IndentStyle},
@@ -35,8 +35,8 @@ use helix_core::{
     text_annotations::{Overlay, TextAnnotations},
     textobject,
     unicode::width::UnicodeWidthChar,
-    visual_offset_from_block, Deletion, LineEnding, Position, Range, Rope, RopeGraphemes,
-    RopeReader, RopeSlice, Selection, SmallVec, Syntax, Tendril, Transaction,
+    visual_offset_from_block, Deletion, LineEnding, Position, Range, Rope, RopeReader, RopeSlice,
+    Selection, SmallVec, Syntax, Tendril, Transaction,
 };
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
@@ -633,10 +633,17 @@ impl std::str::FromStr for MappableCommand {
                 .collect::<Vec<String>>();
             typed::TYPABLE_COMMAND_MAP
                 .get(name)
-                .map(|cmd| MappableCommand::Typable {
-                    name: cmd.name.to_owned(),
-                    doc: format!(":{} {:?}", cmd.name, args),
-                    args,
+                .map(|cmd| {
+                    let doc = if args.is_empty() {
+                        cmd.doc.to_string()
+                    } else {
+                        format!(":{} {:?}", cmd.name, args)
+                    };
+                    MappableCommand::Typable {
+                        name: cmd.name.to_owned(),
+                        doc,
+                        args,
+                    }
                 })
                 .ok_or_else(|| anyhow!("No TypableCommand named '{}'", s))
         } else if let Some(suffix) = s.strip_prefix('@') {
@@ -1681,10 +1688,12 @@ fn replace(cx: &mut Context) {
         if let Some(ch) = ch {
             let transaction = Transaction::change_by_selection(doc.text(), selection, |range| {
                 if !range.is_empty() {
-                    let text: Tendril =
-                        RopeGraphemes::new(doc.text().slice(range.from()..range.to()))
-                            .map(|_g| ch)
-                            .collect();
+                    let text: Tendril = doc
+                        .text()
+                        .slice(range.from()..range.to())
+                        .graphemes()
+                        .map(|_g| ch)
+                        .collect();
                     (range.from(), range.to(), Some(text))
                 } else {
                     // No change.
@@ -3512,6 +3521,10 @@ async fn make_format_callback(
                 }
             }
             Err(err) => {
+                if write.is_none() {
+                    editor.set_error(err.to_string());
+                    return;
+                }
                 log::info!("failed to format '{}': {err}", doc.display_name());
             }
         }
@@ -3822,8 +3835,7 @@ fn goto_next_diag(cx: &mut Context) {
         let diag = doc
             .diagnostics()
             .iter()
-            .find(|diag| diag.range.start > cursor_pos)
-            .or_else(|| doc.diagnostics().first());
+            .find(|diag| diag.range.start > cursor_pos);
 
         let selection = match diag {
             Some(diag) => Selection::single(diag.range.start, diag.range.end),
@@ -3850,8 +3862,7 @@ fn goto_prev_diag(cx: &mut Context) {
             .diagnostics()
             .iter()
             .rev()
-            .find(|diag| diag.range.start < cursor_pos)
-            .or_else(|| doc.diagnostics().last());
+            .find(|diag| diag.range.start < cursor_pos);
 
         let selection = match diag {
             // NOTE: the selection is reversed because we're jumping to the
@@ -6488,6 +6499,7 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
         let alphabet = &cx.editor.config().jump_label_alphabet;
         let Some(i) = event
             .char()
+            .filter(|_| event.modifiers.is_empty())
             .and_then(|ch| alphabet.iter().position(|&it| it == ch))
         else {
             doc_mut!(cx.editor, &doc).remove_jump_labels(view);
@@ -6504,6 +6516,7 @@ fn jump_to_label(cx: &mut Context, labels: Vec<Range>, behaviour: Movement) {
             let alphabet = &cx.editor.config().jump_label_alphabet;
             let Some(inner) = event
                 .char()
+                .filter(|_| event.modifiers.is_empty())
                 .and_then(|ch| alphabet.iter().position(|&it| it == ch))
             else {
                 return;
@@ -6572,7 +6585,9 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
             // madeup of word characters. The latter condition is needed because
             // move_next_word_end simply treats a sequence of characters from
             // the same char class as a word so `=<` would also count as a word.
-            let add_label = RevRopeGraphemes::new(text.slice(..cursor_fwd.head))
+            let add_label = text
+                .slice(..cursor_fwd.head)
+                .graphemes_rev()
                 .take(2)
                 .take_while(|g| g.chars().all(char_is_word))
                 .count()
@@ -6598,7 +6613,9 @@ fn jump_to_word(cx: &mut Context, behaviour: Movement) {
             // madeup of word characters. The latter condition is needed because
             // move_prev_word_start simply treats a sequence of characters from
             // the same char class as a word so `=<` would also count as a word.
-            let add_label = RopeGraphemes::new(text.slice(cursor_rev.head..))
+            let add_label = text
+                .slice(cursor_rev.head..)
+                .graphemes()
                 .take(2)
                 .take_while(|g| g.chars().all(char_is_word))
                 .count()

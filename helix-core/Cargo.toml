@@ -20,10 +20,10 @@ helix-stdx = { path = "../helix-stdx" }
 helix-loader = { path = "../helix-loader" }
 helix-parsec = { path = "../helix-parsec" }
 
-ropey = { version = "1.6.1", default-features = false, features = ["simd"] }
+ropey.workspace = true
 smallvec = "1.13"
 smartstring = "1.0.1"
-unicode-segmentation = "1.12"
+unicode-segmentation.workspace = true
 # unicode-width is changing width definitions
 # that both break our logic and disagree with common
 # width definitions in terminals, we need to replace it.

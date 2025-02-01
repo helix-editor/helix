@@ -64,6 +64,7 @@
 | gdscript | ✓ | ✓ | ✓ |  |
 | gemini | ✓ |  |  |  |
 | gherkin | ✓ |  |  |  |
+| ghostty | ✓ |  |  |  |
 | git-attributes | ✓ |  |  |  |
 | git-commit | ✓ | ✓ |  |  |
 | git-config | ✓ | ✓ |  |  |
