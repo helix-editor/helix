@@ -122,9 +122,9 @@ pub fn textobject_word(
         return Range::new(word_start, word_end);
     }
 
-    match (textobject, word == Word::Sub) {
-        (TextObject::Inside, true) => Range::new(word_start, word_end),
-        (TextObject::Around, true) => {
+    match (textobject, word) {
+        (TextObject::Inside, Word::Sub) => Range::new(word_start, word_end),
+        (TextObject::Around, Word::Sub) => {
             let underscores_count_right = slice
                 .chars_at(word_end)
                 .take_while(|c| char_is_subword_textobj_delimiter(*c))
@@ -142,8 +142,8 @@ pub fn textobject_word(
                 Range::new(word_start - underscore_count_left, word_end)
             }
         }
-        (TextObject::Inside, false) => Range::new(word_start, word_end),
-        (TextObject::Around, false) => {
+        (TextObject::Inside, Word::Long | Word::Short) => Range::new(word_start, word_end),
+        (TextObject::Around, Word::Long | Word::Short) => {
             let whitespace_count_right = slice
                 .chars_at(word_end)
                 .take_while(|c| char_is_whitespace(*c))
@@ -160,8 +160,7 @@ pub fn textobject_word(
                 Range::new(word_start - whitespace_count_left, word_end)
             }
         }
-        (TextObject::Movement, false) => unreachable!(),
-        (TextObject::Movement, true) => unreachable!(),
+        (TextObject::Movement, _) => unreachable!(),
     }
 }
 
