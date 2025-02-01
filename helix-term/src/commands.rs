@@ -5630,27 +5630,13 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                 let line_ending = doc.line_ending.as_str();
 
                 let selection = doc.selection(view.id).clone().transform(|range| {
-                    let line_idx = range.cursor_line(text);
-
-                    // count = 1 => this line
-                    // count = 2 => this line, 1 line above and 1 line below (3 total)
-                    // count = 3 => this line, 2 lines above and 2 lines below (5 total)
-                    // etc.
-                    let vertical_offset = count - 1;
-
-                    let from_line_idx = line_idx.saturating_sub(vertical_offset);
-                    let to_line_idx = (line_idx + vertical_offset).min(text.len_lines() - 1);
-
-                    let line_start = text.line_to_char(from_line_idx);
-                    // The beginning of the next line -1 is the same as the last character in the current line
-                    let line_end = text.line_to_char(to_line_idx + 1).saturating_sub(1);
-
                     let (from, to) = match objtype {
-                        textobject::TextObject::Around => (
-                            line_start.saturating_sub(line_ending.len()),
-                            line_end + line_ending.len(),
-                        ),
-                        textobject::TextObject::Inside => (line_start, line_end),
+                        textobject::TextObject::Around => {
+                            nearest_newlines(&range, true, text, line_ending, count)
+                        }
+                        textobject::TextObject::Inside => {
+                            nearest_newlines(&range, false, text, line_ending, count)
+                        }
                         textobject::TextObject::Movement => unreachable!(),
                     };
 
@@ -5817,29 +5803,77 @@ fn surround_add(cx: &mut Context) {
     cx.editor.autoinfo = Some(Info::new("Surround selections with", &SURROUND_HELP_TEXT));
 }
 
+/// Finds the `n`th nearest pair of newlines around a Range, and returns their positions
+/// if `inclusive` is true. If `inclusive` is false, returns the pair of char indices
+/// corresponding to the char just after the first newline and the char just before the
+/// last newline
+fn nearest_newlines(
+    range: &Range,
+    inclusive: bool,
+    text: RopeSlice,
+    line_ending: &str,
+    count: usize,
+) -> (usize, usize) {
+    let line_idx = range.cursor_line(text);
+
+    // count = 1 => this line
+    // count = 2 => this line, 1 line above and 1 line below (3 total)
+    // count = 3 => this line, 2 lines above and 2 lines below (5 total)
+    // etc.
+    let vertical_offset = count - 1;
+
+    let from_line_idx = line_idx.saturating_sub(vertical_offset);
+    let to_line_idx = (line_idx + vertical_offset).min(text.len_lines() - 1);
+
+    let line_start = text.line_to_char(from_line_idx);
+    // The beginning of the next line -1 is the same as the last character in the current line
+    let line_end = text.line_to_char(to_line_idx + 1).saturating_sub(1);
+
+    if inclusive {
+        (
+            line_start.saturating_sub(line_ending.len()),
+            line_end + line_ending.len(),
+        )
+    } else {
+        (line_start, line_end)
+    }
+}
+
 fn surround_replace(cx: &mut Context) {
     let count = cx.count();
     cx.on_next_key(move |cx, event| {
-        let surround_ch = match event.char() {
-            Some('m') => None, // m selects the closest surround pair
-            Some(ch) => Some(ch),
-            None => return,
-        };
         let (view, doc) = current!(cx.editor);
         let text = doc.text().slice(..);
-        let selection = doc.selection(view.id);
+        let selection = doc.selection(view.id).clone();
 
-        let change_pos =
-            match surround::get_surround_pos(doc.syntax(), text, selection, surround_ch, count) {
+        let change_pos = if event.code == KeyCode::Enter {
+            let line_ending = doc.line_ending.as_str();
+            selection
+                .ranges()
+                .iter()
+                .flat_map(|range| {
+                    let (start, end) = nearest_newlines(range, true, text, line_ending, count);
+                    vec![(start), (end)]
+                })
+                .collect()
+        } else {
+            let surround_ch = match event.char() {
+                Some('m') => None, // m selects the closest surround pair
+                Some(ch) => Some(ch),
+                None => return,
+            };
+
+            match surround::get_surround_pos(doc.syntax(), text, &selection, surround_ch, count) {
                 Ok(c) => c,
                 Err(err) => {
                     cx.editor.set_error(err.to_string());
                     return;
                 }
-            };
+            }
+        };
 
-        let selection = selection.clone();
-        let ranges: SmallVec<[Range; 1]> = change_pos.iter().map(|&p| Range::point(p)).collect();
+        let ranges = change_pos.iter().map(|&p| Range::point(p)).collect();
+
         doc.set_selection(
             view.id,
             Selection::new(ranges, selection.primary_index() * 2),
@@ -5848,14 +5882,23 @@ fn surround_replace(cx: &mut Context) {
         cx.on_next_key(move |cx, event| {
             cx.editor.autoinfo = None;
             let (view, doc) = current!(cx.editor);
-            let to = match event.char() {
-                Some(to) => to,
-                None => return doc.set_selection(view.id, selection),
+            let (open, close) = if event.code == KeyCode::Enter {
+                let line_ending = doc.line_ending.as_str();
+                (line_ending.to_owned(), line_ending.to_owned())
+            } else {
+                let to = match event.char() {
+                    Some(to) => to,
+                    None => return doc.set_selection(view.id, selection),
+                };
+                let (open, close) = match_brackets::get_pair(to);
+                (open.to_string(), close.to_string())
             };
-            let (open, close) = match_brackets::get_pair(to);
+
+            let open = &open;
+            let close = &close;
 
             // the changeset has to be sorted to allow nested surrounds
-            let mut sorted_pos: Vec<(usize, char)> = Vec::new();
+            let mut sorted_pos: Vec<(usize, &str)> = Vec::new();
             for p in change_pos.chunks(2) {
                 sorted_pos.push((p[0], open));
                 sorted_pos.push((p[1], close));
@@ -5866,7 +5909,7 @@ fn surround_replace(cx: &mut Context) {
                 doc.text(),
                 sorted_pos.iter().map(|&pos| {
                     let mut t = Tendril::new();
-                    t.push(pos.1);
+                    t.push_str(pos.1);
                     (pos.0, pos.0 + 1, Some(t))
                 }),
             );
@@ -5888,23 +5931,36 @@ fn surround_delete(cx: &mut Context) {
     let count = cx.count();
     cx.on_next_key(move |cx, event| {
         cx.editor.autoinfo = None;
-        let surround_ch = match event.char() {
-            Some('m') => None, // m selects the closest surround pair
-            Some(ch) => Some(ch),
-            None => return,
-        };
+
         let (view, doc) = current!(cx.editor);
         let text = doc.text().slice(..);
         let selection = doc.selection(view.id);
 
-        let mut change_pos =
+        let mut change_pos = if event.code == KeyCode::Enter {
+            let line_ending = doc.line_ending.as_str();
+            selection
+                .ranges()
+                .iter()
+                .flat_map(|range| {
+                    let (start, end) = nearest_newlines(range, true, text, line_ending, count);
+                    vec![start, end]
+                })
+                .collect()
+        } else {
+            let surround_ch = match event.char() {
+                Some('m') => None, // m selects the closest surround pair
+                Some(ch) => Some(ch),
+                None => return,
+            };
+
             match surround::get_surround_pos(doc.syntax(), text, selection, surround_ch, count) {
                 Ok(c) => c,
                 Err(err) => {
                     cx.editor.set_error(err.to_string());
                     return;
                 }
-            };
+            }
+        };
         change_pos.sort_unstable(); // the changeset has to be sorted to allow nested surrounds
         let transaction =
             Transaction::change(doc.text(), change_pos.into_iter().map(|p| (p, p + 1, None)));
