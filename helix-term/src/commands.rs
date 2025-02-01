@@ -10,7 +10,6 @@ use helix_stdx::{
     rope::{self, RopeSliceExt},
 };
 use helix_vcs::{FileChange, Hunk};
-use libc::NF_IP6_PRI_CONNTRACK_DEFRAG;
 pub use lsp::*;
 use tui::text::Span;
 pub use typed::*;
@@ -18,7 +17,7 @@ pub use typed::*;
 use helix_core::{
     char_idx_at_visual_offset,
     chars::char_is_word,
-    comment::{self, DEFAULT_COMMENT_TOKEN},
+    comment::{self},
     doc_formatter::TextFormat,
     encoding, find_workspace,
     graphemes::{self, next_grapheme_boundary},
@@ -60,7 +59,6 @@ use crate::{
     compositor::{self, Component, Compositor},
     filter_picker_entry,
     job::Callback,
-    keymap::default,
     ui::{self, overlay::overlaid, Picker, PickerColumn, Popup, Prompt, PromptEvent},
 };
 
@@ -5174,7 +5172,7 @@ fn toggle_comments(cx: &mut Context) {
                         if block_commented {
                             return comment::create_block_comment_transaction(
                                 rope,
-                                &vec![*range],
+                                &[*range],
                                 block_commented,
                                 comment_changes,
                             )
@@ -5206,7 +5204,8 @@ fn toggle_line_comments(cx: &mut Context) {
         cx,
         Box::new(
             |doc_line_token, doc_block_tokens, rope, selection, mut get_comment_tokens| {
-                Transaction::change(
+                let mut selections = SmallVec::new();
+                let transaction = Transaction::change(
                     rope,
                     selection.iter().flat_map(|range| {
                         let (injected_line_tokens, injected_block_tokens) =
@@ -5223,16 +5222,20 @@ fn toggle_line_comments(cx: &mut Context) {
                         if line_token.is_none() && block_tokens.is_some() {
                             let default_block_tokens = &[BlockCommentToken::default()];
                             let block_comment_tokens = block_tokens.unwrap_or(default_block_tokens);
-                            comment::toggle_block_comments(
-                                rope,
-                                &comment::split_lines_of_range(rope.slice(..), range),
-                                block_comment_tokens,
-                            )
+                            let ranges = &comment::split_lines_of_range(rope.slice(..), range);
+                            let (changes, should_select) =
+                                comment::toggle_block_comments(rope, ranges, block_comment_tokens);
+                            if should_select {
+                                selections.extend(ranges.clone());
+                            };
+                            changes
                         } else {
                             comment::toggle_line_comments(rope, range, line_token)
                         }
                     }),
-                )
+                );
+
+                transaction.with_selection(Selection::new(selections, selection.primary_index()))
             },
         ),
     );
@@ -5243,7 +5246,8 @@ fn toggle_block_comments(cx: &mut Context) {
         cx,
         Box::new(
             |doc_line_token, doc_block_tokens, rope, selection, mut get_injected_tokens| {
-                Transaction::change(
+                let mut selections = SmallVec::new();
+                let transaction = Transaction::change(
                     rope,
                     selection.iter().flat_map(|range| {
                         let (injected_line_tokens, injected_block_tokens) =
@@ -5262,14 +5266,20 @@ fn toggle_block_comments(cx: &mut Context) {
                         } else {
                             let default_block_tokens = &[BlockCommentToken::default()];
                             let block_comment_tokens = block_tokens.unwrap_or(default_block_tokens);
-                            comment::toggle_block_comments(
+                            let (changes, should_select) = comment::toggle_block_comments(
                                 rope,
                                 &vec![*range],
                                 block_comment_tokens,
-                            )
+                            );
+                            if should_select {
+                                selections.push(*range);
+                            };
+                            changes
                         }
                     }),
-                )
+                );
+
+                transaction.with_selection(Selection::new(selections, selection.primary_index()))
             },
         ),
     );
