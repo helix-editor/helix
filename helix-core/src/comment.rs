@@ -37,18 +37,24 @@ pub fn get_comment_token<'a, S: AsRef<str>>(
 ///     - Column of existing tokens, if the lines are commented; column to place tokens at otherwise.
 /// - The margin to the right of the comment tokens
 ///     - Defaults to `1`. If any existing comment token is not followed by a space, changes to `0`.
-fn find_line_comment(
-    token: &str,
+fn find_line_comment<'a>(
     text: RopeSlice,
-    lines: impl IntoIterator<Item = usize>,
+    lines: impl IntoIterator<
+        Item = (
+            // line number
+            usize,
+            // token for this line
+            &'a str,
+        ),
+    >,
 ) -> (bool, Vec<usize>, usize, usize) {
     let mut commented = true;
     let mut to_change = Vec::new();
     let mut min = usize::MAX; // minimum col for first_non_whitespace_char
     let mut margin = 1;
-    let token_len = token.chars().count();
 
-    for line in lines {
+    for (line, token) in lines {
+        let token_len = token.chars().count();
         let line_slice = text.line(line);
         if let Some(pos) = line_slice.first_non_whitespace_char() {
             let len = line_slice.len_chars();
@@ -79,11 +85,8 @@ fn find_line_comment(
 }
 
 // for a given range and syntax, determine if there are additional tokens to consider
-pub type InjectedTokens = fn(
-    range: Range,
-    syntax: Option<&crate::Syntax>,
-    rope: RopeSlice,
-) -> (Option<Vec<String>>, Option<Vec<BlockCommentToken>>);
+pub type InjectedTokens =
+    Box<dyn FnMut(usize, usize) -> (Option<Vec<String>>, Option<Vec<BlockCommentToken>>)>;
 
 #[must_use]
 pub fn toggle_line_comments(
@@ -97,13 +100,16 @@ pub fn toggle_line_comments(
     let token = token.unwrap_or(DEFAULT_COMMENT_TOKEN);
     let comment = Tendril::from(format!("{} ", token));
 
-    let mut lines: Vec<usize> = Vec::with_capacity(selection.len());
+    let mut lines: Vec<(usize, &str)> = Vec::with_capacity(selection.len());
 
     let mut min_next_line = 0;
     for selection in selection {
         let (start, end) = selection.line_range(text);
         let start = start.clamp(min_next_line, text.len_lines());
         let end = (end + 1).min(text.len_lines());
+
+        let start_byte = text.line_to_byte(start);
+        let end_byte = text.line_to_byte(start);
 
         lines.extend(start..end);
         min_next_line = end;
