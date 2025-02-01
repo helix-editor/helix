@@ -37,6 +37,7 @@ use std::{
     fmt::Display,
     future::Future,
     path::Path,
+    sync::Arc,
 };
 
 /// Gets the first language server that is attached to a document which supports a specific feature.
@@ -1036,16 +1037,14 @@ pub fn signature_help(cx: &mut Context) {
         .trigger_signature_help(SignatureHelpInvoked::Manual, cx.editor)
 }
 
-// <<<<a<<< HEAD
-pub fn hover(cx: &mut Context) {
+enum HoverDisplay {
+    Popup,
+    File,
+}
+
+fn hover_impl(cx: &mut Context, hover_action: HoverDisplay) {
     use ui::lsp::hover::Hover;
 
-    // ===a====
-    // pub fn hover_impl<T>(cx: &mut Context, callback: T)
-    // where
-    //     T: FnOnce(String, &mut Editor, &mut Compositor) + std::marker::Send + 'static,
-    // {
-    // >>>>a>>> 0e043a81 (feat: add new `hover_dump` command)
     let (view, doc) = current!(cx.editor);
     if doc
         .language_servers_with_feature(LanguageServerFeature::Hover)
@@ -1069,43 +1068,10 @@ pub fn hover(cx: &mut Context) {
                 .text_document_hover(doc.identifier(), pos, None)
                 .unwrap();
 
-            // <<<<<<< HEAD
             async move {
                 let json = request.await?;
                 let response = serde_json::from_value::<Option<lsp::Hover>>(json)?;
                 anyhow::Ok((server_name, response))
-                // =======
-                //     cx.callback(
-                //         future,
-                //         move |editor, compositor, response: Option<lsp::Hover>| {
-                //             if let Some(hover) = response {
-                //                 // hover.contents / .range <- used for visualizing
-
-                //                 fn marked_string_to_markdown(contents: lsp::MarkedString) -> String {
-                //                     match contents {
-                //                         lsp::MarkedString::String(contents) => contents,
-                //                         lsp::MarkedString::LanguageString(string) => {
-                //                             if string.language == "markdown" {
-                //                                 string.value
-                //                             } else {
-                //                                 format!("```{}\n{}\n```", string.language, string.value)
-                //                             }
-                //                         }
-                //                     }
-                //                 }
-
-                //                 let contents = match hover.contents {
-                //                     lsp::HoverContents::Scalar(contents) => marked_string_to_markdown(contents),
-                //                     lsp::HoverContents::Array(contents) => contents
-                //                         .into_iter()
-                //                         .map(marked_string_to_markdown)
-                //                         .collect::<Vec<_>>()
-                //                         .join("\n\n"),
-                //                     lsp::HoverContents::Markup(contents) => contents.value,
-                //                 };
-
-                //                 callback(contents, editor, compositor);
-                // >>>>>>> 0e043a81 (feat: add new `hover_dump` command)
             }
         })
         .collect();
@@ -1125,32 +1091,39 @@ pub fn hover(cx: &mut Context) {
                 return;
             }
 
-            // create new popup
-            let contents = Hover::new(hovers, editor.syn_loader.clone());
-            let popup = Popup::new(Hover::ID, contents).auto_close(true);
-            compositor.replace_or_push(Hover::ID, popup);
+            let hover = Hover::new(hovers, editor.syn_loader.clone());
+
+            match hover_action {
+                HoverDisplay::Popup => {
+                    let popup = Popup::new(Hover::ID, hover).auto_close(true);
+                    compositor.replace_or_push(Hover::ID, popup);
+                }
+                HoverDisplay::File => {
+                    editor.new_file_from_document(
+                        Action::VerticalSplit,
+                        Document::from(
+                            Rope::from(hover.string_content()),
+                            None,
+                            Arc::clone(&editor.config),
+                        ),
+                    );
+                    let hover_doc = doc_mut!(editor);
+
+                    let _ = hover_doc
+                        .set_language_by_language_id("markdown", editor.syn_loader.clone());
+                }
+            }
         };
         Ok(Callback::EditorCompositor(Box::new(call)))
     });
 }
 
-pub fn hover_dump(cx: &mut Context) {
-    hover_impl(cx, |contents, editor, _compositor| {
-        editor.new_file_from_document(
-            Action::VerticalSplit,
-            Document::from(Rope::from(contents), None, editor.config.clone()),
-        );
-        let hover_doc = doc_mut!(editor);
-        let _ = hover_doc.set_language_by_language_id("markdown", editor.syn_loader.clone());
-    })
+pub fn hover(cx: &mut Context) {
+    hover_impl(cx, HoverDisplay::Popup)
 }
 
-pub fn hover(cx: &mut Context) {
-    hover_impl(cx, |contents, editor, compositor| {
-        let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
-        let popup = Popup::new("hover", contents).auto_close(true);
-        compositor.replace_or_push("hover", popup);
-    })
+pub fn hover_dump(cx: &mut Context) {
+    hover_impl(cx, HoverDisplay::File)
 }
 
 pub fn rename_symbol(cx: &mut Context) {

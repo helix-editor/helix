@@ -15,7 +15,8 @@ use crate::ui::Markdown;
 
 pub struct Hover {
     active_index: usize,
-    contents: Vec<(Option<Markdown>, Markdown)>,
+    contents: Vec<(Option<String>, String)>,
+    config_loader: Arc<ArcSwap<syntax::Loader>>,
 }
 
 impl Hover {
@@ -30,16 +31,10 @@ impl Hover {
             .into_iter()
             .enumerate()
             .map(|(idx, (server_name, hover))| {
-                let header = (n_hovers > 1).then(|| {
-                    Markdown::new(
-                        format!("**[{}/{}] {}**", idx + 1, n_hovers, server_name),
-                        config_loader.clone(),
-                    )
-                });
-                let body = Markdown::new(
-                    hover_contents_to_string(hover.contents),
-                    config_loader.clone(),
-                );
+                let header = (n_hovers > 1)
+                    .then(|| format!("**[{}/{}] {}**", idx + 1, n_hovers, server_name));
+                let body = hover_contents_to_string(hover.contents);
+
                 (header, body)
             })
             .collect();
@@ -47,6 +42,7 @@ impl Hover {
         Self {
             active_index: usize::default(),
             contents,
+            config_loader,
         }
     }
 
@@ -54,8 +50,27 @@ impl Hover {
         self.contents.len() > 1
     }
 
-    fn content(&self) -> &(Option<Markdown>, Markdown) {
-        &self.contents[self.active_index]
+    fn content(&self) -> (Option<Markdown>, Markdown) {
+        let (header, body) = &self.contents[self.active_index];
+
+        (
+            header
+                .clone()
+                .map(|header| Markdown::new(header, Arc::clone(&self.config_loader))),
+            Markdown::new(body.to_owned(), Arc::clone(&self.config_loader)),
+        )
+    }
+
+    pub fn string_content(&self) -> String {
+        self.contents
+            .iter()
+            .map(|(header, body)| {
+                let header = header.clone().unwrap_or_default();
+
+                format!("{header}{body}")
+            })
+            .collect::<Vec<String>>()
+            .join("\n\n---\n\n")
     }
 
     fn set_index(&mut self, index: usize) {
