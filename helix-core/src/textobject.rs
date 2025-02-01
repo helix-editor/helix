@@ -13,13 +13,14 @@ use crate::syntax::LanguageConfiguration;
 use crate::Range;
 use crate::{surround, Syntax};
 
-fn find_word_boundary(
-    slice: RopeSlice,
-    mut pos: usize,
-    direction: Direction,
-    long: bool,
-    is_subword: bool,
-) -> usize {
+#[derive(PartialEq, Copy, Clone)]
+pub enum Word {
+    Long,
+    Short,
+    Sub,
+}
+
+fn find_word_boundary(slice: RopeSlice, mut pos: usize, direction: Direction, word: Word) -> usize {
     use CharCategory::{Eol, Whitespace};
 
     let iter = match direction {
@@ -50,12 +51,11 @@ fn find_word_boundary(
         match categorize_char(ch) {
             Eol | Whitespace => return pos,
             category => {
-                let matches_short_word = !long
-                    && !is_subword
+                let matches_short_word = word == Word::Short
                     && category != prev_category
                     && pos != 0
                     && pos != slice.len_chars();
-                let matches_subword = is_subword
+                let matches_subword = word == Word::Sub
                     && match direction {
                         Direction::Forward => is_sub_word_boundary(prev_ch, ch, Direction::Forward),
                         Direction::Backward => {
@@ -103,15 +103,14 @@ pub fn textobject_word(
     range: Range,
     textobject: TextObject,
     _count: usize,
-    long: bool,
-    is_subword: bool,
+    word: Word,
 ) -> Range {
     let pos = range.cursor(slice);
 
-    let word_start = find_word_boundary(slice, pos, Direction::Backward, long, is_subword);
+    let word_start = find_word_boundary(slice, pos, Direction::Backward, word);
     let word_end = match slice.get_char(pos).map(categorize_char) {
         None | Some(CharCategory::Whitespace | CharCategory::Eol) => pos,
-        _ => find_word_boundary(slice, pos + 1, Direction::Forward, long, is_subword),
+        _ => find_word_boundary(slice, pos + 1, Direction::Forward, word),
     };
 
     // Special case.
@@ -119,7 +118,7 @@ pub fn textobject_word(
         return Range::new(word_start, word_end);
     }
 
-    match (textobject, is_subword) {
+    match (textobject, word == Word::Sub) {
         (TextObject::Inside, true) => Range::new(word_start, word_end),
         (TextObject::Around, true) => {
             let underscores_count_right = slice
@@ -451,7 +450,7 @@ mod test {
                 let (pos, objtype, expected_range) = case;
                 // cursor is a single width selection
                 let range = Range::new(pos, pos + 1);
-                let result = textobject_word(slice, range, objtype, 1, false, false);
+                let result = textobject_word(slice, range, objtype, 1, Word::Short);
                 assert_eq!(
                     result,
                     expected_range.into(),

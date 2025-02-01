@@ -14,7 +14,8 @@ use tui::{text::Span, widgets::Row};
 use super::{align_view, push_jump, Align, Context, Editor};
 
 use helix_core::{
-    syntax::LanguageServerFeature, text_annotations::InlineAnnotation, Selection, Uri,
+    syntax::LanguageServerFeature, text_annotations::InlineAnnotation, textobject::Word, Selection,
+    Uri,
 };
 use helix_stdx::path;
 use helix_view::{
@@ -1068,7 +1069,7 @@ pub fn rename_symbol(cx: &mut Context) {
             primary_selection
         } else {
             use helix_core::textobject::{textobject_word, TextObject};
-            textobject_word(text, primary_selection, TextObject::Inside, 1, false, false)
+            textobject_word(text, primary_selection, TextObject::Inside, 1, Word::Short)
         }
         .fragment(text)
         .into()
