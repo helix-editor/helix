@@ -180,11 +180,14 @@ pub struct Document {
 
     // Last time we wrote to the file. This will carry the time the file was last opened if there
     // were no saves.
-    last_saved_time: SystemTime,
+    pub(crate) last_saved_time: SystemTime,
 
     last_saved_revision: usize,
     version: i32, // should be usize?
     pub(crate) modified_since_accessed: bool,
+    // Whether the file was modified by another process after it was last opened or saved.
+    // Just a heuristic, and may be stale.
+    pub externally_modified: bool,
 
     pub(crate) diagnostics: Vec<Diagnostic>,
     pub(crate) language_servers: HashMap<LanguageServerName, Arc<Client>>,
@@ -287,6 +290,7 @@ impl fmt::Debug for Document {
             .field("last_saved_revision", &self.last_saved_revision)
             .field("version", &self.version)
             .field("modified_since_accessed", &self.modified_since_accessed)
+            .field("externally_modified", &self.externally_modified)
             .field("diagnostics", &self.diagnostics)
             // .field("language_server", &self.language_server)
             .finish()
@@ -691,6 +695,7 @@ impl Document {
             last_saved_time: SystemTime::now(),
             last_saved_revision: 0,
             modified_since_accessed: false,
+            externally_modified: false,
             language_servers: HashMap::new(),
             diff_handle: None,
             config,

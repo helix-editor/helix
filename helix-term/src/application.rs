@@ -628,6 +628,9 @@ impl Application {
                     self.render().await;
                 }
             }
+            EditorEvent::ExternalModification(_) => {
+                self.render().await;
+            }
             EditorEvent::Redraw => {
                 self.render().await;
             }

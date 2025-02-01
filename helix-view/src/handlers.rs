@@ -14,11 +14,19 @@ pub enum AutoSaveEvent {
     LeftInsertMode,
 }
 
+/// Indicates that the file corresponding to a particular document should be checked for
+/// external modifications.
+#[derive(Debug)]
+pub struct CheckModificationEvent {
+    pub doc_id: DocumentId,
+}
+
 pub struct Handlers {
     // only public because most of the actual implementation is in helix-term right now :/
     pub completions: Sender<lsp::CompletionEvent>,
     pub signature_hints: Sender<lsp::SignatureHelpEvent>,
     pub auto_save: Sender<AutoSaveEvent>,
+    pub check_modification: Sender<CheckModificationEvent>,
 }
 
 impl Handlers {

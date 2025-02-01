@@ -33,6 +33,7 @@ use std::{
     path::{Path, PathBuf},
     pin::Pin,
     sync::Arc,
+    time::SystemTime,
 };
 
 use tokio::{
@@ -1101,6 +1102,17 @@ pub struct Editor {
 
     pub mouse_down_range: Option<Range>,
     pub cursor_cache: CursorCache,
+
+    external_modification_events: (
+        UnboundedSender<ExternalModificationEvent>,
+        UnboundedReceiver<ExternalModificationEvent>,
+    ),
+}
+
+#[derive(Debug)]
+pub struct ExternalModificationEvent {
+    doc_id: DocumentId,
+    was_modified: bool,
 }
 
 pub type Motion = Box<dyn Fn(&mut Editor)>;
@@ -1111,6 +1123,7 @@ pub enum EditorEvent {
     ConfigEvent(ConfigEvent),
     LanguageServerMessage((LanguageServerId, Call)),
     DebuggerEvent(dap::Payload),
+    ExternalModification(ExternalModificationEvent),
     IdleTimer,
     Redraw,
 }
@@ -1177,6 +1190,7 @@ impl Editor {
         let language_servers = helix_lsp::Registry::new(syn_loader.clone());
         let conf = config.load();
         let auto_pairs = (&conf.auto_pairs).into();
+        let external_modification_events = tokio::sync::mpsc::unbounded_channel();
 
         // HAXX: offset the render area height by 1 to account for prompt/commandline
         area.height -= 1;
@@ -1223,6 +1237,7 @@ impl Editor {
             handlers,
             mouse_down_range: None,
             cursor_cache: CursorCache::default(),
+            external_modification_events,
         }
     }
 
@@ -1451,6 +1466,31 @@ impl Editor {
         doc.language_servers.clear();
         doc.set_path(Some(path));
         self.refresh_doc_language(doc_id)
+    }
+
+    pub fn check_external_modification(&mut self, doc_id: DocumentId) {
+        //let path = self.document(doc_id).map(|
+        let (path, last_saved_time) = {
+            let Some(doc) = self.document(doc_id) else {
+                // It's okay if the document is gone - we expect to be called async.
+                return;
+            };
+            (doc.path().cloned(), doc.last_saved_time)
+        };
+        let tx = self.external_modification_events.0.clone();
+
+        let was_modified = check_external_modification(path, last_saved_time);
+        tokio::spawn(async move {
+            // Drop the error for now since we'll try again the next time the user tries
+            // to edit.  The most likely problem is lacking read ACLs, in which case we
+            // can't reload anyway.
+            let _ = was_modified.await.map(|was_modified| {
+                tx.send(ExternalModificationEvent {
+                    doc_id,
+                    was_modified,
+                })
+            });
+        });
     }
 
     pub fn refresh_doc_language(&mut self, doc_id: DocumentId) {
@@ -2087,6 +2127,23 @@ impl Editor {
         .map(|_| ())
     }
 
+    fn handle_external_modification(&mut self, event: &ExternalModificationEvent) {
+        let mut is_modified = false;
+        if let Some(doc) = self.document_mut(event.doc_id) {
+            doc.externally_modified = event.was_modified;
+            is_modified = doc.is_modified();
+        }
+        // Set the status if a conflict is detected.
+        if is_modified && event.was_modified {
+            let tree = &self.tree;
+            if let Some(focused_doc_id) = tree.try_get(tree.focus).map(|view| view.doc) {
+                if focused_doc_id == event.doc_id {
+                    self.set_status("file externally modified; :write! or :reload");
+                }
+            }
+        }
+    }
+
     pub async fn wait_event(&mut self) -> EditorEvent {
         // the loop only runs once or twice and would be better implemented with a recursion + const generic
         // however due to limitations with async functions that can not be implemented right now
@@ -2106,6 +2163,10 @@ impl Editor {
                 }
                 Some(event) = self.debugger_events.next() => {
                     return EditorEvent::DebuggerEvent(event)
+                }
+                Some(event) = self.external_modification_events.1.recv() => {
+                    self.handle_external_modification(&event);
+                    return EditorEvent::ExternalModification(event)
                 }
 
                 _ = helix_event::redraw_requested() => {
@@ -2253,6 +2314,20 @@ fn try_restore_indent(doc: &mut Document, view: &mut View) {
                 (line_start_pos, pos, None)
             });
         doc.apply(&transaction, view.id);
+    }
+}
+
+async fn check_external_modification(
+    path: Option<PathBuf>,
+    last_saved_time: SystemTime,
+) -> anyhow::Result<bool> {
+    if let Some(path) = path {
+        let metadata = tokio::fs::metadata(&path).await?;
+        let mtime = metadata.modified()?;
+        Ok(last_saved_time < mtime)
+    } else {
+        // No path means there can't be an external modification.
+        Ok(false)
     }
 }
 
