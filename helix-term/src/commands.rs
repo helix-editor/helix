@@ -633,10 +633,17 @@ impl std::str::FromStr for MappableCommand {
                 .collect::<Vec<String>>();
             typed::TYPABLE_COMMAND_MAP
                 .get(name)
-                .map(|cmd| MappableCommand::Typable {
-                    name: cmd.name.to_owned(),
-                    doc: format!(":{} {:?}", cmd.name, args),
-                    args,
+                .map(|cmd| {
+                    let doc = if args.is_empty() {
+                        cmd.doc.to_string()
+                    } else {
+                        format!(":{} {:?}", cmd.name, args)
+                    };
+                    MappableCommand::Typable {
+                        name: cmd.name.to_owned(),
+                        doc,
+                        args,
+                    }
                 })
                 .ok_or_else(|| anyhow!("No TypableCommand named '{}'", s))
         } else if let Some(suffix) = s.strip_prefix('@') {
