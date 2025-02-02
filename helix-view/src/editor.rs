@@ -1,8 +1,10 @@
 use crate::{
     annotations::diagnostics::{DiagnosticFilter, InlineDiagnosticsConfig},
+    clipboard::ClipboardProvider,
     document::{
         DocumentOpenError, DocumentSavedEventFuture, DocumentSavedEventResult, Mode, SavePoint,
     },
+    events::DocumentFocusLost,
     graphics::{CursorKind, Rect},
     handlers::Handlers,
     info::Info,
@@ -13,6 +15,7 @@ use crate::{
     Document, DocumentId, View, ViewId,
 };
 use dap::StackFrame;
+use helix_event::dispatch;
 use helix_vcs::DiffProviderRegistry;
 
 use futures_util::stream::select_all::SelectAll;
@@ -267,8 +270,15 @@ pub struct Config {
     pub auto_pairs: AutoPairConfig,
     /// Automatic auto-completion, automatically pop up without user trigger. Defaults to true.
     pub auto_completion: bool,
+    /// Enable filepath completion.
+    /// Show files and directories if an existing path at the cursor was recognized,
+    /// either absolute or relative to the current opened document or current working directory (if the buffer is not yet saved).
+    /// Defaults to true.
+    pub path_completion: bool,
     /// Automatic formatting on save. Defaults to true.
     pub auto_format: bool,
+    /// Default register used for yank/paste. Defaults to '"'
+    pub default_yank_register: char,
     /// Automatic save on focus lost and/or after delay.
     /// Time delay in milliseconds since last edit after which auto save timer triggers.
     /// Time delay defaults to false with 3000ms delay. Focus lost defaults to false.
@@ -296,6 +306,9 @@ pub struct Config {
     /// Whether to instruct the LSP to replace the entire word when applying a completion
     /// or to only insert new text
     pub completion_replace: bool,
+    /// `true` if helix should automatically add a line comment token if you're currently in a comment
+    /// and press `enter`.
+    pub continue_comments: bool,
     /// Whether to display infoboxes. Defaults to true.
     pub auto_info: bool,
     pub file_picker: FilePickerConfig,
@@ -345,10 +358,12 @@ pub struct Config {
     /// Display diagnostic below the line they occur.
     pub inline_diagnostics: InlineDiagnosticsConfig,
     pub end_of_line_diagnostics: DiagnosticFilter,
+    // Set to override the default clipboard provider
+    pub clipboard_provider: ClipboardProvider,
 }
 
 #[derive(Debug, Clone, PartialEq, Deserialize, Serialize, Eq, PartialOrd, Ord)]
-#[serde(rename_all = "kebab-case", default)]
+#[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
 pub struct SmartTabConfig {
     pub enable: bool,
     pub supersede_menu: bool,
@@ -947,7 +962,9 @@ impl Default for Config {
             middle_click_paste: true,
             auto_pairs: AutoPairConfig::default(),
             auto_completion: true,
+            path_completion: true,
             auto_format: true,
+            default_yank_register: '"',
             auto_save: AutoSave::default(),
             idle_timeout: Duration::from_millis(250),
             completion_timeout: Duration::from_millis(250),
@@ -973,6 +990,7 @@ impl Default for Config {
             },
             text_width: 80,
             completion_replace: false,
+            continue_comments: true,
             workspace_lsp_roots: Vec::new(),
             default_line_ending: LineEndingConfig::default(),
             insert_final_newline: true,
@@ -982,6 +1000,7 @@ impl Default for Config {
             jump_label_alphabet: ('a'..='z').collect(),
             inline_diagnostics: InlineDiagnosticsConfig::default(),
             end_of_line_diagnostics: DiagnosticFilter::Disable,
+            clipboard_provider: ClipboardProvider::default(),
         }
     }
 }
@@ -1060,6 +1079,7 @@ pub struct Editor {
     redraw_timer: Pin<Box<Sleep>>,
     last_motion: Option<Motion>,
     pub last_completion: Option<CompleteAction>,
+    last_cwd: Option<PathBuf>,
 
     pub exit_code: i32,
 
@@ -1117,6 +1137,7 @@ pub enum CompleteAction {
     Applied {
         trigger_offset: usize,
         changes: Vec<Change>,
+        placeholder: bool,
     },
 }
 
@@ -1183,13 +1204,17 @@ impl Editor {
             theme_loader,
             last_theme: None,
             last_selection: None,
-            registers: Registers::default(),
+            registers: Registers::new(Box::new(arc_swap::access::Map::new(
+                Arc::clone(&config),
+                |config: &Config| &config.clipboard_provider,
+            ))),
             status_msg: None,
             autoinfo: None,
             idle_timer: Box::pin(sleep(conf.idle_timeout)),
             redraw_timer: Box::pin(sleep(Duration::MAX)),
             last_motion: None,
             last_completion: None,
+            last_cwd: None,
             config,
             auto_pairs,
             exit_code: 0,
@@ -1391,9 +1416,7 @@ impl Editor {
             if !ls.is_initialized() {
                 continue;
             }
-            if let Some(notification) = ls.did_rename(old_path, &new_path, is_dir) {
-                tokio::spawn(notification);
-            };
+            ls.did_rename(old_path, &new_path, is_dir);
         }
         self.language_servers
             .file_event_handler
@@ -1416,7 +1439,7 @@ impl Editor {
             }
             // if we are open in LSPs send did_close notification
             for language_server in doc.language_servers() {
-                tokio::spawn(language_server.text_document_did_close(doc.identifier()));
+                language_server.text_document_did_close(doc.identifier());
             }
         }
         // we need to clear the list of language servers here so that
@@ -1497,7 +1520,7 @@ impl Editor {
             });
 
         for (_, language_server) in doc_language_servers_not_in_registry {
-            tokio::spawn(language_server.text_document_did_close(doc.identifier()));
+            language_server.text_document_did_close(doc.identifier());
         }
 
         let language_servers_not_in_doc = language_servers.iter().filter(|(name, ls)| {
@@ -1508,12 +1531,12 @@ impl Editor {
 
         for (_, language_server) in language_servers_not_in_doc {
             // TODO: this now races with on_init code if the init happens too quickly
-            tokio::spawn(language_server.text_document_did_open(
+            language_server.text_document_did_open(
                 doc_url.clone(),
                 doc.version(),
                 doc.text(),
                 language_id.clone(),
-            ));
+            );
         }
 
         doc.language_servers = language_servers;
@@ -1568,7 +1591,7 @@ impl Editor {
             self.enter_normal_mode();
         }
 
-        match action {
+        let focust_lost = match action {
             Action::Replace => {
                 let (view, doc) = current_ref!(self);
                 // If the current view is an empty scratch buffer and is not displayed in any other views, delete it.
@@ -1618,6 +1641,10 @@ impl Editor {
 
                 self.replace_document_in_view(view_id, id);
 
+                dispatch(DocumentFocusLost {
+                    editor: self,
+                    doc: id,
+                });
                 return;
             }
             Action::Load => {
@@ -1628,6 +1655,7 @@ impl Editor {
                 return;
             }
             Action::HorizontalSplit | Action::VerticalSplit => {
+                let focus_lost = self.tree.try_get(self.tree.focus).map(|view| view.doc);
                 // copy the current view, unless there is no view yet
                 let view = self
                     .tree
@@ -1647,10 +1675,17 @@ impl Editor {
                 let doc = doc_mut!(self, &id);
                 doc.ensure_view_init(view_id);
                 doc.mark_as_focused();
+                focus_lost
             }
-        }
+        };
 
         self._refresh();
+        if let Some(focus_lost) = focust_lost {
+            dispatch(DocumentFocusLost {
+                editor: self,
+                doc: focus_lost,
+            });
+        }
     }
 
     /// Generate an id for a new document and register it.
@@ -1700,10 +1735,14 @@ impl Editor {
         Ok(doc_id)
     }
 
+    pub fn document_id_by_path(&self, path: &Path) -> Option<DocumentId> {
+        self.document_by_path(path).map(|doc| doc.id)
+    }
+
     // ??? possible use for integration tests
     pub fn open(&mut self, path: &Path, action: Action) -> Result<DocumentId, DocumentOpenError> {
         let path = helix_stdx::path::canonicalize(path);
-        let id = self.document_by_path(&path).map(|doc| doc.id);
+        let id = self.document_id_by_path(&path);
 
         let id = if let Some(id) = id {
             id
@@ -1756,8 +1795,7 @@ impl Editor {
         self.saves.remove(&doc_id);
 
         for language_server in doc.language_servers() {
-            // TODO: track error
-            tokio::spawn(language_server.text_document_did_close(doc.identifier()));
+            language_server.text_document_did_close(doc.identifier());
         }
 
         enum Action {
@@ -1877,11 +1915,15 @@ impl Editor {
                 let doc = doc_mut!(self, &view.doc);
                 view.sync_changes(doc);
             }
+            let view = view!(self, view_id);
+            let doc = doc_mut!(self, &view.doc);
+            doc.mark_as_focused();
+            let focus_lost = self.tree.get(prev_id).doc;
+            dispatch(DocumentFocusLost {
+                editor: self,
+                doc: focus_lost,
+            });
         }
-
-        let view = view!(self, view_id);
-        let doc = doc_mut!(self, &view.doc);
-        doc.mark_as_focused();
     }
 
     pub fn focus_next(&mut self) {
@@ -2163,6 +2205,16 @@ impl Editor {
             doc.ensure_view_init(current_view.id);
             current_view.id
         }
+    }
+
+    pub fn set_cwd(&mut self, path: &Path) -> std::io::Result<()> {
+        self.last_cwd = helix_stdx::env::set_current_working_dir(path)?;
+        self.clear_doc_relative_paths();
+        Ok(())
+    }
+
+    pub fn get_last_cwd(&mut self) -> Option<&Path> {
+        self.last_cwd.as_deref()
     }
 }
 

@@ -1,11 +1,13 @@
 ## Editor
 
 - [`[editor]` Section](#editor-section)
+- [`[editor.clipboard-provider]` Section](#editorclipboard-provider-section)
 - [`[editor.statusline]` Section](#editorstatusline-section)
 - [`[editor.lsp]` Section](#editorlsp-section)
 - [`[editor.cursor-shape]` Section](#editorcursor-shape-section)
 - [`[editor.file-picker]` Section](#editorfile-picker-section)
 - [`[editor.auto-pairs]` Section](#editorauto-pairs-section)
+- [`[editor.auto-save]` Section](#editorauto-save-section)
 - [`[editor.search]` Section](#editorsearch-section)
 - [`[editor.whitespace]` Section](#editorwhitespace-section)
 - [`[editor.indent-guides]` Section](#editorindent-guides-section)
@@ -24,14 +26,17 @@
 |--|--|---------|
 | `scrolloff` | Number of lines of padding around the edge of the screen when scrolling | `5` |
 | `mouse` | Enable mouse mode | `true` |
+| `default-yank-register` | Default register used for yank/paste | `"` |
 | `middle-click-paste` | Middle click paste support | `true` |
 | `scroll-lines` | Number of lines to scroll per scroll wheel step | `3` |
 | `shell` | Shell to use when running external commands | Unix: `["sh", "-c"]`<br/>Windows: `["cmd", "/C"]` |
 | `line-number` | Line number display: `absolute` simply shows each line's number, while `relative` shows the distance from the current line. When unfocused or in insert mode, `relative` will still show absolute line numbers | `absolute` |
 | `cursorline` | Highlight all lines with a cursor | `false` |
 | `cursorcolumn` | Highlight all columns with a cursor | `false` |
+| `continue-comments` | if helix should automatically add a line comment token if you create a new line inside a comment. | `true` |
 | `gutters` | Gutters to display: Available are `diagnostics` and `diff` and `line-numbers` and `spacer`, note that `diagnostics` also includes other features like breakpoints, 1-width padding will be inserted if gutters is non-empty | `["diagnostics", "spacer", "line-numbers", "spacer", "diff"]` |
 | `auto-completion` | Enable automatic pop up of auto-completion | `true` |
+| `path-completion` | Enable filepath completion. Show files and directories if an existing path at the cursor was recognized, either absolute or relative to the current opened document or current working directory (if the buffer is not yet saved). Defaults to true. | `true` |
 | `auto-format` | Enable automatic formatting on save | `true` |
 | `idle-timeout` | Time in milliseconds since last keypress before idle timers trigger. | `250` |
 | `completion-timeout` | Time in milliseconds after typing a word character before completions are shown, set to 5 for instant.  | `250` |
@@ -52,6 +57,30 @@
 | `indent-heuristic` | How the indentation for a newly inserted line is computed: `simple` just copies the indentation level from the previous line, `tree-sitter` computes the indentation based on the syntax tree and `hybrid` combines both approaches. If the chosen heuristic is not available, a different one will be used as a fallback (the fallback order being `hybrid` -> `tree-sitter` -> `simple`). | `hybrid`
 | `jump-label-alphabet` | The characters that are used to generate two character jump labels. Characters at the start of the alphabet are used first. | `"abcdefghijklmnopqrstuvwxyz"`
 | `end-of-line-diagnostics` | Minimum severity of diagnostics to render at the end of the line. Set to `disable` to disable entirely. Refer to the setting about `inline-diagnostics` for more details | "disable"
+| `clipboard-provider` | Which API to use for clipboard interaction. One of `pasteboard` (MacOS), `wayland`, `x-clip`, `x-sel`, `win-32-yank`, `termux`, `tmux`, `windows`, `termcode`, `none`, or a custom command set. | Platform and environment specific. |
+
+### `[editor.clipboard-provider]` Section
+
+Helix can be configured either to use a builtin clipboard configuration or to use
+a provided command.
+
+For instance, setting it to use OSC 52 termcodes, the configuration would be:
+```toml
+[editor]
+clipboard-provider = "termcode"
+```
+
+Alternatively, Helix can be configured to use arbitary commands for clipboard integration:
+
+```toml
+[editor.clipboard-provider.custom]
+yank = { command = "cat",  args = ["test.txt"] }
+paste = { command = "tee",  args = ["test.txt"] }
+primary-yank = { command = "cat",  args = ["test-primary.txt"] } # optional
+primary-paste = { command = "tee",  args = ["test-primary.txt"] } # optional
+```
+
+For custom commands the contents of the yank/paste is communicated over stdin/stdout.
 
 ### `[editor.statusline]` Section
 
@@ -116,7 +145,8 @@ The following statusline elements can be configured:
 | Key                   | Description                                                 | Default |
 | ---                   | -----------                                                 | ------- |
 | `enable`              | Enables LSP integration. Setting to false will completely disable language servers regardless of language settings.| `true` |
-| `display-messages`    | Display LSP progress messages below statusline[^1]          | `false` |
+| `display-messages`    | Display LSP `window/showMessage` messages below statusline[^1] | `true` |
+| `display-progress-messages` | Display LSP progress messages below statusline[^1]    | `false` |
 | `auto-signature-help` | Enable automatic popup of signature help (parameter hints)  | `true`  |
 | `display-inlay-hints` | Display inlay hints[^2]                                     | `false` |
 | `display-signature-help-docs` | Display docs under signature help popup             | `true`  |
@@ -125,7 +155,7 @@ The following statusline elements can be configured:
 
 [^1]: By default, a progress spinner is shown in the statusline beside the file path.
 
-[^2]: You may also have to activate them in the LSP config for them to appear, not just in Helix. Inlay hints in Helix are still being improved on and may be a little bit laggy/janky under some circumstances. Please report any bugs you see so we can fix them!
+[^2]: You may also have to activate them in the language server config for them to appear, not just in Helix. Inlay hints in Helix are still being improved on and may be a little bit laggy/janky under some circumstances. Please report any bugs you see so we can fix them!
 
 ### `[editor.cursor-shape]` Section
 
@@ -415,6 +445,8 @@ fn main() {
 | `max-wrap` | Equivalent of the `editor.soft-wrap.max-wrap` option for diagnostics.  | `20` |
 | `max-diagnostics` | Maximum number of diagnostics to render inline for a given line  | `10` |
 
+The allowed values for `cursor-line` and `other-lines` are: `error`, `warning`, `info`, `hint`.
+
 The (first) diagnostic with the highest severity that is not shown inline is rendered at the end of the line (as long as its severity is higher than the `end-of-line-diagnostics` config option):
 
 ```
@@ -428,7 +460,8 @@ fn main() {
 
 The new diagnostic rendering is not yet enabled by default. As soon as end of line or inline diagnostics are enabled the old diagnostics rendering is automatically disabled. The recommended default setting are:
 
-```
+```toml
+[editor]
 end-of-line-diagnostics = "hint"
 [editor.inline-diagnostics]
 cursor-line = "warning" # show warnings and errors on the cursorline inline

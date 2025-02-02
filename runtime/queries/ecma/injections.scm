@@ -7,7 +7,20 @@
     (member_expression
       property: (property_identifier) @injection.language)
   ]
-  arguments: (template_string) @injection.content)
+  arguments: (template_string) @injection.content
+  (#any-of? @injection.language "html" "css" "json" "sql" "js" "ts" "bash"))
+
+; Parse the contents of $ template literals as shell commands
+
+(call_expression
+  function: [
+    (identifier) @_template_function_name
+    (member_expression
+      property: (property_identifier) @_template_function_name)
+  ]
+  arguments: (template_string) @injection.content
+ (#eq? @_template_function_name "$")
+ (#set! injection.language "bash"))
 
 ; Parse the contents of gql template literals
 

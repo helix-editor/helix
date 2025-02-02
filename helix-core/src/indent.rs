@@ -1,4 +1,4 @@
-use std::{borrow::Cow, collections::HashMap};
+use std::{borrow::Cow, collections::HashMap, iter};
 
 use helix_stdx::rope::RopeSliceExt;
 use tree_sitter::{Query, QueryCursor, QueryPredicateArg};
@@ -8,7 +8,7 @@ use crate::{
     graphemes::{grapheme_width, tab_width_at},
     syntax::{IndentationHeuristic, LanguageConfiguration, RopeProvider, Syntax},
     tree_sitter::Node,
-    Position, Rope, RopeGraphemes, RopeSlice,
+    Position, Rope, RopeSlice, Tendril,
 };
 
 /// Enum representing indentation style.
@@ -200,7 +200,7 @@ pub fn indent_level_for_line(line: RopeSlice, tab_width: usize, indent_width: us
 /// Create a string of tabs & spaces that has the same visual width as the given RopeSlice (independent of the tab width).
 fn whitespace_with_same_width(text: RopeSlice) -> String {
     let mut s = String::new();
-    for grapheme in RopeGraphemes::new(text) {
+    for grapheme in text.graphemes() {
         if grapheme == "\t" {
             s.push('\t');
         } else {
@@ -208,6 +208,36 @@ fn whitespace_with_same_width(text: RopeSlice) -> String {
         }
     }
     s
+}
+
+/// normalizes indentation to tabs/spaces based on user configuration
+/// This function does not change the actual indentation width, just the character
+/// composition.
+pub fn normalize_indentation(
+    prefix: RopeSlice<'_>,
+    line: RopeSlice<'_>,
+    dst: &mut Tendril,
+    indent_style: IndentStyle,
+    tab_width: usize,
+) -> usize {
+    #[allow(deprecated)]
+    let off = crate::visual_coords_at_pos(prefix, prefix.len_chars(), tab_width).col;
+    let mut len = 0;
+    let mut original_len = 0;
+    for ch in line.chars() {
+        match ch {
+            '\t' => len += tab_width_at(len + off, tab_width as u16),
+            ' ' => len += 1,
+            _ => break,
+        }
+        original_len += 1;
+    }
+    if indent_style == IndentStyle::Tabs {
+        dst.extend(iter::repeat('\t').take(len / tab_width));
+        len %= tab_width;
+    }
+    dst.extend(iter::repeat(' ').take(len));
+    original_len
 }
 
 fn add_indent_level(
@@ -386,7 +416,7 @@ enum IndentCaptureType<'a> {
     Align(RopeSlice<'a>),
 }
 
-impl<'a> IndentCaptureType<'a> {
+impl IndentCaptureType<'_> {
     fn default_scope(&self) -> IndentScope {
         match self {
             IndentCaptureType::Indent | IndentCaptureType::IndentAlways => IndentScope::Tail,
@@ -426,7 +456,7 @@ struct IndentQueryResult<'a> {
 fn get_node_start_line(node: Node, new_line_byte_pos: Option<usize>) -> usize {
     let mut node_line = node.start_position().row;
     // Adjust for the new line that will be inserted
-    if new_line_byte_pos.map_or(false, |pos| node.start_byte() >= pos) {
+    if new_line_byte_pos.is_some_and(|pos| node.start_byte() >= pos) {
         node_line += 1;
     }
     node_line
@@ -434,7 +464,7 @@ fn get_node_start_line(node: Node, new_line_byte_pos: Option<usize>) -> usize {
 fn get_node_end_line(node: Node, new_line_byte_pos: Option<usize>) -> usize {
     let mut node_line = node.end_position().row;
     // Adjust for the new line that will be inserted (with a strict inequality since end_byte is exclusive)
-    if new_line_byte_pos.map_or(false, |pos| node.end_byte() > pos) {
+    if new_line_byte_pos.is_some_and(|pos| node.end_byte() > pos) {
         node_line += 1;
     }
     node_line

@@ -8,6 +8,11 @@ on:
   schedule:
     - cron: "00 01 * * *"
 
+env:
+  MSRV: "1.76"
+  # This key can be changed to bust the cache of tree-sitter grammars.
+  GRAMMAR_CACHE_VERSION: ""
+
 jobs:
   check:
     name: Check (msrv)
@@ -17,12 +22,21 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.70
+      - name: Install MSRV toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.MSRV }}
 
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "build"
+
+      - name: Cache tree-sitter grammars
+        uses: actions/cache@v4
+        with:
+          path: runtime/grammars
+          key: ${{ runner.os }}-stable-v${{ env.GRAMMAR_CACHE_VERSION }}-tree-sitter-grammars-${{ hashFiles('languages.toml') }}
+          restore-keys: ${{ runner.os }}-stable-v${{ env.GRAMMAR_CACHE_VERSION }}-tree-sitter-grammars-
 
       - name: Run cargo check
         run: cargo check
@@ -38,19 +52,21 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.70
+      - name: Install MSRV toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.MSRV }}
 
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "build"
 
-      - name: Cache test tree-sitter grammar
+      - name: Cache tree-sitter grammars
         uses: actions/cache@v4
         with:
           path: runtime/grammars
-          key: ${{ runner.os }}-stable-v${{ env.CACHE_VERSION }}-tree-sitter-grammars-${{ hashFiles('languages.toml') }}
-          restore-keys: ${{ runner.os }}-stable-v${{ env.CACHE_VERSION }}-tree-sitter-grammars-
+          key: ${{ runner.os }}-stable-v${{ env.GRAMMAR_CACHE_VERSION }}-tree-sitter-grammars-${{ hashFiles('languages.toml') }}
+          restore-keys: ${{ runner.os }}-stable-v${{ env.GRAMMAR_CACHE_VERSION }}-tree-sitter-grammars-
 
       - name: Run cargo test
         run: cargo test --workspace
@@ -70,14 +86,22 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.70
+      - name: Install MSRV toolchain
+        uses: dtolnay/rust-toolchain@master
         with:
+          toolchain: ${{ env.MSRV }}
           components: rustfmt, clippy
 
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "build"
+
+      - name: Cache tree-sitter grammars
+        uses: actions/cache@v4
+        with:
+          path: runtime/grammars
+          key: ${{ runner.os }}-stable-v${{ env.GRAMMAR_CACHE_VERSION }}-tree-sitter-grammars-${{ hashFiles('languages.toml') }}
+          restore-keys: ${{ runner.os }}-stable-v${{ env.GRAMMAR_CACHE_VERSION }}-tree-sitter-grammars-
 
       - name: Run cargo fmt
         run: cargo fmt --all --check
@@ -98,12 +122,21 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v4
 
-      - name: Install stable toolchain
-        uses: dtolnay/rust-toolchain@1.70
+      - name: Install MSRV toolchain
+        uses: dtolnay/rust-toolchain@master
+        with:
+          toolchain: ${{ env.MSRV }}
 
       - uses: Swatinem/rust-cache@v2
         with:
           shared-key: "build"
+
+      - name: Cache tree-sitter grammars
+        uses: actions/cache@v4
+        with:
+          path: runtime/grammars
+          key: ${{ runner.os }}-stable-v${{ env.GRAMMAR_CACHE_VERSION }}-tree-sitter-grammars-${{ hashFiles('languages.toml') }}
+          restore-keys: ${{ runner.os }}-stable-v${{ env.GRAMMAR_CACHE_VERSION }}-tree-sitter-grammars-
 
       - name: Validate queries
         run: cargo xtask query-check

@@ -1,0 +1,160 @@
+# Sunset
+# Author : Egor Afanasin <afanasin.egor@gmail.com>
+# Repo: https://github.com/pithecantrope/sunset
+
+# Syntax highlighting
+# ----------------------------------------------------------------
+attribute = "rose"
+
+type = "rose"
+"type.builtin" = { fg = "rose", modifiers = ["italic"] }
+
+constructor = "wood"
+
+constant = "fire"
+"constant.builtin"   = { fg = "fire", modifiers = ["italic"] }
+"constant.character" = "wood"
+"constant.character.escape" = "pink"
+"constant.numeric"   = "wood"
+
+string = "grass"
+"string.regexp"  = "pink"
+"string.special" = "rose"
+"string.special.symbol" = "fire"
+
+comment = { fg = "cmnt", modifiers = ["italic"] }
+"comment.block.documentation" = "grass"
+
+variable = "text"
+"variable.builtin" = { fg = "sky", modifiers = ["italic"] }
+# TODO: variable.parameter
+"variable.other.member" = "mud"
+
+label = "sky"
+
+punctuation = "cmnt"
+"punctuation.special" = "wine"
+
+keyword = "sun"
+"keyword.control.return"    = { fg = "sun", modifiers = ["italic"] }
+"keyword.control.exception" = { fg = "sun", modifiers = ["italic"] }
+"keyword.directive" = "sky"
+
+operator = "wine"
+
+function = "peach"
+"function.builtin" = { fg = "peach", modifiers = ["italic"] }
+"function.macro"   = "pink"
+
+tag = "peach"
+
+namespace = { fg = "pink", modifiers = ["italic"] }
+
+special = "sky"
+
+# Editor interface
+# ----------------------------------------------------------------
+"markup.heading.marker" = "sun"
+"markup.heading.1" = "attn"
+"markup.heading.2" = "fire"
+"markup.heading.3" = "rose"
+"markup.heading.4" = "peach"
+"markup.heading.5" = "wine"
+"markup.heading.6" = "grass"
+
+"markup.list" = "wood"
+
+"markup.bold"          = { modifiers = ["bold"] }
+"markup.italic"        = { modifiers = ["italic"] }
+"markup.strikethrough" = { modifiers = ["crossed_out"] }
+
+"markup.link.url"   = { fg = "sky", underline.style = "line" }
+"markup.link.label" = { fg = "sky", modifiers = ["italic"] }
+"markup.link.text"  = "mud"
+
+"markup.quote" = "grass"
+
+"markup.raw"   = "pink"
+
+"diff.plus"  = "grass"
+"diff.minus" = "attn"
+"diff.delta" = "sky"
+
+# User interface
+# ----------------------------------------------------------------
+"ui.background" = { fg = "text", bg = "base" }
+
+"ui.cursor" = { modifiers = ["reversed"] }
+"ui.cursor.match" = { fg = "attn", modifiers = ["bold"] }
+
+# TODO: ui.debug
+
+"ui.linenr" = "block"
+"ui.linenr.selected" = "cmnt"
+
+"ui.statusline" = { bg = "block" }
+"ui.statusline.inactive" = { fg = "cmnt" }
+"ui.statusline.normal"   = { fg = "block", bg = "sun",  modifiers = ["bold"] }
+"ui.statusline.insert"   = { fg = "block", bg = "grass", modifiers = ["bold"] }
+"ui.statusline.select"   = { fg = "block", bg = "wine",  modifiers = ["bold"] }
+
+"ui.bufferline" = { fg = "cmnt", bg = "block" }
+"ui.bufferline.active" = "sun"
+
+"ui.popup" = { fg = "text", bg = "base" }
+"ui.popup.info" = { fg = "text", bg = "block" }
+
+"ui.window" = { fg = "block", modifiers = ["bold"] }
+
+"ui.help" = { fg = "text", bg = "block" }
+
+"ui.text" = { fg = "text", bg = "base" }
+"ui.text.directory" = "sky"
+"ui.text.focus"     = "sun"
+"ui.text.inactive"  = { fg = "cmnt", modifiers = ["italic"] }
+"ui.text.info"      = { bg = "block" }
+
+"ui.virtual" = { fg = "block" }
+"ui.virtual.ruler"        = { bg = "block" }
+"ui.virtual.indent-guide" = "sel"
+"ui.virtual.jump-label"   = { fg = "attn", modifiers = ["bold"] }
+
+"ui.menu" = { fg = "text", bg = "base" }
+"ui.menu.selected" = { bg = "sel" }
+"ui.menu.scroll"   = "sel"
+
+"ui.selection" = { bg = "sel" }
+
+"ui.highlight" = { bg = "sel" }
+
+error   = "attn"
+warning = "fire"
+info    = "pink"
+hint    = "sky"
+
+diagnostic = { underline.style = "line" }
+
+[palette]
+# Reddish
+fire  = "#EE7711"
+rose  = "#EE7777"
+peach = "#EEBB77"
+pink  = "#EEAAAA"
+wood  = "#997755"
+
+# Greenish
+grass = "#66CC33"
+mud   = "#BBCC77"
+sun   = "#EEEE11"
+
+# Bluish
+sky  = "#77AAAA"
+wine = "#775599"
+
+# Ui
+base  = "#111111"
+block = "#222222"
+sel   = "#333333"
+cmnt  = "#777777"
+text  = "#EEEEEE"
+attn  = "#EE1111"

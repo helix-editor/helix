@@ -391,8 +391,8 @@
  --> 6) Sugar is sweet,
  --> 7) And so are you.
 
- Note : X works similarly to x although it doesn't extend to
-      subsequent lines. X on an empty line does nothing.
+ Note: X works similarly to x although it doesn't extend to
+       subsequent lines. X on an empty line does nothing.
 
 =================================================================
 =                   3.8 COLLAPSING SELECTIONS                   =
@@ -411,8 +411,8 @@
  --> This is an error-free line with words to move around in.
 
  Note: This works the same in Select mode.
- Note: Another related command is Alt-; which flips selections.
-
+ Note: Another related command is Alt-; which flips the direction
+       of the selection (flips the selection's cursor and anchor).
 
 
 
@@ -1223,7 +1223,7 @@ letters! that is not good grammar. you can fix this.
  to the matching ). You can do the same on the line below: for example
  move to ], and press mm to jump to [ .
 
- --> you can (jump between matching parenthesis)
+ --> you can (jump between matching parentheses)
  --> or between matching [ square brackets ]
  --> now { you know the drill: this works with brackets too }
 
@@ -1238,19 +1238,19 @@ letters! that is not good grammar. you can fix this.
  pair of brackets or other delimiters. In the lines below:
 
  - move to the --> line, put your cursor in normal mode at any
- location between the parenthesis, for example at 'x', and press
- mi( or mi) to select the whole content inside the parenthesis
- (parenthesis excluded). As usual, you can then do anything you want
+ location between the parentheses, for example at 'x', and press
+ mi( or mi) to select the whole content inside the parentheses
+ (parentheses excluded). As usual, you can then do anything you want
  with the selection (for example, press c to change it)
 
- --> outside and (inside x parenthesis) - and outside again
+ --> outside and (inside x parentheses) - and outside again
 
  Test below that you can do the same with [], or {}, or with
  nested combinations of these (this will act on the immediately
  surrounding matching pair). This also works with "" and similar
 
  --> test [ with square brackets ] !
- --> try ( with nested [ pairs of ( parenthesis) and "brackets" ])
+ --> try ( with nested [ pairs of ( parentheses) and "brackets" ])
 
 =================================================================
 =               12.3 USING MATCH MODE SELECT AROUND             =
@@ -1284,7 +1284,7 @@ letters! that is not good grammar. you can fix this.
  move in normal mode the cursor to the start of select, then enter
  selection mode with v , then select the 4 next words with 4e ),
   * ii) press ms( or ms) to surround the selection with a pair of
- parenthesis.
+ parentheses.
 
  --> so, select all of this, and surround it with ()
 
@@ -1304,9 +1304,9 @@ letters! that is not good grammar. you can fix this.
  command. On the line below, move the cursor anywhere
  within the pair of (), for example to the 'x', then from there,
  in normal mode, press md( or md) to delete the surrounding
- pair of parenthesis.
+ pair of parentheses.
 
- --> delete (the x pair of parenthesis) from within!
+ --> delete (the x pair of parentheses) from within!
 
  You can naturally delete other kinds of surroundings:
 

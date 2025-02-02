@@ -2,36 +2,9 @@ use std::fmt::Display;
 
 use crate::editor::Action;
 use crate::Editor;
-use crate::{DocumentId, ViewId};
 use helix_core::Uri;
 use helix_lsp::util::generate_transaction_from_edits;
 use helix_lsp::{lsp, OffsetEncoding};
-
-pub enum CompletionEvent {
-    /// Auto completion was triggered by typing a word char
-    AutoTrigger {
-        cursor: usize,
-        doc: DocumentId,
-        view: ViewId,
-    },
-    /// Auto completion was triggered by typing a trigger char
-    /// specified by the LSP
-    TriggerChar {
-        cursor: usize,
-        doc: DocumentId,
-        view: ViewId,
-    },
-    /// A completion was manually requested (c-x)
-    ManualTrigger {
-        cursor: usize,
-        doc: DocumentId,
-        view: ViewId,
-    },
-    /// Some text was deleted and the cursor is now at `pos`
-    DeleteText { cursor: usize },
-    /// Invalidate the current auto completion trigger
-    Cancel,
-}
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 pub enum SignatureHelpInvoked {
@@ -244,7 +217,7 @@ impl Editor {
             ResourceOp::Create(op) => {
                 let uri = Uri::try_from(&op.uri)?;
                 let path = uri.as_path().expect("URIs are valid paths");
-                let ignore_if_exists = op.options.as_ref().map_or(false, |options| {
+                let ignore_if_exists = op.options.as_ref().is_some_and(|options| {
                     !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
                 });
                 if !ignore_if_exists || !path.exists() {
@@ -288,7 +261,7 @@ impl Editor {
                 let from = from_uri.as_path().expect("URIs are valid paths");
                 let to_uri = Uri::try_from(&op.new_uri)?;
                 let to = to_uri.as_path().expect("URIs are valid paths");
-                let ignore_if_exists = op.options.as_ref().map_or(false, |options| {
+                let ignore_if_exists = op.options.as_ref().is_some_and(|options| {
                     !options.overwrite.unwrap_or(false) && options.ignore_if_exists.unwrap_or(false)
                 });
                 if !ignore_if_exists || !to.exists() {
