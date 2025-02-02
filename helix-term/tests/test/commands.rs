@@ -910,6 +910,64 @@ async fn test_injected_comment_tokens_multiple_selections() -> anyhow::Result<()
     ))
     .await?;
 
+    // Many single-selections
+    test((
+        indoc! {r#"\
+            <p>C#[|o]#mment t#(|o)#ggle #(|o)#n this line sh#(|o)#uld use the HTML c#(|o)#mment t#(|o)#ken(s).</p>
+            <script type="text/javascript">
+              // C#(|o)#mment t#(|o)#ggle #(|o)#n this line sh#(|o)#uld use the javascript c#(|o)#mment t#(|o)#ken(s).
+              f#(|o)##(|o)#();
+              css`
+                html {
+                  backgr#(|o)#und-c#(|o)#l#(|o)#r: red;
+                }
+              `;
+            </script>
+        "#},
+        ":lang html<ret> C",
+        indoc! {r#"\
+            <p>C#[|<!-- o -->]#mment t#(|<!-- o -->)#ggle #(|<!-- o -->)#n this line sh#(|<!-- o -->)#uld use the HTML c#(|<!-- o -->)#mment t#(|<!-- o -->)#ken(s).</p>
+            <script type="text/javascript">
+              // C#(|/* o */)#mment t#(|/* o */)#ggle #(|/* o */)#n this line sh#(|/* o */)#uld use the javascript c#(|/* o */)#mment t#(|/* o */)#ken(s).
+              f#(|/* o */)##(|/* o */)#();
+              css`
+                html {
+                  backgr#(|/* o */)#und-c#(|/* o */)#l#(|/* o */)#r: red;
+                }
+              `;
+            </script>
+        "#},
+    ))
+    .await?;
+    test((
+        indoc! {r#"\
+            <p>C#[|<!-- o -->]#mment t#(|<!-- o -->)#ggle #(|<!-- o -->)#n this line sh#(|<!-- o -->)#uld use the HTML c#(|<!-- o -->)#mment t#(|<!-- o -->)#ken(s).</p>
+            <script type="text/javascript">
+              // C#(|/* o */)#mment t#(|/* o */)#ggle #(|/* o */)#n this line sh#(|/* o */)#uld use the javascript c#(|/* o */)#mment t#(|/* o */)#ken(s).
+              f#(|/* o */)##(|/* o */)#();
+              css`
+                html {
+                  backgr#(|/* o */)#und-c#(|/* o */)#l#(|/* o */)#r: red;
+                }
+              `;
+            </script>
+        "#},
+        ":lang html<ret> C",
+        indoc! {r#"\
+            <p>C#[|o]#mment t#(|o)#ggle #(|o)#n this line sh#(|o)#uld use the HTML c#(|o)#mment t#(|o)#ken(s).</p>
+            <script type="text/javascript">
+              // C#(|o)#mment t#(|o)#ggle #(|o)#n this line sh#(|o)#uld use the javascript c#(|o)#mment t#(|o)#ken(s).
+              f#(|o)##(|o)#();
+              css`
+                html {
+                  backgr#(|o)#und-c#(|o)#l#(|o)#r: red;
+                }
+              `;
+            </script>
+        "#},
+    ))
+    .await?;
+
     Ok(())
 }
 
