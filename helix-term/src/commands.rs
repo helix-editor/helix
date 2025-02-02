@@ -5090,8 +5090,6 @@ pub fn completion(cx: &mut Context) {
 }
 
 // comments
-// type CommentTransactionFn =
-//     Box<dyn FnMut(&Rope, &Selection, comment::GetCommentTokens) -> Transaction>;
 
 pub type CommentTransactionFn<'a> = Box<
     dyn FnMut(
@@ -5136,26 +5134,7 @@ fn toggle_comments_impl<'a>(
             let mut best_fit = None;
             let mut min_gap = usize::MAX;
 
-            // Find the injection with the most tightly encompassing
-            // range.
-            //
-            // TODO: improve performance of this
-            //
-            // I'm thinking layer.ranges can be a
-            // BTreeSet<Range> instead of Vec<Range>
-            //
-            // The "Cmp" implementation can basically be
-            // range.start_byte.cmp(other.start_byte)
-            //   .then(range.end_byte.cmp(other.end_byte))
-            //
-            // Since we can't implement Cmp for Range (external trate and struct)
-            // we need to use newtype pattern: struct TSRange(Range)
-            // But I tried that and I'm not sure it'll work
-            //
-            // I *could* just use the same Vec, and when we're inserting into it
-            // we'll do it in the correct order. Then do Vec::binary_search_by
-            //
-            // However, I don't know if that'll be a good idea.
+            // Find the injection with the most tightly encompassing range.
             if let Some(syntax) = &syntax {
                 for (layer_id, layer) in &syntax.layers {
                     for ts_range in &layer.ranges {
@@ -5239,7 +5218,6 @@ fn toggle_comments(cx: &mut Context) {
                         // block commented by line would also be block commented so check this first
                         if line_commented {
                             return comment::create_block_comment_transaction(
-                                rope,
                                 &split_lines,
                                 line_commented,
                                 line_comment_changes,
@@ -5253,7 +5231,6 @@ fn toggle_comments(cx: &mut Context) {
                         // check if selection has block comments
                         if block_commented {
                             return comment::create_block_comment_transaction(
-                                rope,
                                 &[*range],
                                 block_commented,
                                 comment_changes,
@@ -5264,7 +5241,6 @@ fn toggle_comments(cx: &mut Context) {
                         // not commented and only have block comment tokens
                         if line_token.is_none() && block_tokens.is_some() {
                             return comment::create_block_comment_transaction(
-                                rope,
                                 &split_lines,
                                 line_commented,
                                 line_comment_changes,
