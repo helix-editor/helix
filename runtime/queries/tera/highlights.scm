@@ -1,9 +1,9 @@
-; Syntax highlighting scopes for Helix: https://docs.helix-editor.com/themes.html.
+; Namespaces
 
 (import_statement
   scope: (identifier) @namespace)
 
-; Namespaces
+; Functions
 
 (filter_expression
   filter: (identifier) @function.builtin
@@ -103,7 +103,7 @@
     (optional_parameter
       name: (identifier) @variable.parameter)))
 
-; Functions
+; Keywords
 
 [
   "set"
@@ -150,13 +150,11 @@
   "endif"
 ] @keyword.control.conditional
 
-; Keywords
-;-----------
+; Tags
 
 (comment_tag) @comment
 
-; Tags
-;-----------
+; Tokens
 
 [
   "("
@@ -196,8 +194,8 @@
   ","
 ] @punctuation.delimiter
 
-; Tokens
-;-----------
+
+; Literals
 
 (number) @constant.numeric
 
@@ -205,14 +203,12 @@
 
 (string) @string
 
-; Literals
-;-----------
+; Properties
 
 (member_expression
   property: (identifier)? @variable.other.member)
 
-; Properties
-;-----------
+; Variables
 
 ((identifier) @variable.builtin
   (#any-of? @variable.builtin
@@ -220,6 +216,3 @@
     "__tera_context"))
 
 (identifier) @variable
-
-; Variables
-;----------
