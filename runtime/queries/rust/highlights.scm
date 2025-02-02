@@ -1,9 +1,89 @@
 ; -------
-; Tree-Sitter doesn't allow overrides in regards to captures,
-; though it is possible to affect the child node of a captured
-; node. Thus, the approach here is to flip the order so that
-; overrides are unnecessary.
+; Basic identifiers
 ; -------
+
+; We do not style ? as an operator on purpose as it allows styling ? differently, as many highlighters do. @operator.special might have been a better scope, but @special is already documented so the change would break themes (including the intent of the default theme)
+"?" @special
+
+(type_identifier) @type
+(identifier) @variable
+(field_identifier) @variable.other.member
+
+; -------
+; Operators
+; -------
+
+[
+  "*"
+  "'"
+  "->"
+  "=>"
+  "<="
+  "="
+  "=="
+  "!"
+  "!="
+  "%"
+  "%="
+  "&"
+  "&="
+  "&&"
+  "|"
+  "|="
+  "||"
+  "^"
+  "^="
+  "*"
+  "*="
+  "-"
+  "-="
+  "+"
+  "+="
+  "/"
+  "/="
+  ">"
+  "<"
+  ">="
+  ">>"
+  "<<"
+  ">>="
+  "<<="
+  "@"
+  ".."
+  "..="
+  "'"
+] @operator
+
+; -------
+; Paths
+; -------
+
+(use_declaration
+  argument: (identifier) @namespace)
+(use_wildcard
+  (identifier) @namespace)
+(extern_crate_declaration
+  name: (identifier) @namespace
+  alias: (identifier)? @namespace)
+(mod_item
+  name: (identifier) @namespace)
+(scoped_use_list
+  path: (identifier)? @namespace)
+(use_list
+  (identifier) @namespace)
+(use_as_clause
+  path: (identifier)? @namespace
+  alias: (identifier) @namespace)
+
+; ---
+; Remaining Paths
+; ---
+
+(scoped_identifier
+  path: (identifier)? @namespace
+  name: (identifier) @namespace)
+(scoped_type_identifier
+  path: (identifier) @namespace)
 
 ; -------
 ; Types
@@ -15,6 +95,8 @@
   left: (type_identifier) @type.parameter)
 (optional_type_parameter
   name: (type_identifier) @type.parameter)
+(type_arguments
+  (type_identifier))
 
 ; ---
 ; Primitives
@@ -283,8 +365,41 @@
   (#match? @constructor "^[A-Z]"))
 
 ; -------
+; Functions
+; -------
+
+(call_expression
+  function: [
+    ((identifier) @function)
+    (scoped_identifier
+      name: (identifier) @function)
+    (field_expression
+      field: (field_identifier) @function)
+  ])
+(generic_function
+  function: [
+    ((identifier) @function)
+    (scoped_identifier
+      name: (identifier) @function)
+    (field_expression
+      field: (field_identifier) @function.method)
+  ])
+
+(function_item
+  name: (identifier) @function)
+
+(function_signature_item
+  name: (identifier) @function)
+
+; -------
 ; Guess Other Types
 ; -------
+; Other PascalCase identifiers are assumed to be structs.
+
+((identifier) @type
+  (#match? @type "^[A-Z]"))
+
+(never_type "!" @type)
 
 ((identifier) @constant
  (#match? @constant "^[A-Z][A-Z\\d_]*$"))
@@ -320,42 +435,6 @@
       (#match? @constructor "^[A-Z]")))
 
 ; ---
-; Other PascalCase identifiers are assumed to be structs.
-; ---
-
-((identifier) @type
-  (#match? @type "^[A-Z]"))
-
-(never_type "!" @type)
-
-; -------
-; Functions
-; -------
-
-(call_expression
-  function: [
-    ((identifier) @function)
-    (scoped_identifier
-      name: (identifier) @function)
-    (field_expression
-      field: (field_identifier) @function)
-  ])
-(generic_function
-  function: [
-    ((identifier) @function)
-    (scoped_identifier
-      name: (identifier) @function)
-    (field_expression
-      field: (field_identifier) @function.method)
-  ])
-
-(function_item
-  name: (identifier) @function)
-
-(function_signature_item
-  name: (identifier) @function)
-
-; ---
 ; Macros
 ; ---
 
@@ -389,90 +468,3 @@
 
 (metavariable) @variable.parameter
 (fragment_specifier) @type
-
-; -------
-; Operators
-; -------
-
-[
-  "*"
-  "'"
-  "->"
-  "=>"
-  "<="
-  "="
-  "=="
-  "!"
-  "!="
-  "%"
-  "%="
-  "&"
-  "&="
-  "&&"
-  "|"
-  "|="
-  "||"
-  "^"
-  "^="
-  "*"
-  "*="
-  "-"
-  "-="
-  "+"
-  "+="
-  "/"
-  "/="
-  ">"
-  "<"
-  ">="
-  ">>"
-  "<<"
-  ">>="
-  "<<="
-  "@"
-  ".."
-  "..="
-  "'"
-] @operator
-
-; -------
-; Paths
-; -------
-
-(use_declaration
-  argument: (identifier) @namespace)
-(use_wildcard
-  (identifier) @namespace)
-(extern_crate_declaration
-  name: (identifier) @namespace
-  alias: (identifier)? @namespace)
-(mod_item
-  name: (identifier) @namespace)
-(scoped_use_list
-  path: (identifier)? @namespace)
-(use_list
-  (identifier) @namespace)
-(use_as_clause
-  path: (identifier)? @namespace
-  alias: (identifier) @namespace)
-
-; ---
-; Remaining Paths
-; ---
-
-(scoped_identifier
-  path: (identifier)? @namespace
-  name: (identifier) @namespace)
-(scoped_type_identifier
-  path: (identifier) @namespace)
-
-; -------
-; Remaining Identifiers
-; -------
-
-; We do not style ? as an operator on purpose as it allows styling ? differently, as many highlighters do. @operator.special might have been a better scope, but @special is already documented so the change would break themes (including the intent of the default theme)
-"?" @special
-
-(type_identifier) @type
-(identifier) @variable
-(field_identifier) @variable.other.member
