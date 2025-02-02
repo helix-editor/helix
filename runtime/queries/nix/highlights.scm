@@ -1,5 +1,23 @@
 (comment) @comment
 
+[
+  ";"
+  "."
+  ","
+  "="
+  ":"
+  (ellipses)
+] @punctuation.delimiter
+
+[
+  "("
+  ")"
+  "["
+  "]"
+  "{"
+  "}"
+] @punctuation.bracket
+
 "assert" @keyword.control.exception
 "or" @keyword.operator
 "rec" @keyword.control.repeat
@@ -92,21 +110,3 @@
   "?" @operator
   attrpath: (attrpath
     attr: (identifier) @variable.other.member))
-
-[
-  ";"
-  "."
-  ","
-  "="
-  ":"
-  (ellipses)
-] @punctuation.delimiter
-
-[
-  "("
-  ")"
-  "["
-  "]"
-  "{"
-  "}"
-] @punctuation.bracket
