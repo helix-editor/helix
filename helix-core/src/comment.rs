@@ -229,14 +229,14 @@ pub fn find_block_comments(
 pub fn create_block_comment_transaction(
     _doc: &Rope,
     ranges: &[Range],
-    commented: bool,
+    was_commented: bool,
     comment_changes: Vec<CommentChange>,
 ) -> (Vec<Change>, SmallVec<[Range; 1]>) {
     let mut changes: Vec<Change> = Vec::with_capacity(ranges.len() * 2);
     let mut ranges: SmallVec<[Range; 1]> = SmallVec::with_capacity(ranges.len());
     let mut offs = 0;
     for change in comment_changes {
-        if commented {
+        if was_commented {
             if let CommentChange::Commented {
                 range,
                 start_pos,
@@ -248,16 +248,11 @@ pub fn create_block_comment_transaction(
             } = change
             {
                 let from = range.from();
-                changes.push((
-                    from + start_pos,
-                    from + start_pos + start_token.len() + start_margin as usize,
-                    None,
-                ));
-                changes.push((
-                    from + end_pos - end_token.len() - end_margin as usize + 1,
-                    from + end_pos + 1,
-                    None,
-                ));
+                let keep_from = from + start_pos + start_token.len() + start_margin as usize;
+                changes.push((from + start_pos, keep_from, None));
+                let keep_until = from + end_pos - end_token.len() - end_margin as usize + 1;
+                changes.push((keep_until, from + end_pos + 1, None));
+                ranges.push(Range::new(keep_from, keep_until).with_direction(range.direction()));
             }
         } else {
             // uncommented so manually map ranges through changes
@@ -303,13 +298,28 @@ pub fn toggle_block_comments(
     ranges: &Vec<Range>,
     tokens: &[BlockCommentToken],
     selections: &mut SmallVec<[Range; 1]>,
-    added_chars: &mut usize,
+    added_chars: &mut isize,
 ) -> Vec<Change> {
     let text = doc.slice(..);
-    let (commented, comment_changes) = find_block_comments(tokens, text, ranges);
+    let (was_commented, comment_changes) = find_block_comments(tokens, text, ranges);
     let (changes, new_ranges) =
-        create_block_comment_transaction(doc, ranges, commented, comment_changes);
-    if commented {
+        create_block_comment_transaction(doc, ranges, was_commented, comment_changes);
+
+    if was_commented {
+        for (i, range) in new_ranges.iter().enumerate() {
+            // every 2 elements (from, to) in `changes` corresponds
+            // the `from` - `to` represents the range of text that will be deleted.
+            // to 1 element in `new_ranges`
+            let (from, to, _) = changes[i * 2];
+            let (from2, to2, _) = changes[i * 2 + 1];
+            *added_chars -= to2 as isize - from2 as isize;
+            selections.push(Range::new(
+                (range.anchor as isize + *added_chars).try_into().unwrap(),
+                (range.head as isize + *added_chars).try_into().unwrap(),
+            ));
+            *added_chars -= to as isize - from as isize;
+        }
+
         changes
     } else {
         // when we add comment tokens, we want to extend our selection to
@@ -323,9 +333,12 @@ pub fn toggle_block_comments(
             // Will not underflow because the new range must always be
             // at least the same size as the old range, since we're
             // adding comment token characters, never removing.
-            let range = Range::new(range.from() + *added_chars, range.to() + *added_chars);
+            let range = Range::new(
+                range.anchor + *added_chars as usize,
+                range.head + *added_chars as usize,
+            );
             selections.push(range);
-            *added_chars += range.len() - old_range.len();
+            *added_chars += range.len() as isize - old_range.len() as isize;
         }
 
         changes

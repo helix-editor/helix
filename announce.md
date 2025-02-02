@@ -34,3 +34,4 @@ It works in _all_ languages that properly inject comment tokens. For instance, J
 
 Closes https://github.com/helix-editor/helix/issues/7364
 Closes https://github.com/helix-editor/helix/issues/11647
+Related to to https://github.com/helix-editor/helix/issues/9425
