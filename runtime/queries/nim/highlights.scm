@@ -1,3 +1,5 @@
+(identifier) @variable
+
 ;; Constants, Comments, and Literals
 
 (comment) @comment.line
@@ -329,5 +331,3 @@
 (dot_expression
   left: (identifier) @variable
   right: (identifier) @variable.other.member)
-
-(identifier) @variable
