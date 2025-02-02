@@ -661,7 +661,7 @@ async fn test_injected_comment_tokens_simple() -> anyhow::Result<()> {
         indoc! {r#"\
             <p>Comment toggle on this line should use the HTML comment token(s).</p>
             <script type="text/javascript">
-              // Comment toggle#[| on this line s]#hould use the javascript comment token(s).
+              // Comment toggle #[|on this line s]#hould use the javascript comment token(s).
               foo();
             </script>
         "#},
@@ -669,7 +669,7 @@ async fn test_injected_comment_tokens_simple() -> anyhow::Result<()> {
         indoc! {r#"\
             <p>Comment toggle on this line should use the HTML comment token(s).</p>
             <script type="text/javascript">
-              Comment toggle#[| on this line s]#hould use the javascript comment token(s).
+              Comment toggle #[|on this line s]#hould use the javascript comment token(s).
               foo();
             </script>
         "#},
@@ -701,7 +701,7 @@ async fn test_injected_comment_tokens_simple() -> anyhow::Result<()> {
         indoc! {r#"\
             <p>Comment toggle on this line should use the HTML comment token(s).</p>
             <script type="text/javascript">
-              Comment toggle #[|on this line s]#hould use the javascript comment token(s).
+              // Comment toggle #[|on this line s]#hould use the javascript comment token(s).
               foo();
             </script>
         "#},
@@ -709,7 +709,7 @@ async fn test_injected_comment_tokens_simple() -> anyhow::Result<()> {
         indoc! {r#"\
             <p>Comment toggle on this line should use the HTML comment token(s).</p>
             <script type="text/javascript">
-              Comment toggle #[|/* on this line s */]#hould use the javascript comment token(s).
+              // Comment toggle #[|/* on this line s */]#hould use the javascript comment token(s).
               foo();
             </script>
         "#},
@@ -721,7 +721,7 @@ async fn test_injected_comment_tokens_simple() -> anyhow::Result<()> {
         indoc! {r#"\
             <p>Comment toggle on this line should use the HTML comment token(s).</p>
             <script type="text/javascript">
-              Comment toggle#[|/* on this line s*/]#hould use the javascript comment token(s).
+              // Comment toggle #[|/* on this line s */]#hould use the javascript comment token(s).
               foo();
             </script>
         "#},
@@ -729,7 +729,7 @@ async fn test_injected_comment_tokens_simple() -> anyhow::Result<()> {
         indoc! {r#"\
             <p>Comment toggle on this line should use the HTML comment token(s).</p>
             <script type="text/javascript">
-              Comment toggle#[| on this line s]#hould use the javascript comment token(s).
+              // Comment toggle #[|on this line s]#hould use the javascript comment token(s).
               foo();
             </script>
         "#},
@@ -835,17 +835,17 @@ async fn test_injected_comment_tokens_multiple_selections() -> anyhow::Result<()
     // Works with block comment toggle across different layers
     test((
         indoc! {r#"\
-            <p>Comment toggle #(|on this line )#should use the HTML comment token(s).</p>
+            <p>Comment toggle #(|on this line)# should use the HTML comment token(s).</p>
             <script type="text/javascript">
-              // Comment toggle #[|on this line ]#should use the javascript comment token(s).
+              // Comment toggle #[|on this line]# should use the javascript comment token(s).
               foo();
             </script>
         "#},
         ":lang html<ret> C",
         indoc! {r#"\
-            <p> C-c #(|<!-- on this line -->)# should use the HTML comment token(s). </p>
+            <p>Comment toggle #(|<!-- on this line -->)# should use the HTML comment token(s).</p>
             <script type="text/javascript">
-              // C-c #[|/* on this line */]# should use the javascript comment token(s).
+              // Comment toggle #[|/* on this line */]# should use the javascript comment token(s).
               foo();
             </script>
         "#},
