@@ -251,6 +251,7 @@ pub fn create_block_comment_transaction(
                 changes.push((from + start_pos, keep_from, None));
                 let keep_until = from + end_pos - end_token.len() - end_margin as usize + 1;
                 changes.push((keep_until, from + end_pos + 1, None));
+                // The range of characters keep_from..keep_until remain in the document
                 ranges.push(Range::new(keep_from, keep_until).with_direction(range.direction()));
             }
         } else {
@@ -311,12 +312,12 @@ pub fn toggle_block_comments(
             // to 1 element in `new_ranges`
             let (from, to, _) = changes[i * 2];
             let (from2, to2, _) = changes[i * 2 + 1];
-            *added_chars -= to2 as isize - from2 as isize;
+            *added_chars -= to as isize - from as isize;
             selections.push(Range::new(
                 (range.anchor as isize + *added_chars).try_into().unwrap(),
                 (range.head as isize + *added_chars).try_into().unwrap(),
             ));
-            *added_chars -= to as isize - from as isize;
+            *added_chars -= to2 as isize - from2 as isize;
         }
 
         changes

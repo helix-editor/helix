@@ -852,6 +852,64 @@ async fn test_injected_comment_tokens_multiple_selections() -> anyhow::Result<()
     ))
     .await?;
 
+    // Many selections on the same line
+    test((
+        indoc! {r#"\
+            <p>C#[|o]#mment t#(|o)#ggle #(|o)#n this line sh#(|o)#uld use the HTML c#(|o)#mment t#(|o)#ken(s).</p>
+            <script type="text/javascript">
+              // Comment toggle on this line should use the javascript comment token(s).
+              foo();
+              css`
+                html {
+                  background-color: red;
+                }
+              `;
+            </script>
+        "#},
+        ":lang html<ret> C",
+        indoc! {r#"\
+            <p>C#[|<!-- o -->]#mment t#(|<!-- o -->)#ggle #(|<!-- o -->)#n this line sh#(|<!-- o -->)#uld use the HTML c#(|<!-- o -->)#mment t#(|<!-- o -->)#ken(s).</p>
+            <script type="text/javascript">
+              // Comment toggle on this line should use the javascript comment token(s).
+              foo();
+              css`
+                html {
+                  background-color: red;
+                }
+              `;
+            </script>
+        "#},
+    ))
+    .await?;
+    test((
+        indoc! {r#"\
+            <p>C#[|<!-- o -->]#mment t#(|<!-- o -->)#ggle #(|<!-- o -->)#n this line sh#(|<!-- o -->)#uld use the HTML c#(|<!-- o -->)#mment t#(|<!-- o -->)#ken(s).</p>
+            <script type="text/javascript">
+              // Comment toggle on this line should use the javascript comment token(s).
+              foo();
+              css`
+                html {
+                  background-color: red;
+                }
+              `;
+            </script>
+        "#},
+        ":lang html<ret> C",
+        indoc! {r#"\
+            <p>C#[|o]#mment t#(|o)#ggle #(|o)#n this line sh#(|o)#uld use the HTML c#(|o)#mment t#(|o)#ken(s).</p>
+            <script type="text/javascript">
+              // Comment toggle on this line should use the javascript comment token(s).
+              foo();
+              css`
+                html {
+                  background-color: red;
+                }
+              `;
+            </script>
+        "#},
+    ))
+    .await?;
+
     Ok(())
 }
 
