@@ -149,13 +149,13 @@
 
 ; Identifiers
 
+(identifier) @variable
+
 (classProperty (identifier) @variable.other.member)
 (objectProperty (identifier) @variable.other.member)
 
 (parameterList (typedIdentifier (identifier) @variable.parameter))
 (objectBodyParameters (typedIdentifier (identifier) @variable.parameter))
-
-(identifier) @variable
 
 ; Method definitions
 
