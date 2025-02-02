@@ -40,7 +40,7 @@
    "#" @function.builtin
    name: (identifier) @function.builtin @_name
    type: (predicate_type) @function.builtin)
- (#any-of? @_name "eq" "match" "any-of" "not-any-of" "is" "is-not" "not-same-line" "not-kind-eq" "set" "select-adjacent" "strip"))
+ (#any-of? @_name "eq" "not-eq" "match" "not-match" "any-of" "not-any-of" "is" "is-not" "not-same-line" "not-kind-eq" "set" "select-adjacent" "strip"))
 (predicate name: (identifier) @error)
 
 (capture) @label
