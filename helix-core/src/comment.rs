@@ -310,14 +310,32 @@ pub fn toggle_block_comments(
             // every 2 elements (from, to) in `changes` corresponds
             // the `from` - `to` represents the range of text that will be deleted.
             // to 1 element in `new_ranges`
-            let (from, to, _) = changes[i * 2];
-            let (from2, to2, _) = changes[i * 2 + 1];
-            *added_chars -= to as isize - from as isize;
+            //
+            // Left token:
+            //
+            // "<!-- "
+            //  ^ left_from
+            //       ^ left_to
+            //
+            // Right token:
+            //
+            // " -->"
+            //  ^ right_from
+            //      ^ right_o
+            let (left_from, left_to, _) = changes[i * 2];
+            let (right_from, right_o, _) = changes[i * 2 + 1];
+
+            *added_chars -= left_to as isize - left_from as isize;
+
+            // We slide the range to the left by the amount of characters
+            // we've deleted so far + the amount of chars deleted for
+            // the left comment token of the current iteration
             selections.push(Range::new(
                 (range.anchor as isize + *added_chars).try_into().unwrap(),
                 (range.head as isize + *added_chars).try_into().unwrap(),
             ));
-            *added_chars -= to2 as isize - from2 as isize;
+
+            *added_chars -= right_o as isize - right_from as isize;
         }
 
         changes
