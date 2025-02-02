@@ -5124,6 +5124,7 @@ fn toggle_comments_impl<'a>(
         .and_then(|lc| lc.block_comment_tokens.as_ref())
         .map(|tc| &tc[..]);
 
+    // TODO: figure out how to avoid this clone
     let syntax = doc.syntax().cloned();
 
     let transaction = comment_transaction(
@@ -5307,8 +5308,6 @@ fn toggle_block_comments(cx: &mut Context) {
         cx,
         Box::new(
             |doc_line_token, doc_block_tokens, rope, selection, mut get_injected_tokens| {
-                // when we add comment tokens, we want to extend our selection to
-                // also include the added tokens.
                 let mut selections = SmallVec::new();
                 let mut added_chars = 0;
                 let transaction = Transaction::change(
