@@ -12,10 +12,7 @@
 
 (command_name) @function
 
-(variable_name) @variable
-
-((variable_name) @constant
-  (#match? @constant "^[A-Z][A-Z_0-9]*$"))
+(variable_name) @variable.other.member
 
 [
   "if"
