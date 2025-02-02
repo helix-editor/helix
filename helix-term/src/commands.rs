@@ -5136,18 +5136,42 @@ fn toggle_comments_impl<'a>(
             let mut best_fit = None;
             let mut min_gap = usize::MAX;
 
+            // Find the injection with the most tightly encompassing
+            // range.
+            //
             // TODO: improve performance of this
+            //
+            // I'm thinking layer.ranges can be a
+            // BTreeSet<Range> instead of Vec<Range>
+            //
+            // The "Cmp" implementation can basically be
+            // range.start_byte.cmp(other.start_byte)
+            //   .then(range.end_byte.cmp(other.end_byte))
+            //
+            // Since we can't implement Cmp for Range (external trate and struct)
+            // we need to use newtype pattern: struct TSRange(Range)
+            // But I tried that and I'm not sure it'll work
+            //
+            // I *could* just use the same Vec, and when we're inserting into it
+            // we'll do it in the correct order. Then do Vec::binary_search_by
+            //
+            // However, I don't know if that'll be a good idea.
             if let Some(syntax) = &syntax {
                 for (layer_id, layer) in &syntax.layers {
                     for ts_range in &layer.ranges {
-                        // let (start, end) = range.into_byte_range(rope);
                         let is_encompassing =
                             ts_range.start_byte <= start && ts_range.end_byte >= end;
                         if is_encompassing {
                             let this_gap = ts_range.end_byte - ts_range.start_byte;
                             if this_gap < min_gap
-                                // ignore the "comment" language
-                                && syntax.layer_config(layer_id).language_name != "comment"
+                                // ignore the "comment" language family
+                                // as that would mean we can't uncomment anything, or
+                                // the comments would be incorrect.
+                                //
+                                // Since uncommenting would attempt to use the comment
+                                // language's non-existing comment tokens
+                                // TODO: add this as a language configuration key?
+                                && !matches!(syntax.layer_config(layer_id).language_name.as_ref(), "jsdoc" | "comment")
                             {
                                 best_fit = Some(layer_id);
                                 min_gap = this_gap;
