@@ -3,7 +3,7 @@
 
 use smallvec::SmallVec;
 
-use crate::{syntax::BlockCommentToken, Change, Range, Rope, RopeSlice, Tendril};
+use crate::{syntax::BlockCommentToken, Change, Range, Rope, RopeSlice, Syntax, Tendril};
 use helix_stdx::rope::RopeSliceExt;
 use std::borrow::Cow;
 
@@ -76,8 +76,14 @@ fn find_line_comment(
 }
 
 // for a given range and syntax, determine if there are additional tokens to consider
-pub type GetInjectedTokens<'a> =
-    Box<dyn FnMut(usize, usize) -> (Option<Vec<String>>, Option<Vec<BlockCommentToken>>) + 'a>;
+pub type GetInjectedTokens<'a> = Box<
+    dyn FnMut(
+            Option<&Syntax>,
+            usize,
+            usize,
+        ) -> (Option<Vec<String>>, Option<Vec<BlockCommentToken>>)
+        + 'a,
+>;
 
 #[must_use]
 pub fn toggle_line_comments(doc: &Rope, range: &Range, token: Option<&str>) -> Vec<Change> {
