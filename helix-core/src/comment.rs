@@ -25,6 +25,50 @@ pub fn get_comment_token<'a, S: AsRef<str>>(
         .max_by_key(|token| token.len())
 }
 
+pub fn get_injected_tokens(
+    syntax: Option<&Syntax>,
+    start: usize,
+    end: usize,
+) -> (Option<Vec<String>>, Option<Vec<BlockCommentToken>>) {
+    let mut best_fit = None;
+    let mut min_gap = usize::MAX;
+
+    // Find the injection with the most tightly encompassing range.
+    if let Some(syntax) = &syntax {
+        for (layer_id, layer) in &syntax.layers {
+            for ts_range in &layer.ranges {
+                let is_encompassing = ts_range.start_byte <= start && ts_range.end_byte >= end;
+                if is_encompassing {
+                    let this_gap = ts_range.end_byte - ts_range.start_byte;
+                    if this_gap < min_gap
+                                // ignore the "comment" language family
+                                // as that would mean we can't uncomment anything, or
+                                // the comments would be incorrect.
+                                //
+                                // Since uncommenting would attempt to use the comment
+                                // language's non-existing comment tokens
+                                // TODO: add this as a language configuration key?
+                                && !matches!(syntax.layer_config(layer_id).language_name.as_ref(), "jsdoc" | "comment")
+                    {
+                        best_fit = Some(layer_id);
+                        min_gap = this_gap;
+                    }
+                }
+            }
+        }
+
+        if let Some(best_fit) = best_fit {
+            let config = syntax.layer_config(best_fit);
+            return (
+                config.comment_tokens.clone(),
+                config.block_comment_tokens.clone(),
+            );
+        }
+    }
+
+    (None, None)
+}
+
 /// Given text, a comment token, and a set of line indices, returns the following:
 /// - Whether the given lines should be considered commented
 ///     - If any of the lines are uncommented, all lines are considered as such.

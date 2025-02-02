@@ -5091,90 +5091,55 @@ pub fn completion(cx: &mut Context) {
 
 // comments
 
-pub type CommentTransactionFn<'a> =
-    Box<dyn FnMut(&mut Context, comment::GetInjectedTokens<'a>) + 'a>;
-
-fn toggle_comments_impl<'a>(
-    cx: &'a mut Context,
-    mut comment_transaction: CommentTransactionFn<'a>,
-) {
-    comment_transaction(
-        cx,
-        Box::new(move |syntax: Option<&Syntax>, start: usize, end: usize| {
-            let mut best_fit = None;
-            let mut min_gap = usize::MAX;
-
-            // Find the injection with the most tightly encompassing range.
-            if let Some(syntax) = &syntax {
-                for (layer_id, layer) in &syntax.layers {
-                    for ts_range in &layer.ranges {
-                        let is_encompassing =
-                            ts_range.start_byte <= start && ts_range.end_byte >= end;
-                        if is_encompassing {
-                            let this_gap = ts_range.end_byte - ts_range.start_byte;
-                            if this_gap < min_gap
-                                // ignore the "comment" language family
-                                // as that would mean we can't uncomment anything, or
-                                // the comments would be incorrect.
-                                //
-                                // Since uncommenting would attempt to use the comment
-                                // language's non-existing comment tokens
-                                // TODO: add this as a language configuration key?
-                                && !matches!(syntax.layer_config(layer_id).language_name.as_ref(), "jsdoc" | "comment")
-                            {
-                                best_fit = Some(layer_id);
-                                min_gap = this_gap;
-                            }
-                        }
-                    }
-                }
-
-                if let Some(best_fit) = best_fit {
-                    let config = syntax.layer_config(best_fit);
-                    return (
-                        config.comment_tokens.clone(),
-                        config.block_comment_tokens.clone(),
-                    );
-                }
-            }
-
-            (None, None)
-        }),
-    );
-}
-
 /// commenting behavior, for each range in selection:
 /// 1. only line comment tokens -> line comment
 /// 2. each line block commented -> uncomment all lines
 /// 3. whole selection block commented -> uncomment selection
 /// 4. all lines not commented and block tokens -> comment uncommented lines
 /// 5. no comment tokens and not block commented -> line comment
+fn toggle_comments_impl<F>(cx: &mut Context, comments_transaction: F)
+where
+    F: Fn(
+        &Rope,
+        &Selection,
+        Option<&str>,
+        Option<&[BlockCommentToken]>,
+        Option<&Syntax>,
+    ) -> Transaction,
+{
+    let (view, doc) = current!(cx.editor);
+    let syntax = doc.syntax();
+    let rope = doc.text();
+    let selection = doc.selection(view.id);
+
+    // The comment tokens to fallback to if no comment tokens are found for the injection layer.
+    let doc_line_token: Option<&str> = doc
+        .language_config()
+        .and_then(|lc| lc.comment_tokens.as_ref())
+        .and_then(|tc| tc.first())
+        .map(|tc| tc.as_str());
+    let doc_block_tokens: Option<&[BlockCommentToken]> = doc
+        .language_config()
+        .and_then(|lc| lc.block_comment_tokens.as_ref())
+        .map(|tc| &tc[..]);
+
+    // Call the custom logic provided by the caller (the original functions).
+    let transaction =
+        comments_transaction(rope, selection, doc_line_token, doc_block_tokens, syntax);
+
+    doc.apply(&transaction, view.id);
+    exit_select_mode(cx);
+}
+
 fn toggle_comments(cx: &mut Context) {
     toggle_comments_impl(
         cx,
-        Box::new(|cx, mut get_comment_tokens| {
-            let (view, doc) = current!(cx.editor);
-            let syntax = doc.syntax();
-            let rope = doc.text();
-            let selection = doc.selection(view.id);
-
-            // The comment tokens to fallback to if no comment tokens are found for the injection layer.
-            let doc_line_token: Option<&str> = doc
-                .language_config()
-                .and_then(|lc| lc.comment_tokens.as_ref())
-                .and_then(|tc| tc.first())
-                .map(|tc| tc.as_str());
-            let doc_block_tokens: Option<&[BlockCommentToken]> = doc
-                .language_config()
-                .and_then(|lc| lc.block_comment_tokens.as_ref())
-                .map(|tc| &tc[..]);
-
-            let transaction = Transaction::change(
+        |rope, selection, doc_line_token, doc_block_tokens, syntax| {
+            Transaction::change(
                 rope,
                 selection.iter().flat_map(|range| {
-                    let text = rope.slice(..);
                     let (injected_line_tokens, injected_block_tokens) =
-                        get_comment_tokens(syntax, range.from(), range.to());
+                        comment::get_injected_tokens(syntax, range.from(), range.to());
 
                     let line_token = injected_line_tokens
                         .as_ref()
@@ -5184,20 +5149,21 @@ fn toggle_comments(cx: &mut Context) {
 
                     let block_tokens = injected_block_tokens.as_deref().or(doc_block_tokens);
 
-                    // only have line tokens
                     if line_token.is_some() && block_tokens.is_none() {
                         return comment::toggle_line_comments(rope, range, line_token);
                     }
 
-                    let split_lines = comment::split_lines_of_range(text, range);
+                    let split_lines = comment::split_lines_of_range(rope.slice(..), range);
 
                     let default_block_tokens = &[BlockCommentToken::default()];
                     let block_comment_tokens = block_tokens.unwrap_or(default_block_tokens);
 
-                    let (line_commented, line_comment_changes) =
-                        comment::find_block_comments(block_comment_tokens, text, &split_lines);
+                    let (line_commented, line_comment_changes) = comment::find_block_comments(
+                        block_comment_tokens,
+                        rope.slice(..),
+                        &split_lines,
+                    );
 
-                    // block commented by line would also be block commented so check this first
                     if line_commented {
                         return comment::create_block_comment_transaction(
                             &split_lines,
@@ -5207,10 +5173,12 @@ fn toggle_comments(cx: &mut Context) {
                         .0;
                     }
 
-                    let (block_commented, comment_changes) =
-                        comment::find_block_comments(block_comment_tokens, text, &vec![*range]);
+                    let (block_commented, comment_changes) = comment::find_block_comments(
+                        block_comment_tokens,
+                        rope.slice(..),
+                        &vec![*range],
+                    );
 
-                    // check if selection has block comments
                     if block_commented {
                         return comment::create_block_comment_transaction(
                             &[*range],
@@ -5218,9 +5186,8 @@ fn toggle_comments(cx: &mut Context) {
                             comment_changes,
                         )
                         .0;
-                    };
+                    }
 
-                    // not commented and only have block comment tokens
                     if line_token.is_none() && block_tokens.is_some() {
                         return comment::create_block_comment_transaction(
                             &split_lines,
@@ -5230,47 +5197,26 @@ fn toggle_comments(cx: &mut Context) {
                         .0;
                     }
 
-                    // not block commented at all and don't have any tokens
                     comment::toggle_line_comments(rope, range, line_token)
                 }),
-            );
-
-            doc.apply(&transaction, view.id);
-            exit_select_mode(cx);
-        }),
-    )
+            )
+        },
+    );
 }
 
 fn toggle_line_comments(cx: &mut Context) {
     toggle_comments_impl(
         cx,
-        Box::new(|cx, mut get_comment_tokens| {
-            let (view, doc) = current!(cx.editor);
-            let syntax = doc.syntax();
-            let rope = doc.text();
-            let selection = doc.selection(view.id);
-
-            // The comment tokens to fallback to if no comment tokens are found for the injection layer.
-            let doc_line_token: Option<&str> = doc
-                .language_config()
-                .and_then(|lc| lc.comment_tokens.as_ref())
-                .and_then(|tc| tc.first())
-                .map(|tc| tc.as_str());
-            let doc_block_tokens: Option<&[BlockCommentToken]> = doc
-                .language_config()
-                .and_then(|lc| lc.block_comment_tokens.as_ref())
-                .map(|tc| &tc[..]);
-
-            // when we add comment tokens, we want to extend our selection to
-            // also include the added tokens.
+        |rope, selection, doc_line_token, doc_block_tokens, syntax| {
             let mut selections = SmallVec::new();
             let mut added_chars = 0;
             let mut removed_chars = 0;
+
             let transaction = Transaction::change(
                 rope,
                 selection.iter().flat_map(|range| {
                     let (injected_line_tokens, injected_block_tokens) =
-                        get_comment_tokens(syntax, range.from(), range.to());
+                        comment::get_injected_tokens(syntax, range.from(), range.to());
 
                     let line_token = injected_line_tokens
                         .as_ref()
@@ -5298,43 +5244,24 @@ fn toggle_line_comments(cx: &mut Context) {
                 }),
             );
 
-            let transaction =
-                transaction.with_selection(Selection::new(selections, selection.primary_index()));
-
-            doc.apply(&transaction, view.id);
-            exit_select_mode(cx);
-        }),
+            transaction.with_selection(Selection::new(selections, selection.primary_index()))
+        },
     );
 }
 
 fn toggle_block_comments(cx: &mut Context) {
     toggle_comments_impl(
         cx,
-        Box::new(|cx, mut get_injected_tokens| {
-            let (view, doc) = current!(cx.editor);
-            let syntax = doc.syntax();
-            let rope = doc.text();
-            let selection = doc.selection(view.id);
-
-            // The comment tokens to fallback to if no comment tokens are found for the injection layer.
-            let doc_line_token: Option<&str> = doc
-                .language_config()
-                .and_then(|lc| lc.comment_tokens.as_ref())
-                .and_then(|tc| tc.first())
-                .map(|tc| tc.as_str());
-            let doc_block_tokens: Option<&[BlockCommentToken]> = doc
-                .language_config()
-                .and_then(|lc| lc.block_comment_tokens.as_ref())
-                .map(|tc| &tc[..]);
-
+        |rope, selection, doc_line_token, doc_block_tokens, syntax| {
             let mut selections = SmallVec::new();
             let mut added_chars = 0;
             let mut removed_chars = 0;
+
             let transaction = Transaction::change(
                 rope,
                 selection.iter().flat_map(|range| {
                     let (injected_line_tokens, injected_block_tokens) =
-                        get_injected_tokens(syntax, range.from(), range.to());
+                        comment::get_injected_tokens(syntax, range.from(), range.to());
 
                     let line_token = injected_line_tokens
                         .as_ref()
@@ -5362,12 +5289,8 @@ fn toggle_block_comments(cx: &mut Context) {
                 }),
             );
 
-            let transaction =
-                transaction.with_selection(Selection::new(selections, selection.primary_index()));
-
-            doc.apply(&transaction, view.id);
-            exit_select_mode(cx);
-        }),
+            transaction.with_selection(Selection::new(selections, selection.primary_index()))
+        },
     );
 }
 
