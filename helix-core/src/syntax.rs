@@ -1429,6 +1429,7 @@ impl Syntax {
         })
     }
 
+    /// Get an injection layer's language configuration
     pub fn layer_config(&self, layer_id: LayerId) -> Arc<LanguageConfiguration> {
         let loader = &self.loader.load();
         let language_id = self.layers[layer_id].config.language_id;

@@ -92,20 +92,17 @@ pub fn toggle_line_comments(doc: &Rope, range: &Range, token: Option<&str>) -> V
     let start = start.clamp(0, text.len_lines());
     let end = (end + 1).min(text.len_lines());
 
-    // let start_byte = text.line_to_byte(start);
-    // let end_byte = text.line_to_byte(start);
-
     let mut lines = vec![];
     lines.extend(start..end);
 
-    let (commented, to_change, min, margin) = find_line_comment(token, text, lines);
+    let (was_commented, to_change, min, margin) = find_line_comment(token, text, lines);
 
     let mut changes: Vec<Change> = Vec::with_capacity(to_change.len());
 
     for line in to_change {
         let pos = text.line_to_char(line) + min;
 
-        if !commented {
+        if !was_commented {
             // comment line
             changes.push((pos, pos, Some(comment.clone())));
         } else {
@@ -145,7 +142,7 @@ pub fn find_block_comments(
     text: RopeSlice,
     ranges: &Vec<Range>,
 ) -> (bool, Vec<CommentChange>) {
-    let mut commented = true;
+    let mut was_commented = true;
     let mut only_whitespace = true;
     let mut comment_changes = Vec::with_capacity(ranges.len());
     let default_tokens = tokens.first().cloned().unwrap_or_default();
@@ -200,7 +197,7 @@ pub fn find_block_comments(
                     start_token: default_tokens.start.clone(),
                     end_token: default_tokens.end.clone(),
                 });
-                commented = false;
+                was_commented = false;
             } else {
                 comment_changes.push(CommentChange::Commented {
                     range: *range,
@@ -219,14 +216,13 @@ pub fn find_block_comments(
         }
     }
     if only_whitespace {
-        commented = false;
+        was_commented = false;
     }
-    (commented, comment_changes)
+    (was_commented, comment_changes)
 }
 
 #[must_use]
 pub fn create_block_comment_transaction(
-    _doc: &Rope,
     ranges: &[Range],
     was_commented: bool,
     comment_changes: Vec<CommentChange>,
@@ -304,7 +300,7 @@ pub fn toggle_block_comments(
     let text = doc.slice(..);
     let (was_commented, comment_changes) = find_block_comments(tokens, text, ranges);
     let (changes, new_ranges) =
-        create_block_comment_transaction(doc, ranges, was_commented, comment_changes);
+        create_block_comment_transaction(ranges, was_commented, comment_changes);
 
     if was_commented {
         for (range, changes) in new_ranges.iter().zip(changes.chunks_exact(2)) {
