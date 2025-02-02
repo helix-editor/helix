@@ -22,6 +22,11 @@
 
 (":") @punctuation.delimiter
 
+[
+ (string)
+ (color)
+] @string
+
 ; (color) are hex values
 (color "#" @punctuation.special
  (#eq? @punctuation.special "#"))
@@ -44,17 +49,12 @@
 (tuple "," @punctuation.delimiter.special
        (#eq? @punctuation.delimiter.special ","))
 
-[
- (string)
- (color)
-] @string
+; `keybind`
+(keybind_value) @string.special
 
 ; clear is a special keyword that clear all existing keybind up to that point
 ((keybind_value) @keyword 
  (#eq? @keyword "clear"))
-
-; `keybind`
-(keybind_value) @string.special
 
 ; NOTE: The order here matters!
 [
