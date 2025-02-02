@@ -2098,9 +2098,9 @@ dependencies = [
 
 [[package]]
 name = "im-lists"
-version = "0.8.1"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c38da2a11f128e1af1585abdd7041a96fc1adcd6ca2cb33e7fc5728326edbe8a"
+checksum = "88485149c4fcec01ebce4e4b8284a3c75b3d8a4749169f5481144e6433e9bcd2"
 dependencies = [
  "smallvec",
 ]
@@ -3119,10 +3119,11 @@ checksum = "a2eb9349b6444b326872e140eb1cf5e7c522154d69e7a0ffb0fb81c06b37543f"
 [[package]]
 name = "steel-core"
 version = "0.6.0"
-source = "git+https://github.com/mattwparas/steel.git#785312ab654d47dd87c5a2b7a137e9fd9e644346"
+source = "git+https://github.com/mattwparas/steel.git#888eff4c1ba1abc5a80481b8dfd2187e8fe53f12"
 dependencies = [
  "abi_stable",
  "anyhow",
+ "arc-swap",
  "async-ffi",
  "bigdecimal",
  "bincode",
@@ -3169,7 +3170,7 @@ dependencies = [
 [[package]]
 name = "steel-derive"
 version = "0.5.0"
-source = "git+https://github.com/mattwparas/steel.git#785312ab654d47dd87c5a2b7a137e9fd9e644346"
+source = "git+https://github.com/mattwparas/steel.git#888eff4c1ba1abc5a80481b8dfd2187e8fe53f12"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -3179,7 +3180,7 @@ dependencies = [
 [[package]]
 name = "steel-doc"
 version = "0.6.0"
-source = "git+https://github.com/mattwparas/steel.git#785312ab654d47dd87c5a2b7a137e9fd9e644346"
+source = "git+https://github.com/mattwparas/steel.git#888eff4c1ba1abc5a80481b8dfd2187e8fe53f12"
 dependencies = [
  "steel-core",
 ]
@@ -3187,7 +3188,7 @@ dependencies = [
 [[package]]
 name = "steel-gen"
 version = "0.2.0"
-source = "git+https://github.com/mattwparas/steel.git#785312ab654d47dd87c5a2b7a137e9fd9e644346"
+source = "git+https://github.com/mattwparas/steel.git#888eff4c1ba1abc5a80481b8dfd2187e8fe53f12"
 dependencies = [
  "codegen",
  "serde",
@@ -3197,7 +3198,7 @@ dependencies = [
 [[package]]
 name = "steel-parser"
 version = "0.6.0"
-source = "git+https://github.com/mattwparas/steel.git#785312ab654d47dd87c5a2b7a137e9fd9e644346"
+source = "git+https://github.com/mattwparas/steel.git#888eff4c1ba1abc5a80481b8dfd2187e8fe53f12"
 dependencies = [
  "compact_str",
  "fxhash",
