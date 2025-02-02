@@ -113,7 +113,7 @@ pub(crate) fn path_completion(
                     kind: Cow::Borrowed(kind),
                     label: file_name.into(),
                     transaction,
-                    documentation,
+                    documentation: Some(documentation),
                     provider: CompletionProvider::Path,
                 }))
             })

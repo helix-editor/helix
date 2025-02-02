@@ -8,7 +8,7 @@ pub struct CompletionItem {
     pub label: Cow<'static, str>,
     pub kind: Cow<'static, str>,
     /// Containing Markdown
-    pub documentation: String,
+    pub documentation: Option<String>,
     pub provider: CompletionProvider,
 }
 

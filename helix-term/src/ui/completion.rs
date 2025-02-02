@@ -523,7 +523,10 @@ impl Component for Completion {
                 None => return,
             },
             CompletionItem::Other(option) => {
-                markdowned(language, None, Some(&option.documentation))
+                let Some(doc) = option.documentation.as_deref() else {
+                    return;
+                };
+                markdowned(language, None, Some(doc))
             }
         };
 
