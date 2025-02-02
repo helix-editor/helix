@@ -298,7 +298,8 @@ pub fn toggle_block_comments(
     ranges: &Vec<Range>,
     tokens: &[BlockCommentToken],
     selections: &mut SmallVec<[Range; 1]>,
-    added_chars: &mut isize,
+    added_chars: &mut usize,
+    removed_chars: &mut usize,
 ) -> Vec<Change> {
     let text = doc.slice(..);
     let (was_commented, comment_changes) = find_block_comments(tokens, text, ranges);
@@ -306,7 +307,7 @@ pub fn toggle_block_comments(
         create_block_comment_transaction(doc, ranges, was_commented, comment_changes);
 
     if was_commented {
-        for (i, range) in new_ranges.iter().enumerate() {
+        for (range, changes) in new_ranges.iter().zip(changes.chunks_exact(2)) {
             // every 2 elements (from, to) in `changes` corresponds
             // the `from` - `to` represents the range of text that will be deleted.
             // to 1 element in `new_ranges`
@@ -321,42 +322,43 @@ pub fn toggle_block_comments(
             //
             // " -->"
             //  ^ right_from
-            //      ^ right_o
-            let (left_from, left_to, _) = changes[i * 2];
-            let (right_from, right_o, _) = changes[i * 2 + 1];
+            //      ^ right_to
+            let [(left_from, left_to, _), (right_from, right_to, _)] = changes else {
+                unreachable!()
+            };
 
-            *added_chars -= left_to as isize - left_from as isize;
+            *removed_chars += left_to - left_from;
 
             // We slide the range to the left by the amount of characters
             // we've deleted so far + the amount of chars deleted for
             // the left comment token of the current iteration
             selections.push(Range::new(
-                (range.anchor as isize + *added_chars).try_into().unwrap(),
-                (range.head as isize + *added_chars).try_into().unwrap(),
+                range.anchor + *added_chars - *removed_chars,
+                range.head + *added_chars - *removed_chars,
             ));
 
-            *added_chars -= right_o as isize - right_from as isize;
+            *removed_chars += right_to - right_from;
         }
 
         changes
     } else {
+        // we're never removing or
+        // creating ranges. Only shifting / increasing size
+        // of existing ranges to accomodate the newly added
+        // comment tokens.
+        //
         // when we add comment tokens, we want to extend our selection to
         // also include the added tokens.
-        for (i, range) in new_ranges.iter().enumerate() {
-            // will not panic because we're never removing or
-            // creating ranges. Only shifting / increasing size
-            // of existing ranges to accomodate the newly added
-            // comment tokens.
-            let old_range = ranges[i];
+        for (range, old_range) in new_ranges.iter().zip(ranges) {
             // Will not underflow because the new range must always be
             // at least the same size as the old range, since we're
             // adding comment token characters, never removing.
             let range = Range::new(
-                range.anchor + *added_chars as usize,
-                range.head + *added_chars as usize,
+                range.anchor + *added_chars - *removed_chars,
+                range.head + *added_chars - *removed_chars,
             );
             selections.push(range);
-            *added_chars += range.len() as isize - old_range.len() as isize;
+            *added_chars += range.len() - old_range.len();
         }
 
         changes
@@ -500,6 +502,7 @@ mod test {
                 &[BlockCommentToken::default()],
                 &mut SmallVec::new(),
                 &mut 0,
+                &mut 0,
             );
             let transaction = Transaction::change(&doc, changes.into_iter());
             transaction.apply(&mut doc);
@@ -514,6 +517,7 @@ mod test {
                 &[BlockCommentToken::default()],
                 &mut SmallVec::new(),
                 &mut 0,
+                &mut 0,
             );
             let transaction = Transaction::change(&doc, changes.into_iter());
             transaction.apply(&mut doc);
@@ -527,6 +531,7 @@ mod test {
                 &vec![range],
                 &[BlockCommentToken::default()],
                 &mut SmallVec::new(),
+                &mut 0,
                 &mut 0,
             );
             let transaction = Transaction::change(&doc, changes.into_iter());

@@ -5266,6 +5266,7 @@ fn toggle_line_comments(cx: &mut Context) {
                 // also include the added tokens.
                 let mut selections = SmallVec::new();
                 let mut added_chars = 0;
+                let mut removed_chars = 0;
                 let transaction = Transaction::change(
                     rope,
                     selection.iter().flat_map(|range| {
@@ -5290,6 +5291,7 @@ fn toggle_line_comments(cx: &mut Context) {
                                 block_comment_tokens,
                                 &mut selections,
                                 &mut added_chars,
+                                &mut removed_chars,
                             )
                         } else {
                             comment::toggle_line_comments(rope, range, line_token)
@@ -5310,6 +5312,7 @@ fn toggle_block_comments(cx: &mut Context) {
             |doc_line_token, doc_block_tokens, rope, selection, mut get_injected_tokens| {
                 let mut selections = SmallVec::new();
                 let mut added_chars = 0;
+                let mut removed_chars = 0;
                 let transaction = Transaction::change(
                     rope,
                     selection.iter().flat_map(|range| {
@@ -5336,6 +5339,7 @@ fn toggle_block_comments(cx: &mut Context) {
                                 block_comment_tokens,
                                 &mut selections,
                                 &mut added_chars,
+                                &mut removed_chars,
                             )
                         }
                     }),
