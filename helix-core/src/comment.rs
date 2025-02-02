@@ -46,7 +46,6 @@ fn find_line_comment(
     let token_len = token.chars().count();
 
     for line in lines {
-        log::error!("{line}");
         let line_slice = text.line(line);
         if let Some(pos) = line_slice.first_non_whitespace_char() {
             let len = line_slice.len_chars();
