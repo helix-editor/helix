@@ -8,7 +8,7 @@ pub mod menu;
 pub mod overlay;
 pub mod picker;
 pub mod popup;
-mod prompt;
+pub mod prompt;
 mod spinner;
 mod statusline;
 mod text;

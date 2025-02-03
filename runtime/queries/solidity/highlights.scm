@@ -1,3 +1,9 @@
+; identifiers
+; -----------
+(identifier) @variable
+((identifier) @variable.builtin (#any-of? @variable.builtin "this" "msg" "block" "tx"))
+(yul_identifier) @variable
+
 ; Pragma
 (pragma_directive) @keyword.directive
 (solidity_version_comparison_operator _ @keyword.directive)
@@ -231,10 +237,3 @@
   "delete"
   "new"
 ] @keyword.operator
-
-; identifiers
-; -----------
-((identifier) @variable.builtin (#any-of? @variable.builtin "this" "msg" "block" "tx"))
-(identifier) @variable
-(yul_identifier) @variable
-

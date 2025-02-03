@@ -9,6 +9,7 @@ als = { command = "als" }
 ada-language-server = { command = "ada_language_server" }
 ada-gpr-language-server = {command = "ada_language_server", args = ["--language-gpr"]}
 angular = {command = "ngserver", args = ["--stdio", "--tsProbeLocations", ".", "--ngProbeLocations", ".",]}
+asm-lsp = { command = "asm-lsp" }
 awk-language-server = { command = "awk-language-server" }
 bash-language-server = { command = "bash-language-server", args = ["start"] }
 bass = { command = "bass", args = ["--lsp"] }
@@ -383,7 +384,7 @@ indent = { tab-width = 2, unit = "  " }
 
 [[grammar]]
 name = "elixir"
-source = { git = "https://github.com/elixir-lang/tree-sitter-elixir", rev = "b20eaa75565243c50be5e35e253d8beb58f45d56"  }
+source = { git = "https://github.com/elixir-lang/tree-sitter-elixir", rev = "02a6f7fd4be28dd94ee4dd2ca19cb777053ea74e" }
 
 [[language]]
 name = "fish"
@@ -479,6 +480,18 @@ file-types = [
   "ldtk",
   "ldtkl",
   { glob = ".swift-format" },
+  "sublime-build",
+  "sublime-color-scheme",
+  "sublime-commands",
+  "sublime-completions",
+  "sublime-keymap",
+  "sublime-macro",
+  "sublime-menu",
+  "sublime-mousemap",
+  "sublime-project",
+  "sublime-settings",
+  "sublime-theme",
+  "sublime-workspace"
 ]
 language-servers = [ "vscode-json-language-server" ]
 auto-format = true
@@ -1054,6 +1067,7 @@ file-types = ["php", "inc", "php4", "php5", "phtml", "ctp"]
 shebangs = ["php"]
 roots = ["composer.json", "index.php"]
 comment-token = "//"
+block-comment-tokens = [{start = "/**", end = "*/"}, {start = "/*", end = "*/"}]
 language-servers = [ "intelephense" ]
 indent = { tab-width = 4, unit = "    " }
 
@@ -1185,7 +1199,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "julia"
-source = { git = "https://github.com/tree-sitter/tree-sitter-julia", rev = "8fb38abff74652c4faddbf04d2d5bbbc6b4bae25" }
+source = { git = "https://github.com/tree-sitter/tree-sitter-julia", rev = "e84f10db8eeb8b9807786bfc658808edaa1b4fa2" }
 
 [[language]]
 name = "java"
@@ -1333,6 +1347,8 @@ scope = "source.svelte"
 injection-regex = "svelte"
 file-types = ["svelte"]
 indent = { tab-width = 2, unit = "  " }
+comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/" }
 language-servers = [ "svelteserver" ]
 
 [[grammar]]
@@ -1356,7 +1372,15 @@ source = { git = "https://github.com/ikatyang/tree-sitter-vue", rev = "91fe27547
 [[language]]
 name = "yaml"
 scope = "source.yaml"
-file-types = ["yml", "yaml", { glob = ".prettierrc" }, { glob = ".clangd" }, { glob = ".clang-format" }, { glob = ".clang-tidy" }]
+file-types = [
+  "yml",
+  "yaml",
+  { glob = ".prettierrc" },
+  { glob = ".clangd" },
+  { glob = ".clang-format" },
+  { glob = ".clang-tidy" },
+  "sublime-syntax"
+]
 comment-token = "#"
 indent = { tab-width = 2, unit = "  " }
 language-servers = [ "yaml-language-server", "ansible-language-server" ]
@@ -1985,7 +2009,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "ron"
-source = { git = "https://github.com/zee-editor/tree-sitter-ron", rev = "7762d709a0f7c1f9e269d0125a2e8a7a69006146" }
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-ron", rev = "78938553b93075e638035f624973083451b29055" }
 
 [[language]]
 name = "robot"
@@ -2006,7 +2030,7 @@ scope = "source.r"
 injection-regex = "(r|R)"
 file-types = ["r", "R", { glob = ".Rprofile" }, { glob = "Rprofile.site" }, { glob = ".RHistory" }]
 shebangs = ["r", "R"]
-comment-token = "#"
+comment-tokens = ["#", "#'"]
 indent = { tab-width = 2, unit = "  " }
 language-servers = [ "r" ]
 
@@ -2198,7 +2222,7 @@ language-servers = [ "cairo-language-server" ]
 
 [[grammar]]
 name = "cairo"
-source = { git = "https://github.com/starkware-libs/tree-sitter-cairo", rev = "e3a0212261c125cb38248458cd856c0ffee2b398" }
+source = { git = "https://github.com/starkware-libs/tree-sitter-cairo", rev = "4c6a25680546761b80a710ead1dd34e76c203125" }
 
 [[language]]
 name = "cpon"
@@ -2476,7 +2500,7 @@ formatter = { command = "cue", args = ["fmt", "-"] }
 
 [[grammar]]
 name = "cue"
-source = { git = "https://github.com/eonpatapon/tree-sitter-cue", rev = "61843e3beebf19417e4fede4e8be4df1084317ad" }
+source = { git = "https://github.com/eonpatapon/tree-sitter-cue", rev = "8a5f273bfa281c66354da562f2307c2d394b6c81" }
 
 [[language]]
 name = "slint"
@@ -2738,7 +2762,8 @@ file-types = [
   "xoml",
   "musicxml",
   "glif",
-  "ui"
+  "ui",
+  "sublime-snippet"
 ]
 block-comment-tokens = { start = "<!--", end = "-->" }
 indent = { tab-width = 2, unit = "  " }
@@ -2828,7 +2853,6 @@ file-types = [
   "network",
   { glob = ".editorconfig" },
   { glob = ".npmrc" },
-  { glob = "ghostty/config" },
   { glob = "hgrc" },
   { glob = "npmrc" },
   { glob = "rclone.conf" },
@@ -3049,6 +3073,7 @@ file-types = ["asm", "S", "nasm"]
 injection-regex = "n?asm"
 comment-token = ";"
 indent = { tab-width = 8, unit = "        " }
+language-servers = ["asm-lsp"]
 
 [[grammar]]
 name = "nasm"
@@ -3061,6 +3086,7 @@ file-types = ["s"]
 injection-regex = "gas"
 comment-token = "#"
 indent = { tab-width = 8, unit = "        " }
+language-servers = ["asm-lsp"]
 
 [[grammar]]
 name = "gas"
@@ -3208,7 +3234,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "just"
-source = { git = "https://github.com/poliorcetics/tree-sitter-just", rev = "180bb15d64c63585c4f65c551350048f21987bcb" }
+source = { git = "https://github.com/poliorcetics/tree-sitter-just", rev = "8eddc55e3235d9d87f11b75130857800ec7ba765" }
 
 [[language]]
 name = "gn"
@@ -4074,3 +4100,14 @@ indent = { tab-width = 4, unit = "    " }
 [[grammar]]
 name = "gren"
 source = { git = "https://github.com/MaeBrooks/tree-sitter-gren", rev = "76554f4f2339f5a24eed19c58f2079b51c694152" }
+
+[[language]]
+name = "ghostty"
+scope = "source.ghostty"
+file-types = [{ glob = "ghostty/config" }]
+comment-tokens = "#"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "ghostty"
+source = { git = "https://github.com/bezhermoso/tree-sitter-ghostty" , rev = "8438a93b44367e962b2ea3a3b6511885bebd196a" }

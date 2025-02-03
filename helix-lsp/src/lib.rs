@@ -900,17 +900,7 @@ fn start_client(
         }
 
         // next up, notify<initialized>
-        let notification_result = _client
-            .notify::<lsp::notification::Initialized>(lsp::InitializedParams {})
-            .await;
-
-        if let Err(e) = notification_result {
-            log::error!(
-                "failed to notify language server of its initialization: {}",
-                e
-            );
-            return;
-        }
+        _client.notify::<lsp::notification::Initialized>(lsp::InitializedParams {});
 
         initialize_notify.notify_one();
     });

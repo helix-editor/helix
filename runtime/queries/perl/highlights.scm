@@ -39,6 +39,8 @@
 
 (comment) @comment
 
+(function) @function
+
 (eof_marker) @keyword.directive
 (data_section) @comment
 
@@ -95,5 +97,3 @@
 
 (func0op_call_expression function: _ @function.builtin)
 (func1op_call_expression function: _ @function.builtin)
-
-(function) @function

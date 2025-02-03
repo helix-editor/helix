@@ -2116,6 +2116,10 @@ fn sort_impl(
 
     let selection = doc.selection(view.id);
 
+    if selection.len() == 1 {
+        bail!("Sorting requires multiple selections. Hint: split selection first");
+    }
+
     let mut fragments: Vec<_> = selection
         .slices(text)
         .map(|fragment| fragment.chunks().collect())

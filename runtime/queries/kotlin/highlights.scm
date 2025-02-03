@@ -1,21 +1,20 @@
+;;; Identifiers
+(simple_identifier) @variable
+
+; `field` keyword inside property getter/setter
+; FIXME: This will highlight the keyword outside of getters and setters
+;        since tree-sitter does not allow us to check for arbitrary nestation
+((simple_identifier) @variable.builtin
+(#eq? @variable.builtin "field"))
+
+; `it` keyword inside lambdas
+; FIXME: This will highlight the keyword outside of lambdas since tree-sitter
+;        does not allow us to check for arbitrary nestation
+((simple_identifier) @variable.builtin
+(#eq? @variable.builtin "it"))
+
+
 ;;; Operators & Punctuation
-
-(multi_line_string_literal
-	"$" @punctuation
-  (interpolated_identifier) @none)
-(multi_line_string_literal
-	"${" @punctuation
-	(interpolated_expression) @none
-	"}" @punctuation.)
-
-; NOTE: `interpolated_identifier`s can be highlighted in any way
-(line_string_literal
-	"$" @punctuation
-	(interpolated_identifier) @none)
-(line_string_literal
-	"${" @punctuation
-	(interpolated_expression) @none
-	"}" @punctuation)
 
 [
 	"."
@@ -68,6 +67,23 @@
 	".."
 	"->"
 ] @operator
+
+(multi_line_string_literal
+	"$" @punctuation
+  (interpolated_identifier) @none)
+(multi_line_string_literal
+	"${" @punctuation
+	(interpolated_expression) @none
+	"}" @punctuation.)
+
+; NOTE: `interpolated_identifier`s can be highlighted in any way
+(line_string_literal
+	"$" @punctuation
+	(interpolated_identifier) @none)
+(line_string_literal
+	"${" @punctuation
+	(interpolated_expression) @none
+	"}" @punctuation)
 
 ;;; Keywords
 
@@ -281,18 +297,3 @@
 
 ; `this` this keyword inside classes
 (this_expression) @variable.builtin
-
-;;; Identifiers
-; `field` keyword inside property getter/setter
-; FIXME: This will highlight the keyword outside of getters and setters
-;        since tree-sitter does not allow us to check for arbitrary nestation
-((simple_identifier) @variable.builtin
-(#eq? @variable.builtin "field"))
-
-; `it` keyword inside lambdas
-; FIXME: This will highlight the keyword outside of lambdas since tree-sitter
-;        does not allow us to check for arbitrary nestation
-((simple_identifier) @variable.builtin
-(#eq? @variable.builtin "it"))
-
-(simple_identifier) @variable

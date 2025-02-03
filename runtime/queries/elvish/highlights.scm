@@ -63,13 +63,13 @@
 (number) @constant.numeric
 (string) @string
 
+(variable (identifier) @variable)
 ((variable (identifier) @function)
   (#match? @function ".+\\~$"))
 ((variable (identifier) @constant.builtin.boolean)
  (#match? @constant.builtin.boolean "(true|false)"))
 ((variable (identifier) @constant.builtin)
  (#match? @constant.builtin "(_|after-chdir|args|before-chdir|buildinfo|nil|notify-bg-job-success|num-bg-jobs|ok|paths|pid|pwd|value-out-indicator|version)"))
-(variable (identifier) @variable)
 
 ["$" "@"] @punctuation.special
 ["(" ")" "[" "]" "{" "}"] @punctuation.bracket
