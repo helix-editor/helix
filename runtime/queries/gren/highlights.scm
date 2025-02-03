@@ -3,7 +3,9 @@
   (exposing)
   (backslash)
   (as)
-  (port)
+  (colon)
+  (arrow)
+  (operator_identifier)
   "|"
 ] @keyword
 
@@ -21,16 +23,12 @@
   (type)
   (alias)
   (infix)
+  (port)
   "let"
   "in"
 ] @keyword.storage.type
 
-[
-  (colon)
-  (arrow)
-  (dot)
-  (operator_identifier)
-] @operator
+(dot) @operator
 
 (eq) @keyword.operator.assignment
 
@@ -55,22 +53,30 @@
 
 (field name: (lower_case_identifier) @variable.other.member)
 (field_type name: (lower_case_identifier) @variable.other.member)
-(field_access_expr(lower_case_identifier) @variable.other.member)
+(field_access_expr(lower_case_identifier) @variable)
 
 (type_declaration(upper_case_identifier) @type)
-(type_declaration typeName: (lower_type_name (lower_case_identifier)) @type.parameter)
-((type_ref) @type)
+(type_declaration typeName: (lower_type_name) @type.parameter)
 (type_alias_declaration name: (upper_case_identifier) @type)
-(type_alias_declaration typeVariable: (lower_type_name (lower_case_identifier)) @type.parameter)
-(type_variable (lower_case_identifier) @type.parameter)
+(type_alias_declaration typeVariable: (lower_type_name) @type.parameter)
 
-(union_pattern constructor: (upper_case_qid (upper_case_identifier) @label (dot) (upper_case_identifier) @variable.other.member)) 
-(union_pattern constructor: (upper_case_qid (upper_case_identifier) @variable.other.member)) 
+(type_ref(upper_case_qid) @type)
+(type_variable(lower_case_identifier) @type.parameter)
 
-(union_variant(upper_case_identifier) @variable.other.member)
-(value_expr name: (value_qid (upper_case_identifier) @label))
-(value_expr (upper_case_qid (upper_case_identifier) @label (dot) (upper_case_identifier) @variable.other.member))
-(value_expr(upper_case_qid(upper_case_identifier)) @variable.other.member)
+(union_pattern constructor: (upper_case_qid (upper_case_identifier) @namespace (dot) (upper_case_identifier) @constructor)) 
+(union_pattern constructor: (upper_case_qid (upper_case_identifier) @constructor)) 
+
+(union_variant(upper_case_identifier) @constructor)
+
+(value_expr name: (value_qid (upper_case_identifier) @namespace))
+(value_expr(upper_case_qid(upper_case_identifier) @namespace (dot) (upper_case_identifier) @constructor))
+(value_expr(upper_case_qid(upper_case_identifier)) @constructor)
+
+(value_expr(value_qid(upper_case_identifier) @namespace (dot) (lower_case_identifier) @variable))
+(value_expr(value_qid(lower_case_identifier) @variable))
+
+(let_in_expr(value_declaration(function_declaration_left(lower_case_identifier) @variable)))
+(function_declaration_left(lower_pattern(lower_case_identifier) @variable.parameter))
 
 ; comments
 (line_comment) @comment
