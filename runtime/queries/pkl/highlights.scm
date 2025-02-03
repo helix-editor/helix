@@ -126,7 +126,7 @@
 (slStringLiteral) @string
 (mlStringLiteral) @string
 
-(escapeSequence) @constent.character.escape
+(escapeSequence) @constant.character.escape
 
 (intLiteral) @constant.numeric.integer
 (floatLiteral) @constant.numeric.float
