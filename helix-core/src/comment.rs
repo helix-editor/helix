@@ -11,19 +11,56 @@ use std::borrow::Cow;
 pub const DEFAULT_COMMENT_TOKEN: &str = "#";
 
 /// Returns the longest matching comment token of the given line (if it exists).
-pub fn get_comment_token<'a, S: AsRef<str>>(
+pub fn get_comment_token(
+    syntax: Option<&Syntax>,
     text: RopeSlice,
-    tokens: &'a [S],
+    doc_default_tokens: Option<&Vec<String>>,
     line_num: usize,
-) -> Option<&'a str> {
+) -> Option<String> {
     let line = text.line(line_num);
     let start = line.first_non_whitespace_char()?;
+    let start_char = text.line_to_char(line_num) + start;
 
-    tokens
-        .iter()
-        .map(AsRef::as_ref)
-        .filter(|token| line.slice(start..).starts_with(token))
-        .max_by_key(|token| token.len())
+    let injected_tokens = get_injected_tokens(syntax, start_char, start_char)
+        // we don't care about block comment tokens
+        .0
+        .and_then(|tokens| {
+            tokens
+                .into_iter()
+                .filter(|token| line.slice(start..).starts_with(token))
+                .max_by_key(|token| token.len())
+        });
+
+    injected_tokens.or(
+        // no comment tokens found for injection. Use doc tokens instead
+        doc_default_tokens.and_then(|tokens| {
+            tokens
+                .iter()
+                .filter(|token| line.slice(start..).starts_with(token))
+                .max_by_key(|token| token.len())
+                .cloned()
+        }),
+    )
+}
+
+pub fn get_injected_tokens(
+    syntax: Option<&Syntax>,
+    start: usize,
+    end: usize,
+) -> (Option<Vec<String>>, Option<Vec<BlockCommentToken>>) {
+    // Find the injection with the most tightly encompassing range.
+    syntax
+        .and_then(|syntax| {
+            injection_for_range(syntax, start, end)
+                .map(|language_id| syntax.layer_config(language_id))
+                .map(|config| {
+                    (
+                        config.comment_tokens.clone(),
+                        config.block_comment_tokens.clone(),
+                    )
+                })
+        })
+        .unwrap_or_default()
 }
 
 /// For a given range in the document, get the most tightly encompassing
@@ -56,26 +93,6 @@ pub fn injection_for_range(syntax: &Syntax, from: usize, to: usize) -> Option<La
     }
 
     best_fit
-}
-
-pub fn get_injected_tokens(
-    syntax: Option<&Syntax>,
-    start: usize,
-    end: usize,
-) -> (Option<Vec<String>>, Option<Vec<BlockCommentToken>>) {
-    // Find the injection with the most tightly encompassing range.
-    syntax
-        .and_then(|syntax| {
-            injection_for_range(syntax, start, end)
-                .map(|language_id| syntax.layer_config(language_id))
-                .map(|config| {
-                    (
-                        config.comment_tokens.clone(),
-                        config.block_comment_tokens.clone(),
-                    )
-                })
-        })
-        .unwrap_or_default()
 }
 
 /// Given text, a comment token, and a set of line indices, returns the following:
@@ -599,10 +616,10 @@ mod test {
         #[test]
         fn test_get_comment_with_char_boundaries() {
             let rope = Rope::from("··");
-            let tokens = ["//", "///"];
+            let tokens = vec!["//".to_owned(), "///".to_owned()];
 
             assert_eq!(
-                super::get_comment_token(rope.slice(..), tokens.as_slice(), 0),
+                super::get_comment_token(None, rope.slice(..), Some(&tokens), 0),
                 None
             );
         }
@@ -614,11 +631,11 @@ mod test {
         #[test]
         fn test_use_longest_comment() {
             let text = Rope::from("    /// amogus ඞ");
-            let tokens = ["///", "//"];
+            let tokens = vec!["///".to_owned(), "//".to_owned()];
 
             assert_eq!(
-                super::get_comment_token(text.slice(..), tokens.as_slice(), 0),
-                Some("///")
+                super::get_comment_token(None, text.slice(..), Some(&tokens), 0),
+                Some("///".to_owned())
             );
         }
     }
