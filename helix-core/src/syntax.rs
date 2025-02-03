@@ -1449,14 +1449,13 @@ impl Syntax {
                 if is_encompassing {
                     let this_gap = ts_range.end_byte - ts_range.start_byte;
                     if this_gap < min_gap
-                                // ignore the "comment" language family
-                                // as that would mean we can't uncomment anything, or
-                                // the comments would be incorrect.
+                                // ignore the language family for which it won't make
+                                // sense to consider their comment.
                                 //
                                 // Since uncommenting would attempt to use the comment
                                 // language's non-existing comment tokens
                                 // TODO: add this as a language configuration key?
-                                && !matches!(self.layer_config(layer_id).language_name.as_ref(), "jsdoc" | "comment")
+                                && !matches!(self.layer_config(layer_id).language_name.as_ref(), "jsdoc" | "comment" | "regex")
                     {
                         best_fit = Some(layer_id);
                         min_gap = this_gap;
