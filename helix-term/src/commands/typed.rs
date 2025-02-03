@@ -1645,7 +1645,7 @@ fn tree_sitter_injections(
 
     while let Some((range, language_name)) = ranges.next() {
         while let Some((prev_start, prev_end)) = stack.last() {
-            let is_contained = range.end_byte <= *prev_end && range.start_byte >= *prev_start;
+            let is_contained = range.end_byte < *prev_end && range.start_byte > *prev_start;
             if is_contained {
                 break;
             }
@@ -1658,7 +1658,7 @@ fn tree_sitter_injections(
             format!("[0, {}]", char_count)
         };
 
-        let indent = stack.len() * 2;
+        let indent = stack.len() * 4;
         let indent = format!("{:indent$}", "");
 
         let next_is_contained = ranges.peek().as_ref().is_some_and(|(next, _)| {
@@ -1671,9 +1671,15 @@ fn tree_sitter_injections(
             "".into()
         };
 
+        let dash = if !indent.is_empty() {
+            format!("{}- ", &indent)
+        } else {
+            "- ".into()
+        };
+
         writeln!(
             contents,
-            "{indent}- language: {language_name}
+            "{dash}language: {language_name}
 {indent}  range: {language_range}{children}",
         )?;
 
