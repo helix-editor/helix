@@ -1,123 +1,147 @@
+(heading) @markup.heading
+
+((heading
+  (marker) @markup.heading.marker) @markup.heading.1
+  (#eq? @markup.heading.marker "# "))
+
+((heading
+  (marker) @markup.heading.marker) @markup.heading.2
+  (#eq? @markup.heading.marker "## "))
+
+((heading
+  (marker) @markup.heading.marker) @markup.heading.3
+  (#eq? @markup.heading.marker "### "))
+
+((heading
+  (marker) @markup.heading.marker) @markup.heading.4
+  (#eq? @markup.heading.marker "##### "))
+
+((heading
+  (marker) @markup.heading.marker) @markup.heading.5
+  (#eq? @markup.heading.marker "###### "))
+
+((heading
+  (marker) @markup.heading.marker) @markup.heading.6
+  (#eq? @markup.heading.marker "####### "))
+
+(thematic_break) @special
+
 [
-  (footnote_marker_begin)
-  (footnote_marker_end)
+  (div_marker_begin)
+  (div_marker_end)
+] @tag
+
+[
+  (code_block)
+  (raw_block)
+  (frontmatter)
+] @markup.raw.block
+
+[
+  (code_block_marker_begin)
+  (code_block_marker_end)
+  (raw_block_marker_begin)
+  (raw_block_marker_end)
 ] @punctuation.bracket
 
-(footnote_reference (reference_label) @markup.link.label)
+(language) @type.enum.variant
 
-(footnote (reference_label) @markup.link.label)
+(inline_attribute _ @attribute)
 
-[
-  (autolink)
-  (inline_link_destination)
-  (link_destination)
-] @markup.link.url
-
-(inline_link_destination
-  [
-    "("
-    ")"
-  ] @punctuation.bracket)
-
-(link_reference_definition (link_label) @markup.link.label)
-
-(link_reference_definition
-  [
-    "["
-    "]"
-  ] @punctuation.bracket)
-
-(image_description) @label
-
-(image_description
-  [
-    "!["
-    "]"
-  ] @punctuation.bracket)
-
-(collapsed_reference_image "[]" @punctuation.bracket)
-
-(full_reference_image
-  [
-    "["
-    "]"
-  ] @punctuation.bracket)
-
-(full_reference_image (link_label) @markup.link.label)
-
-(inline_link (link_text) @markup.link.text)
-
-(collapsed_reference_link (link_text) @markup.link.text)
-
-(full_reference_link
-  [
-    "["
-    "]"
-  ] @punctuation.bracket)
-
-(collapsed_reference_link "[]" @punctuation.bracket)
-
-(full_reference_link (link_label) @markup.link.label)
-
-(full_reference_link (link_text) @markup.link.text)
-
-(link_reference_definition ":" @punctuation.delimiter)
-
-(inline_link (inline_link_destination) @markup.link.url)
-
-(autolink
-  [
-    "<"
-    ">"
-  ] @punctuation.bracket)
-
-(link_text
-  [
-    "["
-    "]"
-  ] @punctuation.bracket)
-
-(key_value (value) @string)
-
-(key_value (key) @attribute)
-
-(key_value "=" @operator)
-
-; NOTE: Not perfectly semantically accurate, but a fair approximation.
-(identifier) @string.special.symbol
+(language_marker) @punctuation.delimiter
 
 [
-  (class)
-  (class_name)
-] @type
+  (block_quote)
+  (block_quote_marker)
+] @markup.quote
 
-(block_attribute
+(table_header) @markup.heading
+
+(table_header "|" @punctuation.special)
+
+(table_row "|" @punctuation.special)
+
+(table_separator) @punctuation.special
+
+(table_caption (marker) @punctuation.special)
+
+(table_caption) @label
+
+[
+  (list_marker_dash)
+  (list_marker_plus)
+  (list_marker_star)
+  (list_marker_definition)
+] @markup.list.unnumbered
+
+[
+  (list_marker_decimal_period)
+  (list_marker_decimal_paren)
+  (list_marker_decimal_parens)
+  (list_marker_lower_alpha_period)
+  (list_marker_lower_alpha_paren)
+  (list_marker_lower_alpha_parens)
+  (list_marker_upper_alpha_period)
+  (list_marker_upper_alpha_paren)
+  (list_marker_upper_alpha_parens)
+  (list_marker_lower_roman_period)
+  (list_marker_lower_roman_paren)
+  (list_marker_lower_roman_parens)
+  (list_marker_upper_roman_period)
+  (list_marker_upper_roman_paren)
+  (list_marker_upper_roman_parens)
+] @markup.list.numbered
+
+(list_marker_task
+  (unchecked)) @markup.list.unchecked
+
+(list_marker_task
+  (checked)) @markup.list.checked
+
+(checked
   [
-    "{"
-    "}"
-  ] @punctuation.bracket)
+    "x"
+    "X"
+  ] @constant.builtin.boolean) @markup.list.checked
 
-(inline_attribute
-  [
-    "{"
-    "}"
-  ] @punctuation.bracket)
+[
+  (ellipsis)
+  (en_dash)
+  (em_dash)
+  (quotation_marks)
+] @punctuation.special
 
-(span
-  [
-    "["
-    "]"
-  ] @punctuation.bracket)
+(list_item (term) @constructor)
 
-(inline_comment) @comment.line
+(quotation_marks) @markup.quote
 
-(comment) @comment.block
+((quotation_marks) @constant.character.escape
+  (#any-of? @constant.character.escape "\\\"" "\\'"))
 
-(verbatim) @markup.raw
+[
+  (hard_line_break)
+  (backslash_escape)
+] @constant.character.escape
 
-(raw_inline) @markup.raw
+(emphasis) @markup.italic
 
-(math) @markup.raw
+(strong) @markup.bold
+
+(symbol) @string.special.symbol
+
+(delete) @markup.strikethrough
+
+; TEMP: Scope not available, with no appropriate alternative.
+(insert) @markup.insert
+
+; TEMP: Scope not available, with no appropriate alternative.
+(highlighted) @markup.highlighted
+
+; TEMP: Scope not available, with no appropriate alternative.
+(superscript) @markup.superscript
+
+; TEMP: Scope not available, with no appropriate alternative.
+(subscript) @markup.subscript
 
 [
   (emphasis_begin)
@@ -144,147 +168,123 @@
   (raw_inline_marker_end)
 ] @punctuation.bracket
 
-; TEMP: Scope not available, with no appropriate alternative.
-(subscript) @markup.subscript
+(math) @markup.raw
 
-; TEMP: Scope not available, with no appropriate alternative.
-(superscript) @markup.superscript
+(verbatim) @markup.raw
 
-; TEMP: Scope not available, with no appropriate alternative.
-(highlighted) @markup.highlighted
+(raw_inline) @markup.raw
 
-; TEMP: Scope not available, with no appropriate alternative.
-(insert) @markup.insert
+(comment) @comment.block
 
-(delete) @markup.strikethrough
+(inline_comment) @comment.line
 
-(symbol) @string.special.symbol
-
-(strong) @markup.bold
-
-(emphasis) @markup.italic
-
-[
-  (hard_line_break)
-  (backslash_escape)
-] @constant.character.escape
-
-((quotation_marks) @constant.character.escape
-  (#any-of? @constant.character.escape "\\\"" "\\'"))
-
-(quotation_marks) @markup.quote
-
-(list_item (term) @constructor)
-
-[
-  (ellipsis)
-  (en_dash)
-  (em_dash)
-  (quotation_marks)
-] @punctuation.special
-
-(checked
+(span
   [
-    "x"
-    "X"
-  ] @constant.builtin.boolean) @markup.list.checked
+    "["
+    "]"
+  ] @punctuation.bracket)
 
-(list_marker_task
-  (checked)) @markup.list.checked
+(inline_attribute
+  [
+    "{"
+    "}"
+  ] @punctuation.bracket)
 
-(list_marker_task
-  (unchecked)) @markup.list.unchecked
-
-[
-  (list_marker_decimal_period)
-  (list_marker_decimal_paren)
-  (list_marker_decimal_parens)
-  (list_marker_lower_alpha_period)
-  (list_marker_lower_alpha_paren)
-  (list_marker_lower_alpha_parens)
-  (list_marker_upper_alpha_period)
-  (list_marker_upper_alpha_paren)
-  (list_marker_upper_alpha_parens)
-  (list_marker_lower_roman_period)
-  (list_marker_lower_roman_paren)
-  (list_marker_lower_roman_parens)
-  (list_marker_upper_roman_period)
-  (list_marker_upper_roman_paren)
-  (list_marker_upper_roman_parens)
-] @markup.list.numbered
+(block_attribute
+  [
+    "{"
+    "}"
+  ] @punctuation.bracket)
 
 [
-  (list_marker_dash)
-  (list_marker_plus)
-  (list_marker_star)
-  (list_marker_definition)
-] @markup.list.unnumbered
+  (class)
+  (class_name)
+] @type
 
-(table_caption) @label
+; NOTE: Not perfectly semantically accurate, but a fair approximation.
+(identifier) @string.special.symbol
 
-(table_caption (marker) @punctuation.special)
+(key_value "=" @operator)
 
-(table_separator) @punctuation.special
+(key_value (key) @attribute)
 
-(table_row "|" @punctuation.special)
+(key_value (value) @string)
 
-(table_header "|" @punctuation.special)
+(link_text
+  [
+    "["
+    "]"
+  ] @punctuation.bracket)
 
-(table_header) @markup.heading
+(autolink
+  [
+    "<"
+    ">"
+  ] @punctuation.bracket)
+
+(inline_link (inline_link_destination) @markup.link.url)
+
+(link_reference_definition ":" @punctuation.delimiter)
+
+(full_reference_link (link_text) @markup.link.text)
+
+(full_reference_link (link_label) @markup.link.label)
+
+(collapsed_reference_link "[]" @punctuation.bracket)
+
+(full_reference_link
+  [
+    "["
+    "]"
+  ] @punctuation.bracket)
+
+(collapsed_reference_link (link_text) @markup.link.text)
+
+(inline_link (link_text) @markup.link.text)
+
+(full_reference_image (link_label) @markup.link.label)
+
+(full_reference_image
+  [
+    "["
+    "]"
+  ] @punctuation.bracket)
+
+(collapsed_reference_image "[]" @punctuation.bracket)
+
+(image_description
+  [
+    "!["
+    "]"
+  ] @punctuation.bracket)
+
+(image_description) @label
+
+(link_reference_definition
+  [
+    "["
+    "]"
+  ] @punctuation.bracket)
+
+(link_reference_definition (link_label) @markup.link.label)
+
+(inline_link_destination
+  [
+    "("
+    ")"
+  ] @punctuation.bracket)
 
 [
-  (block_quote)
-  (block_quote_marker)
-] @markup.quote
+  (autolink)
+  (inline_link_destination)
+  (link_destination)
+] @markup.link.url
 
-(language_marker) @punctuation.delimiter
+(footnote (reference_label) @markup.link.label)
 
-(inline_attribute _ @attribute)
-
-(language) @type.enum.variant
+(footnote_reference (reference_label) @markup.link.label)
 
 [
-  (code_block_marker_begin)
-  (code_block_marker_end)
-  (raw_block_marker_begin)
-  (raw_block_marker_end)
+  (footnote_marker_begin)
+  (footnote_marker_end)
 ] @punctuation.bracket
-
-[
-  (code_block)
-  (raw_block)
-  (frontmatter)
-] @markup.raw.block
-
-[
-  (div_marker_begin)
-  (div_marker_end)
-] @tag
-
-(thematic_break) @special
-
-((heading
-  (marker) @markup.heading.marker) @markup.heading.1
-  (#eq? @markup.heading.marker "# "))
-
-((heading
-  (marker) @markup.heading.marker) @markup.heading.2
-  (#eq? @markup.heading.marker "## "))
-
-((heading
-  (marker) @markup.heading.marker) @markup.heading.3
-  (#eq? @markup.heading.marker "### "))
-
-((heading
-  (marker) @markup.heading.marker) @markup.heading.4
-  (#eq? @markup.heading.marker "##### "))
-
-((heading
-  (marker) @markup.heading.marker) @markup.heading.5
-  (#eq? @markup.heading.marker "###### "))
-
-((heading
-  (marker) @markup.heading.marker) @markup.heading.6
-  (#eq? @markup.heading.marker "####### "))
-
-(heading) @markup.heading
