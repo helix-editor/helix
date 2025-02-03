@@ -228,7 +228,7 @@
       "isnot"
     ]
   right: (_) @type)
-; types in "is" comparisions
+; types in "is" comparisons
 
 (except_branch
   values: (expression_list
