@@ -5545,8 +5545,8 @@ fn wonly(cx: &mut Context) {
 fn select_register(cx: &mut Context) {
     cx.editor.autoinfo = Some(Info::from_registers(&cx.editor.registers));
     cx.on_next_key(move |cx, event| {
+        cx.editor.autoinfo = None;
         if let Some(ch) = event.char() {
-            cx.editor.autoinfo = None;
             cx.editor.selected_register = Some(ch);
         }
     })
@@ -5555,8 +5555,8 @@ fn select_register(cx: &mut Context) {
 fn insert_register(cx: &mut Context) {
     cx.editor.autoinfo = Some(Info::from_registers(&cx.editor.registers));
     cx.on_next_key(move |cx, event| {
+        cx.editor.autoinfo = None;
         if let Some(ch) = event.char() {
-            cx.editor.autoinfo = None;
             cx.register = Some(ch);
             paste(
                 cx.editor,
