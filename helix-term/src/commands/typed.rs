@@ -1604,7 +1604,7 @@ fn tree_sitter_scopes(
     Ok(())
 }
 
-fn tree_sitter_injection(
+fn tree_sitter_injections(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
     event: PromptEvent,
@@ -1613,20 +1613,57 @@ fn tree_sitter_injection(
         return Ok(());
     }
 
-    let (view, doc) = current!(cx.editor);
+    let doc = doc!(cx.editor);
 
     let syntax = doc
         .syntax()
         .context("No tree-sitter grammar found for this file.")?;
 
-    let range = doc.selection(view.id).primary();
+    let mut ranges = vec![];
 
-    let language_name = syntax
-        .injection_for_range(range.from(), range.to())
-        .map(|language_id| syntax.layer_config(language_id).language_name.clone())
-        .context("No injection layer found for the current range.")?;
+    for (language_id, layer) in &syntax.layers {
+        let language_name = &syntax.layer_config(language_id).language_name;
+        for range in &layer.ranges {
+            ranges.push((range, language_name.clone()));
+        }
+    }
 
-    cx.editor.set_status(language_name);
+    if ranges.is_empty() {
+        bail!("No injections found for the current file");
+    }
+
+    ranges.sort_unstable_by(|(range_a, _), (range_b, _)| {
+        range_a
+            .start_byte
+            .cmp(&range_b.start_byte)
+            .then(range_a.end_byte.cmp(&range_b.end_byte))
+    });
+
+    let char_count = doc.text().len_chars();
+
+    let mut contents = String::new();
+
+    for (range, language_name) in ranges {
+        let range = if range.end_byte < char_count {
+            format!("`{}` - `{}`", range.start_byte, range.end_byte)
+        } else {
+            "full file".into()
+        };
+        writeln!(contents, "**{}**: {}", language_name, range)?;
+    }
+
+    let callback = async move {
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
+                let popup = Popup::new("hover", contents).auto_close(true);
+                compositor.replace_or_push("hover", popup);
+            },
+        ));
+        Ok(call)
+    };
+
+    cx.jobs.callback(callback);
 
     Ok(())
 }
@@ -3162,10 +3199,10 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         },
     },
     TypableCommand {
-        name: "tree-sitter-injection",
+        name: "tree-sitter-injections",
         aliases: &[],
-        doc: "Display injected language for the primary range.",
-        fun: tree_sitter_injection,
+        doc: "Display injected languages for the file.",
+        fun: tree_sitter_injections,
         signature: CommandSignature::none(),
     },
     TypableCommand {
