@@ -1,5 +1,69 @@
 (comment) @comment
 
+[
+  "."
+  ","
+  "|"
+] @punctuation.delimiter
+
+[
+  "++"
+  "+"
+  "+."
+  "-"
+  "-."
+  "*"
+  "**"
+  "*."
+  "/."
+  "<="
+  "=="
+  "==="
+  "!"
+  "!="
+  "!=="
+  ">="
+  "&&"
+  "||"
+  "="
+  ":="
+  "->"
+  "|>"
+  ":>"
+  "+="
+  (uncurry)
+] @operator
+
+; Explicitly enclose these operators with binary_expression
+; to avoid confusion with JSX tag delimiters
+(binary_expression ["<" ">" "/"] @operator)
+
+[
+  "("
+  ")"
+  "{"
+  "}"
+  "["
+  "]"
+] @punctuation.bracket
+
+(polyvar_type
+  [
+   "["
+   "[>"
+   "[<"
+   "]"
+  ] @punctuation.bracket)
+
+[
+  "~"
+  "?"
+  "=>"
+  ".."
+  "..."
+] @punctuation.special
+
+
 ; Identifiers
 ;------------
 
@@ -142,69 +206,6 @@
   "downto"
   "while"
 ] @keyword.control.conditional
-
-[
-  "."
-  ","
-  "|"
-] @punctuation.delimiter
-
-[
-  "++"
-  "+"
-  "+."
-  "-"
-  "-."
-  "*"
-  "**"
-  "*."
-  "/."
-  "<="
-  "=="
-  "==="
-  "!"
-  "!="
-  "!=="
-  ">="
-  "&&"
-  "||"
-  "="
-  ":="
-  "->"
-  "|>"
-  ":>"
-  "+="
-  (uncurry)
-] @operator
-
-; Explicitly enclose these operators with binary_expression
-; to avoid confusion with JSX tag delimiters
-(binary_expression ["<" ">" "/"] @operator)
-
-[
-  "("
-  ")"
-  "{"
-  "}"
-  "["
-  "]"
-] @punctuation.bracket
-
-(polyvar_type
-  [
-   "["
-   "[>"
-   "[<"
-   "]"
-  ] @punctuation.bracket)
-
-[
-  "~"
-  "?"
-  "=>"
-  ".."
-  "..."
-] @punctuation.special
 
 (ternary_expression ["?" ":"] @operator)
 

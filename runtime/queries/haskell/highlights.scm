@@ -280,6 +280,20 @@
 
 
 ;; ----------------------------------------------------------------------------
+;; Literals and comments
+
+(integer) @constant.numeric.integer
+(exp_negation) @constant.numeric.integer
+(exp_literal (float)) @constant.numeric.float
+(char) @constant.character
+(string) @string
+
+(comment) @comment
+
+(con_unit [ "(" ")" ] @constant.builtin) ; unit, as in ()
+
+
+;; ----------------------------------------------------------------------------
 ;; Keywords, operators, includes
 
 [
@@ -352,6 +366,8 @@
 ;; ----------------------------------------------------------------------------
 ;; Functions and variables
 
+(variable) @variable
+
 (signature name: (variable) @type)
 (function
   name: (variable) @function
@@ -366,7 +382,6 @@
 (exp_apply . (exp_name (variable) @function))
 (exp_apply . (exp_name (qualified_variable (variable) @function)))
 
-(variable) @variable
 (pat_wildcard) @variable
 
 ;; ----------------------------------------------------------------------------

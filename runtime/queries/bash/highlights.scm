@@ -48,6 +48,9 @@
 
 (comment) @comment
 
+((word) @constant.builtin.boolean
+  (#any-of? @constant.builtin.boolean "true" "false"))
+
 (function_definition name: (word) @function)
 
 (file_descriptor) @constant.numeric.integer
@@ -56,7 +59,7 @@
   (command_substitution)
   (process_substitution)
   (expansion)
-]@embedded
+] @embedded
 
 [
   "$"
