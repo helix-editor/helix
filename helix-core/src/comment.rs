@@ -1,6 +1,7 @@
 //! This module contains the functionality toggle comments on lines over the selection
 //! using the comment character defined in the user's `languages.toml`
 
+use slotmap::DefaultKey as LayerId;
 use smallvec::SmallVec;
 
 use crate::{syntax::BlockCommentToken, Change, Range, Rope, RopeSlice, Syntax, Tendril};
@@ -25,6 +26,38 @@ pub fn get_comment_token<'a, S: AsRef<str>>(
         .max_by_key(|token| token.len())
 }
 
+/// For a given range in the document, get the most tightly encompassing
+/// injection layer corresponding to that range.
+pub fn injection_for_range(syntax: &Syntax, from: usize, to: usize) -> Option<LayerId> {
+    let mut best_fit = None;
+    let mut min_gap = usize::MAX;
+
+    for (layer_id, layer) in &syntax.layers {
+        for ts_range in &layer.ranges {
+            let is_encompassing = ts_range.start_byte <= from && ts_range.end_byte >= to;
+            if is_encompassing {
+                let this_gap = ts_range.end_byte - ts_range.start_byte;
+                let config = syntax.layer_config(layer_id);
+                let has_comment_tokens =
+                    config.comment_tokens.is_some() || config.block_comment_tokens.is_some();
+
+                if this_gap < min_gap
+                        // ignore the language family for which it won't make
+                        // sense to consider their comment.
+                        //
+                        // This includes, for instance, `comment`, `jsdoc`, `regex`
+                        && has_comment_tokens
+                {
+                    best_fit = Some(layer_id);
+                    min_gap = this_gap;
+                }
+            }
+        }
+    }
+
+    best_fit
+}
+
 pub fn get_injected_tokens(
     syntax: Option<&Syntax>,
     start: usize,
@@ -33,8 +66,7 @@ pub fn get_injected_tokens(
     // Find the injection with the most tightly encompassing range.
     syntax
         .and_then(|syntax| {
-            syntax
-                .injection_for_range(start, end)
+            injection_for_range(syntax, start, end)
                 .map(|language_id| syntax.layer_config(language_id))
                 .map(|config| {
                     (
