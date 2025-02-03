@@ -1604,6 +1604,33 @@ fn tree_sitter_scopes(
     Ok(())
 }
 
+fn tree_sitter_injection(
+    cx: &mut compositor::Context,
+    _args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let (view, doc) = current!(cx.editor);
+
+    let syntax = doc
+        .syntax()
+        .context("No tree-sitter grammar found for this file.")?;
+
+    let range = doc.selection(view.id).primary();
+
+    let language_name = syntax
+        .injection_for_range(range.from(), range.to())
+        .map(|language_id| syntax.layer_config(language_id).language_name.clone())
+        .context("No injection layer found for the current range.")?;
+
+    cx.editor.set_status(language_name);
+
+    Ok(())
+}
+
 fn tree_sitter_highlight_name(
     cx: &mut compositor::Context,
     _args: Args,
@@ -3133,6 +3160,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
             positionals: (0, Some(0)),
             ..Signature::DEFAULT
         },
+    },
+    TypableCommand {
+        name: "tree-sitter-injection",
+        aliases: &[],
+        doc: "Display injected language for the primary range.",
+        fun: tree_sitter_injection,
+        signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "debug-start",

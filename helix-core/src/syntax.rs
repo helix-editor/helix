@@ -1437,6 +1437,37 @@ impl Syntax {
         Arc::clone(&loader.language_configs[language_id])
     }
 
+    /// For a given range in the document, get the most tightly encompassing
+    /// injection layer corresponding to that range.
+    pub fn injection_for_range(&self, from: usize, to: usize) -> Option<LayerId> {
+        let mut best_fit = None;
+        let mut min_gap = usize::MAX;
+
+        for (layer_id, layer) in &self.layers {
+            for ts_range in &layer.ranges {
+                let is_encompassing = ts_range.start_byte <= from && ts_range.end_byte >= to;
+                if is_encompassing {
+                    let this_gap = ts_range.end_byte - ts_range.start_byte;
+                    if this_gap < min_gap
+                                // ignore the "comment" language family
+                                // as that would mean we can't uncomment anything, or
+                                // the comments would be incorrect.
+                                //
+                                // Since uncommenting would attempt to use the comment
+                                // language's non-existing comment tokens
+                                // TODO: add this as a language configuration key?
+                                && !matches!(self.layer_config(layer_id).language_name.as_ref(), "jsdoc" | "comment")
+                    {
+                        best_fit = Some(layer_id);
+                        min_gap = this_gap;
+                    }
+                }
+            }
+        }
+
+        best_fit
+    }
+
     pub fn tree(&self) -> &Tree {
         self.layers[self.root].tree()
     }
