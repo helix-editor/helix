@@ -3623,13 +3623,14 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
 
     let mut ranges = SmallVec::with_capacity(selection.len());
 
-    let continue_comment_tokens =
-        if comment_continuation == CommentContinuation::Enabled && config.continue_comments {
-            doc.language_config()
-                .and_then(|config| config.comment_tokens.as_ref())
-        } else {
-            None
-        };
+    let continue_comments =
+        comment_continuation == CommentContinuation::Enabled && config.continue_comments;
+
+    let doc_default_tokens = doc
+        .language_config()
+        .and_then(|config| config.comment_tokens.as_ref());
+
+    let syntax = doc.syntax();
 
     let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
         // the line number, where the cursor is currently
@@ -3646,8 +3647,9 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
 
         let above_next_new_line_num = next_new_line_num.saturating_sub(1);
 
-        let continue_comment_token = continue_comment_tokens
-            .and_then(|tokens| comment::get_comment_token(text, tokens, curr_line_num));
+        let continue_comment_token =
+            comment::get_comment_token(syntax, text, doc_default_tokens, curr_line_num)
+                .filter(|_| continue_comments);
 
         // Index to insert newlines after, as well as the char width
         // to use to compensate for those inserted newlines.
@@ -3681,7 +3683,7 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
 
         if open == Open::Above && next_new_line_num == 0 {
             text.push_str(&indent);
-            if let Some(token) = continue_comment_token {
+            if let Some(ref token) = continue_comment_token {
                 text.push_str(token);
                 text.push(' ');
             }
@@ -3690,7 +3692,7 @@ fn open(cx: &mut Context, open: Open, comment_continuation: CommentContinuation)
             text.push_str(doc.line_ending.as_str());
             text.push_str(&indent);
 
-            if let Some(token) = continue_comment_token {
+            if let Some(ref token) = continue_comment_token {
                 text.push_str(token);
                 text.push(' ');
             }
@@ -4139,12 +4141,11 @@ pub mod insert {
         let mut global_offs = 0;
         let mut new_text = String::new();
 
-        let continue_comment_tokens = if config.continue_comments {
-            doc.language_config()
-                .and_then(|config| config.comment_tokens.as_ref())
-        } else {
-            None
-        };
+        let doc_default_comment_token = doc
+            .language_config()
+            .and_then(|config| config.comment_tokens.as_ref());
+
+        let syntax = doc.syntax();
 
         let mut transaction = Transaction::change_by_selection(contents, selection, |range| {
             // Tracks the number of trailing whitespace characters deleted by this selection.
@@ -4161,8 +4162,9 @@ pub mod insert {
             let current_line = text.char_to_line(pos);
             let line_start = text.line_to_char(current_line);
 
-            let continue_comment_token = continue_comment_tokens
-                .and_then(|tokens| comment::get_comment_token(text, tokens, current_line));
+            let continue_comment_token =
+                comment::get_comment_token(syntax, text, doc_default_comment_token, current_line)
+                    .filter(|_| config.continue_comments);
 
             let (from, to, local_offs) = if let Some(idx) =
                 text.slice(line_start..pos).last_non_whitespace_char()
@@ -4197,7 +4199,7 @@ pub mod insert {
                     new_text.reserve_exact(line_ending.len() + indent.len() + token.len() + 1);
                     new_text.push_str(line_ending);
                     new_text.push_str(&indent);
-                    new_text.push_str(token);
+                    new_text.push_str(&token);
                     new_text.push(' ');
                     new_text.chars().count()
                 } else if on_auto_pair {
