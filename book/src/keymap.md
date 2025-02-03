@@ -70,6 +70,7 @@ Normal mode is the default mode when you launch helix. You can return to it from
 | -----       | -----------                                                          | -------                   |
 | `r`         | Replace with a character                                             | `replace`                 |
 | `R`         | Replace with yanked text                                             | `replace_with_yanked`     |
+| `~`         | Switch case of the selected text                                     | `switch_to_alternate_case`|
 | `i`         | Insert before selection                                              | `insert_mode`             |
 | `a`         | Insert after selection (append)                                      | `append_mode`             |
 | `I`         | Insert at the start of the line                                      | `insert_at_line_start`    |
