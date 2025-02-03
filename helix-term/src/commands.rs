@@ -532,6 +532,7 @@ impl MappableCommand {
         wonly, "Close windows except current",
         select_register, "Select register",
         insert_register, "Insert register",
+        copy_between_registers, "Copy between two registers",
         align_view_middle, "Align view middle",
         align_view_top, "Align view top",
         align_view_center, "Align view center",
@@ -5567,6 +5568,41 @@ fn insert_register(cx: &mut Context) {
             );
         }
     })
+}
+
+fn copy_between_registers(cx: &mut Context) {
+    cx.editor.autoinfo = Some(Info::from_registers(&cx.editor.registers));
+    cx.on_next_key(move |cx, event| {
+        cx.editor.autoinfo = None;
+
+        let Some(source) = event.char() else {
+            return;
+        };
+
+        let Some(values) = cx.editor.registers.read(source, cx.editor) else {
+            cx.editor.set_error(format!("register {source} is empty"));
+            return;
+        };
+        let values: Vec<_> = values.map(|value| value.to_string()).collect();
+
+        cx.editor.autoinfo = Some(Info::from_registers(&cx.editor.registers));
+        cx.on_next_key(move |cx, event| {
+            cx.editor.autoinfo = None;
+
+            let Some(dest) = event.char() else {
+                return;
+            };
+
+            let n_values = values.len();
+            match cx.editor.registers.write(dest, values) {
+                Ok(_) => cx.editor.set_status(format!(
+                    "yanked {n_values} value{} from register {source} to {dest}",
+                    if n_values == 1 { "" } else { "s" }
+                )),
+                Err(err) => cx.editor.set_error(err.to_string()),
+            }
+        });
+    });
 }
 
 fn align_view_top(cx: &mut Context) {
