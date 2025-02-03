@@ -1628,10 +1628,6 @@ fn tree_sitter_injections(
         }
     }
 
-    if ranges.is_empty() {
-        bail!("No injections found for the current file");
-    }
-
     ranges.sort_unstable_by(|(range_a, _), (range_b, _)| {
         range_a
             .start_byte
@@ -1643,19 +1639,52 @@ fn tree_sitter_injections(
 
     let mut contents = String::new();
 
-    for (range, language_name) in ranges {
-        let range = if range.end_byte < char_count {
-            format!("`{}` - `{}`", range.start_byte, range.end_byte)
+    let mut stack = Vec::new();
+
+    let mut ranges = ranges.iter().peekable();
+
+    while let Some((range, language_name)) = ranges.next() {
+        while let Some((prev_start, prev_end)) = stack.last() {
+            let is_contained = range.end_byte <= *prev_end && range.start_byte >= *prev_start;
+            if is_contained {
+                break;
+            }
+            stack.pop();
+        }
+
+        let language_range = if range.end_byte < char_count {
+            format!("[{}, {}]", range.start_byte, range.end_byte)
         } else {
-            "full file".into()
+            format!("[0, {}]", char_count)
         };
-        writeln!(contents, "**{}**: {}", language_name, range)?;
+
+        let indent = stack.len() * 2;
+        let indent = format!("{:indent$}", "");
+
+        let next_is_contained = ranges.peek().as_ref().is_some_and(|(next, _)| {
+            range.end_byte > next.end_byte && range.start_byte < next.start_byte
+        });
+
+        let children = if next_is_contained {
+            format!("\n{indent}  injections:")
+        } else {
+            "".into()
+        };
+
+        writeln!(
+            contents,
+            "{indent}- language: {language_name}
+{indent}  range: {language_range}{children}",
+        )?;
+
+        stack.push((range.start_byte, range.end_byte));
     }
 
     let callback = async move {
         let call: job::Callback = Callback::EditorCompositor(Box::new(
             move |editor: &mut Editor, compositor: &mut Compositor| {
-                let contents = ui::Markdown::new(contents, editor.syn_loader.clone());
+                let contents =
+                    ui::Markdown::new(format!("```yaml\n{contents}```"), editor.syn_loader.clone());
                 let popup = Popup::new("hover", contents).auto_close(true);
                 compositor.replace_or_push("hover", popup);
             },
