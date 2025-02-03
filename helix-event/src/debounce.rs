@@ -28,7 +28,10 @@ pub trait AsyncHook: Sync + Send + 'static + Sized {
         // so it should only be reached in case of total CPU overload.
         // However, a bounded channel is much more efficient so it's nice to use here
         let (tx, rx) = mpsc::channel(128);
-        tokio::spawn(run(self, rx));
+        // only spawn worker if we are inside runtime to avoid having to spawn a runtime for unrelated unit tests
+        if tokio::runtime::Handle::try_current().is_ok() {
+            tokio::spawn(run(self, rx));
+        }
         tx
     }
 }

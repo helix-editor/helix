@@ -14,7 +14,8 @@
 "ui.virtual" = "indent"
 "ui.virtual.ruler" = { bg = "line-fg" }
 "ui.cursor.match" = { bg = "cyan" }
-"ui.cursor" = { bg = "white" }
+"ui.cursor" = { bg = "#777777" }
+"ui.cursor.primary" = { bg = "white" }
 "ui.debug" = { fg = "orange" }
 "ui.highlight.frameline" = { bg = "#da8581" }
 "ui.help" = { fg = "text", bg = "bg" }

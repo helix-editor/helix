@@ -27,6 +27,7 @@ string = "silver"
 "constant.character.escape" = "honey"
 # used for lifetimes
 label = "honey"
+tabstop = { modifiers = ["italic"], bg = "bossanova" }
 
 "markup.heading" = "lilac"
 "markup.bold" = { modifiers = ["bold"] }
@@ -55,8 +56,9 @@ label = "honey"
 "ui.text" = { fg = "lavender" }
 "ui.text.focus" = { fg = "white" }
 "ui.text.inactive" = "sirocco"
+"ui.text.directory" = { fg = "lilac" }
 "ui.virtual" = { fg = "comet" }
-"ui.virtual.ruler" = { bg = "revolver" }
+"ui.virtual.ruler" = { bg = "bossanova" }
 "ui.virtual.jump-label" = { fg = "apricot", modifiers = ["bold"] }
 
 "ui.virtual.indent-guide" = { fg = "comet" }

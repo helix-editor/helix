@@ -6,15 +6,9 @@
     flake-utils.url = "github:numtide/flake-utils";
     rust-overlay = {
       url = "github:oxalica/rust-overlay";
-      inputs = {
-        nixpkgs.follows = "nixpkgs";
-        flake-utils.follows = "flake-utils";
-      };
-    };
-    crane = {
-      url = "github:ipetkov/crane";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+    crane.url = "github:ipetkov/crane";
   };
 
   outputs = {
@@ -114,7 +108,7 @@
         if pkgs.stdenv.isLinux
         then pkgs.stdenv
         else pkgs.clangStdenv;
-      rustFlagsEnv = pkgs.lib.optionalString stdenv.isLinux "-C link-arg=-fuse-ld=lld -C target-cpu=native -Clink-arg=-Wl,--no-rosegment";
+      rustFlagsEnv = pkgs.lib.optionalString stdenv.isLinux "-C link-arg=-fuse-ld=lld -C target-cpu=native -Clink-arg=-Wl,--no-rosegment --cfg tokio_unstable";
       rustToolchain = pkgs.pkgsBuildHost.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
       craneLibMSRV = (crane.mkLib pkgs).overrideToolchain rustToolchain;
       craneLibStable = (crane.mkLib pkgs).overrideToolchain pkgs.pkgsBuildHost.rust-bin.stable.latest.default;
@@ -126,6 +120,7 @@
         # disable fetching and building of tree-sitter grammars in the helix-term build.rs
         HELIX_DISABLE_AUTO_GRAMMAR_BUILD = "1";
         buildInputs = [stdenv.cc.cc.lib];
+        nativeBuildInputs = [pkgs.installShellFiles];
         # disable tests
         doCheck = false;
         meta.mainProgram = "hx";
@@ -141,7 +136,10 @@
               cp contrib/Helix.desktop $out/share/applications
               cp logo.svg $out/share/icons/hicolor/scalable/apps/helix.svg
               cp contrib/helix.png $out/share/icons/hicolor/256x256/apps
+              installShellCompletion contrib/completion/hx.{bash,fish,zsh}
             '';
+            # set git revision for nix flake builds, see 'git_hash' in helix-loader/build.rs
+            HELIX_NIX_BUILD_REV = self.rev or self.dirtyRev or null;
           });
         helix = makeOverridableHelix self.packages.${system}.helix-unwrapped {};
         default = self.packages.${system}.helix;

@@ -5,6 +5,7 @@ members = [
   "helix-view",
   "helix-term",
   "helix-tui",
+  "helix-lsp-types",
   "helix-lsp",
   "helix-event",
   "helix-dap",
@@ -21,13 +22,12 @@ default-members = [
 
 [profile.release]
 lto = "thin"
-# debug = true
 
 [profile.opt]
 inherits = "release"
 lto = "fat"
 codegen-units = 1
-# strip = "debuginfo" # TODO: or strip = true
+strip = true
 opt-level = 3
 
 [profile.integration]
@@ -38,16 +38,20 @@ package.helix-term.opt-level = 2
 
 [workspace.dependencies]
 tree-sitter = { version = "0.22" }
-nucleo = "0.2.0"
+nucleo = "0.5.0"
 slotmap = "1.0.7"
-thiserror = "1.0"
+thiserror = "2.0"
+tempfile = "3.15.0"
+bitflags = "2.8"
+unicode-segmentation = "1.2"
+ropey = { version = "1.6.1", default-features = false, features = ["simd"] }
 
 [workspace.package]
-version = "24.3.0"
+version = "25.1.1"
 edition = "2021"
 authors = ["Blaž Hrastnik <blaz@mxxn.io>"]
 categories = ["editor"]
 repository = "https://github.com/helix-editor/helix"
 homepage = "https://helix-editor.com"
 license = "MPL-2.0"
-rust-version = "1.70"
+rust-version = "1.76"

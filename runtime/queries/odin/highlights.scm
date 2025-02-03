@@ -1,12 +1,20 @@
+
+; Variables
+
+(identifier) @variable
+
 [
   (calling_convention)
   (tag)
 ] @keyword.directive
 
 [
-  "import"
-  "package"
+ "package"
 ] @namespace
+
+[
+  "import" 
+] @keyword.control.import
 
 [
   "foreign"
@@ -200,7 +208,7 @@
 
 (struct . (identifier) @type)
 
-(field_type . (identifier) "." (identifier) @type)
+(field_type . (identifier) @keyword.storage.type "." (identifier) @type)
 
 (bit_set_type (identifier) @type ";")
 
@@ -248,6 +256,8 @@
 
 (using_statement (identifier) @namespace)
 
+(import_declaration (identifier) @keyword.storage.type)
+
 ; Parameters
 
 (parameter (identifier) @variable.parameter ":" "="? (identifier)? @constant)
@@ -259,7 +269,3 @@
 (call_expression argument: (identifier) @variable.parameter "=")
 
 (procedure_type (parameters (parameter (identifier) @variable.parameter)))
-
-; Variables
-
-(identifier) @variable

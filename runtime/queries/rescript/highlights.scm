@@ -1,5 +1,69 @@
 (comment) @comment
 
+[
+  "."
+  ","
+  "|"
+] @punctuation.delimiter
+
+[
+  "++"
+  "+"
+  "+."
+  "-"
+  "-."
+  "*"
+  "**"
+  "*."
+  "/."
+  "<="
+  "=="
+  "==="
+  "!"
+  "!="
+  "!=="
+  ">="
+  "&&"
+  "||"
+  "="
+  ":="
+  "->"
+  "|>"
+  ":>"
+  "+="
+  (uncurry)
+] @operator
+
+; Explicitly enclose these operators with binary_expression
+; to avoid confusion with JSX tag delimiters
+(binary_expression ["<" ">" "/"] @operator)
+
+[
+  "("
+  ")"
+  "{"
+  "}"
+  "["
+  "]"
+] @punctuation.bracket
+
+(polyvar_type
+  [
+   "["
+   "[>"
+   "[<"
+   "]"
+  ] @punctuation.bracket)
+
+[
+  "~"
+  "?"
+  "=>"
+  ".."
+  "..."
+] @punctuation.special
+
+
 ; Identifiers
 ;------------
 
@@ -10,10 +74,9 @@
 [
   (type_identifier)
   (unit_type)
+  (list)
+  (list_pattern)
 ] @type
-
-(list ["list{" "}"] @type)
-(list_pattern ["list{" "}"] @type)
 
 [
   (variant_identifier)
@@ -72,14 +135,16 @@
 ; single parameter with no parens
 (function parameter: (value_identifier) @variable.parameter)
 
+; first-level descructuring (required for nvim-tree-sitter as it only matches direct
+; children and the above patterns do not match destructuring patterns in NeoVim)
+(parameter (tuple_pattern (tuple_item_pattern (value_identifier) @variable.parameter)))
+(parameter (array_pattern (value_identifier) @variable.parameter))
+(parameter (record_pattern (value_identifier) @variable.parameter))
+
 ; Meta
 ;-----
 
-[
- "@"
- "@@"
- (decorator_identifier)
-] @keyword.directive
+(decorator_identifier) @keyword.directive
 
 (extension_identifier) @keyword
 ("%") @keyword
@@ -87,7 +152,7 @@
 ; Misc
 ;-----
 
-; (subscript_expression index: (string) @attribute)
+(subscript_expression index: (string) @attribute)
 (polyvar_type_pattern "#" @constant)
 
 [
@@ -101,18 +166,21 @@
   "external"
   "let"
   "module"
+  "mutable"
   "private"
   "rec"
   "type"
   "and"
   "assert"
-  "async"
   "await"
   "with"
-  "unpack"
-] @keyword.storage.type
+  "lazy"
+  "constraint"
+] @keyword
 
-"mutable" @keyword.storage.modifier
+((function "async" @keyword.storage))
+
+(module_unpack "unpack" @keyword)
 
 [
   "if"
@@ -138,68 +206,6 @@
   "downto"
   "while"
 ] @keyword.control.conditional
-
-[
-  "."
-  ","
-  "|"
-] @punctuation.delimiter
-
-[
-  "++"
-  "+"
-  "+."
-  "-"
-  "-."
-  "*"
-  "**"
-  "*."
-  "/."
-  "<="
-  "=="
-  "==="
-  "!"
-  "!="
-  "!=="
-  ">="
-  "&&"
-  "||"
-  "="
-  ":="
-  "->"
-  "|>"
-  ":>"
-  (uncurry)
-] @operator
-
-; Explicitly enclose these operators with binary_expression
-; to avoid confusion with JSX tag delimiters
-(binary_expression ["<" ">" "/"] @operator)
-
-[
-  "("
-  ")"
-  "{"
-  "}"
-  "["
-  "]"
-] @punctuation.bracket
-
-(polyvar_type
-  [
-   "["
-   "[>"
-   "[<"
-   "]"
-  ] @punctuation.bracket)
-
-[
-  "~"
-  "?"
-  "=>"
-  ".."
-  "..."
-] @punctuation.special
 
 (ternary_expression ["?" ":"] @operator)
 

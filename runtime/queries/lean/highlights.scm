@@ -1,3 +1,8 @@
+; Variables
+(identifier) @variable
+
+; Namespaces
+
 (open
   namespace: (identifier) @namespace)
 (namespace
@@ -212,6 +217,3 @@
 
 ;; Error
 (ERROR) @error
-
-; Variables
-(identifier) @variable

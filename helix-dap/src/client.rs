@@ -157,8 +157,8 @@ impl Client {
         )
     }
 
-    pub fn starting_request_args(&self) -> &Option<Value> {
-        &self.starting_request_args
+    pub fn starting_request_args(&self) -> Option<&Value> {
+        self.starting_request_args.as_ref()
     }
 
     pub async fn tcp_process(

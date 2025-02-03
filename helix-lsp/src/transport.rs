@@ -1,4 +1,8 @@
-use crate::{jsonrpc, Error, LanguageServerId, Result};
+use crate::{
+    jsonrpc,
+    lsp::{self, notification::Notification as _},
+    Error, LanguageServerId, Result,
+};
 use anyhow::Context;
 use log::{error, info};
 use serde::{Deserialize, Serialize};
@@ -289,11 +293,10 @@ impl Transport {
                     }
 
                     // Hack: inject a terminated notification so we trigger code that needs to happen after exit
-                    use lsp_types::notification::Notification as _;
                     let notification =
                         ServerMessage::Call(jsonrpc::Call::Notification(jsonrpc::Notification {
                             jsonrpc: None,
-                            method: lsp_types::notification::Exit::METHOD.to_string(),
+                            method: lsp::notification::Exit::METHOD.to_string(),
                             params: jsonrpc::Params::None,
                         }));
                     match transport
@@ -338,8 +341,8 @@ impl Transport {
 
         // Determine if a message is allowed to be sent early
         fn is_initialize(payload: &Payload) -> bool {
-            use lsp_types::{
-                notification::{Initialized, Notification},
+            use lsp::{
+                notification::Initialized,
                 request::{Initialize, Request},
             };
             match payload {
@@ -357,7 +360,7 @@ impl Transport {
         }
 
         fn is_shutdown(payload: &Payload) -> bool {
-            use lsp_types::request::{Request, Shutdown};
+            use lsp::request::{Request, Shutdown};
             matches!(payload, Payload::Request { value: jsonrpc::MethodCall { method, .. }, .. } if method == Shutdown::METHOD)
         }
 
@@ -370,12 +373,11 @@ impl Transport {
                     // server successfully initialized
                     is_pending = false;
 
-                    use lsp_types::notification::Notification;
                     // Hack: inject an initialized notification so we trigger code that needs to happen after init
                     let notification = ServerMessage::Call(jsonrpc::Call::Notification(jsonrpc::Notification {
                         jsonrpc: None,
 
-                        method: lsp_types::notification::Initialized::METHOD.to_string(),
+                        method: lsp::notification::Initialized::METHOD.to_string(),
                         params: jsonrpc::Params::None,
                     }));
                     let language_server_name = &transport.name;

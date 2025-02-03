@@ -1,9 +1,14 @@
 [
   (string)
   (raw_string)
+  (ansi_c_string)
   (heredoc_body)
-  (heredoc_start)
 ] @string
+
+[
+  (heredoc_start)
+  (heredoc_end)
+] @label
 
 (command_name) @function
 
@@ -43,6 +48,9 @@
 
 (comment) @comment
 
+((word) @constant.builtin.boolean
+  (#any-of? @constant.builtin.boolean "true" "false"))
+
 (function_definition name: (word) @function)
 
 (file_descriptor) @constant.numeric.integer
@@ -51,7 +59,7 @@
   (command_substitution)
   (process_substitution)
   (expansion)
-]@embedded
+] @embedded
 
 [
   "$"

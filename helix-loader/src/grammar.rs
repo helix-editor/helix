@@ -273,12 +273,12 @@ fn fetch_grammar(grammar: GrammarConfiguration) -> Result<FetchStatus> {
         }
 
         // ensure the remote matches the configured remote
-        if get_remote_url(&grammar_dir).map_or(true, |s| s != remote) {
+        if get_remote_url(&grammar_dir).as_ref() != Some(&remote) {
             set_remote(&grammar_dir, &remote)?;
         }
 
         // ensure the revision matches the configured revision
-        if get_revision(&grammar_dir).map_or(true, |s| s != revision) {
+        if get_revision(&grammar_dir).as_ref() != Some(&revision) {
             // Fetch the exact revision from the remote.
             // Supported by server-side git since v2.5.0 (July 2015),
             // enabled by default on major git hosts.
@@ -422,7 +422,7 @@ fn build_tree_sitter_library(
         }
     }
 
-    let recompile = needs_recompile(&library_path, &parser_path, &scanner_path)
+    let recompile = needs_recompile(&library_path, &parser_path, scanner_path.as_ref())
         .context("Failed to compare source and binary timestamps")?;
 
     if !recompile {
@@ -568,7 +568,7 @@ fn build_tree_sitter_library(
 fn needs_recompile(
     lib_path: &Path,
     parser_c_path: &Path,
-    scanner_path: &Option<PathBuf>,
+    scanner_path: Option<&PathBuf>,
 ) -> Result<bool> {
     if !lib_path.exists() {
         return Ok(true);

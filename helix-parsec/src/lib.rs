@@ -43,7 +43,7 @@ pub trait Parser<'a> {
 #[doc(hidden)]
 impl<'a, F, T> Parser<'a> for F
 where
-    F: Fn(&'a str) -> ParseResult<T>,
+    F: Fn(&'a str) -> ParseResult<'a, T>,
 {
     type Output = T;
 

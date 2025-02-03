@@ -36,12 +36,12 @@ use helix_loader::grammar::{get_language, load_runtime_file};
 
 pub use tree_cursor::TreeCursor;
 
-fn deserialize_regex<'de, D>(deserializer: D) -> Result<Option<Regex>, D::Error>
+fn deserialize_regex<'de, D>(deserializer: D) -> Result<Option<rope::Regex>, D::Error>
 where
     D: serde::Deserializer<'de>,
 {
     Option::<String>::deserialize(deserializer)?
-        .map(|buf| Regex::new(&buf).map_err(serde::de::Error::custom))
+        .map(|buf| rope::Regex::new(&buf).map_err(serde::de::Error::custom))
         .transpose()
 }
 
@@ -125,6 +125,9 @@ pub struct LanguageConfiguration {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub formatter: Option<FormatterConfiguration>,
 
+    /// If set, overrides `editor.path-completion`.
+    pub path_completion: Option<bool>,
+
     #[serde(default)]
     pub diagnostic_severity: Severity,
 
@@ -132,7 +135,7 @@ pub struct LanguageConfiguration {
 
     // content_regex
     #[serde(default, skip_serializing, deserialize_with = "deserialize_regex")]
-    pub injection_regex: Option<Regex>,
+    pub injection_regex: Option<rope::Regex>,
     // first_line_regex
     //
     #[serde(skip)]
@@ -616,7 +619,7 @@ pub enum CapturedNode<'a> {
     Grouped(Vec<Node<'a>>),
 }
 
-impl<'a> CapturedNode<'a> {
+impl CapturedNode<'_> {
     pub fn start_byte(&self) -> usize {
         match self {
             Self::Single(n) => n.start_byte(),
@@ -991,21 +994,32 @@ impl Loader {
             .cloned()
     }
 
-    pub fn language_config_for_language_id(&self, id: &str) -> Option<Arc<LanguageConfiguration>> {
+    pub fn language_config_for_language_id(
+        &self,
+        id: impl PartialEq<String>,
+    ) -> Option<Arc<LanguageConfiguration>> {
         self.language_configs
             .iter()
-            .find(|config| config.language_id == id)
+            .find(|config| id.eq(&config.language_id))
             .cloned()
     }
 
-    /// Unlike language_config_for_language_id, which only returns Some for an exact id, this
+    /// Unlike `language_config_for_language_id`, which only returns Some for an exact id, this
     /// function will perform a regex match on the given string to find the closest language match.
-    pub fn language_config_for_name(&self, name: &str) -> Option<Arc<LanguageConfiguration>> {
+    pub fn language_config_for_name(&self, slice: RopeSlice) -> Option<Arc<LanguageConfiguration>> {
+        // PERF: If the name matches up with the id, then this saves the need to do expensive regex.
+        let shortcircuit = self.language_config_for_language_id(slice);
+        if shortcircuit.is_some() {
+            return shortcircuit;
+        }
+
+        // If the name did not match up with a known id, then match on injection regex.
+
         let mut best_match_length = 0;
         let mut best_match_position = None;
         for (i, configuration) in self.language_configs.iter().enumerate() {
             if let Some(injection_regex) = &configuration.injection_regex {
-                if let Some(mat) = injection_regex.find(name) {
+                if let Some(mat) = injection_regex.find(slice.regex_input()) {
                     let length = mat.end() - mat.start();
                     if length > best_match_length {
                         best_match_position = Some(i);
@@ -1023,10 +1037,17 @@ impl Loader {
         capture: &InjectionLanguageMarker,
     ) -> Option<Arc<LanguageConfiguration>> {
         match capture {
-            InjectionLanguageMarker::Name(string) => self.language_config_for_name(string),
-            InjectionLanguageMarker::Filename(file) => self.language_config_for_file_name(file),
+            InjectionLanguageMarker::LanguageId(id) => self.language_config_for_language_id(*id),
+            InjectionLanguageMarker::Name(name) => self.language_config_for_name(*name),
+            InjectionLanguageMarker::Filename(file) => {
+                let path_str: Cow<str> = (*file).into();
+                self.language_config_for_file_name(Path::new(path_str.as_ref()))
+            }
             InjectionLanguageMarker::Shebang(shebang) => {
-                self.language_config_for_language_id(shebang)
+                let shebang_str: Cow<str> = (*shebang).into();
+                self.language_config_ids_by_shebang
+                    .get(shebang_str.as_ref())
+                    .and_then(|&id| self.language_configs.get(id).cloned())
             }
         }
     }
@@ -1430,8 +1451,11 @@ impl Syntax {
                 // The `captures` iterator borrows the `Tree` and the `QueryCursor`, which
                 // prevents them from being moved. But both of these values are really just
                 // pointers, so it's actually ok to move them.
-                let cursor_ref =
-                    unsafe { mem::transmute::<_, &'static mut QueryCursor>(&mut cursor) };
+                let cursor_ref = unsafe {
+                    mem::transmute::<&mut tree_sitter::QueryCursor, &mut tree_sitter::QueryCursor>(
+                        &mut cursor,
+                    )
+                };
 
                 // if reusing cursors & no range this resets to whole range
                 cursor_ref.set_byte_range(range.clone().unwrap_or(0..usize::MAX));
@@ -1736,7 +1760,7 @@ pub(crate) fn generate_edits(
 }
 
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::{iter, mem, ops, str, usize};
+use std::{iter, mem, ops, str};
 use tree_sitter::{
     Language as Grammar, Node, Parser, Point, Query, QueryCaptures, QueryCursor, QueryError,
     QueryMatch, Range, TextProvider, Tree,
@@ -1845,7 +1869,7 @@ struct HighlightIterLayer<'a> {
     depth: u32,
 }
 
-impl<'a> fmt::Debug for HighlightIterLayer<'a> {
+impl fmt::Debug for HighlightIterLayer<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("HighlightIterLayer").finish()
     }
@@ -2023,12 +2047,13 @@ impl HighlightConfiguration {
         for capture in query_match.captures {
             let index = Some(capture.index);
             if index == self.injection_language_capture_index {
-                let name = byte_range_to_str(capture.node.byte_range(), source);
-                injection_capture = Some(InjectionLanguageMarker::Name(name));
+                injection_capture = Some(InjectionLanguageMarker::Name(
+                    source.byte_slice(capture.node.byte_range()),
+                ));
             } else if index == self.injection_filename_capture_index {
-                let name = byte_range_to_str(capture.node.byte_range(), source);
-                let path = Path::new(name.as_ref()).to_path_buf();
-                injection_capture = Some(InjectionLanguageMarker::Filename(path.into()));
+                injection_capture = Some(InjectionLanguageMarker::Filename(
+                    source.byte_slice(capture.node.byte_range()),
+                ));
             } else if index == self.injection_shebang_capture_index {
                 let node_slice = source.byte_slice(capture.node.byte_range());
 
@@ -2047,7 +2072,7 @@ impl HighlightConfiguration {
                     .captures_iter(lines.regex_input())
                     .map(|cap| {
                         let cap = lines.byte_slice(cap.get_group(1).unwrap().range());
-                        InjectionLanguageMarker::Shebang(cap.into())
+                        InjectionLanguageMarker::Shebang(cap)
                     })
                     .next()
             } else if index == self.injection_content_capture_index {
@@ -2078,8 +2103,8 @@ impl HighlightConfiguration {
                 "injection.language" if injection_capture.is_none() => {
                     injection_capture = prop
                         .value
-                        .as_ref()
-                        .map(|s| InjectionLanguageMarker::Name(s.as_ref().into()));
+                        .as_deref()
+                        .map(InjectionLanguageMarker::LanguageId);
                 }
 
                 // By default, injections do not include the *children* of an
@@ -2102,7 +2127,7 @@ impl HighlightConfiguration {
     }
 }
 
-impl<'a> HighlightIterLayer<'a> {
+impl HighlightIterLayer<'_> {
     // First, sort scope boundaries by their byte offset in the document. At a
     // given position, emit scope endings before scope beginnings. Finally, emit
     // scope boundaries from deeper layers first.
@@ -2240,7 +2265,7 @@ fn intersect_ranges(
     result
 }
 
-impl<'a> HighlightIter<'a> {
+impl HighlightIter<'_> {
     fn emit_event(
         &mut self,
         offset: usize,
@@ -2295,7 +2320,7 @@ impl<'a> HighlightIter<'a> {
     }
 }
 
-impl<'a> Iterator for HighlightIter<'a> {
+impl Iterator for HighlightIter<'_> {
     type Item = Result<HighlightEvent, Error>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -2477,15 +2502,17 @@ impl<'a> Iterator for HighlightIter<'a> {
                 }
             }
 
-            // Once a highlighting pattern is found for the current node, skip over
-            // any later highlighting patterns that also match this node. Captures
+            // Use the last capture found for the current node, skipping over any
+            // highlight patterns that also match this node. Captures
             // for a given node are ordered by pattern index, so these subsequent
             // captures are guaranteed to be for highlighting, not injections or
             // local variables.
             while let Some((next_match, next_capture_index)) = captures.peek() {
                 let next_capture = next_match.captures[*next_capture_index];
                 if next_capture.node == capture.node {
-                    captures.next();
+                    match_.remove();
+                    capture = next_capture;
+                    match_ = captures.next().unwrap().0;
                 } else {
                     break;
                 }
@@ -2514,9 +2541,20 @@ impl<'a> Iterator for HighlightIter<'a> {
 
 #[derive(Debug, Clone)]
 pub enum InjectionLanguageMarker<'a> {
-    Name(Cow<'a, str>),
-    Filename(Cow<'a, Path>),
-    Shebang(String),
+    /// The language is specified by `LanguageConfiguration`'s `language_id` field.
+    ///
+    /// This marker is used when a pattern sets the `injection.language` property, for example
+    /// `(#set! injection.language "rust")`.
+    LanguageId(&'a str),
+    /// The language is specified in the document and captured by `@injection.language`.
+    ///
+    /// This is used for markdown code fences for example. While the `LanguageId` variant can be
+    /// looked up by finding the language config that sets an `language_id`, this variant contains
+    /// text from the document being highlighted, so the text is checked against each language's
+    /// `injection_regex`.
+    Name(RopeSlice<'a>),
+    Filename(RopeSlice<'a>),
+    Shebang(RopeSlice<'a>),
 }
 
 const SHEBANG: &str = r"#!\s*(?:\S*[/\\](?:env\s+(?:\-\S+\s+)*)?)?([^\s\.\d]+)";
@@ -2659,12 +2697,20 @@ fn node_is_visible(node: &Node) -> bool {
     node.is_missing() || (node.is_named() && node.language().node_kind_is_visible(node.kind_id()))
 }
 
+fn format_anonymous_node_kind(kind: &str) -> Cow<str> {
+    if kind.contains('"') {
+        Cow::Owned(kind.replace('"', "\\\""))
+    } else {
+        Cow::Borrowed(kind)
+    }
+}
+
 pub fn pretty_print_tree<W: fmt::Write>(fmt: &mut W, node: Node) -> fmt::Result {
     if node.child_count() == 0 {
         if node_is_visible(&node) {
             write!(fmt, "({})", node.kind())
         } else {
-            write!(fmt, "\"{}\"", node.kind())
+            write!(fmt, "\"{}\"", format_anonymous_node_kind(node.kind()))
         }
     } else {
         pretty_print_tree_impl(fmt, &mut node.walk(), 0)
@@ -2688,6 +2734,8 @@ fn pretty_print_tree_impl<W: fmt::Write>(
         }
 
         write!(fmt, "({}", node.kind())?;
+    } else {
+        write!(fmt, " \"{}\"", format_anonymous_node_kind(node.kind()))?;
     }
 
     // Handle children.
@@ -2946,7 +2994,7 @@ mod test {
     #[test]
     fn test_pretty_print() {
         let source = r#"// Hello"#;
-        assert_pretty_print("rust", source, "(line_comment)", 0, source.len());
+        assert_pretty_print("rust", source, "(line_comment \"//\")", 0, source.len());
 
         // A large tree should be indented with fields:
         let source = r#"fn main() {
@@ -2956,16 +3004,16 @@ mod test {
             "rust",
             source,
             concat!(
-                "(function_item\n",
+                "(function_item \"fn\"\n",
                 "  name: (identifier)\n",
-                "  parameters: (parameters)\n",
-                "  body: (block\n",
+                "  parameters: (parameters \"(\" \")\")\n",
+                "  body: (block \"{\"\n",
                 "    (expression_statement\n",
                 "      (macro_invocation\n",
-                "        macro: (identifier)\n",
-                "        (token_tree\n",
-                "          (string_literal\n",
-                "            (string_content)))))))",
+                "        macro: (identifier) \"!\"\n",
+                "        (token_tree \"(\"\n",
+                "          (string_literal \"\\\"\"\n",
+                "            (string_content) \"\\\"\") \")\")) \";\") \"}\"))",
             ),
             0,
             source.len(),
@@ -2977,7 +3025,7 @@ mod test {
 
         // Error nodes are printed as errors:
         let source = r#"}{"#;
-        assert_pretty_print("rust", source, "(ERROR)", 0, source.len());
+        assert_pretty_print("rust", source, "(ERROR \"}\" \"{\")", 0, source.len());
 
         // Fields broken under unnamed nodes are determined correctly.
         // In the following source, `object` belongs to the `singleton_method`
@@ -2992,11 +3040,11 @@ mod test {
             "ruby",
             source,
             concat!(
-                "(singleton_method\n",
-                "  object: (self)\n",
+                "(singleton_method \"def\"\n",
+                "  object: (self) \".\"\n",
                 "  name: (identifier)\n",
                 "  body: (body_statement\n",
-                "    (true)))"
+                "    (true)) \"end\")"
             ),
             0,
             source.len(),

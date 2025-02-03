@@ -9,6 +9,7 @@ use super::*;
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::{line_ending, shellwords::Shellwords};
+use helix_stdx::path::home_dir;
 use helix_view::document::{read_to_string, DEFAULT_LANGUAGE_NAME};
 use helix_view::editor::{CloseError, ConfigEvent};
 use serde_json::Value;
@@ -186,9 +187,7 @@ fn buffer_gather_paths_impl(editor: &mut Editor, args: &[Cow<str>]) -> Vec<Docum
     for arg in args {
         let doc_id = editor.documents().find_map(|doc| {
             let arg_path = Some(Path::new(arg.as_ref()));
-            if doc.path().map(|p| p.as_path()) == arg_path
-                || doc.relative_path().as_deref() == arg_path
-            {
+            if doc.path().map(|p| p.as_path()) == arg_path || doc.relative_path() == arg_path {
                 Some(doc.id())
             } else {
                 None
@@ -339,8 +338,11 @@ fn write_impl(
     let path = path.map(AsRef::as_ref);
 
     if config.insert_final_newline {
-        insert_final_newline(doc, view);
+        insert_final_newline(doc, view.id);
     }
+
+    // Save an undo checkpoint for any outstanding changes.
+    doc.append_changes_to_history(view);
 
     let fmt = if config.auto_format {
         doc.auto_format().map(|fmt| {
@@ -366,13 +368,12 @@ fn write_impl(
     Ok(())
 }
 
-fn insert_final_newline(doc: &mut Document, view: &mut View) {
+fn insert_final_newline(doc: &mut Document, view_id: ViewId) {
     let text = doc.text();
     if line_ending::get_line_ending(&text.slice(..)).is_none() {
         let eof = Selection::point(text.len_chars());
         let insert = Transaction::insert(text, &eof, doc.line_ending.as_str().into());
-        doc.apply(&insert, view.id);
-        doc.append_changes_to_history(view);
+        doc.apply(&insert, view_id);
     }
 }
 
@@ -454,13 +455,15 @@ fn format(
     }
 
     let (view, doc) = current!(cx.editor);
-    if let Some(format) = doc.format() {
-        let callback = make_format_callback(doc.id(), doc.version(), view.id, format, None);
-        cx.jobs.callback(callback);
-    }
+    let format = doc.format().context(
+        "A formatter isn't available, and no language server provides formatting capabilities",
+    )?;
+    let callback = make_format_callback(doc.id(), doc.version(), view.id, format, None);
+    cx.jobs.callback(callback);
 
     Ok(())
 }
+
 fn set_indent_style(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -646,11 +649,12 @@ fn force_write_quit(
 /// error, otherwise returns `Ok(())`. If the current document is unmodified,
 /// and there are modified documents, switches focus to one of them.
 pub(super) fn buffers_remaining_impl(editor: &mut Editor) -> anyhow::Result<()> {
-    let (modified_ids, modified_names): (Vec<_>, Vec<_>) = editor
+    let modified_ids: Vec<_> = editor
         .documents()
         .filter(|doc| doc.is_modified())
-        .map(|doc| (doc.id(), doc.display_name()))
-        .unzip();
+        .map(|doc| doc.id())
+        .collect();
+
     if let Some(first) = modified_ids.first() {
         let current = doc!(editor);
         // If the current document is unmodified, and there are modified
@@ -658,6 +662,12 @@ pub(super) fn buffers_remaining_impl(editor: &mut Editor) -> anyhow::Result<()> 
         if !modified_ids.contains(&current.id()) {
             editor.switch(*first, Action::Replace);
         }
+
+        let modified_names: Vec<_> = modified_ids
+            .iter()
+            .map(|doc_id| doc!(editor, doc_id).display_name())
+            .collect();
+
         bail!(
             "{} unsaved buffer{} remaining: {:?}",
             modified_names.len(),
@@ -703,10 +713,14 @@ pub fn write_all_impl(
 
     for (doc_id, target_view) in saves {
         let doc = doc_mut!(cx.editor, &doc_id);
+        let view = view_mut!(cx.editor, target_view);
 
         if config.insert_final_newline {
-            insert_final_newline(doc, view_mut!(cx.editor, target_view));
+            insert_final_newline(doc, target_view);
         }
+
+        // Save an undo checkpoint for any outstanding changes.
+        doc.append_changes_to_history(view);
 
         let fmt = if config.auto_format {
             doc.auto_format().map(|fmt| {
@@ -1068,7 +1082,7 @@ fn show_clipboard_provider(
     }
 
     cx.editor
-        .set_status(cx.editor.registers.clipboard_provider_name().to_string());
+        .set_status(cx.editor.registers.clipboard_provider_name());
     Ok(())
 }
 
@@ -1081,18 +1095,28 @@ fn change_current_directory(
         return Ok(());
     }
 
-    let dir = args
-        .first()
-        .context("target directory not provided")?
-        .as_ref();
-    let dir = helix_stdx::path::expand_tilde(Path::new(dir));
+    let dir = match args.first().map(AsRef::as_ref) {
+        Some("-") => cx
+            .editor
+            .get_last_cwd()
+            .map(|path| Cow::Owned(path.to_path_buf()))
+            .ok_or_else(|| anyhow!("No previous working directory"))?,
+        Some(path) => helix_stdx::path::expand_tilde(Path::new(path)),
+        None => Cow::Owned(home_dir()?),
+    };
 
-    helix_stdx::env::set_current_working_dir(dir)?;
+    cx.editor.set_cwd(&dir).map_err(|err| {
+        anyhow!(
+            "Could not change working directory to '{}': {err}",
+            dir.display()
+        )
+    })?;
 
     cx.editor.set_status(format!(
         "Current working directory is now {}",
         helix_stdx::env::current_working_dir().display()
     ));
+
     Ok(())
 }
 
@@ -1370,37 +1394,49 @@ fn lsp_workspace_command(
     if event != PromptEvent::Validate {
         return Ok(());
     }
+
     let doc = doc!(cx.editor);
-    let Some((language_server_id, options)) = doc
+    let ls_id_commands = doc
         .language_servers_with_feature(LanguageServerFeature::WorkspaceCommand)
-        .find_map(|ls| {
+        .flat_map(|ls| {
             ls.capabilities()
                 .execute_command_provider
-                .as_ref()
-                .map(|options| (ls.id(), options))
-        })
-    else {
-        cx.editor
-            .set_status("No active language servers for this document support workspace commands");
-        return Ok(());
-    };
+                .iter()
+                .flat_map(|options| options.commands.iter())
+                .map(|command| (ls.id(), command))
+        });
 
     if args.is_empty() {
-        let commands = options
-            .commands
-            .iter()
-            .map(|command| helix_lsp::lsp::Command {
-                title: command.clone(),
-                command: command.clone(),
-                arguments: None,
+        let commands = ls_id_commands
+            .map(|(ls_id, command)| {
+                (
+                    ls_id,
+                    helix_lsp::lsp::Command {
+                        title: command.clone(),
+                        command: command.clone(),
+                        arguments: None,
+                    },
+                )
             })
             .collect::<Vec<_>>();
         let callback = async move {
             let call: job::Callback = Callback::EditorCompositor(Box::new(
                 move |_editor: &mut Editor, compositor: &mut Compositor| {
-                    let picker = ui::Picker::new(commands, (), move |cx, command, _action| {
-                        execute_lsp_command(cx.editor, language_server_id, command.clone());
-                    });
+                    let columns = [ui::PickerColumn::new(
+                        "title",
+                        |(_ls_id, command): &(_, helix_lsp::lsp::Command), _| {
+                            command.title.as_str().into()
+                        },
+                    )];
+                    let picker = ui::Picker::new(
+                        columns,
+                        0,
+                        commands,
+                        (),
+                        move |cx, (ls_id, command), _action| {
+                            execute_lsp_command(cx.editor, *ls_id, command.clone());
+                        },
+                    );
                     compositor.push(Box::new(overlaid(picker)))
                 },
             ));
@@ -1409,29 +1445,65 @@ fn lsp_workspace_command(
         cx.jobs.callback(callback);
     } else {
         let command = args.join(" ");
-        if options.commands.iter().any(|c| c == &command) {
-            execute_lsp_command(
-                cx.editor,
-                language_server_id,
-                helix_lsp::lsp::Command {
-                    title: command.clone(),
-                    arguments: None,
-                    command,
-                },
-            );
-        } else {
-            cx.editor.set_status(format!(
-                "`{command}` is not supported for this language server"
-            ));
-            return Ok(());
+        let matches: Vec<_> = ls_id_commands
+            .filter(|(_ls_id, c)| *c == &command)
+            .collect();
+
+        match matches.as_slice() {
+            [(ls_id, _command)] => {
+                execute_lsp_command(
+                    cx.editor,
+                    *ls_id,
+                    helix_lsp::lsp::Command {
+                        title: command.clone(),
+                        arguments: None,
+                        command,
+                    },
+                );
+            }
+            [] => {
+                cx.editor.set_status(format!(
+                    "`{command}` is not supported for any language server"
+                ));
+            }
+            _ => {
+                cx.editor.set_status(format!(
+                    "`{command}` supported by multiple language servers"
+                ));
+            }
         }
     }
     Ok(())
 }
 
+/// Returns all language servers used by the current document if no servers are supplied
+/// If servers are supplied, do a check to make sure that all of the servers exist
+fn valid_lang_servers(doc: &Document, servers: &[Cow<str>]) -> anyhow::Result<Vec<String>> {
+    let valid_ls_names = doc
+        .language_servers()
+        .map(|ls| ls.name().to_string())
+        .collect();
+
+    if servers.is_empty() {
+        Ok(valid_ls_names)
+    } else {
+        let (valid, invalid): (Vec<_>, Vec<_>) = servers
+            .iter()
+            .map(|m| m.to_string())
+            .partition(|ls| valid_ls_names.contains(ls));
+
+        if !invalid.is_empty() {
+            let s = if invalid.len() == 1 { "" } else { "s" };
+            bail!("Unknown language server{s}: {}", invalid.join(", "));
+        };
+
+        Ok(valid)
+    }
+}
+
 fn lsp_restart(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
@@ -1439,17 +1511,25 @@ fn lsp_restart(
     }
 
     let editor_config = cx.editor.config.load();
-    let (_view, doc) = current!(cx.editor);
+    let doc = doc!(cx.editor);
     let config = doc
         .language_config()
         .context("LSP not defined for the current document")?;
 
-    cx.editor.language_servers.restart(
-        config,
-        doc.path(),
-        &editor_config.workspace_lsp_roots,
-        editor_config.lsp.snippets,
-    )?;
+    let ls_restart_names = valid_lang_servers(doc, args)?;
+
+    for server in ls_restart_names.iter() {
+        cx.editor
+            .language_servers
+            .restart_server(
+                server,
+                config,
+                doc.path(),
+                &editor_config.workspace_lsp_roots,
+                editor_config.lsp.snippets,
+            )
+            .transpose()?;
+    }
 
     // This collect is needed because refresh_language_server would need to re-borrow editor.
     let document_ids_to_refresh: Vec<DocumentId> = cx
@@ -1458,10 +1538,9 @@ fn lsp_restart(
         .filter_map(|doc| match doc.language_config() {
             Some(config)
                 if config.language_servers.iter().any(|ls| {
-                    config
-                        .language_servers
+                    ls_restart_names
                         .iter()
-                        .any(|restarted_ls| restarted_ls.name == ls.name)
+                        .any(|restarted_ls| restarted_ls == &ls.name)
                 }) =>
             {
                 Some(doc.id())
@@ -1479,17 +1558,15 @@ fn lsp_restart(
 
 fn lsp_stop(
     cx: &mut compositor::Context,
-    _args: &[Cow<str>],
+    args: &[Cow<str>],
     event: PromptEvent,
 ) -> anyhow::Result<()> {
     if event != PromptEvent::Validate {
         return Ok(());
     }
+    let doc = doc!(cx.editor);
 
-    let ls_shutdown_names = doc!(cx.editor)
-        .language_servers()
-        .map(|ls| ls.name().to_string())
-        .collect::<Vec<_>>();
+    let ls_shutdown_names = valid_lang_servers(doc, args)?;
 
     for ls_name in &ls_shutdown_names {
         cx.editor.language_servers.stop(ls_name);
@@ -1558,7 +1635,7 @@ fn tree_sitter_highlight_name(
         // Query the same range as the one used in syntax highlighting.
         let range = {
             // Calculate viewport byte ranges:
-            let row = text.char_to_line(view.offset.anchor.min(text.len_chars()));
+            let row = text.char_to_line(doc.view_offset(view.id).anchor.min(text.len_chars()));
             // Saturating subs to make it inclusive zero indexing.
             let last_line = text.len_lines().saturating_sub(1);
             let height = view.inner_area(doc).height;
@@ -2039,6 +2116,10 @@ fn sort_impl(
 
     let selection = doc.selection(view.id);
 
+    if selection.len() == 1 {
+        bail!("Sorting requires multiple selections. Hint: split selection first");
+    }
+
     let mut fragments: Vec<_> = selection
         .slices(text)
         .map(|fragment| fragment.chunks().collect())
@@ -2271,7 +2352,7 @@ fn run_shell_command(
             move |editor: &mut Editor, compositor: &mut Compositor| {
                 if !output.is_empty() {
                     let contents = ui::Markdown::new(
-                        format!("```sh\n{}\n```", output),
+                        format!("```sh\n{}\n```", output.trim_end()),
                         editor.syn_loader.clone(),
                     );
                     let popup = Popup::new("shell", contents).position(Some(
@@ -2279,7 +2360,7 @@ fn run_shell_command(
                     ));
                     compositor.replace_or_push("shell", popup);
                 }
-                editor.set_status("Command succeeded");
+                editor.set_status("Command run");
             },
         ));
         Ok(call)
@@ -2469,8 +2550,9 @@ fn read(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> 
     ensure!(!args.is_empty(), "file name is expected");
     ensure!(args.len() == 1, "only the file name is expected");
 
-    let filename = args.get(0).unwrap();
-    let path = PathBuf::from(filename.to_string());
+    let filename = args.first().unwrap();
+    let path = helix_stdx::path::expand_tilde(PathBuf::from(filename.to_string()));
+
     ensure!(
         path.exists() && path.is_file(),
         "path is not a file: {:?}",
@@ -2508,7 +2590,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "open",
-        aliases: &["o"],
+        aliases: &["o", "edit", "e"],
         doc: "Open a file from disk into the current view.",
         fun: open,
         signature: CommandSignature::all(completers::filename),
@@ -2607,7 +2689,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "format",
         aliases: &["fmt"],
-        doc: "Format the file using the LSP formatter.",
+        doc: "Format the file using an external formatter or language server.",
         fun: format,
         signature: CommandSignature::none(),
     },
@@ -2862,16 +2944,16 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "lsp-restart",
         aliases: &[],
-        doc: "Restarts the language servers used by the current doc",
+        doc: "Restarts the given language servers, or all language servers that are used by the current file if no arguments are supplied",
         fun: lsp_restart,
-        signature: CommandSignature::none(),
+        signature: CommandSignature::all(completers::language_servers),
     },
     TypableCommand {
         name: "lsp-stop",
         aliases: &[],
-        doc: "Stops the language servers that are used by the current doc",
+        doc: "Stops the given language servers, or all language servers that are used by the current file if no arguments are supplied",
         fun: lsp_stop,
-        signature: CommandSignature::none(),
+        signature: CommandSignature::all(completers::language_servers),
     },
     TypableCommand {
         name: "tree-sitter-scopes",
@@ -3003,7 +3085,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     TypableCommand {
         name: "tree-sitter-subtree",
         aliases: &["ts-subtree"],
-        doc: "Display tree sitter subtree under cursor, primarily for debugging queries.",
+        doc: "Display the smallest tree-sitter subtree that spans the primary selection, primarily for debugging queries.",
         fun: tree_sitter_subtree,
         signature: CommandSignature::none(),
     },
@@ -3093,7 +3175,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
     },
     TypableCommand {
         name: "move",
-        aliases: &[],
+        aliases: &["mv"],
         doc: "Move the current buffer and its corresponding file to a different path",
         fun: move_buffer,
         signature: CommandSignature::positional(&[completers::filename]),
@@ -3160,8 +3242,8 @@ pub(super) fn command_mode(cx: &mut Context) {
                 {
                     completer(editor, word)
                         .into_iter()
-                        .map(|(range, file)| {
-                            let file = shellwords::escape(file);
+                        .map(|(range, mut file)| {
+                            file.content = shellwords::escape(file.content);
 
                             // offset ranges to input
                             let offset = input.len() - word_len;

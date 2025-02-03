@@ -1,9 +1,15 @@
-use std::{borrow::Cow, cmp::Ordering};
+use std::{
+    borrow::Cow,
+    cmp::Ordering,
+    ops::{Add, AddAssign, Sub, SubAssign},
+};
+
+use helix_stdx::rope::RopeSliceExt;
 
 use crate::{
     chars::char_is_line_ending,
     doc_formatter::{DocumentFormatter, TextFormat},
-    graphemes::{ensure_grapheme_boundary_prev, grapheme_width, RopeGraphemes},
+    graphemes::{ensure_grapheme_boundary_prev, grapheme_width},
     line_ending::line_end_char_index,
     text_annotations::TextAnnotations,
     RopeSlice,
@@ -14,6 +20,38 @@ use crate::{
 pub struct Position {
     pub row: usize,
     pub col: usize,
+}
+
+impl AddAssign for Position {
+    fn add_assign(&mut self, rhs: Self) {
+        self.row += rhs.row;
+        self.col += rhs.col;
+    }
+}
+
+impl SubAssign for Position {
+    fn sub_assign(&mut self, rhs: Self) {
+        self.row -= rhs.row;
+        self.col -= rhs.col;
+    }
+}
+
+impl Sub for Position {
+    type Output = Position;
+
+    fn sub(mut self, rhs: Self) -> Self::Output {
+        self -= rhs;
+        self
+    }
+}
+
+impl Add for Position {
+    type Output = Position;
+
+    fn add(mut self, rhs: Self) -> Self::Output {
+        self += rhs;
+        self
+    }
 }
 
 impl Position {
@@ -65,7 +103,7 @@ pub fn coords_at_pos(text: RopeSlice, pos: usize) -> Position {
 
     let line_start = text.line_to_char(line);
     let pos = ensure_grapheme_boundary_prev(text, pos);
-    let col = RopeGraphemes::new(text.slice(line_start..pos)).count();
+    let col = text.slice(line_start..pos).graphemes().count();
 
     Position::new(line, col)
 }
@@ -90,7 +128,7 @@ pub fn visual_coords_at_pos(text: RopeSlice, pos: usize, tab_width: usize) -> Po
 
     let mut col = 0;
 
-    for grapheme in RopeGraphemes::new(text.slice(line_start..pos)) {
+    for grapheme in text.slice(line_start..pos).graphemes() {
         if grapheme == "\t" {
             col += tab_width - (col % tab_width);
         } else {
@@ -121,20 +159,29 @@ pub fn visual_offset_from_block(
     annotations: &TextAnnotations,
 ) -> (Position, usize) {
     let mut last_pos = Position::default();
-    let (formatter, block_start) =
+    let mut formatter =
         DocumentFormatter::new_at_prev_checkpoint(text, text_fmt, annotations, anchor);
-    let mut char_pos = block_start;
+    let block_start = formatter.next_char_pos();
 
-    for (grapheme, vpos) in formatter {
-        last_pos = vpos;
-        char_pos += grapheme.doc_chars();
-
-        if char_pos > pos {
-            return (last_pos, block_start);
+    while let Some(grapheme) = formatter.next() {
+        last_pos = grapheme.visual_pos;
+        if formatter.next_char_pos() > pos {
+            return (grapheme.visual_pos, block_start);
         }
     }
 
     (last_pos, block_start)
+}
+
+/// Returns the height of the given text when softwrapping
+pub fn softwrapped_dimensions(text: RopeSlice, text_fmt: &TextFormat) -> (usize, u16) {
+    let last_pos =
+        visual_offset_from_block(text, 0, usize::MAX, text_fmt, &TextAnnotations::default()).0;
+    if last_pos.row == 0 {
+        (1, last_pos.col as u16)
+    } else {
+        (last_pos.row + 1, text_fmt.viewport_width)
+    }
 }
 
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
@@ -153,22 +200,21 @@ pub fn visual_offset_from_anchor(
     annotations: &TextAnnotations,
     max_rows: usize,
 ) -> Result<(Position, usize), VisualOffsetError> {
-    let (formatter, block_start) =
+    let mut formatter =
         DocumentFormatter::new_at_prev_checkpoint(text, text_fmt, annotations, anchor);
-    let mut char_pos = block_start;
     let mut anchor_line = None;
     let mut found_pos = None;
     let mut last_pos = Position::default();
 
+    let block_start = formatter.next_char_pos();
     if pos < block_start {
         return Err(VisualOffsetError::PosBeforeAnchorRow);
     }
 
-    for (grapheme, vpos) in formatter {
-        last_pos = vpos;
-        char_pos += grapheme.doc_chars();
+    while let Some(grapheme) = formatter.next() {
+        last_pos = grapheme.visual_pos;
 
-        if char_pos > pos {
+        if formatter.next_char_pos() > pos {
             if let Some(anchor_line) = anchor_line {
                 last_pos.row -= anchor_line;
                 return Ok((last_pos, block_start));
@@ -176,7 +222,7 @@ pub fn visual_offset_from_anchor(
                 found_pos = Some(last_pos);
             }
         }
-        if char_pos > anchor && anchor_line.is_none() {
+        if formatter.next_char_pos() > anchor && anchor_line.is_none() {
             if let Some(mut found_pos) = found_pos {
                 return if found_pos.row == last_pos.row {
                     found_pos.row = 0;
@@ -190,7 +236,7 @@ pub fn visual_offset_from_anchor(
         }
 
         if let Some(anchor_line) = anchor_line {
-            if vpos.row >= anchor_line + max_rows {
+            if grapheme.visual_pos.row >= anchor_line + max_rows {
                 return Err(VisualOffsetError::PosAfterMaxRow);
             }
         }
@@ -231,7 +277,7 @@ pub fn pos_at_coords(text: RopeSlice, coords: Position, limit_before_line_ending
     };
 
     let mut col_char_offset = 0;
-    for (i, g) in RopeGraphemes::new(text.slice(line_start..line_end)).enumerate() {
+    for (i, g) in text.slice(line_start..line_end).graphemes().enumerate() {
         if i == col {
             break;
         }
@@ -262,7 +308,7 @@ pub fn pos_at_visual_coords(text: RopeSlice, coords: Position, tab_width: usize)
 
     let mut col_char_offset = 0;
     let mut cols_remaining = col;
-    for grapheme in RopeGraphemes::new(text.slice(line_start..line_end)) {
+    for grapheme in text.slice(line_start..line_end).graphemes() {
         let grapheme_width = if grapheme == "\t" {
             tab_width - ((col - cols_remaining) % tab_width)
         } else {
@@ -368,39 +414,43 @@ pub fn char_idx_at_visual_block_offset(
     text_fmt: &TextFormat,
     annotations: &TextAnnotations,
 ) -> (usize, usize) {
-    let (formatter, mut char_idx) =
+    let mut formatter =
         DocumentFormatter::new_at_prev_checkpoint(text, text_fmt, annotations, anchor);
-    let mut last_char_idx = char_idx;
-    let mut last_char_idx_on_line = None;
+    let mut last_char_idx = formatter.next_char_pos();
+    let mut found_non_virtual_on_row = false;
     let mut last_row = 0;
-    for (grapheme, grapheme_pos) in formatter {
-        match grapheme_pos.row.cmp(&row) {
+    for grapheme in &mut formatter {
+        match grapheme.visual_pos.row.cmp(&row) {
             Ordering::Equal => {
-                if grapheme_pos.col + grapheme.width() > column {
+                if grapheme.visual_pos.col + grapheme.width() > column {
                     if !grapheme.is_virtual() {
-                        return (char_idx, 0);
-                    } else if let Some(char_idx) = last_char_idx_on_line {
-                        return (char_idx, 0);
+                        return (grapheme.char_idx, 0);
+                    } else if found_non_virtual_on_row {
+                        return (last_char_idx, 0);
                     }
                 } else if !grapheme.is_virtual() {
-                    last_char_idx_on_line = Some(char_idx)
+                    found_non_virtual_on_row = true;
+                    last_char_idx = grapheme.char_idx;
                 }
             }
+            Ordering::Greater if found_non_virtual_on_row => return (last_char_idx, 0),
             Ordering::Greater => return (last_char_idx, row - last_row),
-            _ => (),
+            Ordering::Less => {
+                if !grapheme.is_virtual() {
+                    last_row = grapheme.visual_pos.row;
+                    last_char_idx = grapheme.char_idx;
+                }
+            }
         }
-
-        last_char_idx = char_idx;
-        last_row = grapheme_pos.row;
-        char_idx += grapheme.doc_chars();
     }
 
-    (char_idx, 0)
+    (formatter.next_char_pos(), 0)
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
+    use crate::text_annotations::InlineAnnotation;
     use crate::Rope;
 
     #[test]
@@ -759,6 +809,30 @@ mod test {
         assert_eq!(pos_at_visual_coords(slice, (10, 0).into(), 4), 0);
         assert_eq!(pos_at_visual_coords(slice, (0, 10).into(), 4), 0);
         assert_eq!(pos_at_visual_coords(slice, (10, 10).into(), 4), 0);
+    }
+
+    #[test]
+    fn test_char_idx_at_visual_row_offset_inline_annotation() {
+        let text = Rope::from("foo\nbar");
+        let slice = text.slice(..);
+        let mut text_fmt = TextFormat::default();
+        let annotations = [InlineAnnotation {
+            text: "x".repeat(100).into(),
+            char_idx: 3,
+        }];
+        text_fmt.soft_wrap = true;
+
+        assert_eq!(
+            char_idx_at_visual_offset(
+                slice,
+                0,
+                1,
+                0,
+                &text_fmt,
+                TextAnnotations::default().add_inline_annotations(&annotations, None)
+            ),
+            (2, 1)
+        );
     }
 
     #[test]
