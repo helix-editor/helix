@@ -137,10 +137,10 @@ pub fn toggle_line_comments(doc: &Rope, range: &Range, token: Option<&str>) -> V
     let comment = Tendril::from(format!("{} ", token));
 
     let start = text.char_to_line(range.from());
-    let end = text.char_to_line(range.to());
-
-    let start = start.clamp(0, text.len_lines());
-    let end = (end + 1).min(text.len_lines());
+    let end = text.char_to_line(range.to().saturating_sub(1));
+    let line_count = text.len_lines();
+    let start = start.clamp(0, line_count);
+    let end = (end + 1).min(line_count);
 
     let mut lines = vec![];
     lines.extend(start..end);

@@ -179,6 +179,64 @@ async fn test_injected_comment_tokens_multiple_selections() -> anyhow::Result<()
     ))
     .await?;
 
+    // Full-line selection commenting
+    test((
+        indoc! {r#"\
+            <p>Comment toggle on this line should use the HTML comment token(s).</p>
+            <script type="text/javascript">
+              // Comment toggle on this line should use the javascript comment token(s).
+            #[  foo();
+              css`
+            |]#    html {
+                  background-color: red;
+                }
+              `;
+            </script>
+        "#},
+        ":lang html<ret> c",
+        indoc! {r#"\
+            <p>Comment toggle on this line should use the HTML comment token(s).</p>
+            <script type="text/javascript">
+              // Comment toggle on this line should use the javascript comment token(s).
+            #[  // foo();
+              // css`
+            |]#    html {
+                  background-color: red;
+                }
+              `;
+            </script>
+        "#},
+    ))
+    .await?;
+    test((
+        indoc! {r#"\
+            <p>Comment toggle on this line should use the HTML comment token(s).</p>
+            <script type="text/javascript">
+              // Comment toggle on this line should use the javascript comment token(s).
+            #[  // foo();
+              // css`
+            |]#    html {
+                  background-color: red;
+                }
+              `;
+            </script>
+        "#},
+        ":lang html<ret> c",
+        indoc! {r#"\
+            <p>Comment toggle on this line should use the HTML comment token(s).</p>
+            <script type="text/javascript">
+              // Comment toggle on this line should use the javascript comment token(s).
+            #[  foo();
+              css`
+            |]#    html {
+                  background-color: red;
+                }
+              `;
+            </script>
+        "#},
+    ))
+    .await?;
+
     // Works with block comment toggle across different layers
     test((
         indoc! {r#"\
