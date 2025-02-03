@@ -86,6 +86,93 @@ async fn test_injected_comment_tokens_simple() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tokio::test(flavor = "multi_thread")]
+async fn test_injected_comment_tokens_continue_comment() -> anyhow::Result<()> {
+    test((
+        indoc! {r#"\
+            <p>Some text 1234</p>
+            <script type="text/javascript">
+              // This line should #[|c]#ontinue comments
+              foo();
+            </script>
+        "#},
+        ":lang html<ret>i<ret>",
+        indoc! {r#"\
+            <p>Some text 1234</p>
+            <script type="text/javascript">
+              // This line should
+              // #[|c]#ontinue comments
+              foo();
+            </script>
+        "#},
+    ))
+    .await?;
+
+    test((
+        indoc! {r#"\
+            <p>Some text 1234</p>
+            <script type="text/javascript">
+              // This line should
+              // #[|c]#ontinue comments
+              foo();
+            </script>
+        "#},
+        ":lang html<ret>i<ret>",
+        indoc! {r#"\
+            <p>Some text 1234</p>
+            <script type="text/javascript">
+              // This line should
+              //
+              // #[|c]#ontinue comments
+              foo();
+            </script>
+        "#},
+    ))
+    .await?;
+
+    test((
+        indoc! {r#"\
+            <p>Some text 1234</p>
+            <script type="text/javascript">
+              // This line should #[|c]#ontinue comments
+              foo();
+            </script>
+        "#},
+        ":lang html<ret>i<ret>",
+        indoc! {r#"\
+            <p>Some text 1234</p>
+            <script type="text/javascript">
+              // This line should
+              // #[|c]#ontinue comments
+              foo();
+            </script>
+        "#},
+    ))
+    .await?;
+
+    test((
+        indoc! {r#"\
+            <p>Some text 1234</p>
+            <script type="text/javascript">
+              // This line should #[|c]#ontinue comments
+              foo();
+            </script>
+        "#},
+        ":lang html<ret>O",
+        indoc! {r#"\
+            <p>Some text 1234</p>
+            <script type="text/javascript">
+              // #[
+            |]#  // This line should continue comments
+              foo();
+            </script>
+        "#},
+    ))
+    .await?;
+
+    Ok(())
+}
+
 /// Selections in different regions
 #[tokio::test(flavor = "multi_thread")]
 async fn test_injected_comment_tokens_multiple_selections() -> anyhow::Result<()> {
