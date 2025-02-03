@@ -1095,7 +1095,7 @@ thread_local! {
     })
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct Syntax {
     pub layers: HopSlotMap<LayerId, LanguageLayer>,
     root: LayerId,
@@ -1562,7 +1562,7 @@ impl Syntax {
 bitflags! {
     /// Flags that track the status of a layer
     /// in the `Sytaxn::update` function
-    #[derive(Debug, Clone)]
+    #[derive(Debug)]
     struct LayerUpdateFlags : u32{
         const MODIFIED = 0b001;
         const MOVED = 0b010;
@@ -1570,7 +1570,7 @@ bitflags! {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 pub struct LanguageLayer {
     // mode
     // grammar
