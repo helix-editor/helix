@@ -22,7 +22,7 @@ pub fn get_comment_token(
     let start_char = text.line_to_char(line_num) + start;
 
     let injected_tokens = get_injected_tokens(syntax, start_char, start_char)
-        // we don't care about block comment tokens
+        // we only care about line comment tokens
         .0
         .and_then(|tokens| {
             tokens
@@ -32,7 +32,7 @@ pub fn get_comment_token(
         });
 
     injected_tokens.or(
-        // no comment tokens found for injection. Use doc tokens instead
+        // no comment tokens found for injection, use doc comments if exists
         doc_default_tokens.and_then(|tokens| {
             tokens
                 .iter()
@@ -51,14 +51,13 @@ pub fn get_injected_tokens(
     // Find the injection with the most tightly encompassing range.
     syntax
         .and_then(|syntax| {
-            injection_for_range(syntax, start, end)
-                .map(|language_id| syntax.layer_config(language_id))
-                .map(|config| {
-                    (
-                        config.comment_tokens.clone(),
-                        config.block_comment_tokens.clone(),
-                    )
-                })
+            injection_for_range(syntax, start, end).map(|language_id| {
+                let config = syntax.layer_config(language_id);
+                (
+                    config.comment_tokens.clone(),
+                    config.block_comment_tokens.clone(),
+                )
+            })
         })
         .unwrap_or_default()
 }
@@ -73,20 +72,18 @@ pub fn injection_for_range(syntax: &Syntax, from: usize, to: usize) -> Option<La
         for ts_range in &layer.ranges {
             let is_encompassing = ts_range.start_byte <= from && ts_range.end_byte >= to;
             if is_encompassing {
-                let this_gap = ts_range.end_byte - ts_range.start_byte;
+                let gap = ts_range.end_byte - ts_range.start_byte;
                 let config = syntax.layer_config(layer_id);
+                // ignore the language family for which it won't make
+                // sense to consider their comment.
+                //
+                // This includes, for instance, `comment`, `jsdoc`, `regex`
                 let has_comment_tokens =
                     config.comment_tokens.is_some() || config.block_comment_tokens.is_some();
 
-                if this_gap < min_gap
-                        // ignore the language family for which it won't make
-                        // sense to consider their comment.
-                        //
-                        // This includes, for instance, `comment`, `jsdoc`, `regex`
-                        && has_comment_tokens
-                {
+                if gap < min_gap && has_comment_tokens {
                     best_fit = Some(layer_id);
-                    min_gap = this_gap;
+                    min_gap = gap;
                 }
             }
         }
@@ -144,16 +141,6 @@ fn find_line_comment(
 
     (commented, to_change, min, margin)
 }
-
-// for a given range and syntax, determine if there are additional tokens to consider
-pub type GetInjectedTokens<'a> = Box<
-    dyn FnMut(
-            Option<&Syntax>,
-            usize,
-            usize,
-        ) -> (Option<Vec<String>>, Option<Vec<BlockCommentToken>>)
-        + 'a,
->;
 
 #[must_use]
 pub fn toggle_line_comments(doc: &Rope, range: &Range, token: Option<&str>) -> Vec<Change> {
