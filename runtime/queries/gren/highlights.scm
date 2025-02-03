@@ -43,6 +43,14 @@
 
 "," @punctuation.delimiter
 
+; modules
+
+(module_declaration(upper_case_qid) @namespace)
+(import_clause(upper_case_qid) @namespace)
+(import_clause(as_clause(upper_case_identifier) @namespace))
+(exposing_list(exposed_type) @type)
+(exposing_list(exposed_value) @variable)
+
 ; functions
 
 (type_annotation(lower_case_identifier) @function)
@@ -63,6 +71,8 @@
 (type_ref(upper_case_qid) @type)
 (type_variable(lower_case_identifier) @type.parameter)
 
+; variables
+
 (union_pattern constructor: (upper_case_qid (upper_case_identifier) @namespace (dot) (upper_case_identifier) @constructor)) 
 (union_pattern constructor: (upper_case_qid (upper_case_identifier) @constructor)) 
 
@@ -79,13 +89,16 @@
 (function_declaration_left(lower_pattern(lower_case_identifier) @variable.parameter))
 
 ; comments
+
 (line_comment) @comment
 (block_comment) @comment
 
 ; numbers
+
 (number_constant_expr) @constant.numeric
 
 ; strings
+
 (string_escape) @constant.character.escape
 
 (string_constant_expr) @string
