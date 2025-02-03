@@ -95,8 +95,10 @@
   left: (type_identifier) @type.parameter)
 (optional_type_parameter
   name: (type_identifier) @type.parameter)
-(type_arguments
-  (type_identifier))
+((type_arguments (type_identifier) @constant)
+ (#match? @constant "^[A-Z_]+$"))
+((type_arguments (type_identifier) @comment.unused)
+ (#eq? @comment.unused "_"))
 
 ; ---
 ; Primitives
