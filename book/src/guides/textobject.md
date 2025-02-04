@@ -10,7 +10,7 @@ documentation][tree-sitter-queries].
 Query files should be placed in `runtime/queries/{language}/textobjects.scm`
 when contributing to Helix. Note that to test the query files locally you should put
 them under your local runtime directory (`~/.config/helix/runtime` on Linux
-for example).
+for example) or the workspace runtime directory (`$PWD/.helix/runtime`).
 
 The following [captures][tree-sitter-captures] are recognized:
 

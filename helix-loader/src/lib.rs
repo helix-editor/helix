@@ -36,6 +36,7 @@ pub fn initialize_log_file(specified_file: Option<PathBuf>) {
 /// 3. `HELIX_RUNTIME` (if environment variable is set)
 /// 4. `HELIX_DEFAULT_RUNTIME` (if environment variable is set *at build time*)
 /// 5. subdirectory of path to helix executable (always included)
+/// 6. workspace directory, e.g. `$PWD/.helix/runtime` (see [runtime_dirs])
 ///
 /// Postcondition: returns at least two paths (they might not exist).
 fn prioritize_runtime_dirs() -> Vec<PathBuf> {
@@ -81,8 +82,12 @@ fn prioritize_runtime_dirs() -> Vec<PathBuf> {
 /// All directories should be checked when looking for files.
 ///
 /// Postcondition: returns at least one path (it might not exist).
-pub fn runtime_dirs() -> &'static [PathBuf] {
-    &RUNTIME_DIRS
+pub fn runtime_dirs() -> Vec<PathBuf> {
+    let mut rt_dirs = Vec::with_capacity(RUNTIME_DIRS.len() + 1);
+    rt_dirs.clone_from(&RUNTIME_DIRS);
+    // workspace runtime directory
+    rt_dirs.push(find_workspace().0.join(".helix").join("runtime"));
+    rt_dirs
 }
 
 /// Find file with path relative to runtime directory
@@ -91,7 +96,7 @@ pub fn runtime_dirs() -> &'static [PathBuf] {
 /// The valid runtime directories are searched in priority order and the first
 /// file found to exist is returned, otherwise None.
 fn find_runtime_file(rel_path: &Path) -> Option<PathBuf> {
-    RUNTIME_DIRS.iter().find_map(|rt_dir| {
+    runtime_dirs().iter().find_map(|rt_dir| {
         let path = rt_dir.join(rel_path);
         if path.exists() {
             Some(path)
