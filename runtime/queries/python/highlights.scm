@@ -229,5 +229,3 @@
 
 (class_definition name: (identifier) @type)
 (class_definition superclasses: (argument_list (identifier) @type))
-
-(ERROR) @error

@@ -214,6 +214,3 @@
 ["|" "," "." ":" ";"] @punctuation.delimiter
 
 (sorry) @error
-
-;; Error
-(ERROR) @error

@@ -219,6 +219,3 @@
 
 ;; Property
 (dot_index_expression field: (identifier) @variable.other.member)
-
-;; Error
-(ERROR) @error

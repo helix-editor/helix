@@ -1,5 +1,3 @@
-(ERROR) @error
-
 (line_comment) @comment
 
 (identifier) @variable
