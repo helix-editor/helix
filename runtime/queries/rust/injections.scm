@@ -101,7 +101,3 @@
     [(string_literal) (raw_string_literal)] @injection.content
   )
   (#set! injection.language "sql"))
-
-; ; TODO: change this so it injects into all strings within a macro call
-; ((string_content) @injection.content
-;  (#set! injection.language "rustfmt"))
