@@ -26,8 +26,16 @@
          name: (_) @_macro_name)
        (identifier) @_macro_name
      ]
-   (token_tree . (string_literal) @injection.content))
- (#any-of? @_macro_name "format_args")
+   (token_tree) @injection.content)
+ (#any-of? @_macro_name
+  "format"
+  "write"
+  "writeln"
+  "print"
+  "println"
+  "eprint"
+  "eprintln"
+  "format_args")
  (#set! injection.language "rustfmt")
  (#set! injection.include-children))
 
