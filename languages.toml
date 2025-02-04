@@ -4139,3 +4139,19 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "fga"
 source = { git = "https://github.com/matoous/tree-sitter-fga", rev = "5005e8dd976e1f67beb3d23204580eb6f8b4c965" }
+
+[[language]]
+name = "ink"
+scope = "source.ink"
+file-types = ["ink"]
+injection-regex = "ink"
+comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/"}
+indent = { tab-width = 4, unit = "\t" }
+soft-wrap = { enable = true }
+grammar = "ink"
+
+[[grammar]]
+name = "ink"
+source = { git = "https://github.com/rhizoome/tree-sitter-ink", rev = "8486e9b1627b0bc6b2deb9ee8102277a7c1281ac" }
+
