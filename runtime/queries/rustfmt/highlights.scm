@@ -27,5 +27,3 @@
   "{"
   "}"
 ] @punctuation.special
-
-(ERROR) @error
