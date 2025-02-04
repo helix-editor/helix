@@ -93,5 +93,5 @@
 
 ; Misc
 
-(version) @number
+(version) @constant.numeric
 (comment) @comment
