@@ -46,8 +46,7 @@
   "trace"
   ; anyhow
   "anyhow"
-  "bail"
-  "ensure")
+  "bail")
  (#set! injection.language "rustfmt")
  (#set! injection.include-children))
 
