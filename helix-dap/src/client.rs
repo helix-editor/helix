@@ -132,7 +132,7 @@ impl Client {
         let stderr = BufReader::new(process.stderr.take().expect("Failed to open stderr"));
 
         Self::streams(
-            Box::new(BufReader::new(reader)),
+            Box::new(reader),
             Box::new(writer),
             Some(Box::new(stderr)),
             id,
