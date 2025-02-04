@@ -50,6 +50,15 @@
  (#set! injection.language "json")
  (#set! injection.combined))
 
+; builtins.fromTOML toml
+; Example: https://github.com/NixOS/nix/blob/3e8cd2ffe6c2c6ed8aae7853ddcfcc6d2a49b0ce/tests/functional/lang/eval-okay-fromTOML.nix
+((apply_expression
+   function: (_) @_func
+   argument: (indented_string_expression (string_fragment) @injection.content))
+ (#match? @_func "(^|\\.)fromTOML$")
+ (#set! injection.language "toml")
+ (#set! injection.combined))
+
 ; trivial-builders.nix pkgs.writeShellScript[Bin] name content
 ((apply_expression
    function: (apply_expression function: (_) @_func)
