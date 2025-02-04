@@ -1,12 +1,8 @@
 [
   (module)
+  (as)
   (exposing)
   (backslash)
-  (as)
-  (colon)
-  (arrow)
-  (operator_identifier)
-  "|"
 ] @keyword
 
 (import) @keyword.control.import
@@ -30,7 +26,13 @@
 
 (dot) @operator
 
-(eq) @keyword.operator.assignment
+[
+  (colon)
+  (arrow)
+  (eq)
+  (operator_identifier)
+  "|"
+] @keyword.operator
 
 [
   "("
@@ -48,7 +50,7 @@
 (module_declaration(upper_case_qid) @namespace)
 (import_clause(upper_case_qid) @namespace)
 (import_clause(as_clause(upper_case_identifier) @namespace))
-(exposing_list(exposed_type) @type)
+(exposing_list(exposed_type(upper_case_identifier) @type))
 (exposing_list(exposed_value) @variable)
 
 ; functions
@@ -65,10 +67,13 @@
 
 (type_declaration(upper_case_identifier) @type)
 (type_declaration typeName: (lower_type_name) @type.parameter)
+
 (type_alias_declaration name: (upper_case_identifier) @type)
 (type_alias_declaration typeVariable: (lower_type_name) @type.parameter)
 
 (type_ref(upper_case_qid) @type)
+(type_ref(upper_case_qid(upper_case_identifier) @namespace (dot) (upper_case_identifier) @type))
+
 (type_variable(lower_case_identifier) @type.parameter)
 
 ; variables
@@ -86,6 +91,7 @@
 (value_expr(value_qid(lower_case_identifier) @variable))
 
 (let_in_expr(value_declaration(function_declaration_left(lower_case_identifier) @variable)))
+
 (function_declaration_left(lower_pattern(lower_case_identifier) @variable.parameter))
 
 ; comments
