@@ -153,7 +153,3 @@
 
 ((word) @constant.builtin.boolean
 (#match? @constant.builtin.boolean "^(true|false)$"))
-
-;; Error
-
-(ERROR) @error

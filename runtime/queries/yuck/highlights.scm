@@ -1,10 +1,6 @@
 (ident) @variable
 (index) @variable
 
-; Errors
-
-(ERROR) @error
-
 ; Comments
 
 (comment) @comment

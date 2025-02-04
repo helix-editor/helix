@@ -38,6 +38,3 @@
 (comment) @comment
 
 (preproc) @keyword.directive
-
-(ERROR) @error
-
