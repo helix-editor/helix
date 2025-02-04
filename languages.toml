@@ -4111,3 +4111,12 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "ghostty"
 source = { git = "https://github.com/bezhermoso/tree-sitter-ghostty" , rev = "8438a93b44367e962b2ea3a3b6511885bebd196a" }
+
+[[language]]
+name = "test"
+scope = "source.test"
+file-types = [{ glob = "test/corpus/*.txt" }]
+
+[[grammar]]
+name = "test"
+source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-test", rev = "93746e2e387ae757d21088ab0ab5657efffb973e" }
