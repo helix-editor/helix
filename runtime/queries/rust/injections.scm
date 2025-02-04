@@ -13,6 +13,39 @@
  (#set! injection.language "html")
  (#set! injection.include-children))
 
+; std::fmt 
+
+((macro_invocation
+   macro:
+     [
+       (scoped_identifier
+         name: (_) @_macro_name)
+       (identifier) @_macro_name
+     ]
+   (token_tree) @injection.content)
+ (#any-of? @_macro_name
+  ; std
+  "format"
+  "write"
+  "writeln"
+  "print"
+  "println"
+  "eprint"
+  "eprintln"
+  "format_args"
+  ; log
+  "crit"
+  "error"
+  "warn"
+  "info"
+  "debug"
+  "trace"
+  ; anyhow
+  "anyhow"
+  "bail")
+ (#set! injection.language "rustfmt")
+ (#set! injection.include-children))
+
 ((macro_invocation
    macro:
      [

@@ -4111,3 +4111,13 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "ghostty"
 source = { git = "https://github.com/bezhermoso/tree-sitter-ghostty" , rev = "8438a93b44367e962b2ea3a3b6511885bebd196a" }
+
+[[language]]
+name = "rustfmt"
+scope = "source.rustfmt"
+file-types = []
+injection-regex = "rustfmt"
+
+[[grammar]]
+name = "rustfmt"
+source = { git = "https://github.com/nik-rev/tree-sitter-rustfmt", rev = "d8e517d9aca1905261a378b25688e4500ae4dd22" }
