@@ -42,7 +42,7 @@
 (binary_expression (identifier) @variable)
 
 ((type_identifier) @type.builtin
-  (#match? @type.builtin "^(string|int|map|uint|list|timestamp|bool|duration|double|ipaddress)$"))
+  (#any-of? @type.builtin "string" "int" "map" "uint" "list" "timestamp" "bool" "duration" "double" "ipaddress"))
 
 
 ; Operators
