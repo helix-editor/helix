@@ -1,12 +1,6 @@
 (name) @markup.heading.1
 
-[
-  ":skip"
-  ":error"
-  ":fail-fast"
-  ":language"
-  ":platform"
-] @attribute
+(attribute) @attribute
 
 (attribute
   language: (parameter) @string)
