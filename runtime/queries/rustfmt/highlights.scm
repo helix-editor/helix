@@ -11,6 +11,7 @@
   (sign)
   (fill)
   (align)
+  (width)
 ] @operator
 
 (number) @constant.numeric
