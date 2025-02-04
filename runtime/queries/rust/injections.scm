@@ -28,6 +28,7 @@
      ]
    (token_tree) @injection.content)
  (#any-of? @_macro_name
+  ; std
   "format"
   "write"
   "writeln"
@@ -35,7 +36,18 @@
   "println"
   "eprint"
   "eprintln"
-  "format_args")
+  "format_args"
+  ; log
+  "crit"
+  "error"
+  "warn"
+  "info"
+  "debug"
+  "trace"
+  ; anyhow
+  "anyhow"
+  "bail"
+  "ensure")
  (#set! injection.language "rustfmt")
  (#set! injection.include-children))
 
