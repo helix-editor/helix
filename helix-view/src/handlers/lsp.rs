@@ -281,17 +281,17 @@ impl Editor {
         version: Option<i32>,
         mut diagnostics: Vec<lsp::Diagnostic>,
     ) {
-        let doc = self.documents.values_mut()
-            .find(|doc| doc.uri().is_some_and(|u| u == uri))
-            .filter(|doc| {
-                if let Some(version) = version {
-                    if version != doc.version() {
-                        log::info!("Version ({version}) is out of date for {uri:?} (expected ({}), dropping PublishDiagnostic notification", doc.version());
-                        return false;
-                    }
-                }
-                true
-            });
+        let doc = self
+            .documents
+            .values_mut()
+            .find(|doc| doc.uri().is_some_and(|u| u == uri));
+
+        if let Some((version, doc)) = version.zip(doc.as_ref()) {
+            if version != doc.version() {
+                log::info!("Version ({version}) is out of date for {uri:?} (expected ({})), dropping PublishDiagnostic notification", doc.version());
+                return;
+            }
+        }
 
         let mut unchanged_diag_sources = Vec::new();
         if let Some((lang_conf, old_diagnostics)) = doc
