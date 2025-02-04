@@ -2440,6 +2440,12 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "e9557cb6521e8d009c51a8666f09356f4b817ba9ba0981a305bd86aee47bd35c"
 
 [[package]]
+name = "streaming-iterator"
+version = "0.1.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2b2231b7c3057d5e4ad0156fb3dc807d900806020c5ffa3ee6ff2c8c76fb8520"
+
+[[package]]
 name = "syn"
 version = "2.0.87"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2644,34 +2650,23 @@ dependencies = [
 ]
 
 [[package]]
-name = "tree-house"
-version = "0.1.0-beta.1"
+name = "tree-sitter"
+version = "0.24.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e4b93baffc0ff1790bbb4c69fa4c3909cff1f92012dcfaad99049b967e846644"
+checksum = "a5387dffa7ffc7d2dae12b50c6f7aab8ff79d6210147c6613561fc3d474c6f75"
 dependencies = [
- "arc-swap",
- "hashbrown 0.15.2",
- "kstring",
- "once_cell",
+ "cc",
  "regex",
- "regex-cursor",
- "ropey",
- "slab",
- "tree-house-bindings",
+ "regex-syntax",
+ "streaming-iterator",
+ "tree-sitter-language",
 ]
 
 [[package]]
-name = "tree-house-bindings"
-version = "0.1.0-beta.1"
+name = "tree-sitter-language"
+version = "0.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "67aa746be26e7d9a85af600abba7e62a094b6e4dbf21eb281e4f481d6130b55b"
-dependencies = [
- "cc",
- "libloading",
- "regex-cursor",
- "ropey",
- "thiserror 2.0.11",
-]
+checksum = "38eee4db33814de3d004de9d8d825627ed3320d0989cce0dea30efaf5be4736c"
 
 [[package]]
 name = "unicase"

@@ -17,6 +17,20 @@
  (#set! injection.language "html")
  (#set! injection.include-children))
 
+; std::fmt 
+
+((macro_invocation
+   macro:
+     [
+       (scoped_identifier
+         name: (_) @_macro_name)
+       (identifier) @_macro_name
+     ]
+   (token_tree . (string_literal) @injection.content))
+ (#any-of? @_macro_name "format_args")
+ (#set! injection.language "rustfmt")
+ (#set! injection.include-children))
+
 ((macro_invocation
    macro:
      [
@@ -80,6 +94,6 @@
   )
   (#set! injection.language "sql"))
 
-; TODO: change this so it injects into all strings within a macro call
-((string_content) @injection.content
- (#set! injection.language "rustfmt"))
+; ; TODO: change this so it injects into all strings within a macro call
+; ((string_content) @injection.content
+;  (#set! injection.language "rustfmt"))
