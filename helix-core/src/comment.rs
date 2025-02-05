@@ -68,7 +68,7 @@ pub fn injection_for_range(syntax: &Syntax, from: usize, to: usize) -> Option<La
     let mut best_fit = None;
     let mut min_gap = usize::MAX;
 
-    for (layer_id, layer) in &syntax.layers {
+    for (layer_id, layer) in syntax.layers() {
         for ts_range in &layer.ranges {
             let is_encompassing = ts_range.start_byte <= from && ts_range.end_byte >= to;
             if is_encompassing {
