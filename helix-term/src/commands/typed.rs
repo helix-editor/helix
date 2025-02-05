@@ -1621,7 +1621,7 @@ fn tree_sitter_injections(
 
     let mut ranges = vec![];
 
-    for (language_id, layer) in &syntax.layers {
+    for (language_id, layer) in syntax.layers() {
         let language_name = &syntax.layer_config(language_id).language_name;
         for range in &layer.ranges {
             ranges.push((range, language_name.clone()));
