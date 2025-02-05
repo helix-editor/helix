@@ -135,9 +135,9 @@
 
 (highlighted) @markup.bold
 
-(superscript) @string.special
+(superscript) @string.special.superscript
 
-(subscript) @string.special
+(subscript) @string.special.subscript
 
 [
   (emphasis_begin)
