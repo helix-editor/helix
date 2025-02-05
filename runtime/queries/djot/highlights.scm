@@ -131,17 +131,13 @@
 
 (delete) @markup.strikethrough
 
-; TEMP: Scope not available, with no appropriate alternative.
-(insert) @markup.insert
+(insert) @markup.italic
 
-; TEMP: Scope not available, with no appropriate alternative.
-(highlighted) @markup.highlighted
+(highlighted) @markup.bold
 
-; TEMP: Scope not available, with no appropriate alternative.
-(superscript) @markup.superscript
+(superscript) @string.special
 
-; TEMP: Scope not available, with no appropriate alternative.
-(subscript) @markup.subscript
+(subscript) @string.special
 
 [
   (emphasis_begin)
