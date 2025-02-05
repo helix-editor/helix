@@ -1097,7 +1097,7 @@ thread_local! {
 
 #[derive(Debug)]
 pub struct Syntax {
-    pub layers: HopSlotMap<LayerId, LanguageLayer>,
+    layers: HopSlotMap<LayerId, LanguageLayer>,
     root: LayerId,
     loader: Arc<ArcSwap<Loader>>,
 }
@@ -1427,6 +1427,10 @@ impl Syntax {
 
             Ok(())
         })
+    }
+
+    pub fn layers(&self) -> &HopSlotMap<LayerId, LanguageLayer> {
+        &self.layers
     }
 
     /// Get an injection layer's language configuration
