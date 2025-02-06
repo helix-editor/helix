@@ -75,16 +75,6 @@
   path: (identifier)? @namespace
   alias: (identifier) @namespace)
 
-; ---
-; Remaining Paths
-; ---
-
-(scoped_identifier
-  path: (identifier)? @namespace
-  name: (identifier) @namespace)
-(scoped_type_identifier
-  path: (identifier) @namespace)
-
 ; -------
 ; Types
 ; -------
@@ -97,6 +87,7 @@
   name: (type_identifier) @type.parameter)
 ((type_arguments (type_identifier) @constant)
  (#match? @constant "^[A-Z_]+$"))
+(match_pattern (tuple_struct_pattern "_" @comment.unused))
 ((type_arguments (type_identifier) @comment.unused)
  (#eq? @comment.unused "_"))
 
@@ -474,3 +465,13 @@
     "FromIterator"
     "TryFrom"
     "TryInto"))
+
+; ---
+; Remaining Paths
+; ---
+
+(scoped_identifier
+  path: (identifier)? @namespace
+  name: (identifier) @namespace)
+(scoped_type_identifier
+  path: (identifier) @namespace)
