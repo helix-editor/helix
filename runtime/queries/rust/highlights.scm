@@ -302,6 +302,16 @@
 (function_signature_item
   name: (identifier) @function)
 
+; ---
+; Remaining Paths
+; ---
+
+(scoped_identifier
+  path: (identifier)? @namespace
+  name: (identifier) @namespace)
+(scoped_type_identifier
+  path: (identifier) @namespace)
+
 ; -------
 ; Guess Other Types
 ; -------
@@ -346,6 +356,7 @@
       (#match? @constructor "^[A-Z]")))
 
 (enum_variant (identifier) @type.enum.variant)
+
 
 ; -------
 ; Constructors
@@ -466,13 +477,3 @@
     "FromIterator"
     "TryFrom"
     "TryInto"))
-
-; ---
-; Remaining Paths
-; ---
-
-(scoped_identifier
-  path: (identifier)? @namespace
-  name: (identifier) @namespace)
-(scoped_type_identifier
-  path: (identifier) @namespace)
