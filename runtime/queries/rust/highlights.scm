@@ -282,33 +282,6 @@
 ; TODO: variable.mut to highlight mutable identifiers via locals.scm
 
 ; -------
-; Constructors
-; -------
-; TODO: this is largely guesswork, remove it once we get actual info from locals.scm or r-a
-
-(struct_expression
-  name: (type_identifier) @constructor)
-
-(tuple_struct_pattern
-  type: [
-    (identifier) @constructor
-    (scoped_identifier
-      name: (identifier) @constructor)
-  ])
-(struct_pattern
-  type: [
-    ((type_identifier) @constructor)
-    (scoped_type_identifier
-      name: (type_identifier) @constructor)
-  ])
-(match_pattern
-  ((identifier) @constructor) (#match? @constructor "^[A-Z]"))
-(or_pattern
-  ((identifier) @constructor)
-  ((identifier) @constructor)
-  (#match? @constructor "^[A-Z]"))
-
-; -------
 ; Functions
 ; -------
 
@@ -379,6 +352,33 @@
       (#match? @constructor "^[A-Z]")))
 
 (enum_variant (identifier) @type.enum.variant)
+
+; -------
+; Constructors
+; -------
+; TODO: this is largely guesswork, remove it once we get actual info from locals.scm or r-a
+
+(struct_expression
+  name: (type_identifier) @constructor)
+
+(tuple_struct_pattern
+  type: [
+    (identifier) @constructor
+    (scoped_identifier
+      name: (identifier) @constructor)
+  ])
+(struct_pattern
+  type: [
+    ((type_identifier) @constructor)
+    (scoped_type_identifier
+      name: (type_identifier) @constructor)
+  ])
+(match_pattern
+  ((identifier) @constructor) (#match? @constructor "^[A-Z]"))
+(or_pattern
+  ((identifier) @constructor)
+  ((identifier) @constructor)
+  (#match? @constructor "^[A-Z]"))
 
 ; ---
 ; Macros
