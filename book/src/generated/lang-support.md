@@ -220,7 +220,7 @@
 | twig | ✓ |  |  |  |  |
 | typescript | ✓ | ✓ | ✓ |  | `typescript-language-server` |
 | typespec | ✓ | ✓ | ✓ |  | `tsp-server` |
-| typst | ✓ |  |  |  | `tinymist`, `typst-lsp` |
+| typst | ✓ |  |  | ✓ | `tinymist`, `typst-lsp` |
 | ungrammar | ✓ |  |  |  |  |
 | unison | ✓ | ✓ | ✓ |  |  |
 | uxntal | ✓ |  |  |  |  |
