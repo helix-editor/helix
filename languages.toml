@@ -4120,3 +4120,31 @@ file-types = [{ glob = "test/corpus/*.txt" }]
 [[grammar]]
 name = "test"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-test", rev = "93746e2e387ae757d21088ab0ab5657efffb973e" }
+
+[[language]]
+name = "tera"
+scope = "source.tera"
+file-types = ["tera"]
+block-comment-tokens = [
+  { start = "{#", end = "#}" },
+  { start = "{#-", end = "-#}" },
+  { start = "{#", end = "-#}" },
+  { start = "{#-", end = "#}" },
+]
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "tera"
+source = { git = "https://github.com/uncenter/tree-sitter-tera", rev = "e8d679a29c03e64656463a892a30da626e19ed8e" }
+
+[[language]]
+name = "fga"
+scope = "source.fga"
+injection-regex = "fga"
+file-types = ["fga"]
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "fga"
+source = { git = "https://github.com/matoous/tree-sitter-fga", rev = "5005e8dd976e1f67beb3d23204580eb6f8b4c965" }
