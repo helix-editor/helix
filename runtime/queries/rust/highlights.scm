@@ -110,6 +110,7 @@
 (integer_literal) @constant.numeric.integer
 (float_literal) @constant.numeric.float
 (char_literal) @constant.character
+(unit_expression ["(" ")"] @constant.builtin)
 [
   (string_literal)
   (raw_string_literal)
@@ -387,6 +388,7 @@
 
 (attribute
   (identifier) @function.macro)
+(inner_attribute_item "!" @punctuation)
 (attribute
   [
     (identifier) @function.macro
