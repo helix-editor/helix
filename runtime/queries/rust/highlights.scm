@@ -163,6 +163,7 @@
     "<"
     ">"
   ] @punctuation.bracket)
+(for_lifetimes ["<" ">"] @punctuation.bracket)
 (closure_parameters
   "|" @punctuation.bracket)
 (bracketed_type ["<" ">"] @punctuation.bracket)
