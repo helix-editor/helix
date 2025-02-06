@@ -87,6 +87,7 @@
   name: (type_identifier) @type.parameter)
 ((type_arguments (type_identifier) @constant)
  (#match? @constant "^[A-Z_]+$"))
+(type_arguments (type_identifier) @type)
 (match_pattern (tuple_struct_pattern "_" @comment.unused))
 ((type_arguments (type_identifier) @comment.unused)
  (#eq? @comment.unused "_"))
