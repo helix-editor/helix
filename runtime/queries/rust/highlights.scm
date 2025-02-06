@@ -126,7 +126,6 @@
 ; ---
 
 (self) @variable.builtin
-(enum_variant (identifier) @type.enum.variant)
 
 (field_initializer
   (field_identifier) @variable.other.member)
@@ -435,6 +434,8 @@
     name: (identifier) @constructor
       (#match? @type "^[A-Z]")
       (#match? @constructor "^[A-Z]")))
+
+(enum_variant (identifier) @type.enum.variant)
 
 ; ---
 ; Macros
