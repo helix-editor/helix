@@ -1914,7 +1914,7 @@ language-servers = [ "erlang-ls", "elp" ]
 
 [[grammar]]
 name = "erlang"
-source = { git = "https://github.com/the-mikedavis/tree-sitter-erlang", rev = "9d4b36a76d5519e3dbf1ec4f4b61bb1a293f584c" }
+source = { git = "https://github.com/the-mikedavis/tree-sitter-erlang", rev = "33a3e4f1fa77a3e1a2736813f4b27c358f6c0b63" }
 
 [[language]]
 name = "kotlin"
