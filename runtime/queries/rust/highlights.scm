@@ -275,6 +275,16 @@
 
 ; TODO: variable.mut to highlight mutable identifiers via locals.scm
 
+; ---
+; Remaining Paths
+; ---
+
+(scoped_identifier
+  path: (identifier)? @namespace
+  name: (identifier) @namespace)
+(scoped_type_identifier
+  path: (identifier) @namespace)
+
 ; -------
 ; Functions
 ; -------
@@ -301,16 +311,6 @@
 
 (function_signature_item
   name: (identifier) @function)
-
-; ---
-; Remaining Paths
-; ---
-
-(scoped_identifier
-  path: (identifier)? @namespace
-  name: (identifier) @namespace)
-(scoped_type_identifier
-  path: (identifier) @namespace)
 
 ; -------
 ; Guess Other Types
