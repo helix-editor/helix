@@ -173,6 +173,7 @@
   ] @punctuation.bracket)
 (closure_parameters
   "|" @punctuation.bracket)
+(bracketed_type ["<" ">"] @punctuation.bracket)
 
 ; ---
 ; Variables
