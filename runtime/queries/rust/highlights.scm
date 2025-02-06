@@ -102,7 +102,6 @@
 (integer_literal) @constant.numeric.integer
 (float_literal) @constant.numeric.float
 (char_literal) @constant.character
-(unit_expression ["(" ")"] @constant.builtin)
 [
   (string_literal)
   (raw_string_literal)
