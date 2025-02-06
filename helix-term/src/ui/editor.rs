@@ -1570,9 +1570,15 @@ impl Component for EditorView {
             } else {
                 0
             };
+            let y_offset = if config.statusline.merge_with_commandline {
+                // render macros and key sequences 1 line above
+                1
+            } else {
+                0
+            };
             surface.set_string(
                 area.x + area.width.saturating_sub(key_width + macro_width),
-                area.y + area.height.saturating_sub(1),
+                (area.y + area.height.saturating_sub(1)).saturating_sub(y_offset),
                 disp.get(disp.len().saturating_sub(key_width as usize)..)
                     .unwrap_or(&disp),
                 style,
@@ -1584,7 +1590,7 @@ impl Component for EditorView {
                     .add_modifier(Modifier::BOLD);
                 surface.set_string(
                     area.x + area.width.saturating_sub(3),
-                    area.y + area.height.saturating_sub(1),
+                    (area.y + area.height.saturating_sub(1)).saturating_sub(y_offset),
                     &disp,
                     style,
                 );
