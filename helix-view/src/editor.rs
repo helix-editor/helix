@@ -504,7 +504,7 @@ impl Default for StatusLineConfig {
             ],
             separator: String::from("│"),
             mode: ModeConfig::default(),
-            merge_with_commandline: true,
+            merge_with_commandline: false,
         }
     }
 }
