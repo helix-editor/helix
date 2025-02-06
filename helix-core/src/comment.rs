@@ -491,42 +491,39 @@ mod test {
         #[test]
         fn uncomment() {
             let mut doc = Rope::from("  # 1\n\n  # 2\n  # 3");
-            let mut range = Range::new(0, doc.len_chars() - 1);
+            let range = Range::new(0, doc.len_chars() - 1);
 
             let changes = toggle_line_comments(&doc, &range, None);
             let transaction = Transaction::change(&doc, changes.into_iter());
             transaction.apply(&mut doc);
-            range = range.map(transaction.changes());
+            _ = range.map(transaction.changes());
 
             assert_eq!(doc, "  1\n\n  2\n  3");
-            assert_eq!(range, range); // to ignore the selection unused warning
         }
 
         #[test]
         fn uncomment_0_margin_comments() {
             let mut doc = Rope::from("  #1\n\n  #2\n  #3");
-            let mut range = Range::new(0, doc.len_chars() - 1);
+            let range = Range::new(0, doc.len_chars() - 1);
 
             let changes = toggle_line_comments(&doc, &range, None);
             let transaction = Transaction::change(&doc, changes.into_iter());
             transaction.apply(&mut doc);
-            range = range.map(transaction.changes());
+            _ = range.map(transaction.changes());
 
             assert_eq!(doc, "  1\n\n  2\n  3");
-            assert_eq!(range, range); // to ignore the selection unused warning
         }
 
         #[test]
         fn uncomment_0_margin_comments_with_no_space() {
             let mut doc = Rope::from("#");
-            let mut range = Range::new(0, doc.len_chars() - 1);
+            let range = Range::new(0, doc.len_chars() - 1);
 
             let changes = toggle_line_comments(&doc, &range, None);
             let transaction = Transaction::change(&doc, changes.into_iter());
             transaction.apply(&mut doc);
-            range = range.map(transaction.changes());
+            _ = range.map(transaction.changes());
             assert_eq!(doc, "");
-            assert_eq!(range, range); // to ignore the selection unused warning
         }
 
         #[test]
