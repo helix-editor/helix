@@ -6,3 +6,9 @@
 (sixth)@function
 (seventh)@constant
 
+[
+  ";"
+  ","
+  "|"
+] @punctuation.delimiter
+
