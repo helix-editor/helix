@@ -20,128 +20,92 @@
     ...
   }:
     flake-utils.lib.eachDefaultSystem (system: let
+      # Apply the rust-overlay to nixpkgs so we can access all version.
       pkgs = import nixpkgs {
         inherit system;
         overlays = [(import rust-overlay)];
       };
-      mkRootPath = rel:
-        builtins.path {
-          path = "${toString ./.}/${rel}";
-          name = rel;
-        };
-      filteredSource = let
-        pathsToIgnore = [
-          ".envrc"
-          ".ignore"
-          ".github"
-          ".gitignore"
-          "logo_dark.svg"
-          "logo_light.svg"
-          "rust-toolchain.toml"
-          "rustfmt.toml"
-          "runtime"
-          "screenshot.png"
-          "book"
-          "docs"
-          "README.md"
-          "CHANGELOG.md"
-          "shell.nix"
-          "default.nix"
-          "grammars.nix"
-          "flake.nix"
-          "flake.lock"
-        ];
-        ignorePaths = path: type: let
-          inherit (nixpkgs) lib;
-          # split the nix store path into its components
-          components = lib.splitString "/" path;
-          # drop off the `/nix/hash-source` section from the path
-          relPathComponents = lib.drop 4 components;
-          # reassemble the path components
-          relPath = lib.concatStringsSep "/" relPathComponents;
-        in
-          lib.all (p: ! (lib.hasPrefix p relPath)) pathsToIgnore;
-      in
-        builtins.path {
-          name = "helix-source";
-          path = toString ./.;
-          # filter out unnecessary paths
-          filter = ignorePaths;
-        };
-      makeOverridableHelix = old: config: let
-        grammars = pkgs.callPackage ./grammars.nix config;
-        runtimeDir = pkgs.runCommand "helix-runtime" {} ''
-          mkdir -p $out
-          ln -s ${mkRootPath "runtime"}/* $out
-          rm -r $out/grammars
-          ln -s ${grammars} $out/grammars
-        '';
-        helix-wrapped =
-          pkgs.runCommand
-          old.name
-          {
-            inherit (old) pname version;
-            meta = old.meta or {};
-            passthru =
-              (old.passthru or {})
-              // {
-                unwrapped = old;
-              };
-            nativeBuildInputs = [pkgs.makeWrapper];
-            makeWrapperArgs = config.makeWrapperArgs or [];
-          }
-          ''
-            cp -rs --no-preserve=mode,ownership ${old} $out
-            wrapProgram "$out/bin/hx" ''${makeWrapperArgs[@]} --set HELIX_RUNTIME "${runtimeDir}"
-          '';
-      in
-        helix-wrapped
-        // {
-          override = makeOverridableHelix old;
-          passthru =
-            helix-wrapped.passthru
-            // {
-              wrapper = old: makeOverridableHelix old config;
-            };
-        };
-      stdenv =
-        if pkgs.stdenv.isLinux
-        then pkgs.stdenv
-        else pkgs.clangStdenv;
-      rustFlagsEnv = pkgs.lib.optionalString stdenv.isLinux "-C link-arg=-fuse-ld=lld -C target-cpu=native -Clink-arg=-Wl,--no-rosegment --cfg tokio_unstable";
+
+      # Get Helix's MSRV toolchain to build with by default.
       rustToolchain = pkgs.pkgsBuildHost.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
       craneLibMSRV = (crane.mkLib pkgs).overrideToolchain rustToolchain;
-      craneLibStable = (crane.mkLib pkgs).overrideToolchain pkgs.pkgsBuildHost.rust-bin.stable.latest.default;
+
+      # Common args for most things
       commonArgs = {
-        inherit stdenv;
+        # Helix attempts to reach out to the network and get the grammars. Nix doesn't allow this.
+        HELIX_DISABLE_AUTO_GRAMMAR_BUILD = "1";
+
+        # Get the name and version from the cargo.toml
         inherit (craneLibMSRV.crateNameFromCargoToml {cargoToml = ./helix-term/Cargo.toml;}) pname;
         inherit (craneLibMSRV.crateNameFromCargoToml {cargoToml = ./Cargo.toml;}) version;
-        src = filteredSource;
-        # disable fetching and building of tree-sitter grammars in the helix-term build.rs
-        HELIX_DISABLE_AUTO_GRAMMAR_BUILD = "1";
-        buildInputs = [stdenv.cc.cc.lib];
+
+        # Clean the source.
+        src = craneLibMSRV.cleanCargoSource ./.;
+
+        # Common build inputs.
         nativeBuildInputs = [pkgs.installShellFiles];
+
         # disable tests
         doCheck = false;
-        meta.mainProgram = "hx";
+        strictDeps = true;
       };
+
+      # Next we actually need to build the grammars and the runtime directory
+      # that they reside in. It is built by calling the derivation in the
+      # grammars.nix file, then taking the runtime directory in the git repo
+      # and hooking symlinks up to it.
+      grammars = pkgs.callPackage ./grammars.nix {};
+      runtimeDir = pkgs.runCommand "helix-runtime" {} ''
+        mkdir -p $out
+        ln -s ${./runtime}/* $out
+        rm -r $out/grammars
+        ln -s ${grammars} $out/grammars
+      '';
+
+      # Cranelib allows us to put the dependencies in the nix store. This means
+      # it is semi-incremental if the Cargo.lock doesn't change.
       cargoArtifacts = craneLibMSRV.buildDepsOnly commonArgs;
+
+      # This allows for an overridable helix build.
+      #
+      build_helix = pkgs.lib.makeOverridable ({
+        pkgs,
+        craneLib,
+        runtimeDir,
+        cargoExtraArgs ? "",
+      }:
+        craneLib.buildPackage (commonArgs
+          // rec {
+            inherit cargoArtifacts cargoExtraArgs;
+            nativeBuildInputs = [
+              pkgs.installShellFiles
+              pkgs.git
+            ];
+            env.HELIX_DEFAULT_RUNTIME = "${runtimeDir}";
+
+            postInstall = ''
+              mkdir -p $out/lib
+              installShellCompletion contrib/completion/hx.{bash,fish,zsh}
+              mkdir -p $out/share/{applications,icons/hicolor/256x256/apps}
+              cp contrib/Helix.desktop $out/share/applications
+              cp contrib/helix.png $out/share/icons/hicolor/256x256/apps
+            '';
+
+            meta = {
+              mainProgram = "hx";
+            };
+          }));
     in {
       packages = {
-        helix-unwrapped = craneLibStable.buildPackage (commonArgs
-          // {
-            cargoArtifacts = craneLibStable.buildDepsOnly commonArgs;
-            postInstall = ''
-              mkdir -p $out/share/applications $out/share/icons/hicolor/scalable/apps $out/share/icons/hicolor/256x256/apps
-              cp contrib/Helix.desktop $out/share/applications
-              cp logo.svg $out/share/icons/hicolor/scalable/apps/helix.svg
-              cp contrib/helix.png $out/share/icons/hicolor/256x256/apps
-              installShellCompletion contrib/completion/hx.{bash,fish,zsh}
-            '';
-            # set git revision for nix flake builds, see 'git_hash' in helix-loader/build.rs
-            HELIX_NIX_BUILD_REV = self.rev or self.dirtyRev or null;
-          });
-        helix = makeOverridableHelix self.packages.${system}.helix-unwrapped {};
+        helix = build_helix {
+          inherit pkgs runtimeDir;
+          craneLib = craneLibMSRV;
+        };
+
+        # The default Helix build. Uses the default MSRV Rust toolchain, and the
+        # default nixpkgs, which is the one in the Flake.lock of Helix.
+        #
+        # This can be overridden though to add Cargo Features, flags, and different toolchains.
         default = self.packages.${system}.helix;
       };
 
@@ -168,19 +132,25 @@
           });
       };
 
-      devShells.default = pkgs.mkShell {
-        inputsFrom = builtins.attrValues self.checks.${system};
-        nativeBuildInputs = with pkgs;
-          [lld_13 cargo-flamegraph rust-analyzer]
-          ++ (lib.optional (stdenv.isx86_64 && stdenv.isLinux) pkgs.cargo-tarpaulin)
-          ++ (lib.optional stdenv.isLinux pkgs.lldb)
-          ++ (lib.optional stdenv.isDarwin pkgs.darwin.apple_sdk.frameworks.CoreFoundation);
-        shellHook = ''
-          export HELIX_RUNTIME="$PWD/runtime"
-          export RUST_BACKTRACE="1"
-          export RUSTFLAGS="''${RUSTFLAGS:-""} ${rustFlagsEnv}"
-        '';
-      };
+      formatter = pkgs.alejandra;
+
+      devShells.default = let
+        rustFlagsEnv = pkgs.lib.optionalString pkgs.stdenv.isLinux "-C link-arg=-fuse-ld=lld -C target-cpu=native -Clink-arg=-Wl,--no-rosegment --cfg tokio_unstable";
+      in
+        pkgs.mkShell
+        {
+          inputsFrom = builtins.attrValues self.checks.${system};
+          nativeBuildInputs = with pkgs;
+            [lld_13 cargo-flamegraph rust-analyzer]
+            ++ (lib.optional (stdenv.isx86_64 && stdenv.isLinux) pkgs.cargo-tarpaulin)
+            ++ (lib.optional stdenv.isLinux pkgs.lldb)
+            ++ (lib.optional stdenv.isDarwin pkgs.darwin.apple_sdk.frameworks.CoreFoundation);
+          shellHook = ''
+            export HELIX_RUNTIME="$PWD/runtime"
+            export RUST_BACKTRACE="1"
+            export RUSTFLAGS="''${RUSTFLAGS:-""} ${rustFlagsEnv}"
+          '';
+        };
     })
     // {
       overlays.default = final: prev: {
