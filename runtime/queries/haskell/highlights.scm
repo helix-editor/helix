@@ -256,8 +256,6 @@
 )
 
 
-(con_unit) @constant.builtin ; unit, as in ()
-
 (comment) @comment
 
 
