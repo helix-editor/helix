@@ -241,6 +241,7 @@ type DynQueryCallback<T, D> =
 pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     columns: Arc<[Column<T, D>]>,
     primary_column: usize,
+    always_show_headers: bool,
     editor_data: Arc<D>,
     version: Arc<AtomicUsize>,
     matcher: Nucleo<T>,
@@ -374,6 +375,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         Self {
             columns,
             primary_column: default_column,
+            always_show_headers: false,
             matcher,
             editor_data,
             version,
@@ -428,6 +430,11 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
 
     pub fn with_initial_cursor(mut self, cursor: u32) -> Self {
         self.cursor = cursor;
+        self
+    }
+
+    pub fn always_show_headers(mut self) -> Self {
+        self.always_show_headers = true;
         self
     }
 
@@ -836,7 +843,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
             .widths(&self.widths);
 
         // -- Header
-        if self.columns.len() > 1 {
+        if self.always_show_headers || self.columns.len() > 1 {
             let active_column = self.query.active_column(self.prompt.position());
             let header_style = cx.editor.theme.get("ui.picker.header");
             let header_column_style = cx.editor.theme.get("ui.picker.header.column");
