@@ -151,7 +151,7 @@ mod windows_rc {
     pub(crate) fn link_icon_in_windows_exe(icon_path: &str) {
         let windres_exe = PathBuf::from(r"windres.exe");
         check_if_exe_works(&windres_exe).expect(
-            "Could locate windres.exe binary from gnu toolkit in the PATH environment variable.",
+            "Could not locate windres.exe binary from gnu toolkit in the PATH environment variable.",
         );
 
         let output = env::var("OUT_DIR").expect("Env var OUT_DIR should have been set by compiler");
