@@ -26,6 +26,7 @@
 |--|--|---------|
 | `scrolloff` | Number of lines of padding around the edge of the screen when scrolling | `5` |
 | `mouse` | Enable mouse mode | `true` |
+| `prompt-completion` | Show prompt completions | `true` |
 | `default-yank-register` | Default register used for yank/paste | `"` |
 | `middle-click-paste` | Middle click paste support | `true` |
 | `scroll-lines` | Number of lines to scroll per scroll wheel step | `3` |

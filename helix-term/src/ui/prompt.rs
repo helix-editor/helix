@@ -400,13 +400,78 @@ const BASE_WIDTH: u16 = 30;
 
 impl Prompt {
     pub fn render_prompt(&mut self, area: Rect, surface: &mut Surface, cx: &mut Context) {
-        let theme = &cx.editor.theme;
+        let theme = &cx.editor.theme.clone();
+        let show_prompt_completion = &cx.editor.config.load().prompt_completion;
+
         let prompt_color = theme.get("ui.text");
         let completion_color = theme.get("ui.menu");
         let selected_color = theme.get("ui.menu.selected");
         let suggestion_color = theme.get("ui.text.inactive");
         let background = theme.get("ui.background");
+
+        let line = area.height - 1;
+        surface.clear_with(area.clip_top(line), background);
+        // render buffer text
+        surface.set_string(area.x, area.y + line, &self.prompt, prompt_color);
+
+        self.line_area = area
+            .clip_left(self.prompt.len() as u16)
+            .clip_top(line)
+            .clip_right(2);
+
+        if self.line.is_empty() {
+            // Show the most recently entered value as a suggestion.
+            if let Some(suggestion) = self.first_history_completion(cx.editor) {
+                surface.set_string(
+                    self.line_area.x,
+                    self.line_area.y,
+                    suggestion,
+                    suggestion_color,
+                );
+            }
+        } else if let Some((language, loader)) = self.language.as_ref() {
+            let mut text: ui::text::Text = crate::ui::markdown::highlighted_code_block(
+                &self.line,
+                language,
+                Some(&cx.editor.theme),
+                loader.clone(),
+                None,
+            )
+            .into();
+            text.render(self.line_area, surface, cx);
+        } else {
+            if self.line.len() < self.line_area.width as usize {
+                self.anchor = 0;
+            } else if self.cursor < self.anchor {
+                self.anchor = self.cursor;
+            } else if self.cursor - self.anchor > self.line_area.width as usize {
+                self.anchor = self.cursor - self.line_area.width as usize;
+            }
+
+            self.truncate_start = self.anchor > 0;
+            self.truncate_end = self.line.len() - self.anchor > self.line_area.width as usize;
+
+            // if we keep inserting characters just before the end elipsis, we move the anchor
+            // so that those new characters are displayed
+            if self.truncate_end && self.cursor - self.anchor >= self.line_area.width as usize {
+                self.anchor += 1;
+            }
+
+            surface.set_string_anchored(
+                self.line_area.x,
+                self.line_area.y,
+                self.truncate_start,
+                self.truncate_end,
+                &self.line.as_str()[self.anchor..],
+                self.line_area.width as usize - self.truncate_end as usize,
+                |_| prompt_color,
+            );
+        }
+
         // completion
+        if !show_prompt_completion {
+            return;
+        }
 
         let max_len = self
             .completion
@@ -502,65 +567,6 @@ impl Prompt {
 
             block.render(area, surface);
             text.render(inner, surface, cx);
-        }
-
-        let line = area.height - 1;
-        surface.clear_with(area.clip_top(line), background);
-        // render buffer text
-        surface.set_string(area.x, area.y + line, &self.prompt, prompt_color);
-
-        self.line_area = area
-            .clip_left(self.prompt.len() as u16)
-            .clip_top(line)
-            .clip_right(2);
-
-        if self.line.is_empty() {
-            // Show the most recently entered value as a suggestion.
-            if let Some(suggestion) = self.first_history_completion(cx.editor) {
-                surface.set_string(
-                    self.line_area.x,
-                    self.line_area.y,
-                    suggestion,
-                    suggestion_color,
-                );
-            }
-        } else if let Some((language, loader)) = self.language.as_ref() {
-            let mut text: ui::text::Text = crate::ui::markdown::highlighted_code_block(
-                &self.line,
-                language,
-                Some(&cx.editor.theme),
-                loader.clone(),
-                None,
-            )
-            .into();
-            text.render(self.line_area, surface, cx);
-        } else {
-            if self.line.len() < self.line_area.width as usize {
-                self.anchor = 0;
-            } else if self.cursor < self.anchor {
-                self.anchor = self.cursor;
-            } else if self.cursor - self.anchor > self.line_area.width as usize {
-                self.anchor = self.cursor - self.line_area.width as usize;
-            }
-
-            self.truncate_start = self.anchor > 0;
-            self.truncate_end = self.line.len() - self.anchor > self.line_area.width as usize;
-
-            // if we keep inserting characters just before the end elipsis, we move the anchor
-            // so that those new characters are displayed
-            if self.truncate_end && self.cursor - self.anchor >= self.line_area.width as usize {
-                self.anchor += 1;
-            }
-
-            surface.set_string_anchored(
-                self.line_area.x,
-                self.line_area.y,
-                self.truncate_start,
-                self.truncate_end,
-                &self.line.as_str()[self.anchor..],
-                self.line_area.width as usize - self.truncate_end as usize,
-                |_| prompt_color,
-            );
         }
     }
 }
