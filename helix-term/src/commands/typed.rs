@@ -682,7 +682,7 @@ pub fn write_all_impl(
     cx: &mut compositor::Context,
     force: bool,
     write_scratch: bool,
-    is_auto_save: bool,
+    from_auto_save: bool,
 ) -> anyhow::Result<()> {
     let mut errors: Vec<&'static str> = Vec::new();
     let config = cx.editor.config();
@@ -723,7 +723,7 @@ pub fn write_all_impl(
         // Save an undo checkpoint for any outstanding changes.
         doc.append_changes_to_history(view);
 
-        let fmt = if config.auto_format && !is_auto_save {
+        let fmt = if config.auto_format && config.auto_save.format_on_auto_save && from_auto_save {
             doc.auto_format().map(|fmt| {
                 let callback = make_format_callback(
                     doc_id,
