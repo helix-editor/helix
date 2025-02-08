@@ -723,17 +723,34 @@ pub fn write_all_impl(
         // Save an undo checkpoint for any outstanding changes.
         doc.append_changes_to_history(view);
 
-        let fmt = if config.auto_format && config.auto_save.format_on_auto_save && from_auto_save {
-            doc.auto_format().map(|fmt| {
-                let callback = make_format_callback(
-                    doc_id,
-                    doc.version(),
-                    target_view,
-                    fmt,
-                    Some((None, force)),
-                );
-                jobs.add(Job::with_callback(callback).wait_before_exiting());
-            })
+        let fmt = if config.auto_format {
+            if from_auto_save {
+                if config.auto_save.format_on_auto_save {
+                    doc.auto_format().map(|fmt| {
+                        let callback = make_format_callback(
+                            doc_id,
+                            doc.version(),
+                            target_view,
+                            fmt,
+                            Some((None, force)),
+                        );
+                        jobs.add(Job::with_callback(callback).wait_before_exiting());
+                    })
+                } else {
+                    None
+                }
+            } else {
+                doc.auto_format().map(|fmt| {
+                    let callback = make_format_callback(
+                        doc_id,
+                        doc.version(),
+                        target_view,
+                        fmt,
+                        Some((None, force)),
+                    );
+                    jobs.add(Job::with_callback(callback).wait_before_exiting());
+                })
+            }
         } else {
             None
         };
