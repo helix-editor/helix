@@ -682,6 +682,7 @@ pub fn write_all_impl(
     cx: &mut compositor::Context,
     force: bool,
     write_scratch: bool,
+    is_auto_save: bool,
 ) -> anyhow::Result<()> {
     let mut errors: Vec<&'static str> = Vec::new();
     let config = cx.editor.config();
@@ -722,7 +723,7 @@ pub fn write_all_impl(
         // Save an undo checkpoint for any outstanding changes.
         doc.append_changes_to_history(view);
 
-        let fmt = if config.auto_format {
+        let fmt = if config.auto_format && !is_auto_save {
             doc.auto_format().map(|fmt| {
                 let callback = make_format_callback(
                     doc_id,
@@ -758,7 +759,7 @@ fn write_all(
         return Ok(());
     }
 
-    write_all_impl(cx, false, true)
+    write_all_impl(cx, false, true, false)
 }
 
 fn force_write_all(
@@ -770,7 +771,7 @@ fn force_write_all(
         return Ok(());
     }
 
-    write_all_impl(cx, true, true)
+    write_all_impl(cx, true, true, false)
 }
 
 fn write_all_quit(
@@ -781,7 +782,7 @@ fn write_all_quit(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-    write_all_impl(cx, false, true)?;
+    write_all_impl(cx, false, true, false)?;
     quit_all_impl(cx, false)
 }
 
@@ -793,7 +794,7 @@ fn force_write_all_quit(
     if event != PromptEvent::Validate {
         return Ok(());
     }
-    let _ = write_all_impl(cx, true, true);
+    let _ = write_all_impl(cx, true, true, false);
     quit_all_impl(cx, true)
 }
 
