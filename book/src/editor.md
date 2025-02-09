@@ -262,6 +262,7 @@ Control auto save behavior.
 | `focus-lost` | Enable automatic saving on the focus moving away from Helix. Requires [focus event support](https://github.com/helix-editor/helix/wiki/Terminal-Support) from your terminal | `false` |
 | `after-delay.enable` | Enable automatic saving after `auto-save.after-delay.timeout` milliseconds have passed since last edit. | `false` |
 | `after-delay.timeout` | Time in milliseconds since last edit before auto save timer triggers. | `3000` |
+| `format-on-auto-save ` | Enable formatting on automatic save. | `false` |
 
 ### `[editor.search]` Section
 
