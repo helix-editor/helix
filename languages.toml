@@ -123,6 +123,7 @@ vscode-json-language-server = { command = "vscode-json-language-server", args = 
 vuels = { command = "vue-language-server", args = ["--stdio"], config = { typescript = { tsdk = "node_modules/typescript/lib/" } } }
 wgsl_analyzer = { command = "wgsl_analyzer" }
 yaml-language-server = { command = "yaml-language-server", args = ["--stdio"] }
+yls = { command = "yls", args = ["-vv"] }
 zls = { command = "zls" }
 blueprint-compiler = { command = "blueprint-compiler", args = ["lsp"] }
 typst-lsp = { command = "typst-lsp" }
@@ -4148,3 +4149,16 @@ scope = "source.csv"
 [[grammar]]
 name = "csv"
 source = { git = "https://github.com/weartist/rainbow-csv-tree-sitter", rev = "d3dbf916446131417e4c2ea9eb8591b23b466d27" }
+
+[[language]]
+name = "yara"
+scope = "source.yara"
+file-types = ["yara", "yar"]
+indent = { tab-width = 2, unit = "  " }
+comment-tokens = "//"
+block-comment-tokens = { start = "/*", end = "*/"}
+language-servers = [ "yls" ]
+
+[[grammar]]
+name = "yara"
+source = { git = "https://github.com/egibs/tree-sitter-yara", rev = "eb3ede203275c38000177f72ec0f9965312806ef" }
