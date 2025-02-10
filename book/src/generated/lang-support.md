@@ -30,6 +30,7 @@
 | cpp | ✓ | ✓ | ✓ | `clangd` |
 | crystal | ✓ | ✓ |  | `crystalline` |
 | css | ✓ |  | ✓ | `vscode-css-language-server` |
+| csv | ✓ |  |  |  |
 | cue | ✓ |  |  | `cuelsp` |
 | cylc | ✓ | ✓ | ✓ |  |
 | d | ✓ | ✓ | ✓ | `serve-d` |
@@ -55,6 +56,7 @@
 | erb | ✓ |  |  |  |
 | erlang | ✓ | ✓ |  | `erlang_ls`, `elp` |
 | esdl | ✓ |  |  |  |
+| fga | ✓ | ✓ | ✓ |  |
 | fidl | ✓ |  |  |  |
 | fish | ✓ | ✓ | ✓ | `fish-lsp` |
 | forth | ✓ |  |  | `forth-lsp` |
@@ -146,7 +148,7 @@
 | nginx | ✓ |  |  |  |
 | nickel | ✓ |  | ✓ | `nls` |
 | nim | ✓ | ✓ | ✓ | `nimlangserver` |
-| nix | ✓ | ✓ |  | `nil`, `nixd` |
+| nix | ✓ | ✓ | ✓ | `nil`, `nixd` |
 | nu | ✓ |  |  | `nu` |
 | nunjucks | ✓ |  |  |  |
 | ocaml | ✓ |  | ✓ | `ocamllsp` |
@@ -215,6 +217,7 @@
 | tcl | ✓ |  | ✓ |  |
 | teal | ✓ |  |  | `teal-language-server` |
 | templ | ✓ |  |  | `templ` |
+| tera | ✓ |  |  |  |
 | textproto | ✓ | ✓ | ✓ |  |
 | tfvars | ✓ |  | ✓ | `terraform-ls` |
 | thrift | ✓ |  |  |  |

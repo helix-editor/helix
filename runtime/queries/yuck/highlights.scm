@@ -1,6 +1,5 @@
-; Errors
-
-(ERROR) @error
+(ident) @variable
+(index) @variable
 
 ; Comments
 
@@ -64,6 +63,12 @@
 (function_call
   name: (ident) @function)
 
+; Tags
+
+; TODO apply to every symbol in list? I think it should probably only be applied to the first child of the list
+(list
+  (symbol) @tag)
+
 ; Variables
 
 (ident) @variable
@@ -94,14 +99,3 @@
 (loop_widget . "for" @keyword.control.repeat . (symbol) @variable . "in" @keyword.operator . (symbol) @variable)
 
 (loop_widget . "for" @keyword.control.repeat . (symbol) @variable . "in" @keyword.operator)
-
-; Tags
-
-; TODO apply to every symbol in list? I think it should probably only be applied to the first child of the list
-(list
-  (symbol) @tag)
-
-; Other stuff that has not been caught by the previous queries yet
-
-(ident) @variable
-(index) @variable
