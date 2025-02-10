@@ -176,6 +176,67 @@
   (#set! injection.language "python")
   (#set! injection.combined))
 
+; pkgs.writers.writeNu[Bin] name attrs content
+(apply_expression
+  (apply_expression
+    function: (apply_expression
+      function: ((_) @_func)))
+    argument: (indented_string_expression (string_fragment) @injection.content)
+  (#match? @_func "(^|\\.)writeNu(Bin)?$")
+  (#set! injection.language "nu")
+  (#set! injection.combined))
+
+; pkgs.writers.writeRuby[Bin] name attrs content
+(apply_expression
+  (apply_expression
+    function: (apply_expression
+      function: ((_) @_func)))
+    argument: (indented_string_expression (string_fragment) @injection.content)
+  (#match? @_func "(^|\\.)writeRuby(Bin)?$")
+  (#set! injection.language "ruby")
+  (#set! injection.combined))
+
+; pkgs.writers.writeLua[Bin] name attrs content
+(apply_expression
+  (apply_expression
+    function: (apply_expression
+      function: ((_) @_func)))
+    argument: (indented_string_expression (string_fragment) @injection.content)
+  (#match? @_func "(^|\\.)writeLua(Bin)?$")
+  (#set! injection.language "lua")
+  (#set! injection.combined))
+
+; pkgs.writers.writeNginxConfig name attrs content
+(apply_expression
+  (apply_expression
+    function: (apply_expression
+      function: ((_) @_func)))
+    argument: (indented_string_expression (string_fragment) @injection.content)
+  (#match? @_func "(^|\\.)writeNginxConfig$")
+  (#set! injection.language "nginx")
+  (#set! injection.combined))
+
+; pkgs.writers.writeGuile[Bin] name attrs content
+(apply_expression
+  (apply_expression
+    function: (apply_expression
+      function: ((_) @_func)))
+    argument: (indented_string_expression (string_fragment) @injection.content)
+  (#match? @_func "(^|\\.)writeGuile(Bin)?$")
+  (#set! injection.language "scheme") ; Guile is a GNU specific implementation of scheme
+  (#set! injection.combined))
+
+
+; pkgs.writers.writeBabashka[Bin] name attrs content
+(apply_expression
+  (apply_expression
+    function: (apply_expression
+      function: ((_) @_func)))
+    argument: (indented_string_expression (string_fragment) @injection.content)
+  (#match? @_func "(^|\\.)writeBabashka(Bin)?$")
+  (#set! injection.language "clojure")
+  (#set! injection.combined))
+
 ; pkgs.writers.writeFSharp[Bin] name content
 ; No query available for f-sharp as of the time of writing
 ; See: https://github.com/helix-editor/helix/issues/4943
