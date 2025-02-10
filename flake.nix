@@ -55,7 +55,7 @@
       # grammars.nix file, then taking the runtime directory in the git repo
       # and hooking symlinks up to it.
       grammars = pkgs.callPackage ./grammars.nix {};
-      runtimeDir = pkgs.runCommand "helix-runtime" {} ''
+      runtime = pkgs.runCommand "helix-runtime" {} ''
         mkdir -p $out
         ln -s ${./runtime}/* $out
         rm -r $out/grammars
@@ -69,21 +69,21 @@
       # This allows for an overridable helix build.
       #
       build_helix = pkgs.lib.makeOverridable ({
-        pkgs ? pkgs,
+        npkgs ? pkgs,
         craneLib ? craneLibMSRV,
-        runtimeDir ? runtimeDir,
+        runtimeDir ? runtime,
         cargoExtraArgs ? "",
       }:
         craneLib.buildPackage (commonArgs
           // rec {
             inherit cargoExtraArgs;
             nativeBuildInputs = [
-              pkgs.installShellFiles
-              pkgs.git
+              npkgs.installShellFiles
+              npkgs.git
             ];
 
             cargoArtifacts = craneLib.buildDepsOnly commonArgs;
-            
+
             env.HELIX_DEFAULT_RUNTIME = "${runtimeDir}";
 
             postInstall = ''
@@ -100,7 +100,7 @@
           }));
     in {
       packages = {
-        helix = build_helix { };
+        helix = build_helix {};
 
         # The default Helix build. Uses the default MSRV Rust toolchain, and the
         # default nixpkgs, which is the one in the Flake.lock of Helix.
