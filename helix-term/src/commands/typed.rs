@@ -6,6 +6,7 @@ use crate::job::Job;
 
 use super::*;
 
+use helix_core::diff::diff_ropes;
 use helix_core::fuzzy::fuzzy_match;
 use helix_core::indent::MAX_INDENT;
 use helix_core::{line_ending, shellwords::Shellwords};
@@ -2423,6 +2424,104 @@ fn reset_diff_change(
     Ok(())
 }
 
+fn get_diff_change_at_selection(editor: &mut Editor) -> anyhow::Result<String> {
+    let (view, doc) = current!(editor);
+    let Some(handle) = doc.diff_handle() else {
+        bail!("Diff is not available in the current buffer")
+    };
+
+    let diff = handle.load();
+    let doc_text = doc.text().slice(..);
+    let primary_selection = doc.selection(view.id).primary();
+
+    let Some((base_start, base_end, doc_start, doc_end)) = diff
+        .hunks_intersecting_line_ranges([primary_selection.line_range(doc_text)].into_iter())
+        .fold(None, |line_ranges, hunk| match line_ranges {
+            Some((base_start, base_end, doc_start, doc_end)) => Some((
+                hunk.before.start.min(base_start),
+                hunk.before.end.max(base_end),
+                hunk.after.start.min(doc_start),
+                hunk.after.end.max(doc_end),
+            )),
+            None => Some((
+                hunk.before.start,
+                hunk.before.end,
+                hunk.after.start,
+                hunk.after.end,
+            )),
+        })
+    else {
+        bail!("There are no changes in the primary selection");
+    };
+
+    let base = diff.diff_base();
+    let doc = diff.doc();
+    Ok(diff_ropes(
+        base.slice(
+            base.line_to_char(base_start as usize)..base.line_to_char((base_end as usize) + 1) - 1,
+        ),
+        doc.slice(
+            doc.line_to_char(doc_start as usize)..doc.line_to_char((doc_end as usize) + 1) - 1,
+        ),
+    ))
+}
+
+fn show_selection_diff_popup(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    ensure!(
+        args.is_empty(),
+        "show-selection-diff-popup takes no arguments"
+    );
+
+    let text = get_diff_change_at_selection(cx.editor)?;
+
+    let callback = async move {
+        let call: job::Callback = Callback::EditorCompositor(Box::new(
+            move |editor: &mut Editor, compositor: &mut Compositor| {
+                let contents =
+                    ui::Markdown::new(format!("```diff\n{}```", text), editor.syn_loader.clone());
+                let popup = Popup::new("show-selection-diff-popup", contents).auto_close(true);
+                compositor.replace_or_push("show-selection-diff-popup", popup);
+            },
+        ));
+        Ok(call)
+    };
+    cx.jobs.callback(callback);
+    Ok(())
+}
+
+fn yank_selection_diff(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    let reg = match args.first() {
+        Some(s) => {
+            ensure!(s.chars().count() == 1, format!("Invalid register {s}"));
+            s.chars().next().unwrap()
+        }
+        None => '+',
+    };
+
+    let text = get_diff_change_at_selection(cx.editor)?;
+
+    cx.editor.registers.write(reg, vec![text])?;
+    cx.editor.set_status(format!(
+        "Yanked diff changes in the primary selection to register {reg}",
+    ));
+    Ok(())
+}
+
 fn clear_register(
     cx: &mut compositor::Context,
     args: &[Cow<str>],
@@ -3158,6 +3257,20 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         doc: "Reset the diff change at the cursor position.",
         fun: reset_diff_change,
         signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "show-selection-diff-popup",
+        aliases: &["diffshow"],
+        doc: "Show a popup with the unsaved diff hunks intersecting the primary selection.",
+        fun: show_selection_diff_popup,
+        signature: CommandSignature::none(),
+    },
+    TypableCommand {
+        name: "yank-selection-diff",
+        aliases: &["diffyank"],
+        doc: "Yank the unsaved diff hunks intersecting the primary selection.",
+        fun: yank_selection_diff,
+        signature: CommandSignature::all(completers::register),
     },
     TypableCommand {
         name: "clear-register",
