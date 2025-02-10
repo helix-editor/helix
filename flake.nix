@@ -69,18 +69,21 @@
       # This allows for an overridable helix build.
       #
       build_helix = pkgs.lib.makeOverridable ({
-        pkgs,
-        craneLib,
-        runtimeDir,
+        pkgs ? pkgs,
+        craneLib ? craneLibMSRV,
+        runtimeDir ? runtimeDir,
         cargoExtraArgs ? "",
       }:
         craneLib.buildPackage (commonArgs
           // rec {
-            inherit cargoArtifacts cargoExtraArgs;
+            inherit cargoExtraArgs;
             nativeBuildInputs = [
               pkgs.installShellFiles
               pkgs.git
             ];
+
+            cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+            
             env.HELIX_DEFAULT_RUNTIME = "${runtimeDir}";
 
             postInstall = ''
@@ -97,10 +100,7 @@
           }));
     in {
       packages = {
-        helix = build_helix {
-          inherit pkgs runtimeDir;
-          craneLib = craneLibMSRV;
-        };
+        helix = build_helix { };
 
         # The default Helix build. Uses the default MSRV Rust toolchain, and the
         # default nixpkgs, which is the one in the Flake.lock of Helix.
