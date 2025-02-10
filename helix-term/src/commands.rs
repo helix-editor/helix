@@ -5295,7 +5295,11 @@ fn toggle_block_comments(cx: &mut Context) {
                 }),
             );
 
-            transaction.with_selection(Selection::new(selections, selection.primary_index()))
+            if selections.is_empty() {
+                transaction
+            } else {
+                transaction.with_selection(Selection::new(selections, selection.primary_index()))
+            }
         },
     );
 }
