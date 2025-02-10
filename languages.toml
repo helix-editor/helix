@@ -4139,3 +4139,12 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "fga"
 source = { git = "https://github.com/matoous/tree-sitter-fga", rev = "5005e8dd976e1f67beb3d23204580eb6f8b4c965" }
+
+[[language]]
+name = "csv"
+file-types = ["csv"]
+scope = "source.csv"
+
+[[grammar]]
+name = "csv"
+source = { git = "https://github.com/weartist/rainbow-csv-tree-sitter", rev = "d3dbf916446131417e4c2ea9eb8591b23b466d27" }
