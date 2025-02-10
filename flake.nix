@@ -66,26 +66,59 @@
       # it is semi-incremental if the Cargo.lock doesn't change.
       cargoArtifacts = craneLibMSRV.buildDepsOnly commonArgs;
 
-      # This allows for an overridable helix build.
+      # This allows for an easily overridable Helix build.
       #
+      # Example:
+      # Overrides to use Nightly toolchain
+      #
+      #   pkgs = import nixpkgs {
+      #     inherit syste;
+      #     overlays = [ (import rust-overlay) ]
+      #   };
+      #   craneLib = crane.mkLib pkgs;
+      #   nightly-crane = craneLib.overrideToolchain (p: p.rust-bin.nightly.latest.default);
+      #   helix.packages.${pkgs.system}.default.override {
+      #     craneLib = nightly-crane;
+      #   };
       build_helix = pkgs.lib.makeOverridable ({
+        # nixpkgs used
         npkgs ? pkgs,
+        # CraneLib instance used
         craneLib ? craneLibMSRV,
+        # The runtime directory derivation
         runtimeDir ? runtime,
+        # Any extra arguments to Cargo such as features or optlevel
         cargoExtraArgs ? "",
+        # RUSTFLAGS environment variable
+        rustFlags ? "",
       }:
         craneLib.buildPackage (commonArgs
           // rec {
-            inherit cargoExtraArgs;
+            inherit cargoExtraArgs rustFlags;
+
+            # The tools required on the build host
             nativeBuildInputs = [
               npkgs.installShellFiles
               npkgs.git
             ];
 
-            cargoArtifacts = craneLib.buildDepsOnly commonArgs;
+            # The dependencies. Would be nice to capture them from the
+            # above derivation, but cannot with the way it is currently setup.
+            # This derivation must use the same craneLib instance, RUSTFLAGS,
+            # and cargoExtraFlags to be both sound and useful.
+            cargoArtifacts = craneLib.buildDepsOnly ({
+                inherit cargoExtraArgs;
+                RUSTFLAGS = rustFlags;
+              }
+              // commonArgs);
 
+            # Set the environment variable at runtime for the runtime dir
             env.HELIX_DEFAULT_RUNTIME = "${runtimeDir}";
 
+            # The build-time envar to get the git hash
+            HELIX_NIX_BUILD_REV = self.rev or self.dirtyRev or null;
+
+            # Get all the application stuff in the output directory.
             postInstall = ''
               mkdir -p $out/lib
               installShellCompletion ${./contrib/completion}/hx.{bash,fish,zsh}
@@ -100,6 +133,7 @@
           }));
     in {
       packages = {
+        # Use all the defaults.
         helix = build_helix {};
 
         # The default Helix build. Uses the default MSRV Rust toolchain, and the
@@ -109,6 +143,8 @@
         default = self.packages.${system}.helix;
       };
 
+      # Note that if overrides are used, none of the checks will use the cached override artifacts
+      # as they are all MSRV only.
       checks = {
         # Build the crate itself
         inherit (self.packages.${system}) helix;
@@ -134,6 +170,7 @@
 
       formatter = pkgs.alejandra;
 
+      # Devshell behavior is preserved.
       devShells.default = let
         rustFlagsEnv = pkgs.lib.optionalString pkgs.stdenv.isLinux "-C link-arg=-fuse-ld=lld -C target-cpu=native -Clink-arg=-Wl,--no-rosegment --cfg tokio_unstable";
       in
