@@ -72,7 +72,7 @@
       # Overrides to use Nightly toolchain
       #
       #   pkgs = import nixpkgs {
-      #     inherit syste;
+      #     inherit system;
       #     overlays = [ (import rust-overlay) ]
       #   };
       #   craneLib = crane.mkLib pkgs;
