@@ -16,7 +16,7 @@
   "meta"
   "strings"
   "condition"
-] @property
+] @attribute
 
 ; Operators
 [
@@ -54,7 +54,7 @@
   "xor"
   "base64"
   "base64wide"
-] @keyword.modifier
+] @keyword.storage.modifier
 
 ; Numbers and sizes
 (integer_literal) @constant.numeric
@@ -63,8 +63,7 @@
 ; Strings
 (double_quoted_string) @string
 (single_quoted_string) @string
-(escape_sequence) @string.escape
-(text_string) @text.literal
+(escape_sequence) @constant.character.escape
 
 ; Hex strings
 (hex_string) @string.special
@@ -80,7 +79,7 @@
 [
   "true"
   "false"
-] @constant.boolean
+] @constant.builtin.boolean
 
 ; Keywords and special identifiers
 [

@@ -4152,7 +4152,6 @@ source = { git = "https://github.com/weartist/rainbow-csv-tree-sitter", rev = "d
 
 [[language]]
 name = "yara"
-auto-format = false
 scope = "source.yara"
 file-types = ["yara", "yar"]
 indent = { tab-width = 2, unit = "  " }
@@ -4162,4 +4161,4 @@ language-servers = [ "yls" ]
 
 [[grammar]]
 name = "yara"
-source = { git = "https://github.com/egibs/tree-sitter-yara.git", rev = "eb3ede203275c38000177f72ec0f9965312806ef" }
+source = { git = "https://github.com/egibs/tree-sitter-yara", rev = "eb3ede203275c38000177f72ec0f9965312806ef" }
