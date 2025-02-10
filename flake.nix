@@ -88,10 +88,10 @@
 
             postInstall = ''
               mkdir -p $out/lib
-              installShellCompletion contrib/completion/hx.{bash,fish,zsh}
+              installShellCompletion ${./contrib/completion}/hx.{bash,fish,zsh}
               mkdir -p $out/share/{applications,icons/hicolor/256x256/apps}
-              cp contrib/Helix.desktop $out/share/applications
-              cp contrib/helix.png $out/share/icons/hicolor/256x256/apps
+              cp ${./contrib/Helix.desktop} $out/share/applications
+              cp ${./contrib/helix.png} $out/share/icons/hicolor/256x256/apps
             '';
 
             meta = {
