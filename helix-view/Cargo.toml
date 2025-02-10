@@ -57,7 +57,7 @@ thiserror.workspace = true
 kstring = "2.0"
 
 keyboard_query = { version = "0.1.0", optional = true }
-evdev = { version = "0.13", optional = true }
+evdev = { version = "0.13", features = ["tokio"], optional = true }
 
 [target.'cfg(windows)'.dependencies]
 clipboard-win = { version = "5.4", features = ["std"] }
