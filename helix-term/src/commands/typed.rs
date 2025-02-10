@@ -2491,6 +2491,43 @@ fn clear_register(
     Ok(())
 }
 
+fn copy_register(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+
+    ensure!(args.len() == 2, ":copy-register takes two arguments");
+
+    ensure!(
+        args[0].chars().count() == 1,
+        format!("Invalid register {}", args[0])
+    );
+    ensure!(
+        args[1].chars().count() == 1,
+        format!("Invalid register {}", args[0])
+    );
+
+    let src_register = args[0].chars().next().unwrap_or_default();
+    let Some(values) = cx.editor.registers.read(src_register, cx.editor) else {
+        bail!("Register {} not found", src_register);
+    };
+
+    let dest_register = args[1].chars().next().unwrap_or_default();
+    if let Err(error) = cx
+        .editor
+        .registers
+        .write(dest_register, values.map(|v| v.to_string()).collect())
+    {
+        bail!(error);
+    }
+
+    Ok(())
+}
+
 fn redraw(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -3201,6 +3238,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Clear given register. If no argument is provided, clear all registers.",
         fun: clear_register,
+        signature: CommandSignature::all(completers::register),
+    },
+    TypableCommand {
+        name: "copy-register",
+        aliases: &[],
+        doc: "Copy first register contents to second register.",
+        fun: copy_register,
         signature: CommandSignature::all(completers::register),
     },
     TypableCommand {
