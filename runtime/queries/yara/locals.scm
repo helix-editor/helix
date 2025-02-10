@@ -1,5 +1,5 @@
-(rule_definition) @local.definition.rule
-(string_identifier) @local.definition.var
+(rule_definition) @local.definition
+(string_identifier) @local.definition
 
 (for_expression
   (string_identifier) @local.reference)
