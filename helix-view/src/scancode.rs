@@ -62,9 +62,14 @@ mod keyboard_state {
     use std::sync::atomic::{AtomicU16, Ordering};
     use std::sync::Arc;
 
+    struct DeviceHandle {
+        _path: std::path::PathBuf,
+        _handle: tokio::task::JoinHandle<()>,
+    }
+
     pub struct KeyboardState {
         codes: [Arc<AtomicU16>; 2],
-        _handle: std::thread::JoinHandle<()>,
+        _handle: Vec<DeviceHandle>,
     }
 
     fn is_keyboard(device: &Device) -> bool {
@@ -78,37 +83,40 @@ mod keyboard_state {
             let key1 = Arc::new(AtomicU16::new(0));
             let key2 = Arc::new(AtomicU16::new(0));
 
-            let k1 = Arc::clone(&key1);
-            let k2 = Arc::clone(&key2);
+            // find keyboards
+            let keyboards = evdev::enumerate()
+                .filter(|(_, dev)| is_keyboard(dev))
+                .collect::<Vec<_>>();
 
-            let _handle = std::thread::spawn(move || {
-                // Try to find last keyboard input device
-                // TODO how to find actual system input device?
-                // TODO get input device path from config
-                let now = std::time::Instant::now();
-                let Some((device_path, mut device)) = evdev::enumerate()
-                    .filter(|(_, dev)| is_keyboard(dev))
-                    .last()
-                else {
-                    log::warn!("No keyboard devices found");
-                    return;
-                };
-                log::info!(
-                    "Listen last keyboard input device '{}' (spend {}ms): {}",
-                    device_path.display(),
-                    now.elapsed().as_millis(),
-                    device.name().unwrap_or_default()
-                );
+            let mut handles = Vec::new();
 
-                // evdev constants
-                const KEY_STATE_RELEASE: i32 = 0;
-                let mut codes: [u16; 2] = [0, 0];
-                loop {
-                    let Ok(stream) = device.fetch_events() else {
-                        log::error!("Failed to fetch devices events");
-                        continue;
+            // evdev constant
+            const KEY_STATE_RELEASE: i32 = 0;
+
+            for (path, mut item) in keyboards {
+                // skip already grabbed keyboards
+                let is_grabbed = item.grab().is_err();
+                if !is_grabbed {
+                    if let Err(e) = item.ungrab() {
+                        log::error!("Failed to ungrab input: {e}");
+                    }
+                }
+                if is_grabbed {
+                    continue;
+                }
+                let k1 = Arc::clone(&key1);
+                let k2 = Arc::clone(&key2);
+                let mut codes = [0, 0];
+                let device_path = path.to_str().unwrap_or_default().to_owned();
+                let handle = tokio::task::spawn(async move {
+                    let device_name = item.name().unwrap_or_default().to_owned();
+                    log::info!("Start listen events from: {device_name} ({device_path})");
+                    let Ok(mut events) = item.into_event_stream() else {
+                        log::error!("Failed to stream events from: {device_name} ({device_path})");
+                        return;
                     };
-                    for event in stream {
+
+                    while let Ok(event) = events.next_event().await {
                         if evdev::EventType::KEY != event.event_type() {
                             continue;
                         };
@@ -129,11 +137,16 @@ mod keyboard_state {
                         k1.store(codes[0], Ordering::Relaxed);
                         k2.store(codes[1], Ordering::Relaxed);
                     }
-                }
-            });
+                });
+
+                handles.push(DeviceHandle {
+                    _path: path,
+                    _handle: handle,
+                })
+            }
 
             Self {
-                _handle,
+                _handle: handles,
                 codes: [key1, key2],
             }
         }
@@ -287,8 +300,6 @@ where
                 .map_err(|e| <D::Error as Error>::custom(e))?,
         )
     } else {
-        log::debug!("User defined scancode layout not found: {}", value.layout);
-
         // lookup in hardcoded defaults
         let Some(map) = defaults::LAYOUTS.get(value.layout.as_str()) else {
             return Err(<D::Error as Error>::custom(format!(
@@ -296,6 +307,11 @@ where
                 value.layout
             )));
         };
+
+        log::debug!(
+            "User defined scancode layout not found: {}. Use default",
+            value.layout
+        );
 
         map.to_owned()
     };
