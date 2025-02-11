@@ -2763,7 +2763,8 @@ file-types = [
   "musicxml",
   "glif",
   "ui",
-  "sublime-snippet"
+  "sublime-snippet",
+  "xsl"
 ]
 block-comment-tokens = { start = "<!--", end = "-->" }
 indent = { tab-width = 2, unit = "  " }
