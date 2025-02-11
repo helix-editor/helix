@@ -65,9 +65,9 @@
 "ui.cursor.primary" = { fg = "white", modifiers = ["reversed"] }
 "ui.cursor.match" = { fg = "blue", modifiers = ["underlined"]}
 
-"ui.selection" = { bg = "light-gray" }
+"ui.selection" = { bg = "black", modifiers = ["reversed"] }
 "ui.selection.primary" = { bg = "gray" }
-"ui.cursorline.primary" = { bg = "light-black" }
+"ui.cursorline.primary" = { bg = "dark-black" }
 
 "ui.linenr" = { fg = "linenr" }
 "ui.linenr.selected" = { fg = "white" }
@@ -105,6 +105,7 @@ gold = "#D19A66"
 cyan = "#46A6B2"
 white = "#ABB2BF"
 black = "#16181A"
+dark-black = "#12100E"
 light-black = "#2C323C"
 gray = "#252D30"
 faint-gray = "#ABB2BF"
