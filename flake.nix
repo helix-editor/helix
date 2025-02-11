@@ -8,133 +8,92 @@
       url = "github:oxalica/rust-overlay";
       inputs.nixpkgs.follows = "nixpkgs";
     };
-    crane.url = "github:ipetkov/crane";
   };
 
   outputs = {
     self,
     nixpkgs,
-    crane,
     flake-utils,
     rust-overlay,
     ...
-  }:
+  }: let
+    mkHelix = {
+      pkgs,
+      rustPlatform,
+      ...
+    }: let
+      # Next we actually need to build the grammars and the runtime directory
+      # that they reside in. It is built by calling the derivation in the
+      # grammars.nix file, then taking the runtime directory in the git repo
+      # and hooking symlinks up to it.
+      grammars = pkgs.callPackage ./grammars.nix {};
+      runtimeDir = pkgs.runCommand "helix-runtime" {} ''
+        mkdir -p $out
+        ln -s ${./runtime}/* $out
+        rm -r $out/grammars
+        ln -s ${grammars} $out/grammars
+      '';
+    in
+      rustPlatform.buildRustPackage {
+        name = with builtins; (fromTOML (readFile ./helix-term/Cargo.toml)).package.name;
+        version = with builtins; (fromTOML (readFile ./Cargo.toml)).workspace.package.version;
+
+        src = pkgs.lib.sources.cleanSource ./.;
+
+        cargoLock = {
+          lockFile = ./Cargo.lock;
+        };
+
+        nativeBuildInputs = [
+          pkgs.installShellFiles
+          pkgs.git
+        ];
+
+        # Helix attempts to reach out to the network and get the grammars. Nix doesn't allow this.
+        HELIX_DISABLE_AUTO_GRAMMAR_BUILD = "1";
+
+        # So Helix knows what rev it is.
+        HELIX_NIX_BUILD_REV = self.rev or self.dirtyRev or null;
+
+        # Use Helix's opt profile for the build.
+        buildType = "opt";
+
+        doCheck = false;
+        strictDeps = true;
+
+        # Sets the Helix runtimedir to the grammars
+        env.HELIX_DEFAULT_RUNTIME = "${runtimeDir}";
+
+        # Get all the application stuff in the output directory.
+        postInstall = ''
+          mkdir -p $out/lib
+          installShellCompletion ${./contrib/completion}/hx.{bash,fish,zsh}
+          mkdir -p $out/share/{applications,icons/hicolor/256x256/apps}
+          cp ${./contrib/Helix.desktop} $out/share/applications
+          cp ${./contrib/helix.png} $out/share/icons/hicolor/256x256/apps
+        '';
+
+        meta = {
+          mainProgram = "hx";
+        };
+      };
+  in
     flake-utils.lib.eachDefaultSystem (system: let
-      # Apply the rust-overlay to nixpkgs so we can access all version.
       pkgs = import nixpkgs {
         inherit system;
         overlays = [(import rust-overlay)];
       };
 
       # Get Helix's MSRV toolchain to build with by default.
-      rustToolchain = pkgs.pkgsBuildHost.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
-      craneLibMSRV = (crane.mkLib pkgs).overrideToolchain rustToolchain;
-
-      # Common args for most things
-      commonArgs = {
-        # Helix attempts to reach out to the network and get the grammars. Nix doesn't allow this.
-        HELIX_DISABLE_AUTO_GRAMMAR_BUILD = "1";
-
-        # Get the name and version from the cargo.toml
-        inherit (craneLibMSRV.crateNameFromCargoToml {cargoToml = ./helix-term/Cargo.toml;}) pname;
-        inherit (craneLibMSRV.crateNameFromCargoToml {cargoToml = ./Cargo.toml;}) version;
-
-        # Clean the source.
-        src = craneLibMSRV.cleanCargoSource ./.;
-
-        # Common build inputs.
-        nativeBuildInputs = [pkgs.installShellFiles];
-
-        # disable tests
-        doCheck = false;
-        strictDeps = true;
+      msrvToolchain = pkgs.pkgsBuildHost.rust-bin.fromRustupToolchainFile ./rust-toolchain.toml;
+      msrvPlatform = pkgs.makeRustPlatform {
+        cargo = msrvToolchain;
+        rustc = msrvToolchain;
       };
-
-      # Next we actually need to build the grammars and the runtime directory
-      # that they reside in. It is built by calling the derivation in the
-      # grammars.nix file, then taking the runtime directory in the git repo
-      # and hooking symlinks up to it.
-      grammars = pkgs.callPackage ./grammars.nix {};
-      runtime = pkgs.runCommand "helix-runtime" {} ''
-        mkdir -p $out
-        ln -s ${./runtime}/* $out
-        rm -r $out/grammars
-        ln -s ${grammars} $out/grammars
-      '';
-
-      # Cranelib allows us to put the dependencies in the nix store. This means
-      # it is semi-incremental if the Cargo.lock doesn't change.
-      cargoArtifacts = craneLibMSRV.buildDepsOnly commonArgs;
-
-      # This allows for an easily overridable Helix build.
-      #
-      # Example:
-      # Overrides to use Nightly toolchain
-      #
-      #   pkgs = import nixpkgs {
-      #     inherit system;
-      #     overlays = [ (import rust-overlay) ]
-      #   };
-      #   craneLib = crane.mkLib pkgs;
-      #   nightly-crane = craneLib.overrideToolchain (p: p.rust-bin.nightly.latest.default);
-      #   helix.packages.${pkgs.system}.default.override {
-      #     craneLib = nightly-crane;
-      #   };
-      build_helix = pkgs.lib.makeOverridable ({
-        # nixpkgs used
-        npkgs ? pkgs,
-        # CraneLib instance used
-        craneLib ? craneLibMSRV,
-        # The runtime directory derivation
-        runtimeDir ? runtime,
-        # Any extra arguments to Cargo such as features or optlevel
-        cargoExtraArgs ? "",
-        # RUSTFLAGS environment variable
-        rustFlags ? "",
-      }:
-        craneLib.buildPackage (commonArgs
-          // rec {
-            inherit cargoExtraArgs rustFlags;
-
-            # The tools required on the build host
-            nativeBuildInputs = [
-              npkgs.installShellFiles
-              npkgs.git
-            ];
-
-            # The dependencies. Would be nice to capture them from the
-            # above derivation, but cannot with the way it is currently setup.
-            # This derivation must use the same craneLib instance, RUSTFLAGS,
-            # and cargoExtraFlags to be both sound and useful.
-            cargoArtifacts = craneLib.buildDepsOnly ({
-                inherit cargoExtraArgs;
-                RUSTFLAGS = rustFlags;
-              }
-              // commonArgs);
-
-            # Set the environment variable at runtime for the runtime dir
-            env.HELIX_DEFAULT_RUNTIME = "${runtimeDir}";
-
-            # The build-time envar to get the git hash
-            HELIX_NIX_BUILD_REV = self.rev or self.dirtyRev or null;
-
-            # Get all the application stuff in the output directory.
-            postInstall = ''
-              mkdir -p $out/lib
-              installShellCompletion ${./contrib/completion}/hx.{bash,fish,zsh}
-              mkdir -p $out/share/{applications,icons/hicolor/256x256/apps}
-              cp ${./contrib/Helix.desktop} $out/share/applications
-              cp ${./contrib/helix.png} $out/share/icons/hicolor/256x256/apps
-            '';
-
-            meta = {
-              mainProgram = "hx";
-            };
-          }));
     in {
       packages = {
-        # Use all the defaults.
-        helix = build_helix {};
+        # Make MSRV Helix
+        helix = pkgs.callPackage mkHelix {rustPlatform = msrvPlatform;};
 
         # The default Helix build. Uses the default MSRV Rust toolchain, and the
         # default nixpkgs, which is the one in the Flake.lock of Helix.
@@ -143,29 +102,12 @@
         default = self.packages.${system}.helix;
       };
 
-      # Note that if overrides are used, none of the checks will use the cached override artifacts
-      # as they are all MSRV only.
       checks = {
-        # Build the crate itself
-        inherit (self.packages.${system}) helix;
-
-        clippy = craneLibMSRV.cargoClippy (commonArgs
-          // {
-            inherit cargoArtifacts;
-            cargoClippyExtraArgs = "--all-targets -- --deny warnings";
-          });
-
-        fmt = craneLibMSRV.cargoFmt commonArgs;
-
-        doc = craneLibMSRV.cargoDoc (commonArgs
-          // {
-            inherit cargoArtifacts;
-          });
-
-        test = craneLibMSRV.cargoTest (commonArgs
-          // {
-            inherit cargoArtifacts;
-          });
+        helix = self.outputs.packages.${system}.helix.overrideAttrs (prev:
+          {
+            buildType = "debug";
+          }
+          // prev);
       };
 
       formatter = pkgs.alejandra;
@@ -190,8 +132,10 @@
         };
     })
     // {
-      overlays.default = final: prev: {
-        inherit (self.packages.${final.system}) helix;
+      overlays = {
+        default = final: prev: {
+          helix = final.callPackage mkHelix {};
+        };
       };
     };
 
