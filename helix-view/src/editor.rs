@@ -807,9 +807,6 @@ pub struct AutoSave {
     /// Auto save on focus lost. Defaults to false.
     #[serde(default)]
     pub focus_lost: bool,
-    /// Format on auto save. Defaults to false.
-    #[serde(default)]
-    pub format_on_auto_save: bool,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize, Serialize)]
