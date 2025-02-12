@@ -126,7 +126,6 @@ yaml-language-server = { command = "yaml-language-server", args = ["--stdio"] }
 yls = { command = "yls", args = ["-vv"] }
 zls = { command = "zls" }
 blueprint-compiler = { command = "blueprint-compiler", args = ["lsp"] }
-typst-lsp = { command = "typst-lsp" }
 tinymist = { command = "tinymist" }
 ts_query_ls = { command = "ts_query_ls" }
 pkgbuild-language-server = { command = "pkgbuild-language-server" }
@@ -3335,7 +3334,7 @@ injection-regex = "typ(st)?"
 file-types = ["typst", "typ"]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
-language-servers = ["tinymist", "typst-lsp"]
+language-servers = ["tinymist"]
 indent = { tab-width = 2, unit = "  " }
 
 [language.auto-pairs]
