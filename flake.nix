@@ -20,6 +20,7 @@
     mkHelix = {
       pkgs,
       rustPlatform,
+      stdenv,
       ...
     }: let
       # Next we actually need to build the grammars and the runtime directory
@@ -34,29 +35,48 @@
         ln -s ${grammars} $out/grammars
       '';
     in
-      rustPlatform.buildRustPackage {
-        name = with builtins; (fromTOML (readFile ./helix-term/Cargo.toml)).package.name;
-        version = with builtins; (fromTOML (readFile ./Cargo.toml)).workspace.package.version;
+      # Currently rustPlatform.buildRustPackage doesn't have the finalAttrs pattern
+      # hooked up. To get around this while having good customization, mkDerivation is
+      # used instead.
+      stdenv.mkDerivation (self: {
+        # START: Reelvalute the below attrs when
+        # https://github.com/NixOS/nixpkgs/pull/354999
+        # or
+        # https://github.com/NixOS/nixpkgs/pull/194475
+        # Are merged.
 
-        src = pkgs.lib.sources.cleanSource ./.;
-
-        cargoLock = {
+        # TODO: Probably change to cargoLock
+        cargoDeps = rustPlatform.importCargoLock {
           lockFile = ./Cargo.lock;
         };
 
         nativeBuildInputs = [
+          rustPlatform.rust.rustc # TODO: Remove
+          rustPlatform.rust.cargo # TODO: Remove
           pkgs.installShellFiles
           pkgs.git
         ];
+
+        # TODO: Remove entire attr
+        buildInputs = with rustPlatform; [
+          cargoSetupHook
+          cargoBuildHook
+          cargoInstallHook
+        ];
+
+        # Use Helix's opt profile for the build.
+        # TODO: s/cargoBuildType/buildType
+        cargoBuildType = "opt";
+        # END: Funny attrs to reevaluate
+
+        name = with builtins; (fromTOML (readFile ./helix-term/Cargo.toml)).package.name;
+        src = pkgs.lib.sources.cleanSource ./.;
 
         # Helix attempts to reach out to the network and get the grammars. Nix doesn't allow this.
         HELIX_DISABLE_AUTO_GRAMMAR_BUILD = "1";
 
         # So Helix knows what rev it is.
         HELIX_NIX_BUILD_REV = self.rev or self.dirtyRev or null;
-
-        # Use Helix's opt profile for the build.
-        buildType = "opt";
 
         doCheck = false;
         strictDeps = true;
@@ -76,7 +96,7 @@
         meta = {
           mainProgram = "hx";
         };
-      };
+      });
   in
     flake-utils.lib.eachDefaultSystem (system: let
       pkgs = import nixpkgs {
@@ -103,11 +123,9 @@
       };
 
       checks = {
-        helix = self.outputs.packages.${system}.helix.overrideAttrs (prev:
-          {
-            buildType = "debug";
-          }
-          // prev);
+        helix = self.outputs.packages.${system}.helix.overrideAttrs {
+          cargoBuildType = "debug";
+        };
       };
 
       formatter = pkgs.alejandra;
