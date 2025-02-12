@@ -167,7 +167,7 @@
 | pest | ✓ | ✓ | ✓ | `pest-language-server` |
 | php | ✓ | ✓ | ✓ | `intelephense` |
 | php-only | ✓ |  |  |  |
-| pkgbuild | ✓ | ✓ | ✓ | `pkgbuild-language-server`, `bash-language-server` |
+| pkgbuild | ✓ | ✓ | ✓ | `termux-language-server`, `bash-language-server` |
 | pkl | ✓ |  | ✓ |  |
 | po | ✓ | ✓ |  |  |
 | pod | ✓ |  |  |  |

@@ -128,7 +128,7 @@ zls = { command = "zls" }
 blueprint-compiler = { command = "blueprint-compiler", args = ["lsp"] }
 tinymist = { command = "tinymist" }
 ts_query_ls = { command = "ts_query_ls" }
-pkgbuild-language-server = { command = "pkgbuild-language-server" }
+termux-language-server = { command = "termux-language-server" }
 helm_ls = { command = "helm_ls", args = ["serve"] }
 ember-language-server = { command = "ember-language-server", args = ["--stdio"] }
 teal-language-server = { command = "teal-language-server" }
@@ -3701,7 +3701,7 @@ file-types = [{ glob = "PKGBUILD" }]
 comment-token = "#"
 grammar = "bash"
 language-servers = [
-  "pkgbuild-language-server",
+  "termux-language-server",
   { except-features = [
     "diagnostics",
   ], name = "bash-language-server" },
