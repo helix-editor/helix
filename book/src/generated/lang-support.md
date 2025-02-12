@@ -30,6 +30,7 @@
 | cpp | ✓ | ✓ | ✓ | `clangd` |
 | crystal | ✓ | ✓ |  | `crystalline` |
 | css | ✓ |  | ✓ | `vscode-css-language-server` |
+| csv | ✓ |  |  |  |
 | cue | ✓ |  |  | `cuelsp` |
 | cylc | ✓ | ✓ | ✓ |  |
 | d | ✓ | ✓ | ✓ | `serve-d` |
@@ -38,6 +39,7 @@
 | devicetree | ✓ |  |  |  |
 | dhall | ✓ | ✓ |  | `dhall-lsp-server` |
 | diff | ✓ |  |  |  |
+| djot | ✓ |  |  |  |
 | docker-compose | ✓ | ✓ | ✓ | `docker-compose-langserver`, `yaml-language-server` |
 | dockerfile | ✓ | ✓ |  | `docker-langserver` |
 | dot | ✓ |  |  | `dot-language-server` |
@@ -148,7 +150,7 @@
 | nginx | ✓ |  |  |  |
 | nickel | ✓ |  | ✓ | `nls` |
 | nim | ✓ | ✓ | ✓ | `nimlangserver` |
-| nix | ✓ | ✓ |  | `nil`, `nixd` |
+| nix | ✓ | ✓ | ✓ | `nil`, `nixd` |
 | nu | ✓ |  |  | `nu` |
 | nunjucks | ✓ |  |  |  |
 | ocaml | ✓ |  | ✓ | `ocamllsp` |
@@ -228,7 +230,7 @@
 | twig | ✓ |  |  |  |
 | typescript | ✓ | ✓ | ✓ | `typescript-language-server` |
 | typespec | ✓ | ✓ | ✓ | `tsp-server` |
-| typst | ✓ |  |  | `tinymist`, `typst-lsp` |
+| typst | ✓ |  |  | `tinymist` |
 | ungrammar | ✓ |  |  |  |
 | unison | ✓ | ✓ | ✓ |  |
 | uxntal | ✓ |  |  |  |
@@ -249,5 +251,6 @@
 | xml | ✓ |  | ✓ |  |
 | xtc | ✓ |  |  |  |
 | yaml | ✓ | ✓ | ✓ | `yaml-language-server`, `ansible-language-server` |
+| yara | ✓ |  |  | `yls` |
 | yuck | ✓ |  |  |  |
 | zig | ✓ | ✓ | ✓ | `zls` |

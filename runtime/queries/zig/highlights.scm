@@ -1,105 +1,133 @@
-; Comments
+; Variables
 
-((comment) @comment.block.documentation
-  (#match? @comment.block.documentation "^//!"))
+(identifier) @variable
 
-(comment) @comment.line
+; Parameters
 
-; Punctuation
+(parameter
+  name: (identifier) @variable.parameter)
 
-[
-  "["
-  "]"
-  "("
-  ")"
-  "{"
-  "}"
-] @punctuation.bracket
+(payload
+  (identifier) @variable.parameter)
 
-[
-  ";"
-  "."
-  ","
-  ":"
-  "=>"
-  "->"
-] @punctuation.delimiter
+; Types
 
-(payload "|" @punctuation.bracket)
+(parameter
+  type: (identifier) @type)
 
-; Literals
+((identifier) @type
+  (#match? @type "^[A-Z_][a-zA-Z0-9_]*"))
 
-(character) @constant.character
-
-[
-  (string)
-  (multiline_string)
-] @string
-
-(integer) @constant.numeric.integer
-
-(float) @constant.numeric.float
-
-(boolean) @constant.builtin.boolean
-
-(escape_sequence) @constant.character.escape
-
-; Operator
-
-[
+(variable_declaration
+  (identifier) @type
   "="
-  "*="
-  "*%="
-  "*|="
-  "/="
-  "%="
-  "+="
-  "+%="
-  "+|="
-  "-="
-  "-%="
-  "-|="
-  "<<="
-  "<<|="
-  ">>="
-  "&="
-  "^="
-  "|="
-  "!"
-  "~"
-  "-"
-  "-%"
-  "&"
-  "=="
-  "!="
-  ">"
-  ">="
-  "<="
-  "<"
-  "&"
-  "^"
-  "|"
-  "<<"
-  ">>"
-  "<<|"
-  "+"
-  "++"
-  "+%"
-  "-%"
-  "+|"
-  "-|"
-  "*"
-  "/"
-  "%"
-  "**"
-  "*%"
-  "*|"
-  "||"
-  ".*"
-  ".?"
-  "?"
-  ".."
-] @operator
+  [
+    (struct_declaration)
+    (enum_declaration)
+    (union_declaration)
+    (opaque_declaration)
+  ])
+
+[
+  (builtin_type)
+  "anyframe"
+] @type.builtin
+
+; Constants
+
+((identifier) @constant
+  (#match? @constant "^[A-Z][A-Z_0-9]+$"))
+
+[
+  "null"
+  "unreachable"
+  "undefined"
+] @constant.builtin
+
+(field_expression
+  .
+  member: (identifier) @constant)
+
+(enum_declaration
+  (container_field
+    type: (identifier) @constant))
+
+; Labels
+
+(block_label
+  (identifier) @label)
+
+(break_label
+  (identifier) @label)
+
+; Fields
+
+(field_initializer
+  .
+  (identifier) @variable.other.member)
+
+(field_expression
+  (_)
+  member: (identifier) @variable.other.member)
+
+(field_expression
+  (_)
+  member: (identifier) @type (#match? @type "^[A-Z_][a-zA-Z0-9_]*"))
+
+(field_expression
+  (_)
+  member: (identifier) @constant (#match? @constant "^[A-Z][A-Z_0-9]+$"))
+
+(container_field
+  name: (identifier) @variable.other.member)
+
+(initializer_list
+  (assignment_expression
+      left: (field_expression
+              .
+              member: (identifier) @variable.other.member)))
+
+; Functions
+
+(builtin_identifier) @function.builtin
+
+(call_expression
+  function: (identifier) @function)
+
+(call_expression
+  function: (field_expression
+    member: (identifier) @function.method))
+
+(function_declaration
+  name: (identifier) @function)
+
+; Modules
+
+(variable_declaration
+  (_)
+  (builtin_function
+    (builtin_identifier) @keyword.control.import
+    (#any-of? @keyword.control.import "@import" "@cImport")))
+
+(variable_declaration
+  (_)
+  (field_expression
+    object: (builtin_function
+      (builtin_identifier) @keyword.control.import
+      (#any-of? @keyword.control.import "@import" "@cImport"))))
+
+; Builtins
+
+[
+  "c"
+  "..."
+] @variable.builtin
+
+((identifier) @variable.builtin
+  (#eq? @variable.builtin "_"))
+
+(calling_convention
+  (identifier) @variable.builtin)
 
 ; Keywords
 
@@ -182,123 +210,105 @@
   "threadlocal"
 ] @keyword.storage.modifier
 
-; Builtins
+; Operator
 
 [
-  "c"
-  "..."
-] @variable.builtin
-
-((identifier) @variable.builtin
-  (#eq? @variable.builtin "_"))
-
-(calling_convention
-  (identifier) @variable.builtin)
-
-; Modules
-
-(variable_declaration
-  (identifier) @variable ; TODO: module
-  (builtin_function
-    (builtin_identifier) @keyword.control.import
-    (#any-of? @keyword.control.import "@import" "@cImport")))
-
-(variable_declaration
-  (identifier) @variable ; TODO: module
-  (field_expression
-    object: (builtin_function
-      (builtin_identifier) @keyword.control.import
-      (#any-of? @keyword.control.import "@import" "@cImport"))))
-
-; Functions
-
-(call_expression
-  function: (field_expression
-    member: (identifier) @function.method))
-
-(call_expression
-  function: (identifier) @function)
-
-(function_declaration
-  name: (identifier) @function)
-
-(builtin_identifier) @function.builtin
-
-; Fields
-
-(field_initializer
-  .
-  (identifier) @variable.other.member)
-
-(field_expression
-  (_)
-  member: (identifier) @type (#match? @type "^[A-Z_][a-zA-Z0-9_]*"))
-
-(field_expression
-  (_)
-  member: (identifier) @variable.other.member)
-
-(container_field
-  name: (identifier) @variable.other.member)
-
-(initializer_list
-  (assignment_expression
-      left: (field_expression
-              .
-              member: (identifier) @variable.other.member)))
-
-; Labels
-
-(block_label (identifier) @label)
-
-(break_label (identifier) @label)
-
-; Constants
-
-((identifier) @constant
-  (#match? @constant "^[A-Z][A-Z_0-9]+$"))
-
-[
-  "null"
-  "undefined"
-] @constant.builtin
-
-(field_expression
-  .
-  member: (identifier) @constant)
-
-(enum_declaration
-  (container_field
-    type: (identifier) @constant))
-
-; Types
-
-(parameter
-  type: (identifier) @type)
-
-((identifier) @type
-  (#match? @type "^[A-Z_][a-zA-Z0-9_]*"))
-
-(variable_declaration
-  (identifier) @type
   "="
-  [
-    (struct_declaration)
-    (enum_declaration)
-    (union_declaration)
-    (opaque_declaration)
-  ])
+  "*="
+  "*%="
+  "*|="
+  "/="
+  "%="
+  "+="
+  "+%="
+  "+|="
+  "-="
+  "-%="
+  "-|="
+  "<<="
+  "<<|="
+  ">>="
+  "&="
+  "^="
+  "|="
+  "!"
+  "~"
+  "-"
+  "-%"
+  "&"
+  "=="
+  "!="
+  ">"
+  ">="
+  "<="
+  "<"
+  "&"
+  "^"
+  "|"
+  "<<"
+  ">>"
+  "<<|"
+  "+"
+  "++"
+  "+%"
+  "-%"
+  "+|"
+  "-|"
+  "*"
+  "/"
+  "%"
+  "**"
+  "*%"
+  "*|"
+  "||"
+  ".*"
+  ".?"
+  "?"
+  ".."
+] @operator
+
+; Literals
+
+(character) @constant.character
 
 [
-  (builtin_type)
-  "anyframe"
-] @type.builtin
+  (string)
+  (multiline_string)
+] @string
 
-; Parameters
+(integer) @constant.numeric.integer
 
-(parameter
-  name: (identifier) @variable.parameter)
+(float) @constant.numeric.float
 
-; Variables
+(boolean) @constant.builtin.boolean
 
-(identifier) @variable
+(escape_sequence) @constant.character.escape
+
+; Punctuation
+
+[
+  "["
+  "]"
+  "("
+  ")"
+  "{"
+  "}"
+] @punctuation.bracket
+
+[
+  ";"
+  "."
+  ","
+  ":"
+  "=>"
+  "->"
+] @punctuation.delimiter
+
+(payload "|" @punctuation.bracket)
+
+; Comments
+
+(comment) @comment.line
+
+((comment) @comment.block.documentation
+  (#match? @comment.block.documentation "^//!"))
