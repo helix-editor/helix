@@ -103,6 +103,7 @@
 | idris |  |  |  | `idris2-lsp` |
 | iex | ✓ |  |  |  |
 | ini | ✓ |  |  |  |
+| ink | ✓ |  |  |  |
 | inko | ✓ | ✓ | ✓ |  |
 | janet | ✓ |  |  |  |
 | java | ✓ | ✓ | ✓ | `jdtls` |
