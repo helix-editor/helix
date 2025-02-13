@@ -72,7 +72,7 @@ log = "0.4"
 nucleo.workspace = true
 ignore = "0.4"
 # markdown doc rendering
-pulldown-cmark = { version = "0.12", default-features = false }
+pulldown-cmark = { version = "0.13", default-features = false }
 # file type detection
 content_inspector = "0.2.4"
 thiserror.workspace = true
