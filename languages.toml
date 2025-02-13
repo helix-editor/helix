@@ -1,7 +1,7 @@
 # Language support configuration.
 # See the languages documentation: https://docs.helix-editor.com/master/languages.html
 
-use-grammars = { except = [ "hare", "wren", "gemini" ] }
+use-grammars = { except = [ "wren", "gemini" ] }
 
 [language-server]
 
@@ -123,12 +123,12 @@ vscode-json-language-server = { command = "vscode-json-language-server", args = 
 vuels = { command = "vue-language-server", args = ["--stdio"], config = { typescript = { tsdk = "node_modules/typescript/lib/" } } }
 wgsl_analyzer = { command = "wgsl_analyzer" }
 yaml-language-server = { command = "yaml-language-server", args = ["--stdio"] }
+yls = { command = "yls", args = ["-vv"] }
 zls = { command = "zls" }
 blueprint-compiler = { command = "blueprint-compiler", args = ["lsp"] }
-typst-lsp = { command = "typst-lsp" }
 tinymist = { command = "tinymist" }
 ts_query_ls = { command = "ts_query_ls" }
-pkgbuild-language-server = { command = "pkgbuild-language-server" }
+termux-language-server = { command = "termux-language-server" }
 helm_ls = { command = "helm_ls", args = ["serve"] }
 ember-language-server = { command = "ember-language-server", args = ["--stdio"] }
 teal-language-server = { command = "teal-language-server" }
@@ -1696,6 +1696,18 @@ name = "markdown_inline"
 source = { git = "https://github.com/tree-sitter-grammars/tree-sitter-markdown", rev = "62516e8c78380e3b51d5b55727995d2c511436d8", subpath = "tree-sitter-markdown-inline" }
 
 [[language]]
+name = "djot"
+scope = "source.djot"
+injection-regex = "dj|djot"
+file-types = ["dj", "djot"]
+indent = { tab-width = 2, unit = "  " }
+block-comment-tokens = { start = "{%", end = "%}" }
+
+[[grammar]]
+name = "djot"
+source = { git = "https://github.com/treeman/tree-sitter-djot", rev = "67e6e23ba7be81a4373e0f49e21207bdc32d12a5" }
+
+[[language]]
 name = "dart"
 scope = "source.dart"
 file-types = ["dart"]
@@ -1914,7 +1926,7 @@ language-servers = [ "erlang-ls", "elp" ]
 
 [[grammar]]
 name = "erlang"
-source = { git = "https://github.com/the-mikedavis/tree-sitter-erlang", rev = "9d4b36a76d5519e3dbf1ec4f4b61bb1a293f584c" }
+source = { git = "https://github.com/the-mikedavis/tree-sitter-erlang", rev = "33a3e4f1fa77a3e1a2736813f4b27c358f6c0b63" }
 
 [[language]]
 name = "kotlin"
@@ -2763,7 +2775,8 @@ file-types = [
   "musicxml",
   "glif",
   "ui",
-  "sublime-snippet"
+  "sublime-snippet",
+  "xsl"
 ]
 block-comment-tokens = { start = "<!--", end = "-->" }
 indent = { tab-width = 2, unit = "  " }
@@ -3234,7 +3247,7 @@ indent = { tab-width = 4, unit = "    " }
 
 [[grammar]]
 name = "just"
-source = { git = "https://github.com/poliorcetics/tree-sitter-just", rev = "8eddc55e3235d9d87f11b75130857800ec7ba765" }
+source = { git = "https://github.com/poliorcetics/tree-sitter-just", rev = "8d03cfdd7ab89ff76d935827de1b93450fa0ec0a" }
 
 [[language]]
 name = "gn"
@@ -3321,7 +3334,7 @@ injection-regex = "typ(st)?"
 file-types = ["typst", "typ"]
 comment-token = "//"
 block-comment-tokens = { start = "/*", end = "*/" }
-language-servers = ["tinymist", "typst-lsp"]
+language-servers = ["tinymist"]
 indent = { tab-width = 2, unit = "  " }
 
 [language.auto-pairs]
@@ -3688,7 +3701,7 @@ file-types = [{ glob = "PKGBUILD" }]
 comment-token = "#"
 grammar = "bash"
 language-servers = [
-  "pkgbuild-language-server",
+  "termux-language-server",
   { except-features = [
     "diagnostics",
   ], name = "bash-language-server" },
@@ -4111,3 +4124,67 @@ indent = { tab-width = 2, unit = "  " }
 [[grammar]]
 name = "ghostty"
 source = { git = "https://github.com/bezhermoso/tree-sitter-ghostty" , rev = "8438a93b44367e962b2ea3a3b6511885bebd196a" }
+
+[[language]]
+name = "tera"
+scope = "source.tera"
+file-types = ["tera"]
+block-comment-tokens = [
+  { start = "{#", end = "#}" },
+  { start = "{#-", end = "-#}" },
+  { start = "{#", end = "-#}" },
+  { start = "{#-", end = "#}" },
+]
+indent = { tab-width = 4, unit = "    " }
+
+[[grammar]]
+name = "tera"
+source = { git = "https://github.com/uncenter/tree-sitter-tera", rev = "e8d679a29c03e64656463a892a30da626e19ed8e" }
+
+[[language]]
+name = "fga"
+scope = "source.fga"
+injection-regex = "fga"
+file-types = ["fga"]
+comment-token = "#"
+indent = { tab-width = 2, unit = "  " }
+
+[[grammar]]
+name = "fga"
+source = { git = "https://github.com/matoous/tree-sitter-fga", rev = "5005e8dd976e1f67beb3d23204580eb6f8b4c965" }
+
+[[language]]
+name = "csv"
+file-types = ["csv"]
+scope = "source.csv"
+
+[[grammar]]
+name = "csv"
+source = { git = "https://github.com/weartist/rainbow-csv-tree-sitter", rev = "d3dbf916446131417e4c2ea9eb8591b23b466d27" }
+
+[[language]]
+name = "yara"
+scope = "source.yara"
+file-types = ["yara", "yar"]
+indent = { tab-width = 2, unit = "  " }
+comment-tokens = "//"
+block-comment-tokens = { start = "/*", end = "*/"}
+language-servers = [ "yls" ]
+
+[[grammar]]
+name = "yara"
+source = { git = "https://github.com/egibs/tree-sitter-yara", rev = "eb3ede203275c38000177f72ec0f9965312806ef" }
+
+[[language]]
+name = "ink"
+scope = "source.ink"
+file-types = ["ink"]
+injection-regex = "ink"
+comment-token = "//"
+block-comment-tokens = { start = "/*", end = "*/"}
+indent = { tab-width = 4, unit = "\t" }
+soft-wrap = { enable = true }
+
+[[grammar]]
+name = "ink"
+source = { git = "https://github.com/rhizoome/tree-sitter-ink", rev = "8486e9b1627b0bc6b2deb9ee8102277a7c1281ac" }

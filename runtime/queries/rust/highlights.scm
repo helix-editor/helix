@@ -75,16 +75,6 @@
   path: (identifier)? @namespace
   alias: (identifier) @namespace)
 
-; ---
-; Remaining Paths
-; ---
-
-(scoped_identifier
-  path: (identifier)? @namespace
-  name: (identifier) @namespace)
-(scoped_type_identifier
-  path: (identifier) @namespace)
-
 ; -------
 ; Types
 ; -------
@@ -97,6 +87,8 @@
   name: (type_identifier) @type.parameter)
 ((type_arguments (type_identifier) @constant)
  (#match? @constant "^[A-Z_]+$"))
+(type_arguments (type_identifier) @type)
+(tuple_struct_pattern "_" @comment.unused)
 ((type_arguments (type_identifier) @comment.unused)
  (#eq? @comment.unused "_"))
 
@@ -126,7 +118,6 @@
 ; ---
 
 (self) @variable.builtin
-(enum_variant (identifier) @type.enum.variant)
 
 (field_initializer
   (field_identifier) @variable.other.member)
@@ -140,63 +131,6 @@
 (label
   "'" @label
   (identifier) @label)
-
-; ---
-; Prelude
-; ---
-
-((identifier) @type.enum.variant.builtin
- (#any-of? @type.enum.variant.builtin "Some" "None" "Ok" "Err"))
-
-
-(call_expression
-  (identifier) @function.builtin
-  (#any-of? @function.builtin
-    "drop"
-    "size_of"
-    "size_of_val"
-    "align_of"
-    "align_of_val"))
-
-((type_identifier) @type.builtin
- (#any-of?
-    @type.builtin
-    "Send"
-    "Sized"
-    "Sync"
-    "Unpin"
-    "Drop"
-    "Fn"
-    "FnMut"
-    "FnOnce"
-    "AsMut"
-    "AsRef"
-    "From"
-    "Into"
-    "DoubleEndedIterator"
-    "ExactSizeIterator"
-    "Extend"
-    "IntoIterator"
-    "Iterator"
-    "Option"
-    "Result"
-    "Clone"
-    "Copy"
-    "Debug"
-    "Default"
-    "Eq"
-    "Hash"
-    "Ord"
-    "PartialEq"
-    "PartialOrd"
-    "ToOwned"
-    "Box"
-    "String"
-    "ToString"
-    "Vec"
-    "FromIterator"
-    "TryFrom"
-    "TryInto"))
 
 ; ---
 ; Punctuation
@@ -229,8 +163,10 @@
     "<"
     ">"
   ] @punctuation.bracket)
+(for_lifetimes ["<" ">"] @punctuation.bracket)
 (closure_parameters
   "|" @punctuation.bracket)
+(bracketed_type ["<" ">"] @punctuation.bracket)
 
 ; ---
 ; Variables
@@ -339,32 +275,15 @@
 
 ; TODO: variable.mut to highlight mutable identifiers via locals.scm
 
-; -------
-; Constructors
-; -------
-; TODO: this is largely guesswork, remove it once we get actual info from locals.scm or r-a
+; ---
+; Remaining Paths
+; ---
 
-(struct_expression
-  name: (type_identifier) @constructor)
-
-(tuple_struct_pattern
-  type: [
-    (identifier) @constructor
-    (scoped_identifier
-      name: (identifier) @constructor)
-  ])
-(struct_pattern
-  type: [
-    ((type_identifier) @constructor)
-    (scoped_type_identifier
-      name: (type_identifier) @constructor)
-  ])
-(match_pattern
-  ((identifier) @constructor) (#match? @constructor "^[A-Z]"))
-(or_pattern
-  ((identifier) @constructor)
-  ((identifier) @constructor)
-  (#match? @constructor "^[A-Z]"))
+(scoped_identifier
+  path: (identifier)? @namespace
+  name: (identifier) @namespace)
+(scoped_type_identifier
+  path: (identifier) @namespace)
 
 ; -------
 ; Functions
@@ -436,18 +355,43 @@
       (#match? @type "^[A-Z]")
       (#match? @constructor "^[A-Z]")))
 
+(enum_variant (identifier) @type.enum.variant)
+
+
+; -------
+; Constructors
+; -------
+; TODO: this is largely guesswork, remove it once we get actual info from locals.scm or r-a
+
+(struct_expression
+  name: (type_identifier) @constructor)
+
+(tuple_struct_pattern
+  type: [
+    (identifier) @constructor
+    (scoped_identifier
+      name: (identifier) @constructor)
+  ])
+(struct_pattern
+  type: [
+    ((type_identifier) @constructor)
+    (scoped_type_identifier
+      name: (type_identifier) @constructor)
+  ])
+(match_pattern
+  ((identifier) @constructor) (#match? @constructor "^[A-Z]"))
+(or_pattern
+  ((identifier) @constructor)
+  ((identifier) @constructor)
+  (#match? @constructor "^[A-Z]"))
+
 ; ---
 ; Macros
 ; ---
 
 (attribute
-  (identifier) @special
-  arguments: (token_tree (identifier) @type)
-  (#eq? @special "derive")
-)
-
-(attribute
   (identifier) @function.macro)
+(inner_attribute_item "!" @punctuation)
 (attribute
   [
     (identifier) @function.macro
@@ -470,3 +414,66 @@
 
 (metavariable) @variable.parameter
 (fragment_specifier) @type
+
+(attribute
+  (identifier) @special
+  arguments: (token_tree (identifier) @type)
+  (#eq? @special "derive")
+)
+
+; ---
+; Prelude
+; ---
+
+((identifier) @type.enum.variant.builtin
+ (#any-of? @type.enum.variant.builtin "Some" "None" "Ok" "Err"))
+
+
+(call_expression
+  (identifier) @function.builtin
+  (#any-of? @function.builtin
+    "drop"
+    "size_of"
+    "size_of_val"
+    "align_of"
+    "align_of_val"))
+
+((type_identifier) @type.builtin
+ (#any-of?
+    @type.builtin
+    "Send"
+    "Sized"
+    "Sync"
+    "Unpin"
+    "Drop"
+    "Fn"
+    "FnMut"
+    "FnOnce"
+    "AsMut"
+    "AsRef"
+    "From"
+    "Into"
+    "DoubleEndedIterator"
+    "ExactSizeIterator"
+    "Extend"
+    "IntoIterator"
+    "Iterator"
+    "Option"
+    "Result"
+    "Clone"
+    "Copy"
+    "Debug"
+    "Default"
+    "Eq"
+    "Hash"
+    "Ord"
+    "PartialEq"
+    "PartialOrd"
+    "ToOwned"
+    "Box"
+    "String"
+    "ToString"
+    "Vec"
+    "FromIterator"
+    "TryFrom"
+    "TryInto"))

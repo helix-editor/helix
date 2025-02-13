@@ -1522,7 +1522,12 @@ impl Component for EditorView {
             }
             Event::FocusLost => {
                 if context.editor.config().auto_save.focus_lost {
-                    if let Err(e) = commands::typed::write_all_impl(context, false, false) {
+                    let options = commands::WriteAllOptions {
+                        force: false,
+                        write_scratch: false,
+                        auto_format: false,
+                    };
+                    if let Err(e) = commands::typed::write_all_impl(context, options) {
                         context.editor.set_error(format!("{}", e));
                     }
                 }

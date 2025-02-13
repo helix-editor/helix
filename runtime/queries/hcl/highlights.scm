@@ -1,5 +1,3 @@
-(ERROR) @error
-
 [ 
   "if"
   "else"

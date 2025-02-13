@@ -122,6 +122,3 @@
 
 (namespace_get function: (identifier) @function.method)
 (namespace_get_internal function: (identifier) @function.method)
-
-; Error
-(ERROR) @error
