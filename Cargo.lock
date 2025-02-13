@@ -1322,9 +1322,7 @@ dependencies = [
  "arc-swap",
  "bitflags",
  "chrono",
- "dunce",
  "encoding_rs",
- "etcetera",
  "globset",
  "hashbrown 0.14.5",
  "helix-loader",
@@ -1389,7 +1387,6 @@ version = "25.1.1"
 dependencies = [
  "anyhow",
  "cc",
- "dunce",
  "etcetera",
  "helix-stdx",
  "libloading",
@@ -1414,7 +1411,6 @@ dependencies = [
  "helix-core",
  "helix-loader",
  "helix-lsp-types",
- "helix-parsec",
  "helix-stdx",
  "log",
  "parking_lot",
@@ -1433,7 +1429,6 @@ dependencies = [
  "bitflags",
  "serde",
  "serde_json",
- "serde_repr",
  "url",
 ]
 
@@ -1516,7 +1511,6 @@ dependencies = [
  "helix-view",
  "log",
  "once_cell",
- "serde",
  "termini",
  "unicode-segmentation",
 ]
@@ -2306,17 +2300,6 @@ dependencies = [
  "memchr",
  "ryu",
  "serde",
-]
-
-[[package]]
-name = "serde_repr"
-version = "0.1.19"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6c64451ba24fc7a6a2d60fc75dd9c83c90903b19028d4eff35e88fc1e86564e9"
-dependencies = [
- "proc-macro2",
- "quote",
- "syn",
 ]
 
 [[package]]

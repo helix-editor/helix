@@ -39,7 +39,6 @@ regex = "1"
 bitflags.workspace = true
 ahash = "0.8.11"
 hashbrown = { version = "0.14.5", features = ["raw"] }
-dunce = "1.0"
 url = "2.5.4"
 
 log = "0.4"
@@ -54,7 +53,6 @@ encoding_rs = "0.8"
 
 chrono = { version = "0.4", default-features = false, features = ["alloc", "std"] }
 
-etcetera = "0.8"
 textwrap = "0.16.1"
 
 nucleo.workspace = true
