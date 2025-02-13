@@ -182,7 +182,7 @@
 | ron | ✓ |  | ✓ |  |  |
 | rst | ✓ |  |  |  |  |
 | ruby | ✓ | ✓ | ✓ |  | `solargraph` |
-| rust | ✓ | ✓ | ✓ |  | `rust-analyzer` |
+| rust | ✓ | ✓ | ✓ | ✓ | `rust-analyzer` |
 | sage | ✓ | ✓ |  |  |  |
 | scala | ✓ | ✓ | ✓ |  | `metals` |
 | scheme | ✓ |  | ✓ |  |  |
