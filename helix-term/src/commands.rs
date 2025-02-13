@@ -11,7 +11,10 @@ use helix_stdx::{
 };
 use helix_vcs::{FileChange, Hunk};
 pub use lsp::*;
-use tui::text::Span;
+use tui::{
+    text::{Span, Spans},
+    widgets::Cell,
+};
 pub use typed::*;
 
 use helix_core::{
@@ -2404,18 +2407,41 @@ fn global_search(cx: &mut Context) {
     struct GlobalSearchConfig {
         smart_case: bool,
         file_picker_config: helix_view::editor::FilePickerConfig,
+        directory_style: Style,
+        number_style: Style,
+        colon_style: Style,
     }
 
     let config = cx.editor.config();
     let config = GlobalSearchConfig {
         smart_case: config.search.smart_case,
         file_picker_config: config.file_picker.clone(),
+        directory_style: cx.editor.theme.get("ui.text.directory"),
+        number_style: cx.editor.theme.get("constant.numeric"),
+        colon_style: cx.editor.theme.get("punctuation"),
     };
 
     let columns = [
-        PickerColumn::new("path", |item: &FileResult, _| {
+        PickerColumn::new("path", |item: &FileResult, config: &GlobalSearchConfig| {
             let path = helix_stdx::path::get_relative_path(&item.path);
-            format!("{}:{}", path.to_string_lossy(), item.line_num + 1).into()
+
+            let mut components = path.components().map(|a| a.as_os_str().to_string_lossy());
+
+            let filename = components.next_back().unwrap_or_default();
+
+            let mut directories = String::new();
+
+            for segment in components {
+                directories.push_str(&segment);
+                directories.push(std::path::MAIN_SEPARATOR)
+            }
+
+            Cell::from(Spans::from(vec![
+                Span::styled(directories.to_string(), config.directory_style),
+                Span::raw(filename.to_string()),
+                Span::styled(":", config.colon_style),
+                Span::styled((item.line_num + 1).to_string(), config.number_style),
+            ]))
         }),
         PickerColumn::hidden("contents"),
     ];
