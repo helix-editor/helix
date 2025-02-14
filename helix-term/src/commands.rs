@@ -2438,7 +2438,7 @@ fn global_search(cx: &mut Context) {
 
             Cell::from(Spans::from(vec![
                 Span::styled(directories, config.directory_style),
-                Span::raw(filename.to_string()),
+                Span::raw(filename),
                 Span::styled(":", config.colon_style),
                 Span::styled((item.line_num + 1).to_string(), config.number_style),
             ]))
