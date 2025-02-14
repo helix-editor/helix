@@ -2425,19 +2425,19 @@ fn global_search(cx: &mut Context) {
         PickerColumn::new("path", |item: &FileResult, config: &GlobalSearchConfig| {
             let path = helix_stdx::path::get_relative_path(&item.path);
 
-            let mut components = path.components().map(|a| a.as_os_str().to_string_lossy());
+            let directories = path
+                .parent()
+                .filter(|p| !p.as_os_str().is_empty())
+                .map(|p| p.to_string_lossy().to_string() + "/")
+                .unwrap_or_default();
 
-            let filename = components.next_back().unwrap_or_default();
-
-            let mut directories = String::new();
-
-            for segment in components {
-                directories.push_str(&segment);
-                directories.push(std::path::MAIN_SEPARATOR)
-            }
+            let filename = path
+                .file_name()
+                .map(|f| f.to_string_lossy().to_string())
+                .unwrap_or_default();
 
             Cell::from(Spans::from(vec![
-                Span::styled(directories.to_string(), config.directory_style),
+                Span::styled(directories, config.directory_style),
                 Span::raw(filename.to_string()),
                 Span::styled(":", config.colon_style),
                 Span::styled((item.line_num + 1).to_string(), config.number_style),
