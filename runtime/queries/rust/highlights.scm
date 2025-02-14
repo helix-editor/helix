@@ -422,6 +422,7 @@
 )
 
 (token_repetition_pattern [")" "(" "$"] @punctuation.special)
+(token_repetition_pattern "?" @operator)
 
 ; ---
 ; Prelude
