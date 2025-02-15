@@ -109,7 +109,7 @@
         rustc = msrvToolchain;
       };
     in {
-      packages = {
+      packages = rec {
         # Make MSRV Helix
         helix = pkgs.callPackage mkHelix {rustPlatform = msrvPlatform;};
 
@@ -117,7 +117,7 @@
         # default nixpkgs, which is the one in the Flake.lock of Helix.
         #
         # This can be overridden though to add Cargo Features, flags, and different toolchains.
-        default = self.packages.${system}.helix;
+        default = helix;
       };
 
       checks.helix = self.outputs.packages.${system}.helix.overrideAttrs {
