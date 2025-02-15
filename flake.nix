@@ -39,7 +39,7 @@
       # hooked up. To get around this while having good customization, mkDerivation is
       # used instead.
       stdenv.mkDerivation (self: {
-        # START: Reelvalute the below attrs when
+        # START: Reevaluate the below attrs when
         # https://github.com/NixOS/nixpkgs/pull/354999
         # or
         # https://github.com/NixOS/nixpkgs/pull/194475
@@ -93,9 +93,7 @@
           cp ${./contrib/helix.png} $out/share/icons/hicolor/256x256/apps
         '';
 
-        meta = {
-          mainProgram = "hx";
-        };
+        meta.mainProgram = "hx";
       });
   in
     flake-utils.lib.eachDefaultSystem (system: let
@@ -122,10 +120,8 @@
         default = self.packages.${system}.helix;
       };
 
-      checks = {
-        helix = self.outputs.packages.${system}.helix.overrideAttrs {
-          cargoBuildType = "debug";
-        };
+      checks.helix = self.outputs.packages.${system}.helix.overrideAttrs {
+        cargoBuildType = "debug";
       };
 
       formatter = pkgs.alejandra;
@@ -150,10 +146,8 @@
         };
     })
     // {
-      overlays = {
-        default = final: prev: {
-          helix = final.callPackage mkHelix {};
-        };
+      overlays.default = final: prev: {
+        helix = final.callPackage mkHelix {};
       };
     };
 
