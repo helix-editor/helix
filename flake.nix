@@ -23,6 +23,23 @@
       stdenv,
       ...
     }: let
+      fs = pkgs.lib.fileset;
+
+      src = fs.difference (fs.gitTracked ./.) (fs.unions [
+        ./.envrc
+        ./.gitignore
+        ./rustfmt.toml
+        ./screenshot.png
+        ./book
+        ./docs
+        ./flake.lock
+        (fs.maybeMissing ./.github)
+        (fs.maybeMissing ./.ignore)
+        (fs.fileFilter (file: file.hasExt ".svg") ./.)
+        (fs.fileFilter (file: file.hasExt ".md") ./.)
+        (fs.fileFilter (file: file.hasExt ".nix") ./.)
+      ]);
+      
       # Next we actually need to build the grammars and the runtime directory
       # that they reside in. It is built by calling the derivation in the
       # grammars.nix file, then taking the runtime directory in the git repo
@@ -70,7 +87,10 @@
         # END: Funny attrs to reevaluate
 
         name = with builtins; (fromTOML (readFile ./helix-term/Cargo.toml)).package.name;
-        src = pkgs.lib.sources.cleanSource ./.;
+        src = fs.toSource {
+          root = ./.;
+          fileset = src;
+        };
 
         # Helix attempts to reach out to the network and get the grammars. Nix doesn't allow this.
         HELIX_DISABLE_AUTO_GRAMMAR_BUILD = "1";
