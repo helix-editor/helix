@@ -2488,6 +2488,32 @@ fn clear_register(
     Ok(())
 }
 
+fn clear_jumplist(
+    cx: &mut compositor::Context,
+    args: &[Cow<str>],
+    event: PromptEvent,
+) -> anyhow::Result<()> {
+    if event != PromptEvent::Validate {
+        return Ok(());
+    }
+    ensure!(args.len() <= 1, ":clear-jumplist takes at most 1 argument");
+
+    let doc = doc!(cx.editor);
+    let view = view_mut!(cx.editor);
+    let selection = doc.selection(view.id);
+    if args.len() == 1 {
+        let to_remove = args[0].parse::<usize>()?;
+        view.jumps.remove_from_head(to_remove);
+    } else {
+        view.jumps.clear();
+    }
+    if view.jumps.len() == 0 {
+        // Fixup cases where the jumplist is emptied into an invalid state
+        view.jumps.push((doc.id(), selection.clone()));
+    }
+    Ok(())
+}
+
 fn redraw(
     cx: &mut compositor::Context,
     _args: &[Cow<str>],
@@ -3199,6 +3225,13 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         doc: "Clear given register. If no argument is provided, clear all registers.",
         fun: clear_register,
         signature: CommandSignature::all(completers::register),
+    },
+    TypableCommand {
+        name: "clear-jumplist",
+        aliases: &["clj"],
+        doc: "Pops items from the jump list. If not argument is provided, clear the jump list.",
+        fun: clear_jumplist,
+        signature: CommandSignature::none(),
     },
     TypableCommand {
         name: "redraw",
