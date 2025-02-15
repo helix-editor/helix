@@ -2627,7 +2627,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["o", "edit", "e"],
         doc: "Open a file from disk into the current view.",
         fun: open,
-        signature: CommandSignature::all(completers::filename),
+        signature: CommandSignature::all(|editor, input| completers::filename_with_git_ignore(editor, input, false)),
     },
     TypableCommand {
         name: "buffer-close",
@@ -3029,7 +3029,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["vs"],
         doc: "Open the file in a vertical split.",
         fun: vsplit,
-        signature: CommandSignature::all(completers::filename)
+        signature: CommandSignature::all(|editor, input| completers::filename_with_git_ignore(editor, input, false)),
     },
     TypableCommand {
         name: "vsplit-new",
@@ -3043,7 +3043,7 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &["hs", "sp"],
         doc: "Open the file in a horizontal split.",
         fun: hsplit,
-        signature: CommandSignature::all(completers::filename)
+        signature: CommandSignature::all(|editor, input| completers::filename_with_git_ignore(editor, input, false)),
     },
     TypableCommand {
         name: "hsplit-new",
