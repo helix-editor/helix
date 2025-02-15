@@ -68,6 +68,13 @@ impl CommandCompleter {
             var_args: completer,
         }
     }
+
+    const fn hybrid(completers: &'static [Completer], fallback: Completer) -> Self {
+        Self {
+            positional_args: completers,
+            var_args: fallback,
+        }
+    }
 }
 
 fn quit(cx: &mut compositor::Context, _args: Args, event: PromptEvent) -> anyhow::Result<()> {
