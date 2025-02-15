@@ -65,6 +65,13 @@ impl CommandSignature {
             var_args: completer,
         }
     }
+
+    const fn hybrid(completers: &'static [Completer], fallback: Completer) -> Self {
+        Self {
+            positional_args: completers,
+            var_args: fallback,
+        }
+    }
 }
 
 fn quit(cx: &mut compositor::Context, args: &[Cow<str>], event: PromptEvent) -> anyhow::Result<()> {
@@ -3156,35 +3163,35 @@ pub const TYPABLE_COMMAND_LIST: &[TypableCommand] = &[
         aliases: &[],
         doc: "Run shell command, inserting output before each selection.",
         fun: insert_output,
-        signature: CommandSignature::none(),
+        signature: CommandSignature::hybrid(&[completers::program], completers::filename)
     },
     TypableCommand {
         name: "append-output",
         aliases: &[],
         doc: "Run shell command, appending output after each selection.",
         fun: append_output,
-        signature: CommandSignature::none(),
+        signature: CommandSignature::hybrid(&[completers::program], completers::filename)
     },
     TypableCommand {
         name: "pipe",
         aliases: &[],
         doc: "Pipe each selection to the shell command.",
         fun: pipe,
-        signature: CommandSignature::none(),
+        signature: CommandSignature::hybrid(&[completers::program], completers::filename)
     },
     TypableCommand {
         name: "pipe-to",
         aliases: &[],
         doc: "Pipe each selection to the shell command, ignoring output.",
         fun: pipe_to,
-        signature: CommandSignature::none(),
+        signature: CommandSignature::hybrid(&[completers::program], completers::filename)
     },
     TypableCommand {
         name: "run-shell-command",
         aliases: &["sh"],
         doc: "Run a shell command",
         fun: run_shell_command,
-        signature: CommandSignature::all(completers::filename)
+        signature: CommandSignature::hybrid(&[completers::program], completers::filename)
     },
     TypableCommand {
         name: "reset-diff-change",
