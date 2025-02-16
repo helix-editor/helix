@@ -4064,8 +4064,14 @@ fn goto_prev_change(cx: &mut Context) {
 
 fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
     let count = cx.count() as u32 - 1;
-    let motion = move |editor: &mut Editor, _mode: MotionMode, _move_override: Option<Movement>| {
+    let motion = move |editor: &mut Editor, mode: MotionMode, move_override: Option<Movement>| {
         let (view, doc) = current!(editor);
+
+        let direction = match mode {
+            MotionMode::Normal => direction,
+            MotionMode::Reverse => direction.reverse(),
+        };
+
         let doc_text = doc.text().slice(..);
         let diff_handle = if let Some(diff_handle) = doc.diff_handle() {
             diff_handle
@@ -4091,16 +4097,23 @@ fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
             };
             let hunk = diff.nth_hunk(hunk_idx);
             let new_range = hunk_range(hunk, doc_text);
-            if editor.mode == Mode::Select {
-                let head = if new_range.head < range.anchor {
-                    new_range.anchor
-                } else {
-                    new_range.head
-                };
 
-                Range::new(range.anchor, head)
+            let movement = move_override.unwrap_or(if editor.mode == Mode::Select {
+                Movement::Extend
             } else {
-                new_range.with_direction(direction)
+                Movement::Move
+            });
+            match movement {
+                Movement::Extend => {
+                    let head = if new_range.head < range.anchor {
+                        new_range.anchor
+                    } else {
+                        new_range.head
+                    };
+
+                    Range::new(range.anchor, head)
+                }
+                Movement::Move => new_range.with_direction(direction),
             }
         });
 
