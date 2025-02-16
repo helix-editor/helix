@@ -1369,11 +1369,11 @@ impl Editor {
     }
 
     pub fn repeat_last_motion(&mut self, count: usize) {
-        self.repeat_last_motion_impl(count, MotionMode::Normal, Some(Movement::Move));
+        self.repeat_last_motion_impl(count, MotionMode::Normal, None);
     }
 
     pub fn repeat_last_motion_reverse(&mut self, count: usize) {
-        self.repeat_last_motion_impl(count, MotionMode::Reverse, Some(Movement::Move));
+        self.repeat_last_motion_impl(count, MotionMode::Reverse, None);
     }
 
     pub fn extend_repeat_last_motion(&mut self, count: usize) {
