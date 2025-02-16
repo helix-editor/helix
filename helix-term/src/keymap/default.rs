@@ -11,6 +11,9 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "k" | "up" => move_visual_line_up,
         "l" | "right" => move_char_right,
 
+        "L" => find_next_pair,
+        "H" => find_prev_pair,
+        
         "t" => find_till_char,
         "f" => find_next_char,
         "T" => till_prev_char,
