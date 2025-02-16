@@ -2428,7 +2428,7 @@ fn global_search(cx: &mut Context) {
             let directories = path
                 .parent()
                 .filter(|p| !p.as_os_str().is_empty())
-                .map(|p| p.to_string_lossy().to_string() + "/")
+                .map(|p| format!("{}{}", p.display(), std::path::MAIN_SEPARATOR))
                 .unwrap_or_default();
 
             let filename = path
