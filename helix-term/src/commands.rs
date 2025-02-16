@@ -6038,10 +6038,12 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
 
     cx.on_next_key(move |cx, event| {
         cx.editor.autoinfo = None;
-        if let Some(ch) = event.char() {
-            let textobject = move |editor: &mut Editor,
-                                   _mode: MotionMode,
-                                   _move_override: Option<Movement>| {
+        let Some(ch) = event.char() else {
+            return;
+        };
+
+        let textobject =
+            move |editor: &mut Editor, _mode: MotionMode, _move_override: Option<Movement>| {
                 let (view, doc) = current!(editor);
                 let loader = editor.syn_loader.load();
                 let text = doc.text().slice(..);
@@ -6110,8 +6112,7 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
                 });
                 doc.set_selection(view.id, selection);
             };
-            cx.editor.apply_motion(textobject);
-        }
+        cx.editor.apply_motion(textobject);
     });
 
     let title = match objtype {
