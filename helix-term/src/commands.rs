@@ -35,7 +35,7 @@ use helix_core::{
     movement::{self, move_vertically_visual, Direction},
     object, pos_at_coords,
     regex::{self, Regex},
-    search::{self, CharMatcher},
+    search::{self},
     selection, surround,
     syntax::config::{BlockCommentToken, LanguageServerFeature},
     text_annotations::{Overlay, TextAnnotations},
@@ -46,8 +46,8 @@ use helix_core::{
 };
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
-    editor::Action,
     expansion,
+    editor::{Action, MotionMode},
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
@@ -354,6 +354,9 @@ impl MappableCommand {
         extend_till_prev_char, "Extend till previous occurrence of char",
         extend_prev_char, "Extend to previous occurrence of char",
         repeat_last_motion, "Repeat last motion",
+        repeat_last_motion_reverse, "Repeat last motion in reverse",
+        extend_repeat_last_motion, "Extend selection by repeating last motion",
+        extend_repeat_last_motion_reverse, "Extend selection by repeating last motion in reverse",
         replace, "Replace with new char",
         switch_case, "Switch (toggle) case",
         switch_to_uppercase, "Switch to uppercase",
@@ -1240,35 +1243,42 @@ fn move_next_sub_word_end(cx: &mut Context) {
     move_word_impl(cx, movement::move_next_sub_word_end)
 }
 
-fn goto_para_impl<F>(cx: &mut Context, move_fn: F)
-where
-    F: Fn(RopeSlice, Range, usize, Movement) -> Range + 'static,
-{
+fn goto_para_impl(cx: &mut Context, direction: Direction) {
     let count = cx.count();
-    let motion = move |editor: &mut Editor| {
+    let motion = move |editor: &mut Editor, mode: MotionMode, move_override: Option<Movement>| {
         let (view, doc) = current!(editor);
         let text = doc.text().slice(..);
-        let behavior = if editor.mode == Mode::Select {
+
+        let direction = match mode {
+            MotionMode::Normal => direction,
+            MotionMode::Reverse => direction.reverse(),
+        };
+        let move_fn = match direction {
+            Direction::Forward => movement::move_next_paragraph,
+            Direction::Backward => movement::move_prev_paragraph,
+        };
+
+        let movement = move_override.unwrap_or(if editor.mode == Mode::Select {
             Movement::Extend
         } else {
             Movement::Move
-        };
+        });
 
         let selection = doc
             .selection(view.id)
             .clone()
-            .transform(|range| move_fn(text, range, count, behavior));
+            .transform(|range| move_fn(text, range, count, movement));
         doc.set_selection(view.id, selection);
     };
     cx.editor.apply_motion(motion)
 }
 
 fn goto_prev_paragraph(cx: &mut Context) {
-    goto_para_impl(cx, movement::move_prev_paragraph)
+    goto_para_impl(cx, Direction::Backward)
 }
 
 fn goto_next_paragraph(cx: &mut Context) {
-    goto_para_impl(cx, movement::move_next_paragraph)
+    goto_para_impl(cx, Direction::Forward)
 }
 
 fn goto_file_start(cx: &mut Context) {
@@ -1496,56 +1506,67 @@ fn find_char_line_ending(
     count: usize,
     direction: Direction,
     inclusive: bool,
-    extend: bool,
+    movement: Movement,
 ) {
-    let (view, doc) = current!(cx.editor);
-    let text = doc.text().slice(..);
+    let motion = move |editor: &mut Editor, mode: MotionMode, move_override: Option<Movement>| {
+        let (view, doc) = current!(editor);
+        let text = doc.text().slice(..);
 
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        let cursor = range.cursor(text);
-        let cursor_line = range.cursor_line(text);
-
-        // Finding the line where we're going to find <ret>. Depends mostly on
-        // `count`, but also takes into account edge cases where we're already at the end
-        // of a line or the beginning of a line
-        let find_on_line = match direction {
-            Direction::Forward => {
-                let on_edge = line_end_char_index(&text, cursor_line) == cursor;
-                let line = cursor_line + count - 1 + (on_edge as usize);
-                if line >= text.len_lines() - 1 {
-                    return range;
-                } else {
-                    line
-                }
-            }
-            Direction::Backward => {
-                let on_edge = text.line_to_char(cursor_line) == cursor && !inclusive;
-                let line = cursor_line as isize - (count as isize - 1 + on_edge as isize);
-                if line <= 0 {
-                    return range;
-                } else {
-                    line as usize
-                }
-            }
+        let direction = match mode {
+            MotionMode::Normal => direction,
+            MotionMode::Reverse => direction.reverse(),
         };
 
-        let pos = match (direction, inclusive) {
-            (Direction::Forward, true) => line_end_char_index(&text, find_on_line),
-            (Direction::Forward, false) => line_end_char_index(&text, find_on_line) - 1,
-            (Direction::Backward, true) => line_end_char_index(&text, find_on_line - 1),
-            (Direction::Backward, false) => text.line_to_char(find_on_line),
-        };
+        let selection = doc.selection(view.id).clone().transform(|range| {
+            let cursor = range.cursor(text);
+            let cursor_line = range.cursor_line(text);
 
-        if extend {
-            range.put_cursor(text, pos, true)
-        } else {
-            Range::point(range.cursor(text)).put_cursor(text, pos, true)
-        }
-    });
-    doc.set_selection(view.id, selection);
+            // Finding the line where we're going to find <ret>. Depends mostly on
+            // `count`, but also takes into account edge cases where we're already at the end
+            // of a line or the beginning of a line
+            let find_on_line = match direction {
+                Direction::Forward => {
+                    let on_edge = if inclusive {
+                        line_end_char_index(&text, cursor_line) == cursor
+                    } else {
+                        line_end_char_index(&text, cursor_line) - 1 == cursor
+                    };
+                    let line = cursor_line + count - 1 + (on_edge as usize);
+                    if line >= text.len_lines() - 1 {
+                        return range;
+                    } else {
+                        line
+                    }
+                }
+                Direction::Backward => {
+                    let on_edge = text.line_to_char(cursor_line) == cursor && !inclusive;
+                    let line = cursor_line as isize - (count as isize - 1 + on_edge as isize);
+                    if line <= 0 {
+                        return range;
+                    } else {
+                        line as usize
+                    }
+                }
+            };
+
+            let pos = match (direction, inclusive) {
+                (Direction::Forward, true) => line_end_char_index(&text, find_on_line),
+                (Direction::Forward, false) => line_end_char_index(&text, find_on_line) - 1,
+                (Direction::Backward, true) => line_end_char_index(&text, find_on_line - 1),
+                (Direction::Backward, false) => text.line_to_char(find_on_line),
+            };
+
+            match move_override.unwrap_or(movement) {
+                Movement::Extend => range.put_cursor(text, pos, true),
+                Movement::Move => Range::point(range.cursor(text)).put_cursor(text, pos, true),
+            }
+        });
+        doc.set_selection(view.id, selection);
+    };
+    cx.editor.apply_motion(motion);
 }
 
-fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bool) {
+fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, movement: Movement) {
     // TODO: count is reset to 1 before next key so we move it into the closure here.
     // Would be nice to carry over.
     let count = cx.count();
@@ -1559,7 +1580,7 @@ fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bo
                 code: KeyCode::Enter,
                 ..
             } => {
-                find_char_line_ending(cx, count, direction, inclusive, extend);
+                find_char_line_ending(cx, count, direction, inclusive, movement);
                 return;
             }
 
@@ -1573,56 +1594,45 @@ fn find_char(cx: &mut Context, direction: Direction, inclusive: bool, extend: bo
             } => ch,
             _ => return,
         };
-        let motion = move |editor: &mut Editor| {
-            match direction {
-                Direction::Forward => {
-                    find_char_impl(editor, &find_next_char_impl, inclusive, extend, ch, count)
-                }
-                Direction::Backward => {
-                    find_char_impl(editor, &find_prev_char_impl, inclusive, extend, ch, count)
-                }
+        let motion =
+            move |editor: &mut Editor, mode: MotionMode, move_override: Option<Movement>| {
+                let (view, doc) = current!(editor);
+                let text = doc.text().slice(..);
+
+                let direction = match mode {
+                    MotionMode::Normal => direction,
+                    MotionMode::Reverse => direction.reverse(),
+                };
+
+                let selection = doc.selection(view.id).clone().transform(|range| {
+                    // TODO: use `Range::cursor()` here instead.  However, that works in terms of
+                    // graphemes, whereas this function doesn't yet.  So we're doing the same logic
+                    // here, but just in terms of chars instead.
+                    let search_start_pos = if range.anchor < range.head {
+                        range.head - 1
+                    } else {
+                        range.head
+                    };
+
+                    let search_fn = match direction {
+                        Direction::Forward => find_next_char_impl,
+                        Direction::Backward => find_prev_char_impl,
+                    };
+
+                    search_fn(text, ch, search_start_pos, count, inclusive).map_or(range, |pos| {
+                        match move_override.unwrap_or(movement) {
+                            Movement::Extend => range.put_cursor(text, pos, true),
+                            Movement::Move => {
+                                Range::point(range.cursor(text)).put_cursor(text, pos, true)
+                            }
+                        }
+                    })
+                });
+                doc.set_selection(view.id, selection);
             };
-        };
 
         cx.editor.apply_motion(motion);
     })
-}
-
-//
-
-#[inline]
-fn find_char_impl<F, M: CharMatcher + Clone + Copy>(
-    editor: &mut Editor,
-    search_fn: &F,
-    inclusive: bool,
-    extend: bool,
-    char_matcher: M,
-    count: usize,
-) where
-    F: Fn(RopeSlice, M, usize, usize, bool) -> Option<usize> + 'static,
-{
-    let (view, doc) = current!(editor);
-    let text = doc.text().slice(..);
-
-    let selection = doc.selection(view.id).clone().transform(|range| {
-        // TODO: use `Range::cursor()` here instead.  However, that works in terms of
-        // graphemes, whereas this function doesn't yet.  So we're doing the same logic
-        // here, but just in terms of chars instead.
-        let search_start_pos = if range.anchor < range.head {
-            range.head - 1
-        } else {
-            range.head
-        };
-
-        search_fn(text, char_matcher, search_start_pos, count, inclusive).map_or(range, |pos| {
-            if extend {
-                range.put_cursor(text, pos, true)
-            } else {
-                Range::point(range.cursor(text)).put_cursor(text, pos, true)
-            }
-        })
-    });
-    doc.set_selection(view.id, selection);
 }
 
 fn find_next_char_impl(
@@ -1663,39 +1673,51 @@ fn find_prev_char_impl(
 }
 
 fn find_till_char(cx: &mut Context) {
-    find_char(cx, Direction::Forward, false, false);
+    find_char(cx, Direction::Forward, false, Movement::Move);
 }
 
 fn find_next_char(cx: &mut Context) {
-    find_char(cx, Direction::Forward, true, false)
+    find_char(cx, Direction::Forward, true, Movement::Move)
 }
 
 fn extend_till_char(cx: &mut Context) {
-    find_char(cx, Direction::Forward, false, true)
+    find_char(cx, Direction::Forward, false, Movement::Extend)
 }
 
 fn extend_next_char(cx: &mut Context) {
-    find_char(cx, Direction::Forward, true, true)
+    find_char(cx, Direction::Forward, true, Movement::Extend)
 }
 
 fn till_prev_char(cx: &mut Context) {
-    find_char(cx, Direction::Backward, false, false)
+    find_char(cx, Direction::Backward, false, Movement::Move)
 }
 
 fn find_prev_char(cx: &mut Context) {
-    find_char(cx, Direction::Backward, true, false)
+    find_char(cx, Direction::Backward, true, Movement::Move)
 }
 
 fn extend_till_prev_char(cx: &mut Context) {
-    find_char(cx, Direction::Backward, false, true)
+    find_char(cx, Direction::Backward, false, Movement::Extend)
 }
 
 fn extend_prev_char(cx: &mut Context) {
-    find_char(cx, Direction::Backward, true, true)
+    find_char(cx, Direction::Backward, true, Movement::Extend)
 }
 
 fn repeat_last_motion(cx: &mut Context) {
     cx.editor.repeat_last_motion(cx.count())
+}
+
+fn repeat_last_motion_reverse(cx: &mut Context) {
+    cx.editor.repeat_last_motion_reverse(cx.count())
+}
+
+fn extend_repeat_last_motion(cx: &mut Context) {
+    cx.editor.extend_repeat_last_motion(cx.count())
+}
+
+fn extend_repeat_last_motion_reverse(cx: &mut Context) {
+    cx.editor.extend_repeat_last_motion_reverse(cx.count())
 }
 
 fn replace(cx: &mut Context) {
@@ -3959,7 +3981,7 @@ fn goto_last_diag(cx: &mut Context) {
 }
 
 fn goto_next_diag(cx: &mut Context) {
-    let motion = move |editor: &mut Editor| {
+    let motion = move |editor: &mut Editor, _mode: MotionMode, _move_override: Option<Movement>| {
         let (view, doc) = current!(editor);
 
         let cursor_pos = doc
@@ -3985,7 +4007,7 @@ fn goto_next_diag(cx: &mut Context) {
 }
 
 fn goto_prev_diag(cx: &mut Context) {
-    let motion = move |editor: &mut Editor| {
+    let motion = move |editor: &mut Editor, _mode: MotionMode, _move_override: Option<Movement>| {
         let (view, doc) = current!(editor);
 
         let cursor_pos = doc
@@ -4050,7 +4072,7 @@ fn goto_prev_change(cx: &mut Context) {
 
 fn goto_next_change_impl(cx: &mut Context, direction: Direction) {
     let count = cx.count() as u32 - 1;
-    let motion = move |editor: &mut Editor| {
+    let motion = move |editor: &mut Editor, _mode: MotionMode, _move_override: Option<Movement>| {
         let (view, doc) = current!(editor);
         let doc_text = doc.text().slice(..);
         let diff_handle = if let Some(diff_handle) = doc.diff_handle() {
@@ -5445,7 +5467,7 @@ fn reverse_selection_contents(cx: &mut Context) {
 // tree sitter node selection
 
 fn expand_selection(cx: &mut Context) {
-    let motion = |editor: &mut Editor| {
+    let motion = |editor: &mut Editor, _mode: MotionMode, _move_override: Option<Movement>| {
         let (view, doc) = current!(editor);
 
         if let Some(syntax) = doc.syntax() {
@@ -5467,7 +5489,7 @@ fn expand_selection(cx: &mut Context) {
 }
 
 fn shrink_selection(cx: &mut Context) {
-    let motion = |editor: &mut Editor| {
+    let motion = |editor: &mut Editor, _mode: MotionMode, _move_override: Option<Movement>| {
         let (view, doc) = current!(editor);
         let current_selection = doc.selection(view.id);
         // try to restore previous selection
@@ -5494,7 +5516,7 @@ fn select_sibling_impl<F>(cx: &mut Context, sibling_fn: F)
 where
     F: Fn(&helix_core::Syntax, RopeSlice, Selection) -> Selection + 'static,
 {
-    let motion = move |editor: &mut Editor| {
+    let motion = move |editor: &mut Editor, _mode: MotionMode, _move_override: Option<Movement>| {
         let (view, doc) = current!(editor);
 
         if let Some(syntax) = doc.syntax() {
@@ -5516,7 +5538,7 @@ fn select_prev_sibling(cx: &mut Context) {
 }
 
 fn move_node_bound_impl(cx: &mut Context, dir: Direction, movement: Movement) {
-    let motion = move |editor: &mut Editor| {
+    let motion = move |editor: &mut Editor, _mode: MotionMode, _move_override: Option<Movement>| {
         let (view, doc) = current!(editor);
 
         if let Some(syntax) = doc.syntax() {
@@ -5569,7 +5591,7 @@ where
 }
 
 fn select_all_siblings(cx: &mut Context) {
-    let motion = |editor: &mut Editor| {
+    let motion = |editor: &mut Editor, _mode: MotionMode, _move_override: Option<Movement>| {
         select_all_impl(editor, object::select_all_siblings);
     };
 
@@ -5577,7 +5599,7 @@ fn select_all_siblings(cx: &mut Context) {
 }
 
 fn select_all_children(cx: &mut Context) {
-    let motion = |editor: &mut Editor| {
+    let motion = |editor: &mut Editor, _mode: MotionMode, _move_override: Option<Movement>| {
         select_all_impl(editor, object::select_all_children);
     };
 
@@ -5887,7 +5909,7 @@ fn scroll_down(cx: &mut Context) {
 
 fn goto_ts_object_impl(cx: &mut Context, object: &'static str, direction: Direction) {
     let count = cx.count();
-    let motion = move |editor: &mut Editor| {
+    let motion = move |editor: &mut Editor, _mode: MotionMode, _move_override: Option<Movement>| {
         let (view, doc) = current!(editor);
         let loader = editor.syn_loader.load();
         if let Some(syntax) = doc.syntax() {
@@ -5990,7 +6012,9 @@ fn select_textobject(cx: &mut Context, objtype: textobject::TextObject) {
     cx.on_next_key(move |cx, event| {
         cx.editor.autoinfo = None;
         if let Some(ch) = event.char() {
-            let textobject = move |editor: &mut Editor| {
+            let textobject = move |editor: &mut Editor,
+                                   _mode: MotionMode,
+                                   _move_override: Option<Movement>| {
                 let (view, doc) = current!(editor);
                 let loader = editor.syn_loader.load();
                 let text = doc.text().slice(..);

@@ -25,6 +25,15 @@ pub enum Direction {
     Backward,
 }
 
+impl Direction {
+    pub fn reverse(self) -> Self {
+        match self {
+            Direction::Forward => Direction::Backward,
+            Direction::Backward => Direction::Forward,
+        }
+    }
+}
+
 #[derive(Copy, Clone, PartialEq, Eq)]
 pub enum Movement {
     Extend,
