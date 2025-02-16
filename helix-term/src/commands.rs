@@ -46,8 +46,8 @@ use helix_core::{
 };
 use helix_view::{
     document::{FormatterError, Mode, SCRATCH_BUFFER_NAME},
-    expansion,
     editor::{Action, MotionMode},
+    expansion,
     info::Info,
     input::KeyEvent,
     keyboard::KeyCode,
@@ -5517,12 +5517,19 @@ fn shrink_selection(cx: &mut Context) {
     cx.editor.apply_motion(motion);
 }
 
-fn select_sibling_impl<F>(cx: &mut Context, sibling_fn: F)
-where
-    F: Fn(&helix_core::Syntax, RopeSlice, Selection) -> Selection + 'static,
-{
-    let motion = move |editor: &mut Editor, _mode: MotionMode, _move_override: Option<Movement>| {
+fn select_sibling_impl(cx: &mut Context, direction: Direction) {
+    let motion = move |editor: &mut Editor, mode: MotionMode, _move_override: Option<Movement>| {
         let (view, doc) = current!(editor);
+
+        let direction = match mode {
+            MotionMode::Normal => direction,
+            MotionMode::Reverse => direction.reverse(),
+        };
+
+        let sibling_fn = match direction {
+            Direction::Forward => object::select_next_sibling,
+            Direction::Backward => object::select_prev_sibling,
+        };
 
         if let Some(syntax) = doc.syntax() {
             let text = doc.text().slice(..);
@@ -5535,26 +5542,31 @@ where
 }
 
 fn select_next_sibling(cx: &mut Context) {
-    select_sibling_impl(cx, object::select_next_sibling)
+    select_sibling_impl(cx, Direction::Forward)
 }
 
 fn select_prev_sibling(cx: &mut Context) {
-    select_sibling_impl(cx, object::select_prev_sibling)
+    select_sibling_impl(cx, Direction::Backward)
 }
 
-fn move_node_bound_impl(cx: &mut Context, dir: Direction, movement: Movement) {
-    let motion = move |editor: &mut Editor, _mode: MotionMode, _move_override: Option<Movement>| {
+fn move_node_bound_impl(cx: &mut Context, direction: Direction, movement: Movement) {
+    let motion = move |editor: &mut Editor, mode: MotionMode, move_override: Option<Movement>| {
         let (view, doc) = current!(editor);
 
+        let direction = match mode {
+            MotionMode::Normal => direction,
+            MotionMode::Reverse => direction.reverse(),
+        };
         if let Some(syntax) = doc.syntax() {
             let text = doc.text().slice(..);
             let current_selection = doc.selection(view.id);
 
+            let movement = move_override.unwrap_or(movement);
             let selection = movement::move_parent_node_end(
                 syntax,
                 text,
                 current_selection.clone(),
-                dir,
+                direction,
                 movement,
             );
 
@@ -5914,9 +5926,13 @@ fn scroll_down(cx: &mut Context) {
 
 fn goto_ts_object_impl(cx: &mut Context, object: &'static str, direction: Direction) {
     let count = cx.count();
-    let motion = move |editor: &mut Editor, _mode: MotionMode, _move_override: Option<Movement>| {
+    let motion = move |editor: &mut Editor, mode: MotionMode, move_override: Option<Movement>| {
         let (view, doc) = current!(editor);
         let loader = editor.syn_loader.load();
+        let direction = match mode {
+            MotionMode::Normal => direction,
+            MotionMode::Reverse => direction.reverse(),
+        };
         if let Some(syntax) = doc.syntax() {
             let text = doc.text().slice(..);
             let root = syntax.tree().root_node();
@@ -5926,16 +5942,22 @@ fn goto_ts_object_impl(cx: &mut Context, object: &'static str, direction: Direct
                     text, range, object, direction, &root, syntax, &loader, count,
                 );
 
-                if editor.mode == Mode::Select {
-                    let head = if new_range.head < range.anchor {
-                        new_range.anchor
-                    } else {
-                        new_range.head
-                    };
-
-                    Range::new(range.anchor, head)
+                let movement = move_override.unwrap_or(if editor.mode == Mode::Select {
+                    Movement::Extend
                 } else {
-                    new_range.with_direction(direction)
+                    Movement::Move
+                });
+                match movement {
+                    Movement::Extend => {
+                        let head = if new_range.head < range.anchor {
+                            new_range.anchor
+                        } else {
+                            new_range.head
+                        };
+
+                        Range::new(range.anchor, head)
+                    }
+                    Movement::Move => new_range.with_direction(direction),
                 }
             });
 
