@@ -45,8 +45,12 @@ use anyhow::{anyhow, bail, Error};
 pub use helix_core::diagnostic::Severity;
 use helix_core::{
     auto_pairs::AutoPairs,
+<<<<<<< HEAD
     diagnostic::DiagnosticProvider,
+||||||| parent of bdb6860b (feat: add reverse repeat motion)
+=======
     movement::Movement,
+>>>>>>> bdb6860b (feat: add reverse repeat motion)
     syntax::{self, AutoPairConfig, IndentationHeuristic, LanguageServerFeature, SoftWrap},
     Change, LineEnding, Position, Range, Selection, Uri, NATIVE_LINE_ENDING,
 };
@@ -420,6 +424,8 @@ pub fn get_terminal_provider() -> Option<TerminalConfig> {
         args: vec!["cmd".to_string(), "/C".to_string()],
     })
 }
+
+#[cfg(not(any(windows, target_arch = "wasm32")))]
 pub fn get_terminal_provider() -> Option<TerminalConfig> {
     use helix_stdx::env::{binary_exists, env_var_is_set};
 
@@ -439,8 +445,6 @@ pub fn get_terminal_provider() -> Option<TerminalConfig> {
 
     None
 }
-
-#[cfg(not(any(windows, target_arch = "wasm32")))]
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default, rename_all = "kebab-case", deny_unknown_fields)]
