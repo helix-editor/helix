@@ -3981,52 +3981,44 @@ fn goto_last_diag(cx: &mut Context) {
 }
 
 fn goto_next_diag(cx: &mut Context) {
-    let motion = move |editor: &mut Editor, _mode: MotionMode, _move_override: Option<Movement>| {
-        let (view, doc) = current!(editor);
-
-        let cursor_pos = doc
-            .selection(view.id)
-            .primary()
-            .cursor(doc.text().slice(..));
-
-        let diag = doc
-            .diagnostics()
-            .iter()
-            .find(|diag| diag.range.start > cursor_pos);
-
-        let selection = match diag {
-            Some(diag) => Selection::single(diag.range.start, diag.range.end),
-            None => return,
-        };
-        doc.set_selection(view.id, selection);
-        view.diagnostics_handler
-            .immediately_show_diagnostic(doc, view.id);
-    };
-
-    cx.editor.apply_motion(motion);
+    goto_diag_impl(cx, Direction::Forward)
 }
 
 fn goto_prev_diag(cx: &mut Context) {
-    let motion = move |editor: &mut Editor, _mode: MotionMode, _move_override: Option<Movement>| {
+    goto_diag_impl(cx, Direction::Backward)
+}
+
+fn goto_diag_impl(cx: &mut Context, direction: Direction) {
+    let motion = move |editor: &mut Editor, mode: MotionMode, _move_override: Option<Movement>| {
         let (view, doc) = current!(editor);
+
+        let direction = match mode {
+            MotionMode::Normal => direction,
+            MotionMode::Reverse => direction.reverse(),
+        };
 
         let cursor_pos = doc
             .selection(view.id)
             .primary()
             .cursor(doc.text().slice(..));
 
-        let diag = doc
-            .diagnostics()
-            .iter()
-            .rev()
-            .find(|diag| diag.range.start < cursor_pos);
+        let diagnostics = doc.diagnostics();
+        let diag = match direction {
+            Direction::Forward => diagnostics.iter().find(|d| d.range.start > cursor_pos),
+            Direction::Backward => diagnostics
+                .iter()
+                .rev()
+                .find(|d| d.range.start < cursor_pos),
+        };
 
         let selection = match diag {
-            // NOTE: the selection is reversed because we're jumping to the
-            // previous diagnostic.
-            Some(diag) => Selection::single(diag.range.end, diag.range.start),
+            Some(diag) => match direction {
+                Direction::Forward => Selection::single(diag.range.start, diag.range.end),
+                Direction::Backward => Selection::single(diag.range.end, diag.range.start),
+            },
             None => return,
         };
+
         doc.set_selection(view.id, selection);
         view.diagnostics_handler
             .immediately_show_diagnostic(doc, view.id);
