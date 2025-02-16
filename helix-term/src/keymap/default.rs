@@ -18,7 +18,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "r" => replace,
         "R" => replace_with_yanked,
         "A-." =>  repeat_last_motion,
-        "A-S-." =>  repeat_last_motion_reverse,
+        "A->" =>  repeat_last_motion_reverse,
 
         "~" => switch_case,
         "`" => switch_to_lowercase,
@@ -362,7 +362,7 @@ pub fn default() -> HashMap<Mode, KeyTrie> {
         "T" => extend_till_prev_char,
         "F" => extend_prev_char,
         "A-." =>  extend_repeat_last_motion,
-        "A-S-." =>  extend_repeat_last_motion_reverse,
+        "A->" =>  extend_repeat_last_motion_reverse,
 
         "home" => extend_to_line_start,
         "end" => extend_to_line_end,
