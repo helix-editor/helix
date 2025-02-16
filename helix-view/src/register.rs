@@ -18,7 +18,8 @@ use crate::{
 /// * Black hole (`_`): all values read and written are discarded
 /// * Selection indices (`#`): index number of each selection starting at 1
 /// * Selection contents (`.`)
-/// * Document path (`%`): filename of the current buffer
+/// * Relative document path (`%`): filename of the current buffer, relative to Helix's current working directory
+/// * Absolute document path (`%`): absolute path of the current buffer
 /// * System clipboard (`*`)
 /// * Primary clipboard (`+`)
 pub struct Registers {
@@ -57,8 +58,16 @@ impl Registers {
                 let text = doc.text().slice(..);
                 Some(RegisterValues::new(doc.selection(view.id).fragments(text)))
             }
-            '%' => {
-                let path = doc!(editor).display_name();
+            '%' | '=' => {
+                let doc = doc!(editor);
+                let path = match name {
+                    '%' => doc.display_name(),
+                    '=' => doc.path().map_or_else(
+                        || crate::document::SCRATCH_BUFFER_NAME.into(),
+                        |path| path.to_string_lossy(),
+                    ),
+                    _ => unreachable!(),
+                };
                 Some(RegisterValues::new(iter::once(path)))
             }
             '*' | '+' => Some(read_from_clipboard(
@@ -80,7 +89,9 @@ impl Registers {
     pub fn write(&mut self, name: char, mut values: Vec<String>) -> Result<()> {
         match name {
             '_' => Ok(()),
-            '#' | '.' | '%' => Err(anyhow::anyhow!("Register {name} does not support writing")),
+            '#' | '.' | '%' | '=' => {
+                Err(anyhow::anyhow!("Register {name} does not support writing"))
+            }
             '*' | '+' => {
                 self.clipboard_provider.load().set_contents(
                     &values.join(NATIVE_LINE_ENDING.as_str()),
@@ -105,7 +116,9 @@ impl Registers {
     pub fn push(&mut self, name: char, mut value: String) -> Result<()> {
         match name {
             '_' => Ok(()),
-            '#' | '.' | '%' => Err(anyhow::anyhow!("Register {name} does not support pushing")),
+            '#' | '.' | '%' | '=' => {
+                Err(anyhow::anyhow!("Register {name} does not support pushing"))
+            }
             '*' | '+' => {
                 let clipboard_type = match name {
                     '+' => ClipboardType::Clipboard,
@@ -165,7 +178,8 @@ impl Registers {
                     ('_', "<empty>"),
                     ('#', "<selection indices>"),
                     ('.', "<selection contents>"),
-                    ('%', "<document path>"),
+                    ('%', "<relative document path>"),
+                    ('=', "<absolute document path>"),
                     ('+', "<system clipboard>"),
                     ('*', "<primary clipboard>"),
                 ]
@@ -192,7 +206,7 @@ impl Registers {
 
                 true
             }
-            '_' | '#' | '.' | '%' => false,
+            '_' | '#' | '.' | '%' | '=' => false,
             _ => self.inner.remove(&name).is_some(),
         }
     }
