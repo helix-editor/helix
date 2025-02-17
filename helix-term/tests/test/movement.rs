@@ -782,3 +782,23 @@ async fn test_find_repeat_motion_reverse() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+/// The `find` / `till` on `<ret>` has its special handling so test it specifically.
+#[tokio::test(flavor = "multi_thread")]
+async fn test_find_till_return_key() -> anyhow::Result<()> {
+    test(("#[|h]#ello\nworld\n", "f<ret>", "#[hello\n|]#world\n")).await?;
+    test(("#[|h]#ello\nworld\n", "t<ret>", "#[hello|]#\nworld\n")).await?;
+
+    // with one repeat
+    test(("#[|h]#ello\nworld\n", "f<ret><A-.>", "hello#[\nworld\n|]#")).await?;
+    test(("#[|h]#ello\nworld\n", "t<ret><A-.>", "hell#[o\nworld|]#\n")).await?;
+
+    // test transition from normal to select mode.
+    test((
+        "#[|0]#0\n11\n22\n33\n",
+        "f<ret><A-.>v<A-.>",
+        "00#[\n11\n22\n|]#33\n",
+    ))
+    .await?;
+    Ok(())
+}
