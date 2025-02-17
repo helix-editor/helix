@@ -93,7 +93,7 @@
 "ui.statusline.insert" = { fg = "shade00", bg = "green" }
 "ui.statusline.select" = { fg = "shade00", bg = "purple" }
 
-"ui.popup" = { fg = "shade04", bg = "shade00" }
+"ui.popup" = { fg = "shade04", bg = "shade01_lighter" }
 "ui.window" = { fg = "shade04", bg = "shade00" }
 "ui.help" = { fg = "shade06", bg = "shade00" }
 "ui.text" = "shade05"
