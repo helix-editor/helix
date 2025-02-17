@@ -14,11 +14,12 @@ mod statusline;
 mod text;
 mod text_decorations;
 
-use crate::compositor::Compositor;
-use crate::filter_picker_entry;
+use crate::compositor::{Compositor, Context};
 use crate::job::{self, Callback};
+use crate::{ctrl, filter_picker_entry};
 pub use completion::Completion;
 pub use editor::EditorView;
+use helix_core::hashmap;
 use helix_stdx::rope;
 use helix_view::theme::Style;
 pub use markdown::Markdown;
@@ -32,6 +33,7 @@ pub use text::Text;
 use helix_view::Editor;
 use tui::text::Span;
 
+use std::collections::HashMap;
 use std::path::Path;
 use std::{error::Error, path::PathBuf};
 
@@ -296,6 +298,11 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
             }
         },
     )];
+
+    let delete_file: Box<dyn Fn(&mut Context) + 'static> = Box::new(|cx: &mut Context| {
+        log::error!("1");
+    });
+
     let picker = Picker::new(
         columns,
         0,
@@ -324,7 +331,8 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
             }
         },
     )
-    .with_preview(|_editor, (path, _is_dir)| Some((path.as_path().into(), None)));
+    .with_preview(|_editor, (path, _is_dir)| Some((path.as_path().into(), None)))
+    .with_key_handler(hashmap!(ctrl!('x') => delete_file));
 
     Ok(picker)
 }
