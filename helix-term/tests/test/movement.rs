@@ -726,3 +726,59 @@ async fn tree_sitter_motions_work_across_injections() -> anyhow::Result<()> {
 
     Ok(())
 }
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_find_repeat_motion_forward() -> anyhow::Result<()> {
+    // Single repeat
+    test(("#[|f]#oo bar baz bax", "fb<A-.>", "foo #[bar b|]#az bax")).await?;
+
+    // Double repeat
+    test((
+        "#[|f]#oo bar baz bax",
+        "fb<A-.><A-.>",
+        "foo bar #[baz b|]#ax",
+    ))
+    .await?;
+    // Same test, but using count prefix.
+    test(("#[|f]#oo bar baz bax", "fb2<A-.>", "foo bar #[baz b|]#ax")).await?;
+
+    // Start in normal mode, find, switch to select mode, then repeat
+    test(("#[|f]#oo bar baz bax", "fbv<A-.>", "#[foo bar b|]#az bax")).await?;
+
+    Ok(())
+}
+
+#[tokio::test(flavor = "multi_thread")]
+async fn test_find_repeat_motion_reverse() -> anyhow::Result<()> {
+    // Single reverse after double forward
+    test((
+        "#[|f]#oo bar baz bax",
+        "fb2<A-.><A-gt>",
+        "foo bar #[|baz b]#ax",
+    ))
+    .await?;
+    // Double reverse after double forward
+    test((
+        "#[|f]#oo bar baz bax",
+        "fb<A-.><A-.><A-gt><A-gt>",
+        "foo #[|bar b]#az bax",
+    ))
+    .await?;
+    // Same as above but using counts
+    test((
+        "#[|f]#oo bar baz bax",
+        "fb2<A-.>2<A-gt>",
+        "foo #[|bar b]#az bax",
+    ))
+    .await?;
+
+    // Start in normal mode, find, switch to select mode, then repeat twice, then reverse.
+    test((
+        "#[|f]#oo bar baz bax",
+        "fbv2<A-.><A-gt>",
+        "#[foo bar b|]#az bax",
+    ))
+    .await?;
+
+    Ok(())
+}
