@@ -1079,7 +1079,10 @@ impl<I: 'static + Send + Sync, D: 'static + Send + Sync> Component for Picker<I,
                     .first_history_completion(ctx.editor)
                     .filter(|_| self.prompt.line().is_empty())
                 {
-                    self.prompt.set_line(completion.to_string(), ctx.editor);
+                    // The history register is used in global search, we need to escape the '%' character
+                    self.prompt
+                        .set_line(escape_percent(completion.into_owned()), ctx.editor);
+
                     // Inserting from the history register is a paste.
                     self.handle_prompt_change(true);
                 } else {
@@ -1157,3 +1160,19 @@ impl<T: 'static + Send + Sync, D> Drop for Picker<T, D> {
 }
 
 type PickerCallback<T> = Box<dyn Fn(&mut Context, &T, Action)>;
+
+fn escape_percent(query: String) -> String {
+    if query.contains('%') {
+        query.chars().fold(String::new(), |mut acc, c| {
+            if c == '%' {
+                acc.push('\\');
+            }
+
+            acc.push(c);
+
+            acc
+        })
+    } else {
+        query
+    }
+}
