@@ -37,6 +37,8 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::{error::Error, path::PathBuf};
 
+use self::picker::PickerKeyHandler;
+
 struct Utf8PathBuf {
     path: String,
     is_dir: bool,
@@ -320,18 +322,16 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         },
     )];
 
-    let delete: Box<dyn Fn(&mut Context) + 'static> = Box::new(|cx: &mut Context| {
-        log::error!("delete file");
-    });
-    let create: Box<dyn Fn(&mut Context) + 'static> = Box::new(|cx: &mut Context| {
-        log::error!("create file");
-    });
-    let rename: Box<dyn Fn(&mut Context) + 'static> = Box::new(|cx: &mut Context| {
-        log::error!("rename file");
-    });
-    let copy: Box<dyn Fn(&mut Context) + 'static> = Box::new(|cx: &mut Context| {
-        log::error!("copy file");
-    });
+    macro_rules! declare_key_handlers {
+        ($($op:literal $key:expr => $handler:expr),*) => {
+            hashmap!(
+                $(
+                    $key => Box::new($handler)
+                        as Box<dyn Fn(&mut Context) + 'static>
+                ),*
+            )
+        };
+    }
 
     let picker = Picker::new(
         columns,
@@ -362,12 +362,20 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         },
     )
     .with_preview(|_editor, (path, _is_dir)| Some((path.as_path().into(), None)))
-    .with_key_handler(HashMap::from([
-        (alt!('c'), create),
-        (alt!('d'), delete),
-        (alt!('y'), copy),
-        (alt!('r'), rename),
-    ]));
+    .with_key_handlers(declare_key_handlers! {
+        "Create" alt!('c') => |cx: &mut Context| {
+            log::error!("create file");
+        },
+        "Delete" alt!('d') => |cx: &mut Context| {
+            log::error!("delete file");
+        },
+        "Copy" alt!('y') => |cx: &mut Context| {
+            log::error!("copy file");
+        },
+        "Rename" alt!('r') => |cx: &mut Context| {
+            log::error!("rename file");
+        }
+    });
 
     Ok(picker)
 }
