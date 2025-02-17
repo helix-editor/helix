@@ -450,9 +450,21 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         },
         // copy
         alt!('y') => {
-            create_file_operation_prompt("copy-to:", cx, path, |path, input| {
-                Ok("".into())
+            create_file_operation_prompt("copy-to:", cx, path, |copy_from, copy_to_str| {
+                let copy_to = helix_stdx::path::expand_tilde(PathBuf::from(copy_to_str));
+                if copy_to_str.ends_with('/') {
+                    Err(format!("Copying directories is not supported: {} is a directory", copy_from.display()))
+                } else if copy_to.exists() {
+                    // TODO: confirmation prompt when overwriting
+                    Err(format!("Path {copy_to_str} exists"))
+                } else {
+                    std::fs::copy(copy_from, copy_to).map_err(
+                        |err| format!("Unable to copy from file {} to {copy_to_str}: {err}",
+                            copy_from.display()
+                    ))?;
 
+                    Ok(format!("Copied contents of file {} to {copy_to_str}", copy_from.display()))
+                }
             })
         },
     });
