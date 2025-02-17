@@ -1648,10 +1648,9 @@ fn find_char_pair(cx: &mut Context, direction: Direction, extend: bool) {
                             search::find_nth_prev_pair(text, ch, ch2, search_start_pos, count)
                                 .map_or(range, |pos| {
                                     if extend {
-                                        Range::new(range.from(), pos + 1)
-                                            .with_direction(range.direction())
+                                        Range::new(pos + 2, range.to())
                                     } else {
-                                        Range::new(pos, pos + 1)
+                                        Range::new(pos + 2, pos)
                                     }
                                 })
                         });

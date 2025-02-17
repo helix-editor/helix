@@ -95,11 +95,10 @@ pub fn find_nth_prev(text: RopeSlice, ch: char, mut pos: usize, n: usize) -> Opt
     Some(pos)
 }
 
-
 pub fn find_nth_prev_pair<M: CharMatcher>(
     text: RopeSlice,
-    char_matcher: M,
-    char_matcher_2: M,
+    char_matcher_left: M,
+    char_matcher_right: M,
     mut pos: usize,
     n: usize,
 ) -> Option<usize> {
@@ -111,17 +110,17 @@ pub fn find_nth_prev_pair<M: CharMatcher>(
 
     for _ in 0..n {
         loop {
-            let c = chars.next()?;
-            let c2 = chars.peek()?;
+            let c_right = chars.next()?;
+            let c_left = chars.peek()?;
 
             pos -= 1;
 
-            if char_matcher.char_match(c) && char_matcher_2.char_match(*c2) {
+            if char_matcher_left.char_match(*c_left) && char_matcher_right.char_match(c_right) {
                 break;
             }
         }
     }
+    log::error!("{pos}");
 
     Some(pos - 1)
 }
-
