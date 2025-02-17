@@ -16,7 +16,7 @@ mod text_decorations;
 
 use crate::compositor::{Compositor, Context};
 use crate::job::{self, Callback};
-use crate::{ctrl, filter_picker_entry};
+use crate::{alt, ctrl, filter_picker_entry};
 pub use completion::Completion;
 pub use editor::EditorView;
 use helix_core::hashmap;
@@ -320,8 +320,17 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         },
     )];
 
-    let delete_file: Box<dyn Fn(&mut Context) + 'static> = Box::new(|cx: &mut Context| {
-        log::error!("1");
+    let delete: Box<dyn Fn(&mut Context) + 'static> = Box::new(|cx: &mut Context| {
+        log::error!("delete file");
+    });
+    let create: Box<dyn Fn(&mut Context) + 'static> = Box::new(|cx: &mut Context| {
+        log::error!("create file");
+    });
+    let rename: Box<dyn Fn(&mut Context) + 'static> = Box::new(|cx: &mut Context| {
+        log::error!("rename file");
+    });
+    let copy: Box<dyn Fn(&mut Context) + 'static> = Box::new(|cx: &mut Context| {
+        log::error!("copy file");
     });
 
     let picker = Picker::new(
@@ -353,7 +362,12 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         },
     )
     .with_preview(|_editor, (path, _is_dir)| Some((path.as_path().into(), None)))
-    .with_key_handler(hashmap!(ctrl!('x') => delete_file));
+    .with_key_handler(HashMap::from([
+        (alt!('c'), create),
+        (alt!('d'), delete),
+        (alt!('y'), copy),
+        (alt!('r'), rename),
+    ]));
 
     Ok(picker)
 }
