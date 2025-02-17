@@ -333,7 +333,7 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
     .with_key_handlers(declare_key_handlers! {
         // TODO: add a way to get user input in the Picker component and then
         // execute an action based on that. Maybe re-use the existing Prompt component somehow?
-        |cx, path: &(PathBuf, bool)|,
+        |cx, (path, _is_dir): &(PathBuf, bool)|,
         // create
         alt!('c') => {
             // TODO: ask user for name of file to be created

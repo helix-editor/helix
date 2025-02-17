@@ -1186,7 +1186,7 @@ pub type PickerKeyHandler<T> = HashMap<KeyEvent, Box<dyn Fn(&mut Context, &T) + 
 /// Convenience macro to add custom keybindings per picker
 #[macro_export]
 macro_rules! declare_key_handlers {
-        (|$cx:ident, $item:ident : $t:ty|, $($key:expr => $handler:block),* $(,)?) => {
+        (|$cx:ident, $item:tt : $t:ty|, $($key:expr => $handler:block),* $(,)?) => {
             hashmap!(
                 $(
                     $key => Box::new(|$cx: &mut Context, $item: $t| $handler)
