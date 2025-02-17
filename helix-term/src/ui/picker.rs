@@ -259,7 +259,7 @@ pub struct Picker<T: 'static + Send + Sync, D: 'static> {
     widths: Vec<Constraint>,
 
     callback_fn: PickerCallback<T>,
-    custom_key_handlers: PickerKeyHandler,
+    custom_key_handlers: PickerKeyHandler<T>,
 
     pub truncate_start: bool,
     /// Caches paths to documents
@@ -395,7 +395,7 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
         }
     }
 
-    pub fn with_key_handlers(mut self, handlers: PickerKeyHandler) -> Self {
+    pub fn with_key_handlers(mut self, handlers: PickerKeyHandler<T>) -> Self {
         self.custom_key_handlers = handlers;
         self
     }
@@ -518,8 +518,10 @@ impl<T: 'static + Send + Sync, D: 'static + Send + Sync> Picker<T, D> {
     }
 
     fn custom_event_handler(&mut self, event: &KeyEvent, cx: &mut Context) -> EventResult {
-        if let Some(callback) = self.custom_key_handlers.get(event) {
-            callback(cx);
+        if let (Some(callback), Some(selected)) =
+            (self.custom_key_handlers.get(event), self.selection())
+        {
+            callback(cx, selected);
             EventResult::Consumed(None)
         } else {
             EventResult::Ignored(None)
@@ -1191,4 +1193,4 @@ impl<T: 'static + Send + Sync, D> Drop for Picker<T, D> {
 }
 
 type PickerCallback<T> = Box<dyn Fn(&mut Context, &T, Action)>;
-pub type PickerKeyHandler = HashMap<KeyEvent, Box<dyn Fn(&mut Context) + 'static>>;
+pub type PickerKeyHandler<T> = HashMap<KeyEvent, Box<dyn Fn(&mut Context, &T) + 'static>>;
