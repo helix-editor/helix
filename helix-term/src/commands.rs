@@ -1587,7 +1587,7 @@ fn find_char_pair(cx: &mut Context, direction: Direction, extend: bool) {
         };
 
         cx.on_next_key(move |cx, event| {
-            let ch2 = match event {
+            let ch_2 = match event {
                 KeyEvent {
                     code: KeyCode::Enter,
                     ..
@@ -1607,56 +1607,32 @@ fn find_char_pair(cx: &mut Context, direction: Direction, extend: bool) {
                 _ => return,
             };
             let motion = move |editor: &mut Editor| {
-                match direction {
-                    Direction::Forward => {
-                        let (view, doc) = current!(editor);
-                        let text = doc.text().slice(..);
-                        let selection = doc.selection(view.id).clone().transform(|range| {
-                            // TODO: use `Range::cursor()` here instead.  However, that works in terms of
-                            // graphemes, whereas this function doesn't yet.  So we're doing the same logic
-                            // here, but just in terms of chars instead.
-                            let search_start_pos = if range.anchor < range.head {
-                                range.head - 1
-                            } else {
-                                range.head
-                            };
-
-                            search::find_nth_next_pair(text, ch, ch2, search_start_pos, count)
-                                .map_or(range, |pos| {
-                                    if extend {
-                                        Range::new(range.from(), pos + 2)
-                                    } else {
-                                        Range::new(pos, pos + 2)
-                                    }
-                                })
-                        });
-                        doc.set_selection(view.id, selection);
-                    }
-                    Direction::Backward => {
-                        let (view, doc) = current!(editor);
-                        let text = doc.text().slice(..);
-                        let selection = doc.selection(view.id).clone().transform(|range| {
-                            // TODO: use `Range::cursor()` here instead.  However, that works in terms of
-                            // graphemes, whereas this function doesn't yet.  So we're doing the same logic
-                            // here, but just in terms of chars instead.
-                            let search_start_pos = if range.anchor < range.head {
-                                range.head - 1
-                            } else {
-                                range.head
-                            };
-
-                            search::find_nth_prev_pair(text, ch, ch2, search_start_pos, count)
-                                .map_or(range, |pos| {
-                                    if extend {
-                                        Range::new(pos + 2, range.to())
-                                    } else {
-                                        Range::new(pos + 2, pos)
-                                    }
-                                })
-                        });
-                        doc.set_selection(view.id, selection);
-                    }
+                let (view, doc) = current!(editor);
+                let text = doc.text().slice(..);
+                let selection = doc.selection(view.id).clone();
+                let selection = match direction {
+                    Direction::Forward => selection.transform(|range| {
+                        search::find_nth_next_pair(text, ch, ch_2, range.char_cursor(), count)
+                            .map_or(range, |pos| {
+                                if extend {
+                                    Range::new(range.from(), pos + 2)
+                                } else {
+                                    Range::new(pos, pos + 2)
+                                }
+                            })
+                    }),
+                    Direction::Backward => selection.transform(|range| {
+                        search::find_nth_prev_pair(text, ch, ch_2, range.char_cursor(), count)
+                            .map_or(range, |pos| {
+                                if extend {
+                                    Range::new(pos + 2, range.to())
+                                } else {
+                                    Range::new(pos + 2, pos)
+                                }
+                            })
+                    }),
                 };
+                doc.set_selection(view.id, selection);
             };
 
             cx.editor.apply_motion(motion);
@@ -1675,20 +1651,12 @@ fn find_char_impl<F, M: CharMatcher + Clone + Copy>(
 ) where
     F: Fn(RopeSlice, M, usize, usize, bool) -> Option<usize> + 'static,
 {
+    // TODO: make this grapheme-aware
     let (view, doc) = current!(editor);
     let text = doc.text().slice(..);
 
     let selection = doc.selection(view.id).clone().transform(|range| {
-        // TODO: use `Range::cursor()` here instead.  However, that works in terms of
-        // graphemes, whereas this function doesn't yet.  So we're doing the same logic
-        // here, but just in terms of chars instead.
-        let search_start_pos = if range.anchor < range.head {
-            range.head - 1
-        } else {
-            range.head
-        };
-
-        search_fn(text, char_matcher, search_start_pos, count, inclusive).map_or(range, |pos| {
+        search_fn(text, char_matcher, range.char_cursor(), count, inclusive).map_or(range, |pos| {
             if extend {
                 range.put_cursor(text, pos, true)
             } else {
