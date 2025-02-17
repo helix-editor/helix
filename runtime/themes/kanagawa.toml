@@ -99,16 +99,18 @@ hint = "waveAqua1"
 "special" = "peachRed"
 
 ## Markup modifiers
+"markup.heading" = { fg = "springViolet2", modifiers = ["bold"] }
 "markup.heading.marker" = "springViolet2"
-"markup.heading" = { fg = "crystalBlue", modifiers = ["bold"] }
-"markup.list" = "oniViolet"
+"markup.heading.1" = { fg = "carpYellow", modifiers = ["bold"] }
+"markup.heading.2" = { fg = "crystalBlue", modifiers = ["bold"] }
+"markup.list" = "sakuraPink"
 "markup.bold" = { modifiers = ["bold"] }
 "markup.italic" = { modifiers = ["italic"] }
 "markup.strikethrough" = { modifiers = ["crossed_out"] }
 "markup.link.text" = { fg = "springBlue" }
-"markup.link.url" = { fg = "sakuraPink" }
+"markup.link.url" = { fg = "lightBlue" }
 "markup.link.label" = "surimiOrange"
-"markup.quote" = "springViolet1"
+"markup.quote" = "oniViolet2"
 "markup.raw" = "springGreen"
 
 [palette]
@@ -138,10 +140,10 @@ dragonBlue = "#658594"     # diagnostic hint
 oniViolet = "#957FB8"      # statements and keywords
 oniViolet2 = "#B8B4D0"     # parameters
 crystalBlue = "#7E9CD8"    # functions and titles
-springViolet1 = "#938AA9"  # light foreground
+# springViolet1 = "#938AA9"
 springViolet2 = "#9CABCA"  # brackets and punctuation
 springBlue = "#7FB4CA"     # specials and builtins
-# lightBlue = "#A3D4D5"
+lightBlue = "#A3D4D5"      # URLs
 waveAqua2 = "#7AA89F"      # types
 # waveAqua3  = "#68AD99"
 # waveAqua4  = "#7AA880"
