@@ -130,21 +130,20 @@
       };
     in {
       packages = rec {
-        # Make MSRV Helix
-        helix = pkgs.callPackage mkHelix {rustPlatform = msrvPlatform;};
+        helix = pkgs.callPackage mkHelix { };
 
-        # The default Helix build. Uses the default MSRV Rust toolchain, and the
-        # default nixpkgs, which is the one in the Flake.lock of Helix.
+        # The default Helix build. Uses the latest stable Rust toolchain, and unstable
+        # nixpkgs.
         #
-        # This can be overridden though to add Cargo Features, flags, and different toolchains.
+        # This can be overridden though to add Cargo Features, flags, and different toolchains with
+        # packages.${system}.default.overrideAttrs { ... };
         default = helix;
       };
 
       checks.helix = self.outputs.packages.${system}.helix.overrideAttrs {
         cargoBuildType = "debug";
+        rustPlatform = msrvPlatform;
       };
-
-      formatter = pkgs.alejandra;
 
       # Devshell behavior is preserved.
       devShells.default = let
