@@ -379,21 +379,21 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         |cx, (path, _is_dir): &(PathBuf, bool)|,
         // create
         alt!('c') => {
-            create_file_operation_prompt("create:", cx, path, |_path, create| {
-                let path = helix_stdx::path::expand_tilde(PathBuf::from(create));
+            create_file_operation_prompt("create:", cx, path, |_, to_create_str| {
+                let to_create = helix_stdx::path::expand_tilde(PathBuf::from(to_create_str));
 
-                if path.exists() {
-                    return Err(format!("Path {create} already exists."))
+                if to_create.exists() {
+                    return Err(format!("Path {to_create_str} already exists"))
                 };
 
-                if create.ends_with(std::path::MAIN_SEPARATOR) {
-                    fs::create_dir_all(path).map_err(|err| format!("Unable to create directory {create}: {err}"))?;
+                if to_create_str.ends_with(std::path::MAIN_SEPARATOR) {
+                    fs::create_dir_all(to_create).map_err(|err| format!("Unable to create directory {to_create_str}: {err}"))?;
 
-                    Ok(format!("Created directory: {create}"))
+                    Ok(format!("Created directory: {to_create_str}"))
                 } else {
-                    fs::File::create(path).map_err(|err| format!("Unable to create file {create}: {err}"))?;
+                    fs::File::create(to_create).map_err(|err| format!("Unable to create file {to_create_str}: {err}"))?;
 
-                    Ok(format!("Created file: {create}"))
+                    Ok(format!("Created file: {to_create_str}"))
                 }
             })
         },
@@ -406,9 +406,25 @@ pub fn file_explorer(root: PathBuf, editor: &Editor) -> Result<FileExplorer, std
         },
         // delete
         alt!('d') => {
-            create_file_operation_prompt("delete? (y/n):", cx, path, |path, input| {
-                Ok("".into())
+            create_file_operation_prompt("delete? (y/n):", cx, path, |_, to_delete_str| {
+                let to_delete = helix_stdx::path::expand_tilde(PathBuf::from(to_delete_str));
+                if matches!(to_delete_str, "y" | "n") {
+                    if to_delete.exists() {
+                        return Err(format!("Path {to_delete_str} does not exist"))
+                    };
 
+                    if to_delete_str.ends_with(std::path::MAIN_SEPARATOR) {
+                        fs::remove_dir_all(to_delete).map_err(|err| format!("Unable to delete directory {to_delete_str}: {err}"))?;
+
+                        Ok(format!("Deleted directory: {to_delete_str}"))
+                    } else {
+                        fs::remove_file(to_delete).map_err(|err| format!("Unable to delete file {to_delete_str}: {err}"))?;
+
+                        Ok(format!("Deleted file: {to_delete_str}"))
+                    }
+                } else {
+                    Ok(format!("Did not delete: {to_delete_str}"))
+                }
             })
         },
         // copy
